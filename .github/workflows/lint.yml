@@ -103,6 +103,36 @@ jobs:
           source = source.replace(strict_helper, tolerant_helper, 1)
           exec(compile(source, 'music-cue-phase2-editor', 'exec'))
 
+      - name: Stabilize cue metadata reader
+        shell: python
+        run: |
+          from pathlib import Path
+
+          target = Path('src/screens/SettingsAdmin/MusicCueEditor.tsx')
+          text = target.read_text()
+          old = '''    useEffect(() => {
+              setDuration(null)
+              if (!draft) return
+              const asset = effectiveAssetMap.get(draft.track)
+              const bundled = getMusicTrackSoundEntry(draft.track)
+          '''
+          new = '''    const draftTrack = draft?.track
+
+            useEffect(() => {
+              setDuration(null)
+              if (!draftTrack) return
+              const asset = effectiveAssetMap.get(draftTrack)
+              const bundled = getMusicTrackSoundEntry(draftTrack)
+          '''
+          if old not in text:
+              raise SystemExit('Could not locate cue metadata effect body')
+          text = text.replace(old, new, 1)
+          old_dependencies = '    }, [draft?.track, effectiveAssetMap])\n'
+          new_dependencies = '    }, [draftTrack, effectiveAssetMap])\n'
+          if old_dependencies not in text:
+              raise SystemExit('Could not locate cue metadata effect dependencies')
+          target.write_text(text.replace(old_dependencies, new_dependencies, 1))
+
       - name: Format Music Manager editor
         run: |
           npx prettier --write \
