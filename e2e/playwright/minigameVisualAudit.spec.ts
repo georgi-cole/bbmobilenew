@@ -31,29 +31,29 @@ async function writeScreenshot(
   await page.screenshot({ path: path.join(gameDirectory, `${state}.png`) })
 }
 
-test.describe('Minigame visual audit @visual-audit', () => {
-  test.skip(!writeVisualAudit, 'Visual audit artifacts are generated only by npm run audit:visual')
+if (writeVisualAudit) {
+  test.describe('Minigame visual audit @visual-audit', () => {
+    for (const game of ACTIVE_GAMES) {
+      test(`${game.key} captures start and partial-result states`, async ({ page }, testInfo) => {
+        await openLab(page, game)
 
-  for (const game of ACTIVE_GAMES) {
-    test(`${game.key} captures start and partial-result states`, async ({ page }, testInfo) => {
-      await openLab(page, game)
+        const hostDialog = page.getByRole('dialog', {
+          name: new RegExp(`${game.title} minigame`, 'i'),
+        })
+        await expect(hostDialog).toBeVisible()
+        await expect(page.getByTestId('minigame-lab-selected-title')).toHaveText(game.title)
+        await assertNoHorizontalDocumentOverflow(page)
+        await writeScreenshot(page, testInfo.project.name, game.key, 'start')
 
-      const hostDialog = page.getByRole('dialog', {
-        name: new RegExp(`${game.title} minigame`, 'i'),
+        const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
+        await menuButton.click()
+        await hostDialog.getByRole('menuitem', { name: /Leave competition/i }).click()
+        await hostDialog.getByRole('button', { name: 'Exit with 0' }).click()
+
+        await expect(hostDialog.getByRole('heading', { name: 'Exited early' })).toBeVisible()
+        await assertNoHorizontalDocumentOverflow(page)
+        await writeScreenshot(page, testInfo.project.name, game.key, 'partial-result')
       })
-      await expect(hostDialog).toBeVisible()
-      await expect(page.getByTestId('minigame-lab-selected-title')).toHaveText(game.title)
-      await assertNoHorizontalDocumentOverflow(page)
-      await writeScreenshot(page, testInfo.project.name, game.key, 'start')
-
-      const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
-      await menuButton.click()
-      await hostDialog.getByRole('menuitem', { name: /Leave competition/i }).click()
-      await hostDialog.getByRole('button', { name: 'Exit with 0' }).click()
-
-      await expect(hostDialog.getByRole('heading', { name: 'Exited early' })).toBeVisible()
-      await assertNoHorizontalDocumentOverflow(page)
-      await writeScreenshot(page, testInfo.project.name, game.key, 'partial-result')
-    })
-  }
-})
+    }
+  })
+}
