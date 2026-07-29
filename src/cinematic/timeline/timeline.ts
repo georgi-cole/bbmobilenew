@@ -87,7 +87,9 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   // Give the wide landscape a few seconds to move through afternoon, sunset,
   // and evening before the final blackout.
   const sunsetProgress = easedRange(frame, 1684, 1786);
-  const finalDarkness = easedRange(frame, 1766, 1799);
+  // The player ends just before the authored final frame. Reach full black
+  // early and hold it so the last visible frame cannot leave a grey flash.
+  const finalDarkness = easedRange(frame, 1748, 1776);
   const stormProgress = rangeProgress(frame, 300, 930);
   const eveningProgress = rangeProgress(frame, 810, 1320);
   const cloudBuild = easedRange(frame, 300, 465);
