@@ -106,32 +106,41 @@ jobs:
       - name: Stabilize cue metadata reader
         shell: python
         run: |
+          import re
           from pathlib import Path
 
           target = Path('src/screens/SettingsAdmin/MusicCueEditor.tsx')
           text = target.read_text()
-          old = '''    useEffect(() => {
-              setDuration(null)
-              if (!draft) return
-              const asset = effectiveAssetMap.get(draft.track)
-              const bundled = getMusicTrackSoundEntry(draft.track)
-          '''
-          new = '''    const draftTrack = draft?.track
-
-            useEffect(() => {
-              setDuration(null)
-              if (!draftTrack) return
-              const asset = effectiveAssetMap.get(draftTrack)
-              const bundled = getMusicTrackSoundEntry(draftTrack)
-          '''
-          if old not in text:
-              raise SystemExit('Could not locate cue metadata effect body')
-          text = text.replace(old, new, 1)
-          old_dependencies = '    }, [draft?.track, effectiveAssetMap])\n'
-          new_dependencies = '    }, [draftTrack, effectiveAssetMap])\n'
-          if old_dependencies not in text:
-              raise SystemExit('Could not locate cue metadata effect dependencies')
-          target.write_text(text.replace(old_dependencies, new_dependencies, 1))
+          pattern = re.compile(
+              r'(?P<indent>^[ \t]*)useEffect\(\(\) => \{\n'
+              r'(?P=indent)[ \t]+setDuration\(null\)\n'
+              r'(?P=indent)[ \t]+if \(!draft\) return\n'
+              r'(?P=indent)[ \t]+const asset = effectiveAssetMap\.get\(draft\.track\)\n'
+              r'(?P=indent)[ \t]+const bundled = getMusicTrackSoundEntry\(draft\.track\)',
+              re.MULTILINE,
+          )
+          match = pattern.search(text)
+          if not match:
+              raise SystemExit('Could not locate cue metadata effect structurally')
+          indent = match.group('indent')
+          replacement = (
+              f'{indent}const draftTrack = draft?.track\n\n'
+              f'{indent}useEffect(() => {{\n'
+              f'{indent}  setDuration(null)\n'
+              f'{indent}  if (!draftTrack) return\n'
+              f'{indent}  const asset = effectiveAssetMap.get(draftTrack)\n'
+              f'{indent}  const bundled = getMusicTrackSoundEntry(draftTrack)'
+          )
+          text = pattern.sub(replacement, text, count=1)
+          text, count = re.subn(
+              r'\}, \[draft\?\.track, effectiveAssetMap\]\)',
+              '}, [draftTrack, effectiveAssetMap])',
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit('Could not locate cue metadata dependency list')
+          target.write_text(text)
 
       - name: Format Music Manager editor
         run: |
