@@ -10,6 +10,7 @@ import {
   DEFAULT_MUSIC_CONFIG,
   resolveMusicCue,
   type MusicConfigDocument,
+  type MusicMinigameVariant,
   type ResolvedMusicCue,
 } from './musicConfig'
 import type { MusicTrack } from './musicTracks'
@@ -22,6 +23,7 @@ export interface MusicResolverState {
   challenge: {
     pending?: {
       phase?: string | null
+      musicVariant?: MusicMinigameVariant | null
       game?: {
         key?: string | null
         category?: GameCategory | null
@@ -53,6 +55,7 @@ export function resolveDesiredMusicCue(
             gameKey: pendingChallenge.game?.key ?? null,
             category: pendingChallenge.game?.category ?? null,
             stage: pendingChallenge.phase ?? null,
+            variant: pendingChallenge.musicVariant ?? 'normal',
           }
         : null,
     },

@@ -60,6 +60,7 @@ export default function AudioStateSync() {
       spectatorActive: root.game.spectatorActive,
       seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
+      pendingChallengeVariant: root.challenge.pending?.musicVariant ?? 'normal',
       pendingChallengeGameKey: root.challenge.pending?.game?.key ?? null,
       pendingChallengeGameCategory: root.challenge.pending?.game?.category ?? null,
       socialPanelOpen: root.social.panelOpen,
@@ -131,6 +132,7 @@ export default function AudioStateSync() {
           musicState.pendingChallengePhase !== null
             ? {
                 phase: musicState.pendingChallengePhase,
+                musicVariant: musicState.pendingChallengeVariant,
                 game: {
                   key: musicState.pendingChallengeGameKey,
                   category: musicState.pendingChallengeGameCategory,
@@ -216,7 +218,7 @@ export default function AudioStateSync() {
       }
 
       SoundManager.setMusicVolume(0)
-      void SoundManager.setDesiredMusic(desiredCue.track, cueReason(desiredCue)).then(() => {
+      void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue)).then(() => {
         if (transitionTokenRef.current !== transitionToken) return
         if (desiredCue.transition!.fadeInMs <= 0) {
           SoundManager.setMusicVolume(musicState.musicVolume)
@@ -246,7 +248,7 @@ export default function AudioStateSync() {
           const nextCue = latestDesiredRef.current
           if (isManagedMinigameCue(nextCue)) return
           previousDesiredRef.current = nextCue
-          void SoundManager.setDesiredMusic(nextCue.track, cueReason(nextCue))
+          void SoundManager.setDesiredMusicCue(nextCue, cueReason(nextCue))
         })
       }, previousCue.transition.postGameHoldMs)
       return
@@ -254,7 +256,7 @@ export default function AudioStateSync() {
 
     clearPostGameTimer()
     SoundManager.setMusicVolume(musicState.musicVolume)
-    void SoundManager.setDesiredMusic(desiredCue.track, cueReason(desiredCue))
+    void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue))
   }, [desiredCue, musicState.musicOn, musicState.musicVolume])
 
   useEffect(
