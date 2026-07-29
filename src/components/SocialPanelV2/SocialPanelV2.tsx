@@ -142,15 +142,6 @@ export default function SocialPanelV2() {
     game.posWinnerId === humanPlayer?.id &&
     Boolean(game.lohId) &&
     !game.povSavedId
-
-  // When the human wins Safety, open the panel with the LOH selected so the
-  // contextual “Ask LOH for POS Advice” card is immediately discoverable.
-  useEffect(() => {
-    if (!safetyConsultationOpen || !game.lohId || primaryTargetId) return
-    setPrimaryTargetId(game.lohId)
-    setSelectedTargets(new Set([game.lohId]))
-  }, [game.lohId, primaryTargetId, safetyConsultationOpen])
-
   useEffect(
     () => () => {
       if (successPulseTimerRef.current !== null) {
@@ -204,8 +195,28 @@ export default function SocialPanelV2() {
     !selectedAction?.requiredTargetStatus &&
     selectedActionId !== 'proposeAlliance'
   const usesMultipleTargets = targetMode === 'multi' || (multiSelectActive && isBatchCompatible)
+  // A POS holder begins with the LOH selected for an individual consultation
+  // without mutating local state from an effect. Group selections always use
+  // the player's explicit picks, so this default cannot replace a multi-select.
+  const suggestedSafetyTargetId =
+    safetyConsultationOpen &&
+    targetMode === 'primary' &&
+    primaryTargetId === null &&
+    selectedTargets.size === 0
+      ? game.lohId
+      : null
+  const effectivePrimaryTargetId =
+    targetMode === 'none' ? null : (primaryTargetId ?? suggestedSafetyTargetId)
+  const selectedPlayerIds = useMemo(
+    () =>
+      selectedTargets.size > 0
+        ? selectedTargets
+        : effectivePrimaryTargetId
+          ? new Set([effectivePrimaryTargetId])
+          : selectedTargets,
+    [effectivePrimaryTargetId, selectedTargets]
+  )
   const selectedTargetCount = selectedTargets.size
-  const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId
   const needsTarget = targetMode !== 'none'
   const needsSubject = targetMode === 'primaryPlusSubject'
   const hasRequiredTargets =
@@ -754,7 +765,7 @@ export default function SocialPanelV2() {
               humanPlayerId={humanPlayer.id}
               relationships={relationships}
               disabledIds={disabledPlayerIds}
-              selectedIds={selectedTargets}
+              selectedIds={selectedPlayerIds}
               onSelectionChange={handleSelectionChange}
               multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
@@ -768,9 +779,7 @@ export default function SocialPanelV2() {
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
               onPremiumLockedClick={handleRealityUpgrade}
-              selectedTargetIds={
-                targetMode === 'none' || selectedTargets.size === 0 ? undefined : selectedTargets
-              }
+              selectedTargetIds={targetMode === 'none' ? undefined : selectedPlayerIds}
               players={orderedPlayers}
               actorId={humanPlayer.id}
               actorEnergy={energy}
@@ -778,8 +787,9 @@ export default function SocialPanelV2() {
               actorInfo={info}
               relationships={relationships}
               primaryTargetStatus={
-                primaryTargetId
-                  ? (game.players.find((player) => player.id === primaryTargetId)?.status ?? null)
+                effectivePrimaryTargetId
+                  ? (game.players.find((player) => player.id === effectivePrimaryTargetId)
+                      ?.status ?? null)
                   : null
               }
               dramaMode={dramaMode}

@@ -654,6 +654,7 @@ describe('SocialPanelV2 – subject picker', () => {
     // Re-create with the LOH override now that we know the correct player id.
     store = makeStore({
       phase: 'social_1',
+      dramaMode: true,
       playerStatusOverrides: { [firstNonUser.id]: 'loh' },
     })
     humanId = store.getState().game.players.find((p) => p.isUser)!.id
@@ -737,6 +738,7 @@ describe('SocialPanelV2 – subject picker', () => {
     cleanup()
     store = makeStore({
       phase: 'pos_results',
+      dramaMode: true,
       posWinnerId: posHolder.id,
       nomineeIds: [nomineeWithPos.id],
       playerStatusOverrides: {
@@ -765,6 +767,7 @@ describe('SocialPanelV2 – subject picker', () => {
     cleanup()
     store = makeStore({
       phase: 'pos_results',
+      dramaMode: true,
       posWinnerId: posHolder.id,
       nomineeIds: [humanId, otherNominee.id],
       humanStatus: 'nominated',

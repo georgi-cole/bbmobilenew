@@ -151,6 +151,35 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           costOverride: input.costOverride,
         })
       }
+      if (targetIds.length > 1) {
+        return targetIds
+          .map((targetId, index) =>
+            executeAction(input.actorId, targetId, input.actionId, {
+              source: 'manual',
+              subjectId: input.subjectId,
+              waiveCosts: index > 0,
+              costOverride: index === 0 ? input.costOverride : { energy: 0, influence: 0, info: 0 },
+            })
+          )
+          .reduce<ExecuteActionResult>(
+            (combined, entry, index) => ({
+              success: combined.success || entry.success,
+              summary:
+                index === targetIds.length - 1
+                  ? `Reached ${targetIds.length} housemates.`
+                  : combined.summary,
+              newEnergy: entry.newEnergy,
+              delta: (combined.delta * index + entry.delta) / Math.max(1, index + 1),
+              label: entry.label,
+              score: (combined.score * index + entry.score) / Math.max(1, index + 1),
+              targetDeltas: {
+                ...(combined.targetDeltas ?? {}),
+                [targetIds[index]]: entry.delta,
+              },
+            }),
+            result(false, '', energy)
+          )
+      }
       return executeAction(
         input.actorId,
         mode === 'none' ? input.actorId : input.targetId,
