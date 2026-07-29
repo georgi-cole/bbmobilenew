@@ -313,10 +313,17 @@ function collectTwinShockFullSizeLookupTokens(player: Pick<Player, 'id' | 'name'
 }
 
 function listFormalCutoutCandidates(): Array<{ basename: string; filename: string }> {
-  return FORMAL_CUTOUT_FILES.map((filename) => {
-    const basename = filename.replace(/\.[^.]+$/, '');
-    return { basename, filename };
-  });
+  return FORMAL_CUTOUT_FILES
+    .map((filename) => {
+      const basename = filename.replace(/\.[^.]+$/, '');
+      return { basename, filename };
+    })
+    .sort((a, b) => {
+      const formatPriority = (filename: string) => (
+        filename.toLowerCase().endsWith('.png') ? 0 : 1
+      );
+      return formatPriority(a.filename) - formatPriority(b.filename);
+    });
 }
 
 function listInformalCutoutCandidates(): Array<{ basename: string; filename: string }> {

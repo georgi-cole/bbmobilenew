@@ -48,6 +48,20 @@ describe('FullSizeCutoutImage', () => {
     );
   });
 
+  it('prefers the supported PNG when a legacy formal format also exists', () => {
+    render(
+      <FullSizeCutoutImage
+        player={{ id: 'blue', name: 'Blue', avatar: '/blue.webp' }}
+        attire="formal"
+        alt="Blue at the ceremony"
+      />,
+    );
+
+    expect(screen.getByAltText('Blue at the ceremony').getAttribute('src')).toContain(
+      'Blue_formal.png',
+    );
+  });
+
   it('uses the neutral full-body fallback for user players with no gendered cutout', () => {
     render(
       <FullSizeCutoutImage

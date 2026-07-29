@@ -126,10 +126,7 @@ export default function Credits({ autoPlay = false, onComplete }: CreditsProps) 
     player.addEventListener('ended', onPlayerEnded)
 
     if (!needsStart && !player.isPlaying()) {
-      void Promise.resolve(player.play()).catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        setNeedsStart(true)
-      })
+      player.play()
     }
 
     return () => {

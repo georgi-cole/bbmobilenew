@@ -13,43 +13,39 @@ function ruleBody(selector: string): string {
   return match?.[1] ?? ''
 }
 
-describe('Housemates biography broadcast layout contract', () => {
-  it('uses a full-height hero instead of splitting the phone into copy and portrait rows', () => {
-    const card = ruleBody('.hbc-card')
-    const portraitWrap = ruleBody('.hbc-card__portrait-wrap')
+describe('Housemates biography interactive layout contract', () => {
+  it('uses a contained carousel card instead of splitting it into copy and portrait rows', () => {
+    const card = ruleBody('.hbc-carousel__card')
 
     expect(card).not.toContain('grid-template-areas')
     expect(card).not.toContain('grid-template-rows')
-    expect(portraitWrap).toContain('position: absolute')
-    expect(portraitWrap).toContain('top: max(48px')
-    expect(portraitWrap).toContain('bottom: max(18px')
-    expect(portraitWrap).toContain('left: -12vw')
-    expect(portraitWrap).toContain('right: -12vw')
+    expect(card).toContain('overflow: hidden')
+    expect(card).toContain('height: min(52dvh, 510px)')
   })
 
-  it('keeps the full cutout visible while preserving configured focal positions', () => {
-    const portrait = ruleBody('.hbc-card__portrait')
+  it('keeps the carousel cutout visible with a protected floor margin', () => {
+    const portrait = ruleBody('.hbc-carousel__card img')
 
     expect(portrait).toContain('object-fit: contain')
     expect(portrait).toContain('object-position: center bottom')
-    expect(portrait).toContain('transform-origin: center bottom')
-    expect(portrait).not.toContain('!important')
+    expect(portrait).toContain('bottom: clamp(14px, 2dvh, 22px)')
+    expect(portrait).toContain('height: calc(91% - 20px)')
   })
 
-  it('keeps biography copy subordinate to the talent', () => {
-    const copy = ruleBody('.hbc-card__copy')
-    const bubble = ruleBody('.hbc-bubble')
+  it('makes the full-story talent height-driven without cropping the cutout', () => {
+    const stage = ruleBody('.hbc-profile__portrait-stage')
+    const portrait = ruleBody('.hbc-profile__portrait')
 
-    expect(copy).toContain('position: absolute')
-    expect(copy).toContain('width: min(47vw, 340px)')
-    expect(copy).toContain('max-width: 340px')
-    expect(bubble).toContain('-webkit-line-clamp: 4')
+    expect(stage).toContain('width: min(112vw, 700px)')
+    expect(stage).toContain('height: calc(100dvh - 170px)')
+    expect(stage).toContain('margin-left: -23vw')
+    expect(portrait).toContain('object-fit: contain')
+    expect(portrait).toContain('object-position: center bottom')
   })
 
-  it('contains dedicated short-phone, tablet, and landscape compositions', () => {
-    expect(CSS).toContain('@media (max-height: 700px) and (orientation: portrait)')
-    expect(CSS).toContain('@media (min-width: 700px) and (orientation: portrait)')
-    expect(CSS).toContain('@media (orientation: landscape)')
+  it('contains dedicated short-phone and larger-screen compositions', () => {
+    expect(CSS).toContain('@media (max-width: 370px) and (max-height: 700px)')
+    expect(CSS).toContain('@media (min-width: 700px)')
     expect(CSS).not.toContain('* -')
   })
 })

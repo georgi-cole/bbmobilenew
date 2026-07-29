@@ -1,0 +1,51 @@
+.season-recap-preview {
+  display: grid;
+  min-height: 100dvh;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 28px;
+  color: #f7f4ff;
+  background: radial-gradient(circle at 50% 30%, rgba(137, 101, 238, 0.24), transparent 28%), #050711;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  text-align: center;
+}
+
+.season-recap-preview p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.season-recap-preview h1 {
+  margin: 0 0 12px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.7rem, 14vw, 5rem);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+}
+
+.season-recap-preview button,
+.season-recap-preview a {
+  min-width: 174px;
+  padding: 13px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: #15111e;
+  background: #f4efff;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.season-recap-preview a {
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.07);
+}

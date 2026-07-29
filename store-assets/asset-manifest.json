@@ -1,0 +1,23 @@
+{
+  "generatedOn": "2026-07-22",
+  "locale": "en-US",
+  "recommendedSet": "product",
+  "apple": {
+    "icon": { "path": "apple/app-store-icon-1024.png", "width": 1024, "height": 1024, "alpha": false },
+    "iphone69": { "directory": "apple/iphone-6.9-product", "count": 6, "width": 1320, "height": 2868, "alpha": false },
+    "ipad13": { "directory": "apple/ipad-13-product", "count": 6, "width": 2048, "height": 2732, "alpha": false }
+  },
+  "googlePlay": {
+    "icon": { "path": "google-play/app-icon-512.png", "width": 512, "height": 512, "mode": "RGBA" },
+    "featureGraphic": { "path": "google-play/feature-graphic-product-1024x500.png", "width": 1024, "height": 500, "alpha": false },
+    "phoneScreenshots": { "directory": "google-play/phone-product", "count": 6, "width": 1080, "height": 1920, "alpha": false }
+  },
+  "productScenes": [
+    { "id": "01-ai-housemates", "housemates": ["Mimi", "Zed", "Lia"], "interface": "docs/pr-screenshots/social-panel-overview.png" },
+    { "id": "02-public-mode", "housemates": ["Rae", "Noa", "Finn"], "interface": "docs/screenshots/public-meter-modernized-overview.png" },
+    { "id": "03-glass-bridge", "housemates": ["Blue", "Sol", "Ivy"], "interface": "docs/screenshots/glass-bridge/gb-03-playing-human-turn.png" },
+    { "id": "04-chain-of-greed", "housemates": ["Jax", "Vee", "Kai"], "interface": "docs/screenshots/chain-of-greed/11-real-active-turn.png" },
+    { "id": "05-confessional", "housemates": ["Quinn", "Zed", "Mimi"], "interface": "docs/pr-screenshots/04-confessional-decision-screen.png" },
+    { "id": "06-season-story", "housemates": ["Aria", "Jax", "Vee"], "interface": "docs/pr-screenshots/finale-overlay-mobile-after.png" }
+  ]
+}

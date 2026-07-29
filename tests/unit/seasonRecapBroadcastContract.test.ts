@@ -19,18 +19,18 @@ describe('season recap broadcast contract', () => {
     expect(source).not.toContain('RecapAvatar')
   })
 
-  it('uses one full-screen photoshoot at a time instead of a split collage', () => {
-    expect(source).not.toContain('src-broadcast-photoshoot__reduced-grid')
-    expect(source).toContain('reducedMotion ? 3_600 : 3_350')
+  it('uses one automatic full-screen opening slide at a time', () => {
+    expect(source).toContain('src-auto-intro__slide')
+    expect(source).toContain('AUTOMATIC_INTRO_SLIDES')
     expect(source).toContain('<AnimatePresence mode="wait" initial={false}>')
   })
 
-  it('does not expose the technical eviction ladder or archive dashboard', () => {
+  it('replaces the technical ladder with the interactive honors and season calendar', () => {
     expect(source).not.toContain("from './EvictionLadder'")
-    expect(source).not.toContain('src-archive-progress')
-    expect(source).not.toContain('src-archive-header')
-    expect(source).not.toContain('sceneProgress')
-    expect(source).not.toContain('seasonPlacement')
+    expect(source).toContain('src-recap-hub__awards')
+    expect(source).toContain('src-recap-hub__journey')
+    expect(source).toContain('src-awards__list')
+    expect(source).toContain('src-finale-calendar')
   })
 
   it('keeps raw approval numbers and record counts out of editorial copy', () => {

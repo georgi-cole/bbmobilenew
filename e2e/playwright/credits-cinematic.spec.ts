@@ -1,8 +1,6 @@
 import { closeDebugPanelIfOpen, expect, test } from './support/test'
 
 test.describe('Credits cinematic @core-journey', () => {
-  test.setTimeout(60_000)
-
   test('uses the real WebGL renderer with mobile performance settings', async ({ page }) => {
     await page.addInitScript(() => {
       sessionStorage.setItem('bb:homeHubSplashShownThisSession', 'true')
@@ -20,7 +18,7 @@ test.describe('Credits cinematic @core-journey', () => {
 
     const start = page.getByRole('button', { name: 'Tap to start credits' })
     if (await start.isVisible()) {
-      await start.evaluate((button) => (button as HTMLButtonElement).click())
+      await start.click()
     }
 
     const cinematic = page.locator('.big-eye-cinematic')

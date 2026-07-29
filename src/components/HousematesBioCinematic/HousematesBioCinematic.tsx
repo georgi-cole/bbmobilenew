@@ -1,373 +1,355 @@
-import type { CSSProperties } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { SoundManager } from '../../services/sound/SoundManager'
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { SoundManager } from '../../services/sound/SoundManager';
 import {
   createCinematicAudio,
   type CinematicAudioController,
-} from '../../services/sound/cinematicAudio'
-import { HOUSEMATES_BIO_CARDS, type HousematesBioCard } from './housematesBioData'
-import { getHousematesBioScene, HOUSEMATES_BIO_DURATION_MS } from './housematesBioTimeline'
-import './HousematesBioCinematic.css'
+} from '../../services/sound/cinematicAudio';
+import {
+  HOUSEMATES_BIO_CARDS,
+  type HousematesBioCard,
+} from './housematesBioData';
+import './HousematesBioCinematic.css';
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const INTRO_DURATION_MS = 3_200;
 
 interface IntroHubAudioWindow extends Window {
-  _introhubMusicOn?: boolean
+  _introhubMusicOn?: boolean;
 }
 
+type HousematesView = 'intro' | 'map' | 'profile';
+
 function asset(path: string): string {
-  return `${BASE}${path}`
+  return `${BASE}${path}`;
 }
 
 function portraitSrc(card: HousematesBioCard): string {
-  return asset(`/assets/Informal_attires/${card.portraitFile}`)
+  return asset(`/assets/Informal_attires/${card.portraitFile}`);
 }
 
 function backdropSrc(card: HousematesBioCard): string {
-  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`)
+  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`);
 }
 
-function IntroScene() {
+function Intro({ onExplore }: { onExplore: () => void }) {
   return (
     <motion.section
       className="hbc-intro"
-      initial={{ opacity: 0, scale: 1.04 }}
+      initial={{ opacity: 0, scale: 1.03 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
+      exit={{ opacity: 0, scale: 0.985 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
-      <motion.p
-        className="hbc-kicker"
-        initial={{ opacity: 0, letterSpacing: '0.45em' }}
-        animate={{ opacity: 1, letterSpacing: '0.28em' }}
-        transition={{ delay: 0.18, duration: 0.8 }}
-      >
-        The Big Eye presents
-      </motion.p>
-      <motion.h1
-        initial={{ opacity: 0, y: 26 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.36, duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-      >
-        Meet the Housemates
-      </motion.h1>
-      <motion.div
-        className="hbc-intro__line"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ delay: 0.65, duration: 0.75 }}
-        aria-hidden="true"
-      />
-      <motion.p
-        className="hbc-intro__sub"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.85, duration: 0.55 }}
-      >
-        22 lives. One house. One life-changing prize.
-      </motion.p>
-    </motion.section>
-  )
-}
-
-function HousemateScene({ card, index }: { card: HousematesBioCard; index: number }) {
-  const isEven = index % 2 === 0
-  const style = {
-    '--hbc-accent': card.accent,
-    '--hbc-backdrop-position': `${36 + (index % 5) * 7}% center`,
-  } as CSSProperties
-
-  return (
-    <motion.section
-      className={`hbc-card${isEven ? '' : ' hbc-card--reverse'}`}
-      style={style}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.44 }}
-    >
-      <motion.div
-        className="hbc-card__backdrop"
-        style={{ backgroundImage: `url("${backdropSrc(card)}")` }}
-        initial={{ scale: 1.075, x: isEven ? 12 : -12 }}
-        animate={{ scale: 1.015, x: 0 }}
-        transition={{ duration: 4.2, ease: 'linear' }}
-        aria-hidden="true"
-      />
-      <div className="hbc-card__grade" aria-hidden="true" />
-      <div className="hbc-card__ordinal" aria-hidden="true">
-        {String(index + 1).padStart(2, '0')}
-      </div>
-
-      <motion.div
-        className="hbc-card__portrait-wrap"
-        initial={{ opacity: 0, x: isEven ? -58 : 58, y: 26 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ duration: 0.68, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="hbc-card__halo" aria-hidden="true" />
-        <img
-          className="hbc-card__portrait"
-          src={portraitSrc(card)}
-          alt={card.fullName}
-          style={{ objectPosition: card.portraitPosition ?? 'center bottom' }}
-          draggable={false}
-        />
-      </motion.div>
-
-      <div className="hbc-card__copy">
-        <motion.div
-          className="hbc-card__identity"
-          initial={{ opacity: 0, y: 18 }}
+      <div className="hbc-intro__grain" aria-hidden="true" />
+      <div className="hbc-intro__copy">
+        <motion.p
+          className="hbc-kicker"
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.58 }}
+          transition={{ delay: 0.15 }}
         >
-          <p className="hbc-card__eyebrow">
-            Housemate {String(index + 1).padStart(2, '0')} / {HOUSEMATES_BIO_CARDS.length}
-          </p>
-          <h2>{card.name}</h2>
-          <p className="hbc-card__details">
-            {card.age} · {card.location} · {card.profession}
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="hbc-bubble hbc-bubble--dream"
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.58, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          The Big Eye presents
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span className="hbc-bubble__label">Why I’m here</span>
-          {card.prizePlan}
-        </motion.div>
+          Meet the<br />Housemates
+        </motion.h1>
+        <motion.p
+          className="hbc-intro__sub"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+        >
+          22 lives. One house. Follow the stories you want to know.
+        </motion.p>
+        <motion.button
+          className="hbc-primary-action"
+          type="button"
+          onClick={onExplore}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.02 }}
+        >
+          Enter the house <span aria-hidden="true">→</span>
+        </motion.button>
       </div>
     </motion.section>
-  )
+  );
 }
 
-function OutroScene() {
+function HousemateCarousel({
+  onSelect,
+}: {
+  onSelect: (index: number) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeCard = HOUSEMATES_BIO_CARDS[activeIndex];
+
+  const move = (direction: -1 | 1) => {
+    setActiveIndex((current) => (
+      (current + direction + HOUSEMATES_BIO_CARDS.length) % HOUSEMATES_BIO_CARDS.length
+    ));
+  };
+
   return (
     <motion.section
-      className="hbc-ending hbc-ending--outro"
+      className="hbc-carousel"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="hbc-carousel__aurora" aria-hidden="true" />
+      <header className="hbc-carousel__heading">
+        <p className="hbc-kicker">Meet the housemates</p>
+        <h1>One story at a time.</h1>
+        <p>Browse the cast, then tap a card to open their full story.</p>
+      </header>
+
+      <div className="hbc-carousel__viewport" aria-label="Housemate carousel">
+        <motion.div
+          className="hbc-carousel__track"
+          animate={{ x: `-${activeIndex * 80}vw` }}
+          transition={{ type: 'spring', stiffness: 260, damping: 30, mass: 0.72 }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.14}
+          onDragEnd={(_, info) => {
+            if (info.offset.x <= -42) move(1);
+            if (info.offset.x >= 42) move(-1);
+          }}
+        >
+          {HOUSEMATES_BIO_CARDS.map((card, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={card.id}
+                className="hbc-carousel__card"
+                type="button"
+                onClick={() => (isActive ? onSelect(index) : setActiveIndex(index))}
+                data-active={isActive ? 'true' : 'false'}
+                aria-current={isActive ? 'true' : undefined}
+                aria-label={isActive ? `Open ${card.name}'s full story` : `Show ${card.name}`}
+                style={{
+                  '--hbc-accent': card.accent,
+                  '--hbc-carousel-backdrop': `url("${backdropSrc(card)}")`,
+                } as CSSProperties}
+              >
+                <div className="hbc-carousel__card-background" aria-hidden="true" />
+                <span className="hbc-carousel__card-number">
+                  {String(index + 1).padStart(2, '0')} / {HOUSEMATES_BIO_CARDS.length}
+                </span>
+                <img src={portraitSrc(card)} alt="" aria-hidden="true" draggable={false} />
+                <span className="hbc-carousel__card-copy">
+                  <strong>{card.name}</strong>
+                  <small>{card.age} · {card.profession}</small>
+                  <em>{isActive ? 'Read full story →' : 'Tap to preview'}</em>
+                </span>
+              </button>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      <div className="hbc-carousel__controls">
+        <button type="button" onClick={() => move(-1)} aria-label="Previous housemate">
+          <span aria-hidden="true">←</span>
+        </button>
+        <div className="hbc-carousel__current" aria-live="polite">
+          <strong>{activeCard.name}</strong>
+          <span>{String(activeIndex + 1).padStart(2, '0')} / {String(HOUSEMATES_BIO_CARDS.length).padStart(2, '0')}</span>
+        </div>
+        <button type="button" onClick={() => move(1)} aria-label="Next housemate">
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </motion.section>
+  );
+}
+
+function HousemateProfile({
+  card,
+  index,
+  onBack,
+  onPrevious,
+  onNext,
+}: {
+  card: HousematesBioCard;
+  index: number;
+  onBack: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const hasPrevious = index > 0;
+  const hasNext = index < HOUSEMATES_BIO_CARDS.length - 1;
+
+  return (
+    <motion.section
+      className="hbc-profile"
+      style={{
+        '--hbc-accent': card.accent,
+        '--hbc-profile-backdrop': `url("${backdropSrc(card)}")`,
+      } as CSSProperties}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.7 }}
     >
-      <motion.div
-        className="hbc-ending__eye"
-        initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        transition={{ duration: 0.8, type: 'spring', bounce: 0.24 }}
-        aria-hidden="true"
-      >
-        ◉
-      </motion.div>
-      <motion.p
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35, duration: 0.65 }}
-      >
-        You can find more spicy details about the housemates through the IntroHub.
-      </motion.p>
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.35, duration: 0.6 }}
-      >
-        Open Housemates in the IntroHub to discover every full biography.
-      </motion.span>
-    </motion.section>
-  )
-}
+      <div className="hbc-profile__backdrop" aria-hidden="true" />
+      <div className="hbc-profile__grade" aria-hidden="true" />
+      <button className="hbc-back-button" type="button" onClick={onBack}>
+        <span aria-hidden="true">←</span> All housemates
+      </button>
 
-function CreditScene() {
-  return (
-    <motion.section
-      className="hbc-ending hbc-ending--credit"
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.7 }}
-    >
-      <p className="hbc-kicker">Theme song</p>
-      <h2>Midnight</h2>
-      <p className="hbc-credit__artist">Jay Someday</p>
-      <div className="hbc-credit__rule" aria-hidden="true" />
-      <span>Housemates biography cinematic</span>
-    </motion.section>
-  )
-}
+      <div className="hbc-profile__layout">
+        <motion.div
+          className="hbc-profile__portrait-stage"
+          initial={{ opacity: 0, x: -28, y: 18 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ duration: 0.56, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="hbc-profile__halo" aria-hidden="true" />
+          <img
+            className="hbc-profile__portrait"
+            src={portraitSrc(card)}
+            alt={card.fullName}
+            draggable={false}
+          />
+        </motion.div>
 
-function LogoScene() {
-  return (
-    <motion.section
-      className="hbc-ending hbc-ending--logo"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.9 }}
-    >
-      <motion.div
-        className="hbc-logo__glow"
-        initial={{ opacity: 0, scale: 0.72 }}
-        animate={{ opacity: [0, 0.72, 0.38], scale: [0.72, 1.12, 1] }}
-        transition={{ duration: 2.8, ease: 'easeOut' }}
-        aria-hidden="true"
-      />
-      <motion.img
-        src={asset('/assets/kolequant.png')}
-        alt="Kolequant"
-        initial={{ opacity: 0, scale: 0.86, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-        transition={{ delay: 0.35, duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-      />
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.7 }}
-        transition={{ delay: 1.25, duration: 0.65 }}
-      >
-        The house is ready.
-      </motion.p>
+        <motion.article
+          className="hbc-profile__copy"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.56, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <p className="hbc-profile__counter">
+            Housemate {String(index + 1).padStart(2, '0')} <span>/</span> {HOUSEMATES_BIO_CARDS.length}
+          </p>
+          <h1>{card.name}</h1>
+          <p className="hbc-profile__facts">{card.age} · {card.location} · {card.profession}</p>
+          <div className="hbc-profile__story">
+            <span>In the house</span>
+            <p>{card.introduction}</p>
+          </div>
+          <div className="hbc-profile__why">
+            <span>Their why</span>
+            <p>{card.prizePlan}</p>
+          </div>
+        </motion.article>
+      </div>
+
+      <nav className="hbc-profile__nav" aria-label="Housemate navigation">
+        <button type="button" onClick={onPrevious} disabled={!hasPrevious}>Previous</button>
+        <button type="button" onClick={onNext} disabled={!hasNext}>
+          Next <span aria-hidden="true">→</span>
+        </button>
+      </nav>
     </motion.section>
-  )
+  );
 }
 
 export interface HousematesBioCinematicProps {
-  onComplete: () => void
+  onComplete: () => void;
 }
 
 export default function HousematesBioCinematic({ onComplete }: HousematesBioCinematicProps) {
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const prefersReducedMotion = useReducedMotion()
-  const onCompleteRef = useRef(onComplete)
-  const completedRef = useRef(false)
-  const audioRef = useRef<CinematicAudioController | null>(null)
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const reducedMotion = useReducedMotion() ?? false;
+  const [view, setView] = useState<HousematesView>('intro');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const onCompleteRef = useRef(onComplete);
+  const audioRef = useRef<CinematicAudioController | null>(null);
+  const completeRef = useRef(false);
+
+  const selectedCard = HOUSEMATES_BIO_CARDS[selectedIndex];
 
   useEffect(() => {
-    onCompleteRef.current = onComplete
-  }, [onComplete])
-
-  const scene = useMemo(() => getHousematesBioScene(elapsedMs), [elapsedMs])
-  const progress = Math.min(1, elapsedMs / HOUSEMATES_BIO_DURATION_MS)
-  const preloadFromIndex =
-    scene.kind === 'housemate'
-      ? scene.index
-      : scene.kind === 'intro'
-        ? -1
-        : HOUSEMATES_BIO_CARDS.length
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const finish = useCallback(() => {
-    if (completedRef.current) return
-    completedRef.current = true
-    audioRef.current?.fadeOutAndStop(550)
-    onCompleteRef.current()
-  }, [])
+    if (completeRef.current) return;
+    completeRef.current = true;
+    audioRef.current?.fadeOutAndStop(420);
+    onCompleteRef.current();
+  }, []);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    closeButtonRef.current?.focus()
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    SoundManager.panicStopAllMusic();
 
-    SoundManager.panicStopAllMusic()
-    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78)
-    audioRef.current = audio
-    if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) {
-      audio.play()
-    }
+    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78, { loop: true });
+    audioRef.current = audio;
+    if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) audio.play();
 
-    const startedAt = performance.now()
-    const interval = window.setInterval(() => {
-      const nextElapsed = performance.now() - startedAt
-      setElapsedMs(Math.min(HOUSEMATES_BIO_DURATION_MS, nextElapsed))
-      if (nextElapsed >= HOUSEMATES_BIO_DURATION_MS) {
-        window.clearInterval(interval)
-        finish()
-      }
-    }, 80)
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') finish()
-    }
-    window.addEventListener('keydown', handleKeyDown)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') finish();
+    };
+    window.addEventListener('keydown', onKeyDown);
 
     return () => {
-      window.clearInterval(interval)
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      audio.dispose()
-      audioRef.current = null
-      void SoundManager.syncMusic()
-    }
-  }, [finish])
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      audio.dispose();
+      audioRef.current = null;
+      void SoundManager.syncMusic();
+    };
+  }, [finish]);
 
   useEffect(() => {
-    // Keep the next few cuts ready without downloading the full cinematic in
-    // one burst. Repeated professional settings naturally reuse browser cache.
-    const upcomingCards = HOUSEMATES_BIO_CARDS.slice(preloadFromIndex + 1, preloadFromIndex + 4)
-    const sources = new Set<string>()
-    upcomingCards.forEach((card) => {
-      sources.add(portraitSrc(card))
-      sources.add(backdropSrc(card))
-    })
-    sources.forEach((src) => {
-      const image = new Image()
-      image.decoding = 'async'
-      image.src = src
-    })
-  }, [preloadFromIndex])
+    if (view !== 'intro') return undefined;
+    const timeout = window.setTimeout(
+      () => setView('map'),
+      reducedMotion ? 0 : INTRO_DURATION_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [reducedMotion, view]);
 
-  useEffect(() => {
-    if (scene.kind === 'logo') {
-      audioRef.current?.fadeOutAndStop(3_600)
-    }
-  }, [scene.kind])
+  const openProfile = useCallback((index: number) => {
+    setSelectedIndex(index);
+    setView('profile');
+  }, []);
+
+  const changeProfile = useCallback((direction: -1 | 1) => {
+    setSelectedIndex((current) => Math.min(
+      HOUSEMATES_BIO_CARDS.length - 1,
+      Math.max(0, current + direction),
+    ));
+  }, []);
 
   return (
     <div
-      className={`hbc${prefersReducedMotion ? ' hbc--reduced-motion' : ''}`}
+      className={`hbc${reducedMotion ? ' hbc--reduced-motion' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Meet the Housemates cinematic"
+      aria-label="Meet the Housemates"
     >
-      <div className="hbc__ambient" aria-hidden="true" />
-      <button
-        ref={closeButtonRef}
-        className="hbc__skip"
-        type="button"
-        onClick={finish}
-        aria-label="Return to IntroHub"
-      >
-        <span>Skip</span>
-        <span aria-hidden="true">×</span>
+      <button className="hbc__exit" type="button" onClick={finish} aria-label="Exit Housemates">
+        Exit <span aria-hidden="true">×</span>
       </button>
-
-      <div className="hbc__progress" aria-hidden="true">
-        <motion.div
-          animate={{ scaleX: progress }}
-          transition={{ duration: 0.08, ease: 'linear' }}
-        />
-      </div>
+      <div className="hbc__sound" aria-label="Housemates music is playing">♫</div>
 
       <main className="hbc__stage" aria-live="polite">
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={scene.key}
-            className="hbc__scene-shell"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.34 }}
-          >
-            {scene.kind === 'intro' && <IntroScene />}
-            {scene.kind === 'housemate' && <HousemateScene card={scene.card} index={scene.index} />}
-            {scene.kind === 'outro' && <OutroScene />}
-            {scene.kind === 'credit' && <CreditScene />}
-            {scene.kind === 'logo' && <LogoScene />}
-          </motion.div>
+          {view === 'intro' && <Intro key="intro" onExplore={() => setView('map')} />}
+          {view === 'map' && <HousemateCarousel key="carousel" onSelect={openProfile} />}
+          {view === 'profile' && selectedCard && (
+            <HousemateProfile
+              key={selectedCard.id}
+              card={selectedCard}
+              index={selectedIndex}
+              onBack={() => setView('map')}
+              onPrevious={() => changeProfile(-1)}
+              onNext={() => changeProfile(1)}
+            />
+          )}
         </AnimatePresence>
       </main>
     </div>
-  )
+  );
 }

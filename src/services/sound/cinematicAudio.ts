@@ -21,7 +21,11 @@ function isAutoplayBlocked(error: unknown): boolean {
   );
 }
 
-export function createCinematicAudio(src: string, volume = 1): CinematicAudioController {
+export function createCinematicAudio(
+  src: string,
+  volume = 1,
+  options: { loop?: boolean } = {},
+): CinematicAudioController {
   if (typeof Audio === 'undefined') {
     return {
       play: () => {},
@@ -34,6 +38,7 @@ export function createCinematicAudio(src: string, volume = 1): CinematicAudioCon
   const baseVolume = clampVolume(volume);
   audio.preload = 'auto';
   audio.volume = baseVolume;
+  audio.loop = options.loop ?? false;
 
   let fadeTimer: number | null = null;
   let retryHandler: (() => void) | null = null;

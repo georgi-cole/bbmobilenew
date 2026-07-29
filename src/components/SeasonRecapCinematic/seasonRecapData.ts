@@ -341,7 +341,7 @@ function buildCategories(players: Player[], publicOpinion?: PublicOpinionState |
       subtitle: 'Won so often it started looking personal.',
       emoji: '⚡',
       winner: compzilla,
-      winnerStat: `${Math.max(totalCompWins(compzilla), 0)} win${totalCompWins(compzilla) === 1 ? '' : 's'}`,
+      winnerStat: `${Math.max(totalCompWins(compzilla), 0)} comp${totalCompWins(compzilla) === 1 ? '' : 's'} won`,
       accentColor: '#f4c15d',
       accentGlow: 'rgba(244, 193, 93, 0.24)',
       bgGradient: 'linear-gradient(180deg, #1b1420 0%, #09070d 56%, #050609 100%)',

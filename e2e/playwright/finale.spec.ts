@@ -411,7 +411,7 @@ test.describe('Finale / Jury flow @release', () => {
     await expect(favoriteVote).toBeHidden()
 
     await resumedGoodbye.getByRole('button', { name: 'Skip to end' }).click()
-    await expect(page.getByLabel('Credits cinematic', { exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByLabel('Credits cinematic')).toBeVisible({ timeout: 15_000 })
     await page.getByRole('button', { name: 'Skip credits' }).click()
     await expect(page).toHaveURL(/#\/game-over$/, { timeout: 5_000 })
     await expect(page.getByRole('heading', { name: 'Season Complete' })).toBeVisible()
