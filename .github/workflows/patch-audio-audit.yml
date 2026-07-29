@@ -24,6 +24,7 @@ jobs:
           ref: agent/audio-auto-index-migration
           fetch-depth: 0
 
+      # Replace the final legacy dynamicSound reader with registry-backed validation.
       - name: Replace legacy dynamicSound audit
         shell: python
         run: |
