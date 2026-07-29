@@ -19,9 +19,11 @@ import {
   resolveAudioEventCue,
   resolveMusicCue,
   type AudioEventId,
+  MUSIC_MINIGAME_VARIANTS,
   type MusicConfigMode,
   type MusicConfigOverrides,
   type MusicMinigameStage,
+  type MusicMinigameVariant,
   type MusicSelection,
 } from '../../services/sound/musicConfig'
 import {
@@ -39,9 +41,11 @@ import {
   buildEffectiveMusicConfig,
   mergeMusicTrackAssets,
 } from '../../services/sound/musicRuntimeConfig'
+import MusicCueEditor from './MusicCueEditor'
+import type { MusicCueDefinition } from '../../services/sound/musicCue'
 import './MusicManagerPanel.css'
 
-type ManagerSection = 'phases' | 'minigames' | 'events' | 'tracks' | 'data'
+type ManagerSection = 'phases' | 'minigames' | 'events' | 'tracks' | 'cues' | 'data'
 type EditableMode = Exclude<MusicConfigMode, 'any'>
 
 const MINIGAME_STAGES: readonly MusicMinigameStage[] = [
@@ -57,6 +61,7 @@ const SECTION_TABS: ReadonlyArray<{ id: ManagerSection; label: string }> = [
   { id: 'minigames', label: 'Minigames' },
   { id: 'events', label: 'Events' },
   { id: 'tracks', label: 'Tracks' },
+  { id: 'cues', label: 'Cues' },
   { id: 'data', label: 'Data' },
 ]
 
@@ -75,10 +80,18 @@ function titleFromKey(key: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-function selectionFromValue(value: string): MusicSelection | undefined {
+function selectionFromValue(
+  value: string,
+  cues: Readonly<Record<string, MusicCueDefinition>>
+): MusicSelection | undefined {
   if (value === 'default') return undefined
   if (value === 'inherit') return { kind: 'inherit' }
   if (value === 'silence') return { kind: 'silence' }
+  if (value.startsWith('cue:')) {
+    const cueId = value.slice(4)
+    const cue = cues[cueId]
+    if (cue) return { kind: 'track', track: cue.track, cueId }
+  }
   if (MUSIC_TRACK_IDS.includes(value as CatalogMusicTrack)) {
     return { kind: 'track', track: value as CatalogMusicTrack }
   }
@@ -87,25 +100,33 @@ function selectionFromValue(value: string): MusicSelection | undefined {
 
 function selectionToValue(selection: MusicSelection | undefined): string {
   if (!selection) return 'default'
-  if (selection.kind === 'track') return selection.track
+  if (selection.kind === 'track')
+    return selection.cueId ? `cue:${selection.cueId}` : selection.track
   return selection.kind
 }
 
-function selectionLabel(selection: MusicSelection | undefined): string {
+function selectionLabel(
+  selection: MusicSelection | undefined,
+  cues: Readonly<Record<string, MusicCueDefinition>> = {}
+): string {
   if (!selection) return 'Unconfigured'
   if (selection.kind === 'inherit') return 'Inherit'
   if (selection.kind === 'silence') return 'Silence'
-  return MUSIC_CATALOG[selection.track].displayName
+  return selection.cueId
+    ? (cues[selection.cueId]?.displayName ?? `Missing cue: ${selection.cueId}`)
+    : MUSIC_CATALOG[selection.track].displayName
 }
 
 function AssignmentSelect({
   value,
   onChange,
   ariaLabel,
+  cues,
 }: {
   value: string
   onChange: (value: string) => void
   ariaLabel: string
+  cues: Readonly<Record<string, MusicCueDefinition>>
 }) {
   return (
     <select
@@ -117,11 +138,24 @@ function AssignmentSelect({
       <option value="default">Default / server</option>
       <option value="inherit">Inherit parent</option>
       <option value="silence">Explicit silence</option>
-      {MUSIC_TRACK_IDS.map((track) => (
-        <option key={track} value={track}>
-          {MUSIC_CATALOG[track].displayName}
-        </option>
-      ))}
+      {Object.keys(cues).length > 0 && (
+        <optgroup label="Saved cues">
+          {Object.values(cues)
+            .sort((left, right) => left.displayName.localeCompare(right.displayName))
+            .map((cue) => (
+              <option key={cue.id} value={`cue:${cue.id}`}>
+                {cue.displayName} · {MUSIC_CATALOG[cue.track].displayName}
+              </option>
+            ))}
+        </optgroup>
+      )}
+      <optgroup label="Full tracks">
+        {MUSIC_TRACK_IDS.map((track) => (
+          <option key={track} value={track}>
+            {MUSIC_CATALOG[track].displayName}
+          </option>
+        ))}
+      </optgroup>
     </select>
   )
 }
@@ -141,6 +175,7 @@ export default function MusicManagerPanel() {
   const [section, setSection] = useState<ManagerSection>('phases')
   const [mode, setMode] = useState<EditableMode>('classic')
   const [stage, setStage] = useState<MusicMinigameStage>('playing')
+  const [variant, setVariant] = useState<MusicMinigameVariant>('normal')
   const [search, setSearch] = useState('')
   const [importText, setImportText] = useState('')
   const [message, setMessage] = useState<string | null>(null)
@@ -211,7 +246,7 @@ export default function MusicManagerPanel() {
   const updatePhase = (phase: Phase, value: string) => {
     const next = cloneOverrides(localOverrides)
     const modeOverrides = { ...(next.modePhaseOverrides?.[mode] ?? {}) }
-    const selection = selectionFromValue(value)
+    const selection = selectionFromValue(value, effectiveConfig.musicCues)
     if (selection) modeOverrides[phase] = selection
     else delete modeOverrides[phase]
     next.modePhaseOverrides = {
@@ -223,18 +258,32 @@ export default function MusicManagerPanel() {
 
   const updateMinigame = (gameKey: string, value: string) => {
     const next = cloneOverrides(localOverrides)
-    const allAssignments = { ...(next.minigameAssignments ?? {}) }
-    const modeAssignments = { ...(allAssignments[mode] ?? {}) }
-    const gameAssignments = { ...(modeAssignments[gameKey] ?? {}) }
-    const selection = selectionFromValue(value)
+    const selection = selectionFromValue(value, effectiveConfig.musicCues)
 
-    if (selection) gameAssignments[stage] = selection
-    else delete gameAssignments[stage]
-
-    if (Object.keys(gameAssignments).length === 0) delete modeAssignments[gameKey]
-    else modeAssignments[gameKey] = gameAssignments
-    allAssignments[mode] = modeAssignments
-    next.minigameAssignments = allAssignments
+    if (variant === 'normal') {
+      const allAssignments = { ...(next.minigameAssignments ?? {}) }
+      const modeAssignments = { ...(allAssignments[mode] ?? {}) }
+      const gameAssignments = { ...(modeAssignments[gameKey] ?? {}) }
+      if (selection) gameAssignments[stage] = selection
+      else delete gameAssignments[stage]
+      if (Object.keys(gameAssignments).length === 0) delete modeAssignments[gameKey]
+      else modeAssignments[gameKey] = gameAssignments
+      allAssignments[mode] = modeAssignments
+      next.minigameAssignments = allAssignments
+    } else {
+      const allAssignments = { ...(next.minigameVariantAssignments ?? {}) }
+      const modeAssignments = { ...(allAssignments[mode] ?? {}) }
+      const gameAssignments = { ...(modeAssignments[gameKey] ?? {}) }
+      const stageAssignments = { ...(gameAssignments[stage] ?? {}) }
+      if (selection) stageAssignments[variant] = selection
+      else delete stageAssignments[variant]
+      if (Object.keys(stageAssignments).length === 0) delete gameAssignments[stage]
+      else gameAssignments[stage] = stageAssignments
+      if (Object.keys(gameAssignments).length === 0) delete modeAssignments[gameKey]
+      else modeAssignments[gameKey] = gameAssignments
+      allAssignments[mode] = modeAssignments
+      next.minigameVariantAssignments = allAssignments
+    }
     commitOverrides(next)
   }
 
@@ -368,9 +417,11 @@ export default function MusicManagerPanel() {
         tracks?: unknown
       }
       const assignments = sanitiseMusicConfigOverrides(parsed.assignments ?? parsed)
-      const tracks = sanitiseMusicTrackAssetOverrides(parsed.tracks)
       dispatch(setMusicConfigOverrides(assignments))
-      dispatch(setMusicTrackAssets(tracks))
+      if (Object.prototype.hasOwnProperty.call(parsed, 'tracks')) {
+        const tracks = sanitiseMusicTrackAssetOverrides(parsed.tracks)
+        dispatch(setMusicTrackAssets(tracks))
+      }
       setMessage('Validated music configuration imported successfully.')
     } catch {
       setMessage('Import failed: the text is not valid JSON.')
@@ -481,9 +532,10 @@ export default function MusicManagerPanel() {
                     value={selectionToValue(local)}
                     onChange={(value) => updatePhase(phase, value)}
                     ariaLabel={`Music for ${titleFromKey(phase)}`}
+                    cues={effectiveConfig.musicCues}
                   />
                   <span className="music-manager__resolved">
-                    Effective: {selectionLabel(effective)}
+                    Effective: {selectionLabel(effective, effectiveConfig.musicCues)}
                   </span>
                 </div>
               </article>
@@ -496,7 +548,10 @@ export default function MusicManagerPanel() {
         <div className="music-manager__list">
           <div className="music-manager__section-copy">
             <h3>Minigame stage assignments</h3>
-            <p>Assign rules, countdown, gameplay, results and completion independently.</p>
+            <p>
+              Assign lifecycle stages and switch gameplay music for final rounds, sudden death or
+              overtime.
+            </p>
           </div>
           <div className="music-manager__filters">
             <input
@@ -512,16 +567,41 @@ export default function MusicManagerPanel() {
                   key={value}
                   type="button"
                   className={stage === value ? 'music-manager__stage--active' : ''}
-                  onClick={() => setStage(value)}
+                  onClick={() => {
+                    setStage(value)
+                    if (value !== 'playing') setVariant('normal')
+                  }}
                 >
                   {titleFromKey(value)}
                 </button>
               ))}
             </div>
+            {stage === 'playing' && (
+              <div className="music-manager__variant-tabs" aria-label="Minigame music variant">
+                {MUSIC_MINIGAME_VARIANTS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={variant === value ? 'music-manager__variant--active' : ''}
+                    onClick={() => setVariant(value)}
+                  >
+                    {titleFromKey(value)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {filteredGames.map((game) => {
-            const local = localOverrides.minigameAssignments?.[mode]?.[game.key]?.[stage]
-            const remote = remoteOverrides?.minigameAssignments?.[mode]?.[game.key]?.[stage]
+            const local =
+              variant === 'normal'
+                ? localOverrides.minigameAssignments?.[mode]?.[game.key]?.[stage]
+                : localOverrides.minigameVariantAssignments?.[mode]?.[game.key]?.[stage]?.[variant]
+            const remote =
+              variant === 'normal'
+                ? remoteOverrides?.minigameAssignments?.[mode]?.[game.key]?.[stage]
+                : remoteOverrides?.minigameVariantAssignments?.[mode]?.[game.key]?.[stage]?.[
+                    variant
+                  ]
             const cue = resolveMusicCue(
               {
                 mode,
@@ -530,7 +610,7 @@ export default function MusicManagerPanel() {
                 musicScene: 'none',
                 spectatorActive: false,
                 socialOpen: false,
-                minigame: { gameKey: game.key, category: game.category, stage },
+                minigame: { gameKey: game.key, category: game.category, stage, variant },
               },
               effectiveConfig
             )
@@ -549,11 +629,16 @@ export default function MusicManagerPanel() {
                   <AssignmentSelect
                     value={selectionToValue(local)}
                     onChange={(value) => updateMinigame(game.key, value)}
-                    ariaLabel={`${stage} music for ${game.title}`}
+                    ariaLabel={`${stage} ${variant} music for ${game.title}`}
+                    cues={effectiveConfig.musicCues}
                   />
                   <span className="music-manager__resolved">
                     Effective:{' '}
-                    {cue.track === 'none' ? 'Silence' : MUSIC_CATALOG[cue.track].displayName}
+                    {cue.track === 'none'
+                      ? 'Silence'
+                      : cue.playbackCue && cue.selection.kind === 'track' && cue.selection.cueId
+                        ? cue.playbackCue.displayName
+                        : MUSIC_CATALOG[cue.track].displayName}
                   </span>
                 </div>
               </article>
@@ -686,6 +771,16 @@ export default function MusicManagerPanel() {
             )
           })}
         </div>
+      )}
+
+      {section === 'cues' && (
+        <MusicCueEditor
+          localOverrides={localOverrides}
+          effectiveConfig={effectiveConfig}
+          effectiveAssetMap={effectiveAssetMap}
+          onCommit={commitOverrides}
+          onMessage={setMessage}
+        />
       )}
 
       {section === 'data' && (
