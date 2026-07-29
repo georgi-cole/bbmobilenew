@@ -19,7 +19,7 @@ import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
-import { detectDebugMode } from '../../utils/debugMode';
+import { canAccessSpecialSettings } from '../../utils/debugMode';
 import './GameDebug.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ function runDebugSimulation(
 
 export default function GameDebug() {
   const navigate = useNavigate();
-  const isDebug = detectDebugMode();
+  const isDebug = canAccessSpecialSettings();
 
 
   // ── Game list & filters ──────────────────────────────────────────────────

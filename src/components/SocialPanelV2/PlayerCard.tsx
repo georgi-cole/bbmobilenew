@@ -1,23 +1,32 @@
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import type { Player } from '../../types';
-import { getRelationshipLabel, getPlayerMood, getMoodClass } from './relationshipUtils';
-import './PlayerCard.css';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import type { Player } from '../../types'
+import { getRelationshipLabel, getPlayerMood, getMoodClass } from './relationshipUtils'
+import './PlayerCard.css'
 
 interface PlayerCardProps {
-  player: Player;
-  selected: boolean;
-  disabled: boolean;
+  player: Player
+  selected: boolean
+  disabled: boolean
   /** Called when the card is activated. additive=true when Ctrl/Cmd is held; shiftKey=true when Shift is held. */
-  onSelect: (playerId: string, additive: boolean, shiftKey: boolean) => void;
-  /** Optional affinity percentage toward the human player. Clamped to 0–100 before display. */
-  affinity?: number;
+  onSelect: (playerId: string, additive: boolean, shiftKey: boolean) => void
+  /** Optional signed relationship percentage toward the human player. */
+  affinity?: number
   /**
    * Relationship delta accumulated this session (sum of action deltas for this
    * actor→target pair). Positive → green up arrow, negative → red down arrow,
    * zero or undefined → hidden.
    */
-  affinityDelta?: number;
-  relationshipTags?: readonly string[];
+  affinityDelta?: number
+  relationshipTags?: readonly string[]
+}
+
+function formatStatus(status: Player['status']): string {
+  return status
+    .split('+')
+    .map((part) =>
+      part === 'nominated' ? 'Nom' : part === 'active' ? 'Active' : part.toUpperCase()
+    )
+    .join(' + ')
 }
 
 /**
@@ -39,28 +48,28 @@ export default function PlayerCard({
 }: PlayerCardProps) {
   const classes = ['pc', selected ? 'pc--selected' : '', disabled ? 'pc--disabled' : '']
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
 
-  const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null;
-  const affinityDisplay = affinity !== undefined ? `${Math.max(0, Math.min(100, affinity))}%` : '—';
-  const mood = getPlayerMood(player.id, affinity);
-  const moodClass = getMoodClass(mood);
+  const rel = affinity !== undefined ? getRelationshipLabel(affinity) : null
+  const affinityDisplay = affinity !== undefined ? `${Math.round(affinity)}%` : '—'
+  const mood = getPlayerMood(player.id, affinity)
+  const moodClass = getMoodClass(mood)
 
   function handleClick(e: React.MouseEvent) {
-    if (disabled) return;
-    onSelect(player.id, e.ctrlKey || e.metaKey, e.shiftKey);
+    if (disabled) return
+    onSelect(player.id, e.ctrlKey || e.metaKey, e.shiftKey)
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (disabled) return;
+    if (disabled) return
     if (e.key === 'Escape' && selected) {
-      e.preventDefault();
-      onSelect(player.id, false, false);
-      return;
+      e.preventDefault()
+      onSelect(player.id, false, false)
+      return
     }
     if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onSelect(player.id, e.ctrlKey || e.metaKey, e.shiftKey);
+      e.preventDefault()
+      onSelect(player.id, e.ctrlKey || e.metaKey, e.shiftKey)
     }
   }
 
@@ -77,31 +86,31 @@ export default function PlayerCard({
     >
       {/* ── Compact header row (always visible) ── */}
       <div className="pc__row">
-        <PlayerAvatar player={player} size="sm" affinity={affinity} />
-        <span className="pc__name">{player.name}</span>
-        <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
-          {player.status}
+        <PlayerAvatar player={player} size="sm" affinity={affinity} relationshipScale="signed" />
+        <span className="pc__identity">
+          <span className="pc__name">{player.name}</span>
+          <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
+            {formatStatus(player.status)}
+          </span>
         </span>
       </div>
 
       {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
       {selected && (
         <div className="pc__expanded" aria-label={`${player.name} relationship details`}>
-          {rel && (
-            <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>
-          )}
+          {rel && <span className={`pc__rel-label pc__rel-label--${rel.key}`}>{rel.label}</span>}
           <span
             className="pc__expanded-affinity"
-            title="One shared relationship score; directional opinions remain internal to the simulation."
+            title="Current relationship percentage. Directional private opinions remain internal."
           >
-            Relationship {affinityDisplay}
+            {affinityDisplay}
           </span>
           {affinityDelta !== undefined && affinityDelta !== 0 && (
             <span
               className={`pc__delta-arrow pc__delta-arrow--${affinityDelta > 0 ? 'up' : 'down'}`}
               aria-label={affinityDelta > 0 ? 'Relationship improved' : 'Relationship declined'}
             >
-              {affinityDelta > 0 ? '↑' : '↓'}
+              ({affinityDelta > 0 ? '↑' : '↓'})
             </span>
           )}
           <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
@@ -125,5 +134,5 @@ export default function PlayerCard({
         </div>
       )}
     </button>
-  );
+  )
 }

@@ -24,6 +24,7 @@ export { socialConfig } from './socialConfig';
 export { SocialEngine } from './SocialEngine';
 export {
   autoResolveExpiredIncomingInteractionsForWeek,
+  autoResolveExpiredIncomingInteractionsForClock,
   getIncomingInteractionTypeLabel,
   respondToIncomingInteraction,
 } from './incomingInteractions';
@@ -108,4 +109,6 @@ export {
   SocialManeuvers,
 } from './SocialManeuvers';
 export { socialAIDriver } from './socialAIDriver';
+export * from './reality';
+export * from './realitySeasonSimulation';
 export { dispatchSocialSummary, SocialSummaryBridge } from './SocialSummaryBridge';

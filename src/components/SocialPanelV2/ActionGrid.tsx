@@ -1,5 +1,5 @@
 ﻿import { useRef } from 'react'
-import { SOCIAL_ACTIONS } from '../../social/socialActions'
+import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../social/socialActions'
 import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
 import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility'
@@ -10,6 +10,7 @@ import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
 export interface ActionGridProps {
   onActionClick?: (actionId: string) => void
   onPreview?: (actionId: string) => void
+  onPremiumLockedClick?: (actionId: string) => void
   disabledIds?: ReadonlySet<string>
   selectedId?: string | null
   selectedTargetIds?: ReadonlySet<string>
@@ -28,13 +29,14 @@ export interface ActionGridProps {
 }
 
 /**
- * Stable action catalogue. Normal Mode exposes the compact core toolkit; Drama
- * Mode exposes the complete non-AI catalogue. Affordability changes styling and
- * feedback rather than card position, preserving muscle memory.
+ * Stable action catalogue. Normal Mode exposes the complete strategy toolkit;
+ * Reality Mode adds its higher-density story actions. Affordability changes
+ * styling and feedback rather than card position, preserving muscle memory.
  */
 export default function ActionGrid({
   onActionClick,
   onPreview,
+  onPremiumLockedClick,
   disabledIds = new Set(),
   selectedId = null,
   selectedTargetIds,
@@ -113,7 +115,82 @@ export default function ActionGrid({
     )
   }
 
-  const visibleActions = SOCIAL_ACTIONS.filter(isContextEligible)
+  function isRelevantRealityPreview(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+    return (
+      !dramaMode &&
+      isRealityExclusiveAction(action) &&
+      !action.aiOnly &&
+      !hiddenActionIds.has(action.id) &&
+      evaluateSocialActionEligibility({
+        action,
+        actorId,
+        targetIds: selectedTargetIds ? Array.from(selectedTargetIds) : [],
+        phase: currentPhase,
+        players,
+        primaryTargetStatus,
+        relationships,
+        dramaNetwork,
+        dramaMode: false,
+        ignoreRealityModeGate: true,
+      }).eligible
+    )
+  }
+
+  const actorHasSafety = Boolean(
+    players?.find((player) => player.id === actorId)?.status.includes('pos')
+  )
+  const safetyConsultationOpen =
+    actorHasSafety && (currentPhase === 'pos_results' || currentPhase === 'pos_ceremony')
+
+  function contextualizeAction(action: (typeof SOCIAL_ACTIONS)[number]) {
+    if (action.id !== 'ask_loh_target') return action
+    if (safetyConsultationOpen) {
+      return {
+        ...action,
+        title: 'Ask LOH for POS Advice',
+        description: 'Ask the LOH whether to use Safety and how they want the ceremony handled.',
+      }
+    }
+    if (
+      currentPhase &&
+      [
+        'nomination_results',
+        'pre_veto_public_save',
+        'pos_comp_announcement',
+        'pos_comp',
+        'pos_ceremony_results',
+        'social_2',
+        'live_vote',
+      ].includes(currentPhase)
+    ) {
+      return {
+        ...action,
+        title: 'Ask Who Goes Now',
+        description:
+          'Ask which current nominee the LOH wants out now that the block may have changed.',
+      }
+    }
+    return {
+      ...action,
+      title: 'Ask LOH Plan',
+      description: 'Ask who the LOH is considering before nominations are locked.',
+    }
+  }
+
+  const isRealityPreview = (action: (typeof SOCIAL_ACTIONS)[number]) =>
+    isRelevantRealityPreview(action)
+
+  const visibleActions = SOCIAL_ACTIONS.filter(
+    (action) => isRealityPreview(action) || isContextEligible(action)
+  ).sort((left, right) => {
+    const leftPreview = isRealityPreview(left)
+    const rightPreview = isRealityPreview(right)
+    if (leftPreview !== rightPreview) return leftPreview ? 1 : -1
+    if (!safetyConsultationOpen) return 0
+    if (left.id === 'ask_loh_target') return -1
+    if (right.id === 'ask_loh_target') return 1
+    return 0
+  })
 
   function getAvailabilityReason(costs: {
     energy: number
@@ -136,20 +213,24 @@ export default function ActionGrid({
   return (
     <div ref={containerRef} className="sp2-action-grid" role="group" onKeyDown={handleKeyDown}>
       {visibleActions.map((action) => {
+        const contextualAction = contextualizeAction(action)
         const costs = getActionCosts(action)
         const availabilityReason = getAvailabilityReason(costs)
-        const isDisabled = disabledIds.has(action.id)
+        const premiumLocked = isRealityPreview(action)
+        const isDisabled = !premiumLocked && disabledIds.has(action.id)
         const isAvailable = actorEnergy !== undefined && isActionAffordable(costs)
         return (
           <ActionCard
             key={action.id}
-            action={action}
+            action={contextualAction}
             costs={costs}
             selected={selectedId === action.id}
             disabled={isDisabled}
+            premiumLocked={premiumLocked}
             availabilityReason={availabilityReason}
             available={actorEnergy !== undefined ? isAvailable : undefined}
             onClick={onActionClick}
+            onPremiumLockedClick={onPremiumLockedClick}
             onPreview={onPreview}
             costOverride={costs}
           />

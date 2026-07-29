@@ -41,9 +41,20 @@
 /* ── Compact header row (always visible) ────────────────────────────────── */
 .pc__row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.45rem;
   padding: 0.4rem 0.5rem;
+}
+
+.pc__row .pa {
+  margin-top: 0.08rem;
+}
+
+.pc__identity {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 0.22rem;
 }
 
 /* ── Selected state ─────────────────────────────────────────────────────── */
@@ -62,7 +73,7 @@
 
 /* ── Name ───────────────────────────────────────────────────────────────── */
 .pc__name {
-  flex: 1;
+  min-width: 0;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text, rgba(255, 255, 255, 0.92));
@@ -73,11 +84,12 @@
 
 /* ── Status pill ────────────────────────────────────────────────────────── */
 .pc__status {
-  font-size: 0.62rem;
+  justify-self: start;
+  font-size: 0.57rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 0.1rem 0.35rem;
+  padding: 0.08rem 0.28rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--color-text-muted, rgba(255, 255, 255, 0.48));

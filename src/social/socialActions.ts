@@ -161,6 +161,11 @@ export interface SocialActionDefinition {
   requiredActorStatus?: readonly PlayerStatus[]
   /** Only available while the premium Drama Mode simulation is enabled. */
   dramaOnly?: boolean
+  /**
+   * Part of the paid Reality strategy layer. In Classic it remains visible as
+   * a locked preview card rather than making the core catalogue feel smaller.
+   */
+  realityExclusive?: boolean
   allowedPhases?: readonly string[]
   requiredRelationshipTags?: readonly string[]
   excludedRelationshipTags?: readonly string[]
@@ -257,6 +262,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'alliance',
     availabilityHint: 'Requires positive affinity',
     excludedRelationshipTags: ['alliance'],
+    realityExclusive: true,
     yields: { influence: 0.06 },
   },
   {
@@ -269,6 +275,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     baseCost: 2,
     targetMode: 'primary',
     successWeight: 2,
+    realityExclusive: true,
   },
   {
     id: 'betray',
@@ -284,6 +291,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'betrayal',
     availabilityHint: 'High-risk betrayal',
     requiredRelationshipTags: ['alliance'],
+    realityExclusive: true,
     yields: { influence: 0.04 },
   },
   {
@@ -341,6 +349,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 2,
     outcomeTag: 'rumor',
     yields: { influence: 0.05 },
+    realityExclusive: true,
   },
   {
     id: 'startFight',
@@ -473,9 +482,10 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   },
   {
     id: 'ask_hold_safety',
-    title: 'Ask Them Not to Use It',
+    title: 'Respect Nominations',
     icon: '✋',
-    description: 'As LOH, ask the Safety holder to leave the nominations unchanged.',
+    description:
+      'As LOH, ask the Safety holder not to use Safety and leave your nominations unchanged.',
     category: 'strategic',
     kind: 'political_spend',
     baseCost: { energy: 2, influence: 1 },
@@ -486,6 +496,31 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     requiredActorStatus: ['loh', 'loh+pos'],
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
     allowedPhases: ['pos_results', 'pos_ceremony'],
+  },
+  {
+    id: 'warn_about_danger',
+    title: 'Warn About Danger',
+    icon: '⚠️',
+    description:
+      'Tell this housemate the LOH named them as a target. They may appreciate it, but the LOH could find out.',
+    category: 'strategic',
+    kind: 'intel_spend',
+    baseCost: { energy: 1, info: 1 },
+    targetMode: 'primary',
+    successWeight: 2,
+    outcomeTag: 'warning',
+    availabilityHint: 'Requires target intel from the LOH',
+    dramaOnly: true,
+    allowedPhases: [
+      'social_1',
+      'nominations',
+      'nomination_results',
+      'pre_veto_public_save',
+      'pos_comp_announcement',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+    ],
   },
   {
     id: 'ask_why_nominated',
@@ -609,3 +644,34 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     successWeight: 1,
   },
 ]
+
+/**
+ * Strategy actions that are promoted in Classic as locked Reality previews.
+ * The IDs cover political manipulation and persistent-story actions; the
+ * small rapport toolkit remains fully playable in the base game.
+ */
+const REALITY_EXCLUSIVE_ACTION_IDS = new Set([
+  'proposeAlliance',
+  'protect',
+  'betray',
+  'rumor',
+  'startFight',
+  'pitch_target',
+  'suggest_replacement',
+  'ask_use_safety',
+  'ask_safety_plan',
+  'ask_hold_safety',
+  'warn_about_danger',
+  'ask_why_nominated',
+  'ask_loh_target',
+  'warn_about_player',
+  'rally_votes_against',
+])
+
+export function isRealityExclusiveAction(action: SocialActionDefinition): boolean {
+  return (
+    action.realityExclusive === true ||
+    action.dramaOnly === true ||
+    REALITY_EXCLUSIVE_ACTION_IDS.has(action.id)
+  )
+}

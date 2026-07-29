@@ -157,7 +157,17 @@ describe('socialMiddleware — alliance bonus only for manual actions', () => {
       payload: {
         source: 'actor',
         target: 'human',
-        delta: 5,
+        delta: 10,
+        tags: ['alliance'],
+        actionSource: 'manual',
+      },
+    });
+    store.dispatch({
+      type: 'social/updateRelationship',
+      payload: {
+        source: 'human',
+        target: 'actor',
+        delta: 10,
         tags: ['alliance'],
         actionSource: 'manual',
       },

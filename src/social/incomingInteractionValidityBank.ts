@@ -4,6 +4,8 @@ export interface IncomingInteractionValidityRule {
   senderMustHoldSafety?: boolean
   humanMustBeHoh?: boolean
   humanMustHoldSafety?: boolean
+  humanMustBeOffBlock?: boolean
+  humanMustBeEligibleVoter?: boolean
   subjectMustBeInHouse?: boolean
   allowedPhases?: readonly string[]
   invalidPhases?: readonly string[]
@@ -28,14 +30,20 @@ export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteract
   },
   nominee_campaign: {
     senderMustBeNominee: true,
+    humanMustBeOffBlock: true,
+    humanMustBeEligibleVoter: true,
     allowedPhases: ['social_2', 'live_vote'],
   },
   post_veto_campaign: {
     senderMustBeNominee: true,
+    humanMustBeOffBlock: true,
+    humanMustBeEligibleVoter: true,
     allowedPhases: ['social_2', 'live_vote'],
   },
   live_vote_pitch: {
     senderMustBeNominee: true,
+    humanMustBeOffBlock: true,
+    humanMustBeEligibleVoter: true,
     allowedPhases: ['live_vote'],
   },
   post_veto_gratitude: {

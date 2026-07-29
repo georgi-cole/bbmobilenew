@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { canAccessSpecialSettings, detectDebugMode, isDebugAccessGranted } from '../debugMode';
+import {
+  DEBUG_ACCESS_STORAGE_KEY,
+  canAccessSpecialSettings,
+  detectDebugMode,
+  isDebugAccessGranted,
+  persistDebugAccess,
+  revokeDebugAccess,
+} from '../debugMode';
 
 describe('debugMode gating', () => {
   afterEach(() => {
     delete (window as { __E2E__?: boolean }).__E2E__;
+    localStorage.removeItem(DEBUG_ACCESS_STORAGE_KEY);
   });
 
   it('allows e2e sessions regardless of host or query string', () => {
@@ -91,5 +99,21 @@ describe('debugMode gating', () => {
         hash: '',
       } as unknown as Location),
     ).toBe(true);
+  });
+
+  it('persists an explicitly enabled QA session across route navigation', () => {
+    persistDebugAccess();
+
+    expect(isDebugAccessGranted(new URLSearchParams(), 'georgi-cole.github.io')).toBe(true);
+    expect(
+      canAccessSpecialSettings({
+        hostname: 'georgi-cole.github.io',
+        search: '',
+        hash: '#/settings',
+      } as unknown as Location),
+    ).toBe(true);
+
+    revokeDebugAccess();
+    expect(isDebugAccessGranted(new URLSearchParams(), 'georgi-cole.github.io')).toBe(false);
   });
 });

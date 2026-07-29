@@ -1,10 +1,9 @@
 /**
  * smExecNormalize — cost normalization helpers for SocialManeuvers.
  *
- * Normal Mode deliberately uses one visible resource: Energy. Drama Mode may
- * additionally spend Influence and Intel. Runtime callers pass their effective
- * mode explicitly. The standalone helper retains its legacy multi-resource
- * default for compatibility with existing utilities and tests.
+ * Energy, Influence, and Information are strategic resources in every social
+ * intensity. Reality Mode may override the authored price, but Normal Mode
+ * uses the base multi-resource price rather than silently zeroing aux costs.
  */
 
 import { resolveActionTargetMode } from './socialActions'
@@ -57,16 +56,14 @@ function toScaledIntPts(value: number, scale: number): number {
 export function normalizeActionCosts(
   action: SocialActionDefinition,
   targetCount = 0,
-  dramaMode = true
+  dramaMode = false
 ): {
   energy: number
   influence: number
   info: number
 } {
   const energy = normalizeActionCost(action, targetCount, dramaMode)
-  if (!dramaMode) return { energy, influence: 0, info: 0 }
-
-  const authoredCost = action.dramaCost ?? action.baseCost
+  const authoredCost = dramaMode && action.dramaCost ? action.dramaCost : action.baseCost
   return {
     energy,
     influence: toScaledIntPts(

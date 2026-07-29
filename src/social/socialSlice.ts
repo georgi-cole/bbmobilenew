@@ -41,6 +41,39 @@ import {
 } from './socialHistory'
 import { clampSocialResource, migrateSocialState } from './socialStateMigration'
 import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig'
+import {
+  appendRealitySimulationTrace,
+  createInitialRealitySimulationState,
+  normalizeRealitySimulationState,
+  type RealitySimulationState,
+  type RealitySimulationTrace,
+} from './realitySimulation'
+import type {
+  RealityDebt,
+  RealityDomainState,
+  RealityFact,
+  RealityMemory,
+  RealityPromise,
+  RealityRelationshipChange,
+  RealitySecret,
+  RealityThread,
+} from './reality'
+import {
+  addRealityFact,
+  applyLegacyRelationshipUpdateToReality,
+  applyRealityRelationshipChange,
+  finalizeRealityVote,
+  ensureRealityActors,
+  learnRealityFact,
+  normalizeRealityDomainState,
+  projectRealityAffinity,
+  recordRealityCeremonyOutcome,
+  upsertRealityDebt,
+  upsertRealityPromise,
+  upsertRealitySecret,
+  upsertRealityThread,
+  type RealityCeremonyInput,
+} from './reality'
 
 function clampBank(
   budgets: Record<string, number>,
@@ -49,6 +82,121 @@ function clampBank(
   return Object.fromEntries(
     Object.entries(budgets).map(([playerId, value]) => [playerId, clampSocialResource(value, kind)])
   )
+}
+
+const REALITY_PROJECTED_TAGS = new Set([
+  'alliance',
+  'romance',
+  'bromance',
+  'rivalry',
+  'betrayal',
+  'safety_promise',
+  'protection',
+  'target',
+  'suspicious',
+  'unreliable',
+])
+
+function projectRealityTags(
+  reality: RealityDomainState,
+  sourceId: string,
+  targetId: string,
+  existingTags: readonly string[]
+): string[] {
+  const tags = existingTags.filter((tag) => !REALITY_PROJECTED_TAGS.has(tag))
+  const edge = reality.relationships[sourceId]?.[targetId]
+  if (!edge) return tags
+  if (
+    Object.values(reality.alliances).some(
+      (alliance) =>
+        alliance.status !== 'DISSOLVED' &&
+        alliance.memberIds.includes(sourceId) &&
+        alliance.memberIds.includes(targetId)
+    ) ||
+    edge.perceivedLabel === 'ALLY' ||
+    edge.perceivedLabel === 'CORE_ALLY'
+  ) {
+    tags.push('alliance')
+  }
+  if (
+    Object.values(reality.romances).some(
+      (romance) =>
+        romance.status === 'ACTIVE' &&
+        romance.participantIds.includes(sourceId) &&
+        romance.participantIds.includes(targetId)
+    ) ||
+    edge.perceivedLabel === 'ROMANCE' ||
+    edge.perceivedLabel === 'POWER_PAIR'
+  ) {
+    tags.push('romance')
+  }
+  if (edge.perceivedLabel === 'RIVAL') tags.push('rivalry')
+  if (edge.suspicion >= 55) tags.push('suspicious')
+  if (edge.reliability <= -35) tags.push('unreliable')
+  if (
+    edge.perceivedLabel === 'ENEMY' ||
+    Object.values(reality.grievances).some(
+      (grievance) =>
+        grievance.holderId === sourceId &&
+        grievance.againstId === targetId &&
+        grievance.status !== 'RESOLVED' &&
+        grievance.severity >= 65
+    )
+  ) {
+    tags.push('betrayal')
+  }
+  if (
+    Object.values(reality.promises).some(
+      (promise) =>
+        promise.status === 'ACTIVE' &&
+        promise.promisorId === sourceId &&
+        promise.beneficiaryIds.includes(targetId) &&
+        (promise.kind.toLowerCase().includes('protect') ||
+          promise.kind.toLowerCase().includes('safety'))
+    )
+  ) {
+    tags.push('safety_promise', 'protection')
+  }
+  if (
+    Object.values(reality.alliances).some(
+      (alliance) =>
+        alliance.status !== 'DISSOLVED' &&
+        alliance.memberIds.includes(sourceId) &&
+        alliance.currentTargetIds.includes(targetId)
+    )
+  ) {
+    tags.push('target')
+  }
+  return [...new Set(tags)]
+}
+
+function projectRealityEdgeIntoLegacy(
+  reality: RealityDomainState,
+  relationships: SocialState['relationships'],
+  sourceId: string,
+  targetId: string
+): void {
+  const edge = reality.relationships[sourceId]?.[targetId]
+  if (!edge || sourceId === targetId) return
+  relationships[sourceId] ??= {}
+  const existing = relationships[sourceId][targetId]
+  relationships[sourceId][targetId] = {
+    affinity: projectRealityAffinity(edge),
+    tags: projectRealityTags(reality, sourceId, targetId, existing?.tags ?? []),
+  }
+}
+
+function projectRealityRelationshipsIntoLegacy(
+  reality: RealityDomainState,
+  relationships: SocialState['relationships']
+): void {
+  for (const [sourceId, targets] of Object.entries(reality.relationships)) {
+    relationships[sourceId] ??= {}
+    delete relationships[sourceId][sourceId]
+    for (const targetId of Object.keys(targets)) {
+      projectRealityEdgeIntoLegacy(reality, relationships, sourceId, targetId)
+    }
+  }
 }
 
 const socialSlice = createSlice({
@@ -129,6 +277,169 @@ const socialSlice = createSlice({
       appendPersistentSocialHistory(
         state as unknown as SocialStateWithHistory,
         action.payload.entry
+      )
+    },
+    /**
+     * Bind the persisted v3 social RNG to a game seed. Existing saves keep
+     * their cursor unless an explicit new-season reset is requested.
+     */
+    initializeRealitySimulation(state, action: PayloadAction<{ seed: number; force?: boolean }>) {
+      if (state.realitySimulation?.rng && !action.payload.force) return
+      state.realitySimulation = createInitialRealitySimulationState(action.payload.seed)
+    },
+    replaceRealitySimulation(state, action: PayloadAction<RealitySimulationState>) {
+      state.realitySimulation = normalizeRealitySimulationState(action.payload)
+    },
+    replaceRealityDomain(state, action: PayloadAction<RealityDomainState>) {
+      state.reality = normalizeRealityDomainState(action.payload, state.relationships)
+      projectRealityRelationshipsIntoLegacy(state.reality, state.relationships)
+    },
+    ensureRealityDomainActors(state, action: PayloadAction<{ actorIds: string[] }>) {
+      ensureRealityActors(state.reality as RealityDomainState, action.payload.actorIds)
+    },
+    applyRealityRelationshipDelta(state, action: PayloadAction<RealityRelationshipChange>) {
+      applyRealityRelationshipChange(state.reality as RealityDomainState, action.payload)
+      projectRealityEdgeIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships,
+        action.payload.sourceId,
+        action.payload.targetId
+      )
+    },
+    applyRealityAmbientMood(
+      state,
+      action: PayloadAction<{
+        actorId: string
+        valenceDelta: number
+        arousalDelta: number
+        stressDelta: number
+        socialEnergyDelta: number
+      }>
+    ) {
+      const { actorId, valenceDelta, arousalDelta, stressDelta, socialEnergyDelta } = action.payload
+      ensureRealityActors(state.reality as RealityDomainState, [actorId])
+      const contestant = state.reality.contestants[actorId]
+      const clamp = (value: number, minimum: number, maximum: number) =>
+        Math.max(minimum, Math.min(maximum, Number.isFinite(value) ? value : 0))
+      contestant.mood.valence = clamp(contestant.mood.valence + valenceDelta, -100, 100)
+      contestant.mood.arousal = clamp(contestant.mood.arousal + arousalDelta, -100, 100)
+      contestant.stress = clamp(contestant.stress + stressDelta, 0, 100)
+      contestant.socialEnergy = clamp(contestant.socialEnergy + socialEnergyDelta, -100, 100)
+      if (valenceDelta > 0) {
+        contestant.emotions.joy = clamp(contestant.emotions.joy + valenceDelta * 0.6, 0, 100)
+      } else if (valenceDelta < 0) {
+        contestant.emotions.anger = clamp(
+          contestant.emotions.anger + Math.abs(valenceDelta) * 0.35,
+          0,
+          100
+        )
+      }
+    },
+    applyRealityAmbientRelationship(
+      state,
+      action: PayloadAction<{
+        sourceId: string
+        targetId: string
+        socialDelta: number
+        day: number
+        phase?: string
+      }>
+    ) {
+      const { sourceId, targetId, socialDelta, day, phase = 'week_start' } = action.payload
+      if (sourceId === targetId || socialDelta === 0) return
+      ensureRealityActors(state.reality as RealityDomainState, [sourceId, targetId])
+      const magnitude = Math.min(3, Math.abs(socialDelta))
+      const cooling = socialDelta > 0
+      applyRealityRelationshipChange(state.reality as RealityDomainState, {
+        sourceId,
+        targetId,
+        day,
+        phase,
+        eventId: `ambient:${day}:${phase}:${sourceId}:${targetId}`,
+        meaningful: false,
+        deltas: cooling
+          ? {
+              warmth: magnitude,
+              trust: magnitude * 0.6,
+              resentment: -magnitude * 3,
+              suspicion: -magnitude * 2.5,
+              fear: -magnitude * 1.5,
+              perceivedThreat: -magnitude,
+            }
+          : {
+              warmth: -magnitude,
+              trust: -magnitude * 0.7,
+              resentment: magnitude * 6,
+              suspicion: magnitude * 4,
+              fear: magnitude * 2,
+              perceivedThreat: magnitude * 2,
+            },
+      })
+      projectRealityEdgeIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships,
+        sourceId,
+        targetId
+      )
+    },
+    recordRealityFact(state, action: PayloadAction<RealityFact>) {
+      addRealityFact(state.reality as RealityDomainState, action.payload)
+    },
+    learnRealityKnowledge(
+      state,
+      action: PayloadAction<{
+        ownerId: string
+        factId: string
+        memory: RealityMemory
+        confidence?: number
+      }>
+    ) {
+      learnRealityFact(state.reality as RealityDomainState, action.payload)
+    },
+    upsertRealityPromiseRecord(state, action: PayloadAction<RealityPromise>) {
+      upsertRealityPromise(state.reality as RealityDomainState, action.payload)
+    },
+    upsertRealityDebtRecord(state, action: PayloadAction<RealityDebt>) {
+      upsertRealityDebt(state.reality as RealityDomainState, action.payload)
+    },
+    upsertRealitySecretRecord(state, action: PayloadAction<RealitySecret>) {
+      upsertRealitySecret(state.reality as RealityDomainState, action.payload)
+    },
+    upsertRealityThreadRecord(state, action: PayloadAction<RealityThread>) {
+      upsertRealityThread(state.reality as RealityDomainState, action.payload)
+    },
+    recordRealityCeremony(state, action: PayloadAction<RealityCeremonyInput>) {
+      recordRealityCeremonyOutcome(state.reality as RealityDomainState, action.payload)
+      projectRealityRelationshipsIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships
+      )
+    },
+    recordRealityActualVote(
+      state,
+      action: PayloadAction<{
+        actorId: string
+        targetId: string
+        day: number
+        phase: string
+        eventId: string
+      }>
+    ) {
+      finalizeRealityVote(
+        state.reality as RealityDomainState,
+        action.payload.actorId,
+        action.payload.targetId,
+        { day: action.payload.day, phase: action.payload.phase },
+        action.payload.eventId
+      )
+    },
+    recordRealitySimulationTrace(
+      state,
+      action: PayloadAction<Omit<RealitySimulationTrace, 'id' | 'sequence'>>
+    ) {
+      state.realitySimulation = appendRealitySimulationTrace(
+        state.realitySimulation ?? createInitialRealitySimulationState(),
+        action.payload
       )
     },
     replaceDramaNetwork(state, action: PayloadAction<DramaSocialNetwork>) {
@@ -333,6 +644,31 @@ const socialSlice = createSlice({
         }
       })
     },
+    /** Resolve the exact interactions whose day/phase deadlines have passed. */
+    resolveIncomingInteractionsByDeadline(
+      state,
+      action: PayloadAction<{
+        interactionIds: string[]
+        day: number
+        phase: string
+        resolvedAt?: number
+      }>
+    ) {
+      const ids = new Set(action.payload.interactionIds)
+      const resolvedTimestamp =
+        action.payload.resolvedAt ??
+        action.payload.day * 1_000_000 + Math.max(0, action.payload.phase.length * 100)
+      state.incomingInteractions.forEach((interaction) => {
+        if (ids.has(interaction.id) && !interaction.resolved) {
+          interaction.resolved = true
+          interaction.read = true
+          interaction.resolvedAt = resolvedTimestamp
+          interaction.resolvedWeek = action.payload.day
+          interaction.resolvedWith =
+            getIncomingInteractionResponsePolicy(interaction) === 'required' ? 'ignore' : 'dismiss'
+        }
+      })
+    },
     /** Update the affinity (and optionally tags) for a directed relationship. */
     updateRelationship(
       state,
@@ -374,6 +710,15 @@ const socialSlice = createSlice({
           tags: relationshipTags,
         }
       }
+      applyLegacyRelationshipUpdateToReality(
+        state.reality as RealityDomainState,
+        source,
+        target,
+        safeDelta,
+        tags,
+        0,
+        'legacy'
+      )
     },
     /** Apply delta updates to directed social memory entries. */
     updateSocialMemory(
@@ -477,6 +822,12 @@ const socialSlice = createSlice({
       return migrateSocialState(action.payload)
     },
   },
+  extraReducers: (builder) => {
+    builder.addMatcher(
+      (action) => action.type === 'game/resetGame',
+      () => migrateSocialState({} as SocialState)
+    )
+  },
 })
 
 export const {
@@ -491,6 +842,22 @@ export const {
   setInfoBankEntry,
   applyInfoDelta,
   recordSocialAction,
+  initializeRealitySimulation,
+  replaceRealitySimulation,
+  replaceRealityDomain,
+  ensureRealityDomainActors,
+  applyRealityRelationshipDelta,
+  applyRealityAmbientMood,
+  applyRealityAmbientRelationship,
+  recordRealityFact,
+  learnRealityKnowledge,
+  upsertRealityPromiseRecord,
+  upsertRealityDebtRecord,
+  upsertRealitySecretRecord,
+  upsertRealityThreadRecord,
+  recordRealityCeremony,
+  recordRealityActualVote,
+  recordRealitySimulationTrace,
   replaceDramaNetwork,
   applyDramaAction,
   applyDramaIncomingResponse,
@@ -506,6 +873,7 @@ export const {
   invalidateIncomingInteractions,
   drainEvictedPlayerSocial,
   resolveExpiredIncomingInteractionsForWeek,
+  resolveIncomingInteractionsByDeadline,
   updateRelationship,
   updateSocialMemory,
   decaySocialMemory,
@@ -527,6 +895,12 @@ export const selectSocialBudgets = (state: { social: SocialState }) => state.soc
 export const selectEnergyBank = (state: { social: SocialState }) => state.social?.energyBank
 export const selectInfluenceBank = (state: { social: SocialState }) => state.social?.influenceBank
 export const selectInfoBank = (state: { social: SocialState }) => state.social?.infoBank
+export const selectRealityDomain = (state: { social: SocialState }) => state.social.reality
+export const selectRealityRelationship = (
+  state: { social: SocialState },
+  sourceId: string,
+  targetId: string
+) => state.social.reality.relationships[sourceId]?.[targetId]
 export const selectLastSocialReport = (state: { social: SocialState }) =>
   state.social?.lastReport ?? null
 export const selectInfluenceWeights = (state: { social: SocialState }) =>
@@ -535,6 +909,8 @@ export const selectSessionLogs = (state: { social: SocialState }) =>
   state.social?.sessionLogs as SocialState['sessionLogs']
 export const selectPersistentSocialHistory = (state: { social: SocialState }) =>
   getPersistentSocialHistory(state.social as SocialStateWithHistory)
+export const selectRealitySimulation = (state: { social: SocialState }) =>
+  state.social?.realitySimulation ?? SOCIAL_INITIAL_STATE.realitySimulation
 export const selectSocialPanelOpen = (state: { social: SocialState }) =>
   state.social?.panelOpen ?? false
 export const selectSocialMemory = (state: { social: SocialState }) =>

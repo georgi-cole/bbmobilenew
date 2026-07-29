@@ -90,7 +90,7 @@ function renderStore(initialVip = makeVipState()) {
 }
 
 function openDramaMode() {
-  fireEvent.click(screen.getByRole('button', { name: 'Open Drama Mode' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Open Reality Mode' }))
 }
 
 describe('Store product presentation', () => {
@@ -110,8 +110,10 @@ describe('Store product presentation', () => {
     openDramaMode()
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Drama Mode' })).toBeInTheDocument()
-    expect(screen.getByText('Richer alliance decisions')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Reality Mode' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Make secret deals, bold moves and unforgettable rivalries')
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unlock for $4.99' })).toBeEnabled()
   })
 
@@ -119,7 +121,7 @@ describe('Store product presentation', () => {
     renderStore(makeVipState({ owned: ['dramaMode'] }))
     openDramaMode()
 
-    expect(screen.getByRole('heading', { name: 'Drama Mode is unlocked' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Reality Mode is unlocked' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Unlock for/ })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Settings' }))
@@ -146,7 +148,7 @@ describe('Store product presentation', () => {
 
     resolvePurchase(snapshotFrom(purchasedState))
     expect(
-      await screen.findByRole('heading', { name: 'Drama Mode is unlocked' })
+      await screen.findByRole('heading', { name: 'Reality Mode is unlocked' })
     ).toBeInTheDocument()
   })
 
@@ -183,7 +185,7 @@ describe('Store product presentation', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: 'Drama Mode is unlocked' })
+      await screen.findByRole('heading', { name: 'Reality Mode is unlocked' })
     ).toBeInTheDocument()
     expect(loadVipStoreSnapshotMock).toHaveBeenCalledWith({ restore: true })
   })

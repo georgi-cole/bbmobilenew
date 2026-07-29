@@ -14,15 +14,15 @@ const BASE: Record<IncomingInteractionResponseType, number> = {
 
 /** Relationship consequences tuned to the emotional stakes of each approach. */
 export const INCOMING_RESPONSE_EFFECTS: Partial<Record<IncomingInteractionType, DeltaTable>> = {
-  compliment: { positive: 4, neutral: 1, negative: -3, dismiss: -2 },
-  check_in: { positive: 6, neutral: 2, negative: -5, dismiss: -4 },
-  gossip: { positive: 5, neutral: 1, negative: -5, dismiss: -3 },
-  warning: { positive: 7, neutral: 2, negative: -7, dismiss: -4 },
-  snide_remark: { positive: 3, neutral: 0, negative: -7, dismiss: -2 },
-  deal_offer: { accept: 9, neutral: 0, decline: -6, dismiss: -4 },
-  alliance_proposal: { accept: 12, neutral: 1, decline: -10, dismiss: -7 },
-  nomination_plea: { positive: 8, neutral: 0, negative: -9, dismiss: -6 },
-  other: { positive: 5, neutral: 1, negative: -5, dismiss: -3 },
+  compliment: { positive: 4, neutral: 1, negative: -3, dismiss: -2, ignore: -2 },
+  check_in: { positive: 6, neutral: 2, negative: -5, dismiss: -4, ignore: -6 },
+  gossip: { positive: 5, neutral: 1, negative: -5, dismiss: -3, ignore: -2 },
+  warning: { positive: 7, neutral: 2, negative: -7, dismiss: -4, ignore: -8 },
+  snide_remark: { positive: 3, neutral: 0, negative: -7, dismiss: -2, ignore: 1 },
+  deal_offer: { accept: 9, neutral: 0, decline: -6, dismiss: -4, ignore: -7 },
+  alliance_proposal: { accept: 12, neutral: 1, decline: -10, dismiss: -7, ignore: -12 },
+  nomination_plea: { positive: 8, neutral: 0, negative: -9, dismiss: -6, ignore: -10 },
+  other: { positive: 5, neutral: 1, negative: -5, dismiss: -3, ignore: -4 },
 }
 
 const WARM_TONES = new Set(['Warm', 'Trusting'])
@@ -84,7 +84,7 @@ const RESPONSE_LOG_COPY: Record<IncomingInteractionResponseType, readonly string
     'You let the message from {name} expire unanswered.',
     'You never answered {name}, and the silence became the answer.',
     'You ignored the approach by {name} until the moment passed.',
-    'You left {name} waiting through the end of the week.',
+    'You left {name} waiting until the decision window closed.',
   ],
 }
 

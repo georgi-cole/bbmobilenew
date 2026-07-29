@@ -228,6 +228,21 @@ const HEADLINE_TEMPLATES: HeadlineTemplate[] = [
   },
 ];
 
+// Headlines without a matching Reality event may describe audience sentiment,
+// but must not invent a relationship, promise, rumour, betrayal, or ceremony.
+// Event-specific public stories are projected from the Reality event ledger.
+const BACKGROUND_SAFE_HEADLINE_KEYS = new Set([
+  'viral_moment',
+  'fan_wave',
+  'underdog_love',
+  'fan_backlash',
+  'villain_edit',
+]);
+
+const BACKGROUND_SAFE_HEADLINE_TEMPLATES = HEADLINE_TEMPLATES.filter(
+  (template) => BACKGROUND_SAFE_HEADLINE_KEYS.has(template.key) && !template.requiresRelated,
+);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Pick a severity band using a weighted random draw. Returns a HeadlineSeverity ('mild' | 'dramatic' | 'shocking'). */
@@ -320,8 +335,8 @@ export function generateDailyPublicUpdate(params: GenerateHeadlinesParams): Dail
     const magnitude = severityMagnitude(severity, rng);
 
     // Pick a template
-    const templateIndex = Math.floor(rng() * HEADLINE_TEMPLATES.length);
-    const template = HEADLINE_TEMPLATES[templateIndex];
+    const templateIndex = Math.floor(rng() * BACKGROUND_SAFE_HEADLINE_TEMPLATES.length);
+    const template = BACKGROUND_SAFE_HEADLINE_TEMPLATES[templateIndex];
 
     // Determine sign based on template tone
     let positive: boolean;

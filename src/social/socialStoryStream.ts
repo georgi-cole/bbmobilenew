@@ -105,6 +105,15 @@ function arcDescription(arc: DramaArc, first: string, second: string): string {
   return `${pair} are still living with the fallout of a move that changed their trust.`
 }
 
+function stableVariant(value: string, count: number): number {
+  let hash = 2166136261
+  for (const character of value) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return Math.abs(hash) % Math.max(1, count)
+}
+
 function eventToBeat(
   event: DramaHouseEvent,
   network: DramaSocialNetwork,
@@ -120,9 +129,27 @@ function eventToBeat(
   let text = event.text
   if (event.type === 'confrontation') {
     kind = 'conflict'
-    title = `${first} and ${second} finally snapped`
-    text =
-      'A disagreement that had stayed private is now forcing the rest of the house to choose sides.'
+    const confrontationCopy = [
+      {
+        title: `${first} and ${second} had a blowup`,
+        text: 'A private disagreement spilled into the house, and people are starting to choose sides.',
+      },
+      {
+        title: `${first} and ${second} drew a line`,
+        text: 'What looked like ordinary friction became a public divide that neither side could smooth over.',
+      },
+      {
+        title: `A quiet feud between ${first} and ${second} went public`,
+        text: 'The room caught the tension at the same time, changing how both players are being read.',
+      },
+      {
+        title: `${first} and ${second} lost patience`,
+        text: 'A sharp exchange exposed weeks of irritation and gave the rest of the house something new to discuss.',
+      },
+    ]
+    const variant = confrontationCopy[stableVariant(event.id, confrontationCopy.length)]
+    title = variant.title
+    text = variant.text
   } else if (event.type === 'reconciliation') {
     kind = 'repair'
     title = `${first} and ${second} called a truce`
@@ -171,6 +198,119 @@ function eventToBeat(
       dedupeKey: `pair:${pairKey(event.participantIds[0] ?? event.id, event.participantIds[1] ?? event.id)}:${event.week}`,
     },
   }
+}
+
+function buildConfrontationClusters(
+  events: readonly DramaHouseEvent[],
+  nameOf: (id: string) => string,
+  currentWeek: number
+): { beats: ScoredBeat[]; clusteredEventIds: Set<string> } {
+  const confrontations = events.filter(
+    (event) => event.type === 'confrontation' && event.participantIds.length >= 2
+  )
+  const byParticipant = new Map<string, DramaHouseEvent[]>()
+  for (const event of confrontations) {
+    for (const participantId of event.participantIds) {
+      byParticipant.set(participantId, [...(byParticipant.get(participantId) ?? []), event])
+    }
+  }
+  const clusteredEventIds = new Set<string>()
+  const beats: ScoredBeat[] = []
+  const rankedParticipants = [...byParticipant.entries()].sort(
+    (left, right) => right[1].length - left[1].length || left[0].localeCompare(right[0])
+  )
+  for (const [centerId, candidateEvents] of rankedParticipants) {
+    const clusterEvents = candidateEvents.filter((event) => !clusteredEventIds.has(event.id))
+    const counterpartIds = [
+      ...new Set(
+        clusterEvents.flatMap((event) =>
+          event.participantIds.filter((participantId) => participantId !== centerId)
+        )
+      ),
+    ]
+    if (clusterEvents.length < 3 || counterpartIds.length < 3) continue
+    clusterEvents.forEach((event) => clusteredEventIds.add(event.id))
+    const centerName = nameOf(centerId)
+    const counterpartNames = counterpartIds.slice(0, 4).map(nameOf)
+    const remainingCount = Math.max(0, counterpartIds.length - counterpartNames.length)
+    const names = `${counterpartNames.join(', ')}${
+      remainingCount > 0 ? ` and ${remainingCount} more` : ''
+    }`
+    beats.push({
+      score: 108 + Math.min(12, clusterEvents.length),
+      beat: {
+        id: `confrontation-cluster:${currentWeek}:${centerId}`,
+        kind: 'conflict',
+        title: `${centerName} is at the center of a house blowup`,
+        text: `Separate clashes with ${names} are no longer reading as isolated moments. The pattern is reshaping the house around ${centerName}.`,
+        participantIds: [centerId, ...counterpartIds],
+        week: currentWeek,
+        phase: 'social',
+        severity: 'major',
+        createdAt: Math.max(...clusterEvents.map((event) => event.createdAt)),
+        dedupeKey: `confrontation-cluster:${currentWeek}:${centerId}`,
+      },
+    })
+  }
+  return { beats, clusteredEventIds }
+}
+
+function consolidateConflictCenters(
+  candidates: readonly ScoredBeat[],
+  nameOf: (id: string) => string,
+  currentWeek: number
+): ScoredBeat[] {
+  const pairConflicts = candidates.filter(
+    (candidate) =>
+      candidate.beat.kind === 'conflict' &&
+      candidate.beat.participantIds.length === 2 &&
+      !candidate.beat.id.startsWith('confrontation-cluster:')
+  )
+  const byParticipant = new Map<string, ScoredBeat[]>()
+  for (const candidate of pairConflicts) {
+    for (const participantId of candidate.beat.participantIds) {
+      byParticipant.set(participantId, [...(byParticipant.get(participantId) ?? []), candidate])
+    }
+  }
+
+  const consumedBeatIds = new Set<string>()
+  const clusters: ScoredBeat[] = []
+  const ranked = [...byParticipant.entries()].sort(
+    (left, right) => right[1].length - left[1].length || left[0].localeCompare(right[0])
+  )
+  for (const [centerId, entries] of ranked) {
+    const available = entries.filter((entry) => !consumedBeatIds.has(entry.beat.id))
+    const counterpartIds = [
+      ...new Set(
+        available.flatMap((entry) =>
+          entry.beat.participantIds.filter((participantId) => participantId !== centerId)
+        )
+      ),
+    ]
+    if (available.length < 3 || counterpartIds.length < 3) continue
+    available.forEach((entry) => consumedBeatIds.add(entry.beat.id))
+    const names = counterpartIds.slice(0, 4).map(nameOf)
+    const more = Math.max(0, counterpartIds.length - names.length)
+    clusters.push({
+      score: Math.max(...available.map((entry) => entry.score)) + 12,
+      beat: {
+        id: `conflict-center:${currentWeek}:${centerId}`,
+        kind: 'conflict',
+        title: `${nameOf(centerId)} is becoming the center of the house tension`,
+        text: `Separate friction with ${names.join(', ')}${
+          more > 0 ? ` and ${more} more` : ''
+        } now reads as one developing pattern, not a string of identical blowups.`,
+        participantIds: [centerId, ...counterpartIds],
+        week: currentWeek,
+        phase: 'social',
+        severity: 'major',
+        createdAt: Math.max(...available.map((entry) => entry.beat.createdAt)),
+        dedupeKey: `conflict-center:${currentWeek}:${centerId}`,
+      },
+    })
+  }
+
+  return [...clusters, ...candidates.filter((candidate) => !consumedBeatIds.has(candidate.beat.id))]
 }
 
 function buildActionBeats({
@@ -301,12 +441,31 @@ function buildActionBeats({
       tags.has('betrayal')
     ) {
       kind = 'conflict'
-      title = visibleConflict
-        ? `${leftName} and ${rightName} finally snapped`
-        : 'Trust is sliding fast'
-      text = visibleConflict
-        ? 'Their private tension reached the rest of the house, and people are beginning to choose sides.'
-        : `${leftName} and ${rightName} have grown colder after a pattern of strained exchanges.`
+      if (visibleConflict) {
+        const copy = [
+          {
+            title: `${leftName} and ${rightName} could not hide the friction`,
+            text: 'A sharp exchange changed the mood around them, and the house is reassessing both sides.',
+          },
+          {
+            title: `${leftName} challenged ${rightName} in front of the house`,
+            text: 'What began as a private disagreement became a public test of trust and patience.',
+          },
+          {
+            title: `${leftName} and ${rightName} reached a breaking point`,
+            text: 'The conversation ended colder than it began, leaving a new divide for others to navigate.',
+          },
+          {
+            title: `The room felt the strain between ${leftName} and ${rightName}`,
+            text: 'Neither player backed away cleanly, and their unresolved tension is now part of the house picture.',
+          },
+        ][stableVariant(`${key}:${currentWeek}`, 4)]
+        title = copy.title
+        text = copy.text
+      } else {
+        title = 'Trust is sliding fast'
+        text = `${leftName} and ${rightName} have grown colder after a pattern of strained exchanges.`
+      }
       score = 72 + Math.min(20, Math.abs(shift) + negative * 3)
     } else if (baseline <= -5 && shift >= 6 && (repairs > 0 || positive >= 2)) {
       kind = 'repair'
@@ -363,17 +522,25 @@ export function buildSocialStoryStream({
         event.participantIds.includes(humanId) ||
         (event.type === 'discovery' && event.participantIds[0] === humanId))
   )
-  const candidates = [
-    ...knownEvents.map((event) => eventToBeat(event, network, nameOf)),
-    ...buildActionBeats({
-      actionHistory,
-      relationships,
-      weekStartRelSnapshot,
-      humanId,
-      currentWeek,
-      nameOf,
-    }),
-  ]
+  const confrontationClusters = buildConfrontationClusters(knownEvents, nameOf, currentWeek)
+  const candidates = consolidateConflictCenters(
+    [
+      ...confrontationClusters.beats,
+      ...knownEvents
+        .filter((event) => !confrontationClusters.clusteredEventIds.has(event.id))
+        .map((event) => eventToBeat(event, network, nameOf)),
+      ...buildActionBeats({
+        actionHistory,
+        relationships,
+        weekStartRelSnapshot,
+        humanId,
+        currentWeek,
+        nameOf,
+      }),
+    ],
+    nameOf,
+    currentWeek
+  )
   const deduped = new Map<string, ScoredBeat>()
   for (const candidate of candidates) {
     const existing = deduped.get(candidate.beat.dedupeKey)

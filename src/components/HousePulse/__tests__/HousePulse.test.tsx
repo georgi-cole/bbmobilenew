@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { createInitialDramaSocialNetwork } from '../../../social/dramaModeEngine'
+import { createInitialRealityDomainState } from '../../../social/reality'
 import type { Player } from '../../../types'
 import HousePulse from '../HousePulse'
 
@@ -11,6 +12,26 @@ const players = [
 ] as Player[]
 
 describe('HousePulse', () => {
+  it('opens My Game first and labels stream counts as visible shifts', () => {
+    render(
+      <HousePulse
+        network={createInitialDramaSocialNetwork()}
+        players={players}
+        humanId="human"
+        actionHistory={[]}
+        relationships={{}}
+        weekStartRelSnapshot={{}}
+        currentWeek={2}
+        reality={createInitialRealityDomainState()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /my pulse/i }))
+    expect(screen.getByText('Your private game read')).toBeInTheDocument()
+    expect(screen.getByText('visible shifts')).toBeInTheDocument()
+    expect(screen.queryByText('house stories')).toBeNull()
+  })
+
   it('presents a causal stream, continuing stories and concrete intel known to the player', () => {
     const network = createInitialDramaSocialNetwork()
     network.arcs.push({
@@ -66,7 +87,7 @@ describe('HousePulse', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /house pulse/i }))
+    fireEvent.click(screen.getByRole('button', { name: /my pulse/i }))
     expect(screen.getByText('New information surfaced')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'stories' }))
@@ -80,7 +101,7 @@ describe('HousePulse', () => {
       screen.getByText('Lia heard Kai testing your name as a backup plan.')
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close House Pulse' }))
-    expect(screen.queryByRole('dialog', { name: 'House Pulse' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close My Pulse' }))
+    expect(screen.queryByRole('dialog', { name: 'My Pulse' })).toBeNull()
   })
 })

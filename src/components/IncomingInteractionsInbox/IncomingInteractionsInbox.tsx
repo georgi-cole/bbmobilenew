@@ -42,6 +42,10 @@ import type {
   SocialMemoryMap,
 } from '../../social/types'
 import type { Player } from '../../types'
+import {
+  formatIncomingDeadline,
+  isIncomingInteractionUrgent,
+} from '../../social/incomingInteractionDeadline'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import IncomingInteractionIcon from './IncomingInteractionIcon'
 import './IncomingInteractionsInbox.css'
@@ -55,23 +59,20 @@ function formatResponseLabel(interaction: IncomingInteraction): string {
   )}`
 }
 
-function isExpiringThisWeek(interaction: IncomingInteraction, currentWeek: number): boolean {
-  return !interaction.resolved && interaction.expiresAtWeek <= currentWeek
-}
-
 function getExpiryLabel(
   interaction: IncomingInteraction,
   currentWeek: number,
+  currentPhase: string,
   policy: IncomingInteractionResponsePolicy
 ): string | null {
   if (
     interaction.resolved ||
     policy !== 'required' ||
-    !isExpiringThisWeek(interaction, currentWeek)
+    !isIncomingInteractionUrgent(interaction, { day: currentWeek, phase: currentPhase })
   ) {
     return null
   }
-  return 'Answer this week'
+  return formatIncomingDeadline(interaction)
 }
 
 function getHouseRead(
@@ -145,6 +146,7 @@ interface InteractionItemProps {
   showActions: boolean
   playerById: Map<string, Player>
   currentWeek: number
+  currentPhase: string
   onRead: (interactionId: string) => void
   onRespond: (
     interactionId: string,
@@ -165,6 +167,7 @@ function InteractionItem({
   showActions,
   playerById,
   currentWeek,
+  currentPhase,
   onRead,
   onRespond,
   relationships,
@@ -178,8 +181,10 @@ function InteractionItem({
   const fromName = fromPlayer?.name ?? interaction.fromId
   const typeLabel = getIncomingInteractionTypeLabel(interaction.type)
   const isUnread = !interaction.read && !interaction.resolved
-  const isUrgent = policy === 'required' && isExpiringThisWeek(interaction, currentWeek)
-  const expiryLabel = getExpiryLabel(interaction, currentWeek, policy)
+  const isUrgent =
+    policy === 'required' &&
+    isIncomingInteractionUrgent(interaction, { day: currentWeek, phase: currentPhase })
+  const expiryLabel = getExpiryLabel(interaction, currentWeek, currentPhase, policy)
   const shouldShowActions = showActions && policy !== 'readOnly' && !interaction.resolved
 
   useEffect(() => {
@@ -344,7 +349,12 @@ export default function IncomingInteractionsInbox() {
     () =>
       interactions.map((interaction) => ({
         interaction,
-        priority: getIncomingInteractionPriority(interaction.type),
+        priority: getIncomingInteractionPriority(
+          interaction.type,
+          typeof interaction.payload?.scenarioKey === 'string'
+            ? interaction.payload.scenarioKey
+            : undefined
+        ),
         policy: getIncomingInteractionResponsePolicy(interaction),
       })),
     [interactions]
@@ -433,6 +443,7 @@ export default function IncomingInteractionsInbox() {
         showActions={showActions}
         playerById={playerById}
         currentWeek={currentWeek}
+        currentPhase={game.phase ?? 'week_start'}
         onRead={(interactionId) => dispatch(markIncomingInteractionRead(interactionId))}
         onRespond={(interactionId, responseType, responseLabel) => {
           setRecentlyResolvedIds((current) => {
@@ -464,7 +475,7 @@ export default function IncomingInteractionsInbox() {
             <div className="inbox-header__title">
               <IncomingInteractionIcon name="inbox" className="inbox-header__title-icon" />
               <span className="inbox-header__title-text">Incoming Interactions</span>
-              {globalDramaMode && <span className="inbox-header__mode">Drama</span>}
+              {globalDramaMode && <span className="inbox-header__mode">Reality</span>}
             </div>
             <button
               className="inbox-header__close"

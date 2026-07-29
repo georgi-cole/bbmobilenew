@@ -120,8 +120,26 @@ export function buildDeliverySlotCounts(
 }
 
 export function getIncomingInteractionPriority(
-  type: IncomingInteractionType
+  type: IncomingInteractionType,
+  scenarioKey?: string
 ): IncomingInteractionPriority {
+  // These are decision-bearing scenes, not flavour chatter. Keep them ahead of
+  // the normal spam controls even when their generic interaction type is a
+  // warning or snide remark.
+  if (
+    [
+      'nominee_confronts_loh',
+      'replacement_nominee_reacts_to_loh',
+      'betrayal_warning',
+      'targeted_snark',
+      'player_nominated_tension',
+      'live_vote_pitch',
+      'loh_consults_safety_holder',
+      'safety_holder_consults_loh',
+    ].includes(scenarioKey ?? '')
+  ) {
+    return 'high'
+  }
   return socialConfig.incomingInteractionDeliveryConfig.defaultPriorityByType[type] ?? 'medium'
 }
 
@@ -320,6 +338,13 @@ export function deliverScheduledIncomingInteractionsForPhase(
     (entry) => !entry.resolved && isIncomingInteractionActionable(entry)
   )
   let activeVisibleCount = activeVisible.length
+  let activeMajorCount = activeVisible.filter(
+    (entry) =>
+      getIncomingInteractionPriority(
+        entry.type,
+        typeof entry.payload?.scenarioKey === 'string' ? entry.payload.scenarioKey : undefined
+      ) === 'high'
+  ).length
   const deliveredThisPhase = getDeliveredThisPhase(
     socialState.incomingInteractionDelivery,
     phase,
@@ -327,6 +352,7 @@ export function deliverScheduledIncomingInteractionsForPhase(
   )
   let remainingPhaseSlots = Math.max(0, deliveryConfig.maxDeliveredPerPhase - deliveredThisPhase)
   let remainingActionableSlots = Math.max(0, deliveryConfig.maxActiveVisible - activeVisibleCount)
+  let remainingMajorSlots = Math.max(0, deliveryConfig.maxMajorActiveVisible - activeMajorCount)
 
   const eligible: ScheduledIncomingInteraction[] = []
   const remaining: ScheduledIncomingInteraction[] = []
@@ -441,7 +467,12 @@ export function deliverScheduledIncomingInteractionsForPhase(
     }
 
     const actionable = isIncomingInteractionActionable(entry.interaction)
-    if (remainingPhaseSlots <= 0 || (actionable && remainingActionableSlots <= 0)) {
+    const isMajor = entry.priority === 'high'
+    const canUseMajorLane = isMajor && remainingMajorSlots > 0
+    if (
+      remainingPhaseSlots <= 0 ||
+      (actionable && remainingActionableSlots <= 0 && !canUseMajorLane)
+    ) {
       const scheduledWeek = entry.scheduledForWeek ?? week
       const scheduledPhase = entry.scheduledForPhase ?? phase
       const overduePhases = computePhaseDistance(
@@ -467,6 +498,10 @@ export function deliverScheduledIncomingInteractionsForPhase(
     remainingPhaseSlots -= 1
     if (actionable) {
       activeVisibleCount += 1
+      if (isMajor) {
+        activeMajorCount += 1
+        remainingMajorSlots = Math.max(0, deliveryConfig.maxMajorActiveVisible - activeMajorCount)
+      }
       remainingActionableSlots = Math.max(0, deliveryConfig.maxActiveVisible - activeVisibleCount)
       activeVisible.push(entry.interaction)
     }

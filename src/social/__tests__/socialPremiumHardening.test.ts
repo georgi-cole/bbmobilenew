@@ -10,6 +10,7 @@ import {
   setRemoteSocialRuntimeConfig,
 } from '../socialRuntimeConfig'
 import { migrateSocialState } from '../socialStateMigration'
+import { SOCIAL_STATE_VERSION } from '../socialHistory'
 import { normalizeActionCosts } from '../smExecNormalize'
 import { SOCIAL_ACTIONS } from '../socialActions'
 import { computeOutcomeScore } from '../SocialPolicy'
@@ -182,7 +183,7 @@ describe('Social premium hardening', () => {
     } as SocialState
 
     const migrated = migrateSocialState(legacy)
-    expect(migrated.socialStateVersion).toBe(2)
+    expect(migrated.socialStateVersion).toBe(SOCIAL_STATE_VERSION)
     expect(migrated.energyBank.user).toBe(30)
     expect(migrated.energyBank.finn).toBe(0)
     expect(migrated.influenceBank.user).toBe(0)
@@ -191,12 +192,12 @@ describe('Social premium hardening', () => {
     expect(migrated.sessionLogs).toHaveLength(1)
   })
 
-  it('keeps Normal action costs Energy-only and Drama multi-resource', () => {
+  it('keeps all three strategic resources active and allows Reality pricing overrides', () => {
     const shareIntel = action('share_intel')
     expect(normalizeActionCosts(shareIntel, 1, false)).toEqual({
       energy: 1,
       influence: 0,
-      info: 0,
+      info: 200,
     })
     expect(normalizeActionCosts(shareIntel, 1, true).info).toBeGreaterThan(0)
   })

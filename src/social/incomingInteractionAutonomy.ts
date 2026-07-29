@@ -59,6 +59,7 @@ export interface AutonomyPlayer {
 export interface AutonomyContext {
   phase: string
   week: number
+  seed?: number
   relationships: RelationshipsMap
   socialMemory?: SocialMemoryMap
   players: AutonomyPlayer[]
@@ -194,6 +195,7 @@ interface ActorConstraints {
   playerIsHoh: boolean
   playerHasSafetyPower: boolean
   playerIsNominee: boolean
+  playerCanVote: boolean
   playerFinishedLastLohComp: boolean
   actorWasSaved: boolean
   actorIsPendingEvictee: boolean
@@ -241,6 +243,68 @@ function formatNameList(names: string[]): string {
   if (names.length === 1) return names[0]
   if (names.length === 2) return `${names[0]} and ${names[1]}`
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+function shouldInitiateLohSafetyConsult(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext
+): boolean {
+  const random =
+    context.random ??
+    createDeterministicSocialRandom([
+      context.seed ?? 0,
+      context.week,
+      actorId,
+      playerId,
+      'loh-safety-consult',
+    ])
+  return random() < 0.75
+}
+
+function getLohSafetyPreference(
+  actorId: string,
+  context: AutonomyContext
+): {
+  preferredSafetyAdvice: 'hold' | 'save'
+  preferredSafetyTargetId?: string
+  preferredSafetyTargetName?: string
+  preferredReplacementId?: string
+  preferredReplacementName?: string
+} {
+  const nominees = (context.nomineeIds ?? [])
+    .map((id) => getPlayerById(context, id))
+    .filter((player): player is AutonomyPlayer => Boolean(player))
+  const nonNominees = context.players.filter(
+    (player) =>
+      player.id !== actorId &&
+      !player.isUser &&
+      player.status !== 'evicted' &&
+      player.status !== 'jury' &&
+      !(context.nomineeIds ?? []).includes(player.id)
+  )
+  const affinity = (playerId: string) => context.relationships[actorId]?.[playerId]?.affinity ?? 0
+  const currentTarget = [...nominees].sort(
+    (left, right) => affinity(left.id) - affinity(right.id)
+  )[0]
+  const replacement = [...nonNominees].sort(
+    (left, right) => affinity(left.id) - affinity(right.id)
+  )[0]
+  const wantsReplacement =
+    Boolean(currentTarget && replacement) &&
+    affinity(replacement!.id) <= affinity(currentTarget!.id) - 12
+  if (!wantsReplacement) return { preferredSafetyAdvice: 'hold' }
+  const saveTarget =
+    [...nominees]
+      .filter((nominee) => nominee.id !== currentTarget?.id)
+      .sort((left, right) => affinity(right.id) - affinity(left.id))[0] ?? nominees[0]
+  return {
+    preferredSafetyAdvice: 'save',
+    preferredSafetyTargetId: saveTarget?.id,
+    preferredSafetyTargetName: saveTarget?.name ?? saveTarget?.id,
+    preferredReplacementId: replacement?.id,
+    preferredReplacementName: replacement?.name ?? replacement?.id,
+  }
 }
 
 function buildRelationshipSignals(
@@ -302,6 +366,7 @@ function buildActorConstraints(
     (context.posWinnerId === playerId || playerEntry?.status.includes('pos') === true)
   const playerIsNominee =
     nomineeIds.includes(playerId) || playerEntry?.status.includes('nominated') === true
+  const playerCanVote = !playerIsNominee && !playerIsHoh
   const playerFinishedLastLohComp = context.lastHohCompFinisherId === playerId
   const actorWasSaved = context.povSavedId === actor.id
   const actorIsPendingEvictee = context.pendingEvictionId === actor.id
@@ -318,6 +383,7 @@ function buildActorConstraints(
     playerIsHoh,
     playerHasSafetyPower,
     playerIsNominee,
+    playerCanVote,
     playerFinishedLastLohComp,
     actorWasSaved,
     actorIsPendingEvictee,
@@ -419,6 +485,7 @@ function resolveIncomingInteractionPlan(
     constraints.actorIsCurrentHoh &&
     constraints.playerHasSafetyPower
   ) {
+    if (!shouldInitiateLohSafetyConsult(actorId, playerId, context)) return null
     plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
   } else if (
     context.phase === 'pos_results' &&
@@ -500,6 +567,7 @@ function resolveIncomingInteractionPlan(
     plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' }
   } else if (
     constraints.actorIsNominee &&
+    constraints.playerCanVote &&
     (context.phase === 'social_2' || context.phase === 'live_vote')
   ) {
     plan = {
@@ -681,11 +749,33 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_pending_eviction' }
   }
 
+  // Work out a critical plan before applying the ordinary conversation caps.
+  // The LOH → human Safety-holder consultation is the one high-stakes
+  // conversation that must not be crowded out by nominee pitches.
+  const plan = resolveIncomingInteractionPlan(actorId, playerId, context)
+  if (!plan) {
+    return { allowed: false, reason: 'blocked_by_context_rules' }
+  }
+  const planPriority = getIncomingInteractionPriority(plan.type, plan.scenarioKey)
+  const isMajorInteraction = context.dramaMode && planPriority === 'high'
+  const isCriticalConsultation = plan.scenarioKey === 'loh_consults_safety_holder'
+
   const globalActive = pendingInteractions.filter(
     (interaction) => !interaction.resolved && isIncomingInteractionActionable(interaction)
   ).length
   const maxActive = context.dramaMode ? cfg.maxActive : 4
-  if (globalActive >= maxActive) {
+  const majorActive = pendingInteractions.filter(
+    (interaction) =>
+      !interaction.resolved &&
+      isIncomingInteractionActionable(interaction) &&
+      getIncomingInteractionPriority(
+        interaction.type,
+        typeof interaction.payload?.scenarioKey === 'string'
+          ? interaction.payload.scenarioKey
+          : undefined
+      ) === 'high'
+  ).length
+  if (globalActive >= maxActive && !(isMajorInteraction && majorActive < cfg.maxMajorActive)) {
     if (socialConfig.verbose) {
       console.debug(
         `[autonomy] skip ${actorId}: global active cap reached (${globalActive}/${maxActive})`
@@ -700,7 +790,7 @@ export function evaluateIncomingInteractionEnqueueDecision(
       !interaction.resolved &&
       isIncomingInteractionActionable(interaction)
   ).length
-  if (perAiActive >= cfg.maxPerAI) {
+  if (perAiActive >= cfg.maxPerAI && !isCriticalConsultation) {
     if (socialConfig.verbose) {
       console.debug(
         `[autonomy] skip ${actorId}: per-AI cap reached (${perAiActive}/${cfg.maxPerAI})`
@@ -709,18 +799,13 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_actor_cap', perAiActive }
   }
 
-  const plan = resolveIncomingInteractionPlan(actorId, playerId, context)
-  if (!plan) {
-    return { allowed: false, reason: 'blocked_by_context_rules' }
-  }
-
   const recencyPenalty = computeRecencyPenalty(
     actorId,
     pendingInteractions,
     context.week,
     cfg.cooldownTicks
   )
-  if (recencyPenalty >= 1 && !(context.dramaMode && isCriticalEventScenario(plan))) {
+  if (recencyPenalty >= 0.5 && !(context.dramaMode && isCriticalEventScenario(plan))) {
     if (socialConfig.verbose) {
       console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`)
     }
@@ -1149,6 +1234,7 @@ export function scheduleIncomingInteractionsForPhase(
   const context: AutonomyContext = {
     phase,
     week,
+    seed: contextOverride?.seed ?? gameState?.seed ?? 0,
     relationships,
     socialMemory,
     players,
@@ -1232,13 +1318,15 @@ export function scheduleIncomingInteractionsForPhase(
           Math.min(3, criticalDecisionCount)
         )
       : socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint
+  const weeklyGenerationLimit = context.dramaMode
+    ? Math.max(
+        socialConfig.incomingInteractionConfig.maxPerWeek,
+        alreadyCreatedThisWeek + criticalDecisionCount
+      )
+    : 4
   const generationBudget = Math.max(
     0,
-    Math.min(
-      checkpointBudget,
-      (context.dramaMode ? socialConfig.incomingInteractionConfig.maxPerWeek : 4) -
-        alreadyCreatedThisWeek
-    )
+    Math.min(checkpointBudget, weeklyGenerationLimit - alreadyCreatedThisWeek)
   )
   let generatedThisCheckpoint = 0
 
@@ -1320,10 +1408,13 @@ export function scheduleIncomingInteractionsForPhase(
         nomineeNames: (context.nomineeIds ?? []).map((nomineeId) =>
           getPlayerName(context, nomineeId, nomineeId)
         ),
+        ...(plan.scenarioKey === 'loh_consults_safety_holder'
+          ? getLohSafetyPreference(actor.id, context)
+          : {}),
       },
     })
 
-    const priority = getIncomingInteractionPriority(plan.type)
+    const priority = getIncomingInteractionPriority(plan.type, plan.scenarioKey)
     logIncomingInteractionDecision(store.dispatch, {
       stage: 'generation',
       reason: 'generated',
@@ -1338,12 +1429,17 @@ export function scheduleIncomingInteractionsForPhase(
           ? `score=${decision.score.toFixed(3)};scenario=${plan.scenarioKey}`
           : `scenario=${plan.scenarioKey}`,
     })
-    const dedupeReason = getInteractionDedupeReason({
+    const mustDeliverConsultationNow = plan.scenarioKey === 'loh_consults_safety_holder'
+    const candidateDedupeReason = getInteractionDedupeReason({
       interaction,
       priority,
       pendingInteractions,
       week,
     })
+    const dedupeReason =
+      mustDeliverConsultationNow && candidateDedupeReason !== 'deduped_same_scenario'
+        ? null
+        : candidateDedupeReason
     if (dedupeReason) {
       logIncomingInteractionDecision(store.dispatch, {
         stage: 'deduped',
@@ -1358,13 +1454,19 @@ export function scheduleIncomingInteractionsForPhase(
       continue
     }
 
-    const slot = assignDeliverySlot({
-      phase,
-      week,
-      priority,
-      slotCounts,
-      visibleActiveCount,
-    })
+    const slot = mustDeliverConsultationNow
+      ? {
+          scheduledForWeek: week,
+          scheduledForPhase: phase,
+          deliveryReason: 'critical_consultation',
+        }
+      : assignDeliverySlot({
+          phase,
+          week,
+          priority,
+          slotCounts,
+          visibleActiveCount,
+        })
     if (!slot) {
       const dropReason =
         visibleActiveCount >= socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible

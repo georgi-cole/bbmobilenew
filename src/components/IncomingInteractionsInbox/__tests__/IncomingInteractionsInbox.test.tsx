@@ -247,8 +247,8 @@ describe('IncomingInteractionsInbox', () => {
     expect(hasAllianceBetween(socialState.relationships, humanId, otherPlayer.id)).toBe(true)
     expect(socialState.energyBank[humanId]).toBe(2)
     expect(socialState.energyBank[otherPlayer.id]).toBe(2)
-    expect(socialState.influenceBank[humanId] ?? 0).toBe(0)
-    expect(socialState.influenceBank[otherPlayer.id] ?? 0).toBe(0)
+    expect(socialState.influenceBank[humanId]).toBe(200)
+    expect(socialState.influenceBank[otherPlayer.id]).toBe(200)
   })
 
   it('keeps contextual choices compact with no permanent descriptions beneath them', () => {

@@ -101,7 +101,10 @@ describe('evaluateSocialActionEligibility', () => {
     expect(
       evaluateSocialActionEligibility({
         ...base,
-        relationships: { user: { ally: { affinity: 30, tags: ['alliance'] } } },
+        relationships: {
+          user: { ally: { affinity: 30, tags: ['alliance'] } },
+          ally: { user: { affinity: 30, tags: ['alliance'] } },
+        },
       }).eligible
     ).toBe(true)
   })

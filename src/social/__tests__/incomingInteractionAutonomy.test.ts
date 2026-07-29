@@ -100,6 +100,7 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
         game: {
           players: context.players,
           week: context.week,
+          seed: context.seed ?? 0,
           lohId: context.lohId ?? null,
           nomineeIds: context.nomineeIds ?? [],
           posWinnerId: context.posWinnerId ?? null,
@@ -183,6 +184,7 @@ describe('incomingInteractionAutonomy thematic routing', () => {
   it('has the AI LOH consult a human Safety holder with the real nominees', () => {
     const context = buildContext({
       phase: 'pos_results',
+      seed: 0,
       lohId: 'loh',
       posWinnerId: 'user',
       nomineeIds: ['nomineeA', 'nomineeB'],
@@ -205,6 +207,30 @@ describe('incomingInteractionAutonomy thematic routing', () => {
     expect(consultation?.type).toBe('deal_offer')
     expect(consultation?.payload?.scenarioKey).toBe('loh_consults_safety_holder')
     expect(consultation?.payload?.nomineeNames).toEqual(['Nominee A', 'Nominee B'])
+    expect(consultation?.payload?.preferredSafetyAdvice).toBe('hold')
+  })
+
+  it('does not route nominee vote pitches to the human LOH', () => {
+    const context = buildContext({
+      phase: 'live_vote',
+      lohId: 'user',
+      nomineeIds: ['nominee'],
+      players: [
+        { id: 'user', name: 'You', status: 'loh', isUser: true },
+        { id: 'nominee', name: 'Nominee', status: 'nominated' },
+      ],
+      relationships: { nominee: { user: { affinity: 20, tags: [] } } },
+      random: () => 0,
+    })
+    const store = buildStore(context)
+
+    scheduleIncomingInteractionsForPhase('live_vote', store, context)
+
+    expect(
+      store.social.scheduledIncomingInteractions.some(
+        (entry) => entry.interaction.payload?.scenarioKey === 'live_vote_pitch'
+      )
+    ).toBe(false)
   })
 
   it('queues both nominee pitches when the human holds Safety, while delivery remains paced', () => {

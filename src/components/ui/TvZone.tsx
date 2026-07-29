@@ -1,40 +1,52 @@
-import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, useId, startTransition, type CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
-import type { Phase, Player } from '../../types';
-import { useStore } from 'react-redux';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectAlivePlayers } from '../../store/gameSlice';
-import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence';
-import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice';
-import type { RootState } from '../../store/store';
-import GameTopChip from '../GameTopChip/GameTopChip';
-import TVLog from '../TVLog/TVLog';
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useId,
+  startTransition,
+  type CSSProperties,
+} from 'react'
+import { createPortal } from 'react-dom'
+import type { Phase, Player } from '../../types'
+import { useStore } from 'react-redux'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { selectAlivePlayers } from '../../store/gameSlice'
+import { savedStateKeyForProfile, saveSeasonSnapshot } from '../../store/saveStatePersistence'
+import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice'
+import type { RootState } from '../../store/store'
+import GameTopChip from '../GameTopChip/GameTopChip'
+import TVLog from '../TVLog/TVLog'
 import TvAnnouncementOverlay, {
   type Announcement,
-} from './TvAnnouncementOverlay/TvAnnouncementOverlay';
-import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal';
-import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal';
+} from './TvAnnouncementOverlay/TvAnnouncementOverlay'
+import TvAnnouncementModal from './TvAnnouncementModal/TvAnnouncementModal'
+import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal'
 import AnimatedVoteResultsModal, {
   type PublicEvictionTiebreakDisplay,
   type VoteTally,
-} from '../AnimatedVoteResultsModal/AnimatedVoteResultsModal';
-import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal';
-import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService';
-import type { TvEvent } from '../../types';
-import TopUtilityButton from '../TopUtilityButton/TopUtilityButton';
-import { getViewportMessageKey } from './tvZoneKeys';
-import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents';
-import { formatCycleAriaLabel, formatCycleLabel, formatPhaseLabel } from '../../utils/gameStatusLanguage';
-import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay';
-import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay';
-import DemocraciaResultsReveal from './DemocraciaResultsReveal/DemocraciaResultsReveal';
-import './TvZone.css';
-import './TvZoneEnhancements.css';
-import './ShockDangerMode.css';
+} from '../AnimatedVoteResultsModal/AnimatedVoteResultsModal'
+import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal'
+import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService'
+import type { TvEvent } from '../../types'
+import TopUtilityButton from '../TopUtilityButton/TopUtilityButton'
+import { getViewportMessageKey } from './tvZoneKeys'
+import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents'
+import {
+  formatCycleAriaLabel,
+  formatCycleLabel,
+  formatPhaseLabel,
+} from '../../utils/gameStatusLanguage'
+import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay'
+import ConfessionalSpotlightOverlay from '../FloatingActionBar/ConfessionalSpotlightOverlay'
+import DemocraciaResultsReveal from './DemocraciaResultsReveal/DemocraciaResultsReveal'
+import './TvZone.css'
+import './TvZoneEnhancements.css'
+import './ShockDangerMode.css'
 
-const NOOP = () => {};
-
-
+const NOOP = () => {}
 
 // ─── Announcement configuration ──────────────────────────────────────────────
 
@@ -63,29 +75,122 @@ const MAJOR_KEYS = new Set([
   'twist',
   'loh_comp_announcement',
   'pos_comp_announcement',
-]);
+])
 
 /** Maps a major key to its announcement title and subtitle. */
-const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }> = {
-  nomination_ceremony:  { title: 'Nomination Ceremony',        subtitle: 'Two players are nominated for elimination.',                  isLive: true,  autoDismissMs: null },
-  veto_ceremony:        { title: 'Safety Ceremony',            subtitle: 'Will the Power of Safety be used?',                            isLive: true,  autoDismissMs: null },
-  live_eviction:        { title: 'Live Elimination',            subtitle: 'The house votes to eliminate.',                                isLive: true,  autoDismissMs: null },
-  final4:               { title: 'Final 4 — Safety Ceremony', subtitle: 'Only four players remain.',                                    isLive: true,  autoDismissMs: null },
-  final3_announcement:  { title: 'The Finale',                subtitle: 'Three players remain — the three-part Final LOH begins.',      isLive: true,  autoDismissMs: null },
-  final_hoh:            { title: 'Final LOH Decision',         subtitle: 'The most powerful decision of the game.',                      isLive: true,  autoDismissMs: null },
-  jury:                 { title: 'Tribunal Votes',             subtitle: 'The Tribunal decides the winner.',                             isLive: true,  autoDismissMs: null },
-  battle_back:          { title: 'Back 2 the Game',            subtitle: 'Eliminated players compete for a second chance.',              isLive: true,  autoDismissMs: null },
-  double_eviction:      { title: 'Double Elimination!',        subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',      isLive: true,  autoDismissMs: null },
-  vip_veto:             { title: 'Double Trouble!',            subtitle: 'The holder may use the power twice this ceremony. 👑',            isLive: true,  autoDismissMs: null },
-  diamond_pov:          { title: 'Halo Exchange!',             subtitle: 'The holder may name the backup nominee. 😇',                    isLive: true,  autoDismissMs: null },
-  coup_detat:           { title: 'Detox!',                     subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',    isLive: true,  autoDismissMs: null },
-  spotlight_veto:       { title: 'Force Majeure!',             subtitle: 'The holder is forced to use the power this ceremony. ✨',        isLive: true,  autoDismissMs: null },
-  democracia:           { title: 'DEMOCRACIA!',                subtitle: 'The house will elect the new Leader of the House by secret vote.', isLive: true,  autoDismissMs: null },
-  tribunal_phase:       { title: `Congrats all, you've just made it to tribunal.`, subtitle: 'Your voices will crown the winner.', isLive: true, autoDismissMs: null },
-  twist:                { title: 'Shock Alert!',               subtitle: 'The Big Eye has a surprise.',                                  isLive: true,  autoDismissMs: null },
-  loh_comp_announcement: { title: 'LOH Competition',           subtitle: 'Power is up for grabs — who will become Leader of the House?', isLive: true,  autoDismissMs: null },
-  pos_comp_announcement: { title: 'Power of Safety',           subtitle: 'It\'s time for the Power of Safety competition!',              isLive: true,  autoDismissMs: null },
-};
+const ANNOUNCEMENT_META: Record<
+  string,
+  { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }
+> = {
+  nomination_ceremony: {
+    title: 'Nomination Ceremony',
+    subtitle: 'Two players are nominated for elimination.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  veto_ceremony: {
+    title: 'Safety Ceremony',
+    subtitle: 'Will the Power of Safety be used?',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  live_eviction: {
+    title: 'Live Elimination',
+    subtitle: 'The house votes to eliminate.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  final4: {
+    title: 'Final 4 — Safety Ceremony',
+    subtitle: 'Only four players remain.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  final3_announcement: {
+    title: 'The Finale',
+    subtitle: 'Three players remain — the three-part Final LOH begins.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  final_hoh: {
+    title: 'Final LOH Decision',
+    subtitle: 'The most powerful decision of the game.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  jury: {
+    title: 'Tribunal Votes',
+    subtitle: 'The Tribunal decides the winner.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  battle_back: {
+    title: 'Back 2 the Game',
+    subtitle: 'Eliminated players compete for a second chance.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  double_eviction: {
+    title: 'Double Elimination!',
+    subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  vip_veto: {
+    title: 'Double Trouble!',
+    subtitle: 'The holder may use the power twice this ceremony. 👑',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  diamond_pov: {
+    title: 'Halo Exchange!',
+    subtitle: 'The holder may name the backup nominee. 😇',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  coup_detat: {
+    title: 'Detox!',
+    subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  spotlight_veto: {
+    title: 'Force Majeure!',
+    subtitle: 'The holder is forced to use the power this ceremony. ✨',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  democracia: {
+    title: 'DEMOCRACIA!',
+    subtitle: 'The house will elect the new Leader of the House by secret vote.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  tribunal_phase: {
+    title: `Congrats all, you've just made it to tribunal.`,
+    subtitle: 'Your voices will crown the winner.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  twist: {
+    title: 'Shock Alert!',
+    subtitle: 'The Big Eye has a surprise.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  loh_comp_announcement: {
+    title: 'LOH Competition',
+    subtitle: 'Power is up for grabs — who will become Leader of the House?',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  pos_comp_announcement: {
+    title: 'Power of Safety',
+    subtitle: "It's time for the Power of Safety competition!",
+    isLive: true,
+    autoDismissMs: null,
+  },
+}
 
 /**
  * Extract the major key from a TvEvent using explicit meta.major or ev.major
@@ -93,13 +198,13 @@ const ANNOUNCEMENT_META: Record<string, { title: string; subtitle: string; isLiv
  * events without a major key can still trigger the Battle Back announcement).
  */
 function extractMajorKey(ev: TvEvent): string | null {
-  const key = ev.meta?.major ?? ev.major ?? null;
-  const hasBattleBackCopy = ev.type === 'twist' && /battle back|back 2 the game/i.test(ev.text);
+  const key = ev.meta?.major ?? ev.major ?? null
+  const hasBattleBackCopy = ev.type === 'twist' && /battle back|back 2 the game/i.test(ev.text)
 
   // Legacy Battle Back events may still be tagged as a generic twist (or missing a major).
-  if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back';
-  if (!key) return null;
-  return MAJOR_KEYS.has(key) ? key : null;
+  if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back'
+  if (!key) return null
+  return MAJOR_KEYS.has(key) ? key : null
 }
 
 /** Build an Announcement object for the given major key and event. */
@@ -109,12 +214,12 @@ function buildAnnouncement(key: string, ev: TvEvent): Announcement {
     subtitle: ev.text,
     isLive: false,
     autoDismissMs: 4500,
-  };
-  return { key, ...meta };
+  }
+  return { key, ...meta }
 }
 
 function isDetoxSequenceEvent(event: TvEvent | undefined): event is TvEvent {
-  return event?.meta?.sequence === 'detox_safety';
+  return event?.meta?.sequence === 'detox_safety'
 }
 
 /**
@@ -127,33 +232,33 @@ function isDetoxSequenceEvent(event: TvEvent | undefined): event is TvEvent {
 function getPhaseAnnouncementKey(
   phase: Phase,
   aliveCount: number,
-  doubleEvictionActive: boolean,
+  doubleEvictionActive: boolean
 ): string | null {
-  if (phase === 'loh_comp_announcement') return 'loh_comp_announcement';
-  if (phase === 'democracia_vote') return 'democracia';
-  if (phase === 'pos_comp_announcement') return 'pos_comp_announcement';
-  if (phase === 'pos_ceremony')    return aliveCount === 4 ? 'final4' : 'veto_ceremony';
-  if (phase === 'nominations')     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony';
-  if (phase === 'live_vote')       return 'live_eviction';
-  if (phase === 'final3')          return aliveCount === 3 ? 'final3_announcement' : null;
-  if (phase === 'final3_decision') return 'final_hoh';
-  if (phase === 'jury')            return 'jury';
-  return null;
+  if (phase === 'loh_comp_announcement') return 'loh_comp_announcement'
+  if (phase === 'democracia_vote') return 'democracia'
+  if (phase === 'pos_comp_announcement') return 'pos_comp_announcement'
+  if (phase === 'pos_ceremony') return aliveCount === 4 ? 'final4' : 'veto_ceremony'
+  if (phase === 'nominations')
+    return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony'
+  if (phase === 'live_vote') return 'live_eviction'
+  if (phase === 'final3') return aliveCount === 3 ? 'final3_announcement' : null
+  if (phase === 'final3_decision') return 'final_hoh'
+  if (phase === 'jury') return 'jury'
+  return null
 }
-
 
 // Duration (ms) the main viewport text stays faded after an announcement is dismissed,
 // preventing jarring text transitions between the overlay disappearing and new text.
-const POST_DISMISS_FADE_MS = 300;
-const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700;
-const LIVE_VOTE_CUTOUT_PADDING = 12;
-const LIVE_VOTE_CUTOUT_RADIUS = 18;
-const DETOX_MESSAGE_HOLD_MS = 1500;
+const POST_DISMISS_FADE_MS = 300
+const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700
+const LIVE_VOTE_CUTOUT_PADDING = 12
+const LIVE_VOTE_CUTOUT_RADIUS = 18
+const DETOX_MESSAGE_HOLD_MS = 1500
 const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
   'loh_tiebreak_tie',
   'loh_tiebreak_deciding',
   'loh_tiebreak_decision',
-]);
+])
 
 /**
  * Announcement keys that trigger the cinematic shock intro sequence:
@@ -174,64 +279,64 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'battle_back_challenge',
   'democracia',
   'tribunal_phase',
-]);
+])
 
 type TvZonePublicSaveReveal = {
-  nominees: Player[];
-  approvals: Record<string, number>;
-  savedId: string;
-};
+  nominees: Player[]
+  approvals: Record<string, number>
+  savedId: string
+}
 
 type TvZoneVoteResultsReveal = {
-  nominees: VoteTally[];
-  evictee?: Player | null;
-  evicteeIds?: string[];
-  onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
-  publicTiebreak?: PublicEvictionTiebreakDisplay | null;
-  onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
-  onDone: () => void;
-};
+  nominees: VoteTally[]
+  evictee?: Player | null
+  evicteeIds?: string[]
+  onTiebreakerRequired?: (tiedNomineeIds: string[]) => void
+  publicTiebreak?: PublicEvictionTiebreakDisplay | null
+  onPublicTiebreakResolved?: (evicteeIds: string[]) => void
+  onDone: () => void
+}
 
 type TvZoneDemocraciaResultsReveal = {
-  mode: 'winner' | 'tie' | 'message';
-  title: string;
-  subtitle: string;
+  mode: 'winner' | 'tie' | 'message'
+  title: string
+  subtitle: string
   participants: Array<{
-    player: Player;
-    voteCount: number;
-  }>;
-  onDone: () => void;
-};
+    player: Player
+    voteCount: number
+  }>
+  onDone: () => void
+}
 
 type LiveVoteBackdropMetrics = {
-  viewportWidth: number;
-  viewportHeight: number;
+  viewportWidth: number
+  viewportHeight: number
   cutout: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  };
-};
+    x: number
+    y: number
+    w: number
+    h: number
+  }
+}
 
 type TvZoneProps = {
-  publicSaveReveal?: TvZonePublicSaveReveal | null;
-  onPublicSaveDone?: () => void;
-  voteResultsReveal?: TvZoneVoteResultsReveal | null;
-  democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null;
-  mainLogMaxVisible?: number;
-  priorityAnnouncement?: Announcement | null;
-  onPriorityAnnouncementDismiss?: () => void;
-  externalAnnouncement?: Announcement | null;
-  onExternalAnnouncementDismiss?: () => void;
+  publicSaveReveal?: TvZonePublicSaveReveal | null
+  onPublicSaveDone?: () => void
+  voteResultsReveal?: TvZoneVoteResultsReveal | null
+  democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null
+  mainLogMaxVisible?: number
+  priorityAnnouncement?: Announcement | null
+  onPriorityAnnouncementDismiss?: () => void
+  externalAnnouncement?: Announcement | null
+  onExternalAnnouncementDismiss?: () => void
   /** Fallback text shown in the viewport when no fresh event is available and the screen would otherwise go blank. */
-  viewportFallbackMessage?: string;
+  viewportFallbackMessage?: string
   /** Compact board occupancy chip shown when the roster header yields space to the board. */
   occupancyChip?: {
-    label: string;
-    ariaLabel: string;
-  } | null;
-};
+    label: string
+    ariaLabel: string
+  } | null
+}
 
 /**
  * TvZone — the central "TV-like" action zone.
@@ -248,100 +353,97 @@ type TvZoneProps = {
  * To inject new content: dispatch addTvEvent() action via useAppDispatch().
  */
 export default function TvZone(props: TvZoneProps) {
-  const dispatch = useAppDispatch();
-  const { onPriorityAnnouncementDismiss, onExternalAnnouncementDismiss } = props;
-  const gameState = useAppSelector((s) => s.game);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false);
-  const isGuest = useAppSelector((s: RootState) => s.profiles.isGuest);
-  const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId);
-  const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null);
-  const reduxStore = useStore<RootState>();
-  const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio);
+  const dispatch = useAppDispatch()
+  const { onPriorityAnnouncementDismiss, onExternalAnnouncementDismiss } = props
+  const gameState = useAppSelector((s) => s.game)
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const doubleEvictionActive = useAppSelector((s) => s.game.doubleEviction?.weekActive ?? false)
+  const isGuest = useAppSelector((s: RootState) => s.profiles.isGuest)
+  const activeProfileId = useAppSelector((s: RootState) => s.profiles.activeProfileId)
+  const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null)
+  const reduxStore = useStore<RootState>()
+  const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio)
 
   // Filter entries for the TV viewport (excludes DR-only events).
-  const tvVisibleFeed = useMemo(
-    () => gameState.tvFeed.filter(isVisibleOnTv),
-    [gameState.tvFeed],
-  );
+  const tvVisibleFeed = useMemo(() => gameState.tvFeed.filter(isVisibleOnTv), [gameState.tvFeed])
   // Filter entries for the main-screen log strip (excludes DR-only events).
-  const mainLogFeed = useMemo(
-    () => gameState.tvFeed.filter(isVisibleInMainLog),
-    [gameState.tvFeed],
-  );
-  const mainLogMaxVisible = props.mainLogMaxVisible ?? 2;
-  const occupancyChip = props.occupancyChip ?? null;
+  const mainLogFeed = useMemo(() => gameState.tvFeed.filter(isVisibleInMainLog), [gameState.tvFeed])
+  const mainLogMaxVisible = props.mainLogMaxVisible ?? 2
+  const occupancyChip = props.occupancyChip ?? null
 
-  const latestEvent = tvVisibleFeed[0];
+  const latestEvent = tvVisibleFeed[0]
   const announcementPrerollEvent = useMemo(() => {
-    const prerollId = latestEvent?.meta?.announcementPrerollEventId;
-    if (typeof prerollId !== 'string') return null;
-    return tvVisibleFeed.find((event) => event.id === prerollId) ?? null;
-  }, [latestEvent, tvVisibleFeed]);
-  const publicSaveRevealActive = Boolean(props.publicSaveReveal);
-  const voteResultsRevealActive = Boolean(props.voteResultsReveal);
-  const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal);
-  const priorityAnnouncement = props.priorityAnnouncement ?? null;
-  const externalAnnouncement = props.externalAnnouncement ?? null;
+    const prerollId = latestEvent?.meta?.announcementPrerollEventId
+    if (typeof prerollId !== 'string') return null
+    return tvVisibleFeed.find((event) => event.id === prerollId) ?? null
+  }, [latestEvent, tvVisibleFeed])
+  const publicSaveRevealActive = Boolean(props.publicSaveReveal)
+  const voteResultsRevealActive = Boolean(props.voteResultsReveal)
+  const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal)
+  const priorityAnnouncement = props.priorityAnnouncement ?? null
+  const externalAnnouncement = props.externalAnnouncement ?? null
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log('TvZone latestEvent:', latestEvent);
+      console.log('TvZone latestEvent:', latestEvent)
     }
-  }, [latestEvent]);
+  }, [latestEvent])
 
   // ── Announcement state ──────────────────────────────────────────────────────
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false)
   // Keep the modal key alive independently so the modal stays open even if
   // the overlay dismisses (e.g. via auto-dismiss) while the user is reading.
-  const [modalAnnouncementKey, setModalAnnouncementKey] = useState<string | null>(null);
+  const [modalAnnouncementKey, setModalAnnouncementKey] = useState<string | null>(null)
   // Track which event the user has manually dismissed so the overlay doesn't
   // reappear for the same event after dismissal.
-  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null);
+  const [dismissedEventId, setDismissedEventId] = useState<string | null>(null)
   // Track which phase was dismissed to avoid re-showing within the same phase.
-  const [dismissedPhase, setDismissedPhase] = useState<Phase | null>(null);
+  const [dismissedPhase, setDismissedPhase] = useState<Phase | null>(null)
   // Phase-triggered announcement (set on phase transition, cleared on dismiss or non-popup phase).
-  const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null);
+  const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null)
   // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
-  const [postDismissBlocked, setPostDismissBlocked] = useState(false);
+  const [postDismissBlocked, setPostDismissBlocked] = useState(false)
   // Short-lived TV spotlight effect for Double Eviction special announcements.
-  const [deSpotlightActive, setDeSpotlightActive] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null);
+  const [deSpotlightActive, setDeSpotlightActive] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null)
   // Save feedback dialog — shows a mobile-friendly confirmation after save.
-  const [saveFeedbackOpen, setSaveFeedbackOpen] = useState(false);
-  const [saveFeedbackIsError, setSaveFeedbackIsError] = useState(false);
-  const [detoxMessageQueue, setDetoxMessageQueue] = useState<TvEvent[]>([]);
-  const [detoxMessageIndex, setDetoxMessageIndex] = useState(0);
-  const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const detoxSequenceLatestIdRef = useRef<string | null>(null);
+  const [saveFeedbackOpen, setSaveFeedbackOpen] = useState(false)
+  const [saveFeedbackIsError, setSaveFeedbackIsError] = useState(false)
+  const [detoxMessageQueue, setDetoxMessageQueue] = useState<TvEvent[]>([])
+  const [detoxMessageIndex, setDetoxMessageIndex] = useState(0)
+  const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const detoxSequenceLatestIdRef = useRef<string | null>(null)
   // Tracks the previous phase to detect phase transitions.
-  const previousPhaseRef = useRef<Phase | null>(null);
+  const previousPhaseRef = useRef<Phase | null>(null)
   // Stable ref so phase-transition effect always reads the latest latestEvent.
-  const latestEventRef = useRef(latestEvent);
+  const latestEventRef = useRef(latestEvent)
   // Update the ref after each render so the phase-transition effect always has
   // the freshest value without needing latestEvent in its own dependency array.
-  const tvZoneRef = useRef<HTMLElement | null>(null);
-  const liveVoteBackdropMaskId = useId().replace(/:/g, '-') + '-live-vote-mask';
-  const [liveVoteBackdropMetrics, setLiveVoteBackdropMetrics] = useState<LiveVoteBackdropMetrics | null>(null);
+  const tvZoneRef = useRef<HTMLElement | null>(null)
+  const liveVoteBackdropMaskId = useId().replace(/:/g, '-') + '-live-vote-mask'
+  const [liveVoteBackdropMetrics, setLiveVoteBackdropMetrics] =
+    useState<LiveVoteBackdropMetrics | null>(null)
 
   useLayoutEffect(() => {
-    latestEventRef.current = latestEvent;
-  });
+    latestEventRef.current = latestEvent
+  })
 
   useLayoutEffect(() => {
-    if (!voteResultsRevealActive) return;
+    if (!voteResultsRevealActive) return
 
     const updateBackdropMetrics = () => {
-      const zone = tvZoneRef.current;
-      if (!zone || typeof window === 'undefined') return;
+      const zone = tvZoneRef.current
+      if (!zone || typeof window === 'undefined') return
 
-      const rect = zone.getBoundingClientRect();
-      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || Math.ceil(rect.right);
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || Math.ceil(rect.bottom);
+      const rect = zone.getBoundingClientRect()
+      const viewportWidth =
+        window.innerWidth || document.documentElement.clientWidth || Math.ceil(rect.right)
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight || Math.ceil(rect.bottom)
 
       setLiveVoteBackdropMetrics({
         viewportWidth,
@@ -352,80 +454,83 @@ export default function TvZone(props: TvZoneProps) {
           w: rect.width + LIVE_VOTE_CUTOUT_PADDING * 2,
           h: rect.height + LIVE_VOTE_CUTOUT_PADDING * 2,
         },
-      });
-    };
+      })
+    }
 
-    updateBackdropMetrics();
-    const handleViewportChange = () => updateBackdropMetrics();
-    window.addEventListener('resize', handleViewportChange);
-    window.addEventListener('scroll', handleViewportChange, true);
+    updateBackdropMetrics()
+    const handleViewportChange = () => updateBackdropMetrics()
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
 
-    const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(handleViewportChange)
-      : null;
-    if (observer && tvZoneRef.current) observer.observe(tvZoneRef.current);
+    const observer =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleViewportChange) : null
+    if (observer && tvZoneRef.current) observer.observe(tvZoneRef.current)
 
     return () => {
-      window.removeEventListener('resize', handleViewportChange);
-      window.removeEventListener('scroll', handleViewportChange, true);
-      observer?.disconnect();
-    };
-  }, [voteResultsRevealActive]);
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+      observer?.disconnect()
+    }
+  }, [voteResultsRevealActive])
 
-  const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex];
-  const displayedEvent = activeDetoxEvent ?? latestEvent;
-  const detoxMessageActive = Boolean(activeDetoxEvent);
+  const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex]
+  const displayedEvent = activeDetoxEvent ?? latestEvent
+  const detoxMessageActive = Boolean(activeDetoxEvent)
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
-  const [shockIntroActive, setShockIntroActive] = useState(false);
+  const [shockIntroActive, setShockIntroActive] = useState(false)
   // Phase C: info-button spotlight (ConfessionalSpotlightOverlay reused).
-  const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false);
+  const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false)
   // Ref forwarded to the TvAnnouncementOverlay info button for spotlight targeting.
-  const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null);
+  const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null)
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
   // Also allows an in-place upgrade for nomination-phase overlays when
   // Double Eviction activates after the phase has already been entered.
   useEffect(() => {
-    const currentPhase = gameState.phase;
-    const prevPhase = previousPhaseRef.current;
-    previousPhaseRef.current = currentPhase;
+    const currentPhase = gameState.phase
+    const prevPhase = previousPhaseRef.current
+    previousPhaseRef.current = currentPhase
     const democraciaPreVoteActive =
-      currentPhase === 'loh_comp_announcement' &&
-      gameState.democracia?.active === true;
+      currentPhase === 'loh_comp_announcement' && gameState.democracia?.active === true
     const key = democraciaPreVoteActive
       ? 'democracia'
-      : getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive);
+      : getPhaseAnnouncementKey(currentPhase, alivePlayers.length, doubleEvictionActive)
     const keyChangedInPlace =
       prevPhase === currentPhase &&
       phaseAnnouncement?.key !== null &&
       phaseAnnouncement?.key !== undefined &&
-      phaseAnnouncement?.key !== key;
+      phaseAnnouncement?.key !== key
 
     // Skip on initial mount (no previous phase) and when phase/key haven't changed.
-    if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return;
-    const ev = latestEventRef.current;
+    if (prevPhase === null || (prevPhase === currentPhase && !keyChangedInPlace)) return
+    const ev = latestEventRef.current
     // Batch all state updates as a non-urgent transition (satisfies react-hooks/set-state-in-effect
     // by deferring setState calls into a callback rather than calling them synchronously).
     startTransition(() => {
       if (key && (currentPhase !== dismissedPhase || keyChangedInPlace)) {
-        const stub: TvEvent = { id: 'phase-transition-stub', text: '', type: 'game', timestamp: Date.now() };
-        setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub));
+        const stub: TvEvent = {
+          id: 'phase-transition-stub',
+          text: '',
+          type: 'game',
+          timestamp: Date.now(),
+        }
+        setPhaseAnnouncement(buildAnnouncement(key, ev ?? stub))
         // Suppress any concurrent event-based popup with the same key to prevent duplication.
         if (ev && extractMajorKey(ev) === key) {
-          setDismissedEventId(ev.id);
+          setDismissedEventId(ev.id)
         }
       } else {
         // Entering a non-popup phase: clear any stale phase announcement.
         // Also clear the dismissed guard so the same phase can show its popup again in a later week.
         if (dismissedPhase && currentPhase !== dismissedPhase) {
-          setDismissedPhase(null);
+          setDismissedPhase(null)
         }
-        setPhaseAnnouncement(null);
+        setPhaseAnnouncement(null)
       }
-    });
+    })
   }, [
     gameState.phase,
     gameState.democracia?.active,
@@ -433,137 +538,159 @@ export default function TvZone(props: TvZoneProps) {
     dismissedPhase,
     doubleEvictionActive,
     phaseAnnouncement?.key,
-  ]);
+  ])
 
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
-    const announcementEvent = announcementPrerollEvent ?? latestEvent;
-    if (!announcementEvent) return null;
-    if (announcementEvent.id === dismissedEventId) return null;
-    const majorKey = extractMajorKey(announcementEvent);
-    return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null;
-  }, [announcementPrerollEvent, latestEvent, dismissedEventId]);
-  const eventAnnouncementSource = announcementPrerollEvent ?? latestEvent;
+    const announcementEvent = announcementPrerollEvent ?? latestEvent
+    if (!announcementEvent) return null
+    if (announcementEvent.id === dismissedEventId) return null
+    const majorKey = extractMajorKey(announcementEvent)
+    return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null
+  }, [announcementPrerollEvent, latestEvent, dismissedEventId])
+  const eventAnnouncementSource = announcementPrerollEvent ?? latestEvent
+
+  // The core game phase remains jury while the post-finale sequence plays.
+  // Replace its stale Tribunal Votes card with the resolved winner on the
+  // main screen, through the interview and Public Favorite handoff.
+  const winnerBroadcast = useMemo(() => {
+    const finale = gameState.seasonFinale
+    if (!finale || !['winnerInterview', 'publicFavoriteSetup'].includes(finale.phase)) return null
+
+    return gameState.players.find((player) => player.id === finale.winnerId) ?? null
+  }, [gameState.players, gameState.seasonFinale])
 
   // Active announcement precedence: priorityAnnouncement, then externalAnnouncement,
   // then phaseAnnouncement, then eventAnnouncement.
-  const activeAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+  const activeAnnouncement =
+    priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement
   const isShockAnnouncement =
-    activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key);
-  const showInlineAnnouncement = activeAnnouncement != null && !(shockIntroActive && isShockAnnouncement);
-  const showOccupancyChip = occupancyChip != null && !showInlineAnnouncement;
+    activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key)
+  const showInlineAnnouncement =
+    winnerBroadcast == null &&
+    activeAnnouncement != null &&
+    !(shockIntroActive && isShockAnnouncement)
+  const showOccupancyChip =
+    occupancyChip != null && !showInlineAnnouncement && winnerBroadcast == null
   const suppressStaleLiveVotePitchMessage =
-    displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY &&
-    gameState.phase !== 'social_2';
-  const hasFallbackViewportMessage = Boolean(props.viewportFallbackMessage);
+    displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY && gameState.phase !== 'social_2'
+  const hasFallbackViewportMessage = Boolean(props.viewportFallbackMessage)
   const hideViewportMessage =
     (postDismissBlocked && !hasFallbackViewportMessage) ||
     (suppressStaleLiveVotePitchMessage && !hasFallbackViewportMessage) ||
     !!activeAnnouncement ||
+    winnerBroadcast != null ||
     publicSaveRevealActive ||
     voteResultsRevealActive ||
-    democraciaResultsRevealActive;
+    democraciaResultsRevealActive
   // When the stale pitch message is suppressed but a fallback is available, use the
   // fallback instead of the suppressed event text so the viewport stays meaningful.
   const viewportDisplayText =
-    (suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage)
+    suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage
       ? props.viewportFallbackMessage
-      : displayedEvent?.text ?? props.viewportFallbackMessage ?? 'Welcome to The Big Eye – AI Edition 🏠';
-  const baseViewportMessageKey = getViewportMessageKey(displayedEvent);
+      : (displayedEvent?.text ??
+        props.viewportFallbackMessage ??
+        'Welcome to The Big Eye – AI Edition 🏠')
+  const baseViewportMessageKey = getViewportMessageKey(displayedEvent)
   const viewportMessageKey = detoxMessageActive
     ? `${baseViewportMessageKey}-${detoxMessageIndex}`
-    : baseViewportMessageKey;
-  let mainTvMessage: string | undefined;
-  if (activeAnnouncement) {
-    mainTvMessage = activeAnnouncement.title;
+    : baseViewportMessageKey
+  let mainTvMessage: string | undefined
+  if (winnerBroadcast) {
+    mainTvMessage = winnerBroadcast.name + ' wins The Big Eye'
+  } else if (activeAnnouncement) {
+    mainTvMessage = activeAnnouncement.title
   } else if (suppressStaleLiveVotePitchMessage) {
-    mainTvMessage = hasFallbackViewportMessage ? props.viewportFallbackMessage : undefined;
+    mainTvMessage = hasFallbackViewportMessage ? props.viewportFallbackMessage : undefined
   } else {
-    mainTvMessage = displayedEvent?.text;
+    mainTvMessage = displayedEvent?.text
   }
 
   useEffect(() => {
-    const latestVisibleId = tvVisibleFeed[0]?.id ?? null;
-    const previousLatestId = detoxSequenceLatestIdRef.current;
-    detoxSequenceLatestIdRef.current = latestVisibleId;
+    const latestVisibleId = tvVisibleFeed[0]?.id ?? null
+    const previousLatestId = detoxSequenceLatestIdRef.current
+    detoxSequenceLatestIdRef.current = latestVisibleId
 
-    if (previousLatestId === null || latestVisibleId === previousLatestId) return;
+    if (previousLatestId === null || latestVisibleId === previousLatestId) return
 
-    const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId);
-    const newEventCount = previousIndex === -1 ? 1 : previousIndex;
-    const newEvents = tvVisibleFeed.slice(0, newEventCount);
-    const detoxEvents = newEvents.filter(isDetoxSequenceEvent);
-    if (detoxEvents.length === 0) return;
+    const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId)
+    const newEventCount = previousIndex === -1 ? 1 : previousIndex
+    const newEvents = tvVisibleFeed.slice(0, newEventCount)
+    const detoxEvents = newEvents.filter(isDetoxSequenceEvent)
+    if (detoxEvents.length === 0) return
 
     startTransition(() => {
-      setDetoxMessageQueue(detoxEvents.reverse());
-      setDetoxMessageIndex(0);
-    });
-  }, [tvVisibleFeed]);
+      setDetoxMessageQueue(detoxEvents.reverse())
+      setDetoxMessageIndex(0)
+    })
+  }, [tvVisibleFeed])
 
   useEffect(() => {
     if (detoxMessageTimerRef.current !== null) {
-      clearTimeout(detoxMessageTimerRef.current);
-      detoxMessageTimerRef.current = null;
+      clearTimeout(detoxMessageTimerRef.current)
+      detoxMessageTimerRef.current = null
     }
-    if (detoxMessageQueue.length === 0) return;
+    if (detoxMessageQueue.length === 0) return
 
     detoxMessageTimerRef.current = setTimeout(() => {
       startTransition(() => {
         if (detoxMessageIndex < detoxMessageQueue.length - 1) {
-          setDetoxMessageIndex((index) => index + 1);
+          setDetoxMessageIndex((index) => index + 1)
         } else {
-          setDetoxMessageQueue([]);
-          setDetoxMessageIndex(0);
+          setDetoxMessageQueue([])
+          setDetoxMessageIndex(0)
         }
-      });
-      detoxMessageTimerRef.current = null;
-    }, DETOX_MESSAGE_HOLD_MS);
+      })
+      detoxMessageTimerRef.current = null
+    }, DETOX_MESSAGE_HOLD_MS)
 
     return () => {
       if (detoxMessageTimerRef.current !== null) {
-        clearTimeout(detoxMessageTimerRef.current);
-        detoxMessageTimerRef.current = null;
+        clearTimeout(detoxMessageTimerRef.current)
+        detoxMessageTimerRef.current = null
       }
-    };
-  }, [detoxMessageIndex, detoxMessageQueue]);
+    }
+  }, [detoxMessageIndex, detoxMessageQueue])
 
   const handleDismiss = useCallback(() => {
-    const currentAnnouncement = priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement;
+    const currentAnnouncement =
+      priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement
     const skipPostDismissFade =
-      currentAnnouncement != null &&
-      CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key);
+      currentAnnouncement != null && CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key)
     if (priorityAnnouncement) {
-      onPriorityAnnouncementDismiss?.();
+      onPriorityAnnouncementDismiss?.()
     } else if (externalAnnouncement) {
       // External announcements are used as one-off pre-roll overlays (e.g. ad
       // break copy) for the *current* phase. If an internal phase/event
       // announcement was queued behind the same render, clear it too so the TV
       // does not immediately show a second overlay after the break message.
       if (phaseAnnouncement) {
-        setDismissedPhase(gameState.phase);
-        setPhaseAnnouncement(null);
+        setDismissedPhase(gameState.phase)
+        setPhaseAnnouncement(null)
       } else if (eventAnnouncementSource) {
-        setDismissedEventId(eventAnnouncementSource.id);
+        setDismissedEventId(eventAnnouncementSource.id)
       }
-      onExternalAnnouncementDismiss?.();
+      onExternalAnnouncementDismiss?.()
     } else if (phaseAnnouncement) {
-      setDismissedPhase(gameState.phase);
-      setPhaseAnnouncement(null);
+      setDismissedPhase(gameState.phase)
+      setPhaseAnnouncement(null)
     } else if (eventAnnouncementSource) {
-      setDismissedEventId(eventAnnouncementSource.id);
+      setDismissedEventId(eventAnnouncementSource.id)
     }
     if (skipPostDismissFade) {
-      setPostDismissBlocked(false);
+      setPostDismissBlocked(false)
       if (dismissBlockTimerRef.current !== null) {
-        clearTimeout(dismissBlockTimerRef.current);
-        dismissBlockTimerRef.current = null;
+        clearTimeout(dismissBlockTimerRef.current)
+        dismissBlockTimerRef.current = null
       }
-      return;
+      return
     }
-    setPostDismissBlocked(true);
-    if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
-    dismissBlockTimerRef.current = setTimeout(() => setPostDismissBlocked(false), POST_DISMISS_FADE_MS);
+    setPostDismissBlocked(true)
+    if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
+    dismissBlockTimerRef.current = setTimeout(
+      () => setPostDismissBlocked(false),
+      POST_DISMISS_FADE_MS
+    )
   }, [
     priorityAnnouncement,
     externalAnnouncement,
@@ -573,20 +700,20 @@ export default function TvZone(props: TvZoneProps) {
     gameState.phase,
     onPriorityAnnouncementDismiss,
     onExternalAnnouncementDismiss,
-  ]);
+  ])
 
   // Cleanup post-dismiss timer on unmount
   useEffect(() => {
     return () => {
-      if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current);
-    };
-  }, []);
+      if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
-      if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current);
-    };
-  }, []);
+      if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current)
+    }
+  }, [])
 
   // Play a short TV-only spotlight intro for Double Eviction announcements,
   // then return the surrounding UI to normal while keeping the announcement visible.
@@ -596,86 +723,86 @@ export default function TvZone(props: TvZoneProps) {
       activeAnnouncement?.key === 'vip_veto' ||
       activeAnnouncement?.key === 'diamond_pov' ||
       activeAnnouncement?.key === 'coup_detat' ||
-      activeAnnouncement?.key === 'spotlight_veto';
+      activeAnnouncement?.key === 'spotlight_veto'
 
     if (!isSpecialAnnouncement || !showInlineAnnouncement) {
       startTransition(() => {
-        setDeSpotlightActive(false);
-      });
+        setDeSpotlightActive(false)
+      })
       if (deSpotlightTimerRef.current !== null) {
-        clearTimeout(deSpotlightTimerRef.current);
-        deSpotlightTimerRef.current = null;
+        clearTimeout(deSpotlightTimerRef.current)
+        deSpotlightTimerRef.current = null
       }
-      return;
+      return
     }
 
     startTransition(() => {
-      setDeSpotlightActive(true);
-    });
-    if (deSpotlightTimerRef.current !== null) clearTimeout(deSpotlightTimerRef.current);
+      setDeSpotlightActive(true)
+    })
+    if (deSpotlightTimerRef.current !== null) clearTimeout(deSpotlightTimerRef.current)
     deSpotlightTimerRef.current = setTimeout(() => {
       startTransition(() => {
-        setDeSpotlightActive(false);
-      });
-      deSpotlightTimerRef.current = null;
-    }, DOUBLE_EVICTION_SPOTLIGHT_MS);
+        setDeSpotlightActive(false)
+      })
+      deSpotlightTimerRef.current = null
+    }, DOUBLE_EVICTION_SPOTLIGHT_MS)
 
     return () => {
       if (deSpotlightTimerRef.current !== null) {
-        clearTimeout(deSpotlightTimerRef.current);
-        deSpotlightTimerRef.current = null;
+        clearTimeout(deSpotlightTimerRef.current)
+        deSpotlightTimerRef.current = null
       }
-    };
-  }, [activeAnnouncement?.key, showInlineAnnouncement]);
+    }
+  }, [activeAnnouncement?.key, showInlineAnnouncement])
 
   // ── Shock intro sequence ──────────────────────────────────────────────────────
   // Fires whenever the active announcement key changes.
   // - Shock key  → start the stinger (phase A); spotlight cleared.
   // - Non-shock  → clear both phases (handles dismissal mid-sequence).
   useEffect(() => {
-    const key = activeAnnouncement?.key ?? null;
-    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key);
+    const key = activeAnnouncement?.key ?? null
+    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key)
     startTransition(() => {
       if (isShock) {
-        setShockIntroActive(true);
-        setShockInfoSpotlightActive(false);
+        setShockIntroActive(true)
+        setShockInfoSpotlightActive(false)
       } else {
-        setShockIntroActive(false);
-        setShockInfoSpotlightActive(false);
+        setShockIntroActive(false)
+        setShockInfoSpotlightActive(false)
       }
-    });
-  }, [activeAnnouncement?.key]);
+    })
+  }, [activeAnnouncement?.key])
 
   const handleShockIntroComplete = useCallback(() => {
     startTransition(() => {
-      setShockIntroActive(false);
-      setShockInfoSpotlightActive(true);
-    });
-  }, []);
+      setShockIntroActive(false)
+      setShockInfoSpotlightActive(true)
+    })
+  }, [])
 
   const handleShockSpotlightComplete = useCallback(() => {
-    startTransition(() => setShockInfoSpotlightActive(false));
-  }, []);
+    startTransition(() => setShockInfoSpotlightActive(false))
+  }, [])
 
   // When the user opens the info modal during the spotlight, complete the spotlight cleanly.
   const handleInfo = useCallback(() => {
     if (shockInfoSpotlightActive) {
-      startTransition(() => setShockInfoSpotlightActive(false));
+      startTransition(() => setShockInfoSpotlightActive(false))
     }
     if (activeAnnouncement) {
-      setModalAnnouncementKey(activeAnnouncement.key);
-      setModalOpen(true);
+      setModalAnnouncementKey(activeAnnouncement.key)
+      setModalOpen(true)
     }
-  }, [activeAnnouncement, shockInfoSpotlightActive]);
+  }, [activeAnnouncement, shockInfoSpotlightActive])
 
   // Listen for central FAB 'tv:announcement-dismiss' events
   useEffect(() => {
-    const handler = () => handleDismiss();
-    window.addEventListener('tv:announcement-dismiss', handler);
-    return () => window.removeEventListener('tv:announcement-dismiss', handler);
-  }, [handleDismiss]);
+    const handler = () => handleDismiss()
+    window.addEventListener('tv:announcement-dismiss', handler)
+    return () => window.removeEventListener('tv:announcement-dismiss', handler)
+  }, [handleDismiss])
 
-  const handleModalClose = useCallback(() => setModalOpen(false), []);
+  const handleModalClose = useCallback(() => setModalOpen(false), [])
 
   // ── Shock danger-mode body classes ───────────────────────────────────────────
   // body--shock-active: applied for the full shock pipeline duration, shifts the
@@ -683,44 +810,44 @@ export default function TvZone(props: TvZoneProps) {
   // app--shock-shake: added briefly at stinger start on <html> to drive the
   //   CSS shake animation on .game-screen-shell; removed after 600 ms (longer
   //   than the 480 ms animation so the class is always present for the full shake).
-  const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive;
+    const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive
     if (shockSequenceActive) {
-      document.body.classList.add('body--shock-active');
+      document.body.classList.add('body--shock-active')
     } else {
-      document.body.classList.remove('body--shock-active');
+      document.body.classList.remove('body--shock-active')
     }
     return () => {
-      document.body.classList.remove('body--shock-active');
-    };
-  }, [shockIntroActive, shockInfoSpotlightActive, detoxMessageActive]);
+      document.body.classList.remove('body--shock-active')
+    }
+  }, [shockIntroActive, shockInfoSpotlightActive, detoxMessageActive])
 
   useEffect(() => {
-    if (!shockIntroActive) return;
+    if (!shockIntroActive) return
     // Add shake class; animation is 480 ms — remove after 600 ms.
-    document.documentElement.classList.add('app--shock-shake');
-    if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current);
+    document.documentElement.classList.add('app--shock-shake')
+    if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current)
     shockShakeTimerRef.current = setTimeout(() => {
-      document.documentElement.classList.remove('app--shock-shake');
-      shockShakeTimerRef.current = null;
-    }, 600);
-  }, [shockIntroActive]);
+      document.documentElement.classList.remove('app--shock-shake')
+      shockShakeTimerRef.current = null
+    }, 600)
+  }, [shockIntroActive])
 
   // Clean up shake class and danger mode on unmount.
   useEffect(() => {
     return () => {
-      if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current);
-      if (detoxMessageTimerRef.current !== null) clearTimeout(detoxMessageTimerRef.current);
-      document.documentElement.classList.remove('app--shock-shake');
-      document.body.classList.remove('body--shock-active');
-    };
-  }, []);
+      if (shockShakeTimerRef.current !== null) clearTimeout(shockShakeTimerRef.current)
+      if (detoxMessageTimerRef.current !== null) clearTimeout(detoxMessageTimerRef.current)
+      document.documentElement.classList.remove('app--shock-shake')
+      document.body.classList.remove('body--shock-active')
+    }
+  }, [])
 
-  const phaseLabel = formatPhaseLabel(gameState.phase);
-  const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start';
-  const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge;
+  const phaseLabel = formatPhaseLabel(gameState.phase)
+  const isAtGameStart = gameState.week === 1 && gameState.phase === 'week_start'
+  const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge
   const saveChipAriaLabel = isGuest
     ? 'Save (unavailable in guest mode)'
     : !activeProfileId
@@ -733,7 +860,7 @@ export default function TvZone(props: TvZoneProps) {
             ? 'Saved!'
             : saveStatus === 'error'
               ? 'Save failed'
-              : 'Save game';
+              : 'Save game'
   const saveChipTitle = isGuest
     ? 'Save unavailable in guest mode'
     : !activeProfileId
@@ -746,17 +873,17 @@ export default function TvZone(props: TvZoneProps) {
             ? 'Saved!'
             : saveStatus === 'error'
               ? 'Save failed — try again'
-              : 'Save game';
+              : 'Save game'
 
   // Distinguish the double-eviction spotlight from the live-vote focus state.
-  const isDeSpotlight = deSpotlightActive;
-  const isLiveVoteFocus = voteResultsRevealActive;
+  const isDeSpotlight = deSpotlightActive
+  const isLiveVoteFocus = voteResultsRevealActive
 
   const handleSave = useCallback(() => {
-    if (!canSave || !activeProfileId) return;
+    if (!canSave || !activeProfileId) return
 
-    const currentState = reduxStore.getState();
-    const key = savedStateKeyForProfile(activeProfileId);
+    const currentState = reduxStore.getState()
+    const key = savedStateKeyForProfile(activeProfileId)
     const ok = saveSeasonSnapshot(key, {
       version: 1,
       profileId: activeProfileId,
@@ -764,14 +891,14 @@ export default function TvZone(props: TvZoneProps) {
       game: currentState.game,
       finale: currentState.finale,
       social: currentState.social,
-    });
-    setSaveStatus(ok ? 'saved' : 'error');
-    setSaveFeedbackIsError(!ok);
-    setSaveFeedbackOpen(true);
+    })
+    setSaveStatus(ok ? 'saved' : 'error')
+    setSaveFeedbackIsError(!ok)
+    setSaveFeedbackOpen(true)
 
-    if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current);
-    saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000);
-  }, [activeProfileId, canSave, reduxStore]);
+    if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current)
+    saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
+  }, [activeProfileId, canSave, reduxStore])
 
   return (
     <section
@@ -780,73 +907,79 @@ export default function TvZone(props: TvZoneProps) {
         isDeSpotlight ? 'tv-zone--de-spotlight' : '',
         isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
         detoxMessageActive ? 'tv-zone--detox-stream' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
       ref={tvZoneRef}
       aria-label="Game action zone"
       style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
     >
       {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
-      {isDeSpotlight && createPortal(
-        <div className="tv-zone-de-backdrop" aria-hidden="true" />,
-        document.body,
-      )}
-      {isLiveVoteFocus && liveVoteBackdropMetrics && createPortal(
-        <div className="tv-zone-live-vote-backdrop" aria-hidden="true">
-          <svg
-            className="tv-zone-live-vote-backdrop__svg"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox={`0 0 ${liveVoteBackdropMetrics.viewportWidth} ${liveVoteBackdropMetrics.viewportHeight}`}
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <mask id={liveVoteBackdropMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
-                <rect
-                  x={0}
-                  y={0}
-                  width={liveVoteBackdropMetrics.viewportWidth}
-                  height={liveVoteBackdropMetrics.viewportHeight}
-                  fill="white"
-                />
-                <rect
-                  x={liveVoteBackdropMetrics.cutout.x}
-                  y={liveVoteBackdropMetrics.cutout.y}
-                  width={liveVoteBackdropMetrics.cutout.w}
-                  height={liveVoteBackdropMetrics.cutout.h}
-                  rx={LIVE_VOTE_CUTOUT_RADIUS}
-                  ry={LIVE_VOTE_CUTOUT_RADIUS}
-                  fill="black"
-                />
-              </mask>
-              <linearGradient id={`${liveVoteBackdropMaskId}-shade`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#030812" stopOpacity="0.38" />
-                <stop offset="100%" stopColor="#02060c" stopOpacity="0.56" />
-              </linearGradient>
-              <radialGradient id={`${liveVoteBackdropMaskId}-glow`} cx="50%" cy="34%" r="70%">
-                <stop offset="0%" stopColor="#78a8ff" stopOpacity="0.08" />
-                <stop offset="16%" stopColor="#78a8ff" stopOpacity="0.04" />
-                <stop offset="30%" stopColor="#000000" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <rect
-              x={0}
-              y={0}
-              width={liveVoteBackdropMetrics.viewportWidth}
-              height={liveVoteBackdropMetrics.viewportHeight}
-              fill={`url(#${liveVoteBackdropMaskId}-glow)`}
-              mask={`url(#${liveVoteBackdropMaskId})`}
-            />
-            <rect
-              x={0}
-              y={0}
-              width={liveVoteBackdropMetrics.viewportWidth}
-              height={liveVoteBackdropMetrics.viewportHeight}
-              fill={`url(#${liveVoteBackdropMaskId}-shade)`}
-              mask={`url(#${liveVoteBackdropMaskId})`}
-            />
-          </svg>
-        </div>,
-        document.body,
-      )}
+      {isDeSpotlight &&
+        createPortal(<div className="tv-zone-de-backdrop" aria-hidden="true" />, document.body)}
+      {isLiveVoteFocus &&
+        liveVoteBackdropMetrics &&
+        createPortal(
+          <div className="tv-zone-live-vote-backdrop" aria-hidden="true">
+            <svg
+              className="tv-zone-live-vote-backdrop__svg"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox={`0 0 ${liveVoteBackdropMetrics.viewportWidth} ${liveVoteBackdropMetrics.viewportHeight}`}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <mask
+                  id={liveVoteBackdropMaskId}
+                  maskUnits="userSpaceOnUse"
+                  maskContentUnits="userSpaceOnUse"
+                >
+                  <rect
+                    x={0}
+                    y={0}
+                    width={liveVoteBackdropMetrics.viewportWidth}
+                    height={liveVoteBackdropMetrics.viewportHeight}
+                    fill="white"
+                  />
+                  <rect
+                    x={liveVoteBackdropMetrics.cutout.x}
+                    y={liveVoteBackdropMetrics.cutout.y}
+                    width={liveVoteBackdropMetrics.cutout.w}
+                    height={liveVoteBackdropMetrics.cutout.h}
+                    rx={LIVE_VOTE_CUTOUT_RADIUS}
+                    ry={LIVE_VOTE_CUTOUT_RADIUS}
+                    fill="black"
+                  />
+                </mask>
+                <linearGradient id={`${liveVoteBackdropMaskId}-shade`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#030812" stopOpacity="0.38" />
+                  <stop offset="100%" stopColor="#02060c" stopOpacity="0.56" />
+                </linearGradient>
+                <radialGradient id={`${liveVoteBackdropMaskId}-glow`} cx="50%" cy="34%" r="70%">
+                  <stop offset="0%" stopColor="#78a8ff" stopOpacity="0.08" />
+                  <stop offset="16%" stopColor="#78a8ff" stopOpacity="0.04" />
+                  <stop offset="30%" stopColor="#000000" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <rect
+                x={0}
+                y={0}
+                width={liveVoteBackdropMetrics.viewportWidth}
+                height={liveVoteBackdropMetrics.viewportHeight}
+                fill={`url(#${liveVoteBackdropMaskId}-glow)`}
+                mask={`url(#${liveVoteBackdropMaskId})`}
+              />
+              <rect
+                x={0}
+                y={0}
+                width={liveVoteBackdropMetrics.viewportWidth}
+                height={liveVoteBackdropMetrics.viewportHeight}
+                fill={`url(#${liveVoteBackdropMaskId}-shade)`}
+                mask={`url(#${liveVoteBackdropMaskId})`}
+              />
+            </svg>
+          </div>,
+          document.body
+        )}
 
       {/* ── Head bar ────────────────────────────────────────────────────── */}
       <div className="tv-zone__head">
@@ -857,12 +990,21 @@ export default function TvZone(props: TvZoneProps) {
 
         {/* Center: scrollable single-row status chips */}
         <ul className="tv-zone__head-pills" aria-label="Game status chips">
-          <li><GameTopChip label={formatCycleLabel(gameState.week)} ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)} tone="neutral" className="tv-zone__head-chip" /></li>
+          <li>
+            <GameTopChip
+              label={formatCycleLabel(gameState.week)}
+              ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)}
+              tone="neutral"
+              className="tv-zone__head-chip"
+            />
+          </li>
         </ul>
 
         <div className="tv-zone__head-actions">
           {gameState.isLive && (
-            <span className="tv-zone__live-badge" aria-live="polite">LIVE</span>
+            <span className="tv-zone__live-badge" aria-live="polite">
+              LIVE
+            </span>
           )}
           {/* Alive/total moved to the Housemates occupancy chip so this header can host direct audio toggles. */}
           <TopUtilityButton
@@ -898,7 +1040,13 @@ export default function TvZone(props: TvZoneProps) {
             </span>
           )}
 
-          <div className="tv-zone__viewport" role="region" aria-label="Live game events display" aria-live="polite" aria-atomic="true">
+          <div
+            className="tv-zone__viewport"
+            role="region"
+            aria-label="Live game events display"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <p
               key={viewportMessageKey}
               aria-hidden={hideViewportMessage}
@@ -906,7 +1054,9 @@ export default function TvZone(props: TvZoneProps) {
                 'tv-zone__now',
                 detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
                 hideViewportMessage ? 'tv-zone__now--hidden' : '',
-              ].filter(Boolean).join(' ')}
+              ]
+                .filter(Boolean)
+                .join(' ')}
               style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
               {viewportDisplayText}
@@ -917,6 +1067,23 @@ export default function TvZone(props: TvZoneProps) {
               <div className="tv-zone__twist-badge" aria-hidden="true">
                 <span>🌀</span>
                 SHOCK
+              </div>
+            )}
+
+            {winnerBroadcast && (
+              <div className="tv-zone__winner-broadcast" role="status" aria-live="polite">
+                <div className="tv-zone__winner-sparkles" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </div>
+                <span className="tv-zone__winner-kicker">Final verdict</span>
+                <strong className="tv-zone__winner-name">{winnerBroadcast.name}</strong>
+                <span className="tv-zone__winner-copy">wins The Big Eye</span>
+                <span className="tv-zone__winner-footer">The Tribunal has spoken</span>
               </div>
             )}
 
@@ -1006,12 +1173,14 @@ export default function TvZone(props: TvZoneProps) {
       <ConfirmExitModal
         open={saveFeedbackOpen}
         title={saveFeedbackIsError ? 'Save failed' : 'Saved'}
-        description={saveFeedbackIsError ? 'Please try again.' : 'Your season is ready to resume later.'}
+        description={
+          saveFeedbackIsError ? 'Please try again.' : 'Your season is ready to resume later.'
+        }
         confirmLabel="OK"
         showCancel={false}
         onConfirm={() => setSaveFeedbackOpen(false)}
         onCancel={() => setSaveFeedbackOpen(false)}
       />
     </section>
-  );
+  )
 }

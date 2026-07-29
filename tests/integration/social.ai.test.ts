@@ -39,6 +39,7 @@ function makeFullStore() {
           ],
           seed: 42,
           week: 1,
+          phase: 'social_1',
         },
       ) => state,
     },

@@ -5,7 +5,7 @@
   position: fixed;
   bottom: 5rem; /* above nav bar */
   right: 1rem;
-  z-index: 9000;
+  z-index: 12001;
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
@@ -29,8 +29,9 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 8999;
-  width: min(22rem, 100vw);
+  z-index: 12000;
+  width: min(28rem, 100vw);
+  box-sizing: border-box;
   background: #0d0d1a;
   color: #e0e0f0;
   border-left: 1px solid rgba(255 255 255 / 0.1);
@@ -66,14 +67,48 @@
   background: rgba(255 255 255 / 0.1);
 }
 
+.dbg-panel__nav {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.45rem 0.6rem;
+  overflow-x: auto;
+  flex: 0 0 auto;
+  background: #111a30;
+  border-bottom: 1px solid rgba(255 255 255 / 0.08);
+  scrollbar-width: thin;
+}
+.dbg-panel__nav button {
+  min-height: 2rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(255 255 255 / 0.12);
+  border-radius: 999px;
+  background: #16213e;
+  color: #dce5ff;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.dbg-panel__nav button:hover,
+.dbg-panel__nav button:focus-visible {
+  background: #0f3460;
+  outline: 2px solid #8ba7ff;
+  outline-offset: 1px;
+}
+
 /* Scrollable body */
 .dbg-panel__body {
   overflow-y: auto;
+  min-width: 0;
   flex: 1;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  scroll-behavior: smooth;
+}
+
+.dbg-panel__body > [id] {
+  scroll-margin-top: 0.5rem;
 }
 
 /* Section */
@@ -239,6 +274,85 @@
   background: rgba(180 20 20 / 0.4);
 }
 
+.dbg-health {
+  padding: 0.5rem 0.6rem;
+  border-radius: 5px;
+  font-weight: 600;
+}
+.dbg-health--ok {
+  color: #9aefbd;
+  background: rgba(25 130 70 / 0.2);
+  border: 1px solid rgba(75 220 130 / 0.3);
+}
+.dbg-health--issues {
+  color: #ffd38a;
+  background: rgba(180 100 10 / 0.18);
+  border: 1px solid rgba(255 180 60 / 0.3);
+}
+.dbg-issue-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.dbg-issue--error {
+  color: #ff9b9b;
+}
+.dbg-issue--warning {
+  color: #ffd38a;
+}
+.dbg-file-input {
+  display: none;
+}
+.dbg-status {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(139 167 255 / 0.35);
+  border-radius: 6px;
+  background: #16213e;
+  color: #f2f5ff;
+  box-shadow: 0 -3px 12px rgba(0 0 0 / 0.35);
+}
+.dbg-help {
+  margin: 0;
+  color: #aeb9dd;
+  line-height: 1.45;
+}
+.dbg-help code {
+  color: #f2ce7b;
+  word-break: break-all;
+}
+.dbg-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 0.75rem;
+}
+.dbg-toggle-grid label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.8rem;
+}
+.dbg-range {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(5rem, 1fr) 3.4rem;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd6ff;
+}
+.dbg-range input {
+  width: 100%;
+}
+.dbg-range output {
+  color: #f2ce7b;
+  font-family: monospace;
+  text-align: right;
+}
+
 /* In-panel minigame picker. Native select popups are unreliable in some
    Android WebViews/emulators, so keep the complete interaction in the drawer. */
 .dbg-minigame-picker {
@@ -310,8 +424,22 @@
 }
 
 /* Hide on very small screens (phones in portrait) by tucking behind toggle */
-@media (max-width: 360px) {
+@media (max-width: 600px) {
   .dbg-panel {
     width: 100vw;
+    border-left: 0;
+  }
+  .dbg-panel__body {
+    overflow-x: hidden;
+  }
+  .dbg-row:not(.dbg-row--col) > .dbg-label {
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+  .dbg-row > .dbg-select {
+    min-width: 8rem;
+  }
+  .dbg-btn {
+    white-space: normal;
   }
 }

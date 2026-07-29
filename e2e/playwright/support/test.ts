@@ -96,7 +96,11 @@ export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
       page.on('console', onConsole)
       page.on('pageerror', onPageError)
       await page.route('**/api/live-config', async (route) => {
-        await route.fulfill({ body: '{}', contentType: 'application/json', status: 200 })
+        await route.fulfill({
+          body: '{}',
+          contentType: 'application/json',
+          status: 200,
+        })
       })
       await installUnhandledRejectionReporter(page)
 

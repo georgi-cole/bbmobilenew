@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -18,6 +18,11 @@ import {
   selectHasTribunalHouseAccess,
   selectIsVipActive,
 } from '../../store/vipSlice'
+import {
+  REALITY_MODE_PRESETS,
+  getProfileRealityAgeEligibility,
+  type RealityModePreset,
+} from '../../modes/realityMode'
 import './Settings.css'
 
 // ── Theme options ──────────────────────────────────────────────────────────────
@@ -40,7 +45,7 @@ type ToggleItem = {
   label: string
   badge?: string
   gated?: boolean
-  lockedFeature?: 'Drama Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes'
+  lockedFeature?: 'Reality Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes'
   get: (s: SettingsState) => boolean
   onChange: (dispatch: AppDispatch, val: boolean) => void
 }
@@ -52,6 +57,7 @@ type DropdownItem = {
   options: { value: string; label: string; vipOnly?: boolean }[]
   get: (s: SettingsState) => string
   onChange: (dispatch: AppDispatch, val: string) => void
+  description?: string
 }
 
 type SettingItem = ToggleItem | DropdownItem
@@ -121,10 +127,10 @@ const SECTIONS: SettingSection[] = [
       {
         type: 'toggle',
         id: 'dramaMode',
-        label: 'Drama Mode',
+        label: 'Reality Mode',
         badge: 'Store',
         gated: true,
-        lockedFeature: 'Drama Mode',
+        lockedFeature: 'Reality Mode',
         get: (s) => s.gameUX.dramaMode,
         onChange: (dispatch, val) =>
           dispatch(
@@ -132,6 +138,23 @@ const SECTIONS: SettingSection[] = [
               val ? { dramaMode: true } : { dramaMode: false, dramaModeAdminOverride: false }
             )
           ),
+      },
+      {
+        type: 'dropdown',
+        id: 'realityModePreset',
+        label: 'Reality style',
+        options: REALITY_MODE_PRESETS.map(({ value, label }) => ({ value, label })),
+        get: (s) => s.gameUX.realityModePreset,
+        onChange: (dispatch, val) =>
+          dispatch(setGameUX({ realityModePreset: val as RealityModePreset })),
+        description: 'Casual is lighter, TV Grade is balanced, and 18+ has stronger intensity.',
+      },
+      {
+        type: 'toggle',
+        id: 'romanceStorylines',
+        label: 'Romance storylines',
+        get: (s) => s.gameUX.romanceStorylines,
+        onChange: (dispatch, val) => dispatch(setGameUX({ romanceStorylines: val })),
       },
       {
         type: 'toggle',
@@ -212,11 +235,28 @@ export default function Settings() {
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
   const hasTribunalHouse = useAppSelector(selectHasTribunalHouseAccess)
+  const realityAgeEligibility = useAppSelector((state) =>
+    getProfileRealityAgeEligibility(state.profiles)
+  )
+  const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride
+  const showRealitySettings = hasRealityAccess && settings.gameUX.dramaMode
   const [lockedFeature, setLockedFeature] = useState<
-    'Drama Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes' | null
+    'Reality Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes' | null
   >(null)
 
+  useEffect(() => {
+    if (settings.gameUX.realityModePreset === 'adult' && realityAgeEligibility !== 'adult') {
+      dispatch(setGameUX({ realityModePreset: 'tv' }))
+    }
+  }, [dispatch, realityAgeEligibility, settings.gameUX.realityModePreset])
+
   function renderItem(item: SettingItem) {
+    if (
+      (item.id === 'realityModePreset' || item.id === 'romanceStorylines') &&
+      !showRealitySettings
+    ) {
+      return null
+    }
     switch (item.type) {
       case 'toggle': {
         const hasAccess =
@@ -255,30 +295,42 @@ export default function Settings() {
       case 'dropdown': {
         const value = item.get(settings)
         return (
-          <div key={item.id} className="settings-row">
-            <label className="settings-row__label" htmlFor={`setting-${item.id}`}>
-              {item.label}
-            </label>
-            <select
-              id={`setting-${item.id}`}
-              className="settings-select"
-              value={value}
-              onChange={(e) => {
-                const option = item.options.find((candidate) => candidate.value === e.target.value)
-                if (option?.vipOnly && !isVipActive) {
-                  setLockedFeature('VIP themes')
-                  return
-                }
-                item.onChange(dispatch, e.target.value)
-              }}
-            >
-              {item.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                  {opt.vipOnly ? ' · VIP' : ''}
-                </option>
-              ))}
-            </select>
+          <div key={item.id} className="settings-row settings-row--col">
+            <div className="settings-row settings-row--nested">
+              <label className="settings-row__label" htmlFor={`setting-${item.id}`}>
+                {item.label}
+              </label>
+              <select
+                id={`setting-${item.id}`}
+                className="settings-select"
+                value={value}
+                onChange={(e) => {
+                  const option = item.options.find(
+                    (candidate) => candidate.value === e.target.value
+                  )
+                  if (option?.vipOnly && !isVipActive) {
+                    setLockedFeature('VIP themes')
+                    return
+                  }
+                  item.onChange(dispatch, e.target.value)
+                }}
+              >
+                {item.options.map((opt) => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    disabled={opt.value === 'adult' && realityAgeEligibility !== 'adult'}
+                  >
+                    {opt.label}
+                    {opt.vipOnly ? ' · VIP' : ''}
+                    {opt.value === 'adult' && realityAgeEligibility !== 'adult'
+                      ? ' · Requires profile age 18+'
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {item.description && <p className="settings-helper-text">{item.description}</p>}
           </div>
         )
       }

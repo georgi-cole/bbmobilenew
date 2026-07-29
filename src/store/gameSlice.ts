@@ -115,6 +115,7 @@ const AI_LOH_WIN_THREAT_WEIGHT = 4
 const AI_POS_WIN_THREAT_WEIGHT = 3
 const AI_NEVER_NOMINATED_THREAT_WEIGHT = 1
 const AI_CURRENT_LOH_POWER_THREAT_WEIGHT = 2
+const EARLY_HUMAN_GRACE_BY_WEEK = [0, 16, 12, 6] as const
 
 function getPhaseOrderIndex(phase: Phase): number {
   return PHASE_ORDER.indexOf(phase)
@@ -373,6 +374,8 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     seed: 42,
     lohId: null,
     lohSocialPlan: null,
+    currentWeekNominationRecord: null,
+    lastWeekNominationRecord: null,
     lohSafetyAdvice: null,
     prevHohId: null,
     nomineeIds: [],
@@ -636,6 +639,17 @@ function getStrategicRelationship(state: GameState, actorId: string, targetId: s
   return state.strategicRelationships?.[actorId]?.[targetId] ?? null
 }
 
+function getEarlyHumanGrace(
+  state: GameState,
+  candidate: Player | undefined,
+  affinity: number,
+  tags: ReadonlySet<string>
+): number {
+  if (!candidate?.isUser || state.week < 1 || state.week > 3 || affinity < -15) return 0
+  if (tags.has('target') || tags.has('betrayal') || tags.has('rivalry')) return 0
+  return EARLY_HUMAN_GRACE_BY_WEEK[state.week] ?? 0
+}
+
 function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
   const relationship = getStrategicRelationship(state, holderId, nominee.id)
   if (!relationship) return -getAiThreatScore(state, nominee) * 3
@@ -659,10 +673,18 @@ function getSafetyRelationshipScore(state: GameState, holderId: string, nominee:
   return score
 }
 
-function getNominationTargetScore(state: GameState, lohId: string, candidate: Player): number {
+export function getNominationTargetScore(
+  state: GameState,
+  lohId: string,
+  candidate: Player
+): number {
   const relationship = getStrategicRelationship(state, lohId, candidate.id)
   const tags = new Set(relationship?.tags ?? [])
-  let score = getAiThreatScore(state, candidate) * 4 - (relationship?.affinity ?? 0)
+  const affinity = relationship?.affinity ?? 0
+  let score =
+    getAiThreatScore(state, candidate) * 4 -
+    affinity -
+    getEarlyHumanGrace(state, candidate, affinity, tags)
   if (tags.has('betrayal')) score += 125
   else {
     if (tags.has('alliance')) score -= 110
@@ -672,7 +694,22 @@ function getNominationTargetScore(state: GameState, lohId: string, candidate: Pl
   if (tags.has('target')) score += 55
   if (tags.has('rivalry')) score += 45
   if (tags.has('suspicious') || tags.has('unreliable')) score += 18
+  const priorNominations = state.lastWeekNominationRecord
+  if (priorNominations?.lohId === candidate.id && priorNominations.nomineeIds.includes(lohId)) {
+    // Revenge matters, but alliances and stronger strategic reasons can still outweigh it.
+    score += 32
+  }
   return score
+}
+
+function rememberOriginalNominations(state: GameState): void {
+  if (!state.lohId || state.nomineeIds.length === 0) return
+  if (state.currentWeekNominationRecord?.week === state.week) return
+  state.currentWeekNominationRecord = {
+    week: state.week,
+    lohId: state.lohId,
+    nomineeIds: [...new Set(state.nomineeIds)],
+  }
 }
 
 function pickStrategicNominationTargets(
@@ -1558,7 +1595,8 @@ export function chooseAiEvictionVote(
       (gameSeed ^ hashString(`vote:${state.week}:${voterId}:${nomineeId}`)) >>> 0
     )
 
-    let score = threat * 8 - affinity + rng() * 4
+    let score =
+      threat * 8 - affinity + rng() * 4 - getEarlyHumanGrace(state, nominee, affinity, tags) * 1.35
     if (tags.has('target')) score += 25
     if (tags.has('betrayal')) score += 35
     if (tags.has('protection') || tags.has('shield')) score -= 20
@@ -2153,6 +2191,7 @@ const gameSlice = createSlice({
       incrementTimesNominated(state, id2)
       state.awaitingNominations = false
       state.pendingNominee1Id = null
+      rememberOriginalNominations(state)
       pushEvent(
         state,
         `${p1.name} and ${p2.name} have been nominated for elimination by ${lohPlayer?.name ?? 'the LOH'}. 🎯`,
@@ -2222,6 +2261,7 @@ const gameSlice = createSlice({
 
       state.awaitingNominations = false
       state.pendingNominee1Id = null
+      rememberOriginalNominations(state)
       const allNomineePlayers = state.nomineeIds
         .map((id) => state.players.find((p) => p.id === id))
         .filter(Boolean)
@@ -3843,6 +3883,8 @@ const gameSlice = createSlice({
         status: action.payload.status ?? 'active',
         twinShock: action.payload.twinShock ?? createInitialTwinShockState(),
         lohSafetyAdvice: action.payload.lohSafetyAdvice ?? null,
+        currentWeekNominationRecord: action.payload.currentWeekNominationRecord ?? null,
+        lastWeekNominationRecord: action.payload.lastWeekNominationRecord ?? null,
         twinShockConsumed: action.payload.twinShockConsumed ?? false,
         twinShockActivatedSeason: action.payload.twinShockActivatedSeason ?? null,
         twinShockResolution: action.payload.twinShockResolution ?? null,
@@ -4586,6 +4628,8 @@ const gameSlice = createSlice({
           // week_end → week_start: increment week and reset week-level fields.
           // Save the outgoing LOH so they can be excluded from this week's LOH comp.
           state.prevHohId = state.lohId ?? null
+          state.lastWeekNominationRecord = state.currentWeekNominationRecord ?? null
+          state.currentWeekNominationRecord = null
           state.week += 1
           state.lohId = null
           state.lohSocialPlan = null
@@ -4849,9 +4893,13 @@ const gameSlice = createSlice({
             canUsePublicNomineeRule && state.lastHohCompFinisherId
               ? pool.filter((p) => p.id !== state.lastHohCompFinisherId)
               : pool
-          const nominees = state.dramaSocialMode
-            ? pickStrategicNominationTargets(state, state.lohId!, aiPool, nomineeCount, rng)
-            : seededPickN(rng, aiPool, nomineeCount)
+          const nominees = pickStrategicNominationTargets(
+            state,
+            state.lohId!,
+            aiPool,
+            nomineeCount,
+            rng
+          )
           state.nomineeIds = nominees.map((n) => n.id)
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id)
@@ -4880,6 +4928,7 @@ const gameSlice = createSlice({
             }
           }
 
+          rememberOriginalNominations(state)
           const allNominees = state.nomineeIds.map((id) => state.players.find((p) => p.id === id))
           const names = allNominees.filter(Boolean).map((n) => n!.name)
           const nameList = isDoubleEviction ? names.join(', ') : formatNameList(names)

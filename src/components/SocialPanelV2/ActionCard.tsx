@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { SocialActionDefinition } from '../../social/socialActions'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
+import StoreProductIcon from '../StoreProductModal/StoreProductIcon'
 import './ActionCard.css'
 
 export interface ActionCardProps {
@@ -14,6 +15,8 @@ export interface ActionCardProps {
   selected?: boolean
   /** When true the card is non-interactive and shows an overlay. */
   disabled?: boolean
+  /** Visible upgrade preview for an action that belongs to Reality Mode. */
+  premiumLocked?: boolean
   /** Message shown in the disabled overlay. */
   disabledMessage?: string
   /** Affordability or contextual availability reason. */
@@ -22,6 +25,8 @@ export interface ActionCardProps {
   available?: boolean
   /** Called with the action id when the card is activated. */
   onClick?: (actionId: string) => void
+  /** Opens the Reality upgrade path from a locked preview card. */
+  onPremiumLockedClick?: (actionId: string) => void
   /** Called with the action id when the Preview button is clicked. */
   onPreview?: (actionId: string) => void
   /** Called when a card is hovered or focused. */
@@ -37,10 +42,12 @@ export default function ActionCard({
   description,
   selected = false,
   disabled = false,
+  premiumLocked = false,
   disabledMessage = 'Unavailable',
   availabilityReason,
   available,
   onClick,
+  onPremiumLockedClick,
   onPreview,
   onHoverFocus,
   costOverride,
@@ -81,6 +88,10 @@ export default function ActionCard({
   }
 
   function handleActivate() {
+    if (premiumLocked) {
+      onPremiumLockedClick?.(id)
+      return
+    }
     if (!isDisabled) onClick?.(id)
   }
 
@@ -102,6 +113,7 @@ export default function ActionCard({
     'ac-card',
     selected ? 'ac-card--selected' : '',
     isDisabled ? 'ac-card--disabled' : '',
+    premiumLocked ? 'ac-card--premium-locked' : '',
     !isDisabled && availabilityReason ? 'ac-card--unavailable' : '',
     accentClass,
     longPressActive ? 'ac-card--tooltip-open' : '',
@@ -115,6 +127,7 @@ export default function ActionCard({
       role="button"
       tabIndex={isDisabled ? -1 : 0}
       aria-disabled={isDisabled}
+      aria-label={premiumLocked ? `${title}. VIP Reality action` : undefined}
       aria-pressed={selected}
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
@@ -136,6 +149,15 @@ export default function ActionCard({
           </span>
         )}
         <span className="ac-card__title">{title}</span>
+        {premiumLocked && (
+          <span
+            className="ac-card__premium-badge"
+            aria-label="Reality Mode action"
+            title="Unlock Reality Mode"
+          >
+            <StoreProductIcon name="vip" />
+          </span>
+        )}
       </div>
 
       <div className="ac-card__chips">

@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom'
 import type { Player } from '../../types'
 import { buildSocialStoryStream } from '../../social/socialStoryStream'
 import type { DramaSocialNetwork, RelationshipsMap, SocialActionLogEntry } from '../../social/types'
+import type { RealityDomainState } from '../../social/reality'
+import RealityLedger from '../RealityLedger/RealityLedger'
 import './HousePulse.css'
 
-type PulseTab = 'stream' | 'stories' | 'intel'
+type PulseTab = 'stream' | 'stories' | 'intel' | 'ledger'
 
 interface HousePulseProps {
   network: DramaSocialNetwork
@@ -15,6 +17,7 @@ interface HousePulseProps {
   relationships: RelationshipsMap
   weekStartRelSnapshot: Record<string, Record<string, number>>
   currentWeek: number
+  reality?: RealityDomainState
 }
 
 const RUMOUR_LABEL: Record<string, string> = {
@@ -73,9 +76,10 @@ export default function HousePulse({
   relationships,
   weekStartRelSnapshot,
   currentWeek,
+  reality,
 }: HousePulseProps) {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<PulseTab>('stream')
+  const [tab, setTab] = useState<PulseTab>(reality ? 'ledger' : 'stream')
   const playerName = (id: string) => players.find((player) => player.id === id)?.name ?? 'Unknown'
 
   const knownArcs = useMemo(
@@ -120,16 +124,16 @@ export default function HousePulse({
         className="house-pulse__sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="House Pulse"
+        aria-label="My Pulse"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="house-pulse__header">
           <div>
-            <span className="house-pulse__eyebrow">Drama Mode</span>
-            <h2>House Pulse</h2>
-            <p>The stories, tensions and whispers shaping the house.</p>
+            <span className="house-pulse__eyebrow">Reality Mode</span>
+            <h2>My Pulse</h2>
+            <p>Your reads, promises and risks, with the live house picture beside them.</p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close House Pulse">
+          <button type="button" onClick={() => setOpen(false)} aria-label="Close My Pulse">
             &times;
           </button>
         </header>
@@ -139,7 +143,7 @@ export default function HousePulse({
             <strong>{activeStories}</strong> storylines
           </span>
           <span>
-            <strong>{storyBeats.length}</strong> house stories
+            <strong>{storyBeats.length}</strong> visible shifts
           </span>
           <span>
             <strong>
@@ -149,15 +153,18 @@ export default function HousePulse({
           </span>
         </div>
 
-        <nav className="house-pulse__tabs" aria-label="House Pulse sections">
-          {(['stream', 'stories', 'intel'] as PulseTab[]).map((item) => (
+        <nav className="house-pulse__tabs" aria-label="My Pulse sections">
+          {(reality
+            ? (['ledger', 'stream', 'stories', 'intel'] as PulseTab[])
+            : (['stream', 'stories', 'intel'] as PulseTab[])
+          ).map((item) => (
             <button
               key={item}
               type="button"
               className={tab === item ? 'is-active' : ''}
               onClick={() => setTab(item)}
             >
-              {item}
+              {item === 'ledger' ? 'My Game' : item}
             </button>
           ))}
         </nav>
@@ -268,6 +275,10 @@ export default function HousePulse({
             ) : (
               <p className="house-pulse__empty">You have not learned any current house intel.</p>
             ))}
+
+          {tab === 'ledger' && reality && (
+            <RealityLedger reality={reality} players={players} humanId={humanId} />
+          )}
         </div>
       </section>
     </div>
@@ -275,16 +286,25 @@ export default function HousePulse({
 
   return (
     <>
-      <button type="button" className="house-pulse__summary" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="house-pulse__summary"
+        onClick={() => {
+          setTab(reality ? 'ledger' : 'stream')
+          setOpen(true)
+        }}
+      >
         <span className="house-pulse__mark">◉</span>
         <span>
-          <strong>House Pulse</strong>
-          <small>
-            {activeStories} stories · {storyBeats.length} shifts
-          </small>
+          <strong>My Pulse</strong>
+          <small>My Game · {storyBeats.length} visible shifts</small>
         </span>
-        <em>{latest?.text ?? 'The house is still reading the room.'}</em>
-        <b>Open</b>
+        <em>
+          {reality
+            ? 'Your people reads, commitments and known game facts.'
+            : (latest?.text ?? 'The house is still reading the room.')}
+        </em>
+        <b>Open My Game</b>
       </button>
       {modal && createPortal(modal, document.body)}
     </>

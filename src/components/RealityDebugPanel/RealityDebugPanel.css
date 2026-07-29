@@ -1,0 +1,35 @@
+.reality-debug {
+  margin: 0 0.7rem 0.35rem;
+  padding: 0.42rem 0.55rem;
+  border: 1px dashed rgba(125, 211, 252, 0.32);
+  border-radius: 8px;
+  color: #b9dff2;
+  background: rgba(3, 18, 30, 0.48);
+  font-size: 0.62rem;
+}
+
+.reality-debug summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.reality-debug div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.reality-debug span {
+  padding: 0.18rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(125, 211, 252, 0.08);
+}
+
+.reality-debug p {
+  margin: 0.35rem 0 0;
+}
+
+.reality-debug small {
+  color: #fbbf84;
+}

@@ -5,12 +5,15 @@ import { getActionById } from '../../social/SocialManeuvers'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { getSocialNarrative } from './socialNarratives'
 import type { Player } from '../../types'
+import type { RelationshipsMap } from '../../social/types'
 import './RecentActivity.css'
 
 export interface RecentActivityProps {
   players?: readonly Player[]
   maxEntries?: number
   dramaMode?: boolean
+  humanId?: string
+  relationships?: RelationshipsMap
 }
 
 function getOutcomeIcon(entry: { outcome: 'success' | 'failure' }): string {
@@ -44,6 +47,8 @@ export default function RecentActivity({
   players,
   maxEntries = 6,
   dramaMode = false,
+  humanId,
+  relationships,
 }: RecentActivityProps) {
   const sessionLogs = useAppSelector(selectSessionLogs)
   const [clearedBefore, setClearedBefore] = useState(0)
@@ -136,6 +141,20 @@ export default function RecentActivity({
             const outcomeClass = getOutcomeClass(entry)
             const relationshipClass = getRelationshipClass(entry.delta)
             const deltaText = entry.delta === 0 ? '' : `${entry.delta > 0 ? '+' : ''}${entry.delta}`
+            const outward = humanId
+              ? relationships?.[humanId]?.[entry.targetId]?.affinity
+              : undefined
+            const inward = humanId
+              ? relationships?.[entry.targetId]?.[humanId]?.affinity
+              : undefined
+            const currentRelationship =
+              outward !== undefined || inward !== undefined
+                ? Math.round(((outward ?? 0) + (inward ?? 0)) / 2)
+                : undefined
+            const currentRelationshipText =
+              currentRelationship === undefined
+                ? ''
+                : ` · current ${currentRelationship > 0 ? '+' : ''}${currentRelationship}`
             const narrative =
               entry.narrative ??
               (entry.actionId === 'ask_loh_target' && subjectName
@@ -175,7 +194,8 @@ export default function RecentActivity({
                   <span className="ra-entry__narrative">{narrative}</span>
                   {deltaText && (
                     <span className={`ra-entry__delta ra-entry__delta--${relationshipClass}`}>
-                      Relationship {deltaText}
+                      Relationship change {deltaText}
+                      {currentRelationshipText}
                     </span>
                   )}
                   {resourceParts.length > 0 && (

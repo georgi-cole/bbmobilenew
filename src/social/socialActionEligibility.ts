@@ -1,7 +1,7 @@
 import type { PlayerStatus } from '../types'
 import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPacing'
 import type { SocialActionDefinition, SubjectPool } from './socialActions'
-import { resolveActionTargetMode } from './socialActions'
+import { isRealityExclusiveAction, resolveActionTargetMode } from './socialActions'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
 
 export interface ActionEligibilityPlayer {
@@ -22,6 +22,8 @@ export interface SocialActionEligibilityContext {
   relationships?: RelationshipsMap
   dramaNetwork?: DramaSocialNetwork
   dramaMode?: boolean
+  /** Used by Classic upgrade previews to test relevance without unlocking execution. */
+  ignoreRealityModeGate?: boolean
   requireCompleteSelection?: boolean
   allowAIOnly?: boolean
 }
@@ -48,10 +50,24 @@ function relationshipTags(
   actorId: string,
   targetId: string
 ): Set<string> {
-  return new Set([
-    ...(relationships?.[actorId]?.[targetId]?.tags ?? []),
-    ...(relationships?.[targetId]?.[actorId]?.tags ?? []),
-  ])
+  return new Set(relationships?.[actorId]?.[targetId]?.tags ?? [])
+}
+
+function hasActiveRelationshipTag(
+  relationships: RelationshipsMap,
+  actorId: string,
+  targetId: string,
+  tag: string
+): boolean {
+  if (tag === 'alliance') {
+    const actorAffinity = relationships[actorId]?.[targetId]?.affinity ?? 0
+    const targetAffinity = relationships[targetId]?.[actorId]?.affinity ?? 0
+    const tagged =
+      relationships[actorId]?.[targetId]?.tags.includes(tag) === true ||
+      relationships[targetId]?.[actorId]?.tags.includes(tag) === true
+    return tagged && Math.min(actorAffinity, targetAffinity) >= 10
+  }
+  return relationships[actorId]?.[targetId]?.tags.includes(tag) === true
 }
 
 function isValidSubject(
@@ -102,11 +118,14 @@ export function evaluateSocialActionEligibility({
   relationships,
   dramaNetwork,
   dramaMode = false,
+  ignoreRealityModeGate = false,
   requireCompleteSelection = false,
   allowAIOnly = false,
 }: SocialActionEligibilityContext): SocialActionEligibilityResult {
   if (action.aiOnly && !allowAIOnly) return unavailable('AI-only action')
-  if (action.dramaOnly && !dramaMode) return unavailable('Drama Mode required')
+  if (isRealityExclusiveAction(action) && !dramaMode && !ignoreRealityModeGate) {
+    return unavailable('Reality Mode required')
+  }
 
   if (dramaMode && isPublicDramaAction(action.id)) {
     const pacing = getPublicDramaActionAvailability(dramaNetwork, week)
@@ -160,7 +179,13 @@ export function evaluateSocialActionEligibility({
   if (requiredActorStatus) {
     const resolvedActorStatus =
       actorStatus ?? (playerById.get(actorId)?.status as PlayerStatus | undefined)
-    if (!resolvedActorStatus || !requiredActorStatus.includes(resolvedActorStatus)) {
+    if (players.length === 0 && actorStatus === undefined && !requireCompleteSelection) {
+      return unavailable('Select the required role holder')
+    }
+    if (
+      (players.length > 0 || actorStatus !== undefined) &&
+      (!resolvedActorStatus || !requiredActorStatus.includes(resolvedActorStatus))
+    ) {
       return unavailable('Your current role cannot use this action')
     }
   }
@@ -169,20 +194,25 @@ export function evaluateSocialActionEligibility({
     ? (action.dramaRequiredTargetStatus ?? action.requiredTargetStatus)
     : action.requiredTargetStatus
   if (requiredTargetStatus) {
-    if (targets.length === 0 && !primaryTargetStatus) {
+    if (players.length === 0 && primaryTargetStatus === undefined && !requireCompleteSelection) {
       return unavailable('Select the required role holder')
     }
-    const statuses =
-      targets.length > 0
-        ? targets.map(
-            (targetId, index) =>
-              playerById.get(targetId)?.status ?? (index === 0 ? primaryTargetStatus : null)
-          )
-        : [primaryTargetStatus]
-    if (
-      statuses.some((status) => !status || !requiredTargetStatus.includes(status as PlayerStatus))
-    ) {
-      return unavailable('This action requires a different role holder')
+    if (players.length > 0 || primaryTargetStatus !== undefined) {
+      if (targets.length === 0 && !primaryTargetStatus) {
+        return unavailable('Select the required role holder')
+      }
+      const statuses =
+        targets.length > 0
+          ? targets.map(
+              (targetId, index) =>
+                playerById.get(targetId)?.status ?? (index === 0 ? primaryTargetStatus : null)
+            )
+          : [primaryTargetStatus]
+      if (
+        statuses.some((status) => !status || !requiredTargetStatus.includes(status as PlayerStatus))
+      ) {
+        return unavailable('This action requires a different role holder')
+      }
     }
   }
 
@@ -209,17 +239,25 @@ export function evaluateSocialActionEligibility({
     }
     for (const targetId of targets) {
       const affinity = relationships[actorId]?.[targetId]?.affinity ?? 0
-      const tags = relationshipTags(relationships, actorId, targetId)
       if (minAffinity !== undefined && affinity < minAffinity) {
         return unavailable(`Requires relationship ${minAffinity}% or higher`)
       }
       if (maxAffinity !== undefined && affinity > maxAffinity) {
         return unavailable(`Only available while the relationship is ${maxAffinity}% or lower`)
       }
-      if (requiredRelationshipTags && !requiredRelationshipTags.some((tag) => tags.has(tag))) {
+      if (
+        requiredRelationshipTags &&
+        !requiredRelationshipTags.some((tag) =>
+          hasActiveRelationshipTag(relationships, actorId, targetId, tag)
+        )
+      ) {
         return unavailable('The required relationship is not active')
       }
-      if (excludedRelationshipTags?.some((tag) => tags.has(tag))) {
+      if (
+        excludedRelationshipTags?.some((tag) =>
+          hasActiveRelationshipTag(relationships, actorId, targetId, tag)
+        )
+      ) {
         return unavailable('This relationship has already moved past that action')
       }
     }
@@ -289,16 +327,21 @@ export function evaluateSocialActionEligibility({
 
   if (requireCompleteSelection && targetMode === 'primaryPlusSubject' && subjectId) {
     const primaryTargetId = targets[0] ?? ''
+    const invalidWithoutRoster =
+      players.length === 0 &&
+      (subjectId === primaryTargetId || (!action.allowActorAsSubject && subjectId === actorId))
     if (
-      !isValidSubject(
-        action.subjectPool ?? 'houseguests',
-        subjectId,
-        actorId,
-        primaryTargetId,
-        players,
-        relationships,
-        action.allowActorAsSubject === true
-      )
+      invalidWithoutRoster ||
+      (players.length > 0 &&
+        !isValidSubject(
+          action.subjectPool ?? 'houseguests',
+          subjectId,
+          actorId,
+          primaryTargetId,
+          players,
+          relationships,
+          action.allowActorAsSubject === true
+        ))
     ) {
       return unavailable('That subject does not fit this action')
     }

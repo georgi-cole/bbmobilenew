@@ -30,11 +30,9 @@ import type { Player } from '../../types'
 import { resolveActionTargetMode } from '../../social/socialActions'
 import type { SubjectPool } from '../../social/socialActions'
 import { getEffectiveSocialMode } from '../../social/socialMode'
-import {
-  createDeterministicSocialRandom,
-  validateSocialExecution,
-} from '../../social/socialExecutionGuard'
+import { validateSocialExecution } from '../../social/socialExecutionGuard'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
+import { executeHumanRealityAction } from '../../social/reality/humanFlow'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
@@ -132,10 +130,18 @@ export default function SocialPanelV2() {
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
   const [successPulse, setSuccessPulse] = useState(false)
   const [executing, setExecuting] = useState(false)
+  const handleRealityUpgrade = useCallback(() => {
+    dispatch(closeSocialPanel())
+    navigate('/store')
+  }, [dispatch, navigate])
   const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isExecutingRef = useRef(false)
-
+  const safetyConsultationOpen =
+    ['pos_results', 'pos_ceremony'].includes(game.phase) &&
+    game.posWinnerId === humanPlayer?.id &&
+    Boolean(game.lohId) &&
+    !game.povSavedId
   useEffect(
     () => () => {
       if (successPulseTimerRef.current !== null) {
@@ -189,8 +195,28 @@ export default function SocialPanelV2() {
     !selectedAction?.requiredTargetStatus &&
     selectedActionId !== 'proposeAlliance'
   const usesMultipleTargets = targetMode === 'multi' || (multiSelectActive && isBatchCompatible)
+  // A POS holder begins with the LOH selected for an individual consultation
+  // without mutating local state from an effect. Group selections always use
+  // the player's explicit picks, so this default cannot replace a multi-select.
+  const suggestedSafetyTargetId =
+    safetyConsultationOpen &&
+    targetMode === 'primary' &&
+    primaryTargetId === null &&
+    selectedTargets.size === 0
+      ? game.lohId
+      : null
+  const effectivePrimaryTargetId =
+    targetMode === 'none' ? null : (primaryTargetId ?? suggestedSafetyTargetId)
+  const selectedPlayerIds = useMemo(
+    () =>
+      selectedTargets.size > 0
+        ? selectedTargets
+        : effectivePrimaryTargetId
+          ? new Set([effectivePrimaryTargetId])
+          : selectedTargets,
+    [effectivePrimaryTargetId, selectedTargets]
+  )
   const selectedTargetCount = selectedTargets.size
-  const effectivePrimaryTargetId = targetMode === 'none' ? null : primaryTargetId
   const needsTarget = targetMode !== 'none'
   const needsSubject = targetMode === 'primaryPlusSubject'
   const hasRequiredTargets =
@@ -308,6 +334,17 @@ export default function SocialPanelV2() {
       !game.povSavedId
     const humanIsLoh = game.lohId === humanPlayer?.id
     const humanIsNominated = Boolean(humanPlayer?.status.includes('nominated'))
+    const disclosedDangerTargetId =
+      game.lohSocialPlan?.week === game.week && game.lohSocialPlan.lohId === game.lohId
+        ? game.lohSocialPlan.disclosedTargetByPlayerId?.[humanPlayer?.id ?? '']
+        : undefined
+    const alreadyWarnedDangerTarget = actionHistory.some(
+      (entry) =>
+        entry.actorId === humanPlayer?.id &&
+        entry.targetId === disclosedDangerTargetId &&
+        entry.actionId === 'warn_about_danger' &&
+        entry.week === game.week
+    )
     const lohPlanOpen = [
       'loh_results',
       'social_1',
@@ -324,6 +361,13 @@ export default function SocialPanelV2() {
     if (!beforeNominations) hidden.add('pitch_target')
     if (!lohPlanOpen || !game.lohId) hidden.add('ask_loh_target')
     if (!humanIsNominated || !game.lohId) hidden.add('ask_why_nominated')
+    if (
+      !disclosedDangerTargetId ||
+      primaryTargetId !== disclosedDangerTargetId ||
+      alreadyWarnedDangerTarget
+    ) {
+      hidden.add('warn_about_danger')
+    }
     if (!safetyDecisionOpen) {
       hidden.add('ask_use_safety')
       hidden.add('ask_safety_plan')
@@ -339,8 +383,12 @@ export default function SocialPanelV2() {
     game.phase,
     game.posWinnerId,
     game.povSavedId,
+    game.lohSocialPlan,
+    game.week,
     humanPlayer?.id,
     humanPlayer?.status,
+    primaryTargetId,
+    actionHistory,
   ])
 
   const handleActionClick = useCallback(
@@ -464,46 +512,71 @@ export default function SocialPanelV2() {
       return
     }
 
-    const random = createDeterministicSocialRandom([
-      game.seed,
-      game.week,
-      game.phase,
-      humanPlayer.id,
-      selectedActionId,
-      targetIds.join(','),
-      sessionLogs.length,
-    ])
-
     const results =
       targetMode === 'multi'
         ? [
-            SocialManeuvers.executeGroupAction(humanPlayer.id, targetIds, selectedActionId, {
-              source: 'manual',
-              random,
-            }),
+            dispatch(
+              executeHumanRealityAction({
+                actorId: humanPlayer.id,
+                targetId: targetIds[0],
+                targetIds,
+                actionId: selectedActionId,
+                subjectId: selectedSubjectId ?? undefined,
+                costOverride: totalCosts,
+              })
+            ),
           ]
-        : targetIds.map((targetId, index) =>
-            SocialManeuvers.executeAction(humanPlayer.id, targetId, selectedActionId, {
-              source: 'manual',
-              subjectId: selectedSubjectId ?? undefined,
-              random,
-              waiveCosts: index > 0,
-              costOverride: index === 0 ? totalCosts : undefined,
-            })
-          )
+        : targetMode !== 'none' && targetIds.length === 1 && !usesMultipleTargets
+          ? [
+              dispatch(
+                executeHumanRealityAction({
+                  actorId: humanPlayer.id,
+                  targetId: targetIds[0],
+                  actionId: selectedActionId,
+                  subjectId: selectedSubjectId ?? undefined,
+                  costOverride: totalCosts,
+                })
+              ),
+            ]
+          : targetMode === 'none'
+            ? [
+                dispatch(
+                  executeHumanRealityAction({
+                    actorId: humanPlayer.id,
+                    targetId: humanPlayer.id,
+                    targetIds: [],
+                    actionId: selectedActionId,
+                    costOverride: totalCosts,
+                  })
+                ),
+              ]
+            : [
+                dispatch(
+                  executeHumanRealityAction({
+                    actorId: humanPlayer.id,
+                    targetId: targetIds[0],
+                    targetIds,
+                    actionId: selectedActionId,
+                    subjectId: selectedSubjectId ?? undefined,
+                    costOverride: totalCosts,
+                  })
+                ),
+              ]
 
     const successfulResults = results.filter((result) => result.success)
     const firstResult = results[0]
+    const reachedTargetCount =
+      Object.keys(firstResult.targetDeltas ?? {}).length || successfulResults.length
     setFeedbackMsg(
       targetMode === 'multi'
         ? firstResult.summary
         : usesMultipleTargets
-          ? successfulResults.length === targetIds.length
+          ? reachedTargetCount === targetIds.length
             ? `${getSocialActionPresentation(selectedAction).title} reached all ${
                 targetIds.length
               } selected housemates.`
             : `${getSocialActionPresentation(selectedAction).title} reached ${
-                successfulResults.length
+                reachedTargetCount
               } of ${targetIds.length} selected housemates.`
           : firstResult.summary
     )
@@ -555,10 +628,7 @@ export default function SocialPanelV2() {
     effectivePrimaryTargetId,
     energy,
     executionEligibility,
-    game.phase,
     game.players,
-    game.seed,
-    game.week,
     hasExecutableSelection,
     humanPlayer,
     info,
@@ -567,7 +637,6 @@ export default function SocialPanelV2() {
     selectedActionId,
     selectedSubjectId,
     selectedTargets,
-    sessionLogs.length,
     targetMode,
     totalCosts,
     usesMultipleTargets,
@@ -611,7 +680,7 @@ export default function SocialPanelV2() {
       <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ' sp2-modal--normal'}`}>
         <header className="sp2-header">
           <span className="sp2-header__title">
-            {dramaMode ? '🔥 Drama Mode' : '💬 Social Phase'}
+            {dramaMode ? '🔥 Reality Mode' : '💬 Social Phase'}
           </span>
           <div
             className={`sp2-header__resources${dramaMode ? '' : ' sp2-header__resources--normal'}`}
@@ -621,41 +690,21 @@ export default function SocialPanelV2() {
             </span>
             <button
               type="button"
-              className={`sp2-resource-chip sp2-resource-chip--influence${
-                dramaMode ? '' : ' sp2-resource-chip--locked'
-              }`}
+              className="sp2-resource-chip sp2-resource-chip--influence"
               aria-live="polite"
-              aria-label={
-                dramaMode
-                  ? `Influence: ${influence}`
-                  : 'Influence is available with Drama Mode. Open store.'
-              }
-              title={dramaMode ? 'Influence' : 'Unlock Influence with Drama Mode'}
-              onClick={() => {
-                if (!dramaMode) navigate('/store')
-              }}
+              aria-label={`Influence: ${influence}`}
+              title="Influence"
             >
               🤝 {influence}
-              {!dramaMode && ' 🔒'}
             </button>
             <button
               type="button"
-              className={`sp2-resource-chip sp2-resource-chip--info${
-                dramaMode ? '' : ' sp2-resource-chip--locked'
-              }`}
+              className="sp2-resource-chip sp2-resource-chip--info"
               aria-live="polite"
-              aria-label={
-                dramaMode
-                  ? `Info: ${info}`
-                  : 'Information is available with Drama Mode. Open store.'
-              }
-              title={dramaMode ? 'Information' : 'Unlock Information with Drama Mode'}
-              onClick={() => {
-                if (!dramaMode) navigate('/store')
-              }}
+              aria-label={`Info: ${info}`}
+              title="Information"
             >
               💡 {info}
-              {!dramaMode && ' 🔒'}
             </button>
           </div>
           <button
@@ -677,6 +726,7 @@ export default function SocialPanelV2() {
             relationships={relationships ?? {}}
             weekStartRelSnapshot={weekStartRelSnapshot}
             currentWeek={game.week}
+            reality={socialState.reality}
           />
         )}
 
@@ -684,6 +734,25 @@ export default function SocialPanelV2() {
           <div className="sp2-column sp2-column--players" aria-label="Player roster">
             <div className="sp2-column__heading">
               <span className="sp2-column__label">Players</span>
+              {!usesMultipleTargets && (
+                <span
+                  className="sp2-relationship-legend"
+                  aria-label="Avatar rings: green means close, yellow means mixed, red means strained"
+                >
+                  <span>
+                    <i className="is-close" />
+                    Close
+                  </span>
+                  <span>
+                    <i className="is-mixed" />
+                    Mixed
+                  </span>
+                  <span>
+                    <i className="is-strained" />
+                    Strained
+                  </span>
+                </span>
+              )}
               {usesMultipleTargets && (
                 <span className="sp2-multi-hint" role="status">
                   Group: {selectedTargets.size} selected ·{' '}
@@ -696,7 +765,7 @@ export default function SocialPanelV2() {
               humanPlayerId={humanPlayer.id}
               relationships={relationships}
               disabledIds={disabledPlayerIds}
-              selectedIds={selectedTargets}
+              selectedIds={selectedPlayerIds}
               onSelectionChange={handleSelectionChange}
               multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
@@ -709,9 +778,8 @@ export default function SocialPanelV2() {
             <ActionGrid
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
-              selectedTargetIds={
-                targetMode === 'none' || selectedTargets.size === 0 ? undefined : selectedTargets
-              }
+              onPremiumLockedClick={handleRealityUpgrade}
+              selectedTargetIds={targetMode === 'none' ? undefined : selectedPlayerIds}
               players={orderedPlayers}
               actorId={humanPlayer.id}
               actorEnergy={energy}
@@ -719,8 +787,9 @@ export default function SocialPanelV2() {
               actorInfo={info}
               relationships={relationships}
               primaryTargetStatus={
-                primaryTargetId
-                  ? (game.players.find((player) => player.id === primaryTargetId)?.status ?? null)
+                effectivePrimaryTargetId
+                  ? (game.players.find((player) => player.id === effectivePrimaryTargetId)
+                      ?.status ?? null)
                   : null
               }
               dramaMode={dramaMode}
@@ -775,6 +844,8 @@ export default function SocialPanelV2() {
           <RecentActivity
             players={game.players.filter((player) => !player.isUser)}
             dramaMode={dramaMode}
+            humanId={humanPlayer.id}
+            relationships={relationships}
           />
         </div>
 

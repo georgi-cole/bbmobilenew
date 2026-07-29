@@ -86,6 +86,21 @@ function violatesDeclarativeRule(
   if (rule.senderMustHoldSafety && !holdsSafety(game, interaction.fromId)) return true
   if (rule.humanMustBeHoh && !isHumanHoh(game)) return true
   if (rule.humanMustHoldSafety && !isHumanVetoActionable(game)) return true
+  if (rule.humanMustBeOffBlock) {
+    const human = humanPlayer(game)
+    if (!human || isNominee(game, human.id)) return true
+  }
+  if (rule.humanMustBeEligibleVoter) {
+    const human = humanPlayer(game)
+    if (
+      !human ||
+      isNominee(game, human.id) ||
+      game.lohId === human.id ||
+      human.status.includes('loh')
+    ) {
+      return true
+    }
+  }
 
   if (rule.subjectMustBeInHouse) {
     const subjectId = interaction.payload?.subjectId

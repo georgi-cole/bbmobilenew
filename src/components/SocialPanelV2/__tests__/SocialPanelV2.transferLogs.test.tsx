@@ -9,12 +9,12 @@
  *  4. social.sessionLogs are cleared after the panel is closed.
  *  5. No diary entry is added when sessionLogs is empty on close.
  *  6. Multiple session logs (3) still produce only ONE summary diary entry.
- *  7. A 'social' type TV event is dispatched on close when sessionLogs exist.
- *  8. The TV close message is one of the preset messages from TV_SOCIAL_CLOSE_MESSAGES.
+ *  7. Closing does not fabricate an extra generic TV event.
+ *  8. The causal Diary Room summary replaces preset close chatter.
  *  9. No 'social' type TV event is dispatched when sessionLogs is empty on close.
  * 10. AI-initiated logs (actorId !== humanId) are not written as diary entries.
  * 11. The summary diary entry has source: 'manual' and channels: ['dr'].
- * 12. The TV close message has channels that includes 'tv'.
+ * 12. The summary stays private to the Diary Room channel.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -25,7 +25,6 @@ import gameReducer from '../../../store/gameSlice';
 import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice';
 import { initManeuvers } from '../../../social/SocialManeuvers';
 import SocialPanelV2 from '../SocialPanelV2';
-import { TV_SOCIAL_CLOSE_MESSAGES } from '../socialNarratives';
 import type { RootState } from '../../../store/store';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -206,7 +205,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     expect(diaryCountAfter).toBe(diaryCountBefore + 1);
   });
 
-  it('dispatches a social type TV event on close when sessionLogs exist', () => {
+  it('does not fabricate a social TV event just because the panel closed', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -228,10 +227,10 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
     const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
-    expect(socialCountAfter).toBe(socialCountBefore + 1);
+    expect(socialCountAfter).toBe(socialCountBefore);
   });
 
-  it('TV close message text is one of the preset messages', () => {
+  it('uses the causal diary summary instead of preset close chatter', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -250,10 +249,10 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     renderPanel(store);
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
-    // The social message is the newest entry (index 0) since it is dispatched last.
     const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social');
-    expect(socialEntry).toBeDefined();
-    expect(TV_SOCIAL_CLOSE_MESSAGES).toContain(socialEntry!.text);
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
+    expect(socialEntry).toBeUndefined();
+    expect(diaryEntry?.text).toContain('social action');
   });
 
   it('does not dispatch a social type TV event when sessionLogs is empty on close', () => {
@@ -324,7 +323,7 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     expect(diaryEntry!.channels).toContain('dr');
   });
 
-  it('TV close message has channels that includes "tv"', () => {
+  it('keeps the close summary on the Diary Room channel', () => {
     store.dispatch(
       recordSocialAction({
         entry: {
@@ -343,8 +342,8 @@ describe('SocialPanelV2 – session log transfer on close', () => {
     renderPanel(store);
     fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
 
-    const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social');
-    expect(socialEntry).toBeDefined();
-    expect(socialEntry!.channels).toContain('tv');
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
+    expect(diaryEntry).toBeDefined();
+    expect(diaryEntry!.channels).toEqual(['dr']);
   });
 });

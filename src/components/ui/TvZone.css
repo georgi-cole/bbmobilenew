@@ -91,7 +91,9 @@
   font-size: 0.85rem;
   line-height: 1;
   padding: 4px 6px;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tv-zone__audio-btn:hover {
@@ -129,7 +131,8 @@
 }
 
 @keyframes livePulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     box-shadow:
       0 0 8px rgba(220, 38, 38, 0.72),
@@ -159,7 +162,12 @@
   padding: 20px 18px;
   background:
     radial-gradient(circle at 16% 14%, rgba(104, 129, 255, 0.18), rgba(104, 129, 255, 0) 28%),
-    linear-gradient(180deg, rgba(21, 29, 42, 0.78) 0%, rgba(9, 14, 22, 0.9) 36%, rgba(4, 8, 14, 0.98) 100%);
+    linear-gradient(
+      180deg,
+      rgba(21, 29, 42, 0.78) 0%,
+      rgba(9, 14, 22, 0.9) 36%,
+      rgba(4, 8, 14, 0.98) 100%
+    );
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -174,14 +182,21 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(134deg, rgba(255, 255, 255, 0.1) 0%, rgba(122, 162, 255, 0.08) 16%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(ellipse at 18% 10%, rgba(255, 255, 255, 0.08) 0%, rgba(122, 162, 255, 0.05) 28%, rgba(255, 255, 255, 0) 65%);
+    linear-gradient(
+      134deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(122, 162, 255, 0.08) 16%,
+      rgba(255, 255, 255, 0) 42%
+    ),
+    radial-gradient(
+      ellipse at 18% 10%,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(122, 162, 255, 0.05) 28%,
+      rgba(255, 255, 255, 0) 65%
+    );
   clip-path: ellipse(
-    var(--tv-reflection-width)
-    var(--tv-reflection-height)
-    at
-    var(--tv-reflection-x)
-    var(--tv-reflection-y)
+    var(--tv-reflection-width) var(--tv-reflection-height) at var(--tv-reflection-x)
+      var(--tv-reflection-y)
   );
   filter: blur(2px);
   pointer-events: none;
@@ -195,22 +210,14 @@
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0) 0 1px,
-      rgba(0, 0, 0, 0.2) 1px 2px
-    ),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0) 0 1px, rgba(0, 0, 0, 0.2) 1px 2px),
     linear-gradient(
       180deg,
       rgba(15, 23, 42, 0.06) 0%,
       rgba(15, 23, 42, 0) 34%,
       rgba(0, 0, 0, 0.26) 100%
     ),
-    radial-gradient(
-      110% 90% at 50% 50%,
-      rgba(255, 255, 255, 0) 58%,
-      rgba(0, 0, 0, 0.16) 100%
-    );
+    radial-gradient(110% 90% at 50% 50%, rgba(255, 255, 255, 0) 58%, rgba(0, 0, 0, 0.16) 100%);
   /* Intentionally faint so the screen texture reads as material detail, not a text overlay. */
   opacity: var(--tv-screen-texture-opacity);
   pointer-events: none;
@@ -292,7 +299,12 @@
 .tv-zone--detox-stream .tv-zone__viewport {
   background:
     radial-gradient(circle at 16% 14%, rgba(220, 38, 38, 0.13), rgba(220, 38, 38, 0) 30%),
-    linear-gradient(180deg, rgba(34, 18, 24, 0.82) 0%, rgba(13, 12, 20, 0.92) 38%, rgba(5, 8, 14, 0.98) 100%);
+    linear-gradient(
+      180deg,
+      rgba(34, 18, 24, 0.82) 0%,
+      rgba(13, 12, 20, 0.92) 38%,
+      rgba(5, 8, 14, 0.98) 100%
+    );
   animation: detoxSignalPulse 1.5s ease-in-out infinite;
 }
 
@@ -309,11 +321,7 @@
   font-weight: 700;
   text-align: center;
   line-height: 1.55;
-  background: linear-gradient(
-    180deg,
-    rgba(10, 16, 24, 0.12) 0%,
-    rgba(5, 9, 16, 0.34) 100%
-  );
+  background: linear-gradient(180deg, rgba(10, 16, 24, 0.12) 0%, rgba(5, 9, 16, 0.34) 100%);
   text-shadow:
     0 0 16px rgba(0, 0, 0, 1),
     0 1px 4px rgba(0, 0, 0, 1);
@@ -339,6 +347,144 @@
 }
 
 /* ── Event feed ────────────────────────────────────────────────────────────── */
+/* Finale winner bulletin: celebratory, but restrained enough to stay within
+   the main faux-TV's broadcast language. */
+.tv-zone__winner-broadcast {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 0.18rem;
+  width: min(100%, 560px);
+  padding: 1rem 1.25rem;
+  overflow: hidden;
+  border: 1px solid rgba(250, 204, 21, 0.32);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(250, 204, 21, 0.18), transparent 54%),
+    linear-gradient(145deg, rgba(41, 34, 17, 0.9), rgba(10, 15, 25, 0.94));
+  box-shadow:
+    0 0 30px rgba(250, 204, 21, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  text-align: center;
+  animation: tvWinnerBulletinIn 520ms cubic-bezier(0.16, 0.82, 0.28, 1) both;
+}
+
+.tv-zone__winner-kicker,
+.tv-zone__winner-footer {
+  color: rgba(253, 230, 138, 0.82);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tv-zone__winner-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff8d8;
+  font-size: clamp(1.25rem, 4.6vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 0 20px rgba(250, 204, 21, 0.24),
+    0 2px 8px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+.tv-zone__winner-copy {
+  color: #fcd34d;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tv-zone__winner-footer {
+  margin-top: 0.22rem;
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+}
+
+.tv-zone__winner-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tv-zone__winner-sparkles i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fde68a;
+  box-shadow: 0 0 9px #facc15;
+  animation: tvWinnerSparkle 2.8s ease-in-out infinite;
+}
+
+.tv-zone__winner-sparkles i:nth-child(1) {
+  top: 22%;
+  left: 12%;
+}
+.tv-zone__winner-sparkles i:nth-child(2) {
+  top: 66%;
+  left: 20%;
+  animation-delay: -1.4s;
+}
+.tv-zone__winner-sparkles i:nth-child(3) {
+  top: 19%;
+  left: 82%;
+  animation-delay: -0.7s;
+}
+.tv-zone__winner-sparkles i:nth-child(4) {
+  top: 72%;
+  left: 88%;
+  animation-delay: -2.1s;
+}
+.tv-zone__winner-sparkles i:nth-child(5) {
+  top: 10%;
+  left: 42%;
+  animation-delay: -1.9s;
+}
+.tv-zone__winner-sparkles i:nth-child(6) {
+  top: 83%;
+  left: 58%;
+  animation-delay: -0.3s;
+}
+
+@keyframes tvWinnerBulletinIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tvWinnerSparkle {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.65);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-zone__winner-broadcast,
+  .tv-zone__winner-sparkles i {
+    animation: none;
+  }
+}
+
 .tv-zone__feed {
   list-style: none;
   margin: 0;
@@ -372,8 +518,13 @@
 }
 
 @keyframes tvFeedItemIn {
-  from { opacity: 0; background: rgba(99, 102, 241, 0.18); }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+    background: rgba(99, 102, 241, 0.18);
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .tv-zone__feed-type {
@@ -387,11 +538,21 @@
 }
 
 /* Type colour accents */
-.tv-zone__feed-item--game   { border-left: 2px solid var(--color-accent); }
-.tv-zone__feed-item--social { border-left: 2px solid #1fc884; }
-.tv-zone__feed-item--vote   { border-left: 2px solid #ef4444; }
-.tv-zone__feed-item--twist  { border-left: 2px solid #f59e0b; }
-.tv-zone__feed-item--diary  { border-left: 2px solid #8b5cf6; }
+.tv-zone__feed-item--game {
+  border-left: 2px solid var(--color-accent);
+}
+.tv-zone__feed-item--social {
+  border-left: 2px solid #1fc884;
+}
+.tv-zone__feed-item--vote {
+  border-left: 2px solid #ef4444;
+}
+.tv-zone__feed-item--twist {
+  border-left: 2px solid #f59e0b;
+}
+.tv-zone__feed-item--diary {
+  border-left: 2px solid #8b5cf6;
+}
 
 .tv-zone--live-vote-focus {
   position: relative;
@@ -414,8 +575,12 @@
 }
 
 @keyframes liveVoteBackdropFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────────── */
@@ -556,15 +721,23 @@
   text-transform: uppercase;
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(245, 158, 11, 0.3);
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(245, 158, 11, 0.3);
   pointer-events: none;
   user-select: none;
   animation: twistBadgeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes twistBadgeIn {
-  from { opacity: 0; transform: scale(0.8) translateY(4px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes twistBadgeDelicatePulse {
@@ -617,7 +790,6 @@
   }
 }
 
-
 /* ── Double Eviction spotlight effect ──────────────────────────────────────── */
 
 /**
@@ -636,20 +808,24 @@
       rgba(255, 214, 102, 0.06) 18%,
       rgba(0, 0, 0, 0) 28%
     ),
-    linear-gradient(
-      180deg,
-      rgba(40, 0, 8, 0.84) 0%,
-      rgba(14, 0, 4, 0.78) 100%
-    );
+    linear-gradient(180deg, rgba(40, 0, 8, 0.84) 0%, rgba(14, 0, 4, 0.78) 100%);
   pointer-events: none;
   animation: deBackdropPulse var(--de-spotlight-ms, 1700ms) ease-out forwards;
 }
 
 @keyframes deBackdropPulse {
-  0%   { opacity: 0; }
-  18%  { opacity: 1; }
-  72%  { opacity: 0.92; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /**

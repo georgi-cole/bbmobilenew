@@ -1,3 +1,7 @@
+import type { RealitySimulationState } from './realitySimulation'
+import type { RealityDomainState } from './reality/types'
+import type { RealityDeadline } from './reality/types'
+
 // Social module types – scaffold for the bbmobilenew social subsystem.
 // Engine, policy, maneuvers and UI will be added in subsequent PRs.
 
@@ -197,6 +201,8 @@ export interface SocialActionLogEntry {
   timestamp: number
   /** In-game week in which the action happened, used by daily engagement systems. */
   week?: number
+  /** In-game phase used to reset diminishing repetition odds at the next phase. */
+  phase?: string
   /** Normalised outcome score in [-1, +1] produced by the SocialPolicy evaluator. */
   score?: number
   /** Human-readable outcome label (e.g. 'Good', 'Bad') produced by the evaluator. */
@@ -280,6 +286,10 @@ export interface IncomingInteraction {
   createdAt: number
   createdWeek: number
   expiresAtWeek: number
+  /** Canonical daily clock. Week fields remain save-compatible aliases. */
+  createdDay?: number
+  createdPhase?: string
+  deadline?: RealityDeadline
   read: boolean
   requiresResponse: boolean
   resolved: boolean
@@ -294,6 +304,7 @@ export interface ScheduledIncomingInteraction {
   interaction: IncomingInteraction
   scheduledForPhase?: string
   scheduledForWeek?: number
+  scheduledForDay?: number
   priority: IncomingInteractionPriority
   scheduledAt: number
   deliveryReason?: string
@@ -336,6 +347,14 @@ export interface SocialState {
   actionHistory?: SocialActionLogEntry[]
   /** Schema version used by backward-compatible social save migration. */
   socialStateVersion?: number
+  /**
+   * Persisted deterministic stream and bounded debug trace for the Reality
+   * Mode v3 orchestrator. V2 engines remain available through compatibility
+   * paths while the new causal engine is introduced in slices.
+   */
+  realitySimulation: RealitySimulationState
+  /** Causal Reality Mode v3 world, perception, relationship, and lifecycle state. */
+  reality: RealityDomainState
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[]
   /** Decision log entries for incoming interaction scheduling/debugging. */

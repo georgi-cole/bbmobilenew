@@ -39,6 +39,7 @@ import { selectPublicOpinion } from '../../publicOpinion'
 import { showInterstitial } from '../../services/ads/adsService'
 import { SoundManager } from '../../services/sound/SoundManager'
 import type { RootState } from '../../store/store'
+import { SOCIAL_INITIAL_STATE } from '../../social/constants'
 import { useStore } from 'react-redux'
 import JurorBubble from './JurorBubble'
 import FinalTallyPanel from './FinalTallyPanel'
@@ -65,6 +66,7 @@ export default function FinalFaceoff() {
   const revealed = useAppSelector(selectRevealedJurors)
   const settings = useAppSelector(selectSettings)
   const publicOpinion = useAppSelector(selectPublicOpinion)
+  const socialReality = useAppSelector((s) => s.social?.reality ?? SOCIAL_INITIAL_STATE.reality)
   const { play } = useSound()
 
   const jurorListRef = useRef<HTMLDivElement>(null)
@@ -263,9 +265,18 @@ export default function FinalFaceoff() {
           americasVoteEnabled: game.cfg?.americasVoteEnabled,
         },
         publicApprovalProfiles: hasPublicProfiles ? publicOpinion.profiles : undefined,
+        reality: socialReality,
       })
     )
-  }, [dispatch, finale.hasStarted, game.players, game.seed, game.cfg, publicOpinion.profiles])
+  }, [
+    dispatch,
+    finale.hasStarted,
+    game.players,
+    game.seed,
+    game.cfg,
+    publicOpinion.profiles,
+    socialReality,
+  ])
 
   // ── ACT 1: Auto-advance juror clue reveals every 3 s ──────────────────
   // Pauses while waiting for a human juror to cast their vote.
@@ -371,7 +382,13 @@ export default function FinalFaceoff() {
     if (!awaitingId || finale.isComplete) return
     const timeoutMs = game.cfg?.tVoteReveal ?? 30_000
     const timer = setTimeout(() => {
-      const aiVote = aiJurorVote(awaitingId, finale.finalistIds, game.seed)
+      const aiVote = aiJurorVote(
+        awaitingId,
+        finale.finalistIds,
+        game.seed,
+        socialReality,
+        finale.juryScorecards[awaitingId]
+      )
       dispatch(castVote({ jurorId: awaitingId, finalistId: aiVote }))
     }, timeoutMs)
     return () => clearTimeout(timer)
@@ -380,8 +397,10 @@ export default function FinalFaceoff() {
     finale.awaitingHumanJurorId,
     finale.isComplete,
     finale.finalistIds,
+    finale.juryScorecards,
     game.cfg?.tVoteReveal,
     game.seed,
+    socialReality,
   ])
 
   // ── Auto-scroll jury list ──────────────────────────────────────────────
@@ -440,7 +459,13 @@ export default function FinalFaceoff() {
           dispatch(
             castVote({
               jurorId,
-              finalistId: aiJurorVote(jurorId, finaleState.finalistIds, game.seed),
+              finalistId: aiJurorVote(
+                jurorId,
+                finaleState.finalistIds,
+                game.seed,
+                socialReality,
+                finaleState.juryScorecards[jurorId]
+              ),
             })
           )
         }

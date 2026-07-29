@@ -4,6 +4,10 @@ import { normalizeRelationshipsForTags } from './socialAlliance'
 import { SOCIAL_STATE_VERSION, type SocialStateWithHistory } from './socialHistory'
 import { getSocialRuntimeConfig } from './socialRuntimeConfig'
 import type { SocialActionLogEntry, SocialState } from './types'
+import { normalizeRealitySimulationState } from './realitySimulation'
+import { normalizeRealityDomainState } from './reality/state'
+import { normalizeIncomingInteractionContract } from './incomingInteractionFactory'
+import { migrateDramaAlliances } from './reality/relationshipForms'
 
 export type SocialResourceKind = 'energy' | 'influence' | 'info'
 
@@ -52,6 +56,8 @@ function cloneInitialState(): SocialState {
     dramaNetwork: normalizeDramaSocialNetwork(),
     influenceWeights: {},
     weekStartRelSnapshot: {},
+    realitySimulation: normalizeRealitySimulationState(undefined),
+    reality: normalizeRealityDomainState(undefined),
   }
 }
 
@@ -74,6 +80,7 @@ export function migrateSocialState(raw: SocialState): SocialState {
     ...base,
     ...input,
     socialStateVersion: SOCIAL_STATE_VERSION,
+    realitySimulation: normalizeRealitySimulationState(input.realitySimulation),
     energyBank: sanitiseBank(input.energyBank, 'energy'),
     influenceBank: sanitiseBank(input.influenceBank, 'influence'),
     infoBank: sanitiseBank(input.infoBank, 'info'),
@@ -81,13 +88,19 @@ export function migrateSocialState(raw: SocialState): SocialState {
     sessionLogs: Array.isArray(input.sessionLogs) ? input.sessionLogs : [],
     actionHistory: (legacyHistory as SocialActionLogEntry[]).slice(-historyLimit),
     incomingInteractions: Array.isArray(input.incomingInteractions)
-      ? input.incomingInteractions
+      ? input.incomingInteractions.map((interaction) =>
+          normalizeIncomingInteractionContract(interaction)
+        )
       : [],
     incomingInteractionLogs: Array.isArray(input.incomingInteractionLogs)
       ? input.incomingInteractionLogs
       : [],
     scheduledIncomingInteractions: Array.isArray(input.scheduledIncomingInteractions)
-      ? input.scheduledIncomingInteractions
+      ? input.scheduledIncomingInteractions.map((scheduled) => ({
+          ...scheduled,
+          scheduledForDay: scheduled.scheduledForDay ?? scheduled.scheduledForWeek,
+          interaction: normalizeIncomingInteractionContract(scheduled.interaction),
+        }))
       : [],
     incomingInteractionDelivery: {
       ...base.incomingInteractionDelivery,
@@ -112,6 +125,9 @@ export function migrateSocialState(raw: SocialState): SocialState {
         ? input.weekStartRelSnapshot
         : {},
   }
+
+  migrated.reality = normalizeRealityDomainState(input.reality, migrated.relationships)
+  migrateDramaAlliances(migrated.reality, migrated.dramaNetwork.alliances)
 
   return migrated
 }

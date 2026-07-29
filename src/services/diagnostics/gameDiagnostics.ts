@@ -18,6 +18,7 @@ export type GameDiagnostic = {
 
 let latestContext: Partial<GameDiagnostic> = {};
 let installed = false;
+const actionHistory: Array<{ type: string; at: string }> = [];
 
 type DiagnosticState = {
   game?: {
@@ -45,17 +46,25 @@ function activeSurface(state: DiagnosticState): string {
 export const gameDiagnosticsMiddleware: Middleware = (api) => (next) => (action) => {
   const result = next(action);
   const state = api.getState() as DiagnosticState;
+  const actionType =
+    typeof action === 'object' && action && 'type' in action ? String(action.type) : 'unknown';
+  actionHistory.push({ type: actionType, at: new Date().toISOString() });
+  if (actionHistory.length > 100) actionHistory.splice(0, actionHistory.length - 100);
   latestContext = {
     phase: state?.game?.phase,
     week: state?.game?.week,
     gameId: state?.game?.gameId ?? null,
     runId: state?.game?.runId ?? null,
     saveVersion: state?.game?.saveVersion,
-    lastAction: typeof action === 'object' && action && 'type' in action ? String(action.type) : 'unknown',
+    lastAction: actionType,
     activeSurface: activeSurface(state),
   };
   return result;
 };
+
+export function getDiagnosticActionHistory(): ReadonlyArray<{ type: string; at: string }> {
+  return actionHistory;
+}
 
 export function captureGameDiagnostic(reason: string, error?: unknown): GameDiagnostic {
   const report: GameDiagnostic = {

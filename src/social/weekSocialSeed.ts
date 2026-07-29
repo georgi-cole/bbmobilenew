@@ -1,14 +1,17 @@
 /**
  * weekSocialSeed — initializes new relationships and consolidates recent social memory.
  *
- * New pairs receive a deterministic starting chemistry value. Existing pairs no
- * longer drift randomly every week: gratitude, resentment, neglect and trust
- * momentum produce a small bounded continuity adjustment instead. Meaningful
- * game events already change relationships when they happen, so this weekly pass
- * only represents emotions settling between days rather than replaying the event.
+ * New pairs receive a deterministic starting chemistry value. Existing pairs
+ * receive a small continuity adjustment plus a light deterministic background
+ * shift. The latter represents indirect conversations, observation, ordinary
+ * mood, and off-screen house life without inventing a major event.
  */
 
-import { updateRelationship } from './socialSlice'
+import {
+  applyRealityAmbientMood,
+  applyRealityAmbientRelationship,
+  updateRelationship,
+} from './socialSlice'
 import HOUSEGUESTS from '../data/houseguests'
 import type { SocialMemoryEntry, SocialMemoryMap } from './types'
 
@@ -107,13 +110,34 @@ export function getRelationshipContinuityDelta(entry?: SocialMemoryEntry): numbe
   return Math.max(-2, Math.min(2, Math.round(signal / 4)))
 }
 
+export function getAmbientRelationshipDelta(
+  roll: number,
+  options: { humanInvolved?: boolean; week?: number } = {}
+): number {
+  const safeRoll = Math.max(0, Math.min(0.999_999, Number.isFinite(roll) ? roll : 0.5))
+  const earlyHumanWarmth = options.humanInvolved === true && (options.week ?? 1) <= 3
+  if (earlyHumanWarmth) {
+    if (safeRoll < 0.07) return -2
+    if (safeRoll < 0.22) return -1
+    if (safeRoll < 0.55) return 0
+    if (safeRoll < 0.87) return 1
+    return 2
+  }
+  if (safeRoll < 0.12) return -2
+  if (safeRoll < 0.32) return -1
+  if (safeRoll < 0.68) return 0
+  if (safeRoll < 0.88) return 1
+  return 2
+}
+
 /**
  * Seed or refresh relationships at week start.
  *
  * - Week 1 keeps the established roster chemistry behavior.
  * - Brand-new pairs receive deterministic chemistry between -12 and +25.
- * - Existing pairs receive at most ±2 from remembered treatment, never an
- *   unexplained random swing.
+ * - Existing pairs receive at most ±3 from memory plus low-amplitude ambient
+ *   house life. Human-involved edges get a small early warmth bias, not immunity.
+ * - Contestant mood, stress, and social energy settle a little each day.
  */
 export function seedWeekRelationships(store: StoreAPI): void {
   const state = store.getState() as SeedState
@@ -144,7 +168,17 @@ export function seedWeekRelationships(store: StoreAPI): void {
       const target = active[targetIndex]
       const existing = relationships[actor.id]?.[target.id]
       const delta = existing
-        ? getRelationshipContinuityDelta(socialMemory[actor.id]?.[target.id])
+        ? Math.max(
+            -3,
+            Math.min(
+              3,
+              getRelationshipContinuityDelta(socialMemory[actor.id]?.[target.id]) +
+                getAmbientRelationshipDelta(rng(), {
+                  humanInvolved: actor.isUser === true || target.isUser === true,
+                  week,
+                })
+            )
+          )
         : Math.round(-12 + rng() * 37)
 
       if (delta !== 0) {
@@ -156,7 +190,29 @@ export function seedWeekRelationships(store: StoreAPI): void {
             actionSource: 'system',
           })
         )
+        if (existing) {
+          store.dispatch(
+            applyRealityAmbientRelationship({
+              sourceId: actor.id,
+              targetId: target.id,
+              socialDelta: delta,
+              day: week,
+            })
+          )
+        }
       }
     }
+  }
+
+  for (const player of active) {
+    store.dispatch(
+      applyRealityAmbientMood({
+        actorId: player.id,
+        valenceDelta: Math.round((rng() - 0.48) * 10),
+        arousalDelta: Math.round((rng() - 0.5) * 8),
+        stressDelta: Math.round((rng() - 0.52) * 6),
+        socialEnergyDelta: Math.round((rng() - 0.5) * 8),
+      })
+    )
   }
 }
