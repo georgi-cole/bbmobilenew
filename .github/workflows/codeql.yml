@@ -15,8 +15,8 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{{ matrix.language }})
-    runs-on: ${{{ matrix.os }}
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     strategy:
       fail-fast: false
@@ -53,8 +53,8 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: ${{{ matrix.language }}
-          build-mode: ${{{ matrix.build-mode }}
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
 
       - name: Build iOS app for analysis
         if: matrix.language == 'swift'
