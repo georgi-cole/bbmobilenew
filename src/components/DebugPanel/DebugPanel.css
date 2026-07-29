@@ -415,7 +415,7 @@
 .dbg-minigame-picker__option + .dbg-minigame-picker__option {
   border-top: 1px solid rgba(255 255 255 / 0.06);
 }
-.dbg-minigame-picker__option[aria-selected="true"] {
+.dbg-minigame-picker__option[aria-selected='true'] {
   background: #16213e;
   color: #fff;
 }

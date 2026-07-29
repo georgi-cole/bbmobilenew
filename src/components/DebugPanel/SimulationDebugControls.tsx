@@ -1,17 +1,17 @@
-import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { setAudio, setGameUX, setSim } from "../../store/settingsSlice";
-import { SoundManager } from "../../services/sound/SoundManager";
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { setAudio, setGameUX, setSim } from '../../store/settingsSlice'
+import { SoundManager } from '../../services/sound/SoundManager'
 
 const CHANCE_CONTROLS = [
-  ["battleBackChance", "Battle Back"],
-  ["specialSafetyChance", "Special Safety"],
-  ["doubleEvictionChance", "Double Eviction"],
-  ["dayStartShockChance", "Morning Shock"],
-] as const;
+  ['battleBackChance', 'Battle Back'],
+  ['specialSafetyChance', 'Special Safety'],
+  ['doubleEvictionChance', 'Double Eviction'],
+  ['dayStartShockChance', 'Morning Shock'],
+] as const
 
 export default function SimulationDebugControls() {
-  const dispatch = useAppDispatch();
-  const settings = useAppSelector((state) => state.settings);
+  const dispatch = useAppDispatch()
+  const settings = useAppSelector((state) => state.settings)
 
   return (
     <>
@@ -22,9 +22,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.sim.enableTwists}
-              onChange={(event) =>
-                dispatch(setSim({ enableTwists: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setSim({ enableTwists: event.target.checked }))}
             />
             Twists
           </label>
@@ -37,7 +35,7 @@ export default function SimulationDebugControls() {
                   setGameUX({
                     dramaMode: event.target.checked,
                     dramaModeAdminOverride: event.target.checked,
-                  }),
+                  })
                 )
               }
             />
@@ -52,7 +50,7 @@ export default function SimulationDebugControls() {
                   setSim({
                     publicMode: event.target.checked,
                     publicModeAdminOverride: event.target.checked,
-                  }),
+                  })
                 )
               }
             />
@@ -62,9 +60,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.sim.enableJuryHouse}
-              onChange={(event) =>
-                dispatch(setSim({ enableJuryHouse: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setSim({ enableJuryHouse: event.target.checked }))}
             />
             Tribunal House
           </label>
@@ -72,9 +68,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.sim.enableFavoritePlayer}
-              onChange={(event) =>
-                dispatch(setSim({ enableFavoritePlayer: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setSim({ enableFavoritePlayer: event.target.checked }))}
             />
             Public Favorite
           </label>
@@ -82,9 +76,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.sim.allowSelfEvict}
-              onChange={(event) =>
-                dispatch(setSim({ allowSelfEvict: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setSim({ allowSelfEvict: event.target.checked }))}
             />
             Self Eviction
           </label>
@@ -92,9 +84,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.gameUX.spectatorMode}
-              onChange={(event) =>
-                dispatch(setGameUX({ spectatorMode: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setGameUX({ spectatorMode: event.target.checked }))}
             />
             Spectator Mode
           </label>
@@ -102,9 +92,7 @@ export default function SimulationDebugControls() {
             <input
               type="checkbox"
               checked={settings.gameUX.animations}
-              onChange={(event) =>
-                dispatch(setGameUX({ animations: event.target.checked }))
-              }
+              onChange={(event) => dispatch(setGameUX({ animations: event.target.checked }))}
             />
             Animations
           </label>
@@ -121,9 +109,7 @@ export default function SimulationDebugControls() {
               min={0}
               max={100}
               value={settings.sim[key]}
-              onChange={(event) =>
-                dispatch(setSim({ [key]: Number(event.target.value) }))
-              }
+              onChange={(event) => dispatch(setSim({ [key]: Number(event.target.value) }))}
             />
             <output>{settings.sim[key]}%</output>
           </label>
@@ -136,17 +122,17 @@ export default function SimulationDebugControls() {
             max={100}
             value={settings.sim.secretMissionTriggerOverride ?? -1}
             onChange={(event) => {
-              const value = Number(event.target.value);
+              const value = Number(event.target.value)
               dispatch(
                 setSim({
                   secretMissionTriggerOverride: value < 0 ? null : value,
-                }),
-              );
+                })
+              )
             }}
           />
           <output>
             {settings.sim.secretMissionTriggerOverride === null
-              ? "default"
+              ? 'default'
               : `${settings.sim.secretMissionTriggerOverride}%`}
           </output>
         </label>
@@ -158,17 +144,15 @@ export default function SimulationDebugControls() {
             max={20}
             value={settings.sim.secretMissionTriggerWeekOverride ?? 0}
             onChange={(event) => {
-              const value = Number(event.target.value);
+              const value = Number(event.target.value)
               dispatch(
                 setSim({
                   secretMissionTriggerWeekOverride: value === 0 ? null : value,
-                }),
-              );
+                })
+              )
             }}
           />
-          <output>
-            {settings.sim.secretMissionTriggerWeekOverride ?? "off"}
-          </output>
+          <output>{settings.sim.secretMissionTriggerWeekOverride ?? 'off'}</output>
         </label>
         <div className="dbg-row">
           <button
@@ -180,7 +164,7 @@ export default function SimulationDebugControls() {
                   specialSafetyChance: 100,
                   doubleEvictionChance: 100,
                   dayStartShockChance: 100,
-                }),
+                })
               )
             }
           >
@@ -195,7 +179,7 @@ export default function SimulationDebugControls() {
                   specialSafetyChance: 0,
                   doubleEvictionChance: 0,
                   dayStartShockChance: 0,
-                }),
+                })
               )
             }
           >
@@ -208,21 +192,21 @@ export default function SimulationDebugControls() {
         <h3 className="dbg-section__title">Audio & presentation</h3>
         <dl className="dbg-grid">
           <dt>Music</dt>
-          <dd>{settings.audio.musicOn ? "on" : "off"}</dd>
+          <dd>{settings.audio.musicOn ? 'on' : 'off'}</dd>
           <dt>SFX</dt>
-          <dd>{settings.audio.sfxOn ? "on" : "off"}</dd>
+          <dd>{settings.audio.sfxOn ? 'on' : 'off'}</dd>
           <dt>Current track</dt>
-          <dd>{SoundManager.currentMusicKey ?? "—"}</dd>
+          <dd>{SoundManager.currentMusicKey ?? '—'}</dd>
           <dt>BGM owner</dt>
-          <dd>{SoundManager.currentBgmOwner ?? "—"}</dd>
+          <dd>{SoundManager.currentBgmOwner ?? '—'}</dd>
         </dl>
         <div className="dbg-row">
           <button
             className="dbg-btn"
             onClick={() => {
-              dispatch(setAudio({ sfxOn: true }));
-              void SoundManager.unlockFromGesture();
-              void SoundManager.play("ui:confirm");
+              dispatch(setAudio({ sfxOn: true }))
+              void SoundManager.unlockFromGesture()
+              void SoundManager.play('ui:confirm')
             }}
           >
             Test Confirm
@@ -230,9 +214,9 @@ export default function SimulationDebugControls() {
           <button
             className="dbg-btn"
             onClick={() => {
-              dispatch(setAudio({ sfxOn: true }));
-              void SoundManager.unlockFromGesture();
-              void SoundManager.play("ui:error");
+              dispatch(setAudio({ sfxOn: true }))
+              void SoundManager.unlockFromGesture()
+              void SoundManager.play('ui:error')
             }}
           >
             Test Error
@@ -246,5 +230,5 @@ export default function SimulationDebugControls() {
         </div>
       </section>
     </>
-  );
+  )
 }

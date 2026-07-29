@@ -1,25 +1,22 @@
-import { defineConfig, devices } from "@playwright/test";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { defineConfig, devices } from '@playwright/test'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const rootDir = path.dirname(fileURLToPath(import.meta.url));
-const nodeBin = process.execPath;
-const viteScript = path.join(rootDir, "node_modules", "vite", "bin", "vite.js");
-const baseURL = "http://127.0.0.1:4173/bbmobilenew/";
+const rootDir = path.dirname(fileURLToPath(import.meta.url))
+const nodeBin = process.execPath
+const viteScript = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js')
+const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
 
 export default defineConfig({
-  testDir: "./e2e/playwright",
-  outputDir: "test-results",
+  testDir: './e2e/playwright',
+  outputDir: 'test-results',
   retries: 0,
-  reporter: [
-    ["list"],
-    ["html", { outputFolder: "playwright-report", open: "never" }],
-  ],
+  reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
     baseURL,
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   webServer: {
     command: `"${nodeBin}" "${viteScript}" --host 127.0.0.1 --port 4173 --strictPort`,
@@ -29,25 +26,25 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "desktop-chromium",
+      name: 'desktop-chromium',
       use: {
-        ...devices["Desktop Chrome"],
-        browserName: "chromium",
+        ...devices['Desktop Chrome'],
+        browserName: 'chromium',
         viewport: { width: 1366, height: 768 },
       },
     },
     {
-      name: "mobile-chromium",
-      use: { browserName: "chromium", ...devices["Pixel 7"] },
+      name: 'mobile-chromium',
+      use: { browserName: 'chromium', ...devices['Pixel 7'] },
     },
     {
-      name: "mobile-webkit",
-      use: { browserName: "webkit", ...devices["iPhone 13"] },
+      name: 'mobile-webkit',
+      use: { browserName: 'webkit', ...devices['iPhone 13'] },
     },
     {
-      name: "narrow-chromium",
+      name: 'narrow-chromium',
       use: {
-        browserName: "chromium",
+        browserName: 'chromium',
         viewport: { width: 320, height: 568 },
         deviceScaleFactor: 1,
         isMobile: true,
@@ -55,9 +52,9 @@ export default defineConfig({
       },
     },
     {
-      name: "compact-mobile-chromium",
+      name: 'compact-mobile-chromium',
       use: {
-        browserName: "chromium",
+        browserName: 'chromium',
         viewport: { width: 360, height: 800 },
         deviceScaleFactor: 1,
         isMobile: true,
@@ -65,12 +62,12 @@ export default defineConfig({
       },
     },
     {
-      name: "wide-desktop-chromium",
+      name: 'wide-desktop-chromium',
       use: {
-        ...devices["Desktop Chrome"],
-        browserName: "chromium",
+        ...devices['Desktop Chrome'],
+        browserName: 'chromium',
         viewport: { width: 1920, height: 1080 },
       },
     },
   ],
-});
+})
