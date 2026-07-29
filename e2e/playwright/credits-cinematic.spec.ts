@@ -31,9 +31,5 @@ test.describe('Credits cinematic @core-journey', () => {
 
     await page.waitForTimeout(500)
     await expect(page.locator('.big-eye-cinematic')).toBeVisible()
-    await page.screenshot({
-      path: 'test-results/credits-adaptive-mobile.png',
-      fullPage: false,
-    })
   })
 })
