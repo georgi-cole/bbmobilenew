@@ -4,8 +4,12 @@ sync = Path('src/services/sound/AudioStateSync.tsx')
 text = sync.read_text()
 text = text.replace("import { musicCueSignature } from './musicCue'\n", '', 1)
 start = text.index('export function hasSameResolvedPlayback(')
-end = text.index('\nexport default function AudioStateSync()', start)
-text = text[:start] + "import {\n  hasSameResolvedPlayback,\n  shouldCrossfadeManagedMinigameCue,\n} from './musicCueTransitions'\n" + text[end:]
+end = text.index('\nfunction enrichMinigameTransition(', start)
+text = (
+    text[:start]
+    + "import {\n  hasSameResolvedPlayback,\n  shouldCrossfadeManagedMinigameCue,\n} from './musicCueTransitions'\n"
+    + text[end:]
+)
 sync.write_text(text)
 
 Path('src/services/sound/musicCueTransitions.ts').write_text(
