@@ -2,7 +2,7 @@
  * useWheelOfLuck.ts — Audio hook for the Risk Wheel spin animation.
  *
  * Exposes `startWheelSound()` and `stopWheelSound()` so callers can play
- * (and stop) the looping spin track keyed as 'minigame:wheelofluck'.
+ * (and stop) the looping spin track keyed as 'minigame:risk_wheel_spin'.
  * The audio asset path is /assets/sounds/minigame_wheelofluck.mp3; until the
  * file is added the hook is a no-op (SoundManager silently handles missing files).
  *
@@ -25,7 +25,7 @@
 import { useCallback } from 'react';
 import { SoundManager } from '../services/sound/SoundManager';
 
-const WHEEL_SOUND_KEY = 'minigame:wheelofluck';
+const WHEEL_SOUND_KEY = 'minigame:risk_wheel_spin';
 
 export interface UseWheelOfLuckReturn {
   /** Play the wheel-spin loop. Safe to call even if the asset is not yet present. */

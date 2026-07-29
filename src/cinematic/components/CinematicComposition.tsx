@@ -54,7 +54,7 @@ const THUNDER_STRIKES = [
 const CinematicThunder = () => {
   const { fps, durationInFrames } = useVideoConfig()
   const { isPlayer } = getRemotionEnvironment()
-  const relativeSource = 'assets/sounds/cinematic-thunder.wav'
+  const relativeSource = 'assets/sounds/cinematic_thunder.wav'
   const source =
     isPlayer && typeof document !== 'undefined'
       ? new URL(relativeSource, document.baseURI).toString()
