@@ -1,4 +1,5 @@
 name: Deploy Vite app to GitHub Pages
+# Credits mobile-seamlessness release trigger.
 
 on:
   push:
