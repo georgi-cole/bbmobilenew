@@ -95,17 +95,11 @@ jobs:
             if marker not in text:
               raise SystemExit('Could not locate filename-alias migration marker')
             text = text.replace(marker, insertion + marker, 1)
-
-          if 'dynamicSound?: SoundEntry' not in text:
-            text = text.replace(
-              '  tags: readonly MusicTrackTag[]\n}\n\nexport interface MusicTrackAssetOverride',
-              '  tags: readonly MusicTrackTag[]\n  dynamicSound?: SoundEntry\n}\n\nexport interface MusicTrackAssetOverride',
-            )
           target.write_text(text)
 
           generator = Path('scripts/generate-audio-manifest.mjs')
           generated = generator.read_text().replace(
-            'const generated = `/* eslint-disable */\n',
+            r'const generated = `/* eslint-disable */\n',
             'const generated = `',
           )
           generator.write_text(generated)
@@ -125,6 +119,21 @@ jobs:
           node --check scripts/migrate-audio-assets.mjs
           node scripts/migrate-audio-assets.mjs
           node scripts/generate-audio-manifest.mjs
+
+      - name: Preserve catalog compatibility contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          target = Path('src/services/sound/musicCatalog.ts')
+          text = target.read_text()
+          if 'dynamicSound?: SoundEntry' not in text:
+            old = '  tags: readonly MusicTrackTag[]\n}'
+            new = '  tags: readonly MusicTrackTag[]\n  dynamicSound?: SoundEntry\n}'
+            if old not in text:
+              raise SystemExit('Could not locate MusicTrackDefinition tags field')
+            text = text.replace(old, new, 1)
+          target.write_text(text)
 
       - name: Format generated integration
         run: |
