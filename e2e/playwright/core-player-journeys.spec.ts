@@ -148,9 +148,10 @@ async function clickFirstEnabled(buttons: Locator): Promise<void> {
 
 async function completeActiveConfessionalDecision(page: Page): Promise<void> {
   const before = await readAppState(page)
-  const advance = page.getByRole('button', { name: 'Advance to next phase' })
-  await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await advance.click()
+  const confessional = page.getByRole('button', { name: /^Confessional \(\d+\)$/ })
+  await expect(confessional).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await expect(confessional).toBeEnabled()
+  await confessional.click()
 
   const session = page.getByTestId('required-confessional-session')
   await expect(session).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })

@@ -301,10 +301,16 @@ test.describe('Finale / Jury flow @release', () => {
     await tribunal
       .getByRole('button', { name: /Skip All/ })
       .evaluate((button) => (button as HTMLButtonElement).click())
-    const recap = page.getByRole('dialog', { name: 'Season recap cinematic' })
+    const recap = page.getByRole('dialog', { name: 'Season recap archive' })
     await expect(recap).toBeVisible({ timeout: 10_000 })
     await recap
-      .getByRole('button', { name: 'Skip recap' })
+      .getByRole('button', { name: 'Skip opening' })
+      .evaluate((button) => (button as HTMLButtonElement).click())
+    await expect(recap.getByRole('heading', { name: 'Choose the next chapter.' })).toBeVisible({
+      timeout: 10_000,
+    })
+    await recap
+      .getByRole('button', { name: 'Exit season recap' })
       .evaluate((button) => (button as HTMLButtonElement).click())
     await expect(recap).toBeHidden()
 
@@ -411,7 +417,9 @@ test.describe('Finale / Jury flow @release', () => {
     await expect(favoriteVote).toBeHidden()
 
     await resumedGoodbye.getByRole('button', { name: 'Skip to end' }).click()
-    await expect(page.getByLabel('Credits cinematic')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByLabel('Credits cinematic', { exact: true })).toBeVisible({
+      timeout: 15_000,
+    })
     await page.getByRole('button', { name: 'Skip credits' }).click()
     await expect(page).toHaveURL(/#\/game-over$/, { timeout: 5_000 })
     await expect(page.getByRole('heading', { name: 'Season Complete' })).toBeVisible()

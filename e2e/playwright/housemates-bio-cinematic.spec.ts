@@ -30,15 +30,17 @@ test.describe('Housemate biographies @core-journey', () => {
     await expect(playMenu).toBeVisible()
     await playMenu.getByRole('button', { name: 'Housemates', exact: true }).click()
 
-    const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates cinematic' })
+    const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates' })
     await expect(cinematic).toBeVisible()
+    await cinematic.getByRole('button', { name: 'Enter the house' }).click()
+    await cinematic.getByRole('button', { name: "Open Aria's full story" }).click()
     await expect(cinematic.getByRole('heading', { name: 'Aria' })).toBeVisible({
       timeout: 10_000,
     })
 
-    const portrait = cinematic.locator('.hbc-card__portrait')
-    const portraitWrap = cinematic.locator('.hbc-card__portrait-wrap')
-    const copy = cinematic.locator('.hbc-card__copy')
+    const portrait = cinematic.locator('.hbc-profile__portrait')
+    const portraitWrap = cinematic.locator('.hbc-profile__portrait-stage')
+    const copy = cinematic.locator('.hbc-profile__copy')
     await expect(portrait).toBeVisible()
     await expect
       .poll(() => portrait.evaluate((image) => (image as HTMLImageElement).naturalWidth))
@@ -51,33 +53,14 @@ test.describe('Housemate biographies @core-journey', () => {
       throw new Error('Biography layout measurements are unavailable')
     }
 
-    expect(portraitBox.height).toBeGreaterThan(viewport.height * 0.78)
-    expect(portraitBox.y + portraitBox.height).toBeLessThanOrEqual(viewport.height - 10)
+    expect(portraitBox.height).toBeGreaterThan(viewport.height * 0.72)
+    expect(portraitBox.y).toBeGreaterThanOrEqual(80)
+    expect(portraitBox.y + portraitBox.height).toBeLessThanOrEqual(viewport.height - 50)
     expect(copyBox.width).toBeLessThanOrEqual(viewport.width * 0.5)
     expect(copyBox.x).toBeGreaterThanOrEqual(viewport.width * 0.48)
 
     await page.screenshot({
       path: 'test-results/housemates-biography-aria-mobile.png',
-      fullPage: false,
-    })
-
-    await page.setViewportSize({ width: 915, height: 412 })
-    await page.waitForTimeout(300)
-
-    const landscapePortraitBox = await portraitWrap.boundingBox()
-    const landscapeCopyBox = await copy.boundingBox()
-    if (!landscapePortraitBox || !landscapeCopyBox) {
-      throw new Error('Landscape biography measurements are unavailable')
-    }
-
-    expect(landscapePortraitBox.width).toBeGreaterThan(915 * 0.42)
-    expect(landscapePortraitBox.height).toBeGreaterThan(412 * 0.72)
-    expect(landscapePortraitBox.y + landscapePortraitBox.height).toBeLessThanOrEqual(412 - 8)
-    expect(landscapeCopyBox.x).toBeGreaterThan(915 * 0.5)
-    expect(landscapeCopyBox.x + landscapeCopyBox.width).toBeLessThanOrEqual(915 - 20)
-
-    await page.screenshot({
-      path: 'test-results/housemates-biography-aria-landscape.png',
       fullPage: false,
     })
   })

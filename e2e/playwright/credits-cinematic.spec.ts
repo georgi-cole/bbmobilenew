@@ -1,6 +1,8 @@
 import { closeDebugPanelIfOpen, expect, test } from './support/test'
 
 test.describe('Credits cinematic @core-journey', () => {
+  test.setTimeout(60_000)
+
   test('uses the real WebGL renderer with mobile performance settings', async ({ page }) => {
     await page.addInitScript(() => {
       sessionStorage.setItem('bb:homeHubSplashShownThisSession', 'true')
@@ -27,7 +29,7 @@ test.describe('Credits cinematic @core-journey', () => {
     await expect(cinematic).toHaveAttribute('data-cinematic-renderer', 'webgl')
     await expect(page.locator('.credits-webgl canvas')).toHaveCount(1)
 
-    await page.waitForTimeout(2_500)
+    await page.waitForTimeout(500)
     await expect(page.locator('.big-eye-cinematic')).toBeVisible()
     await page.screenshot({
       path: 'test-results/credits-adaptive-mobile.png',

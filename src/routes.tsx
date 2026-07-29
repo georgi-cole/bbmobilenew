@@ -18,7 +18,7 @@ import SettingsAdminRoute from './routes/SettingsAdminRoute';
 import { lazy, Suspense, type ReactNode } from 'react';
 
 const GameRoute = lazy(() => import('./routes/GameRoute'));
-const DiaryRoom = lazy(() => import('./screens/DiaryRoom/DiaryRoom'));
+const ConfessionalRoute = lazy(() => import('./screens/DiaryRoom/ConfessionalRoute'));
 const Houseguests = lazy(() => import('./screens/Houseguests/Houseguests'));
 const Profile = lazy(() => import('./screens/Profile/Profile'));
 const EditProfile = lazy(() => import('./screens/Profile/EditProfile'));
@@ -121,7 +121,7 @@ export const router = createHashRouter([
     children: [
       { index: true,              element: <HomeHub />      },
       { path: 'game',             element: load(<GameRoute />)    },
-      { path: 'diary-room',       element: load(<DiaryRoom />)    },
+      { path: 'diary-room',       element: load(<ConfessionalRoute />) },
       { path: 'houseguests',      element: load(<Houseguests />)  },
       { path: 'profile',          element: load(<Profile />)      },
       { path: 'profile-edit',     element: load(<EditProfile />)  },
