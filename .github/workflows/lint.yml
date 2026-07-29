@@ -25,7 +25,7 @@ jobs:
       - name: Run lint
         run: npm run lint:ci
 
-  music-cue-phase2-core:
+  music-cue-phase2-editor:
     if: github.head_ref == 'agent/music-cue-editor-phase2' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -46,132 +46,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply Phase 2 core implementation
+      - name: Apply Music Manager editor implementation
         shell: python
         run: |
           from pathlib import Path
 
-          workflow = Path('.github/workflows/music-cue-phase2-core.yml').read_text().splitlines()
-          step_name = '      - name: Implement cue runtime and minigame variants'
-          start = workflow.index(step_name)
-          run_line = next(
-              index for index in range(start + 1, len(workflow))
-              if workflow[index] == '        run: |'
-          )
-          end = next(
-              index for index in range(run_line + 1, len(workflow))
-              if workflow[index].startswith('      - name: ')
-          )
-          prefix = '          '
-          source = '\n'.join(
-              line[len(prefix):] if line.startswith(prefix) else line
-              for line in workflow[run_line + 1:end]
-          )
-          strict_helper = '''def replace_once(path: str, old: str, new: str) -> None:
-              target = Path(path)
-              text = target.read_text()
-              if old not in text:
-                  raise SystemExit(f'Could not locate replacement in {path}: {old[:120]!r}')
-              target.write_text(text.replace(old, new, 1))
-          '''
-          tolerant_helper = '''def replace_once(path: str, old: str, new: str) -> None:
-              target = Path(path)
-              text = target.read_text()
-              if old in text:
-                  target.write_text(text.replace(old, new, 1))
-                  return
+          lines = Path('.github/workflows/music-cue-phase2-ui.yml').read_text().splitlines()
+          start = lines.index('# python: |') + 1
+          end = lines.index('# IMPLEMENTATION_SOURCE_END')
+          source_lines = []
+          for line in lines[start:end]:
+              if line == '#':
+                  source_lines.append('')
+              elif line.startswith('#   '):
+                  source_lines.append(line[4:])
+              else:
+                  raise SystemExit(f'Unexpected implementation source line: {line!r}')
+          source = '\n'.join(source_lines)
+          exec(compile(source, 'music-cue-phase2-editor', 'exec'))
 
-              text_lines = text.splitlines(keepends=True)
-              old_lines = old.splitlines(keepends=True)
-              new_lines = new.splitlines(keepends=True)
-              normalized_old = [line.lstrip() for line in old_lines]
-              for index in range(0, len(text_lines) - len(old_lines) + 1):
-                  candidate = text_lines[index:index + len(old_lines)]
-                  if [line.lstrip() for line in candidate] != normalized_old:
-                      continue
-                  matched_indent = candidate[0][:-len(candidate[0].lstrip())]
-                  new_indent = new_lines[0][:-len(new_lines[0].lstrip())] if new_lines else ''
-                  adjusted = []
-                  for line in new_lines:
-                      if not line.strip():
-                          adjusted.append(line)
-                          continue
-                      line_indent = line[:-len(line.lstrip())]
-                      relative = line_indent[len(new_indent):] if line_indent.startswith(new_indent) else line_indent
-                      adjusted.append(matched_indent + relative + line.lstrip())
-                  target.write_text(''.join(text_lines[:index] + adjusted + text_lines[index + len(old_lines):]))
-                  return
-              raise SystemExit(f'Could not locate replacement in {path}: {old[:120]!r}')
-          '''
-          if strict_helper not in source:
-              raise SystemExit('Could not locate strict replacement helper in implementation source')
-          source = source.replace(strict_helper, tolerant_helper, 1)
-          exec(compile(source, 'music-cue-phase2-implementation', 'exec'))
-
-      - name: Repair Phase 2 core contracts
-        shell: python
-        run: |
-          from pathlib import Path
-
-          engine = Path('src/services/sound/MusicCueEngine.ts')
-          engine_text = engine.read_text()
-          old_constructor = "  constructor(private readonly _hooks: MusicCueEngineHooks = {}) {}\n"
-          new_constructor = "  private readonly _hooks: MusicCueEngineHooks\n\n  constructor(hooks: MusicCueEngineHooks = {}) {\n    this._hooks = hooks\n  }\n"
-          if old_constructor not in engine_text:
-              raise SystemExit('Could not locate MusicCueEngine constructor parameter property')
-          engine.write_text(engine_text.replace(old_constructor, new_constructor, 1))
-
-          config = Path('src/services/sound/musicConfig.ts')
-          config_text = config.read_text()
-          profile_misplacement = (
-              "  transition?: MusicTransitionPolicy\n"
-              "  playbackCue?: MusicCueDefinition\n"
-              "}\n\nexport interface AudioEventCue"
-          )
-          if profile_misplacement in config_text:
-              config_text = config_text.replace(
-                  profile_misplacement,
-                  "  transition?: MusicTransitionPolicy\n}\n\nexport interface AudioEventCue",
-                  1,
-              )
-          resolved_block = (
-              "  inheritedAssignments: readonly string[]\n"
-              "  transition?: MusicTransitionPolicy\n"
-              "}\n\nexport const INHERIT_MUSIC"
-          )
-          if resolved_block not in config_text:
-              raise SystemExit('Could not locate ResolvedMusicCue contract')
-          config_text = config_text.replace(
-              resolved_block,
-              "  inheritedAssignments: readonly string[]\n"
-              "  transition?: MusicTransitionPolicy\n"
-              "  playbackCue?: MusicCueDefinition\n"
-              "}\n\nexport const INHERIT_MUSIC",
-              1,
-          )
-          config.write_text(config_text)
-
-      - name: Format Phase 2 core
+      - name: Format Music Manager editor
         run: |
           npx prettier --write \
-            src/services/sound/musicCue.ts \
-            src/services/sound/MusicCueEngine.ts \
-            src/services/sound/minigameMusicVariant.ts \
-            src/services/sound/musicConfig.ts \
-            src/services/sound/musicConfigSanitizer.ts \
-            src/services/sound/resolveDesiredMusic.ts \
-            src/services/sound/AudioStateSync.tsx \
-            src/services/sound/SoundManager.ts \
-            src/store/challengeSlice.ts \
-            src/components/MinigameHost/MinigameHost.tsx \
-            src/screens/GameScreen/GameScreen.tsx \
-            src/components/RiskWheelComp/RiskWheelComp.tsx \
-            tests/unit/sound/musicCue.test.ts \
-            tests/unit/sound/musicCueResolver.test.ts \
-            tests/unit/sound/MusicCueEngine.test.ts \
-            docs/MUSIC_CUE_PHASE2.md
+            src/screens/SettingsAdmin/MusicCueEditor.tsx \
+            src/screens/SettingsAdmin/MusicManagerPanel.tsx \
+            src/screens/SettingsAdmin/MusicManagerPanel.css \
+            src/services/sound/musicConfigAudit.ts \
+            tests/unit/sound/musicCueAudit.test.ts \
+            tests/unit/sound/musicCueSanitizer.test.ts
 
-      - name: Validate Phase 2 core
+      - name: Validate Music Manager editor
         run: |
           npm run test:guard
           npm run lint:ci
@@ -180,35 +84,28 @@ jobs:
             tests/unit/sound/musicCue.test.ts \
             tests/unit/sound/musicCueResolver.test.ts \
             tests/unit/sound/MusicCueEngine.test.ts \
-            tests/unit/sound/resolveDesiredMusic.test.ts \
-            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicCueAudit.test.ts \
+            tests/unit/sound/musicCueSanitizer.test.ts \
             tests/unit/sound/musicConfigAudit.test.ts \
+            tests/unit/sound/musicConfigSanitizer.test.ts \
+            tests/unit/sound/musicRuntimeConfig.test.ts \
+            tests/unit/sound/resolveDesiredMusic.test.ts \
             tests/unit/sound/queue.test.ts
           npm run build
           npm run build:mobile
 
-      - name: Commit validated Phase 2 core
+      - name: Commit validated Music Manager editor
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
-            src/services/sound/musicCue.ts \
-            src/services/sound/MusicCueEngine.ts \
-            src/services/sound/minigameMusicVariant.ts \
-            src/services/sound/musicConfig.ts \
-            src/services/sound/musicConfigSanitizer.ts \
-            src/services/sound/resolveDesiredMusic.ts \
-            src/services/sound/AudioStateSync.tsx \
-            src/services/sound/SoundManager.ts \
-            src/store/challengeSlice.ts \
-            src/components/MinigameHost/MinigameHost.tsx \
-            src/screens/GameScreen/GameScreen.tsx \
-            src/components/RiskWheelComp/RiskWheelComp.tsx \
-            tests/unit/sound/musicCue.test.ts \
-            tests/unit/sound/musicCueResolver.test.ts \
-            tests/unit/sound/MusicCueEngine.test.ts \
-            docs/MUSIC_CUE_PHASE2.md
-          git commit -m 'Add advanced music cues and minigame variants'
+            src/screens/SettingsAdmin/MusicCueEditor.tsx \
+            src/screens/SettingsAdmin/MusicManagerPanel.tsx \
+            src/screens/SettingsAdmin/MusicManagerPanel.css \
+            src/services/sound/musicConfigAudit.ts \
+            tests/unit/sound/musicCueAudit.test.ts \
+            tests/unit/sound/musicCueSanitizer.test.ts
+          git commit -m 'Add Music Manager cue editor and variant controls'
           git push origin HEAD:refs/heads/agent/music-cue-editor-phase2
