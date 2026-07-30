@@ -1,12 +1,9 @@
-Exit code: 0
-Wall time: 1 seconds
-Output:
 /**
- * HoldTheWallComp â€“ "Hold the Wall" endurance competition screen.
+ * HoldTheWallComp – "Hold the Wall" endurance competition screen.
  *
  * Phases:
- *   active   â†’ players hold the wall; AI participants drop deterministically
- *   complete â†’ winner announced, onComplete fires
+ *   active   → players hold the wall; AI participants drop deterministically
+ *   complete → winner announced, onComplete fires
  *
  * NOTE: This component intentionally has NO countdown logic and NO rules
  * display. Both are handled upstream by MinigameHost before this component
@@ -32,7 +29,7 @@ import EffectsOverlay from '../../ui/games/HoldTheWall/effects/EffectsOverlay';
 import Hourglass from '../../ui/games/HoldTheWall/Hourglass';
 import './HoldTheWallComp.css';
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 /** Minimal participant shape accepted via props (mirrors MinigameParticipant). */
 interface ParticipantProp {
@@ -58,47 +55,47 @@ interface GamePlayer {
   isUser?: boolean;
 }
 
-// â”€â”€â”€ Narration lines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Narration lines ──────────────────────────────────────────────────────────
 
 const NARRATION = {
   start: [
-    "Alright players â€” grip that wall like your life depends on it! ðŸ’ª",
-    "Welcome to the wall of pain. Hope you all had a good breakfast! ðŸ‹ï¸",
-    "Let's see who has the strengthâ€¦ and who has the noodle arms! ðŸ",
+    "Alright players — grip that wall like your life depends on it! 💪",
+    "Welcome to the wall of pain. Hope you all had a good breakfast! 🏋️",
+    "Let's see who has the strength… and who has the noodle arms! 🍝",
   ],
   holding: [
-    "You're doing great! Your arms definitely won't regret this tomorrowâ€¦ ðŸ˜…",
-    "Look at you, still hanging on! Literally! ðŸ¤©",
-    "The wall loves youâ€¦ the wall won't let you goâ€¦ ðŸ‘»",
-    "Impressive grip strength. Have you been opening jars? ðŸ«™",
-    "Everybody is still holding on â€” production is NOT happy! ðŸ˜¤",
-    "The crowd is on the edge of their seats right now! ðŸŽ¤",
+    "You're doing great! Your arms definitely won't regret this tomorrow… 😅",
+    "Look at you, still hanging on! Literally! 🤩",
+    "The wall loves you… the wall won't let you go… 👻",
+    "Impressive grip strength. Have you been opening jars? 🫙",
+    "Everybody is still holding on — production is NOT happy! 😤",
+    "The crowd is on the edge of their seats right now! 🎤",
   ],
   someone_dropped: [
-    "{name} has hit the ground! That's gonna leave a mark! ðŸ’¥",
-    "{name} is out! Don't worry, we have ice packs! ðŸ§Š",
-    "{name} couldn't hold on â€” the wall claims another victim! ðŸ˜±",
-    "There goes {name}! Gravity: 1, Housemate: 0! ðŸª‚",
-    "{name} drops! The competition just got tighter! ðŸ”¥",
+    "{name} has hit the ground! That's gonna leave a mark! 💥",
+    "{name} is out! Don't worry, we have ice packs! 🧊",
+    "{name} couldn't hold on — the wall claims another victim! 😱",
+    "There goes {name}! Gravity: 1, Housemate: 0! 🪂",
+    "{name} drops! The competition just got tighter! 🔥",
   ],
   final_two: [
-    "We're down to TWO! This is getting intense! ðŸ”¥",
-    "Mano a mano! Who wants it more?! ðŸ’ª",
-    "Two players, one wall, zero mercy! ðŸ˜¤",
+    "We're down to TWO! This is getting intense! 🔥",
+    "Mano a mano! Who wants it more?! 💪",
+    "Two players, one wall, zero mercy! 😤",
   ],
   victory: [
-    "WE HAVE A WINNER! What an incredible performance! ðŸ†",
-    "VICTORY! Your arms may be dead but your spirit is alive! ðŸŽ‰",
-    "CHAMPION! You've conquered the wall! ðŸ‘‘",
+    "WE HAVE A WINNER! What an incredible performance! 🏆",
+    "VICTORY! Your arms may be dead but your spirit is alive! 🎉",
+    "CHAMPION! You've conquered the wall! 👑",
   ],
   loss: [
-    "And you're down! Great effort though! ðŸ’”",
-    "Gravity wins this round! Better luck next time! ðŸŒ",
-    "The wall claims another victim! At least you tried! ðŸ˜¢",
+    "And you're down! Great effort though! 💔",
+    "Gravity wins this round! Better luck next time! 🌍",
+    "The wall claims another victim! At least you tried! 😢",
   ],
 };
 
-// â”€â”€â”€ Timing & seed constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Timing & seed constants ──────────────────────────────────────────────────
 
 /** How long the winner screen stays visible before MinigameHost dismisses it. */
 const WINNER_SCREEN_DURATION_MS = 5000;
@@ -107,7 +104,7 @@ const SPECTATOR_FAST_FORWARD_SPEED = 2;
 /** Minimum ms between periodic "still holding" narration messages. */
 const MIN_NARRATION_INTERVAL_MS = 8000;
 
-/** Extra random ms added on top of MIN_NARRATION_INTERVAL_MS (0â€“this value). */
+/** Extra random ms added on top of MIN_NARRATION_INTERVAL_MS (0–this value). */
 const NARRATION_INTERVAL_RANGE_MS = 7000;
 
 /**
@@ -119,7 +116,7 @@ const NARRATION_SEED_OFFSET   = 0xdeadbeef; // start + holding messages
 const DROP_EVENT_SEED_OFFSET  = 0xc0ffee;   // player-drop narration fallback
 const COMPLETE_SEED_OFFSET    = 0xfacade;   // winner/loss narration
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function handleAvatarError(e: React.SyntheticEvent<HTMLImageElement>, name: string) {
   const img = e.currentTarget;
@@ -138,7 +135,7 @@ function pickLine(lines: string[], rng: () => number): string {
   return lines[Math.floor(rng() * lines.length)];
 }
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function HoldTheWallComp({
   participantIds,
@@ -170,7 +167,7 @@ export default function HoldTheWallComp({
       };
     }
   }
-  // Then overlay with real store data (higher priority â€” has proper avatars)
+  // Then overlay with real store data (higher priority — has proper avatars)
   for (const p of storePlayers) {
     playerMap[p.id] = {
       id: p.id,
@@ -186,11 +183,11 @@ export default function HoldTheWallComp({
   const [fastForward, setFastForward] = useState(false);
   // Track round start for the complete screen "last player standing after Xs" message
   const [roundStartKey, setRoundStartKey] = useState(0);
-  const [narrativeMsg, setNarrativeMsg] = useState('Get ready to hold on for dear lifeâ€¦');
+  const [narrativeMsg, setNarrativeMsg] = useState('Get ready to hold on for dear life…');
   const startTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const humanDroppedRef = useRef(false);
-  // Seeded RNG for narrative â€” advanced per message so each pick is different
+  // Seeded RNG for narrative — advanced per message so each pick is different
   const rngRef = useRef<(() => number) | null>(null);
   const prevDropCountRef = useRef(0);
 
@@ -204,7 +201,7 @@ export default function HoldTheWallComp({
   const humanPlayer = Object.values(playerMap).find((p) => p.isUser);
   const humanId: string | null = humanPlayer?.id ?? null;
 
-  // â”€â”€ Effects hook â€” subscribes to controller events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Effects hook — subscribes to controller events ────────────────────────
   const { activeEffects, isAutoDropped } = useHoldTheWallEffects(
     controller,
     humanId,
@@ -228,7 +225,7 @@ export default function HoldTheWallComp({
     'wind', 'rain', 'paint', 'vibrate', 'sound',
   ].filter((effect) => effect in activeEffects).map((effect) => `htw-effects--${effect}`);
 
-  // â”€â”€ Initialise competition on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Initialise competition on mount ──────────────────────────────────────
   useEffect(() => {
     // Create a stable GameController for this game session (pass seed so
     // scheduler options are accessible if needed externally).
@@ -253,7 +250,7 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // â”€â”€ Start round state + 2-second hold rule when game becomes active â”€â”€
+  // ── Start round state + 2-second hold rule when game becomes active ──
   useEffect(() => {
     if (htw.status !== 'active') return;
 
@@ -280,7 +277,7 @@ export default function HoldTheWallComp({
 
     // Start auto-scheduling randomised distraction effects for this round.
     // A new EffectsScheduler is created here using the controller that was
-    // created on mount â€” the controllerRef is stable for the component lifetime.
+    // created on mount — the controllerRef is stable for the component lifetime.
     let effectsScheduler: EffectsScheduler | null = null;
     if (controllerRef.current) {
       effectsScheduler = new EffectsScheduler(controllerRef.current, seed, 1);
@@ -295,7 +292,7 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
 
-  // â”€â”€ Schedule AI drops; pressure shortens the remaining endurance window â”€â”€
+  // ── Schedule AI drops; pressure shortens the remaining endurance window ──
   // This only changes rival endurance. The human rule stays deliberately simple:
   // press and keep holding the wall. A fake call remains distraction-only.
   useEffect(() => {
@@ -325,7 +322,7 @@ export default function HoldTheWallComp({
     };
   }, [dispatch, fastForward, htw.aiDropSchedule, htw.droppedIds, htw.status, humanId, pressureTier]);
 
-  // â”€â”€ Elapsed timer (requestAnimationFrame loop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Elapsed timer (requestAnimationFrame loop) ────────────────────────────
   useEffect(() => {
     if (htw.status !== 'active') return;
 
@@ -342,20 +339,20 @@ export default function HoldTheWallComp({
     };
   }, [htw.status]);
 
-  // â”€â”€ Resolve outcome when game completes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Resolve outcome when game completes ──────────────────────────────────
   useEffect(() => {
     if (htw.status !== 'complete' || htw.outcomeResolved) return;
     dispatch(resolveHoldTheWallOutcome());
   }, [htw.status, htw.outcomeResolved, dispatch]);
 
-  // â”€â”€ Notify parent after a short delay so the winner screen is visible â”€â”€â”€â”€â”€
+  // ── Notify parent after a short delay so the winner screen is visible ─────
   useEffect(() => {
     if (htw.status !== 'complete') return;
     const t = window.setTimeout(() => onComplete?.(), WINNER_SCREEN_DURATION_MS);
     return () => window.clearTimeout(t);
   }, [htw.status, onComplete]);
 
-  // â”€â”€ Narration: start message + periodic holding updates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Narration: start message + periodic holding updates ───────────────────
   useEffect(() => {
     if (htw.status !== 'active') return;
     // Initialise the seeded RNG on first activation (offset by 999 so it's
@@ -363,7 +360,7 @@ export default function HoldTheWallComp({
     rngRef.current = mulberry32(seed ^ NARRATION_SEED_OFFSET);
     setNarrativeMsg(pickLine(NARRATION.start, rngRef.current));
 
-    // Schedule periodic "still holding" updates (8â€“15 s between messages)
+    // Schedule periodic "still holding" updates (8–15 s between messages)
     const intervals: ReturnType<typeof window.setTimeout>[] = [];
     let nextDelay = MIN_NARRATION_INTERVAL_MS + Math.floor((rngRef.current?.() ?? 0.5) * NARRATION_INTERVAL_RANGE_MS);
     function scheduleNext() {
@@ -383,7 +380,7 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
 
-  // â”€â”€ Narration: player drop events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Narration: player drop events ─────────────────────────────────────────
   useEffect(() => {
     if (htw.status !== 'active') return;
     const newDropCount = htw.droppedIds.length;
@@ -405,7 +402,7 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.droppedIds]);
 
-  // â”€â”€ Narration: game complete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Narration: game complete ───────────────────────────────────────────────
   useEffect(() => {
     if (htw.status !== 'complete') return;
     const rng = rngRef.current ?? mulberry32(seed ^ COMPLETE_SEED_OFFSET);
@@ -417,13 +414,13 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
 
-  // â”€â”€ Human hold / release handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Human hold / release handlers ─────────────────────────────────────────
   const handleHoldStart = useCallback(
     (e: React.PointerEvent) => {
       if (htw.status !== 'active' || humanDroppedRef.current) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       setIsHolding(true);
-      // Notify the controller â€” cancels the 2-second auto-drop timer
+      // Notify the controller — cancels the 2-second auto-drop timer
       controllerRef.current?.onPlayerHoldStart();
     },
     [htw.status],
@@ -444,7 +441,7 @@ export default function HoldTheWallComp({
     e.preventDefault();
   }, []);
 
-  // â”€â”€â”€ Derived display data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Derived display data ─────────────────────────────────────────────────
 
   const aliveIds = htw.participantIds.filter((id) => !htw.droppedIds.includes(id));
   const remaining = aliveIds.length;
@@ -454,7 +451,7 @@ export default function HoldTheWallComp({
   const humanIsWinner = htw.winnerId === humanId;
   const canHoldWall = htw.status === 'active' && !humanDropped;
   const fastForwardActive = htw.status === 'active' && humanDropped && fastForward;
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
       className={['htw-root', `htw-root--${pressureState}`, ...activeEffectClasses].filter(Boolean).join(' ')}
@@ -487,8 +484,8 @@ export default function HoldTheWallComp({
                 aria-pressed={fastForwardActive}
                 title={fastForwardActive ? '2x speed active' : 'Fast-forward 2x'}
               >
-                <span aria-hidden="true">â©</span>
-                <span>2Ã—</span>
+                <span aria-hidden="true">⏩</span>
+                <span>2×</span>
               </button>
             )}
           </div>
@@ -530,8 +527,8 @@ export default function HoldTheWallComp({
                 onError={(e) => handleAvatarError(e, name)}
               />
               <span className="htw-participant-name">{name}</span>
-              {dropped && <span className="htw-participant-dropped-badge">ðŸ’§</span>}
-              {htw.winnerId === id && <span className="htw-participant-winner-badge">ðŸ†</span>}
+              {dropped && <span className="htw-participant-dropped-badge">💧</span>}
+              {htw.winnerId === id && <span className="htw-participant-winner-badge">🏆</span>}
             </div>
           );
         })}
@@ -539,11 +536,11 @@ export default function HoldTheWallComp({
 
       {/* Narration box */}
       <div className="htw-narrative" data-testid="htw-narrative">
-        <span className="htw-narrative-icon">ðŸ“¢</span>
+        <span className="htw-narrative-icon">📢</span>
         <span className="htw-narrative-text">{narrativeMsg}</span>
       </div>
 
-      {/* Wall panel â€” expands to fill remaining space and stays visible while spectating */}
+      {/* Wall panel — expands to fill remaining space and stays visible while spectating */}
       {htw.status === 'active' && (
         <div
           className={[
@@ -583,28 +580,28 @@ export default function HoldTheWallComp({
                   className={['htw-wall__grip', isHumanGrip ? 'htw-wall__grip--human' : 'htw-wall__grip--rival', isHolding && isHumanGrip ? 'is-holding' : ''].filter(Boolean).join(' ')}
                   style={{ '--grip-index': index, '--grip-row': index % 2 } as CSSProperties}
                 >
-                  <span className="htw-wall__grip-hand">{isHumanGrip ? 'âœ‹' : 'â—'}</span>
+                  <span className="htw-wall__grip-hand">{isHumanGrip ? '✋' : '●'}</span>
                   <span className="htw-wall__grip-name">{player?.name ?? `AI ${index}`}</span>
                 </span>
               );
             })}
           </div>
           <div className="htw-wall__hold-zone">
-            <span className="htw-wall__hold-icon" aria-hidden="true">âœ‹</span>
+            <span className="htw-wall__hold-icon" aria-hidden="true">✋</span>
             <span className="htw-wall__hold-label">{canHoldWall ? (isHolding ? 'YOU ARE HOLDING' : 'PRESS & HOLD YOUR GRIP') : 'SPECTATING THE WALL'}</span>
-            <span className="htw-wall__hold-copy">{canHoldWall ? 'Hold steady â€” shocks push rivals closer to the edge.' : `${remaining} still fighting.`}</span>
+            <span className="htw-wall__hold-copy">{canHoldWall ? 'Hold steady — shocks push rivals closer to the edge.' : `${remaining} still fighting.`}</span>
           </div>
         </div>
       )}
 
-      {/* Human dropped â€” spectator message */}
+      {/* Human dropped — spectator message */}
       {htw.status === 'active' && humanDropped && (
         <div className="htw-spectating" data-testid="htw-spectating">
-          <p>You dropped! Watching {remaining} player{remaining !== 1 ? 's' : ''} remainingâ€¦</p>
+          <p>You dropped! Watching {remaining} player{remaining !== 1 ? 's' : ''} remaining…</p>
           {/* Auto-drop feedback: shown when eliminated by the 2-second rule */}
           {isAutoDropped && (
             <p className="htw-auto-drop-notice" data-testid="htw-auto-drop-notice">
-              â± Eliminated: you didn't press hold within 2 seconds of round start.
+              ⏱ Eliminated: you didn't press hold within 2 seconds of round start.
             </p>
           )}
         </div>
@@ -613,14 +610,14 @@ export default function HoldTheWallComp({
       {/* Auto-drop banner overlay (shown briefly when first eliminated) */}
       {isAutoDropped && humanDropped && (
         <div className="htw-auto-drop-banner" data-testid="htw-auto-drop-banner">
-          â± Too slow â€” auto-eliminated!
+          ⏱ Too slow — auto-eliminated!
         </div>
       )}
 
       {/* Game over screen */}
       {htw.status === 'complete' && (
         <div className="htw-complete" data-testid="htw-complete">
-          <div className="htw-complete-trophy">ðŸ†</div>
+          <div className="htw-complete-trophy">🏆</div>
           <h2 className="htw-complete-title">
             {humanIsWinner ? 'You Won!' : `${winnerPlayer?.name ?? 'Unknown'} Wins!`}
           </h2>
@@ -628,11 +625,10 @@ export default function HoldTheWallComp({
             Last player standing after {formatElapsed(elapsedMs)}
           </p>
           <p className="htw-complete-prize">
-            {prizeType === 'LOH' ? 'ðŸ‘‘ Leader of the House' : 'ðŸ”‘ Power of Safety'} awarded!
+            {prizeType === 'LOH' ? '👑 Leader of the House' : '🔑 Power of Safety'} awarded!
           </p>
         </div>
       )}
     </div>
   );
 }
-
