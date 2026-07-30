@@ -22,14 +22,14 @@ function getState(store: ReturnType<typeof makeStore>): FamousFiguresState {
 
 const PLAYER = 'scorer-player';
 
-// ─── Scoring point values ─────────────────────────────────────────────────────
+// â”€â”€â”€ Scoring point values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe('getPointsForHintsUsed', () => {
   it('returns 10 for 0 hints', () => expect(getPointsForHintsUsed(0)).toBe(10));
-  it('returns 9 for 1 hint', () => expect(getPointsForHintsUsed(1)).toBe(9));
-  it('returns 7 for 2 hints', () => expect(getPointsForHintsUsed(2)).toBe(7));
-  it('returns 5 for 3 hints', () => expect(getPointsForHintsUsed(3)).toBe(5));
-  it('returns 3 for 4 hints', () => expect(getPointsForHintsUsed(4)).toBe(3));
+  it('returns 8 for 1 hint', () => expect(getPointsForHintsUsed(1)).toBe(8));
+  it('returns 5 for 2 hints', () => expect(getPointsForHintsUsed(2)).toBe(5));
+  it('returns 3 for 3 hints', () => expect(getPointsForHintsUsed(3)).toBe(3));
+  it('returns 1 for the final visible hint', () => expect(getPointsForHintsUsed(4)).toBe(1));
   it('returns 1 for 5 hints', () => expect(getPointsForHintsUsed(5)).toBe(1));
   it('returns 1 for overtime (6+)', () => {
     expect(getPointsForHintsUsed(6)).toBe(1);
@@ -37,14 +37,14 @@ describe('getPointsForHintsUsed', () => {
   });
 });
 
-// ─── Scoring across rounds ────────────────────────────────────────────────────
+// â”€â”€â”€ Scoring across rounds â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe('scoring across rounds', () => {
   it('accumulates scores across 6 rounds correctly', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER], competitionType: 'LOH', seed: 7 }));
 
-    // Round 1: correct with 0 hints → 10 pts
+    // Round 1: correct with 0 hints â†’ 10 pts
     const s0 = getState(store);
     const fig1 = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER, guess: fig1.canonicalName }));
@@ -52,17 +52,17 @@ describe('scoring across rounds', () => {
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
-    // Round 2: request 2 hints then correct → 7 pts
+    // Round 2: request 2 hints then correct â†’ 7 pts
     store.dispatch(revealNextHint());
     store.dispatch(revealNextHint());
     const s1 = getState(store);
     const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s1, PLAYER, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER, guess: fig2.canonicalName }));
-    expect(getState(store).playerScores[PLAYER]).toBe(17); // 10 + 7
+    expect(getState(store).playerScores[PLAYER]).toBe(15); // 10 + 5
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
-    // Round 3: no correct answer → 0 pts
+    // Round 3: no correct answer â†’ 0 pts
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
@@ -72,11 +72,11 @@ describe('scoring across rounds', () => {
     }
 
     expect(getState(store).status).toBe('complete');
-    expect(getState(store).playerScores[PLAYER]).toBe(17);
+    expect(getState(store).playerScores[PLAYER]).toBe(15);
   });
 });
 
-// ─── Tiebreaker logic ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Tiebreaker logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe('tiebreaker logic', () => {
   it('player with more correct rounds wins on tiebreak', () => {
@@ -85,7 +85,7 @@ describe('tiebreaker logic', () => {
     const PB = 'tie-b';
     store.dispatch(startFamousFigures({ participantIds: [PA, PB], competitionType: 'LOH', seed: 3 }));
 
-    // Round 1: both answer correctly with 0 hints → both get 10
+    // Round 1: both answer correctly with 0 hints â†’ both get 10
     const s0 = getState(store);
     const fig1A = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PA, s0.currentRound)];
     const fig1B = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PB, s0.currentRound)];
@@ -94,15 +94,15 @@ describe('tiebreaker logic', () => {
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
-    // Round 2: only PA answers correctly with 0 hints → PA +10, PB +0
+    // Round 2: only PA answers correctly with 0 hints â†’ PA +10, PB +0
     const s1 = getState(store);
     const fig2A = FAMOUS_FIGURES[getPlayerFigureIndex(s1, PA, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PA, guess: fig2A.canonicalName }));
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
-    // Round 3: only PB answers correctly with 0 hints → PB +10
-    // But: PA has 20 total, PB has 20 total — tiebreak by correct rounds
+    // Round 3: only PB answers correctly with 0 hints â†’ PB +10
+    // But: PA has 20 total, PB has 20 total â€” tiebreak by correct rounds
     const s2 = getState(store);
     const fig3B = FAMOUS_FIGURES[getPlayerFigureIndex(s2, PB, s2.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PB, guess: fig3B.canonicalName }));
@@ -118,7 +118,7 @@ describe('tiebreaker logic', () => {
     expect(s.status).toBe('complete');
     // PA: 10 + 10 + 0 = 20 (2 correct rounds)
     // PB: 10 + 0 + 10 = 20 (2 correct rounds)
-    // Exact tie in both score and rounds → first by array order
+    // Exact tie in both score and rounds â†’ first by array order
     expect([PA, PB]).toContain(s.winnerId);
   });
 
@@ -153,3 +153,4 @@ describe('tiebreaker logic', () => {
     expect(s.playerScores[PA]).toBeGreaterThan(s.playerScores[PB] ?? 0);
   });
 });
+
