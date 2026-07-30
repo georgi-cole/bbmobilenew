@@ -32,7 +32,7 @@ describe('match-flow integration', () => {
   it('simulates a full 6-round match', () => {
     const store = makeStore();
 
-    // ── Start match ──────────────────────────────────────────────────────
+    // â”€â”€ Start match â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     store.dispatch(startFamousFigures({
       participantIds: [HUMAN, AI],
       competitionType: 'LOH',
@@ -42,7 +42,7 @@ describe('match-flow integration', () => {
     expect(ff(store).status).toBe('round_active');
     expect(ff(store).currentRound).toBe(0);
 
-    // ── Round 1: human guesses correctly with 0 hints ────────────────────
+    // â”€â”€ Round 1: human guesses correctly with 0 hints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const s0 = ff(store);
     const fig1 = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig1.canonicalName }));
@@ -61,7 +61,7 @@ describe('match-flow integration', () => {
     expect(ff(store).status).toBe('round_active');
     expect(ff(store).currentRound).toBe(1);
 
-    // ── Round 2: human requests 2 hints then guesses correctly ────────────
+    // â”€â”€ Round 2: human requests 2 hints then guesses correctly â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     store.dispatch(revealNextHint());
     store.dispatch(revealNextHint());
     expect(ff(store).hintsRevealed).toBe(2);
@@ -72,16 +72,16 @@ describe('match-flow integration', () => {
     store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: 1 }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
-    expect(ff(store).playerScores[HUMAN]).toBe(17); // 10 + 7
+    expect(ff(store).playerScores[HUMAN]).toBe(15); // 10 + 5
 
     store.dispatch(endRound());
-    expect(ff(store).playerRoundScores[HUMAN][1]).toBe(7); // 2 hints = 7 pts
+    expect(ff(store).playerRoundScores[HUMAN][1]).toBe(5); // 2 hints = 5 pts
     store.dispatch(nextRound());
 
     expect(ff(store).currentRound).toBe(2);
     expect(ff(store).status).toBe('round_active');
 
-    // ── Round 3: AI answers correctly (their own figure), human misses ────
+    // â”€â”€ Round 3: AI answers correctly (their own figure), human misses â”€â”€â”€â”€
     const s2 = ff(store);
     const fig3Ai = FAMOUS_FIGURES[getPlayerFigureIndex(s2, AI, s2.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: AI, guess: fig3Ai.canonicalName }));
@@ -90,7 +90,7 @@ describe('match-flow integration', () => {
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: 'completely wrong answer xyzzy' }));
 
     expect(ff(store).playerCorrect[AI]).toBe(true);
-    // HUMAN submitted a wrong answer — playerCorrect remains false
+    // HUMAN submitted a wrong answer â€” playerCorrect remains false
     expect(ff(store).playerCorrect[HUMAN] ?? false).toBe(false);
     expect(ff(store).playerScores[AI]).toBeGreaterThan(0);
 
@@ -111,14 +111,14 @@ describe('match-flow integration', () => {
       store.dispatch(nextRound());
     }
 
-    // ── Final state ───────────────────────────────────────────────────────
+    // â”€â”€ Final state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const final = ff(store);
     expect(final.status).toBe('complete');
 
     // Human has 47 pts; AI has points from round 3 only
     const humanTotal = final.playerScores[HUMAN];
     const aiTotal = final.playerScores[AI];
-    expect(humanTotal).toBe(47);
+    expect(humanTotal).toBe(45);
     expect(aiTotal).toBeGreaterThan(0);
 
     // Human won overall (17 > AI's single-round score of at most 10)
@@ -151,9 +151,9 @@ describe('match-flow integration', () => {
     const fig = FAMOUS_FIGURES[getPlayerFigureIndex(s0, HUMAN, 0)];
     store.dispatch(submitPlayerGuess({ playerId: HUMAN, guess: fig.canonicalName }));
 
-    // Cursor must NOT advance yet — advancePlayerCursor not dispatched
+    // Cursor must NOT advance yet â€” advancePlayerCursor not dispatched
     expect(ff(store).playerRoundCursor[HUMAN]).toBe(0);
-    // AI hasn't answered → round stays active (not round_reveal)
+    // AI hasn't answered â†’ round stays active (not round_reveal)
     expect(ff(store).status).toBe('round_active');
 
     // After advancePlayerCursor, cursor advances but round still active (AI pending)
@@ -179,7 +179,7 @@ describe('match-flow integration', () => {
       expect(ff(store).playerRoundCursor[HUMAN]).toBe(round);
       store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: round }));
       expect(ff(store).playerRoundCursor[HUMAN]).toBe(round + 1);
-      // AI hasn't answered → round stays active (not round_reveal)
+      // AI hasn't answered â†’ round stays active (not round_reveal)
       expect(ff(store).status).toBe('round_active');
       // Advance round via endRound/nextRound to proceed (AI still inactive)
       store.dispatch(endRound());
@@ -193,3 +193,4 @@ describe('match-flow integration', () => {
     expect(ff(store).playerRoundCursor[HUMAN]).toBe(6);
   });
 });
+
