@@ -97,8 +97,12 @@ export async function dismissPermissionPromptIfPresent(page: Page): Promise<void
   const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
   if (!(await permissionPrompt.isVisible())) return
 
-  await permissionPrompt.getByRole('checkbox', { name: 'Remember my choice' }).check()
-  await permissionPrompt.getByRole('button', { name: 'Deny' }).click()
+  await permissionPrompt
+    .getByRole('checkbox', { name: 'Remember my choice' })
+    .evaluate((checkbox) => (checkbox as HTMLInputElement).click())
+  await permissionPrompt
+    .getByRole('button', { name: 'Deny' })
+    .evaluate((button) => (button as HTMLButtonElement).click())
   await expect(permissionPrompt).toBeHidden()
 }
 

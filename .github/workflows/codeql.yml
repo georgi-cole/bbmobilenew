@@ -50,7 +50,7 @@ jobs:
         if: matrix.language == 'swift'
         run: npm ci
 
-      - name: Sync iOS web assets and plugins
+      - name: Sync iOS web assets
         if: matrix.language == 'swift'
         run: npm run sync:ios
 
