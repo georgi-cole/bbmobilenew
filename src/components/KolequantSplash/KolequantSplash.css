@@ -51,6 +51,35 @@
   animation: kq-splash-exit 360ms ease forwards;
 }
 
+.kq-splash__skyline {
+  position: absolute;
+  z-index: 0;
+  inset: auto 0 0;
+  height: min(36dvh, 340px);
+  overflow: hidden;
+  opacity: 0.78;
+  background:
+    linear-gradient(to top, rgba(1, 3, 10, 0.92), rgba(3, 8, 24, 0.36) 52%, transparent),
+    url('/assets/splash-city-skyline-photographic.png') center bottom / cover no-repeat;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 29%, #000 100%);
+  pointer-events: none;
+}
+
+.kq-splash__skyline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 16% 62%, rgba(250, 214, 137, 0.95) 0 1px, transparent 2px),
+    radial-gradient(circle at 31% 43%, rgba(182, 213, 255, 0.82) 0 1px, transparent 2px),
+    radial-gradient(circle at 47% 68%, rgba(255, 224, 155, 0.88) 0 1px, transparent 2px),
+    radial-gradient(circle at 65% 50%, rgba(162, 207, 255, 0.78) 0 1px, transparent 2px),
+    radial-gradient(circle at 81% 66%, rgba(255, 215, 130, 0.86) 0 1px, transparent 2px);
+  filter: drop-shadow(0 0 4px rgba(187, 211, 255, 0.42));
+  opacity: 0.12;
+  animation: kq-skyline-lights 5.6s steps(2, end) infinite;
+}
+
 .kq-splash__logo-wrap {
   position: relative;
   z-index: 1;
@@ -189,6 +218,18 @@
   to { transform: translateX(22%); }
 }
 
+@keyframes kq-skyline-lights {
+  0%,
+  22%,
+  65%,
+  100% { opacity: 0.28; }
+  23%,
+  29%,
+  73% { opacity: 0.76; }
+  30%,
+  72% { opacity: 0.46; }
+}
+
 @media (max-width: 420px) {
   .kq-splash {
     --kq-splash-logo-width: 60vmin;
@@ -214,7 +255,8 @@
   .kq-splash__logo-wrap,
   .kq-splash__dna-glow,
   .kq-splash__preload,
-  .kq-splash__copyright {
+  .kq-splash__copyright,
+  .kq-splash__skyline::after {
     animation-duration: 1ms;
     animation-iteration-count: 1;
   }
