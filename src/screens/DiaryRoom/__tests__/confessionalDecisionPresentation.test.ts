@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../../store/gameSlice';
+import gameReducer, { activateCupidArrowNow } from '../../../store/gameSlice';
 import settingsReducer from '../../../store/settingsSlice';
 import { getConfessionalDecisionPresentation } from '../confessionalDecisionPresentation';
+import { buildConfessionalDecisionUnits } from '../cupidDecisionUnits';
 
 function createBaseGame() {
   const store = configureStore({
@@ -81,5 +82,32 @@ describe('getConfessionalDecisionPresentation', () => {
     );
 
     expect(firstReplacement.key).not.toBe(secondReplacement.key);
+  });
+
+  it('presents active Cupid nominees as combined pair choices', () => {
+    const store = configureStore({
+      reducer: {
+        game: gameReducer,
+        settings: settingsReducer,
+      },
+    });
+    store.dispatch(activateCupidArrowNow());
+    const game = store.getState().game;
+    const nomineePlayers = game.cupidArrow!.pairs
+      .slice(0, 2)
+      .flatMap((pair) =>
+        pair.memberIds.map((id) => game.players.find((player) => player.id === id)!),
+      );
+
+    const units = buildConfessionalDecisionUnits(game, nomineePlayers);
+    const presentation = getConfessionalDecisionPresentation(
+      { type: 'eviction_vote', week: game.week, phase: 'live_vote' },
+      game,
+      game.players,
+    );
+
+    expect(units).toHaveLength(2);
+    expect(units.every((unit) => unit.players.length === 2)).toBe(true);
+    expect(presentation.prompt).toMatch(/joint ballot counts as two votes/i);
   });
 });

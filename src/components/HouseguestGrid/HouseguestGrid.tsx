@@ -8,6 +8,7 @@ import styles from './HouseguestGrid.module.css'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
 import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
+import { getCupidPair, isCupidArrowActive } from '../../features/twists/cupidArrow'
 
 const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
 
@@ -339,6 +340,11 @@ export default function HouseguestGrid({
         >
           {renderedHouseguests.map((hg) => {
             const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
+            const cupidPair = isCupidArrowActive(game) ? getCupidPair(game, String(hg.id)) : null
+            const cupidPartnerId = cupidPair?.memberIds.find((id) => id !== String(hg.id))
+            const cupidPartnerName = cupidPartnerId
+              ? game.players.find((player) => player.id === cupidPartnerId)?.name
+              : undefined
             return (
               <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
                 <AvatarTile
@@ -357,6 +363,11 @@ export default function HouseguestGrid({
                   isEvicting={hg.isEvicting}
                   nominationCeremonyState={hg.nominationCeremonyState}
                   descriptionId="houseguests-interaction-instructions"
+                  pairColor={cupidPair?.color}
+                  pairLabel={
+                    cupidPair ? `Pair ${cupidPair.id.replace('cupid-pair-', '')}` : undefined
+                  }
+                  partnerName={cupidPartnerName}
                 />
               </li>
             )

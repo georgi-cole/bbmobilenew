@@ -23,6 +23,8 @@ export interface Player {
   name: string
   /** Emoji or URL used as avatar face */
   avatar: string
+  /** Optional cast metadata used by twists that prefer mixed-gender pairings. */
+  sex?: string
   status: PlayerStatus
   /** False when the player left outside a standard eviction and cannot join the Tribunal. */
   tribunalEligible?: boolean
@@ -355,6 +357,28 @@ export interface DemocraciaResultDisplay {
   voteCountsByCandidateId: Record<string, number>
   title: string
   subtitle: string
+}
+
+export interface CupidArrowPair {
+  id: string
+  memberIds: [string, string]
+  /** Stable visual token shared by both partner tiles. */
+  color: string
+}
+
+/**
+ * Season-level state for Cupid's Arrow. Pairs remain recorded after the spell
+ * breaks so social history and season presentation can still reference them.
+ */
+export interface CupidArrowState {
+  scheduledSeason: number | null
+  status: 'inactive' | 'scheduled' | 'active' | 'broken'
+  activatedSeason: number | null
+  activatedWeek: number | null
+  pairs: CupidArrowPair[]
+  eliminatedPairCount: number
+  /** Second half of a pair waiting for the shared elimination cinematic. */
+  pendingPartnerEvictionId: string | null
 }
 
 export interface SpecialVetoState {
@@ -795,6 +819,8 @@ export interface GameState {
    * Undefined on legacy saved games created before this feature was added.
    */
   democracia?: DemocraciaState
+  /** Full-season Cupid's Arrow pairing shock. */
+  cupidArrow?: CupidArrowState
   /**
    * When Democracia resolves to a tie with public mode OFF, both tied players
    * become co-LOHs.  This array holds their IDs; null on normal days.
@@ -841,6 +867,17 @@ export interface GameState {
    * Append-only; used for post-season display and debugging.
    */
   history?: GameHistoryEvent[]
+  /**
+   * Durable snapshot of the current elimination round. Kept after transient
+   * vote UI state is dismissed so the finalized exit can be archived accurately.
+   */
+  pendingExitContext?: {
+    week: number
+    leaderIds: string[]
+    nomineeIds: string[]
+    votesByVoterId: Record<string, string>
+    voteCounts: Record<string, number>
+  } | null
   /**
    * Day-start elimination shock state.
    * When set, the popup is visible and advance() is blocked until the player

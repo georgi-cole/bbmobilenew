@@ -24,6 +24,691 @@
   animation: shockIntroBackdropFade var(--shock-intro-duration-ms, 2320ms) linear forwards;
 }
 
+.shock-intro[data-cupid-mode] {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 143, 184, 0.25), transparent 34%),
+    radial-gradient(circle at 16% 18%, rgba(210, 164, 242, 0.14), transparent 29%),
+    radial-gradient(circle at 86% 80%, rgba(132, 96, 170, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(35, 11, 30, 0.99), rgba(12, 8, 24, 1));
+}
+
+.shock-intro[data-cupid-mode='breaking'] {
+  animation:
+    cupidBreakBackdrop var(--shock-intro-duration-ms, 3900ms) ease forwards,
+    shockIntroBackdropFade var(--shock-intro-duration-ms, 3900ms) linear forwards;
+}
+
+.shock-intro__cupid-cinematic {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shock-intro__cupid-proclamation {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  width: min(88vw, 620px);
+  height: 100%;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding:
+    max(32px, calc(env(safe-area-inset-top, 0px) + 24px))
+    18px
+    max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px));
+  color: #fff5f8;
+  text-align: center;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.62);
+  animation: cupidProclamationReveal var(--shock-intro-duration-ms, 4400ms) ease both;
+}
+
+.shock-intro__cupid-kicker {
+  margin: 0 0 12px;
+  color: rgba(255, 221, 232, 0.82);
+  font-size: clamp(0.68rem, 2.6vw, 0.86rem);
+  font-weight: 850;
+  letter-spacing: 0.28em;
+}
+
+.shock-intro__cupid-sigil {
+  display: grid;
+  width: clamp(64px, 18vw, 92px);
+  height: clamp(64px, 18vw, 92px);
+  margin-bottom: 12px;
+  place-items: center;
+  border: 1px solid rgba(255, 222, 233, 0.28);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(210, 99, 145, 0.22), rgba(79, 32, 69, 0.08) 66%, transparent 68%);
+  box-shadow:
+    0 0 0 8px rgba(255, 255, 255, 0.018),
+    0 0 42px rgba(226, 100, 151, 0.2);
+  animation: cupidSigilBeat 1.8s ease-in-out 0.5s 2;
+}
+
+.shock-intro__cupid-sigil svg {
+  width: 68%;
+  height: 68%;
+  overflow: visible;
+}
+
+.cupid-sigil-art__heart {
+  fill: rgba(239, 116, 164, 0.9);
+  stroke: #ffe6ef;
+  stroke-width: 1.45;
+  stroke-linejoin: round;
+}
+
+.cupid-sigil-art__bow,
+.cupid-sigil-art__arrow {
+  fill: none;
+  stroke: #ffe9f1;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cupid-sigil-art__rift {
+  fill: none;
+  stroke: #581a3b;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.shock-intro__cupid-proclamation h1 {
+  display: flex;
+  margin: 0;
+  flex-direction: column;
+  color: #fff8fb;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.45rem, 12vw, 5.5rem);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 0.9;
+}
+
+.shock-intro__cupid-proclamation h1 strong {
+  margin-top: 7px;
+  color: #ffb3ce;
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-proclamation h1 strong {
+  color: #e9d8e6;
+}
+
+.shock-intro__cupid-divider {
+  display: grid;
+  width: min(74vw, 340px);
+  margin: 22px 0 16px;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 180, 207, 0.9);
+}
+
+.shock-intro__cupid-divider span {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 211, 227, 0.48));
+}
+
+.shock-intro__cupid-divider span:last-child {
+  transform: scaleX(-1);
+}
+
+.shock-intro__cupid-divider b {
+  position: relative;
+  display: block;
+  width: 12px;
+  height: 12px;
+  transform: rotate(-45deg);
+  border-radius: 50% 50% 50% 0;
+  background: #f49aba;
+  box-shadow: 0 0 14px rgba(244, 129, 171, 0.38);
+}
+
+.shock-intro__cupid-divider b.shock-intro__divider-mark--broken {
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  transform: rotate(-28deg);
+  background: linear-gradient(90deg, #f3bdd0 0 42%, transparent 42% 56%, #f3bdd0 56%);
+  box-shadow: 0 0 12px rgba(238, 156, 188, 0.3);
+}
+
+.shock-intro__cupid-declaration {
+  max-width: 34rem;
+  margin: 0;
+  color: rgba(255, 238, 244, 0.9);
+  font-size: clamp(0.98rem, 3.8vw, 1.3rem);
+  font-weight: 580;
+  line-height: 1.5;
+}
+
+.shock-intro__cupid-handoff {
+  position: absolute;
+  bottom: max(26px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  margin: 0;
+  color: rgba(255, 229, 238, 0.58);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.shock-intro__cupid-heart,
+.shock-intro__cupid-arrow,
+.shock-intro__cupid-flight,
+.shock-intro__pair-token,
+.shock-intro__cupid-petal {
+  position: absolute;
+  display: block;
+}
+
+.shock-intro__cupid-departure {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.shock-intro__cupid-color-bloom {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: block;
+  width: clamp(112px, 31vw, 208px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 244, 224, 0.58);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 14px rgba(255, 237, 249, 0.025),
+    0 0 46px rgba(238, 125, 184, 0.44),
+    inset 0 0 22px rgba(255, 255, 255, 0.24);
+  filter: saturate(1.3) blur(0.2px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  clip-path: circle(50% at 50% 50%);
+  transform: translate(-50%, -50%) scale(0.25) rotate(-45deg);
+}
+
+.shock-intro__cupid-color-bloom::before,
+.shock-intro__cupid-color-bloom::after {
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(255, 246, 225, 0.48);
+  border-radius: 44% 56% 54% 46%;
+  content: '';
+}
+
+.shock-intro__cupid-color-bloom::before {
+  animation: cupidColorRingSpin 1.3s linear infinite;
+}
+
+.shock-intro__cupid-color-bloom::after {
+  inset: 25%;
+  background: rgba(255, 240, 221, 0.12);
+  animation: cupidColorRingSpin 0.8s linear infinite reverse;
+}
+
+.shock-intro__cupid-heart {
+  top: 20%;
+  left: 50%;
+  width: clamp(92px, 25vw, 170px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 26px rgba(255, 103, 158, 0.48));
+  transform: translateX(-50%);
+  animation: cupidHeartArrival 4.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.65s both;
+}
+
+.shock-intro__cupid-arrow {
+  top: 37%;
+  left: -34%;
+  width: clamp(230px, 58vw, 420px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 18px rgba(255, 220, 150, 0.46));
+  animation: cupidArrowCross 3.1s cubic-bezier(0.2, 0.75, 0.3, 1) 0.4s both;
+}
+
+.cupid-arrow-art__shaft {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.cupid-arrow-art__head {
+  fill: #fff0c9;
+  stroke: #c77a9d;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.cupid-arrow-art__feather {
+  fill: rgba(238, 147, 181, 0.82);
+  stroke: #ffdce9;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.cupid-arrow-art__heart {
+  fill: rgba(220, 88, 143, 0.92);
+  stroke: #ffe2ed;
+  stroke-width: 1.5;
+}
+
+.shock-intro__cupid-flight {
+  right: 8%;
+  bottom: 15%;
+  width: clamp(100px, 23vw, 170px);
+  height: auto;
+  overflow: visible;
+  opacity: 0;
+  filter: drop-shadow(0 8px 18px rgba(10, 3, 9, 0.55));
+}
+
+.cupid-flight-art__wing {
+  fill: rgba(255, 228, 239, 0.14);
+  stroke: rgba(255, 228, 239, 0.88);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cupid-flight-art__body {
+  fill: rgba(213, 112, 158, 0.68);
+  stroke: #ffe5ef;
+  stroke-width: 2.2;
+}
+
+.cupid-flight-art__line,
+.cupid-flight-art__arrow,
+.cupid-flight-art__halo {
+  fill: none;
+  stroke: #ffe7ef;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cupid-flight-art__halo {
+  stroke: #ffe9b5;
+  filter: drop-shadow(0 0 5px rgba(255, 228, 167, 0.72));
+}
+
+.cupid-heart-art__body {
+  stroke: rgba(255, 227, 238, 0.82);
+  stroke-width: 2;
+}
+
+.cupid-heart-art__rift {
+  fill: none;
+  stroke: #4b1232;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 150;
+  stroke-dashoffset: 150;
+  animation: cupidArtworkRift 760ms ease 4.3s forwards;
+}
+
+.cupid-heart-art__spark {
+  fill: none;
+  stroke: rgba(255, 224, 235, 0.85);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.shock-intro__pair-token {
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  width: clamp(20px, 5vw, 30px);
+  height: clamp(20px, 5vw, 30px);
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--cupid-pair-color) 76%, white 24%);
+  border-radius: 50%;
+  background: var(--cupid-pair-color);
+  color: #fff;
+  font-size: clamp(0.58rem, 2vw, 0.76rem);
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.48);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cupid-pair-color) 62%, transparent);
+  opacity: 0;
+  transform: translate(var(--cupid-pair-start-x), var(--cupid-pair-start-y)) scale(0.6);
+}
+
+.shock-intro__cupid-petal {
+  top: 46%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50% 50% 50% 0;
+  background: rgba(255, 148, 188, 0.9);
+  box-shadow: 0 0 12px rgba(255, 134, 179, 0.48);
+  transform: rotate(-45deg);
+  animation: cupidHeartScatter 3s ease-out 1.6s both;
+}
+
+.shock-intro__cupid-petal--2 {
+  --cupid-x: -32vw;
+  --cupid-y: -22vh;
+  animation-delay: 1.72s;
+}
+
+.shock-intro__cupid-petal--3 {
+  --cupid-x: 29vw;
+  --cupid-y: -18vh;
+  animation-delay: 1.84s;
+}
+
+.shock-intro__cupid-petal--4 {
+  --cupid-x: -25vw;
+  --cupid-y: 24vh;
+  animation-delay: 1.96s;
+}
+
+.shock-intro__cupid-petal--5 {
+  --cupid-x: 34vw;
+  --cupid-y: 20vh;
+  animation-delay: 2.08s;
+}
+
+.shock-intro__cupid-petal--6 {
+  --cupid-x: 4vw;
+  --cupid-y: 31vh;
+  animation-delay: 2.2s;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-heart {
+  top: 42%;
+  animation: cupidHeartBreak 2.2s cubic-bezier(0.28, 0.82, 0.24, 1) 3.35s both;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-arrow {
+  display: none;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-flight {
+  top: calc(42% + 54px);
+  right: auto;
+  bottom: auto;
+  left: calc(50% + clamp(44px, 12vw, 92px));
+  animation: cupidFlightCollect 0.9s cubic-bezier(0.18, 0.88, 0.24, 1) 4.8s both;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-petal {
+  background: rgba(255, 183, 205, 0.72);
+  animation: cupidBrokenPieces 1.9s ease-in 4.55s both;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__pair-token {
+  animation: cupidPairBadgesBreak 4.25s cubic-bezier(0.2, 0.78, 0.2, 1) both;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-color-bloom {
+  animation: cupidColorBloom 3.5s cubic-bezier(0.18, 0.82, 0.24, 1) 2.05s both;
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-departure {
+  animation: cupidDepartureTakeoff 2.05s cubic-bezier(0.25, 0.06, 0.68, 1) 5.65s both;
+}
+
+@keyframes cupidHeartArrival {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.2) rotate(-14deg);
+  }
+  38% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1) rotate(4deg);
+  }
+  64% {
+    transform: translateX(-50%) scale(0.94) rotate(0deg);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translateX(-50%) translateY(-16px) scale(0.78);
+  }
+}
+
+@keyframes cupidArrowCross {
+  0% {
+    opacity: 0;
+    transform: translateX(0) rotate(-7deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(138vw) rotate(4deg);
+  }
+}
+
+@keyframes cupidHeartScatter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-45deg) scale(0.2);
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--cupid-x, 22vw), var(--cupid-y, -28vh)) rotate(85deg) scale(1.4);
+  }
+}
+
+@keyframes cupidHeartBreak {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.25) rotate(-14deg);
+  }
+  34% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1) rotate(3deg);
+  }
+  58% {
+    transform: translateX(-50%) scale(0.98) rotate(-2deg);
+  }
+  78% {
+    filter: drop-shadow(0 0 30px rgba(255, 103, 158, 0.6)) grayscale(0);
+  }
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 34px rgba(255, 127, 176, 0.72)) grayscale(0.06);
+    transform: translateX(-50%) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes cupidArtworkRift {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 150;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cupidFlightCollect {
+  0% {
+    opacity: 0;
+    transform: translate(8vw, 7vh) rotate(-16deg) scale(0.58);
+  }
+  42% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(4deg) scale(0.92);
+  }
+}
+
+@keyframes cupidBrokenPieces {
+  0% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--cupid-x, 20vw), 58vh) rotate(160deg) scale(0.45);
+  }
+}
+
+@keyframes cupidPairBadgesBreak {
+  0% {
+    opacity: 0;
+    transform: translate(var(--cupid-pair-start-x), var(--cupid-pair-start-y)) scale(0.55);
+  }
+  13% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 1;
+    transform: translate(var(--cupid-pair-mix-x), var(--cupid-pair-mix-y)) scale(1.08) rotate(110deg);
+  }
+  67% {
+    opacity: 0.88;
+    transform: translate(calc(var(--cupid-pair-mix-x) * 0.22), calc(var(--cupid-pair-mix-y) * 0.22)) rotate(260deg) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(420deg) scale(0.12);
+  }
+}
+
+@keyframes cupidColorBloom {
+  0% {
+    opacity: 0;
+    clip-path: circle(14% at 50% 50%);
+    transform: translate(-50%, -50%) scale(0.2) rotate(-54deg);
+  }
+  21% {
+    opacity: 0.94;
+    clip-path: circle(50% at 50% 50%);
+    transform: translate(-50%, -50%) scale(0.72) rotate(-12deg);
+  }
+  48% {
+    opacity: 1;
+    clip-path: circle(50% at 50% 50%);
+    transform: translate(-50%, -50%) scale(1.08) rotate(40deg);
+  }
+  68% {
+    opacity: 0.92;
+    clip-path: polygon(
+      50% 94%, 10% 58%, 2% 32%, 12% 11%, 31% 6%, 50% 21%,
+      69% 6%, 88% 11%, 98% 32%, 90% 58%
+    );
+    transform: translate(-50%, -50%) scale(0.96) rotate(0deg);
+  }
+  100% {
+    opacity: 0.14;
+    clip-path: polygon(
+      50% 94%, 10% 58%, 2% 32%, 12% 11%, 31% 6%, 50% 21%,
+      69% 6%, 88% 11%, 98% 32%, 90% 58%
+    );
+    transform: translate(-50%, -50%) scale(0.72) rotate(0deg);
+  }
+}
+
+@keyframes cupidColorRingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cupidDepartureTakeoff {
+  0%,
+  10% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(52vw, -66vh) rotate(19deg) scale(0.42);
+  }
+}
+
+@keyframes cupidProclamationReveal {
+  0%,
+  10% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  24%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  94%,
+  100% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+.shock-intro[data-cupid-mode='breaking'] .shock-intro__cupid-proclamation {
+  animation: cupidBreakProclamationReveal var(--shock-intro-duration-ms, 7800ms) ease both;
+}
+
+@keyframes cupidBreakProclamationReveal {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  17%,
+  27% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  34%,
+  100% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes cupidSigilBeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 0 10px rgba(255, 255, 255, 0.022),
+      0 0 52px rgba(226, 100, 151, 0.28);
+  }
+}
+
+@keyframes cupidBreakBackdrop {
+  0%,
+  58% {
+    background-color: rgba(50, 11, 38, 0.92);
+  }
+  100% {
+    background-color: rgba(2, 5, 12, 0.98);
+  }
+}
+
 .shock-intro__vision-stage {
   position: absolute;
   inset: 0;
@@ -140,6 +825,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shock-intro__cupid-cinematic {
+    display: none;
+  }
+
+  .shock-intro__pair-token {
+    display: none;
+  }
+
+  .shock-intro__cupid-proclamation,
+  .shock-intro__cupid-sigil {
+    animation: none;
+  }
+
   .shock-intro {
     animation: shockIntroFadeSimple 0.4s ease forwards;
   }

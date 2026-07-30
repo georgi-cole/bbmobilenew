@@ -108,6 +108,11 @@ import { useEvictionFlow } from './flows/useEvictionFlow'
 import { useLohFlow } from './flows/useLohFlow'
 import { useSafetyFlow } from './flows/useSafetyFlow'
 import { BATTLE_BACK_RETRY_LIMIT, useTwistFlow } from './flows/useTwistFlow'
+import {
+  expandCupidIds,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../features/twists/cupidArrow'
 export {
   POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
   POST_VOTE_ANNOUNCEMENT_MS,
@@ -314,12 +319,13 @@ export default function GameScreen() {
     showHumanNomAnim,
     showNomAnim,
     showNominationDangerSignals,
-    nominationDangerLockedId,
+    nominationDangerLockedIds,
     nomAnimPlayers,
     lohCeremonyTileId,
     shouldShowNominationCeremony,
     showNominationsModal,
     nomineeOptions,
+    autoNomineeOptionId,
     autoNomineeLabel,
     handleCommitNominees,
     handleNomAnimDone,
@@ -387,18 +393,29 @@ export default function GameScreen() {
     const isEvicted = p.status === 'evicted' || p.status === 'jury'
     const parts: string[] = []
     const povProtectedIds = new Set(game.povProtectedIds ?? [])
-    if (game.lohId === p.id) parts.push('loh')
-    if (game.posWinnerId === p.id) parts.push('pos')
+    if (game.lohId === p.id || p.status.includes('loh')) parts.push('loh')
+    if (game.posWinnerId === p.id || p.status.includes('pos')) parts.push('pos')
     if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     // Suppress permanent nomination badge while the nomination animation is
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
     const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
-    const isAnimatingSaveTarget = pendingSaveCeremony?.savedId === p.id
-    const isPublicSaveWinner = pendingPublicSaveResult?.savedId === p.id
-    const isAnimatingReplacementNominee = activeReplacementAnimationTargetId === p.id
+    const isAnimatingSaveTarget = pendingSaveCeremony
+      ? expandCupidIds(game, [pendingSaveCeremony.savedId]).includes(p.id)
+      : false
+    const isPublicSaveWinner = pendingPublicSaveResult
+      ? expandCupidIds(game, [pendingPublicSaveResult.savedId]).includes(p.id)
+      : false
+    const isAnimatingReplacementNominee = activeReplacementAnimationTargetId
+      ? expandCupidIds(game, [activeReplacementAnimationTargetId]).includes(p.id)
+      : false
     const isAnimatingAwardWinner =
-      pendingWinnerCeremony?.winnerId === p.id || (showAdvanceHohCeremony && game.lohId === p.id)
+      (pendingWinnerCeremony
+        ? expandCupidIds(game, [pendingWinnerCeremony.winnerId]).includes(p.id)
+        : false) ||
+      (showAdvanceHohCeremony && game.lohId
+        ? expandCupidIds(game, [game.lohId]).includes(p.id)
+        : false)
     if (
       Array.isArray(game.nomineeIds) &&
       game.nomineeIds.includes(p.id) &&
@@ -429,7 +446,7 @@ export default function GameScreen() {
       !isEvicted && showNominationDangerSignals
         ? game.lohId === p.id
           ? 'loh'
-          : nominationDangerLockedId === p.id
+          : nominationDangerLockedIds.includes(p.id)
             ? 'locked'
             : 'danger'
         : undefined
@@ -1065,7 +1082,7 @@ export default function GameScreen() {
     <LayoutGroup id="game-layout">
       <div
         ref={gameScreenRef}
-        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}`}
+        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}`}
         style={responsiveGameLayout.cssVars}
         data-layout-size={responsiveGameLayout.layoutSize}
         data-roster-mode={responsiveGameLayout.rosterMode}
@@ -1079,6 +1096,7 @@ export default function GameScreen() {
               nominees: publicSaveNominees,
               approvals: publicSaveApprovals,
               savedId: publicSaveWinnerId,
+              pairs: isCupidArrowActive(game) ? game.cupidArrow?.pairs : undefined,
             }}
             onPublicSaveDone={handlePublicSaveDone}
             priorityAnnouncement={confessionalTvAnnouncement}
@@ -1206,7 +1224,9 @@ export default function GameScreen() {
                   👑 LOH Competition
                 </h2>
                 <p className="tv-binary-modal__subtitle">
-                  As outgoing LOH, you are not eligible to compete.
+                  {isCupidArrowActive(game)
+                    ? `As the outgoing LOH pair, you and ${game.players.find((player) => player.id === getCupidPartnerId(game, humanPlayer?.id))?.name ?? 'your partner'} are not eligible to compete.`
+                    : 'As outgoing LOH, you are not eligible to compete.'}
                 </p>
               </header>
               <div className="tv-binary-modal__body">
@@ -1229,14 +1249,14 @@ export default function GameScreen() {
             subtitle={
               game.doubleEviction?.weekActive
                 ? `${humanPlayer?.name}, choose THREE players to nominate — Double Elimination tonight!`
-                : `${humanPlayer?.name}, choose two players to nominate for elimination.`
+                : isCupidArrowActive(game)
+                  ? `${humanPlayer?.name}, choose two pairs to nominate for elimination.`
+                  : `${humanPlayer?.name}, choose two players to nominate for elimination.`
             }
             options={nomineeOptions}
             maxSelect={game.doubleEviction?.weekActive ? 3 : 2}
             onConfirm={handleCommitNominees}
-            autoNomineeId={
-              canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? undefined) : undefined
-            }
+            autoNomineeId={canUsePublicNomineeRule ? autoNomineeOptionId : undefined}
             autoNomineeLabel={autoNomineeLabel}
           />
         )}
@@ -1583,18 +1603,22 @@ export default function GameScreen() {
             layoutSignal={responsiveGameLayout.revision}
             resolveTiles={() => {
               const winnerId = game.lohId!
-              const winnerPlayer = game.players.find((p) => p.id === winnerId)
-              return [
-                {
-                  rect: getTileRect(winnerId),
+              return expandCupidIds(game, [winnerId]).map((roleWinnerId) => {
+                const winnerPlayer = game.players.find((p) => p.id === roleWinnerId)
+                return {
+                  rect: getTileRect(roleWinnerId),
                   badge: '👑',
                   badgeImageSrc: LOH_BADGE_SRC,
+                  badgeVariant: isCupidArrowActive(game) ? ('cupid-kiss' as const) : undefined,
                   badgeStart: 'center' as const,
-                  badgeLabel: `${winnerPlayer?.name ?? winnerId} wins Leader of the House`,
-                },
-              ]
+                  badgeLabel: `${winnerPlayer?.name ?? roleWinnerId} wins Leader of the House`,
+                }
+              })
             }}
-            caption={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House!`}
+            caption={`${expandCupidIds(game, [game.lohId])
+              .map((id) => game.players.find((player) => player.id === id)?.name)
+              .filter(Boolean)
+              .join(' & ')} ${isCupidArrowActive(game) ? 'win' : 'wins'} Leader of the House!`}
             subtitle="👑"
             onDone={handleAdvanceHohCeremonyDone}
             ariaLabel={`${game.players.find((p) => p.id === game.lohId)?.name ?? 'A player'} wins Leader of the House`}
@@ -1626,7 +1650,7 @@ export default function GameScreen() {
               const sourceId =
                 game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
               const sourceRect = sourceId ? getTileRect(sourceId) : null
-              const replacementPlayer = game.players.find((p) => p.id === replacementId)
+              const replacementIds = expandCupidIds(game, [replacementId])
               const sourceIsDistinct =
                 sourceRect != null && sourceId != null && sourceId !== replacementId
               return [
@@ -1638,14 +1662,14 @@ export default function GameScreen() {
                       },
                     ]
                   : []),
-                {
-                  rect: getTileRect(replacementId),
+                ...replacementIds.map((id) => ({
+                  rect: getTileRect(id),
                   badge: '❓',
                   badgeImageSrc: NOMINATION_BADGE_SRC,
                   badgeStart: sourceIsDistinct ? sourceRect : ('center' as const),
-                  badgeLabel: `${replacementPlayer?.name ?? replacementId} named backup nominee`,
+                  badgeLabel: `${game.players.find((player) => player.id === id)?.name ?? id} named backup nominee`,
                   glowTone: 'danger' as const,
-                },
+                })),
               ]
             }}
             caption="Backup nominee named"
@@ -1663,19 +1687,27 @@ export default function GameScreen() {
           <CeremonyOverlay
             tiles={[]}
             layoutSignal={responsiveGameLayout.revision}
-            resolveTiles={() => [
-              {
-                rect: getTileRect(pendingPublicSaveResult.savedId),
+            resolveTiles={() =>
+              expandCupidIds(game, [pendingPublicSaveResult.savedId]).map((savedId) => ({
+                rect: getTileRect(savedId),
                 badge: '❓',
                 badgeImageSrc: NOMINATION_BADGE_SRC,
-                badgeLabel: `${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} public save extraction`,
+                badgeLabel: `${game.players.find((player) => player.id === savedId)?.name ?? 'A player'} public save extraction`,
                 badgeMotion: 'extract' as const,
                 glowTone: 'success' as const,
-              },
-            ]}
-            caption={`${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe!`}
+              }))
+            }
+            caption={`${expandCupidIds(game, [pendingPublicSaveResult.savedId])
+              .map((id) => game.players.find((player) => player.id === id)?.name)
+              .filter(Boolean)
+              .join(' & ')} ${isCupidArrowActive(game) ? 'are' : 'is'} safe!`}
             onDone={handlePublicSaveCeremonyDone}
-            ariaLabel={`Public save ceremony: ${game.players.find((p) => p.id === pendingPublicSaveResult.savedId)?.name ?? 'A player'} is safe`}
+            ariaLabel={`Public save ceremony: ${expandCupidIds(game, [
+              pendingPublicSaveResult.savedId,
+            ])
+              .map((id) => game.players.find((player) => player.id === id)?.name)
+              .filter(Boolean)
+              .join(' and ')} ${isCupidArrowActive(game) ? 'are' : 'is'} safe`}
             showDim={false}
             showCaption={false}
           />

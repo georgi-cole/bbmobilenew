@@ -76,6 +76,66 @@ type Props = {
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
   /** Shared instructions announced when this tile is interactive. */
   descriptionId?: string
+  pairColor?: string
+  pairLabel?: string
+  partnerName?: string
+}
+
+function CupidStatusBadgeIcon({ code }: { code: string }) {
+  if (code === 'nominated') {
+    return (
+      <svg className={styles.cupidStatusIcon} viewBox="0 0 32 32" aria-hidden="true">
+        <path
+          className={styles.cupidStatusIconFill}
+          d="M15.2 27.1C11.3 23.8 4.1 18.8 4.1 11.7c0-4 2.8-6.7 6.5-6.7 2.5 0 4.3 1.3 5.4 3.2C17.1 6.3 18.9 5 21.4 5c3.7 0 6.5 2.7 6.5 6.7 0 6.7-6.4 11.6-10.3 14.8"
+        />
+        <path
+          className={styles.cupidStatusIconCrack}
+          d="m17.5 7.3-3.3 6 3.6 2.1-3.7 4.1 2.2 1.7-1.1 5.9"
+        />
+      </svg>
+    )
+  }
+
+  return null
+}
+
+function CupidEvictionMark() {
+  return (
+    <svg
+      className={styles.cupidEvictionMark}
+      viewBox="0 0 120 120"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="cupid-eviction-heart" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ff88b5" />
+          <stop offset="0.55" stopColor="#dc4d86" />
+          <stop offset="1" stopColor="#8f285d" />
+        </linearGradient>
+        <filter id="cupid-eviction-shadow" x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#1a0613" floodOpacity=".72" />
+        </filter>
+      </defs>
+      <g filter="url(#cupid-eviction-shadow)">
+        <path
+          className={styles.cupidEvictionHeartHalf}
+          fill="url(#cupid-eviction-heart)"
+          d="M56.5 98.5C39.2 84.4 14 67.6 14 43.6 14 28.4 24.6 18 38.5 18c9.2 0 15.5 4.7 20.1 11.8l-9.3 16.6 8.1 6.9-10.7 12 7.4 7.2-4.3 18.8 6.7 7.2Z"
+        />
+        <path
+          className={styles.cupidEvictionHeartHalf}
+          fill="url(#cupid-eviction-heart)"
+          d="M63.2 98.6c17.4-14.1 42.8-31 42.8-55C106 28.4 95.4 18 81.5 18c-9.9 0-16.5 5.4-21 13.5L53 45l9.7 8.1-10.1 11.6 7.4 7.5-4.2 19.1 7.4 7.3Z"
+        />
+        <path
+          className={styles.cupidEvictionCrack}
+          d="m60.5 31.5-9.8 15.2 10.7 7-10.2 11.1 8.6 7.3-5.7 20.6"
+        />
+      </g>
+    </svg>
+  )
 }
 
 function formatStat(value: number | null | undefined, options: { decimals?: number } = {}) {
@@ -100,6 +160,9 @@ export default function AvatarTile({
   isReturning = false,
   nominationCeremonyState,
   descriptionId,
+  pairColor,
+  pairLabel,
+  partnerName,
 }: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
@@ -315,7 +378,11 @@ export default function AvatarTile({
         ]
           .filter(Boolean)
           .join(' ')}
-        aria-label={ariaLabel}
+        aria-label={
+          pairLabel && partnerName
+            ? `${ariaLabel}. ${pairLabel}, partnered with ${partnerName}`
+            : ariaLabel
+        }
         aria-describedby={isInteractive ? descriptionId : undefined}
         title={name}
         role={isInteractive ? 'button' : 'group'}
@@ -338,6 +405,8 @@ export default function AvatarTile({
               }
             : undefined
         }
+        data-cupid-pair={pairLabel}
+        style={pairColor ? ({ '--cupid-pair-color': pairColor } as React.CSSProperties) : undefined}
       >
         <motion.div
           className={[
@@ -373,6 +442,16 @@ export default function AvatarTile({
             </span>
           )}
 
+          {pairLabel && (
+            <span
+              className={styles.cupidPairMarker}
+              title={partnerName ? `${pairLabel}: partnered with ${partnerName}` : pairLabel}
+              aria-label={pairLabel}
+            >
+              <span aria-hidden="true">{pairLabel.replace(/\D+/g, '')}</span>
+            </span>
+          )}
+
           {resolvedAvatarUrl ? (
             <img
               src={resolvedAvatarUrl}
@@ -392,12 +471,21 @@ export default function AvatarTile({
               {badges.map((b) => (
                 <span
                   key={b.code}
-                  className={`${styles.statusBadge} ${styles[`badge_${b.code}`] ?? ''}`}
+                  className={[
+                    styles.statusBadge,
+                    styles[`badge_${b.code}`] ?? '',
+                    pairLabel && b.code === 'loh' ? styles.cupidPermanentLoh : '',
+                    pairLabel && b.code === 'pos' ? styles.cupidPermanentPos : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   role="listitem"
                   aria-label={b.label}
                   title={b.label}
                 >
-                  {b.imageSrc ? (
+                  {pairLabel && b.code === 'nominated' ? (
+                    <CupidStatusBadgeIcon code={b.code} />
+                  ) : b.imageSrc ? (
                     <img
                       src={b.imageSrc}
                       alt=""
@@ -414,12 +502,16 @@ export default function AvatarTile({
 
           {/* Evictee mark — paint brushstroke PNG overlay */}
           {(isEvicted || isReturning) && (
-            <img
-              src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
-              alt=""
-              aria-hidden="true"
-              className={`${styles.cross}${isReturning ? ` ${styles.returningCross}` : ''}`}
-            />
+            pairLabel && isEvicted && !isReturning ? (
+              <CupidEvictionMark />
+            ) : (
+              <img
+                src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
+                alt=""
+                aria-hidden="true"
+                className={`${styles.cross}${isReturning ? ` ${styles.returningCross}` : ''}`}
+              />
+            )
           )}
         </motion.div>
 

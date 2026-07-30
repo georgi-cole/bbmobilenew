@@ -1,6 +1,7 @@
 import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doubleEvictionTieUtils'
 import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import type { GameState, Player } from '../../types'
+import { isCupidArrowActive } from '../../features/twists/cupidArrow'
 
 export interface DecisionPresentation {
   key: string
@@ -48,7 +49,9 @@ export function getConfessionalDecisionPresentation(
       break
     }
     case 'eviction_vote':
-      prompt = 'Choose who you want to eliminate.'
+      prompt = isCupidArrowActive(game)
+        ? 'Choose the pair your pair will vote to eliminate. Your joint ballot counts as two votes.'
+        : 'Choose who you want to eliminate.'
       keyParts.push(`nominees=${game.nomineeIds.join(',')}`)
       break
     case 'double_vote_offer':

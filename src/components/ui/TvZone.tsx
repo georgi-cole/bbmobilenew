@@ -10,7 +10,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
-import type { Phase, Player } from '../../types'
+import type { CupidArrowPair, Phase, Player } from '../../types'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { selectAlivePlayers } from '../../store/gameSlice'
@@ -71,6 +71,8 @@ const MAJOR_KEYS = new Set([
   'coup_detat',
   'spotlight_veto',
   'democracia',
+  'cupid_arrow',
+  'cupid_arrow_broken',
   'tribunal_phase',
   'twist',
   'loh_comp_announcement',
@@ -133,6 +135,18 @@ const ANNOUNCEMENT_META: Record<
   double_eviction: {
     title: 'Double Elimination!',
     subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  cupid_arrow: {
+    title: "Cupid's Arrow",
+    subtitle: 'The house is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  cupid_arrow_broken: {
+    title: "Cupid's Spell Is Broken",
+    subtitle: 'Four pairs have fallen. Cupid leaves the house, and every survivor now plays alone.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -278,13 +292,21 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'battle_back_rules',
   'battle_back_challenge',
   'democracia',
+  'cupid_arrow',
+  'cupid_arrow_broken',
   'tribunal_phase',
 ])
+
+type QueuedShockAnnouncement = {
+  announcement: Announcement
+  eventId: string
+}
 
 type TvZonePublicSaveReveal = {
   nominees: Player[]
   approvals: Record<string, number>
   savedId: string
+  pairs?: CupidArrowPair[]
 }
 
 type TvZoneVoteResultsReveal = {
@@ -412,11 +434,19 @@ export default function TvZone(props: TvZoneProps) {
   const [saveFeedbackIsError, setSaveFeedbackIsError] = useState(false)
   const [detoxMessageQueue, setDetoxMessageQueue] = useState<TvEvent[]>([])
   const [detoxMessageIndex, setDetoxMessageIndex] = useState(0)
+  // A single reducer action can append the shock activation and its practical
+  // consequence (for example a Force Majeure replacement) at once. Keep the
+  // shock broadcast in a small FIFO so the consequence never hides its stinger.
+  const [shockAnnouncementQueue, setShockAnnouncementQueue] = useState<
+    QueuedShockAnnouncement[]
+  >([])
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const detoxSequenceLatestIdRef = useRef<string | null>(null)
+  const shockSequenceLatestIdRef = useRef<string | null>(null)
+  const seenShockEventIdsRef = useRef(new Set<string>())
   // Tracks the previous phase to detect phase transitions.
   const previousPhaseRef = useRef<Phase | null>(null)
   // Stable ref so phase-transition effect always reads the latest latestEvent.
@@ -484,6 +514,33 @@ export default function TvZone(props: TvZoneProps) {
   const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false)
   // Ref forwarded to the TvAnnouncementOverlay info button for spotlight targeting.
   const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null)
+  // The end of Cupid's Arrow is a season climax, not an ordinary feed item.
+  // Keep an explicit broadcast alive so a Confessional prompt or phase card
+  // cannot bury the full-screen dissociation sequence.
+  const [cupidBreakAnnouncement, setCupidBreakAnnouncement] = useState<Announcement | null>(null)
+  const previousCupidStatusRef = useRef(gameState.cupidArrow?.status ?? 'inactive')
+
+  useEffect(() => {
+    const previousStatus = previousCupidStatusRef.current
+    const nextStatus = gameState.cupidArrow?.status ?? 'inactive'
+    previousCupidStatusRef.current = nextStatus
+
+    if (previousStatus === 'active' && nextStatus === 'broken') {
+      startTransition(() => {
+        setCupidBreakAnnouncement(
+          buildAnnouncement('cupid_arrow_broken', {
+            id: `cupid-arrow-break-${Date.now()}`,
+            text: "Cupid's Arrow has ended.",
+            type: 'twist',
+            timestamp: Date.now(),
+            meta: { major: 'cupid_arrow_broken' },
+          })
+        )
+      })
+    } else if (nextStatus !== 'broken') {
+      startTransition(() => setCupidBreakAnnouncement(null))
+    }
+  }, [gameState.cupidArrow?.status])
 
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
@@ -550,6 +607,47 @@ export default function TvZone(props: TvZoneProps) {
   }, [announcementPrerollEvent, latestEvent, dismissedEventId])
   const eventAnnouncementSource = announcementPrerollEvent ?? latestEvent
 
+  // Capture shock events that are no longer the latest feed item by the time
+  // React renders. This is common when a special veto immediately creates a
+  // replacement-nominee event in the same state update.
+  useEffect(() => {
+    const latestVisibleId = tvVisibleFeed[0]?.id ?? null
+    const previousLatestId = shockSequenceLatestIdRef.current
+    shockSequenceLatestIdRef.current = latestVisibleId
+
+    if (previousLatestId === null || latestVisibleId === previousLatestId) {
+      if (previousLatestId === null && latestVisibleId) {
+        const initialKey = extractMajorKey(tvVisibleFeed[0])
+        if (initialKey && SHOCK_ANNOUNCEMENT_KEYS.has(initialKey)) {
+          seenShockEventIdsRef.current.add(latestVisibleId)
+        }
+      }
+      return
+    }
+
+    const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId)
+    const newEventCount = previousIndex === -1 ? 1 : previousIndex
+    const newEvents = tvVisibleFeed.slice(0, newEventCount)
+    const queued = [...newEvents]
+      .reverse()
+      .flatMap((event) => {
+        const key = extractMajorKey(event)
+        if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
+        if (seenShockEventIdsRef.current.has(event.id)) return []
+        seenShockEventIdsRef.current.add(event.id)
+
+        // The top event is already visible through the normal event path.
+        // Queue only a shock that was immediately followed by another event.
+        if (event.id === latestVisibleId) return []
+        return [{ announcement: buildAnnouncement(key, event), eventId: event.id }]
+      })
+
+    if (queued.length === 0) return
+    startTransition(() => {
+      setShockAnnouncementQueue((current) => [...current, ...queued])
+    })
+  }, [tvVisibleFeed])
+
   // The core game phase remains jury while the post-finale sequence plays.
   // Replace its stale Tribunal Votes card with the resolved winner on the
   // main screen, through the interview and Public Favorite handoff.
@@ -560,10 +658,26 @@ export default function TvZone(props: TvZoneProps) {
     return gameState.players.find((player) => player.id === finale.winnerId) ?? null
   }, [gameState.players, gameState.seasonFinale])
 
-  // Active announcement precedence: priorityAnnouncement, then externalAnnouncement,
-  // then phaseAnnouncement, then eventAnnouncement.
+  const eventAnnouncementHasShockPriority =
+    eventAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(eventAnnouncement.key)
+  const queuedShockAnnouncement = shockAnnouncementQueue[0] ?? null
+
+  // A shock event must finish its fullscreen → Faux TV → info spotlight sequence
+  // before a simultaneous phase card (for example the first LOH competition)
+  // is allowed to take over the TV.
   const activeAnnouncement =
-    priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement
+    cupidBreakAnnouncement ??
+    queuedShockAnnouncement?.announcement ??
+    (eventAnnouncementHasShockPriority ? eventAnnouncement : null) ??
+    priorityAnnouncement ??
+    externalAnnouncement ??
+    phaseAnnouncement ??
+    eventAnnouncement
+  const activeAnnouncementSequenceId =
+    queuedShockAnnouncement?.eventId ??
+    (activeAnnouncement === eventAnnouncement ? eventAnnouncementSource?.id : null) ??
+    activeAnnouncement?.key ??
+    ''
   const isShockAnnouncement =
     activeAnnouncement != null && SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key)
   const showInlineAnnouncement =
@@ -653,11 +767,15 @@ export default function TvZone(props: TvZoneProps) {
   }, [detoxMessageIndex, detoxMessageQueue])
 
   const handleDismiss = useCallback(() => {
-    const currentAnnouncement =
-      priorityAnnouncement ?? externalAnnouncement ?? phaseAnnouncement ?? eventAnnouncement
+    const currentAnnouncement = activeAnnouncement
     const skipPostDismissFade =
       currentAnnouncement != null && CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key)
-    if (priorityAnnouncement) {
+    if (cupidBreakAnnouncement) {
+      setCupidBreakAnnouncement(null)
+    } else if (queuedShockAnnouncement) {
+      setDismissedEventId(queuedShockAnnouncement.eventId)
+      setShockAnnouncementQueue((queue) => queue.slice(1))
+    } else if (priorityAnnouncement) {
       onPriorityAnnouncementDismiss?.()
     } else if (externalAnnouncement) {
       // External announcements are used as one-off pre-roll overlays (e.g. ad
@@ -671,6 +789,8 @@ export default function TvZone(props: TvZoneProps) {
         setDismissedEventId(eventAnnouncementSource.id)
       }
       onExternalAnnouncementDismiss?.()
+    } else if (eventAnnouncementHasShockPriority && eventAnnouncementSource) {
+      setDismissedEventId(eventAnnouncementSource.id)
     } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase)
       setPhaseAnnouncement(null)
@@ -692,11 +812,14 @@ export default function TvZone(props: TvZoneProps) {
       POST_DISMISS_FADE_MS
     )
   }, [
+    activeAnnouncement,
+    cupidBreakAnnouncement,
+    queuedShockAnnouncement,
     priorityAnnouncement,
     externalAnnouncement,
+    eventAnnouncementHasShockPriority,
     eventAnnouncementSource,
     phaseAnnouncement,
-    eventAnnouncement,
     gameState.phase,
     onPriorityAnnouncementDismiss,
     onExternalAnnouncementDismiss,
@@ -771,7 +894,7 @@ export default function TvZone(props: TvZoneProps) {
         setShockInfoSpotlightActive(false)
       }
     })
-  }, [activeAnnouncement?.key])
+  }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
 
   const handleShockIntroComplete = useCallback(() => {
     startTransition(() => {
@@ -802,6 +925,17 @@ export default function TvZone(props: TvZoneProps) {
     return () => window.removeEventListener('tv:announcement-dismiss', handler)
   }, [handleDismiss])
 
+  // The Cupid-break broadcast is deliberately persistent through its full
+  // cinematic and TV handoff. Once the player presses Play, clear that one
+  // card so the next Safety/shock announcement can take the screen.
+  useEffect(() => {
+    const handlePlay = () => {
+      if (cupidBreakAnnouncement) handleDismiss()
+    }
+    window.addEventListener('ui:playPressed', handlePlay)
+    return () => window.removeEventListener('ui:playPressed', handlePlay)
+  }, [cupidBreakAnnouncement, handleDismiss])
+
   const handleModalClose = useCallback(() => setModalOpen(false), [])
 
   // ── Shock danger-mode body classes ───────────────────────────────────────────
@@ -811,18 +945,27 @@ export default function TvZone(props: TvZoneProps) {
   //   CSS shake animation on .game-screen-shell; removed after 600 ms (longer
   //   than the 480 ms animation so the class is always present for the full shake).
   const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cupidShockKey =
+    activeAnnouncement?.key === 'cupid_arrow' ||
+    activeAnnouncement?.key === 'cupid_arrow_broken'
 
   useEffect(() => {
     const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive
-    if (shockSequenceActive) {
+    if (shockSequenceActive && cupidShockKey) {
+      document.body.classList.add('body--cupid-shock')
+      document.body.classList.remove('body--shock-active')
+    } else if (shockSequenceActive) {
       document.body.classList.add('body--shock-active')
+      document.body.classList.remove('body--cupid-shock')
     } else {
       document.body.classList.remove('body--shock-active')
+      document.body.classList.remove('body--cupid-shock')
     }
     return () => {
       document.body.classList.remove('body--shock-active')
+      document.body.classList.remove('body--cupid-shock')
     }
-  }, [shockIntroActive, shockInfoSpotlightActive, detoxMessageActive])
+  }, [cupidShockKey, shockIntroActive, shockInfoSpotlightActive, detoxMessageActive])
 
   useEffect(() => {
     if (!shockIntroActive) return
@@ -842,6 +985,7 @@ export default function TvZone(props: TvZoneProps) {
       if (detoxMessageTimerRef.current !== null) clearTimeout(detoxMessageTimerRef.current)
       document.documentElement.classList.remove('app--shock-shake')
       document.body.classList.remove('body--shock-active')
+      document.body.classList.remove('body--cupid-shock')
     }
   }, [])
 
@@ -1104,6 +1248,7 @@ export default function TvZone(props: TvZoneProps) {
                 nominees={props.publicSaveReveal.nominees}
                 approvals={props.publicSaveReveal.approvals}
                 savedId={props.publicSaveReveal.savedId}
+                pairs={props.publicSaveReveal.pairs}
                 onDone={props.onPublicSaveDone ?? NOOP}
               />
             )}
@@ -1155,9 +1300,11 @@ export default function TvZone(props: TvZoneProps) {
       {/* ── Shock announcement sequence ───────────────────────────────────── */}
       {/* Phase A: full-screen cinematic stinger */}
       <ShockIntroOverlay
+        key={activeAnnouncementSequenceId}
         active={shockIntroActive}
         shockKey={activeAnnouncement?.key ?? ''}
         announcement={activeAnnouncement}
+        cupidPairs={gameState.cupidArrow?.pairs ?? []}
         onComplete={handleShockIntroComplete}
       />
       {/* Phase C: info-button spotlight — reuses the same visual language as the
