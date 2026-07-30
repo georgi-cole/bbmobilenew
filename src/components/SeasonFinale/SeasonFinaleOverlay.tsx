@@ -286,7 +286,16 @@ export default function SeasonFinaleOverlay() {
       )}
 
       {finale.phase === 'lightsOffTransition' && showCredits && (
-        <Credits autoPlay onComplete={() => dispatch(completeFinale())} />
+        <Credits
+          autoPlay
+          onComplete={() => {
+            // The credits end guard is already black. Commit the finale and
+            // move to its modal in this same render turn so the powered-down
+            // game screen can never flash between them.
+            dispatch(completeFinale())
+            navigate('/game-over', { replace: true })
+          }}
+        />
       )}
     </>
   )

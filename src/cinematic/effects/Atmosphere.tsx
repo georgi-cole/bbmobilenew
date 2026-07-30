@@ -186,6 +186,7 @@ type RainDrop = {
 const Rain = ({ frame, intensity, quality }: { frame: number; intensity: number; quality: CinematicQuality }) => {
   const meshRef = useRef<InstancedMesh>(null);
   const helper = useMemo(() => new Object3D(), []);
+  const lastDrawnFrame = useRef<number | null>(null);
   const sampledFrame = quality === 'balanced' ? Math.floor(frame / 2) * 2 : frame;
   const drops = useMemo<RainDrop[]>(() => {
     const random = createSeededRandom(CINEMATIC_CONFIG.seed + 91);
@@ -203,8 +204,14 @@ const Rain = ({ frame, intensity, quality }: { frame: number; intensity: number;
     const mesh = meshRef.current;
     if (!mesh) return;
 
+    // Keep the mesh and its shader warm from the first frame, but do not
+    // spend time updating invisible rain before the weather beat begins.
+    const drawFrame = intensity > 0.001 ? sampledFrame : 0;
+    if (lastDrawnFrame.current === drawFrame) return;
+    lastDrawnFrame.current = drawFrame;
+
     drops.forEach((drop, index) => {
-      const travel = (sampledFrame * drop.speed + drop.yOffset) % 118;
+      const travel = (drawFrame * drop.speed + drop.yOffset) % 118;
       helper.position.set(drop.x + travel * 0.08, 112 - travel, drop.z);
       helper.rotation.set(0, 0, -0.13);
       helper.scale.set(drop.thickness, drop.length, drop.thickness);
@@ -213,10 +220,10 @@ const Rain = ({ frame, intensity, quality }: { frame: number; intensity: number;
     });
     mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
-  }, [drops, helper, sampledFrame]);
+  }, [drops, helper, intensity, sampledFrame]);
 
-  if (intensity <= 0.001) return null;
-
+  // Mount before the rain is visible so iOS compiles the instanced material
+  // during the opening blackout instead of at the rain transition.
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, drops.length]} frustumCulled={false}>
       <boxGeometry args={[1, 1, 1]} />

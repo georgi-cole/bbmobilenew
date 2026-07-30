@@ -49,7 +49,7 @@ describe('centralized minigame music configuration', () => {
 
   it('stores the requested asset and lifecycle timings in one config', () => {
     const config = getMinigameMusicConfig('bigSpender')
-    expect(config?.sound.src).toContain('assets/sounds/challenge_group_1_audio.mp3')
+    expect(config?.sound.src).toContain('assets/music/challenge_group_1.mp3')
     expect(config?.sound.loop).toBe(true)
     expect(config?.fadeInMs).toBe(500)
     expect(config?.postGameHoldMs).toBe(2800)

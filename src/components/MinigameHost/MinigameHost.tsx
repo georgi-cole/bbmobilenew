@@ -17,6 +17,11 @@ import MinigameUtilityDock from '../MinigameUtilityDock/MinigameUtilityDock'
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper'
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper'
 import { SoundManager } from '../../services/sound/SoundManager'
+import {
+  MINIGAME_MUSIC_VARIANT_EVENT,
+  type MinigameMusicVariantDetail,
+} from '../../services/sound/minigameMusicVariant'
+import type { MusicMinigameVariant } from '../../services/sound/musicConfig'
 import ClosestWithoutGoingOverComp from '../ClosestWithoutGoingOverComp'
 import type { CwgoPrizeType } from '../../features/cwgo/cwgoCompetitionSlice'
 import HoldTheWallComp from '../HoldTheWallComp/HoldTheWallComp'
@@ -85,6 +90,7 @@ interface Props {
   onDone: (rawValue: number, partial?: boolean, completion?: ReactMinigameCompletion) => void
   /** Publishes the host's actual visual lifecycle to the central music resolver. */
   onPhaseChange?: (phase: HostPhase) => void
+  onMusicVariantChange?: (variant: MusicMinigameVariant) => void
   /** When true the rules modal is skipped and countdown starts immediately. */
   skipRules?: boolean
   /** When true the 3-second countdown is skipped (for testing). */
@@ -125,6 +131,7 @@ export default function MinigameHost({
   gameOptions = {},
   onDone,
   onPhaseChange,
+  onMusicVariantChange,
   skipRules = false,
   skipCountdown = false,
   participants,
@@ -176,7 +183,18 @@ export default function MinigameHost({
 
   useEffect(() => {
     onPhaseChange?.(phase)
-  }, [onPhaseChange, phase])
+    if (phase !== 'playing') onMusicVariantChange?.('normal')
+  }, [onMusicVariantChange, onPhaseChange, phase])
+
+  useEffect(() => {
+    const handleVariant = (event: Event) => {
+      const detail = (event as CustomEvent<MinigameMusicVariantDetail>).detail
+      if (!detail || (detail.gameKey && detail.gameKey !== game.key)) return
+      onMusicVariantChange?.(detail.variant)
+    }
+    window.addEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)
+    return () => window.removeEventListener(MINIGAME_MUSIC_VARIANT_EVENT, handleVariant)
+  }, [game.key, onMusicVariantChange])
 
   useEffect(() => {
     if (phase === 'results') setUtilityView(null)

@@ -4,7 +4,7 @@ import {
   getMinigameStageSelection,
   type MusicConfigMode,
 } from './musicConfig'
-import { MUSIC_CATALOG } from './musicCatalog'
+import { getMusicTrackSoundEntry } from './musicCatalog'
 import type { SoundEntry } from './sounds'
 import type { MusicTrack } from './musicTracks'
 
@@ -29,7 +29,7 @@ export const MINIGAME_MUSIC_CONFIGS: readonly MinigameMusicConfig[] =
     const transition = profile.transition
     if (!transition?.managedLifecycle || selection.kind !== 'track') return []
 
-    const sound = MUSIC_CATALOG[selection.track].dynamicSound
+    const sound = getMusicTrackSoundEntry(selection.track)
     if (!sound) return []
 
     return [

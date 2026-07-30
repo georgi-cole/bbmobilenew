@@ -1,27 +1,7 @@
-import { SOUND_REGISTRY, SOUNDS_BASE, type SoundEntry } from './sounds'
+import { SOUND_REGISTRY, type SoundEntry } from './sounds'
+import { GENERATED_MUSIC_TRACK_IDS, GENERATED_MUSIC_TRACKS } from './generatedAudioManifest'
 
-/**
- * Stable semantic track identifiers used by the resolver and SoundManager.
- * Keep file paths and display metadata here rather than scattering them across
- * phase switches and individual minigame components.
- */
-export const MUSIC_TRACK_IDS = [
-  'spectator',
-  'social',
-  'competition',
-  'nominations',
-  'veto',
-  'risk_wheel',
-  'glass_bridge',
-  'quick_tap',
-  'wildcard_western',
-  'challenge_group_1',
-  'season_recap',
-  'jury_voting',
-  'public_voting',
-  'final_modal',
-] as const
-
+export const MUSIC_TRACK_IDS = GENERATED_MUSIC_TRACK_IDS
 export type CatalogMusicTrack = (typeof MUSIC_TRACK_IDS)[number]
 export type MusicTrackFallback = CatalogMusicTrack | 'none'
 export type MusicTrackTag =
@@ -38,118 +18,22 @@ export interface MusicTrackDefinition {
   soundKey: string
   fallbackTrack: MusicTrackFallback
   tags: readonly MusicTrackTag[]
-  /**
-   * Optional registry entry for tracks that are not part of the legacy static
-   * SOUND_REGISTRY. AudioStateSync registers these entries during app startup.
-   */
   dynamicSound?: SoundEntry
 }
 
 export interface MusicTrackAssetOverride {
   track: CatalogMusicTrack
-  /** Absolute http(s) URL after validation, or a bundled app-relative URL locally. */
   src: string
   volume?: number
   loop?: boolean
 }
 
-export const MUSIC_CATALOG: Readonly<Record<CatalogMusicTrack, MusicTrackDefinition>> = {
-  spectator: {
-    displayName: 'Spectator',
-    soundKey: 'music:spectator_loop',
-    fallbackTrack: 'competition',
-    tags: ['ambient', 'spectator'],
-  },
-  social: {
-    displayName: 'Social Module',
-    soundKey: 'music:social_module',
-    fallbackTrack: 'none',
-    tags: ['ambient', 'social'],
-  },
-  competition: {
-    displayName: 'General Competition',
-    soundKey: 'music:hoh_comp_general',
-    fallbackTrack: 'none',
-    tags: ['ambient', 'competition'],
-  },
-  nominations: {
-    displayName: 'Nominations',
-    soundKey: 'music:nominations_main',
-    fallbackTrack: 'competition',
-    tags: ['ambient', 'ceremony'],
-  },
-  veto: {
-    displayName: 'Safety Ceremony',
-    soundKey: 'music:veto_phase',
-    fallbackTrack: 'competition',
-    tags: ['ambient', 'ceremony'],
-  },
-  risk_wheel: {
-    displayName: 'Risk Wheel',
-    soundKey: 'music:risk_wheel_loop',
-    fallbackTrack: 'competition',
-    tags: ['competition', 'minigame'],
-  },
-  glass_bridge: {
-    displayName: 'Crystal Path',
-    soundKey: 'music:gb_main',
-    fallbackTrack: 'competition',
-    tags: ['competition', 'minigame'],
-  },
-  quick_tap: {
-    displayName: 'Quick Tap Family',
-    soundKey: 'music:quicktap_main',
-    fallbackTrack: 'competition',
-    tags: ['competition', 'minigame'],
-  },
-  wildcard_western: {
-    displayName: 'Wildcard Western',
-    soundKey: 'music:wildcard_western_main',
-    fallbackTrack: 'competition',
-    tags: ['competition', 'minigame'],
-  },
-  challenge_group_1: {
-    displayName: 'Challenge Group 1',
-    soundKey: 'music:challenge_group_1',
-    fallbackTrack: 'competition',
-    tags: ['competition', 'minigame'],
-    dynamicSound: {
-      key: 'music:challenge_group_1',
-      category: 'music',
-      src: `${SOUNDS_BASE}challenge_group_1_audio.mp3`,
-      preload: false,
-      volume: 0.4,
-      loop: true,
-    },
-  },
-  season_recap: {
-    displayName: 'Season Recap',
-    soundKey: 'music:season_recap',
-    fallbackTrack: 'jury_voting',
-    tags: ['ambient', 'finale'],
-  },
-  jury_voting: {
-    displayName: 'Tribunal Voting',
-    soundKey: 'music:jury_voting_bg',
-    fallbackTrack: 'none',
-    tags: ['ambient', 'finale'],
-  },
-  public_voting: {
-    displayName: 'Public Voting',
-    soundKey: 'music:public_voting',
-    fallbackTrack: 'jury_voting',
-    tags: ['ceremony', 'finale'],
-  },
-  final_modal: {
-    displayName: 'Final Results',
-    soundKey: 'music:final_modal',
-    fallbackTrack: 'jury_voting',
-    tags: ['ambient', 'finale'],
-  },
-}
+export const MUSIC_CATALOG = GENERATED_MUSIC_TRACKS as unknown as Readonly<
+  Record<CatalogMusicTrack, MusicTrackDefinition>
+>
 
 export function isCatalogMusicTrack(value: unknown): value is CatalogMusicTrack {
-  return typeof value === 'string' && MUSIC_TRACK_IDS.includes(value as CatalogMusicTrack)
+  return typeof value === 'string' && (MUSIC_TRACK_IDS as readonly string[]).includes(value)
 }
 
 export function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {
@@ -157,15 +41,11 @@ export function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDef
 }
 
 export function getMusicTrackSoundEntry(track: CatalogMusicTrack): SoundEntry | undefined {
-  const definition = MUSIC_CATALOG[track]
-  return definition.dynamicSound ?? SOUND_REGISTRY[definition.soundKey]
+  return SOUND_REGISTRY[MUSIC_CATALOG[track].soundKey]
 }
 
 export function getDynamicMusicSoundEntries(): SoundEntry[] {
-  return MUSIC_TRACK_IDS.flatMap((track) => {
-    const dynamicSound = MUSIC_CATALOG[track].dynamicSound
-    return dynamicSound ? [dynamicSound] : []
-  })
+  return []
 }
 
 export function createMusicTrackOverrideSound(asset: MusicTrackAssetOverride): SoundEntry {
@@ -184,17 +64,14 @@ export function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallb
   return MUSIC_CATALOG[track].fallbackTrack
 }
 
-/** Returns the configured asset-fallback chain without repeating tracks. */
 export function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {
   const chain: MusicTrackFallback[] = []
   const seen = new Set<CatalogMusicTrack>()
   let current: MusicTrackFallback = track
-
   while (current !== 'none' && !seen.has(current)) {
     seen.add(current)
     current = getMusicFallbackTrack(current)
     chain.push(current)
   }
-
   return chain
 }

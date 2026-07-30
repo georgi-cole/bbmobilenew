@@ -85,6 +85,7 @@ const COAST_SURFACE_VERTEX = `
 
 const COAST_SURFACE_FRAGMENT = `
   uniform vec3 uBaseColor;
+  uniform float uOpacity;
   uniform float uReveal;
   uniform float uNearDepth;
   uniform float uFarDepth;
@@ -116,7 +117,7 @@ const COAST_SURFACE_FRAGMENT = `
 
     float edge = 1.0 - smoothstep(0.0, 0.055, abs(depth + revealNoise - revealFront));
     color += mix(vec3(0.15, 0.22, 0.24), vec3(0.42, 0.29, 0.2), uSunset) * edge * 0.04;
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, uOpacity);
   }
 `;
 
@@ -194,8 +195,6 @@ const CloudBank = ({ frame, opacity, state }: {
     { x: -12, y: 132, z: -760, width: 188, height: 48, drift: 0.002 },
     { x: 164, y: 118, z: -820, width: 152, height: 41, drift: -0.0025 },
   ], []);
-
-  if (opacity <= 0.001) return null;
 
   return (
     <group>
@@ -559,10 +558,12 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
     .lerp(new Color('#b66d50'), state.goldenHourProgress * 0.62)
     .lerp(new Color('#55303a'), state.sunsetProgress * 0.9);
 
-  // Reveal opaque coast pixels from the distant horizon toward the camera.
-  // This keeps the city spatially continuous during the transition without
-  // double-exposing two transparent worlds.
-  if (opacity <= 0.001) return null;
+  // Build the coast while it is fully transparent. This lets mobile GPUs
+  // compile the custom materials and create the yacht texture during the
+  // opening beat, rather than on the eye-to-sun transition.
+  const isPrewarming = opacity <= 0.001;
+  const revealOpacity = isPrewarming ? 0 : opacity;
+  const materialOpacity = isPrewarming ? 0 : 1;
 
   return (
     <group>
@@ -573,12 +574,13 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
           fragmentShader={SEA_FRAGMENT}
           uniforms={{
             uTime: { value: frame },
-            uOpacity: { value: 1 },
-            uReveal: { value: opacity },
+            uOpacity: { value: materialOpacity },
+            uReveal: { value: revealOpacity },
             uGoldenHour: { value: state.goldenHourProgress },
             uSunset: { value: state.sunsetProgress },
           }}
-          depthWrite
+          transparent={isPrewarming}
+          depthWrite={!isPrewarming}
         />
       </mesh>
 
@@ -588,14 +590,16 @@ export const FinalCoast = ({ frame, state }: { frame: number; state: TimelineSta
           fragmentShader={COAST_SURFACE_FRAGMENT}
           uniforms={{
             uBaseColor: { value: sandColor },
-            uReveal: { value: clamp01((opacity - 0.68) / 0.32) },
+            uOpacity: { value: materialOpacity },
+            uReveal: { value: clamp01((revealOpacity - 0.68) / 0.32) },
             uNearDepth: { value: 324 },
             uFarDepth: { value: 535 },
             uRockiness: { value: 0 },
             uSunset: { value: state.sunsetProgress },
           }}
           side={DoubleSide}
-          depthWrite
+          transparent={isPrewarming}
+          depthWrite={!isPrewarming}
         />
       </mesh>
       <Line
