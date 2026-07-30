@@ -1,26 +1,18 @@
+Exit code: 0
+Wall time: 1.3 seconds
+Output:
 import type { GameMode } from '../../modes/modeTypes'
 import type { GameCategory } from '../../minigames/registry'
 import type { MusicScene } from '../../store/uiSlice'
 import type { Phase } from '../../types'
 import type { MusicTrack } from './musicTracks'
-import { getMusicTrackSoundEntry } from './musicCatalog'
-import { createDefaultMusicCue, type MusicCueDefinition } from './musicCue'
 
 export type MusicConfigMode = GameMode | 'any'
 export type MusicMinigameStage = 'rules' | 'countdown' | 'playing' | 'results' | 'done'
-export const MUSIC_MINIGAME_VARIANTS = [
-  'normal',
-  'intense',
-  'final_round',
-  'sudden_death',
-  'overtime',
-  'victory_lap',
-] as const
-export type MusicMinigameVariant = (typeof MUSIC_MINIGAME_VARIANTS)[number]
 export type NonSilentMusicTrack = Exclude<MusicTrack, 'none'>
 
 export type MusicSelection =
-  | { kind: 'track'; track: NonSilentMusicTrack; cueId?: string }
+  | { kind: 'track'; track: NonSilentMusicTrack }
   | { kind: 'silence' }
   | { kind: 'inherit' }
 
@@ -47,13 +39,6 @@ export interface MinigameMusicProfile {
 export type MinigameStageAssignments = Partial<Record<MusicMinigameStage, MusicSelection>>
 export type MinigameAssignmentMap = Readonly<Record<string, MinigameStageAssignments>>
 export type ModeMinigameAssignments = Readonly<Record<MusicConfigMode, MinigameAssignmentMap>>
-export type MinigameVariantSelections = Partial<Record<MusicMinigameVariant, MusicSelection>>
-export type MinigameStageVariantAssignments = Partial<
-  Record<MusicMinigameStage, MinigameVariantSelections>
->
-export type ModeMinigameVariantAssignments = Readonly<
-  Record<MusicConfigMode, Readonly<Record<string, MinigameStageVariantAssignments>>>
->
 
 export const AUDIO_EVENT_IDS = [
   'competition.results',
@@ -106,8 +91,6 @@ export interface MusicConfigDocument {
   minigameProfiles: readonly MinigameMusicProfile[]
   /** Lightweight exact game/stage overrides used by server and admin UI. */
   minigameAssignments: ModeMinigameAssignments
-  minigameVariantAssignments: ModeMinigameVariantAssignments
-  musicCues: Readonly<Record<string, MusicCueDefinition>>
   minigameCategoryMusic: Readonly<Record<GameCategory, MusicSelection>>
   eventSounds: Readonly<Record<AudioEventId, AudioEventCue>>
   contextMusic: Readonly<MusicContextPolicy>
@@ -119,10 +102,6 @@ export interface MusicConfigOverrides {
   sceneMusic?: Partial<Record<MusicScene, MusicSelection>>
   minigameProfiles?: MinigameMusicProfile[]
   minigameAssignments?: Partial<Record<MusicConfigMode, Record<string, MinigameStageAssignments>>>
-  minigameVariantAssignments?: Partial<
-    Record<MusicConfigMode, Record<string, MinigameStageVariantAssignments>>
-  >
-  musicCues?: Record<string, MusicCueDefinition>
   minigameCategoryMusic?: Partial<Record<GameCategory, MusicSelection>>
   eventSounds?: Partial<Record<AudioEventId, AudioEventCue>>
   contextMusic?: Partial<MusicContextPolicy>
@@ -140,7 +119,6 @@ export interface MusicResolverContext {
     gameKey?: string | null
     category?: GameCategory | null
     stage?: MusicMinigameStage | string | null
-    variant?: MusicMinigameVariant | string | null
   } | null
 }
 
@@ -162,14 +140,13 @@ export interface ResolvedMusicCue {
   source: MusicResolutionSource
   inheritedAssignments: readonly string[]
   transition?: MusicTransitionPolicy
-  playbackCue?: MusicCueDefinition
 }
 
 export const INHERIT_MUSIC = { kind: 'inherit' } as const satisfies MusicSelection
 export const SILENT_MUSIC = { kind: 'silence' } as const satisfies MusicSelection
 
-export function musicTrack(track: NonSilentMusicTrack, cueId?: string): MusicSelection {
-  return { kind: 'track', track, ...(cueId ? { cueId } : {}) }
+export function musicTrack(track: NonSilentMusicTrack): MusicSelection {
+  return { kind: 'track', track }
 }
 
 const COMPETITION_MUSIC = musicTrack('competition')
@@ -227,6 +204,7 @@ export const CHALLENGE_GROUP_1_GAME_KEYS = [
   'snake',
   'castleRescue',
   'batteryLow',
+  'holdWall',
 ] as const
 
 export const DEFAULT_MINIGAME_MUSIC_PROFILES: readonly MinigameMusicProfile[] = [
@@ -309,12 +287,6 @@ const EMPTY_MINIGAME_ASSIGNMENTS: ModeMinigameAssignments = {
   survival: {},
 }
 
-const EMPTY_MINIGAME_VARIANT_ASSIGNMENTS: ModeMinigameVariantAssignments = {
-  any: {},
-  classic: {},
-  survival: {},
-}
-
 export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   version: 1,
   phaseMusic: DEFAULT_PHASE_MUSIC_POLICY,
@@ -325,8 +297,6 @@ export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   sceneMusic: DEFAULT_SCENE_MUSIC_POLICY,
   minigameProfiles: DEFAULT_MINIGAME_MUSIC_PROFILES,
   minigameAssignments: EMPTY_MINIGAME_ASSIGNMENTS,
-  minigameVariantAssignments: EMPTY_MINIGAME_VARIANT_ASSIGNMENTS,
-  musicCues: {},
   minigameCategoryMusic: DEFAULT_MINIGAME_CATEGORY_MUSIC,
   eventSounds: DEFAULT_EVENT_SOUND_POLICY,
   contextMusic: {
@@ -389,21 +359,6 @@ export function mergeMusicConfigOverrides(
         merged.minigameAssignments,
         layer.minigameAssignments
       ),
-      minigameVariantAssignments: {
-        any: {
-          ...(merged.minigameVariantAssignments?.any ?? {}),
-          ...(layer.minigameVariantAssignments?.any ?? {}),
-        },
-        classic: {
-          ...(merged.minigameVariantAssignments?.classic ?? {}),
-          ...(layer.minigameVariantAssignments?.classic ?? {}),
-        },
-        survival: {
-          ...(merged.minigameVariantAssignments?.survival ?? {}),
-          ...(layer.minigameVariantAssignments?.survival ?? {}),
-        },
-      },
-      musicCues: { ...(merged.musicCues ?? {}), ...(layer.musicCues ?? {}) },
       minigameCategoryMusic: {
         ...(merged.minigameCategoryMusic ?? {}),
         ...(layer.minigameCategoryMusic ?? {}),
@@ -452,12 +407,6 @@ export function createMusicConfig(overrides: MusicConfigOverrides = {}): MusicCo
       classic: minigameAssignments.classic ?? {},
       survival: minigameAssignments.survival ?? {},
     },
-    minigameVariantAssignments: {
-      any: overrides.minigameVariantAssignments?.any ?? {},
-      classic: overrides.minigameVariantAssignments?.classic ?? {},
-      survival: overrides.minigameVariantAssignments?.survival ?? {},
-    },
-    musicCues: { ...(overrides.musicCues ?? {}) },
     minigameCategoryMusic: {
       ...DEFAULT_MUSIC_CONFIG.minigameCategoryMusic,
       ...(overrides.minigameCategoryMusic ?? {}),
@@ -519,33 +468,11 @@ export function getDirectMinigameSelection(
   gameKey: string,
   mode: GameMode,
   stage: string | null | undefined,
-  variant: MusicMinigameVariant | string | null | undefined = 'normal',
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
 ): Array<{ selection: MusicSelection; assignmentId: string }> {
   if (!stage) return []
   const typedStage = stage as MusicMinigameStage
   const results: Array<{ selection: MusicSelection; assignmentId: string }> = []
-  const typedVariant = MUSIC_MINIGAME_VARIANTS.includes(variant as MusicMinigameVariant)
-    ? (variant as MusicMinigameVariant)
-    : 'normal'
-  if (typedVariant !== 'normal') {
-    const modeVariant =
-      config.minigameVariantAssignments[mode]?.[gameKey]?.[typedStage]?.[typedVariant]
-    if (modeVariant) {
-      results.push({
-        selection: modeVariant,
-        assignmentId: `minigame-variant.${mode}.${gameKey}.${stage}.${typedVariant}`,
-      })
-    }
-    const sharedVariant =
-      config.minigameVariantAssignments.any?.[gameKey]?.[typedStage]?.[typedVariant]
-    if (sharedVariant) {
-      results.push({
-        selection: sharedVariant,
-        assignmentId: `minigame-variant.any.${gameKey}.${stage}.${typedVariant}`,
-      })
-    }
-  }
   const modeSelection = config.minigameAssignments[mode]?.[gameKey]?.[typedStage]
   if (modeSelection) {
     results.push({
@@ -573,9 +500,6 @@ export function hasDeclaredMinigamePolicy(
   )
   return (
     hasDirectAssignment ||
-    (['any', 'classic', 'survival'] as const).some(
-      (mode) => config.minigameVariantAssignments[mode]?.[gameKey] !== undefined
-    ) ||
     config.minigameProfiles.some((profile) => profile.gameKeys.includes(gameKey)) ||
     config.minigameCategoryMusic[category] !== undefined
   )
@@ -612,30 +536,13 @@ export function resolveMusicCue(
       inheritedAssignments.push(assignmentId)
       return null
     }
-    const track = selectionToTrack(selection)
-    const configuredCue =
-      selection.kind === 'track' && selection.cueId
-        ? config.musicCues[selection.cueId]
-        : selection.kind === 'track'
-          ? config.musicCues[`track:${selection.track}`]
-          : undefined
-    const playbackCue =
-      selection.kind === 'track'
-        ? configuredCue?.track === selection.track
-          ? configuredCue
-          : createDefaultMusicCue(
-              selection.track,
-              getMusicTrackSoundEntry(selection.track)?.loop ?? true
-            )
-        : undefined
     return {
-      track,
+      track: selectionToTrack(selection),
       selection,
       assignmentId,
       source,
       inheritedAssignments: [...inheritedAssignments],
       ...(transition ? { transition } : {}),
-      ...(playbackCue ? { playbackCue } : {}),
     }
   }
 
@@ -666,7 +573,6 @@ export function resolveMusicCue(
       minigame.gameKey,
       context.mode,
       minigame.stage,
-      minigame.variant,
       config
     )) {
       const directCue = resolveSelection(direct.selection, direct.assignmentId, 'minigame')
@@ -727,3 +633,4 @@ export function resolveMusicCue(
     }
   )
 }
+
