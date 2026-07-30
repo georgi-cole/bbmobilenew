@@ -19,54 +19,54 @@
  * configured duration.
  */
 
-import { mulberry32 } from '../../../../store/rng';
+import { mulberry32 } from '../../../../store/rng'
 import type {
   HoldTheWallGameController,
   EffectType,
-} from '../../../../games/hold-the-wall/GameController';
+} from '../../../../games/hold-the-wall/GameController'
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
 interface ScheduledEffect {
-  effectType: EffectType;
+  effectType: EffectType
   /** Milliseconds after round start to emit EFFECT_START. */
-  startDelay: number;
+  startDelay: number
   /** Milliseconds after EFFECT_START to emit EFFECT_STOP. */
-  duration: number;
+  duration: number
   /** Params forwarded to emitEffectStart. */
-  params: Record<string, unknown>;
+  params: Record<string, unknown>
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** XOR constant mixed into seed to decouple effect scheduling from other RNG
  *  streams that use the same base seed (e.g. AI-drop schedule). */
-const SEED_MIX = 0xeffec75;
+const SEED_MIX = 0xeffec75
 
 /** Default round window assumed when none is provided (ms). */
-const DEFAULT_ROUND_MS = 120_000;
+const DEFAULT_ROUND_MS = 120_000
 
 /** Minimum ms after round start before any auto-effect fires. */
-const WINDOW_START_MS = 5_000;
+const WINDOW_START_MS = 5_000
 
 /** Minimum ms before round end to avoid late effects. */
-const WINDOW_END_BUFFER_MS = 10_000;
+const WINDOW_END_BUFFER_MS = 10_000
 
 /** Minimum effect duration (ms). */
-const EFFECT_MIN_DURATION_MS = 3_000;
+const EFFECT_MIN_DURATION_MS = 3_000
 
 /** Random range on top of the minimum (ms). */
-const EFFECT_DURATION_RANGE_MS = 5_000;
+const EFFECT_DURATION_RANGE_MS = 5_000
 
-const CALLERS = ['The Host', 'Production', 'Mom', 'Your Agent', 'The Network'];
+const CALLERS = ['The Host', 'Production', 'Mom', 'Your Agent', 'The Network']
 
 // ─── Effect catalogue ─────────────────────────────────────────────────────────
 
 /** Base probability (0–1) for each effect type at intensity = 1. */
 const EFFECT_CATALOGUE: Array<{
-  effectType: EffectType;
-  baseProbability: number;
-  buildParams: (rng: () => number) => Record<string, unknown>;
+  effectType: EffectType
+  baseProbability: number
+  buildParams: (rng: () => number) => Record<string, unknown>
 }> = [
   {
     effectType: 'rain',
@@ -100,7 +100,7 @@ const EFFECT_CATALOGUE: Array<{
     baseProbability: 0.2,
     buildParams: () => ({}),
   },
-];
+]
 
 // ─── Schedule builder ─────────────────────────────────────────────────────────
 
@@ -108,29 +108,51 @@ const EFFECT_CATALOGUE: Array<{
 export function buildEffectSchedule(
   seed: number,
   intensity: number,
-  roundDurationMs: number,
+  roundDurationMs: number
 ): ScheduledEffect[] {
-  const rng = mulberry32(seed ^ SEED_MIX);
-  const schedule: ScheduledEffect[] = [];
+  const rng = mulberry32(seed ^ SEED_MIX)
+  const schedule: ScheduledEffect[] = []
 
-  const windowStart = WINDOW_START_MS;
-  const windowEnd = roundDurationMs - WINDOW_END_BUFFER_MS;
-  const usableWindow = windowEnd - windowStart;
+  const windowStart = WINDOW_START_MS
+  const windowEnd = roundDurationMs - WINDOW_END_BUFFER_MS
+  const usableWindow = windowEnd - windowStart
 
-  if (usableWindow <= 0) return schedule;
+  if (intensity <= 0 || usableWindow <= 0) return schedule
+
+  // Every round needs a readable opening beat. Previously every effect could
+  // randomly land late in the round, so a player could reasonably conclude
+  // that the environment system was absent. These effects are presentation
+  // pressure, not surprise eliminations: fake calls still never affect a hold.
+  const openingTimeline: ScheduledEffect[] = [
+    { effectType: 'rain', startDelay: windowStart, duration: 6_500, params: { intensity: 1.05 } },
+    { effectType: 'wind', startDelay: 11_000, duration: 5_500, params: {} },
+    {
+      effectType: 'fakeCall',
+      startDelay: 19_000,
+      duration: 6_000,
+      params: { caller: CALLERS[Math.floor(rng() * CALLERS.length)] },
+    },
+    {
+      effectType: 'vibrate',
+      startDelay: 28_000,
+      duration: 4_000,
+      params: { pattern: [150, 80, 150] },
+    },
+  ]
+  schedule.push(...openingTimeline.filter((effect) => effect.startDelay < windowEnd))
 
   for (const entry of EFFECT_CATALOGUE) {
-    const probability = Math.min(1, entry.baseProbability * intensity);
-    if (rng() > probability) continue;
+    const probability = Math.min(1, entry.baseProbability * intensity)
+    if (rng() > probability) continue
 
-    const startDelay = windowStart + Math.floor(rng() * usableWindow);
-    const duration = EFFECT_MIN_DURATION_MS + Math.floor(rng() * EFFECT_DURATION_RANGE_MS);
-    const params = entry.buildParams(rng);
+    const startDelay = windowStart + Math.floor(rng() * usableWindow)
+    const duration = EFFECT_MIN_DURATION_MS + Math.floor(rng() * EFFECT_DURATION_RANGE_MS)
+    const params = entry.buildParams(rng)
 
-    schedule.push({ effectType: entry.effectType, startDelay, duration, params });
+    schedule.push({ effectType: entry.effectType, startDelay, duration, params })
   }
 
-  return schedule;
+  return schedule
 }
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────
@@ -153,17 +175,17 @@ export function buildEffectSchedule(
  * ```
  */
 export class EffectsScheduler {
-  private readonly controller: HoldTheWallGameController;
-  private readonly seed: number;
-  private readonly intensity: number;
-  private readonly roundDurationMs: number;
+  private readonly controller: HoldTheWallGameController
+  private readonly seed: number
+  private readonly intensity: number
+  private readonly roundDurationMs: number
 
-  private timers: ReturnType<typeof setTimeout>[] = [];
-  private activeEffects = new Set<EffectType>();
+  private timers: ReturnType<typeof setTimeout>[] = []
+  private activeEffects = new Set<EffectType>()
 
   /** Unsubscribe functions from controller event listeners. */
-  private unsubStart: (() => void) | null = null;
-  private unsubStop: (() => void) | null = null;
+  private unsubStart: (() => void) | null = null
+  private unsubStop: (() => void) | null = null
 
   /**
    * @param controller     - The game controller whose `emitEffectStart/Stop`
@@ -179,65 +201,65 @@ export class EffectsScheduler {
     controller: HoldTheWallGameController,
     seed?: number,
     intensity = 1,
-    roundDurationMs = DEFAULT_ROUND_MS,
+    roundDurationMs = DEFAULT_ROUND_MS
   ) {
-    this.controller = controller;
-    this.seed = seed ?? Date.now();
-    this.intensity = intensity;
-    this.roundDurationMs = roundDurationMs;
+    this.controller = controller
+    this.seed = seed ?? Date.now()
+    this.intensity = intensity
+    this.roundDurationMs = roundDurationMs
 
     // Track ALL effect activity on this controller (including external calls)
     // so scheduled effects don't conflict with manually triggered ones.
     this.unsubStart = controller.on('EFFECT_START', (p) => {
-      this.activeEffects.add(p.effectType);
-    });
+      this.activeEffects.add(p.effectType)
+    })
     this.unsubStop = controller.on('EFFECT_STOP', (p) => {
-      this.activeEffects.delete(p.effectType);
-    });
+      this.activeEffects.delete(p.effectType)
+    })
   }
 
   /** Start scheduling effects for the current round. Clears any previous timers. */
   start(): void {
-    this.stop();
+    this.stop()
 
-    const schedule = buildEffectSchedule(this.seed, this.intensity, this.roundDurationMs);
+    const schedule = buildEffectSchedule(this.seed, this.intensity, this.roundDurationMs)
 
     for (const effect of schedule) {
       const startTimer = setTimeout(() => {
         // Skip if any source (manual or earlier schedule) already started this effect
-        if (this.activeEffects.has(effect.effectType)) return;
+        if (this.activeEffects.has(effect.effectType)) return
 
         // activeEffects will be updated via the EFFECT_START listener we registered
-        this.controller.emitEffectStart(effect.effectType, effect.params);
+        this.controller.emitEffectStart(effect.effectType, effect.params)
 
         const stopTimer = setTimeout(() => {
           // Only emit STOP if the effect is still tracked as active by us
           // (guards against external stop calls that already ended the effect)
           if (this.activeEffects.has(effect.effectType)) {
-            this.controller.emitEffectStop(effect.effectType);
+            this.controller.emitEffectStop(effect.effectType)
           }
-        }, effect.duration);
+        }, effect.duration)
 
-        this.timers.push(stopTimer);
-      }, effect.startDelay);
+        this.timers.push(stopTimer)
+      }, effect.startDelay)
 
-      this.timers.push(startTimer);
+      this.timers.push(startTimer)
     }
   }
 
   /** Cancel all pending scheduled timers and unsubscribe from controller events. */
   stop(): void {
-    for (const t of this.timers) clearTimeout(t);
-    this.timers = [];
-    this.activeEffects.clear();
+    for (const t of this.timers) clearTimeout(t)
+    this.timers = []
+    this.activeEffects.clear()
   }
 
   /** Release all resources. Call when the scheduler is no longer needed. */
   destroy(): void {
-    this.stop();
-    this.unsubStart?.();
-    this.unsubStop?.();
-    this.unsubStart = null;
-    this.unsubStop = null;
+    this.stop()
+    this.unsubStart?.()
+    this.unsubStop?.()
+    this.unsubStart = null
+    this.unsubStop = null
   }
 }

@@ -10,7 +10,7 @@
  * mounts. This ensures exactly one server-driven countdown occurs and rules
  * are shown exactly once.
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import {
@@ -193,6 +193,9 @@ export default function HoldTheWallComp({
 
   // GameController for server-authoritative effects + 2-second hold rule
   const controllerRef = useRef<HoldTheWallGameController | null>(null);
+  // The ref is used by pointer handlers; state makes the effects hook subscribe
+  // after the controller is created (a ref assignment alone does not re-render).
+  const [controller, setController] = useState<HoldTheWallGameController | null>(null);
 
   // Derived helpers
   const humanPlayer = Object.values(playerMap).find((p) => p.isUser);
@@ -200,9 +203,27 @@ export default function HoldTheWallComp({
 
   // ── Effects hook — subscribes to controller events ────────────────────────
   const { activeEffects, isAutoDropped } = useHoldTheWallEffects(
-    controllerRef.current,
+    controller,
     humanId,
   );
+
+  // Pressure is the arena's readable endurance system. Time is the baseline;
+  // weather and production shocks add temporary load. It accelerates the
+  // existing rival drop schedule at tier boundaries, without making a fake
+  // phone call or a cosmetic effect secretly drop the human player.
+  const effectPressure =
+    ('rain' in activeEffects ? 8 : 0) +
+    ('wind' in activeEffects ? 12 : 0) +
+    ('paint' in activeEffects ? 5 : 0) +
+    ('vibrate' in activeEffects ? 16 : 0) +
+    ('sound' in activeEffects ? 4 : 0);
+  const pressurePercent = Math.min(100, Math.max(8, Math.round((elapsedMs / 55_000) * 100) + effectPressure));
+  const pressureTier = pressurePercent >= 78 ? 'critical' : pressurePercent >= 55 ? 'high' : pressurePercent >= 30 ? 'rising' : 'steady';
+  const pressureState = pressureTier === 'critical' ? 'danger' : pressureTier === 'steady' ? 'steady' : 'strain';
+  const pressureSpeed = pressureTier === 'critical' ? '38%' : pressureTier === 'high' ? '20%' : pressureTier === 'rising' ? '8%' : 'normal';
+  const activeEffectClasses = [
+    'wind', 'rain', 'paint', 'vibrate', 'sound',
+  ].filter((effect) => effect in activeEffects).map((effect) => `htw-effects--${effect}`);
 
   // ── Initialise competition on mount ──────────────────────────────────────
   useEffect(() => {
@@ -210,6 +231,7 @@ export default function HoldTheWallComp({
     // scheduler options are accessible if needed externally).
     const ctrl = new HoldTheWallGameController(`htw-${seed}`, { seed, intensity: 1 });
     controllerRef.current = ctrl;
+    setController(ctrl);
 
     dispatch(
       startHoldTheWall({
@@ -222,6 +244,7 @@ export default function HoldTheWallComp({
     return () => {
       ctrl.destroy();
       controllerRef.current = null;
+      setController(null);
       dispatch(resetHoldTheWall());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -269,7 +292,9 @@ export default function HoldTheWallComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [htw.status]);
 
-  // ── Schedule AI drops; spectator fast-forward compresses the remaining timers ──
+  // ── Schedule AI drops; pressure shortens the remaining endurance window ──
+  // This only changes rival endurance. The human rule stays deliberately simple:
+  // press and keep holding the wall. A fake call remains distraction-only.
   useEffect(() => {
     if (htw.status !== 'active') return;
 
@@ -282,19 +307,20 @@ export default function HoldTheWallComp({
     const humanDroppedForSpeed = humanId ? htw.droppedIds.includes(humanId) : false;
     const timerSpeed =
       fastForward && humanDroppedForSpeed ? SPECTATOR_FAST_FORWARD_SPEED : 1;
+    const pressureSpeed = pressureTier === 'critical' ? 1.38 : pressureTier === 'high' ? 1.2 : pressureTier === 'rising' ? 1.08 : 1;
 
     const timeouts = Object.entries(htw.aiDropSchedule)
       .filter(([id]) => !htw.droppedIds.includes(id))
       .map(([id, dropAtMs]) =>
         window.setTimeout(() => {
           dispatch(dropPlayer(id));
-        }, Math.max(0, (dropAtMs - elapsed) / timerSpeed)),
+        }, Math.max(0, (dropAtMs - elapsed) / (timerSpeed * pressureSpeed))),
       );
 
     return () => {
       timeouts.forEach((t) => window.clearTimeout(t));
     };
-  }, [dispatch, fastForward, htw.aiDropSchedule, htw.droppedIds, htw.status, humanId]);
+  }, [dispatch, fastForward, htw.aiDropSchedule, htw.droppedIds, htw.status, humanId, pressureTier]);
 
   // ── Elapsed timer (requestAnimationFrame loop) ────────────────────────────
   useEffect(() => {
@@ -425,15 +451,12 @@ export default function HoldTheWallComp({
   const humanIsWinner = htw.winnerId === humanId;
   const canHoldWall = htw.status === 'active' && !humanDropped;
   const fastForwardActive = htw.status === 'active' && humanDropped && fastForward;
-
-  // Wind modifier class — applied to root so CSS can target participant avatars
-  const windActive = 'wind' in activeEffects;
-
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className={['htw-root', windActive ? 'htw-effects--wind' : ''].filter(Boolean).join(' ')}
+      className={['htw-root', `htw-root--${pressureState}`, ...activeEffectClasses].filter(Boolean).join(' ')}
       data-testid="htw-root"
+      data-pressure={pressureState}
       style={{ position: 'relative' }}
     >
       {/* Distraction effects overlay (non-blocking visuals) */}
@@ -530,17 +553,44 @@ export default function HoldTheWallComp({
             .join(' ')}
           data-testid="htw-wall"
           role={canHoldWall ? 'button' : 'img'}
-          aria-label={canHoldWall ? 'Hold the wall' : 'Wall still in play'}
+          aria-label={canHoldWall ? `Hold the wall. Pressure ${pressurePercent}%. Rival fatigue is ${pressureSpeed}.` : 'Wall still in play'}
           aria-pressed={canHoldWall ? isHolding : undefined}
           onPointerDown={canHoldWall ? handleHoldStart : undefined}
           onPointerUp={canHoldWall ? handleHoldEnd : undefined}
           onPointerLeave={canHoldWall ? handleHoldEnd : undefined}
           onContextMenu={handleContextMenu}
         >
-          <span className="htw-wall-icon">🧱</span>
-          <span className="htw-wall-instruction">
-            {canHoldWall ? (isHolding ? 'HOLDING!' : 'PRESS & HOLD') : 'WALL CONTINUES'}
-          </span>
+          <div className="htw-wall__arena-glow" aria-hidden="true" />
+          <div className="htw-wall__floodlights" aria-hidden="true"><span /><span /></div>
+          <div className="htw-wall__pressure" aria-label={`Wall pressure ${pressurePercent}%`}>
+            <div className="htw-wall__pressure-copy">
+              <span>Wall pressure</span>
+              <strong>{pressureState === 'danger' ? 'CRITICAL' : pressureState === 'strain' ? 'RISING' : 'STABLE'}</strong>
+            </div>
+            <div className="htw-wall__pressure-track" aria-hidden="true"><span style={{ width: `${pressurePercent}%` }} /></div>
+            <span className="htw-wall__pressure-impact">Rival fatigue: {pressureSpeed}</span>
+          </div>
+          <div className="htw-wall__grip-field" aria-hidden="true">
+            {aliveIds.map((id, index) => {
+              const player = playerMap[id];
+              const isHumanGrip = id === humanId;
+              return (
+                <span
+                  key={id}
+                  className={['htw-wall__grip', isHumanGrip ? 'htw-wall__grip--human' : 'htw-wall__grip--rival', isHolding && isHumanGrip ? 'is-holding' : ''].filter(Boolean).join(' ')}
+                  style={{ '--grip-index': index, '--grip-row': index % 2 } as CSSProperties}
+                >
+                  <span className="htw-wall__grip-hand">{isHumanGrip ? '✋' : '●'}</span>
+                  <span className="htw-wall__grip-name">{player?.name ?? `AI ${index}`}</span>
+                </span>
+              );
+            })}
+          </div>
+          <div className="htw-wall__hold-zone">
+            <span className="htw-wall__hold-icon" aria-hidden="true">✋</span>
+            <span className="htw-wall__hold-label">{canHoldWall ? (isHolding ? 'YOU ARE HOLDING' : 'PRESS & HOLD YOUR GRIP') : 'SPECTATING THE WALL'}</span>
+            <span className="htw-wall__hold-copy">{canHoldWall ? 'Hold steady — shocks push rivals closer to the edge.' : `${remaining} still fighting.`}</span>
+          </div>
         </div>
       )}
 

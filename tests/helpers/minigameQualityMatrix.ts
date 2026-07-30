@@ -299,6 +299,15 @@ export const ACTIVE_MINIGAME_QUALITY_DETAILS: Record<string, QualityDetail> = {
     logic: 'tests/unit/battery-low/batteryLow.logic.test.ts',
     risk: 'No focused component or store/host integration test.',
   },
+  houseOfDarkness: {
+    input: 'pointer/touch memory-card selection',
+    scoring: 'survival',
+    tie: 'More completed rounds, then remaining lifespan, lower total damage, fewer mistakes, faster total time, and stable participant order.',
+    logic: 'tests/unit/house-of-darkness/houseOfDarknessUtils.test.ts',
+    component: 'tests/unit/house-of-darkness/HouseOfDarknessComp.test.tsx',
+    host: 'tests/unit/house-of-darkness/houseOfDarknessRegistry.test.ts',
+    risk: 'Long multi-round completion still needs a real browser terminal-path driver.',
+  },
 }
 
 function describeTimeout(game: GameRegistryEntry): string {

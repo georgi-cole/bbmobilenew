@@ -13,9 +13,27 @@ import adsReducer from '../../src/store/adsSlice'
 import remoteConfigReducer from '../../src/remoteConfig/remoteConfigSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
+import type { GameState } from '../../src/types'
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
+}))
+
+vi.mock('../../src/store/confessionalDecisionSelectors', () => ({
+  selectActiveConfessionalDecision: () => null,
+}))
+
+vi.mock('../../src/components/CeremonyOverlay/CeremonyOverlay', () => ({
+  default: ({
+    caption,
+    resolveTiles,
+  }: {
+    caption: string
+    resolveTiles?: () => unknown
+  }) => {
+    resolveTiles?.()
+    return <div data-testid="ceremony-overlay">{caption}</div>
+  },
 }))
 
 vi.mock('../../src/components/ui/TvZone', () => ({
@@ -24,7 +42,8 @@ vi.mock('../../src/components/ui/TvZone', () => ({
   ),
 }))
 
-function makeStore() {
+function makeStore(gameOverrides: Partial<GameState> = {}) {
+  const base = gameReducer(undefined, { type: '@@INIT' })
   return configureStore({
     reducer: {
       game: gameReducer,
@@ -37,7 +56,34 @@ function makeStore() {
       remoteConfig: remoteConfigReducer,
       publicOpinion: publicOpinionReducer,
     },
+    preloadedState: { game: { ...base, ...gameOverrides } },
   })
+}
+
+function makeCupidOverrides(overrides: Partial<GameState> = {}): Partial<GameState> {
+  const base = gameReducer(undefined, { type: '@@INIT' })
+  const pairedPlayers = base.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury',
+  )
+  const pairs = Array.from({ length: Math.floor(pairedPlayers.length / 2) }, (_, index) => ({
+    id: `layout-cupid-pair-${index + 1}`,
+    memberIds: [pairedPlayers[index * 2].id, pairedPlayers[index * 2 + 1].id] as [string, string],
+    color: '#ff5d8f',
+  }))
+
+  return {
+    season: 77,
+    cupidArrow: {
+      scheduledSeason: 77,
+      status: 'active',
+      activatedSeason: 77,
+      activatedWeek: 1,
+      pairs,
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
+    },
+    ...overrides,
+  }
 }
 
 function renderGameScreen(store: ReturnType<typeof makeStore>) {
@@ -73,5 +119,73 @@ describe('GameScreen compact roster balancing', () => {
 
     expect(container.firstElementChild).toHaveClass('game-screen--compact-roster-balance')
     expect(screen.getByTestId('tv-zone')).toHaveAttribute('data-log-rows', '3')
+  })
+})
+
+describe("GameScreen Cupid's Arrow presentation", () => {
+  it('marks the game shell while the pairs format is active', () => {
+    const store = makeStore(makeCupidOverrides())
+
+    const { container } = renderGameScreen(store)
+
+    expect(container.firstElementChild).toHaveClass('game-screen--cupid-active')
+  })
+
+  it('names both partners in the outgoing LOH eligibility warning', () => {
+    const base = gameReducer(undefined, { type: '@@INIT' })
+    const human = base.players.find((player) => player.isUser)!
+    const partnerId = makeCupidOverrides().cupidArrow!.pairs.find((pair) =>
+      pair.memberIds.includes(human.id),
+    )!.memberIds.find((id) => id !== human.id)!
+    const partner = base.players.find((player) => player.id === partnerId)!
+    const store = makeStore(
+      makeCupidOverrides({
+        phase: 'loh_comp',
+        prevHohId: human.id,
+      }),
+    )
+
+    renderGameScreen(store)
+
+    expect(
+      screen.getByText(
+        `As the outgoing LOH pair, you and ${partner.name} are not eligible to compete.`,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('explains that the human LOH nominates two pairs', () => {
+    const base = gameReducer(undefined, { type: '@@INIT' })
+    const human = base.players.find((player) => player.isUser)!
+    const store = makeStore(
+      makeCupidOverrides({
+        phase: 'nomination_results',
+        lohId: human.id,
+        awaitingNominations: true,
+      }),
+    )
+
+    renderGameScreen(store)
+
+    expect(
+      screen.getByText(`${human.name}, choose two pairs to nominate for elimination.`),
+    ).toBeInTheDocument()
+  })
+
+  it('uses plural winner copy when a paired LOH result is revealed', () => {
+    const base = gameReducer(undefined, { type: '@@INIT' })
+    const human = base.players.find((player) => player.isUser)!
+    const winnerId = base.players.find((player) => !player.isUser)!.id
+    const store = makeStore(
+      makeCupidOverrides({
+        phase: 'loh_results',
+        prevHohId: human.id,
+        lohId: winnerId,
+      }),
+    )
+
+    renderGameScreen(store)
+
+    expect(screen.getByText(/ win Leader of the House!$/)).toBeInTheDocument()
   })
 })

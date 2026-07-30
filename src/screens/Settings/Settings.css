@@ -9,8 +9,7 @@
   overflow: hidden;
   background:
     radial-gradient(circle at top center, rgba(99, 102, 241, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%),
-    var(--color-bg);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%), var(--color-bg);
   color: var(--color-text);
 }
 
@@ -57,7 +56,11 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 8px 20px rgba(0, 0, 0, 0.22);
-  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 .settings-screen__back:hover,
 .settings-screen__back:focus-visible {
@@ -117,7 +120,11 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 6px 14px rgba(0, 0, 0, 0.16);
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
   white-space: nowrap;
 }
 .settings-tab--active {
@@ -183,7 +190,12 @@
   min-height: 3.85rem;
   position: relative;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 22%, rgba(255, 255, 255, 0.01) 100%),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.015) 22%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
     linear-gradient(180deg, rgba(26, 35, 54, 0.96), rgba(20, 27, 38, 0.96));
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 16px;
@@ -216,7 +228,12 @@
 .settings-row:focus-within {
   border-color: rgba(255, 255, 255, 0.11);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.065) 0%, rgba(255, 255, 255, 0.018) 24%, rgba(255, 255, 255, 0.01) 100%),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.065) 0%,
+      rgba(255, 255, 255, 0.018) 24%,
+      rgba(255, 255, 255, 0.01) 100%
+    ),
     linear-gradient(180deg, rgba(30, 40, 60, 0.98), rgba(20, 27, 38, 0.98));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
@@ -303,15 +320,17 @@
   top: 50%;
   left: 0.18rem;
   transform: translateY(-50%);
-  transition: left 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    left 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
   box-shadow:
     0 1px 1px rgba(255, 255, 255, 0.4) inset,
     0 5px 10px rgba(0, 0, 0, 0.28);
 }
 .settings-toggle:checked {
   background:
-    linear-gradient(180deg, rgba(129, 132, 255, 0.98), rgba(86, 91, 234, 0.98)),
-    var(--color-accent);
+    linear-gradient(180deg, rgba(129, 132, 255, 0.98), rgba(86, 91, 234, 0.98)), var(--color-accent);
   border-color: rgba(99, 102, 241, 0.4);
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.12),
@@ -422,7 +441,11 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 6px 14px rgba(0, 0, 0, 0.16);
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 .settings-select:hover {
   background:
@@ -472,7 +495,7 @@
 
 .settings-helper-text {
   font-size: 0.75rem;
-  color: var(--color-text-muted, rgba(255,255,255,0.5));
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
   margin-top: 4px;
 }
 
@@ -495,7 +518,9 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .settings-theme-btn--active {
   border-color: var(--color-accent);
@@ -564,22 +589,22 @@
 /* ── Theme preset CSS variables ──────────────────────────────────────────── */
 
 body.theme-midnight {
-  --color-accent:   #6366f1;
+  --color-accent: #6366f1;
   --color-accent-2: #8b5cf6;
 }
 
 body.theme-neon {
-  --color-accent:   #22d3ee;
+  --color-accent: #22d3ee;
   --color-accent-2: #a78bfa;
 }
 
 body.theme-sunset {
-  --color-accent:   #f97316;
+  --color-accent: #f97316;
   --color-accent-2: #ec4899;
 }
 
 body.theme-ocean {
-  --color-accent:   #0ea5e9;
+  --color-accent: #0ea5e9;
   --color-accent-2: #06b6d4;
 }
 
@@ -595,9 +620,9 @@ body.reduce-motion *::after {
 }
 
 body.high-contrast {
-  --color-text:       #ffffff;
+  --color-text: #ffffff;
   --color-text-muted: rgba(255, 255, 255, 0.75);
-  --color-line:       rgba(255, 255, 255, 0.3);
+  --color-line: rgba(255, 255, 255, 0.3);
 }
 
 /* ── Comp Selection panel ───────────────────────────────────────────────── */
@@ -643,7 +668,10 @@ body.high-contrast {
   font-weight: 600;
   padding: 0.3rem 0.75rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 .comp-selection__filter-btn--active {
   background: var(--color-accent);
@@ -935,4 +963,27 @@ body.high-contrast {
   font-size: 0.7rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.settings-row--legal {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-row--legal > span:first-child {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.settings-row--legal small {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.settings-row--legal > span:last-child {
+  color: #a5b4fc;
+  font-size: 1.4rem;
 }

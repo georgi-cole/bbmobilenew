@@ -96,6 +96,10 @@ interface GameState {
   pendingEviction?: { evicteeId: string; evictionMessage: string } | null
   doubleEviction?: { weekActive?: boolean }
   specialVeto?: { activeType?: string | null }
+  cupidArrow?: {
+    status?: 'inactive' | 'scheduled' | 'active' | 'broken'
+    pairs?: Array<{ memberIds: [string, string] }>
+  }
   dramaSocialMode?: boolean
   players: Array<{ id: string; name?: string; status: string; isUser?: boolean }>
 }
@@ -807,6 +811,32 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
     const afterState = api.getState() as StateWithGame
     const newPhase = afterState.game?.phase
+    if (
+      prevState.game.cupidArrow?.status !== 'active' &&
+      afterState.game.cupidArrow?.status === 'active'
+    ) {
+      for (const pair of afterState.game.cupidArrow.pairs ?? []) {
+        const [firstId, secondId] = pair.memberIds
+        api.dispatch(
+          updateRelationship({
+            source: firstId,
+            target: secondId,
+            delta: 55,
+            tags: ['cupid_partner', 'alliance', 'protection'],
+            actionSource: 'system',
+          })
+        )
+        api.dispatch(
+          updateRelationship({
+            source: secondId,
+            target: firstId,
+            delta: 55,
+            tags: ['cupid_partner', 'alliance', 'protection'],
+            actionSource: 'system',
+          })
+        )
+      }
+    }
     recordPhaseCeremony(api as unknown as MiddlewareAPI, prevPhase, newPhase)
 
     if (

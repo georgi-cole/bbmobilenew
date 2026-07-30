@@ -401,9 +401,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     instructions: [
       'Each round presents a social question with several answer options.',
       'Everyone locks in an answer at the same time.',
-      'Use available hints carefully to read the room.',
+      'You get 3 hints for the whole game, and each hint can only be used once.',
       'Players in the minority are eliminated.',
-      'If there is no clear majority, the game resolves the tie before moving on.',
+      'A tied ballot gets one re-vote. If it is still tied, that question is discarded and a new one begins.',
       'The last contestants face a final head-to-head to decide the winner.',
     ],
     resultMode: 'placement',
@@ -1261,7 +1261,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   batteryLow: {
     key: 'batteryLow',
     title: 'Battery Low',
-    description: 'Choose a reserve battery, open the rack, and decide whether to take the bank offer.',
+    description:
+      'Choose a reserve battery, open the rack, and decide whether to take the bank offer.',
     instructions: [
       'Choose a reserve battery and keep it sealed while you open the rest of the rack.',
       'After each stage, consider the bank’s offer based on the charges still hidden.',

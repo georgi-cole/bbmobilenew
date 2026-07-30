@@ -1,0 +1,9 @@
+# Android SDK path (use the correct path for your machine).
+sdk.dir=C\:\\Users\\YOUR_USER\\AppData\\Local\\Android\\Sdk
+
+# Release signing. Keep real values only in the ignored android/local.properties
+# file, or provide the equivalent ANDROID_* environment variables in CI.
+releaseStoreFile=../keystores/the-big-eye-release.jks
+releaseStorePassword=CHANGE_ME
+releaseKeyAlias=the-big-eye
+releaseKeyPassword=CHANGE_ME

@@ -581,4 +581,19 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Battery Low simulates private Bank Offer charging booths; AI mixes risk ' +
       'tolerance, offer value, and rack luck.',
   },
+  houseOfDarkness: {
+    key: 'houseOfDarkness',
+    category: 'mental',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: {
+      physical: 0,
+      mental: 0.45,
+      precision: 0.25,
+      nerve: 0.25,
+      luck: 0.05,
+    },
+    notes:
+      'House of Darkness rewards memory, precision, and composure while preserving a small amount of board variance.',
+  },
 }

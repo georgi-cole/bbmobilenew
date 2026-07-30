@@ -12,6 +12,12 @@ import type { CeremonyTile } from '../../../components/CeremonyOverlay/CeremonyO
 import type { Player } from '../../../types'
 import { statusBadgeImageSrc } from '../../../utils/statusBadges'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
+import {
+  expandCupidIds,
+  getCupidPair,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../../features/twists/cupidArrow'
 
 const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
 
@@ -46,17 +52,40 @@ export function useSafetyFlow({
   // replacement. The Continue button is hidden while this modal is open.
   // (showReplacementModal is defined below after pendingReplacementCeremony.)
   const replacementNeeded = game.replacementNeeded === true
-  const replacementBaseOptions = alivePlayers.filter(
-    (p) => p.id !== game.lohId && p.id !== game.posWinnerId && !game.nomineeIds.includes(p.id)
-  )
+  const replacementBaseOptions = (() => {
+    const roleIds = new Set(
+      expandCupidIds(
+        game,
+        [game.lohId, game.posWinnerId].filter((id): id is string => Boolean(id))
+      )
+    )
+    const candidates = alivePlayers.filter((player) => {
+      const unitIds = expandCupidIds(game, [player.id])
+      return !roleIds.has(player.id) && unitIds.every((id) => !game.nomineeIds.includes(id))
+    })
+    if (!isCupidArrowActive(game)) return candidates
+    const seen = new Set<string>()
+    return candidates.filter((player) => {
+      const key = getCupidPair(game, player.id)?.id ?? `solo:${player.id}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  })()
   const replacementOptions = (() => {
     const protectedIds = new Set(game.povProtectedIds ?? [])
-    const nonProtected = replacementBaseOptions.filter((player) => !protectedIds.has(player.id))
+    const nonProtected = replacementBaseOptions.filter((player) =>
+      expandCupidIds(game, [player.id]).every((id) => !protectedIds.has(id))
+    )
     return nonProtected.length > 0 ? nonProtected : replacementBaseOptions
   })()
 
   // ── Human POS holder decision (use veto or not) ──────────────────────────
-  const humanIsPosHolder = Boolean(humanPlayer && game.posWinnerId === humanPlayer.id)
+  const humanIsPosHolder = Boolean(
+    humanPlayer &&
+    (game.posWinnerId === humanPlayer.id ||
+      getCupidPartnerId(game, game.posWinnerId) === humanPlayer.id)
+  )
   const activeSpecialVeto = game.specialVeto?.activeType ?? null
   const specialVetoName =
     activeSpecialVeto === 'vip'
@@ -94,7 +123,10 @@ export function useSafetyFlow({
 
   const handlePovSaveTarget = useCallback(
     (id: string) => {
-      const savedPlayer = game.players.find((p) => p.id === id)
+      const savedPlayers = expandCupidIds(game, [id])
+        .map((savedId) => game.players.find((player) => player.id === savedId))
+        .filter((player): player is Player => Boolean(player))
+      const savedPlayer = savedPlayers.find((player) => player.id === id) ?? savedPlayers[0]
       const savedRect = getTileRect(id)
       const holderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
       const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
@@ -129,16 +161,16 @@ export function useSafetyFlow({
               },
             ]
           : []),
-        {
-          rect: savedRect,
+        ...savedPlayers.map((player) => ({
+          rect: getTileRect(player.id),
           badge: '🛡️',
-          badgeStart: sourceIsDistinctHolder ? holderRect : 'center',
-          badgeLabel: `${savedPlayer.name} saved by veto`,
+          badgeVariant: isCupidArrowActive(game) ? ('cupid-hug' as const) : undefined,
+          badgeStart: sourceIsDistinctHolder ? holderRect : ('center' as const),
+          badgeLabel: `${player.name} saved by veto`,
           glowTone: 'success' as const,
-        },
+        })),
       ]
       const resolveTiles = (): CeremonyTile[] => {
-        const currentSavedRect = getTileRect(id)
         const currentHolderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
         const currentSourceIsDistinctHolder =
           currentHolderRect != null && game.posWinnerId != null && game.posWinnerId !== id
@@ -152,34 +184,31 @@ export function useSafetyFlow({
                 },
               ]
             : []),
-          {
-            rect: currentSavedRect,
-            badge: 'ðŸ›¡ï¸',
+          ...savedPlayers.map((player) => ({
+            rect: getTileRect(player.id),
+            badge: '🛡️',
+            badgeVariant: isCupidArrowActive(game) ? ('cupid-hug' as const) : undefined,
             badgeStart:
-              currentSourceIsDistinctHolder && currentHolderRect ? currentHolderRect : 'center',
-            badgeLabel: `${savedPlayer.name} saved by veto`,
+              currentSourceIsDistinctHolder && currentHolderRect
+                ? currentHolderRect
+                : ('center' as const),
+            badgeLabel: `${player.name} saved by veto`,
             glowTone: 'success' as const,
-          },
+          })),
         ]
       }
 
+      const savedNames = savedPlayers.map((player) => player.name).join(' & ')
       pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
       setPendingSaveCeremony({
         tiles,
         resolveTiles,
-        caption: `${savedPlayer.name} has been saved!`,
+        caption: `${savedNames} ${savedPlayers.length > 1 ? 'have' : 'has'} been saved!`,
         subtitle: saveSubtitle,
         savedId: id,
       })
     },
-    [
-      dispatch,
-      game.players,
-      game.specialVeto?.awaitingVipSecondSaveTarget,
-      activeSpecialVeto,
-      getTileRect,
-      game.posWinnerId,
-    ]
+    [dispatch, game, activeSpecialVeto, getTileRect]
   )
 
   // Hide the save modal while the save ceremony is playing.
@@ -191,7 +220,17 @@ export function useSafetyFlow({
     humanIsPosHolder &&
     !pendingSaveCeremony &&
     !activeConfessionalDecision
-  const povSaveOptions = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+  const povSaveOptions = (() => {
+    const nominees = alivePlayers.filter((player) => game.nomineeIds.includes(player.id))
+    if (!isCupidArrowActive(game)) return nominees
+    const seenPairs = new Set<string>()
+    return nominees.filter((player) => {
+      const key = getCupidPair(game, player.id)?.id ?? `solo:${player.id}`
+      if (seenPairs.has(key)) return false
+      seenPairs.add(key)
+      return true
+    })
+  })()
 
   const showVipSecondUseModal =
     game.phase === 'pos_ceremony_results' &&
@@ -235,7 +274,11 @@ export function useSafetyFlow({
 
   const startReplacementCeremony = useCallback(
     (id: string, onCommit: () => void) => {
-      const replacementPlayer = game.players.find((p) => p.id === id)
+      const replacementPlayers = expandCupidIds(game, [id])
+        .map((replacementId) => game.players.find((player) => player.id === replacementId))
+        .filter((player): player is Player => Boolean(player))
+      const replacementPlayer =
+        replacementPlayers.find((player) => player.id === id) ?? replacementPlayers[0]
       const replacementRect = getTileRect(id)
       const sourceId = game.specialVeto?.activeType === 'diamond' ? game.posWinnerId : game.lohId
       const sourceRect = sourceId ? getTileRect(sourceId) : null
@@ -269,17 +312,16 @@ export function useSafetyFlow({
               },
             ]
           : []),
-        {
-          rect: replacementRect,
+        ...replacementPlayers.map((player) => ({
+          rect: getTileRect(player.id),
           badge: '❓',
           badgeImageSrc: NOMINATION_BADGE_SRC,
-          badgeStart: sourceIsDistinct ? sourceRect : 'center',
-          badgeLabel: `${replacementPlayer.name} named backup nominee`,
+          badgeStart: sourceIsDistinct ? sourceRect : ('center' as const),
+          badgeLabel: `${player.name} named backup nominee`,
           glowTone: 'danger' as const,
-        },
+        })),
       ]
       const resolveTiles = (): CeremonyTile[] => {
-        const currentReplacementRect = getTileRect(id)
         const currentSourceRect = sourceId ? getTileRect(sourceId) : null
         const currentSourceIsDistinct =
           currentSourceRect != null && sourceId != null && sourceId !== id
@@ -293,34 +335,31 @@ export function useSafetyFlow({
                 },
               ]
             : []),
-          {
-            rect: currentReplacementRect,
-            badge: 'â“',
+          ...replacementPlayers.map((player) => ({
+            rect: getTileRect(player.id),
+            badge: '❓',
             badgeImageSrc: NOMINATION_BADGE_SRC,
-            badgeStart: currentSourceIsDistinct && currentSourceRect ? currentSourceRect : 'center',
-            badgeLabel: `${replacementPlayer.name} named backup nominee`,
+            badgeStart:
+              currentSourceIsDistinct && currentSourceRect
+                ? currentSourceRect
+                : ('center' as const),
+            badgeLabel: `${player.name} named backup nominee`,
             glowTone: 'danger' as const,
-          },
+          })),
         ]
       }
 
+      const replacementNames = replacementPlayers.map((player) => player.name).join(' & ')
       pendingReplacementDispatchRef.current = onCommit
       setPendingReplacementCeremony({
         tiles,
         resolveTiles,
-        caption: `${replacementPlayer.name} is the backup nominee!`,
+        caption: `${replacementNames} ${replacementPlayers.length > 1 ? 'are' : 'is'} the backup nominee${replacementPlayers.length > 1 ? 's' : ''}!`,
         subtitle: replacementSubtitle,
         replacementId: id,
       })
     },
-    [
-      game.players,
-      getTileRect,
-      game.specialVeto?.activeType,
-      game.posWinnerId,
-      game.lohId,
-      activeSpecialVeto,
-    ]
+    [game, getTileRect, activeSpecialVeto]
   )
 
   const handleReplacementNominee = useCallback(

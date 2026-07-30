@@ -33,6 +33,7 @@ const Rules = lazy(() => import('./screens/Rules/Rules'))
 const PublicMeter = lazy(() => import('./screens/PublicMeter/PublicMeter'))
 const Settings = lazy(() => import('./screens/Settings/Settings'))
 const Store = lazy(() => import('./screens/Store/Store'))
+const Legal = lazy(() => import('./screens/Legal/Legal'))
 const CinematicPreview = lazy(() => import('./screens/CinematicPreview/CinematicPreview'))
 const PhonePreviewPage = lazy(() => import('./screens/PhonePreviewPage/PhonePreviewPage'))
 const SeasonRecapPreview = import.meta.env.DEV
@@ -144,6 +145,7 @@ export const router = createHashRouter([
       { path: 'public-meter', element: load(<PublicMeter />) },
       { path: 'settings', element: load(<Settings />) },
       { path: 'store', element: load(<Store />) },
+      { path: 'legal', element: load(<Legal />) },
       { path: 'settingsatiste', element: <SettingsAdminRoute /> },
       ...(twistsQaEnabled && TwistsTestPage != null
         ? [

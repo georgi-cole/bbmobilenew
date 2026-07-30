@@ -5,7 +5,7 @@
  * that have been rerouted into the Confessional.
  */
 
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   commitNominees,
@@ -31,7 +31,9 @@ import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doub
 import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import type { Player } from '../../types'
 import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
+import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import { getConfessionalPowerName } from './confessionalDecisionPresentation'
+import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
 import './ConfessionalDecisionPanel.css'
 
 interface DecisionPanelProps {
@@ -80,13 +82,74 @@ function PlayerRow({
   )
 }
 
+function DecisionUnitRow({
+  unit,
+  selected,
+  onClick,
+  danger = false,
+  label,
+  disabled = false,
+}: {
+  unit: ConfessionalDecisionUnit
+  selected: boolean
+  onClick: () => void
+  danger?: boolean
+  label?: string
+  disabled?: boolean
+}) {
+  if (unit.players.length === 1) {
+    return (
+      <PlayerRow
+        player={unit.players[0]}
+        selected={selected}
+        onClick={onClick}
+        danger={danger}
+        label={label}
+        disabled={disabled}
+      />
+    )
+  }
+
+  return (
+    <button
+      className={[
+        'cdp-option',
+        'cdp-option--pair',
+        selected ? 'cdp-option--selected' : '',
+        danger ? 'cdp-option--danger' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      type="button"
+      onClick={onClick}
+      aria-label={`${unit.label}, Pair ${unit.pairNumber}`}
+      aria-pressed={selected}
+      disabled={disabled}
+      style={{ '--cdp-pair-color': unit.pairColor } as CSSProperties}
+    >
+      <span className="cdp-option__pair-avatars" aria-hidden="true">
+        {unit.players.map((player) => (
+          <PlayerAvatar key={player.id} player={player} selected={selected} size="md" />
+        ))}
+      </span>
+      <span className="cdp-option__name">{unit.label}</span>
+      <span className="cdp-option__pair-dot" aria-hidden="true">
+        {unit.pairNumber}
+      </span>
+      {label && <span className="cdp-option__tag">{label}</span>}
+    </button>
+  )
+}
+
 function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const isDoubleEviction = Boolean(game.doubleEviction?.weekActive)
   const required = isDoubleEviction ? 3 : 2
-  const options = alivePlayers.filter((p) => p.id !== game.lohId)
+  const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
+  const options = alivePlayers.filter((p) => !lohIds.has(p.id))
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
   const canUsePublicNomineeRule = (game.publicModeEnabled ?? false) && !isDoubleEviction
   const autoNomineeId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
 
@@ -108,10 +171,10 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (!canConfirm || submitting) return
     setSubmitting(true)
     const selectedNames = selected
-      .map((id) => options.find((player) => player.id === id)?.name)
+      .map((id) => optionUnits.find((unit) => unit.id === id)?.label)
       .filter((name): name is string => Boolean(name))
     const autoNomineeName = autoNomineeId
-      ? (options.find((player) => player.id === autoNomineeId)?.name ?? null)
+      ? (optionUnits.find((unit) => unit.memberIds.includes(autoNomineeId))?.label ?? null)
       : null
     const nominationSummary = autoNomineeName
       ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is automatically added as the public auto-nominee.`
@@ -123,14 +186,14 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Nomination choices">
-        {options.map((p) => {
-          const isAuto = p.id === autoNomineeId
+        {optionUnits.map((unit) => {
+          const isAuto = autoNomineeId ? unit.memberIds.includes(autoNomineeId) : false
           return (
-            <PlayerRow
-              key={p.id}
-              player={p}
-              selected={selected.includes(p.id) || isAuto}
-              onClick={() => toggle(p.id)}
+            <DecisionUnitRow
+              key={unit.id}
+              unit={unit}
+              selected={selected.includes(unit.id) || isAuto}
+              onClick={() => toggle(unit.id)}
               label={isAuto ? 'Auto-Nominee' : undefined}
               disabled={submitting || isAuto}
             />
@@ -161,6 +224,7 @@ function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
   const game = useAppSelector((s) => s.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -169,20 +233,22 @@ function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return
     setSelectedId(id)
     setSubmitting(true)
-    const name = options.find((player) => player.id === id)?.name ?? 'that player'
-    onDecisionCommitted?.(`I choose ${name}.`)
+    const name = optionUnits.find((unit) => unit.id === id)?.label ?? 'that pair'
+    onDecisionCommitted?.(
+      isCupidArrowActive(game) ? `Our pair casts both votes against ${name}.` : `I choose ${name}.`
+    )
     dispatch(submitHumanVote(id))
   }
 
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Eviction vote choices">
-        {options.map((p) => (
-          <PlayerRow
-            key={p.id}
-            player={p}
-            selected={p.id === selectedId}
-            onClick={() => handleSelect(p.id)}
+        {optionUnits.map((unit) => (
+          <DecisionUnitRow
+            key={unit.id}
+            unit={unit}
+            selected={unit.id === selectedId}
+            onClick={() => handleSelect(unit.id)}
             danger
             disabled={submitting}
           />
@@ -449,6 +515,7 @@ function PosSaveTargetPanel({ onDecisionCommitted }: DecisionPanelProps) {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const isVipSecondSave = Boolean(game.specialVeto?.awaitingVipSecondSaveTarget)
   const options = alivePlayers.filter((p) => game.nomineeIds.includes(p.id))
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -457,7 +524,7 @@ function PosSaveTargetPanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return
     setSelectedId(id)
     setSubmitting(true)
-    const name = options.find((player) => player.id === id)?.name ?? 'that nominee'
+    const name = optionUnits.find((unit) => unit.id === id)?.label ?? 'that nominee pair'
     onDecisionCommitted?.(`I save ${name}.`)
     dispatch(isVipSecondSave ? submitVipSecondSaveTarget(id) : submitPovSaveTarget(id))
   }
@@ -465,12 +532,12 @@ function PosSaveTargetPanel({ onDecisionCommitted }: DecisionPanelProps) {
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Save target choices">
-        {options.map((p) => (
-          <PlayerRow
-            key={p.id}
-            player={p}
-            selected={p.id === selectedId}
-            onClick={() => handleSelect(p.id)}
+        {optionUnits.map((unit) => (
+          <DecisionUnitRow
+            key={unit.id}
+            unit={unit}
+            selected={unit.id === selectedId}
+            onClick={() => handleSelect(unit.id)}
             disabled={submitting}
           />
         ))}
@@ -487,8 +554,10 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
   const isCoup1 = Boolean(game.specialVeto?.awaitingCoupReplacement1)
   const isCoup2 = Boolean(game.specialVeto?.awaitingCoupReplacement2)
 
+  const lohUnitIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
+  const posUnitIds = new Set(expandCupidIds(game, game.posWinnerId ? [game.posWinnerId] : []))
   const replacementBaseOptions = alivePlayers.filter(
-    (p) => p.id !== game.lohId && p.id !== game.posWinnerId && !game.nomineeIds.includes(p.id)
+    (p) => !lohUnitIds.has(p.id) && !posUnitIds.has(p.id) && !game.nomineeIds.includes(p.id)
   )
   const protectedIds = new Set(game.povProtectedIds ?? [])
   const nonProtected = replacementBaseOptions.filter((p) => !protectedIds.has(p.id))
@@ -496,8 +565,8 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
 
   const coupBaseOptions = alivePlayers.filter(
     (p) =>
-      p.id !== game.lohId &&
-      p.id !== game.posWinnerId &&
+      !lohUnitIds.has(p.id) &&
+      !posUnitIds.has(p.id) &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.specialVeto?.coupReplacement1Id
   )
@@ -506,6 +575,7 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
   const coupOptions = coupNonProtected.length >= neededCount ? coupNonProtected : coupBaseOptions
 
   const options = isDiamond ? standardOptions : isCoup1 || isCoup2 ? coupOptions : standardOptions
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -514,7 +584,7 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return
     setSelectedId(id)
     setSubmitting(true)
-    const name = options.find((player) => player.id === id)?.name ?? 'that player'
+    const name = optionUnits.find((unit) => unit.id === id)?.label ?? 'that pair'
     onDecisionCommitted?.(`I name ${name} as the backup nominee.`)
     if (isDiamond) dispatch(submitDiamondReplacement(id))
     else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(id))
@@ -524,12 +594,12 @@ function ReplacementNomineePanel({ onDecisionCommitted }: DecisionPanelProps) {
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Replacement nominee choices">
-        {options.map((p) => (
-          <PlayerRow
-            key={p.id}
-            player={p}
-            selected={p.id === selectedId}
-            onClick={() => handleSelect(p.id)}
+        {optionUnits.map((unit) => (
+          <DecisionUnitRow
+            key={unit.id}
+            unit={unit}
+            selected={unit.id === selectedId}
+            onClick={() => handleSelect(unit.id)}
             disabled={submitting}
           />
         ))}
@@ -546,6 +616,7 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
   const isDoubleEviction = game.doubleEviction?.weekActive === true
   const isPosTieBreak = game.awaitingPosTieBreak === true
   const options = alivePlayers.filter((p) => tiedIds.includes(p.id))
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
 
   const multiSelectCount = isDoubleEviction
     ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
@@ -569,7 +640,7 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting) return
     setSelectedId(id)
     setSubmitting(true)
-    const name = options.find((player) => player.id === id)?.name ?? 'that nominee'
+    const name = optionUnits.find((unit) => unit.id === id)?.label ?? 'that nominee pair'
     onDecisionCommitted?.(`I choose to eliminate ${name}.`)
     if (isPosTieBreak) dispatch(submitPosTieBreak(id))
     else dispatch(submitTieBreak(id))
@@ -579,7 +650,7 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
     if (submitting || selectedIds.length !== multiSelectCount) return
     setSubmitting(true)
     const names = selectedIds
-      .map((id) => options.find((player) => player.id === id)?.name)
+      .map((id) => optionUnits.find((unit) => unit.id === id)?.label)
       .filter((name): name is string => Boolean(name))
     onDecisionCommitted?.(`I choose to eliminate ${formatNameList(names)}.`)
     dispatch(submitDoubleEvictionTieBreak(selectedIds))
@@ -588,14 +659,14 @@ function TieBreakPanel({ onDecisionCommitted }: DecisionPanelProps) {
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
       <div className="cdp-option-grid" role="group" aria-label="Tie-break choices">
-        {options.map((p) => (
-          <PlayerRow
-            key={p.id}
-            player={p}
-            selected={isMulti ? selectedIds.includes(p.id) : p.id === selectedId}
+        {optionUnits.map((unit) => (
+          <DecisionUnitRow
+            key={unit.id}
+            unit={unit}
+            selected={isMulti ? selectedIds.includes(unit.id) : unit.id === selectedId}
             onClick={() => {
-              if (isMulti) toggleMulti(p.id)
-              else handleSingle(p.id)
+              if (isMulti) toggleMulti(unit.id)
+              else handleSingle(unit.id)
             }}
             danger
             disabled={submitting}

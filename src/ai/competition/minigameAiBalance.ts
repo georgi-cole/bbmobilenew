@@ -58,11 +58,14 @@ function validateBandChances(key: string, tuning: MinigameAiTuning): void {
 /**
  * Per-minigame AI balance configuration.
  *
- * Quick Tap target behaviour (humans routinely score 175–220):
+ * Quick Tap target behaviour (strong human runs can reach 300–350 with a
+ * favourable booster sequence):
  *   - AI score bands were reduced by 15% (issue #951) so the field is easier
  *     for the player to catch up to.
  *   - Most AI results land around 155–190 (competitive zone).
- *   - Occasional standout AI performances reach ~205–225.
+ *   - Occasional standout AI performances reach ~225–265.
+ *   - A 1% perfect-run outcome can reach 350, matching an exceptional human
+ *     run that collects the time, 2×, and 3× boosts cleanly.
  *   - Some weaker outcomes exist (~115–135) so results don't feel scripted.
  *   - Hot-streak / slump modifiers add extra variance without being identity-locked.
  */
@@ -72,11 +75,13 @@ export const minigameAiBalance: Record<string, MinigameAiTuning> = {
     // Bands reduced by 15% vs the original tuning (issue #951, item 6) to make
     // Quick Tap Race easier for the player to catch up to.
     scoreBands: [
-      { chance: 0.08, min: 89, max: 118 },
-      { chance: 0.22, min: 119, max: 157 },
-      { chance: 0.32, min: 158, max: 187 },
-      { chance: 0.25, min: 187, max: 225 },
-      { chance: 0.13, min: 226, max: 264 },
+      { chance: 0.03, min: 89, max: 118 },
+      { chance: 0.17, min: 119, max: 157 },
+      { chance: 0.20, min: 158, max: 187 },
+      { chance: 0.30, min: 187, max: 225 },
+      { chance: 0.25, min: 226, max: 264 },
+      // Rare perfect booster run. With jitter and a hot streak this tops out at 350.
+      { chance: 0.05, min: 300, max: 328 },
     ],
     jitter: 4,
     hotStreakChance: 0.10,

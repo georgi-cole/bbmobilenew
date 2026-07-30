@@ -187,9 +187,9 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
     );
     // Bands reduced 15% (issue #951). Absolute minimum is the lowest band (89)
     // minus max jitter (4) minus max slump (14) = 71. Absolute maximum is the
-    // highest band (264) plus max jitter (4) plus max hot-streak bonus (18) = 286.
+    // rare perfect-run band (328) plus max jitter (4) plus max hot-streak bonus (18) = 350.
     expect(Math.min(...scores)).toBeGreaterThanOrEqual(60);
-    expect(Math.max(...scores)).toBeLessThanOrEqual(300);
+    expect(Math.max(...scores)).toBeLessThanOrEqual(350);
   });
 
   it('competitive zone scores dominate — majority fall in the competitive range', () => {
@@ -200,11 +200,11 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
 
     // Bands from minigameAiBalance.ts, reduced 15% (issue #951). Grouped to the
     // configured (scaled) band edges so each range maps to its nominal chance:
-    //   band1: ≤118        →  8% nominal
-    //   band2: 119–157     → 22% nominal
-    //   band3: 158–187     → 32% nominal
-    //   band4: 188–225     → 25% nominal
-    //   band5: ≥226        → 13% nominal
+    //   band1: ≤118        →  3% nominal
+    //   band2: 119–157     → 17% nominal
+    //   band3: 158–187     → 20% nominal
+    //   band4: 188–225     → 30% nominal
+    //   band5: ≥226        → 30% nominal (including the 5% perfect-run tier)
     //
     // Jitter (±4) and hot-streak/slump (±6–18) can shift individual scores across
     // band edges, so tolerances are intentionally wider than the nominal percentage.
@@ -220,25 +220,25 @@ describe('simulateQuickTapAiScore — realism and competitiveness', () => {
     // Sanity: all 1000 scores are captured (exhaustive + non-overlapping).
     expect(counts.band1 + counts.band2 + counts.band3 + counts.band4 + counts.band5).toBe(1000);
 
-    // band1 (~8% nominal): allow generous tolerance for jitter + slump spillover
-    expect(counts.band1).toBeGreaterThanOrEqual(40);
-    expect(counts.band1).toBeLessThanOrEqual(170);
+    // band1 (~3% nominal): allow generous tolerance for jitter + slump spillover
+    expect(counts.band1).toBeGreaterThanOrEqual(5);
+    expect(counts.band1).toBeLessThanOrEqual(100);
 
-    // band2 (~22% nominal)
-    expect(counts.band2).toBeGreaterThanOrEqual(150);
-    expect(counts.band2).toBeLessThanOrEqual(330);
+    // band2 (~17% nominal)
+    expect(counts.band2).toBeGreaterThanOrEqual(100);
+    expect(counts.band2).toBeLessThanOrEqual(270);
 
-    // band3 (~32% nominal — core competitive zone)
-    expect(counts.band3).toBeGreaterThanOrEqual(230);
-    expect(counts.band3).toBeLessThanOrEqual(420);
+    // band3 (~20% nominal)
+    expect(counts.band3).toBeGreaterThanOrEqual(130);
+    expect(counts.band3).toBeLessThanOrEqual(300);
 
-    // band4 (~25% nominal)
-    expect(counts.band4).toBeGreaterThanOrEqual(170);
-    expect(counts.band4).toBeLessThanOrEqual(340);
+    // band4 (~30% nominal — core competitive zone)
+    expect(counts.band4).toBeGreaterThanOrEqual(230);
+    expect(counts.band4).toBeLessThanOrEqual(400);
 
-    // band5 (~13% nominal): allow tolerance for hot-streak spillover
-    expect(counts.band5).toBeGreaterThanOrEqual(70);
-    expect(counts.band5).toBeLessThanOrEqual(200);
+    // band5 (~30% nominal): includes standout and perfect-run outcomes
+    expect(counts.band5).toBeGreaterThanOrEqual(180);
+    expect(counts.band5).toBeLessThanOrEqual(400);
 
     // Summary check: competitive zone (bands 2–5) should dominate
     const competitive = counts.band2 + counts.band3 + counts.band4 + counts.band5;

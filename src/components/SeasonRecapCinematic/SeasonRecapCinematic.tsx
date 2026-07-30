@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import type { Player } from '../../types';
+import type { GameHistoryEvent, Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
@@ -16,6 +16,7 @@ export interface SeasonRecapProps {
   season: number;
   week: number;
   players: Player[];
+  history?: GameHistoryEvent[];
   publicOpinion?: PublicOpinionState | null;
   onComplete: () => void;
 }
@@ -366,23 +367,30 @@ function HonorDetail({ category }: { category: AwardCategory }) {
   );
 }
 
+function getSeasonDayCount(recapData: RecapData, week: number): number {
+  const latestRecordedExit = recapData.evictionLadder.reduce(
+    (latest, player) => Math.max(latest, player.evictedAtWeek ?? 0),
+    0,
+  );
+
+  return Math.max(1, Math.round(week), latestRecordedExit);
+}
+
 function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineCheckpoint[] {
-  const totalDays = Math.max(week * 7, 7);
+  const totalDays = getSeasonDayCount(recapData, week);
+  const latestPreFinaleDay = Math.max(1, totalDays - 1);
   const evictions = recapData.evictionLadder;
   const checkpoints = evictions.map((player, index) => {
     const inferredDay = Math.round(((index + 1) / (evictions.length + 1)) * totalDays);
-    const day = Math.max(1, Math.min(totalDays - 1, (player.evictedAtWeek ?? 0) * 7 || inferredDay));
-    const wasJury = player.status === 'jury';
+    const day = Math.max(1, Math.min(latestPreFinaleDay, player.evictedAtWeek ?? inferredDay));
     return {
       id: `eviction-${player.id}-${index}`,
       day,
       player,
       kind: 'eviction' as const,
       title: player.name,
-      label: wasJury ? 'Jury seat' : 'Evicted',
-      detail: wasJury
-        ? `${player.name} took a seat on the jury.`
-        : `${player.name}'s season ended here.`,
+      label: 'Exit',
+      detail: `${player.name}'s season ended here.`,
     };
   });
   const knownTwists: TimelineCheckpoint[] = [];
@@ -403,22 +411,22 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
       detail: `${entries.length} housemates left the game on the same night.`,
     });
   });
-  const firstJuror = checkpoints.find((checkpoint) => checkpoint.label === 'Jury seat');
-  if (firstJuror) {
+  if (totalDays >= 6) {
+    const midpointDay = Math.max(2, Math.round(totalDays / 2) - 1);
     knownTwists.push({
-      id: `milestone-jury-${firstJuror.day}`,
-      day: Math.max(1, firstJuror.day - 1),
+      id: `milestone-midseason-${midpointDay}`,
+      day: midpointDay,
       kind: 'milestone',
-      title: 'Jury phase',
+      title: 'Midseason turn',
       label: 'Milestone',
-      detail: 'The season entered its jury chapter.',
+      detail: 'The season crossed into its decisive second half.',
     });
   }
   evictions.filter((player) => (player.stats?.battleBackWins ?? 0) > 0).forEach((player, index) => {
     const departure = checkpoints.find((checkpoint) => checkpoint.player?.id === player.id);
     knownTwists.push({
       id: `twist-battle-back-${player.id}`,
-      day: Math.min(totalDays - 1, (departure?.day ?? Math.round(totalDays / 2)) + index + 2),
+      day: Math.min(latestPreFinaleDay, (departure?.day ?? Math.round(totalDays / 2)) + index + 2),
       player,
       kind: 'twist',
       title: 'Battle back',
@@ -450,10 +458,14 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
 function FinaleCalendarFocus({
   day,
   events,
+  history,
+  allPlayers,
   onClose,
 }: {
   day: number;
   events: TimelineCheckpoint[];
+  history: GameHistoryEvent[];
+  allPlayers: Player[];
   onClose: () => void;
 }) {
   const leadEvent = events.find((event) => event.kind === 'twist')
@@ -464,7 +476,6 @@ function FinaleCalendarFocus({
   if (!leadEvent) return null;
 
   const player = leadEvent.player;
-  const totalWins = (player?.stats?.lohWins ?? 0) + (player?.stats?.posWins ?? 0);
   const placement = player?.isWinner || player?.finalRank === 1
     ? '#1'
     : player?.seasonPlacement
@@ -476,6 +487,72 @@ function FinaleCalendarFocus({
   const involvedPlayers = events
     .map((event) => event.player)
     .filter((eventPlayer): eventPlayer is Player => Boolean(eventPlayer));
+  const exitRecords = history.filter((event) => event.type === 'seasonExit');
+  const exitRecord = player
+    ? [...exitRecords].reverse().find((event: GameHistoryEvent) => event.data.playerId === player.id)
+    : undefined;
+  const exitData = exitRecord?.data;
+  const leaderIds = Array.isArray(exitData?.leaderIds)
+    ? exitData.leaderIds.filter((id: unknown): id is string => typeof id === 'string')
+    : [];
+  const leaderNames = leaderIds
+    .map((id) => allPlayers.find((candidate) => candidate.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const decisionMakerId = typeof exitData?.decisionMakerId === 'string'
+    ? exitData.decisionMakerId
+    : null;
+  const decisionMakerName = decisionMakerId
+    ? allPlayers.find((candidate) => candidate.id === decisionMakerId)?.name
+    : null;
+  const voteCounts = exitData?.voteCounts && typeof exitData.voteCounts === 'object'
+    ? exitData.voteCounts as Record<string, unknown>
+    : {};
+  const votesAgainst = player && typeof voteCounts[player.id] === 'number'
+    ? voteCounts[player.id] as number
+    : null;
+  const totalBallots = Object.values(voteCounts).reduce<number>(
+    (total, count) => total + (typeof count === 'number' ? count : 0),
+    0,
+  );
+  const helpedEliminateIds = player
+    ? exitRecords.flatMap((record) => {
+        const eliminatedId = typeof record.data.playerId === 'string' ? record.data.playerId : null;
+        const votes = record.data.votesByVoterId && typeof record.data.votesByVoterId === 'object'
+          ? record.data.votesByVoterId as Record<string, unknown>
+          : {};
+        return eliminatedId && votes[player.id] === eliminatedId ? [eliminatedId] : [];
+      })
+    : [];
+  const controlledExitIds = player
+    ? exitRecords.flatMap((record) => {
+        const eliminatedId = typeof record.data.playerId === 'string' ? record.data.playerId : null;
+        const recordLeaderIds = Array.isArray(record.data.leaderIds) ? record.data.leaderIds : [];
+        return eliminatedId && recordLeaderIds.includes(player.id) ? [eliminatedId] : [];
+      })
+    : [];
+  const namesForIds = (ids: string[]) => [...new Set(ids)]
+    .map((id) => allPlayers.find((candidate) => candidate.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
+  const helpedEliminateNames = namesForIds(helpedEliminateIds);
+  const controlledExitNames = namesForIds(controlledExitIds);
+  const storyFacts = player
+    ? [
+        decisionMakerName
+          ? { label: 'Exit decision', value: `${decisionMakerName} made the direct decision to eliminate ${player.name}.` }
+          : leaderNames.length > 0
+            ? { label: 'Round control', value: `${player.name} was eliminated during ${leaderNames.join(' & ')}'s leadership.` }
+            : null,
+        votesAgainst != null && totalBallots > 0
+          ? { label: 'Final ballot', value: `${votesAgainst} of ${totalBallots} recorded votes were cast against ${player.name}.` }
+          : null,
+        controlledExitNames.length > 0
+          ? { label: 'Power moves', value: `${player.name}'s leadership rounds ended ${controlledExitNames.join(', ')}'s run${controlledExitNames.length === 1 ? '' : 's'}.` }
+          : null,
+        helpedEliminateNames.length > 0
+          ? { label: 'Direct impact', value: `${player.name}'s recorded votes helped eliminate ${helpedEliminateNames.join(', ')}.` }
+          : null,
+      ].filter((fact): fact is { label: string; value: string } => Boolean(fact))
+    : [];
 
   return (
     <motion.article
@@ -501,19 +578,22 @@ function FinaleCalendarFocus({
         <div>
           <p>Day {day} · {leadEvent.label}</p>
           <h2>{leadEvent.kind === 'eviction' && player ? player.name : leadEvent.title}</h2>
-          <span>{leadEvent.detail}</span>
+          <span>{leadEvent.detail}{player && placement !== '—' ? ` Finished ${placement}.` : ''}</span>
         </div>
       </div>
-      {player && (
-        <dl className="src-finale-calendar__focus-stats">
-          <div><dt>Placement</dt><dd>{placement}</dd></div>
-          <div><dt>Comp wins</dt><dd>{totalWins}</dd></div>
-          <div><dt>Nominated</dt><dd>{player.stats?.timesNominated ?? 0}×</dd></div>
+      {storyFacts.length > 0 && (
+        <dl className="src-finale-calendar__focus-story">
+          {storyFacts.map((fact) => (
+            <div key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
         </dl>
       )}
       {!player && involvedPlayers.length > 0 && (
         <div className="src-finale-calendar__focus-cast">
-          <p>Housemates involved</p>
+          <p>Players involved</p>
           <div>
             {involvedPlayers.map((involvedPlayer) => (
               <span key={involvedPlayer.id}>
@@ -537,14 +617,16 @@ function FinaleCalendarFocus({
 function FinaleTimeline({
   recapData,
   week,
+  history,
   onBack,
 }: {
   recapData: RecapData;
   week: number;
+  history: GameHistoryEvent[];
   onBack: () => void;
 }) {
   const checkpoints = useMemo(() => buildTimelineCheckpoints(recapData, week), [recapData, week]);
-  const totalDays = Math.max(week * 7, 7);
+  const totalDays = getSeasonDayCount(recapData, week);
   const windowSize = 28;
   const calendarWindows = Array.from({ length: Math.ceil(totalDays / windowSize) }, (_, index) => {
     const start = index * windowSize + 1;
@@ -567,7 +649,17 @@ function FinaleTimeline({
     ? Array.from({ length: activeWindow.end - activeWindow.start + 1 }, (_, index) => activeWindow.start + index)
     : [];
   const activeEventDays = calendarDays.filter((day) => (eventsByDay.get(day)?.length ?? 0) > 0).length;
-  const chapterNumber = String(windowIndex + 1).padStart(2, '0');
+  const rangeLabel = calendarWindows.length === 1
+    ? `${totalDays}-day season`
+    : `Days ${activeWindow?.start ?? 1}–${activeWindow?.end ?? totalDays}`;
+  const daysPerTimelineRow = 4;
+  const calendarRows = Array.from(
+    { length: Math.ceil(calendarDays.length / daysPerTimelineRow) },
+    (_, rowIndex) => calendarDays.slice(
+      rowIndex * daysPerTimelineRow,
+      (rowIndex + 1) * daysPerTimelineRow,
+    ),
+  );
 
   const selectWindow = (index: number) => {
     setWindowIndex(index);
@@ -589,26 +681,35 @@ function FinaleTimeline({
         <h1>The season, day by day.</h1>
         <p>A living record of exits, shocks, and the final crown.</p>
       </header>
-      <div className="src-finale-calendar__tabs" role="tablist" aria-label="Season calendar ranges">
-        {calendarWindows.map((calendarWindow, index) => (
-          <button
-            key={calendarWindow.start}
-            type="button"
-            role="tab"
-            aria-selected={index === windowIndex}
-            onClick={() => selectWindow(index)}
-          >
-            Days {calendarWindow.start}–{calendarWindow.end}
-          </button>
-        ))}
-      </div>
-      <div className="src-finale-calendar__stage">
+      {calendarWindows.length > 1 && (
+        <div
+          className="src-finale-calendar__tabs"
+          role="tablist"
+          aria-label="Season calendar ranges"
+          style={{ '--src-calendar-window-count': calendarWindows.length } as CSSProperties}
+        >
+          {calendarWindows.map((calendarWindow, index) => (
+            <button
+              key={calendarWindow.start}
+              type="button"
+              role="tab"
+              aria-selected={index === windowIndex}
+              onClick={() => selectWindow(index)}
+            >
+              Days {calendarWindow.start}–{calendarWindow.end}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="src-finale-calendar__stage" data-mode={selectedEvents.length > 0 ? 'focus' : 'calendar'}>
         <AnimatePresence initial={false} mode="popLayout">
           {selectedEvents.length > 0 && selectedDay != null ? (
             <FinaleCalendarFocus
               key={`focus-${selectedDay}`}
               day={selectedDay}
               events={selectedEvents}
+              history={history}
+              allPlayers={[...recapData.evictionLadder, ...recapData.finalists]}
               onClose={() => setSelectedDay(null)}
             />
           ) : (
@@ -620,8 +721,8 @@ function FinaleTimeline({
               exit={{ opacity: 0, scale: 1.035, filter: 'blur(4px)' }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="src-finale-calendar__summary" aria-label={`Chapter ${chapterNumber}: ${activeEventDays} event days`}>
-                <span>CHAPTER {chapterNumber}</span>
+              <div className="src-finale-calendar__summary" aria-label={`${rangeLabel}: ${activeEventDays} event days`}>
+                <span>{rangeLabel}</span>
                 <strong>{activeEventDays} moments saved</strong>
               </div>
               <div className="src-finale-calendar__legend" aria-label="Event legend">
@@ -630,41 +731,58 @@ function FinaleTimeline({
                   return <span key={kind} data-kind={kind}><i aria-hidden="true">{meta.icon}</i>{meta.name}</span>;
                 })}
               </div>
-              <div className="src-finale-calendar__grid" aria-label={`Season days ${activeWindow?.start ?? 1} to ${activeWindow?.end ?? totalDays}`}>
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((dayName, index) => (
-                  <span key={`${dayName}-${index}`} className="src-finale-calendar__weekday" aria-hidden="true">{dayName}</span>
+              <div
+                className="src-finale-calendar__timeline"
+                aria-label={`Season days ${activeWindow?.start ?? 1} to ${activeWindow?.end ?? totalDays}`}
+                style={{ '--src-timeline-row-count': calendarRows.length } as CSSProperties}
+              >
+                <div className="src-finale-calendar__timeline-label">
+                  <span>Day 01</span>
+                  <strong>Season route</strong>
+                  <span>Finale {String(totalDays).padStart(2, '0')}</span>
+                </div>
+                {calendarRows.map((rowDays, rowIndex) => (
+                  <div
+                    className="src-finale-calendar__timeline-row"
+                    data-direction={rowIndex % 2 === 0 ? 'forward' : 'reverse'}
+                    key={rowDays[0]}
+                    role="group"
+                    aria-label={`Days ${rowDays[0]} to ${rowDays.at(-1)}`}
+                  >
+                      {rowDays.map((day) => {
+                        const dayEvents = eventsByDay.get(day) ?? [];
+                        const primaryEvent = dayEvents.find((event) => event.kind === 'twist')
+                          ?? dayEvents.find((event) => event.kind === 'milestone')
+                          ?? dayEvents.find((event) => event.kind === 'finale')
+                          ?? dayEvents[0];
+                        const meta = primaryEvent ? CALENDAR_EVENT_META[primaryEvent.kind] : null;
+                        return (
+                          <motion.button
+                            key={day}
+                            type="button"
+                            className="src-finale-calendar__day"
+                            data-event={primaryEvent ? 'true' : 'false'}
+                            data-kind={primaryEvent?.kind}
+                            layoutId={primaryEvent ? `finale-day-${day}` : undefined}
+                            aria-label={primaryEvent ? `Day ${day}: ${primaryEvent.title}, ${primaryEvent.label}` : `Day ${day}: no major event recorded`}
+                            disabled={dayEvents.length === 0}
+                            whileTap={primaryEvent ? { scale: 0.92 } : undefined}
+                            onClick={() => setSelectedDay(day)}
+                          >
+                            <span className="src-finale-calendar__day-number">{String(day).padStart(2, '0')}</span>
+                            {primaryEvent?.player && (
+                              <span className="src-finale-calendar__day-portrait" aria-hidden="true">
+                                <PlayerAvatar player={primaryEvent.player} size="sm" showEvictedStyle={false} showRelationshipOutline={false} />
+                              </span>
+                            )}
+                            {meta && !primaryEvent?.player && <i aria-hidden="true">{meta.icon}</i>}
+                            {meta && <small>{meta.label}</small>}
+                            {dayEvents.length > 1 && <em aria-hidden="true">+{dayEvents.length - 1}</em>}
+                          </motion.button>
+                        );
+                      })}
+                  </div>
                 ))}
-                {calendarDays.map((day) => {
-                  const dayEvents = eventsByDay.get(day) ?? [];
-                  const primaryEvent = dayEvents.find((event) => event.kind === 'twist')
-                    ?? dayEvents.find((event) => event.kind === 'milestone')
-                    ?? dayEvents.find((event) => event.kind === 'finale')
-                    ?? dayEvents[0];
-                  const meta = primaryEvent ? CALENDAR_EVENT_META[primaryEvent.kind] : null;
-                  return (
-                    <motion.button
-                      key={day}
-                      type="button"
-                      className="src-finale-calendar__day"
-                      data-event={primaryEvent ? 'true' : 'false'}
-                      data-kind={primaryEvent?.kind}
-                      layoutId={primaryEvent ? `finale-day-${day}` : undefined}
-                      aria-label={primaryEvent ? `Day ${day}: ${primaryEvent.title}, ${primaryEvent.label}` : `Day ${day}: no major event recorded`}
-                      disabled={dayEvents.length === 0}
-                      whileTap={primaryEvent ? { scale: 0.92 } : undefined}
-                      onClick={() => setSelectedDay(day)}
-                    >
-                      <span className="src-finale-calendar__day-number">{String(day).padStart(2, '0')}</span>
-                      {primaryEvent?.player && (
-                        <span className="src-finale-calendar__day-portrait" aria-hidden="true">
-                          <PlayerAvatar player={primaryEvent.player} size="sm" showEvictedStyle={false} showRelationshipOutline={false} />
-                        </span>
-                      )}
-                      {meta && !primaryEvent?.player && <i aria-hidden="true">{meta.icon}</i>}
-                      {dayEvents.length > 1 && <em aria-hidden="true">+{dayEvents.length - 1}</em>}
-                    </motion.button>
-                  );
-                })}
               </div>
               <p className="src-finale-calendar__hint">Tap a marked date to open its archive card.</p>
             </motion.div>
@@ -679,6 +797,7 @@ export default function SeasonRecapCinematic({
   season,
   week,
   players,
+  history = [],
   publicOpinion,
   onComplete,
 }: SeasonRecapProps) {
@@ -780,7 +899,13 @@ export default function SeasonRecapCinematic({
           </motion.section>
         )}
         {view === 'journey' && (
-          <FinaleTimeline key="journey" recapData={recapData} week={week} onBack={() => setView('hub')} />
+          <FinaleTimeline
+            key="journey"
+            recapData={recapData}
+            week={week}
+            history={history}
+            onBack={() => setView('hub')}
+          />
         )}
       </AnimatePresence>
     </motion.div>

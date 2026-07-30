@@ -419,6 +419,7 @@ export default function FinalFaceoff() {
         season={game.season}
         week={game.week}
         players={game.players}
+        history={game.history}
         publicOpinion={publicOpinion}
         onComplete={handleRecapComplete}
       />

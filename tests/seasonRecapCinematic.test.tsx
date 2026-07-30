@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import SeasonRecapCinematic from '../src/components/SeasonRecapCinematic/SeasonRecapCinematic';
 import { buildSeasonRecapData } from '../src/components/SeasonRecapCinematic/seasonRecapData';
-import type { Player } from '../src/types';
+import type { GameHistoryEvent, Player } from '../src/types';
 import type { PublicOpinionState } from '../src/publicOpinion/types';
 
 vi.mock('framer-motion', async () => {
@@ -41,12 +41,30 @@ const PUBLIC_OPINION: PublicOpinionState = {
   currentFeedDay: 11,
 };
 
+const EXIT_HISTORY: GameHistoryEvent[] = [
+  {
+    type: 'seasonExit',
+    week: 6,
+    data: {
+      playerId: 'e1',
+      leaderIds: ['f1'],
+      nomineeIds: ['e1', 'f2'],
+      votesByVoterId: { f1: 'e1', j1: 'e1', f2: 'f2' },
+      voteCounts: { e1: 2, f2: 1 },
+      decisionMakerId: null,
+      exitMethod: 'vote',
+    },
+    timestamp: 1,
+  },
+];
+
 function renderRecap(onComplete = vi.fn()) {
   render(
     <SeasonRecapCinematic
       season={9}
       week={12}
       players={PLAYERS}
+      history={EXIT_HISTORY}
       publicOpinion={PUBLIC_OPINION}
       onComplete={onComplete}
     />,
@@ -96,20 +114,22 @@ describe('Season recap archive', () => {
     fireEvent.click(screen.getByRole('button', { name: /open calendar/i }));
 
     expect(screen.getByLabelText(/event legend/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: /days 29.*56/i }));
-    const drewCheckpoint = screen.getByRole('button', { name: /day 42: drew, evicted/i });
+    expect(screen.getByLabelText(/12-day season/i)).toBeTruthy();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.queryByRole('button', { name: /day 13:/i })).toBeNull();
+    const drewCheckpoint = screen.getByRole('button', { name: /day 6: drew, exit/i });
     fireEvent.click(drewCheckpoint);
 
     expect(screen.queryByLabelText(/event legend/i)).toBeNull();
-    expect(screen.getByText("Drew's season ended here.")).toBeTruthy();
-    expect(screen.getByText('Comp wins')).toBeTruthy();
+    expect(screen.getByText(/Drew's season ended here/i)).toBeTruthy();
+    expect(screen.getByText(/eliminated during Avery's leadership/i)).toBeTruthy();
+    expect(screen.getByText(/2 of 3 recorded votes/i)).toBeTruthy();
     expect(screen.queryByText(/house note/i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /calendar/i }));
-    expect(screen.getByRole('button', { name: /day 42: drew, evicted/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /day 6: drew, exit/i })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('tab', { name: /days 57.*84/i }));
-    fireEvent.click(screen.getByRole('button', { name: /day 69: jury phase, milestone/i }));
+    fireEvent.click(screen.getByRole('button', { name: /day 5: midseason turn, milestone/i }));
     expect(screen.getByText('Why it mattered')).toBeTruthy();
   });
 

@@ -29,6 +29,7 @@ export interface StoreProductDefinition {
   accessRoute?: string
   accessLabel?: string
   legalNote?: string
+  availableInRelease: boolean
 }
 
 export const VIP_PRODUCT_ID =
@@ -52,11 +53,8 @@ export const NO_ADS_PRODUCT_ID =
 export const VIP_BENEFITS = [
   'Public Mode controls',
   'Surveyeval Mode',
-  'Tribunal Mode when released',
   'Reality Mode',
-  'Ad-free play',
   'VIP themes',
-  'Future VIP features',
 ] as const
 
 export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
@@ -79,8 +77,8 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
       'Your included modes and controls are available from the Home screen and Settings.',
     accessRoute: '/settings',
     accessLabel: 'Manage VIP features',
-    legalNote:
-      'A permanent, non-consumable purchase. Future VIP features are included when released.',
+    legalNote: 'A permanent, non-consumable purchase.',
+    availableInRelease: true,
   },
   {
     key: 'survivalMode',
@@ -105,6 +103,7 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     accessInstructions: 'Choose Surveyeval from the Home screen.',
     accessRoute: '/',
     accessLabel: 'Go to Home',
+    availableInRelease: true,
   },
   {
     key: 'publicMode',
@@ -129,6 +128,7 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     accessInstructions: 'Turn Public Mode on or off in Settings before starting a season.',
     accessRoute: '/settings',
     accessLabel: 'Open Settings',
+    availableInRelease: true,
   },
   {
     key: 'tribunalHouse',
@@ -154,6 +154,7 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     accessLabel: 'Open Settings',
     legalNote:
       'The entitlement is permanent; feature availability may depend on the current release.',
+    availableInRelease: false,
   },
   {
     key: 'dramaMode',
@@ -178,6 +179,7 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     accessInstructions: 'Choose how real you want the season to feel in Settings.',
     accessRoute: '/settings',
     accessLabel: 'Open Settings',
+    availableInRelease: true,
   },
   {
     key: 'noAds',
@@ -200,12 +202,13 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     badge: 'Permanent unlock',
     accessInstructions:
       'No setup is needed. Automatic ads are removed as soon as this unlock is active.',
+    availableInRelease: false,
   },
 ]
 
 export const STANDALONE_PRODUCT_KEYS: readonly StoreEntitlementKey[] =
   STORE_PRODUCT_CATALOG.flatMap((product) =>
-    product.entitlement == null ? [] : [product.entitlement]
+    product.entitlement == null || !product.availableInRelease ? [] : [product.entitlement]
   )
 
 export function getStoreProductDefinition(key: StoreProductKey): StoreProductDefinition {

@@ -37,6 +37,27 @@ async function installUnhandledRejectionReporter(page: Page): Promise<void> {
       writable: false,
     })
 
+    // Browser E2E validates UI state, not media decoding. Keeping play() inert
+    // prevents codec/autoplay differences from producing false console failures,
+    // especially in WebKit, while audio behavior remains covered by unit tests.
+    Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+      configurable: true,
+      value: () => Promise.resolve(),
+      writable: true,
+    })
+    const createElement = document.createElement.bind(document)
+    document.createElement = ((tagName: string, options?: ElementCreationOptions) => {
+      const element = createElement(tagName, options)
+      if (tagName.toLowerCase() === 'audio') {
+        Object.defineProperty(element, 'src', {
+          configurable: true,
+          get: () => '',
+          set: () => undefined,
+        })
+      }
+      return element
+    }) as typeof document.createElement
+
     window.addEventListener('unhandledrejection', (event) => {
       const reason = event.reason
       const detail = reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason)
@@ -100,9 +121,18 @@ export const test = base.extend<{ browserErrors: BrowserErrorCollector }>({
       page.on('console', onConsole)
       page.on('pageerror', onPageError)
       await page.route('**/api/live-config', async (route) => {
+        await route.fulfill({ body: '{}', contentType: 'application/json', status: 200 })
+      })
+      await page.route('https://fonts.googleapis.com/**', async (route) => {
+        await route.fulfill({ body: '', contentType: 'text/css', status: 200 })
+      })
+      await page.route('https://fonts.gstatic.com/**', async (route) => {
+        await route.fulfill({ body: '', contentType: 'font/woff2', status: 200 })
+      })
+      await page.route('https://api.dicebear.com/**', async (route) => {
         await route.fulfill({
-          body: '{}',
-          contentType: 'application/json',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" fill="#263653"/></svg>',
+          contentType: 'image/svg+xml',
           status: 200,
         })
       })

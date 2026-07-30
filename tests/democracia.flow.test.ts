@@ -24,8 +24,8 @@
  * 20. submitPosTieBreak validates eligibility.
  */
 
-import { describe, it, expect } from 'vitest';
-import { configureStore } from '@reduxjs/toolkit';
+import { describe, it, expect } from 'vitest'
+import { configureStore } from '@reduxjs/toolkit'
 import gameReducer, {
   advance,
   activateDemocracia,
@@ -34,13 +34,14 @@ import gameReducer, {
   resolveDemocraciaPublicBreaker,
   submitCoLohNomination,
   submitPosTieBreak,
+  finalizePendingEviction,
   queueForcedShock,
   tryActivateDemocracia,
   tryActivatePendingForcedDemocracia,
-} from '../src/store/gameSlice';
-import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
-import { selectIsWaitingForInput } from '../src/store/selectors';
-import type { GameState, Player, DemocraciaState } from '../src/types';
+} from '../src/store/gameSlice'
+import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice'
+import { selectIsWaitingForInput } from '../src/store/selectors'
+import type { GameState, Player, DemocraciaState } from '../src/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function makePlayers(count: number, humanIndex = 0): Player[] {
     avatar: '🧑',
     status: 'active' as const,
     isUser: i === humanIndex,
-  }));
+  }))
 }
 
 const DEFAULT_DEMOCRACIA: DemocraciaState = {
@@ -65,11 +66,11 @@ const DEFAULT_DEMOCRACIA: DemocraciaState = {
   awaitingHumanVote: false,
   awaitingPublicBreaker: false,
   resultDisplay: null,
-};
+}
 
 function makeStore(
   gameOverrides: Partial<GameState> = {},
-  settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {},
+  settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}
 ) {
   const base: GameState = {
     season: 1,
@@ -104,7 +105,7 @@ function makeStore(
     awaitingCoLohNomination: false,
     coLohNomineeByCoLohId: null,
     awaitingPosTieBreak: false,
-  };
+  }
 
   const mergedSettings = {
     ...DEFAULT_SETTINGS,
@@ -114,7 +115,7 @@ function makeStore(
       ...settingsOverrides.sim,
     },
     ...settingsOverrides,
-  };
+  }
 
   return configureStore({
     reducer: { game: gameReducer, settings: settingsReducer },
@@ -122,7 +123,7 @@ function makeStore(
       game: { ...base, ...gameOverrides },
       settings: mergedSettings,
     },
-  });
+  })
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -132,85 +133,85 @@ describe('Democracia twist', () => {
 
   describe('auto-activation eligibility', () => {
     it('activates on day 5 with odd alive count', () => {
-      const store = makeStore({ week: 5, players: makePlayers(9) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(true);
-      expect(store.getState().game.democracia?.active).toBe(true);
-      expect(store.getState().game.democracia?.activatedDay).toBe(5);
-    });
+      const store = makeStore({ week: 5, players: makePlayers(9) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(true)
+      expect(store.getState().game.democracia?.active).toBe(true)
+      expect(store.getState().game.democracia?.activatedDay).toBe(5)
+    })
 
     it('activates on day 7 with odd alive count', () => {
-      const store = makeStore({ week: 7, players: makePlayers(7) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(true);
-      expect(store.getState().game.democracia?.active).toBe(true);
-    });
+      const store = makeStore({ week: 7, players: makePlayers(7) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(true)
+      expect(store.getState().game.democracia?.active).toBe(true)
+    })
 
     it('activates on day 9 with odd alive count', () => {
-      const store = makeStore({ week: 9, players: makePlayers(5) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(true);
-      expect(store.getState().game.democracia?.active).toBe(true);
-    });
+      const store = makeStore({ week: 9, players: makePlayers(5) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(true)
+      expect(store.getState().game.democracia?.active).toBe(true)
+    })
 
     it('activates on day 10 as hard cutoff with odd alive count', () => {
-      const store = makeStore({ week: 10, players: makePlayers(5) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(true);
-    });
+      const store = makeStore({ week: 10, players: makePlayers(5) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(true)
+    })
 
     it('does NOT activate on day 4 (not in eligible window)', () => {
-      const store = makeStore({ week: 4, players: makePlayers(9) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-      expect(store.getState().game.democracia?.active).toBe(false);
-    });
+      const store = makeStore({ week: 4, players: makePlayers(9) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+      expect(store.getState().game.democracia?.active).toBe(false)
+    })
 
     it('does NOT activate on day 6 (not in eligible window)', () => {
-      const store = makeStore({ week: 6, players: makePlayers(9) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      const store = makeStore({ week: 6, players: makePlayers(9) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate on day 11 (past hard cutoff)', () => {
-      const store = makeStore({ week: 11, players: makePlayers(7) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      const store = makeStore({ week: 11, players: makePlayers(7) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate with even alive count on day 5', () => {
-      const store = makeStore({ week: 5, players: makePlayers(8) });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      const store = makeStore({ week: 5, players: makePlayers(8) })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate if already used this season', () => {
       const store = makeStore({
         week: 5,
         democracia: { ...DEFAULT_DEMOCRACIA, usedThisSeason: true },
-      });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate if another twist already active this week', () => {
-      const store = makeStore({ week: 5, twistActivatedThisWeek: true });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      const store = makeStore({ week: 5, twistActivatedThisWeek: true })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate if phase is not loh_comp_announcement', () => {
-      const store = makeStore({ week: 5, phase: 'nominations' });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
+      const store = makeStore({ week: 5, phase: 'nominations' })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('does NOT activate if twists are disabled in settings', () => {
-      const store = makeStore({ week: 5 }, { sim: { enableTwists: false } });
-      const activated = store.dispatch(tryActivateDemocracia());
-      expect(activated).toBe(false);
-    });
-  });
+      const store = makeStore({ week: 5 }, { sim: { enableTwists: false } })
+      const activated = store.dispatch(tryActivateDemocracia())
+      expect(activated).toBe(false)
+    })
+  })
 
   // ── 2. Debug-forced activation ────────────────────────────────────────────
 
@@ -222,60 +223,60 @@ describe('Democracia twist', () => {
         phase: 'loh_comp_announcement',
         players: makePlayers(8), // even
         pendingForcedShock: { type: 'democracia', requestedWeek: 4, earliestWeek: 4 },
-      });
-      const activated = store.dispatch(tryActivatePendingForcedDemocracia());
-      expect(activated).toBe(true);
-      expect(store.getState().game.democracia?.active).toBe(true);
-      expect(store.getState().game.pendingForcedShock).toBeNull();
-    });
+      })
+      const activated = store.dispatch(tryActivatePendingForcedDemocracia())
+      expect(activated).toBe(true)
+      expect(store.getState().game.democracia?.active).toBe(true)
+      expect(store.getState().game.pendingForcedShock).toBeNull()
+    })
 
     it('does NOT activate if pending shock type is not democracia', () => {
       const store = makeStore({
         week: 5,
         phase: 'loh_comp_announcement',
         pendingForcedShock: { type: 'doubleEviction', requestedWeek: 5, earliestWeek: 5 },
-      });
-      const activated = store.dispatch(tryActivatePendingForcedDemocracia());
-      expect(activated).toBe(false);
-    });
+      })
+      const activated = store.dispatch(tryActivatePendingForcedDemocracia())
+      expect(activated).toBe(false)
+    })
 
     it('queues forced shock and activates on next loh_comp_announcement', () => {
       const store = makeStore({
         week: 5,
         phase: 'nominations', // not at loh_comp_announcement yet
-      });
-      store.dispatch(queueForcedShock('democracia'));
+      })
+      store.dispatch(queueForcedShock('democracia'))
       // Not yet at the right phase
-      expect(store.dispatch(tryActivatePendingForcedDemocracia())).toBe(false);
+      expect(store.dispatch(tryActivatePendingForcedDemocracia())).toBe(false)
       // Move to loh_comp_announcement (simulated by overriding state)
       // For this test, just verify the queued shock is set
-      expect(store.getState().game.pendingForcedShock?.type).toBe('democracia');
-    });
-  });
+      expect(store.getState().game.pendingForcedShock?.type).toBe('democracia')
+    })
+  })
 
   // ── 3. Activation state ───────────────────────────────────────────────────
 
   describe('activateDemocracia reducer', () => {
     it('sets active, usedThisSeason, activatedDay, twistActive, twistActivatedThisWeek', () => {
-      const store = makeStore({ week: 5 });
-      store.dispatch(activateDemocracia());
-      const dem = store.getState().game.democracia!;
-      expect(dem.active).toBe(true);
-      expect(dem.usedThisSeason).toBe(true);
-      expect(dem.activatedDay).toBe(5);
-      expect(store.getState().game.twistActive).toBe(true);
-      expect(store.getState().game.twistActivatedThisWeek).toBe(true);
-    });
+      const store = makeStore({ week: 5 })
+      store.dispatch(activateDemocracia())
+      const dem = store.getState().game.democracia!
+      expect(dem.active).toBe(true)
+      expect(dem.usedThisSeason).toBe(true)
+      expect(dem.activatedDay).toBe(5)
+      expect(store.getState().game.twistActive).toBe(true)
+      expect(store.getState().game.twistActivatedThisWeek).toBe(true)
+    })
 
     it('pushes a TV event with major=democracia', () => {
-      const store = makeStore({ week: 5 });
-      store.dispatch(activateDemocracia());
-      const feed = store.getState().game.tvFeed;
-      const democraciaEvent = feed.find((e) => e.major === 'democracia');
-      expect(democraciaEvent).toBeDefined();
-      expect(democraciaEvent?.type).toBe('twist');
-    });
-  });
+      const store = makeStore({ week: 5 })
+      store.dispatch(activateDemocracia())
+      const feed = store.getState().game.tvFeed
+      const democraciaEvent = feed.find((e) => e.major === 'democracia')
+      expect(democraciaEvent).toBeDefined()
+      expect(democraciaEvent?.type).toBe('twist')
+    })
+  })
 
   // ── 4. Democracia vote phase — single winner ──────────────────────────────
 
@@ -285,7 +286,7 @@ describe('Democracia twist', () => {
       const players = makePlayers(6, humanIsPlayer ? 0 : 99).map((p, i) => ({
         ...p,
         isUser: i === 0 && humanIsPlayer,
-      }));
+      }))
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -309,44 +310,44 @@ describe('Democracia twist', () => {
           awaitingHumanVote: true,
           awaitingPublicBreaker: false,
         },
-      });
-      return { store, players };
+      })
+      return { store, players }
     }
 
     it('advance() is blocked while human vote is pending', () => {
-      const { store } = makeVoteStore();
-      const phaseBefore = store.getState().game.phase;
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe(phaseBefore); // phase unchanged
-    });
+      const { store } = makeVoteStore()
+      const phaseBefore = store.getState().game.phase
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe(phaseBefore) // phase unchanged
+    })
 
     it('human can cast a vote and advance unblocks', () => {
-      const { store } = makeVoteStore();
+      const { store } = makeVoteStore()
       // Human p0 votes for p4
-      store.dispatch(submitDemocraciaVote('p4'));
-      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(false);
+      store.dispatch(submitDemocraciaVote('p4'))
+      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(false)
       // Now advance can proceed — p4 has 4 votes total, clear winner
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe('democracia_results');
-      expect(store.getState().game.lohId).toBe('p4');
-    });
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('democracia_results')
+      expect(store.getState().game.lohId).toBe('p4')
+    })
 
     it('human cannot vote for themselves', () => {
-      const { store } = makeVoteStore();
-      store.dispatch(submitDemocraciaVote('p0')); // self-vote
-      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(true); // still waiting
-    });
+      const { store } = makeVoteStore()
+      store.dispatch(submitDemocraciaVote('p0')) // self-vote
+      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(true) // still waiting
+    })
 
     it('human cannot vote for a non-candidate', () => {
-      const { store } = makeVoteStore();
+      const { store } = makeVoteStore()
       // Temporarily make p0 not a candidate — but p0 IS a candidate here.
       // Vote for an ID that doesn't exist.
-      store.dispatch(submitDemocraciaVote('nonexistent'));
-      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(true);
-    });
+      store.dispatch(submitDemocraciaVote('nonexistent'))
+      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(true)
+    })
 
     it('winner is applied as LOH and democracia_results transitions to social_1', () => {
-      const players = makePlayers(5);
+      const players = makePlayers(5)
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -362,27 +363,27 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
         },
-      });
+      })
       // p1 gets 3 votes → winner
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe('democracia_results');
-      expect(store.getState().game.lohId).toBe('p1');
-      expect(store.getState().game.democracia?.active).toBe(false);
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('democracia_results')
+      expect(store.getState().game.lohId).toBe('p1')
+      expect(store.getState().game.democracia?.active).toBe(false)
       expect(store.getState().game.democracia?.resultDisplay).toMatchObject({
         mode: 'winner',
         participantIds: ['p1'],
-      });
+      })
       // Advance from democracia_results → social_1
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe('social_1');
-    });
-  });
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('social_1')
+    })
+  })
 
   // ── 5. Ballotage (first tie) ───────────────────────────────────────────────
 
   describe('ballotage on tie', () => {
     function makeTieStore() {
-      const players = makePlayers(5);
+      const players = makePlayers(5)
       // p0 (human) and p1 each get 2 votes → tie
       const store = makeStore({
         week: 5,
@@ -399,53 +400,53 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
         },
-      });
-      return store;
+      })
+      return store
     }
 
     it('advances to ballotage round when there is a tie', () => {
-      const store = makeTieStore();
-      store.dispatch(advance());
-      const dem = store.getState().game.democracia!;
+      const store = makeTieStore()
+      store.dispatch(advance())
+      const dem = store.getState().game.democracia!
       // Still at democracia_vote (ballotage round)
-      expect(store.getState().game.phase).toBe('democracia_vote');
-      expect(dem.round).toBe(2);
-      expect(dem.candidateIds).toEqual(expect.arrayContaining(['p0', 'p1']));
-      expect(dem.candidateIds).toHaveLength(2);
+      expect(store.getState().game.phase).toBe('democracia_vote')
+      expect(dem.round).toBe(2)
+      expect(dem.candidateIds).toEqual(expect.arrayContaining(['p0', 'p1']))
+      expect(dem.candidateIds).toHaveLength(2)
       expect(dem.resultDisplay).toMatchObject({
         mode: 'tie',
         participantIds: ['p0', 'p1'],
-      });
-    });
+      })
+    })
 
     it('tied candidates do NOT vote in ballotage', () => {
-      const store = makeTieStore();
-      store.dispatch(advance());
-      const dem = store.getState().game.democracia!;
+      const store = makeTieStore()
+      store.dispatch(advance())
+      const dem = store.getState().game.democracia!
       // p0 and p1 are tied candidates; they should NOT be in eligibleVoterIds
-      expect(dem.eligibleVoterIds).not.toContain('p0');
-      expect(dem.eligibleVoterIds).not.toContain('p1');
+      expect(dem.eligibleVoterIds).not.toContain('p0')
+      expect(dem.eligibleVoterIds).not.toContain('p1')
       // p2, p3, p4 should be voters
-      expect(dem.eligibleVoterIds).toContain('p2');
-      expect(dem.eligibleVoterIds).toContain('p3');
-      expect(dem.eligibleVoterIds).toContain('p4');
-    });
+      expect(dem.eligibleVoterIds).toContain('p2')
+      expect(dem.eligibleVoterIds).toContain('p3')
+      expect(dem.eligibleVoterIds).toContain('p4')
+    })
 
     it('human voter must vote in ballotage', () => {
-      const store = makeTieStore();
-      store.dispatch(advance()); // enter ballotage
-      const dem = store.getState().game.democracia!;
+      const store = makeTieStore()
+      store.dispatch(advance()) // enter ballotage
+      const dem = store.getState().game.democracia!
       // Human p0 is a TIED candidate, not a voter — awaitingHumanVote should be false
       // because the human is in the tied pool, not the voter pool
-      expect(dem.awaitingHumanVote).toBe(false); // human is not a voter this round
-    });
-  });
+      expect(dem.awaitingHumanVote).toBe(false) // human is not a voter this round
+    })
+  })
 
   // ── 6. Ballotage with human as voter ──────────────────────────────────────
 
   describe('ballotage with human as voter', () => {
     it('blocks advance() for human voter in ballotage', () => {
-      const players = makePlayers(5, 2); // human is p2
+      const players = makePlayers(5, 2) // human is p2
       // p0 and p1 are tied candidates; p2 (human) is a voter
       const store = makeStore({
         week: 5,
@@ -462,14 +463,14 @@ describe('Democracia twist', () => {
           awaitingHumanVote: true,
           awaitingPublicBreaker: false,
         },
-      });
-      const phaseBefore = store.getState().game.phase;
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe(phaseBefore);
-    });
+      })
+      const phaseBefore = store.getState().game.phase
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe(phaseBefore)
+    })
 
     it('human voter can submit their ballotage vote', () => {
-      const players = makePlayers(5, 2); // human is p2
+      const players = makePlayers(5, 2) // human is p2
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -485,14 +486,14 @@ describe('Democracia twist', () => {
           awaitingHumanVote: true,
           awaitingPublicBreaker: false,
         },
-      });
-      store.dispatch(submitDemocraciaVote('p0'));
-      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(false);
+      })
+      store.dispatch(submitDemocraciaVote('p0'))
+      expect(store.getState().game.democracia?.awaitingHumanVote).toBe(false)
       // Now advance: p0 has 3 votes, wins
-      store.dispatch(advance());
-      expect(store.getState().game.lohId).toBe('p0');
-    });
-  });
+      store.dispatch(advance())
+      expect(store.getState().game.lohId).toBe('p0')
+    })
+  })
 
   // ── 7. Ballotage final tie — public mode OFF (co-LOH) ─────────────────────
 
@@ -515,30 +516,30 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
         },
-      });
-      tieStore.dispatch(advance());
-      const state = tieStore.getState().game;
-      expect(state.coLohIds).toEqual(expect.arrayContaining(['p0', 'p1']));
-      expect(state.coLohIds).toHaveLength(2);
-      expect(state.phase).toBe('democracia_results');
+      })
+      tieStore.dispatch(advance())
+      const state = tieStore.getState().game
+      expect(state.coLohIds).toEqual(expect.arrayContaining(['p0', 'p1']))
+      expect(state.coLohIds).toHaveLength(2)
+      expect(state.phase).toBe('democracia_results')
       expect(state.democracia?.resultDisplay).toMatchObject({
         mode: 'tie',
         participantIds: ['p0', 'p1'],
         title: 'CO-LEADERS ELECTED',
-      });
+      })
       // Both players should have loh status
-      const p0 = state.players.find((p) => p.id === 'p0')!;
-      const p1 = state.players.find((p) => p.id === 'p1')!;
-      expect(p0.status).toBe('loh');
-      expect(p1.status).toBe('loh');
-    });
-  });
+      const p0 = state.players.find((p) => p.id === 'p0')!
+      const p1 = state.players.find((p) => p.id === 'p1')!
+      expect(p0.status).toBe('loh')
+      expect(p1.status).toBe('loh')
+    })
+  })
 
   // ── 8. Ballotage final tie — public mode ON (public breaks tie) ────────────
 
   describe('ballotage final tie — public mode ON — public breaks tie', () => {
     it('sets awaitingPublicBreaker flag instead of creating co-LOHs', () => {
-      const players = makePlayers(5);
+      const players = makePlayers(5)
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -555,19 +556,19 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
         },
-      });
-      store.dispatch(advance());
-      expect(store.getState().game.democracia?.awaitingPublicBreaker).toBe(true);
-      expect(store.getState().game.coLohIds).toBeNull();
+      })
+      store.dispatch(advance())
+      expect(store.getState().game.democracia?.awaitingPublicBreaker).toBe(true)
+      expect(store.getState().game.coLohIds).toBeNull()
       expect(store.getState().game.democracia?.resultDisplay).toMatchObject({
         mode: 'tie',
         participantIds: ['p0', 'p1'],
         title: 'FINAL TIE',
-      });
-    });
+      })
+    })
 
     it('resolveDemocraciaPublicBreaker applies winner and transitions to democracia_results', () => {
-      const players = makePlayers(5);
+      const players = makePlayers(5)
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -584,17 +585,17 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: true, // already in public breaker state
         },
-      });
-      store.dispatch(resolveDemocraciaPublicBreaker({ winnerId: 'p0' }));
-      const state = store.getState().game;
-      expect(state.lohId).toBe('p0');
-      expect(state.phase).toBe('democracia_results');
-      expect(state.democracia?.active).toBe(false);
-      expect(state.democracia?.awaitingPublicBreaker).toBe(false);
-    });
+      })
+      store.dispatch(resolveDemocraciaPublicBreaker({ winnerId: 'p0' }))
+      const state = store.getState().game
+      expect(state.lohId).toBe('p0')
+      expect(state.phase).toBe('democracia_results')
+      expect(state.democracia?.active).toBe(false)
+      expect(state.democracia?.awaitingPublicBreaker).toBe(false)
+    })
 
     it('resolveDemocraciaPublicBreaker is rejected if candidate not in tied set', () => {
-      const players = makePlayers(5);
+      const players = makePlayers(5)
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -610,20 +611,20 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: true,
         },
-      });
-      const phaseBefore = store.getState().game.phase;
-      store.dispatch(resolveDemocraciaPublicBreaker({ winnerId: 'p3' }));
-      expect(store.getState().game.phase).toBe(phaseBefore); // unchanged
-      expect(store.getState().game.lohId).toBeNull();
-    });
-  });
+      })
+      const phaseBefore = store.getState().game.phase
+      store.dispatch(resolveDemocraciaPublicBreaker({ winnerId: 'p3' }))
+      expect(store.getState().game.phase).toBe(phaseBefore) // unchanged
+      expect(store.getState().game.lohId).toBeNull()
+    })
+  })
 
   // ── 9. Deterministic fallback when no ballotage voters ────────────────────
 
   describe('deterministic fallback — no ballotage voters', () => {
     it('picks a winner when all alive players are tied candidates', () => {
       // Only 2 players, both tied → no one can vote in ballotage
-      const players = makePlayers(2);
+      const players = makePlayers(2)
       const store = makeStore({
         week: 5,
         phase: 'democracia_vote',
@@ -639,18 +640,18 @@ describe('Democracia twist', () => {
           awaitingHumanVote: false,
           awaitingPublicBreaker: false,
         },
-      });
-      store.dispatch(advance());
-      const state = store.getState().game;
+      })
+      store.dispatch(advance())
+      const state = store.getState().game
       // Should resolve to democracia_results with a winner (or co-LOH if second tie)
       // Since round 1 tie with no voters → falls through to deterministic fallback
       // Actually with 2 players, ballotageVoters = [], so deterministic fallback fires
-      expect(['democracia_results', 'democracia_vote']).toContain(state.phase);
+      expect(['democracia_results', 'democracia_vote']).toContain(state.phase)
       if (state.phase === 'democracia_results') {
-        expect(state.lohId).toMatch(/^p[01]$/);
+        expect(state.lohId).toMatch(/^p[01]$/)
       }
-    });
-  });
+    })
+  })
 
   describe('Democracia result display state', () => {
     it('dismissDemocraciaResultDisplay clears the reveal and selector gating', () => {
@@ -667,67 +668,71 @@ describe('Democracia twist', () => {
             subtitle: 'Player 1 wins.',
           },
         },
-      });
+      })
 
-      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(true);
+      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(
+        true
+      )
 
-      store.dispatch(dismissDemocraciaResultDisplay());
+      store.dispatch(dismissDemocraciaResultDisplay())
 
-      expect(store.getState().game.democracia?.resultDisplay).toBeNull();
-      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(false);
-    });
-  });
+      expect(store.getState().game.democracia?.resultDisplay).toBeNull()
+      expect(selectIsWaitingForInput(store.getState() as ReturnType<typeof store.getState>)).toBe(
+        false
+      )
+    })
+  })
 
   // ── 10. Co-LOH nomination flow ────────────────────────────────────────────
 
   describe('co-LOH nomination flow', () => {
     function makeCoLohNomStore(humanIsCoLoh = false) {
-      const players = makePlayers(6, humanIsCoLoh ? 0 : 99);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
+      const players = makePlayers(6, humanIsCoLoh ? 0 : 99)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
       return makeStore({
         week: 5,
         phase: 'nominations', // advance() will process nomination_results
         players,
         lohId: 'p0',
         coLohIds: ['p0', 'p1'],
-      });
+      })
     }
 
     it('AI co-LOHs each nominate exactly 1 person', () => {
-      const store = makeCoLohNomStore(false);
-      store.dispatch(advance());
-      const state = store.getState().game;
+      const store = makeCoLohNomStore(false)
+      store.dispatch(advance())
+      const state = store.getState().game
       // Two AI co-LOHs should each pick 1 nominee → 2 nominees total
-      expect(state.nomineeIds).toHaveLength(2);
-    });
+      expect(state.nomineeIds).toHaveLength(2)
+    })
 
     it('nominees are not co-LOHs themselves', () => {
-      const store = makeCoLohNomStore(false);
-      store.dispatch(advance());
-      const state = store.getState().game;
-      expect(state.nomineeIds).not.toContain('p0');
-      expect(state.nomineeIds).not.toContain('p1');
-    });
+      const store = makeCoLohNomStore(false)
+      store.dispatch(advance())
+      const state = store.getState().game
+      expect(state.nomineeIds).not.toContain('p0')
+      expect(state.nomineeIds).not.toContain('p1')
+    })
 
     it('nominees are distinct', () => {
-      const store = makeCoLohNomStore(false);
-      store.dispatch(advance());
-      const state = store.getState().game;
-      const unique = new Set(state.nomineeIds);
-      expect(unique.size).toBe(state.nomineeIds.length);
-    });
+      const store = makeCoLohNomStore(false)
+      store.dispatch(advance())
+      const state = store.getState().game
+      const unique = new Set(state.nomineeIds)
+      expect(unique.size).toBe(state.nomineeIds.length)
+    })
 
     it('human co-LOH must nominate via submitCoLohNomination', () => {
-      const store = makeCoLohNomStore(true); // p0 is human co-LOH
-      store.dispatch(advance());
-      expect(store.getState().game.awaitingCoLohNomination).toBe(true);
-    });
+      const store = makeCoLohNomStore(true) // p0 is human co-LOH
+      store.dispatch(advance())
+      expect(store.getState().game.awaitingCoLohNomination).toBe(true)
+    })
 
     it('submitCoLohNomination rejects self-nomination', () => {
-      const players = makePlayers(6, 0);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
+      const players = makePlayers(6, 0)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
       const store = makeStore({
         week: 5,
         phase: 'nominations',
@@ -736,15 +741,15 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         awaitingCoLohNomination: true,
         coLohNomineeByCoLohId: {},
-      });
-      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p0' }));
-      expect(store.getState().game.awaitingCoLohNomination).toBe(true); // still waiting
-    });
+      })
+      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p0' }))
+      expect(store.getState().game.awaitingCoLohNomination).toBe(true) // still waiting
+    })
 
     it('submitCoLohNomination rejects nominating other co-LOH', () => {
-      const players = makePlayers(6, 0);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
+      const players = makePlayers(6, 0)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
       const store = makeStore({
         week: 5,
         phase: 'nominations',
@@ -753,15 +758,15 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         awaitingCoLohNomination: true,
         coLohNomineeByCoLohId: {},
-      });
-      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p1' }));
-      expect(store.getState().game.awaitingCoLohNomination).toBe(true); // still waiting
-    });
+      })
+      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p1' }))
+      expect(store.getState().game.awaitingCoLohNomination).toBe(true) // still waiting
+    })
 
     it('submitCoLohNomination accepts a valid nomination', () => {
-      const players = makePlayers(6, 0);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
+      const players = makePlayers(6, 0)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
       const store = makeStore({
         week: 5,
         phase: 'nominations',
@@ -770,22 +775,22 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         awaitingCoLohNomination: true,
         coLohNomineeByCoLohId: {},
-      });
-      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p3' }));
-      expect(store.getState().game.awaitingCoLohNomination).toBe(false);
-      expect(store.getState().game.nomineeIds).toContain('p3');
-    });
-  });
+      })
+      store.dispatch(submitCoLohNomination({ coLohId: 'p0', nomineeId: 'p3' }))
+      expect(store.getState().game.awaitingCoLohNomination).toBe(false)
+      expect(store.getState().game.nomineeIds).toContain('p3')
+    })
+  })
 
   // ── 11. Democracia day bypasses public-save and third-nominee logic ────────
 
   describe('Democracia day bypasses public-save / third-nominee logic', () => {
     it('pre_veto_public_save is skipped when nomineeIds.length is 2 (co-LOH day)', () => {
-      const players = makePlayers(8, 99);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
-      players[2].status = 'nominated';
-      players[3].status = 'nominated';
+      const players = makePlayers(8, 99)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
+      players[2].status = 'nominated'
+      players[3].status = 'nominated'
       const store = makeStore({
         week: 5,
         phase: 'nomination_results', // advance() will process pre_veto_public_save
@@ -795,15 +800,15 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         nomineeIds: ['p2', 'p3'], // 2 nominees — public save requires 3
         lastHohCompFinisherId: null, // no comp finisher on Democracia day
-      });
-      store.dispatch(advance());
+      })
+      store.dispatch(advance())
       // Should skip to pos_comp_announcement (2 nominees, not 3, so public save is skipped)
-      expect(store.getState().game.phase).toBe('pos_comp_announcement');
-    });
+      expect(store.getState().game.phase).toBe('pos_comp_announcement')
+    })
 
     it('does not crash when lastHohCompFinisherId is null on Democracia day', () => {
-      const players = makePlayers(8, 99);
-      players[0].status = 'loh';
+      const players = makePlayers(8, 99)
+      players[0].status = 'loh'
       const store = makeStore({
         week: 5,
         phase: 'nominations', // advance() will process nomination_results
@@ -812,22 +817,22 @@ describe('Democracia twist', () => {
         lohId: 'p0',
         coLohIds: null, // single LOH Democracia day
         lastHohCompFinisherId: null, // no comp finisher
-      });
+      })
       // Should not throw
-      expect(() => store.dispatch(advance())).not.toThrow();
-    });
-  });
+      expect(() => store.dispatch(advance())).not.toThrow()
+    })
+  })
 
   // ── 12. Co-LOH day eviction tie — POS holder breaks it (AI) ───────────────
 
   describe('co-LOH day eviction tie — POS holder breaks tie', () => {
     it('AI POS holder deterministically resolves the tie (no deadlock)', () => {
-      const players = makePlayers(6, 99); // all AI
-      players[0].status = 'loh';
-      players[1].status = 'loh';
-      players[5].status = 'pos';
-      players[2].status = 'nominated';
-      players[3].status = 'nominated';
+      const players = makePlayers(6, 99) // all AI
+      players[0].status = 'loh'
+      players[1].status = 'loh'
+      players[5].status = 'pos'
+      players[2].status = 'nominated'
+      players[3].status = 'nominated'
       const store = makeStore({
         week: 5,
         phase: 'live_vote', // advance() will process eviction_results
@@ -837,21 +842,21 @@ describe('Democracia twist', () => {
         posWinnerId: 'p5',
         nomineeIds: ['p2', 'p3'],
         votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' }, // 2-2 tie
-      });
-      store.dispatch(advance());
-      const state = store.getState().game;
+      })
+      store.dispatch(advance())
+      const state = store.getState().game
       // AI POS holder should have broken the tie
-      expect(state.pendingEviction).not.toBeNull();
-      expect(['p2', 'p3']).toContain(state.pendingEviction?.evicteeId);
-    });
+      expect(state.pendingEviction).not.toBeNull()
+      expect(['p2', 'p3']).toContain(state.pendingEviction?.evicteeId)
+    })
 
     it('human POS holder is prompted via awaitingTieBreak + awaitingPosTieBreak', () => {
-      const players = makePlayers(6, 5); // human is p5
-      players[0].status = 'loh';
-      players[1].status = 'loh';
-      players[5].status = 'pos';
-      players[2].status = 'nominated';
-      players[3].status = 'nominated';
+      const players = makePlayers(6, 5) // human is p5
+      players[0].status = 'loh'
+      players[1].status = 'loh'
+      players[5].status = 'pos'
+      players[2].status = 'nominated'
+      players[3].status = 'nominated'
       const store = makeStore({
         week: 5,
         phase: 'live_vote', // advance() will process eviction_results
@@ -861,20 +866,20 @@ describe('Democracia twist', () => {
         posWinnerId: 'p5',
         nomineeIds: ['p2', 'p3'],
         votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' }, // 2-2 tie
-      });
-      store.dispatch(advance());
-      const state = store.getState().game;
-      expect(state.awaitingTieBreak).toBe(true);
-      expect(state.awaitingPosTieBreak).toBe(true);
-    });
+      })
+      store.dispatch(advance())
+      const state = store.getState().game
+      expect(state.awaitingTieBreak).toBe(true)
+      expect(state.awaitingPosTieBreak).toBe(true)
+    })
 
     it('submitPosTieBreak resolves the tie and queues the eviction', () => {
-      const players = makePlayers(6, 5);
-      players[0].status = 'loh';
-      players[1].status = 'loh';
-      players[5].status = 'pos';
-      players[2].status = 'nominated';
-      players[3].status = 'nominated';
+      const players = makePlayers(6, 5)
+      players[0].status = 'loh'
+      players[1].status = 'loh'
+      players[5].status = 'pos'
+      players[2].status = 'nominated'
+      players[3].status = 'nominated'
       const store = makeStore({
         week: 5,
         phase: 'eviction_results', // already in this phase (tie-break flow)
@@ -888,18 +893,21 @@ describe('Democracia twist', () => {
         tiedNomineeIds: ['p2', 'p3'],
         voteResults: null,
         votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' },
-      });
-      store.dispatch(submitPosTieBreak('p2'));
-      const state = store.getState().game;
-      expect(state.awaitingTieBreak).toBe(false);
-      expect(state.awaitingPosTieBreak).toBe(false);
-      expect(state.pendingEviction?.evicteeId).toBe('p2');
-      expect(state.phase).toBe('week_end');
-    });
+      })
+      store.dispatch(submitPosTieBreak('p2'))
+      const state = store.getState().game
+      expect(state.awaitingTieBreak).toBe(false)
+      expect(state.awaitingPosTieBreak).toBe(false)
+      expect(state.pendingEviction?.evicteeId).toBe('p2')
+      expect(state.phase).toBe('eviction_results')
+      store.dispatch(finalizePendingEviction('p2'))
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('week_end')
+    })
 
     it('submitPosTieBreak rejects non-tied nominee', () => {
-      const players = makePlayers(6, 5);
-      players[5].status = 'pos';
+      const players = makePlayers(6, 5)
+      players[5].status = 'pos'
       const store = makeStore({
         week: 5,
         phase: 'eviction_results',
@@ -910,47 +918,47 @@ describe('Democracia twist', () => {
         awaitingPosTieBreak: true,
         tiedNomineeIds: ['p2', 'p3'],
         votes: {},
-      });
-      const phaseBefore = store.getState().game.phase;
-      store.dispatch(submitPosTieBreak('p4')); // not a tied nominee
-      expect(store.getState().game.awaitingTieBreak).toBe(true); // unchanged
-      expect(store.getState().game.phase).toBe(phaseBefore);
-    });
-  });
+      })
+      const phaseBefore = store.getState().game.phase
+      store.dispatch(submitPosTieBreak('p4')) // not a tied nominee
+      expect(store.getState().game.awaitingTieBreak).toBe(true) // unchanged
+      expect(store.getState().game.phase).toBe(phaseBefore)
+    })
+  })
 
   // ── 13. Normal non-Democracia weeks unaffected ────────────────────────────
 
   describe('normal non-Democracia weeks', () => {
     it('advance() from loh_comp goes to loh_results (no democracia active)', () => {
-      const players = makePlayers(8, 99);
+      const players = makePlayers(8, 99)
       const store = makeStore({
         week: 3,
         phase: 'loh_comp',
         players,
         democracia: { ...DEFAULT_DEMOCRACIA }, // not active
-      });
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe('loh_results');
-    });
+      })
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('loh_results')
+    })
 
     it('loh_results applies LOH winner via seeded pick (not democracia)', () => {
-      const players = makePlayers(8, 99);
+      const players = makePlayers(8, 99)
       const store = makeStore({
         week: 3,
         phase: 'loh_comp',
         players,
         democracia: { ...DEFAULT_DEMOCRACIA },
-      });
-      store.dispatch(advance());
-      expect(store.getState().game.lohId).not.toBeNull();
-    });
-  });
+      })
+      store.dispatch(advance())
+      expect(store.getState().game.lohId).not.toBeNull()
+    })
+  })
 
   // ── 14. week_start resets Democracia and co-LOH state ────────────────────
 
   describe('week_start reset', () => {
     it('clears active Democracia state at week_start but preserves usedThisSeason', () => {
-      const players = makePlayers(8, 99);
+      const players = makePlayers(8, 99)
       const store = makeStore({
         week: 5,
         phase: 'week_end',
@@ -966,51 +974,51 @@ describe('Democracia twist', () => {
         // Do NOT set awaitingCoLohNomination or awaitingPosTieBreak — those
         // are cleared before we reach week_end in a normal flow.
         coLohNomineeByCoLohId: { p0: 'p2' },
-      });
-      store.dispatch(advance()); // week_end → week_start
-      const state = store.getState().game;
-      const dem = state.democracia!;
-      expect(dem.usedThisSeason).toBe(true); // preserved
-      expect(dem.active).toBe(false);
-      expect(dem.activatedDay).toBeNull();
-      expect(dem.round).toBe(0);
-      expect(dem.resultDisplay).toBeNull();
-      expect(state.coLohIds).toBeNull();
-      expect(state.awaitingCoLohNomination).toBe(false);
-      expect(state.coLohNomineeByCoLohId).toBeNull();
-      expect(state.awaitingPosTieBreak).toBe(false);
-    });
-  });
+      })
+      store.dispatch(advance()) // week_end → week_start
+      const state = store.getState().game
+      const dem = state.democracia!
+      expect(dem.usedThisSeason).toBe(true) // preserved
+      expect(dem.active).toBe(false)
+      expect(dem.activatedDay).toBeNull()
+      expect(dem.round).toBe(0)
+      expect(dem.resultDisplay).toBeNull()
+      expect(state.coLohIds).toBeNull()
+      expect(state.awaitingCoLohNomination).toBe(false)
+      expect(state.coLohNomineeByCoLohId).toBeNull()
+      expect(state.awaitingPosTieBreak).toBe(false)
+    })
+  })
 
   // ── 15. Full Democracia flow (all-AI) ─────────────────────────────────────
 
   describe('full Democracia flow — all AI', () => {
     it('completes a full Democracia flow without deadlocking', () => {
-      const players = makePlayers(9, 99); // no human
+      const players = makePlayers(9, 99) // no human
       const store = makeStore({
         week: 5,
         phase: 'loh_comp_announcement',
         players,
-      });
+      })
       // Activate Democracia
-      store.dispatch(activateDemocracia());
+      store.dispatch(activateDemocracia())
       // Advance to loh_comp → redirects to democracia_vote
-      store.dispatch(advance());
-      expect(store.getState().game.phase).toBe('democracia_vote');
+      store.dispatch(advance())
+      expect(store.getState().game.phase).toBe('democracia_vote')
       // Advance through vote
-      store.dispatch(advance());
+      store.dispatch(advance())
       // Should be in democracia_results or still democracia_vote (ballotage)
-      const phaseAfter = store.getState().game.phase;
-      expect(['democracia_vote', 'democracia_results']).toContain(phaseAfter);
+      const phaseAfter = store.getState().game.phase
+      expect(['democracia_vote', 'democracia_results']).toContain(phaseAfter)
       // Keep advancing until social_1 or a limit
-      let steps = 0;
+      let steps = 0
       while (store.getState().game.phase !== 'social_1' && steps < 10) {
-        store.dispatch(advance());
-        steps++;
+        store.dispatch(advance())
+        steps++
       }
-      expect(store.getState().game.phase).toBe('social_1');
+      expect(store.getState().game.phase).toBe('social_1')
       // LOH must be set
-      expect(store.getState().game.lohId).not.toBeNull();
-    });
-  });
-});
+      expect(store.getState().game.lohId).not.toBeNull()
+    })
+  })
+})

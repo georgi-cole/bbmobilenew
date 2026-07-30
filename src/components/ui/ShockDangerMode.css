@@ -20,16 +20,36 @@
  * the game" not "device malfunction".
  */
 @keyframes shockShakeShell {
-  0%    { transform: translateX(0)     rotate(0deg); }
-  8%    { transform: translateX(-9px)  rotate(-0.6deg); }
-  18%   { transform: translateX(9px)   rotate(0.6deg); }
-  28%   { transform: translateX(-6px)  rotate(-0.4deg); }
-  38%   { transform: translateX(6px)   rotate(0.4deg); }
-  50%   { transform: translateX(-3px)  rotate(-0.15deg); }
-  62%   { transform: translateX(3px)   rotate(0.15deg); }
-  76%   { transform: translateX(-1px); }
-  88%   { transform: translateX(1px); }
-  100%  { transform: translateX(0)     rotate(0deg); }
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  8% {
+    transform: translateX(-9px) rotate(-0.6deg);
+  }
+  18% {
+    transform: translateX(9px) rotate(0.6deg);
+  }
+  28% {
+    transform: translateX(-6px) rotate(-0.4deg);
+  }
+  38% {
+    transform: translateX(6px) rotate(0.4deg);
+  }
+  50% {
+    transform: translateX(-3px) rotate(-0.15deg);
+  }
+  62% {
+    transform: translateX(3px) rotate(0.15deg);
+  }
+  76% {
+    transform: translateX(-1px);
+  }
+  88% {
+    transform: translateX(1px);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
 }
 
 /* Applied to <html> for the brief shake window at shock start. */
@@ -47,21 +67,310 @@
  * recolour buttons, borders, glows, and chips without re-theming every element.
  */
 body.body--shock-active {
-  --color-accent:   #d97706;
+  --color-accent: #d97706;
   --color-accent-2: #b91c1c;
 
   /* Danger tint for card surfaces / subtle ambient fill */
-  --color-card:     #1f1012;
-  --color-card-2:   #271316;
+  --color-card: #1f1012;
+  --color-card-2: #271316;
 
   /* Re-tint the line/divider colour */
-  --color-line:     rgba(245, 158, 11, 0.14);
+  --color-line: rgba(245, 158, 11, 0.14);
+}
+
+body.body--cupid-shock {
+  --color-accent: #df729d;
+  --color-accent-2: #9d73c9;
+  --color-card: #21111e;
+  --color-card-2: #2a1525;
+  --color-line: rgba(255, 159, 197, 0.16);
+}
+
+body.body--cupid-shock .tv-zone {
+  border-color: rgba(255, 173, 205, 0.28);
+  background: linear-gradient(180deg, rgba(47, 18, 40, 0.97), rgba(17, 9, 23, 0.99));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.54),
+    0 0 0 1px rgba(255, 226, 238, 0.05),
+    0 0 28px rgba(220, 100, 151, 0.16);
+}
+
+body.body--cupid-shock .tv-announcement {
+  --announcement-main-glow: rgba(246, 119, 168, 0.26);
+  --announcement-secondary-glow: rgba(185, 128, 220, 0.16);
+  --announcement-edge-left: rgba(255, 148, 190, 0.08);
+  --announcement-edge-right: rgba(188, 139, 224, 0.08);
+  --announcement-title-glow: rgba(255, 137, 182, 0.58);
+  --announcement-title-ambient: rgba(216, 112, 158, 0.22);
+  --announcement-info-border: rgba(255, 184, 211, 0.52);
+  --announcement-info-bg: rgba(197, 82, 134, 0.18);
+  --announcement-info-bg-hover: rgba(197, 82, 134, 0.3);
+  --announcement-info-color: #ffc0d7;
+}
+
+body.body--cupid-shock .tv-zone__twist-badge {
+  background: linear-gradient(135deg, rgba(169, 68, 116, 0.95), rgba(132, 88, 180, 0.95));
+  border-color: rgba(255, 220, 234, 0.3);
+  color: #fff5f9;
+}
+
+/*
+ * Persistent Cupid palette. Unlike body--cupid-shock (the short announcement
+ * pipeline), this scope remains for the whole paired portion of the season.
+ */
+.game-screen--cupid-active {
+  --color-accent: #dc6798;
+  --color-accent-2: #a75fbc;
+  --color-card: #1d111d;
+  --color-card-2: #261523;
+  --color-line: rgba(255, 159, 198, 0.14);
+}
+
+.game-screen--cupid-active .game-top-chip--accent,
+.game-screen--cupid-active .tv-zone__head-chip {
+  border-color: rgba(255, 206, 224, 0.28);
+  background:
+    radial-gradient(circle at 24% 0%, rgba(255, 236, 244, 0.2), transparent 44%),
+    linear-gradient(135deg, rgba(205, 76, 133, 0.96), rgba(158, 83, 174, 0.96));
+  box-shadow:
+    0 0 14px rgba(218, 87, 146, 0.2),
+    inset 0 1px 0 rgba(255, 238, 245, 0.16);
+}
+
+.game-screen--cupid-active .game-top-chip--neutral,
+.game-screen--cupid-active .tv-zone__occupancy-chip {
+  border-color: rgba(255, 181, 209, 0.18);
+  background: rgba(65, 28, 58, 0.72);
+  color: #ffeaf2;
+  box-shadow:
+    0 6px 16px rgba(17, 4, 14, 0.32),
+    inset 0 1px 0 rgba(255, 239, 245, 0.07);
+}
+
+.game-screen--cupid-active .tv-zone {
+  border-color: rgba(239, 126, 171, 0.25);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(221, 100, 154, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(38, 20, 36, 0.98), rgba(18, 10, 22, 0.99));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(255, 228, 238, 0.04),
+    0 0 30px rgba(211, 83, 142, 0.1);
+}
+
+.game-screen--cupid-active .tv-zone__head {
+  border-bottom-color: rgba(255, 169, 202, 0.1);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(229, 112, 164, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(54, 25, 49, 0.9), rgba(25, 14, 29, 0.94));
+}
+
+.game-screen--cupid-active .tv-zone__bezel {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(231, 124, 170, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(255, 232, 241, 0.025), transparent);
+}
+
+.game-screen--cupid-active .tv-zone__viewport,
+.game-screen--cupid-active .tv-zone__bezel-frame {
+  border-color: #271425;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(205, 92, 146, 0.12), transparent 30%),
+    radial-gradient(circle at 84% 76%, rgba(154, 86, 181, 0.1), transparent 36%),
+    linear-gradient(180deg, #180f1c 0%, #09080f 100%);
+  box-shadow:
+    0 0 0 1px rgba(242, 144, 183, 0.1),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.48),
+    inset 0 -34px 50px rgba(8, 3, 10, 0.34),
+    0 6px 24px rgba(0, 0, 0, 0.62),
+    0 0 30px rgba(198, 76, 137, 0.1),
+    0 0 62px rgba(133, 68, 166, 0.08);
+}
+
+.game-screen--cupid-active .tv-zone__feed {
+  border-top-color: rgba(255, 169, 202, 0.1);
+  background: linear-gradient(180deg, rgba(50, 23, 45, 0.74), rgba(24, 13, 28, 0.84));
+}
+
+.game-screen--cupid-active .tv-zone__feed-item:first-child {
+  background: linear-gradient(90deg, rgba(218, 83, 145, 0.12), rgba(151, 86, 181, 0.055));
+}
+
+.game-screen--cupid-active .tv-zone__feed-item--game {
+  border-left-color: rgba(239, 119, 168, 0.72);
+}
+
+.game-screen--cupid-active .tv-zone__bezel-brand {
+  border-color: rgba(242, 151, 188, 0.17);
+  background: rgba(48, 21, 43, 0.68);
+}
+
+.game-screen--cupid-active .tv-zone__bezel-brand__text {
+  color: #ffe2ed;
+}
+
+.game-screen--cupid-active .tv-zone__audio-btn {
+  border-color: rgba(255, 186, 212, 0.14);
+  background: rgba(116, 49, 88, 0.16);
+}
+
+.game-screen--cupid-active .tv-zone__twist-badge {
+  border-color: rgba(255, 220, 234, 0.25);
+  background: linear-gradient(135deg, rgba(177, 66, 119, 0.94), rgba(132, 76, 166, 0.94));
+  color: #fff3f8;
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.44),
+    0 0 14px rgba(211, 92, 147, 0.14);
+}
+
+body.body--cupid-shock {
+  --color-accent: #df729d;
+  --color-accent-2: #9d73c9;
+  --color-card: #21111e;
+  --color-card-2: #2a1525;
+  --color-line: rgba(255, 159, 197, 0.16);
+}
+
+body.body--cupid-shock .tv-zone {
+  border-color: rgba(255, 173, 205, 0.28);
+  background: linear-gradient(180deg, rgba(47, 18, 40, 0.97), rgba(17, 9, 23, 0.99));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.54),
+    0 0 0 1px rgba(255, 226, 238, 0.05),
+    0 0 28px rgba(220, 100, 151, 0.16);
+}
+
+body.body--cupid-shock .tv-announcement {
+  --announcement-main-glow: rgba(246, 119, 168, 0.26);
+  --announcement-secondary-glow: rgba(185, 128, 220, 0.16);
+  --announcement-edge-left: rgba(255, 148, 190, 0.08);
+  --announcement-edge-right: rgba(188, 139, 224, 0.08);
+  --announcement-title-glow: rgba(255, 137, 182, 0.58);
+  --announcement-title-ambient: rgba(216, 112, 158, 0.22);
+  --announcement-info-border: rgba(255, 184, 211, 0.52);
+  --announcement-info-bg: rgba(197, 82, 134, 0.18);
+  --announcement-info-bg-hover: rgba(197, 82, 134, 0.3);
+  --announcement-info-color: #ffc0d7;
+}
+
+body.body--cupid-shock .tv-zone__twist-badge {
+  background: linear-gradient(135deg, rgba(169, 68, 116, 0.95), rgba(132, 88, 180, 0.95));
+  border-color: rgba(255, 220, 234, 0.3);
+  color: #fff5f9;
+}
+
+/*
+ * Persistent Cupid palette. Unlike body--cupid-shock (the short announcement
+ * pipeline), this scope remains for the whole paired portion of the season.
+ */
+.game-screen--cupid-active {
+  --color-accent: #dc6798;
+  --color-accent-2: #a75fbc;
+  --color-card: #1d111d;
+  --color-card-2: #261523;
+  --color-line: rgba(255, 159, 198, 0.14);
+}
+
+.game-screen--cupid-active .game-top-chip--accent,
+.game-screen--cupid-active .tv-zone__head-chip {
+  border-color: rgba(255, 206, 224, 0.28);
+  background:
+    radial-gradient(circle at 24% 0%, rgba(255, 236, 244, 0.2), transparent 44%),
+    linear-gradient(135deg, rgba(205, 76, 133, 0.96), rgba(158, 83, 174, 0.96));
+  box-shadow:
+    0 0 14px rgba(218, 87, 146, 0.2),
+    inset 0 1px 0 rgba(255, 238, 245, 0.16);
+}
+
+.game-screen--cupid-active .game-top-chip--neutral,
+.game-screen--cupid-active .tv-zone__occupancy-chip {
+  border-color: rgba(255, 181, 209, 0.18);
+  background: rgba(65, 28, 58, 0.72);
+  color: #ffeaf2;
+  box-shadow:
+    0 6px 16px rgba(17, 4, 14, 0.32),
+    inset 0 1px 0 rgba(255, 239, 245, 0.07);
+}
+
+.game-screen--cupid-active .tv-zone {
+  border-color: rgba(239, 126, 171, 0.25);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(221, 100, 154, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(38, 20, 36, 0.98), rgba(18, 10, 22, 0.99));
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(255, 228, 238, 0.04),
+    0 0 30px rgba(211, 83, 142, 0.1);
+}
+
+.game-screen--cupid-active .tv-zone__head {
+  border-bottom-color: rgba(255, 169, 202, 0.1);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(229, 112, 164, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(54, 25, 49, 0.9), rgba(25, 14, 29, 0.94));
+}
+
+.game-screen--cupid-active .tv-zone__bezel {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(231, 124, 170, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(255, 232, 241, 0.025), transparent);
+}
+
+.game-screen--cupid-active .tv-zone__viewport,
+.game-screen--cupid-active .tv-zone__bezel-frame {
+  border-color: #271425;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(205, 92, 146, 0.12), transparent 30%),
+    radial-gradient(circle at 84% 76%, rgba(154, 86, 181, 0.1), transparent 36%),
+    linear-gradient(180deg, #180f1c 0%, #09080f 100%);
+  box-shadow:
+    0 0 0 1px rgba(242, 144, 183, 0.1),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.48),
+    inset 0 -34px 50px rgba(8, 3, 10, 0.34),
+    0 6px 24px rgba(0, 0, 0, 0.62),
+    0 0 30px rgba(198, 76, 137, 0.1),
+    0 0 62px rgba(133, 68, 166, 0.08);
+}
+
+.game-screen--cupid-active .tv-zone__feed {
+  border-top-color: rgba(255, 169, 202, 0.1);
+  background: linear-gradient(180deg, rgba(50, 23, 45, 0.74), rgba(24, 13, 28, 0.84));
+}
+
+.game-screen--cupid-active .tv-zone__feed-item:first-child {
+  background: linear-gradient(90deg, rgba(218, 83, 145, 0.12), rgba(151, 86, 181, 0.055));
+}
+
+.game-screen--cupid-active .tv-zone__feed-item--game {
+  border-left-color: rgba(239, 119, 168, 0.72);
+}
+
+.game-screen--cupid-active .tv-zone__bezel-brand {
+  border-color: rgba(242, 151, 188, 0.17);
+  background: rgba(48, 21, 43, 0.68);
+}
+
+.game-screen--cupid-active .tv-zone__bezel-brand__text {
+  color: #ffe2ed;
+}
+
+.game-screen--cupid-active .tv-zone__audio-btn {
+  border-color: rgba(255, 186, 212, 0.14);
+  background: rgba(116, 49, 88, 0.16);
+}
+
+.game-screen--cupid-active .tv-zone__twist-badge {
+  border-color: rgba(255, 220, 234, 0.25);
+  background: linear-gradient(135deg, rgba(177, 66, 119, 0.94), rgba(132, 76, 166, 0.94));
+  color: #fff3f8;
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.44),
+    0 0 14px rgba(211, 92, 147, 0.14);
 }
 
 body.body--shock-active .tv-zone {
   border-color: rgba(245, 158, 11, 0.24);
-  background:
-    linear-gradient(180deg, rgba(41, 17, 20, 0.96) 0%, rgba(17, 8, 11, 0.99) 100%);
+  background: linear-gradient(180deg, rgba(41, 17, 20, 0.96) 0%, rgba(17, 8, 11, 0.99) 100%);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.58),
     0 0 0 1px rgba(255, 255, 255, 0.04),
@@ -69,16 +378,14 @@ body.body--shock-active .tv-zone {
 }
 
 body.body--shock-active .tv-zone__head {
-  background:
-    linear-gradient(180deg, rgba(60, 20, 24, 0.9) 0%, rgba(23, 11, 15, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(60, 20, 24, 0.9) 0%, rgba(23, 11, 15, 0.96) 100%);
   border-bottom-color: rgba(245, 158, 11, 0.14);
   box-shadow: inset 0 -1px 0 rgba(255, 237, 213, 0.06);
 }
 
 /* Shock-state badge (the SHOCK corner ribbon on the TV viewport) */
 body.body--shock-active .tv-zone__twist-badge {
-  background:
-    linear-gradient(135deg, rgba(145, 24, 32, 0.95) 0%, rgba(217, 119, 6, 0.95) 100%);
+  background: linear-gradient(135deg, rgba(145, 24, 32, 0.95) 0%, rgba(217, 119, 6, 0.95) 100%);
   border-color: rgba(255, 237, 213, 0.26);
   color: #fff7ed;
   text-shadow:
@@ -95,8 +402,12 @@ body.body--shock-active .tv-zone__twist-badge {
 
 /* Shift the head-chip accent pill border & glow */
 body.body--shock-active .tv-zone__head-chip {
-  background:
-    linear-gradient(135deg, rgba(122, 28, 37, 0.98) 0%, rgba(189, 66, 31, 0.96) 58%, rgba(245, 158, 11, 0.94) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(122, 28, 37, 0.98) 0%,
+    rgba(189, 66, 31, 0.96) 58%,
+    rgba(245, 158, 11, 0.94) 100%
+  );
   border-color: rgba(255, 237, 213, 0.28);
   box-shadow:
     0 0 14px rgba(192, 36, 51, 0.18),
@@ -166,7 +477,12 @@ body.body--shock-active .tv-zone--detox-stream .tv-zone__viewport {
   background:
     radial-gradient(circle at 16% 14%, rgba(245, 158, 11, 0.13), rgba(245, 158, 11, 0) 28%),
     radial-gradient(circle at 82% 78%, rgba(185, 28, 28, 0.12), rgba(185, 28, 28, 0) 34%),
-    linear-gradient(180deg, rgba(46, 18, 22, 0.9) 0%, rgba(16, 10, 16, 0.94) 38%, rgba(7, 5, 9, 0.99) 100%);
+    linear-gradient(
+      180deg,
+      rgba(46, 18, 22, 0.9) 0%,
+      rgba(16, 10, 16, 0.94) 38%,
+      rgba(7, 5, 9, 0.99) 100%
+    );
   box-shadow:
     inset 0 0 34px rgba(0, 0, 0, 0.64),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -175,8 +491,7 @@ body.body--shock-active .tv-zone--detox-stream .tv-zone__viewport {
 }
 
 body.body--shock-active .tv-zone__now--detox-stream {
-  background:
-    linear-gradient(180deg, rgba(79, 22, 27, 0.34) 0%, rgba(26, 12, 16, 0.52) 100%);
+  background: linear-gradient(180deg, rgba(79, 22, 27, 0.34) 0%, rgba(26, 12, 16, 0.52) 100%);
   border-color: rgba(251, 191, 36, 0.14);
   box-shadow:
     0 0 24px rgba(192, 36, 51, 0.1),
@@ -189,13 +504,11 @@ body.body--shock-active .tv-zone__now--detox-stream {
 
 body.body--shock-active .tv-zone__feed {
   border-top-color: rgba(245, 158, 11, 0.12);
-  background:
-    linear-gradient(180deg, rgba(37, 16, 20, 0.72) 0%, rgba(20, 10, 14, 0.82) 100%);
+  background: linear-gradient(180deg, rgba(37, 16, 20, 0.72) 0%, rgba(20, 10, 14, 0.82) 100%);
 }
 
 body.body--shock-active .tv-zone__feed-item:first-child {
-  background:
-    linear-gradient(90deg, rgba(185, 28, 28, 0.16) 0%, rgba(245, 158, 11, 0.08) 100%);
+  background: linear-gradient(90deg, rgba(185, 28, 28, 0.16) 0%, rgba(245, 158, 11, 0.08) 100%);
 }
 
 body.body--shock-active .tv-zone__feed-item--game {
@@ -205,22 +518,21 @@ body.body--shock-active .tv-zone__feed-item--game {
 /* Override the TV announcement colours while shock is active so the
    broadcast stinger inside the bezel inherits the danger palette. */
 body.body--shock-active .tv-announcement {
-  --announcement-main-glow:       rgba(220, 38, 38, 0.22);
-  --announcement-secondary-glow:  rgba(180, 20, 20, 0.14);
-  --announcement-edge-left:       rgba(200, 40, 40, 0.07);
-  --announcement-edge-right:      rgba(160, 30, 30, 0.08);
-  --announcement-title-glow:      rgba(220, 38, 38, 0.55);
-  --announcement-title-ambient:   rgba(190, 30, 30, 0.2);
-  --announcement-info-border:     rgba(252, 165, 165, 0.5);
-  --announcement-info-bg:         rgba(220, 38, 38, 0.18);
-  --announcement-info-bg-hover:   rgba(220, 38, 38, 0.3);
-  --announcement-info-color:      #fca5a5;
+  --announcement-main-glow: rgba(220, 38, 38, 0.22);
+  --announcement-secondary-glow: rgba(180, 20, 20, 0.14);
+  --announcement-edge-left: rgba(200, 40, 40, 0.07);
+  --announcement-edge-right: rgba(160, 30, 30, 0.08);
+  --announcement-title-glow: rgba(220, 38, 38, 0.55);
+  --announcement-title-ambient: rgba(190, 30, 30, 0.2);
+  --announcement-info-border: rgba(252, 165, 165, 0.5);
+  --announcement-info-bg: rgba(220, 38, 38, 0.18);
+  --announcement-info-bg-hover: rgba(220, 38, 38, 0.3);
+  --announcement-info-color: #fca5a5;
 }
 
 /* LIVE badge accent during danger mode */
 body.body--shock-active .tv-zone__live-badge {
-  background:
-    linear-gradient(135deg, rgba(145, 24, 32, 0.92) 0%, rgba(217, 119, 6, 0.88) 100%);
+  background: linear-gradient(135deg, rgba(145, 24, 32, 0.92) 0%, rgba(217, 119, 6, 0.88) 100%);
   border-color: rgba(255, 237, 213, 0.22);
   color: #fff7ed;
 }

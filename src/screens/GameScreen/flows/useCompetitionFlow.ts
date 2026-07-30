@@ -15,6 +15,7 @@ import type { Player } from '../../../types'
 import { computeScores } from '../../../minigames/scoring'
 import { isPlacementRankingGame } from '../../../minigames/registry'
 import { statusBadgeImageSrc } from '../../../utils/statusBadges'
+import { expandCupidIds, isCupidArrowActive } from '../../../features/twists/cupidArrow'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -379,10 +380,13 @@ export function useCompetitionFlow({
         return
       }
 
-      const winnerPlayer = game.players.find((p) => p.id === finalWinnerId) ?? null
+      const winnerIds = expandCupidIds(game, [finalWinnerId])
+      const winnerPlayers = winnerIds
+        .map((id) => game.players.find((player) => player.id === id))
+        .filter((player): player is Player => Boolean(player))
       const sourceDomRect = getTileRect(finalWinnerId)
 
-      if (!winnerPlayer || !sourceDomRect) {
+      if (winnerPlayers.length === 0 || !sourceDomRect) {
         // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
         dispatch(
           applyMinigameWinner({
@@ -410,15 +414,19 @@ export function useCompetitionFlow({
           screen: 'GameScreen',
         })
       }
-      const tiles: CeremonyTile[] = [
-        {
-          rect: sourceDomRect,
-          badge: winSymbol,
-          badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
-          badgeStart: 'center',
-          badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
-        },
-      ]
+      const tiles: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
+        rect: getTileRect(winnerPlayer.id),
+        badge: winSymbol,
+        badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
+        badgeVariant: isCupidArrowActive(game)
+          ? isHohComp
+            ? 'cupid-kiss'
+            : 'cupid-hug'
+          : undefined,
+        badgeStart: 'center',
+        badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
+      }))
+      const winnerNames = winnerPlayers.map((player) => player.name).join(' & ')
       pendingWinnerDispatchRef.current = () =>
         dispatch(
           applyMinigameWinner({
@@ -430,22 +438,13 @@ export function useCompetitionFlow({
       setPendingWinnerCeremony({
         winnerId: finalWinnerId,
         tiles,
-        caption: `${winnerPlayer.name} wins ${winLabel}!`,
+        caption: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}!`,
         subtitle: winSymbol,
-        ariaLabel: `${winnerPlayer.name} wins ${winLabel}`,
+        ariaLabel: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}`,
         measureA: () => getTileRect(finalWinnerId),
       })
     },
-    [
-      dispatch,
-      game.phase,
-      game.players,
-      getTileRect,
-      humanPlayer,
-      isF3MinigamePhase,
-      pendingChallenge,
-      store,
-    ]
+    [dispatch, game, getTileRect, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
   )
 
   return {

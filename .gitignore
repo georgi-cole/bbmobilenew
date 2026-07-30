@@ -43,6 +43,7 @@ screenshots/
 # Capacitor build cache
 .capacitor/
 .worktrees/
+.cupid-pr*/
 coverage/
 playwright-report/
 test-results/

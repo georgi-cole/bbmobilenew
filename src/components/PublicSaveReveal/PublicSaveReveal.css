@@ -38,7 +38,9 @@
     linear-gradient(180deg, rgba(9, 14, 28, 0.96) 0%, rgba(11, 18, 36, 0.92) 100%);
   backdrop-filter: blur(10px);
   transform: scale(0.96);
-  transition: transform 0.45s ease, opacity 0.35s ease;
+  transition:
+    transform 0.45s ease,
+    opacity 0.35s ease;
 }
 
 .psr--entering .psr__panel,
@@ -110,6 +112,10 @@
   filter: drop-shadow(0 0 18px rgba(74, 222, 128, 0.35));
 }
 
+.psr--saved .psr__nominee--saved {
+  transform: scale(1.1) translateY(-3px) !important;
+}
+
 .psr__nominee--nominated {
   opacity: 0.72 !important;
   filter: saturate(0.85);
@@ -119,6 +125,32 @@
 .psr__avatar-wrap {
   position: relative;
   display: inline-flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.psr__avatar-wrap--pair {
+  min-width: 4.65rem;
+  padding-right: 0.65rem;
+}
+
+.psr__avatar-member {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.46));
+}
+
+.psr__avatar-wrap--pair .psr__avatar-member + .psr__avatar-member {
+  z-index: 2;
+  margin-left: -1.25rem;
+  transform: translate(0.65rem, 0.18rem);
+}
+
+.psr__avatar-wrap--pair .pa {
+  border-color: var(--pair-color, rgba(131, 191, 255, 0.88));
+  box-shadow:
+    0 0 0 2px rgba(7, 13, 27, 0.9),
+    0 0 11px color-mix(in srgb, var(--pair-color, #83bfff) 38%, transparent);
 }
 
 /* ── Name ── */
@@ -214,8 +246,30 @@
     font-size: 0.64rem;
   }
 
+  .psr__avatar-wrap--pair {
+    min-width: 3.9rem;
+    transform: scale(0.9);
+  }
+
   .psr__bar-track {
     height: 0.24rem;
+  }
+}
+
+/* On very narrow phones, keep all three pair totals for the reveal, then devote
+   the result beat to the saved pair instead of squeezing six faces indefinitely. */
+@media (max-width: 360px) {
+  .psr--saved .psr__nominees {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .psr--saved .psr__nominee--nominated {
+    display: none;
+  }
+
+  .psr--saved .psr__nominee--saved {
+    width: min(100%, 10rem);
+    justify-self: center;
   }
 }
 

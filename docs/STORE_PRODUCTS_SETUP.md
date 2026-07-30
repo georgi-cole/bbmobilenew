@@ -1,46 +1,42 @@
 # Store products release setup
 
-The app includes five permanent, one-time products for iOS and Android. Every
-product must be configured as **non-consumable** in Apple App Store Connect and
+The 1.0 release includes four permanent, one-time products for iOS and Android.
+Every released product must be configured as **non-consumable** in Apple App Store Connect and
 as a **one-time, non-consumable product** in Google Play Console.
 
 ## Before creating the store listings
 
-Confirm the final application identifiers first. The current iOS/Capacitor ID is
-`com.georgicole.thebigeye`, while Android currently uses
-`com.bbmobilenew.app`. Choose the final Google Play package before uploading the
-first release; changing it later creates a different Play app.
+The permanent iOS, Android, and Capacitor identifier is
+`com.georgicole.thebigeye`. Confirm that this exact ID is available in both
+developer consoles before uploading the first release; changing it later creates
+a different app.
 
-Tribunal House is still labelled "coming soon" in the app and its setting is not
-connected to gameplay yet. Do not activate its standalone product or advertise
-it as an immediately available VIP benefit until that feature is complete. The
-entitlement can remain in the code now so both products will unlock it when it
-is released.
+Tribunal Mode and No Ads remain reserved in code but are hidden from the 1.0
+store. Do not create or activate those products until Tribunal gameplay and a
+real advertising integration are present and tested.
 
 ## Product identifiers
 
 Use the same IDs on both platforms:
 
-| Product         | Product ID                               | Grants                                                              |
-| --------------- | ---------------------------------------- | ------------------------------------------------------------------- |
-| The Big Eye VIP | `com.georgicole.thebigeye.vip`           | All current standalone unlocks, VIP themes, and future VIP benefits |
-| Survival Mode   | `com.georgicole.thebigeye.survival`      | Survival Mode only                                                  |
-| Public Mode     | `com.georgicole.thebigeye.publicmode`    | Public Mode only                                                    |
-| Tribunal House  | `com.georgicole.thebigeye.tribunalhouse` | Tribunal House only                                                 |
-| No Ads          | `com.georgicole.thebigeye.noads`         | Removes automatic ads only                                          |
+| Product         | Product ID                            | Grants                                        |
+| --------------- | ------------------------------------- | --------------------------------------------- |
+| The Big Eye VIP | `com.georgicole.thebigeye.vip`        | All current standalone unlocks and VIP themes |
+| Survival Mode   | `com.georgicole.thebigeye.survival`   | Survival Mode only                            |
+| Public Mode     | `com.georgicole.thebigeye.publicmode` | Public Mode only                              |
+| Reality Mode    | `com.georgicole.thebigeye.dramamode`  | Reality Mode only                             |
 
 The IDs can be overridden with the matching `VITE_*_PRODUCT_ID` values in the
 platform environment files. The app always displays the localized title and
 price returned by Apple or Google.
 
-Set the VIP price below the combined price of the four separate products. VIP
-is a permanent bundle, not a subscription. New VIP-only benefits can be added
-to the entitlement later without creating a replacement VIP product.
+Set the VIP price below the combined price of the three standalone products.
+VIP is a permanent bundle, not a subscription.
 
 ## Apple App Store Connect
 
 1. Accept the Paid Apps agreement and complete banking and tax information.
-2. Under the app's In-App Purchases, create all five products as
+2. Under the app's In-App Purchases, create the four released products as
    **Non-Consumable**.
 3. Add localization, price, review screenshot, and review notes to each product.
 4. In Xcode, confirm that the app target has the In-App Purchase capability.
@@ -100,6 +96,4 @@ Apple StoreKit receipt/JWS needed by that backend.
   and offline launch on physical iOS and Android devices.
 - Confirm VIP grants every standalone entitlement and VIP-only themes.
 - Confirm each standalone purchase grants only its advertised feature.
-- Confirm No Ads and VIP suppress automatic ads; optional rewarded ads remain a
-  player choice.
 - Remove `VITE_VIP_DEV_ENTITLEMENT=true` from every release environment.

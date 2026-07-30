@@ -285,22 +285,9 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/romance storylines/i)).toBeTruthy()
   })
 
-  it('gates Tribunal House for standard users', () => {
-    const standard = renderSettings()
-    const standardToggle = screen.getByLabelText(/toggle tribunal house/i)
-    fireEvent.click(standardToggle)
-    expect(standard.store.getState().settings.sim.enableJuryHouse).toBe(false)
-    expect(
-      screen.getByText(/tribunal house is available as a permanent one-time purchase/i)
-    ).toBeTruthy()
-  })
-
-  it('allows a standalone Tribunal House owner to enable it without VIP', () => {
-    const { store } = renderSettings(['/settings'], false, false, true)
-    fireEvent.click(screen.getByLabelText(/toggle tribunal house/i))
-
-    expect(store.getState().settings.sim.enableJuryHouse).toBe(true)
-    expect(screen.queryByRole('dialog')).toBeNull()
+  it('does not expose the unreleased Tribunal House setting', () => {
+    renderSettings()
+    expect(screen.queryByLabelText(/toggle tribunal house/i)).toBeNull()
   })
 
   it('keeps VIP themes locked for standard users', () => {

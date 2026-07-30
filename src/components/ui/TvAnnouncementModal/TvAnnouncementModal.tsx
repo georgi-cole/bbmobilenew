@@ -1,16 +1,16 @@
-import { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import './TvAnnouncementModal.css';
+import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import './TvAnnouncementModal.css'
 
 // ─── Phase copy ───────────────────────────────────────────────────────────────
 
 interface PhaseCopy {
-  icon: string;
-  label: string;
-  category: string;
-  body: string;
+  icon: string
+  label: string
+  category: string
+  body: string
   /** Optional shock-specific detail paragraph appended after `body`. */
-  shockDetail?: string;
+  shockDetail?: string
 }
 
 const PHASE_COPY: Record<string, PhaseCopy> = {
@@ -97,77 +97,104 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'BACK 2 THE GAME',
     category: 'Twist',
     body: 'A Back 2 the Game shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
-    shockDetail: 'Eliminated players compete head-to-head in a specially designed challenge. Only one winner earns the right to return. Upon re-entry, the returning player is immediately eligible for all competitions, nominations, and votes — existing alliances must adapt at once.',
+    shockDetail:
+      'Eliminated players compete head-to-head in a specially designed challenge. Only one winner earns the right to return. Upon re-entry, the returning player is immediately eligible for all competitions, nominations, and votes — existing alliances must adapt at once.',
   },
   battle_back_shock: {
     icon: '🔥',
     label: 'SHOCK TWIST',
     category: 'Twist',
     body: 'Back 2 the Game has been activated. One of the recently eliminated players now has a chance to fight their way back into the house.',
-    shockDetail: 'This is not a standard elimination week. The Back 2 the Game shock changes the trajectory of the game by giving a previously eliminated player a route back in. All current alliance plans, targets, and strategies must account for a possible new returnee.',
+    shockDetail:
+      'This is not a standard elimination week. The Back 2 the Game shock changes the trajectory of the game by giving a previously eliminated player a route back in. All current alliance plans, targets, and strategies must account for a possible new returnee.',
   },
   battle_back_rules: {
     icon: '📜',
     label: 'BACK 2 THE GAME RULES',
     category: 'Twist',
     body: 'The Back 2 the Game field is set. Recently eliminated players will compete head-to-head, and only one winner can earn their return to the game.',
-    shockDetail: 'Only Tribunal members who have been eliminated are eligible to compete. Each player faces off in a single-elimination bracket or direct challenge format chosen by Big Eye. The winner earns immediate, full re-entry: eligible for all competitions, nominations, and votes from the next phase onward.',
+    shockDetail:
+      'Only Tribunal members who have been eliminated are eligible to compete. Each player faces off in a single-elimination bracket or direct challenge format chosen by Big Eye. The winner earns immediate, full re-entry: eligible for all competitions, nominations, and votes from the next phase onward.',
   },
   battle_back_challenge: {
     icon: '🏆',
     label: 'BACK 2 THE GAME CHALLENGE',
     category: 'Competition',
     body: 'The Back 2 the Game challenge is about to begin. Watch the showdown play out to see which eliminated player can claw their way back into The Big Eye.',
-    shockDetail: 'The challenge is live and in progress. Eliminated players are competing for the right to re-enter the house. The winner will be announced shortly — and once re-entered, they are immediately a full player again with no special protections or restrictions.',
+    shockDetail:
+      'The challenge is live and in progress. Eliminated players are competing for the right to re-enter the house. The winner will be announced shortly — and once re-entered, they are immediately a full player again with no special protections or restrictions.',
   },
   double_eviction: {
     icon: '⚡',
     label: 'DOUBLE ELIMINATION',
     category: 'Twist',
-    body: 'A Double Elimination has been triggered! Tonight\'s Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.',
-    shockDetail: 'The Double Elimination runs as a compressed, fast-paced week: three nominees are put up, a Safety competition determines who can be saved, and after the Safety Ceremony the house votes out two players in one sitting. Strategic timelines are cut short — every conversation and every alliance decision must happen immediately.',
+    body: "A Double Elimination has been triggered! Tonight's Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.",
+    shockDetail:
+      'The Double Elimination runs as a compressed, fast-paced week: three nominees are put up, a Safety competition determines who can be saved, and after the Safety Ceremony the house votes out two players in one sitting. Strategic timelines are cut short — every conversation and every alliance decision must happen immediately.',
+  },
+  cupid_arrow: {
+    icon: '🏹',
+    label: "CUPID HAS CHOSEN",
+    category: 'Season Shock',
+    body: 'Cupid has matched every housemate with a partner. For now, you are not playing alone: every pair shares one fate inside The Big Eye house.',
+    shockDetail:
+      'Each pair deliberates together and casts one joint ballot worth two votes. The partner of the Power of Safety winner is protected from replacement nomination. Secret Missions and conflicting shocks wait beyond the spell. Four eliminated pairs will break Cupid’s hold.',
+  },
+  cupid_arrow_broken: {
+    icon: '💔',
+    label: 'THE LAST ARROW BREAKS',
+    category: 'Season Shock',
+    body: 'Four pairs have fallen. The hearts fracture, Cupid’s final arrow dissolves, and the winged matchmaker leaves The Big Eye house. The rose-lit spell recedes and the original game returns.',
+    shockDetail:
+      'Every survivor now competes, nominates, votes, and faces elimination alone. Former partners keep the relationship history they created: devotion may survive, but arguments, betrayals, and incompatible games can turn the old bond into a scar.',
   },
   democracia: {
     icon: '🗳️',
     label: 'DEMOCRACIA',
     category: 'Shock',
     body: 'Democracia has been activated. Instead of competing for power, the house will elect the next Leader of the House by secret vote.',
-    shockDetail: 'Every active player becomes part of the election. If there is a tie for first place, the tied candidates stay in contention and the remaining eligible houseguests revote until the result is resolved.',
+    shockDetail:
+      'Every active player becomes part of the election. If there is a tie for first place, the tied candidates stay in contention and the remaining eligible houseguests revote until the result is resolved.',
   },
   twist: {
     icon: '🌀',
     label: 'SHOCK',
     category: 'Shock',
     body: 'The Big Eye never plays by the same rules twice. A shock has been introduced that could change the course of the game. Pay close attention — nothing is certain, and the players may need to adapt quickly to survive.',
-    shockDetail: 'A new shock condition is now in effect. The Big Eye may introduce effects that alter nominations, safety, voting, or the structure of the week at any moment. Watch how players react — adaptability is the key to survival.',
+    shockDetail:
+      'A new shock condition is now in effect. The Big Eye may introduce effects that alter nominations, safety, voting, or the structure of the week at any moment. Watch how players react — adaptability is the key to survival.',
   },
   vip_veto: {
     icon: '👑',
     label: 'DOUBLE TROUBLE',
     category: 'Shock',
     body: 'A special power has been activated — Double Trouble! The holder of the Power of Safety may use it twice during this Safety Ceremony, saving up to two different nominees.',
-    shockDetail: 'Each use forces the Leader of the House to immediately name a replacement nominee. The holder decides independently for each use whether to deploy the power. The power expires at the end of this ceremony and cannot be carried forward.',
+    shockDetail:
+      'Each use forces the Leader of the House to immediately name a replacement nominee. The holder decides independently for each use whether to deploy the power. The power expires at the end of this ceremony and cannot be carried forward.',
   },
   diamond_pov: {
     icon: '😇',
     label: 'HALO EXCHANGE',
     category: 'Shock',
     body: 'A special power has been activated — the Halo Exchange! The holder of this enhanced Power of Safety has the unique authority to name the backup nominee directly.',
-    shockDetail: 'When the Halo Exchange is used, the normal LOH naming rights are bypassed entirely. The holder may choose any eligible non-nominee, non-LOH player as the replacement. This shifts strategic power away from the LOH at the most critical moment of the week.',
+    shockDetail:
+      'When the Halo Exchange is used, the normal LOH naming rights are bypassed entirely. The holder may choose any eligible non-nominee, non-LOH player as the replacement. This shifts strategic power away from the LOH at the most critical moment of the week.',
   },
   coup_detat: {
     icon: '⚡',
     label: 'DETOX',
     category: 'Shock',
     body: 'A special power has been activated — the Detox! Both current nominees have been immediately cleared from the block. The holder must now name two entirely new nominees.',
-    shockDetail: 'The Detox wipes the existing nominations and forces the holder to rebuild the block from scratch. The holder is not eligible to be nominated, but the outgoing Leader of the House is. A new Power of Safety competition proceeds with the replacement nominees in place.',
+    shockDetail:
+      'The Detox wipes the existing nominations and forces the holder to rebuild the block from scratch. The holder is not eligible to be nominated, but the outgoing Leader of the House is. A new Power of Safety competition proceeds with the replacement nominees in place.',
   },
   spotlight_veto: {
     icon: '✨',
     label: 'FORCE MAJEURE',
     category: 'Shock',
     body: 'A special power has been activated — Force Majeure! The Power of Safety holder is required to use the power this ceremony — it cannot be kept unplayed.',
-    shockDetail: 'Regardless of the holder\'s strategic preference, the Power of Safety must be used this ceremony. A replacement nominee must be named by the LOH immediately. This force-use removes the option of "keeping nominations the same" and dramatically increases the pressure on both the holder and the LOH.',
+    shockDetail:
+      'Regardless of the holder\'s strategic preference, the Power of Safety must be used this ceremony. A replacement nominee must be named by the LOH immediately. This force-use removes the option of "keeping nominations the same" and dramatically increases the pressure on both the holder and the LOH.',
   },
   loh_comp_announcement: {
     icon: '🏆',
@@ -179,23 +206,32 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🎭',
     label: 'POWER OF SAFETY',
     category: 'Competition',
-    body: 'It is time for the Power of Safety competition. Players will battle for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the day\'s outcome entirely.',
+    body: "It is time for the Power of Safety competition. Players will battle for the most powerful item in the game. The winner holds the sole power to change the nominations and potentially rewrite the day's outcome entirely.",
   },
-};
+}
+
+PHASE_COPY.cupid_arrow.shockDetail =
+  'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Once four pairs have left the house, Cupid’s spell breaks and everyone returns to an individual game.'
+PHASE_COPY.cupid_arrow.shockDetail =
+  'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Protect your partner: their fate is tied to yours.'
+PHASE_COPY.cupid_arrow_broken.body =
+  'Four pairs have fallen. Cupid’s spell has ended, the bonds are gone, and the house is no longer divided into pairs.'
+PHASE_COPY.cupid_arrow_broken.shockDetail =
+  'Every survivor now competes, nominates, votes, and faces elimination alone. The connection each former pair built may still shape the game—but it no longer controls their fate.'
 
 const FALLBACK_COPY: PhaseCopy = {
   icon: '📢',
   label: 'ANNOUNCEMENT',
   category: 'The Big Eye',
   body: 'A significant moment has occurred in The Big Eye. The players — and you — must decide what comes next.',
-};
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export interface TvAnnouncementModalProps {
-  announcementKey: string;
-  open: boolean;
-  onClose: () => void;
+  announcementKey: string
+  open: boolean
+  onClose: () => void
 }
 
 /**
@@ -209,68 +245,72 @@ export default function TvAnnouncementModal({
   open,
   onClose,
 }: TvAnnouncementModalProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null)
 
   // Keep a ref to onClose so the fast-path always calls the latest callback
   // without the effect re-running on every render.
-  const onCloseRef = useRef(onClose);
+  const onCloseRef = useRef(onClose)
   useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
+    onCloseRef.current = onClose
+  }, [onClose])
 
   // Fast-path: auto-close immediately when animations are disabled.
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     if (document.body.classList.contains('no-animations')) {
-      onCloseRef.current();
+      onCloseRef.current()
     }
-  }, [open]);
+  }, [open])
 
   // ESC to close
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
 
   // Focus the card when opened
   useEffect(() => {
-    if (open) cardRef.current?.focus();
-  }, [open]);
+    if (open) cardRef.current?.focus()
+  }, [open])
 
-  if (!open) return null;
+  if (!open) return null
 
-  const copy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY;
+  const copy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
 
   return createPortal(
     <div
       className="tv-ann-modal__backdrop"
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
-        className="tv-ann-modal__card"
+        className={[
+          'tv-ann-modal__card',
+          announcementKey === 'cupid_arrow' ? 'tv-ann-modal__card--cupid' : '',
+          announcementKey === 'cupid_arrow_broken' ? 'tv-ann-modal__card--cupid-broken' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={`Phase info: ${copy.label}`}
         tabIndex={-1}
         ref={cardRef}
       >
-        <button
-          className="tv-ann-modal__close"
-          onClick={onClose}
-          aria-label="Close"
-        >
+        <button className="tv-ann-modal__close" onClick={onClose} aria-label="Close">
           ✕
         </button>
 
         <div className="tv-ann-modal__header">
-          <span className="tv-ann-modal__icon" aria-hidden="true">{copy.icon}</span>
+          <span className="tv-ann-modal__icon" aria-hidden="true">
+            {copy.icon}
+          </span>
           <h2 className="tv-ann-modal__title">{copy.label}</h2>
         </div>
         <span className="tv-ann-modal__badge">{copy.category}</span>
@@ -281,12 +321,10 @@ export default function TvAnnouncementModal({
           {copy.body.split('\n').map((line, i) => (
             <p key={i}>{line}</p>
           ))}
-          {copy.shockDetail && (
-            <p className="tv-ann-modal__shock-detail">{copy.shockDetail}</p>
-          )}
+          {copy.shockDetail && <p className="tv-ann-modal__shock-detail">{copy.shockDetail}</p>}
         </div>
       </div>
     </div>,
-    document.body,
-  );
+    document.body
+  )
 }

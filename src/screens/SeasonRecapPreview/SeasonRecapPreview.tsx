@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Player } from '../../types';
+import type { GameHistoryEvent, Player } from '../../types';
 import SeasonRecapCinematic from '../../components/SeasonRecapCinematic/SeasonRecapCinematic';
 import { HOUSEMATES_BIO_CARDS } from '../../components/HousematesBioCinematic/housematesBioData';
 import {
@@ -22,6 +22,38 @@ const PREVIEW_PLAYERS: Player[] = HOUSEMATES_BIO_CARDS.map((housemate, index) =>
     timesNominated: (index + 2) % 5,
   },
 }));
+
+const PREVIEW_EXIT_HISTORY: GameHistoryEvent[] = PREVIEW_PLAYERS
+  .filter((player) => player.status === 'evicted' || player.status === 'jury')
+  .map((player, index) => {
+    const alternative = PREVIEW_PLAYERS.find((candidate) => candidate.id !== player.id) ?? PREVIEW_PLAYERS[0];
+    const voters = Array.from(
+      { length: Math.min(5, PREVIEW_PLAYERS.length - 2) },
+      (_, offset) => PREVIEW_PLAYERS[(index + offset + 2) % PREVIEW_PLAYERS.length],
+    ).filter((voter) => voter.id !== player.id && voter.id !== alternative.id);
+    const votesByVoterId = Object.fromEntries(
+      voters.map((voter, voterIndex) => [voter.id, voterIndex < 3 ? player.id : alternative.id]),
+    );
+    const votesAgainst = Object.values(votesByVoterId).filter((targetId) => targetId === player.id).length;
+
+    return {
+      type: 'seasonExit',
+      week: Math.max(1, Math.min(11, index + 1)),
+      data: {
+        playerId: player.id,
+        leaderIds: [PREVIEW_PLAYERS[index % 2]?.id].filter(Boolean),
+        nomineeIds: [player.id, alternative.id],
+        votesByVoterId,
+        voteCounts: {
+          [player.id]: votesAgainst,
+          [alternative.id]: Object.keys(votesByVoterId).length - votesAgainst,
+        },
+        decisionMakerId: null,
+        exitMethod: 'vote',
+      },
+      timestamp: index + 1,
+    };
+  });
 
 function asset(path: string): string {
   return `${BASE}${path}`;
@@ -54,6 +86,7 @@ export default function SeasonRecapPreview() {
         season={1}
         week={12}
         players={PREVIEW_PLAYERS}
+        history={PREVIEW_EXIT_HISTORY}
         onComplete={() => {
           audioRef.current?.fadeOutAndStop(360);
           setOpen(false);

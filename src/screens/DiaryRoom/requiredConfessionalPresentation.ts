@@ -2,6 +2,7 @@ import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doub
 import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import type { GameState } from '../../types'
 import { getConfessionalPowerName } from './confessionalDecisionPresentation'
+import { isCupidArrowActive } from '../../features/twists/cupidArrow'
 
 export type RequiredConfessionalTone = 'private' | 'strategic' | 'danger' | 'power'
 
@@ -64,10 +65,16 @@ export function getRequiredConfessionalPresentation(
       return {
         key,
         eyebrow: dayLabel,
-        title: survival ? 'Elimination Vote' : 'Live Eviction Vote',
-        prompt: survival
-          ? 'Select the contestant you want removed from the current run.'
-          : 'Cast your private vote for the nominee whose game you want to end tonight.',
+        title: isCupidArrowActive(game)
+          ? 'Joint Pair Vote'
+          : survival
+            ? 'Elimination Vote'
+            : 'Live Eviction Vote',
+        prompt: isCupidArrowActive(game)
+          ? 'Choose one nominated pair. You and your partner cast this decision together, and the ballot counts as two votes.'
+          : survival
+            ? 'Select the contestant you want removed from the current run.'
+            : 'Cast your private vote for the nominee whose game you want to end tonight.',
         consequence: 'Once confirmed, this vote cannot be changed.',
         confirmLabel: 'Seal eviction vote',
         confirmation: 'Your eviction vote is sealed.',

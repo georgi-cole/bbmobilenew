@@ -5,6 +5,7 @@ playwright-report
 test-results
 renders
 .worktrees
+.cupid-pr*
 .capacitor
 android/.gradle
 android/app/build

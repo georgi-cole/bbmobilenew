@@ -49,7 +49,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         onDone={onDone}
         revealIntervalMs={1}
         postRevealDelayMs={1}
-      />,
+      />
     );
 
     await act(async () => {
@@ -59,7 +59,9 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(screen.getByText('Public approval breaks the tie.')).toBeTruthy();
     expect(screen.getByText('47% approval')).toBeTruthy();
     expect(screen.getByText('31% approval')).toBeTruthy();
-    expect(container.querySelector('.avrm__public-tiebreak-option--evictee')?.textContent).toContain('Nominee 3');
+    expect(
+      container.querySelector('.avrm__public-tiebreak-option--evictee')?.textContent
+    ).toContain('Nominee 3');
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(20);
@@ -96,14 +98,16 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         onDone={onDone}
         revealIntervalMs={1}
         postRevealDelayMs={1}
-      />,
+      />
     );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(20);
     });
 
-    expect(screen.getByText('The nominees with lower public approval will be eliminated.')).toBeTruthy();
+    expect(
+      screen.getByText('The nominees with lower public approval will be eliminated.')
+    ).toBeTruthy();
     expect(container.querySelectorAll('.avrm__public-tiebreak-option--evictee')).toHaveLength(2);
 
     await act(async () => {
@@ -142,7 +146,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         revealIntervalMs={1}
         postRevealDelayMs={1}
         variant="tv"
-      />,
+      />
     );
 
     await act(async () => {
@@ -175,7 +179,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         revealIntervalMs={1}
         postRevealDelayMs={1}
         variant="tv"
-      />,
+      />
     );
 
     await act(async () => {
@@ -187,7 +191,9 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelector('.avrm__tv-duel-divider')?.textContent).toContain('VS');
     expect(container.querySelectorAll('.avrm__tv-vote-ring')).toHaveLength(2);
     expect(container.querySelectorAll('.avrm__tv-vote-ring-track')).toHaveLength(2);
-    expect(container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')).toBeTruthy();
+    expect(
+      container.querySelector('.avrm__tv-vote-ring-fill')?.getAttribute('stroke-dasharray')
+    ).toBeTruthy();
     expect(container.querySelector('.avrm__tally-count[aria-label="1 vote"]')).toBeTruthy();
     expect(screen.getByText('Live')).toBeTruthy();
     expect(container.querySelector('.avrm__commentary--tv')).toBeNull();
@@ -195,6 +201,47 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelector('.avrm__tally--tv .avrm__tally-name')).toBeNull();
     expect(screen.getByText('Nominee 1')).toHaveClass('visually-hidden');
     expect(screen.queryByText(/has been eliminated\./i)).toBeNull();
+  });
+
+  it('renders Cupid vote results as two overlapped pair units with shared tallies', async () => {
+    const pairOneA = makePlayer('p1', 'Pair One A');
+    const pairOneB = makePlayer('p2', 'Pair One B');
+    const pairTwoA = makePlayer('p3', 'Pair Two A');
+    const pairTwoB = makePlayer('p4', 'Pair Two B');
+    const { container } = render(
+      <AnimatedVoteResultsModal
+        nominees={[
+          {
+            nominee: pairOneA,
+            partner: pairOneB,
+            pairColor: '#ff5d8f',
+            voteCount: 0,
+          },
+          {
+            nominee: pairTwoA,
+            partner: pairTwoB,
+            pairColor: '#5bbcff',
+            voteCount: 0,
+          },
+        ]}
+        evictee={pairOneA}
+        evicteeIds={[pairOneB.id]}
+        onDone={vi.fn()}
+        revealIntervalMs={1}
+        postRevealDelayMs={1}
+        variant="tv"
+      />
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20);
+    });
+
+    expect(container.querySelectorAll('.avrm__tally--tv')).toHaveLength(2);
+    expect(container.querySelectorAll('.avrm__tv-avatar-wrap--pair')).toHaveLength(2);
+    expect(container.querySelectorAll('.avrm__tv-avatar-member')).toHaveLength(4);
+    expect(container.querySelectorAll('.avrm__tally--evictee')).toHaveLength(1);
+    expect(screen.getByText('Pair One A and Pair One B')).toHaveClass('visually-hidden');
   });
 
   it('keeps three TV nominees in the same compact row for double eliminations', async () => {
@@ -210,7 +257,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         revealIntervalMs={1}
         postRevealDelayMs={1}
         variant="tv"
-      />,
+      />
     );
 
     await act(async () => {
@@ -236,7 +283,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
         revealIntervalMs={1}
         postRevealDelayMs={1}
         variant="tv"
-      />,
+      />
     );
 
     await act(async () => {

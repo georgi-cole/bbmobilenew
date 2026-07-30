@@ -117,6 +117,11 @@ export default function PlayerCard({
           {relationshipTags.includes('alliance') && (
             <span className="pc__bond-chip pc__bond-chip--ally">{'\uD83E\uDD1D Ally'}</span>
           )}
+          {relationshipTags.includes('cupid_partner') && (
+            <span className="pc__bond-chip pc__bond-chip--romance">
+              {'\uD83D\uDC98 Cupid pair'}
+            </span>
+          )}
           {relationshipTags.includes('romance') && (
             <span className="pc__bond-chip pc__bond-chip--romance">{'\uD83D\uDC95 Romance'}</span>
           )}

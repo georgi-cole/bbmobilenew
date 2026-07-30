@@ -6,15 +6,12 @@ import MinigameHost from '../MinigameHost'
 vi.mock('../../../services/sound/SoundManager', () => ({
   SoundManager: {
     play: vi.fn(),
+    stop: vi.fn(),
   },
 }))
 
 vi.mock('../../../minigames/LegacyMinigameWrapper', () => ({
-  default: ({
-    onComplete,
-  }: {
-    onComplete: (result: { value: number }) => void
-  }) => (
+  default: ({ onComplete }: { onComplete: (result: { value: number }) => void }) => (
     <button onClick={() => onComplete({ value: 5 })} type="button">
       Finish Test Game
     </button>
@@ -59,6 +56,12 @@ const makeParticipants = (humanScore: number, aiScore: number) => [
   },
 ]
 
+function exitMinigame() {
+  fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: /Leave competition/i }))
+  fireEvent.click(screen.getByRole('button', { name: 'Exit with 0' }))
+}
+
 describe('MinigameHost competition retry', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -85,22 +88,24 @@ describe('MinigameHost competition retry', () => {
           onWatch,
           onContinueWithoutRetry,
         }}
-      />,
+      />
     )
 
     act(() => {
       vi.runAllTimers()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exit minigame' }))
+    exitMinigame()
 
-    expect(screen.getByText('Watch a short ad to retry before this result is locked in.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Watch a short ad to retry before this result is locked in.')
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'See full ranking' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reverse time' }))
 
     expect(onWatch).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: 'Exit minigame' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open minigame menu' })).toBeInTheDocument()
     expect(screen.queryByText('🚪 Exited Early')).toBeNull()
     expect(onContinueWithoutRetry).not.toHaveBeenCalled()
   })
@@ -117,7 +122,7 @@ describe('MinigameHost competition retry', () => {
           enabled: true,
           onWatch: vi.fn(),
         }}
-      />,
+      />
     )
 
     act(() => {
@@ -139,7 +144,7 @@ describe('MinigameHost competition retry', () => {
         skipCountdown
         participants={makeParticipants(0, 50)}
         competitionRetry={{ enabled: true, onWatch: vi.fn() }}
-      />,
+      />
     )
 
     act(() => {
@@ -165,7 +170,7 @@ describe('MinigameHost competition retry', () => {
         skipRules
         skipCountdown
         participants={makeParticipants(5, 1)}
-      />,
+      />
     )
 
     act(() => {
@@ -179,5 +184,175 @@ describe('MinigameHost competition retry', () => {
 
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(onDone).toHaveBeenCalledWith(5, false)
+  })
+
+  it('lets a player dismiss the utility menu, review rules, and cancel an early exit', () => {
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={vi.fn()}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(5, 1)}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss minigame options' }))
+    expect(screen.queryByRole('menu', { name: 'Minigame options' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /View rules/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Return to game' }))
+    expect(screen.getByRole('button', { name: 'Finish Test Game' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Leave competition/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keep playing' }))
+    expect(screen.getByRole('button', { name: 'Finish Test Game' })).toBeInTheDocument()
+  })
+
+  it('returns from reference rules to an active countdown', () => {
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={vi.fn()}
+        skipRules
+        participants={makeParticipants(5, 1)}
+      />
+    )
+
+    expect(screen.getByText('Get Ready')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /View rules/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Return to countdown' }))
+
+    expect(screen.getByText('Get Ready')).toBeInTheDocument()
+  })
+
+  it('closes an open utility menu with Escape', () => {
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={vi.fn()}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(5, 1)}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open minigame menu' }))
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(screen.getByRole('menu', { name: 'Minigame options' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('menu', { name: 'Minigame options' })).toBeNull()
+  })
+
+  it('shows a standalone score when no competition leaderboard was requested', () => {
+    render(<MinigameHost game={baseGame} onDone={vi.fn()} skipRules skipCountdown />)
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Continue/ })).toBeInTheDocument()
+  })
+
+  it('labels a standalone early-exit result as partial', () => {
+    render(<MinigameHost game={baseGame} onDone={vi.fn()} skipRules skipCountdown />)
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    exitMinigame()
+
+    expect(screen.getByText(/partial/i)).toBeInTheDocument()
+  })
+
+  it('renders pending retry state and commits an organic result from the close control', () => {
+    const onContinueWithoutRetry = vi.fn()
+    const onDone = vi.fn()
+
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={onDone}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(0, 50)}
+        competitionRetry={{
+          enabled: true,
+          pending: true,
+          onWatch: vi.fn(),
+          onContinueWithoutRetry,
+        }}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+    expect(screen.getByRole('button', { name: /Opening Ad/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }))
+
+    expect(onContinueWithoutRetry).toHaveBeenCalledTimes(1)
+    expect(onDone).toHaveBeenCalledWith(5, false)
+  })
+
+  it('uses placement labels and numeric ranks beyond the medal positions', () => {
+    const placementGame = {
+      ...baseGame,
+      resultMode: 'placement',
+    } as GameRegistryEntry
+    const participants = [
+      ...makeParticipants(100, 30),
+      {
+        id: 'ai-2',
+        name: 'CPU Two',
+        isHuman: false,
+        precomputedScore: 20,
+        previousPR: null,
+      },
+      {
+        id: 'ai-3',
+        name: 'CPU Three',
+        isHuman: false,
+        precomputedScore: 10,
+        previousPR: null,
+      },
+    ]
+
+    render(
+      <MinigameHost
+        game={placementGame}
+        onDone={vi.fn()}
+        skipRules
+        skipCountdown
+        participants={participants}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+
+    expect(screen.getByText('4.')).toBeInTheDocument()
+    expect(screen.getByText('4th')).toBeInTheDocument()
   })
 })

@@ -227,6 +227,7 @@ export const CHALLENGE_GROUP_1_GAME_KEYS = [
   'snake',
   'castleRescue',
   'batteryLow',
+  'holdWall',
 ] as const
 
 export const DEFAULT_MINIGAME_MUSIC_PROFILES: readonly MinigameMusicProfile[] = [

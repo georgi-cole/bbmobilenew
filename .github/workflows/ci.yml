@@ -56,3 +56,48 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ${{ matrix.script }}
+
+  android-native:
+    name: Android native lint and debug build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci
+      - run: npm run sync:android
+      - name: Lint and compile the Android app
+        working-directory: android
+        run: ./gradlew lintDebug assembleDebug
+
+  ios-native:
+    name: iOS simulator build
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run sync:ios
+      - name: Compile the iOS app without signing
+        run: >-
+          xcodebuild build
+          -project ios/App/App.xcodeproj
+          -target App
+          -configuration Debug
+          -sdk iphonesimulator
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED=NO

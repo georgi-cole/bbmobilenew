@@ -65,6 +65,8 @@ export interface SeasonArchive {
   playerSummaries: PlayerSeasonSummary[];
   /** Any rewards / achievements earned this season. */
   rewardsEarned?: string[];
+  /** True when Cupid's Arrow activated during this season. Used for its cooldown. */
+  cupidArrowActivated?: boolean;
   /**
    * Week numbers where a double eviction occurred (2 players evicted in one week).
    * Used to award survivedDoubleEviction points to players who survived those weeks.

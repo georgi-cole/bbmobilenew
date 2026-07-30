@@ -66,9 +66,7 @@ function parseSnapshot(raw: string): DebugSnapshot {
 }
 
 function downloadJson(filename: string, value: unknown): void {
-  const blob = new Blob([JSON.stringify(value, null, 2)], {
-    type: 'application/json',
-  })
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -88,38 +86,23 @@ function collectHealthIssues(state: RootState): HealthIssue[] {
   )
 
   if (game.players.filter((player) => player.isUser).length !== 1) {
-    issues.push({
-      severity: 'error',
-      message: 'The season must have exactly one human player.',
-    })
+    issues.push({ severity: 'error', message: 'The season must have exactly one human player.' })
   }
   if (new Set(game.players.map((player) => player.id)).size !== game.players.length) {
     issues.push({ severity: 'error', message: 'Duplicate player IDs exist.' })
   }
   if (game.lohId && !aliveIds.has(game.lohId)) {
-    issues.push({
-      severity: 'error',
-      message: 'The current LOH is not an active player.',
-    })
+    issues.push({ severity: 'error', message: 'The current LOH is not an active player.' })
   }
   if (game.posWinnerId && !aliveIds.has(game.posWinnerId)) {
-    issues.push({
-      severity: 'error',
-      message: 'The current POS winner is not active.',
-    })
+    issues.push({ severity: 'error', message: 'The current POS winner is not active.' })
   }
   if (new Set(game.nomineeIds).size !== game.nomineeIds.length) {
-    issues.push({
-      severity: 'error',
-      message: 'The nominee list contains duplicates.',
-    })
+    issues.push({ severity: 'error', message: 'The nominee list contains duplicates.' })
   }
   for (const nomineeId of game.nomineeIds) {
     if (!playerIds.has(nomineeId)) {
-      issues.push({
-        severity: 'error',
-        message: `Nominee ${nomineeId} does not exist.`,
-      })
+      issues.push({ severity: 'error', message: `Nominee ${nomineeId} does not exist.` })
     } else if (!aliveIds.has(nomineeId)) {
       issues.push({
         severity: 'error',

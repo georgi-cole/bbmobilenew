@@ -469,7 +469,7 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
     expect(session?.aiScores?.['p0']).toBeUndefined();
   });
 
-  it('AI scores fall within the competitive Quick Tap band [50, 280]', () => {
+  it('AI scores fall within the competitive Quick Tap band [50, 350]', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -487,7 +487,7 @@ describe('Quick Tap Race — startMinigame uses direct AI scoring', () => {
     for (const id of ['p1', 'p2', 'p3', 'p4']) {
       const score = session?.aiScores?.[id] ?? -1;
       expect(score).toBeGreaterThanOrEqual(50);
-      expect(score).toBeLessThanOrEqual(280);
+      expect(score).toBeLessThanOrEqual(350);
     }
   });
 

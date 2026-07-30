@@ -239,7 +239,10 @@ export default function Store() {
 
       <p className="vip-store__terms">
         These are one-time, non-consumable purchases charged to your Apple or Google account. Use
-        Restore Purchases after reinstalling or moving to another device.
+        Restore Purchases after reinstalling or moving to another device.{' '}
+        <button type="button" onClick={() => navigate('/legal')}>
+          Privacy and terms
+        </button>
       </p>
 
       {selectedDefinition && selectedProductKey && (
