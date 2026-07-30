@@ -1,8 +1,11 @@
-/* ─────────────────────────────────────────────────────────────────────────────
-   HoldTheWallComp — "Hold the Wall" endurance competition UI
-   ───────────────────────────────────────────────────────────────────────────── */
+Exit code: 0
+Wall time: 1.3 seconds
+Output:
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   HoldTheWallComp â€” "Hold the Wall" endurance competition UI
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* ── Root ──────────────────────────────────────────────────────────────────── */
+/* â”€â”€ Root â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-root {
   display: flex;
@@ -18,7 +21,7 @@
   min-height: 100vh; /* fallback */
 }
 
-/* ── HUD ────────────────────────────────────────────────────────────────────── */
+/* â”€â”€ HUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-hud {
   display: flex;
@@ -63,7 +66,7 @@
   color: #83bfff;
 }
 
-/* ── Participants ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Participants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-participants {
   display: flex;
@@ -127,7 +130,7 @@
   font-size: 0.85rem;
 }
 
-/* ── Wall panel ──────────────────────────────────────────────────────────────── */
+/* â”€â”€ Wall panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-wall {
   width: 200px;
@@ -147,7 +150,7 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Expanded brick wall ─────────────────────────────────────────────────────── */
+/* â”€â”€ Expanded brick wall â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-wall--expanded {
   width: 100%;
@@ -163,9 +166,9 @@
   background-color: #8b3a22;
 
   /* Brick pattern:
-     Layer 1 — horizontal mortar lines every 32 px
-     Layer 2 — vertical mortar for even brick rows (0 %, 50 %)
-     Layer 3 — vertical mortar for odd brick rows (25 %, 75 %) offset by 32 px
+     Layer 1 â€” horizontal mortar lines every 32 px
+     Layer 2 â€” vertical mortar for even brick rows (0 %, 50 %)
+     Layer 3 â€” vertical mortar for odd brick rows (25 %, 75 %) offset by 32 px
   */
   background-image:
     /* Horizontal mortar */
@@ -220,7 +223,7 @@
   box-shadow: 0 4px 20px rgba(255, 107, 157, 0.35);
 }
 
-/* Holding state for expanded brick wall — keep brick pattern, add glow */
+/* Holding state for expanded brick wall â€” keep brick pattern, add glow */
 .htw-wall--expanded.htw-wall--holding,
 .htw-wall--expanded:active {
   background-color: #a04428;
@@ -276,7 +279,7 @@
   pointer-events: none;
 }
 
-/* ── Narration box ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Narration box â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-narrative {
   display: flex;
@@ -341,7 +344,7 @@
   opacity: 0.68;
 }
 
-/* ── Complete screen ─────────────────────────────────────────────────────────── */
+/* â”€â”€ Complete screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .htw-complete {
   display: flex;
@@ -380,3 +383,160 @@
   color: #83bfff;
   margin: 0.25rem 0 0;
 }
+
+/* â”€â”€ Arena redesign â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.htw-root {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 48rem);
+  max-width: none;
+  min-height: 100%;
+  gap: 0.7rem;
+  padding: clamp(0.65rem, 2vw, 1.15rem);
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(255, 193, 112, 0.22), transparent 47%),
+    radial-gradient(circle at 12% 86%, rgba(67, 56, 202, 0.18), transparent 30%),
+    linear-gradient(180deg, #171423 0%, #0d1020 46%, #070a12 100%);
+}
+
+.htw-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .44;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, #000, transparent 80%);
+}
+
+.htw-hud {
+  order: 0;
+  max-width: none;
+  width: min(100%, 34rem);
+  padding: .55rem 1rem;
+  border-color: rgba(255, 205, 123, .24);
+  background: linear-gradient(135deg, rgba(42, 39, 55, .94), rgba(19, 23, 37, .92));
+  box-shadow: 0 14px 34px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.08);
+}
+
+.htw-hud-label { color: rgba(255, 221, 159, .65); }
+.htw-hud-value { color: #ffd17c; text-shadow: 0 0 14px rgba(255, 174, 79, .42); }
+.htw-participants { order: 1; gap: .65rem; }
+.htw-participant-avatar { width: 42px; height: 42px; background: #23304a; }
+.htw-participant--alive .htw-participant-avatar { border-color: #8ac2ff; box-shadow: 0 0 0 3px rgba(82, 157, 255, .1); }
+.htw-participant--human .htw-participant-avatar { border-color: #ffd17c; box-shadow: 0 0 0 3px rgba(255, 174, 79, .15); }
+.htw-narrative {
+  order: 2;
+  max-width: 40rem;
+  padding: .65rem .85rem;
+  border: 1px solid rgba(132, 177, 255, .18);
+  border-left: 3px solid #79b7ff;
+  background: rgba(15, 24, 43, .82);
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+}
+
+.htw-wall--expanded {
+  order: 3;
+  position: relative;
+  isolation: isolate;
+  display: block;
+  flex: 1 1 28rem;
+  width: 100%;
+  min-height: clamp(30rem, 64vh, 46rem);
+  overflow: hidden;
+  border: 1px solid rgba(255, 203, 130, .32);
+  border-radius: 1.35rem 1.35rem .8rem .8rem;
+  cursor: grab;
+  background-color: #5c2c22;
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,.36) 1px, transparent 1px),
+    linear-gradient(rgba(0,0,0,.38) 2px, transparent 2px),
+    linear-gradient(120deg, rgba(255, 216, 165, .12), transparent 28%, rgba(0,0,0,.13) 72%),
+    linear-gradient(180deg, #8c4630, #54271f 68%, #301914);
+  background-size: 25% 100%, 100% 3.5rem, 100% 100%, 100% 100%;
+  box-shadow: 0 30px 58px rgba(0,0,0,.44), inset 0 1px rgba(255,240,211,.24), inset 0 -46px 80px rgba(0,0,0,.3);
+}
+
+.htw-wall--expanded::before,
+.htw-wall--expanded::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.htw-wall--expanded::before {
+  z-index: 1;
+  opacity: .42;
+  background: repeating-linear-gradient(111deg, transparent 0 5.8rem, rgba(44, 17, 13, .48) 5.9rem 6.05rem, transparent 6.15rem 9.5rem);
+}
+
+.htw-wall--expanded::after {
+  z-index: 6;
+  background: linear-gradient(180deg, rgba(255,224,172,.09), transparent 17%, transparent 79%, rgba(0,0,0,.34));
+}
+
+.htw-wall__arena-glow { position: absolute; inset: -30% 10% auto; height: 38%; z-index: 0; background: radial-gradient(ellipse, rgba(255, 191, 107, .26), transparent 68%); filter: blur(16px); }
+.htw-wall__floodlights { position: absolute; inset: .85rem 1rem auto; z-index: 7; display: flex; justify-content: space-between; pointer-events: none; }
+.htw-wall__floodlights span { width: 2.1rem; height: .45rem; border-radius: 999px; background: #ffe6aa; box-shadow: 0 0 8px #ffe6aa, 0 0 32px rgba(255, 194, 100, .82); transform: rotate(8deg); }
+.htw-wall__floodlights span:last-child { transform: rotate(-8deg); }
+
+.htw-wall__pressure { position: absolute; z-index: 8; top: 1.1rem; left: 50%; width: min(72%, 25rem); transform: translateX(-50%); padding: .52rem .65rem .62rem; border: 1px solid rgba(255,255,255,.19); border-radius: .85rem; background: rgba(9, 13, 24, .76); box-shadow: 0 10px 24px rgba(0,0,0,.3); backdrop-filter: blur(8px); }
+.htw-wall__pressure-copy { display: flex; justify-content: space-between; gap: .8rem; margin-bottom: .35rem; color: rgba(255,255,255,.7); font-size: .61rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.htw-wall__pressure-copy strong { color: #a6d1ff; }
+.htw-wall__pressure-track { height: .4rem; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.11); }
+.htw-wall__pressure-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4dd4ff, #75a7ff); box-shadow: 0 0 14px rgba(80, 196, 255, .72); transition: width 500ms ease; }
+.htw-wall__pressure-impact { display: block; margin-top: .45rem; color: rgba(255,255,255,.52); font-size: .53rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.htw-root--strain .htw-wall__pressure-copy strong { color: #ffd166; }
+.htw-root--strain .htw-wall__pressure-track span { background: linear-gradient(90deg, #ffbd59, #ff7948); box-shadow: 0 0 16px rgba(255, 137, 68, .74); }
+.htw-root--danger .htw-wall--expanded { border-color: rgba(255, 105, 105, .72); animation: htw-wall-danger 1s ease-in-out infinite alternate; }
+.htw-root--danger .htw-wall__pressure-copy strong { color: #ff9191; }
+.htw-root--danger .htw-wall__pressure-track span { background: linear-gradient(90deg, #ff784d, #fb4f6f); box-shadow: 0 0 19px rgba(255, 72, 79, .78); }
+
+/* Effects now belong to the arena, not just a layer placed over it. */
+.htw-effects--rain .htw-wall { filter: saturate(.78) brightness(.83); }
+.htw-effects--rain .htw-wall__arena-glow { opacity: .32; background: linear-gradient(180deg, rgba(73, 132, 186, .34), transparent 55%); }
+.htw-effects--wind .htw-wall__floodlights span { animation: htw-light-swing .75s ease-in-out infinite alternate; }
+.htw-effects--wind .htw-wall__grip { animation: htw-grip-buffet .68s ease-in-out infinite alternate; }
+.htw-effects--paint .htw-wall__pressure { box-shadow: 0 10px 24px rgba(0,0,0,.3), 0 0 0 2px rgba(213, 54, 66, .34); }
+.htw-effects--sound .htw-wall__hold-zone { animation: htw-zone-rattle .22s linear infinite alternate; }
+.htw-effects--vibrate .htw-wall { animation: htw-arena-quake .13s linear infinite; }
+.htw-effects--vibrate .htw-wall__floodlights { filter: brightness(1.55) saturate(1.35); }
+
+@keyframes htw-light-swing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes htw-grip-buffet { from { margin-left: -3px; } to { margin-left: 3px; } }
+@keyframes htw-zone-rattle { from { transform: translateX(-1px); } to { transform: translateX(1px); } }
+@keyframes htw-arena-quake { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-2px,1px); } 75% { transform: translate(2px,-1px); } }
+.htw-root--danger .htw-wall--expanded::before { opacity: .72; background: repeating-linear-gradient(106deg, transparent 0 4.5rem, rgba(40, 9, 8, .62) 4.6rem 4.78rem, transparent 4.9rem 7.8rem); }
+@keyframes htw-wall-danger { to { transform: translateX(1px); filter: saturate(1.16) contrast(1.05); } }
+
+.htw-wall__grip-field { position: absolute; inset: 7rem 0 5.5rem; z-index: 4; pointer-events: none; }
+.htw-wall__grip { position: absolute; left: calc(15% + (var(--grip-index) * 24%)); top: calc(68% - (var(--grip-row) * 27%)); display: grid; justify-items: center; gap: .18rem; color: rgba(255,255,255,.72); font-size: .57rem; font-weight: 800; text-shadow: 0 2px 3px rgba(0,0,0,.7); transform: translateX(-50%); }
+.htw-wall__grip-hand { display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 2px solid #78baff; border-radius: 50%; background: #22334e; box-shadow: 0 0 0 5px rgba(71, 148, 255, .12), 0 9px 17px rgba(0,0,0,.34); }
+.htw-wall__grip--human .htw-wall__grip-hand { border-color: #ffd074; background: #5a3828; box-shadow: 0 0 0 6px rgba(255, 183, 82, .16), 0 0 22px rgba(255, 182, 80, .52); }
+.htw-wall__grip.is-holding .htw-wall__grip-hand { transform: scale(1.15); box-shadow: 0 0 0 7px rgba(255, 196, 93, .24), 0 0 30px rgba(255, 191, 89, .76); }
+.htw-wall__grip-name { max-width: 5.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.htw-wall__hold-zone { position: absolute; z-index: 9; left: 50%; bottom: 1.25rem; display: grid; justify-items: center; gap: .12rem; width: min(76%, 20rem); transform: translateX(-50%); padding: .82rem 1rem; border: 1px solid rgba(255, 221, 159, .42); border-radius: 1rem; background: linear-gradient(135deg, rgba(40, 25, 26, .92), rgba(23, 29, 45, .92)); box-shadow: 0 15px 32px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.12); }
+.htw-wall__hold-icon { font-size: 1.45rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(255, 194, 95, .72)); }
+.htw-wall__hold-label { color: #fff2d6; font-size: .82rem; font-weight: 900; letter-spacing: .11em; text-align: center; }
+.htw-wall__hold-copy { color: rgba(225, 234, 255, .72); font-size: .68rem; }
+.htw-wall--holding .htw-wall__hold-zone { border-color: #ffe09a; background: linear-gradient(135deg, rgba(110, 64, 28, .96), rgba(45, 40, 36, .96)); box-shadow: 0 0 0 4px rgba(255, 191, 87, .15), 0 18px 38px rgba(0,0,0,.45); }
+.htw-wall--holding .htw-wall__hold-label { color: #ffe7a5; }
+
+@media (max-width: 540px) {
+  .htw-root { border-radius: 0; padding: .55rem; }
+  .htw-hud { width: 100%; }
+  .htw-participants { gap: .45rem; }
+  .htw-participant-avatar { width: 35px; height: 35px; }
+  .htw-wall--expanded { min-height: 33rem; border-radius: 1rem .8rem .5rem .5rem; }
+  .htw-wall__pressure { width: 83%; }
+  .htw-wall__grip { left: calc(14% + (var(--grip-index) * 25%)); }
+  .htw-wall__hold-zone { bottom: .8rem; width: 84%; }
+}
+
+@media (prefers-reduced-motion: reduce) { .htw-root--danger .htw-wall--expanded { animation: none; } }
+
