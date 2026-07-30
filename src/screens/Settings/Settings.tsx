@@ -15,7 +15,6 @@ import {
 import {
   selectHasDramaModeAccess,
   selectHasPublicModeAccess,
-  selectHasTribunalHouseAccess,
   selectIsVipActive,
 } from '../../store/vipSlice'
 import {
@@ -45,7 +44,7 @@ type ToggleItem = {
   label: string
   badge?: string
   gated?: boolean
-  lockedFeature?: 'Reality Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes'
+  lockedFeature?: 'Reality Mode' | 'Public Mode' | 'VIP themes'
   get: (s: SettingsState) => boolean
   onChange: (dispatch: AppDispatch, val: boolean) => void
 }
@@ -171,16 +170,6 @@ const SECTIONS: SettingSection[] = [
             )
           ),
       },
-      {
-        type: 'toggle',
-        id: 'tribunalHouse',
-        label: 'Tribunal House',
-        badge: 'Store',
-        gated: true,
-        lockedFeature: 'Tribunal House',
-        get: (s) => s.sim.enableJuryHouse,
-        onChange: (dispatch, val) => dispatch(setSim({ enableJuryHouse: val })),
-      },
     ],
   },
   {
@@ -234,14 +223,13 @@ export default function Settings() {
   const isVipActive = useAppSelector(selectIsVipActive)
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
-  const hasTribunalHouse = useAppSelector(selectHasTribunalHouseAccess)
   const realityAgeEligibility = useAppSelector((state) =>
     getProfileRealityAgeEligibility(state.profiles)
   )
   const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride
   const showRealitySettings = hasRealityAccess && settings.gameUX.dramaMode
   const [lockedFeature, setLockedFeature] = useState<
-    'Reality Mode' | 'Public Mode' | 'Tribunal House' | 'VIP themes' | null
+    'Reality Mode' | 'Public Mode' | 'VIP themes' | null
   >(null)
 
   useEffect(() => {
@@ -264,9 +252,7 @@ export default function Settings() {
             ? hasDramaMode || settings.gameUX.dramaModeAdminOverride
             : item.id === 'publicMode'
               ? hasPublicMode || settings.sim.publicModeAdminOverride
-              : item.id === 'tribunalHouse'
-                ? hasTribunalHouse
-                : true
+              : true
         const checked = item.gated && !hasAccess ? false : item.get(settings)
         return (
           <div key={item.id} className="settings-row">
@@ -365,6 +351,17 @@ export default function Settings() {
             {section.items.map(renderItem)}
           </section>
         ))}
+        <button
+          type="button"
+          className="settings-row settings-row--legal"
+          onClick={() => navigate('/legal')}
+        >
+          <span>
+            <strong>Privacy, terms &amp; support</strong>
+            <small>Review data use, purchase terms, and help options</small>
+          </span>
+          <span aria-hidden="true">&rsaquo;</span>
+        </button>
       </div>
       <ConfirmExitModal
         open={lockedFeature != null}

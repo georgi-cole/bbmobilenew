@@ -1,14 +1,78 @@
-# Release blockers and console-only requirements
+# Remaining release actions requiring owner or store-console access
 
-The media meets current upload dimensions, but the release is not compliant until these items are resolved.
+The repository-side release blockers have been addressed. The game is still **not ready to submit** until every item below is completed with the developer accounts, signing keys, public URLs, and physical devices.
 
-1. **Permanent IDs:** Capacitor/iOS use `com.georgicole.thebigeye`; Android uses `com.bbmobilenew.app`. Choose the permanent IDs before creating store records.
-2. **iPad:** Xcode targets iPhone and iPad. Capture the final app on a 13-inch iPad, or intentionally switch the binary to iPhone-only. The supplied iPad marketing images use genuine phone UI on an app-themed background and must be replaced if the native iPad layout differs.
-3. **Location:** The UI can request location, but the native manifests lack matching iOS usage text and Android location permissions. Configure and test it, or disable it. Match the store disclosures to that decision.
-4. **Privacy:** The Apple privacy manifest says no data is collected, while optional location and premium Diary Room network flows exist. Reconcile the final binary, privacy policy, and both console forms.
-5. **Backend:** Confirm HTTPS, retention, deletion, access controls, and request/IP logging for the production backend and AI provider.
-6. **Ads/IAP:** Decide whether ads and the No Ads Pack ship in 1.0. If enabled, add the required native SDK disclosures, agreements, billing products, and tracking decisions.
-7. **Installed icon:** Native projects still use the Capacitor placeholder. Replace native icon catalogs so the installed icon matches this store package.
-8. **Public contacts:** Publish `privacy-policy.html` at a stable HTTPS URL and provide a working support URL and monitored developer email.
-9. **Content rating:** Declare any simulated casino/chance mechanics honestly. No real-money gambling was found.
-10. **Console-only items:** Complete legal contact verification, tax/banking, territories, category, pricing, Apple age/export forms, Google content rating, target audience, app access, Data safety, and testing-access requirements.
+## 1. Reserve the permanent app identity
+
+- Confirm `com.georgicole.thebigeye` is available in Apple Developer/App Store Connect and Google Play Console.
+- Create both store records with that exact identifier.
+- Confirm the public app name “The Big Eye” is available and legally cleared for the intended territories.
+
+## 2. Create and protect signing credentials
+
+- Android: create the Play upload keystore, keep it outside the repository, and fill `android/local.properties` from `android/local.properties.example` (or use the documented `ANDROID_*` CI secrets).
+- Enroll in Play App Signing and securely back up the upload key.
+- Apple: select the Apple Developer team, create distribution certificates/profiles, and archive with the current required Xcode/iOS SDK.
+
+## 3. Publish legal and support pages
+
+- Publish `public/legal/privacy-policy.html` and `public/legal/terms-of-use.html` at stable public HTTPS URLs.
+- Create a public support page and a monitored support/developer email.
+- Copy `.env.android.example` and `.env.ios.example` to the ignored real files, replace the three `example.com` legal/support URLs, and run:
+  - `npm run verify:store-env:android`
+  - `npm run verify:store-env:ios`
+- Enter the same privacy and support URLs in both store consoles.
+
+## 4. Configure the four released purchases
+
+Create these as one-time, non-consumable products on both stores:
+
+- `com.georgicole.thebigeye.vip`
+- `com.georgicole.thebigeye.survival`
+- `com.georgicole.thebigeye.publicmode`
+- `com.georgicole.thebigeye.dramamode`
+
+Then:
+
+- Complete paid-app agreements, banking, and tax setup.
+- Add localized names, descriptions, prices, and review screenshots.
+- Keep Tribunal Mode and No Ads inactive; they are intentionally hidden in 1.0.
+- Test purchase, cancel, pending payment, restore, refund/revocation, reinstall, account switching, and offline launch.
+
+## 5. Complete the store compliance forms
+
+- Apple: privacy nutrition label, age rating, export-compliance answers, territories, category, pricing, review contact, and IAP review submission.
+- Google: Data safety, target audience, content rating, app access, ads declaration (“No” for this binary), financial features, government apps, health, and any other required policy declarations.
+- Disclose optional precise location for weather personalization, store purchases, no tracking, and no advertising SDK.
+- Rate simulated chance/casino-like mechanics honestly; no real-money gambling was found.
+
+## 6. Produce and test signed native builds
+
+- Android: run `npm run prepare:store:android`, build a signed AAB, upload it to Internal testing, and install it from Google Play.
+- iOS: on a Mac, run `npm run prepare:store:ios`, archive the app, validate it, upload it to TestFlight, and install it from TestFlight.
+- Test on physical low- and high-end phones: first launch, denied/allowed location, offline play, save/resume, full season completion, background/foreground recovery, audio, purchases, and restore.
+- Test the final UI on a 13-inch iPad. Replace the supplied tablet marketing compositions with direct native captures if the layout differs, or intentionally change the target to iPhone-only before submission.
+
+## 7. Complete required pre-release testing
+
+- Run the GitHub Release Product Quality workflow and require every job to pass.
+- Complete the Google closed-testing requirement if the Play account is a personal account subject to it.
+- Run TestFlight external/internal testing appropriate to the release risk.
+- Resolve all crash, ANR, pre-launch report, TestFlight, and accessibility findings before production rollout.
+
+## 8. Keep online AI disabled for 1.0
+
+Do not set `VITE_BIG_EYE_AI_ENABLED=true` or a VIP Diary Room endpoint for this release. Enabling it requires a production backend security review, authentication/rate limiting, documented retention and deletion, updated policy/manifest/store disclosures, and end-to-end moderation testing.
+
+## Repository-side work already completed
+
+- Android and iOS now share the permanent bundle ID and version.
+- Native location permissions, user-facing rationale, and iOS privacy declaration are aligned.
+- Capacitor placeholder icons and splashes were replaced with the approved store artwork.
+- Unfinished Tribunal and No Ads products are hidden from sale.
+- Privacy, terms, and support information is reachable in-app.
+- Release environment validation and Android signing templates are present.
+- Pull requests now compile Android and iOS native projects; Swift CodeQL receives synced native assets.
+- Type checking, linting, formatting, web builds, and Capacitor syncs pass locally.
+- Android native lint and debug assembly pass locally.
+- The authoritative suite passes all 4,804 tests, with no disabled tests, and the risk-based coverage gate passes.

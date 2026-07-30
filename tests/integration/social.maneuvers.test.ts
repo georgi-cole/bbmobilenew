@@ -14,7 +14,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import gameReducer from '../../src/store/gameSlice'
+import gameReducer, { setPhase } from '../../src/store/gameSlice'
 import settingsReducer, { setGameUX } from '../../src/store/settingsSlice'
 import socialReducer, {
   selectEnergyBank,
@@ -123,21 +123,25 @@ function makeStore(dramaMode = false) {
   return store
 }
 
-function makeStoreWithSocialMiddleware() {
+function makeStoreWithSocialMiddleware(
+  dramaMode = false,
+  players = [
+    { id: 'p1', name: 'P1', status: 'active' as const },
+    { id: 'p2', name: 'P2', status: 'active' as const },
+  ]
+) {
   const initialGame = gameReducer(undefined, { type: '@@test/init' })
   const store = configureStore({
     reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     preloadedState: {
       game: {
         ...initialGame,
-        players: [
-          { id: 'p1', name: 'P1', status: 'active' },
-          { id: 'p2', name: 'P2', status: 'active' },
-        ],
+        players,
       },
     } as never,
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
   })
+  if (dramaMode) store.dispatch(setGameUX({ dramaMode: true }))
   return store
 }
 
@@ -561,7 +565,7 @@ describe('executeAction – happy path', () => {
   })
 
   it('tags relationship with outcomeTag when action has one', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
 
@@ -571,11 +575,16 @@ describe('executeAction – happy path', () => {
   })
 
   it('applies the contextual subject tag only for primaryPlusSubject actions', () => {
-    const store = makeStore()
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'P1', status: 'active' },
+      { id: 'p2', name: 'P2', status: 'loh' },
+      { id: 'p3', name: 'P3', status: 'active' },
+    ])
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 300 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+    store.dispatch(setPhase('social_1'))
 
     executeAction('p1', 'p2', 'pitch_target', { subjectId: 'p3' })
 
@@ -737,7 +746,7 @@ describe('executeAction – outcome delta from SocialPolicy', () => {
   })
 
   it('delta for betray (aggressive, socialConfig) is negative on success', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     store.dispatch(
@@ -890,7 +899,7 @@ describe('getAvailableActions – multi-resource filtering', () => {
 
 describe('executeAction – multi-resource deductions', () => {
   it('deducts info cost when executing rumor (info cost 100 pts)', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 150 }))
@@ -911,7 +920,7 @@ describe('executeAction – multi-resource deductions', () => {
   })
 
   it('returns failure when info is insufficient for rumor', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
     // No info set → 0 < 100 required
@@ -980,14 +989,14 @@ describe('executeAction – multi-resource deductions', () => {
   })
 
   it('propose alliance success creates a reciprocal alliance', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
 
     const result = executeAction('p1', 'p2', 'proposeAlliance', {
       outcome: 'success',
-      random: sequence(0.79, 0.999),
+      random: () => 0,
     })
 
     expect(result.success).toBe(true)
@@ -1006,7 +1015,7 @@ describe('executeAction – multi-resource deductions', () => {
   })
 
   it('grants alliance formation resources only once for a reciprocal alliance', () => {
-    const store = makeStoreWithSocialMiddleware()
+    const store = makeStoreWithSocialMiddleware(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
@@ -1015,12 +1024,12 @@ describe('executeAction – multi-resource deductions', () => {
     executeAction('p1', 'p2', 'proposeAlliance', {
       outcome: 'success',
       source: 'manual',
-      random: sequence(0.79, 0.999),
+      random: () => 0,
     })
 
-    expect(store.getState().social.energyBank.p1).toBe(9)
+    expect(store.getState().social.energyBank.p1).toBe(8)
     expect(store.getState().social.energyBank.p2).toBe(2)
-    expect(store.getState().social.influenceBank.p1).toBe(206)
+    expect(store.getState().social.influenceBank.p1).toBe(208)
     expect(store.getState().social.influenceBank.p2).toBe(200)
   })
 
@@ -1044,7 +1053,7 @@ describe('executeAction – multi-resource deductions', () => {
   })
 
   it('repairs stale low-affinity alliance tags through a newly accepted proposal', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
@@ -1088,14 +1097,14 @@ describe('executeAction – multi-resource deductions', () => {
 
 describe('executeAction – balancesAfter in sessionLogs', () => {
   it('session log entry contains costs with all three resources (rumor: energy+info)', () => {
-    const store = makeStore()
+    const store = makeStore(true)
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
     store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 200 }))
 
     executeAction('p1', 'p2', 'rumor')
     const entry = store.getState().social.sessionLogs[0] as SocialActionLogEntry
-    expect(entry.costs).toEqual({ energy: 2, influence: 0, info: 100 })
+    expect(entry.costs).toEqual({ energy: 3, influence: 0, info: 100 })
   })
 
   it('session log entry contains balancesAfter (whisper: costs energy 1, yields info +100)', () => {

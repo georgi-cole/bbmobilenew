@@ -1134,7 +1134,7 @@ export default function TvZone(props: TvZoneProps) {
         <ul className="tv-zone__head-pills" aria-label="Game status chips">
           <li>
             <GameTopChip
-              label={formatCycleLabel(gameState.week)}
+              label={formatCycleLabel(gameState.season, gameState.week)}
               ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)}
               tone="neutral"
               className="tv-zone__head-chip"

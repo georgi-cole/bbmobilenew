@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
-import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   advance,
   setPhase,
@@ -22,28 +22,28 @@ import {
   completeMission,
   setCupidArrowSchedule,
   breakCupidArrowNow,
-} from '../../store/gameSlice'
-import { DEFAULT_SETTINGS, setSim } from '../../store/settingsSlice'
+} from '../../store/gameSlice';
+import { DEFAULT_SETTINGS, setSim } from '../../store/settingsSlice';
 import {
   clearIncomingInteractionLogs,
   pushIncomingInteraction,
   scheduleIncomingInteraction,
   selectIncomingInteractionLogs,
   updateSocialMemory,
-} from '../../social/socialSlice'
-import { autoResolveExpiredIncomingInteractionsForWeek } from '../../social/incomingInteractions'
-import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler'
-import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteractionPhases'
-import { socialConfig } from '../../social/socialConfig'
-import FinaleDebugControls from './FinaleControls.debug'
-import MinigameDebugControls from './MinigameDebugControls'
-import SurvivorDebugControls from './SurvivorDebugControls'
-import DebugDiagnostics from './DebugDiagnostics'
-import SimulationDebugControls from './SimulationDebugControls'
-import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode'
-import type { ForcedShockType, Phase } from '../../types'
-import type { IncomingInteraction, IncomingInteractionType } from '../../social/types'
-import './DebugPanel.css'
+} from '../../social/socialSlice';
+import { autoResolveExpiredIncomingInteractionsForWeek } from '../../social/incomingInteractions';
+import { getIncomingInteractionPriority } from '../../social/incomingInteractionScheduler';
+import { INCOMING_INTERACTION_PHASE_ORDER } from '../../social/incomingInteractionPhases';
+import { socialConfig } from '../../social/socialConfig';
+import FinaleDebugControls from './FinaleControls.debug';
+import MinigameDebugControls from './MinigameDebugControls';
+import SurvivorDebugControls from './SurvivorDebugControls';
+import DebugDiagnostics from './DebugDiagnostics';
+import SimulationDebugControls from './SimulationDebugControls';
+import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode';
+import type { ForcedShockType, Phase } from '../../types';
+import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
+import './DebugPanel.css';
 
 const PHASES: Phase[] = [
   'week_start',
@@ -71,7 +71,7 @@ const PHASES: Phase[] = [
   'jury_announcement',
   'jury_cinematic',
   'jury',
-]
+];
 
 const INCOMING_TYPES: IncomingInteractionType[] = [
   'compliment',
@@ -83,7 +83,7 @@ const INCOMING_TYPES: IncomingInteractionType[] = [
   'check_in',
   'snide_remark',
   'other',
-]
+];
 
 const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   compliment: ['Your speech was iconic tonight.', 'You handled that ceremony like a pro.'],
@@ -98,9 +98,9 @@ const INCOMING_TEXT: Record<IncomingInteractionType, string[]> = {
   check_in: ['How are you feeling about the week?', 'Checking in — you okay?'],
   snide_remark: ['Nice move… if it actually works.', 'Bold choice. Hope it pays off.'],
   other: ['We need to talk later.', 'Just wanted to say hey.'],
-}
+};
 
-const INCOMING_BATCH_SIZE = 6
+const INCOMING_BATCH_SIZE = 6;
 const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'doubleEviction', label: 'Double Elimination' },
   { value: 'dayStartShock', label: 'Morning Shock' },
@@ -111,16 +111,16 @@ const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'spotlight', label: 'Force Majeure Safety' },
   { value: 'democracia', label: 'Democracia' },
   { value: 'twinShock', label: 'Twin Shock' },
-]
+];
 
-let incomingSeedCounter = 0
+let incomingSeedCounter = 0;
 
 function pickRandom<T>(list: readonly T[]): T {
-  return list[Math.floor(Math.random() * list.length)]
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 function interactionRequiresResponse(type: IncomingInteractionType): boolean {
-  return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea'
+  return type === 'alliance_proposal' || type === 'deal_offer' || type === 'nomination_plea';
 }
 
 function buildIncomingInteraction(
@@ -128,11 +128,11 @@ function buildIncomingInteraction(
   week: number,
   overrides: { type?: IncomingInteractionType; expiresAtWeek?: number } = {}
 ): IncomingInteraction {
-  const type = overrides.type ?? pickRandom(INCOMING_TYPES)
-  const text = pickRandom(INCOMING_TEXT[type])
-  const now = Date.now()
-  const canUseUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-  const id = canUseUuid ? crypto.randomUUID() : `incoming-${now}-${incomingSeedCounter++}`
+  const type = overrides.type ?? pickRandom(INCOMING_TYPES);
+  const text = pickRandom(INCOMING_TEXT[type]);
+  const now = Date.now();
+  const canUseUuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function';
+  const id = canUseUuid ? crypto.randomUUID() : `incoming-${now}-${incomingSeedCounter++}`;
   return {
     id,
     fromId,
@@ -144,7 +144,7 @@ function buildIncomingInteraction(
     read: false,
     requiresResponse: interactionRequiresResponse(type),
     resolved: false,
-  }
+  };
 }
 
 function buildScheduledInteraction(
@@ -153,7 +153,7 @@ function buildScheduledInteraction(
   phase: string,
   type: IncomingInteractionType
 ) {
-  const interaction = buildIncomingInteraction(fromId, week, { type, expiresAtWeek: week + 1 })
+  const interaction = buildIncomingInteraction(fromId, week, { type, expiresAtWeek: week + 1 });
   return {
     interaction,
     priority: getIncomingInteractionPriority(type),
@@ -161,114 +161,114 @@ function buildScheduledInteraction(
     scheduledForWeek: week,
     scheduledForPhase: phase,
     deliveryReason: 'debug_seed',
-  }
+  };
 }
 
 export default function DebugPanel() {
-  const [searchParams] = useSearchParams()
-  const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true
-  const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname)
+  const [searchParams] = useSearchParams();
+  const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true;
+  const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname);
 
   useEffect(() => {
     if (searchParams.get('debug') === '1' && searchParams.get('qa') === '1') {
-      persistDebugAccess()
+      persistDebugAccess();
     }
-  }, [searchParams])
+  }, [searchParams]);
 
-  if (!isDebug) return null
+  if (!isDebug) return null;
 
-  return <DebugPanelContent searchParams={searchParams} />
+  return <DebugPanelContent searchParams={searchParams} />;
 }
 
 function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) {
-  const navigate = useNavigate()
-  const dispatch = useAppDispatch()
-  const game = useAppSelector((s) => s.game)
-  const settings = useAppSelector((s) => s.settings ?? DEFAULT_SETTINGS)
-  const incomingLogs = useAppSelector(selectIncomingInteractionLogs)
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const game = useAppSelector((s) => s.game);
+  const settings = useAppSelector((s) => s.settings ?? DEFAULT_SETTINGS);
+  const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
 
-  const [isOpen, setIsOpen] = useState(true)
-  const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase)
-  const [selectedHoH, setSelectedHoH] = useState('')
-  const [nominee1, setNominee1] = useState('')
-  const [nominee2, setNominee2] = useState('')
-  const [selectedPov, setSelectedPov] = useState('')
-  const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('')
-  const [selectedF4Evictee, setSelectedF4Evictee] = useState('')
-  const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction')
+  const [isOpen, setIsOpen] = useState(true);
+  const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
+  const [selectedHoH, setSelectedHoH] = useState('');
+  const [nominee1, setNominee1] = useState('');
+  const [nominee2, setNominee2] = useState('');
+  const [selectedPov, setSelectedPov] = useState('');
+  const [selectedStatusPlayer, setSelectedStatusPlayer] = useState('');
+  const [selectedF4Evictee, setSelectedF4Evictee] = useState('');
+  const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
   const [cupidSeasonInput, setCupidSeasonInput] = useState(
     settings.sim.cupidArrowSeasonOverride?.toString() ?? ''
-  )
+  );
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'd') {
-        event.preventDefault()
-        setIsOpen((open) => !open)
+        event.preventDefault();
+        setIsOpen((open) => !open);
       }
-    }
-    window.addEventListener('keydown', handleShortcut)
-    return () => window.removeEventListener('keydown', handleShortcut)
-  }, [])
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   const jumpToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
-  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-  const evicted = game.players.filter((p) => p.status === 'evicted' || p.status === 'jury')
-  const humanPlayer = game.players.find((p) => p.isUser)
-  const aiPlayers = alive.filter((p) => !p.isUser)
+  const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury');
+  const evicted = game.players.filter((p) => p.status === 'evicted' || p.status === 'jury');
+  const humanPlayer = game.players.find((p) => p.isUser);
+  const aiPlayers = alive.filter((p) => !p.isUser);
 
   const hohName = game.lohId
     ? (game.players.find((p) => p.id === game.lohId)?.name ?? game.lohId)
-    : '—'
+    : '—';
   const povName = game.posWinnerId
     ? (game.players.find((p) => p.id === game.posWinnerId)?.name ?? game.posWinnerId)
-    : '—'
+    : '—';
   const nomineeNames = game.nomineeIds.length
     ? game.nomineeIds.map((id) => game.players.find((p) => p.id === id)?.name ?? id).join(', ')
-    : '—'
+    : '—';
 
   // Players eligible to be evicted in Final4 (current nominees)
-  const f4Nominees = game.players.filter((p) => game.nomineeIds.includes(p.id))
-  const canSeedInteraction = aiPlayers.length > 0 && !!humanPlayer
-  const memoryCaps = socialConfig.socialMemoryConfig.caps
+  const f4Nominees = game.players.filter((p) => game.nomineeIds.includes(p.id));
+  const canSeedInteraction = aiPlayers.length > 0 && !!humanPlayer;
+  const memoryCaps = socialConfig.socialMemoryConfig.caps;
 
   function handleSeedIncomingInteraction() {
-    if (!canSeedInteraction || !humanPlayer) return
-    const fromPlayer = pickRandom(aiPlayers)
-    dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)))
+    if (!canSeedInteraction || !humanPlayer) return;
+    const fromPlayer = pickRandom(aiPlayers);
+    dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)));
   }
 
   function handleSeedIncomingBatch() {
-    if (!canSeedInteraction || !humanPlayer) return
-    const batchSize = Math.min(INCOMING_BATCH_SIZE, aiPlayers.length * 2)
+    if (!canSeedInteraction || !humanPlayer) return;
+    const batchSize = Math.min(INCOMING_BATCH_SIZE, aiPlayers.length * 2);
     for (let i = 0; i < batchSize; i += 1) {
-      const fromPlayer = pickRandom(aiPlayers)
-      dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)))
+      const fromPlayer = pickRandom(aiPlayers);
+      dispatch(pushIncomingInteraction(buildIncomingInteraction(fromPlayer.id, game.week)));
     }
   }
 
   function handleScheduleBusyWeek() {
-    if (!canSeedInteraction || !humanPlayer) return
+    if (!canSeedInteraction || !humanPlayer) return;
     INCOMING_INTERACTION_PHASE_ORDER.forEach((phase) => {
-      const fromPlayer = pickRandom(aiPlayers)
-      const type = pickRandom(INCOMING_TYPES)
+      const fromPlayer = pickRandom(aiPlayers);
+      const type = pickRandom(INCOMING_TYPES);
       dispatch(
         scheduleIncomingInteraction(
           buildScheduledInteraction(fromPlayer.id, game.week, phase, type)
         )
-      )
-    })
+      );
+    });
   }
 
   function handleAutoResolveIgnored() {
-    dispatch(autoResolveExpiredIncomingInteractionsForWeek(game.week + 1))
+    dispatch(autoResolveExpiredIncomingInteractionsForWeek(game.week + 1));
   }
 
   function handleBoostTrust() {
-    if (!humanPlayer) return
+    if (!humanPlayer) return;
     aiPlayers.forEach((player) => {
       dispatch(
         updateSocialMemory({
@@ -279,12 +279,12 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
             trustMomentum: memoryCaps.trustMomentum,
           },
         })
-      )
-    })
+      );
+    });
   }
 
   function handleBoostResentment() {
-    if (!humanPlayer) return
+    if (!humanPlayer) return;
     aiPlayers.forEach((player) => {
       dispatch(
         updateSocialMemory({
@@ -296,24 +296,24 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
             trustMomentum: -memoryCaps.trustMomentum,
           },
         })
-      )
-    })
+      );
+    });
   }
 
   function handleClearInteractionLogs() {
-    dispatch(clearIncomingInteractionLogs())
+    dispatch(clearIncomingInteractionLogs());
   }
 
   function handleQueueForcedShock() {
-    dispatch(queueForcedShock(selectedForcedShock))
+    dispatch(queueForcedShock(selectedForcedShock));
   }
 
   function handleCupidSeasonSchedule() {
-    const parsed = Number(cupidSeasonInput)
-    const season = Number.isInteger(parsed) && parsed > 0 ? parsed : null
-    dispatch(setSim({ cupidArrowSeasonOverride: season }))
-    dispatch(setCupidArrowSchedule(season))
-    setCupidSeasonInput(season?.toString() ?? '')
+    const parsed = Number(cupidSeasonInput);
+    const season = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    dispatch(setSim({ cupidArrowSeasonOverride: season }));
+    dispatch(setCupidArrowSchedule(season));
+    setCupidSeasonInput(season?.toString() ?? '');
   }
 
   return (
@@ -446,8 +446,8 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   className="dbg-btn"
                   disabled={!selectedHoH}
                   onClick={() => {
-                    dispatch(forceHoH(selectedHoH))
-                    setSelectedHoH('')
+                    dispatch(forceHoH(selectedHoH));
+                    setSelectedHoH('');
                   }}
                 >
                   Set
@@ -485,9 +485,9 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                     className="dbg-btn"
                     disabled={!nominee1 || !nominee2}
                     onClick={() => {
-                      dispatch(forceNominees([nominee1, nominee2]))
-                      setNominee1('')
-                      setNominee2('')
+                      dispatch(forceNominees([nominee1, nominee2]));
+                      setNominee1('');
+                      setNominee2('');
                     }}
                   >
                     Set
@@ -513,8 +513,8 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   className="dbg-btn"
                   disabled={!selectedPov}
                   onClick={() => {
-                    dispatch(forcePovWinner(selectedPov))
-                    setSelectedPov('')
+                    dispatch(forcePovWinner(selectedPov));
+                    setSelectedPov('');
                   }}
                 >
                   Set
@@ -634,9 +634,9 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                     className="dbg-btn"
                     type="button"
                     onClick={() => {
-                      setCupidSeasonInput('')
-                      dispatch(setSim({ cupidArrowSeasonOverride: null }))
-                      dispatch(setCupidArrowSchedule(null))
+                      setCupidSeasonInput('');
+                      dispatch(setSim({ cupidArrowSeasonOverride: null }));
+                      dispatch(setCupidArrowSchedule(null));
                     }}
                   >
                     Disable
@@ -724,8 +724,8 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                     className="dbg-btn"
                     disabled={!selectedF4Evictee}
                     onClick={() => {
-                      dispatch(finalizeFinal4Eviction(selectedF4Evictee))
-                      setSelectedF4Evictee('')
+                      dispatch(finalizeFinal4Eviction(selectedF4Evictee));
+                      setSelectedF4Evictee('');
                     }}
                   >
                     Evict
@@ -733,7 +733,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   <button
                     className="dbg-btn"
                     onClick={() => {
-                      dispatch(advance())
+                      dispatch(advance());
                     }}
                     title="⚠ Overrides human POS holder decision — for debug use only"
                   >
@@ -903,5 +903,5 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
         </aside>
       )}
     </>
-  )
+  );
 }

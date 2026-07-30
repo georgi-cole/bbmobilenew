@@ -387,7 +387,7 @@ describe('Ceremony fix: public save follow-up announcement', () => {
     expect(store.getState().game.phase).toBe('pre_veto_public_save')
     expect(screen.getByTestId('external-announcement')).toHaveTextContent('Public Save Result')
     expect(screen.getByTestId('external-announcement')).toHaveTextContent(
-      'Player 2 was saved with 50% of the public support.'
+      'Player 2 was saved with 33% of the public support.'
     )
     expect(screen.getByTestId('external-announcement')).toHaveTextContent(
       'Player 3 and Player 4 are still in danger.'

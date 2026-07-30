@@ -1,4 +1,4 @@
-package com.bbmobilenew.app;
+package com.georgicole.thebigeye;
 
 import com.getcapacitor.BridgeActivity;
 

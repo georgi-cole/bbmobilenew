@@ -2610,7 +2610,11 @@ const gameSlice = createSlice({
       const lohPlayer = state.players.find((p) => p.id === state.lohId)
       if (nominees.length !== expectedCount) return
 
-      state.nomineeIds = ids
+      // Keep the submitted choices separate from the draft nominee list.
+      // appendNominee mutates nomineeIds below; assigning the payload array
+      // directly would also mutate `ids` and incorrectly attribute the forced
+      // public nominee to the LOH in nominationContext.
+      state.nomineeIds = [...ids]
       nominees.forEach((n) => {
         n.status = 'nominated'
         incrementTimesNominated(state, n.id)

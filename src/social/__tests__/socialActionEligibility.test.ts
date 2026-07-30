@@ -70,6 +70,7 @@ describe('evaluateSocialActionEligibility', () => {
         targetIds: ['ally'],
         players,
         relationships: { user: { ally: { affinity: 0, tags: [] } } },
+        ignoreRealityModeGate: true,
         requireCompleteSelection: true,
       }).eligible
     ).toBe(false)
@@ -79,6 +80,7 @@ describe('evaluateSocialActionEligibility', () => {
         actorId: 'user',
         targetIds: ['loh'],
         players,
+        ignoreRealityModeGate: true,
       }).eligible
     ).toBe(true)
   })

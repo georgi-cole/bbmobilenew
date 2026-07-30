@@ -1,0 +1,247 @@
+/* First modernisation pass: upgrades the eight priority game surfaces without
+   changing their rules, controls, or host contracts. */
+
+/* Minesweeps — make the board the clear hero and improve scan hierarchy. */
+.minesweeps__shell {
+  border-color: rgba(103, 232, 249, 0.34);
+  background:
+    radial-gradient(circle at 50% -12%, rgba(14, 165, 233, 0.32), transparent 42%),
+    linear-gradient(155deg, #101b35 0%, #11182a 52%, #080d19 100%);
+  box-shadow:
+    0 28px 70px rgba(2, 8, 23, 0.5),
+    inset 0 1px rgba(255, 255, 255, 0.1);
+}
+.minesweeps__header {
+  padding-bottom: 1rem;
+}
+.minesweeps__title {
+  letter-spacing: -0.035em;
+}
+.minesweeps__stats {
+  min-width: min(100%, 17rem);
+}
+.minesweeps__stat {
+  background: linear-gradient(145deg, rgba(30, 50, 83, 0.94), rgba(11, 20, 38, 0.92));
+}
+.minesweeps__board {
+  gap: 0.38rem;
+  padding: 1rem;
+  background: linear-gradient(145deg, rgba(1, 8, 24, 0.96), rgba(10, 24, 47, 0.84));
+  border-color: rgba(125, 211, 252, 0.25);
+  box-shadow:
+    0 18px 34px rgba(1, 8, 24, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+}
+.minesweeps__cell {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(150deg, #516783, #293a56 72%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.15),
+    0 7px 14px rgba(0, 0, 0, 0.18);
+}
+.minesweeps__cell:not(.minesweeps__cell--revealed):hover {
+  border-color: rgba(103, 232, 249, 0.72);
+  box-shadow:
+    0 0 0 2px rgba(34, 211, 238, 0.14),
+    inset 0 1px rgba(255, 255, 255, 0.2),
+    0 9px 18px rgba(0, 0, 0, 0.28);
+}
+.minesweeps__cell--revealed {
+  background: linear-gradient(145deg, rgba(145, 177, 210, 0.22), rgba(31, 49, 74, 0.32));
+}
+
+/* Hold the Wall — give the endurance surface weight, heat, and atmosphere. */
+.htw-root {
+  max-width: 620px;
+  padding: 1rem 1rem 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(248, 113, 113, 0.14), transparent 48%);
+}
+.htw-hud {
+  max-width: 420px;
+  border-color: rgba(251, 146, 60, 0.25);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+}
+.htw-wall--expanded {
+  border-top-color: rgba(255, 223, 167, 0.35);
+  background-color: #984426;
+  box-shadow:
+    0 -6px 32px rgba(0, 0, 0, 0.46),
+    inset 0 1px rgba(255, 230, 196, 0.18);
+}
+.htw-wall--expanded::after {
+  content: 'HOLD THE LINE';
+  color: rgba(255, 229, 187, 0.7);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.55);
+}
+.htw-wall--expanded.htw-wall--holding {
+  box-shadow:
+    0 -7px 38px rgba(255, 107, 157, 0.5),
+    inset 0 0 0 3px rgba(255, 207, 121, 0.28);
+}
+
+/* Estimation and Timing Bar — replace flat modal treatment with a cinematic stage. */
+.eg,
+.tbg {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(96, 165, 250, 0.15), transparent 30%),
+    radial-gradient(circle at 80% 84%, rgba(168, 85, 247, 0.18), transparent 33%), #070b18;
+}
+.eg__card,
+.tbg__card {
+  border-color: rgba(167, 139, 250, 0.34);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.72),
+    0 0 0 1px rgba(191, 219, 254, 0.06),
+    inset 0 1px rgba(255, 255, 255, 0.1);
+}
+.eg__header,
+.tbg__header {
+  background: linear-gradient(135deg, rgba(67, 56, 202, 0.32), rgba(14, 165, 233, 0.12));
+}
+.eg__instruction-banner,
+.tbg__round-banner {
+  border-radius: 12px;
+  margin-inline: 14px;
+  border: 1px solid rgba(129, 140, 248, 0.32);
+}
+.eg__canvas-wrap {
+  box-shadow: inset 0 0 46px rgba(56, 189, 248, 0.1);
+}
+.eg__start-btn,
+.eg__submit-btn,
+.tbg__btn {
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.32);
+}
+
+/* Quick Tap Race — turn the surrounding card into a more energetic arena. */
+.qtr-canvas {
+  background:
+    radial-gradient(circle at 50% -10%, rgba(251, 146, 60, 0.24), transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(124, 58, 237, 0.22), transparent 37%),
+    rgba(3, 7, 18, 0.97);
+}
+.qtr-canvas__card {
+  max-width: 520px;
+  border-color: rgba(251, 146, 60, 0.3);
+  box-shadow:
+    0 30px 88px rgba(0, 0, 0, 0.68),
+    0 0 46px rgba(249, 115, 22, 0.12);
+}
+.qtr-canvas__header {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.17), rgba(124, 58, 237, 0.13));
+}
+.qtr-canvas__stage {
+  background: linear-gradient(180deg, rgba(22, 24, 46, 0.98), rgba(8, 10, 22, 1));
+}
+.qtr-canvas__progress-fill {
+  background: linear-gradient(90deg, #a855f7, #f97316, #facc15);
+}
+
+/* Fit Me In — preserve its arcade identity while making the narrow layout intentional. */
+.tetris-root {
+  background: radial-gradient(ellipse at 50% 0%, #182e63 0%, #080f24 48%, #040812 100%);
+}
+.tetris-board-wrap {
+  border-color: #315ea7;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 2px rgba(85, 156, 255, 0.12),
+    0 18px 44px rgba(0, 0, 0, 0.54),
+    inset 0 0 26px rgba(17, 53, 113, 0.45);
+}
+.tetris-panel {
+  padding: 0.5rem;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(20, 40, 82, 0.72), rgba(5, 12, 31, 0.78));
+  border: 1px solid rgba(91, 141, 220, 0.18);
+}
+.tetris-panel-label {
+  color: #9fc5ff;
+}
+@media (max-width: 640px) {
+  .tetris-root {
+    padding: 0.5rem 0.35rem 0.25rem;
+    overflow: auto;
+  }
+  .tetris-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'board board' 'left right';
+    gap: 0.5rem;
+    max-width: 390px;
+    align-items: start;
+  }
+  .tetris-board-wrap {
+    grid-area: board;
+    justify-self: center;
+  }
+  .tetris-panel--left {
+    grid-area: left;
+  }
+  .tetris-panel--right {
+    grid-area: right;
+  }
+  .tetris-panel {
+    min-width: 0;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem 0.65rem;
+  }
+  .tetris-next {
+    flex-direction: row;
+    gap: 0.35rem;
+    overflow: hidden;
+  }
+  .tetris-mini-grid {
+    transform: scale(0.82);
+    transform-origin: left top;
+    margin-right: -10px;
+  }
+  .tetris-touch-controls {
+    margin-top: 0.55rem;
+  }
+}
+
+/* Big Spender and Battery Low — surface the stakes without changing flow. */
+.big-spender__board-shell,
+.big-spender__dashboard {
+  border-color: rgba(251, 191, 36, 0.24);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px rgba(255, 255, 255, 0.08);
+}
+.big-spender__wallet {
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.22),
+    inset 0 1px rgba(255, 255, 255, 0.16);
+}
+.big-spender__wallet:not(.big-spender__wallet--revealed):hover {
+  transform: translateY(-4px) scale(1.025);
+  filter: saturate(1.12) brightness(1.08);
+}
+.vault-verdict__pod {
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.16);
+}
+.vault-verdict__pod--available:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.025);
+  box-shadow:
+    0 0 0 2px rgba(77, 233, 189, 0.22),
+    0 14px 28px rgba(0, 0, 0, 0.32);
+}
+.vault-verdict__battery-grid {
+  gap: clamp(8px, 1.5vw, 13px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .big-spender__wallet:not(.big-spender__wallet--revealed):hover,
+  .vault-verdict__pod--available:hover:not(:disabled) {
+    transform: none;
+  }
+}

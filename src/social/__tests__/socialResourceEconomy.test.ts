@@ -76,7 +76,7 @@ describe('atomic Group Chat execution', () => {
     initManeuvers(store)
     store.dispatch(setEnergyBankEntry({ playerId: 'user', value: 10 }))
 
-    const rolls = [0, 0.999]
+    const rolls = [0, 0, 0, 0.999]
     const result = executeGroupAction('user', ['a', 'b'], 'group_chat', {
       source: 'manual',
       random: () => rolls.shift() ?? 0.5,

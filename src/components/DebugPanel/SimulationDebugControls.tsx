@@ -123,11 +123,7 @@ export default function SimulationDebugControls() {
             value={settings.sim.secretMissionTriggerOverride ?? -1}
             onChange={(event) => {
               const value = Number(event.target.value)
-              dispatch(
-                setSim({
-                  secretMissionTriggerOverride: value < 0 ? null : value,
-                })
-              )
+              dispatch(setSim({ secretMissionTriggerOverride: value < 0 ? null : value }))
             }}
           />
           <output>
@@ -145,11 +141,7 @@ export default function SimulationDebugControls() {
             value={settings.sim.secretMissionTriggerWeekOverride ?? 0}
             onChange={(event) => {
               const value = Number(event.target.value)
-              dispatch(
-                setSim({
-                  secretMissionTriggerWeekOverride: value === 0 ? null : value,
-                })
-              )
+              dispatch(setSim({ secretMissionTriggerWeekOverride: value === 0 ? null : value }))
             }}
           />
           <output>{settings.sim.secretMissionTriggerWeekOverride ?? 'off'}</output>

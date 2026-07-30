@@ -153,13 +153,14 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).hintsRevealed).toBe(1);
     store.dispatch(revealNextHint());
     expect(getState(store).hintsRevealed).toBe(2);
+    expect(getState(store).timerPhase).toBe('hint_3');
   });
 
-  it('revealNextHint does not exceed 5', () => {
+  it('revealNextHint does not exceed the four visible hints', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'LOH', seed: 1 }));
     for (let i = 0; i < 10; i++) store.dispatch(revealNextHint());
-    expect(getState(store).hintsRevealed).toBe(5);
+    expect(getState(store).hintsRevealed).toBe(4);
   });
 
   it('advanceTimer is blocked after all participants solve the round', () => {

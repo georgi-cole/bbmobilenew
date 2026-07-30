@@ -50,6 +50,10 @@ jobs:
         if: matrix.language == 'swift'
         run: npm ci
 
+      - name: Sync iOS web assets and plugins
+        if: matrix.language == 'swift'
+        run: npm run sync:ios
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -62,6 +66,8 @@ jobs:
           xcodebuild build
           -project ios/App/App.xcodeproj
           -target App
+          -configuration Debug
+          -sdk iphonesimulator
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
 

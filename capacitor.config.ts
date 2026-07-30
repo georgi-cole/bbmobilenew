@@ -1,10 +1,7 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  /**
-   * Reverse-domain bundle identifier.  Update this to your own Apple Developer
-   * Team / App Store Connect bundle ID before building for distribution.
-   */
+  /** Permanent identifier shared by the Android and iOS store records. */
   appId: 'com.georgicole.thebigeye',
 
   /**
@@ -29,6 +26,6 @@ const config: CapacitorConfig = {
       backgroundColor: '#00000000',
     },
   },
-};
+}
 
-export default config;
+export default config

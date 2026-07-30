@@ -483,3 +483,58 @@
   color: #c8d8ff;
   font-size: 0.9rem;
 }
+
+/* Phone composition: keep the board as the focus, then place hold/stats and
+   queue below it. This prevents the desktop side rails from clipping. */
+@media (max-width: 640px) {
+  .tetris-root {
+    padding: 0.5rem 0.35rem 0.25rem;
+    overflow: auto;
+  }
+
+  .tetris-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'board board'
+      'left right';
+    gap: 0.5rem;
+    max-width: 390px;
+    align-items: start;
+  }
+
+  .tetris-board-wrap {
+    grid-area: board;
+    justify-self: center;
+  }
+
+  .tetris-board {
+    --cell: min(7.8vw, 28px) !important;
+  }
+
+  .tetris-panel--left { grid-area: left; }
+  .tetris-panel--right { grid-area: right; }
+
+  .tetris-panel {
+    min-width: 0;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem 0.65rem;
+  }
+
+  .tetris-next {
+    flex-direction: row;
+    gap: 0.35rem;
+    overflow: hidden;
+  }
+
+  .tetris-mini-grid {
+    transform: scale(0.82);
+    transform-origin: left top;
+    margin-right: -10px;
+  }
+
+  .tetris-touch-controls { margin-top: 0.55rem; }
+}

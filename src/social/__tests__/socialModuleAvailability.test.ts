@@ -3,7 +3,7 @@ import {
   getBlockedSocialModuleAnnouncementMessage,
   getIncomingSocialModuleAvailability,
   getSocialModuleAvailability,
-  SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE,
+  SOCIAL_MODULE_BLOCKED_DURING_LIVE_VOTE_MESSAGE,
   SOCIAL_MODULE_BLOCKED_OUT_OF_GAME_MESSAGE,
 } from '../socialModuleAvailability'
 
@@ -60,7 +60,7 @@ describe('socialModuleAvailability', () => {
 
     expect(outgoing.canOpen).toBe(false)
     expect(getBlockedSocialModuleAnnouncementMessage(outgoing)).toBe(
-      SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE
+      SOCIAL_MODULE_BLOCKED_DURING_LIVE_VOTE_MESSAGE
     )
     expect(incoming.canOpen).toBe(true)
     expect(getBlockedSocialModuleAnnouncementMessage(incoming)).toBeNull()

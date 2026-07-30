@@ -81,12 +81,15 @@ function isNativeBillingPlatform(): boolean {
 }
 
 async function loadProducts(): Promise<Partial<Record<StoreProductKey, StoreProduct>>> {
+  const releasedProducts = STORE_PRODUCT_CATALOG.filter(
+    (definition) => definition.availableInRelease
+  )
   const { products } = await NativePurchases.getProducts({
-    productIdentifiers: STORE_PRODUCT_CATALOG.map((definition) => definition.productId),
+    productIdentifiers: releasedProducts.map((definition) => definition.productId),
     productType: PURCHASE_TYPE.INAPP,
   })
   const catalog: Partial<Record<StoreProductKey, StoreProduct>> = {}
-  for (const definition of STORE_PRODUCT_CATALOG) {
+  for (const definition of releasedProducts) {
     const product = products.find((candidate) => productMatchesDefinition(candidate, definition))
     if (product) catalog[definition.key] = toStoreProduct(product, definition)
   }
@@ -165,6 +168,9 @@ export async function purchaseStoreProduct(productKey: StoreProductKey): Promise
   }
 
   const definition = getStoreProductDefinition(productKey)
+  if (!definition.availableInRelease) {
+    throw new Error('This product is not available in the current release.')
+  }
   const transaction = await NativePurchases.purchaseProduct({
     productIdentifier: definition.productId,
     productType: PURCHASE_TYPE.INAPP,

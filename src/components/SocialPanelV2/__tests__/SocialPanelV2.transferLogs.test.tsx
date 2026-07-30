@@ -17,54 +17,57 @@
  * 12. The summary stays private to the Diary Room channel.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import gameReducer from '../../../store/gameSlice';
-import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice';
-import { initManeuvers } from '../../../social/SocialManeuvers';
-import SocialPanelV2 from '../SocialPanelV2';
-import type { RootState } from '../../../store/store';
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { MemoryRouter } from 'react-router'
+import { configureStore } from '@reduxjs/toolkit'
+import gameReducer from '../../../store/gameSlice'
+import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice'
+import { initManeuvers } from '../../../social/SocialManeuvers'
+import SocialPanelV2 from '../SocialPanelV2'
+import type { RootState } from '../../../store/store'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore() {
-  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } });
-  const defaultState = base.getState() as RootState;
+  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } })
+  const defaultState = base.getState() as RootState
   const store = configureStore({
     reducer: { game: gameReducer, social: socialReducer },
     preloadedState: {
       game: { ...defaultState.game, phase: 'social_1' as RootState['game']['phase'] },
       social: defaultState.social,
     },
-  });
-  initManeuvers(store);
-  return store;
+  })
+  initManeuvers(store)
+  return store
 }
 
 function renderPanel(store: ReturnType<typeof makeStore>) {
   return render(
-    <Provider store={store}>
-      <SocialPanelV2 />
-    </Provider>,
-  );
+    <MemoryRouter>
+      <Provider store={store}>
+        <SocialPanelV2 />
+      </Provider>
+    </MemoryRouter>
+  )
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('SocialPanelV2 – session log transfer on close', () => {
-  let store: ReturnType<typeof makeStore>;
-  let humanId: string;
-  let otherPlayerId: string;
+  let store: ReturnType<typeof makeStore>
+  let humanId: string
+  let otherPlayerId: string
 
   beforeEach(() => {
-    store = makeStore();
-    const players = store.getState().game.players;
-    humanId = players.find((p) => p.isUser)!.id;
-    otherPlayerId = players.find((p) => !p.isUser)!.id;
-    store.dispatch(openSocialPanel());
-  });
+    store = makeStore()
+    const players = store.getState().game.players
+    humanId = players.find((p) => p.isUser)!.id
+    otherPlayerId = players.find((p) => !p.isUser)!.id
+    store.dispatch(openSocialPanel())
+  })
 
   it('adds exactly one summary diary entry to tvFeed when sessionLogs exist on close', () => {
     store.dispatch(
@@ -79,18 +82,18 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    renderPanel(store)
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
     // Exactly one summary diary entry regardless of session log count.
-    expect(diaryCountAfter).toBe(diaryCountBefore + 1);
-  });
+    expect(diaryCountAfter).toBe(diaryCountBefore + 1)
+  })
 
   it('diary entry has type "diary"', () => {
     store.dispatch(
@@ -105,17 +108,17 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    renderPanel(store)
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const feed = store.getState().game.tvFeed;
-    const diaryEntry = feed.find((e) => e.type === 'diary');
-    expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.type).toBe('diary');
-  });
+    const feed = store.getState().game.tvFeed
+    const diaryEntry = feed.find((e) => e.type === 'diary')
+    expect(diaryEntry).toBeDefined()
+    expect(diaryEntry!.type).toBe('diary')
+  })
 
   it('diary entry text includes week and outcome counts', () => {
     store.dispatch(
@@ -130,18 +133,18 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    renderPanel(store)
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const feed = store.getState().game.tvFeed;
-    const diaryEntry = feed.find((e) => e.type === 'diary');
-    expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.text).toContain('Day');
-    expect(diaryEntry!.text).toContain('success');
-  });
+    const feed = store.getState().game.tvFeed
+    const diaryEntry = feed.find((e) => e.type === 'diary')
+    expect(diaryEntry).toBeDefined()
+    expect(diaryEntry!.text).toContain('Day')
+    expect(diaryEntry!.text).toContain('success')
+  })
 
   it('clears social.sessionLogs after close', () => {
     store.dispatch(
@@ -156,26 +159,26 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    expect(store.getState().social.sessionLogs.length).toBe(1);
+    renderPanel(store)
+    expect(store.getState().social.sessionLogs.length).toBe(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    expect(store.getState().social.sessionLogs.length).toBe(0);
-  });
+    expect(store.getState().social.sessionLogs.length).toBe(0)
+  })
 
   it('does not add a diary entry when sessionLogs is empty on close', () => {
-    renderPanel(store);
-    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    renderPanel(store)
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    expect(diaryCountAfter).toBe(diaryCountBefore);
-  });
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
+    expect(diaryCountAfter).toBe(diaryCountBefore)
+  })
 
   it('multiple session logs produce exactly ONE summary diary entry', () => {
     for (let i = 0; i < 3; i++) {
@@ -191,19 +194,19 @@ describe('SocialPanelV2 – session log transfer on close', () => {
             newEnergy: 4 - i,
             timestamp: Date.now() + i,
           },
-        }),
-      );
+        })
+      )
     }
 
-    renderPanel(store);
-    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    renderPanel(store)
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
     // 3 session logs → ONE summary diary entry (not 3 individual entries).
-    expect(diaryCountAfter).toBe(diaryCountBefore + 1);
-  });
+    expect(diaryCountAfter).toBe(diaryCountBefore + 1)
+  })
 
   it('does not fabricate a social TV event just because the panel closed', () => {
     store.dispatch(
@@ -218,17 +221,17 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    renderPanel(store)
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
-    expect(socialCountAfter).toBe(socialCountBefore);
-  });
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
+    expect(socialCountAfter).toBe(socialCountBefore)
+  })
 
   it('uses the causal diary summary instead of preset close chatter', () => {
     store.dispatch(
@@ -243,32 +246,32 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    renderPanel(store)
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social');
-    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
-    expect(socialEntry).toBeUndefined();
-    expect(diaryEntry?.text).toContain('social action');
-  });
+    const socialEntry = store.getState().game.tvFeed.find((e) => e.type === 'social')
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary')
+    expect(socialEntry).toBeUndefined()
+    expect(diaryEntry?.text).toContain('social action')
+  })
 
   it('does not dispatch a social type TV event when sessionLogs is empty on close', () => {
-    renderPanel(store);
-    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    renderPanel(store)
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
-    expect(socialCountAfter).toBe(socialCountBefore);
-  });
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
+    expect(socialCountAfter).toBe(socialCountBefore)
+  })
 
   it('AI-initiated logs are not written as diary entries and do not trigger a social TV event', () => {
-    const aiPlayer = store.getState().game.players.find((p) => !p.isUser && p.id !== otherPlayerId);
-    expect(aiPlayer).toBeDefined();
-    const aiPlayerId = aiPlayer!.id;
+    const aiPlayer = store.getState().game.players.find((p) => !p.isUser && p.id !== otherPlayerId)
+    expect(aiPlayer).toBeDefined()
+    const aiPlayerId = aiPlayer!.id
     // Record a log where an AI player is the actor (not the human)
     store.dispatch(
       recordSocialAction({
@@ -282,21 +285,21 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
+    renderPanel(store)
+    const diaryCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
+    const socialCountBefore = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
     // No diary entry and no social TV message — the only actor is AI, not the human player.
-    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length;
-    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length;
-    expect(diaryCountAfter).toBe(diaryCountBefore);
-    expect(socialCountAfter).toBe(socialCountBefore);
-  });
+    const diaryCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'diary').length
+    const socialCountAfter = store.getState().game.tvFeed.filter((e) => e.type === 'social').length
+    expect(diaryCountAfter).toBe(diaryCountBefore)
+    expect(socialCountAfter).toBe(socialCountBefore)
+  })
 
   it('summary diary entry has source "manual" and channels ["dr"]', () => {
     store.dispatch(
@@ -311,17 +314,17 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    renderPanel(store)
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
-    expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.source).toBe('manual');
-    expect(diaryEntry!.channels).toContain('dr');
-  });
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary')
+    expect(diaryEntry).toBeDefined()
+    expect(diaryEntry!.source).toBe('manual')
+    expect(diaryEntry!.channels).toContain('dr')
+  })
 
   it('keeps the close summary on the Diary Room channel', () => {
     store.dispatch(
@@ -336,14 +339,14 @@ describe('SocialPanelV2 – session log transfer on close', () => {
           newEnergy: 4,
           timestamp: Date.now(),
         },
-      }),
-    );
+      })
+    )
 
-    renderPanel(store);
-    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }));
+    renderPanel(store)
+    fireEvent.click(screen.getByRole('button', { name: 'Close social panel' }))
 
-    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary');
-    expect(diaryEntry).toBeDefined();
-    expect(diaryEntry!.channels).toEqual(['dr']);
-  });
-});
+    const diaryEntry = store.getState().game.tvFeed.find((e) => e.type === 'diary')
+    expect(diaryEntry).toBeDefined()
+    expect(diaryEntry!.channels).toEqual(['dr'])
+  })
+})

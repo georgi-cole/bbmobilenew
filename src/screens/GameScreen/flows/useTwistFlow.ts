@@ -59,6 +59,12 @@ const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
 const EMPTY_PLAYER_IDS: string[] = []
 export const BATTLE_BACK_RETRY_LIMIT = 3
 
+function formatPlayerNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? ''
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
 export interface PendingPublicSaveResult {
   savedId: string
   supportPercent?: number
@@ -289,7 +295,7 @@ export function useTwistFlow({
       pendingPublicSaveResult.supportPercent != null
         ? ` with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support`
         : ' by the public'
-    }. ${remainingNomineeNames.join(', ')} are still in danger.`
+    }. ${formatPlayerNames(remainingNomineeNames)} are still in danger.`
     return {
       key: 'public_save_result',
       title: 'Public Save Result',

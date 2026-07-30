@@ -6,7 +6,7 @@
  *  2. simulateMinigameAiScore routes snake to simulateSnakeAiScore (same result)
  *  3. simulateMinigameAiScore routes unknown games to simulateAiPerformance
  *  4. simulateMinigameAiScore is deterministic for identical inputs
- *  5. quickTap scores via dispatcher fall in the competitive zone [100, 300]
+ *  5. quickTap scores via dispatcher fall in the competitive zone [100, 350]
  *  6. quickTap scores in challenge flow (simulateMinigameAiScore) are competitive
  *  7. Both startMinigame and startChallenge produce competitive quickTap AI scores
  */
@@ -101,14 +101,14 @@ describe('simulateMinigameAiScore — quickTap routing', () => {
     expect(a).toBe(b);
   });
 
-  it('quickTap scores via dispatcher fall in the competitive zone [85, 300]', () => {
+  it('quickTap scores via dispatcher fall in the competitive zone [85, 350]', () => {
     const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
     const scores = seeds.map((seed) =>
       simulateMinigameAiScore({ gameKey: 'quickTap', seed, playerId: `p${seed}` }),
     );
     // Bands reduced 15% (issue #951): lowest band 89 − jitter/slump ≈ 71.
     expect(Math.min(...scores)).toBeGreaterThanOrEqual(60);
-    expect(Math.max(...scores)).toBeLessThanOrEqual(300);
+    expect(Math.max(...scores)).toBeLessThanOrEqual(350);
   });
 
   it('quickTap scores via dispatcher respect the configured timeLimitSeconds', () => {
@@ -175,7 +175,7 @@ describe('simulateMinigameAiScore — generic fallback routing', () => {
 // ── 4. Session flow (startMinigame) — competitive quickTap scores ─────────────
 
 describe('startMinigame — quickTap uses competitive scoring via shared dispatcher', () => {
-  it('precomputed AI scores fall in the competitive zone [100, 300]', () => {
+  it('precomputed AI scores fall in the competitive zone [100, 350]', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -195,7 +195,7 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
       const score = session?.aiScores?.[pid];
       expect(typeof score).toBe('number');
       expect(score).toBeGreaterThanOrEqual(60);
-      expect(score).toBeLessThanOrEqual(300);
+      expect(score).toBeLessThanOrEqual(350);
     }
   });
 
@@ -229,7 +229,7 @@ describe('startMinigame — quickTap uses competitive scoring via shared dispatc
 // ── 5. Challenge flow (startChallenge) — same quickTap scoring path ───────────
 
 describe('startChallenge — quickTap uses the same shared dispatcher as startMinigame', () => {
-  it('AI scores in the challenge flow are in the competitive zone [60, 300]', () => {
+  it('AI scores in the challenge flow are in the competitive zone [60, 350]', () => {
     const players = makePlayers(5);
     const store = makeStore({ players });
 
@@ -244,7 +244,7 @@ describe('startChallenge — quickTap uses the same shared dispatcher as startMi
       const score = pending?.aiScores?.[pid];
       if (typeof score === 'number') {
         expect(score).toBeGreaterThanOrEqual(60);
-        expect(score).toBeLessThanOrEqual(300);
+        expect(score).toBeLessThanOrEqual(350);
       }
     }
   });

@@ -72,10 +72,10 @@ describe('match-flow integration', () => {
     store.dispatch(advancePlayerCursor({ playerId: HUMAN, targetRound: 1 }));
 
     expect(ff(store).playerCorrect[HUMAN]).toBe(true);
-    expect(ff(store).playerScores[HUMAN]).toBe(17); // 10 + 7
+    expect(ff(store).playerScores[HUMAN]).toBe(15); // 10 + 5
 
     store.dispatch(endRound());
-    expect(ff(store).playerRoundScores[HUMAN][1]).toBe(7); // 2 hints = 7 pts
+    expect(ff(store).playerRoundScores[HUMAN][1]).toBe(5); // 2 hints = 5 pts
     store.dispatch(nextRound());
 
     expect(ff(store).currentRound).toBe(2);
@@ -118,7 +118,7 @@ describe('match-flow integration', () => {
     // Human has 47 pts; AI has points from round 3 only
     const humanTotal = final.playerScores[HUMAN];
     const aiTotal = final.playerScores[AI];
-    expect(humanTotal).toBe(47);
+    expect(humanTotal).toBe(45);
     expect(aiTotal).toBeGreaterThan(0);
 
     // Human won overall (17 > AI's single-round score of at most 10)

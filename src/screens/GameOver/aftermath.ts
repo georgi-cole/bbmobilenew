@@ -972,6 +972,23 @@ function storyFromLinkedScenario(
   linkedEventId: string
 ): AftermathStory {
   const [firstBullet, secondBullet] = chooseTwo(scenario.bulletPoints, `${seed}:bullets`)
+  const headline = renderTemplate(
+    scenario.headlines[selectIndex(`${seed}:headline`, scenario.headlines.length)],
+    context,
+    season,
+    winnerName,
+    partner
+  )
+  const renderedBody = renderTemplate(
+    scenario.bodies[selectIndex(`${seed}:body`, scenario.bodies.length)],
+    context,
+    season,
+    winnerName,
+    partner
+  )
+  const body = `${headline} ${renderedBody}`.includes(partner.name)
+    ? renderedBody
+    : `${renderedBody} The story remains inseparable from ${partner.name}.`
   return {
     playerId: context.player.id,
     playerName: context.player.name,
@@ -980,13 +997,7 @@ function storyFromLinkedScenario(
     toneLabel: config.toneLabels[scenario.tone],
     categoryLabel: config.categories[scenario.category] ?? scenario.category,
     badge: scenario.badge,
-    headline: renderTemplate(
-      scenario.headlines[selectIndex(`${seed}:headline`, scenario.headlines.length)],
-      context,
-      season,
-      winnerName,
-      partner
-    ),
+    headline,
     subheadline: renderTemplate(
       scenario.subheadlines[selectIndex(`${seed}:subheadline`, scenario.subheadlines.length)],
       context,
@@ -994,13 +1005,7 @@ function storyFromLinkedScenario(
       winnerName,
       partner
     ),
-    body: renderTemplate(
-      scenario.bodies[selectIndex(`${seed}:body`, scenario.bodies.length)],
-      context,
-      season,
-      winnerName,
-      partner
-    ),
+    body,
     bulletPoints: [
       renderTemplate(firstBullet, context, season, winnerName, partner),
       renderTemplate(secondBullet, context, season, winnerName, partner),

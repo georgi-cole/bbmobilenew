@@ -23,6 +23,13 @@ export interface FigureRow {
   era: string;
 }
 
+/**
+ * The second curated hint is deliberately omitted from play. It commonly
+ * repeats the broad setup clue without adding useful information.
+ */
+export const VISIBLE_HINT_INDICES = [0, 2, 3, 4] as const;
+export const MAX_VISIBLE_HINTS = VISIBLE_HINT_INDICES.length;
+
 // ─── Game state enums / unions ────────────────────────────────────────────────
 
 export type HintStage =

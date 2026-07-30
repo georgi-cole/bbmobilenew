@@ -33,6 +33,8 @@ export interface SocialModuleAvailability {
 
 export const SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE =
   'The house is in a locked ceremony, so you cannot start a new conversation right now.'
+export const SOCIAL_MODULE_BLOCKED_DURING_LIVE_VOTE_MESSAGE =
+  'Everybody is currently waiting to vote or be voted, so no time for chit-chat now.'
 export const SOCIAL_MODULE_BLOCKED_OUT_OF_GAME_MESSAGE =
   'You are no longer in the house. But maybe try telepathy?'
 export const SURVIVOR_SOCIAL_BLOCKED_MESSAGES = [
@@ -144,6 +146,10 @@ export function getBlockedSocialModuleAnnouncementMessage(
     availability.humanPlayerId === null
   ) {
     return SOCIAL_MODULE_BLOCKED_OUT_OF_GAME_MESSAGE
+  }
+
+  if (availability.phase === 'live_vote') {
+    return SOCIAL_MODULE_BLOCKED_DURING_LIVE_VOTE_MESSAGE
   }
 
   return SOCIAL_MODULE_BLOCKED_IN_GAME_MESSAGE

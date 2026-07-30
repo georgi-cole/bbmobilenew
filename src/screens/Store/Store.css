@@ -238,6 +238,16 @@
   text-align: center;
 }
 
+.vip-store__terms button {
+  padding: 0;
+  border: 0;
+  color: #a5b4fc;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .vip-store__standalone,
 .vip-store__restore-panel {
   width: min(100%, 29rem);

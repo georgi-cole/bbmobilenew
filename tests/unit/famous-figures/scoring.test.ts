@@ -26,10 +26,10 @@ const PLAYER = 'scorer-player';
 
 describe('getPointsForHintsUsed', () => {
   it('returns 10 for 0 hints', () => expect(getPointsForHintsUsed(0)).toBe(10));
-  it('returns 9 for 1 hint', () => expect(getPointsForHintsUsed(1)).toBe(9));
-  it('returns 7 for 2 hints', () => expect(getPointsForHintsUsed(2)).toBe(7));
-  it('returns 5 for 3 hints', () => expect(getPointsForHintsUsed(3)).toBe(5));
-  it('returns 3 for 4 hints', () => expect(getPointsForHintsUsed(4)).toBe(3));
+  it('returns 8 for 1 hint', () => expect(getPointsForHintsUsed(1)).toBe(8));
+  it('returns 5 for 2 hints', () => expect(getPointsForHintsUsed(2)).toBe(5));
+  it('returns 3 for 3 hints', () => expect(getPointsForHintsUsed(3)).toBe(3));
+  it('returns 1 for the final visible hint', () => expect(getPointsForHintsUsed(4)).toBe(1));
   it('returns 1 for 5 hints', () => expect(getPointsForHintsUsed(5)).toBe(1));
   it('returns 1 for overtime (6+)', () => {
     expect(getPointsForHintsUsed(6)).toBe(1);
@@ -58,7 +58,7 @@ describe('scoring across rounds', () => {
     const s1 = getState(store);
     const fig2 = FAMOUS_FIGURES[getPlayerFigureIndex(s1, PLAYER, s1.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER, guess: fig2.canonicalName }));
-    expect(getState(store).playerScores[PLAYER]).toBe(17); // 10 + 7
+    expect(getState(store).playerScores[PLAYER]).toBe(15); // 10 + 5
     store.dispatch(endRound());
     store.dispatch(nextRound());
 
@@ -72,7 +72,7 @@ describe('scoring across rounds', () => {
     }
 
     expect(getState(store).status).toBe('complete');
-    expect(getState(store).playerScores[PLAYER]).toBe(17);
+    expect(getState(store).playerScores[PLAYER]).toBe(15);
   });
 });
 

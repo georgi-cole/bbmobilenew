@@ -2,7 +2,7 @@
 
 ## How this stays complete
 
-This matrix covers all 32 non-retired registry entries at the Phase 2 baseline. Its executable source is `tests/helpers/minigameQualityMatrix.ts`. The completeness test compares its keys with `getPoolByFilter({ retired: false })`, verifies cited files exist, and checks that every active key appears in this document.
+This matrix covers every non-retired registry entry. Its executable source is `tests/helpers/minigameQualityMatrix.ts`. The completeness test compares its keys with `getPoolByFilter({ retired: false })`, verifies cited files exist, and checks that every active key appears in this document.
 
 Evidence codes: **L** logic/rules, **C** real component, **H** host/integration, **B** registry-driven Playwright. ?B configured? means a browser path exists; only `docs/quality-phase-2-report.md` may claim it passed after execution.
 
@@ -57,6 +57,7 @@ Except for `gridOfLuck` (explicitly 2?4), the registry currently omits game-spec
 | `bigSpender`             | Big Spender: Broke or Boom | spend/bank            | placement   |               owned | authoritative equal-balance policy                                   |
 | `chainOfGreed`           | Chain of Greed             | split/steal/vote/duel | placement   |               owned | only a genuinely tied vote enters deterministic duel                 |
 | `batteryLow`             | Battery Low                | charge allocation     | survival    |               owned | authoritative charge/elimination result                              |
+| `houseOfDarkness`        | House of Darkness          | memory-card selection | survival    |               owned | rounds, lifespan, damage, mistakes, time, stable order               |
 
 ?Owned? means the component has no registry-wide timeout; its round state machine owns timing. Late timers still cannot overwrite an accepted result.
 
@@ -96,6 +97,7 @@ Except for `gridOfLuck` (explicitly 2?4), the registry currently omits game-spec
 | `bigSpender`             | bigSpenderLogic            | ?                        | ?                           | B configured | component/store/host coverage           |
 | `chainOfGreed`           | logic/rules                | ChainOfGreed.component   | integration                 | B configured | double-vote/duel input                  |
 | `batteryLow`             | batteryLow.logic           | ?                        | ?                           | B configured | component/store/host coverage           |
+| `houseOfDarkness`        | survival rules + AI        | HouseOfDarknessComp      | registry integration        | B configured | long browser terminal path              |
 
 ## Interpretation
 

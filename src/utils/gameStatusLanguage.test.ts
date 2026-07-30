@@ -9,7 +9,7 @@ describe('game status language', () => {
   });
 
   it('separates compact visible cycle text from its full accessible label', () => {
-    expect(formatCycleLabel(4)).toBe('Day 4');
+    expect(formatCycleLabel(2, 4)).toBe('S02D4');
     expect(formatCycleAriaLabel(2, 4)).toBe('Season 2, day 4');
   });
 });

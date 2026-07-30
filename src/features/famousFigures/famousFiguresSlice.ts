@@ -11,7 +11,7 @@
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { mulberry32 } from '../../store/rng';
-import type { FigureDifficulty, FigureRow } from '../../games/famous-figures/model';
+import { MAX_VISIBLE_HINTS, type FigureDifficulty, type FigureRow } from '../../games/famous-figures/model';
 import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import figuresData from '../../games/famous-figures/data/famous_figures.json';
 
@@ -132,11 +132,10 @@ function shuffleIndices(rng: () => number, length: number): number[] {
 export function getPointsForHintsUsed(hintsRevealed: number): number {
   switch (hintsRevealed) {
     case 0: return 10;
-    case 1: return 9;
-    case 2: return 7;
-    case 3: return 5;
-    case 4: return 3;
-    case 5: return 1;
+    case 1: return 8;
+    case 2: return 5;
+    case 3: return 3;
+    case 4: return 1;
     default: return 1; // Cap scoring at the final clue value.
   }
 }
@@ -184,7 +183,7 @@ export function getFamousFiguresAiPlan(
   const clueNumber = Math.round(clampAiValue(
     profile.expectedClue + knowledgeShift + naturalVariation + hesitation,
     2,
-    6,
+    MAX_VISIBLE_HINTS + 1,
   ));
   const reactionDelay =
     850 +
@@ -240,7 +239,7 @@ export function buildAiSubmissionsForRound(
       : familiarityEvent < 0.14
         ? 0.14
         : 0;
-    const lateHintAdjustment = Math.min(5, Math.max(0, hintsRevealed)) * 0.025;
+    const lateHintAdjustment = Math.min(MAX_VISIBLE_HINTS, Math.max(0, hintsRevealed)) * 0.025;
     const threshold = clampAiValue(
       profile.solveChance + (knowledge - 0.64) * 0.38 + familiarity + exceptionalAdjustment + lateHintAdjustment,
       0.08,
@@ -419,9 +418,9 @@ const famousFiguresSlice = createSlice({
     revealNextHint(state) {
       if (state.status !== 'round_active') return;
       if (state.roundComplete) return;
-      if (state.hintsRevealed >= 5) return;
+      if (state.hintsRevealed >= MAX_VISIBLE_HINTS) return;
       state.hintsRevealed += 1;
-      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5'];
+      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_3', 'hint_4', 'hint_5'];
       const phaseIdx = Math.min(state.hintsRevealed, phases.length - 1);
       state.timerPhase = phases[phaseIdx];
     },
@@ -434,7 +433,7 @@ const famousFiguresSlice = createSlice({
     advanceTimer(state) {
       if (state.roundComplete) return;
       const order: FamousFiguresTimerPhase[] = [
-        'clue', 'hint_1', 'hint_2', 'hint_3', 'hint_4', 'hint_5', 'done',
+        'clue', 'hint_1', 'hint_3', 'hint_4', 'hint_5', 'done',
       ];
       const idx = order.indexOf(state.timerPhase);
       if (idx < 0 || idx >= order.length - 1) return;

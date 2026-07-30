@@ -8,22 +8,33 @@ if (localPropertiesFile.exists()) {
     }
 }
 
+def releaseSigningValue = { propertyName, environmentName ->
+    localProperties.getProperty(propertyName) ?: System.getenv(environmentName)
+}
+
+def releaseStoreFile = releaseSigningValue('releaseStoreFile', 'ANDROID_KEYSTORE_PATH')
+def releaseStorePassword = releaseSigningValue('releaseStorePassword', 'ANDROID_KEYSTORE_PASSWORD')
+def releaseKeyAlias = releaseSigningValue('releaseKeyAlias', 'ANDROID_KEY_ALIAS')
+def releaseKeyPassword = releaseSigningValue('releaseKeyPassword', 'ANDROID_KEY_PASSWORD')
 def releaseSigningConfigured = [
-    'releaseStoreFile',
-    'releaseStorePassword',
-    'releaseKeyAlias',
-    'releaseKeyPassword'
-].every { key -> localProperties.getProperty(key) }
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+].every { value -> value }
+def releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.toLowerCase().contains('release')
+}
 
 android {
-    namespace = "com.bbmobilenew.app"
+    namespace = "com.georgicole.thebigeye"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.bbmobilenew.app"
+        applicationId "com.georgicole.thebigeye"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -34,10 +45,10 @@ android {
     if (releaseSigningConfigured) {
         signingConfigs {
             release {
-                storeFile rootProject.file(localProperties.getProperty('releaseStoreFile'))
-                storePassword localProperties.getProperty('releaseStorePassword')
-                keyAlias localProperties.getProperty('releaseKeyAlias')
-                keyPassword localProperties.getProperty('releaseKeyPassword')
+                storeFile rootProject.file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
             }
         }
     }
@@ -47,8 +58,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (releaseSigningConfigured) {
                 signingConfig signingConfigs.release
-            } else {
-                throw new RuntimeException('Missing release signing properties in android/local.properties')
+            } else if (releaseBuildRequested) {
+                throw new GradleException(
+                    'Missing Android release signing configuration. See android/local.properties.example.'
+                )
             }
         }
     }

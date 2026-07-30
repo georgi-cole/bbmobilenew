@@ -450,7 +450,7 @@
 .src-finale-calendar__heading h1 { margin: 8px 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.2rem, 9.8vw, 4.1rem); font-weight: 500; letter-spacing: -0.065em; line-height: 0.86; }
 .src-finale-calendar__heading > p:last-child { max-width: 280px; margin: 8px auto 0; color: rgba(255, 255, 255, 0.67); font-size: 0.73rem; line-height: 1.38; }
 
-.src-finale-calendar__tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: min(100%, 450px); margin: 0 auto; padding: 4px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; background: rgba(5, 6, 12, 0.48); }
+.src-finale-calendar__tabs { display: grid; grid-template-columns: repeat(var(--src-calendar-window-count, 3), minmax(0, 1fr)); gap: 6px; width: min(100%, 450px); margin: 0 auto; padding: 4px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; background: rgba(5, 6, 12, 0.48); }
 .src-finale-calendar__tabs button { min-height: 34px; padding: 5px 3px; border: 0; border-radius: 11px; color: rgba(255, 255, 255, 0.56); background: transparent; font: inherit; font-size: 0.52rem; font-weight: 900; letter-spacing: 0.07em; line-height: 1.15; text-transform: uppercase; cursor: pointer; }
 .src-finale-calendar__tabs button[aria-selected='true'] { color: #1e1721; background: #f1ddaf; box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24); }
 
@@ -605,11 +605,45 @@
 .src-finale-calendar__heading { box-sizing: border-box; width: min(100%, 440px); }
 .src-finale-calendar__heading h1 { font-size: clamp(2rem, 8vw, 3.55rem); text-wrap: balance; }
 .src-finale-calendar__tabs, .src-finale-calendar__grid { box-sizing: border-box; }
-.src-finale-calendar__stage { display: flex; box-sizing: border-box; width: min(100%, 440px); min-height: 350px; flex: 1 0 auto; margin: 0 auto; perspective: 900px; }
-.src-finale-calendar__calendar-view { display: flex; width: 100%; min-height: 100%; flex: 1; flex-direction: column; }
+.src-finale-calendar__stage { display: flex; box-sizing: border-box; width: min(100%, 440px); min-width: 0; max-width: 100%; min-height: 350px; flex: 1 0 auto; margin: 0 auto; perspective: 900px; }
+.src-finale-calendar__stage[data-mode='calendar'] { min-height: 0; flex: 0 0 auto; }
+.src-finale-calendar__calendar-view { display: flex; width: 100%; min-width: 0; min-height: 100%; flex: 1; flex-direction: column; }
 .src-finale-calendar__calendar-view .src-finale-calendar__summary { margin-bottom: 12px; }
 .src-finale-calendar__calendar-view .src-finale-calendar__legend { margin-bottom: 15px; }
-.src-finale-calendar__calendar-view .src-finale-calendar__grid { grid-template-rows: auto repeat(4, 72px); align-content: space-evenly; flex: 1; margin-bottom: 12px; }
+.src-finale-calendar__calendar-view .src-finale-calendar__grid { grid-template-rows: auto repeat(var(--src-calendar-row-count, 4), 72px); align-content: start; flex: none; margin-bottom: 12px; }
+.src-finale-calendar__timeline {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  gap: 13px;
+  width: min(100%, 440px);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 auto 12px;
+  padding: 13px 12px 15px;
+  overflow: hidden;
+  border: 1px solid rgba(244, 218, 183, 0.17);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 88% 6%, rgba(255, 210, 177, 0.13), transparent 29%),
+    radial-gradient(circle at 8% 92%, rgba(140, 127, 255, 0.12), transparent 31%),
+    linear-gradient(145deg, rgba(49, 31, 53, 0.94), rgba(8, 9, 17, 0.97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.065), 0 18px 38px rgba(0, 0, 0, 0.25);
+}
+.src-finale-calendar__timeline::after { position: absolute; inset: 8px; border: 1px solid rgba(255, 239, 216, 0.045); border-radius: 21px; content: ''; pointer-events: none; }
+.src-finale-calendar__timeline-label { position: relative; z-index: 3; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 0 4px; color: rgba(255, 255, 255, 0.42); font-size: 0.43rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+.src-finale-calendar__timeline-label strong { color: #f2d28e; font-size: 0.49rem; letter-spacing: 0.13em; }
+.src-finale-calendar__timeline-label span:last-child { text-align: right; }
+.src-finale-calendar__timeline-row { position: relative; z-index: 2; display: flex; gap: 7px; min-width: 0; }
+.src-finale-calendar__timeline-row[data-direction='reverse'] { flex-direction: row-reverse; }
+.src-finale-calendar__timeline-row::before { position: absolute; top: 50%; right: 7%; left: 7%; height: 1px; background: linear-gradient(90deg, rgba(246, 211, 147, 0.28), rgba(200, 191, 255, 0.68), rgba(246, 211, 147, 0.28)); box-shadow: 0 0 11px rgba(200, 191, 255, 0.24); content: ''; }
+.src-finale-calendar__timeline-row:not(:last-child)::after { position: absolute; z-index: -1; top: 50%; width: 22px; height: calc(100% + 14px); border-top: 1px solid rgba(218, 203, 255, 0.52); border-bottom: 1px solid rgba(218, 203, 255, 0.52); content: ''; }
+.src-finale-calendar__timeline-row[data-direction='forward']:not(:last-child)::after { right: -5px; border-right: 1px solid rgba(218, 203, 255, 0.52); border-radius: 0 18px 18px 0; }
+.src-finale-calendar__timeline-row[data-direction='reverse']:not(:last-child)::after { left: -5px; border-left: 1px solid rgba(218, 203, 255, 0.52); border-radius: 18px 0 0 18px; }
+.src-finale-calendar__timeline-row .src-finale-calendar__day { width: 100%; min-width: 0; min-height: 68px; height: 68px; flex: 1 1 0; border: 1px solid rgba(255, 255, 255, 0.075); border-radius: 18px; background: linear-gradient(145deg, rgba(38, 29, 46, 0.97), rgba(8, 9, 17, 0.98)); box-shadow: 0 7px 14px rgba(0, 0, 0, 0.24); }
+.src-finale-calendar__timeline-row .src-finale-calendar__day[data-event='true'] { border-radius: 18px; }
+.src-finale-calendar__timeline-row .src-finale-calendar__day-portrait { top: 15px; right: 8px; width: 28px; height: 28px; }
+.src-finale-calendar__timeline-row .src-finale-calendar__day-portrait .pa { width: 24px; height: 24px; }
 .src-finale-calendar__hint { margin: 0; color: rgba(255, 255, 255, 0.44); font-size: 0.49rem; font-weight: 800; letter-spacing: 0.08em; text-align: center; text-transform: uppercase; }
 
 /* Marked dates are compact archive seals; identity is reserved for the reveal. */
@@ -623,7 +657,7 @@
 .src-finale-calendar__day[data-kind='milestone']::after { background: #a4f5df; box-shadow: 0 0 9px rgba(164, 245, 223, 0.65); }
 .src-finale-calendar__day[data-kind='finale']::after { background: #fff0bd; box-shadow: 0 0 10px rgba(255, 240, 189, 0.7); }
 
-.src-finale-calendar__focus-card { position: relative; display: flex; box-sizing: border-box; width: 100%; min-height: 100%; flex: 1; flex-direction: column; justify-content: center; overflow: hidden; padding: 58px 24px 24px; border: 1px solid rgba(245, 211, 147, 0.42); border-radius: 32px; color: #fff; background: radial-gradient(circle at 86% 18%, rgba(255, 221, 169, 0.18), transparent 24%), linear-gradient(138deg, rgba(77, 43, 62, 0.98), rgba(9, 9, 17, 0.99) 72%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11), 0 26px 58px rgba(0, 0, 0, 0.34); transform-origin: 50% 50%; }
+.src-finale-calendar__focus-card { position: relative; display: flex; box-sizing: border-box; width: 100%; min-height: 100%; flex: 1; flex-direction: column; justify-content: flex-start; overflow: hidden; padding: 58px 24px 24px; border: 1px solid rgba(245, 211, 147, 0.42); border-radius: 32px; color: #fff; background: radial-gradient(circle at 86% 18%, rgba(255, 221, 169, 0.18), transparent 24%), linear-gradient(138deg, rgba(77, 43, 62, 0.98), rgba(9, 9, 17, 0.99) 72%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11), 0 26px 58px rgba(0, 0, 0, 0.34); transform-origin: 50% 50%; }
 .src-finale-calendar__focus-card::before { position: absolute; top: -74px; right: -86px; width: 240px; height: 240px; border: 1px solid rgba(255, 231, 197, 0.11); border-radius: 50%; box-shadow: 0 0 0 22px rgba(255, 231, 197, 0.025), 0 0 0 44px rgba(255, 231, 197, 0.018); content: ''; pointer-events: none; }
 .src-finale-calendar__focus-card::after { position: absolute; inset: 0 auto 0 0; width: 3px; background: linear-gradient(#f6d987, #df8eb0); content: ''; }
 .src-finale-calendar__focus-card[data-kind='twist'] { border-color: rgba(179, 189, 255, 0.48); background: radial-gradient(circle at 86% 18%, rgba(196, 205, 255, 0.18), transparent 25%), linear-gradient(138deg, rgba(53, 48, 102, 0.98), rgba(8, 9, 20, 0.99) 72%); }
@@ -640,6 +674,11 @@
 .src-finale-calendar__focus-stats div { min-width: 0; padding: 12px 10px 11px; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 17px; background: rgba(4, 5, 11, 0.27); }
 .src-finale-calendar__focus-stats dt { overflow: hidden; margin-bottom: 5px; color: rgba(255, 255, 255, 0.48); font-size: 0.44rem; font-weight: 900; letter-spacing: 0.09em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .src-finale-calendar__focus-stats dd { margin: 0; color: #fff6e5; font-family: Georgia, 'Times New Roman', serif; font-size: 1.42rem; line-height: 1; }
+.src-finale-calendar__focus-story { position: relative; z-index: 1; display: grid; gap: 0; margin: 20px 0 0; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 19px; background: rgba(4, 5, 11, 0.25); }
+.src-finale-calendar__focus-story div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; padding: 12px 13px; }
+.src-finale-calendar__focus-story div + div { border-top: 1px solid rgba(255, 255, 255, 0.075); }
+.src-finale-calendar__focus-story dt { color: #f2d28e; font-size: 0.46rem; font-weight: 900; letter-spacing: 0.1em; line-height: 1.25; text-transform: uppercase; }
+.src-finale-calendar__focus-story dd { margin: 0; color: rgba(255, 255, 255, 0.77); font-size: 0.65rem; line-height: 1.4; }
 .src-finale-calendar__focus-cast { position: relative; z-index: 1; margin-top: 20px; }
 .src-finale-calendar__focus-cast > p { margin: 0 0 8px; color: rgba(255, 255, 255, 0.54); font-size: 0.47rem; font-weight: 900; letter-spacing: 0.11em; text-transform: uppercase; }
 .src-finale-calendar__focus-cast > div { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -650,6 +689,16 @@
 .src-finale-calendar__focus-impact strong { display: block; margin-bottom: 4px; color: #f3d48f; font-size: 0.46rem; letter-spacing: 0.12em; text-transform: uppercase; }
 
 @media (max-width: 410px) {
+  .src-finale-calendar__stage[data-mode='calendar'] { min-height: clamp(390px, 54dvh, 480px); flex: 1 1 auto; }
+  .src-finale-calendar__calendar-view { flex: 1; }
+  .src-finale-calendar__timeline { grid-template-rows: auto repeat(var(--src-timeline-row-count, 3), minmax(82px, 1fr)); min-height: clamp(390px, 54dvh, 480px); flex: 1; gap: 10px; padding: 14px 12px 16px; }
+  .src-finale-calendar__timeline-row { min-height: 0; }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day { height: 100%; min-height: 0; }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day-number { top: 10px; left: 10px; font-size: 0.66rem; }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day-portrait { top: 50%; right: 50%; width: 60px; height: 60px; border-color: rgba(255, 255, 255, 0.48); box-shadow: 0 7px 16px rgba(0, 0, 0, 0.4); transform: translate(50%, -47%); }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day-portrait .pa { width: 56px; height: 56px; }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day[data-event='true'] i { top: 48%; right: auto; left: 50%; font-size: 1.75rem; transform: translate(-50%, -50%); }
+  .src-finale-calendar__timeline-row .src-finale-calendar__day[data-event='true'] small { right: 7px; bottom: 10px; left: 9px; font-size: 0.43rem; letter-spacing: 0.065em; }
   .src-finale-calendar__stage, .src-finale-calendar__focus-card { min-height: 326px; }
   .src-finale-calendar__focus-card { padding: 54px 17px 18px; border-radius: 27px; }
   .src-finale-calendar__focus-identity { grid-template-columns: 72px minmax(0, 1fr); gap: 13px; }
@@ -661,8 +710,8 @@
 }
 
 @media (max-height: 760px) {
-  .src-finale-calendar__calendar-view .src-finale-calendar__grid { grid-template-rows: auto repeat(4, 58px); }
-  .src-finale-calendar__day { height: 58px; }
+  .src-finale-calendar__calendar-view .src-finale-calendar__grid { grid-template-rows: auto repeat(var(--src-calendar-row-count, 4), 58px); }
+  .src-finale-calendar__grid .src-finale-calendar__day { height: 58px; }
 }
 
 .src-finale-timeline {

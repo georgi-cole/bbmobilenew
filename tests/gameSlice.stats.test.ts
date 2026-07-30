@@ -304,12 +304,27 @@ describe('evictedAtWeek is stamped at eviction time', () => {
       lohId: 'loh',
       players,
       pendingEviction: { evicteeId: 'evictee', evictionMessage: 'Evictee was evicted.' },
+      pendingExitContext: {
+        week: 4,
+        leaderIds: ['loh'],
+        nomineeIds: ['evictee', 'a1'],
+        votesByVoterId: { a0: 'evictee', a2: 'evictee', a3: 'a1' },
+        voteCounts: { evictee: 2, a1: 1 },
+      },
     });
 
     store.dispatch(finalizePendingEviction('evictee'));
 
     const evictee = store.getState().game.players.find((p) => p.id === 'evictee');
     expect(evictee?.evictedAtWeek).toBe(4);
+    const exitRecord = store.getState().game.history?.find((event) => event.type === 'seasonExit');
+    expect(exitRecord?.data).toMatchObject({
+      playerId: 'evictee',
+      leaderIds: ['loh'],
+      votesByVoterId: { a0: 'evictee', a2: 'evictee', a3: 'a1' },
+      voteCounts: { evictee: 2, a1: 1 },
+    });
+    expect(store.getState().game.pendingExitContext).toBeNull();
   });
 
   it('clears and re-stamps evictedAtWeek for a Battle Back returnee who is later evicted', () => {

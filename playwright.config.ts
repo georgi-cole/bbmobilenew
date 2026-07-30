@@ -6,6 +6,10 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const nodeBin = process.execPath
 const viteScript = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js')
 const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+const chromiumLaunchOptions = chromiumExecutablePath
+  ? { launchOptions: { executablePath: chromiumExecutablePath } }
+  : {}
 
 export default defineConfig({
   testDir: './e2e/playwright',
@@ -16,7 +20,7 @@ export default defineConfig({
     baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.VISUAL_AUDIT_WRITE === '1' ? 'off' : 'retain-on-failure',
   },
   webServer: {
     command: `"${nodeBin}" "${viteScript}" --host 127.0.0.1 --port 4173 --strictPort`,
@@ -30,12 +34,13 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         browserName: 'chromium',
+        ...chromiumLaunchOptions,
         viewport: { width: 1366, height: 768 },
       },
     },
     {
       name: 'mobile-chromium',
-      use: { browserName: 'chromium', ...devices['Pixel 7'] },
+      use: { browserName: 'chromium', ...devices['Pixel 7'], ...chromiumLaunchOptions },
     },
     {
       name: 'mobile-webkit',
@@ -45,6 +50,7 @@ export default defineConfig({
       name: 'narrow-chromium',
       use: {
         browserName: 'chromium',
+        ...chromiumLaunchOptions,
         viewport: { width: 320, height: 568 },
         deviceScaleFactor: 1,
         isMobile: true,
@@ -55,6 +61,7 @@ export default defineConfig({
       name: 'compact-mobile-chromium',
       use: {
         browserName: 'chromium',
+        ...chromiumLaunchOptions,
         viewport: { width: 360, height: 800 },
         deviceScaleFactor: 1,
         isMobile: true,
@@ -66,6 +73,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         browserName: 'chromium',
+        ...chromiumLaunchOptions,
         viewport: { width: 1920, height: 1080 },
       },
     },

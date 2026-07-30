@@ -35,6 +35,7 @@ import { mulberry32 } from '../../store/rng';
 import { getDicebear, resolveAvatar } from '../../utils/avatar';
 import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy';
 import { getHintText } from '../../games/famous-figures/hints';
+import { MAX_VISIBLE_HINTS, VISIBLE_HINT_INDICES } from '../../games/famous-figures/model';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './FamousFiguresComp.css';
 
@@ -57,11 +58,10 @@ const WINNER_SCREEN_DURATION_MS = 4000;
 
 // Timer durations per phase (milliseconds).
 // Every visible clue receives 10 seconds. There is no extra overtime window
-// after the fifth hint.
+// after the final visible hint.
 const PHASE_DURATIONS: Record<string, number> = {
   clue: 10000,
   hint_1: 10000,
-  hint_2: 10000,
   hint_3: 10000,
   hint_4: 10000,
   hint_5: 10000,
@@ -365,12 +365,11 @@ export default function FamousFiguresComp({
     const clueByPhase: Record<string, number> = {
       clue: 1,
       hint_1: 2,
-      hint_2: 3,
-      hint_3: 4,
-      hint_4: 5,
-      hint_5: 6,
+      hint_3: 3,
+      hint_4: 4,
+      hint_5: 5,
     };
-    const visibleClue = clueByPhase[ff.timerPhase] ?? 6;
+    const visibleClue = clueByPhase[ff.timerPhase] ?? MAX_VISIBLE_HINTS + 1;
 
     for (const [aiId, correct] of Object.entries(aiSubs)) {
       if (!correct) continue;
@@ -505,15 +504,7 @@ export default function FamousFiguresComp({
         // advancePlayerCursor after CONFIRM_MS so the round can close.
         // Compute points locally (same formula as slice) for the overlay display.
         const pts = (() => {
-          switch (ff.hintsRevealed) {
-            case 0: return 10;
-            case 1: return 9;
-            case 2: return 7;
-            case 3: return 5;
-            case 4: return 3;
-            case 5: return 1;
-            default: return 1;
-          }
+          return [10, 8, 5, 3, 1][Math.min(ff.hintsRevealed, MAX_VISIBLE_HINTS)] ?? 1;
         })();
         // Cancel any previous pending timer (defensive).
         if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current);
@@ -564,12 +555,12 @@ export default function FamousFiguresComp({
     // When human is ahead of the global round, manage hints locally so we
     // don't mutate the global hintsRevealed for the ongoing AI round.
     if (humanCursor > ff.currentRound) {
-      if (humanAheadHints >= 5) return;
-      setHumanAheadHints((prev) => Math.min(prev + 1, 5));
+      if (humanAheadHints >= MAX_VISIBLE_HINTS) return;
+      setHumanAheadHints((prev) => Math.min(prev + 1, MAX_VISIBLE_HINTS));
       return;
     }
 
-    if (ff.hintsRevealed >= 5) return;
+    if (ff.hintsRevealed >= MAX_VISIBLE_HINTS) return;
     dispatch(revealNextHint());
   }, [ff.status, ff.hintsRevealed, ff.currentRound, humanCursor, humanAheadHints, dispatch]);
 
@@ -626,7 +617,7 @@ export default function FamousFiguresComp({
       humanCorrect = ff.playerCorrect[humanId] ?? false;
     }
   }
-  const hintsAllRevealed = effectiveHintsRevealed >= 5;
+  const hintsAllRevealed = effectiveHintsRevealed >= MAX_VISIBLE_HINTS;
   const canRequestHint =
     ff.status === 'round_active' &&
     humanCursor < ff.totalRounds &&
@@ -887,7 +878,7 @@ export default function FamousFiguresComp({
               {Array.from({ length: effectiveHintsRevealed }, (_, i) => (
                 <li key={i} className="ff-hint-item">
                   <span className="ff-hint-num">#{i + 1}</span>
-                  <span>{getHintText(figure, i)}</span>
+                  <span>{getHintText(figure, VISIBLE_HINT_INDICES[i])}</span>
                 </li>
               ))}
             </ul>
@@ -900,9 +891,9 @@ export default function FamousFiguresComp({
         className="ff-hint-btn"
         onClick={handleRequestHint}
         disabled={!canRequestHint}
-        aria-label={`Request hint (${5 - effectiveHintsRevealed} remaining)`}
+        aria-label={`Request hint (${MAX_VISIBLE_HINTS - effectiveHintsRevealed} remaining)`}
       >
-        💡 Request Hint ({effectiveHintsRevealed}/5 used)
+        💡 Request Hint ({effectiveHintsRevealed}/{MAX_VISIBLE_HINTS} used)
       </button>
 
       {/* Success confirmation overlay — shown for CONFIRM_MS after a correct guess */}
