@@ -1,1 +1,1 @@
-export * from './registryHouseOfDarkness'
+export * from './registryBase'
