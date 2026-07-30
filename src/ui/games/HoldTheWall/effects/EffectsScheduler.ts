@@ -1,5 +1,5 @@
 Exit code: 0
-Wall time: 1.2 seconds
+Wall time: 1 seconds
 Output:
 /**
  * EffectsScheduler â€” deterministic / randomised distraction-effect scheduler.
