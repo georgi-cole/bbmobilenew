@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import {
   activateDoubleVoteReward,
   activateMissionImmunityReward,
@@ -25,6 +25,8 @@ import { calculateRequiredDoubleEvictionSlots } from '../../features/twists/doub
 import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import type { Player } from '../../types'
 import type { RequiredConfessionalPresentation } from './requiredConfessionalPresentation'
+import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
+import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
 
 interface Props {
   decision: ActiveConfessionalDecision
@@ -61,6 +63,65 @@ function PlayerCard({
       <span className="rcd-player__copy">
         <strong>{player.name}</strong>
         {tag && <small>{tag}</small>}
+      </span>
+      <span className="rcd-player__check" aria-hidden="true">
+        {selected ? '✓' : ''}
+      </span>
+    </button>
+  )
+}
+
+interface DecisionUnitCardProps {
+  unit: ConfessionalDecisionUnit
+  selected: boolean
+  onSelect: () => void
+  danger?: boolean
+  disabled?: boolean
+  tag?: string
+}
+
+function DecisionUnitCard({
+  unit,
+  selected,
+  onSelect,
+  danger = false,
+  disabled = false,
+  tag,
+}: DecisionUnitCardProps) {
+  if (unit.players.length === 1) {
+    return (
+      <PlayerCard
+        player={unit.players[0]}
+        selected={selected}
+        onSelect={onSelect}
+        danger={danger}
+        disabled={disabled}
+        tag={tag}
+      />
+    )
+  }
+
+  return (
+    <button
+      className={`rcd-player rcd-player--pair${selected ? ' rcd-player--selected' : ''}${danger ? ' rcd-player--danger' : ''}`}
+      type="button"
+      onClick={onSelect}
+      aria-label={`${unit.label}, Pair ${unit.pairNumber}`}
+      aria-pressed={selected}
+      disabled={disabled}
+      style={{ '--rcd-pair-color': unit.pairColor } as CSSProperties}
+    >
+      <span className="rcd-player__pair-avatars" aria-hidden="true">
+        {unit.players.map((player) => (
+          <PlayerAvatar key={player.id} player={player} selected={selected} size="md" />
+        ))}
+      </span>
+      <span className="rcd-player__copy">
+        <strong>{unit.label}</strong>
+        {tag && <small>{tag}</small>}
+      </span>
+      <span className="rcd-player__pair-dot" aria-hidden="true">
+        {unit.pairNumber}
       </span>
       <span className="rcd-player__check" aria-hidden="true">
         {selected ? '✓' : ''}
@@ -119,7 +180,9 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const isDoubleEviction = game.doubleEviction?.weekActive === true
   const required = isDoubleEviction ? 3 : 2
-  const options = alivePlayers.filter((player) => player.id !== game.lohId)
+  const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
+  const options = alivePlayers.filter((player) => !lohIds.has(player.id))
+  const optionUnits = buildConfessionalDecisionUnits(game, options)
   const autoNomineeId =
     game.publicModeEnabled === true && !isDoubleEviction
       ? (game.lastHohCompFinisherId ?? null)
@@ -128,11 +191,17 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const [committing, setCommitting] = useState(false)
 
   const selectedNames = selectedIds
-    .map((id) => options.find((player) => player.id === id)?.name)
+    .map((id) => optionUnits.find((unit) => unit.id === id)?.label)
     .filter((name): name is string => Boolean(name))
   const autoNomineeName = autoNomineeId
-    ? (options.find((player) => player.id === autoNomineeId)?.name ?? null)
+    ? (optionUnits.find((unit) => unit.memberIds.includes(autoNomineeId))?.label ?? null)
     : null
+  const autoNomineeUnit = autoNomineeId
+    ? (optionUnits.find((unit) => unit.memberIds.includes(autoNomineeId)) ?? null)
+    : null
+  const selectableUnits = autoNomineeUnit
+    ? optionUnits.filter((unit) => unit.id !== autoNomineeUnit.id)
+    : optionUnits
   const ready = selectedIds.length === required
   const review = ready
     ? autoNomineeName
@@ -141,7 +210,10 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
     : `Choose ${required - selectedIds.length} more`
 
   function togglePlayer(id: string) {
-    if (committing || id === autoNomineeId) return
+    const unitIsAutomatic = autoNomineeId
+      ? optionUnits.find((unit) => unit.id === id)?.memberIds.includes(autoNomineeId)
+      : false
+    if (committing || unitIsAutomatic) return
     setSelectedIds((current) => {
       if (current.includes(id)) return current.filter((selectedId) => selectedId !== id)
       if (current.length < required) return [...current, id]
@@ -162,18 +234,40 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
 
   return (
     <div className="rcd-layout" data-testid="required-confessional-decision">
+      {autoNomineeUnit && (
+        <div
+          className="rcd-auto-nominee"
+          aria-label={`Automatic nominee: ${autoNomineeUnit.label}`}
+        >
+          <span className="rcd-auto-nominee__avatars" aria-hidden="true">
+            {autoNomineeUnit.players.map((player) => (
+              <PlayerAvatar key={player.id} player={player} size="md" />
+            ))}
+          </span>
+          <span className="rcd-auto-nominee__copy">
+            <small>Automatic nominee</small>
+            <strong>{autoNomineeUnit.label}</strong>
+            <em>This pair is already on the block.</em>
+          </span>
+          <span
+            className="rcd-auto-nominee__pair-dot"
+            aria-hidden="true"
+            style={{ '--rcd-pair-color': autoNomineeUnit.pairColor } as CSSProperties}
+          >
+            {autoNomineeUnit.pairNumber}
+          </span>
+        </div>
+      )}
       <div className="rcd-grid" role="group" aria-label="Nomination choices">
-        {options.map((player) => {
-          const isAutoNominee = player.id === autoNomineeId
+        {selectableUnits.map((unit) => {
           return (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              selected={selectedIds.includes(player.id) || isAutoNominee}
-              onSelect={() => togglePlayer(player.id)}
-              disabled={committing || isAutoNominee}
+            <DecisionUnitCard
+              key={unit.id}
+              unit={unit}
+              selected={selectedIds.includes(unit.id)}
+              onSelect={() => togglePlayer(unit.id)}
+              disabled={committing}
               danger
-              tag={isAutoNominee ? 'Automatic nominee' : undefined}
             />
           )
         })}
@@ -191,53 +285,53 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   )
 }
 
-interface SinglePlayerDecisionProps {
-  options: Player[]
+interface SingleUnitDecisionProps {
+  units: ConfessionalDecisionUnit[]
   presentation: RequiredConfessionalPresentation
   reviewPrefix: string
   danger?: boolean
-  tagForPlayer?: (player: Player) => string | undefined
-  onCommit: (player: Player) => void
+  tagForUnit?: (unit: ConfessionalDecisionUnit) => string | undefined
+  onCommit: (unit: ConfessionalDecisionUnit) => void
 }
 
-function SinglePlayerDecision({
-  options,
+function SingleUnitDecision({
+  units,
   presentation,
   reviewPrefix,
   danger = false,
-  tagForPlayer,
+  tagForUnit,
   onCommit,
-}: SinglePlayerDecisionProps) {
+}: SingleUnitDecisionProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [committing, setCommitting] = useState(false)
-  const selectedPlayer = options.find((player) => player.id === selectedId) ?? null
+  const selectedUnit = units.find((unit) => unit.id === selectedId) ?? null
 
   function confirm() {
-    if (!selectedPlayer || committing) return
+    if (!selectedUnit || committing) return
     setCommitting(true)
-    onCommit(selectedPlayer)
+    onCommit(selectedUnit)
   }
 
   return (
     <div className="rcd-layout" data-testid="required-confessional-decision">
       <div className="rcd-grid" role="group" aria-label={presentation.title}>
-        {options.map((player) => (
-          <PlayerCard
-            key={player.id}
-            player={player}
-            selected={selectedId === player.id}
-            onSelect={() => setSelectedId(player.id)}
+        {units.map((unit) => (
+          <DecisionUnitCard
+            key={unit.id}
+            unit={unit}
+            selected={selectedId === unit.id}
+            onSelect={() => setSelectedId(unit.id)}
             disabled={committing}
             danger={danger}
-            tag={tagForPlayer?.(player)}
+            tag={tagForUnit?.(unit)}
           />
         ))}
       </div>
       <ConfirmTray
-        review={selectedPlayer ? `${reviewPrefix} ${selectedPlayer.name}` : 'Select a contestant'}
+        review={selectedUnit ? `${reviewPrefix} ${selectedUnit.label}` : 'Select a pair'}
         consequence={presentation.consequence}
         confirmLabel={presentation.confirmLabel}
-        disabled={!selectedPlayer}
+        disabled={!selectedUnit}
         danger={danger}
         committing={committing}
         onConfirm={confirm}
@@ -317,16 +411,21 @@ function EvictionVoteDecision({ presentation, onDecisionCommitted }: Omit<Props,
   const game = useAppSelector((state) => state.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const options = alivePlayers.filter((player) => game.nomineeIds.includes(player.id))
+  const units = buildConfessionalDecisionUnits(game, options)
 
   return (
-    <SinglePlayerDecision
-      options={options}
+    <SingleUnitDecision
+      units={units}
       presentation={presentation}
       reviewPrefix="Vote to eliminate"
       danger
-      onCommit={(player) => {
-        dispatch(submitHumanVote(player.id))
-        onDecisionCommitted(`Voted to eliminate ${player.name}.`)
+      onCommit={(unit) => {
+        dispatch(submitHumanVote(unit.id))
+        onDecisionCommitted(
+          isCupidArrowActive(game)
+            ? `Our pair cast both votes to eliminate ${unit.label}.`
+            : `Voted to eliminate ${unit.label}.`
+        )
       }}
     />
   )
@@ -422,15 +521,16 @@ function SaveTargetDecision({ presentation, onDecisionCommitted }: Omit<Props, '
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const secondSave = game.specialVeto?.awaitingVipSecondSaveTarget === true
   const options = alivePlayers.filter((player) => game.nomineeIds.includes(player.id))
+  const units = buildConfessionalDecisionUnits(game, options)
 
   return (
-    <SinglePlayerDecision
-      options={options}
+    <SingleUnitDecision
+      units={units}
       presentation={presentation}
       reviewPrefix="Save"
-      onCommit={(player) => {
-        dispatch(secondSave ? submitVipSecondSaveTarget(player.id) : submitPovSaveTarget(player.id))
-        onDecisionCommitted(`Saved ${player.name}.`)
+      onCommit={(unit) => {
+        dispatch(secondSave ? submitVipSecondSaveTarget(unit.id) : submitPovSaveTarget(unit.id))
+        onDecisionCommitted(`Saved ${unit.label}.`)
       }}
     />
   )
@@ -444,20 +544,20 @@ function ReplacementDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const isCoup1 = game.specialVeto?.awaitingCoupReplacement1 === true
   const isCoup2 = game.specialVeto?.awaitingCoupReplacement2 === true
   const protectedIds = useMemo(() => new Set(game.povProtectedIds ?? []), [game.povProtectedIds])
+  const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
+  const posIds = new Set(expandCupidIds(game, game.posWinnerId ? [game.posWinnerId] : []))
 
   const standardBase = alivePlayers.filter(
     (player) =>
-      player.id !== game.lohId &&
-      player.id !== game.posWinnerId &&
-      !game.nomineeIds.includes(player.id)
+      !lohIds.has(player.id) && !posIds.has(player.id) && !game.nomineeIds.includes(player.id)
   )
   const standardUnprotected = standardBase.filter((player) => !protectedIds.has(player.id))
   const standardOptions = standardUnprotected.length > 0 ? standardUnprotected : standardBase
 
   const coupBase = alivePlayers.filter(
     (player) =>
-      player.id !== game.lohId &&
-      player.id !== game.posWinnerId &&
+      !lohIds.has(player.id) &&
+      !posIds.has(player.id) &&
       !game.nomineeIds.includes(player.id) &&
       player.id !== game.specialVeto?.coupReplacement1Id
   )
@@ -465,21 +565,24 @@ function ReplacementDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const coupRequired = isCoup1 ? 2 : 1
   const coupOptions = coupUnprotected.length >= coupRequired ? coupUnprotected : coupBase
   const options = isDiamond ? standardOptions : isCoup1 || isCoup2 ? coupOptions : standardOptions
+  const units = buildConfessionalDecisionUnits(game, options)
 
   return (
-    <SinglePlayerDecision
-      options={options}
+    <SingleUnitDecision
+      units={units}
       presentation={presentation}
       reviewPrefix="Name as replacement:"
       danger
-      tagForPlayer={(player) =>
-        protectedIds.has(player.id) ? 'Protection override fallback' : undefined
+      tagForUnit={(unit) =>
+        unit.memberIds.some((id) => protectedIds.has(id))
+          ? 'Protection override fallback'
+          : undefined
       }
-      onCommit={(player) => {
-        if (isDiamond) dispatch(submitDiamondReplacement(player.id))
-        else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(player.id))
-        else dispatch(setReplacementNominee(player.id))
-        onDecisionCommitted(`Named ${player.name} as the replacement nominee.`)
+      onCommit={(unit) => {
+        if (isDiamond) dispatch(submitDiamondReplacement(unit.id))
+        else if (isCoup1 || isCoup2) dispatch(submitCoupReplacement(unit.id))
+        else dispatch(setReplacementNominee(unit.id))
+        onDecisionCommitted(`Named ${unit.label} as the replacement nominee.`)
       }}
     />
   )
@@ -561,16 +664,18 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const tiedIds = game.tiedNomineeIds ?? game.nomineeIds
   const options = alivePlayers.filter((player) => tiedIds.includes(player.id))
-  const required = game.doubleEviction?.weekActive
-    ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
-    : 1
+  const units = buildConfessionalDecisionUnits(game, options)
+  const required =
+    game.doubleEviction?.weekActive && !isCupidArrowActive(game)
+      ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
+      : 1
   const isMulti = required > 1
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [committing, setCommitting] = useState(false)
-  const selectedPlayers = selectedIds
-    .map((id) => options.find((player) => player.id === id))
-    .filter((player): player is Player => Boolean(player))
-  const ready = selectedPlayers.length === required
+  const selectedUnits = selectedIds
+    .map((id) => units.find((unit) => unit.id === id))
+    .filter((unit): unit is ConfessionalDecisionUnit => Boolean(unit))
+  const ready = selectedUnits.length === required
 
   function toggle(id: string) {
     if (committing) return
@@ -588,19 +693,19 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
     else if (game.awaitingPosTieBreak) dispatch(submitPosTieBreak(selectedIds[0]))
     else dispatch(submitTieBreak(selectedIds[0]))
     onDecisionCommitted(
-      `Chose to eliminate ${formatNameList(selectedPlayers.map((player) => player.name))}.`
+      `Chose to eliminate ${formatNameList(selectedUnits.map((unit) => unit.label))}.`
     )
   }
 
   return (
     <div className="rcd-layout" data-testid="required-confessional-decision">
       <div className="rcd-grid" role="group" aria-label="Tie-break choices">
-        {options.map((player) => (
-          <PlayerCard
-            key={player.id}
-            player={player}
-            selected={selectedIds.includes(player.id)}
-            onSelect={() => toggle(player.id)}
+        {units.map((unit) => (
+          <DecisionUnitCard
+            key={unit.id}
+            unit={unit}
+            selected={selectedIds.includes(unit.id)}
+            onSelect={() => toggle(unit.id)}
             danger
             disabled={committing}
           />
@@ -609,8 +714,8 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
       <ConfirmTray
         review={
           ready
-            ? formatNameList(selectedPlayers.map((player) => player.name))
-            : `Choose ${required - selectedPlayers.length} more`
+            ? formatNameList(selectedUnits.map((unit) => unit.label))
+            : `Choose ${required - selectedUnits.length} more`
         }
         consequence={presentation.consequence}
         confirmLabel={presentation.confirmLabel}

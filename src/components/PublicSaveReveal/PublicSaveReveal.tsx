@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
-import type { Player } from '../../types'
+import type { CupidArrowPair, Player } from '../../types'
 import { store } from '../../store/store'
 import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService'
 import { completeDramaPublicSave } from '../../publicOpinion/DramaPublicSaveIntegration'
@@ -11,7 +11,54 @@ export interface PublicSaveRevealProps {
   /** Raw approval values are converted to save-vote shares totalling exactly 100%. */
   approvals: Record<string, number>
   savedId: string
+  /** Active Cupid pairs are rendered as one compact, shared-vote TV unit. */
+  pairs?: CupidArrowPair[]
   onDone: () => void
+}
+
+type PublicSaveDisplayUnit = {
+  id: string
+  members: Player[]
+  label: string
+  voteShare: number
+  color?: string
+}
+
+function buildPublicSaveDisplayUnits(
+  nominees: Player[],
+  voteShares: Record<string, number>,
+  pairs: CupidArrowPair[] = []
+): PublicSaveDisplayUnit[] {
+  if (pairs.length === 0) {
+    return nominees.map((player) => ({
+      id: player.id,
+      members: [player],
+      label: player.name,
+      voteShare: voteShares[player.id] ?? 0,
+    }))
+  }
+
+  const nomineeById = new Map(nominees.map((player) => [player.id, player]))
+  const consumedIds = new Set<string>()
+  const units: PublicSaveDisplayUnit[] = []
+  nominees.forEach((player) => {
+    if (consumedIds.has(player.id)) return
+    const pair = pairs.find((candidate) => candidate.memberIds.includes(player.id))
+    const members = pair
+      ? pair.memberIds
+          .map((id) => nomineeById.get(id))
+          .filter((member): member is Player => Boolean(member))
+      : [player]
+    members.forEach((member) => consumedIds.add(member.id))
+    units.push({
+      id: pair?.id ?? player.id,
+      members,
+      label: members.map((member) => member.name).join(' & '),
+      voteShare: members.reduce((sum, member) => sum + (voteShares[member.id] ?? 0), 0),
+      color: pair?.color,
+    })
+  })
+  return units
 }
 
 type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting'
@@ -30,17 +77,24 @@ function NormalPublicSaveReveal({
   nominees,
   voteShares,
   savedId,
+  pairs,
   onDone,
 }: {
   nominees: Player[]
   voteShares: Record<string, number>
   savedId: string
+  pairs?: CupidArrowPair[]
   onDone: () => void
 }) {
   const [phase, setPhase] = useState<AnimPhase>('entering')
   const [valuesRevealed, setValuesRevealed] = useState(false)
   const timersRef = useRef<number[]>([])
   const doneRef = useRef(false)
+  const displayUnits = buildPublicSaveDisplayUnits(nominees, voteShares, pairs)
+  const savedUnit = displayUnits.find((unit) =>
+    unit.members.some((member) => member.id === savedId)
+  )
+  const hasPairedUnits = displayUnits.some((unit) => unit.members.length > 1)
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((id) => window.clearTimeout(id))
@@ -78,24 +132,25 @@ function NormalPublicSaveReveal({
       className={`psr psr--${phase}`}
       role="status"
       aria-live="assertive"
-      aria-label={`Public Save: ${nominees.find((nominee) => nominee.id === savedId)?.name ?? ''} is saved`}
+      aria-label={`Public Save: ${savedUnit?.label ?? ''} ${savedUnit?.members.length === 2 ? 'are' : 'is'} saved`}
     >
       <div className="psr__panel">
         <div className="psr__heading">
           <span className="psr__heading-eyebrow">Public Save</span>
           <p className="psr__heading-sub">
-            Before safety battle, the player with highest public support is saved.
+            Before the safety battle, the {hasPairedUnits ? 'pair' : 'player'} with the highest
+            public support is saved.
           </p>
         </div>
 
         <div className="psr__nominees">
-          {nominees.map((player, index) => {
-            const isSaved = player.id === savedId
-            const voteShare = voteShares[player.id] ?? 0
+          {displayUnits.map((unit, index) => {
+            const isSaved = unit.members.some((member) => member.id === savedId)
+            const voteShare = unit.voteShare
             const formattedShare = formatShare(voteShare)
             return (
               <div
-                key={player.id}
+                key={unit.id}
                 className={[
                   'psr__nominee',
                   isSaved && (phase === 'saved' || phase === 'exiting')
@@ -112,13 +167,20 @@ function NormalPublicSaveReveal({
                     '--stagger': index,
                     '--pending-width': `${32 + index * 6}%`,
                     '--pending-delay': `${index * 140}ms`,
+                    '--pair-color': unit.color,
                   } as CSSProperties
                 }
               >
-                <div className="psr__avatar-wrap">
-                  <PlayerAvatar player={player} size="sm" />
+                <div
+                  className={`psr__avatar-wrap${unit.members.length > 1 ? ' psr__avatar-wrap--pair' : ''}`}
+                >
+                  {unit.members.map((member) => (
+                    <div className="psr__avatar-member" key={member.id}>
+                      <PlayerAvatar player={member} size="sm" />
+                    </div>
+                  ))}
                 </div>
-                <span className="psr__name">{player.name}</span>
+                <span className="psr__name">{unit.label}</span>
                 <div className="psr__bar-track">
                   <div
                     className={`psr__bar-motion${!valuesRevealed ? ' psr__bar-motion--pending' : ''}`}
@@ -133,7 +195,7 @@ function NormalPublicSaveReveal({
                               ? `${voteShare}%`
                               : 'var(--pending-width)',
                       }}
-                      aria-label={`${player.name} save vote: ${valuesRevealed ? formattedShare : 'pending reveal'}`}
+                      aria-label={`${unit.label} save vote: ${valuesRevealed ? formattedShare : 'pending reveal'}`}
                     />
                   </div>
                 </div>
@@ -158,6 +220,7 @@ export default function PublicSaveReveal({
   nominees,
   approvals,
   savedId,
+  pairs,
   onDone,
 }: PublicSaveRevealProps) {
   const currentState = store.getState()
@@ -165,6 +228,7 @@ export default function PublicSaveReveal({
     currentState.settings.gameUX.dramaMode === true && currentState.game.publicModeEnabled === true
   const nomineeIds = nominees.map((nominee) => nominee.id)
   const voteShares = normalisePublicSaveVoteShares(nomineeIds, approvals)
+  const displayUnits = buildPublicSaveDisplayUnits(nominees, voteShares, pairs)
 
   const handleDone = () => {
     // The established result announcement reads this same object. Mutating it
@@ -172,12 +236,13 @@ export default function PublicSaveReveal({
     Object.assign(approvals, voteShares)
 
     if (dramaModeEnabled) {
-      const winningShare = voteShares[savedId] ?? 0
+      const winningUnit = displayUnits.find((unit) =>
+        unit.members.some((member) => member.id === savedId)
+      )
+      const winningShare = winningUnit?.voteShare ?? voteShares[savedId] ?? 0
       const runnerUpShare = Math.max(
         0,
-        ...nomineeIds
-          .filter((nomineeId) => nomineeId !== savedId)
-          .map((nomineeId) => voteShares[nomineeId] ?? 0)
+        ...displayUnits.filter((unit) => unit.id !== winningUnit?.id).map((unit) => unit.voteShare)
       )
       completeDramaPublicSave(
         nomineeIds,
@@ -198,6 +263,7 @@ export default function PublicSaveReveal({
       nominees={nominees}
       voteShares={voteShares}
       savedId={savedId}
+      pairs={pairs}
       onDone={handleDone}
     />
   )

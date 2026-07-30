@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import type { Player } from '../../../types'
+import type { CupidArrowPair, Player } from '../../../types'
 import { store } from '../../../store/store'
 import { setGameUX } from '../../../store/settingsSlice'
 import { normalisePublicSaveVoteShares } from '../../../publicOpinion/PublicSaveService'
@@ -171,5 +171,38 @@ describe('PublicSaveReveal', () => {
         .map((element) => element.textContent)
         .filter(Boolean)
     ).toHaveLength(3)
+  })
+
+  it('groups six Cupid nominees into three readable pair cards with shared percentages', () => {
+    const cupidNominees = Array.from({ length: 6 }, (_, index) =>
+      makePlayer(`c${index + 1}`, `Cupid ${index + 1}`)
+    )
+    const pairs: CupidArrowPair[] = [
+      { id: 'pair-1', memberIds: ['c1', 'c2'], color: '#ff5d8f' },
+      { id: 'pair-2', memberIds: ['c3', 'c4'], color: '#5bbcff' },
+      { id: 'pair-3', memberIds: ['c5', 'c6'], color: '#ffc857' },
+    ]
+
+    render(
+      <PublicSaveReveal
+        nominees={cupidNominees}
+        approvals={{ c1: 70, c2: 70, c3: 50, c4: 50, c5: 30, c6: 30 }}
+        savedId="c1"
+        pairs={pairs}
+        onDone={vi.fn()}
+      />
+    )
+
+    expect(document.querySelectorAll('.psr__nominee')).toHaveLength(3)
+    expect(document.querySelectorAll('.psr__avatar-member')).toHaveLength(6)
+    expect(screen.getByText('Cupid 1 & Cupid 2')).toBeTruthy()
+    expect(screen.getAllByText('?? %')).toHaveLength(3)
+
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    expect(screen.queryByText('?? %')).toBeNull()
+    expect(screen.getByText('46.6%')).toBeTruthy()
   })
 })

@@ -32,6 +32,12 @@ import {
   loadEvictionVoteBreakdownUnlock,
   saveEvictionVoteBreakdownUnlock,
 } from '../../../features/evictionVoteBreakdownStorage'
+import {
+  expandCupidIds,
+  getCupidPair,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../../features/twists/cupidArrow'
 
 export const POST_VOTE_ANNOUNCEMENT_MS = 3600
 export const POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS = 400
@@ -184,11 +190,30 @@ export function useEvictionFlow({
   // Show vote results whenever they are available, including during a tie-break
   // wait so the house votes are always revealed before the LOH is prompted.
   const showVoteResults = Boolean(game.voteResults)
-  const voteResultsTallies = showVoteResults
-    ? game.players
-        .filter((p) => game.voteResults && p.id in game.voteResults)
-        .map((p) => ({ nominee: p, voteCount: game.voteResults![p.id] ?? 0 }))
-    : []
+  const voteResultsTallies = (() => {
+    if (!showVoteResults || !game.voteResults) return []
+    const resultIds = Object.keys(game.voteResults)
+    const seenUnits = new Set<string>()
+    return resultIds.flatMap((id) => {
+      const nominee = game.players.find((player) => player.id === id)
+      if (!nominee) return []
+      const pair = getCupidPair(game, id)
+      const unitId = isCupidArrowActive(game) && pair ? pair.id : `solo:${id}`
+      if (seenUnits.has(unitId)) return []
+      seenUnits.add(unitId)
+      const partnerId = isCupidArrowActive(game)
+        ? pair?.memberIds.find((memberId) => memberId !== id)
+        : null
+      return [
+        {
+          nominee,
+          partner: partnerId ? game.players.find((player) => player.id === partnerId) : undefined,
+          pairColor: pair?.color,
+          voteCount: game.voteResults![id] ?? 0,
+        },
+      ]
+    })
+  })()
   const voteResultsEvicteeIds = useMemo(
     () =>
       getOutcomeVisibleEvicteeIds({
@@ -271,6 +296,11 @@ export function useEvictionFlow({
       const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
       const defaultAnnouncement = (() => {
         const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
+        const evicteeUnitIds = expandCupidIds(game, [evictee.id])
+        const evicteeNames = evicteeUnitIds
+          .map((id) => game.players.find((player) => player.id === id)?.name)
+          .filter(Boolean)
+          .join(' and ')
         const hasTwoNominees = Object.keys(game.voteResults ?? {}).length === 2
         const otherVotes = Object.entries(game.voteResults ?? {}).reduce(
           (s, [id, count]) => (id !== evictee.id ? s + count : s),
@@ -280,7 +310,9 @@ export function useEvictionFlow({
           title: hasTwoNominees
             ? `By a vote of ${evicteeVotes} to ${otherVotes}`
             : `With ${evicteeVotes} vote${evicteeVotes === 1 ? '' : 's'}`,
-          subtitle: `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
+          subtitle: isCupidArrowActive(game)
+            ? `${evicteeNames || evictee.name}, Cupid's Arrow means you leave the house together.`
+            : `${evictee.name}, please say your goodbyes and leave through the Confessional's special exit.`,
         }
       })()
       const voteAnnouncement =
@@ -311,18 +343,7 @@ export function useEvictionFlow({
     proceedAfterVoteResults()
   }, [
     canOfferVoteBreakdown,
-    game.doubleEviction?.pendingSecondEviction?.evicteeId,
-    game.doubleEviction?.weekActive,
-    game.awaitingVoteDeductionPrompt,
-    game.lohId,
-    game.nomineeIds,
-    game.pendingEviction,
-    game.phase,
-    game.players,
-    game.publicModeEnabled,
-    game.votes,
-    game.voteResults,
-    game.week,
+    game,
     hasActiveVoteBreakdownUnlock,
     proceedAfterVoteResults,
     queueVoteBreakdownPrompt,
@@ -740,6 +761,14 @@ export function useEvictionFlow({
     const evicteeId = game.pendingEviction?.evicteeId
     if (!evicteeId) return
     const hasQueuedSecondEviction = Boolean(game.doubleEviction?.pendingSecondEviction)
+    const cupidPartnerId = isCupidArrowActive(game) ? getCupidPartnerId(game, evicteeId) : null
+    const hasQueuedPartnerEviction = Boolean(
+      cupidPartnerId &&
+      game.players.some(
+        (player) =>
+          player.id === cupidPartnerId && player.status !== 'evicted' && player.status !== 'jury'
+      )
+    )
     // Clear the overlay flag so AvatarTile returns to normal after the cinematic.
     dispatch(setEvictionOverlay(null))
     // Capture the phase before dispatch since finalizePendingEviction may change it.
@@ -748,7 +777,7 @@ export function useEvictionFlow({
     if (isFinal4) {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')
-    } else if (hasQueuedSecondEviction) {
+    } else if (hasQueuedSecondEviction || hasQueuedPartnerEviction) {
       // Keep the second double-eviction cinematic in the same flow so it gets
       // its own overlay mount and eviction stinger before the week advances.
     } else {
@@ -760,7 +789,7 @@ export function useEvictionFlow({
     }
     // Show the confessional breakdown prompt if it was flagged during vote-results
     // dismissal (post-eviction confessional mode).
-    if (isPostEvictionConfessionalModeRef.current) {
+    if (isPostEvictionConfessionalModeRef.current && !hasQueuedPartnerEviction) {
       if (autoRevealOwnEvictionVotesRef.current && postEvictionVoteSnapshotRef.current) {
         setPostEvictionVoteBreakdown(postEvictionVoteSnapshotRef.current)
         postEvictionVoteSnapshotRef.current = null
@@ -779,14 +808,7 @@ export function useEvictionFlow({
         setShowVoteBreakdownPrompt(true)
       }, POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
     }
-  }, [
-    dispatch,
-    game.doubleEviction?.pendingSecondEviction,
-    game.pendingEviction,
-    game.phase,
-    setFinal4Stage,
-    isMountedRef,
-  ])
+  }, [dispatch, game, setFinal4Stage, isMountedRef])
 
   return {
     showVoteBreakdownPrompt,

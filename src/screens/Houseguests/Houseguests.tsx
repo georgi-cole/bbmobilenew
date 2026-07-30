@@ -27,8 +27,8 @@ export default function Houseguests() {
   const houseguests = players.slice(0, effectiveCastSize).map((p) => {
     // Derive statuses from authoritative game-level fields
     const parts: string[] = []
-    if (lohId === p.id) parts.push('loh')
-    if (posWinnerId === p.id) parts.push('pos')
+    if (lohId === p.id || p.status.includes('loh')) parts.push('loh')
+    if (posWinnerId === p.id || p.status.includes('pos')) parts.push('pos')
     if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     if (Array.isArray(nomineeIds) && nomineeIds.includes(p.id)) parts.push('nominated')
     if (p.status === 'jury') parts.push('jury')

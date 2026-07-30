@@ -42,6 +42,11 @@ import {
 } from '../../../ai/competition'
 import { mulberry32 } from '../../../store/rng'
 import {
+  expandCupidIds,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../../features/twists/cupidArrow'
+import {
   BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
   advanceBattleBackAnnouncementStep,
   buildBattleBackFeedMessage,
@@ -225,40 +230,66 @@ export function useTwistFlow({
     isPublicModeEnabled(game.mode) &&
     game.phase === 'pre_veto_public_save' &&
     Boolean(game.awaitingPublicSave) &&
-    game.nomineeIds.length === 3 &&
+    game.nomineeIds.length === (isCupidArrowActive(game) ? 6 : 3) &&
     !pendingPublicSaveResult
 
   const publicSaveApprovals = useMemo(() => {
     const out: Record<string, number> = {}
     game.nomineeIds.forEach((id) => {
-      out[id] = publicOpinionProfiles[id]?.approval ?? 50
+      const partnerId = getCupidPartnerId(game, id)
+      const ownApproval = publicOpinionProfiles[id]?.approval ?? 50
+      const partnerApproval = partnerId
+        ? (publicOpinionProfiles[partnerId]?.approval ?? 50)
+        : ownApproval
+      out[id] = Math.round((ownApproval + partnerApproval) / 2)
     })
     return out
-  }, [game.nomineeIds, publicOpinionProfiles])
+  }, [game, publicOpinionProfiles])
 
-  const publicSaveWinnerId = useMemo(() => {
-    if (!showPublicSaveReveal) return null
-    const result = resolvePublicSaveNominee({
-      nomineeIds: game.nomineeIds,
-      profiles: publicOpinionProfiles,
+  const pairAdjustedPublicProfiles = useMemo(() => {
+    if (!isCupidArrowActive(game)) return publicOpinionProfiles
+    const adjusted = { ...publicOpinionProfiles }
+    game.nomineeIds.forEach((id) => {
+      const base = publicOpinionProfiles[id]
+      adjusted[id] = {
+        playerId: id,
+        approval: publicSaveApprovals[id] ?? 50,
+        previousApproval: base?.previousApproval ?? publicSaveApprovals[id] ?? 50,
+        seasonApprovals: base?.seasonApprovals ?? [],
+        completedDirectionCount: base?.completedDirectionCount ?? 0,
+        cumulativePositiveDelta: base?.cumulativePositiveDelta ?? 0,
+      }
     })
-    return result.savedId || null
-  }, [showPublicSaveReveal, game.nomineeIds, publicOpinionProfiles])
+    return adjusted
+  }, [game, publicOpinionProfiles, publicSaveApprovals])
+
+  const publicSaveResolution = useMemo(() => {
+    if (!showPublicSaveReveal) return null
+    return resolvePublicSaveNominee({
+      nomineeIds: game.nomineeIds,
+      profiles: pairAdjustedPublicProfiles,
+    })
+  }, [showPublicSaveReveal, game.nomineeIds, pairAdjustedPublicProfiles])
+  const publicSaveWinnerId = publicSaveResolution?.savedId || null
 
   const publicSaveResultAnnouncement = useMemo<Announcement | null>(() => {
     if (!pendingPublicSaveResult) return null
     const savedPlayer = game.players.find((player) => player.id === pendingPublicSaveResult.savedId)
     if (!savedPlayer) return null
-    const remainingNomineeNames = game.nomineeIds
-      .filter((id) => id !== pendingPublicSaveResult.savedId)
+    const savedIds = new Set(expandCupidIds(game, [pendingPublicSaveResult.savedId]))
+    const savedNames = [...savedIds]
       .map((id) => game.players.find((player) => player.id === id)?.name)
       .filter((name): name is string => Boolean(name))
-    const subtitle =
-      pendingPublicSaveResult.supportPercent != null && remainingNomineeNames.length === 2
-        ? `${savedPlayer.name} was saved with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support. ${remainingNomineeNames.join(' and ')} are still in danger.`
-        : remainingNomineeNames.length === 2
-          ? `${savedPlayer.name} was saved by the public. ${remainingNomineeNames.join(' and ')} are still in danger.`
-          : `${savedPlayer.name} was saved by the public.`
+    const remainingNomineeNames = game.nomineeIds
+      .filter((id) => !savedIds.has(id))
+      .map((id) => game.players.find((player) => player.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
+    const savedLabel = savedNames.join(' and ') || savedPlayer.name
+    const subtitle = `${savedLabel} ${savedNames.length > 1 ? 'were' : 'was'} saved${
+      pendingPublicSaveResult.supportPercent != null
+        ? ` with ${Math.round(pendingPublicSaveResult.supportPercent)}% of the public support`
+        : ' by the public'
+    }. ${remainingNomineeNames.join(', ')} are still in danger.`
     return {
       key: 'public_save_result',
       title: 'Public Save Result',
@@ -266,7 +297,7 @@ export function useTwistFlow({
       isLive: true,
       autoDismissMs: PUBLIC_SAVE_RESULT_DELAY_MS,
     }
-  }, [game.nomineeIds, game.players, pendingPublicSaveResult])
+  }, [game, pendingPublicSaveResult])
 
   const publicSaveCeremonyKey = pendingPublicSaveResult
     ? `w${game.week}-public-save-${pendingPublicSaveResult.savedId}`
@@ -278,11 +309,16 @@ export function useTwistFlow({
 
   const handlePublicSaveDone = useCallback(() => {
     if (!publicSaveWinnerId) return
+    const savedUnitIds = expandCupidIds(game, [publicSaveWinnerId])
+    const supportPercent = savedUnitIds.reduce(
+      (sum, id) => sum + (publicSaveResolution?.voteShareByPlayerId[id] ?? 0),
+      0
+    )
     setPendingPublicSaveResult({
       savedId: publicSaveWinnerId,
-      supportPercent: publicSaveApprovals[publicSaveWinnerId],
+      supportPercent,
     })
-  }, [publicSaveApprovals, publicSaveWinnerId])
+  }, [game, publicSaveResolution, publicSaveWinnerId])
 
   const handlePublicSaveResultDismiss = useCallback(() => {
     if (!pendingPublicSaveResult) return

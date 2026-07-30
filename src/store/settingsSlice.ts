@@ -87,6 +87,11 @@ export interface SettingsState {
      * override and the mission will trigger on that exact week_start entry.
      */
     secretMissionTriggerWeekOverride: number | null
+    /**
+     * DEBUG/TESTING ONLY — season number on which Cupid's Arrow activates
+     * immediately before the first LOH competition. Null disables scheduling.
+     */
+    cupidArrowSeasonOverride: number | null
   }
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -192,6 +197,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     secretMissionTriggerOverride: null,
     // DEBUG/TESTING ONLY — null means no forced trigger week is set.
     secretMissionTriggerWeekOverride: null,
+    cupidArrowSeasonOverride: null,
   },
   visual: {
     enableZoom: false,

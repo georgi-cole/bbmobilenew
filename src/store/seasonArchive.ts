@@ -6,44 +6,44 @@
  * `leaderboardScore` is computed from these fields using the scoring module.
  */
 export interface PlayerSeasonSummary {
-  playerId: string;
-  displayName: string;
+  playerId: string
+  displayName: string
   /** Null means explicitly no placement (e.g. evicted pre-jury). Undefined means not yet determined. */
-  finalPlacement?: number | null;
+  finalPlacement?: number | null
   /** Number of LOH competitions won this season. */
-  lohWins?: number;
+  lohWins?: number
   /** Number of POS competitions won this season. */
-  posWins?: number;
+  posWins?: number
   /** Total comps won (LOH + POS); kept for backward compatibility. */
-  compsWon?: number;
+  compsWon?: number
   /** Number of times the player was nominated for eviction. */
-  timesNominated?: number;
+  timesNominated?: number
   /** @deprecated Use timesNominated */
-  noms?: number;
+  noms?: number
   /** True if the player made the jury (status 'jury' at season end). */
-  madeJury?: boolean;
+  madeJury?: boolean
   /** Number of Battle Back competitions won (returned to house after eviction). */
-  battleBackWins?: number;
+  battleBackWins?: number
   /** True if the player survived a double eviction week (two evictions in one week). */
-  survivedDoubleEviction?: boolean;
+  survivedDoubleEviction?: boolean
   /** True if the player survived a triple eviction week (three evictions in one week). */
-  survivedTripleEviction?: boolean;
+  survivedTripleEviction?: boolean
   /** True if the player won the Public's Favorite Player vote. */
-  wonPublicFavorite?: boolean;
+  wonPublicFavorite?: boolean
   /** True if the player won the Final LOH (Part 3 of the Final 3 competition). */
-  wonFinalHoh?: boolean;
+  wonFinalHoh?: boolean
   /** Number of days the player remained in the house (alive). */
-  daysAlive?: number;
+  daysAlive?: number
   /** Number of weeks the player remained in the house (alive). */
-  weeksAlive?: number;
+  weeksAlive?: number
   /** True if the player was evicted at some point (including jury). */
-  isEvicted?: boolean;
+  isEvicted?: boolean
   /** Final public approval captured when the season ended. */
-  finalPublicApproval?: number;
+  finalPublicApproval?: number
   /** Wrap-up titles this player won in the season recap. */
-  titlesWon?: string[];
+  titlesWon?: string[]
   /** Computed total leaderboard score using the scoring module weights. */
-  leaderboardScore?: number;
+  leaderboardScore?: number
 }
 
 /**
@@ -52,26 +52,28 @@ export interface PlayerSeasonSummary {
  */
 export interface SeasonArchive {
   /** 1-based season number. */
-  seasonIndex: number;
+  seasonIndex: number
   /** UUID or timestamp-derived unique identifier for this season. */
-  seasonId: string;
+  seasonId: string
   /** ISO timestamp when the season started (optional). */
-  startAt?: string;
+  startAt?: string
   /** ISO timestamp when the season ended (optional). */
-  endAt?: string;
+  endAt?: string
   /** Optional human-readable season summary text. */
-  summaryText?: string;
+  summaryText?: string
   /** Per-player results. */
-  playerSummaries: PlayerSeasonSummary[];
+  playerSummaries: PlayerSeasonSummary[]
   /** Any rewards / achievements earned this season. */
-  rewardsEarned?: string[];
+  rewardsEarned?: string[]
+  /** True when Cupid's Arrow activated during this season. Used for its cooldown. */
+  cupidArrowActivated?: boolean
   /**
    * Week numbers where a double eviction occurred (2 players evicted in one week).
    * Used to award survivedDoubleEviction points to players who survived those weeks.
    */
-  doubleEvictionWeeks?: number[];
+  doubleEvictionWeeks?: number[]
   /**
    * Week numbers where a triple eviction occurred (3 players evicted in one week).
    */
-  tripleEvictionWeeks?: number[];
+  tripleEvictionWeeks?: number[]
 }

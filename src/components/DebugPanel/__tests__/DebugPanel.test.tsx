@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import DebugPanel from '../DebugPanel'
 import gameReducer from '../../../store/gameSlice'
 import socialReducer from '../../../social/socialSlice'
+import settingsReducer from '../../../store/settingsSlice'
 
 vi.mock('../FinaleControls.debug', () => ({
   default: () => null,
@@ -29,6 +30,7 @@ function makeStore() {
     reducer: {
       game: gameReducer,
       social: socialReducer,
+      settings: settingsReducer,
     },
   })
 }
@@ -55,7 +57,7 @@ describe('DebugPanel forced shock controls', () => {
         <MemoryRouter initialEntries={['/']}>
           <DebugRouteHarness />
         </MemoryRouter>
-      </Provider>,
+      </Provider>
     )
 
     expect(screen.queryByRole('complementary', { name: 'Debug Panel' })).toBeNull()
@@ -69,12 +71,19 @@ describe('DebugPanel forced shock controls', () => {
     const player = store.getState().game.players[0]
     render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}><DebugPanel /></MemoryRouter>
-      </Provider>,
+        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
+          <DebugPanel />
+        </MemoryRouter>
+      </Provider>
     )
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Player House Status' }), player.id)
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Player House Status' }),
+      player.id
+    )
     await user.click(screen.getByRole('button', { name: 'Set Tribunal' }))
-    expect(store.getState().game.players.find((candidate) => candidate.id === player.id)?.status).toBe('jury')
+    expect(
+      store.getState().game.players.find((candidate) => candidate.id === player.id)?.status
+    ).toBe('jury')
   })
 
   it('includes Back 2 the Game in the force shock dropdown and queues it', async () => {
@@ -86,7 +95,7 @@ describe('DebugPanel forced shock controls', () => {
         <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
           <DebugPanel />
         </MemoryRouter>
-      </Provider>,
+      </Provider>
     )
 
     const forceShockSelect = screen.getByRole('combobox', { name: 'Force Shock' })
@@ -108,7 +117,7 @@ describe('DebugPanel forced shock controls', () => {
         <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
           <DebugPanel />
         </MemoryRouter>
-      </Provider>,
+      </Provider>
     )
 
     const forceShockSelect = screen.getByRole('combobox', { name: 'Force Shock' })
@@ -130,7 +139,7 @@ describe('DebugPanel forced shock controls', () => {
         <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
           <DebugPanel />
         </MemoryRouter>
-      </Provider>,
+      </Provider>
     )
 
     const forceShockSelect = screen.getByRole('combobox', { name: 'Force Shock' })
@@ -141,5 +150,26 @@ describe('DebugPanel forced shock controls', () => {
     await user.click(screen.getByRole('button', { name: 'Queue' }))
 
     expect(store.getState().game.pendingForcedShock?.type).toBe('twinShock')
+  })
+
+  it("schedules Cupid's Arrow for an exact season", async () => {
+    const user = userEvent.setup()
+    const store = makeStore()
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/game?debug=1&qa=1']}>
+          <DebugPanel />
+        </MemoryRouter>
+      </Provider>
+    )
+
+    const seasonInput = screen.getByRole('spinbutton', { name: "Cupid's Arrow Season" })
+    await user.clear(seasonInput)
+    await user.type(seasonInput, '3')
+    await user.click(screen.getByRole('button', { name: 'Schedule' }))
+
+    expect(store.getState().settings.sim.cupidArrowSeasonOverride).toBe(3)
+    expect(store.getState().game.cupidArrow?.scheduledSeason).toBe(3)
   })
 })

@@ -5,6 +5,12 @@ import type { ActiveConfessionalDecision } from '../../../store/confessionalDeci
 import type { Player } from '../../../types'
 import { detectDebugMode } from '../../../utils/debugMode'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
+import {
+  expandCupidIds,
+  getCupidPair,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../../features/twists/cupidArrow'
 
 interface UseLohFlowOptions {
   game: RootState['game']
@@ -39,11 +45,17 @@ export function useLohFlow({
 
   const advanceHohKey = useMemo(() => {
     if (game.phase !== 'loh_results' || !game.lohId) return ''
-    // Only trigger when the human was the outgoing LOH (prevHohId === human id)
+    // Only trigger when the human or their Cupid partner was the outgoing LOH
     // and the winner ceremony was NOT already shown by MinigameHost.
-    if (!game.prevHohId || game.prevHohId !== humanPlayer?.id) return ''
+    if (
+      !game.prevHohId ||
+      (game.prevHohId !== humanPlayer?.id &&
+        getCupidPartnerId(game, game.prevHohId) !== humanPlayer?.id)
+    ) {
+      return ''
+    }
     return `w${game.week}-hoh-${game.lohId}`
-  }, [game.phase, game.lohId, game.week, game.prevHohId, humanPlayer?.id])
+  }, [game, humanPlayer?.id])
 
   const advanceHohCeremonyEligible = advanceHohKey !== '' && advanceHohKey !== advanceHohConsumedKey
 
@@ -54,12 +66,22 @@ export function useLohFlow({
   const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers])
   const hohCompParticipants = useMemo(() => {
     if (game.phase !== 'loh_comp' || !game.prevHohId) return aliveIds
-    return aliveIds.filter((id) => id !== game.prevHohId)
-  }, [game.phase, game.prevHohId, aliveIds])
+    const outgoingIds = new Set(expandCupidIds(game, [game.prevHohId]))
+    return aliveIds.filter((id) => !outgoingIds.has(id))
+  }, [game, aliveIds])
 
-  const humanIsHoH = Boolean(humanPlayer && game.lohId === humanPlayer.id)
+  const humanIsHoH = Boolean(
+    humanPlayer &&
+    (game.lohId === humanPlayer.id || getCupidPartnerId(game, game.lohId) === humanPlayer.id)
+  )
   const humanIsOutgoingHoh =
-    game.phase === 'loh_comp' && !!game.prevHohId && game.prevHohId === humanPlayer?.id
+    game.phase === 'loh_comp' &&
+    !!game.prevHohId &&
+    Boolean(
+      humanPlayer &&
+      (game.prevHohId === humanPlayer.id ||
+        getCupidPartnerId(game, game.prevHohId) === humanPlayer.id)
+    )
 
   // Warning modal state: shown once per week when the human is the outgoing LOH.
   // Tracks which week the warning was dismissed so it resets automatically each week.
@@ -97,35 +119,36 @@ export function useLohFlow({
     game.phase === 'nomination_results' && Boolean(game.awaitingNominations) && !showNomAnim
   const canUsePublicNomineeRule =
     game.publicModeEnabled === true && game.doubleEviction?.weekActive !== true
-  const nominationDangerLockedId =
+  const nominationDangerLockedIds =
     showNominationDangerSignals && canUsePublicNomineeRule
-      ? (game.lastHohCompFinisherId ?? null)
-      : null
+      ? expandCupidIds(game, game.lastHohCompFinisherId ? [game.lastHohCompFinisherId] : [])
+      : []
 
   const nomAnimPlayers = useMemo(() => {
     if (showHumanNomAnim) {
-      const base = pendingNominees
+      const base = expandCupidIds(game, pendingNominees)
         .map((id) => game.players.find((p) => p.id === id))
         .filter(Boolean) as Player[]
       // When Public mode is active and this is not a Double Eviction, include the auto-third nominee.
       const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
       if (autoId && !pendingNominees.includes(autoId)) {
         const autoPlayer = game.players.find((p) => p.id === autoId)
-        if (autoPlayer) return [...base, autoPlayer]
+        if (autoPlayer) {
+          const expandedAuto = expandCupidIds(game, [autoId])
+            .map((id) => game.players.find((player) => player.id === id))
+            .filter((player): player is Player => Boolean(player))
+          return [
+            ...base,
+            ...expandedAuto.filter((player) => !base.some((p) => p.id === player.id)),
+          ]
+        }
       }
       return base
     }
     return game.nomineeIds
       .map((id) => game.players.find((p) => p.id === id))
       .filter(Boolean) as Player[]
-  }, [
-    showHumanNomAnim,
-    pendingNominees,
-    game.players,
-    canUsePublicNomineeRule,
-    game.lastHohCompFinisherId,
-    game.nomineeIds,
-  ])
+  }, [game, showHumanNomAnim, pendingNominees, canUsePublicNomineeRule])
 
   // Build CeremonyOverlay tiles for nominations: ❓ badges fly to nominee tiles.
   // Tile rects are resolved lazily by the CeremonyOverlay via getTileRect
@@ -148,7 +171,24 @@ export function useLohFlow({
     !showNomAnim &&
     !activeConfessionalDecision
 
-  const nomineeOptions = alivePlayers.filter((p) => p.id !== game.lohId)
+  const nomineeOptions = (() => {
+    const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
+    const candidates = alivePlayers.filter((player) => !lohIds.has(player.id))
+    if (!isCupidArrowActive(game)) return candidates
+    const seenPairs = new Set<string>()
+    return candidates.filter((player) => {
+      const key = getCupidPair(game, player.id)?.id ?? `solo:${player.id}`
+      if (seenPairs.has(key)) return false
+      seenPairs.add(key)
+      return true
+    })
+  })()
+  const autoNomineeOptionId =
+    canUsePublicNomineeRule && game.lastHohCompFinisherId
+      ? (nomineeOptions.find((player) =>
+          expandCupidIds(game, [game.lastHohCompFinisherId!]).includes(player.id)
+        )?.id ?? game.lastHohCompFinisherId)
+      : undefined
 
   // Compact label for the forced auto-nominee option in the nomination picker.
   // 'survival' comps show "First out"; scored/unknown comps show "Lowest Score".
@@ -165,17 +205,11 @@ export function useLohFlow({
       console.log('NOMINATION_TRIGGERED', ids, { currentUserIsHoh, screen: 'GameScreen' })
       // Pre-consume the exact key that commitNominees will produce.
       const autoId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
-      const fullIds = autoId && !ids.includes(autoId) ? [...ids, autoId] : ids
+      const fullIds = expandCupidIds(game, autoId && !ids.includes(autoId) ? [...ids, autoId] : ids)
       setAiNomAnimConsumedKey(`w${game.week}-${[...fullIds].sort().join(',')}`)
       setPendingNominees(ids)
     },
-    [
-      humanIsHoH,
-      game.week,
-      canUsePublicNomineeRule,
-      game.lastHohCompFinisherId,
-      setAiNomAnimConsumedKey,
-    ]
+    [game, humanIsHoH, canUsePublicNomineeRule, setAiNomAnimConsumedKey]
   )
 
   const handleNomAnimDone = useCallback(() => {
@@ -198,7 +232,7 @@ export function useLohFlow({
     // While the human LOH animation is playing, the reducer hasn't committed
     // nominationContext yet, so derive the pills from the pending picks.
     if (showHumanNomAnim && pendingNominees.length > 0) {
-      pendingNominees.forEach((id) => {
+      expandCupidIds(game, pendingNominees).forEach((id) => {
         labels[id] = 'LOH Nominee'
       })
       if (
@@ -206,7 +240,9 @@ export function useLohFlow({
         game.lastHohCompFinisherId &&
         !pendingNominees.includes(game.lastHohCompFinisherId)
       ) {
-        labels[game.lastHohCompFinisherId] = 'Last in LOH Comp'
+        expandCupidIds(game, [game.lastHohCompFinisherId]).forEach((id) => {
+          labels[id] = 'Last in LOH Comp'
+        })
       }
       return labels
     }
@@ -217,16 +253,12 @@ export function useLohFlow({
       labels[id] = 'LOH Nominee'
     })
     if (ctx.autoNomineeId && !ctx.hohNomineeIds.includes(ctx.autoNomineeId)) {
-      labels[ctx.autoNomineeId] = 'Last in LOH Comp'
+      expandCupidIds(game, [ctx.autoNomineeId]).forEach((id) => {
+        labels[id] = 'Last in LOH Comp'
+      })
     }
     return labels
-  }, [
-    showHumanNomAnim,
-    pendingNominees,
-    canUsePublicNomineeRule,
-    game.lastHohCompFinisherId,
-    game.nominationContext,
-  ])
+  }, [game, showHumanNomAnim, pendingNominees, canUsePublicNomineeRule])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.
@@ -274,13 +306,14 @@ export function useLohFlow({
     showHumanNomAnim,
     showNomAnim,
     showNominationDangerSignals,
-    nominationDangerLockedId,
+    nominationDangerLockedIds,
     nomAnimPlayers,
     nomCeremonyTileIds,
     lohCeremonyTileId,
     shouldShowNominationCeremony,
     showNominationsModal,
     nomineeOptions,
+    autoNomineeOptionId,
     autoNomineeLabel,
     handleCommitNominees,
     handleNomAnimDone,

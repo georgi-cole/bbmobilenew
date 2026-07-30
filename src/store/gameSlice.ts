@@ -77,6 +77,18 @@ import {
 } from '../features/twists/doubleEvictionTieUtils'
 import { buildDayStartShockSelection } from '../features/twists/dayStartShock'
 import {
+  areDistinctCupidPairs,
+  createCupidArrowPairs,
+  CUPID_ARROW_BREAK_AFTER_PAIRS,
+  expandCupidIds,
+  getCupidPair,
+  getCupidPartnerId,
+  isCupidArrowActive,
+  isCupidArrowTwistLocked,
+  isSameCupidPair,
+  shouldScheduleCupidArrowSeason,
+} from '../features/twists/cupidArrow'
+import {
   createInitialTwinShockState,
   resolveTwinShockTurn,
   TWIN_SHOCK_ALI_ID,
@@ -217,6 +229,7 @@ const HOUSEGUEST_POOL = HOUSEGUESTS.map((hg) => ({
   id: hg.id,
   name: hg.name,
   avatar: hg.sex === 'Female' ? '👩' : '🧑',
+  sex: hg.sex,
 }))
 
 type SecretMissionTaskBuildResult = {
@@ -355,8 +368,12 @@ function nextSeasonNumber(archives: SeasonArchive[]): number {
  * each new season always uses the latest persisted configuration rather than
  * stale module-scope values.
  */
-export function createInitialGameState(options?: { twinShockConsumed?: boolean }): GameState {
+export function createInitialGameState(options?: {
+  twinShockConsumed?: boolean
+  seed?: number
+}): GameState {
   const twinShockConsumed = options?.twinShockConsumed === true
+  const seed = options?.seed ?? 42
   const freshPlayers = buildInitialPlayers(twinShockConsumed)
   const freshSettings = loadSettings()
   // Guest mode never persists archives — treat as an empty history so guest
@@ -366,12 +383,18 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
     ? []
     : (loadSeasonArchives(archiveKeyForActiveProfile()) ?? [])
   const season = nextSeasonNumber(seasonArchives)
+  const cupidArrowIsScheduled = shouldScheduleCupidArrowSeason({
+    season,
+    seasonArchives,
+    seed,
+    seasonOverride: freshSettings.sim.cupidArrowSeasonOverride,
+  })
   return {
     gameId: crypto.randomUUID(),
     season,
     week: 1,
     phase: 'week_start',
-    seed: 42,
+    seed,
     lohId: null,
     lohSocialPlan: null,
     currentWeekNominationRecord: null,
@@ -475,6 +498,15 @@ export function createInitialGameState(options?: { twinShockConsumed?: boolean }
       awaitingPublicBreaker: false,
       resultDisplay: null,
     },
+    cupidArrow: {
+      scheduledSeason: cupidArrowIsScheduled ? season : null,
+      status: cupidArrowIsScheduled ? 'scheduled' : 'inactive',
+      activatedSeason: null,
+      activatedWeek: null,
+      pairs: [],
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
+    },
     coLohIds: null,
     awaitingCoLohNomination: false,
     coLohNomineeByCoLohId: null,
@@ -571,6 +603,220 @@ function addPovProtectedId(state: GameState, playerId: string | null | undefined
   state.povProtectedIds = [...ids]
 }
 
+function getCupidRoleIds(state: GameState, playerId: string | null | undefined): string[] {
+  if (!playerId) return []
+  return expandCupidIds(state, [playerId]).filter((id) => {
+    const player = state.players.find((candidate) => candidate.id === id)
+    return player != null && player.status !== 'evicted' && player.status !== 'jury'
+  })
+}
+
+function getCupidHumanCoholder(
+  state: GameState,
+  holderId: string | null | undefined
+): Player | undefined {
+  const roleIds = new Set(getCupidRoleIds(state, holderId))
+  return state.players.find((player) => player.isUser && roleIds.has(player.id))
+}
+
+function syncCupidRoleStatuses(state: GameState) {
+  if (!isCupidArrowActive(state)) return
+  const lohIds = new Set(getCupidRoleIds(state, state.lohId))
+  const posIds = new Set(getCupidRoleIds(state, state.posWinnerId))
+  const nomineeIds = new Set(state.nomineeIds)
+  state.players.forEach((player) => {
+    if (player.status === 'evicted' || player.status === 'jury') return
+    const isLoh = lohIds.has(player.id)
+    const isPos = posIds.has(player.id)
+    const isNominee = nomineeIds.has(player.id)
+    if (isNominee && isPos) player.status = 'nominated+pos'
+    else if (isNominee) player.status = 'nominated'
+    else if (isLoh && isPos) player.status = 'loh+pos'
+    else if (isLoh) player.status = 'loh'
+    else if (isPos) player.status = 'pos'
+    else player.status = 'active'
+  })
+}
+
+function expandCupidNominees(state: GameState) {
+  if (!isCupidArrowActive(state)) return
+  const before = new Set(state.nomineeIds)
+  const expanded = expandCupidIds(state, state.nomineeIds)
+  state.nomineeIds = expanded
+  expanded.forEach((id) => {
+    if (!before.has(id)) incrementTimesNominated(state, id)
+  })
+  syncCupidRoleStatuses(state)
+}
+
+function removeCupidNomineeUnit(state: GameState, saveId: string): string[] {
+  const removedIds = expandCupidIds(state, [saveId]).filter((id) => state.nomineeIds.includes(id))
+  state.nomineeIds = state.nomineeIds.filter((id) => !removedIds.includes(id))
+  syncCupidRoleStatuses(state)
+  return removedIds
+}
+
+function collapseCupidCandidates(state: GameState, players: Player[]): Player[] {
+  if (!isCupidArrowActive(state)) return players
+  const seen = new Set<string>()
+  return players.filter((player) => {
+    const key = getCupidPair(state, player.id)?.id ?? `solo:${player.id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function activateCupidArrowForSeason(state: GameState) {
+  if (state.cupidArrow?.status !== 'scheduled' || state.season !== state.cupidArrow.scheduledSeason)
+    return
+  const pairs = createCupidArrowPairs(state.players, state.seed)
+  if (pairs.length < 2) {
+    state.cupidArrow.status = 'inactive'
+    return
+  }
+  state.cupidArrow.status = 'active'
+  state.cupidArrow.activatedSeason = state.season
+  state.cupidArrow.activatedWeek = state.week
+  state.cupidArrow.pairs = pairs
+  state.cupidArrow.eliminatedPairCount = 0
+  state.cupidArrow.pendingPartnerEvictionId = null
+  state.twistActive = true
+  state.twistActivatedThisWeek = true
+  state.history = [
+    ...(state.history ?? []),
+    {
+      type: 'cupidArrow',
+      week: state.week,
+      data: { pairs: pairs.map((pair) => pair.memberIds) },
+      timestamp: Date.now(),
+    },
+  ]
+  const pairNames = pairs
+    .map((pair) =>
+      pair.memberIds
+        .map((id) => state.players.find((player) => player.id === id)?.name ?? id)
+        .join(' & ')
+    )
+    .join(' · ')
+  pushEvent(
+    state,
+    `🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: ${pairNames}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘`,
+    'twist',
+    { major: 'cupid_arrow' }
+  )
+}
+
+function breakCupidArrowSpell(state: GameState) {
+  if (!isCupidArrowActive(state) || !state.cupidArrow) return
+  state.cupidArrow.status = 'broken'
+  state.cupidArrow.pendingPartnerEvictionId = null
+  state.twistActive = false
+  pushEvent(
+    state,
+    `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
+    'twist',
+    { major: 'cupid_arrow_broken' }
+  )
+}
+
+function resolvePairAwarePublicSave(rootState: RootState) {
+  const { game } = rootState
+  const profiles = rootState.publicOpinion?.profiles ?? {}
+  if (!isCupidArrowActive(game)) {
+    return resolvePublicSaveNominee({ nomineeIds: game.nomineeIds, profiles })
+  }
+
+  const adjustedProfiles: typeof profiles = { ...profiles }
+  game.nomineeIds.forEach((id) => {
+    const partnerId = getCupidPartnerId(game, id)
+    const base = profiles[id]
+    const ownApproval = base?.approval ?? 50
+    const partnerApproval = partnerId ? (profiles[partnerId]?.approval ?? 50) : ownApproval
+    const pairApproval = Math.round((ownApproval + partnerApproval) / 2)
+    adjustedProfiles[id] = {
+      playerId: id,
+      approval: pairApproval,
+      previousApproval: base?.previousApproval ?? pairApproval,
+      seasonApprovals: base?.seasonApprovals ?? [],
+      completedDirectionCount: base?.completedDirectionCount ?? 0,
+      cumulativePositiveDelta: base?.cumulativePositiveDelta ?? 0,
+    }
+  })
+  return resolvePublicSaveNominee({
+    nomineeIds: game.nomineeIds,
+    profiles: adjustedProfiles,
+  })
+}
+
+function resolveCupidPairEviction(state: GameState): boolean {
+  if (!isCupidArrowActive(state)) return false
+  const units = new Map<string, string[]>()
+  state.nomineeIds.forEach((id) => {
+    const pair = getCupidPair(state, id)
+    const key = pair?.id ?? `solo:${id}`
+    const current = units.get(key) ?? []
+    if (!current.includes(id)) current.push(id)
+    units.set(key, current)
+  })
+  if (units.size === 0) return true
+
+  const directCounts: Record<string, number> = Object.fromEntries(
+    state.nomineeIds.map((id) => [id, 0])
+  )
+  Object.values(state.votes ?? {}).forEach((id) => {
+    if (id in directCounts) directCounts[id] += 1
+  })
+  const unitTotals = [...units.entries()].map(([key, memberIds]) => ({
+    key,
+    memberIds,
+    total: memberIds.reduce((sum, id) => sum + (directCounts[id] ?? 0), 0),
+  }))
+  const maxVotes = Math.max(...unitTotals.map((unit) => unit.total))
+  const topUnits = unitTotals.filter((unit) => unit.total === maxVotes)
+  state.voteResults = Object.fromEntries(
+    unitTotals.flatMap((unit) => unit.memberIds.map((id) => [id, unit.total]))
+  )
+
+  const queueUnit = (unit: (typeof unitTotals)[number], prefix = '') => {
+    const primaryId =
+      [...unit.memberIds].sort((a, b) => (directCounts[b] ?? 0) - (directCounts[a] ?? 0))[0] ??
+      unit.memberIds[0]
+    const names = formatNameList(
+      unit.memberIds.map((id) => state.players.find((player) => player.id === id)?.name ?? id)
+    )
+    state.pendingEviction = {
+      evicteeId: primaryId,
+      evictionMessage: `${prefix}${names}, Cupid's Arrow means you are eliminated together. 💔`,
+    }
+  }
+
+  if (topUnits.length === 1) {
+    queueUnit(topUnits[0])
+    return true
+  }
+
+  const tiedRepresentativeIds = topUnits.map((unit) => unit.memberIds[0])
+  const tieBreaker =
+    getCupidHumanCoholder(state, state.lohId) ??
+    state.players.find((player) => player.id === state.lohId)
+  if (tieBreaker?.isUser) {
+    state.awaitingTieBreak = true
+    state.tiedNomineeIds = tiedRepresentativeIds
+    pushEvent(
+      state,
+      `The nominated pairs are tied. ${tieBreaker.name}, your LOH pair must decide which pair leaves. 🗳️`,
+      'game'
+    )
+    return true
+  }
+
+  const rng = mulberry32((state.seed ^ 0xc0a1d71e) >>> 0)
+  const chosen = topUnits[Math.floor(rng() * topUnits.length)]
+  queueUnit(chosen, `${tieBreaker?.name ?? 'The LOH'} breaks the tie. `)
+  return true
+}
+
 function getReplacementEligiblePlayers(
   state: GameState,
   alivePlayers: Player[],
@@ -578,15 +824,24 @@ function getReplacementEligiblePlayers(
   options: { allowLoh?: boolean; actorId?: string | null } = {}
 ): Player[] {
   const actorId = options.actorId === undefined ? state.lohId : options.actorId
-  const baseEligible = alivePlayers.filter(
-    (pl) =>
-      (options.allowLoh === true || pl.id !== state.lohId) &&
-      pl.id !== state.posWinnerId &&
-      !state.nomineeIds.includes(pl.id) &&
-      canPlayerTargetPlayer(state, actorId, pl.id)
+  const lohRoleIds = new Set(getCupidRoleIds(state, state.lohId))
+  const posRoleIds = new Set(getCupidRoleIds(state, state.posWinnerId))
+  const baseEligible = collapseCupidCandidates(
+    state,
+    alivePlayers.filter((pl) => {
+      const unitIds = expandCupidIds(state, [pl.id])
+      return (
+        (options.allowLoh === true || unitIds.every((id) => !lohRoleIds.has(id))) &&
+        unitIds.every((id) => !posRoleIds.has(id)) &&
+        unitIds.every((id) => !state.nomineeIds.includes(id)) &&
+        canPlayerTargetPlayer(state, actorId, pl.id)
+      )
+    })
   )
   const protectedIds = new Set(getPovProtectedIds(state))
-  const nonProtected = baseEligible.filter((player) => !protectedIds.has(player.id))
+  const nonProtected = baseEligible.filter((player) =>
+    expandCupidIds(state, [player.id]).every((id) => !protectedIds.has(id))
+  )
   return nonProtected.length >= neededCount ? nonProtected : baseEligible
 }
 
@@ -603,15 +858,21 @@ function isEligibleReplacementNominee(
 }
 
 function appendNominee(state: GameState, playerId: string) {
-  if (state.nomineeIds.includes(playerId)) return
-  state.nomineeIds.push(playerId)
-  const player = state.players.find((candidate) => candidate.id === playerId)
-  if (player) {
-    if (player.id === state.lohId) player.status = 'loh'
-    else if (player.id === state.posWinnerId) player.status = 'nominated+pos'
-    else player.status = 'nominated'
+  const nomineeIds = expandCupidIds(state, [playerId])
+  nomineeIds.forEach((id) => {
+    if (state.nomineeIds.includes(id)) return
+    state.nomineeIds.push(id)
+    incrementTimesNominated(state, id)
+  })
+  syncCupidRoleStatuses(state)
+  if (!isCupidArrowActive(state)) {
+    const player = state.players.find((candidate) => candidate.id === playerId)
+    if (player) {
+      if (player.id === state.lohId) player.status = 'loh'
+      else if (player.id === state.posWinnerId) player.status = 'nominated+pos'
+      else player.status = 'nominated'
+    }
   }
-  incrementTimesNominated(state, playerId)
 }
 
 function getAiThreatScore(
@@ -893,6 +1154,59 @@ function evictedStatus(state: GameState): 'evicted' | 'jury' {
   return evictedSoFar < nonJuryEvictions ? 'evicted' : 'jury'
 }
 
+function archiveSeasonExitContext(state: GameState, playerId: string) {
+  const alreadyArchived = (state.history ?? []).some(
+    (event) =>
+      event.type === 'seasonExit' && event.week === state.week && event.data.playerId === playerId
+  )
+  if (alreadyArchived) return
+
+  const roundSnapshot =
+    state.pendingExitContext?.week === state.week ? state.pendingExitContext : null
+  const aliveCount = state.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury'
+  ).length
+  const isFinalThreeDecision =
+    aliveCount === 3 && state.nomineeIds.length === 2 && Boolean(state.lohId)
+  const decisionMakerId =
+    state.phase === 'final4_eviction'
+      ? state.posWinnerId
+      : state.phase === 'final3_decision' || isFinalThreeDecision
+        ? state.lohId
+        : null
+  const leaderIds =
+    roundSnapshot?.leaderIds ??
+    (state.coLohIds?.length ? [...state.coLohIds] : state.lohId ? [state.lohId] : [])
+  const exitMethod =
+    state.dayStartShock?.targetId === playerId
+      ? 'shock'
+      : isCupidArrowActive(state) && state.cupidArrow?.pendingPartnerEvictionId === playerId
+        ? 'linkedExit'
+        : decisionMakerId
+          ? 'directDecision'
+          : state.doubleEviction?.weekActive
+            ? 'doubleExit'
+            : 'vote'
+
+  state.history = [
+    ...(state.history ?? []),
+    {
+      type: 'seasonExit',
+      week: state.week,
+      data: {
+        playerId,
+        leaderIds,
+        nomineeIds: roundSnapshot?.nomineeIds ?? [...state.nomineeIds],
+        votesByVoterId: roundSnapshot?.votesByVoterId ?? { ...(state.votes ?? {}) },
+        voteCounts: roundSnapshot?.voteCounts ?? { ...(state.voteResults ?? {}) },
+        decisionMakerId,
+        exitMethod,
+      },
+      timestamp: Date.now(),
+    },
+  ]
+}
+
 /**
  * Stamp the explicit season placement for a player at the moment they leave
  * the house. This gives finale recap / archive views a reliable ordering
@@ -903,6 +1217,8 @@ function evictedStatus(state: GameState): 'evicted' | 'jury' {
 function assignSeasonPlacementOnExit(state: GameState, playerId: string) {
   const player = state.players.find((p) => p.id === playerId)
   if (!player) return
+
+  archiveSeasonExitContext(state, playerId)
 
   // Always stamp the eviction week (even for Battle Back returnees evicted a
   // second time — their evictedAtWeek is cleared in completeBattleBack so this
@@ -1016,7 +1332,7 @@ function canPlayerTargetPlayer(
   actorId: string | null | undefined,
   targetId: string
 ): boolean {
-  return !isTwinAlliancePair(state, actorId, targetId)
+  return !isTwinAlliancePair(state, actorId, targetId) && !isSameCupidPair(state, actorId, targetId)
 }
 
 function usesPluralPlayerGrammar(
@@ -1110,6 +1426,7 @@ function queueTwinShockConfessional(
 }
 
 function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
+  if (isCupidArrowActive(state)) return false
   if (!canHumanReceiveTwinShockConfessional(state)) return false
   const twinShock = state.twinShock ?? createInitialTwinShockState()
   const forcedTwinShock =
@@ -1373,7 +1690,8 @@ function resolveCompetitionParticipants(state: GameState): string[] {
   const alive = getAlivePlayers(state)
   const aliveIds = alive.map((p) => p.id)
   if (state.phase === 'loh_comp' && state.prevHohId) {
-    const eligible = alive.filter((p) => p.id !== state.prevHohId)
+    const outgoingLohIds = new Set(getCupidRoleIds(state, state.prevHohId))
+    const eligible = alive.filter((p) => !outgoingLohIds.has(p.id))
     if (eligible.length > 0) {
       return eligible.map((p) => p.id)
     }
@@ -1413,8 +1731,9 @@ function applyLohWinner(state: GameState, winnerId: string, source?: string) {
     })
   }
   state.lohId = winnerId
+  const lohIds = new Set(getCupidRoleIds(state, winnerId))
   state.players.forEach((p) => {
-    if (p.id === winnerId) p.status = 'loh'
+    if (lohIds.has(p.id)) p.status = 'loh'
     else if (p.status === 'loh') p.status = 'active'
   })
   const winner = state.players.find((p) => p.id === winnerId)
@@ -1422,7 +1741,15 @@ function applyLohWinner(state: GameState, winnerId: string, source?: string) {
     if (!winner.stats) winner.stats = { lohWins: 0, posWins: 0, timesNominated: 0 }
     winner.stats.lohWins += 1
   }
-  pushEvent(state, `${winner?.name ?? winnerId} has won Leader of the House! 👑`, 'game')
+  const partnerId = getCupidPartnerId(state, winnerId)
+  const partner = state.players.find((player) => player.id === partnerId)
+  pushEvent(
+    state,
+    partner
+      ? `${winner?.name ?? winnerId} won Leader of the House, making ${partner.name} co-LOH under Cupid's Arrow! 👑💘`
+      : `${winner?.name ?? winnerId} has won Leader of the House! 👑`,
+    'game'
+  )
 }
 
 /**
@@ -1431,15 +1758,28 @@ function applyLohWinner(state: GameState, winnerId: string, source?: string) {
  */
 function applyPosWinner(state: GameState, winnerId: string, alive: Player[]): Phase {
   state.posWinnerId = winnerId
+  const posIds = new Set(getCupidRoleIds(state, winnerId))
   const p = state.players.find((pl) => pl.id === winnerId)
+  state.players.forEach((player) => {
+    if (!posIds.has(player.id)) return
+    if (player.status === 'loh') player.status = 'loh+pos'
+    else if (player.status === 'nominated') player.status = 'nominated+pos'
+    else player.status = 'pos'
+  })
   if (p) {
-    if (p.status === 'loh') p.status = 'loh+pos'
-    else if (p.status === 'nominated') p.status = 'nominated+pos'
-    else p.status = 'pos'
     if (!p.stats) p.stats = { lohWins: 0, posWins: 0, timesNominated: 0 }
     p.stats.posWins += 1
   }
-  pushEvent(state, `${p?.name ?? winnerId} has won the Power of Safety! 🎭`, 'game')
+  const partnerId = getCupidPartnerId(state, winnerId)
+  const partner = state.players.find((player) => player.id === partnerId)
+  if (partnerId) addPovProtectedId(state, partnerId)
+  pushEvent(
+    state,
+    partner
+      ? `${p?.name ?? winnerId} won the Power of Safety. ${partner.name} also receives the immunity badge and cannot be named as a replacement! 🎭💘`
+      : `${p?.name ?? winnerId} has won the Power of Safety! 🎭`,
+    'game'
+  )
 
   // ── Final 4 bypass (skip ceremony; POS holder has sole eviction vote) ──
   // This rule always applies at Final 4 regardless of any config flags.
@@ -1611,6 +1951,38 @@ export function chooseAiEvictionVote(
 
   scored.sort((a, b) => b.score - a.score || a.nomineeId.localeCompare(b.nomineeId))
   return scored[0].nomineeId
+}
+
+function chooseCupidPairEvictionVote(
+  state: GameState,
+  voterIds: string[],
+  nomineeIds: string[],
+  gameSeed: number
+): string {
+  const candidatePlayers = collapseCupidCandidates(
+    state,
+    nomineeIds
+      .map((id) => state.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player))
+  )
+  const candidateIds = candidatePlayers.map((player) => player.id)
+  const effectiveCandidateIds = candidateIds.length > 0 ? candidateIds : nomineeIds
+  const preferences = voterIds.map((voterId) =>
+    chooseAiEvictionVote(state, voterId, effectiveCandidateIds, gameSeed)
+  )
+  const preferredPairIds = preferences.map(
+    (targetId) => getCupidPair(state, targetId)?.id ?? `solo:${targetId}`
+  )
+  if (preferredPairIds.every((pairId) => pairId === preferredPairIds[0])) return preferences[0]
+
+  const consensusRng = mulberry32(
+    (gameSeed ^
+      hashString(
+        `pair-vote:${state.week}:${[...voterIds].sort().join('|')}:${preferences.join('|')}`
+      )) >>>
+      0
+  )
+  return preferences[Math.floor(consensusRng() * preferences.length)]
 }
 
 const gameSlice = createSlice({
@@ -1824,7 +2196,8 @@ const gameSlice = createSlice({
         // Priority:
         //   1. lastPlaceId explicitly supplied by the game component (authoritative)
         //   2. Score-based derivation (fallback)
-        const nonWinners = session.participants.filter((id) => id !== winnerId)
+        const winnerUnitIds = new Set(getCupidRoleIds(state, winnerId))
+        const nonWinners = session.participants.filter((id) => !winnerUnitIds.has(id))
         if (nonWinners.length > 0) {
           const explicitLastPlace =
             payload.lastPlaceId != null && nonWinners.includes(payload.lastPlaceId)
@@ -1923,7 +2296,8 @@ const gameSlice = createSlice({
         //      elimination order or actual scores in the feature slice).
         //   2. Score-based derivation when scores are available.
         //   3. nonWinners[0] fallback (arbitrary, kept for backward compat).
-        const nonWinners = resolvedParticipants.filter((id) => id !== winnerId)
+        const winnerUnitIds = new Set(getCupidRoleIds(state, winnerId))
+        const nonWinners = resolvedParticipants.filter((id) => !winnerUnitIds.has(id))
         if (nonWinners.length > 0) {
           const validLastPlace =
             lastPlaceId != null && nonWinners.includes(lastPlaceId) ? lastPlaceId : null
@@ -2127,9 +2501,7 @@ const gameSlice = createSlice({
       const lohPlayer = state.players.find((p) => p.id === state.lohId)
       if (!player || !lohPlayer) return
 
-      state.nomineeIds.push(id)
-      player.status = 'nominated'
-      incrementTimesNominated(state, id)
+      appendNominee(state, id)
       state.replacementNeeded = false
       state.povSavedId = null
       // VIP: advance stage after first replacement (stage 1 → 2) or second replacement (stage 3 → -1)
@@ -2171,7 +2543,7 @@ const gameSlice = createSlice({
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return
       const id2 = action.payload
       const id1 = state.pendingNominee1Id
-      if (!id1 || id2 === id1) return
+      if (!id1 || id2 === id1 || !areDistinctCupidPairs(state, [id1, id2])) return
       const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
       const eligible = alive.filter(
         (p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id)
@@ -2189,6 +2561,7 @@ const gameSlice = createSlice({
       p2.status = 'nominated'
       incrementTimesNominated(state, id1)
       incrementTimesNominated(state, id2)
+      expandCupidNominees(state)
       state.awaitingNominations = false
       state.pendingNominee1Id = null
       rememberOriginalNominations(state)
@@ -2215,15 +2588,19 @@ const gameSlice = createSlice({
       // Defensive: in public mode non-DE weeks, strip the forced auto-nominee from the
       // submitted IDs before validating count. The UI disables that option, but if it
       // somehow appears in the payload it must not reduce the total to only 2 nominees.
-      const ids =
+      const autoNomineeUnitIds =
         canUsePublicNomineeRule && state.lastHohCompFinisherId
-          ? action.payload.filter((id) => id !== state.lastHohCompFinisherId)
-          : action.payload
+          ? new Set(expandCupidIds(state, [state.lastHohCompFinisherId]))
+          : null
+      const ids = autoNomineeUnitIds
+        ? action.payload.filter((id) => !autoNomineeUnitIds.has(id))
+        : action.payload
 
       // Human always picks 2 in normal weeks (3rd is auto-appended); picks 3 in DE.
       const expectedCount = isDoubleEviction ? 3 : 2
       if (ids.length !== expectedCount) return
       if (new Set(ids).size !== ids.length) return // duplicates check
+      if (!areDistinctCupidPairs(state, ids)) return
       const eligible = alive.filter(
         (p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id)
       )
@@ -2238,22 +2615,24 @@ const gameSlice = createSlice({
         n.status = 'nominated'
         incrementTimesNominated(state, n.id)
       })
+      expandCupidNominees(state)
 
       // In eligible weeks (including Final 4), auto-append the last-place LOH comp finisher.
       if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
         const autoId = state.lastHohCompFinisherId
         let autoNomineeId: string | null = null
-        if (!state.nomineeIds.includes(autoId)) {
+        const autoPairAlreadyNominated = expandCupidIds(state, [autoId]).some((id) =>
+          state.nomineeIds.includes(id)
+        )
+        if (!autoPairAlreadyNominated) {
           const autoPlayer = eligible.find((p) => p.id === autoId)
           if (autoPlayer) {
-            state.nomineeIds = [...state.nomineeIds, autoId]
-            autoPlayer.status = 'nominated'
-            incrementTimesNominated(state, autoId)
+            appendNominee(state, autoId)
             autoNomineeId = autoId
           }
         }
         state.nominationContext = {
-          hohNomineeIds: ids,
+          hohNomineeIds: expandCupidIds(state, ids),
           autoNomineeId,
           publicSaveApplied: false,
         }
@@ -2291,7 +2670,10 @@ const gameSlice = createSlice({
      */
     commitPublicSave(state, action: PayloadAction<CommitPublicSavePayload>) {
       if (!state.awaitingPublicSave || state.phase !== 'pre_veto_public_save') return
-      if (state.nomineeIds.length !== 3) return
+      const cupidActive = isCupidArrowActive(state)
+      const expectedBefore = cupidActive ? 6 : 3
+      const expectedAfter = cupidActive ? 4 : 2
+      if (state.nomineeIds.length !== expectedBefore) return
       const savedId = typeof action.payload === 'string' ? action.payload : action.payload.savedId
       const supportPercent =
         typeof action.payload === 'string' ? null : (action.payload.supportPercent ?? null)
@@ -2300,15 +2682,22 @@ const gameSlice = createSlice({
       const savedPlayer = state.players.find((p) => p.id === savedId)
       if (!savedPlayer) return
 
-      const remainingNomineeIds = state.nomineeIds.filter((id) => id !== savedId)
-      if (remainingNomineeIds.length !== 2) return
+      const savedUnitIds = expandCupidIds(state, [savedId]).filter((id) =>
+        state.nomineeIds.includes(id)
+      )
+      const remainingNomineeIds = state.nomineeIds.filter((id) => !savedUnitIds.includes(id))
+      if (remainingNomineeIds.length !== expectedAfter) return
       const remainingNomineeNames = remainingNomineeIds
         .map((id) => state.players.find((p) => p.id === id)?.name)
         .filter((name): name is string => Boolean(name))
 
       // Remove from active nominee block
       state.nomineeIds = remainingNomineeIds
-      savedPlayer.status = 'active'
+      savedUnitIds.forEach((id) => {
+        const player = state.players.find((candidate) => candidate.id === id)
+        if (player) player.status = 'active'
+      })
+      syncCupidRoleStatuses(state)
 
       // Record metadata
       state.publicSavedNomineeId = savedId
@@ -2323,11 +2712,13 @@ const gameSlice = createSlice({
       pushPovCompetitionAnnouncement(state)
       pushEvent(
         state,
-        supportPercent !== null && remainingNomineeNames.length === 2
-          ? `${savedPlayer.name} was saved with ${Math.round(supportPercent)}% of the public support. ${formatNameList(remainingNomineeNames)} are still in danger.`
-          : remainingNomineeNames.length === 2
-            ? `${savedPlayer.name} was saved by the public. ${formatNameList(remainingNomineeNames)} are still in danger.`
-            : `${savedPlayer.name} was saved by the public.`,
+        `${formatNameList(
+          savedUnitIds.map((id) => state.players.find((player) => player.id === id)?.name ?? id)
+        )} ${savedUnitIds.length > 1 ? 'were' : 'was'} saved${
+          supportPercent !== null
+            ? ` with ${Math.round(supportPercent)}% of the public support`
+            : ' by the public'
+        }. ${formatNameList(remainingNomineeNames)} are still in danger.`,
         'game',
         { suppressPhaseAnnouncementKey: 'pos_comp_announcement' }
       )
@@ -2398,23 +2789,30 @@ const gameSlice = createSlice({
 
       const savedPlayer = state.players.find((p) => p.id === saveId)
       const posWinner = state.players.find((p) => p.id === state.posWinnerId)
-      const lohPlayer = state.players.find((p) => p.id === state.lohId)
+      let lohPlayer = state.players.find((p) => p.id === state.lohId)
       if (!savedPlayer || !posWinner) return
       const twinSaveTarget = getTwinNomineeToSave(state, posWinner.id)
       if (twinSaveTarget && twinSaveTarget.id !== saveId) return
 
       // Save the selected nominee
-      state.nomineeIds = state.nomineeIds.filter((id) => id !== saveId)
+      const savedUnitIds = removeCupidNomineeUnit(state, saveId)
       savedPlayer.status = 'active'
       state.awaitingPovSaveTarget = false
       // Track the saved player so they cannot be immediately re-nominated as the replacement
       state.povSavedId = saveId
-      addPovProtectedId(state, saveId)
-      pushEvent(state, `${posWinner.name} used the power on ${savedPlayer.name}! 🛡️`, 'game')
+      savedUnitIds.forEach((id) => addPovProtectedId(state, id))
+      pushEvent(
+        state,
+        `${posWinner.name} used the power on ${formatNameList(
+          savedUnitIds.map((id) => state.players.find((player) => player.id === id)?.name ?? id)
+        )}! 🛡️`,
+        'game'
+      )
 
       // Diamond: holder names replacement (not LOH)
       if (state.specialVeto?.activeType === 'diamond') {
-        if (posWinner.isUser) {
+        const posDecisionPlayer = getCupidHumanCoholder(state, posWinner.id) ?? posWinner
+        if (posDecisionPlayer.isUser) {
           state.specialVeto.awaitingHolderReplacement = true
           pushEvent(
             state,
@@ -2442,8 +2840,12 @@ const gameSlice = createSlice({
         return
       }
 
-      // LOH must name a replacement
-      if (lohPlayer?.isUser) {
+      // LOH must name a replacement. During Cupid's Arrow, a human coholder
+      // represents the whole LOH pair even when their AI partner won the comp.
+      const lohDecisionPlayer = getCupidHumanCoholder(state, state.lohId) ?? lohPlayer
+      lohPlayer = lohDecisionPlayer
+      if (lohDecisionPlayer?.isUser) {
+        if (!lohPlayer) return
         state.replacementNeeded = true
         // VIP: track first use stage
         if (state.specialVeto?.activeType === 'vip') {
@@ -2488,7 +2890,14 @@ const gameSlice = createSlice({
       if (!humanPlayer) return
       if (!canPlayerTargetPlayer(state, humanPlayer.id, nomineeId)) return
       if (!state.votes) state.votes = {}
-      state.votes[humanPlayer.id] = nomineeId
+      const voteMap = state.votes
+      const jointVoterIds = getCupidRoleIds(state, humanPlayer.id)
+      jointVoterIds.forEach((voterId) => {
+        const voter = state.players.find((player) => player.id === voterId)
+        if (voter && voter.status !== 'evicted' && voter.status !== 'jury') {
+          voteMap[voterId] = nomineeId
+        }
+      })
       state.awaitingHumanVote = false
     },
 
@@ -2819,6 +3228,15 @@ const gameSlice = createSlice({
 
       const msg = state.pendingEviction.evictionMessage
       const isFinal4 = state.phase === 'final4_eviction'
+      const wasCupidPartnerFollowup =
+        isCupidArrowActive(state) && state.cupidArrow?.pendingPartnerEvictionId === evicteeId
+      const cupidPartnerId =
+        isCupidArrowActive(state) && !wasCupidPartnerFollowup
+          ? getCupidPartnerId(state, evicteeId)
+          : null
+      const cupidPartner = cupidPartnerId
+        ? state.players.find((player) => player.id === cupidPartnerId)
+        : null
 
       assignSeasonPlacementOnExit(state, evicteeId)
       evictee.status = evictedStatus(state)
@@ -2828,7 +3246,24 @@ const gameSlice = createSlice({
 
       pushEvent(state, msg, 'game')
 
-      if (isFinal4) {
+      if (
+        cupidPartner &&
+        cupidPartner.status !== 'evicted' &&
+        cupidPartner.status !== 'jury' &&
+        state.cupidArrow
+      ) {
+        state.cupidArrow.pendingPartnerEvictionId = cupidPartner.id
+        state.pendingEviction = {
+          evicteeId: cupidPartner.id,
+          evictionMessage: `${cupidPartner.name} is bound to ${evictee.name} by Cupid's Arrow and is eliminated too. 💔`,
+        }
+      } else if (wasCupidPartnerFollowup && state.cupidArrow) {
+        state.cupidArrow.pendingPartnerEvictionId = null
+        state.cupidArrow.eliminatedPairCount += 1
+        if (state.cupidArrow.eliminatedPairCount >= CUPID_ARROW_BREAK_AFTER_PAIRS) {
+          breakCupidArrowSpell(state)
+        }
+      } else if (isFinal4) {
         state.phase = 'final3'
         pushEvent(state, `Final 3! Three players remain. 🏆`, 'game')
       } else if (state.doubleEviction?.pendingSecondEviction) {
@@ -2848,6 +3283,7 @@ const gameSlice = createSlice({
       }
 
       if (!state.pendingEviction) {
+        state.pendingExitContext = null
         clearResolvedEvictionRoles(state)
       }
     },
@@ -2866,20 +3302,35 @@ const gameSlice = createSlice({
       const player = state.players.find((p) => p.id === playerId)
       if (!player) return
 
-      // Always 'evicted', never 'jury', for self-evictions.
-      assignSeasonPlacementOnExit(state, playerId)
-      player.status = 'evicted'
-      state.nomineeIds = state.nomineeIds.filter((id) => id !== playerId)
+      // Always 'evicted', never 'jury', for self-evictions. Cupid's active
+      // contract applies here too: voluntarily leaving takes the partner out.
+      const cupidWasActive = isCupidArrowActive(state)
+      const selfEvictionIds = expandCupidIds(state, [playerId]).filter((id) => {
+        const candidate = state.players.find((entry) => entry.id === id)
+        return candidate?.status !== 'evicted' && candidate?.status !== 'jury'
+      })
+      const selfEvictionSet = new Set(selfEvictionIds)
+      selfEvictionIds.forEach((id) => {
+        const exitingPlayer = state.players.find((candidate) => candidate.id === id)
+        if (!exitingPlayer) return
+        assignSeasonPlacementOnExit(state, id)
+        exitingPlayer.status = 'evicted'
+      })
+      state.nomineeIds = state.nomineeIds.filter((id) => !selfEvictionSet.has(id))
 
       // Clear fields that directly reference this player to avoid dangling IDs.
-      if (state.lohId === playerId) state.lohId = null
-      if (state.posWinnerId === playerId) state.posWinnerId = null
-      if (state.povSavedId === playerId) state.povSavedId = null
-      if (state.povProtectedIds?.includes(playerId)) {
-        state.povProtectedIds = state.povProtectedIds.filter((id) => id !== playerId)
+      if (state.lohId && selfEvictionSet.has(state.lohId)) state.lohId = null
+      if (state.posWinnerId && selfEvictionSet.has(state.posWinnerId)) state.posWinnerId = null
+      if (state.povSavedId && selfEvictionSet.has(state.povSavedId)) state.povSavedId = null
+      if (state.povProtectedIds?.some((id) => selfEvictionSet.has(id))) {
+        state.povProtectedIds = state.povProtectedIds.filter((id) => !selfEvictionSet.has(id))
       }
-      if (state.pendingNominee1Id === playerId) state.pendingNominee1Id = null
-      if (state.pendingEviction?.evicteeId === playerId) state.pendingEviction = null
+      if (state.pendingNominee1Id && selfEvictionSet.has(state.pendingNominee1Id)) {
+        state.pendingNominee1Id = null
+      }
+      if (state.pendingEviction && selfEvictionSet.has(state.pendingEviction.evicteeId)) {
+        state.pendingEviction = null
+      }
 
       // Clear human-decision blocking flags so advance() can run cleanly.
       state.replacementNeeded = false
@@ -2896,7 +3347,25 @@ const gameSlice = createSlice({
       state.votes = {}
       state.voteResults = null
 
-      pushEvent(state, `${player.name} has chosen to self-evict from The Big Eye house. 🚪`, 'game')
+      if (cupidWasActive && selfEvictionIds.length > 1 && state.cupidArrow) {
+        state.cupidArrow.eliminatedPairCount += 1
+        if (state.cupidArrow.eliminatedPairCount >= CUPID_ARROW_BREAK_AFTER_PAIRS) {
+          breakCupidArrowSpell(state)
+        }
+      }
+
+      const partner = selfEvictionIds
+        .filter((id) => id !== playerId)
+        .map((id) => state.players.find((candidate) => candidate.id === id)?.name)
+        .filter(Boolean)
+        .join(' and ')
+      pushEvent(
+        state,
+        partner
+          ? `${player.name} has chosen to self-evict. Cupid's Arrow also eliminates ${partner}. 🚪💔`
+          : `${player.name} has chosen to self-evict from The Big Eye house. 🚪`,
+        'game'
+      )
     },
 
     /**
@@ -3140,6 +3609,44 @@ const gameSlice = createSlice({
         timestamp: ts,
       }
       state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+    },
+
+    setCupidArrowSchedule(state, action: PayloadAction<number | null>) {
+      const scheduledSeason = action.payload
+      state.cupidArrow ??= {
+        scheduledSeason,
+        status: 'inactive',
+        activatedSeason: null,
+        activatedWeek: null,
+        pairs: [],
+        eliminatedPairCount: 0,
+        pendingPartnerEvictionId: null,
+      }
+      state.cupidArrow.scheduledSeason = scheduledSeason
+      if (state.cupidArrow.status === 'active' || state.cupidArrow.status === 'broken') return
+      state.cupidArrow.status =
+        scheduledSeason === state.season && state.week === 1 && state.phase === 'week_start'
+          ? 'scheduled'
+          : 'inactive'
+    },
+
+    activateCupidArrowNow(state) {
+      state.cupidArrow ??= {
+        scheduledSeason: state.season,
+        status: 'scheduled',
+        activatedSeason: null,
+        activatedWeek: null,
+        pairs: [],
+        eliminatedPairCount: 0,
+        pendingPartnerEvictionId: null,
+      }
+      state.cupidArrow.scheduledSeason = state.season
+      state.cupidArrow.status = 'scheduled'
+      activateCupidArrowForSeason(state)
+    },
+
+    breakCupidArrowNow(state) {
+      breakCupidArrowSpell(state)
     },
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
@@ -3578,6 +4085,7 @@ const gameSlice = createSlice({
       const player = state.players.find((p) => p.id === id)
       if (player) {
         player.status = player.status === 'pos' ? 'loh+pos' : 'loh'
+        syncCupidRoleStatuses(state)
         pushEvent(state, `[DEBUG] ${player.name} forced as Leader of the House. 👑`, 'game')
       }
     },
@@ -3588,7 +4096,7 @@ const gameSlice = createSlice({
         if (p.status === 'nominated') p.status = 'active'
         if (p.status === 'nominated+pos') p.status = 'pos'
       })
-      state.nomineeIds = ids
+      state.nomineeIds = expandCupidIds(state, ids)
       const names: string[] = []
       ids.forEach((id) => {
         const p = state.players.find((pl) => pl.id === id)
@@ -3597,6 +4105,7 @@ const gameSlice = createSlice({
           names.push(p.name)
         }
       })
+      syncCupidRoleStatuses(state)
       pushEvent(state, `[DEBUG] ${names.join(' and ')} forced as nominees. 🎯`, 'game')
     },
     /** Force a specific player as POS winner (debug only). */
@@ -3613,6 +4122,9 @@ const gameSlice = createSlice({
         if (player.status === 'loh') player.status = 'loh+pos'
         else if (player.status === 'nominated') player.status = 'nominated+pos'
         else player.status = 'pos'
+        const partnerId = getCupidPartnerId(state, id)
+        if (partnerId) addPovProtectedId(state, partnerId)
+        syncCupidRoleStatuses(state)
         pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game')
       }
     },
@@ -3838,8 +4350,7 @@ const gameSlice = createSlice({
       // Use the factory to build a fully fresh initial state from the latest
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = {
-        ...createInitialGameState({ twinShockConsumed }),
-        seed,
+        ...createInitialGameState({ twinShockConsumed, seed }),
         seasonArchives,
         season,
         status: 'active' as const,
@@ -3850,6 +4361,10 @@ const gameSlice = createSlice({
       fresh.twinShockResolvedDay = state.twinShockResolvedDay ?? null
       fresh.twinShockDiscoveredByUser = state.twinShockDiscoveredByUser ?? false
       fresh.liaForcedUntilTwinShockResolved = !twinShockConsumed
+      if (fresh.cupidArrow) {
+        fresh.cupidArrow.status =
+          fresh.cupidArrow.scheduledSeason === season ? 'scheduled' : 'inactive'
+      }
       // Update the welcome message to reflect the actual season number.
       // publicModeEnabled is already derived from settings inside createInitialGameState().
       fresh.tvFeed = [
@@ -3922,7 +4437,7 @@ const gameSlice = createSlice({
         state.awaitingNominations ||
         (state.awaitingPublicSave &&
           state.phase === 'pre_veto_public_save' &&
-          state.nomineeIds.length === 3) ||
+          state.nomineeIds.length === (isCupidArrowActive(state) ? 6 : 3)) ||
         state.awaitingPovDecision ||
         state.awaitingPovSaveTarget ||
         state.awaitingMissionImmunityOffer ||
@@ -4668,6 +5183,7 @@ const gameSlice = createSlice({
             state.specialVeto.awaitingVipSecondSaveTarget = false
             state.twistActive = false
           }
+          if (isCupidArrowActive(state)) state.twistActive = true
           state.twistActivatedThisWeek = false
           state.players.forEach((p) => {
             if (['loh', 'nominated', 'pos', 'loh+pos', 'nominated+pos'].includes(p.status)) {
@@ -4721,6 +5237,7 @@ const gameSlice = createSlice({
             `The Leader of the House comp is about to begin! All eligible players will now battle for the title.`,
             'game'
           )
+          activateCupidArrowForSeason(state)
           break
         }
         case 'loh_comp': {
@@ -4775,13 +5292,15 @@ const gameSlice = createSlice({
           // completeMinigame() applies the LOH winner inline and advances the phase
           // directly, so minigameResult is always null here.  Always pick randomly.
           // Exclude the outgoing LOH (prevHohId) to respect the ineligibility rule.
-          const hohPool = state.prevHohId ? alive.filter((p) => p.id !== state.prevHohId) : alive
+          const outgoingLohIds = new Set(getCupidRoleIds(state, state.prevHohId))
+          const hohPool = state.prevHohId ? alive.filter((p) => !outgoingLohIds.has(p.id)) : alive
           const hohEligible = hohPool.length > 0 ? hohPool : alive
           const hoh = seededPick(rng, hohEligible)
           applyLohWinner(state, hoh.id, '[advance/loh_results]')
           // Track last-place LOH competition finisher for the third-nominee rule.
           // Use RNG to pick deterministically among non-LOH eligible players.
-          const lastPlacePool = hohEligible.filter((p) => p.id !== hoh.id)
+          const winningPairIds = new Set(getCupidRoleIds(state, hoh.id))
+          const lastPlacePool = hohEligible.filter((p) => !winningPairIds.has(p.id))
           if (lastPlacePool.length > 0) {
             state.lastHohCompFinisherId = seededPick(rng, lastPlacePool).id
           }
@@ -4865,12 +5384,17 @@ const gameSlice = createSlice({
           const canUsePublicNomineeRule = publicModeEnabled && !isDoubleEviction
           const nomineeCount = isDoubleEviction ? 3 : 2
           // Guard: need LOH + nomineeCount eligible players.
-          const pool = alive.filter(
-            (p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id)
+          const pool = collapseCupidCandidates(
+            state,
+            alive.filter(
+              (p) => p.id !== state.lohId && canPlayerTargetPlayer(state, state.lohId, p.id)
+            )
           )
           if (pool.length < nomineeCount) break
 
-          const lohPlayer = state.players.find((p) => p.id === state.lohId)
+          const lohPlayer =
+            getCupidHumanCoholder(state, state.lohId) ??
+            state.players.find((p) => p.id === state.lohId)
           if (lohPlayer?.isUser) {
             // Human LOH: block advance() and wait for the multi-select nomination UI.
             // Human still picks 2; the 3rd auto-nominee is appended by commitNominees.
@@ -4889,10 +5413,13 @@ const gameSlice = createSlice({
           // In public mode non-DE weeks, exclude the forced auto-nominee from the AI pick
           // pool so the AI always selects distinct nominees and the auto-nominee is reliably
           // appended as the third nominee below.
-          const aiPool =
+          const autoNomineeUnitIds =
             canUsePublicNomineeRule && state.lastHohCompFinisherId
-              ? pool.filter((p) => p.id !== state.lastHohCompFinisherId)
-              : pool
+              ? new Set(expandCupidIds(state, [state.lastHohCompFinisherId]))
+              : null
+          const aiPool = autoNomineeUnitIds
+            ? pool.filter((p) => !autoNomineeUnitIds.has(p.id))
+            : pool
           const nominees = pickStrategicNominationTargets(
             state,
             state.lohId!,
@@ -4906,23 +5433,27 @@ const gameSlice = createSlice({
             if (p) p.status = 'nominated'
             incrementTimesNominated(state, n.id)
           })
+          expandCupidNominees(state)
 
           // In public mode on non-Double Eviction weeks, auto-append the last-place LOH comp finisher.
           if (canUsePublicNomineeRule && state.lastHohCompFinisherId) {
             const autoId = state.lastHohCompFinisherId
             let autoNomineeId: string | null = null
-            if (!state.nomineeIds.includes(autoId)) {
+            const autoPairAlreadyNominated = expandCupidIds(state, [autoId]).some((id) =>
+              state.nomineeIds.includes(id)
+            )
+            if (!autoPairAlreadyNominated) {
               const autoPlayer = pool.find((p) => p.id === autoId)
               if (autoPlayer) {
-                state.nomineeIds = [...state.nomineeIds, autoId]
-                const ap = state.players.find((p) => p.id === autoId)
-                if (ap) ap.status = 'nominated'
-                incrementTimesNominated(state, autoId)
+                appendNominee(state, autoId)
                 autoNomineeId = autoId
               }
             }
             state.nominationContext = {
-              hohNomineeIds: nominees.map((n) => n.id),
+              hohNomineeIds: expandCupidIds(
+                state,
+                nominees.map((nominee) => nominee.id)
+              ),
               autoNomineeId,
               publicSaveApplied: false,
             }
@@ -4938,15 +5469,16 @@ const gameSlice = createSlice({
         case 'pre_veto_public_save': {
           // Skip this phase unless Public mode is on, this is not a Double Eviction,
           // and there is a valid 3-nominee block to reduce back to 2 before veto.
+          const expectedPublicNominees = isCupidArrowActive(state) ? 6 : 3
           if (
             state.publicModeEnabled !== true ||
             state.doubleEviction?.weekActive ||
-            state.nomineeIds.length !== 3
+            state.nomineeIds.length !== expectedPublicNominees
           ) {
             if (import.meta.env.DEV && state.publicModeEnabled === true) {
               const reason = state.doubleEviction?.weekActive
                 ? 'double eviction active'
-                : `nomineeIds.length is ${state.nomineeIds.length} (expected 3)`
+                : `nomineeIds.length is ${state.nomineeIds.length} (expected ${expectedPublicNominees})`
               console.warn(
                 `[publicMode] pre_veto_public_save skipped even though publicModeEnabled=true — reason: ${reason}`,
                 { week: state.week, nomineeCount: state.nomineeIds.length }
@@ -4997,6 +5529,8 @@ const gameSlice = createSlice({
           const posWinner = state.posWinnerId
             ? (state.players.find((p) => p.id === state.posWinnerId) ?? null)
             : null
+          const posDecisionPlayer = getCupidHumanCoholder(state, state.posWinnerId) ?? posWinner
+          if (!posWinner) break
           const isNominee = posWinner !== null && state.nomineeIds.includes(posWinner.id)
 
           const missionImmunityCheck = {
@@ -5034,7 +5568,9 @@ const gameSlice = createSlice({
               state.povSavedId = autoSavedId
               addPovProtectedId(state, autoSavedId)
               pushEvent(state, `${savedName} used Force Majeure and saved themselves! ✨`, 'game')
-              const lohPlayer = state.players.find((pl) => pl.id === state.lohId)
+              const lohPlayer =
+                getCupidHumanCoholder(state, state.lohId) ??
+                state.players.find((pl) => pl.id === state.lohId)
               if (lohPlayer?.isUser) {
                 state.replacementNeeded = true
                 pushEvent(state, `${lohPlayer.name} must now name a backup nominee. 🎯`, 'game')
@@ -5052,7 +5588,7 @@ const gameSlice = createSlice({
                   }
                 }
               }
-            } else if (posWinner?.isUser) {
+            } else if (posDecisionPlayer?.isUser) {
               // Human must use — directly to save target
               state.awaitingPovSaveTarget = true
               pushEvent(
@@ -5077,7 +5613,9 @@ const gameSlice = createSlice({
                   `${posWinner?.name ?? 'The Force Majeure holder'} used Force Majeure on ${savedName}! ✨`,
                   'game'
                 )
-                const lohPlayer = state.players.find((pl) => pl.id === state.lohId)
+                const lohPlayer =
+                  getCupidHumanCoholder(state, state.lohId) ??
+                  state.players.find((pl) => pl.id === state.lohId)
                 if (lohPlayer?.isUser) {
                   state.replacementNeeded = true
                   pushEvent(state, `${lohPlayer.name} must now name a backup nominee. 🎯`, 'game')
@@ -5099,7 +5637,7 @@ const gameSlice = createSlice({
               state.povSavedId = autoSavedId
               addPovProtectedId(state, autoSavedId)
               pushEvent(state, `${savedName} used Halo Exchange and saved themselves! 😇`, 'game')
-              if (posWinner.isUser) {
+              if (posDecisionPlayer?.isUser) {
                 state.specialVeto!.awaitingHolderReplacement = true
                 pushEvent(
                   state,
@@ -5122,7 +5660,7 @@ const gameSlice = createSlice({
                   }
                 }
               }
-            } else if (posWinner?.isUser) {
+            } else if (posDecisionPlayer?.isUser) {
               state.awaitingPovDecision = true
               pushEvent(state, `${posWinner.name}, will you use Halo Exchange? 😇`, 'game')
             } else {
@@ -5212,7 +5750,7 @@ const gameSlice = createSlice({
                   `${posWinner.name} named ${replacements.map((replacement) => replacement.name).join(' and ')} as the new nominees. ⚡`
                 )
               }
-            } else if (posWinner?.isUser) {
+            } else if (posDecisionPlayer?.isUser) {
               state.awaitingPovDecision = true
               pushEvent(
                 state,
@@ -5355,12 +5893,12 @@ const gameSlice = createSlice({
             // ── POS auto-use rule: nominee who wins POS MUST use it on themselves ──
             const savedName = posWinner.name
             const autoSavedId = posWinner.id
-            state.nomineeIds = state.nomineeIds.filter((id) => id !== posWinner.id)
+            const savedUnitIds = removeCupidNomineeUnit(state, posWinner.id)
             // Update status: was 'nominated+pos', now just 'pos' (saved themselves)
             posWinner.status = 'pos'
             // Track the self-saved player so they cannot be re-nominated as the replacement
             state.povSavedId = autoSavedId
-            addPovProtectedId(state, autoSavedId)
+            savedUnitIds.forEach((id) => addPovProtectedId(state, id))
             const lohName = state.players.find((pl) => pl.id === state.lohId)?.name ?? 'The LOH'
             pushEvent(
               state,
@@ -5369,7 +5907,9 @@ const gameSlice = createSlice({
             )
 
             // LOH must name a replacement
-            const lohPlayer = state.players.find((pl) => pl.id === state.lohId)
+            const lohPlayer =
+              getCupidHumanCoholder(state, state.lohId) ??
+              state.players.find((pl) => pl.id === state.lohId)
             if (lohPlayer?.isUser) {
               // Human LOH: set flag; UI will render replacement picker; Continue hidden
               state.replacementNeeded = true
@@ -5377,10 +5917,14 @@ const gameSlice = createSlice({
             } else {
               state.aiReplacementStep = 1
             }
-          } else if (posWinner?.isUser) {
+          } else if (posDecisionPlayer?.isUser) {
             // Human POS holder who is not a nominee: they must decide whether to use it
             state.awaitingPovDecision = true
-            pushEvent(state, `${posWinner.name}, will you use the Power of Safety? ⚡`, 'game')
+            pushEvent(
+              state,
+              `${posDecisionPlayer.name}, will your pair use the Power of Safety? ⚡`,
+              'game'
+            )
           } else {
             const nominees = state.players.filter((player) => state.nomineeIds.includes(player.id))
             const eligible = getReplacementEligiblePlayers(state, alive)
@@ -5392,16 +5936,18 @@ const gameSlice = createSlice({
               : null
 
             if (saveTarget) {
-              state.nomineeIds = state.nomineeIds.filter((id) => id !== saveTarget.id)
+              const savedUnitIds = removeCupidNomineeUnit(state, saveTarget.id)
               saveTarget.status = 'active'
               state.povSavedId = saveTarget.id
-              addPovProtectedId(state, saveTarget.id)
+              savedUnitIds.forEach((id) => addPovProtectedId(state, id))
               pushEvent(
                 state,
                 `${posWinner?.name ?? 'The safety holder'} used the Power of Safety on ${saveTarget.name}. ⚡`,
                 'game'
               )
-              const lohPlayer = state.players.find((player) => player.id === state.lohId)
+              const lohPlayer =
+                getCupidHumanCoholder(state, state.lohId) ??
+                state.players.find((player) => player.id === state.lohId)
               if (lohPlayer?.isUser) state.replacementNeeded = true
               else state.aiReplacementStep = 1
             } else {
@@ -5423,23 +5969,50 @@ const gameSlice = createSlice({
           break
         }
         case 'live_vote': {
-          // Cast AI eligible votes (eligible = alive, not LOH, not nominee)
+          // Cast AI eligible votes. During Cupid's Arrow each pair deliberates
+          // once, stores the same target for both partners, and therefore counts
+          // as a joint two-vote ballot.
           state.votes = {}
+          const voteMap = state.votes
+          const lohIds = new Set(getCupidRoleIds(state, state.lohId))
           const eligibleVoters = alive.filter(
-            (p) => p.id !== state.lohId && !state.nomineeIds.includes(p.id)
+            (p) => !lohIds.has(p.id) && !state.nomineeIds.includes(p.id)
           )
+          const eligibleVoterIds = new Set(eligibleVoters.map((player) => player.id))
+          const processedVoterUnits = new Set<string>()
           for (const voter of eligibleVoters) {
-            if (!voter.isUser) {
-              const eligibleNomineeIds = state.nomineeIds.filter((nomineeId) =>
-                canPlayerTargetPlayer(state, voter.id, nomineeId)
-              )
-              state.votes[voter.id] = chooseAiEvictionVote(
-                state,
-                voter.id,
-                eligibleNomineeIds.length > 0 ? eligibleNomineeIds : state.nomineeIds,
-                state.seed
-              )
-            }
+            const pair = getCupidPair(state, voter.id)
+            const voterUnitKey = isCupidArrowActive(state) && pair ? pair.id : `solo:${voter.id}`
+            if (processedVoterUnits.has(voterUnitKey)) continue
+            processedVoterUnits.add(voterUnitKey)
+
+            const jointVoterIds = getCupidRoleIds(state, voter.id).filter((id) =>
+              eligibleVoterIds.has(id)
+            )
+            if (
+              jointVoterIds.some((id) => state.players.find((player) => player.id === id)?.isUser)
+            )
+              continue
+
+            const eligibleNomineeIds = state.nomineeIds.filter((nomineeId) =>
+              jointVoterIds.every((voterId) => canPlayerTargetPlayer(state, voterId, nomineeId))
+            )
+            const targetId = isCupidArrowActive(state)
+              ? chooseCupidPairEvictionVote(
+                  state,
+                  jointVoterIds,
+                  eligibleNomineeIds.length > 0 ? eligibleNomineeIds : state.nomineeIds,
+                  state.seed
+                )
+              : chooseAiEvictionVote(
+                  state,
+                  voter.id,
+                  eligibleNomineeIds.length > 0 ? eligibleNomineeIds : state.nomineeIds,
+                  state.seed
+                )
+            jointVoterIds.forEach((voterId) => {
+              voteMap[voterId] = targetId
+            })
           }
 
           // Block advance() if the human player is an eligible voter
@@ -5463,7 +6036,11 @@ const gameSlice = createSlice({
               voteResults: state.voteResults,
               awaitingTieBreak: state.awaitingTieBreak,
             }
-            if (canUseDoubleVote(dvCheck) && !state.humanDoubleVoteActive) {
+            if (
+              !isCupidArrowActive(state) &&
+              canUseDoubleVote(dvCheck) &&
+              !state.humanDoubleVoteActive
+            ) {
               state.awaitingDoubleVoteOffer = true
             }
           }
@@ -5478,12 +6055,24 @@ const gameSlice = createSlice({
 
           const nominees = state.players.filter((p) => state.nomineeIds.includes(p.id))
           if (nominees.length === 0) break
+          if (resolveCupidPairEviction(state)) break
 
           // ── Tally votes ───────────────────────────────────────────────────
           const voteCounts: Record<string, number> = {}
           for (const nomineeId of state.nomineeIds) voteCounts[nomineeId] = 0
           for (const nomineeId of Object.values(state.votes ?? {})) {
             if (nomineeId in voteCounts) voteCounts[nomineeId]++
+          }
+          state.pendingExitContext = {
+            week: state.week,
+            leaderIds: state.coLohIds?.length
+              ? [...state.coLohIds]
+              : state.lohId
+                ? [state.lohId]
+                : [],
+            nomineeIds: [...state.nomineeIds],
+            votesByVoterId: { ...(state.votes ?? {}) },
+            voteCounts: { ...voteCounts },
           }
 
           // ── Double Eviction: evict top 2 nominees ─────────────────────────
@@ -5669,6 +6258,7 @@ const gameSlice = createSlice({
       state,
       action: PayloadAction<number | { day: number; maxDaySpan?: number }>
     ) {
+      if (isCupidArrowTwistLocked(state)) return
       const missionCount = getSeasonSecretMissionCount(state)
       if (missionCount >= 2) return
       if (!canReplaceSecretMissionSlot(state.secretMission)) return
@@ -6143,6 +6733,9 @@ export const {
   openBattleBackCompetition,
   activateDoubleEviction,
   activateSpecialVeto,
+  setCupidArrowSchedule,
+  activateCupidArrowNow,
+  breakCupidArrowNow,
   queueForcedShock,
   clearForcedShock,
   consumeForcedShock,
@@ -6456,7 +7049,7 @@ function resolveDebugBlockers(
   rootState: RootState,
   rng: () => number
 ): boolean {
-  const { game, publicOpinion } = rootState
+  const { game } = rootState
   const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
 
   if (game.pendingEviction) {
@@ -6513,17 +7106,18 @@ function resolveDebugBlockers(
   if (
     game.awaitingPublicSave &&
     game.phase === 'pre_veto_public_save' &&
-    game.nomineeIds.length === 3
+    game.nomineeIds.length === (isCupidArrowActive(game) ? 6 : 3)
   ) {
-    const savedId =
-      resolvePublicSaveNominee({
-        nomineeIds: game.nomineeIds,
-        profiles: publicOpinion?.profiles ?? {},
-      }).savedId || game.nomineeIds[0]
+    const publicSaveResult = resolvePairAwarePublicSave(rootState)
+    const savedId = publicSaveResult.savedId || game.nomineeIds[0]
+    const supportPercent = expandCupidIds(game, [savedId]).reduce(
+      (sum, id) => sum + (publicSaveResult.voteShareByPlayerId[id] ?? 0),
+      0
+    )
     dispatch(
       commitPublicSave({
         savedId,
-        supportPercent: publicOpinion?.profiles?.[savedId]?.approval,
+        supportPercent,
       })
     )
     return true
@@ -6710,17 +7304,18 @@ export const fastForwardToEviction = () => (dispatch: AppDispatch, getState: () 
     if (
       state.awaitingPublicSave &&
       state.phase === 'pre_veto_public_save' &&
-      state.nomineeIds.length === 3
+      state.nomineeIds.length === (isCupidArrowActive(state) ? 6 : 3)
     ) {
-      const savedId =
-        resolvePublicSaveNominee({
-          nomineeIds: state.nomineeIds,
-          profiles: rootState.publicOpinion?.profiles ?? {},
-        }).savedId || state.nomineeIds[0]
+      const publicSaveResult = resolvePairAwarePublicSave(rootState)
+      const savedId = publicSaveResult.savedId || state.nomineeIds[0]
+      const supportPercent = expandCupidIds(state, [savedId]).reduce(
+        (sum, id) => sum + (publicSaveResult.voteShareByPlayerId[id] ?? 0),
+        0
+      )
       dispatch(
         commitPublicSave({
           savedId,
-          supportPercent: rootState.publicOpinion?.profiles?.[savedId]?.approval,
+          supportPercent,
         })
       )
     } else {
@@ -6909,6 +7504,7 @@ export const tryActivateSecretMission =
   () =>
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
+    if (isCupidArrowTwistLocked(game)) return false
     const aliveCount = game.players.filter(
       (player) => player.status !== 'evicted' && player.status !== 'jury'
     ).length
@@ -6992,6 +7588,7 @@ export const tryActivateDayStartShock =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!settings.sim.enableTwists) return false
     if (game.phase !== 'week_start') return false
     if (game.dayStartShock) return false
@@ -7040,6 +7637,7 @@ export const tryActivatePendingForcedDayStartShock =
     const { game } = getState()
     const pending = game.pendingForcedShock
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!pending || pending.type !== 'dayStartShock') return false
     if (game.phase !== 'week_start') return false
     if (game.week < pending.earliestWeek) return false
@@ -7100,6 +7698,7 @@ export const tryActivateBattleBack =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!settings.sim.enableTwists) return false
     if (game.battleBack?.used) return false
     if (game.phase !== 'eviction_results') return false
@@ -7128,6 +7727,7 @@ export const tryActivatePendingForcedBattleBack =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (game.pendingForcedShock?.type !== 'battleBack') return false
     if (game.phase !== 'eviction_results') return false
     if (game.week < game.pendingForcedShock.earliestWeek) return false
@@ -7169,6 +7769,7 @@ export const tryActivateDoubleEviction =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (game.pendingForcedShock) return false
     if (!settings.sim.enableTwists) return false
     if (game.phase !== 'nominations') return false
@@ -7208,6 +7809,7 @@ export const tryActivatePendingForcedDoubleEviction =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (game.pendingForcedShock?.type !== 'doubleEviction') return false
     if (game.phase !== 'nominations') return false
     if (game.week < game.pendingForcedShock.earliestWeek) return false
@@ -7247,6 +7849,7 @@ export const tryActivateSpecialVeto =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (game.pendingForcedShock) return false
     if (!settings.sim.enableTwists) return false
     if (game.phase !== 'pos_results') return false
@@ -7288,6 +7891,7 @@ export const tryActivatePendingForcedSpecialVeto =
     const { game } = getState()
     const pending = game.pendingForcedShock
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!pending || !isSpecialVetoType(pending.type)) return false
     if (game.phase !== 'pos_results') return false
     if (game.week < pending.earliestWeek) return false
@@ -7320,6 +7924,7 @@ export const tryActivateDemocracia =
   (dispatch: AppDispatch, getState: () => RootState): boolean => {
     const { game, settings } = getState()
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!settings.sim.enableTwists) return false
     if (game.democracia?.usedThisSeason) return false
     if (game.phase !== 'loh_comp_announcement') return false
@@ -7354,6 +7959,7 @@ export const tryActivatePendingForcedDemocracia =
     const { game } = getState()
     const pending = game.pendingForcedShock
 
+    if (isCupidArrowTwistLocked(game)) return false
     if (!pending || pending.type !== 'democracia') return false
     if (game.phase !== 'loh_comp_announcement') return false
     if (game.week < pending.earliestWeek) return false

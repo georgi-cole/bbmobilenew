@@ -57,6 +57,54 @@
   object-fit: contain;
 }
 
+/* Cupid's role symbols are ceremony-only: the animation carries a kiss or
+   embrace, then the familiar crown/shield is what remains on the roster. */
+.ceremony-overlay__cupid-badge-art {
+  display: block;
+  width: 43px;
+  height: 43px;
+  overflow: visible;
+  filter: drop-shadow(0 3px 10px rgba(50, 8, 32, 0.5));
+}
+
+.ceremony-overlay__cupid-badge-disc {
+  fill: rgba(83, 28, 61, 0.9);
+  stroke: rgba(255, 233, 206, 0.74);
+  stroke-width: 1.2;
+}
+
+.ceremony-overlay__cupid-kiss {
+  stroke: #fff0df;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.ceremony-overlay__cupid-kiss-line,
+.ceremony-overlay__cupid-hug-arm {
+  fill: none;
+  stroke: #fff0e6;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ceremony-overlay__cupid-hug-heart {
+  fill: #f19ab9;
+  stroke: #ffe9d8;
+  stroke-width: 1.1;
+}
+
+.ceremony-overlay__cupid-spark {
+  fill: #ffe4a6;
+  stroke: rgba(255, 248, 224, 0.88);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+
+.ceremony-overlay__badge[data-badge-variant] {
+  font-size: 0;
+}
+
 /* Phase 1: badge appears and scales in at the start position (centre or off-screen) */
 .ceremony-overlay__badge--appearing {
   animation: badgeAppear 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
