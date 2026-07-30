@@ -19,6 +19,7 @@ import {
 } from '../../store/gameSlice'
 import {
   completeChallenge,
+  setPendingMusicVariant,
   setPendingPhase,
   type PendingChallenge,
 } from '../../store/challengeSlice'
@@ -45,6 +46,7 @@ import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
 import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
+import type { MusicMinigameVariant } from '../../services/sound/musicConfig'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
@@ -177,6 +179,10 @@ export default function GameScreen() {
   const dispatch = useAppDispatch()
   const handleMinigameHostPhaseChange = useCallback(
     (hostPhase: HostPhase) => dispatch(setPendingPhase(hostPhase)),
+    [dispatch]
+  )
+  const handleMinigameMusicVariantChange = useCallback(
+    (variant: MusicMinigameVariant) => dispatch(setPendingMusicVariant(variant)),
     [dispatch]
   )
   const store = useStore<RootState>()
@@ -1500,6 +1506,7 @@ export default function GameScreen() {
               prizeType: pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH'),
             }}
             onPhaseChange={handleMinigameHostPhaseChange}
+            onMusicVariantChange={handleMinigameMusicVariantChange}
             competitionRetry={{
               enabled: competitionRetryInResultsEnabled,
               pending: adPending,

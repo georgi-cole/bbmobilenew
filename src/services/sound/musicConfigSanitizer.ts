@@ -11,11 +11,20 @@ import {
   type MinigameStageAssignments,
   type MusicConfigMode,
   type MusicConfigOverrides,
+  MUSIC_MINIGAME_VARIANTS,
+  type MinigameStageVariantAssignments,
   type MusicMinigameStage,
+  type MusicMinigameVariant,
   type MusicSelection,
   type MusicTransitionPolicy,
 } from './musicConfig'
 import { isCatalogMusicTrack, type MusicTrackAssetOverride } from './musicCatalog'
+import {
+  MUSIC_EFFECT_PRESETS,
+  MUSIC_RESTART_POLICIES,
+  createDefaultMusicCue,
+  type MusicCueDefinition,
+} from './musicCue'
 import { SOUND_REGISTRY } from './sounds'
 
 const MUSIC_CONFIG_MODES = [
@@ -44,6 +53,7 @@ const MAX_PROFILE_COUNT = 200
 const MAX_GAME_KEYS_PER_PROFILE = 200
 const MAX_KEY_LENGTH = 120
 const MAX_TRANSITION_MS = 60_000
+const MAX_CUE_SECONDS = 6 * 60 * 60
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -90,7 +100,8 @@ export function sanitiseMusicSelection(raw: unknown): MusicSelection | undefined
   if (raw.kind === 'silence') return { kind: 'silence' }
   if (raw.kind === 'inherit') return { kind: 'inherit' }
   if (raw.kind === 'track' && isCatalogMusicTrack(raw.track)) {
-    return { kind: 'track', track: raw.track }
+    const cueId = safeString(raw.cueId)
+    return { kind: 'track', track: raw.track, ...(cueId ? { cueId } : {}) }
   }
   return undefined
 }
@@ -160,6 +171,76 @@ function sanitiseProfile(raw: unknown): MinigameMusicProfile | null {
     defaultSelection,
     ...(transition ? { transition } : {}),
   }
+}
+
+function safeCueSeconds(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return Math.max(0, Math.min(MAX_CUE_SECONDS, value))
+}
+
+function sanitiseMusicCue(raw: unknown, id: string): MusicCueDefinition | undefined {
+  if (!isRecord(raw) || !isCatalogMusicTrack(raw.track)) return undefined
+  const defaults = createDefaultMusicCue(raw.track)
+  const displayName = safeString(raw.displayName, 160) ?? defaults.displayName
+  const startAtSec = safeCueSeconds(raw.startAtSec) ?? defaults.startAtSec
+  const endAtSec = safeCueSeconds(raw.endAtSec)
+  const loopStartSec = safeCueSeconds(raw.loopStartSec)
+  const loopEndSec = safeCueSeconds(raw.loopEndSec)
+  const volume = safeUnitInterval(raw.volume) ?? defaults.volume
+  const fadeInMs = safeDuration(raw.fadeInMs) ?? defaults.fadeInMs
+  const fadeOutMs = safeDuration(raw.fadeOutMs) ?? defaults.fadeOutMs
+  const crossfadeMs = safeDuration(raw.crossfadeMs) ?? defaults.crossfadeMs
+  const loop = typeof raw.loop === 'boolean' ? raw.loop : defaults.loop
+  const restartPolicy = MUSIC_RESTART_POLICIES.includes(
+    raw.restartPolicy as (typeof MUSIC_RESTART_POLICIES)[number]
+  )
+    ? (raw.restartPolicy as MusicCueDefinition['restartPolicy'])
+    : defaults.restartPolicy
+  const effectPreset = MUSIC_EFFECT_PRESETS.includes(
+    raw.effectPreset as (typeof MUSIC_EFFECT_PRESETS)[number]
+  )
+    ? (raw.effectPreset as MusicCueDefinition['effectPreset'])
+    : defaults.effectPreset
+  if (endAtSec !== undefined && endAtSec <= startAtSec) return undefined
+  if (loopStartSec !== undefined && loopStartSec < startAtSec) return undefined
+  if (loopEndSec !== undefined && loopEndSec <= (loopStartSec ?? startAtSec)) return undefined
+  if (endAtSec !== undefined && loopEndSec !== undefined && loopEndSec > endAtSec) return undefined
+
+  return {
+    id,
+    displayName,
+    track: raw.track,
+    startAtSec,
+    ...(endAtSec !== undefined ? { endAtSec } : {}),
+    loop,
+    ...(loopStartSec !== undefined ? { loopStartSec } : {}),
+    ...(loopEndSec !== undefined ? { loopEndSec } : {}),
+    volume,
+    fadeInMs,
+    fadeOutMs,
+    crossfadeMs,
+    restartPolicy,
+    effectPreset,
+  }
+}
+
+function sanitiseVariantStageAssignments(
+  raw: unknown
+): MinigameStageVariantAssignments | undefined {
+  if (!isRecord(raw)) return undefined
+  const result: MinigameStageVariantAssignments = {}
+  for (const stage of MINIGAME_STAGES) {
+    const rawStage = raw[stage]
+    if (!isRecord(rawStage)) continue
+    const variants: Partial<Record<MusicMinigameVariant, MusicSelection>> = {}
+    for (const variant of MUSIC_MINIGAME_VARIANTS) {
+      if (variant === 'normal') continue
+      const selection = sanitiseMusicSelection(rawStage[variant])
+      if (selection) variants[variant] = selection
+    }
+    if (Object.keys(variants).length > 0) result[stage] = variants
+  }
+  return Object.keys(result).length > 0 ? result : undefined
 }
 
 function sanitiseEventCue(raw: unknown): AudioEventCue | undefined {
@@ -243,6 +324,32 @@ export function sanitiseMusicConfigOverrides(raw: unknown): MusicConfigOverrides
       if (Object.keys(games).length > 0) assignments[mode] = games
     }
     if (Object.keys(assignments).length > 0) result.minigameAssignments = assignments
+  }
+
+  if (isRecord(raw.minigameVariantAssignments)) {
+    const assignments: NonNullable<MusicConfigOverrides['minigameVariantAssignments']> = {}
+    for (const mode of MUSIC_CONFIG_MODES) {
+      const rawMode = raw.minigameVariantAssignments[mode]
+      if (!isRecord(rawMode)) continue
+      const games: Record<string, MinigameStageVariantAssignments> = {}
+      for (const [gameKey, value] of Object.entries(rawMode)) {
+        if (!isSafeObjectKey(gameKey)) continue
+        const stages = sanitiseVariantStageAssignments(value)
+        if (stages) games[gameKey] = stages
+      }
+      if (Object.keys(games).length > 0) assignments[mode] = games
+    }
+    if (Object.keys(assignments).length > 0) result.minigameVariantAssignments = assignments
+  }
+
+  if (isRecord(raw.musicCues)) {
+    const cues: Record<string, MusicCueDefinition> = {}
+    for (const [cueId, value] of Object.entries(raw.musicCues)) {
+      if (!isSafeObjectKey(cueId)) continue
+      const cue = sanitiseMusicCue(value, cueId)
+      if (cue) cues[cueId] = cue
+    }
+    if (Object.keys(cues).length > 0) result.musicCues = cues
   }
 
   if (isRecord(raw.minigameCategoryMusic)) {

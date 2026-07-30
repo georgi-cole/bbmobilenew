@@ -1,6 +1,7 @@
 import type { GameCategory } from '../../minigames/registry'
 import { SOUND_REGISTRY } from './sounds'
 import { MUSIC_CATALOG, MUSIC_TRACK_IDS, type CatalogMusicTrack } from './musicCatalog'
+import { validateMusicCueDefinition } from './musicCue'
 import {
   AUDIO_EVENT_IDS,
   DEFAULT_MUSIC_CONFIG,
@@ -148,11 +149,62 @@ function auditEventSounds(config: MusicConfigDocument, issues: MusicConfigAuditI
   }
 }
 
+function auditMusicCueLibrary(config: MusicConfigDocument, issues: MusicConfigAuditIssue[]): void {
+  for (const [cueId, cue] of Object.entries(config.musicCues)) {
+    const path = `musicCues.${cueId}`
+    if (cue.id !== cueId) {
+      issues.push({
+        code: 'cue-id-mismatch',
+        message: `Cue key ${cueId} does not match its internal id ${cue.id}.`,
+        path,
+      })
+    }
+    for (const issue of validateMusicCueDefinition(cue)) {
+      issues.push({
+        code: `invalid-cue-${issue.code}`,
+        message: `${cue.displayName}: ${issue.message}`,
+        path,
+      })
+    }
+  }
+
+  const visit = (value: unknown, path: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => visit(entry, `${path}[${index}]`))
+      return
+    }
+    if (!value || typeof value !== 'object') return
+    const record = value as Record<string, unknown>
+    if (record.kind === 'track' && typeof record.cueId === 'string') {
+      const cue = config.musicCues[record.cueId]
+      if (!cue) {
+        issues.push({
+          code: 'missing-assignment-cue',
+          message: `Assignment references missing cue ${record.cueId}.`,
+          path,
+        })
+      } else if (record.track !== cue.track) {
+        issues.push({
+          code: 'assignment-cue-track-mismatch',
+          message: `Assignment track ${String(record.track)} does not match cue ${record.cueId} track ${cue.track}.`,
+          path,
+        })
+      }
+    }
+    for (const [key, entry] of Object.entries(record)) {
+      if (key === 'musicCues') continue
+      visit(entry, path ? `${path}.${key}` : key)
+    }
+  }
+  visit(config, '')
+}
+
 export function auditMusicConfig(
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG,
   activeMinigames: readonly AuditableMinigame[] = []
 ): MusicConfigAuditIssue[] {
   const issues: MusicConfigAuditIssue[] = []
+  auditMusicCueLibrary(config, issues)
 
   if (config.version !== 1) {
     issues.push({

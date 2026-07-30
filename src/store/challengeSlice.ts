@@ -28,6 +28,7 @@ import { computeScores } from '../minigames/scoring'
 import type { RawResult } from '../minigames/scoring'
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice'
 import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
+import type { MusicMinigameVariant } from '../services/sound/musicConfig'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ export interface PendingChallenge {
   seed: number
   participants: string[]
   phase: 'rules' | 'countdown' | 'playing' | 'results' | 'done'
+  musicVariant?: MusicMinigameVariant
   /** Pre-simulated deterministic scores for every non-human participant. */
   aiScores: Record<string, number>
   /**
@@ -129,7 +131,14 @@ const challengeSlice = createSlice({
     },
 
     setPendingPhase(state, action: PayloadAction<PendingChallenge['phase']>) {
-      if (state.pending) state.pending.phase = action.payload
+      if (state.pending) {
+        state.pending.phase = action.payload
+        if (action.payload !== 'playing') state.pending.musicVariant = 'normal'
+      }
+    },
+
+    setPendingMusicVariant(state, action: PayloadAction<MusicMinigameVariant>) {
+      if (state.pending) state.pending.musicVariant = action.payload
     },
 
     incrementNonce(state) {
@@ -152,7 +161,9 @@ const challengeSlice = createSlice({
       const restored = action.payload
       return {
         ...restored,
-        pending: restored.pending ? { ...restored.pending, phase: 'rules' as const } : null,
+        pending: restored.pending
+          ? { ...restored.pending, phase: 'rules' as const, musicVariant: 'normal' as const }
+          : null,
       }
     },
   },
@@ -161,6 +172,7 @@ const challengeSlice = createSlice({
 export const {
   setPendingChallenge,
   setPendingPhase,
+  setPendingMusicVariant,
   incrementNonce,
   recordRun,
   setDebugOverrides,
@@ -551,6 +563,7 @@ export const startChallenge =
       seed: perChallengeSeed,
       participants: finalParticipants,
       phase: 'rules',
+      musicVariant: 'normal',
       aiScores,
       aiTiebreakers,
       prizeType: opts.prizeType,
