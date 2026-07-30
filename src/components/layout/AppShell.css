@@ -20,7 +20,10 @@ body:has(.game-screen-shell) .app-shell {
   flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior-y: contain;
+  /* Do not let horizontal edge drags invoke browser/WebView history navigation.
+     Screen changes remain explicit through the in-game controls. */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding-top: var(--app-safe-area-top);
   padding-right: var(--safe-right);
   padding-bottom: 0;
