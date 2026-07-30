@@ -61,6 +61,14 @@ const violations = []
 const legacyExceptions = []
 const checked = []
 
+async function isPrettierClean(source, options) {
+  try {
+    return await prettier.check(source, options)
+  } catch {
+    return false
+  }
+}
+
 for (const file of files) {
   const fileInfo = await prettier.getFileInfo(file, { ignorePath: '.prettierignore' })
   if (fileInfo.ignored || fileInfo.inferredParser == null) continue
@@ -68,7 +76,7 @@ for (const file of files) {
   const config = (await prettier.resolveConfig(file)) ?? {}
   const options = { ...config, filepath: file }
   const currentSource = await readFile(file, 'utf8')
-  const currentClean = await prettier.check(currentSource, options)
+  const currentClean = await isPrettierClean(currentSource, options)
   const baseSource = git(['show', `${mergeBase}:${file}`])
 
   if (baseSource == null) {
@@ -77,7 +85,7 @@ for (const file of files) {
     continue
   }
 
-  const baseClean = await prettier.check(baseSource, options)
+  const baseClean = await isPrettierClean(baseSource, options)
   if (!baseClean) {
     legacyExceptions.push(file)
     continue
