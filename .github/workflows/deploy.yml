@@ -88,6 +88,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_BUILD_ID: ${{ github.sha }}
         run: npm run build
 
       - name: Setup Pages
