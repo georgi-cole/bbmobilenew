@@ -20,7 +20,7 @@ import famousFiguresReducer, {
 } from '../../../src/features/famousFigures/famousFiguresSlice';
 import type { FamousFiguresState } from '../../../src/features/famousFigures/famousFiguresSlice';
 
-// ─── Test store factory ───────────────────────────────────────────────────────
+// â”€â”€â”€ Test store factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function makeStore(preloaded?: Partial<FamousFiguresState>) {
   return configureStore({
@@ -40,7 +40,7 @@ function getState(store: ReturnType<typeof makeStore>) {
 const PLAYER_A = 'player-a';
 const PLAYER_B = 'player-b';
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe('famousFiguresSlice', () => {
   it('initial state is idle', () => {
@@ -74,7 +74,7 @@ describe('famousFiguresSlice', () => {
     expect(s.correctPlayers).toContain(PLAYER_A);
     // Cursor does NOT advance until advancePlayerCursor is dispatched
     expect(s.playerRoundCursor[PLAYER_A]).toBe(0);
-    // Dispatch advancePlayerCursor — cursor should now be 1
+    // Dispatch advancePlayerCursor â€” cursor should now be 1
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
   });
@@ -85,7 +85,7 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).status).toBe('round_active');
     const s0 = getState(store);
     const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
-    // First player solves — round should stay active since PLAYER_B hasn't answered
+    // First player solves â€” round should stay active since PLAYER_B hasn't answered
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     // Cursor not yet advanced (waiting for advancePlayerCursor)
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
@@ -141,7 +141,7 @@ describe('famousFiguresSlice', () => {
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'einstein' })); // same after normalisation
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: 'EINSTEIN' }));
     const s = getState(store);
-    // All three normalise to the same string — only 1 entry should be stored
+    // All three normalise to the same string â€” only 1 entry should be stored
     expect(s.playerGuesses[PLAYER_A]).toHaveLength(1);
   });
 
@@ -153,18 +153,19 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).hintsRevealed).toBe(1);
     store.dispatch(revealNextHint());
     expect(getState(store).hintsRevealed).toBe(2);
+    expect(getState(store).timerPhase).toBe('hint_3');
   });
 
-  it('revealNextHint does not exceed 5', () => {
+  it('revealNextHint does not exceed the four visible hints', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'LOH', seed: 1 }));
     for (let i = 0; i < 10; i++) store.dispatch(revealNextHint());
-    expect(getState(store).hintsRevealed).toBe(5);
+    expect(getState(store).hintsRevealed).toBe(4);
   });
 
   it('advanceTimer is blocked after all participants solve the round', () => {
     const store = makeStore();
-    // Single participant — solving + advancePlayerCursor closes the round immediately (all solved)
+    // Single participant â€” solving + advancePlayerCursor closes the round immediately (all solved)
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A], competitionType: 'LOH', seed: 1 }));
     const s0 = getState(store);
     const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
@@ -184,7 +185,7 @@ describe('famousFiguresSlice', () => {
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'LOH', seed: 1 }));
     const s0 = getState(store);
     const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
-    // Only PLAYER_A solves — PLAYER_B has not, so roundComplete stays false
+    // Only PLAYER_A solves â€” PLAYER_B has not, so roundComplete stays false
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).roundComplete).toBe(false);
@@ -204,10 +205,10 @@ describe('famousFiguresSlice', () => {
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerCorrect[PLAYER_A]).toBe(true);
     const scoreAfterA = getState(store).playerScores[PLAYER_A];
-    // PLAYER_A tries to submit again BEFORE advancePlayerCursor — should be rejected
+    // PLAYER_A tries to submit again BEFORE advancePlayerCursor â€” should be rejected
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
-    // PLAYER_A tries again AFTER advancePlayerCursor — cursor is now 1, targetRound=0 fails guard
+    // PLAYER_A tries again AFTER advancePlayerCursor â€” cursor is now 1, targetRound=0 fails guard
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     expect(getState(store).playerScores[PLAYER_A]).toBe(scoreAfterA);
@@ -219,12 +220,12 @@ describe('famousFiguresSlice', () => {
     const s0 = getState(store);
     const figureA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     const figureB = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_B, s0.currentRound)];
-    // PLAYER_A solves their personal figure — round stays active
+    // PLAYER_A solves their personal figure â€” round stays active
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figureA.canonicalName }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).status).toBe('round_active');
     expect(getState(store).playerScores[PLAYER_A]).toBeGreaterThan(0);
-    // PLAYER_B solves their personal figure + advancePlayerCursor → all solved → round_reveal
+    // PLAYER_B solves their personal figure + advancePlayerCursor â†’ all solved â†’ round_reveal
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figureB.canonicalName }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_B, targetRound: 0 }));
     const s = getState(store);
@@ -243,7 +244,7 @@ describe('famousFiguresSlice', () => {
     // There is no extra ten-second overtime window after the final clue.
     store.dispatch(advanceTimer());
     expect(getState(store).timerPhase).toBe('done');
-    // One more advance → done
+    // One more advance â†’ done
     store.dispatch(advanceTimer());
     expect(getState(store).timerPhase).toBe('done');
   });
@@ -341,7 +342,7 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).playerScores).toEqual({});
   });
 
-  // ── playerRoundCursor tests ────────────────────────────────────────────────
+  // â”€â”€ playerRoundCursor tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   it('playerRoundCursor starts at 0 for all participants after startFamousFigures', () => {
     const store = makeStore();
@@ -357,9 +358,9 @@ describe('famousFiguresSlice', () => {
     const s0 = getState(store);
     const figure = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, s0.currentRound)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figure.canonicalName }));
-    // Cursor must still be 0 — advancePlayerCursor has not been dispatched yet
+    // Cursor must still be 0 â€” advancePlayerCursor has not been dispatched yet
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
-    // Now dispatch advancePlayerCursor — cursor must be 1
+    // Now dispatch advancePlayerCursor â€” cursor must be 1
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
   });
@@ -394,7 +395,7 @@ describe('famousFiguresSlice', () => {
     const store = makeStore();
     store.dispatch(startFamousFigures({ participantIds: [PLAYER_A, PLAYER_B], competitionType: 'LOH', seed: 42 }));
     const s = getState(store);
-    // matchFigureOrder is shared — all players have the same figure per round.
+    // matchFigureOrder is shared â€” all players have the same figure per round.
     expect(s.matchFigureOrder).toHaveLength(s.totalRounds);
     const queueA = s.playerFigureQueues[PLAYER_A];
     const queueB = s.playerFigureQueues[PLAYER_B];
@@ -424,7 +425,7 @@ describe('famousFiguresSlice', () => {
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
 
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(1);
-    // PLAYER_B hasn't answered yet — cursor stays 0
+    // PLAYER_B hasn't answered yet â€” cursor stays 0
     expect(getState(store).playerRoundCursor[PLAYER_B]).toBe(0);
     // Round is still active since PLAYER_B hasn't solved
     expect(getState(store).status).toBe('round_active');
@@ -437,17 +438,17 @@ describe('famousFiguresSlice', () => {
     expect(s0.currentRound).toBe(0);
     const figA = FAMOUS_FIGURES[getPlayerFigureIndex(s0, PLAYER_A, 0)];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
-    // Cursor is still at 0 — advancePlayerCursor not yet dispatched
+    // Cursor is still at 0 â€” advancePlayerCursor not yet dispatched
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(0);
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
     const s = getState(store);
     // humanDoneWithRound condition: cursor > currentRound
     expect(s.playerRoundCursor[PLAYER_A]).toBeGreaterThan(s.currentRound);
-    // Round must remain active — PLAYER_B hasn't answered
+    // Round must remain active â€” PLAYER_B hasn't answered
     expect(s.status).toBe('round_active');
   });
 
-  // ── matchFigureOrder tests ─────────────────────────────────────────────────
+  // â”€â”€ matchFigureOrder tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   it('matchFigureOrder is populated with totalRounds figures on startFamousFigures', () => {
     const store = makeStore();
@@ -495,7 +496,7 @@ describe('famousFiguresSlice', () => {
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig1.canonicalName, targetRound: 1 }));
     // Cursor should advance to 2 immediately (ahead round)
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(2);
-    // Global round still 0 — PLAYER_B hasn't answered
+    // Global round still 0 â€” PLAYER_B hasn't answered
     expect(getState(store).currentRound).toBe(0);
     expect(getState(store).status).toBe('round_active');
     // Score should include both rounds
@@ -513,17 +514,17 @@ describe('famousFiguresSlice', () => {
     const fig0 = FAMOUS_FIGURES[s0.matchFigureOrder[0]];
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig0.canonicalName, targetRound: 0 }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
-    // Rounds 1 and 2 are ahead rounds — cursor advances immediately in submitPlayerGuess.
+    // Rounds 1 and 2 are ahead rounds â€” cursor advances immediately in submitPlayerGuess.
     for (let r = 1; r < 3; r++) {
       const s = getState(store);
       const fig = FAMOUS_FIGURES[s.matchFigureOrder[r]];
       store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: fig.canonicalName, targetRound: r }));
     }
     expect(getState(store).playerRoundCursor[PLAYER_A]).toBe(3);
-    // PLAYER_B hasn't answered — global still on round 0
+    // PLAYER_B hasn't answered â€” global still on round 0
     expect(getState(store).status).toBe('round_active');
 
-    // Dispatch finishAllRounds — should complete the match
+    // Dispatch finishAllRounds â€” should complete the match
     store.dispatch(finishAllRounds());
     expect(getState(store).status).toBe('complete');
     expect(getState(store).winnerId).toBeDefined();
@@ -544,7 +545,7 @@ describe('famousFiguresSlice', () => {
     // PLAYER_A answers round 1 AHEAD (earns points based on hintsRevealed=0)
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: FAMOUS_FIGURES[s0.matchFigureOrder[1]].canonicalName, targetRound: 1 }));
 
-    // Global round 0 ends — PLAYER_A's round 0 score should be 10 (not 20)
+    // Global round 0 ends â€” PLAYER_A's round 0 score should be 10 (not 20)
     store.dispatch(endRound());
     const scoreRound0 = getState(store).playerRoundScores[PLAYER_A][0];
     const personalRound0 = getState(store).playerPersonalRoundScores[PLAYER_A][0];
@@ -552,7 +553,7 @@ describe('famousFiguresSlice', () => {
     expect(scoreRound0).toBeGreaterThan(0);
   });
 
-  // ── advancePlayerCursor tests ──────────────────────────────────────────────
+  // â”€â”€ advancePlayerCursor tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   it('advancePlayerCursor advances cursor from 0 to 1', () => {
     const store = makeStore();
@@ -576,12 +577,12 @@ describe('famousFiguresSlice', () => {
 
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_A, guess: figA.canonicalName }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_A, targetRound: 0 }));
-    // Still active — PLAYER_B cursor at 0
+    // Still active â€” PLAYER_B cursor at 0
     expect(getState(store).status).toBe('round_active');
 
     store.dispatch(submitPlayerGuess({ playerId: PLAYER_B, guess: figB.canonicalName }));
     store.dispatch(advancePlayerCursor({ playerId: PLAYER_B, targetRound: 0 }));
-    // Now both cursors > 0 — round should have closed
+    // Now both cursors > 0 â€” round should have closed
     expect(getState(store).status).toBe('round_reveal');
     expect(getState(store).roundComplete).toBe(true);
   });
@@ -612,3 +613,4 @@ describe('famousFiguresSlice', () => {
     expect(getState(store).status).toBe('round_reveal'); // closed
   });
 });
+
