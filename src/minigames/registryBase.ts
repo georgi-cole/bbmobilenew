@@ -128,15 +128,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   quickTap: {
     key: 'quickTap',
     title: 'Quick Tap Race',
-    description:
-      'Tap as fast as you can for 30 seconds! Special power-ups and debuffs appear mid-game.',
+    description: 'Tap quickly, grab useful boosts, and finish with the strongest score.',
     instructions: [
-      'A 3-second countdown starts immediately — watch for "GO!" on-screen',
-      'Tap the on-canvas button as fast as possible for 30 seconds',
-      'Watch for the 🎁 MYSTERY BOOSTER prompt on the canvas — tap it to activate!',
-      'Power-ups (⚡ 2× Frenzy, 🔥 3× Turbo) double or triple each tap value',
-      'Beware debuffs like 🥴 Fumble or ⌛ -3 SECONDS that hurt your score',
-      'Your score is based on effective taps (raw taps × any active multiplier)',
+      'Wait for the start signal, then tap the play area as quickly as you can.',
+      'Grab on-screen boosters when they appear to build your score faster.',
+      'Avoid any setbacks and keep tapping until the round ends.',
+      'The highest score wins.',
     ],
     metricKind: 'count',
     metricLabel: 'Taps',
@@ -180,13 +177,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   memoryMatch: {
     key: 'memoryMatch',
     title: 'Memory Colors',
-    description: 'Watch and rebuild a growing sequence of named color swatches',
+    description: 'Watch the colour sequence, then rebuild it in the same order.',
     instructions: [
-      'A sequence of named color swatches flashes one by one',
-      'Round 1 starts with 5 colors, and each new round adds 1 more',
-      'Rebuild the exact same color order from the full 20-color pool',
-      'Your run ends on the 5th total mistake',
-      'Furthest round wins; ties break by fewer mistakes, then faster time',
+      'Watch the colour swatches as they appear.',
+      'Select the swatches in the exact same order.',
+      'The sequence becomes more challenging as you progress.',
+      'Reach the furthest stage to win; close results are decided by accuracy and speed.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',
@@ -277,14 +273,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   estimationGame: {
     key: 'estimationGame',
     title: 'Estimation',
-    description:
-      'Five rounds of rapid estimation — count figures before they vanish, with mixed shapes in the final rounds',
+    description: 'Estimate the figures you see before the board disappears.',
     instructions: [
-      'Figures flash on screen briefly — count what the round asks you to count!',
-      'When the board hides, enter your estimate before the timer runs out',
-      'Five rounds of increasing difficulty — exposure time drops each round',
-      'Rounds 4 and 5 show mixed figure types: read the task carefully!',
-      'Final score = average accuracy across all 5 rounds — highest average wins',
+      'Study the figures and count what the prompt asks for.',
+      'Enter your best estimate before time runs out.',
+      'Later boards may be quicker or use mixed figures, so read the prompt carefully.',
+      'The most accurate overall performance wins.',
     ],
     metricKind: 'accuracy',
     metricLabel: 'Avg Accuracy %',
@@ -351,13 +345,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   famousFigures: {
     key: 'famousFigures',
     title: 'Famous Figures',
-    description:
-      'Identify famous historical figures from progressive clues. Fewer hints = higher score!',
+    description: 'Identify famous historical figures from a series of clues.',
     instructions: [
-      'A historical figure is hidden — guess who it is from clues.',
-      'You start with one clue and can request up to 5 hints.',
-      'Fewer hints used = more points: 10 down to 1.',
-      'Three rounds per match — highest total score wins!',
+      'A historical figure is hidden behind clues.',
+      'Make your guess when you are ready, or reveal another clue for help.',
+      'Earlier correct guesses earn the stronger result.',
+      'Build the best total across the match to win.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -406,14 +399,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     description:
       'Pick the answer you think the crowd will choose. Fall into the minority and you are out.',
     instructions: [
-      'Every round a social question appears with 3 answer options.',
+      'Each round presents a social question with several answer options.',
       'Everyone locks in an answer at the same time.',
-      'You get 3 hints for the whole game, and each hint can only be used once.',
+      'Use available hints carefully to read the room.',
       'Players in the minority are eliminated.',
-      'If everyone picks the same answer, nobody leaves and the next round starts fresh.',
-      'A tied ballot gets one re-vote. If it is still tied, that question is discarded and a new one begins.',
-      'If multiple minority answers tie beneath the majority, every tied minority player is eliminated.',
-      'At the Final 2, the game becomes a dice duel.',
+      'If there is no clear majority, the game resolves the tie before moving on.',
+      'The last contestants face a final head-to-head to decide the winner.',
     ],
     resultMode: 'placement',
     metricKind: 'points',
@@ -597,7 +588,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   logicLocks: {
     key: 'logicLocks',
     title: 'Vault Cracker',
-    description: 'Crack the 4-digit vault combination with unlimited attempts',
+    description: 'Crack the vault combination with as few attempts as possible.',
     instructions: [
       'Drag each tumbler vertically or tap its upper/lower half to set your 4-digit guess',
       'Tap the on-canvas "Test Combination" control to submit',
@@ -621,7 +612,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   snake: {
     key: 'snake',
     title: 'Serpentine',
-    description: 'Race to 1000 points — navigate food, grab bonuses, dodge penalties!',
+    description: 'Guide your serpent to collect food, grab bonuses, and avoid danger.',
     instructions: [
       'Reach 1000 points to complete the run — fastest time wins',
       'Monochrome food silhouettes: fruit +25 pts · heart +75 pts · bug −20 pts',
@@ -646,7 +637,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   cardClash: {
     key: 'cardClash',
     title: 'House of Cards',
-    description: 'Five-round memory tournament with a shared-board final',
+    description: 'A memory tournament that builds to a shared-board final.',
     instructions: [
       'Rounds use 8, 12, 16, 20, then 24 tiles with an elapsed timer and no cutoff',
       'The lowest scorer leaves after rounds 1–3; only the top two survive round 4',
@@ -737,12 +728,11 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   hangman: {
     key: 'hangman',
     title: 'Verdict Board',
-    description: 'Five-round pressure challenge with cumulative scoring and mystery boxes',
+    description: 'A pressure word challenge with cumulative scoring and mystery boxes.',
     instructions: [
-      'Survive 5 rounds of a dark word-guessing pressure board.',
-      'Guess letters to reveal strategic terms and phrases while the timer climbs upward.',
-      'Seven wrong letters crack the board, end the round immediately, and score zero.',
-      'Mystery Boxes can help, hinder, or demand trade-offs before the scoreboard locks in.',
+      'Guess letters to reveal the hidden strategic terms and phrases.',
+      'Wrong guesses increase the pressure and can end the round.',
+      'Mystery Boxes can help, hinder, or demand a trade-off.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -784,7 +774,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   threeDigitsQuiz: {
     key: 'threeDigitsQuiz',
     title: 'Number Trivia',
-    description: 'Survive five number-trivia qualifiers, then win a three-life final duel',
+    description: 'Answer number trivia, survive the qualifiers, and win the final duel.',
     instructions: [
       'Five qualifying rounds are played with a scoreboard after each round',
       'Every question begins with 3 seconds of shared reading time before response timing starts',
@@ -809,7 +799,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   capitalization: {
     key: 'capitalization',
     title: 'Capitalization',
-    description: 'A rotating-globe capital city tournament across three continents.',
+    description: 'A globe-spinning tournament of capital city trivia.',
     instructions: [
       'The globe spins and lands on one of three randomly selected continents.',
       'Answer the capital city for three countries on that continent.',
@@ -974,14 +964,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   dontGoOver: {
     key: 'dontGoOver',
     title: "Don't go over",
-    description: 'Strict numeric elimination rounds followed by a three-life final.',
+    description: 'Make the closest estimate without going over the correct answer.',
     instructions: [
-      'Everyone estimates the same numeric answer; every player who goes over is eliminated.',
-      'If nobody goes over, the furthest valid guess is eliminated; an exact tie eliminates the slower player.',
-      'If everyone goes over, nobody is eliminated and a fresh question is played.',
-      'At three or two survivors, each finalist gets three lives and duel losses cost one life.',
-      'If a qualifier leaves only one survivor, that player wins immediately.',
-      'Equal winning guesses are decided by response time; the last player with lives wins.',
+      'Enter your estimate without exceeding the correct answer.',
+      'Going over puts you at risk; otherwise the least accurate valid estimate can be eliminated.',
+      'When only a few contestants remain, the game becomes a head-to-head final.',
+      'Be the last contestant standing to win.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',
@@ -1000,14 +988,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   blackjackTournament: {
     key: 'blackjackTournament',
     title: 'Blackjack Tournament',
-    description: 'Blackjack duel tournament. Closest to 21 without busting wins.',
+    description: 'Play blackjack duels: get close to 21 without going over.',
     instructions: [
-      'League: play one blackjack duel against every opponent while AI league matches resolve in the background.',
-      'A league win adds 1 point and a league loss removes 1 point. Scores may go below zero.',
-      'After all league matches, the top three scores advance. Everyone tied at the cutoff also qualifies.',
-      'Finals: all qualifiers reset to 3 lives. Winners keep their total; losers lose 1 life.',
-      'The duel winner controls the next pairing. Reach 0 lives and you are eliminated.',
-      'The last finalist with lives remaining wins the competition!',
+      'Choose whether to take another card or hold your hand.',
+      'Get closer to 21 than your opponent without busting to win a duel.',
+      'Strong results carry you through the early tournament and into the finals.',
+      'Keep winning head-to-head duels to become champion.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',
@@ -1026,18 +1012,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   riskWheel: {
     key: 'riskWheel',
     title: 'Risk Wheel',
-    description:
-      'A Wheel-of-Fortune–style multi-round elimination contest. Spin for points, risk it all, or go bankrupt — and watch out for 666!',
+    description: 'Spin for points, bank a good result, and avoid the risky wheel outcomes.',
     instructions: [
-      'Players compete over 3 rounds. All scores reset each round.',
-      'Each player gets up to 3 spins per round.',
-      'After spin 1 or 2 you may Stop & Bank your score, or Spin Again.',
-      'After spin 3 your score is automatically banked.',
-      'BANKRUPT resets your score to 0 and ends your turn.',
-      'SKIP ends your turn immediately — you keep whatever you have.',
-      '666 randomly adds or subtracts 666 points (50/50) then continues.',
-      'After each round the lowest-scoring players are eliminated.',
-      'After Round 3 the highest scorer wins!',
+      'Spin the wheel to build a round score.',
+      'Choose when to bank your score and when to risk another spin.',
+      'Some wheel spaces help, while others can end your turn or wipe out a score.',
+      'Low scorers are eliminated as the competition progresses.',
+      'Finish with the strongest result to win.',
     ],
     resultMode: 'placement',
     metricKind: 'points',
@@ -1081,15 +1062,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   castleRescue: {
     key: 'castleRescue',
     title: 'Find Your Twin',
-    description:
-      'Run and jump through the castle, enter the correct pipes in order, and find your twin before time runs out!',
+    description: 'Run through the castle, find the correct route, and reach your twin.',
     instructions: [
-      'Use Arrow Keys or WASD to run left/right, Up/Space to jump.',
-      'Find the 3 correct pipes and enter them in order by pressing ↓.',
-      'Wrong pipes send you back — watch out!',
-      'Stomp enemies (land on them) for bonus points.',
-      'Break bricks by jumping into them from below.',
-      'Collect Eyeoleans for extra score. Reach your twin to win!',
+      'Use the movement controls to run, jump, and explore the castle.',
+      'Enter the correct pipes in the right order to advance.',
+      'Wrong routes set you back, so use what you learn on the next attempt.',
+      'Collect useful items and reach your twin before time runs out.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -1108,15 +1086,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',
     title: 'The Crystal Path',
-    description:
-      'Step across a path of paired crystal platforms one row at a time. One wrong step and you are eliminated.',
+    description: 'Choose your way across a crystal path and make it further than your rivals.',
     instructions: [
-      'Players cross a glowing crystal path platform by platform.',
-      'Each row has two platforms: LEFT and RIGHT. Only one is solid.',
-      'Choose the wrong platform and it shatters — you are eliminated.',
-      'Everyone starts from the beginning; crossing order is decided by a number draw.',
-      'The player who crosses fastest — or reaches the furthest platform — wins.',
-      'You may use The Expert up to 3 times per run. Each hint adds a 30-second penalty to your final time.',
+      'At each row, choose the crystal platform you think will hold.',
+      'A wrong choice ends your run, so every step matters.',
+      'Use any available expert help carefully—it can come with a trade-off.',
+      'Cross the path fastest, or make the deepest run, to win.',
     ],
     resultMode: 'placement',
     metricKind: 'accuracy',
@@ -1161,13 +1136,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   rescueTheKing: {
     key: 'rescueTheKing',
     title: 'Rescue the King',
-    description: 'Clear the match-3 board before rising water drowns the king',
+    description: 'Clear the match board before the rising water reaches the king.',
     instructions: [
-      'Swap adjacent tiles to create matches of 3 or more identical symbols.',
+      'Swap adjacent tiles to make matches of identical symbols.',
       'Matched tiles are removed — remaining tiles fall downward.',
       'Destroy crates and stone blockers by matching tiles next to them.',
-      'Clear all tiles from the board before the 3-minute timer runs out.',
-      'Big combos earn bonus points — chain cascades for maximum score!',
+      'Clear the board before time runs out to rescue the king.',
+      'Create cascades and larger combos to improve your score.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -1186,14 +1161,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   trapAuction: {
     key: 'trapAuction',
     title: 'Trap Auction',
-    description: 'Secretly bid Eyeolens every round — the lowest bidder is eliminated.',
+    description: 'Bid secretly, manage your funds, and avoid the lowest bid.',
     instructions: [
-      'Every player starts with 100 Eyeolens.',
       'Each round, secretly choose how much to bid.',
-      'After all bids lock, first the highest bid is revealed, then the lowest bid(s); other bids stay hidden.',
-      'The player who bid the LOWEST is eliminated. Ties eliminate all tied players.',
-      'The player who bid the HIGHEST is exposed — their bid is public.',
-      'All players pay their bid from their bank.',
+      'Once bids lock, the important results are revealed while some information stays hidden.',
+      'The lowest bidder is eliminated; a tie can put every tied bidder in danger.',
+      'Every bid comes out of your available funds, so balance safety against saving resources.',
       'Last player standing wins!',
     ],
     metricKind: 'points',
@@ -1213,14 +1186,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   gridOfLuck: {
     key: 'gridOfLuck',
     title: 'Grid of Luck',
-    description:
-      'Open ritual boxes to gain LP, trigger chaos, and eliminate rivals in a cinematic chamber.',
+    description: 'Open ritual boxes, gain power, and outlast your rivals in the chamber.',
     instructions: [
-      'Every player begins with 500 LP and takes turns opening one sealed box.',
+      'Take turns opening sealed boxes to reveal benefits, setbacks, and special powers.',
       'Powers resolve immediately — if a power needs a target, choose a valid player before the ritual continues.',
-      'Shield blocks the next LP damage or elimination effect once.',
-      'If your LP reaches 0, you are eliminated immediately but remain visible in the chamber.',
-      'When only one player remains alive they win instantly; otherwise the highest LP wins when the grid ends.',
+      'Protection can block a harmful effect, but only when it is active.',
+      'Running out of LP eliminates you from the contest.',
+      'Be the last player standing, or finish with the strongest LP total when the grid ends.',
     ],
     resultMode: 'placement',
     metricKind: 'points',
@@ -1241,13 +1213,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   bigSpender: {
     key: 'bigSpender',
     title: 'Big Spender: Broke or Boom',
-    description:
-      'Open private wallets, spend down your Eyeoleans, and lock in before a bomb ruins the run.',
+    description: 'Open wallets, spend toward zero, and lock in before a bomb ruins your run.',
     instructions: [
-      'Start each round with 1,200 Eyeoleans. Open wallets and finish as close to 0 as possible; bombs rank below every survivor.',
-      'After 8 wallets you may Lock in. Rounds 1-3 remove one player and Round 4 selects the final two.',
-      'Rounds 1-4 use private boards. The finalists share one board and alternate picks in Round 5.',
-      'Before the finale, a bomb may be rescued twice by an ad and one mandatory Second Chance Wallet.',
+      'Open wallets and try to finish as close to zero as possible without hitting a bomb.',
+      'When the option appears, choose whether to lock in your result or keep opening wallets.',
+      'Early rounds use private boards; the finalists share the decisive board.',
+      'Any available second-chance option gives you one last decision after a bomb.',
     ],
     resultMode: 'placement',
     metricKind: 'points',
@@ -1266,14 +1237,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   chainOfGreed: {
     key: 'chainOfGreed',
     title: 'Chain of Greed',
-    description:
-      'Build a shared higher-or-lower chain, bank the pressure points, and survive weakest-link eliminations.',
+    description: 'Build a higher-or-lower chain, bank your progress, and survive elimination.',
     instructions: [
-      'Guess Higher or Lower to grow the shared chain from 50 up to 1300 influence.',
-      'Bank secures only the current chain pot, keeps the same reference number, and resets the chain.',
-      'A wrong guess destroys the active pot. Equal numbers count as a miss.',
-      'Standard rounds end with weakest-link votes until 2 players remain.',
-      'Final 2 uses individual timed scoring. Only the winner claims the secured influence total.',
+      'Guess whether the next value will be higher or lower than the current one.',
+      'Keep a correct chain going to build influence, or bank it before you take another risk.',
+      'A wrong guess loses the active chain, so decide when enough is enough.',
+      'Contestants are eliminated as the game progresses, followed by a final head-to-head.',
     ],
 
     resultMode: 'placement',
@@ -1292,15 +1261,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   batteryLow: {
     key: 'batteryLow',
     title: 'Battery Low',
-    description:
-      'Choose a Reserve Battery, open a charging rack, and decide whether to lock the Bank Offer or risk your final charge.',
+    description: 'Choose a reserve battery, open the rack, and decide whether to take the bank offer.',
     instructions: [
-      'Choose one numbered battery as your Reserve Battery. It stays sealed while the rack drains.',
-      'Open the remaining batteries in rounds of 5, 4, 4, 3, 2, 1, and 1.',
-      'After each round, the Bank makes an offer based on the charge values still hidden.',
-      'Accept the Bank Offer to lock that charge, or reject it to keep opening batteries.',
-      'Rejecting the final offer opens your Reserve Battery. There is no swap.',
-      'Other contestants play private charging booths in parallel; their final charge values are revealed only after your game ends.',
+      'Choose a reserve battery and keep it sealed while you open the rest of the rack.',
+      'After each stage, consider the bank’s offer based on the charges still hidden.',
+      'Accept an offer to lock in your charge, or reject it to keep playing.',
+      'If you play to the end, your reserve battery decides the final charge.',
+      'The strongest final charge wins.',
     ],
     resultMode: 'placement',
     metricKind: 'points',
@@ -1314,6 +1281,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 2,
     category: 'logic',
     retired: false,
+  },
+
+  houseOfDarkness: {
+    key: 'houseOfDarkness',
+    title: 'House of Darkness',
+    description: 'Survive a haunted memory challenge where mistakes drain your lifespan.',
+    instructions: [
+      'Reveal cards to find matching pairs on your haunted board.',
+      'Each mismatch costs lifespan, so remember what you have seen.',
+      'Completing a board earns some recovery, but damage can carry into the next round.',
+      'Outlast the other contestants, or finish with the most lifespan when the ritual ends.',
+    ],
+    resultMode: 'placement',
+    metricKind: 'endurance',
+    metricLabel: 'Placement',
+    timeLimitMs: 0,
+    authoritative: true,
+    scoringAdapter: 'authoritative',
+    implementation: 'react',
+    reactComponentKey: 'HouseOfDarkness',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+    minPlayers: 2,
   },
 }
 
