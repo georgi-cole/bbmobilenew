@@ -368,7 +368,10 @@ function nextSeasonNumber(archives: SeasonArchive[]): number {
  * each new season always uses the latest persisted configuration rather than
  * stale module-scope values.
  */
-export function createInitialGameState(options?: { twinShockConsumed?: boolean; seed?: number }): GameState {
+export function createInitialGameState(options?: {
+  twinShockConsumed?: boolean
+  seed?: number
+}): GameState {
   const twinShockConsumed = options?.twinShockConsumed === true
   const seed = options?.seed ?? 42
   const freshPlayers = buildInitialPlayers(twinShockConsumed)
@@ -1974,7 +1977,9 @@ function chooseCupidPairEvictionVote(
 
   const consensusRng = mulberry32(
     (gameSeed ^
-      hashString(`pair-vote:${state.week}:${[...voterIds].sort().join('|')}:${preferences.join('|')}`)) >>>
+      hashString(
+        `pair-vote:${state.week}:${[...voterIds].sort().join('|')}:${preferences.join('|')}`
+      )) >>>
       0
   )
   return preferences[Math.floor(consensusRng() * preferences.length)]
@@ -4357,7 +4362,8 @@ const gameSlice = createSlice({
       fresh.twinShockDiscoveredByUser = state.twinShockDiscoveredByUser ?? false
       fresh.liaForcedUntilTwinShockResolved = !twinShockConsumed
       if (fresh.cupidArrow) {
-        fresh.cupidArrow.status = fresh.cupidArrow.scheduledSeason === season ? 'scheduled' : 'inactive'
+        fresh.cupidArrow.status =
+          fresh.cupidArrow.scheduledSeason === season ? 'scheduled' : 'inactive'
       }
       // Update the welcome message to reflect the actual season number.
       // publicModeEnabled is already derived from settings inside createInitialGameState().
@@ -5983,13 +5989,13 @@ const gameSlice = createSlice({
             const jointVoterIds = getCupidRoleIds(state, voter.id).filter((id) =>
               eligibleVoterIds.has(id)
             )
-            if (jointVoterIds.some((id) => state.players.find((player) => player.id === id)?.isUser))
+            if (
+              jointVoterIds.some((id) => state.players.find((player) => player.id === id)?.isUser)
+            )
               continue
 
             const eligibleNomineeIds = state.nomineeIds.filter((nomineeId) =>
-              jointVoterIds.every((voterId) =>
-                canPlayerTargetPlayer(state, voterId, nomineeId)
-              )
+              jointVoterIds.every((voterId) => canPlayerTargetPlayer(state, voterId, nomineeId))
             )
             const targetId = isCupidArrowActive(state)
               ? chooseCupidPairEvictionVote(

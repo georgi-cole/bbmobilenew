@@ -501,8 +501,8 @@ export default function AvatarTile({
           )}
 
           {/* Evictee mark — paint brushstroke PNG overlay */}
-          {(isEvicted || isReturning) && (
-            pairLabel && isEvicted && !isReturning ? (
+          {(isEvicted || isReturning) &&
+            (pairLabel && isEvicted && !isReturning ? (
               <CupidEvictionMark />
             ) : (
               <img
@@ -511,8 +511,7 @@ export default function AvatarTile({
                 aria-hidden="true"
                 className={`${styles.cross}${isReturning ? ` ${styles.returningCross}` : ''}`}
               />
-            )
-          )}
+            ))}
         </motion.div>
 
         <div className={styles.nameRow} aria-hidden="true" />

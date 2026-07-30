@@ -54,7 +54,7 @@ function makeStore() {
 }
 
 describe("Cupid's Arrow season shock", () => {
-  it('debuts in Season 3, observes a one-season cooldown, and honours Valentine\'s Day', () => {
+  it("debuts in Season 3, observes a one-season cooldown, and honours Valentine's Day", () => {
     const seasonThree = shouldScheduleCupidArrowSeason({
       season: 3,
       seasonArchives: [],
@@ -63,13 +63,17 @@ describe("Cupid's Arrow season shock", () => {
     })
     const cooldownSeason = shouldScheduleCupidArrowSeason({
       season: 4,
-      seasonArchives: [{ seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true }],
+      seasonArchives: [
+        { seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true },
+      ],
       seed: 1,
       now: new Date(2026, 0, 12),
     })
     const valentinesOverride = shouldScheduleCupidArrowSeason({
       season: 4,
-      seasonArchives: [{ seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true }],
+      seasonArchives: [
+        { seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true },
+      ],
       seed: 1,
       now: new Date(2026, 1, 14),
     })
@@ -88,9 +92,7 @@ describe("Cupid's Arrow season shock", () => {
       now: new Date(2026, 0, 12),
     }
 
-    expect(shouldScheduleCupidArrowSeason(options)).toBe(
-      shouldScheduleCupidArrowSeason(options)
-    )
+    expect(shouldScheduleCupidArrowSeason(options)).toBe(shouldScheduleCupidArrowSeason(options))
   })
 
   it('activates at the season-opening LOH announcement before the competition begins', () => {
@@ -214,8 +216,7 @@ describe("Cupid's Arrow season shock", () => {
     pairs
       .filter(
         (pair) =>
-          pair.id !== lohPair.id &&
-          !nomineePairs.some((nomineePair) => nomineePair.id === pair.id)
+          pair.id !== lohPair.id && !nomineePairs.some((nomineePair) => nomineePair.id === pair.id)
       )
       .forEach((pair) => {
         expect(state.votes[pair.memberIds[0]]).toBe(state.votes[pair.memberIds[1]])

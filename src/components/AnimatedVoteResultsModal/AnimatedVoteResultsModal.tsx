@@ -28,61 +28,61 @@
  *   countdownMs         – ms countdown before onDone fires (default 4000)
  */
 
-import { Fragment, useState, useEffect, useRef, useMemo, type CSSProperties } from 'react';
-import type { Player } from '../../types';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import './AnimatedVoteResultsModal.css';
+import { Fragment, useState, useEffect, useRef, useMemo, type CSSProperties } from 'react'
+import type { Player } from '../../types'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import './AnimatedVoteResultsModal.css'
 
 export interface VoteTally {
-  nominee: Player;
-  partner?: Player;
-  pairColor?: string;
-  voteCount: number;
+  nominee: Player
+  partner?: Player
+  pairColor?: string
+  voteCount: number
 }
 
 export interface PublicEvictionTiebreakDisplay {
   tiedNominees: Array<{
-    nominee: Player;
-    approval: number;
-  }>;
-  evicteeIds: string[];
-  countdownMs?: number;
+    nominee: Player
+    approval: number
+  }>
+  evicteeIds: string[]
+  countdownMs?: number
 }
 
 export interface AnimatedVoteResultsModalProps {
-  nominees: VoteTally[];
+  nominees: VoteTally[]
   /** Pre-determined evictee; pass null to let the component detect ties. */
-  evictee?: Player | null;
+  evictee?: Player | null
   /** Optional list of evictee IDs for multi-eviction reveals such as double elimination. */
-  evicteeIds?: string[];
-  onTiebreakerRequired?: (tiedNomineeIds: string[]) => void;
-  publicTiebreak?: PublicEvictionTiebreakDisplay | null;
-  onPublicTiebreakResolved?: (evicteeIds: string[]) => void;
-  onDone: () => void;
-  revealIntervalMs?: number;
-  postRevealDelayMs?: number;
-  countdownMs?: number;
-  variant?: 'modal' | 'tv';
+  evicteeIds?: string[]
+  onTiebreakerRequired?: (tiedNomineeIds: string[]) => void
+  publicTiebreak?: PublicEvictionTiebreakDisplay | null
+  onPublicTiebreakResolved?: (evicteeIds: string[]) => void
+  onDone: () => void
+  revealIntervalMs?: number
+  postRevealDelayMs?: number
+  countdownMs?: number
+  variant?: 'modal' | 'tv'
 }
 
-const MIN_BAR_PCT = 4;
-const TV_RING_RADIUS = 42;
-const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
-const DEFAULT_PUBLIC_TIEBREAK_DELAY_MS = 3000;
+const MIN_BAR_PCT = 4
+const TV_RING_RADIUS = 42
+const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS
+const DEFAULT_PUBLIC_TIEBREAK_DELAY_MS = 3000
 
 interface VoteRingAvatarProps {
-  player: Player;
-  partner?: Player;
-  pairColor?: string;
+  player: Player
+  partner?: Player
+  pairColor?: string
   /** Vote share as a 0..1 fraction for the animated SVG ring. */
-  progress: number;
+  progress: number
   /** Coral for the current leader/evictee, violet for the other nominees. */
-  tone: 'leading' | 'trailing';
+  tone: 'leading' | 'trailing'
 }
 
 function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRingAvatarProps) {
-  const clampedProgress = Math.max(0, Math.min(progress, 1));
-  const dashOffset = TV_RING_CIRCUMFERENCE * (1 - clampedProgress);
+  const clampedProgress = Math.max(0, Math.min(progress, 1))
+  const dashOffset = TV_RING_CIRCUMFERENCE * (1 - clampedProgress)
 
   return (
     <div className="avrm__tv-vote-ring-shell">
@@ -111,7 +111,7 @@ function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRing
         )}
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -121,15 +121,15 @@ function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRing
  */
 function buildVoteSequence(tallies: VoteTally[]): string[] {
   // Create per-nominee pools of vote tokens.
-  const pools = tallies.map((t) => Array<string>(t.voteCount).fill(t.nominee.id));
-  const seq: string[] = [];
-  const maxLen = Math.max(0, ...pools.map((p) => p.length));
+  const pools = tallies.map((t) => Array<string>(t.voteCount).fill(t.nominee.id))
+  const seq: string[] = []
+  const maxLen = Math.max(0, ...pools.map((p) => p.length))
   for (let i = 0; i < maxLen; i++) {
     for (const pool of pools) {
-      if (i < pool.length) seq.push(pool[i]);
+      if (i < pool.length) seq.push(pool[i])
     }
   }
-  return seq;
+  return seq
 }
 
 export default function AnimatedVoteResultsModal({
@@ -145,122 +145,122 @@ export default function AnimatedVoteResultsModal({
   countdownMs = 4000,
   variant = 'modal',
 }: AnimatedVoteResultsModalProps) {
-  const [revealStep, setRevealStep] = useState(0);
-  const [outcomeVisible, setOutcomeVisible] = useState(false);
-  const [publicTiebreakVisible, setPublicTiebreakVisible] = useState(false);
-  const [countdown, setCountdown] = useState(Math.ceil(countdownMs / 1000));
-  const firedRef = useRef(false);
-  const publicResolvedRef = useRef(false);
-  const showVoteStage = !publicTiebreakVisible;
+  const [revealStep, setRevealStep] = useState(0)
+  const [outcomeVisible, setOutcomeVisible] = useState(false)
+  const [publicTiebreakVisible, setPublicTiebreakVisible] = useState(false)
+  const [countdown, setCountdown] = useState(Math.ceil(countdownMs / 1000))
+  const firedRef = useRef(false)
+  const publicResolvedRef = useRef(false)
+  const showVoteStage = !publicTiebreakVisible
 
-  const totalVotes = useMemo(() => nominees.reduce((s, t) => s + t.voteCount, 0), [nominees]);
+  const totalVotes = useMemo(() => nominees.reduce((s, t) => s + t.voteCount, 0), [nominees])
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
-  const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees]);
+  const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees])
 
   // Displayed vote counts at the current reveal step.
   const displayedCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = {};
-    for (const t of nominees) counts[t.nominee.id] = 0;
+    const counts: Record<string, number> = {}
+    for (const t of nominees) counts[t.nominee.id] = 0
     for (let i = 0; i < revealStep; i++) {
-      const id = voteSequence[i];
-      if (id !== undefined) counts[id] = (counts[id] ?? 0) + 1;
+      const id = voteSequence[i]
+      if (id !== undefined) counts[id] = (counts[id] ?? 0) + 1
     }
-    return counts;
-  }, [nominees, voteSequence, revealStep]);
+    return counts
+  }, [nominees, voteSequence, revealStep])
 
   // The nominee that just received the most-recently revealed vote (for pulse).
-  const lastRevealedId = revealStep > 0 ? voteSequence[revealStep - 1] : null;
+  const lastRevealedId = revealStep > 0 ? voteSequence[revealStep - 1] : null
 
   // Detect tie from final tallies when evictee prop is null.
   const { resolvedEvictee, tiedIds } = useMemo(() => {
-    if (nominees.length === 0) return { resolvedEvictee: null, tiedIds: [] as string[] };
-    if (evicteeProp) return { resolvedEvictee: evicteeProp, tiedIds: [] as string[] };
+    if (nominees.length === 0) return { resolvedEvictee: null, tiedIds: [] as string[] }
+    if (evicteeProp) return { resolvedEvictee: evicteeProp, tiedIds: [] as string[] }
 
-    const maxVotes = Math.max(...nominees.map((n) => n.voteCount));
-    const topNominees = nominees.filter((n) => n.voteCount === maxVotes);
+    const maxVotes = Math.max(...nominees.map((n) => n.voteCount))
+    const topNominees = nominees.filter((n) => n.voteCount === maxVotes)
     if (topNominees.length > 1) {
-      return { resolvedEvictee: null, tiedIds: topNominees.map((n) => n.nominee.id) };
+      return { resolvedEvictee: null, tiedIds: topNominees.map((n) => n.nominee.id) }
     }
-    return { resolvedEvictee: topNominees[0].nominee, tiedIds: [] as string[] };
-  }, [nominees, evicteeProp]);
+    return { resolvedEvictee: topNominees[0].nominee, tiedIds: [] as string[] }
+  }, [nominees, evicteeProp])
 
-  const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
-  const isTied = tiedIds.length > 1;
+  const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length
+  const isTied = tiedIds.length > 1
   const resolvedEvicteeIds = useMemo(() => {
-    if (evicteeIds && evicteeIds.length > 0) return new Set(evicteeIds);
-    return resolvedEvictee ? new Set([resolvedEvictee.id]) : new Set<string>();
-  }, [evicteeIds, resolvedEvictee]);
-  const showResolvedEvictees = variant === 'tv' ? allRevealed : outcomeVisible;
+    if (evicteeIds && evicteeIds.length > 0) return new Set(evicteeIds)
+    return resolvedEvictee ? new Set([resolvedEvictee.id]) : new Set<string>()
+  }, [evicteeIds, resolvedEvictee])
+  const showResolvedEvictees = variant === 'tv' ? allRevealed : outcomeVisible
   const maxShownVotes = useMemo(
     () => Math.max(0, ...nominees.map((t) => displayedCounts[t.nominee.id] ?? 0)),
     [displayedCounts, nominees]
-  );
+  )
   const leadingShownIds = useMemo(() => {
-    if (maxShownVotes <= 0) return new Set<string>();
+    if (maxShownVotes <= 0) return new Set<string>()
     const ids = nominees
       .filter((t) => (displayedCounts[t.nominee.id] ?? 0) === maxShownVotes)
-      .map((t) => t.nominee.id);
+      .map((t) => t.nominee.id)
     // Keep ties neutral so only a single clear leader gets the coral highlight.
-    return new Set(ids.length === 1 ? ids : []);
-  }, [displayedCounts, maxShownVotes, nominees]);
+    return new Set(ids.length === 1 ? ids : [])
+  }, [displayedCounts, maxShownVotes, nominees])
   function fire() {
-    if (firedRef.current) return;
-    firedRef.current = true;
-    onDone();
+    if (firedRef.current) return
+    firedRef.current = true
+    onDone()
   }
 
   // Advance reveal step one vote at a time.
   useEffect(() => {
-    if (allRevealed) return;
-    const id = setTimeout(() => setRevealStep((s) => s + 1), revealIntervalMs);
-    return () => clearTimeout(id);
-  }, [revealStep, allRevealed, revealIntervalMs]);
+    if (allRevealed) return
+    const id = setTimeout(() => setRevealStep((s) => s + 1), revealIntervalMs)
+    return () => clearTimeout(id)
+  }, [revealStep, allRevealed, revealIntervalMs])
 
   // After all votes revealed: wait, then show outcome.
   useEffect(() => {
-    if (!allRevealed) return;
+    if (!allRevealed) return
     const id = setTimeout(() => {
       if (publicTiebreak) {
-        setPublicTiebreakVisible(true);
-        return;
+        setPublicTiebreakVisible(true)
+        return
       }
       if (isTied) {
         if (onTiebreakerRequired) {
-          onTiebreakerRequired(tiedIds);
+          onTiebreakerRequired(tiedIds)
         }
         // If tied and no tiebreaker callback is provided, do not proceed to outcome/eviction.
-        return;
+        return
       }
-      setOutcomeVisible(true);
-    }, postRevealDelayMs);
-    return () => clearTimeout(id);
+      setOutcomeVisible(true)
+    }, postRevealDelayMs)
+    return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allRevealed]);
+  }, [allRevealed])
 
   useEffect(() => {
-    if (!publicTiebreakVisible || !publicTiebreak) return;
+    if (!publicTiebreakVisible || !publicTiebreak) return
     const id = setTimeout(() => {
       if (!publicResolvedRef.current) {
-        publicResolvedRef.current = true;
-        onPublicTiebreakResolved?.(publicTiebreak.evicteeIds);
+        publicResolvedRef.current = true
+        onPublicTiebreakResolved?.(publicTiebreak.evicteeIds)
       }
-      fire();
-    }, publicTiebreak.countdownMs ?? DEFAULT_PUBLIC_TIEBREAK_DELAY_MS);
-    return () => clearTimeout(id);
+      fire()
+    }, publicTiebreak.countdownMs ?? DEFAULT_PUBLIC_TIEBREAK_DELAY_MS)
+    return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);
+  }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved])
 
   // Countdown after outcome is visible.
   useEffect(() => {
-    if (!outcomeVisible) return;
+    if (!outcomeVisible) return
     if (countdown <= 0) {
-      fire();
-      return;
+      fire()
+      return
     }
-    const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(id);
+    const id = setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outcomeVisible, countdown]);
+  }, [outcomeVisible, countdown])
 
   return (
     <div
@@ -281,12 +281,12 @@ export default function AnimatedVoteResultsModal({
           <div className="avrm__tv-stage">
             <div className="avrm__tallies avrm__tallies--tv">
               {nominees.map((t, index) => {
-                const shown = displayedCounts[t.nominee.id] ?? 0;
+                const shown = displayedCounts[t.nominee.id] ?? 0
                 const isEvictee =
                   resolvedEvicteeIds.has(t.nominee.id) ||
-                  (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
-                const isPulsing = lastRevealedId === t.nominee.id;
-                const isLeading = outcomeVisible ? isEvictee : leadingShownIds.has(t.nominee.id);
+                  (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false)
+                const isPulsing = lastRevealedId === t.nominee.id
+                const isLeading = outcomeVisible ? isEvictee : leadingShownIds.has(t.nominee.id)
                 return (
                   <Fragment key={t.nominee.id}>
                     {nominees.length === 2 && index === 1 && (
@@ -325,18 +325,18 @@ export default function AnimatedVoteResultsModal({
                       </span>
                     </div>
                   </Fragment>
-                );
+                )
               })}
             </div>
           </div>
         ) : showVoteStage ? (
           <div className="avrm__tallies">
             {nominees.map((t) => {
-              const shown = displayedCounts[t.nominee.id] ?? 0;
+              const shown = displayedCounts[t.nominee.id] ?? 0
               const isEvictee =
                 resolvedEvicteeIds.has(t.nominee.id) ||
-                (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
-              const isPulsing = lastRevealedId === t.nominee.id;
+                (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false)
+              const isPulsing = lastRevealedId === t.nominee.id
               return (
                 <div
                   key={t.nominee.id}
@@ -374,7 +374,7 @@ export default function AnimatedVoteResultsModal({
                   </div>
                   <span className="avrm__tally-count">{shown}</span>
                 </div>
-              );
+              )
             })}
           </div>
         ) : null}
@@ -415,7 +415,7 @@ export default function AnimatedVoteResultsModal({
             </div>
             <div className="avrm__public-tiebreak-options">
               {publicTiebreak.tiedNominees.map(({ nominee, approval }) => {
-                const isEvictee = publicTiebreak.evicteeIds.includes(nominee.id);
+                const isEvictee = publicTiebreak.evicteeIds.includes(nominee.id)
                 return (
                   <div
                     key={nominee.id}
@@ -430,7 +430,7 @@ export default function AnimatedVoteResultsModal({
                     <span className="avrm__public-tiebreak-name">{nominee.name}</span>
                     <span className="avrm__public-tiebreak-approval">{approval}% approval</span>
                   </div>
-                );
+                )
               })}
             </div>
             <p className="avrm__public-tiebreak-caption">
@@ -442,5 +442,5 @@ export default function AnimatedVoteResultsModal({
         )}
       </div>
     </div>
-  );
+  )
 }

@@ -33,10 +33,7 @@ import type { Player } from '../../types'
 import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import { getConfessionalPowerName } from './confessionalDecisionPresentation'
-import {
-  buildConfessionalDecisionUnits,
-  type ConfessionalDecisionUnit,
-} from './cupidDecisionUnits'
+import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
 import './ConfessionalDecisionPanel.css'
 
 interface DecisionPanelProps {
@@ -238,9 +235,7 @@ function EvictionVotePanel({ onDecisionCommitted }: DecisionPanelProps) {
     setSubmitting(true)
     const name = optionUnits.find((unit) => unit.id === id)?.label ?? 'that pair'
     onDecisionCommitted?.(
-      isCupidArrowActive(game)
-        ? `Our pair casts both votes against ${name}.`
-        : `I choose ${name}.`
+      isCupidArrowActive(game) ? `Our pair casts both votes against ${name}.` : `I choose ${name}.`
     )
     dispatch(submitHumanVote(id))
   }

@@ -134,7 +134,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   },
   cupid_arrow: {
     icon: '🏹',
-    label: "CUPID HAS CHOSEN",
+    label: 'CUPID HAS CHOSEN',
     category: 'Season Shock',
     body: 'Cupid has matched every housemate with a partner. For now, you are not playing alone: every pair shares one fate inside The Big Eye house.',
     shockDetail:

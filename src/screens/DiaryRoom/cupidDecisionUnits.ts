@@ -35,9 +35,7 @@ export function buildConfessionalDecisionUnits(
           .map((id) => game.players.find((candidate) => candidate.id === id))
           .filter(
             (candidate): candidate is Player =>
-              Boolean(candidate) &&
-              candidate?.status !== 'evicted' &&
-              candidate?.status !== 'jury'
+              Boolean(candidate) && candidate?.status !== 'evicted' && candidate?.status !== 'jury'
           )
       : [player]
     if (unitPlayers.length === 0) return []

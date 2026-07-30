@@ -26,10 +26,7 @@ import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import type { Player } from '../../types'
 import type { RequiredConfessionalPresentation } from './requiredConfessionalPresentation'
 import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
-import {
-  buildConfessionalDecisionUnits,
-  type ConfessionalDecisionUnit,
-} from './cupidDecisionUnits'
+import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
 
 interface Props {
   decision: ActiveConfessionalDecision
@@ -238,7 +235,10 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   return (
     <div className="rcd-layout" data-testid="required-confessional-decision">
       {autoNomineeUnit && (
-        <div className="rcd-auto-nominee" aria-label={`Automatic nominee: ${autoNomineeUnit.label}`}>
+        <div
+          className="rcd-auto-nominee"
+          aria-label={`Automatic nominee: ${autoNomineeUnit.label}`}
+        >
           <span className="rcd-auto-nominee__avatars" aria-hidden="true">
             {autoNomineeUnit.players.map((player) => (
               <PlayerAvatar key={player.id} player={player} size="md" />
@@ -549,9 +549,7 @@ function ReplacementDecision({ presentation, onDecisionCommitted }: Omit<Props, 
 
   const standardBase = alivePlayers.filter(
     (player) =>
-      !lohIds.has(player.id) &&
-      !posIds.has(player.id) &&
-      !game.nomineeIds.includes(player.id)
+      !lohIds.has(player.id) && !posIds.has(player.id) && !game.nomineeIds.includes(player.id)
   )
   const standardUnprotected = standardBase.filter((player) => !protectedIds.has(player.id))
   const standardOptions = standardUnprotected.length > 0 ? standardUnprotected : standardBase
@@ -667,9 +665,10 @@ function TieBreakDecision({ presentation, onDecisionCommitted }: Omit<Props, 'de
   const tiedIds = game.tiedNomineeIds ?? game.nomineeIds
   const options = alivePlayers.filter((player) => tiedIds.includes(player.id))
   const units = buildConfessionalDecisionUnits(game, options)
-  const required = game.doubleEviction?.weekActive && !isCupidArrowActive(game)
-    ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
-    : 1
+  const required =
+    game.doubleEviction?.weekActive && !isCupidArrowActive(game)
+      ? calculateRequiredDoubleEvictionSlots(tiedIds.length, Boolean(game.pendingEviction))
+      : 1
   const isMulti = required > 1
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [committing, setCommitting] = useState(false)

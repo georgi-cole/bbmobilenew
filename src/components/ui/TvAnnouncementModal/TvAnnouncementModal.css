@@ -15,8 +15,12 @@
 }
 
 @keyframes tvModalFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .tv-ann-modal__card {
@@ -29,7 +33,9 @@
   max-height: 80vh;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
   animation: tvModalSlideUp 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -85,8 +91,14 @@
 }
 
 @keyframes tvModalSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tv-ann-modal__close {

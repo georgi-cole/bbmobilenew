@@ -171,9 +171,19 @@ function CupidCeremonyBadge({ variant }: { variant: NonNullable<CeremonyTile['ba
           </linearGradient>
         </defs>
         <circle className="ceremony-overlay__cupid-badge-disc" cx="23" cy="23" r="20" />
-        <path className="ceremony-overlay__cupid-kiss" fill="url(#ceremony-cupid-kiss)" d="M7.5 23c4-6.8 8.8-9.9 15.5-5.4C29.7 13.1 34.5 16.2 38.5 23c-4.2 7-9.4 10.4-15.5 10.4S11.7 30 7.5 23Z" />
-        <path className="ceremony-overlay__cupid-kiss-line" d="M10.5 22.8c5.6.7 9-1.2 12.5-3.8 3.5 2.6 6.9 4.5 12.5 3.8M14.1 27.3c5.8-1.6 11.9-1.6 17.8 0" />
-        <path className="ceremony-overlay__cupid-spark" d="m10 11 1.6 3.2 3.2 1.6-3.2 1.6L10 20.6l-1.6-3.2-3.2-1.6 3.2-1.6L10 11Z" />
+        <path
+          className="ceremony-overlay__cupid-kiss"
+          fill="url(#ceremony-cupid-kiss)"
+          d="M7.5 23c4-6.8 8.8-9.9 15.5-5.4C29.7 13.1 34.5 16.2 38.5 23c-4.2 7-9.4 10.4-15.5 10.4S11.7 30 7.5 23Z"
+        />
+        <path
+          className="ceremony-overlay__cupid-kiss-line"
+          d="M10.5 22.8c5.6.7 9-1.2 12.5-3.8 3.5 2.6 6.9 4.5 12.5 3.8M14.1 27.3c5.8-1.6 11.9-1.6 17.8 0"
+        />
+        <path
+          className="ceremony-overlay__cupid-spark"
+          d="m10 11 1.6 3.2 3.2 1.6-3.2 1.6L10 20.6l-1.6-3.2-3.2-1.6 3.2-1.6L10 11Z"
+        />
       </svg>
     )
   }
@@ -181,9 +191,18 @@ function CupidCeremonyBadge({ variant }: { variant: NonNullable<CeremonyTile['ba
   return (
     <svg className="ceremony-overlay__cupid-badge-art" viewBox="0 0 46 46" aria-hidden="true">
       <circle className="ceremony-overlay__cupid-badge-disc" cx="23" cy="23" r="20" />
-      <path className="ceremony-overlay__cupid-hug-heart" d="M23 32c-4.2-3.4-9.5-7.1-9.5-12.4 0-3.5 2.3-5.8 5.4-5.8 1.9 0 3.4.9 4.1 2.5.8-1.6 2.2-2.5 4.1-2.5 3.1 0 5.4 2.3 5.4 5.8C32.5 24.9 27.2 28.6 23 32Z" />
-      <path className="ceremony-overlay__cupid-hug-arm" d="M6.5 15.1c3.4 1.4 5.8 5.6 5.9 10.6.2 6.5 4.4 10.6 10.6 12.8M39.5 15.1c-3.4 1.4-5.8 5.6-5.9 10.6-.2 6.5-4.4 10.6-10.6 12.8M11.8 28.2l5-1.8M34.2 28.2l-5-1.8" />
-      <path className="ceremony-overlay__cupid-spark" d="m36.5 8 1.3 2.7 2.7 1.3-2.7 1.3-1.3 2.7-1.3-2.7-2.7-1.3 2.7-1.3L36.5 8Z" />
+      <path
+        className="ceremony-overlay__cupid-hug-heart"
+        d="M23 32c-4.2-3.4-9.5-7.1-9.5-12.4 0-3.5 2.3-5.8 5.4-5.8 1.9 0 3.4.9 4.1 2.5.8-1.6 2.2-2.5 4.1-2.5 3.1 0 5.4 2.3 5.4 5.8C32.5 24.9 27.2 28.6 23 32Z"
+      />
+      <path
+        className="ceremony-overlay__cupid-hug-arm"
+        d="M6.5 15.1c3.4 1.4 5.8 5.6 5.9 10.6.2 6.5 4.4 10.6 10.6 12.8M39.5 15.1c-3.4 1.4-5.8 5.6-5.9 10.6-.2 6.5-4.4 10.6-10.6 12.8M11.8 28.2l5-1.8M34.2 28.2l-5-1.8"
+      />
+      <path
+        className="ceremony-overlay__cupid-spark"
+        d="m36.5 8 1.3 2.7 2.7 1.3-2.7 1.3-1.3 2.7-1.3-2.7-2.7-1.3 2.7-1.3L36.5 8Z"
+      />
     </svg>
   )
 }

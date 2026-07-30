@@ -77,7 +77,12 @@ body:has(.game-screen-shell) {
     radial-gradient(circle at 12% 10%, rgba(220, 120, 158, 0.14), transparent 32%),
     radial-gradient(circle at 88% 31%, rgba(166, 128, 205, 0.11), transparent 36%),
     radial-gradient(circle at 46% 92%, rgba(202, 105, 144, 0.08), transparent 38%),
-    linear-gradient(180deg, rgba(73, 28, 56, 0.13), rgba(29, 21, 46, 0.08) 55%, rgba(45, 21, 43, 0.07));
+    linear-gradient(
+      180deg,
+      rgba(73, 28, 56, 0.13),
+      rgba(29, 21, 46, 0.08) 55%,
+      rgba(45, 21, 43, 0.07)
+    );
 }
 
 .game-screen--cupid-active::after {
@@ -117,9 +122,7 @@ body:has(.game-screen--cupid-active) .tv-zone {
 }
 
 body:has(.game-screen--cupid-active) .game-control-dock {
-  filter:
-    drop-shadow(0 0 12px rgba(197, 101, 143, 0.2))
-    saturate(0.9);
+  filter: drop-shadow(0 0 12px rgba(197, 101, 143, 0.2)) saturate(0.9);
 }
 
 body:has(.game-screen--cupid-active) .game-bottom-nav.nav-bar::before {

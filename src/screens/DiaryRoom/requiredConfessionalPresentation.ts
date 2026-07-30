@@ -73,8 +73,8 @@ export function getRequiredConfessionalPresentation(
         prompt: isCupidArrowActive(game)
           ? 'Choose one nominated pair. You and your partner cast this decision together, and the ballot counts as two votes.'
           : survival
-          ? 'Select the contestant you want removed from the current run.'
-          : 'Cast your private vote for the nominee whose game you want to end tonight.',
+            ? 'Select the contestant you want removed from the current run.'
+            : 'Cast your private vote for the nominee whose game you want to end tonight.',
         consequence: 'Once confirmed, this vote cannot be changed.',
         confirmLabel: 'Seal eviction vote',
         confirmation: 'Your eviction vote is sealed.',

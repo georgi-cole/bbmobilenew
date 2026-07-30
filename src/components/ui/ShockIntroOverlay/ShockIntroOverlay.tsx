@@ -10,8 +10,7 @@ import './ShockIntroOverlay.css'
 
 const SHOCK_INTRO_FULLSCREEN_HOLD_MS = 2000
 const SHOCK_INTRO_HANDOFF_DURATION_MS = 320
-const SHOCK_INTRO_DURATION_MS =
-  SHOCK_INTRO_FULLSCREEN_HOLD_MS + SHOCK_INTRO_HANDOFF_DURATION_MS
+const SHOCK_INTRO_DURATION_MS = SHOCK_INTRO_FULLSCREEN_HOLD_MS + SHOCK_INTRO_HANDOFF_DURATION_MS
 const CUPID_INTRO_DURATION_MS = 6400
 const CUPID_BREAK_DURATION_MS = 7800
 const SHOCK_INTRO_REDUCED_DURATION_MS = 400
@@ -140,11 +139,11 @@ function CupidHeartArtwork({
         />
         {broken && (
           <>
+            <path className="cupid-heart-art__rift" d="m93 24-17 31 17 14-18 19 15 14-10 36" />
             <path
-              className="cupid-heart-art__rift"
-              d="m93 24-17 31 17 14-18 19 15 14-10 36"
+              className="cupid-heart-art__spark"
+              d="m63 58-13-8M120 70l15-9M61 103l-14 8M120 108l16 11"
             />
-            <path className="cupid-heart-art__spark" d="m63 58-13-8M120 70l15-9M61 103l-14 8M120 108l16 11" />
           </>
         )}
       </g>
@@ -163,14 +162,16 @@ function CupidArrowArtwork({ className }: { className: string }) {
         </linearGradient>
       </defs>
       <g className="cupid-arrow-art">
-        <path
-          className="cupid-arrow-art__shaft"
-          d="M45 58h260"
-          stroke="url(#cupid-arrow-metal)"
-        />
+        <path className="cupid-arrow-art__shaft" d="M45 58h260" stroke="url(#cupid-arrow-metal)" />
         <path className="cupid-arrow-art__head" d="m306 58-33-25 7 19-7 6 7 6-7 19 33-25Z" />
-        <path className="cupid-arrow-art__feather" d="M47 58 18 35l20 4 9-17 13 30M47 58 18 81l20-4 9 17 13-30" />
-        <path className="cupid-arrow-art__heart" d="M178 73c-11-8-25-17-25-31 0-8 5-13 12-13 6 0 10 3 13 8 3-5 7-8 13-8 7 0 12 5 12 13 0 14-14 23-25 31Z" />
+        <path
+          className="cupid-arrow-art__feather"
+          d="M47 58 18 35l20 4 9-17 13 30M47 58 18 81l20-4 9 17 13-30"
+        />
+        <path
+          className="cupid-arrow-art__heart"
+          d="M178 73c-11-8-25-17-25-31 0-8 5-13 12-13 6 0 10 3 13 8 3-5 7-8 13-8 7 0 12 5 12 13 0 14-14 23-25 31Z"
+        />
       </g>
     </svg>
   )
@@ -180,11 +181,20 @@ function CupidFlightArtwork({ className }: { className: string }) {
   return (
     <svg className={className} viewBox="0 0 190 150" focusable="false" aria-hidden="true">
       <g className="cupid-flight-art">
-        <path className="cupid-flight-art__wing" d="M74 72C45 46 21 49 10 71c24-7 37 4 43 16-19-1-28 8-31 22 24-12 43-8 57 5" />
-        <path className="cupid-flight-art__wing" d="M111 69c29-25 53-21 64 2-24-8-37 3-44 15 19 0 28 9 31 23-23-13-43-9-57 4" />
+        <path
+          className="cupid-flight-art__wing"
+          d="M74 72C45 46 21 49 10 71c24-7 37 4 43 16-19-1-28 8-31 22 24-12 43-8 57 5"
+        />
+        <path
+          className="cupid-flight-art__wing"
+          d="M111 69c29-25 53-21 64 2-24-8-37 3-44 15 19 0 28 9 31 23-23-13-43-9-57 4"
+        />
         <circle className="cupid-flight-art__body" cx="94" cy="46" r="17" />
         <path className="cupid-flight-art__body" d="M77 68c8-10 27-10 35 0l7 43H70l7-43Z" />
-        <path className="cupid-flight-art__line" d="M119 57c21 8 32 27 28 48M147 105c-11-5-21-5-31 0M145 65c-8 7-12 17-12 30" />
+        <path
+          className="cupid-flight-art__line"
+          d="M119 57c21 8 32 27 28 48M147 105c-11-5-21-5-31 0M145 65c-8 7-12 17-12 30"
+        />
         <path className="cupid-flight-art__arrow" d="m125 99 34-20M159 79l-9 1 5 7" />
         <path className="cupid-flight-art__halo" d="M75 23c13-7 27-7 40 0" />
       </g>
@@ -195,14 +205,23 @@ function CupidFlightArtwork({ className }: { className: string }) {
 function CupidSigilArtwork({ broken }: { broken: boolean }) {
   return broken ? (
     <svg viewBox="0 0 52 52" aria-hidden="true">
-      <path className="cupid-sigil-art__heart" d="M25 44C17 37 6 30 6 18c0-7 5-12 11-12 4 0 7 2 9 5 2-3 5-5 9-5 6 0 11 5 11 12 0 12-12 20-20 26" />
+      <path
+        className="cupid-sigil-art__heart"
+        d="M25 44C17 37 6 30 6 18c0-7 5-12 11-12 4 0 7 2 9 5 2-3 5-5 9-5 6 0 11 5 11 12 0 12-12 20-20 26"
+      />
       <path className="cupid-sigil-art__rift" d="m28 8-7 12 7 5-8 8 6 5-2 7" />
     </svg>
   ) : (
     <svg viewBox="0 0 52 52" aria-hidden="true">
-      <path className="cupid-sigil-art__bow" d="M13 7c17 8 22 29 4 39M39 7c-17 8-22 29-4 39M15 8l21 37" />
+      <path
+        className="cupid-sigil-art__bow"
+        d="M13 7c17 8 22 29 4 39M39 7c-17 8-22 29-4 39M15 8l21 37"
+      />
       <path className="cupid-sigil-art__arrow" d="M8 40 42 13M42 13l-9 1 6 7" />
-      <path className="cupid-sigil-art__heart" d="M26 33c-5-4-11-8-11-14 0-4 3-7 6-7 3 0 4 1 5 4 1-3 3-4 5-4 4 0 6 3 6 7 0 6-6 10-11 14Z" />
+      <path
+        className="cupid-sigil-art__heart"
+        d="M26 33c-5-4-11-8-11-14 0-4 3-7 6-7 3 0 4 1 5 4 1-3 3-4 5-4 4 0 6 3 6 7 0 6-6 10-11 14Z"
+      />
     </svg>
   )
 }
@@ -364,11 +383,7 @@ export default function ShockIntroOverlay({
         </div>
       ) : (
         <div className="shock-intro__vision-stage">
-          <TvAnnouncementOverlay
-            announcement={displayAnnouncement}
-            paused
-            showInfoButton={false}
-          />
+          <TvAnnouncementOverlay announcement={displayAnnouncement} paused showInfoButton={false} />
         </div>
       )}
     </div>,

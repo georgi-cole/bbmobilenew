@@ -140,7 +140,8 @@ const ANNOUNCEMENT_META: Record<
   },
   cupid_arrow: {
     title: "Cupid's Arrow",
-    subtitle: 'The house is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
+    subtitle:
+      'The house is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -437,9 +438,9 @@ export default function TvZone(props: TvZoneProps) {
   // A single reducer action can append the shock activation and its practical
   // consequence (for example a Force Majeure replacement) at once. Keep the
   // shock broadcast in a small FIFO so the consequence never hides its stinger.
-  const [shockAnnouncementQueue, setShockAnnouncementQueue] = useState<
-    QueuedShockAnnouncement[]
-  >([])
+  const [shockAnnouncementQueue, setShockAnnouncementQueue] = useState<QueuedShockAnnouncement[]>(
+    []
+  )
   const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -628,19 +629,17 @@ export default function TvZone(props: TvZoneProps) {
     const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId)
     const newEventCount = previousIndex === -1 ? 1 : previousIndex
     const newEvents = tvVisibleFeed.slice(0, newEventCount)
-    const queued = [...newEvents]
-      .reverse()
-      .flatMap((event) => {
-        const key = extractMajorKey(event)
-        if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
-        if (seenShockEventIdsRef.current.has(event.id)) return []
-        seenShockEventIdsRef.current.add(event.id)
+    const queued = [...newEvents].reverse().flatMap((event) => {
+      const key = extractMajorKey(event)
+      if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
+      if (seenShockEventIdsRef.current.has(event.id)) return []
+      seenShockEventIdsRef.current.add(event.id)
 
-        // The top event is already visible through the normal event path.
-        // Queue only a shock that was immediately followed by another event.
-        if (event.id === latestVisibleId) return []
-        return [{ announcement: buildAnnouncement(key, event), eventId: event.id }]
-      })
+      // The top event is already visible through the normal event path.
+      // Queue only a shock that was immediately followed by another event.
+      if (event.id === latestVisibleId) return []
+      return [{ announcement: buildAnnouncement(key, event), eventId: event.id }]
+    })
 
     if (queued.length === 0) return
     startTransition(() => {
@@ -946,8 +945,7 @@ export default function TvZone(props: TvZoneProps) {
   //   than the 480 ms animation so the class is always present for the full shake).
   const shockShakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cupidShockKey =
-    activeAnnouncement?.key === 'cupid_arrow' ||
-    activeAnnouncement?.key === 'cupid_arrow_broken'
+    activeAnnouncement?.key === 'cupid_arrow' || activeAnnouncement?.key === 'cupid_arrow_broken'
 
   useEffect(() => {
     const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive

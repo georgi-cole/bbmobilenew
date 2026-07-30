@@ -174,7 +174,10 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   box-shadow: 0 10px 22px rgba(99, 102, 241, 0.3);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
 }
 
 .cdp-confirm-btn:hover:not(:disabled) {

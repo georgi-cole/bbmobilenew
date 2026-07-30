@@ -2,10 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { render, screen } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { describe, expect, it, vi } from 'vitest'
-import gameReducer, {
-  activateCupidArrowNow,
-  forceNominees,
-} from '../../../store/gameSlice'
+import gameReducer, { activateCupidArrowNow, forceNominees } from '../../../store/gameSlice'
 import settingsReducer from '../../../store/settingsSlice'
 import RequiredConfessionalDecision from '../RequiredConfessionalDecision'
 import { getRequiredConfessionalPresentation } from '../requiredConfessionalPresentation'
