@@ -22,6 +22,8 @@ import './styles/houseOfCardsInteractionFix.css'
 import './styles/houseOfCardsBrightTheme.css'
 import './styles/houseOfCardsBrightThemePriority.css'
 
+const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? 'local'
+
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
 // early as possible so CSS selectors in _ios-standalone-fixes.css and
 // _introhub-buttons.css are active before the first paint.
@@ -101,7 +103,10 @@ window.toggleIntroHubMusic = function () {
   store.dispatch(setAudio({ musicOn: nextMusicOn }))
 }
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')!
+rootElement.dataset.buildId = BUILD_ID
+
+createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>
