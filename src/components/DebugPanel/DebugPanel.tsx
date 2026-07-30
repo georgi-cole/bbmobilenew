@@ -20,6 +20,7 @@ import {
   queueForcedShock,
   clearForcedShock,
   completeMission,
+  activateCupidArrowNow,
   setCupidArrowSchedule,
   breakCupidArrowNow,
 } from '../../store/gameSlice'
@@ -596,6 +597,14 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   disabled={!game.pendingForcedShock}
                 >
                   Clear
+                </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() => dispatch(activateCupidArrowNow())}
+                  disabled={game.cupidArrow?.status === 'active'}
+                >
+                  Activate Cupid
                 </button>
               </div>
 
