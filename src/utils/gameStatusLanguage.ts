@@ -36,8 +36,8 @@ export function formatPhaseLabel(phase: Phase): string {
   return PHASE_LABELS[phase] ?? phase.replace(/_/g, ' ');
 }
 
-export function formatCycleLabel(week: number): string {
-  return `Day ${week}`;
+export function formatCycleLabel(season: number, week: number): string {
+  return `S${String(season).padStart(2, '0')}D${week}`;
 }
 
 export function formatCycleAriaLabel(season: number, week: number): string {
