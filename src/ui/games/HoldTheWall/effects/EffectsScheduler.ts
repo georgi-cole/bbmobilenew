@@ -1,5 +1,8 @@
+Exit code: 0
+Wall time: 1.2 seconds
+Output:
 /**
- * EffectsScheduler — deterministic / randomised distraction-effect scheduler.
+ * EffectsScheduler â€” deterministic / randomised distraction-effect scheduler.
  *
  * When a Hold-the-Wall round becomes active, call `start()` to schedule a
  * timeline of EFFECT_START / EFFECT_STOP events that fire automatically
@@ -7,14 +10,14 @@
  * controller propagate) to cancel all pending timers.
  *
  * Scheduling is controlled by two parameters:
- *  - `seed`      — integer seed for the mulberry32 PRNG.  When supplied the
+ *  - `seed`      â€” integer seed for the mulberry32 PRNG.  When supplied the
  *                  same seed always produces the same timeline (deterministic
  *                  for tests).  Defaults to `Date.now()`.
- *  - `intensity` — probability multiplier in [0, ∞).  1 = normal, 0 = off,
+ *  - `intensity` â€” probability multiplier in [0, âˆž).  1 = normal, 0 = off,
  *                  2 = double probability for every effect type.
  *
  * Auto-scheduled effects coexist safely with manual calls to
- * `controller.emitEffectStart/Stop` — the scheduler checks whether an effect
+ * `controller.emitEffectStart/Stop` â€” the scheduler checks whether an effect
  * is already active before starting it, and emits the matching STOP after the
  * configured duration.
  */
@@ -25,7 +28,7 @@ import type {
   EffectType,
 } from '../../../../games/hold-the-wall/GameController';
 
-// ─── Internal types ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Internal types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface ScheduledEffect {
   effectType: EffectType;
@@ -37,7 +40,7 @@ interface ScheduledEffect {
   params: Record<string, unknown>;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** XOR constant mixed into seed to decouple effect scheduling from other RNG
  *  streams that use the same base seed (e.g. AI-drop schedule). */
@@ -60,9 +63,9 @@ const EFFECT_DURATION_RANGE_MS = 5_000;
 
 const CALLERS = ['The Host', 'Production', 'Mom', 'Your Agent', 'The Network'];
 
-// ─── Effect catalogue ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Effect catalogue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/** Base probability (0–1) for each effect type at intensity = 1. */
+/** Base probability (0â€“1) for each effect type at intensity = 1. */
 const EFFECT_CATALOGUE: Array<{
   effectType: EffectType;
   baseProbability: number;
@@ -102,7 +105,7 @@ const EFFECT_CATALOGUE: Array<{
   },
 ];
 
-// ─── Schedule builder ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Schedule builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Build a deterministic list of scheduled effects for one round. */
 export function buildEffectSchedule(
@@ -119,6 +122,18 @@ export function buildEffectSchedule(
 
   if (usableWindow <= 0) return schedule;
 
+  // Every round needs a readable opening beat. Previously every effect could
+  // randomly land late in the round, so a player could reasonably conclude
+  // that the environment system was absent. These effects are presentation
+  // pressure, not surprise eliminations: fake calls still never affect a hold.
+  const openingTimeline: ScheduledEffect[] = [
+    { effectType: 'rain', startDelay: 3_500, duration: 6_500, params: { intensity: 1.05 } },
+    { effectType: 'wind', startDelay: 11_000, duration: 5_500, params: {} },
+    { effectType: 'fakeCall', startDelay: 19_000, duration: 6_000, params: { caller: CALLERS[Math.floor(rng() * CALLERS.length)] } },
+    { effectType: 'vibrate', startDelay: 28_000, duration: 4_000, params: { pattern: [150, 80, 150] } },
+  ];
+  schedule.push(...openingTimeline.filter((effect) => effect.startDelay < windowEnd));
+
   for (const entry of EFFECT_CATALOGUE) {
     const probability = Math.min(1, entry.baseProbability * intensity);
     if (rng() > probability) continue;
@@ -133,7 +148,7 @@ export function buildEffectSchedule(
   return schedule;
 }
 
-// ─── Scheduler ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Standalone effect scheduler that wraps a `HoldTheWallGameController`.
@@ -170,7 +185,7 @@ export class EffectsScheduler {
    *                         will be called.
    * @param seed           - PRNG seed for deterministic schedules.  Defaults
    *                         to `Date.now()`.
-   * @param intensity      - Probability multiplier (0–∞).  Defaults to 1.
+   * @param intensity      - Probability multiplier (0â€“âˆž).  Defaults to 1.
    * @param roundDurationMs - Expected round length in ms.  Used to space
    *                          effects across the round window.  Defaults to
    *                          120 000 ms.
@@ -241,3 +256,4 @@ export class EffectsScheduler {
     this.unsubStop = null;
   }
 }
+
