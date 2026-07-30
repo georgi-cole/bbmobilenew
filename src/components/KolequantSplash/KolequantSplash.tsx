@@ -95,6 +95,7 @@ export default function KolequantSplash({
       aria-live="polite"
       aria-label={`${progressLabel} ${clampedProgress}%`}
     >
+      <div className="kq-splash__skyline" aria-hidden="true" />
       <div className="kq-splash__logo-wrap">
         <img
           src={LOGO_SRC}
