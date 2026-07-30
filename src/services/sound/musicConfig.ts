@@ -1,5 +1,5 @@
 Exit code: 0
-Wall time: 1.3 seconds
+Wall time: 1 seconds
 Output:
 import type { GameMode } from '../../modes/modeTypes'
 import type { GameCategory } from '../../minigames/registry'
