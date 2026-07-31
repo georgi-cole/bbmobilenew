@@ -75,6 +75,50 @@ const USER_FACING_NAME_TOKENS = new Set([
 ])
 const USER_FACING_CALLS =
   /(?:^|\.)(?:addLog|addMessage|addNotification|alert|announce|confirm|notify|prompt|pushLog|setDescription|setError|setHeading|setLabel|setMessage|setPrompt|setSubtitle|setText|setTitle|setWarning|showToast|toast)$/i
+const TECHNICAL_PROPERTY_NAMES = new Set([
+  'action',
+  'asset',
+  'category',
+  'class',
+  'class_name',
+  'code',
+  'color',
+  'event',
+  'file',
+  'filename',
+  'href',
+  'icon',
+  'id',
+  'key',
+  'kind',
+  'locale',
+  'mode',
+  'path',
+  'phase',
+  'route',
+  'slug',
+  'src',
+  'status',
+  'test_id',
+  'type',
+  'url',
+  'value',
+  'variant',
+])
+const DISPLAY_NAME_CONTAINER_TOKENS = new Set([
+  'ceremony',
+  'challenge',
+  'competition',
+  'event',
+  'feature',
+  'game',
+  'minigame',
+  'minigames',
+  'mode',
+  'module',
+  'phase',
+  'twist',
+])
 const CODE_EXTENSIONS = new Set(['.js', '.jsx', '.json', '.jsonc', '.ts', '.tsx'])
 const HTML_EXTENSIONS = new Set(['.htm', '.html'])
 
@@ -446,15 +490,113 @@ function isTranslationCall(node) {
   return false
 }
 
+const COMPARISON_OPERATOR_KINDS = new Set([
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.LessThanToken,
+  ts.SyntaxKind.LessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanToken,
+  ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.InKeyword,
+  ts.SyntaxKind.InstanceOfKeyword,
+])
+
+function containsTranslationCall(node) {
+  let found = false
+  function visit(current) {
+    if (found) return
+    if (ts.isCallExpression(current)) {
+      const name = getCalleeName(current.expression).split('.').at(-1)
+      if (name && TRANSLATION_CALLS.has(name)) {
+        found = true
+        return
+      }
+    }
+    ts.forEachChild(current, visit)
+  }
+  visit(node)
+  return found
+}
+
+function isLocalizedFormattingTemplate(node) {
+  if (!ts.isTemplateExpression(node)) return false
+  const literalText = node.head.text + node.templateSpans.map((span) => span.literal.text).join('')
+  return (
+    !/\p{L}/u.test(literalText) &&
+    node.templateSpans.some((span) => containsTranslationCall(span.expression))
+  )
+}
+
+function isInsideRange(node, range) {
+  return node.getStart() >= range.getStart() && node.getEnd() <= range.getEnd()
+}
+
+function isTechnicalControlLiteral(node) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (
+      ts.isBinaryExpression(current) &&
+      COMPARISON_OPERATOR_KINDS.has(current.operatorToken.kind)
+    ) {
+      return true
+    }
+    if (ts.isConditionalExpression(current) && isInsideRange(node, current.condition)) {
+      return true
+    }
+    if (ts.isCaseClause(current) && isInsideRange(node, current.expression)) return true
+    if (
+      ts.isStatement(current) ||
+      ts.isPropertyAssignment(current) ||
+      ts.isVariableDeclaration(current) ||
+      ts.isJsxAttribute(current)
+    ) {
+      return false
+    }
+  }
+  return false
+}
+
 function normalizeSemanticName(name) {
   return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[-.\s]+/g, '_')
 }
 
+function semanticNameTokens(name) {
+  return normalizeSemanticName(name).toLowerCase().split('_').filter(Boolean)
+}
+
 function isUserFacingName(name) {
-  return normalizeSemanticName(name)
-    .toLowerCase()
-    .split('_')
-    .some((token) => USER_FACING_NAME_TOKENS.has(token))
+  return semanticNameTokens(name).some((token) => USER_FACING_NAME_TOKENS.has(token))
+}
+
+function isTechnicalPropertyName(name) {
+  return TECHNICAL_PROPERTY_NAMES.has(normalizeSemanticName(name).toLowerCase())
+}
+
+function isDisplayNameContainer(property) {
+  for (let current = property.parent; current; current = current.parent) {
+    if (ts.isPropertyAssignment(current)) {
+      const name = propertyName(current.name)
+      if (
+        name &&
+        semanticNameTokens(name).some((token) => DISPLAY_NAME_CONTAINER_TOKENS.has(token))
+      ) {
+        return true
+      }
+    }
+    if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+      return semanticNameTokens(current.name.text).some((token) =>
+        DISPLAY_NAME_CONTAINER_TOKENS.has(token)
+      )
+    }
+    if (ts.isCallExpression(current)) {
+      return semanticNameTokens(getCalleeName(current.expression)).some((token) =>
+        DISPLAY_NAME_CONTAINER_TOKENS.has(token)
+      )
+    }
+    if (ts.isStatement(current)) return false
+  }
+  return false
 }
 
 function looksTechnical(value) {
@@ -497,10 +639,19 @@ function semanticContext(node) {
     if (ts.isPropertyAssignment(current)) {
       if (current.name === node) return null
       const name = propertyName(current.name)
-      return name ? { kind: 'name', value: name } : null
+      if (!name) continue
+      if (isTechnicalPropertyName(name)) return null
+      if (isUserFacingName(name)) return { kind: 'name', value: name }
+      if (name === 'name' && isDisplayNameContainer(current)) {
+        return { kind: 'display-name', value: name }
+      }
+      continue
     }
     if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
-      return { kind: 'name', value: current.name.text }
+      if (isUserFacingName(current.name.text)) {
+        return { kind: 'name', value: current.name.text }
+      }
+      continue
     }
     if (
       (ts.isFunctionDeclaration(current) ||
@@ -509,11 +660,12 @@ function semanticContext(node) {
       current.name &&
       ts.isIdentifier(current.name)
     ) {
-      return { kind: 'name', value: current.name.text }
+      return isUserFacingName(current.name.text) ? { kind: 'name', value: current.name.text } : null
     }
     if (ts.isCallExpression(current)) {
       return { kind: 'call', value: getCalleeName(current.expression) }
     }
+    if (ts.isReturnStatement(current)) continue
     if (ts.isStatement(current)) return null
   }
   return null
@@ -521,6 +673,8 @@ function semanticContext(node) {
 
 function candidateIsUserFacing(node) {
   if (isTranslationCall(node)) return false
+  if (isLocalizedFormattingTemplate(node)) return false
+  if (isTechnicalControlLiteral(node)) return false
 
   if (ts.isStringLiteral(node)) {
     const parent = node.parent
@@ -538,14 +692,18 @@ function candidateIsUserFacing(node) {
 
   const attribute = jsxAttributeAncestor(node)
   if (attribute) {
-    const name = attribute.name.getText().toLowerCase()
-    return USER_FACING_JSX_ATTRIBUTES.has(name)
+    const name = attribute.name.getText()
+    return USER_FACING_JSX_ATTRIBUTES.has(name.toLowerCase()) || isUserFacingName(name)
   }
   if (isRenderedJsxChild(node)) return true
 
   const context = semanticContext(node)
   if (!context) return false
-  if (context.kind === 'name') return isUserFacingName(context.value)
+  if (context.kind === 'name') return true
+  if (context.kind === 'display-name') {
+    const text = textFromCandidate(node, node.getSourceFile()).trim()
+    return /\s/u.test(text) || /^\p{Lu}/u.test(text)
+  }
   if (context.kind === 'call') {
     if (context.value.startsWith('console.')) return false
     return USER_FACING_CALLS.test(context.value)
@@ -732,6 +890,27 @@ function runSelfTests() {
     1
   )
   assert.equal(scan("export const title = 'Play' // i18n-ignore").invalidWaivers.length, 1)
+  assert.equal(scan("export const copy = { win: 'You won the challenge' }").violations.length, 1)
+  assert.equal(
+    scan("export const MINIGAME_REGISTRY = [{ id: 'battery-low', name: 'Battery Low' }]").violations
+      .length,
+    1
+  )
+  assert.equal(scan("export const players = [{ id: 'lia', name: 'Lia' }]").violations.length, 0)
+  assert.equal(
+    scan('export const View = () => <Modal confirmLabel="Continue" />').violations.length,
+    1
+  )
+  assert.equal(
+    scan("export const label = kind === 'system' ? `${t('language.system')} · ${name}` : name")
+      .violations.length,
+    0
+  )
+  assert.equal(
+    scan("export const label = kind === 'adult' ? `· ${t('adult')}` : ''").violations.length,
+    0
+  )
+  assert.equal(scan('export const message = `${name} won the game`').violations.length, 1)
   assert.deepEqual(placeholders('Hello {name}, week {week}'), ['name', 'week'])
   assert.equal(sourceHash('x', 'y'), sourceHash('x', 'y'))
   console.log('Localization guard self-tests passed.')
