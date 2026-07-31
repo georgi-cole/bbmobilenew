@@ -40,6 +40,26 @@ const USER_FACING_NAME_TOKENS = new Set([
   'empty',
   'error',
   'failure',
+  'choice',
+  'choices',
+  'dialogue',
+  'dialogues',
+  'explanation',
+  'explanations',
+  'fallback',
+  'fallbacks',
+  'feedback',
+  'objective',
+  'objectives',
+  'option',
+  'options',
+  'refusal',
+  'refusals',
+  'reply',
+  'replies',
+  'response',
+  'responses',
+  'speech',
   'feed',
   'heading',
   'help',
@@ -805,7 +825,6 @@ function shouldScanFile(file) {
     'e2e/',
     'node_modules/',
     'scripts/',
-    'server/',
     'src/i18n/',
     'src/test/',
     'tests/',
@@ -911,6 +930,15 @@ function runSelfTests() {
     0
   )
   assert.equal(scan('export const message = `${name} won the game`').violations.length, 1)
+  assert.equal(
+    scan("const FALLBACKS = ['The game is paused']", 'server/index.js').violations.length,
+    1
+  )
+  assert.equal(
+    scan("const API_RESPONSE = { status: 'ok', id: 'turn-1' }", 'server/index.js').violations
+      .length,
+    0
+  )
   assert.deepEqual(placeholders('Hello {name}, week {week}'), ['name', 'week'])
   assert.equal(sourceHash('x', 'y'), sourceHash('x', 'y'))
   console.log('Localization guard self-tests passed.')
