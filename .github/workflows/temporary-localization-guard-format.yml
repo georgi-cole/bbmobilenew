@@ -1,16 +1,21 @@
-name: Temporary localization guard enhancement
+name: Temporary localization guard fixer
 
 on:
   push:
     branches:
       - agent/add-localization-settings
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
-  enhance:
-    if: github.actor != 'github-actions[bot]'
+  fix:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      (github.event_name == 'push' || github.head_ref == 'agent/add-localization-settings')
     runs-on: ubuntu-latest
     steps:
       - name: Check out feature branch
@@ -28,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Broaden localization guard coverage
+      - name: Strengthen and correct localization guard
         shell: bash
         run: |
           python - <<'PY'
@@ -37,8 +42,15 @@ jobs:
           path = Path('scripts/check-localization.mjs')
           source = path.read_text()
 
-          call_pattern = "const USER_FACING_CALLS = /(?:^|\\.)(?:addLog|addMessage|addNotification|alert|announce|confirm|notify|prompt|pushLog|setDescription|setError|setHeading|setLabel|setMessage|setPrompt|setSubtitle|setText|setTitle|setWarning|showToast|toast)$/i\n"
-          extra_constants = """const TECHNICAL_PROPERTY_NAMES = new Set([
+          def replace_function(name, replacement):
+              global source
+              start_marker = f'function {name}('
+              start = source.index(start_marker)
+              next_function = source.index('\n\nfunction ', start + len(start_marker))
+              source = source[:start] + replacement.rstrip() + source[next_function:]
+
+          if 'const TECHNICAL_PROPERTY_NAMES' not in source:
+              constants = """const TECHNICAL_PROPERTY_NAMES = new Set([
             'action',
             'asset',
             'category',
@@ -83,17 +95,12 @@ jobs:
             'twist',
           ])
           """
-          assert call_pattern in source
-          source = source.replace(call_pattern, call_pattern + extra_constants, 1)
+              source = source.replace('const CODE_EXTENSIONS', constants + 'const CODE_EXTENSIONS', 1)
 
-          old_name_helpers = """function isUserFacingName(name) {
-            return normalizeSemanticName(name)
-              .toLowerCase()
-              .split('_')
-              .some((token) => USER_FACING_NAME_TOKENS.has(token))
-          }
-          """
-          new_name_helpers = """function semanticNameTokens(name) {
+          if 'function semanticNameTokens' not in source:
+              replace_function(
+                  'isUserFacingName',
+                  """function semanticNameTokens(name) {
             return normalizeSemanticName(name).toLowerCase().split('_').filter(Boolean)
           }
 
@@ -129,39 +136,13 @@ jobs:
               if (ts.isStatement(current)) return false
             }
             return false
-          }
-          """
-          assert old_name_helpers in source
-          source = source.replace(old_name_helpers, new_name_helpers, 1)
+          }""",
+              )
 
-          old_context = """function semanticContext(node) {
-            for (let current = node.parent; current; current = current.parent) {
-              if (ts.isPropertyAssignment(current)) {
-                if (current.name === node) return null
-                const name = propertyName(current.name)
-                return name ? { kind: 'name', value: name } : null
-              }
-              if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
-                return { kind: 'name', value: current.name.text }
-              }
-              if (
-                (ts.isFunctionDeclaration(current) ||
-                  ts.isFunctionExpression(current) ||
-                  ts.isMethodDeclaration(current)) &&
-                current.name &&
-                ts.isIdentifier(current.name)
-              ) {
-                return { kind: 'name', value: current.name.text }
-              }
-              if (ts.isCallExpression(current)) {
-                return { kind: 'call', value: getCalleeName(current.expression) }
-              }
-              if (ts.isStatement(current)) return null
-            }
-            return null
-          }
-          """
-          new_context = """function semanticContext(node) {
+          if "return { kind: 'display-name', value: name }" not in source:
+              replace_function(
+                  'semanticContext',
+                  """function semanticContext(node) {
             for (let current = node.parent; current; current = current.parent) {
               if (ts.isPropertyAssignment(current)) {
                 if (current.name === node) return null
@@ -198,56 +179,140 @@ jobs:
               if (ts.isStatement(current)) return null
             }
             return null
-          }
-          """
-          assert old_context in source
-          source = source.replace(old_context, new_context, 1)
+          }""",
+              )
 
-          old_attribute = """    const name = attribute.name.getText().toLowerCase()
-              return USER_FACING_JSX_ATTRIBUTES.has(name)
-          """
-          new_attribute = """    const name = attribute.name.getText()
-              return USER_FACING_JSX_ATTRIBUTES.has(name.toLowerCase()) || isUserFacingName(name)
-          """
-          assert old_attribute in source
-          source = source.replace(old_attribute, new_attribute, 1)
-
-          old_context_use = "  if (context.kind === 'name') return isUserFacingName(context.value)\n"
-          new_context_use = """  if (context.kind === 'name') return true
+              source = source.replace(
+                  "const name = attribute.name.getText().toLowerCase()\n    return USER_FACING_JSX_ATTRIBUTES.has(name)",
+                  "const name = attribute.name.getText()\n    return USER_FACING_JSX_ATTRIBUTES.has(name.toLowerCase()) || isUserFacingName(name)",
+                  1,
+              )
+              source = source.replace(
+                  "if (context.kind === 'name') return isUserFacingName(context.value)",
+                  """if (context.kind === 'name') return true
             if (context.kind === 'display-name') {
               const text = textFromCandidate(node, node.getSourceFile()).trim()
               return /\\s/u.test(text) || /^\\p{Lu}/u.test(text)
-            }
-          """
-          assert old_context_use in source
-          source = source.replace(old_context_use, new_context_use, 1)
+            }""",
+                  1,
+              )
 
-          existing_test = """  assert.equal(
-              scan(\"export const game = { rules: ['Choose a card', 'Avoid the red tile'], id: 'battery-low' }\")
-                .violations.length,
-              2
+          if 'function containsTranslationCall' not in source:
+              helpers = """const COMPARISON_OPERATOR_KINDS = new Set([
+            ts.SyntaxKind.EqualsEqualsToken,
+            ts.SyntaxKind.ExclamationEqualsToken,
+            ts.SyntaxKind.EqualsEqualsEqualsToken,
+            ts.SyntaxKind.ExclamationEqualsEqualsToken,
+            ts.SyntaxKind.LessThanToken,
+            ts.SyntaxKind.LessThanEqualsToken,
+            ts.SyntaxKind.GreaterThanToken,
+            ts.SyntaxKind.GreaterThanEqualsToken,
+            ts.SyntaxKind.InKeyword,
+            ts.SyntaxKind.InstanceOfKeyword,
+          ])
+
+          function containsTranslationCall(node) {
+            let found = false
+            function visit(current) {
+              if (found) return
+              if (ts.isCallExpression(current)) {
+                const name = getCalleeName(current.expression).split('.').at(-1)
+                if (name && TRANSLATION_CALLS.has(name)) {
+                  found = true
+                  return
+                }
+              }
+              ts.forEachChild(current, visit)
+            }
+            visit(node)
+            return found
+          }
+
+          function isLocalizedFormattingTemplate(node) {
+            if (!ts.isTemplateExpression(node)) return false
+            const literalText =
+              node.head.text + node.templateSpans.map((span) => span.literal.text).join('')
+            return (
+              !/\\p{L}/u.test(literalText) &&
+              node.templateSpans.some((span) => containsTranslationCall(span.expression))
             )
+          }
+
+          function isInsideRange(node, range) {
+            return node.getStart() >= range.getStart() && node.getEnd() <= range.getEnd()
+          }
+
+          function isTechnicalControlLiteral(node) {
+            for (let current = node.parent; current; current = current.parent) {
+              if (
+                ts.isBinaryExpression(current) &&
+                COMPARISON_OPERATOR_KINDS.has(current.operatorToken.kind)
+              ) {
+                return true
+              }
+              if (ts.isConditionalExpression(current) && isInsideRange(node, current.condition)) {
+                return true
+              }
+              if (ts.isCaseClause(current) && isInsideRange(node, current.expression)) return true
+              if (
+                ts.isStatement(current) ||
+                ts.isPropertyAssignment(current) ||
+                ts.isVariableDeclaration(current) ||
+                ts.isJsxAttribute(current)
+              ) {
+                return false
+              }
+            }
+            return false
+          }
+
           """
-          added_tests = """  assert.equal(
-              scan(\"export const copy = { win: 'You won the challenge' }\").violations.length,
-              1
-            )
-            assert.equal(
-              scan(\"export const MINIGAME_REGISTRY = [{ id: 'battery-low', name: 'Battery Low' }]\")
-                .violations.length,
-              1
-            )
-            assert.equal(
-              scan(\"export const players = [{ id: 'lia', name: 'Lia' }]\").violations.length,
-              0
-            )
-            assert.equal(
-              scan('export const View = () => <Modal confirmLabel=\"Continue\" />').violations.length,
-              1
-            )
+              source = source.replace('function normalizeSemanticName', helpers + 'function normalizeSemanticName', 1)
+              source = source.replace(
+                  'if (isTranslationCall(node)) return false\n',
+                  """if (isTranslationCall(node)) return false
+            if (isLocalizedFormattingTemplate(node)) return false
+            if (isTechnicalControlLiteral(node)) return false
+          """,
+                  1,
+              )
+
+          if "MINIGAME_REGISTRY = [{ id: 'battery-low'" not in source:
+              tests = """  assert.equal(
+            scan(\"export const copy = { win: 'You won the challenge' }\").violations.length,
+            1
+          )
+          assert.equal(
+            scan(\"export const MINIGAME_REGISTRY = [{ id: 'battery-low', name: 'Battery Low' }]\")
+              .violations.length,
+            1
+          )
+          assert.equal(
+            scan(\"export const players = [{ id: 'lia', name: 'Lia' }]\").violations.length,
+            0
+          )
+          assert.equal(
+            scan('export const View = () => <Modal confirmLabel=\"Continue\" />').violations.length,
+            1
+          )
+          assert.equal(
+            scan(
+              \"export const label = kind === 'system' ? `${t('language.system')} · ${name}` : name\"
+            ).violations.length,
+            0
+          )
+          assert.equal(
+            scan(\"export const label = kind === 'adult' ? `· ${t('adult')}` : ''\")
+              .violations.length,
+            0
+          )
+          assert.equal(scan('export const message = `${name} won the game`').violations.length, 1)
           """
-          assert existing_test in source
-          source = source.replace(existing_test, existing_test + added_tests, 1)
+              source = source.replace(
+                  "  assert.deepEqual(placeholders('Hello {name}, week {week}'), ['name', 'week'])",
+                  tests + "  assert.deepEqual(placeholders('Hello {name}, week {week}'), ['name', 'week'])",
+                  1,
+              )
 
           path.write_text(source)
           PY
@@ -255,14 +320,18 @@ jobs:
       - name: Run localization guard self-tests
         run: node scripts/check-localization.mjs --self-test
 
-      - name: Format localization guard changes
+      - name: Format localization guard
         run: npx prettier --write scripts/check-localization.mjs
 
-      - name: Commit enhanced guard
+      - name: Commit corrected guard
         shell: bash
         run: |
+          if git diff --quiet; then
+            echo 'No guard changes were required.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add scripts/check-localization.mjs
-          git commit -m 'Broaden localization guard coverage'
+          git commit -m 'Harden localization guard detection'
           git push origin HEAD:agent/add-localization-settings
