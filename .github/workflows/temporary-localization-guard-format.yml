@@ -1,4 +1,4 @@
-name: Temporary localization guard formatter
+name: Temporary localization guard enhancement
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  format:
+  enhance:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -28,24 +28,241 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Format localization guard changes
-        run: >-
-          npx prettier --write
-          .github/workflows/ci.yml
-          config/localization-source-review.json
-          docs/LOCALIZATION.md
-          package.json
-          scripts/check-localization.mjs
-
-      - name: Commit canonical formatting
+      - name: Broaden localization guard coverage
         shell: bash
         run: |
-          if git diff --quiet; then
-            echo 'No formatting changes were required.'
-            exit 0
-          fi
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/check-localization.mjs')
+          source = path.read_text()
+
+          call_pattern = "const USER_FACING_CALLS = /(?:^|\\.)(?:addLog|addMessage|addNotification|alert|announce|confirm|notify|prompt|pushLog|setDescription|setError|setHeading|setLabel|setMessage|setPrompt|setSubtitle|setText|setTitle|setWarning|showToast|toast)$/i\n"
+          extra_constants = """const TECHNICAL_PROPERTY_NAMES = new Set([
+            'action',
+            'asset',
+            'category',
+            'class',
+            'class_name',
+            'code',
+            'color',
+            'event',
+            'file',
+            'filename',
+            'href',
+            'icon',
+            'id',
+            'key',
+            'kind',
+            'locale',
+            'mode',
+            'path',
+            'phase',
+            'route',
+            'slug',
+            'src',
+            'status',
+            'test_id',
+            'type',
+            'url',
+            'value',
+            'variant',
+          ])
+          const DISPLAY_NAME_CONTAINER_TOKENS = new Set([
+            'ceremony',
+            'challenge',
+            'competition',
+            'event',
+            'feature',
+            'game',
+            'minigame',
+            'minigames',
+            'mode',
+            'module',
+            'phase',
+            'twist',
+          ])
+          """
+          assert call_pattern in source
+          source = source.replace(call_pattern, call_pattern + extra_constants, 1)
+
+          old_name_helpers = """function isUserFacingName(name) {
+            return normalizeSemanticName(name)
+              .toLowerCase()
+              .split('_')
+              .some((token) => USER_FACING_NAME_TOKENS.has(token))
+          }
+          """
+          new_name_helpers = """function semanticNameTokens(name) {
+            return normalizeSemanticName(name).toLowerCase().split('_').filter(Boolean)
+          }
+
+          function isUserFacingName(name) {
+            return semanticNameTokens(name).some((token) => USER_FACING_NAME_TOKENS.has(token))
+          }
+
+          function isTechnicalPropertyName(name) {
+            return TECHNICAL_PROPERTY_NAMES.has(normalizeSemanticName(name).toLowerCase())
+          }
+
+          function isDisplayNameContainer(property) {
+            for (let current = property.parent; current; current = current.parent) {
+              if (ts.isPropertyAssignment(current)) {
+                const name = propertyName(current.name)
+                if (
+                  name &&
+                  semanticNameTokens(name).some((token) => DISPLAY_NAME_CONTAINER_TOKENS.has(token))
+                ) {
+                  return true
+                }
+              }
+              if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+                return semanticNameTokens(current.name.text).some((token) =>
+                  DISPLAY_NAME_CONTAINER_TOKENS.has(token)
+                )
+              }
+              if (ts.isCallExpression(current)) {
+                return semanticNameTokens(getCalleeName(current.expression)).some((token) =>
+                  DISPLAY_NAME_CONTAINER_TOKENS.has(token)
+                )
+              }
+              if (ts.isStatement(current)) return false
+            }
+            return false
+          }
+          """
+          assert old_name_helpers in source
+          source = source.replace(old_name_helpers, new_name_helpers, 1)
+
+          old_context = """function semanticContext(node) {
+            for (let current = node.parent; current; current = current.parent) {
+              if (ts.isPropertyAssignment(current)) {
+                if (current.name === node) return null
+                const name = propertyName(current.name)
+                return name ? { kind: 'name', value: name } : null
+              }
+              if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+                return { kind: 'name', value: current.name.text }
+              }
+              if (
+                (ts.isFunctionDeclaration(current) ||
+                  ts.isFunctionExpression(current) ||
+                  ts.isMethodDeclaration(current)) &&
+                current.name &&
+                ts.isIdentifier(current.name)
+              ) {
+                return { kind: 'name', value: current.name.text }
+              }
+              if (ts.isCallExpression(current)) {
+                return { kind: 'call', value: getCalleeName(current.expression) }
+              }
+              if (ts.isStatement(current)) return null
+            }
+            return null
+          }
+          """
+          new_context = """function semanticContext(node) {
+            for (let current = node.parent; current; current = current.parent) {
+              if (ts.isPropertyAssignment(current)) {
+                if (current.name === node) return null
+                const name = propertyName(current.name)
+                if (!name) continue
+                if (isTechnicalPropertyName(name)) return null
+                if (isUserFacingName(name)) return { kind: 'name', value: name }
+                if (name === 'name' && isDisplayNameContainer(current)) {
+                  return { kind: 'display-name', value: name }
+                }
+                continue
+              }
+              if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+                if (isUserFacingName(current.name.text)) {
+                  return { kind: 'name', value: current.name.text }
+                }
+                continue
+              }
+              if (
+                (ts.isFunctionDeclaration(current) ||
+                  ts.isFunctionExpression(current) ||
+                  ts.isMethodDeclaration(current)) &&
+                current.name &&
+                ts.isIdentifier(current.name)
+              ) {
+                return isUserFacingName(current.name.text)
+                  ? { kind: 'name', value: current.name.text }
+                  : null
+              }
+              if (ts.isCallExpression(current)) {
+                return { kind: 'call', value: getCalleeName(current.expression) }
+              }
+              if (ts.isReturnStatement(current)) continue
+              if (ts.isStatement(current)) return null
+            }
+            return null
+          }
+          """
+          assert old_context in source
+          source = source.replace(old_context, new_context, 1)
+
+          old_attribute = """    const name = attribute.name.getText().toLowerCase()
+              return USER_FACING_JSX_ATTRIBUTES.has(name)
+          """
+          new_attribute = """    const name = attribute.name.getText()
+              return USER_FACING_JSX_ATTRIBUTES.has(name.toLowerCase()) || isUserFacingName(name)
+          """
+          assert old_attribute in source
+          source = source.replace(old_attribute, new_attribute, 1)
+
+          old_context_use = "  if (context.kind === 'name') return isUserFacingName(context.value)\n"
+          new_context_use = """  if (context.kind === 'name') return true
+            if (context.kind === 'display-name') {
+              const text = textFromCandidate(node, node.getSourceFile()).trim()
+              return /\\s/u.test(text) || /^\\p{Lu}/u.test(text)
+            }
+          """
+          assert old_context_use in source
+          source = source.replace(old_context_use, new_context_use, 1)
+
+          existing_test = """  assert.equal(
+              scan(\"export const game = { rules: ['Choose a card', 'Avoid the red tile'], id: 'battery-low' }\")
+                .violations.length,
+              2
+            )
+          """
+          added_tests = """  assert.equal(
+              scan(\"export const copy = { win: 'You won the challenge' }\").violations.length,
+              1
+            )
+            assert.equal(
+              scan(\"export const MINIGAME_REGISTRY = [{ id: 'battery-low', name: 'Battery Low' }]\")
+                .violations.length,
+              1
+            )
+            assert.equal(
+              scan(\"export const players = [{ id: 'lia', name: 'Lia' }]\").violations.length,
+              0
+            )
+            assert.equal(
+              scan('export const View = () => <Modal confirmLabel=\"Continue\" />').violations.length,
+              1
+            )
+          """
+          assert existing_test in source
+          source = source.replace(existing_test, existing_test + added_tests, 1)
+
+          path.write_text(source)
+          PY
+
+      - name: Run localization guard self-tests
+        run: node scripts/check-localization.mjs --self-test
+
+      - name: Format localization guard changes
+        run: npx prettier --write scripts/check-localization.mjs
+
+      - name: Commit enhanced guard
+        shell: bash
+        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/ci.yml config/localization-source-review.json docs/LOCALIZATION.md package.json scripts/check-localization.mjs
-          git commit -m 'Format localization guard changes'
+          git add scripts/check-localization.mjs
+          git commit -m 'Broaden localization guard coverage'
           git push origin HEAD:agent/add-localization-settings
