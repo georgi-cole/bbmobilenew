@@ -73,7 +73,8 @@ const USER_FACING_NAME_TOKENS = new Set([
   'tooltip',
   'warning',
 ])
-const USER_FACING_CALLS = /(?:^|\.)(?:addLog|addMessage|addNotification|alert|announce|confirm|notify|prompt|pushLog|setDescription|setError|setHeading|setLabel|setMessage|setPrompt|setSubtitle|setText|setTitle|setWarning|showToast|toast)$/i
+const USER_FACING_CALLS =
+  /(?:^|\.)(?:addLog|addMessage|addNotification|alert|announce|confirm|notify|prompt|pushLog|setDescription|setError|setHeading|setLabel|setMessage|setPrompt|setSubtitle|setText|setTitle|setWarning|showToast|toast)$/i
 const CODE_EXTENSIONS = new Set(['.js', '.jsx', '.json', '.jsonc', '.ts', '.tsx'])
 const HTML_EXTENSIONS = new Set(['.htm', '.html'])
 
@@ -385,9 +386,7 @@ function validateCatalogs(currentSource, baseSource, languageSource, acknowledge
             ? previous.catalogs.get(previousCatalogName)
             : undefined
           const translationIsRelevant =
-            !SPARSE_LOCALES.has(locale) ||
-            currentCatalog?.has(key) ||
-            previousCatalog?.has(key)
+            !SPARSE_LOCALES.has(locale) || currentCatalog?.has(key) || previousCatalog?.has(key)
           if (!translationIsRelevant) continue
 
           const currentTranslation = currentCatalog?.get(key)
@@ -423,7 +422,8 @@ function validateCatalogs(currentSource, baseSource, languageSource, acknowledge
 
 function getCalleeName(expression) {
   if (ts.isIdentifier(expression)) return expression.text
-  if (ts.isPropertyAccessExpression(expression)) return `${getCalleeName(expression.expression)}.${expression.name.text}`
+  if (ts.isPropertyAccessExpression(expression))
+    return `${getCalleeName(expression.expression)}.${expression.name.text}`
   return ''
 }
 
@@ -656,20 +656,16 @@ function shouldScanFile(file) {
   if (normalized.includes('/generated') || normalized.includes('.generated.')) return false
   if (/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(normalized)) return false
   if (normalized.startsWith('public/assets/')) return false
-  return CODE_EXTENSIONS.has(path.extname(normalized).toLowerCase()) ||
+  return (
+    CODE_EXTENSIONS.has(path.extname(normalized).toLowerCase()) ||
     HTML_EXTENSIONS.has(path.extname(normalized).toLowerCase())
+  )
 }
 
 function changedFiles(base) {
-  const output = git([
-    'diff',
-    '--name-only',
-    '-z',
-    '--diff-filter=ACMRTUXB',
-    base,
-    'HEAD',
-    '--',
-  ], { encoding: 'buffer' })
+  const output = git(['diff', '--name-only', '-z', '--diff-filter=ACMRTUXB', base, 'HEAD', '--'], {
+    encoding: 'buffer',
+  })
   if (output == null) throw new Error('Unable to enumerate changed files for i18n validation.')
   return output
     .toString('utf8')
@@ -723,14 +719,16 @@ function runSelfTests() {
     0
   )
   assert.equal(
-    scan("export const game = { rules: ['Choose a card', 'Avoid the red tile'], id: 'battery-low' }")
-      .violations.length,
+    scan(
+      "export const game = { rules: ['Choose a card', 'Avoid the red tile'], id: 'battery-low' }"
+    ).violations.length,
     2
   )
   assert.equal(scan("export const ROUTE = '/settings'").violations.length, 0)
   assert.equal(
-    scan("export const title = 'Licensed name' // i18n-ignore: Licensed proper name must remain unchanged")
-      .acceptedWaivers.length,
+    scan(
+      "export const title = 'Licensed name' // i18n-ignore: Licensed proper name must remain unchanged"
+    ).acceptedWaivers.length,
     1
   )
   assert.equal(scan("export const title = 'Play' // i18n-ignore").invalidWaivers.length, 1)
@@ -806,7 +804,7 @@ function main() {
     console.error('\nLocalization quality gate failed:')
     for (const error of errors) console.error(`  - ${error}`)
     console.error(
-      '\nUse t(\'namespace.key\') and add the key to every full locale. ' +
+      "\nUse t('namespace.key') and add the key to every full locale. " +
         'For a genuinely non-translatable literal, add `i18n-ignore: <specific reason>` on the same or previous line.'
     )
     process.exit(1)
