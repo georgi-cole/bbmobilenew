@@ -12,10 +12,7 @@ import {
   normalizeRealityModePreset,
   type RealityModePreset,
 } from '../modes/realityMode'
-import {
-  normalizeLanguagePreference,
-  type LanguagePreference,
-} from '../i18n/languages'
+import { normalizeLanguagePreference, type LanguagePreference } from '../i18n/languages'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 

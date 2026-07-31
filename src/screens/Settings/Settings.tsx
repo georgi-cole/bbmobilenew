@@ -139,8 +139,7 @@ export default function Settings() {
           id: 'music',
           label: t('settings.music'),
           get: (s) => s.audio.musicOn,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setAudio({ musicOn: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setAudio({ musicOn: val })),
         },
         {
           type: 'toggle',
@@ -173,16 +172,14 @@ export default function Settings() {
           id: 'compactRoster',
           label: t('settings.compactMode'),
           get: (s) => s.gameUX.compactRoster,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setGameUX({ compactRoster: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setGameUX({ compactRoster: val })),
         },
         {
           type: 'toggle',
           id: 'houseFeed',
           label: t('settings.houseFeed'),
           get: (s) => s.gameUX.houseFeed,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setGameUX({ houseFeed: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setGameUX({ houseFeed: val })),
         },
         {
           type: 'toggle',
@@ -242,16 +239,14 @@ export default function Settings() {
           id: 'highContrast',
           label: t('settings.highContrast'),
           get: (s) => s.display.highContrast,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setDisplay({ highContrast: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setDisplay({ highContrast: val })),
         },
         {
           type: 'toggle',
           id: 'reduceMotion',
           label: t('settings.reduceMotion'),
           get: (s) => s.display.reduceMotion,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setDisplay({ reduceMotion: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setDisplay({ reduceMotion: val })),
         },
         {
           // Disables spotlights, badge animations, dimmers, eviction sequences,
@@ -260,8 +255,7 @@ export default function Settings() {
           id: 'animations',
           label: t('settings.animations'),
           get: (s) => s.gameUX.animations,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setGameUX({ animations: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setGameUX({ animations: val })),
         },
       ],
     },
@@ -273,8 +267,7 @@ export default function Settings() {
           id: 'haptics',
           label: t('settings.hapticFeedback'),
           get: (s) => s.gameUX.useHaptics,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setGameUX({ useHaptics: val })),
+          onChange: (settingsDispatch, val) => settingsDispatch(setGameUX({ useHaptics: val })),
         },
       ],
     },

@@ -15,9 +15,8 @@ function readSystemLanguageTags(): readonly string[] {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const preference = useAppSelector(selectLanguagePreference)
-  const [systemLanguageTags, setSystemLanguageTags] = useState<readonly string[]>(
-    readSystemLanguageTags
-  )
+  const [systemLanguageTags, setSystemLanguageTags] =
+    useState<readonly string[]>(readSystemLanguageTags)
 
   useEffect(() => {
     if (typeof window === 'undefined') return

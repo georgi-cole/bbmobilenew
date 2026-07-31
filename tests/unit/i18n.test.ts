@@ -97,24 +97,15 @@ describe('settings persistence migration', () => {
   })
 
   it('loads supported languages and rejects invalid persisted values', () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ localization: { language: 'fr-FR' } })
-    )
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ localization: { language: 'fr-FR' } }))
     expect(loadSettings().localization.language).toBe('fr-FR')
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ localization: { language: 'ja-JP' } })
-    )
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ localization: { language: 'ja-JP' } }))
     expect(loadSettings().localization.language).toBe('system')
   })
 
   it('updates the language without changing gameplay settings', () => {
-    const next = settingsReducer(
-      DEFAULT_SETTINGS,
-      setLocalization({ language: 'uk-UA' })
-    )
+    const next = settingsReducer(DEFAULT_SETTINGS, setLocalization({ language: 'uk-UA' }))
 
     expect(next.localization.language).toBe('uk-UA')
     expect(next.gameUX).toEqual(DEFAULT_SETTINGS.gameUX)

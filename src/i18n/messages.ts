@@ -309,8 +309,7 @@ const DE_DE_MESSAGES = {
   'settings.vipOwned': 'Dein VIP-Paket ist freigeschaltet',
   'settings.vipUnlock': 'Premium-Modi und werbefreies Spielen freischalten',
   'settings.privacyTitle': 'Datenschutz, Bedingungen & Support',
-  'settings.privacyDescription':
-    'Datennutzung, Kaufbedingungen und Hilfeoptionen ansehen',
+  'settings.privacyDescription': 'Datennutzung, Kaufbedingungen und Hilfeoptionen ansehen',
   'settings.requiresAdult': 'Erfordert ein Profilalter von mindestens 18 Jahren',
   'settings.unlockTitle': 'Freischalten: {feature}',
   'settings.unlockDescription':
@@ -349,8 +348,7 @@ const ZH_CN_MESSAGES = {
   'settings.realityStyle.casual': '轻松',
   'settings.realityStyle.tv': '电视级',
   'settings.realityStyle.adult': '18+',
-  'settings.realityStyle.description':
-    '轻松模式较温和，电视级模式较平衡，18+ 模式的强度更高。',
+  'settings.realityStyle.description': '轻松模式较温和，电视级模式较平衡，18+ 模式的强度更高。',
   'settings.romanceStorylines': '恋爱剧情',
   'settings.publicMode': '公众模式',
   'settings.highContrast': '高对比度',
