@@ -1,0 +1,51 @@
+name: Temporary localization guard formatter
+
+on:
+  push:
+    branches:
+      - agent/add-localization-settings
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/add-localization-settings
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format localization guard changes
+        run: >-
+          npx prettier --write
+          .github/workflows/ci.yml
+          config/localization-source-review.json
+          docs/LOCALIZATION.md
+          package.json
+          scripts/check-localization.mjs
+
+      - name: Commit canonical formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No formatting changes were required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/ci.yml config/localization-source-review.json docs/LOCALIZATION.md package.json scripts/check-localization.mjs
+          git commit -m 'Format localization guard changes'
+          git push origin HEAD:agent/add-localization-settings
