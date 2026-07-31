@@ -51,8 +51,6 @@ const USER_FACING_NAME_TOKENS = new Set([
   'feedback',
   'objective',
   'objectives',
-  'option',
-  'options',
   'refusal',
   'refusals',
   'reply',
