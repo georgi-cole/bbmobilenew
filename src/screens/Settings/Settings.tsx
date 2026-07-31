@@ -8,6 +8,7 @@ import {
   setAudio,
   setDisplay,
   setGameUX,
+  setLocalization,
   setSim,
   type ThemePreset,
   type SettingsState,
@@ -22,17 +23,28 @@ import {
   getProfileRealityAgeEligibility,
   type RealityModePreset,
 } from '../../modes/realityMode'
+import {
+  LANGUAGE_OPTIONS,
+  getLanguageNativeName,
+  useI18n,
+  type LanguagePreference,
+  type TranslationKey,
+} from '../../i18n'
 import './Settings.css'
 
-// ── Theme options ──────────────────────────────────────────────────────────────
-// To add a new theme: append an entry here AND add a matching body.theme-* CSS
-// rule in Settings.css.
-const THEME_OPTIONS: { value: ThemePreset; label: string; vipOnly?: boolean }[] = [
-  { value: 'midnight', label: '🌙 Midnight' },
-  { value: 'neon', vipOnly: true, label: '⚡ Neon' },
-  { value: 'sunset', vipOnly: true, label: '🌅 Sunset' },
-  { value: 'ocean', vipOnly: true, label: '🌊 Ocean' },
-]
+type LockedFeature = 'realityMode' | 'publicMode' | 'vipThemes'
+
+const REALITY_PRESET_LABEL_KEYS: Record<RealityModePreset, TranslationKey> = {
+  casual: 'settings.realityStyle.casual',
+  tv: 'settings.realityStyle.tv',
+  adult: 'settings.realityStyle.adult',
+}
+
+const LOCKED_FEATURE_KEYS: Record<LockedFeature, TranslationKey> = {
+  realityMode: 'settings.feature.realityMode',
+  publicMode: 'settings.feature.publicMode',
+  vipThemes: 'settings.feature.vipThemes',
+}
 
 // ── Setting item types ─────────────────────────────────────────────────────────
 // Add a new member to this union + a matching case in renderItem() to support
@@ -44,7 +56,7 @@ type ToggleItem = {
   label: string
   badge?: string
   gated?: boolean
-  lockedFeature?: 'Reality Mode' | 'Public Mode' | 'VIP themes'
+  lockedFeature?: LockedFeature
   get: (s: SettingsState) => boolean
   onChange: (dispatch: AppDispatch, val: boolean) => void
 }
@@ -66,154 +78,6 @@ interface SettingSection {
   items: SettingItem[]
 }
 
-// ── Sections config ────────────────────────────────────────────────────────────
-// Edit this array to add, remove, or reorder settings sections and rows.
-//
-//  • New toggle row   → append a { type: 'toggle', … } entry to a section
-//  • New section      → append a new SettingSection to the array
-//  • New theme option → append to THEME_OPTIONS above
-
-const SECTIONS: SettingSection[] = [
-  {
-    id: 'audio',
-    items: [
-      {
-        type: 'toggle',
-        id: 'music',
-        label: 'Music',
-        get: (s) => s.audio.musicOn,
-        onChange: (dispatch, val) => dispatch(setAudio({ musicOn: val })),
-      },
-      {
-        type: 'toggle',
-        id: 'sfx',
-        label: 'Sound Effects',
-        get: (s) => s.audio.sfxOn,
-        onChange: (dispatch, val) => dispatch(setAudio({ sfxOn: val })),
-      },
-    ],
-  },
-  {
-    id: 'theme',
-    items: [
-      {
-        type: 'dropdown',
-        id: 'theme-preset',
-        label: 'Theme',
-        options: THEME_OPTIONS,
-        get: (s) => s.display.themePreset,
-        onChange: (dispatch, val) => dispatch(setDisplay({ themePreset: val as ThemePreset })),
-      },
-    ],
-  },
-  {
-    id: 'gameplay',
-    items: [
-      {
-        type: 'toggle',
-        id: 'compactRoster',
-        label: 'Compact mode',
-        get: (s) => s.gameUX.compactRoster,
-        onChange: (dispatch, val) => dispatch(setGameUX({ compactRoster: val })),
-      },
-      {
-        type: 'toggle',
-        id: 'houseFeed',
-        label: 'House Feed',
-        get: (s) => s.gameUX.houseFeed,
-        onChange: (dispatch, val) => dispatch(setGameUX({ houseFeed: val })),
-      },
-      {
-        type: 'toggle',
-        id: 'dramaMode',
-        label: 'Reality Mode',
-        badge: 'Store',
-        gated: true,
-        lockedFeature: 'Reality Mode',
-        get: (s) => s.gameUX.dramaMode,
-        onChange: (dispatch, val) =>
-          dispatch(
-            setGameUX(
-              val ? { dramaMode: true } : { dramaMode: false, dramaModeAdminOverride: false }
-            )
-          ),
-      },
-      {
-        type: 'dropdown',
-        id: 'realityModePreset',
-        label: 'Reality style',
-        options: REALITY_MODE_PRESETS.map(({ value, label }) => ({ value, label })),
-        get: (s) => s.gameUX.realityModePreset,
-        onChange: (dispatch, val) =>
-          dispatch(setGameUX({ realityModePreset: val as RealityModePreset })),
-        description: 'Casual is lighter, TV Grade is balanced, and 18+ has stronger intensity.',
-      },
-      {
-        type: 'toggle',
-        id: 'romanceStorylines',
-        label: 'Romance storylines',
-        get: (s) => s.gameUX.romanceStorylines,
-        onChange: (dispatch, val) => dispatch(setGameUX({ romanceStorylines: val })),
-      },
-      {
-        type: 'toggle',
-        id: 'publicMode',
-        label: 'Public Mode',
-        badge: 'Store',
-        gated: true,
-        lockedFeature: 'Public Mode',
-        get: (s) => s.sim.publicMode,
-        onChange: (dispatch, val) =>
-          dispatch(
-            setSim(
-              val ? { publicMode: true } : { publicMode: false, publicModeAdminOverride: false }
-            )
-          ),
-      },
-    ],
-  },
-  {
-    id: 'accessibility',
-    items: [
-      {
-        type: 'toggle',
-        id: 'highContrast',
-        label: 'High Contrast',
-        get: (s) => s.display.highContrast,
-        onChange: (dispatch, val) => dispatch(setDisplay({ highContrast: val })),
-      },
-      {
-        type: 'toggle',
-        id: 'reduceMotion',
-        label: 'Reduce Motion',
-        get: (s) => s.display.reduceMotion,
-        onChange: (dispatch, val) => dispatch(setDisplay({ reduceMotion: val })),
-      },
-      {
-        // Disables spotlights, badge animations, dimmers, eviction sequences,
-        // and all other purely-visual effects (body.no-animations).
-        type: 'toggle',
-        id: 'animations',
-        label: 'Animations',
-        get: (s) => s.gameUX.animations,
-        onChange: (dispatch, val) => dispatch(setGameUX({ animations: val })),
-      },
-    ],
-  },
-  {
-    id: 'feedback',
-    items: [
-      {
-        type: 'toggle',
-        id: 'haptics',
-        label: 'Haptic Feedback',
-        get: (s) => s.gameUX.useHaptics,
-        onChange: (dispatch, val) => dispatch(setGameUX({ useHaptics: val })),
-      },
-    ],
-  },
-]
-
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -226,11 +90,195 @@ export default function Settings() {
   const realityAgeEligibility = useAppSelector((state) =>
     getProfileRealityAgeEligibility(state.profiles)
   )
+  const { systemLanguage, t } = useI18n()
   const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride
   const showRealitySettings = hasRealityAccess && settings.gameUX.dramaMode
-  const [lockedFeature, setLockedFeature] = useState<
-    'Reality Mode' | 'Public Mode' | 'VIP themes' | null
-  >(null)
+  const [lockedFeature, setLockedFeature] = useState<LockedFeature | null>(null)
+
+  const themeOptions: DropdownItem['options'] = [
+    { value: 'midnight', label: t('settings.theme.midnight') },
+    { value: 'neon', vipOnly: true, label: t('settings.theme.neon') },
+    { value: 'sunset', vipOnly: true, label: t('settings.theme.sunset') },
+    { value: 'ocean', vipOnly: true, label: t('settings.theme.ocean') },
+  ]
+  const languageOptions: DropdownItem['options'] = LANGUAGE_OPTIONS.map((option) => ({
+    value: option.value,
+    label:
+      option.value === 'system'
+        ? `${t('language.system')} · ${getLanguageNativeName(systemLanguage)}`
+        : option.nativeName,
+  }))
+  const realityStyleOptions: DropdownItem['options'] = REALITY_MODE_PRESETS.map(({ value }) => ({
+    value,
+    label: t(REALITY_PRESET_LABEL_KEYS[value]),
+  }))
+
+  // Keep the screen data-driven so future language packs only translate keys;
+  // they never need to change settings behavior or Redux wiring.
+  const sections: SettingSection[] = [
+    {
+      id: 'localization',
+      items: [
+        {
+          type: 'dropdown',
+          id: 'language',
+          label: t('settings.language'),
+          options: languageOptions,
+          get: (s) => s.localization.language,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setLocalization({ language: val as LanguagePreference })),
+          description: t('settings.language.description'),
+        },
+      ],
+    },
+    {
+      id: 'audio',
+      items: [
+        {
+          type: 'toggle',
+          id: 'music',
+          label: t('settings.music'),
+          get: (s) => s.audio.musicOn,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setAudio({ musicOn: val })),
+        },
+        {
+          type: 'toggle',
+          id: 'sfx',
+          label: t('settings.soundEffects'),
+          get: (s) => s.audio.sfxOn,
+          onChange: (settingsDispatch, val) => settingsDispatch(setAudio({ sfxOn: val })),
+        },
+      ],
+    },
+    {
+      id: 'theme',
+      items: [
+        {
+          type: 'dropdown',
+          id: 'theme-preset',
+          label: t('settings.theme'),
+          options: themeOptions,
+          get: (s) => s.display.themePreset,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setDisplay({ themePreset: val as ThemePreset })),
+        },
+      ],
+    },
+    {
+      id: 'gameplay',
+      items: [
+        {
+          type: 'toggle',
+          id: 'compactRoster',
+          label: t('settings.compactMode'),
+          get: (s) => s.gameUX.compactRoster,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ compactRoster: val })),
+        },
+        {
+          type: 'toggle',
+          id: 'houseFeed',
+          label: t('settings.houseFeed'),
+          get: (s) => s.gameUX.houseFeed,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ houseFeed: val })),
+        },
+        {
+          type: 'toggle',
+          id: 'dramaMode',
+          label: t('settings.realityMode'),
+          badge: t('common.store'),
+          gated: true,
+          lockedFeature: 'realityMode',
+          get: (s) => s.gameUX.dramaMode,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(
+              setGameUX(
+                val ? { dramaMode: true } : { dramaMode: false, dramaModeAdminOverride: false }
+              )
+            ),
+        },
+        {
+          type: 'dropdown',
+          id: 'realityModePreset',
+          label: t('settings.realityStyle'),
+          options: realityStyleOptions,
+          get: (s) => s.gameUX.realityModePreset,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ realityModePreset: val as RealityModePreset })),
+          description: t('settings.realityStyle.description'),
+        },
+        {
+          type: 'toggle',
+          id: 'romanceStorylines',
+          label: t('settings.romanceStorylines'),
+          get: (s) => s.gameUX.romanceStorylines,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ romanceStorylines: val })),
+        },
+        {
+          type: 'toggle',
+          id: 'publicMode',
+          label: t('settings.publicMode'),
+          badge: t('common.store'),
+          gated: true,
+          lockedFeature: 'publicMode',
+          get: (s) => s.sim.publicMode,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(
+              setSim(
+                val ? { publicMode: true } : { publicMode: false, publicModeAdminOverride: false }
+              )
+            ),
+        },
+      ],
+    },
+    {
+      id: 'accessibility',
+      items: [
+        {
+          type: 'toggle',
+          id: 'highContrast',
+          label: t('settings.highContrast'),
+          get: (s) => s.display.highContrast,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setDisplay({ highContrast: val })),
+        },
+        {
+          type: 'toggle',
+          id: 'reduceMotion',
+          label: t('settings.reduceMotion'),
+          get: (s) => s.display.reduceMotion,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setDisplay({ reduceMotion: val })),
+        },
+        {
+          // Disables spotlights, badge animations, dimmers, eviction sequences,
+          // and all other purely-visual effects (body.no-animations).
+          type: 'toggle',
+          id: 'animations',
+          label: t('settings.animations'),
+          get: (s) => s.gameUX.animations,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ animations: val })),
+        },
+      ],
+    },
+    {
+      id: 'feedback',
+      items: [
+        {
+          type: 'toggle',
+          id: 'haptics',
+          label: t('settings.hapticFeedback'),
+          get: (s) => s.gameUX.useHaptics,
+          onChange: (settingsDispatch, val) =>
+            settingsDispatch(setGameUX({ useHaptics: val })),
+        },
+      ],
+    },
+  ]
 
   useEffect(() => {
     if (settings.gameUX.realityModePreset === 'adult' && realityAgeEligibility !== 'adult') {
@@ -264,15 +312,15 @@ export default function Settings() {
               type="checkbox"
               className="settings-toggle"
               checked={checked}
-              onChange={(e) => {
+              onChange={(event) => {
                 if (item.gated && !hasAccess) {
-                  e.preventDefault()
-                  setLockedFeature(item.lockedFeature ?? 'Public Mode')
+                  event.preventDefault()
+                  setLockedFeature(item.lockedFeature ?? 'publicMode')
                   return
                 }
-                item.onChange(dispatch, e.target.checked)
+                item.onChange(dispatch, event.target.checked)
               }}
-              aria-label={`Toggle ${item.label.toLowerCase()}`}
+              aria-label={t('common.toggle', { setting: item.label })}
             />
           </div>
         )
@@ -290,27 +338,27 @@ export default function Settings() {
                 id={`setting-${item.id}`}
                 className="settings-select"
                 value={value}
-                onChange={(e) => {
+                onChange={(event) => {
                   const option = item.options.find(
-                    (candidate) => candidate.value === e.target.value
+                    (candidate) => candidate.value === event.target.value
                   )
                   if (option?.vipOnly && !isVipActive) {
-                    setLockedFeature('VIP themes')
+                    setLockedFeature('vipThemes')
                     return
                   }
-                  item.onChange(dispatch, e.target.value)
+                  item.onChange(dispatch, event.target.value)
                 }}
               >
-                {item.options.map((opt) => (
+                {item.options.map((option) => (
                   <option
-                    key={opt.value}
-                    value={opt.value}
-                    disabled={opt.value === 'adult' && realityAgeEligibility !== 'adult'}
+                    key={option.value}
+                    value={option.value}
+                    disabled={option.value === 'adult' && realityAgeEligibility !== 'adult'}
                   >
-                    {opt.label}
-                    {opt.vipOnly ? ' · VIP' : ''}
-                    {opt.value === 'adult' && realityAgeEligibility !== 'adult'
-                      ? ' · Requires profile age 18+'
+                    {option.label}
+                    {option.vipOnly ? ` · ${t('common.vip')}` : ''}
+                    {option.value === 'adult' && realityAgeEligibility !== 'adult'
+                      ? ` · ${t('settings.requiresAdult')}`
                       : ''}
                   </option>
                 ))}
@@ -323,13 +371,21 @@ export default function Settings() {
     }
   }
 
+  const lockedFeatureLabel = lockedFeature
+    ? t(LOCKED_FEATURE_KEYS[lockedFeature])
+    : t('settings.feature.thisFeature')
+
   return (
     <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
-        <button className="settings-screen__back" onClick={() => navigate(-1)} aria-label="Go back">
+        <button
+          className="settings-screen__back"
+          onClick={() => navigate(-1)}
+          aria-label={t('common.goBack')}
+        >
           ←
         </button>
-        <h1 className="settings-screen__title">⚙️ Settings</h1>
+        <h1 className="settings-screen__title">⚙️ {t('settings.title')}</h1>
       </header>
 
       <div className="settings-content settings-content--flat">
@@ -339,14 +395,14 @@ export default function Settings() {
           onClick={() => navigate('/store')}
         >
           <span>
-            <strong className="settings-row__vip-title">The Big Eye VIP</strong>
-            <small>
-              {isVipActive ? 'Your VIP bundle is owned' : 'Unlock premium modes and ad-free play'}
-            </small>
+            <strong className="settings-row__vip-title">{t('settings.vipTitle')}</strong>
+            <small>{isVipActive ? t('settings.vipOwned') : t('settings.vipUnlock')}</small>
           </span>
-          <span className="settings-row__vip-action">{isVipActive ? 'Owned' : 'View'}</span>
+          <span className="settings-row__vip-action">
+            {isVipActive ? t('common.owned') : t('common.view')}
+          </span>
         </button>
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <section key={section.id} className="settings-section">
             {section.items.map(renderItem)}
           </section>
@@ -357,18 +413,18 @@ export default function Settings() {
           onClick={() => navigate('/legal')}
         >
           <span>
-            <strong>Privacy, terms &amp; support</strong>
-            <small>Review data use, purchase terms, and help options</small>
+            <strong>{t('settings.privacyTitle')}</strong>
+            <small>{t('settings.privacyDescription')}</small>
           </span>
           <span aria-hidden="true">&rsaquo;</span>
         </button>
       </div>
       <ConfirmExitModal
         open={lockedFeature != null}
-        title={`Unlock ${lockedFeature ?? 'this feature'}`}
-        description={`${lockedFeature ?? 'This feature'} is available as a permanent one-time purchase or as part of The Big Eye VIP bundle.`}
-        confirmLabel="View Store"
-        cancelLabel="Not now"
+        title={t('settings.unlockTitle', { feature: lockedFeatureLabel })}
+        description={t('settings.unlockDescription', { feature: lockedFeatureLabel })}
+        confirmLabel={t('settings.viewStore')}
+        cancelLabel={t('common.notNow')}
         onConfirm={() => {
           setLockedFeature(null)
           navigate('/store')
