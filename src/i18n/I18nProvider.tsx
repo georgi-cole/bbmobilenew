@@ -1,38 +1,13 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAppSelector } from '../store/hooks'
 import { selectLanguagePreference } from '../store/settingsSlice'
+import { I18nContext, type I18nContextValue } from './I18nContext'
 import {
   getSystemLanguageTags,
   resolveLanguagePreference,
   resolveSystemLanguage,
-  type AppLanguage,
-  type LanguagePreference,
 } from './languages'
-import {
-  translate,
-  type Translate,
-  type TranslationKey,
-  type TranslationParams,
-} from './messages'
-
-interface I18nContextValue {
-  preference: LanguagePreference
-  language: AppLanguage
-  systemLanguage: AppLanguage
-  t: Translate
-  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string
-  formatDate: (value: Date | number, options?: Intl.DateTimeFormatOptions) => string
-}
-
-const I18nContext = createContext<I18nContextValue | null>(null)
+import { translate, type TranslationKey, type TranslationParams } from './messages'
 
 function readSystemLanguageTags(): readonly string[] {
   return [...getSystemLanguageTags()]
@@ -90,10 +65,4 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   )
 
   return <I18nContext.Provider value={contextValue}>{children}</I18nContext.Provider>
-}
-
-export function useI18n(): I18nContextValue {
-  const context = useContext(I18nContext)
-  if (!context) throw new Error('useI18n must be used within I18nProvider')
-  return context
 }
