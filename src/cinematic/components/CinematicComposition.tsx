@@ -146,7 +146,7 @@ const LightningOverlay = ({ frame, opacity }: { frame: number; opacity: number }
 }
 
 export type CinematicCompositionProps = {
-  audioMode?: 'embedded' | 'external'
+  audioMode?: 'embedded' | 'external' | 'silent'
   credits?: readonly CreditCard[]
 }
 
@@ -168,7 +168,7 @@ export const CinematicComposition = ({
       data-cinematic-renderer="webgl"
     >
       {audioMode === 'embedded' && <CinematicSoundtrack />}
-      <CinematicThunder />
+      {audioMode !== 'silent' && <CinematicThunder />}
 
       <ThreeCanvas
         width={width}

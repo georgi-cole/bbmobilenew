@@ -3,7 +3,7 @@ import { closeDebugPanelIfOpen, expect, test } from './support/test'
 test.describe('Credits cinematic @core-journey', () => {
   test.setTimeout(60_000)
 
-  test('uses the real WebGL renderer with mobile performance settings', async ({ page }) => {
+  test('starts the pre-rendered cinematic immediately with live credits', async ({ page }) => {
     await page.addInitScript(() => {
       sessionStorage.setItem('bb:homeHubSplashShownThisSession', 'true')
       localStorage.setItem(
@@ -18,18 +18,14 @@ test.describe('Credits cinematic @core-journey', () => {
     await page.goto('./#/credits')
     await closeDebugPanelIfOpen(page)
 
-    const start = page.getByRole('button', { name: 'Tap to start credits' })
-    if (await start.isVisible()) {
-      await start.click()
-    }
-
-    const cinematic = page.locator('.big-eye-cinematic')
+    const cinematic = page.locator('.credits-media')
     await expect(cinematic).toBeVisible({ timeout: 15_000 })
-    await expect(cinematic).toHaveAttribute('data-cinematic-quality', 'performance')
-    await expect(cinematic).toHaveAttribute('data-cinematic-renderer', 'webgl')
-    await expect(page.locator('.credits-webgl canvas')).toHaveCount(1)
+    await expect(cinematic).toHaveAttribute('data-cinematic-renderer', 'prerendered-video')
+    await expect(page.getByTestId('credits-background-video')).toBeVisible()
+    await expect(page.locator('.credits-webgl canvas')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Tap to start credits' })).toHaveCount(0)
 
     await page.waitForTimeout(500)
-    await expect(page.locator('.big-eye-cinematic')).toBeVisible()
+    await expect(page.getByTestId('credits-background-video')).toBeVisible()
   })
 })

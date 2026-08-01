@@ -216,8 +216,8 @@ function HomeHubAssetLayer({
                         : to === '/credits'
                           ? () => {
                               void startCreditsSoundtrackFromGesture().catch(() => {
-                                // The Credits screen keeps a direct-link tap fallback for browsers
-                                // that still reject media playback during route navigation.
+                                // The muted video still starts immediately if a browser rejects
+                                // soundtrack playback during route navigation.
                               })
                               onNavigate(to)
                             }

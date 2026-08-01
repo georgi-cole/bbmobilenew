@@ -1,40 +1,16 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-
-interface CreditsRenderBoundaryProps {
-  children: ReactNode;
-  onFailure: (error: Error) => void;
+type CreditsFallbackProps = {
+  posterUrl?: string
 }
 
-interface CreditsRenderBoundaryState {
-  failed: boolean;
-}
-
-export class CreditsRenderBoundary extends Component<
-  CreditsRenderBoundaryProps,
-  CreditsRenderBoundaryState
-> {
-  state: CreditsRenderBoundaryState = { failed: false };
-
-  static getDerivedStateFromError(): CreditsRenderBoundaryState {
-    return { failed: true };
-  }
-
-  componentDidCatch(error: Error, _info: ErrorInfo) {
-    this.props.onFailure(error);
-  }
-
-  render() {
-    if (this.state.failed) return <CreditsFallback />;
-    return this.props.children;
-  }
-}
-
-export default function CreditsFallback() {
+export default function CreditsFallback({ posterUrl }: CreditsFallbackProps) {
   return (
-    <div className="credits-fallback" role="status" aria-live="polite">
-      <div className="credits-fallback__eye" aria-hidden="true">◉</div>
-      <strong>Credits cinematic unavailable</strong>
-      <span>Fallback presentation placeholder</span>
+    <div className="credits-fallback" aria-hidden="true" data-testid="credits-background-fallback">
+      <div
+        className="credits-fallback__skyline"
+        style={posterUrl ? { backgroundImage: `url(${JSON.stringify(posterUrl)})` } : undefined}
+        aria-hidden="true"
+      />
+      <div className="credits-fallback__lights" aria-hidden="true" />
     </div>
-  );
+  )
 }

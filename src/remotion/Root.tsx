@@ -17,9 +17,9 @@ export const RemotionRoot = () => (
       component={CinematicComposition}
       durationInFrames={CINEMATIC_CONFIG.durationInFrames}
       fps={CINEMATIC_CONFIG.fps}
-      width={CINEMATIC_CONFIG.width}
-      height={CINEMATIC_CONFIG.height}
-      defaultProps={{ audioMode: 'embedded', credits: [] }}
+      width={720}
+      height={1280}
+      defaultProps={{ audioMode: 'silent', credits: [] }}
     />
   </>
 )
