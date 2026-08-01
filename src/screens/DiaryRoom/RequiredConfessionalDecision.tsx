@@ -210,21 +210,18 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   )
   const optionUnits = buildConfessionalDecisionUnits(game, options)
   const showFirstImpressions = isVoxPopuli && game.week <= 2 && Boolean(humanId)
-  const impressionsByPlayerId = useMemo(
-    () =>
-      showFirstImpressions && humanId
-        ? buildVoxFirstImpressions({
-            seed: game.seed,
-            week: game.week,
-            humanId,
-            candidates: options.map((player) => ({
-              id: player.id,
-              affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
-            })),
-          })
-        : {},
-    [game.seed, game.week, humanId, options, relationships, showFirstImpressions]
-  )
+  const impressionsByPlayerId =
+    showFirstImpressions && humanId
+      ? buildVoxFirstImpressions({
+          seed: game.seed,
+          week: game.week,
+          humanId,
+          candidates: options.map((player) => ({
+            id: player.id,
+            affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
+          })),
+        })
+      : {}
   const required = isVoxPopuli
     ? Math.min(isVoxFinalFour ? 1 : 2, optionUnits.length)
     : isDoubleEviction

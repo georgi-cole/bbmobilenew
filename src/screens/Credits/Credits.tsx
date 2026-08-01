@@ -55,13 +55,16 @@ export default function Credits({ autoPlay = false, onComplete }: CreditsProps) 
       setIsExiting(true)
       playerRef.current?.pause()
       stopCreditsSoundtrack()
-      exitTimeoutRef.current = window.setTimeout(() => {
-        if (onComplete) {
-          onComplete()
-          return
-        }
-        navigate('/')
-      }, EXIT_FADE_MS)
+      exitTimeoutRef.current = window.setTimeout(
+        () => {
+          if (onComplete) {
+            onComplete()
+            return
+          }
+          navigate('/')
+        },
+        instantBlackout ? 0 : EXIT_FADE_MS
+      )
     },
     [isExiting, navigate, onComplete]
   )
@@ -207,7 +210,7 @@ export default function Credits({ autoPlay = false, onComplete }: CreditsProps) 
       <button
         type="button"
         className="credits-exit"
-        onClick={() => onExit()}
+        onClick={() => onExit(true)}
         aria-label="Skip credits"
       >
         <span>Skip</span>

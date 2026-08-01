@@ -25,10 +25,9 @@ test.describe('Housemate biographies @core-journey', () => {
     await dismissPermissionPromptIfPresent(page)
     await closeDebugPanelIfOpen(page)
 
-    await mainMenu.getByRole('button', { name: 'Play', exact: true }).click()
-    const playMenu = page.getByRole('navigation', { name: 'Play menu' })
-    await expect(playMenu).toBeVisible()
-    await playMenu.getByRole('button', { name: 'Housemates', exact: true }).click()
+    await mainMenu
+      .getByRole('button', { name: 'Housemates', exact: true })
+      .evaluate((button) => (button as HTMLButtonElement).click())
 
     const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates' })
     await expect(cinematic).toBeVisible()

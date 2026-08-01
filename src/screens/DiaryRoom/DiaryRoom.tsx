@@ -1574,43 +1574,6 @@ export default function DiaryRoom() {
                   </div>
                 </section>
               )}
-              {false && activeVoxNominationReveal?.status === 'available' && (
-                <div
-                  className="diary-room__vote-reveal-card"
-                  aria-label="Secret nomination reveal offer"
-                >
-                  <span className="diary-room__vote-reveal-eyebrow">📺 The Big Eye</span>
-                  <p className="diary-room__vote-reveal-copy">
-                    I have the full secret nomination trail. Do you want to see who named whom?
-                  </p>
-                  <div className="diary-room__vote-reveal-actions">
-                    <button
-                      className="diary-room__mission-btn diary-room__mission-btn--accept"
-                      type="button"
-                      onClick={() => {
-                        setVoxNominationReveal(updateVoxNominationRevealStatus('revealed'))
-                        pushBigEyeMessage(
-                          'Then look closely. Every secret nomination is now on the record.'
-                        )
-                      }}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      className="diary-room__mission-btn diary-room__mission-btn--decline"
-                      type="button"
-                      onClick={() => {
-                        setVoxNominationReveal(updateVoxNominationRevealStatus('declined'))
-                        pushBigEyeMessage(
-                          'Very well. The nomination trail will remain behind the curtain.'
-                        )
-                      }}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-              )}
               {activeVoxNominationReveal?.status === 'revealed' && (
                 <section
                   className="diary-room__vote-chart"
