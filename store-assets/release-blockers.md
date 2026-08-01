@@ -14,14 +14,14 @@ The repository-side release blockers have been addressed. The game is still **no
 - Enroll in Play App Signing and securely back up the upload key.
 - Apple: select the Apple Developer team, create distribution certificates/profiles, and archive with the current required Xcode/iOS SDK.
 
-## 3. Publish legal and support pages
+## 3. Connect the published legal and support pages
 
-- Publish `public/legal/privacy-policy.html` and `public/legal/terms-of-use.html` at stable public HTTPS URLs.
-- Create a public support page and a monitored support/developer email.
-- Copy `.env.android.example` and `.env.ios.example` to the ignored real files, replace the three `example.com` legal/support URLs, and run:
+- Privacy, Terms, and support are published from the separate public `georgi-cole/big-eye-legal` repository.
+- The monitored support email is `kolequant@gmail.com`.
+- Copy `.env.android.example` and `.env.ios.example` to the ignored real files and run:
   - `npm run verify:store-env:android`
   - `npm run verify:store-env:ios`
-- Enter the same privacy and support URLs in both store consoles.
+- Enter the published privacy and support URLs in both store consoles.
 
 ## 4. Configure the four released purchases
 

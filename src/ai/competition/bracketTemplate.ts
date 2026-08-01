@@ -35,15 +35,17 @@ export interface ClassicCampaignContext {
 /**
  * Explicitly approved normal-campaign games. Registry activation alone is not
  * enough: entries only belong here after gameplay QA and campaign approval.
- * Special-purpose games such as Capitalization are intentionally absent.
  */
 export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'quickTap',
   'memoryMatch',
+  'timingBar',
+  'estimationGame',
   'holdWall',
   'famousFigures',
   'silentSaboteur',
   'majorityRules',
+  'pressurePlank',
   'colorMatch',
   'logicLocks',
   'snake',
@@ -54,17 +56,16 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'tetris',
   'minesweeps',
   'dontGoOver',
-  'blackjackTournament',
-  'riskWheel',
-  'wildcardWestern',
+  'capitalization',
   'castleRescue',
   'glass_bridge_brutal',
   'crystal_path_shattered',
+  'wildcardWestern',
   'trapAuction',
-  'gridOfLuck',
   'bigSpender',
   'chainOfGreed',
   'batteryLow',
+  'houseOfDarkness',
 ] as const
 
 /** Per-game story prerequisites that apply in addition to the roster map. */
@@ -84,36 +85,46 @@ export function getApprovedCompetitionGameKeys(
 /**
  * Design rules represented below:
  *
- * - Day 1 uses immediately readable, parallel-play games at every normal
- *   cast size, so a smaller configured starting cast still gets a strong hook.
+ * - Each regular season day has its own pool, targeting the expected house
+ *   count with a one-player tolerance for twists and double evictions.
+ * - Day 1 is a fixed two-game premiere: Majority Rules for LOH and Quick Tap
+ *   Race for POS.
  * - With many housemates, LOH uses fixed-round or simultaneous games and POS
- *   stays short. Sequential/turn-heavy formats wait until the cast is smaller.
+ *   stays short. Sequential/turn-heavy formats remain in the large-cast days.
  * - LOH becomes longer and more technical as the season progresses.
  * - POS increasingly permits shorter, simpler, and chance-driven formats.
  * - Final 4 only uses games that make sense with four players.
- * - Each Final 3 part has a distinct style and an escalating difficulty curve.
+ * - Elimination ladders, turn-order spectacles, and social-deduction formats
+ *   stay in the large-cast portion of the season. They lose their tension when
+ *   only a few housemates remain.
+ * - Final 3 uses sustained individual challenges: endurance, precision, and
+ *   multi-round score formats that do not collapse after one elimination.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
-    label: 'Day 1 hook',
+    label: 'Day 1 · premiere',
     minPlayers: 5,
     maxPlayers: 16,
     minDay: 1,
     maxDay: 1,
-    loh: ['holdWall', 'majorityRules', 'memoryMatch'],
-    pos: ['quickTap', 'colorMatch', 'dontGoOver'],
+    loh: ['majorityRules'],
+    pos: ['quickTap'],
   },
   {
-    label: '16-13 players',
-    minPlayers: 13,
+    label: 'Day 2 · 15 housemates (±1)',
+    minPlayers: 14,
     maxPlayers: 16,
+    minDay: 2,
+    maxDay: 2,
     loh: ['holdWall', 'memoryMatch', 'famousFigures', 'majorityRules', 'batteryLow', 'trapAuction'],
     pos: ['quickTap', 'colorMatch', 'cardClash', 'hangman', 'dontGoOver', 'tiltLabyrinth'],
   },
   {
-    label: '12-10 players',
-    minPlayers: 10,
-    maxPlayers: 12,
+    label: 'Day 3 · 14 housemates (±1)',
+    minPlayers: 13,
+    maxPlayers: 15,
+    minDay: 3,
+    maxDay: 3,
     loh: [
       'memoryMatch',
       'famousFigures',
@@ -134,9 +145,88 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
   },
   {
-    label: '9-8 players',
+    label: 'Day 4 · 13 housemates (±1)',
+    minPlayers: 12,
+    maxPlayers: 14,
+    minDay: 4,
+    maxDay: 4,
+    loh: [
+      'memoryMatch',
+      'famousFigures',
+      'silentSaboteur',
+      'majorityRules',
+      'batteryLow',
+      'trapAuction',
+    ],
+    pos: [
+      'quickTap',
+      'colorMatch',
+      'cardClash',
+      'logicLocks',
+      'hangman',
+      'tiltLabyrinth',
+      'dontGoOver',
+      'threeDigitsQuiz',
+    ],
+  },
+  {
+    label: 'Day 5 · 12 housemates (±1)',
+    minPlayers: 11,
+    maxPlayers: 13,
+    minDay: 5,
+    maxDay: 5,
+    loh: [
+      'snake',
+      'memoryMatch',
+      'famousFigures',
+      'silentSaboteur',
+      'chainOfGreed',
+      'batteryLow',
+      'trapAuction',
+    ],
+    pos: [
+      'quickTap',
+      'colorMatch',
+      'cardClash',
+      'logicLocks',
+      'hangman',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'tiltLabyrinth',
+    ],
+  },
+  {
+    label: 'Day 6 · 11 housemates (±1)',
+    minPlayers: 10,
+    maxPlayers: 12,
+    minDay: 6,
+    maxDay: 6,
+    loh: [
+      'snake',
+      'memoryMatch',
+      'famousFigures',
+      'silentSaboteur',
+      'chainOfGreed',
+      'batteryLow',
+      'trapAuction',
+    ],
+    pos: [
+      'quickTap',
+      'colorMatch',
+      'cardClash',
+      'logicLocks',
+      'hangman',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'tiltLabyrinth',
+    ],
+  },
+  {
+    label: 'Day 7 · 9 housemates (±1)',
     minPlayers: 8,
-    maxPlayers: 9,
+    maxPlayers: 10,
+    minDay: 7,
+    maxDay: 7,
     loh: [
       'snake',
       'memoryMatch',
@@ -145,6 +235,9 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'batteryLow',
       'chainOfGreed',
       'trapAuction',
+      'glass_bridge_brutal',
+      'crystal_path_shattered',
+      'wildcardWestern',
     ],
     pos: [
       'logicLocks',
@@ -158,33 +251,165 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
   },
   {
-    label: '7-5 players',
-    minPlayers: 5,
-    maxPlayers: 7,
-    loh: ['castleRescue', 'glass_bridge_brutal', 'chainOfGreed', 'silentSaboteur', 'batteryLow'],
+    label: 'Day 8 · 8 housemates (±1)',
+    minPlayers: 7,
+    maxPlayers: 9,
+    minDay: 8,
+    maxDay: 8,
+    loh: [
+      'castleRescue',
+      'memoryMatch',
+      'famousFigures',
+      'majorityRules',
+      'timingBar',
+      'estimationGame',
+      'holdWall',
+      'pressurePlank',
+      'capitalization',
+      'chainOfGreed',
+      'batteryLow',
+      'houseOfDarkness',
+    ],
     pos: [
-      'riskWheel',
-      'blackjackTournament',
       'bigSpender',
       'logicLocks',
       'hangman',
       'minesweeps',
       'tetris',
+      'threeDigitsQuiz',
+      'dontGoOver',
     ],
   },
   {
-    label: '4 players',
+    label: 'Day 9 · 7 housemates (±1)',
+    minPlayers: 6,
+    maxPlayers: 8,
+    minDay: 9,
+    maxDay: 9,
+    loh: [
+      'memoryMatch',
+      'famousFigures',
+      'timingBar',
+      'holdWall',
+      'pressurePlank',
+      'capitalization',
+      'chainOfGreed',
+      'batteryLow',
+      'houseOfDarkness',
+    ],
+    pos: [
+      'bigSpender',
+      'logicLocks',
+      'hangman',
+      'minesweeps',
+      'tetris',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'quickTap',
+      'colorMatch',
+      'tiltLabyrinth',
+    ],
+  },
+  {
+    label: 'Day 10 · 6 housemates (±1)',
+    minPlayers: 5,
+    maxPlayers: 7,
+    minDay: 10,
+    maxDay: 10,
+    loh: [
+      'castleRescue',
+      'memoryMatch',
+      'timingBar',
+      'estimationGame',
+      'holdWall',
+      'pressurePlank',
+      'capitalization',
+      'batteryLow',
+      'houseOfDarkness',
+    ],
+    pos: [
+      'bigSpender',
+      'logicLocks',
+      'hangman',
+      'minesweeps',
+      'tetris',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'quickTap',
+      'colorMatch',
+      'tiltLabyrinth',
+    ],
+  },
+  {
+    label: 'Day 11 · 5 housemates (±1)',
     minPlayers: 4,
-    maxPlayers: 4,
-    loh: ['crystal_path_shattered', 'chainOfGreed', 'batteryLow', 'holdWall'],
-    pos: ['gridOfLuck', 'riskWheel', 'blackjackTournament', 'bigSpender', 'tetris'],
+    maxPlayers: 6,
+    minDay: 11,
+    maxDay: 11,
+    loh: [
+      'memoryMatch',
+      'famousFigures',
+      'timingBar',
+      'estimationGame',
+      'holdWall',
+      'pressurePlank',
+      'threeDigitsQuiz',
+      'capitalization',
+      'chainOfGreed',
+      'batteryLow',
+      'houseOfDarkness',
+    ],
+    pos: [
+      'bigSpender',
+      'logicLocks',
+      'hangman',
+      'minesweeps',
+      'tetris',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'quickTap',
+      'colorMatch',
+      'tiltLabyrinth',
+    ],
+  },
+  {
+    label: 'Day 12 · 4 housemates (±1)',
+    minPlayers: 3,
+    maxPlayers: 5,
+    minDay: 12,
+    maxDay: 12,
+    loh: [
+      'memoryMatch',
+      'famousFigures',
+      'timingBar',
+      'estimationGame',
+      'holdWall',
+      'pressurePlank',
+      'threeDigitsQuiz',
+      'capitalization',
+      'chainOfGreed',
+      'batteryLow',
+      'houseOfDarkness',
+    ],
+    pos: [
+      'bigSpender',
+      'logicLocks',
+      'hangman',
+      'minesweeps',
+      'tetris',
+      'threeDigitsQuiz',
+      'dontGoOver',
+      'quickTap',
+      'colorMatch',
+      'tiltLabyrinth',
+    ],
   },
   {
     label: 'Final 3 - Part 1 endurance',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp1', 'final3_comp1_minigame'],
-    loh: ['holdWall', 'glass_bridge_brutal'],
+    loh: ['holdWall', 'pressurePlank', 'houseOfDarkness'],
     pos: [],
   },
   {
@@ -192,7 +417,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp2', 'final3_comp2_minigame'],
-    loh: ['memoryMatch', 'famousFigures', 'castleRescue', 'batteryLow'],
+    loh: ['memoryMatch', 'famousFigures', 'timingBar', 'estimationGame'],
     pos: [],
   },
   {
@@ -200,7 +425,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp3', 'final3_comp3_minigame'],
-    loh: ['crystal_path_shattered', 'chainOfGreed', 'wildcardWestern'],
+    loh: ['threeDigitsQuiz', 'capitalization', 'chainOfGreed', 'batteryLow'],
     pos: [],
   },
   {
@@ -210,14 +435,16 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     maxPlayers: 3,
     loh: [
       'holdWall',
-      'glass_bridge_brutal',
+      'pressurePlank',
+      'houseOfDarkness',
       'memoryMatch',
       'famousFigures',
-      'castleRescue',
+      'timingBar',
+      'estimationGame',
+      'threeDigitsQuiz',
+      'capitalization',
       'batteryLow',
-      'crystal_path_shattered',
       'chainOfGreed',
-      'wildcardWestern',
     ],
     pos: [],
   },
@@ -239,6 +466,33 @@ function applyGameStoryPrerequisites(pool: string[], day: number): string[] {
   })
 }
 
+function getRosterFallbackBand(
+  playerCount: number,
+  template: BracketTemplate
+): BracketBand | undefined {
+  const dayGuideBands = template.filter(
+    (band) =>
+      !band.phases && band.minDay !== undefined && band.maxDay !== undefined && band.minDay !== 1
+  )
+
+  return dayGuideBands.sort((left, right) => {
+    const distance = (band: BracketBand) =>
+      playerCount < band.minPlayers
+        ? band.minPlayers - playerCount
+        : playerCount > band.maxPlayers
+          ? playerCount - band.maxPlayers
+          : 0
+    const midpointDistance = (band: BracketBand) =>
+      Math.abs((band.minPlayers + band.maxPlayers) / 2 - playerCount)
+
+    return (
+      distance(left) - distance(right) ||
+      midpointDistance(left) - midpointDistance(right) ||
+      (left.minDay ?? 0) - (right.minDay ?? 0)
+    )
+  })[0]
+}
+
 /**
  * Resolve the exact classic-campaign pool for a day/housemate/phase context.
  * Counts above the supported cast size use the widest large-house band. Counts
@@ -248,6 +502,8 @@ export function getClassicCampaignPoolForContext(
   context: ClassicCampaignContext,
   template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE
 ): string[] {
+  if (context.playerCount < 3) return []
+
   const matched = template
     .filter((band) => matchesCampaignContext(band, context))
     .sort((left, right) => {
@@ -260,14 +516,12 @@ export function getClassicCampaignPoolForContext(
     return applyGameStoryPrerequisites(pool, context.day)
   }
 
-  if (context.playerCount > 16) {
-    const widest = template.find(
-      (band) => band.minPlayers === 13 && band.maxPlayers === 16 && !band.minDay && !band.phases
-    )
-    if (widest) {
-      const pool = context.compType === 'POS' ? widest.pos : widest.loh
-      return applyGameStoryPrerequisites(pool, context.day)
-    }
+  // A twist can put the roster outside a day's +/- 1 guide. Use the closest
+  // safe day row rather than abandoning the curated campaign map altogether.
+  const fallback = getRosterFallbackBand(context.playerCount, template)
+  if (fallback) {
+    const pool = context.compType === 'POS' ? fallback.pos : fallback.loh
+    return applyGameStoryPrerequisites(pool, context.day)
   }
 
   return []
@@ -275,17 +529,38 @@ export function getClassicCampaignPoolForContext(
 
 /**
  * Backwards-compatible count-only resolver used by admin tools and existing
- * callers. Day-specific and Final 3 phase-specific rows are skipped because
- * those callers do not have enough context to select them safely.
+ * callers. It finds the closest roster-safe day-guide row when a caller does
+ * not know the current season day.
  */
 export function getBracketPoolForContext(
   playerCount: number,
   compType: 'LOH' | 'POS',
   template: BracketTemplate = DEFAULT_BRACKET_TEMPLATE
 ): string[] {
-  const genericTemplate = template.filter((band) => !band.minDay && !band.maxDay && !band.phases)
-  return getClassicCampaignPoolForContext(
-    { day: Number.MAX_SAFE_INTEGER, playerCount, compType },
-    genericTemplate
+  if (playerCount < 3) return []
+
+  const final3Compatibility = template.find(
+    (band) =>
+      playerCount === 3 &&
+      band.minPlayers === 3 &&
+      band.maxPlayers === 3 &&
+      !band.minDay &&
+      !band.maxDay &&
+      !band.phases
   )
+  if (final3Compatibility) {
+    const pool = compType === 'POS' ? final3Compatibility.pos : final3Compatibility.loh
+    return applyGameStoryPrerequisites(pool, Number.MAX_SAFE_INTEGER)
+  }
+
+  const fallback = getRosterFallbackBand(playerCount, template)
+  if (!fallback) {
+    const genericTemplate = template.filter((band) => !band.minDay && !band.maxDay && !band.phases)
+    return getClassicCampaignPoolForContext(
+      { day: Number.MAX_SAFE_INTEGER, playerCount, compType },
+      genericTemplate
+    )
+  }
+  const pool = compType === 'POS' ? fallback.pos : fallback.loh
+  return applyGameStoryPrerequisites(pool, Number.MAX_SAFE_INTEGER)
 }
