@@ -1,10 +1,10 @@
 /**
- * FamousFiguresComp â€” React UI for the "Famous Figures" competition.
+ * FamousFiguresComp — React UI for the "Famous Figures" competition.
  *
  * UI states:
- *   round_active  â€” Base clue + revealed hints. Guess input, Request Hint button, timer, scoreboard.
- *   round_reveal  â€” Correct answer shown with who got it right. Auto-advances after 3s.
- *   complete      â€” Winner announcement. Fires onComplete after 4s.
+ *   round_active  — Base clue + revealed hints. Guess input, Request Hint button, timer, scoreboard.
+ *   round_reveal  — Correct answer shown with who got it right. Auto-advances after 3s.
+ *   complete      — Winner announcement. Fires onComplete after 4s.
  */
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -39,7 +39,7 @@ import { MAX_VISIBLE_HINTS, VISIBLE_HINT_INDICES } from '../../games/famous-figu
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
 import './FamousFiguresComp.css'
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
  * Duration (ms) to display the round-reveal screen before advancing to the
@@ -69,32 +69,32 @@ const PHASE_DURATIONS: Record<string, number> = {
   done: 0,
 }
 
-// â”€â”€â”€ Narration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Narration ────────────────────────────────────────────────────────────────
 
 const NARRATION = {
   roundStart: [
-    'A mysterious figure from history awaits â€” who could it be? ðŸ•µï¸',
-    'Can you name this famous face from the past? Put your knowledge to the test! ðŸ“œ',
-    'History is full of legends. Do you know this one? ðŸ›ï¸',
-    'Time to prove your historical knowledge! Who is hiding in these clues? ðŸ”',
+    'A mysterious figure from history awaits — who could it be? 🕵️',
+    'Can you name this famous face from the past? Put your knowledge to the test! 📜',
+    'History is full of legends. Do you know this one? 🏛️',
+    'Time to prove your historical knowledge! Who is hiding in these clues? 🔍',
   ],
   correct: [
-    'Correct! You clearly paid attention in history class! ðŸ“š',
-    "Nailed it! You're a true history buff! â­",
-    'Right on! Your knowledge of the past is impressive! ðŸ†',
-    "That's correct! A legendary answer for a legendary figure! ðŸŽ–ï¸",
+    'Correct! You clearly paid attention in history class! 📚',
+    "Nailed it! You're a true history buff! ⭐",
+    'Right on! Your knowledge of the past is impressive! 🏆',
+    "That's correct! A legendary answer for a legendary figure! 🎖️",
   ],
   wrong: [
-    'Not quite â€” brush up on your history! ðŸ“–',
-    'Incorrect! More hints might help reveal the truth! ðŸ’¡',
-    "That's not right â€” keep thinking! The answer is in the clues! ðŸ§©",
-    'Wrong answer â€” history has a way of surprising us! ðŸ˜¬',
+    'Not quite — brush up on your history! 📖',
+    'Incorrect! More hints might help reveal the truth! 💡',
+    "That's not right — keep thinking! The answer is in the clues! 🧩",
+    'Wrong answer — history has a way of surprising us! 😬',
   ],
   reveal: [
-    "Time's up! Let's see who our mystery figure was! ðŸŽ­",
-    'The reveal moment has arrived! Was your guess right? ðŸŽª',
-    'Mystery solved! Here is your famous figure! âœ¨',
-    'And the historical figure is... drum roll please! ðŸ¥',
+    "Time's up! Let's see who our mystery figure was! 🎭",
+    'The reveal moment has arrived! Was your guess right? 🎪',
+    'Mystery solved! Here is your famous figure! ✨',
+    'And the historical figure is... drum roll please! 🥁',
   ],
 }
 
@@ -102,7 +102,7 @@ function pickLine(lines: string[], index: number): string {
   return lines[index % lines.length]
 }
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ParticipantProp {
   id: string
@@ -145,7 +145,7 @@ interface Props {
   revealPauseMs?: number
 }
 
-// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function FamousFiguresComp({
   participantIds,
@@ -171,7 +171,7 @@ export default function FamousFiguresComp({
       ).game?.players ?? []
   )
 
-  // â”€â”€ Build player map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Build player map ──────────────────────────────────────────────────────
   const playerMap: Record<string, { name: string; isHuman: boolean; avatar: string }> = {}
   if (participantsProp) {
     for (const p of participantsProp) {
@@ -202,13 +202,13 @@ export default function FamousFiguresComp({
     return playerMap[id]?.avatar ?? getDicebear(displayName(id))
   }
 
-  // â”€â”€ Effective seed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Effective seed ────────────────────────────────────────────────────────
   // When no explicit seed is provided (seed === 0), use Date.now() so each
   // production match gets fresh randomisation. Test pages can pass a non-zero
   // seed for fully deterministic behaviour.
   const effectiveSeed = useMemo(() => (seed !== 0 ? seed : Math.floor(Date.now())), [seed])
 
-  // â”€â”€ Local UI state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Local UI state ────────────────────────────────────────────────────────
   const [guessInput, setGuessInput] = useState('')
   const [inputState, setInputState] = useState<'idle' | 'wrong' | 'duplicate'>('idle')
   const [timerSecs, setTimerSecs] = useState(10)
@@ -245,17 +245,17 @@ export default function FamousFiguresComp({
     interval: ReturnType<typeof setInterval>
     timeout: ReturnType<typeof setTimeout>
   } | null>(null)
-  // â”€â”€ AI submission tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AI submission tracking ────────────────────────────────────────────────
   // Tracks each AI already scheduled in the current round. Different AIs can
   // begin on different clues without duplicate timeouts.
   const aiSubmissionKeysRef = useRef<Set<string>>(new Set())
-  // Pending AI submission timeouts â€” cleared on round advance or unmount.
+  // Pending AI submission timeouts — cleared on round advance or unmount.
   const pendingAiTimeoutsRef = useRef<PendingAiTimeout[]>([])
-  // 300 ms debounce for the hint button â€” prevents rapid clicking from
+  // 300 ms debounce for the hint button — prevents rapid clicking from
   // advancing multiple hint stages in one gesture.
   const hintCooldownUntilRef = useRef<number>(0)
 
-  // â”€â”€ Initialise on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Initialise on mount ───────────────────────────────────────────────────
   useEffect(() => {
     dispatch(
       startFamousFigures({ participantIds, competitionType: prizeType, seed: effectiveSeed })
@@ -271,10 +271,10 @@ export default function FamousFiguresComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // â”€â”€ Timer per phase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Timer per phase ───────────────────────────────────────────────────────
   // Double-timer fix: React runs the previous effect's cleanup (clearInterval +
   // clearTimeout) before re-executing this effect whenever the dependency array
-  // [ff.timerPhase, ff.currentRound, ff.status] changes â€” this guarantees stale
+  // [ff.timerPhase, ff.currentRound, ff.status] changes — this guarantees stale
   // timers are cancelled before the new phase timer starts.  The `activeTimerRef`
   // below provides an extra explicit cancel layer so that any late-firing stale
   // callback that survived the closure guards cannot accidentally start a second
@@ -332,7 +332,7 @@ export default function FamousFiguresComp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ff.timerPhase, ff.currentRound, ff.status])
 
-  // â”€â”€ AI submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── AI submissions ────────────────────────────────────────────────────────
   useEffect(() => {
     if (ff.status !== 'round_active') return
     const round = ff.currentRound
@@ -393,7 +393,223 @@ export default function FamousFiguresComp({
       const plan = getFamousFiguresAiPlan(effectiveSeed, round, aiId, aiFigure.difficulty)
       if (visibleClue < plan.clueNumber) continue
       aiSubmissionKeysRef.current.add(key)
-      const t…2553 tokens truncated…€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      const t = setTimeout(() => {
+        pendingAiTimeoutsRef.current = pendingAiTimeoutsRef.current.filter((e) => e.id !== t)
+        // Bail out if the round ended before the AI's delay elapsed.
+        const current = ffRef.current
+        if (current.status !== 'round_active') return
+        if (current.currentRound !== round) return // stale round guard
+        if (current.playerCorrect[aiId]) return
+        // Use the AI's personal figure for this round.
+        const figureIndex = getPlayerFigureIndex(current, aiId, round)
+        const currentFigure = FAMOUS_FIGURES[figureIndex]
+        if (!currentFigure) return
+        dispatch(
+          submitPlayerGuess({
+            playerId: aiId,
+            guess: currentFigure.canonicalName,
+            timestamp: Date.now(),
+          })
+        )
+        // For AI players the cursor must be advanced immediately (no overlay shown).
+        // Use the round captured in the closure as targetRound for the idempotency guard.
+        dispatch(advancePlayerCursor({ playerId: aiId, targetRound: round }))
+      }, plan.delayMs)
+      pendingAiTimeoutsRef.current.push({ id: t, aiId, round })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ff.aiSubmissions, ff.currentRound, ff.status, ff.timerPhase])
+
+  // ── Auto-advance from reveal ──────────────────────────────────────────────
+  useEffect(() => {
+    if (ff.status !== 'round_reveal') return
+    const t = setTimeout(() => {
+      dispatch(nextRound())
+    }, safeRevealPauseMs)
+    return () => clearTimeout(t)
+  }, [ff.status, ff.currentRound, dispatch, safeRevealPauseMs])
+
+  // ── Complete → fire onComplete ────────────────────────────────────────────
+  useEffect(() => {
+    if (ff.status !== 'complete') return
+    if (completeFiredRef.current) return
+    completeFiredRef.current = true
+
+    dispatch(resolveFamousFiguresOutcome())
+
+    const t = setTimeout(() => {
+      onComplete?.()
+    }, WINNER_SCREEN_DURATION_MS)
+    return () => clearTimeout(t)
+  }, [ff.status, dispatch, onComplete])
+
+  // ── Reset input state when human advances to next figure ─────────────────
+  // Fires on cursor advance (human played ahead) AND on global nextRound.
+  // Only humanCursor needs to be in the dependency array — every other value
+  // we care about (guessInput, inputState, humanAheadHints) is local state
+  // being *set* here, not read, so listing them would create an infinite loop.
+  const humanCursor = humanId !== null ? (ff.playerRoundCursor[humanId] ?? 0) : 0
+  useEffect(() => {
+    setGuessInput('')
+    setInputState('idle')
+    setHumanAheadHints(0)
+    // humanCursor is the only trigger needed — see comment above.
+  }, [humanCursor])
+
+  // ── Guess handler ─────────────────────────────────────────────────────────
+  const handleSubmitGuess = useCallback(() => {
+    if (!humanId) return
+    if (ff.status !== 'round_active') return
+    // Block if human has finished all personal rounds
+    if (humanCursor >= ff.totalRounds) return
+    if (humanCursor !== ff.currentRound) return
+    // Block if human already answered this personal round
+    if (humanCursor !== (ff.playerRoundCursor[humanId] ?? 0)) return
+
+    const now = Date.now()
+    if (now < cooldownUntilRef.current) return
+    const cooldownMs = 800 + Math.random() * 400
+    cooldownUntilRef.current = now + cooldownMs
+
+    const trimmed = guessInput.trim()
+    if (trimmed.length === 0) return
+
+    // Local duplicate check for current global round only (to match slice logic).
+    // Use normalizeForMatching so the comparison is case-insensitive and
+    // particle-stripped — consistent with the slice's own duplicate guard.
+    const isAheadRound = humanCursor > ff.currentRound
+    if (!isAheadRound) {
+      const normalizedTrimmed = normalizeForMatching(trimmed)
+      const alreadyGuessed = (ff.playerGuesses[humanId] ?? []).some(
+        (g) => normalizeForMatching(g) === normalizedTrimmed
+      )
+      if (alreadyGuessed) {
+        setInputState('duplicate')
+        return
+      }
+    }
+
+    // Resolve the figure for the human's current personal round from the
+    // shared matchFigureOrder.  Fall back to getPlayerFigureIndex for legacy.
+    const humanFigIdx =
+      ff.matchFigureOrder.length > humanCursor
+        ? ff.matchFigureOrder[humanCursor]
+        : getPlayerFigureIndex(
+            {
+              matchFigureOrder: ff.matchFigureOrder,
+              playerFigureQueues: ff.playerFigureQueues,
+              figureOrder: ff.figureOrder,
+              currentFigureIndex: ff.currentFigureIndex,
+            },
+            humanId,
+            humanCursor
+          )
+    const localFigure = FAMOUS_FIGURES[humanFigIdx]
+    if (!localFigure) return
+
+    // Check correctness locally for immediate UI feedback
+    const correct = isAcceptedGuess(trimmed, localFigure)
+    // Pass targetRound so the slice knows which round the human is answering.
+    dispatch(
+      submitPlayerGuess({
+        playerId: humanId,
+        guess: trimmed,
+        targetRound: humanCursor,
+        timestamp: Date.now(),
+      })
+    )
+
+    if (correct) {
+      setGuessInput('')
+      if (isAheadRound) {
+        // For ahead rounds the cursor already advanced in the reducer — no overlay
+        // shown (spec: overlay only for the current global round). Just clear input.
+        // Nothing else to dispatch; cursor is already at humanCursor+1 in the store.
+      } else {
+        // For the current global round: show the success overlay and dispatch
+        // advancePlayerCursor after CONFIRM_MS so the round can close.
+        // Compute points locally (same formula as slice) for the overlay display.
+        const pts = (() => {
+          return [10, 8, 5, 3, 2, 1][Math.min(ff.hintsRevealed, MAX_VISIBLE_HINTS)] ?? 1
+        })()
+        // Cancel any previous pending timer (defensive).
+        if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current)
+        const roundForCursor = humanCursor // capture before async
+        setSuccessOverlay({ figureName: localFigure.canonicalName, points: pts })
+        confirmTimerRef.current = setTimeout(() => {
+          confirmTimerRef.current = null
+          setSuccessOverlay(null)
+          dispatch(advancePlayerCursor({ playerId: humanId, targetRound: roundForCursor }))
+        }, CONFIRM_MS)
+      }
+    } else {
+      setInputState('wrong')
+      // Clear feedback after a moment
+      setTimeout(() => setInputState('idle'), 1500)
+    }
+  }, [
+    humanId,
+    humanCursor,
+    ff.status,
+    ff.totalRounds,
+    ff.playerRoundCursor,
+    ff.playerGuesses,
+    ff.currentRound,
+    ff.hintsRevealed,
+    ff.matchFigureOrder,
+    ff.playerFigureQueues,
+    ff.figureOrder,
+    ff.currentFigureIndex,
+    guessInput,
+    dispatch,
+  ])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') handleSubmitGuess()
+    },
+    [handleSubmitGuess]
+  )
+
+  const handleRequestHint = useCallback(() => {
+    if (ff.status !== 'round_active') return
+    // 300 ms client-side debounce
+    const now = Date.now()
+    if (now < hintCooldownUntilRef.current) return
+    hintCooldownUntilRef.current = now + 300
+
+    // When human is ahead of the global round, manage hints locally so we
+    // don't mutate the global hintsRevealed for the ongoing AI round.
+    if (humanCursor > ff.currentRound) {
+      if (humanAheadHints >= MAX_VISIBLE_HINTS) return
+      setHumanAheadHints((prev) => Math.min(prev + 1, MAX_VISIBLE_HINTS))
+      return
+    }
+
+    if (ff.hintsRevealed >= MAX_VISIBLE_HINTS) return
+    dispatch(revealNextHint())
+  }, [ff.status, ff.hintsRevealed, ff.currentRound, humanCursor, humanAheadHints, dispatch])
+
+  // "Finish Match" — cancel all pending AI timeouts and the success-overlay
+  // confirm timer, then atomically complete all remaining rounds via finishAllRounds.
+  const handleFinishMatch = useCallback(() => {
+    pendingAiTimeoutsRef.current.forEach((e) => clearTimeout(e.id))
+    pendingAiTimeoutsRef.current = []
+    if (confirmTimerRef.current !== null) {
+      clearTimeout(confirmTimerRef.current)
+      confirmTimerRef.current = null
+    }
+    setSuccessOverlay(null)
+    dispatch(finishAllRounds())
+  }, [dispatch])
+
+  const handleFastForwardRound = useCallback(() => {
+    pendingAiTimeoutsRef.current.forEach((entry) => clearTimeout(entry.id))
+    pendingAiTimeoutsRef.current = []
+    dispatch(fastForwardCurrentRound())
+  }, [dispatch])
+
+  // ── Derived ───────────────────────────────────────────────────────────────
   // The human's active personal round is their cursor position.  With the
   // shared matchFigureOrder all players see the same figure per global round,
   // but the human can advance ahead of the global round immediately after
@@ -408,7 +624,7 @@ export default function FamousFiguresComp({
       : humanId !== null
         ? getPlayerFigureIndex(ff, humanId, ff.currentRound)
         : ff.currentFigureIndex
-  // Always show the human's own figure â€” on round_reveal this is the figure
+  // Always show the human's own figure — on round_reveal this is the figure
   // they were actually being tested on. When there is no local human player,
   // fall back to the global currentFigureIndex.
   const figure = FAMOUS_FIGURES[humanFigureIdx] ?? null
@@ -421,7 +637,7 @@ export default function FamousFiguresComp({
   let humanCorrect = false
   if (humanId) {
     if (humanIsAhead) {
-      // Cursor has advanced â€” human is on a new round not yet answered.
+      // Cursor has advanced — human is on a new round not yet answered.
       humanCorrect = false
     } else {
       humanCorrect = ff.playerCorrect[humanId] ?? false
@@ -463,16 +679,16 @@ export default function FamousFiguresComp({
         ? 'ff-timer-fill ff-timer-fill--warning'
         : 'ff-timer-fill ff-timer-fill--danger'
 
-  // â”€â”€ Render: loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render: loading ───────────────────────────────────────────────────────
   if (ff.status === 'idle') {
     return (
       <div className="ff-container ff-container--loading" aria-live="polite">
-        <p>Loading Famous Figuresâ€¦</p>
+        <p>Loading Famous Figures…</p>
       </div>
     )
   }
 
-  // â”€â”€ Render: personal waiting screen (all personal rounds done) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render: personal waiting screen (all personal rounds done) ────────────
   // Shown only when the human has finished ALL their personal rounds and the
   // global match hasn't yet completed.  Mid-round advancement is handled by
   // showing the next figure immediately in the round_active render below.
@@ -495,7 +711,7 @@ export default function FamousFiguresComp({
         </div>
 
         <div className="ff-waiting-banner" aria-live="polite">
-          â³ Waiting for other players to finishâ€¦
+          ⏳ Waiting for other players to finish…
           {remainingPlayersCount > 0 && (
             <span className="ff-waiting-banner-sub">
               {remainingPlayersCount} player{remainingPlayersCount !== 1 ? 's' : ''} still playing
@@ -509,7 +725,7 @@ export default function FamousFiguresComp({
           type="button"
           aria-label="Finish match and see results"
         >
-          ðŸ Finish Match
+          🏁 Finish Match
         </button>
 
         {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
@@ -517,14 +733,14 @@ export default function FamousFiguresComp({
     )
   }
 
-  // â”€â”€ Render: complete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render: complete ──────────────────────────────────────────────────────
   if (ff.status === 'complete') {
     const winnerId = ff.winnerId ?? ''
     const winnerName = displayName(winnerId)
     const isHumanWinner = winnerId === humanId
 
     if (skipWinnerAnimation) {
-      // Show the final scoreboard immediately â€” no trophy animation.
+      // Show the final scoreboard immediately — no trophy animation.
       return (
         <div
           className="ff-container ff-container--complete ff-container--final-scores"
@@ -537,7 +753,7 @@ export default function FamousFiguresComp({
           </div>
           <MinigameCompleteWrapper
             onContinue={() => onComplete?.()}
-            continueLabel="Continue â€º"
+            continueLabel="Continue ›"
             continueButtonClassName="ff-continue-btn"
             placementsNode={renderScoreboard(
               ff,
@@ -548,11 +764,11 @@ export default function FamousFiguresComp({
             )}
           >
             <div className="ff-winner-banner" role="status">
-              ðŸ†&nbsp;{winnerName}
+              🏆&nbsp;{winnerName}
               {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
               &nbsp;wins!&nbsp;
               <span className="ff-winner-banner-sub">
-                {prizeType} Winner â€” {ff.playerScores[winnerId] ?? 0} pts
+                {prizeType} Winner — {ff.playerScores[winnerId] ?? 0} pts
               </span>
             </div>
           </MinigameCompleteWrapper>
@@ -565,12 +781,12 @@ export default function FamousFiguresComp({
       <div className="ff-container ff-container--complete" aria-live="assertive">
         <MinigameCompleteWrapper
           onContinue={() => onComplete?.()}
-          continueLabel="Continue â€º"
+          continueLabel="Continue ›"
           continueButtonClassName="ff-continue-btn"
         >
           <div className="ff-winner-card">
             <div className="ff-winner-trophy" aria-hidden="true">
-              ðŸ†
+              🏆
             </div>
             <h2 className="ff-winner-title">Famous Figures Champion!</h2>
             <div className="ff-winner-avatar">
@@ -587,7 +803,7 @@ export default function FamousFiguresComp({
               {isHumanWinner && <span className="ff-you-badge"> (You!)</span>}
             </p>
             <p className="ff-winner-subtitle">
-              {prizeType} Winner â€” Total Score: {ff.playerScores[winnerId] ?? 0}
+              {prizeType} Winner — Total Score: {ff.playerScores[winnerId] ?? 0}
             </p>
           </div>
         </MinigameCompleteWrapper>
@@ -595,7 +811,7 @@ export default function FamousFiguresComp({
     )
   }
 
-  // â”€â”€ Render: reveal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render: reveal ────────────────────────────────────────────────────────
   if (ff.status === 'round_reveal') {
     const winnersThisRound = ff.correctPlayers
     return (
@@ -614,10 +830,10 @@ export default function FamousFiguresComp({
 
         <div className="ff-reveal-card" aria-live="assertive">
           <div className="ff-reveal-label">The Answer Was</div>
-          <div className="ff-reveal-name">{figure?.canonicalName ?? 'â€”'}</div>
+          <div className="ff-reveal-name">{figure?.canonicalName ?? '—'}</div>
           {winnersThisRound.length > 0 ? (
             <div className="ff-reveal-winners">
-              âœ… Correct: {winnersThisRound.map((id) => displayName(id)).join(', ')}
+              ✅ Correct: {winnersThisRound.map((id) => displayName(id)).join(', ')}
             </div>
           ) : (
             <div className="ff-reveal-no-winner">No one guessed correctly this round!</div>
@@ -626,19 +842,19 @@ export default function FamousFiguresComp({
 
         {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
 
-        <p style={{ fontSize: '0.75rem', color: '#557799', margin: 0 }}>Next round loadingâ€¦</p>
+        <p style={{ fontSize: '0.75rem', color: '#557799', margin: 0 }}>Next round loading…</p>
       </div>
     )
   }
 
-  // â”€â”€ Render: round_active â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render: round_active ──────────────────────────────────────────────────
   const inputFieldClass = ['ff-input-field', inputState === 'wrong' ? 'ff-input-field--shake' : '']
     .filter(Boolean)
     .join(' ')
 
   const feedbackMsg =
     inputState === 'wrong'
-      ? 'âŒ Not quite, try again!'
+      ? '❌ Not quite, try again!'
       : inputState === 'duplicate'
         ? 'Already guessed that.'
         : ''
@@ -668,11 +884,11 @@ export default function FamousFiguresComp({
       {/* Narration */}
       <p className="ff-narration" aria-live="polite">
         {humanCorrect
-          ? 'Correct â€” waiting for the other housemates.'
+          ? 'Correct — waiting for the other housemates.'
           : pickLine(NARRATION.roundStart, ff.currentRound)}
       </p>
 
-      {/* Timer â€” stay visible during active rounds, including ahead-play. */}
+      {/* Timer — stay visible during active rounds, including ahead-play. */}
       {ff.status === 'round_active' && !humanAllDone && (
         <div className="ff-timer" aria-label={`Timer: ${timerSecs} seconds remaining`} role="timer">
           <div className="ff-timer-bar">
@@ -689,157 +905,4 @@ export default function FamousFiguresComp({
           <p className="ff-base-clue">{figure.baseClueFact}</p>
           {effectiveHintsRevealed > 0 && (
             <ul className="ff-hint-list" aria-label="Revealed hints">
-              {Array.from({ length: effectiveHintsRevealed }, (_, i) => (
-                <li key={i} className="ff-hint-item">
-                  <span className="ff-hint-num">#{i + 1}</span>
-                  <span>{
-                    i === VISIBLE_HINT_INDICES.length
-                      ? getFinalNameHintText(figure)
-                      : getHintText(figure, VISIBLE_HINT_INDICES[i])
-                  }</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Request hint button */}
-      <button
-        className="ff-hint-btn"
-        onClick={handleRequestHint}
-        disabled={!canRequestHint}
-        aria-label={`Request hint (${MAX_VISIBLE_HINTS - effectiveHintsRevealed} remaining)`}
-      >
-        ðŸ’¡ Request Hint ({effectiveHintsRevealed}/{MAX_VISIBLE_HINTS} used)
-      </button>
-
-      {/* Success confirmation overlay â€” shown for CONFIRM_MS after a correct guess */}
-      {successOverlay && (
-        <div
-          className="ff-success-overlay"
-          role="status"
-          aria-live="assertive"
-          data-testid="ff-success-overlay"
-        >
-          <div className="ff-success-overlay-inner">
-            <div className="ff-success-checkmark" aria-hidden="true">
-              âœ…
-            </div>
-            <div className="ff-success-title">Correct!</div>
-            <div className="ff-success-figure">{successOverlay.figureName}</div>
-            <div className="ff-success-points">+{successOverlay.points} points</div>
-          </div>
-        </div>
-      )}
-
-      {humanCorrect && successOverlay === null && ff.status === 'round_active' && (
-        <button className="ff-fastforward-btn" onClick={handleFastForwardRound} type="button">
-          {ff.currentRound + 1 >= ff.totalRounds ? 'Finish Round' : 'Next Round'}
-        </button>
-      )}
-
-      {/* Guess input */}
-      <div className="ff-input-area">
-        <div className="ff-input-row">
-          <input
-            ref={inputRef}
-            className={inputFieldClass}
-            type="text"
-            value={guessInput}
-            onChange={(e) => setGuessInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your guessâ€¦"
-            aria-label="Guess the famous figure"
-            disabled={
-              ff.status !== 'round_active' ||
-              successOverlay !== null ||
-              humanCorrect ||
-              humanId === null ||
-              humanCursor >= ff.totalRounds
-            }
-          />
-          <button
-            className="ff-submit-btn"
-            onClick={handleSubmitGuess}
-            disabled={
-              ff.status !== 'round_active' ||
-              successOverlay !== null ||
-              humanCorrect ||
-              humanId === null ||
-              guessInput.trim().length === 0 ||
-              humanCursor >= ff.totalRounds
-            }
-            aria-label="Submit guess"
-          >
-            Submit
-          </button>
-        </div>
-        <div className={feedbackClass} aria-live="assertive">
-          {feedbackMsg}
-        </div>
-      </div>
-
-      {/* Scoreboard */}
-      {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
-    </div>
-  )
-}
-
-// â”€â”€â”€ Scoreboard helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function renderScoreboard(
-  ff: FamousFiguresState,
-  participantIds: string[],
-  humanId: string | null,
-  displayName: (id: string) => string,
-  playerAvatar: (id: string) => string
-) {
-  const sorted = [...participantIds].sort(
-    (a, b) => (ff.playerScores[b] ?? 0) - (ff.playerScores[a] ?? 0)
-  )
-
-  return (
-    <div className="ff-scoreboard" aria-label="Scoreboard">
-      <div className="ff-scoreboard-title">Scoreboard</div>
-      <div className="ff-scoreboard-list">
-        {sorted.map((id) => {
-          const isHuman = id === humanId
-          const name = displayName(id)
-          const total = ff.playerScores[id] ?? 0
-          const roundScores = ff.playerRoundScores[id] ?? []
-          const correct = ff.playerCorrect[id]
-          return (
-            <div key={id} className="ff-scoreboard-row">
-              <span className="ff-scoreboard-avatar-wrap">
-                <img
-                  className="ff-scoreboard-avatar"
-                  src={playerAvatar(id)}
-                  alt=""
-                  aria-hidden="true"
-                  onError={(e) => {
-                    const img = e.currentTarget
-                    // one-shot fallback to Dicebear to avoid infinite onError loop
-                    img.onerror = null
-                    img.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(name)}`
-                  }}
-                />
-              </span>
-              <span className={`ff-scoreboard-name${isHuman ? ' ff-scoreboard-name--you' : ''}`}>
-                {isHuman ? 'You' : name}
-              </span>
-              <span className="ff-scoreboard-round">[{roundScores.join(', ')}]</span>
-              <span className="ff-scoreboard-total">{total}</span>
-              {correct && (
-                <span className="ff-scoreboard-correct" aria-label="Correct this round">
-                  âœ“
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
+              {Array.from({ le
