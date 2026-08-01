@@ -26,6 +26,6 @@ test.describe('Credits cinematic @core-journey', () => {
     await expect(page.getByRole('button', { name: 'Tap to start credits' })).toHaveCount(0)
 
     await page.waitForTimeout(500)
-    await expect(page.getByLabel('Credits background video')).toBeVisible()
+    await expect(page.getByTestId('credits-background-video')).toBeVisible()
   })
 })
