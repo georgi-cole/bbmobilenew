@@ -5,7 +5,7 @@
  * retained only as a fallback for older or incomplete rows.
  */
 import { describe, expect, it } from 'vitest';
-import { getHintText } from '../../../src/games/famous-figures/hints';
+import { getFinalNameHintText, getHintText } from '../../../src/games/famous-figures/hints';
 import type { FigureRow } from '../../../src/games/famous-figures/model';
 
 function makeFigure(overrides: Partial<FigureRow> & { canonicalName: string }): FigureRow {
@@ -104,3 +104,18 @@ describe('getHintText - out-of-range index', () => {
     expect(() => getHintText(figure, -1)).toThrow(RangeError);
   });
 });
+
+describe('getFinalNameHintText', () => {
+  it('uses the first two letters of a first name', () => {
+    expect(getFinalNameHintText(makeFigure({ canonicalName: 'Harry Styles' }))).toBe(
+      "First name starts with 'Ha'",
+    );
+  });
+
+  it('uses a mononym without calling it a first name', () => {
+    expect(getFinalNameHintText(makeFigure({ canonicalName: 'Cher' }))).toBe(
+      "Name starts with 'Ch'",
+    );
+  });
+});
+
