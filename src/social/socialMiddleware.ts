@@ -38,8 +38,10 @@ import {
   recordRealityActualVote,
   recordRealityCeremony,
   setEnergyBankEntry,
+  pushIncomingInteraction,
   updateRelationship,
   initializeRealitySimulation,
+  applyRealityAmbientMood,
 } from './socialSlice'
 import {
   autoResolveExpiredIncomingInteractionsForClock,
@@ -73,10 +75,24 @@ import {
 } from './socialCommitments'
 import { deriveRealitySimulationSeed, type RealitySimulationState } from './realitySimulation'
 import { getRealityModeAdapter, type RealityCeremonyKind } from './reality'
+import { createIncomingInteraction } from './incomingInteractionFactory'
 
 const SOCIAL_PHASES = new Set<string>(['social_1', 'social_2'])
 
 const PHASE_SET_ACTIONS = new Set(['game/setPhase', 'game/forcePhase'])
+const VOX_SOCIAL_BEAT_PHASES = new Set([
+  'loh_results',
+  'social_1',
+  'nomination_results',
+  'pos_results',
+  'pos_ceremony_results',
+  'social_2',
+  'live_vote',
+  'final3_comp1',
+  'final3_comp2',
+  'final3_comp3',
+  'final3_decision',
+])
 
 interface GameState {
   gameId: string
@@ -100,7 +116,12 @@ interface GameState {
     status?: 'inactive' | 'scheduled' | 'active' | 'broken'
     pairs?: Array<{ memberIds: [string, string] }>
   }
+  voxPopuli?: { status?: 'inactive' | 'scheduled' | 'active' | 'complete' } | null
   dramaSocialMode?: boolean
+  tvFeed?: Array<{
+    text: string
+    meta?: { week?: number; voxSocialBeat?: boolean; pairKey?: string; [key: string]: unknown }
+  }>
   players: Array<{ id: string; name?: string; status: string; isUser?: boolean }>
 }
 
@@ -161,10 +182,12 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
   if (getEffectiveSocialMode(state) !== 'drama' || !state.game) return
   const result = advanceDramaNetwork({
     network: normalizeDramaSocialNetwork(state.social?.dramaNetwork),
-    players: (state.game.players ?? []).map((player) => ({
-      ...player,
-      name: player.name ?? player.id,
-    })),
+    players: (state.game.players ?? [])
+      .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+      .map((player) => ({
+        ...player,
+        name: player.name ?? player.id,
+      })),
     relationships: state.social?.relationships ?? {},
     week: state.game.week ?? 1,
     phase,
@@ -195,6 +218,286 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
       },
     })
   }
+}
+
+function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
+  const state = api.getState() as StateWithGame
+  if (
+    state.game?.voxPopuli?.status !== 'active' ||
+    !VOX_SOCIAL_BEAT_PHASES.has(phase)
+  ) {
+    return
+  }
+  const priorBeats = (state.game.tvFeed ?? []).filter(
+    (event) => event.meta?.voxSocialBeat === true && event.meta?.week === state.game.week
+  )
+  // Vox is a social game.  Let the house breathe with several distinct,
+  // consequential beats, while retaining enough headroom for the ceremony
+  // announcements that must always lead the broadcast.
+  if (priorBeats.length >= 4) return
+  const alive = state.game.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury'
+  )
+  const names = Object.fromEntries(alive.map((player) => [player.id, player.name ?? player.id]))
+  const relationships = state.social?.relationships ?? {}
+  const pairs: Array<{
+    leftId: string
+    rightId: string
+    affinity: number
+    romantic: boolean
+  }> = []
+  for (let leftIndex = 0; leftIndex < alive.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < alive.length; rightIndex += 1) {
+      const leftId = alive[leftIndex].id
+      const rightId = alive[rightIndex].id
+      const outward = relationships[leftId]?.[rightId]?.affinity ?? 0
+      const inward = relationships[rightId]?.[leftId]?.affinity ?? 0
+      const tags = new Set([
+        ...(relationships[leftId]?.[rightId]?.tags ?? []),
+        ...(relationships[rightId]?.[leftId]?.tags ?? []),
+      ])
+      pairs.push({
+        leftId,
+        rightId,
+        affinity: (outward + inward) / 2,
+        romantic: tags.has('romance'),
+      })
+    }
+  }
+  const recentPairKeys = new Set(
+    (state.game.tvFeed ?? [])
+      .filter((event) => event.meta?.voxSocialBeat === true)
+      .slice(0, 4)
+      .map((event) => event.meta?.pairKey)
+      .filter((key): key is string => typeof key === 'string')
+  )
+  const strategicIds = new Set([
+    ...state.game.nomineeIds,
+    ...(state.game.posWinnerId ? [state.game.posWinnerId] : []),
+  ])
+  const rankedPairs = [...pairs]
+    .map((pair) => {
+      const pairKey = [pair.leftId, pair.rightId].sort().join(':')
+      const strategicBonus =
+        (strategicIds.has(pair.leftId) ? 18 : 0) + (strategicIds.has(pair.rightId) ? 18 : 0)
+      const repeatPenalty = recentPairKeys.has(pairKey) ? 80 : 0
+      return {
+        ...pair,
+        pairKey,
+        significance:
+          Math.abs(pair.affinity) + strategicBonus + (pair.romantic ? 22 : 0) - repeatPenalty,
+      }
+    })
+    .sort((left, right) => right.significance - left.significance)
+  const strongest =
+    rankedPairs.find((pair) => !recentPairKeys.has(pair.pairKey)) ?? rankedPairs[0]
+  const nominees = state.game.nomineeIds
+    .map((id) => names[id])
+    .filter((name): name is string => Boolean(name))
+  let text: string | null = null
+
+  const chooseBeat = (choices: readonly string[], salt: string): string => {
+    const input = `${state.game.seed}:${state.game.week}:${phase}:${salt}`
+    let hash = 2166136261
+    for (let index = 0; index < input.length; index += 1) {
+      hash ^= input.charCodeAt(index)
+      hash = Math.imul(hash, 16777619)
+    }
+    return choices[(hash >>> 0) % choices.length]
+  }
+
+  if (strongest && Math.abs(strongest.affinity) >= 24) {
+    const left = names[strongest.leftId]
+    const right = names[strongest.rightId]
+    const close = strongest.affinity > 0
+    const positive: Record<string, readonly string[]> = {
+      loh_results: [
+        `${left} was the first to pull ${right} into a celebratory hug after the immunity result. The room noticed who they reached for.`,
+        `${left} and ${right} disappeared into the pantry to compare notes before the congratulations had even ended.`,
+        `${right} saved a seat beside ${left} after the competition, turning a small gesture into a very visible alliance signal.`,
+      ],
+      social_1: state.game.week === 1
+        ? [
+            `First impressions are taking shape: ${left} and ${right} keep finding their way back to each other, and the house has started to notice.`,
+            `${left} and ${right} spent breakfast trading stories while everyone else quietly worked out whether the chemistry was personal or strategic.`,
+            `${left} chose ${right} for a long walk around the yard. By lunch, three different housemates had opinions about it.`,
+          ]
+        : [
+            `${left} and ${right} stayed behind at the kitchen island after everyone left, lowering their voices whenever footsteps approached.`,
+            `${left} brought ${right} coffee in bed. A sweet gesture—or careful image management, depending on whom you ask.`,
+            `${left} and ${right} spent an hour in the hammock, laughing loudly enough to make two alliances nervous.`,
+            `${right} helped ${left} rehearse a difficult conversation in the dressing room. Their trust is becoming harder to hide.`,
+          ],
+      nomination_results: [
+        `${left} stayed close to ${right} as the nomination totals landed. Visible loyalty can be both comfort and ammunition.`,
+        `${left} squeezed ${right}'s hand under the table when the block was announced. The cameras caught what the room almost missed.`,
+        `${left} and ${right} retreated to the bedroom after the totals, then emerged with the same talking points.`,
+      ],
+      pos_results: [
+        `${left} and ${right} immediately compared notes after the Safety result, careful not to let the rest of the room hear.`,
+        `${right} celebrated the Safety result with ${left} on the balcony while their rivals watched from the kitchen.`,
+        `${left} promised ${right} they would face the next ceremony together. In this house, promises travel fast.`,
+      ],
+      pos_ceremony_results: [
+        `${left} and ${right} shared a long embrace after the block was confirmed. The pressure is testing every promise.`,
+        `${left} found ${right} alone by the pool after the ceremony and stayed until the rest of the house came looking.`,
+        `${right} made ${left} a late dinner after the Safety ceremony. Nobody believed it was only about the food.`,
+      ],
+      social_2: [
+        `${left} is helping ${right} prepare for the audience-facing part of the night. Their bond is now impossible to miss.`,
+        `${left} and ${right} built a blanket fort in the lounge and refused to discuss strategy for one whole hour.`,
+        `${right} gave ${left} a pep talk at the bathroom mirror. Even their rivals admitted it felt genuine.`,
+      ],
+      live_vote: [
+        `${left} and ${right} exchanged a final look as the audience vote opened—one quiet moment in a very public night.`,
+        `${left} mouthed “I've got you” to ${right} as the live vote began. Whether the audience agrees is another question.`,
+        `${left} and ${right} sat shoulder to shoulder for the audience decision, ignoring the empty seats around them.`,
+      ],
+    }
+    const strained: Record<string, readonly string[]> = {
+      loh_results: [
+        `${left} and ${right} kept their distance after the immunity result. The silence between them said more than congratulations could.`,
+        `${right} walked away mid-congratulations when ${left} entered the room. The feud has stopped being subtle.`,
+      ],
+      social_1: [
+        `${left} and ${right} crossed paths twice without speaking. The rest of the house is beginning to read the tension.`,
+        `${left} accused ${right} of retelling a private conversation over breakfast. Half the table suddenly found somewhere else to be.`,
+        `${left} moved bedrooms rather than share another night beside ${right}. Everyone heard the suitcase wheels.`,
+      ],
+      nomination_results: [
+        `${left} and ${right} reacted very differently to the nomination totals, and neither tried to hide it.`,
+        `${right} laughed at the nomination result; ${left} did not. The argument continued behind the closed bedroom door.`,
+      ],
+      pos_results: [
+        `${left} watched ${right}'s reaction to the Safety result closely. Their rivalry is shaping the room.`,
+        `${left} called ${right}'s Safety celebration “premature.” The comment reached the other side of the house in minutes.`,
+      ],
+      pos_ceremony_results: [
+        `${left} and ${right} left the Safety ceremony on opposite sides of the room. Whatever trust existed is wearing thin.`,
+        `${right} confronted ${left} beside the pool after the ceremony, drawing an audience before either noticed.`,
+      ],
+      social_2: [
+        `${left} and ${right} are both making their case, but every conversation seems to circle back to their feud.`,
+        `${left} opened a counter-campaign the moment ${right} left the lounge. The house is choosing sides.`,
+      ],
+      live_vote: [
+        `${left} and ${right} did not acknowledge each other as the public vote opened. The audience has seen the fracture.`,
+        `${right} refused ${left}'s last-minute handshake before the audience decision. The cameras stayed on both of them.`,
+      ],
+    }
+    const romanceOptions = [
+      `${left} and ${right} filled the jacuzzi with champagne, slipped in after lights-out, and left the rest of the house debating exactly how serious this has become.`,
+      `${left} and ${right} shared a kiss on the terrace after midnight. By breakfast, the whole house had reconstructed the moment from whispers.`,
+      `${left} and ${right} skinny-dipped after the garden lights went down. Their secret lasted roughly until someone found the abandoned microphones.`,
+      `${right} surprised ${left} with a candlelit snack beside the pool. Even the biggest schemers stopped to watch.`,
+      `${left} and ${right} fell asleep holding hands on the lounge sofa. The morning camera found them before the other housemates did.`,
+    ] as const
+    const romanceBeat = strongest.romantic && strongest.affinity >= 35 &&
+      ((state.game.seed + state.game.week * 17 + phase.length) % 4 === 0)
+    const phaseChoices = (close ? positive : strained)[phase]
+    text = romanceBeat
+      ? chooseBeat(romanceOptions, `${strongest.pairKey}:romance`)
+      : phaseChoices
+        ? chooseBeat(phaseChoices, strongest.pairKey)
+        : null
+  }
+
+  if (!text && nominees.length > 0) {
+    const nomineeBeats: Partial<Record<string, readonly string[]>> = {
+      nomination_results: [
+        `${nominees.join(', ')} split after the nomination totals: one went quiet in the bedroom, while another demanded answers in the kitchen.`,
+        `The nominations have exposed old fault lines around ${nominees.join(', ')}. A private promise is suddenly being repeated very loudly.`,
+        `${nominees.join(', ')} are on the block, and one of them has hinted there are receipts that could change how the house sees a former ally.`,
+      ],
+      pos_results: [
+        `${nominees.join(', ')} watched the Safety winner celebrate from opposite sides of the garden. Nobody looked comfortable.`,
+        `After the Safety result, one nominee demanded a private word and another started taking notes. The house knows a confrontation is coming.`,
+        `${nominees.join(', ')} are trying to stay composed, but a sharp exchange in the dressing room has already divided the house into witnesses and deniers.`,
+      ],
+      pos_ceremony_results: [
+        `${nominees.join(', ')} face the audience vote now. One is crying in the bedroom; another is promising that the full story will come out if they stay.`,
+        `The confirmed block has pushed ${nominees.join(', ')} into very different moods: apology, anger, and a last attempt to make peace before the public decides.`,
+        `${nominees.join(', ')} left the ceremony with cameras following every step. A slammed door in the hallway made it clear the night is far from calm.`,
+      ],
+      social_2: [
+        `${nominees.join(', ')} are making their cases without naming names. The room is listening for every slip.`,
+        `A nominee's tearful apology turned into an argument when someone challenged the timing. ${nominees.join(', ')} now have the whole house watching.`,
+      ],
+      live_vote: [
+        `${nominees.join(', ')} have made their final appeals. The house can offer support, but only the audience will decide.`,
+        `As the audience vote opens, ${nominees.join(', ')} sit apart in the lounge. One last accusation has left the room completely silent.`,
+        `${nominees.join(', ')} are holding it together for the cameras, but the house has already seen the tears, the threats, and the fractures behind the final appeals.`,
+      ],
+    }
+    const choices = nomineeBeats[phase]
+    text = choices
+      ? chooseBeat(choices, `nominees:${nominees.join(':')}`)
+      : `The block has changed the room around ${nominees.join(', ')}. Conversations are getting quieter, closer, and much more consequential.`
+  }
+  if (!text) return
+  const isMajorBeat =
+    nominees.length > 0 ||
+    Boolean(strongest?.romantic) ||
+    (strongest?.affinity ?? 0) <= -30
+  const normalizedText = text.trim().toLocaleLowerCase()
+  if (
+    (state.game.tvFeed ?? []).some(
+      (event) => event.text.trim().toLocaleLowerCase() === normalizedText
+    )
+  ) {
+    return
+  }
+  api.dispatch({
+    type: 'game/addTvEvent',
+    payload: {
+      text,
+      type: 'social',
+      source: 'system',
+      channels: ['tv', 'mainLog'],
+      meta: {
+        voxSocialBeat: true,
+        week: state.game.week,
+        phase,
+        pairKey: strongest?.pairKey,
+        broadcastPriority: isMajorBeat ? 'critical' : 'standard',
+      },
+    },
+  })
+}
+
+/** A personal save merits a personal reaction before the house moves on. */
+function triggerVoxSafetyThankYou(
+  api: MiddlewareAPI,
+  savedId: string,
+  safetyHolderId: string | null
+): void {
+  const state = api.getState() as StateWithGame
+  if (state.game?.voxPopuli?.status !== 'active') return
+  const human = state.game.players.find((player) => player.isUser)
+  const saved = state.game.players.find((player) => player.id === savedId)
+  if (!human || !saved || safetyHolderId !== human.id || savedId === human.id) return
+
+  const interactionId = `vox-safety-thanks:${state.game.week}:${savedId}`
+  const alreadyQueued = [
+    ...(state.social?.incomingInteractions ?? []),
+    ...(state.social?.scheduledIncomingInteractions ?? []).map((entry) => entry.interaction),
+  ].some((entry) => entry.id === interactionId)
+  if (alreadyQueued) return
+
+  api.dispatch(
+    pushIncomingInteraction(
+      createIncomingInteraction({
+        id: interactionId,
+        fromId: savedId,
+        type: 'compliment',
+        text: `You took my name off the block. I will not forget that when this house gets difficult again.`,
+        week: state.game.week,
+        phase: state.game.phase,
+        mode: 'drama',
+        payload: { scenarioKey: 'post_veto_gratitude', savedById: safetyHolderId },
+      })
+    )
+  )
 }
 
 /** Seed week-start background affinities, then snapshot relationships as baseline. */
@@ -479,10 +782,13 @@ function recordPhaseCeremony(
   const state = api.getState() as StateWithGame
   if (getEffectiveSocialMode(state) !== 'drama') return
   if (nextPhase === 'loh_results' && state.game.lohId) {
+    const voxPopuliActive = state.game.voxPopuli?.status === 'active'
     recordCeremony(api, 'POWER_WON', {
       actorId: state.game.lohId,
-      reason: 'Leader of the House power was won.',
-      tags: ['loh'],
+      reason: voxPopuliActive
+        ? 'Daily immunity was won.'
+        : 'Leader of the House power was won.',
+      tags: [voxPopuliActive ? 'immunity' : 'loh'],
     })
   }
   if (nextPhase === 'pos_results' && state.game.posWinnerId) {
@@ -493,10 +799,14 @@ function recordPhaseCeremony(
     })
   }
   if (nextPhase === 'nomination_results' && state.game.lohId && state.game.nomineeIds.length > 0) {
+    const voxPopuliActive = state.game.voxPopuli?.status === 'active'
     recordCeremony(api, 'NOMINATIONS_LOCKED', {
-      actorId: state.game.lohId,
+      actorId: voxPopuliActive ? null : state.game.lohId,
       targetIds: state.game.nomineeIds,
-      reason: 'The nominations were made official.',
+      reason: voxPopuliActive
+        ? 'The secret housemate ballots were counted.'
+        : 'The nominations were made official.',
+      tags: voxPopuliActive ? ['secret_ballot'] : undefined,
     })
   }
   if (previousPhase === 'pos_ceremony_results') {
@@ -604,7 +914,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       handleAutonomyPhase(api as unknown as AutonomyStore, nextPhase)
     }
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
-    if (prevPhase !== nextPhase) runDramaPhase(api as unknown as MiddlewareAPI, nextPhase)
+    if (prevPhase !== nextPhase) {
+      runDramaPhase(api as unknown as MiddlewareAPI, nextPhase)
+      maybeBroadcastVoxSocialBeat(api as unknown as MiddlewareAPI, nextPhase)
+    }
 
     return result
   }
@@ -698,6 +1011,11 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         saveId,
         prevNominees
       )
+      triggerVoxSafetyThankYou(
+        api as unknown as MiddlewareAPI,
+        saveId,
+        prevState.game?.posWinnerId ?? null
+      )
       recordCeremony(api as unknown as MiddlewareAPI, 'SAFETY_USED', {
         actorId: prevState.game?.posWinnerId ?? null,
         targetIds: [saveId],
@@ -707,7 +1025,9 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       applyReplacementNomineeConsequences(
         api as unknown as MiddlewareAPI,
         replacementIds,
-        prevState.game?.lohId ?? null,
+        prevState.game?.voxPopuli?.status === 'active'
+          ? null
+          : (prevState.game?.lohId ?? null),
         prevState.game?.posWinnerId ?? null
       )
     }
@@ -842,7 +1162,8 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     if (
       newPhase === 'nomination_results' &&
       getEffectiveSocialMode(afterState) === 'drama' &&
-      afterState.game?.lohId
+      afterState.game?.lohId &&
+      afterState.game.voxPopuli?.status !== 'active'
     ) {
       const lohId = afterState.game.lohId
       const newNominees = afterState.game.nomineeIds.filter((id) => !prevNominees.includes(id))
@@ -919,7 +1240,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       if (newPhase !== 'week_start' && ELIGIBLE_PHASES.has(newPhase)) {
         handleAutonomyPhase(api as unknown as AutonomyStore, newPhase)
       }
-      if (newPhase) runDramaPhase(api as unknown as MiddlewareAPI, newPhase)
+      if (newPhase) {
+        runDramaPhase(api as unknown as MiddlewareAPI, newPhase)
+        maybeBroadcastVoxSocialBeat(api as unknown as MiddlewareAPI, newPhase)
+      }
     }
 
     // LOH / POS win bonuses (advance() sets these during loh_results / pos_results)
@@ -1071,6 +1395,24 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     const evicteeId = (action as unknown as { payload: string }).payload
     const evictee = (prevState.game?.players ?? []).find((p) => p.id === evicteeId)
     const week = prevState.game?.week
+    const bondedSurvivors = (prevState.game?.players ?? [])
+      .filter(
+        (player) =>
+          player.id !== evicteeId && player.status !== 'evicted' && player.status !== 'jury'
+      )
+      .map((player) => {
+        const outward = prevState.social?.relationships?.[player.id]?.[evicteeId]
+        const inward = prevState.social?.relationships?.[evicteeId]?.[player.id]
+        const tags = new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])])
+        const bondTag = ['romance', 'bromance', 'alliance'].find((tag) => tags.has(tag))
+        return {
+          player,
+          bondTag,
+          affinity: Math.max(outward?.affinity ?? -100, inward?.affinity ?? -100),
+        }
+      })
+      .filter((entry) => Boolean(entry.bondTag) || entry.affinity >= 45)
+      .sort((left, right) => right.affinity - left.affinity)
 
     const result = next(action)
     recordCeremony(api as unknown as MiddlewareAPI, 'EVICTION', {
@@ -1078,13 +1420,48 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       reason:
         type === 'game/selfEvict'
           ? 'A contestant left the game.'
-          : 'The house vote resulted in an eviction.',
-      tags: type === 'game/selfEvict' ? ['self_eviction'] : [],
+          : prevState.game?.voxPopuli?.status === 'active'
+            ? 'The audience vote resulted in an elimination.'
+            : 'The house vote resulted in an eviction.',
+      tags:
+        type === 'game/selfEvict'
+          ? ['self_eviction']
+          : prevState.game?.voxPopuli?.status === 'active'
+            ? ['public_vote']
+            : [],
     })
 
     // Only drain for the human/user player — AI players manage their own state.
     if (evictee?.isUser) {
       api.dispatch(drainEvictedPlayerSocial({ playerId: evicteeId, week }))
+    }
+
+    if (prevState.game?.voxPopuli?.status === 'active' && evictee && bondedSurvivors[0]) {
+      const affected = bondedSurvivors[0]
+      api.dispatch(
+        applyRealityAmbientMood({
+          actorId: affected.player.id,
+          valenceDelta: -18,
+          arousalDelta: -7,
+          stressDelta: 14,
+          socialEnergyDelta: -12,
+        })
+      )
+      const exposureSeed = `${evicteeId}:${affected.player.id}:${week ?? 0}`
+        .split('')
+        .reduce((total, character) => Math.imul(total ^ character.charCodeAt(0), 16777619), 2166136261)
+      if (affected.bondTag && (exposureSeed >>> 0) % 100 < 34) {
+        api.dispatch({
+          type: 'game/addTvEvent',
+          payload: {
+            text: `${affected.player.name}'s reaction to ${evictee.name}'s exit is impossible to hide. Housemates are starting to wonder just how close they really were.`,
+            type: 'social',
+            source: 'system',
+            channels: ['tv', 'mainLog'],
+            meta: { dramaEvent: true, week, relationshipExposure: true },
+          },
+        })
+      }
     }
 
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
@@ -1104,13 +1481,19 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       ensureRealitySimulationSeed(api as unknown as MiddlewareAPI)
     }
     if (type === 'game/finalizeNominations' || type === 'game/commitNominees') {
-      evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type)
       const state = api.getState() as StateWithGame
+      if (state.game.voxPopuli?.status !== 'active') {
+        evaluateSocialCommitmentsForAction(api as unknown as CommitmentStore, type)
+      }
       if (state.game.lohId && state.game.nomineeIds.length > 0) {
+        const voxPopuliActive = state.game.voxPopuli?.status === 'active'
         recordCeremony(api as unknown as MiddlewareAPI, 'NOMINATIONS_LOCKED', {
-          actorId: state.game.lohId,
+          actorId: voxPopuliActive ? null : state.game.lohId,
           targetIds: state.game.nomineeIds,
-          reason: 'The nominations were made official.',
+          reason: voxPopuliActive
+            ? 'The secret housemate ballots were counted.'
+            : 'The nominations were made official.',
+          tags: voxPopuliActive ? ['secret_ballot'] : undefined,
         })
       }
     }

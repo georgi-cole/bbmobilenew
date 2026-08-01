@@ -20,6 +20,7 @@ interface GameLike {
   mode?: GameMode | null
   phase?: Phase | null
   players?: ReadonlyArray<HumanPlayerLike>
+  voxPopuli?: { status?: string } | null
 }
 
 export interface SocialModuleAvailability {
@@ -88,7 +89,14 @@ export function getSocialModuleAvailability(
     }
   }
 
-  if (moduleKind === 'outgoing' && phase && OUTGOING_SOCIAL_BLOCKED_PHASES.has(phase)) {
+  // Vox Populi runs on social relationships right through the audience-vote
+  // window; only the classic game keeps its ceremony-time conversation lock.
+  if (
+    moduleKind === 'outgoing' &&
+    game.voxPopuli?.status !== 'active' &&
+    phase &&
+    OUTGOING_SOCIAL_BLOCKED_PHASES.has(phase)
+  ) {
     return {
       canOpen: false,
       reason: `Outgoing social actions are blocked during the ${phase} phase.`,

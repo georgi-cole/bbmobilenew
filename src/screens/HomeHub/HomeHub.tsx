@@ -1,55 +1,67 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate, type NavigateFunction } from 'react-router';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { resetGame, hydrateGame } from '../../store/gameSlice';
-import { hydrateFinale } from '../../store/finaleSlice';
-import { hydrateSocial } from '../../social/socialSlice';
-import { hydratePublicOpinion } from '../../publicOpinion/publicOpinionSlice';
-import { hydrateChallenge } from '../../store/challengeSlice';
-import { loadSeasonArchives } from '../../store/archivePersistence';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate, type NavigateFunction } from 'react-router'
+import { useAppSelector, useAppDispatch } from '../../store/hooks'
+import {
+  resetGame,
+  hydrateGame,
+  activateCupidArrowNow,
+  activateVoxPopuliNow,
+  setCupidArrowSchedule,
+  setVoxPopuliSchedule,
+  setSeasonExpansion,
+} from '../../store/gameSlice'
+import { hydrateFinale } from '../../store/finaleSlice'
+import { hydrateSocial } from '../../social/socialSlice'
+import { hydratePublicOpinion } from '../../publicOpinion/publicOpinionSlice'
+import { hydrateChallenge } from '../../store/challengeSlice'
+import { loadSeasonArchives } from '../../store/archivePersistence'
 import {
   selectActiveProfileId,
   selectIsGuest,
   archiveKeyForProfile,
-} from '../../store/profilesSlice';
+} from '../../store/profilesSlice'
 import {
   clearSavedRun,
   getLastPlayedRun,
   getSavedRun,
   loadSavedRunProfile,
   type SavedSeasonSnapshot,
-} from '../../store/saveStatePersistence';
-import type { GameMode } from '../../modes/modeTypes';
-import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun';
-import useBackgroundTheme from '../../hooks/useBackgroundTheme';
-import KolequantSplash from '../../components/KolequantSplash/KolequantSplash';
-import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay';
-import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts';
-import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
-import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal';
-import { SoundManager } from '../../services/sound/SoundManager';
-import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack';
-import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton';
-import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic';
-import { MYSTERY_WILDCARD_BIOS } from '../../components/HousematesBioCinematic/housematesBioData';
-import useHomeHubAssets from '../../hooks/useHomeHubAssets';
-import useIntroHubBackground from '../../hooks/useIntroHubBackground';
+} from '../../store/saveStatePersistence'
+import type { GameMode } from '../../modes/modeTypes'
+import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun'
+import useBackgroundTheme from '../../hooks/useBackgroundTheme'
+import KolequantSplash from '../../components/KolequantSplash/KolequantSplash'
+import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay'
+import PermissionPrompts from '../../components/PermissionPrompts/PermissionPrompts'
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
+import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal'
+import { SoundManager } from '../../services/sound/SoundManager'
+import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack'
+import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton'
+import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic'
+import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
+import { MYSTERY_WILDCARD_BIOS } from '../../components/HousematesBioCinematic/housematesBioData'
+import useHomeHubAssets from '../../hooks/useHomeHubAssets'
+import useIntroHubBackground from '../../hooks/useIntroHubBackground'
 import {
   hasShownHomeHubSplashThisSession,
   markHomeHubSplashSeenForGame,
-} from './homeHubSplashSession';
-import {
-  hasSeenSurvivorRules,
-  markSurvivorRulesSeen,
-} from './survivorRulesSeen';
+} from './homeHubSplashSession'
+import { hasSeenSurvivorRules, markSurvivorRulesSeen } from './survivorRulesSeen'
 import {
   selectRemoteIntroHubBg,
   selectRemoteIntroHubOverlay,
-} from '../../remoteConfig/remoteConfigSlice';
-import { buildAchievementSummary } from '../../store/achievementSummary';
-import './HomeHub.css';
+} from '../../remoteConfig/remoteConfigSlice'
+import { buildAchievementSummary } from '../../store/achievementSummary'
+import {
+  selectHasCupidArrowAccess,
+  selectHasSurvivalModeAccess,
+  selectHasVoxPopuliAccess,
+} from '../../store/vipSlice'
+import { selectDebugExpansionUnlocks } from '../../store/uiSlice'
+import './HomeHub.css'
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 type HomeHubIconName =
   | 'play'
@@ -60,7 +72,7 @@ type HomeHubIconName =
   | 'campaign'
   | 'survival'
   | 'housemates'
-  | 'back';
+  | 'back'
 
 function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
   return (
@@ -70,7 +82,7 @@ function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
       alt=""
       draggable={false}
     />
-  );
+  )
 }
 
 /**
@@ -89,44 +101,49 @@ function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
  *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
  */
 const HUB_BUTTONS = [
-  { to: '/game',         label: 'Play',        icon: 'play',        variant: 'primary_large'    },
-  { to: '/rules',        label: 'Rules',       icon: 'rules',       variant: 'secondary_medium' },
-  { to: '/profile',      label: 'Profile',     icon: 'profile',     variant: 'secondary_medium' },
-  { to: '/leaderboard',  label: 'Leaderboard', icon: 'leaderboard', variant: 'secondary_wide'   },
-  { to: '/credits',      label: 'Credits',     icon: 'credits',     variant: 'secondary_small'  },
-] as const satisfies ReadonlyArray<{ to: string; label: string; icon: HomeHubIconName; variant: GameButtonVariant }>;
+  { to: '/game', label: 'Play', icon: 'play', variant: 'primary_large' },
+  { to: '/rules', label: 'Rules', icon: 'rules', variant: 'secondary_medium' },
+  { to: '/profile', label: 'Profile', icon: 'profile', variant: 'secondary_medium' },
+  { to: '/housemates', label: 'Housemates', icon: 'housemates', variant: 'secondary_wide' },
+  { to: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', variant: 'secondary_wide' },
+  { to: '/credits', label: 'Credits', icon: 'credits', variant: 'secondary_small' },
+] as const satisfies ReadonlyArray<{
+  to: string
+  label: string
+  icon: HomeHubIconName
+  variant: GameButtonVariant
+}>
 
-type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
-type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
-
-const DEBUG_GAME_ROUTE = '/game?debug=1&qa=1';
-// Temporary QA switch: keep the launcher available in web, emulator, and native
-// builds. Set to false before producing the public store release.
-const ENABLE_PUBLIC_DEBUG_LAUNCHER = true;
+type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null
+type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null
+type ExpansionSelection = 'cupidArrow' | 'voxPopuli'
 
 interface HubAssetState {
-  ready: boolean;
-  progress: number;
-  status: string;
+  ready: boolean
+  progress: number
+  status: string
 }
 
 interface PlaySelectionButton {
-  key: string;
-  label: string;
-  icon: ReactNode;
-  variant: GameButtonVariant;
-  onClick: () => void;
+  key: string
+  label: string
+  icon: ReactNode
+  badge?: ReactNode
+  className?: string
+  variant: GameButtonVariant
+  onClick: () => void
 }
 
 interface HomeHubAssetLayerProps {
-  splashDone: boolean;
-  effectiveBgUrl: string | null;
-  backgroundReady: boolean;
-  playSelectionOpen: boolean;
-  playSelectionButtons: PlaySelectionButton[];
-  onPlay: () => void;
-  onNavigate: NavigateFunction;
-  onAssetStateChange: (state: HubAssetState) => void;
+  splashDone: boolean
+  effectiveBgUrl: string | null
+  backgroundReady: boolean
+  playSelectionOpen: boolean
+  playSelectionButtons: PlaySelectionButton[]
+  onPlay: () => void
+  onOpenHousemates: () => void
+  onNavigate: NavigateFunction
+  onAssetStateChange: (state: HubAssetState) => void
 }
 
 function HomeHubAssetLayer({
@@ -136,28 +153,30 @@ function HomeHubAssetLayer({
   playSelectionOpen,
   playSelectionButtons,
   onPlay,
+  onOpenHousemates,
   onNavigate,
   onAssetStateChange,
 }: HomeHubAssetLayerProps) {
-  const { ready: homeHubReady, progress: homeHubLoadProgress, status: homeHubLoadStatus } =
-    useHomeHubAssets(effectiveBgUrl);
-  const assetReady = backgroundReady && homeHubReady;
-  const status = backgroundReady ? homeHubLoadStatus : 'Choosing the right house exterior...';
-  const progress = backgroundReady ? homeHubLoadProgress : Math.min(20, homeHubLoadProgress);
+  const {
+    ready: homeHubReady,
+    progress: homeHubLoadProgress,
+    status: homeHubLoadStatus,
+  } = useHomeHubAssets(effectiveBgUrl)
+  const assetReady = backgroundReady && homeHubReady
+  const status = backgroundReady ? homeHubLoadStatus : 'Choosing the right house exterior...'
+  const progress = backgroundReady ? homeHubLoadProgress : Math.min(20, homeHubLoadProgress)
 
   useEffect(() => {
     onAssetStateChange({
       ready: assetReady,
       progress,
       status,
-    });
-  }, [assetReady, onAssetStateChange, progress, status]);
+    })
+  }, [assetReady, onAssetStateChange, progress, status])
 
   return (
     <>
-      {splashDone && assetReady && (
-        <PermissionPrompts showSoundPrompt={false} />
-      )}
+      {splashDone && assetReady && <PermissionPrompts showSoundPrompt={false} />}
 
       {/* Foreground content — hidden until the full hub asset bundle is ready. */}
       <div className="homehub-content home-hub">
@@ -167,13 +186,18 @@ function HomeHubAssetLayer({
         {/* Button stack: only rendered once the splash has dismissed and the
             full hub bundle is ready. */}
         {splashDone && assetReady && (
-          <nav className="home-hub__buttons" aria-label={playSelectionOpen ? 'Play menu' : 'Main menu'}>
+          <nav
+            className="home-hub__buttons"
+            aria-label={playSelectionOpen ? 'Play menu' : 'Main menu'}
+          >
             {playSelectionOpen
-              ? playSelectionButtons.map(({ key, label, icon, variant, onClick }) => (
+              ? playSelectionButtons.map(({ key, label, icon, badge, className, variant, onClick }) => (
                   <GameButton
                     key={key}
                     label={label}
                     icon={icon}
+                    badge={badge}
+                    className={className}
                     variant={variant}
                     onClick={onClick}
                   />
@@ -184,99 +208,116 @@ function HomeHubAssetLayer({
                     label={label}
                     icon={<HomeHubButtonIcon name={icon} />}
                     variant={variant}
-                    onClick={to === '/game'
-  ? onPlay
-  : to === '/credits'
-    ? () => {
-        void startCreditsSoundtrackFromGesture().catch(() => {
-          // The Credits screen keeps a direct-link tap fallback for browsers
-          // that still reject media playback during route navigation.
-        });
-        onNavigate(to);
-      }
-    : () => onNavigate(to, to === '/profile' ? { state: { from: '/' } } : undefined)
-}
+                    onClick={
+                      to === '/game'
+                        ? onPlay
+                        : to === '/housemates'
+                          ? onOpenHousemates
+                        : to === '/credits'
+                          ? () => {
+                              void startCreditsSoundtrackFromGesture().catch(() => {
+                                // The Credits screen keeps a direct-link tap fallback for browsers
+                                // that still reject media playback during route navigation.
+                              })
+                              onNavigate(to)
+                            }
+                          : () =>
+                              onNavigate(
+                                to,
+                                to === '/profile' ? { state: { from: '/' } } : undefined
+                              )
+                    }
                   />
                 ))}
           </nav>
         )}
       </div>
     </>
-  );
+  )
 }
 
 export default function HomeHub() {
-  const location = useLocation();
+  const location = useLocation()
   const routeState = location.state as {
-    autoStartGame?: boolean;
-    openHubUtility?: string;
-  } | null;
-  const autoStartGame = routeState?.autoStartGame === true;
-  const requestedHubUtility = routeState?.openHubUtility ?? null;
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const gameId = useAppSelector((state) => state.game.gameId);
-  const season = useAppSelector((state) => state.game.season);
-  const week = useAppSelector((state) => state.game.week);
-  const phase = useAppSelector((state) => state.game.phase);
-  const twinShockRevealed = useAppSelector((state) => state.game.twinShockConsumed === true);
+    autoStartGame?: boolean
+    openHubUtility?: string
+  } | null
+  const autoStartGame = routeState?.autoStartGame === true
+  const requestedHubUtility = routeState?.openHubUtility ?? null
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const gameId = useAppSelector((state) => state.game.gameId)
+  const season = useAppSelector((state) => state.game.season)
+  const week = useAppSelector((state) => state.game.week)
+  const phase = useAppSelector((state) => state.game.phase)
+  const twinShockRevealed = useAppSelector((state) => state.game.twinShockConsumed === true)
   const introHubPlayer = useAppSelector(
-    (state) => state.game.players.find((player) => player.isUser) ?? null,
-  );
-  const seasonArchives = useAppSelector((state) => state.game.seasonArchives ?? []);
+    (state) => state.game.players.find((player) => player.isUser) ?? null
+  )
+  const seasonArchives = useAppSelector((state) => state.game.seasonArchives ?? [])
+  const ownsCupidArrow = useAppSelector(selectHasCupidArrowAccess)
+  const ownsSurvivalMode = useAppSelector(selectHasSurvivalModeAccess)
+  const ownsVoxPopuli = useAppSelector(selectHasVoxPopuliAccess)
+  const debugExpansionUnlocks = useAppSelector(selectDebugExpansionUnlocks)
   // `game.week` is the legacy state field name, but in the current game flow it
   // represents the current in-game day count.
-  const dayCount = week;
-  const activeProfileId = useAppSelector(selectActiveProfileId);
-  const isGuest = useAppSelector(selectIsGuest);
-  const { url: bgUrl } = useBackgroundTheme();
-  const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg);
-  const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay);
-  const { url: introHubBgUrl, ready: introHubBgReady } = useIntroHubBackground(remoteBgUrl, bgUrl);
+  const dayCount = week
+  const activeProfileId = useAppSelector(selectActiveProfileId)
+  const isGuest = useAppSelector(selectIsGuest)
+  const { url: bgUrl } = useBackgroundTheme()
+  const remoteBgUrl = useAppSelector(selectRemoteIntroHubBg)
+  const remoteOverlayOpacity = useAppSelector(selectRemoteIntroHubOverlay)
+  const { url: introHubBgUrl, ready: introHubBgReady } = useIntroHubBackground(remoteBgUrl, bgUrl)
   const achievementSummary = useMemo(
-    () => buildAchievementSummary({
-      userPlayer: introHubPlayer,
-      seasonArchives,
-      day: dayCount,
-      phase,
-    }),
-    [dayCount, introHubPlayer, phase, seasonArchives],
-  );
+    () =>
+      buildAchievementSummary({
+        userPlayer: introHubPlayer,
+        seasonArchives,
+        day: dayCount,
+        phase,
+      }),
+    [dayCount, introHubPlayer, phase, seasonArchives]
+  )
   // Remote background takes priority over weather/time-of-day background.
-  const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl;
-  const [isInitialAppSplash] = useState(() => !hasShownHomeHubSplashThisSession());
-  const [splashExitRequested, setSplashExitRequested] = useState(false);
+  const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl
+  const [isInitialAppSplash] = useState(() => !hasShownHomeHubSplashThisSession())
+  const [splashExitRequested, setSplashExitRequested] = useState(false)
   const [hubAssetState, setHubAssetState] = useState<HubAssetState>({
     ready: false,
     progress: 0,
     status: 'Opening the house doors.',
-  });
-  const splashDone = !isInitialAppSplash || (splashExitRequested && hubAssetState.ready);
+  })
+  const splashDone = !isInitialAppSplash || (splashExitRequested && hubAssetState.ready)
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
-  const [preloading, setPreloading] = useState(autoStartGame);
-  const [debugLaunch, setDebugLaunch] = useState(false);
-  const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
-  const [housematesBioOpen, setHousematesBioOpen] = useState(false);
-  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
-  const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
-  const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
-  const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
-  const gameRoute = debugLaunch ? DEBUG_GAME_ROUTE : '/game';
+  const [preloading, setPreloading] = useState(autoStartGame)
+  const [debugLaunch, setDebugLaunch] = useState(false)
+  const shouldRestorePlayMenu = new URLSearchParams(location.search).get('menu') === 'play'
+  const [playSelectionOpen, setPlaySelectionOpen] = useState(shouldRestorePlayMenu)
+  const [housematesBioOpen, setHousematesBioOpen] = useState(false)
+  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null)
+  const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null)
+  const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false)
+  const [expansionPrompt, setExpansionPrompt] = useState<ExpansionSelection | null>(null)
+  const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId)
+  const gameRoute = '/game'
 
   const savedRuns = useMemo(
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
-    [activeProfileId, isGuest],
-  );
-  const classicSnapshot = savedRuns?.runs.classic ?? null;
-  const survivorSnapshot = savedRuns?.runs.survival ?? null;
-  const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null;
-  const hasEndedSurvivorRecord = !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0;
+    [activeProfileId, isGuest]
+  )
+  const classicSnapshot = savedRuns?.runs.classic ?? null
+  const survivorSnapshot = savedRuns?.runs.survival ?? null
+  const cupidArrowSnapshot = savedRuns?.runs.cupidArrow ?? null
+  const voxPopuliSnapshot = savedRuns?.runs.voxPopuli ?? null
+  const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null
+  const hasEndedSurvivorRecord =
+    !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0
 
   useEffect(() => {
-    const gameWindow = window as Window & { game?: Record<string, unknown> };
-    gameWindow.game = gameWindow.game ?? {};
+    const gameWindow = window as Window & { game?: Record<string, unknown> }
+    gameWindow.game = gameWindow.game ?? {}
     // Legacy IntroHub/achievements scripts still read from window.game, so keep
     // the specific season fields they depend on in sync while HomeHub is mounted.
     Object.assign(gameWindow.game, {
@@ -290,152 +331,204 @@ export default function HomeHub() {
       twinShockConsumed: twinShockRevealed,
       mysteryWildcards: MYSTERY_WILDCARD_BIOS,
       assetBase: import.meta.env.BASE_URL || '/',
-    });
-  }, [achievementSummary, dayCount, season, week, phase, introHubPlayer, seasonArchives, twinShockRevealed]);
+    })
+  }, [
+    achievementSummary,
+    dayCount,
+    season,
+    week,
+    phase,
+    introHubPlayer,
+    seasonArchives,
+    twinShockRevealed,
+  ])
 
   useEffect(() => {
-    if (!autoStartGame) return;
+    if (!autoStartGame) return
     // Clear the transient route state after mount so browser back/refresh
     // doesn't auto-start another season from the same history entry.
-    navigate('/', { replace: true });
-  }, [autoStartGame, navigate]);
+    navigate('/', { replace: true })
+  }, [autoStartGame, navigate])
   useEffect(() => {
-    if (!splashDone || !requestedHubUtility) return undefined;
-    let attempts = 0;
+    if (!splashDone || !requestedHubUtility) return undefined
+    let attempts = 0
     const openRequestedUtility = window.setInterval(() => {
-      attempts += 1;
-      const button = document.querySelector<HTMLButtonElement>(`[data-hub-id="${requestedHubUtility}"]`);
+      attempts += 1
+      const button = document.querySelector<HTMLButtonElement>(
+        `[data-hub-id="${requestedHubUtility}"]`
+      )
       if (button) {
-        window.clearInterval(openRequestedUtility);
-        button.click();
-        navigate('/', { replace: true });
+        window.clearInterval(openRequestedUtility)
+        button.click()
+        navigate('/', { replace: true })
       } else if (attempts >= 40) {
-        window.clearInterval(openRequestedUtility);
+        window.clearInterval(openRequestedUtility)
       }
-    }, 50);
-    return () => window.clearInterval(openRequestedUtility);
-  }, [navigate, requestedHubUtility, splashDone]);
+    }, 50)
+    return () => window.clearInterval(openRequestedUtility)
+  }, [navigate, requestedHubUtility, splashDone])
 
   function hydrateSnapshot(snapshot: SavedSeasonSnapshot) {
     if (isSurvivorRunTerminal(snapshot.game)) {
-      setSurvivorPrompt('ended');
-      setPlaySelectionOpen(true);
-      return;
+      setSurvivorPrompt('ended')
+      setPlaySelectionOpen(true)
+      return
     }
-    dispatch(hydrateGame(snapshot.game));
-    dispatch(hydrateFinale(snapshot.finale));
-    dispatch(hydrateSocial(snapshot.social));
-    if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion));
-    if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge));
-    navigate(gameRoute);
+    dispatch(hydrateGame(snapshot.game))
+    dispatch(hydrateFinale(snapshot.finale))
+    dispatch(hydrateSocial(snapshot.social))
+    if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion))
+    if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge))
+    navigate(gameRoute)
   }
 
-  function startClassicRun() {
+  function startClassicRun(expansion: ExpansionSelection | null = null) {
     if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, 'classic');
-      const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? [];
-      dispatch(resetGame(archives));
+      clearSavedRun(activeProfileId, expansion ?? 'classic')
+      const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
+      dispatch(resetGame(archives))
     } else {
-      dispatch(resetGame(undefined));
+      dispatch(resetGame(undefined))
     }
-    setClassicPrompt(null);
-    setPlaySelectionOpen(false);
-    setPreloading(true);
+    dispatch(setSeasonExpansion(expansion))
+    if (expansion === 'cupidArrow') {
+      dispatch(setVoxPopuliSchedule(null))
+      dispatch(activateCupidArrowNow())
+    } else if (expansion === 'voxPopuli') {
+      dispatch(setCupidArrowSchedule(null))
+      dispatch(activateVoxPopuliNow())
+    }
+    setClassicPrompt(null)
+    setExpansionPrompt(null)
+    setPlaySelectionOpen(false)
+    setPreloading(true)
+  }
+
+  function openExpansion(expansion: ExpansionSelection, unlocked: boolean) {
+    SoundManager.unlockFromGesture()
+    if (!unlocked) {
+      openStoreFromPlayMenu()
+      return
+    }
+    const savedExpansion = expansion === 'cupidArrow' ? cupidArrowSnapshot : voxPopuliSnapshot
+    if (savedExpansion) {
+      setExpansionPrompt(expansion)
+      return
+    }
+    startClassicRun(expansion)
+  }
+
+  function resumeExpansionRun(expansion: ExpansionSelection) {
+    const snapshot = expansion === 'cupidArrow' ? cupidArrowSnapshot : voxPopuliSnapshot
+    if (!snapshot) {
+      startClassicRun(expansion)
+      return
+    }
+    try {
+      setExpansionPrompt(null)
+      hydrateSnapshot(snapshot)
+    } catch {
+      startClassicRun(expansion)
+    }
+  }
+
+  function openStoreFromPlayMenu() {
+    navigate('/store', { state: { returnTo: '/?menu=play' } })
   }
 
   function resumeClassicRun() {
     if (!classicSnapshot) {
-      setClassicPrompt(null);
-      startClassicRun();
-      return;
+      setClassicPrompt(null)
+      startClassicRun()
+      return
     }
     try {
-      setClassicPrompt(null);
-      hydrateSnapshot(classicSnapshot);
+      setClassicPrompt(null)
+      hydrateSnapshot(classicSnapshot)
     } catch {
-      startClassicRun();
+      startClassicRun()
     }
   }
 
   function startSurvivorRun() {
     if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, 'survival');
+      clearSavedRun(activeProfileId, 'survival')
     }
-    setSurvivorPrompt(null);
-    setPlaySelectionOpen(false);
-    dispatch(hydrateGame(createSurvivorRun()));
-    setPreloading(true);
+    setSurvivorPrompt(null)
+    setPlaySelectionOpen(false)
+    dispatch(hydrateGame(createSurvivorRun()))
+    setPreloading(true)
   }
 
   function requestSurvivorRunStart() {
     if (!survivorRulesDismissed) {
-      setSurvivorRulesOpen(true);
-      return;
+      setSurvivorRulesOpen(true)
+      return
     }
-    startSurvivorRun();
+    startSurvivorRun()
   }
 
   function handleSurvivorRulesContinue(dontShowAgain: boolean) {
     if (dontShowAgain) {
-      markSurvivorRulesSeen(activeProfileId);
+      markSurvivorRulesSeen(activeProfileId)
     }
-    setSurvivorRulesOpen(false);
-    startSurvivorRun();
+    setSurvivorRulesOpen(false)
+    startSurvivorRun()
   }
 
   function resumeSurvivorRun() {
     if (!survivorSnapshot) {
-      setSurvivorPrompt('ended');
-      return;
+      setSurvivorPrompt('ended')
+      return
     }
-    setSurvivorPrompt(null);
-    hydrateSnapshot(survivorSnapshot);
+    setSurvivorPrompt(null)
+    hydrateSnapshot(survivorSnapshot)
   }
 
   function openSurvivorMode() {
-    SoundManager.unlockFromGesture();
+    SoundManager.unlockFromGesture()
     if (survivorSnapshot) {
-      setSurvivorPrompt('resume-or-new');
-      return;
+      setSurvivorPrompt('resume-or-new')
+      return
     }
     if (hasEndedSurvivorRecord) {
-      setSurvivorPrompt('ended');
-      return;
+      setSurvivorPrompt('ended')
+      return
     }
-    requestSurvivorRunStart();
+    requestSurvivorRunStart()
   }
 
   function startOrResumeMode(mode: GameMode) {
-    SoundManager.unlockFromGesture();
+    SoundManager.unlockFromGesture()
     if (mode === 'survival') {
-      openSurvivorMode();
-      return;
+      openSurvivorMode()
+      return
     }
 
     if (!isGuest && activeProfileId) {
-      const snapshot = getSavedRun(activeProfileId, mode);
+      const snapshot = getSavedRun(activeProfileId, mode)
       if (snapshot?.profileId === activeProfileId) {
-        setClassicPrompt('resume-or-new');
-        return;
+        setClassicPrompt('resume-or-new')
+        return
       }
     }
 
-    startClassicRun();
+    startClassicRun()
   }
 
   function continueLastRun() {
-    SoundManager.unlockFromGesture();
+    SoundManager.unlockFromGesture()
     if (lastSnapshot?.profileId === activeProfileId) {
       try {
-        hydrateSnapshot(lastSnapshot);
-        return;
+        hydrateSnapshot(lastSnapshot)
+        return
       } catch {
-        setPlaySelectionOpen(true);
+        setPlaySelectionOpen(true)
       }
     }
   }
 
-  const playSelectionButtons: PlaySelectionButton[] = [];
+  const playSelectionButtons: PlaySelectionButton[] = []
   if (lastSnapshot) {
     playSelectionButtons.push({
       key: 'continue-last',
@@ -443,7 +536,7 @@ export default function HomeHub() {
       icon: <HomeHubButtonIcon name="play" />,
       variant: 'primary_large',
       onClick: continueLastRun,
-    });
+    })
   }
   playSelectionButtons.push(
     {
@@ -457,27 +550,57 @@ export default function HomeHub() {
       key: 'survival',
       label: 'Surveyeval',
       icon: <HomeHubButtonIcon name="survival" />,
+      badge: ownsSurvivalMode ? undefined : <StoreProductIcon name="vip" />,
       variant: 'secondary_wide',
-      onClick: () => startOrResumeMode('survival'),
-    },
-    {
-      key: 'housemates',
-      label: 'Housemates',
-      icon: <HomeHubButtonIcon name="housemates" />,
-      variant: 'secondary_wide',
+      className: 'home-hub__mode-button home-hub__mode-button--surveyeval',
       onClick: () => {
-        SoundManager.unlockFromGesture();
-        setHousematesBioOpen(true);
+        SoundManager.unlockFromGesture()
+        if (!ownsSurvivalMode) {
+          openStoreFromPlayMenu()
+          return
+        }
+        startOrResumeMode('survival')
       },
     },
-    ...(ENABLE_PUBLIC_DEBUG_LAUNCHER
-      ? [{
-          key: 'debug-launch',
-          label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
-          icon: <span aria-hidden="true">🛠️</span>,
-          variant: 'secondary_wide' as const,
-          onClick: () => setDebugLaunch((enabled) => !enabled),
-        }]
+    {
+      key: 'vox-populi',
+      label: 'Vox Populi',
+      icon: <StoreProductIcon name="voxPopuli" className="home-hub__expansion-icon" />,
+      badge:
+        ownsVoxPopuli || debugExpansionUnlocks.voxPopuli ? undefined : (
+          <StoreProductIcon name="vip" />
+        ),
+      variant: 'secondary_wide',
+      className: 'home-hub__mode-button home-hub__mode-button--vox',
+      onClick: () =>
+        openExpansion('voxPopuli', ownsVoxPopuli || debugExpansionUnlocks.voxPopuli),
+    },
+    {
+      key: 'cupid-arrow',
+      label: "Cupid's Arrow",
+      icon: <StoreProductIcon name="cupidArrow" className="home-hub__expansion-icon" />,
+      badge:
+        ownsCupidArrow || debugExpansionUnlocks.cupidArrow ? undefined : (
+          <StoreProductIcon name="vip" />
+        ),
+      variant: 'secondary_wide',
+      className: 'home-hub__mode-button home-hub__mode-button--cupid',
+      onClick: () =>
+        openExpansion(
+          'cupidArrow',
+          ownsCupidArrow || debugExpansionUnlocks.cupidArrow
+        ),
+    },
+    ...(false
+      ? [
+          {
+            key: 'debug-launch',
+            label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
+            icon: <span aria-hidden="true">🛠️</span>,
+            variant: 'secondary_wide' as const,
+            onClick: () => setDebugLaunch((enabled) => !enabled),
+          },
+        ]
       : []),
     {
       key: 'back',
@@ -485,8 +608,8 @@ export default function HomeHub() {
       icon: <HomeHubButtonIcon name="back" />,
       variant: 'secondary_medium',
       onClick: () => setPlaySelectionOpen(false),
-    },
-  );
+    }
+  )
 
   const handlePlay = () => {
     // Unlock audio in the gesture context.  We intentionally do NOT follow up
@@ -495,9 +618,9 @@ export default function HomeHub() {
     // also violated the single-source-of-truth rule: BGM state is owned by
     // AudioStateSync via the resolver, which will transition the track
     // naturally when the route/phase changes below.
-    SoundManager.unlockFromGesture();
-    setPlaySelectionOpen(true);
-  };
+    SoundManager.unlockFromGesture()
+    setPlaySelectionOpen(true)
+  }
 
   const handleHubAssetStateChange = useCallback((nextState: HubAssetState) => {
     setHubAssetState((current) => {
@@ -506,24 +629,24 @@ export default function HomeHub() {
         current.progress === nextState.progress &&
         current.status === nextState.status
       ) {
-        return current;
+        return current
       }
 
-      return nextState;
-    });
-  }, []);
+      return nextState
+    })
+  }, [])
 
   function handleSplashFinish() {
-    setSplashExitRequested(true);
+    setSplashExitRequested(true)
   }
 
   useEffect(() => {
     if (!splashDone) {
-      return;
+      return
     }
 
-    markHomeHubSplashSeenForGame(gameId);
-  }, [gameId, splashDone]);
+    markHomeHubSplashSeenForGame(gameId)
+  }, [gameId, splashDone])
 
   return (
     <>
@@ -569,6 +692,18 @@ export default function HomeHub() {
       />
 
       <ConfirmExitModal
+        open={expansionPrompt !== null}
+        title={expansionPrompt === 'cupidArrow' ? "Cupid's Arrow" : 'Vox Populi'}
+        description="Resume this expansion season or begin a new one? Your Classic campaign and Surveyeval run stay untouched."
+        confirmLabel="Resume"
+        secondaryLabel="Start New"
+        cancelLabel="Cancel"
+        onConfirm={() => expansionPrompt && resumeExpansionRun(expansionPrompt)}
+        onSecondary={() => expansionPrompt && startClassicRun(expansionPrompt)}
+        onCancel={() => setExpansionPrompt(null)}
+      />
+
+      <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
         title="Surveyeval Mode"
         description="Resume your saved run or start over?"
@@ -588,8 +723,8 @@ export default function HomeHub() {
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
         onCancel={() => {
-          setSurvivorPrompt(null);
-          setPlaySelectionOpen(false);
+          setSurvivorPrompt(null)
+          setPlaySelectionOpen(false)
         }}
       />
 
@@ -635,6 +770,10 @@ export default function HomeHub() {
             playSelectionOpen={playSelectionOpen}
             playSelectionButtons={playSelectionButtons}
             onPlay={handlePlay}
+            onOpenHousemates={() => {
+              SoundManager.unlockFromGesture()
+              setHousematesBioOpen(true)
+            }}
             onNavigate={navigate}
             onAssetStateChange={handleHubAssetStateChange}
           />
@@ -644,5 +783,5 @@ export default function HomeHub() {
         </div>
       </div>
     </>
-  );
+  )
 }

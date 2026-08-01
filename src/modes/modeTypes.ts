@@ -1,6 +1,7 @@
 import type { GameState as BaseGameState, Player as BasePlayer } from '../types';
 
 export type GameMode = 'classic' | 'survival';
+export type SeasonExpansionMode = 'cupidArrow' | 'voxPopuli';
 export type GameRunStatus = 'active' | 'paused' | 'completed' | 'failed';
 
 export interface ClassicModeState {
@@ -63,5 +64,7 @@ declare module '../types' {
     createdAt?: number;
     lastPlayedAt?: number;
     saveVersion?: number;
+    /** Standalone expansion selected from the Play menu. Organic Classic twists leave this null. */
+    expansionMode?: SeasonExpansionMode | null;
   }
 }

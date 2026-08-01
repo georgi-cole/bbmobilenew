@@ -18,6 +18,7 @@
 
 /** Map of single-status codes to their badge emoji. */
 export const STATUS_BADGE_EMOJI: Record<string, string> = {
+  immune: '🛡️',
   loh: '👑',
   pos: '🛡️',
   veto_safe: '🔰',
@@ -38,6 +39,7 @@ export const STATUS_BADGE_IMAGE_SRC: Record<string, string> = {
 
 /** Human-readable label for each badge code (used in aria-label). */
 export const STATUS_BADGE_LABEL: Record<string, string> = {
+  immune: 'Immune Today',
   loh: 'Leader of the House',
   pos: 'Power of Safety',
   veto_safe: 'Veto Safe',

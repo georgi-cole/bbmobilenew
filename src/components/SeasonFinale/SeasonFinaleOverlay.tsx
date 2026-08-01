@@ -220,7 +220,11 @@ export default function SeasonFinaleOverlay() {
                 <span className="season-finale__trophy">🏆</span>
               </div>
               <h2>{winner.name}</h2>
-              <p>The Tribunal has spoken. A new champion is crowned.</p>
+              <p>
+                {game.voxPopuli?.winnerId === winner.id
+                  ? 'The audience has spoken. A new champion is crowned.'
+                  : 'The Tribunal has spoken. A new champion is crowned.'}
+              </p>
             </div>
             <button
               className="season-finale__button"
@@ -289,11 +293,11 @@ export default function SeasonFinaleOverlay() {
         <Credits
           autoPlay
           onComplete={() => {
-            // The credits end guard is already black. Commit the finale and
-            // move to its modal in this same render turn so the powered-down
-            // game screen can never flash between them.
-            dispatch(completeFinale())
+            // Leave the game route while the credits blackout still owns the
+            // viewport. Completing the state first would briefly unmount the
+            // blackout and expose the powered-down house underneath.
             navigate('/game-over', { replace: true })
+            queueMicrotask(() => dispatch(completeFinale()))
           }}
         />
       )}

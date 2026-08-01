@@ -40,6 +40,10 @@ export type AdPlacement =
   | 'public_meter_disliked_boost'
   /** Rewarded: unlock the confessional vote breakdown after live eviction results. */
   | 'eviction_vote_breakdown'
+  /** Rewarded: reveal every secret Vox Populi nomination ballot after nominations. */
+  | 'vox_nomination_breakdown'
+  /** Rewarded: reveal one temporary Vox audience snapshot before the vote closes. */
+  | 'vox_audience_preview'
   /** Rewarded: temporary audience momentum boost during Public Favorite Player voting. */
   | 'favorite_player_audience_surge'
 

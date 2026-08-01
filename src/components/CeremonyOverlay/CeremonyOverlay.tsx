@@ -65,6 +65,10 @@ export interface CeremonyOverlayProps {
   showDim?: boolean
   /** When false, skips rendering the caption/subtitle block. Defaults to true. */
   showCaption?: boolean
+  /** When false, this visual layer does not create a second live-region announcement. */
+  announce?: boolean
+  /** Glow tones omitted when this overlay is composed under another ceremony layer. */
+  hiddenGlowTones?: CeremonyTile['glowTone'][]
   /**
    * Optional callback to resolve tile rects lazily (after DOM commit).
    * When provided, called once on mount and the returned tiles replace
@@ -220,6 +224,8 @@ export default function CeremonyOverlay({
   ariaLabel,
   showDim = true,
   showCaption = true,
+  announce = true,
+  hiddenGlowTones = [],
   resolveTiles,
   layoutSignal,
 }: CeremonyOverlayProps) {
@@ -454,9 +460,10 @@ export default function CeremonyOverlay({
     <>
       <div
         className={`ceremony-overlay ${visible ? 'ceremony-overlay--visible' : 'ceremony-overlay--exiting'}`}
-        role="status"
-        aria-live="assertive"
-        aria-label={ariaLabel ?? caption}
+        role={announce ? 'status' : undefined}
+        aria-live={announce ? 'assertive' : undefined}
+        aria-label={announce ? (ariaLabel ?? caption) : undefined}
+        aria-hidden={announce ? undefined : true}
       >
         {/* SVG dim layer with mask cutouts */}
         {showDim && (
@@ -492,15 +499,19 @@ export default function CeremonyOverlay({
         )}
 
         {/* Glow rings around cutout tiles */}
-        {cutouts.map((c, i) => (
-          <div
-            key={i}
-            className={`ceremony-overlay__glow ceremony-overlay__glow--${validTiles[i]?.glowTone ?? 'gold'}`}
-            style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
-            data-ceremony-tone={validTiles[i]?.glowTone ?? 'gold'}
-            aria-hidden="true"
-          />
-        ))}
+        {cutouts.map((c, i) => {
+          const glowTone = validTiles[i]?.glowTone ?? 'gold'
+          if (hiddenGlowTones.includes(glowTone)) return null
+          return (
+            <div
+              key={i}
+              className={`ceremony-overlay__glow ceremony-overlay__glow--${glowTone}`}
+              style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
+              data-ceremony-tone={glowTone}
+              aria-hidden="true"
+            />
+          )
+        })}
 
         {/* Optional role/context pills above spotlighted tiles */}
         {labelLayouts.map((layout) => (

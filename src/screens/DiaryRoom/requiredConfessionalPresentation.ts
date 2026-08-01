@@ -44,19 +44,57 @@ export function getRequiredConfessionalPresentation(
 
   switch (decision.type) {
     case 'nominations': {
-      const required = game.doubleEviction?.weekActive ? 3 : 2
+      const isVoxPopuli = game.voxPopuli?.status === 'active'
+      const human = game.players.find(
+        (player) =>
+          player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+      )
+      const activeCount = game.players.filter(
+        (player) => player.status !== 'evicted' && player.status !== 'jury'
+      ).length
+      const isVoxFinalFour = isVoxPopuli && activeCount === 4
+      const voxExcludedIds = new Set(
+        [
+          human?.id,
+          isVoxFinalFour ? null : (game.voxPopuli?.immunityWinnerId ?? game.lohId),
+          game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId,
+        ].filter((id): id is string => Boolean(id))
+      )
+      const voxEligibleCount = game.players.filter(
+        (player) =>
+          player.status !== 'evicted' &&
+          player.status !== 'jury' &&
+          !voxExcludedIds.has(player.id)
+      ).length
+      const required = isVoxPopuli
+        ? Math.min(isVoxFinalFour ? 1 : 2, voxEligibleCount)
+        : game.doubleEviction?.weekActive
+          ? 3
+          : 2
       return {
         key,
         eyebrow: dayLabel,
-        title: survival ? 'Nomination Protocol' : 'Nomination Decision',
-        prompt: survival
+        title: isVoxPopuli
+          ? 'Secret Nomination Ballot'
+          : survival
+            ? 'Nomination Protocol'
+            : 'Nomination Decision',
+        prompt: isVoxPopuli
+          ? isVoxFinalFour
+            ? 'Cast one secret nomination vote. Last place is already on the block, and nobody has immunity today.'
+            : `Privately choose ${required === 1 ? 'the eligible housemate' : 'two housemates'} to nominate. You cannot choose yourself, today’s immunity winner, or the last-place nominee.`
+          : survival
           ? `Select ${required} contestants for elimination consideration.`
           : `As Leader, you must nominate ${required} housemates. Your choices remain private until you return to the house.`,
-        consequence: survival
+        consequence: isVoxPopuli
+          ? isVoxFinalFour
+            ? 'The highest total joins the last-place housemate on the block. A tie expands the block.'
+            : 'Only the aggregate totals will be revealed. Everyone tied at the qualifying cutoff is nominated.'
+          : survival
           ? 'The selected contestants will enter the next elimination cycle.'
           : 'Your nominations will be revealed publicly after you leave the Confessional.',
-        confirmLabel: 'Confirm nominations',
-        confirmation: 'Your nominations are locked.',
+        confirmLabel: isVoxPopuli ? 'Seal secret ballot' : 'Confirm nominations',
+        confirmation: isVoxPopuli ? 'Your secret ballot is sealed.' : 'Your nominations are locked.',
         tone: 'strategic',
         returnCue: 'nomination_ceremony',
       }

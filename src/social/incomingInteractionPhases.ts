@@ -9,6 +9,10 @@ export const INCOMING_INTERACTION_PHASE_ORDER = [
   'social_2',
   'live_vote',
   'eviction_results',
+  'final3_comp1',
+  'final3_comp2',
+  'final3_comp3',
+  'final3_decision',
 ] as const;
 
 export type IncomingInteractionPhase = (typeof INCOMING_INTERACTION_PHASE_ORDER)[number];

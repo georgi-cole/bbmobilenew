@@ -448,7 +448,13 @@ describe('release readiness metadata', () => {
   })
 
   it('does not offer unfinished or unavailable products in release 1.0', () => {
-    expect(STANDALONE_PRODUCT_KEYS).toEqual(['survivalMode', 'publicMode', 'dramaMode'])
+    expect(STANDALONE_PRODUCT_KEYS).toEqual([
+      'survivalMode',
+      'publicMode',
+      'dramaMode',
+      'cupidArrow',
+      'voxPopuli',
+    ])
     expect(VIP_BENEFITS).not.toContain('Tribunal Mode when released')
     expect(VIP_BENEFITS).not.toContain('Ad-free play')
   })

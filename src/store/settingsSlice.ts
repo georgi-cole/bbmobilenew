@@ -92,6 +92,11 @@ export interface SettingsState {
      * immediately before the first LOH competition. Null disables scheduling.
      */
     cupidArrowSeasonOverride: number | null
+    /**
+     * DEBUG/TESTING ONLY — season number on which Vox Populi replaces the
+     * standard season format. Null uses production scheduling.
+     */
+    voxPopuliSeasonOverride: number | null
   }
   visual: {
     /** Allow pinch-to-zoom on touch devices. Default false (fixed layout). */
@@ -198,6 +203,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     // DEBUG/TESTING ONLY — null means no forced trigger week is set.
     secretMissionTriggerWeekOverride: null,
     cupidArrowSeasonOverride: null,
+    voxPopuliSeasonOverride: null,
   },
   visual: {
     enableZoom: false,

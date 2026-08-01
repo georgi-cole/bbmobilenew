@@ -295,6 +295,9 @@ body:has(.game-screen--cupid-active) [class*='HouseguestGrid_headerRow'] {
 .game-screen__vote-breakdown-card {
   gap: 14px;
   max-width: min(92vw, 420px);
+  max-height: min(88dvh, 760px);
+  overflow: hidden;
+  align-items: stretch;
 }
 
 .game-screen__vote-breakdown-header {
@@ -316,6 +319,11 @@ body:has(.game-screen--cupid-active) [class*='HouseguestGrid_headerRow'] {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
+  scrollbar-gutter: stable;
 }
 
 .game-screen__vote-breakdown-row {
@@ -345,6 +353,7 @@ body:has(.game-screen--cupid-active) [class*='HouseguestGrid_headerRow'] {
 .game-screen__vote-breakdown-actions {
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .game-screen__layout-debug {

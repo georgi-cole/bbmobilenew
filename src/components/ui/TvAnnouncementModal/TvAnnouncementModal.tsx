@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { VOX_POPULI_INFO_SUMMARY } from '../../../rules/voxPopuliGuide'
 import './TvAnnouncementModal.css'
 
 // ─── Phase copy ───────────────────────────────────────────────────────────────
@@ -11,6 +12,7 @@ interface PhaseCopy {
   body: string
   /** Optional shock-specific detail paragraph appended after `body`. */
   shockDetail?: string
+  rulesRoute?: string
 }
 
 const PHASE_COPY: Record<string, PhaseCopy> = {
@@ -61,6 +63,68 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'FINAL LOH',
     category: 'Endgame',
     body: 'The Final Leader of the House holds the most consequential power in the game. They alone decide who sits beside them in the Final 2 — and who is sent to the Tribunal just one step from the prize. This single choice often defines legacies.',
+  },
+  vox_populi: {
+    icon: '🗣️',
+    label: 'VOX POPULI',
+    category: 'Season Expansion',
+    body: VOX_POPULI_INFO_SUMMARY,
+    shockDetail: 'Open the full guide for the daily loop, ballot ties, Safety backups, doubles, and the audience-led finale.',
+    rulesRoute: '/vox-populi-rules',
+  },
+  vox_immunity_comp: {
+    icon: '🛡️',
+    label: 'IMMUNITY COMPETITION',
+    category: 'Vox Populi',
+    body:
+      'Every remaining housemate may compete. Today’s winner earns immunity and cannot be nominated. The last-place finisher is placed directly on the block before the secret nominations are counted.',
+    shockDetail:
+      'The Final 4 reverses the balance: nobody earns immunity, last place starts on the block, and the other three each cast one secret vote.',
+  },
+  vox_final4_immunity_comp: {
+    icon: '4️⃣',
+    label: 'FINAL 4 COMPETITION',
+    category: 'Vox Populi Endgame',
+    body:
+      'Four housemates remain. Nobody earns immunity; the last-place finisher begins on the block.',
+    shockDetail:
+      'The other three housemates each cast one secret nomination vote. The highest total joins last place on the block; a tie expands it.',
+  },
+  vox_nominations: {
+    icon: '🗳️',
+    label: 'SECRET NOMINATIONS',
+    category: 'Vox Populi',
+    body:
+      'Housemates enter the Confessional one at a time and privately name two eligible people. They cannot nominate themselves or the immunity winner.',
+    shockDetail:
+      'The two highest nomination totals are placed on the block. If players are tied at the cutoff, every tied player is nominated. At Final 4, the other three cast one vote each and the highest total joins the last-place nominee.',
+  },
+  vox_safety_ceremony: {
+    icon: '🎭',
+    label: 'POWER OF SAFETY',
+    category: 'Vox Populi',
+    body:
+      'The Safety holder may keep the block unchanged or save one current nominee. If the winner is on the block, they automatically save themself.',
+    shockDetail:
+      'After a save, the next-highest housemate in the original secret-nomination totals joins the block only when fewer than two nominees remain. On an eligible Double Elimination day, the ranking restores the block only when fewer than three nominees remain. If enough nominees are still in danger, no backup is added.',
+  },
+  vox_public_vote: {
+    icon: '📡',
+    label: 'THE PUBLIC DECIDES',
+    category: 'Live Audience Vote',
+    body:
+      'The nominees face a public vote to eliminate. The nominee with the highest share of the audience vote leaves the house. Housemates do not vote and there is no Leader of the House tiebreak.',
+    shockDetail:
+      'Public Mode can show changing approval, momentum, and hints for building popularity, but it never saves a nominee in Vox Populi. On an eligible Double Elimination day, at least three nominees must face the vote and the two highest audience totals are eliminated.',
+  },
+  vox_final3: {
+    icon: '🏁',
+    label: 'FINAL 3',
+    category: 'Vox Populi Finale',
+    body:
+      'The last three housemates compete for final immunity. The winner is guaranteed a place in the Final 2.',
+    shockDetail:
+      'The audience votes to eliminate one of the other two housemates. Once the Final 2 is formed, the audience votes again—this time to crown the season winner. There is no Tribunal and no sole housemate vote.',
   },
   ad_break_eviction_auto: {
     icon: '📺',
@@ -135,7 +199,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   cupid_arrow: {
     icon: '🏹',
     label: "CUPID HAS CHOSEN",
-    category: 'Season Shock',
+    category: 'Season Expansion',
     body: 'Cupid has matched every housemate with a partner. For now, you are not playing alone: every pair shares one fate inside The Big Eye house.',
     shockDetail:
       'Each pair deliberates together and casts one joint ballot worth two votes. The partner of the Power of Safety winner is protected from replacement nomination. Secret Missions and conflicting shocks wait beyond the spell. Four eliminated pairs will break Cupid’s hold.',
@@ -143,7 +207,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   cupid_arrow_broken: {
     icon: '💔',
     label: 'THE LAST ARROW BREAKS',
-    category: 'Season Shock',
+    category: 'Season Expansion',
     body: 'Four pairs have fallen. The hearts fracture, Cupid’s final arrow dissolves, and the winged matchmaker leaves The Big Eye house. The rose-lit spell recedes and the original game returns.',
     shockDetail:
       'Every survivor now competes, nominates, votes, and faces elimination alone. Former partners keep the relationship history they created: devotion may survive, but arguments, betrayals, and incompatible games can turn the old bond into a scar.',
@@ -322,6 +386,17 @@ export default function TvAnnouncementModal({
             <p key={i}>{line}</p>
           ))}
           {copy.shockDetail && <p className="tv-ann-modal__shock-detail">{copy.shockDetail}</p>}
+          {copy.rulesRoute && (
+            <button
+              type="button"
+              className="tv-ann-modal__rules-link"
+              onClick={() => {
+                window.location.hash = `#${copy.rulesRoute!}`
+              }}
+            >
+              Read Vox Populi rules
+            </button>
+          )}
         </div>
       </div>
     </div>,

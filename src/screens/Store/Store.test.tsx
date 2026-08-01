@@ -105,6 +105,14 @@ describe('Store product presentation', () => {
     }
   })
 
+  it('presents Cupid and Vox as dedicated season expansions', () => {
+    renderStore()
+
+    expect(screen.getByRole('heading', { name: 'Change the rules of the house' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: "Open Cupid's Arrow" })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Vox Populi' })).toBeInTheDocument()
+  })
+
   it('opens the unowned product presentation with live price and real benefits', () => {
     renderStore()
     openDramaMode()

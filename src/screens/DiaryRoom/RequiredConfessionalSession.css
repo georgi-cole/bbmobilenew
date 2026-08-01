@@ -159,10 +159,42 @@
 }
 
 .rcd-player__copy strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 0.86rem;
+  line-height: 1.15;
+}
+
+.rcd-player__avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px;
+  border-radius: 50%;
+}
+
+.rcd-player__avatar--close { box-shadow: 0 0 0 3px #34d399, 0 0 13px rgba(52, 211, 153, 0.4); }
+.rcd-player__avatar--warm { box-shadow: 0 0 0 3px #a3e635, 0 0 12px rgba(163, 230, 53, 0.3); }
+.rcd-player__avatar--neutral { box-shadow: 0 0 0 3px #facc15, 0 0 11px rgba(250, 204, 21, 0.24); }
+.rcd-player__avatar--wary { box-shadow: 0 0 0 3px #fb923c, 0 0 12px rgba(251, 146, 60, 0.3); }
+.rcd-player__avatar--cold { box-shadow: 0 0 0 3px #f87171, 0 0 13px rgba(248, 113, 113, 0.38); }
+
+.rcd-first-impression {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(129, 140, 248, 0.24);
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.07);
+}
+
+.rcd-first-impression span,
+.rcd-first-impression small {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.rcd-layout--vox .rcd-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .rcd-player__copy small {
@@ -398,6 +430,45 @@
 .rcd-confirm__button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
+}
+
+.required-confessional__my-game {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 14px;
+  background: rgba(22, 16, 43, 0.72);
+}
+
+.required-confessional__my-game > p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.required-confessional__first-impression {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  border-left: 3px solid #a78bfa;
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.required-confessional__first-impression strong {
+  color: #ddd6fe;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.required-confessional__first-impression span {
+  color: rgba(245, 243, 255, 0.86);
+  font-size: 0.72rem;
+  line-height: 1.4;
 }
 
 @media (min-width: 680px) {

@@ -45,6 +45,7 @@ export default function NavBar() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [survivalRulesOpen, setSurvivalRulesOpen] = useState(false);
+  const isVoxPopuli = useAppSelector((s) => s.game.voxPopuli?.status === 'active');
   const humanInPendingChallenge =
     Boolean(pendingChallenge && humanPlayer && pendingChallenge.participants.includes(humanPlayer.id));
   const humanInPendingMinigame =
@@ -76,6 +77,10 @@ export default function NavBar() {
   function handleRulesClick() {
     if (gameMode === 'survival') {
       setSurvivalRulesOpen(true);
+      return;
+    }
+    if (isVoxPopuli) {
+      navigate('/vox-populi-rules');
       return;
     }
     navigate('/rules');

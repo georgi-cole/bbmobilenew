@@ -51,6 +51,7 @@ function getAnnouncementThemeClass(key: string): string {
   if (
     key === 'live_eviction' ||
     key === 'eviction_vote_result' ||
+    key === 'vox_final_three_verdict' ||
     key === 'double_eviction' ||
     key === 'coup_detat'
   ) {
@@ -87,6 +88,7 @@ export default function TvAnnouncementOverlay({
   const isSpotlightVeto = announcement.key === 'spotlight_veto';
   const isPublicSaveResult = announcement.key === 'public_save_result';
   const isConfessionalRequired = announcement.key === 'confessional_required';
+  const isVoxFinalThreeVerdict = announcement.key === 'vox_final_three_verdict';
   const isRoyalPurple =
     announcement.key === 'live_eviction' ||
     announcement.key === 'eviction_vote_result' ||
@@ -212,6 +214,7 @@ export default function TvAnnouncementOverlay({
             isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
             isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
             isRoyalPurple ? 'tv-announcement--royal-purple' : '',
+            isVoxFinalThreeVerdict ? 'tv-announcement--vox-final-three' : '',
           ].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="false"

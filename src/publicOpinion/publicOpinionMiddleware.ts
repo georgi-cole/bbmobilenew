@@ -38,6 +38,11 @@ interface GameState {
   povSavedId?: string | null
   /** ID of the nominee saved by the public-save twist (null if not triggered). */
   publicSavedNomineeId?: string | null
+  /** Vox Populi season-format state, when scheduled or active. */
+  voxPopuli?: {
+    status: 'inactive' | 'scheduled' | 'active' | 'complete'
+    safetySaveCounts?: Record<string, number>
+  }
 }
 
 /** Helper: build a current approval map from public opinion profiles. */
@@ -173,13 +178,14 @@ function applyCompetitionResultPublicOpinion(
     }
 
     if (game.lohId) {
+      const voxPopuliActive = game.voxPopuli?.status === 'active'
       store.dispatch(
         updateApproval({
           playerId: game.lohId,
           delta: publicOpinionConfig.competitionImpact.hohWin,
-          reason: 'hoh_win',
+          reason: voxPopuliActive ? 'immunity_win' : 'hoh_win',
           week,
-          eventType: 'hoh_win',
+          eventType: voxPopuliActive ? 'immunity_win' : 'hoh_win',
         })
       )
     }
@@ -250,6 +256,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   // ── Mission action mapping for explicit gameplay actions ───────────────────
 
   if (actionType === 'game/commitNominees') {
+    // Vox ballots are private. They must not be attributed to the immunity
+    // winner or create public backlash as though that player chose the block.
+    if (game.voxPopuli?.status === 'active') return result
     // Human LOH nominated a set of players.
     // Payload is the array of nominee IDs committed by the human player.
     const nominees = (actionPayload as string[] | undefined) ?? []
@@ -547,7 +556,12 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       // Human LOH reactions are handled earlier via `game/commitNominees`; firing them again here
       // would double-apply backlash/sympathy. Only run when awaitingNominations is false
       // (the AI LOH path: nominations were set automatically before this phase was entered).
-      if (newPhase === 'nomination_results' && !game.awaitingNominations && game.lohId) {
+      if (
+        newPhase === 'nomination_results' &&
+        !game.awaitingNominations &&
+        game.lohId &&
+        game.voxPopuli?.status !== 'active'
+      ) {
         const profiles = nextState.publicOpinion?.profiles ?? {}
         const approvals = buildApprovalMap(profiles)
         const nomineeIds = game.nomineeIds ?? []
@@ -591,6 +605,18 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           isPublicSave: false,
         })
         dispatchReactionDeltas(store, reactions, week)
+        const voxSaveCount = game.voxPopuli?.safetySaveCounts?.[game.povSavedId] ?? 0
+        if (game.voxPopuli?.status === 'active' && voxSaveCount >= 2) {
+          store.dispatch(
+            updateApproval({
+              playerId: game.povSavedId,
+              delta: 2,
+              reason: 'repeat_safety_survival',
+              week,
+              eventType: 'pov_save',
+            })
+          )
+        }
       }
 
       if (newPhase === 'week_start') {
@@ -657,6 +683,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             seed: game.seed ?? 0,
             count: publicOpinionConfig.directionsPerCycle,
             relationships: nextState.social?.relationships,
+            voxPopuliActive: game.voxPopuli?.status === 'active',
           })
           for (const direction of newDirections) {
             store.dispatch(addDirection(direction))

@@ -114,6 +114,10 @@ export function useSafetyFlow({
     savedId: string
   } | null>(null)
   const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
+  // A save can also be chosen in the Confessional.  That route commits to
+  // Redux immediately, so remember ceremony IDs already shown to avoid a
+  // second animation after the state change.
+  const presentedSaveIdRef = useRef<string | null>(null)
 
   const handleSaveCeremonyDone = useCallback(() => {
     pendingSaveDispatchRef.current?.()
@@ -199,6 +203,7 @@ export function useSafetyFlow({
       }
 
       const savedNames = savedPlayers.map((player) => player.name).join(' & ')
+      presentedSaveIdRef.current = id
       pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
       setPendingSaveCeremony({
         tiles,
@@ -210,6 +215,65 @@ export function useSafetyFlow({
     },
     [dispatch, game, activeSpecialVeto, getTileRect]
   )
+
+  // Confessional and AI Safety choices commit synchronously rather than going
+  // through handlePovSaveTarget above.  Give those saves the same visual beat:
+  // the nominee comes off the block and receives the Safety badge on their tile.
+  useEffect(() => {
+    const savedId = game.povSavedId ?? null
+    if (!savedId) {
+      presentedSaveIdRef.current = null
+      return
+    }
+    if (presentedSaveIdRef.current === savedId || pendingSaveCeremony) return
+
+    const savedPlayers = expandCupidIds(game, [savedId])
+      .map((id) => game.players.find((player) => player.id === id))
+      .filter((player): player is Player => Boolean(player))
+    const savedPlayer = savedPlayers.find((player) => player.id === savedId) ?? savedPlayers[0]
+    const holderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
+    const savedRect = savedPlayer ? getTileRect(savedPlayer.id) : null
+    if (!savedPlayer || !savedRect) return
+
+    const sourceIsDistinctHolder =
+      holderRect != null && game.posWinnerId != null && game.posWinnerId !== savedId
+    const buildTiles = (): CeremonyTile[] => {
+      const currentHolderRect = game.posWinnerId ? getTileRect(game.posWinnerId) : null
+      const hasDistinctHolder =
+        currentHolderRect != null && game.posWinnerId != null && game.posWinnerId !== savedId
+      return [
+        ...(hasDistinctHolder ? [{ rect: currentHolderRect, glowTone: 'gold' as const }] : []),
+        ...savedPlayers.map((player) => ({
+          rect: getTileRect(player.id),
+          badge: '🛡️',
+          badgeVariant: isCupidArrowActive(game) ? ('cupid-hug' as const) : undefined,
+          badgeStart: hasDistinctHolder && currentHolderRect ? currentHolderRect : ('center' as const),
+          badgeLabel: `${player.name} saved by Safety`,
+          glowTone: 'success' as const,
+        })),
+      ]
+    }
+
+    presentedSaveIdRef.current = savedId
+    const savedNames = savedPlayers.map((player) => player.name).join(' & ')
+    setPendingSaveCeremony({
+      tiles: [
+        ...(sourceIsDistinctHolder ? [{ rect: holderRect, glowTone: 'gold' as const }] : []),
+        ...savedPlayers.map((player) => ({
+          rect: getTileRect(player.id),
+          badge: '🛡️',
+          badgeVariant: isCupidArrowActive(game) ? ('cupid-hug' as const) : undefined,
+          badgeStart: sourceIsDistinctHolder ? holderRect : ('center' as const),
+          badgeLabel: `${player.name} saved by Safety`,
+          glowTone: 'success' as const,
+        })),
+      ],
+      resolveTiles: buildTiles,
+      caption: `${savedNames} ${savedPlayers.length > 1 ? 'have' : 'has'} been saved!`,
+      subtitle: '🛡️ Safety used',
+      savedId,
+    })
+  }, [game, getTileRect, pendingSaveCeremony])
 
   // Hide the save modal while the save ceremony is playing.
   const isAwaitingAnySave =
@@ -419,6 +483,11 @@ export function useSafetyFlow({
     if (!game.povSavedId) return ''
     // Wait until the staged replacement flow is complete (step 0 = replacement committed).
     if (game.aiReplacementStep) return ''
+    if (game.voxPopuli?.status === 'active') {
+      const replacementIds = game.voxPopuli.lastReplacementNomineeIds ?? []
+      if (replacementIds.length === 0) return ''
+      return `w${game.week}-vox-repl-${[...replacementIds].sort().join(',')}`
+    }
     // If the AI LOH handled it, nomineeIds was updated in the same advance() call
     // and no awaiting flags are set. Use a key based on week + nomineeIds.
     const lohPlayer = game.players.find((p) => p.id === game.lohId)
@@ -435,14 +504,19 @@ export function useSafetyFlow({
     game.players,
     game.povSavedId,
     game.aiReplacementStep,
+    game.voxPopuli?.status,
+    game.voxPopuli?.lastReplacementNomineeIds,
   ])
 
   const showAiReplacementAnim =
     aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
-  const activeReplacementAnimationTargetId =
-    showAiReplacementAnim && game.nomineeIds.length > 0
-      ? game.nomineeIds[game.nomineeIds.length - 1]
-      : null
+  const activeReplacementAnimationTargetIds = showAiReplacementAnim
+    ? game.voxPopuli?.status === 'active'
+      ? (game.voxPopuli.lastReplacementNomineeIds ?? [])
+      : game.nomineeIds.length > 0
+        ? [game.nomineeIds[game.nomineeIds.length - 1]]
+        : []
+    : []
 
   // Acknowledge the step-1 "LOH must name a replacement" announcement so advance() can
   // proceed to step 2. Fires when the step-1 handler has run (aiReplacementStep reaches 2).
@@ -478,7 +552,7 @@ export function useSafetyFlow({
     holderReplacementOptions,
     coupReplacementOptions,
     showAiReplacementAnim,
-    activeReplacementAnimationTargetId,
+    activeReplacementAnimationTargetIds,
     handleAiReplacementDone,
   }
 }

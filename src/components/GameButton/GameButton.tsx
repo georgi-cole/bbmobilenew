@@ -12,8 +12,10 @@ type GameButtonState = 'normal' | 'hover' | 'pressed' | 'disabled';
 interface GameButtonProps {
   label: string;
   icon?: ReactNode;
+  badge?: ReactNode;
   variant: GameButtonVariant;
   disabled?: boolean;
+  className?: string;
   onClick?: () => void;
 }
 
@@ -26,8 +28,10 @@ function resolveAsset(variant: GameButtonVariant, state: GameButtonState): strin
 export default function GameButton({
   label,
   icon,
+  badge,
   variant,
   disabled = false,
+  className = '',
   onClick,
 }: GameButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -45,7 +49,7 @@ export default function GameButton({
 
   return (
     <button
-      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}`}
+      className={`game-btn game-btn--${variant}${disabled ? ' game-btn--disabled' : ''}${badge ? ' game-btn--has-badge' : ''}${!disabled && isPressed ? ' game-btn--pressed' : ''}${className ? ` ${className}` : ''}`}
       type="button"
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
@@ -71,6 +75,7 @@ export default function GameButton({
         {icon && <span className="btn-icon" aria-hidden="true">{icon}</span>}
         <span className="btn-label">{label}</span>
       </div>
+      {badge && <span className="btn-badge" aria-hidden="true">{badge}</span>}
     </button>
   );
 }

@@ -123,6 +123,47 @@ body:has(.homehub-shell) .app-shell {
   align-items: center;
   padding: 8px 4px;
   animation: hub-nav-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  max-height: min(70dvh, 590px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.home-hub__mode-button--surveyeval .btn-bg {
+  filter: saturate(0.42) brightness(0.9);
+}
+
+/* Store artwork is also used in the modal, where it has a proportional global
+   size rule. Keep the launcher icons explicit so visiting the store can never
+   resize this menu. */
+.home-hub__mode-button .home-hub__expansion-icon.store-product-icon {
+  display: block;
+  width: 1.42rem;
+  height: 1.42rem;
+  flex: 0 0 1.42rem;
+  fill: none;
+  stroke: #dce3ff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(20, 16, 72, 0.5));
+}
+
+.home-hub__expansion-icon .store-product-icon__surface {
+  fill: rgba(46, 42, 105, 0.42);
+}
+
+.home-hub__expansion-icon .store-product-icon__core {
+  fill: rgba(222, 228, 255, 0.82);
+}
+
+.home-hub__mode-button--vox .home-hub__expansion-icon {
+  stroke: #bfe5ea;
+}
+
+.home-hub__mode-button--cupid .home-hub__expansion-icon {
+  stroke: #f0cbd7;
 }
 
 .home-hub__button-icon {
@@ -163,6 +204,10 @@ body:has(.homehub-shell) .app-shell {
   }
   .home-hub {
     padding-bottom: 28px;
+  }
+  .home-hub__buttons {
+    gap: 9px;
+    max-height: min(73dvh, 560px);
   }
 }
 

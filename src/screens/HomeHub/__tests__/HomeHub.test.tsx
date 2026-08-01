@@ -380,7 +380,7 @@ describe('HomeHub', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
   });
 
-  it('starts a fresh game with debug enabled from the Play menu', async () => {
+  it('keeps the debug launcher out of the player-facing Play menu', async () => {
     renderHomeHub();
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
@@ -389,16 +389,10 @@ describe('HomeHub', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Debug Menu: Off' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Campaign' }));
-
-    expect(screen.getByTestId('asset-preloader-overlay')).toHaveAttribute(
-      'data-destination',
-      '/game?debug=1&qa=1',
-    );
+    expect(screen.queryByRole('button', { name: 'Debug Menu: Off' })).toBeNull();
   });
 
-  it('starts the Surveyeval flow without VIP or survivalMode access instead of opening Store', async () => {
+  it('opens the store from Surveyeval without VIP or survivalMode access', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -410,40 +404,23 @@ describe('HomeHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     fireEvent.click(screen.getByRole('button', { name: 'Surveyeval' }));
 
-    expect(mockNavigate).not.toHaveBeenCalledWith('/store');
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/don't show this again/i));
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Surveyeval' }));
-
-    await waitFor(() => {
-      expect(
-        mockDispatch.mock.calls.some(
-          ([action]) => typeof action === 'object' && action !== null && (action as { type?: string }).type === 'game/hydrateGame',
-        ),
-      ).toBe(true);
-    });
-    expect(localStorage.getItem('bb:homeHubSurvivorRulesSeen:guest')).toBe('1');
+    expect(mockNavigate).toHaveBeenCalledWith('/store', { state: { returnTo: '/?menu=play' } });
+    expect(screen.queryByRole('dialog')).toBeNull();
 
     view.unmount();
   });
 
-  it('opens the Housemates cinematic below the text-only game modes and returns to the Play menu', async () => {
+  it('opens the Housemates cinematic below Profile on the intro hub and returns there', async () => {
     renderHomeHub();
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
-
-    const classic = screen.getByRole('button', { name: 'Campaign' });
-    const survival = screen.getByRole('button', { name: 'Surveyeval' });
+    const profile = screen.getByRole('button', { name: 'Profile' });
     const housemates = screen.getByRole('button', { name: 'Housemates' });
-    expect(screen.queryByRole('button', { name: 'Mystery Wildcards' })).toBeNull();
-    expect(classic).toHaveAttribute('data-has-icon', 'true');
-    expect(survival).toHaveAttribute('data-has-icon', 'true');
-    expect(classic.compareDocumentPosition(survival) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(survival.compareDocumentPosition(housemates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(profile.compareDocumentPosition(housemates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(housemates).toHaveAttribute('data-has-icon', 'true');
 
     fireEvent.click(housemates);
     expect(screen.getByTestId('housemates-bio-cinematic')).toBeInTheDocument();

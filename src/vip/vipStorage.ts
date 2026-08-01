@@ -7,6 +7,8 @@ export interface StoreEntitlements {
   publicMode: boolean
   tribunalHouse: boolean
   dramaMode: boolean
+  cupidArrow: boolean
+  voxPopuli: boolean
   noAds: boolean
 }
 
@@ -22,6 +24,8 @@ export function createEmptyStoreEntitlements(): StoreEntitlements {
     publicMode: false,
     tribunalHouse: false,
     dramaMode: false,
+    cupidArrow: false,
+    voxPopuli: false,
     noAds: false,
   }
 }
@@ -34,6 +38,8 @@ function normalizeEntitlements(raw: unknown): StoreEntitlements {
     publicMode: value.publicMode === true,
     tribunalHouse: value.tribunalHouse === true,
     dramaMode: value.dramaMode === true,
+    cupidArrow: value.cupidArrow === true,
+    voxPopuli: value.voxPopuli === true,
     noAds: value.noAds === true,
   }
 }

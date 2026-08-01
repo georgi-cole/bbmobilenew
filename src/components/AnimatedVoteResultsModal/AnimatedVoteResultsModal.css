@@ -27,6 +27,7 @@
     linear-gradient(180deg, rgba(7, 12, 22, 0.18) 0%, rgba(3, 7, 14, 0.34) 100%);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  container-type: size;
 }
 
 @keyframes avrmFadeIn {
@@ -133,7 +134,7 @@
 .avrm__tv-stage {
   min-height: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: clamp(0.12rem, 1.2vh, 0.28rem) clamp(0.1rem, 1vw, 0.3rem) 0;
   overflow: visible;
@@ -155,6 +156,8 @@
   justify-content: center;
   gap: clamp(0.55rem, 2.4vw, 0.95rem);
   width: 100%;
+  max-width: 34rem;
+  margin: auto;
   padding: 0;
   overflow: visible;
 }
@@ -183,7 +186,7 @@
   align-items: center;
   justify-content: center;
   gap: clamp(0.05rem, 0.3vh, 0.14rem);
-  width: min(30vw, 6.45rem);
+  width: min(30cqw, 6.45rem);
   max-width: 6.45rem;
   min-width: 0;
   padding: 0;
@@ -194,8 +197,14 @@
 }
 
 .avrm__tally--tv-triple {
-  width: min(23vw, 4.8rem);
+  width: min(23cqw, 4.8rem);
   max-width: 4.8rem;
+}
+
+.avrm__tallies--tv[data-nominee-count='4'] .avrm__tally--tv,
+.avrm__tallies--tv[data-nominee-count='5'] .avrm__tally--tv,
+.avrm__tallies--tv[data-nominee-count='6'] .avrm__tally--tv {
+  width: min(18.5cqw, 4rem);
 }
 
 .avrm--tv .avrm__tally--visible {
@@ -222,15 +231,15 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: clamp(4.1rem, 19.2vw, 4.75rem);
-  height: clamp(4.1rem, 19.2vw, 4.75rem);
+  width: clamp(3.2rem, min(19.2cqw, 52cqh), 4.75rem);
+  height: clamp(3.2rem, min(19.2cqw, 52cqh), 4.75rem);
   overflow: visible;
   filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.18));
 }
 
 .avrm__tally--tv-triple .avrm__tv-vote-ring-shell {
-  width: clamp(3.25rem, 15.6vw, 3.65rem);
-  height: clamp(3.25rem, 15.6vw, 3.65rem);
+  width: clamp(2.7rem, min(15.6cqw, 44cqh), 3.65rem);
+  height: clamp(2.7rem, min(15.6cqw, 44cqh), 3.65rem);
 }
 
 .avrm__tv-vote-ring {
@@ -330,6 +339,10 @@
   height: 100%;
   border-width: 1px;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.avrm--tv .pa__img {
+  object-position: center 20%;
 }
 
 .avrm__tally--visible {
@@ -714,11 +727,11 @@
   }
 
   .avrm__tally--tv {
-    width: min(26vw, 5.2rem);
+    width: min(26cqw, 5.2rem);
   }
 
   .avrm__tally--tv-triple {
-    width: min(20.5vw, 4.05rem);
+    width: min(20.5cqw, 4.05rem);
   }
 
   .avrm--tv .avrm__tally-count {

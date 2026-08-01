@@ -152,6 +152,8 @@ describe('canShowAd guard logic', () => {
             publicMode: false,
             tribunalHouse: false,
             dramaMode: false,
+            cupidArrow: false,
+            voxPopuli: false,
             noAds: true,
           },
         })

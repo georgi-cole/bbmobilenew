@@ -32,11 +32,21 @@ export type MusicScene =
 interface UIState {
   socialSummaryOpen: boolean;
   musicScene: MusicScene;
+  debugExpansionUnlocks: {
+    cupidArrow: boolean;
+    voxPopuli: boolean;
+  };
 }
 
 const initialState: UIState = {
   socialSummaryOpen: false,
   musicScene: 'none',
+  // Intentionally Redux-only: debug access disappears with the app session and
+  // is never written into the permanent VIP entitlement cache.
+  debugExpansionUnlocks: {
+    cupidArrow: false,
+    voxPopuli: false,
+  },
 };
 
 const uiSlice = createSlice({
@@ -52,13 +62,32 @@ const uiSlice = createSlice({
     setMusicScene(state, action: { payload: MusicScene }) {
       state.musicScene = action.payload;
     },
+    setDebugExpansionUnlock(
+      state,
+      action: { payload: { expansion: 'cupidArrow' | 'voxPopuli'; unlocked: boolean } },
+    ) {
+      state.debugExpansionUnlocks[action.payload.expansion] = action.payload.unlocked;
+    },
+    clearDebugExpansionUnlocks(state) {
+      state.debugExpansionUnlocks.cupidArrow = false;
+      state.debugExpansionUnlocks.voxPopuli = false;
+    },
   },
 });
 
-export const { openSocialSummary, closeSocialSummary, setMusicScene } = uiSlice.actions;
+export const {
+  openSocialSummary,
+  closeSocialSummary,
+  setMusicScene,
+  setDebugExpansionUnlock,
+  clearDebugExpansionUnlocks,
+} = uiSlice.actions;
 export default uiSlice.reducer;
 
 export const selectSocialSummaryOpen = (state: { ui: UIState }) =>
   state.ui?.socialSummaryOpen ?? false;
 export const selectMusicScene = (state: { ui: UIState }) =>
   state.ui?.musicScene ?? 'none';
+const EMPTY_DEBUG_EXPANSION_UNLOCKS = { cupidArrow: false, voxPopuli: false } as const;
+export const selectDebugExpansionUnlocks = (state: { ui: UIState }) =>
+  state.ui?.debugExpansionUnlocks ?? EMPTY_DEBUG_EXPANSION_UNLOCKS;

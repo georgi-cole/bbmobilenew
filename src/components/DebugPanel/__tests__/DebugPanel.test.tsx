@@ -167,7 +167,7 @@ describe('DebugPanel forced shock controls', () => {
     const seasonInput = screen.getByRole('spinbutton', { name: "Cupid's Arrow Season" });
     await user.clear(seasonInput);
     await user.type(seasonInput, '3');
-    await user.click(screen.getByRole('button', { name: 'Schedule' }));
+    await user.click(screen.getByRole('button', { name: 'Schedule Cupid season' }));
 
     expect(store.getState().settings.sim.cupidArrowSeasonOverride).toBe(3);
     expect(store.getState().game.cupidArrow?.scheduledSeason).toBe(3);

@@ -3,12 +3,27 @@ export type StoreEntitlementKey =
   | 'publicMode'
   | 'tribunalHouse'
   | 'dramaMode'
+  | 'cupidArrow'
+  | 'voxPopuli'
   | 'noAds'
 
 export type StoreProductKey = 'vip' | StoreEntitlementKey
 
-export type StoreProductCategory = 'bundle' | 'game-mode' | 'house-feature' | 'utility'
-export type StoreProductTheme = 'spotlight' | 'survival' | 'public' | 'tribunal' | 'drama' | 'quiet'
+export type StoreProductCategory =
+  | 'bundle'
+  | 'game-mode'
+  | 'house-feature'
+  | 'expansion'
+  | 'utility'
+export type StoreProductTheme =
+  | 'spotlight'
+  | 'survival'
+  | 'public'
+  | 'tribunal'
+  | 'drama'
+  | 'cupid'
+  | 'vox'
+  | 'quiet'
 export type StoreProductIconName = StoreProductKey | 'fallback'
 
 export interface StoreProductDefinition {
@@ -50,10 +65,20 @@ export const DRAMA_MODE_PRODUCT_ID =
 export const NO_ADS_PRODUCT_ID =
   import.meta.env.VITE_NO_ADS_PRODUCT_ID?.trim() || 'com.georgicole.thebigeye.noads'
 
+export const CUPID_ARROW_PRODUCT_ID =
+  import.meta.env.VITE_CUPID_ARROW_PRODUCT_ID?.trim() ||
+  'com.georgicole.thebigeye.cupidarrow'
+
+export const VOX_POPULI_PRODUCT_ID =
+  import.meta.env.VITE_VOX_POPULI_PRODUCT_ID?.trim() ||
+  'com.georgicole.thebigeye.voxpopuli'
+
 export const VIP_BENEFITS = [
   'Public Mode controls',
   'Surveyeval Mode',
   'Reality Mode',
+  "Cupid's Arrow expansion",
+  'Vox Populi expansion',
   'VIP themes',
 ] as const
 
@@ -182,6 +207,58 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     availableInRelease: true,
   },
   {
+    key: 'cupidArrow',
+    productId: CUPID_ARROW_PRODUCT_ID,
+    title: "Cupid's Arrow",
+    description: "Permanently unlock the Cupid's Arrow seasonal expansion.",
+    entitlement: 'cupidArrow',
+    shortTagline: 'One house. Eight pairs. Every fate is shared.',
+    fullDescription:
+      'A full-season paired format where every victory, nomination, vote, and elimination binds two housemates together until the spell breaks.',
+    benefits: [
+      'A complete paired-season rule set',
+      'Shared power, danger, votes, and exits',
+      'Dedicated ceremonies, broadcasts, and season archive',
+      'Permanent access whenever the expansion is scheduled',
+    ],
+    icon: 'cupidArrow',
+    visualTheme: 'cupid',
+    ownershipType: 'one-time',
+    category: 'expansion',
+    badge: 'Season expansion',
+    accessInstructions:
+      "Cupid's Arrow enters eligible new seasons automatically once the expansion is active.",
+    accessRoute: '/',
+    accessLabel: 'Go to Home',
+    availableInRelease: true,
+  },
+  {
+    key: 'voxPopuli',
+    productId: VOX_POPULI_PRODUCT_ID,
+    title: 'Vox Populi',
+    description: 'Permanently unlock the Vox Populi seasonal expansion.',
+    entitlement: 'voxPopuli',
+    shortTagline: 'The house nominates. The audience decides.',
+    fullDescription:
+      'A social-first season where housemates nominate in secret, competition winners earn immunity, and the audience controls every elimination and the final crown.',
+    benefits: [
+      'Secret two-person nomination ballots',
+      'Audience eliminations and finale decision',
+      'Immunity-led competitions and ballot-ranked backups',
+      'Dedicated Confessional, broadcast, social, and archive journeys',
+    ],
+    icon: 'voxPopuli',
+    visualTheme: 'vox',
+    ownershipType: 'one-time',
+    category: 'expansion',
+    badge: 'Season expansion',
+    accessInstructions:
+      'Vox Populi enters eligible new seasons automatically once the expansion is active.',
+    accessRoute: '/',
+    accessLabel: 'Go to Home',
+    availableInRelease: true,
+  },
+  {
     key: 'noAds',
     productId: NO_ADS_PRODUCT_ID,
     title: 'No Ads',
@@ -210,6 +287,18 @@ export const STANDALONE_PRODUCT_KEYS: readonly StoreEntitlementKey[] =
   STORE_PRODUCT_CATALOG.flatMap((product) =>
     product.entitlement == null || !product.availableInRelease ? [] : [product.entitlement]
   )
+
+export const EXPANSION_PRODUCT_KEYS: readonly StoreEntitlementKey[] =
+  STORE_PRODUCT_CATALOG.flatMap((product) =>
+    product.entitlement != null &&
+    product.category === 'expansion' &&
+    product.availableInRelease
+      ? [product.entitlement]
+      : []
+  )
+
+export const FEATURE_PRODUCT_KEYS: readonly StoreEntitlementKey[] =
+  STANDALONE_PRODUCT_KEYS.filter((key) => !EXPANSION_PRODUCT_KEYS.includes(key))
 
 export function getStoreProductDefinition(key: StoreProductKey): StoreProductDefinition {
   const definition = STORE_PRODUCT_CATALOG.find((product) => product.key === key)

@@ -27,7 +27,7 @@ import RecentActivity from './RecentActivity'
 import HousePulse from '../HousePulse/HousePulse'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import type { Player } from '../../types'
-import { resolveActionTargetMode } from '../../social/socialActions'
+import { resolveActionTargetMode, SOCIAL_ACTIONS } from '../../social/socialActions'
 import type { SubjectPool } from '../../social/socialActions'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import { validateSocialExecution } from '../../social/socialExecutionGuard'
@@ -138,6 +138,7 @@ export default function SocialPanelV2() {
   const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isExecutingRef = useRef(false)
   const safetyConsultationOpen =
+    game.voxPopuli?.status !== 'active' &&
     ['pos_results', 'pos_ceremony'].includes(game.phase) &&
     game.posWinnerId === humanPlayer?.id &&
     Boolean(game.lohId) &&
@@ -327,6 +328,7 @@ export default function SocialPanelV2() {
 
   const hiddenContextualActionIds = useMemo(() => {
     const hidden = new Set<string>()
+    const isVoxPopuli = game.voxPopuli?.status === 'active'
     const beforeNominations = game.phase === 'social_1' && game.nomineeIds.length === 0
     const safetyDecisionOpen =
       ['pos_results', 'pos_ceremony'].includes(game.phase) &&
@@ -358,6 +360,17 @@ export default function SocialPanelV2() {
       'pos_ceremony_results',
       'social_2',
     ].includes(game.phase)
+    if (isVoxPopuli) {
+      hidden.add('pitch_target')
+      hidden.add('ask_loh_target')
+      hidden.add('ask_why_nominated')
+      hidden.add('warn_about_danger')
+      hidden.add('ask_hold_safety')
+      hidden.add('suggest_replacement')
+      hidden.add('rally_votes_against')
+    } else {
+      SOCIAL_ACTIONS.filter((action) => action.voxOnly).forEach((action) => hidden.add(action.id))
+    }
     if (!beforeNominations) hidden.add('pitch_target')
     if (!lohPlanOpen || !game.lohId) hidden.add('ask_loh_target')
     if (!humanIsNominated || !game.lohId) hidden.add('ask_why_nominated')
@@ -385,6 +398,7 @@ export default function SocialPanelV2() {
     game.povSavedId,
     game.lohSocialPlan,
     game.week,
+    game.voxPopuli?.status,
     humanPlayer?.id,
     humanPlayer?.status,
     primaryTargetId,
@@ -604,6 +618,9 @@ export default function SocialPanelV2() {
           type: 'social',
           source: 'manual',
           channels: ['mainLog'],
+          // Player-action receipts belong in the activity strip, not on the
+          // broadcast.  The Faux TV is reserved for house-wide consequences.
+          meta: { suppressTv: true },
         })
       )
       setSuccessPulse(true)
@@ -647,7 +664,16 @@ export default function SocialPanelV2() {
   const allNonUser = game.players.filter((player) => !player.isUser && player.status !== 'evicted')
   const activePlayers = allNonUser.filter((player) => player.status !== 'jury')
   const juryPlayers = allNonUser.filter((player) => player.status === 'jury')
-  const orderedPlayers = [...activePlayers, ...juryPlayers]
+  // Daily immunity in Vox Populi is not a leadership office. Adapt only the
+  // Social panel's display copy; the stored role remains untouched for rules.
+  const orderedPlayers = (game.voxPopuli?.status === 'active'
+    ? [...activePlayers, ...juryPlayers].map((player) => {
+        if (player.id !== game.lohId) return player
+        if (player.status === 'loh') return { ...player, status: 'active' as const }
+        if (player.status === 'loh+pos') return { ...player, status: 'pos' as const }
+        return player
+      })
+    : [...activePlayers, ...juryPlayers]) as Player[]
   const disabledPlayerIds = juryPlayers.map((player) => player.id)
 
   const deltasByTargetId = new Map<string, number>()

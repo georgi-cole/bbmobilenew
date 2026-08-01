@@ -253,6 +253,16 @@ export function useCompetitionFlow({
         reactCompletion.authoritativeLastPlaceId !== explicitWinnerId
           ? reactCompletion.authoritativeLastPlaceId
           : null
+      // An abandoned placement competition has no component-owned completion
+      // payload because the game was unmounted. The pre-ranked partial results
+      // are authoritative for that exit: the human is last and the best
+      // remaining competitor wins. Never let the generic participant[0]
+      // fallback turn an exit into a victory (especially in Final 3).
+      const abandonedPlacementWinnerId =
+        partial && rankingOnlyGame
+          ? (rawResults.find((result) => result.playerId !== humanPlayer?.id)?.playerId ?? null)
+          : null
+      const authoritativeWinnerId = explicitWinnerId ?? abandonedPlacementWinnerId
 
       if (import.meta.env.DEV) {
         console.log('[LOH_CROWN] MinigameHost onDone — challenge completion', {
@@ -262,6 +272,7 @@ export function useCompetitionFlow({
           rawResults,
           reactCompletion,
           explicitWinnerId,
+          abandonedPlacementWinnerId,
           partial,
           pendingChallengeAiScores: pendingChallenge.aiScores,
         })
@@ -269,7 +280,7 @@ export function useCompetitionFlow({
 
       const scoreWinnerId = dispatch(
         completeChallenge(rawResults, {
-          authoritativeWinnerId: explicitWinnerId,
+          authoritativeWinnerId,
           partial: partial === true,
         })
       ) as string | null
@@ -306,8 +317,23 @@ export function useCompetitionFlow({
       // resolveGlassBridgeOutcome) applied the winner synchronously before
       // this callback fires.
       const isHohComp = capturedPrizeType === 'LOH'
-      const winSymbol = isHohComp ? '👑' : '🛡️'
-      const winLabel = isHohComp ? 'Leader of the House' : 'Power of Safety'
+      const isVoxComp = isHohComp && game.voxPopuli?.status === 'active'
+      const isVoxFinalFourComp = isVoxComp && aliveIds.length === 4
+      const isVoxImmunityComp = isVoxComp && !isVoxFinalFourComp
+      const winSymbol = isVoxFinalFourComp
+        ? '🏆'
+        : isVoxImmunityComp
+          ? '🛡️'
+          : isHohComp
+            ? '👑'
+            : '🛡️'
+      const winLabel = isVoxFinalFourComp
+        ? 'the Final 4 Competition'
+        : isVoxImmunityComp
+          ? 'Immunity'
+          : isHohComp
+            ? 'Leader of the House'
+            : 'Power of Safety'
 
       // Prefer the canonical winner already committed to the store by the
       // game's feature thunk.  storeRef gives the live Redux state — not
@@ -417,8 +443,8 @@ export function useCompetitionFlow({
       const tiles: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
         rect: getTileRect(winnerPlayer.id),
         badge: winSymbol,
-        badgeImageSrc: isHohComp ? LOH_BADGE_SRC : undefined,
-        badgeVariant: isCupidArrowActive(game)
+        badgeImageSrc: isHohComp && !isVoxComp ? LOH_BADGE_SRC : undefined,
+        badgeVariant: !isVoxComp && isCupidArrowActive(game)
           ? isHohComp
             ? 'cupid-kiss'
             : 'cupid-hug'
@@ -444,7 +470,7 @@ export function useCompetitionFlow({
         measureA: () => getTileRect(finalWinnerId),
       })
     },
-    [dispatch, game, getTileRect, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
+    [aliveIds.length, dispatch, game, getTileRect, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
   )
 
   return {

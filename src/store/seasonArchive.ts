@@ -67,6 +67,8 @@ export interface SeasonArchive {
   rewardsEarned?: string[];
   /** True when Cupid's Arrow activated during this season. Used for its cooldown. */
   cupidArrowActivated?: boolean;
+  /** True when Vox Populi governed this season. Used for its cooldown. */
+  voxPopuliActivated?: boolean;
   /**
    * Week numbers where a double eviction occurred (2 players evicted in one week).
    * Used to award survivedDoubleEviction points to players who survived those weeks.

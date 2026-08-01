@@ -139,11 +139,11 @@ describe('PublicFavoriteOverlay', () => {
     expect(options).not.toHaveProperty('surgeTargetId')
   })
 
-  it('shows a countdown to the final reveal alongside the housemate biography', () => {
+  it('does not leak the season-winner countdown into favorite-player voting', () => {
     render(<PublicFavoriteOverlay candidates={PLAYERS} seed={41} onComplete={vi.fn()} />)
 
     const spotlight = screen.getByRole('region', { name: 'Houseguest Spotlight' })
-    expect(within(spotlight).getByLabelText(/Final reveal in 0:\d{2}/i)).toBeInTheDocument()
+    expect(within(spotlight).queryByLabelText(/Final reveal in 0:\d{2}/i)).not.toBeInTheDocument()
   })
 
   it('makes the rewarded Viewer Spotlight explicitly cosmetic', async () => {

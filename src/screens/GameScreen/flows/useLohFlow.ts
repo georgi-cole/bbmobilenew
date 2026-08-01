@@ -33,6 +33,7 @@ export function useLohFlow({
   searchParams,
   dispatch,
 }: UseLohFlowOptions) {
+  const isVoxPopuli = game.voxPopuli?.status === 'active'
   // ── Advance-picked LOH winner ceremony (outgoing LOH bypass) ──────────
   // When the human is the outgoing LOH, no MinigameHost challenge runs.
   // advance() picks the winner randomly → phase becomes loh_results with
@@ -65,16 +66,18 @@ export function useLohFlow({
 
   const aliveIds = useMemo(() => alivePlayers.map((p) => p.id), [alivePlayers])
   const hohCompParticipants = useMemo(() => {
-    if (game.phase !== 'loh_comp' || !game.prevHohId) return aliveIds
+    if (isVoxPopuli || game.phase !== 'loh_comp' || !game.prevHohId) return aliveIds
     const outgoingIds = new Set(expandCupidIds(game, [game.prevHohId]))
     return aliveIds.filter((id) => !outgoingIds.has(id))
-  }, [game, aliveIds])
+  }, [game, aliveIds, isVoxPopuli])
 
   const humanIsHoH = Boolean(
+    !isVoxPopuli &&
     humanPlayer &&
     (game.lohId === humanPlayer.id || getCupidPartnerId(game, game.lohId) === humanPlayer.id)
   )
   const humanIsOutgoingHoh =
+    !isVoxPopuli &&
     game.phase === 'loh_comp' &&
     !!game.prevHohId &&
     Boolean(
@@ -118,7 +121,9 @@ export function useLohFlow({
   const showNominationDangerSignals =
     game.phase === 'nomination_results' && Boolean(game.awaitingNominations) && !showNomAnim
   const canUsePublicNomineeRule =
-    game.publicModeEnabled === true && game.doubleEviction?.weekActive !== true
+    !isVoxPopuli &&
+    game.publicModeEnabled === true &&
+    game.doubleEviction?.weekActive !== true
   const nominationDangerLockedIds =
     showNominationDangerSignals && canUsePublicNomineeRule
       ? expandCupidIds(game, game.lastHohCompFinisherId ? [game.lastHohCompFinisherId] : [])
@@ -158,7 +163,9 @@ export function useLohFlow({
   const lohCeremonyTileId =
     showNomAnim && game.lohId && game.players.some((p) => p.id === game.lohId) ? game.lohId : null
   const shouldShowNominationCeremony =
-    showNomAnim && nomCeremonyTileIds.length > 0 && lohCeremonyTileId != null
+    showNomAnim &&
+    nomCeremonyTileIds.length > 0 &&
+    (isVoxPopuli || lohCeremonyTileId != null)
 
   // ── Human LOH nomination flow (single multi-select modal) ────────────────
   // Shown when the human LOH must pick their two nominees simultaneously.
@@ -228,6 +235,18 @@ export function useLohFlow({
   // Used by the nomination ceremony overlay to show role pills on each nominee tile.
   const nominationLabels: Record<string, string> = useMemo(() => {
     const labels: Record<string, string> = {}
+    if (isVoxPopuli) {
+      const automaticNomineeId =
+        game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId ?? null
+      game.nomineeIds.forEach((id) => {
+        const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0
+        labels[id] =
+          id === automaticNomineeId
+            ? 'Last Place'
+            : `${votes} Vote${votes === 1 ? '' : 's'}`
+      })
+      return labels
+    }
 
     // While the human LOH animation is playing, the reducer hasn't committed
     // nominationContext yet, so derive the pills from the pending picks.
@@ -258,7 +277,7 @@ export function useLohFlow({
       })
     }
     return labels
-  }, [game, showHumanNomAnim, pendingNominees, canUsePublicNomineeRule])
+  }, [game, showHumanNomAnim, pendingNominees, canUsePublicNomineeRule, isVoxPopuli])
 
   // ── Dev: manually trigger nomination animation ────────────────────────────
   // Only visible in development builds for easy QA verification.

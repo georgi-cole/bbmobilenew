@@ -74,6 +74,7 @@ export interface AutonomyContext {
   isDoubleEviction?: boolean
   specialVeto?: string | null
   lastHohCompFinisherId?: string | null
+  voxPopuliActive?: boolean
   playerSocialActionCount?: number
   dramaMode?: boolean
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
@@ -115,6 +116,7 @@ export interface AutonomyStore {
       doubleEviction?: { weekActive?: boolean }
       specialVeto?: { activeType?: string | null }
       lastHohCompFinisherId?: string | null
+      voxPopuli?: { status?: string } | null
     }
   }
 }
@@ -357,16 +359,19 @@ function buildActorConstraints(
     context.phase === 'pos_ceremony' ||
     context.phase === 'pos_ceremony_results'
   const actorIsNominee = nomineeIds.includes(actor.id) || actor.status.includes('nominated')
-  const actorIsCurrentHoh = context.lohId === actor.id || actor.status.includes('loh')
+  const actorIsCurrentHoh =
+    !context.voxPopuliActive && (context.lohId === actor.id || actor.status.includes('loh'))
   const actorHasSafetyPower =
     safetyIsLive && (context.posWinnerId === actor.id || actor.status.includes('pos'))
-  const playerIsHoh = context.lohId === playerId || playerEntry?.status.includes('loh') === true
+  const playerIsHoh =
+    !context.voxPopuliActive &&
+    (context.lohId === playerId || playerEntry?.status.includes('loh') === true)
   const playerHasSafetyPower =
     safetyIsLive &&
     (context.posWinnerId === playerId || playerEntry?.status.includes('pos') === true)
   const playerIsNominee =
     nomineeIds.includes(playerId) || playerEntry?.status.includes('nominated') === true
-  const playerCanVote = !playerIsNominee && !playerIsHoh
+  const playerCanVote = !context.voxPopuliActive && !playerIsNominee && !playerIsHoh
   const playerFinishedLastLohComp = context.lastHohCompFinisherId === playerId
   const actorWasSaved = context.povSavedId === actor.id
   const actorIsPendingEvictee = context.pendingEvictionId === actor.id
@@ -599,7 +604,11 @@ function resolveIncomingInteractionPlan(
     } else {
       plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' }
     }
-  } else if (context.phase === 'pos_ceremony_results' && constraints.actorIsNominee) {
+  } else if (
+    !context.voxPopuliActive &&
+    context.phase === 'pos_ceremony_results' &&
+    constraints.actorIsNominee
+  ) {
     if (context.dramaMode && constraints.playerIsHoh) {
       plan = {
         type: signals.isMildEnemy ? 'warning' : 'check_in',
@@ -631,6 +640,16 @@ function resolveIncomingInteractionPlan(
 
   if (!plan) {
     plan = fallbackInteractionPlan(context.phase, constraints, signals)
+  }
+  if (
+    !plan &&
+    context.voxPopuliActive &&
+    ['week_start', 'loh_results', 'social_1', 'social_2'].includes(context.phase)
+  ) {
+    plan =
+      signals.affinity >= 0
+        ? { type: 'check_in', scenarioKey: 'generic_check_in' }
+        : { type: 'gossip', scenarioKey: 'generic_gossip' }
   }
   if (!plan) return null
   if (canSendInteractionType(plan.type, constraints, signals)) {
@@ -690,7 +709,7 @@ export function computeIncomingInteractionEngagementScore(
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[] = []
 ): number {
-  const cfg = socialConfig.incomingInteractionConfig
+  const cfg = getIncomingInteractionConfig(context)
   const w = cfg.weights
   const signals = buildRelationshipSignals(actorId, playerId, context)
 
@@ -733,13 +752,29 @@ export interface IncomingInteractionEnqueueDecision {
   recencyPenalty?: number
 }
 
+function getIncomingInteractionConfig(context: AutonomyContext) {
+  const base = socialConfig.incomingInteractionConfig
+  if (!context.voxPopuliActive) return base
+  // Vox Populi is built around the social temperature in the house. Allow a
+  // fuller, event-led day while retaining dedupe and per-housemate safeguards.
+  return {
+    ...base,
+    maxPerWeek: 7,
+    maxGeneratedPerCheckpoint: 4,
+    maxActive: 14,
+    maxMajorActive: 7,
+    cooldownTicks: 0,
+    scoreThreshold: 0.22,
+  }
+}
+
 export function evaluateIncomingInteractionEnqueueDecision(
   actorId: string,
   playerId: string,
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[]
 ): IncomingInteractionEnqueueDecision {
-  const cfg = socialConfig.incomingInteractionConfig
+  const cfg = getIncomingInteractionConfig(context)
   const constraints = buildActorConstraints(actorId, playerId, context)
 
   if (!constraints) {
@@ -757,13 +792,13 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_context_rules' }
   }
   const planPriority = getIncomingInteractionPriority(plan.type, plan.scenarioKey)
-  const isMajorInteraction = context.dramaMode && planPriority === 'high'
+  const isMajorInteraction = (context.dramaMode || context.voxPopuliActive) && planPriority === 'high'
   const isCriticalConsultation = plan.scenarioKey === 'loh_consults_safety_holder'
 
   const globalActive = pendingInteractions.filter(
     (interaction) => !interaction.resolved && isIncomingInteractionActionable(interaction)
   ).length
-  const maxActive = context.dramaMode ? cfg.maxActive : 4
+  const maxActive = context.dramaMode || context.voxPopuliActive ? cfg.maxActive : 4
   const majorActive = pendingInteractions.filter(
     (interaction) =>
       !interaction.resolved &&
@@ -805,7 +840,10 @@ export function evaluateIncomingInteractionEnqueueDecision(
     context.week,
     cfg.cooldownTicks
   )
-  if (recencyPenalty >= 0.5 && !(context.dramaMode && isCriticalEventScenario(plan))) {
+  if (
+    recencyPenalty >= 0.5 &&
+    !((context.dramaMode || context.voxPopuliActive) && isCriticalEventScenario(plan))
+  ) {
     if (socialConfig.verbose) {
       console.debug(`[autonomy] skip ${actorId}: on cooldown (recencyPenalty=${recencyPenalty})`)
     }
@@ -839,10 +877,21 @@ export function evaluateIncomingInteractionEnqueueDecision(
   )
   const score =
     baseScore +
-    (context.dramaMode && isCriticalEventScenario(plan)
-      ? 0.9
+    (context.voxPopuliActive
+      ? Math.max(
+          0,
+          0.34 -
+            pendingInteractions.filter(
+              (interaction) =>
+                interaction.fromId === actorId && interaction.createdWeek === context.week
+            ).length *
+              0.17
+        )
+      : 0) +
+    ((context.dramaMode || context.voxPopuliActive) && isCriticalEventScenario(plan)
+      ? context.voxPopuliActive ? 0.96 : 0.9
       : eventDrivenScenarios.has(plan.scenarioKey)
-        ? 0.2
+        ? context.voxPopuliActive ? 0.34 : 0.2
         : 0)
   if (score < cfg.scoreThreshold) {
     if (socialConfig.verbose) {
@@ -1206,6 +1255,9 @@ export function scheduleIncomingInteractionsForPhase(
   }
 
   const gameState = state.game
+  if (phase.startsWith('final3_') && gameState?.voxPopuli?.status !== 'active') {
+    return
+  }
   const players: AutonomyPlayer[] = contextOverride?.players ?? gameState?.players ?? []
   const week: number = contextOverride?.week ?? gameState?.week ?? 1
   const relationships: RelationshipsMap =
@@ -1254,6 +1306,8 @@ export function scheduleIncomingInteractionsForPhase(
     specialVeto: contextOverride?.specialVeto ?? gameState?.specialVeto?.activeType ?? null,
     lastHohCompFinisherId:
       contextOverride?.lastHohCompFinisherId ?? gameState?.lastHohCompFinisherId ?? null,
+    voxPopuliActive:
+      contextOverride?.voxPopuliActive ?? gameState?.voxPopuli?.status === 'active',
     playerSocialActionCount:
       contextOverride?.playerSocialActionCount ??
       (socialState.actionHistory ?? socialState.sessionLogs ?? []).filter(
@@ -1309,18 +1363,21 @@ export function scheduleIncomingInteractionsForPhase(
   ).length
   const criticalDecisionCount = rankedDecisions.filter(
     (entry) =>
-      context.dramaMode && entry.decision.allowed && isCriticalEventScenario(entry.decision.plan)
+      (context.dramaMode || context.voxPopuliActive) &&
+      entry.decision.allowed &&
+      isCriticalEventScenario(entry.decision.plan)
   ).length
+  const interactionConfig = getIncomingInteractionConfig(context)
   const checkpointBudget =
     criticalDecisionCount > 0
       ? Math.max(
-          socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint,
+          interactionConfig.maxGeneratedPerCheckpoint,
           Math.min(3, criticalDecisionCount)
         )
-      : socialConfig.incomingInteractionConfig.maxGeneratedPerCheckpoint
-  const weeklyGenerationLimit = context.dramaMode
+      : interactionConfig.maxGeneratedPerCheckpoint
+  const weeklyGenerationLimit = context.dramaMode || context.voxPopuliActive
     ? Math.max(
-        socialConfig.incomingInteractionConfig.maxPerWeek,
+        interactionConfig.maxPerWeek,
         alreadyCreatedThisWeek + criticalDecisionCount
       )
     : 4
@@ -1368,6 +1425,7 @@ export function scheduleIncomingInteractionsForPhase(
       continue
     }
 
+    const useVoxDrama = dramaMode || context.voxPopuliActive === true
     const textResult = generateInteractionText(
       actor.id,
       playerId,
@@ -1375,9 +1433,9 @@ export function scheduleIncomingInteractionsForPhase(
       context,
       pendingInteractions,
       context.random,
-      dramaMode
+      useVoxDrama
     )
-    const subject = dramaMode
+    const subject = useVoxDrama
       ? selectInteractionSubject(actor.id, playerId, plan.type, context)
       : undefined
     const subjectName = subject?.name ?? subject?.id
@@ -1397,7 +1455,7 @@ export function scheduleIncomingInteractionsForPhase(
       text: interactionText,
       week,
       phase,
-      mode: dramaMode ? 'drama' : 'normal',
+      mode: useVoxDrama ? 'drama' : 'normal',
       payload: {
         scenarioKey: plan.scenarioKey,
         variantFamilyId: textResult.variantFamilyId,
@@ -1437,7 +1495,8 @@ export function scheduleIncomingInteractionsForPhase(
       week,
     })
     const dedupeReason =
-      mustDeliverConsultationNow && candidateDedupeReason !== 'deduped_same_scenario'
+      mustDeliverConsultationNow &&
+      candidateDedupeReason !== 'deduped_same_scenario'
         ? null
         : candidateDedupeReason
     if (dedupeReason) {
@@ -1466,10 +1525,14 @@ export function scheduleIncomingInteractionsForPhase(
           priority,
           slotCounts,
           visibleActiveCount,
+          deliveryConfigOverride: context.voxPopuliActive
+            ? { maxActiveVisible: 7, maxMajorActiveVisible: 7, maxDeliveredPerPhase: 3 }
+            : undefined,
         })
     if (!slot) {
       const dropReason =
-        visibleActiveCount >= socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible
+        visibleActiveCount >=
+        (context.voxPopuliActive ? 7 : socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible)
           ? 'blocked_by_visible_cap'
           : 'blocked_by_delivery_cap'
       logIncomingInteractionDecision(store.dispatch, {

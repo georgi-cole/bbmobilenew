@@ -38,6 +38,15 @@ export const resolveWildcardWesternOutcome =
       });
     }
 
+    // Final 3 uses the Western game as a standalone challenge.  Its winner is
+    // handed back to the Final 3 flow by the component callback, so do not try
+    // to award the normal LOH/POS prize (or leave the game waiting forever).
+    const isFinalThreeMinigame = /^final3_comp[123]_minigame$/.test(phase);
+    if (isFinalThreeMinigame) {
+      dispatch(markWildcardWesternOutcomeResolved());
+      return;
+    }
+
     if (ww.prizeType === 'LOH' && phase !== 'loh_comp') {
       if (import.meta.env.DEV) {
         console.error(

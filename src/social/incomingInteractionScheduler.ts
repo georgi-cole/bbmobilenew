@@ -41,6 +41,7 @@ interface SchedulerStore {
       awaitingPovDecision?: boolean
       awaitingPovSaveTarget?: boolean
       players?: Array<{ id: string; status: string; isUser?: boolean }>
+      voxPopuli?: { status?: string } | null
     }
   }
 }
@@ -267,14 +268,20 @@ export function assignDeliverySlot({
   priority,
   slotCounts,
   visibleActiveCount,
+  deliveryConfigOverride,
 }: {
   phase: string
   week: number
   priority: IncomingInteractionPriority
   slotCounts: Map<string, number>
   visibleActiveCount: number
+  deliveryConfigOverride?: Partial<{
+    maxActiveVisible: number
+    maxMajorActiveVisible: number
+    maxDeliveredPerPhase: number
+  }>
 }): { scheduledForWeek: number; scheduledForPhase: string; deliveryReason: string } | null {
-  const deliveryConfig = socialConfig.incomingInteractionDeliveryConfig
+  const deliveryConfig = { ...socialConfig.incomingInteractionDeliveryConfig, ...deliveryConfigOverride }
   const phaseIndex = getDeliveryPhaseIndex(phase)
   if (phaseIndex === null) {
     return null
@@ -323,13 +330,22 @@ export function deliverScheduledIncomingInteractionsForPhase(
   contextOverride?: { week?: number }
 ): void {
   const state = store.getState()
+  if (phase.startsWith('final3_') && state.game?.voxPopuli?.status !== 'active') return
   const socialState = state.social
   if (!socialState) return
 
   const scheduled = socialState.scheduledIncomingInteractions ?? []
   if (scheduled.length === 0) return
 
-  const deliveryConfig = socialConfig.incomingInteractionDeliveryConfig
+  const voxPopuliActive = state.game?.voxPopuli?.status === 'active'
+  const deliveryConfig = voxPopuliActive
+    ? {
+        ...socialConfig.incomingInteractionDeliveryConfig,
+        maxActiveVisible: 7,
+        maxMajorActiveVisible: 7,
+        maxDeliveredPerPhase: 3,
+      }
+    : socialConfig.incomingInteractionDeliveryConfig
   const week = contextOverride?.week ?? state.game?.week ?? 1
   const phaseIndex = getDeliveryPhaseIndex(phase)
   if (phaseIndex === null) return
@@ -353,6 +369,15 @@ export function deliverScheduledIncomingInteractionsForPhase(
   let remainingPhaseSlots = Math.max(0, deliveryConfig.maxDeliveredPerPhase - deliveredThisPhase)
   let remainingActionableSlots = Math.max(0, deliveryConfig.maxActiveVisible - activeVisibleCount)
   let remainingMajorSlots = Math.max(0, deliveryConfig.maxMajorActiveVisible - activeMajorCount)
+  const actorsDeliveredThisPhase = new Set(
+    (socialState.incomingInteractions ?? [])
+      .filter(
+        (interaction) =>
+          interaction.payload?.deliveredWeek === week &&
+          interaction.payload?.deliveredPhase === phase
+      )
+      .map((interaction) => interaction.fromId)
+  )
 
   const eligible: ScheduledIncomingInteraction[] = []
   const remaining: ScheduledIncomingInteraction[] = []
@@ -450,6 +475,11 @@ export function deliverScheduledIncomingInteractionsForPhase(
   const deliveries: ScheduledIncomingInteraction[] = []
 
   for (const entry of eligible) {
+    if (voxPopuliActive && actorsDeliveredThisPhase.has(entry.interaction.fromId)) {
+      logDecision(entry, 'postponed', 'postponed_actor_already_seen_this_phase')
+      remaining.push(entry)
+      continue
+    }
     const hasActiveFromActor = activeVisible.some(
       (visible) => !visible.resolved && visible.fromId === entry.interaction.fromId
     )
@@ -494,6 +524,7 @@ export function deliverScheduledIncomingInteractionsForPhase(
     }
 
     deliveries.push(entry)
+    if (voxPopuliActive) actorsDeliveredThisPhase.add(entry.interaction.fromId)
     logDecision(entry, 'delivery', 'phase_checkpoint', entry.deliveryReason)
     remainingPhaseSlots -= 1
     if (actionable) {

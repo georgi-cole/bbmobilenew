@@ -12,12 +12,14 @@ import {
   selectSpotlightItem,
 } from './publicFavoriteSpotlight'
 import { buildPublicFavoriteForecast } from './publicFavoriteOutcome'
+import { buildFinaleAudienceFeed } from './finaleAudienceFeed'
 import './PublicFavoriteOverlay.css'
 import './PublicFavoriteProfessional.css'
 
 interface Props {
   candidates: Player[]
   seed: number
+  mode?: 'favorite' | 'season_winner'
   awardAmount?: number
   eliminationIntervalMs?: number
   onComplete: (winnerId: string) => void
@@ -44,6 +46,8 @@ interface VoteEntry {
 }
 
 const ELIMINATION_INTERVAL_MS = 4800
+const SEASON_WINNER_VOTE_MS = 23_000
+const SEASON_WINNER_IDENTITY_REVEAL_MS = 10_000
 const VOTE_TICK_INTERVAL_MS = 1000
 const INTRO_MS = 1600
 const CLOCK_INTERVAL_MS = 500
@@ -124,11 +128,15 @@ function VoteRankingBoard({
   candidatesById,
   selectedPlayerId,
   onSelect,
+  identitiesHidden,
+  anonymousLabelsById,
 }: {
   entries: VoteEntry[]
   candidatesById: Record<string, Player>
   selectedPlayerId: string | null
   onSelect: (playerId: string) => void
+  identitiesHidden: boolean
+  anonymousLabelsById: Record<string, string>
 }) {
   const visibleEntries = entries.slice(0, MAX_VISIBLE_RANKS)
   const hiddenCount = Math.max(0, entries.length - visibleEntries.length)
@@ -136,28 +144,40 @@ function VoteRankingBoard({
   return (
     <section className="pf-overlay__board" aria-label="Public vote ranking board">
       <div className="pf-overlay__board-header">
-        <p className="pf-overlay__board-title">Live standings</p>
+        <p className="pf-overlay__board-title">Live audience vote</p>
         <span>{entries.length} remaining</span>
       </div>
       <div className="pf-overlay__board-list">
         {visibleEntries.map((entry) => {
           const player = candidatesById[entry.playerId]
           if (!player) return null
+          const displayName = identitiesHidden
+            ? (anonymousLabelsById[entry.playerId] ?? 'Finalist')
+            : entry.name
           return (
             <motion.button
               key={entry.playerId}
               type="button"
               className={`pf-overlay__rank-card${entry.isLeader ? ' pf-overlay__rank-card--leader' : ''}${entry.isSpotlighted ? ' pf-overlay__rank-card--surge' : ''}${selectedPlayerId === entry.playerId ? ' pf-overlay__rank-card--selected' : ''}`}
-              onClick={() => onSelect(entry.playerId)}
-              aria-label={`${entry.name}, rank ${entry.rank}, ${entry.percent}%`}
+              onClick={() => {
+                if (!identitiesHidden) onSelect(entry.playerId)
+              }}
+              aria-label={`${displayName}, rank ${entry.rank}, ${entry.percent}%`}
+              aria-disabled={identitiesHidden}
               layout
               transition={{ layout: { duration: 0.32, ease: 'easeOut' } }}
             >
               <span className="pf-overlay__rank-number">#{entry.rank}</span>
-              <PlayerPortrait player={player} />
+              {identitiesHidden ? (
+                <span className="pf-overlay__portrait pf-overlay__portrait--sealed" aria-hidden="true">
+                  ?
+                </span>
+              ) : (
+                <PlayerPortrait player={player} />
+              )}
               <div className="pf-overlay__rank-copy">
                 <div className="pf-overlay__rank-name-row">
-                  <span className="pf-overlay__rank-name">{entry.name}</span>
+                  <span className="pf-overlay__rank-name">{displayName}</span>
                   <TrendMarker entry={entry} />
                 </div>
                 <div className="pf-overlay__accent-rail" aria-hidden="true">
@@ -194,11 +214,38 @@ function HousemateSpotlight({
   spotlight,
   finalTwoNames,
   revealCountdown,
+  identitiesHidden,
+  showRevealCountdown,
 }: {
   spotlight: ReturnType<typeof selectSpotlightItem>
   finalTwoNames: string | null
   revealCountdown: number
+  identitiesHidden: boolean
+  showRevealCountdown: boolean
 }) {
+  if (identitiesHidden) {
+    return (
+      <motion.section
+        className="pf-overlay__spotlight pf-overlay__spotlight--sealed"
+        role="region"
+        aria-label="Finalist identities sealed"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="pf-overlay__sealed-copy">
+          <p className="pf-overlay__leader-kicker">The final vote is live</p>
+          <h3 className="pf-overlay__leader-name">Two identities. One crown.</h3>
+          <p className="pf-overlay__spotlight-fact">
+            The percentages are moving, but the faces behind them remain hidden for now.
+          </p>
+        </div>
+        <div className="pf-overlay__sealed-pair" aria-hidden="true">
+          <span>?</span>
+          <span>?</span>
+        </div>
+      </motion.section>
+    )
+  }
   if (!spotlight) return null
   const { player } = spotlight.item
 
@@ -224,13 +271,15 @@ function HousemateSpotlight({
         >
           {spotlight.fact}
         </motion.p>
-        <p
-          className="pf-overlay__moment-stat"
-          aria-label={`Final reveal in ${formatRevealCountdown(revealCountdown)}`}
-        >
-          <span>Final reveal in</span>
-          <strong>{formatRevealCountdown(revealCountdown)}</strong>
-        </p>
+        {showRevealCountdown && (
+          <p
+            className="pf-overlay__moment-stat pf-overlay__moment-stat--final-countdown"
+            aria-label={`Final reveal in ${formatRevealCountdown(revealCountdown)}`}
+          >
+            <span>Final reveal in</span>
+            <strong>{formatRevealCountdown(revealCountdown)}</strong>
+          </p>
+        )}
       </div>
       <div className="pf-overlay__leader-portrait-wrap">
         <div className="pf-overlay__leader-glow" aria-hidden="true" />
@@ -288,13 +337,47 @@ function ViewerSpotlightPanel({
   )
 }
 
+function FinaleAudienceFeed({
+  items,
+}: {
+  items: ReturnType<typeof buildFinaleAudienceFeed>
+}) {
+  if (items.length === 0) return null
+  return (
+    <section className="pf-overlay__audience-feed" aria-label="Live audience reactions">
+      <header>
+        <span className="pf-overlay__live-dot" />
+        <strong>Audience live</strong>
+        <small>Comments and voting activity</small>
+      </header>
+      <div className="pf-overlay__audience-feed-list" aria-live="polite">
+        {items.map((item) => (
+          <motion.p
+            key={item.id}
+            className={`pf-overlay__audience-feed-item pf-overlay__audience-feed-item--${item.kind}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <span>{item.kind === 'service' ? 'LIVE DESK' : 'VIEWER'}</span>
+            {item.text}
+          </motion.p>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function FinalReveal({
   winner,
+  runnerUp,
   awardAmount,
+  mode,
   onClose,
 }: {
   winner: Player | undefined
+  runnerUp: Player | undefined
   awardAmount: number
+  mode: 'favorite' | 'season_winner'
   onClose: () => void
 }) {
   return (
@@ -305,7 +388,9 @@ function FinalReveal({
       transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
     >
       <span className="pf-overlay__winner-badge">FINAL REVEAL</span>
-      <p className="pf-overlay__eyebrow">Public&apos;s Favorite Player</p>
+      <p className="pf-overlay__eyebrow">
+        {mode === 'season_winner' ? 'Season Winner' : `Public's Favorite Player`}
+      </p>
       <div className="pf-overlay__winner-avatar-wrap">
         <div className="pf-overlay__winner-glow" aria-hidden="true" />
         {winner ? (
@@ -319,9 +404,18 @@ function FinalReveal({
           </span>
         )}
       </div>
+      {winner && runnerUp && mode === 'season_winner' && (
+        <p className="pf-overlay__runner-up">{runnerUp.name} finishes as runner-up.</p>
+      )}
       <h2 className="pf-overlay__headline">{winner?.name ?? 'Result unavailable'}</h2>
-      {winner && <p className="pf-overlay__winner-prize">Wins {formatEyeoleans(awardAmount)}!</p>}
-      <p className="pf-overlay__sub">The season-long audience record has spoken.</p>
+      {winner && mode === 'favorite' && (
+        <p className="pf-overlay__winner-prize">Wins {formatEyeoleans(awardAmount)}!</p>
+      )}
+      <p className="pf-overlay__sub">
+        {mode === 'season_winner'
+          ? 'The audience has spoken. The season belongs to its champion.'
+          : 'The season-long audience record has spoken.'}
+      </p>
       <button type="button" className="pf-overlay__winner-cta" onClick={onClose} disabled={!winner}>
         Continue
       </button>
@@ -332,12 +426,16 @@ function FinalReveal({
 export default function PublicFavoriteOverlay({
   candidates,
   seed,
+  mode = 'favorite',
   awardAmount = 25000,
-  eliminationIntervalMs = ELIMINATION_INTERVAL_MS,
+  eliminationIntervalMs,
   onComplete,
   onAudienceSurgeRequest,
 }: Props) {
   const publicOpinion = useAppSelector(selectPublicOpinion)
+  const configuredEliminationIntervalMs =
+    eliminationIntervalMs ?? (mode === 'season_winner' ? SEASON_WINNER_VOTE_MS : ELIMINATION_INTERVAL_MS)
+  const effectiveIntroMs = mode === 'season_winner' ? 0 : INTRO_MS
   const prefersReducedMotion = useReducedMotion()
   const forecast = useMemo(
     () => buildPublicFavoriteForecast(candidates, publicOpinion, seed),
@@ -348,12 +446,24 @@ export default function PublicFavoriteOverlay({
     () => Object.fromEntries(candidates.map((candidate) => [candidate.id, candidate])),
     [candidates]
   )
+  const anonymousLabelsById = useMemo(
+    () =>
+      Object.fromEntries(
+        candidates.map((candidate) => [
+          candidate.id,
+          '?',
+        ])
+      ),
+    [candidates]
+  )
 
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [mountedAt] = useState(() => Date.now())
   const [introSkipBoostMs, setIntroSkipBoostMs] = useState(0)
   const [fastForwarding, setFastForwarding] = useState(false)
-  const [nextShiftAt, setNextShiftAt] = useState(() => Date.now() + eliminationIntervalMs)
+  const [nextShiftAt, setNextShiftAt] = useState(
+    () => Date.now() + configuredEliminationIntervalMs
+  )
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(candidates[0]?.id ?? null)
   const [spotlightPending, setSpotlightPending] = useState(false)
   const [spotlightUsed, setSpotlightUsed] = useState(false)
@@ -363,6 +473,7 @@ export default function PublicFavoriteOverlay({
     startedAt: number
   } | null>(null)
   const [spotlightRotation, setSpotlightRotation] = useState(0)
+  const [audienceFeedCount, setAudienceFeedCount] = useState(3)
   const previousRanksRef = useRef<Record<string, number>>({})
   const previousEliminatedCountRef = useRef(0)
   const eliminatedIdsRef = useRef<Set<string>>(new Set())
@@ -372,8 +483,8 @@ export default function PublicFavoriteOverlay({
   const fastForwardButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const effectiveEliminationIntervalMs = fastForwarding
-    ? Math.min(eliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS)
-    : eliminationIntervalMs
+    ? Math.min(configuredEliminationIntervalMs, FAST_FORWARD_ELIMINATION_INTERVAL_MS)
+    : configuredEliminationIntervalMs
 
   const { votes, eliminated, winnerId, isComplete } = useBattleBackVoting({
     candidates: candidateIds,
@@ -383,6 +494,16 @@ export default function PublicFavoriteOverlay({
     driftAmount: fastForwarding ? 1.4 : 2.4,
     targetPercentages: forecast.targetPercentages,
   })
+  const finaleAudienceFeed = useMemo(
+    () =>
+      mode === 'season_winner'
+        ? buildFinaleAudienceFeed(
+            candidates.map((candidate) => candidate.name),
+            seed
+          )
+        : [],
+    [candidates, mode, seed]
+  )
 
   useEffect(() => {
     mountedRef.current = true
@@ -400,6 +521,18 @@ export default function PublicFavoriteOverlay({
     const id = window.setInterval(() => setNowMs(Date.now()), CLOCK_INTERVAL_MS)
     return () => window.clearInterval(id)
   }, [isComplete])
+
+  useEffect(() => {
+    if (mode !== 'season_winner' || isComplete || finaleAudienceFeed.length === 0) return
+    const id = window.setInterval(
+      () =>
+        setAudienceFeedCount((count) =>
+          Math.min(finaleAudienceFeed.length, count + 1)
+        ),
+      fastForwarding ? 650 : 1700
+    )
+    return () => window.clearInterval(id)
+  }, [fastForwarding, finaleAudienceFeed.length, isComplete, mode])
 
   useEffect(() => {
     if (isComplete) return
@@ -501,53 +634,68 @@ export default function PublicFavoriteOverlay({
   const finalTwoNames =
     activePlayers.length === 2 ? `${activePlayers[0].name} vs ${activePlayers[1].name}` : null
   const selectedPlayer = selectedPlayerId ? (candidatesById[selectedPlayerId] ?? null) : null
-  const spotlightWindowRemaining = countdown(INTRO_MS + SPOTLIGHT_SELECTION_WINDOW_MS - elapsedMs)
+  const spotlightWindowRemaining = countdown(
+    effectiveIntroMs + SPOTLIGHT_SELECTION_WINDOW_MS - elapsedMs
+  )
   const canActivateSpotlight =
     !isComplete &&
     !spotlightUsed &&
     !spotlightPending &&
-    elapsedMs >= INTRO_MS &&
-    elapsedMs < INTRO_MS + SPOTLIGHT_SELECTION_WINDOW_MS
+    elapsedMs >= effectiveIntroMs &&
+    elapsedMs < effectiveIntroMs + SPOTLIGHT_SELECTION_WINDOW_MS
   const phase: PublicVotePhase = isComplete
     ? 'final_reveal'
-    : elapsedMs < INTRO_MS
+    : elapsedMs < effectiveIntroMs
       ? 'intro'
       : eliminationActive
         ? 'elimination'
         : activePlayers.length === 2
           ? 'final_two'
           : 'live_results'
+  const identitiesHidden =
+    mode === 'season_winner' &&
+    activePlayers.length === 2 &&
+    elapsedMs < SEASON_WINNER_IDENTITY_REVEAL_MS
 
   const statusLine =
     phase === 'intro'
       ? 'Audience record is being verified'
-      : phase === 'elimination'
-        ? 'Standings paused for elimination'
-        : phase === 'final_two'
-          ? 'The final two are locked'
-          : canActivateSpotlight
-            ? `Viewer Spotlight closes in ${spotlightWindowRemaining}s`
-            : `Next result in ${countdown(nextShiftAt - nowMs)}s`
-  const revealCountdown = countdown(
-    Math.max(0, nextShiftAt - nowMs) +
-      Math.max(0, activePlayers.length - 2) * effectiveEliminationIntervalMs
-  )
+      : identitiesHidden
+        ? 'The vote is moving while both identities remain hidden'
+        : phase === 'elimination'
+            ? 'Standings paused for elimination'
+            : phase === 'final_two'
+              ? 'Every vote can still change who takes the crown'
+              : canActivateSpotlight
+                ? `Viewer Spotlight closes in ${spotlightWindowRemaining}s`
+                : `Next result in ${countdown(nextShiftAt - nowMs)}s`
+  const revealCountdown = isComplete
+    ? 0
+    : Math.max(
+        1,
+        countdown(
+          Math.max(0, nextShiftAt - nowMs) +
+            Math.max(0, activePlayers.length - 2) * effectiveEliminationIntervalMs
+        )
+      )
+  const showFinalCountdown =
+    mode === 'season_winner' && !isComplete && revealCountdown > 0 && revealCountdown <= 3
 
   const handleSkipIntro = useCallback(() => {
-    const remaining = Math.max(0, INTRO_MS - elapsedMs)
+    const remaining = Math.max(0, effectiveIntroMs - elapsedMs)
     if (remaining <= 0) return
     setIntroSkipBoostMs((current) => current + remaining)
     setNowMs(Date.now())
-  }, [elapsedMs])
+  }, [effectiveIntroMs, elapsedMs])
 
   const handleFastForward = useCallback(() => {
     if (fastForwarding || isComplete || spotlightPending) return
-    const remaining = Math.max(0, INTRO_MS - elapsedMs)
+    const remaining = Math.max(0, effectiveIntroMs - elapsedMs)
     if (remaining > 0) setIntroSkipBoostMs((current) => current + remaining)
     setFastForwarding(true)
     setNextShiftAt(Date.now() + FAST_FORWARD_ELIMINATION_INTERVAL_MS)
     setNowMs(Date.now())
-  }, [elapsedMs, fastForwarding, isComplete, spotlightPending])
+  }, [effectiveIntroMs, elapsedMs, fastForwarding, isComplete, spotlightPending])
 
   const handleSpotlight = useCallback(async () => {
     if (
@@ -588,6 +736,10 @@ export default function PublicFavoriteOverlay({
 
   const resolvedWinnerId = winnerId ?? (isComplete ? forecast.winnerId : null)
   const winner = resolvedWinnerId ? candidatesById[resolvedWinnerId] : undefined
+  const runnerUp =
+    mode === 'season_winner' && winner
+      ? candidates.find((candidate) => candidate.id !== winner.id)
+      : undefined
   const handleClose = useCallback(() => {
     if (!resolvedWinnerId || completionFiredRef.current) return
     completionFiredRef.current = true
@@ -600,7 +752,11 @@ export default function PublicFavoriteOverlay({
         className={`pf-overlay${prefersReducedMotion ? ' pf-overlay--reduced-motion' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-label="Public's Favorite Player overlay"
+        aria-label={
+          mode === 'season_winner'
+            ? 'Final public season winner vote'
+            : `Public's Favorite Player overlay`
+        }
       >
         <div className="pf-overlay__dim" aria-hidden="true" />
         <div className="pf-overlay__studio" aria-hidden="true" />
@@ -650,10 +806,14 @@ export default function PublicFavoriteOverlay({
                       <span className="pf-overlay__live-badge">
                         <span className="pf-overlay__live-dot" /> LIVE
                       </span>
-                      <p className="pf-overlay__subtitle">Season-long public vote</p>
+                      <p className="pf-overlay__subtitle">
+                        {mode === 'season_winner' ? 'The last vote of the season' : 'Season-long public vote'}
+                      </p>
                     </div>
                     <div className="pf-overlay__header-copy">
-                      <h2 className="pf-overlay__title">Public Favorite Player</h2>
+                      <h2 className="pf-overlay__title">
+                        {mode === 'season_winner' ? 'The Final Two Face the Public' : 'Public Favorite Player'}
+                      </h2>
                       <p className="pf-overlay__status">{statusLine}</p>
                     </div>
                   </header>
@@ -669,22 +829,36 @@ export default function PublicFavoriteOverlay({
                   spotlight={spotlight}
                   finalTwoNames={finalTwoNames}
                   revealCountdown={revealCountdown}
+                  identitiesHidden={identitiesHidden}
+                  showRevealCountdown={showFinalCountdown}
                 />
                 <VoteRankingBoard
                   entries={voteEntries}
                   candidatesById={candidatesById}
                   selectedPlayerId={selectedPlayerId}
                   onSelect={setSelectedPlayerId}
+                  identitiesHidden={identitiesHidden}
+                  anonymousLabelsById={anonymousLabelsById}
                 />
+                {mode === 'season_winner' && (
+                  <FinaleAudienceFeed
+                    items={finaleAudienceFeed.slice(
+                      Math.max(0, audienceFeedCount - 5),
+                      audienceFeedCount
+                    )}
+                  />
+                )}
               </div>
-              <ViewerSpotlightPanel
-                selectedPlayer={selectedPlayer}
-                activeSpotlight={activeSpotlight}
-                used={spotlightUsed}
-                pending={spotlightPending}
-                canActivate={canActivateSpotlight}
-                onActivate={handleSpotlight}
-              />
+              {!identitiesHidden && (
+                <ViewerSpotlightPanel
+                  selectedPlayer={selectedPlayer}
+                  activeSpotlight={activeSpotlight}
+                  used={spotlightUsed}
+                  pending={spotlightPending}
+                  canActivate={canActivateSpotlight}
+                  onActivate={handleSpotlight}
+                />
+              )}
               <AnimatePresence>
                 {phase === 'intro' && (
                   <motion.div
@@ -694,16 +868,26 @@ export default function PublicFavoriteOverlay({
                     exit={{ opacity: 0 }}
                   >
                     <span className="pf-overlay__intro-live">LIVE</span>
-                    <p className="pf-overlay__intro-title">Public Favorite Vote</p>
+                    <p className="pf-overlay__intro-title">
+                      {mode === 'season_winner' ? 'Final Public Vote' : 'Public Favorite Vote'}
+                    </p>
                     <p className="pf-overlay__intro-subtitle">
-                      Season-long audience records are being verified.
+                      {mode === 'season_winner'
+                        ? 'The percentages go live first. Halfway through, the identities behind them will be revealed.'
+                        : 'Season-long audience records are being verified.'}
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           ) : (
-            <FinalReveal winner={winner} awardAmount={awardAmount} onClose={handleClose} />
+            <FinalReveal
+              winner={winner}
+              runnerUp={runnerUp}
+              awardAmount={awardAmount}
+              mode={mode}
+              onClose={handleClose}
+            />
           )}
         </div>
       </div>

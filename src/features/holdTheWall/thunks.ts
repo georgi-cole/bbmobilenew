@@ -36,6 +36,15 @@ export const resolveHoldTheWallOutcome =
       phase,
     });
 
+    // Final 3 uses the same interactive component, but its result is applied by
+    // the GameScreen's Final 3 callback.  Marking the game resolved here lets
+    // that authoritative callback run without incorrectly awarding an LOH/POS.
+    const isFinalThreeMinigame = /^final3_comp[123]_minigame$/.test(phase);
+    if (isFinalThreeMinigame) {
+      dispatch(markHoldTheWallOutcomeResolved());
+      return;
+    }
+
     // Validate game phase matches prize type before dispatching.
     if (htw.prizeType === 'LOH' && phase !== 'loh_comp') {
       console.error(

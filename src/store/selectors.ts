@@ -28,6 +28,10 @@ import {
 export const selectIsWaitingForInput = (state: RootState): boolean => {
   const game = state.game
   const sv = game.specialVeto
+  const voxFinalThreeVerdictCanAdvance =
+    game.voxPopuli?.status === 'active' &&
+    game.voxPopuli.publicVoteContext === 'final3' &&
+    game.voteResults == null
 
   return (
     Boolean(game.replacementNeeded) ||
@@ -41,7 +45,7 @@ export const selectIsWaitingForInput = (state: RootState): boolean => {
     Boolean(game.awaitingTieBreak) ||
     Boolean(game.awaitingFinal3Eviction) ||
     game.phase === 'final4_eviction' ||
-    Boolean(game.pendingEviction) ||
+    (Boolean(game.pendingEviction) && !voxFinalThreeVerdictCanAdvance) ||
     Boolean(game.dayStartShock) ||
     Boolean(sv?.awaitingHolderReplacement) ||
     Boolean(sv?.awaitingCoupReplacement1) ||

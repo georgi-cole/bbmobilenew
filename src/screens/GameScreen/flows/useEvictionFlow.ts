@@ -296,6 +296,27 @@ export function useEvictionFlow({
       const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
       const defaultAnnouncement = (() => {
         const evicteeVotes = game.voteResults?.[evictee.id] ?? 0
+        if (game.voteResultsMode === 'public') {
+          const secondEvictee = secondPendingEvictionId
+            ? game.players.find((player) => player.id === secondPendingEvictionId)
+            : null
+          if (game.doubleEviction?.weekActive && secondEvictee) {
+            const secondPercent = game.voteResults?.[secondEvictee.id] ?? 0
+            return {
+              title: 'DOUBLE ELIMINATION RESULT',
+              subtitle: `${evictee.name} (${evicteeVotes.toFixed(1)}%) and ${secondEvictee.name} (${secondPercent.toFixed(1)}%) received the two highest audience totals and are eliminated tonight.`,
+            }
+          }
+          const isFinalThree = game.voxPopuli?.publicVoteContext === 'final3'
+          return {
+            title: isFinalThree
+              ? 'THE PUBLIC HAS CHOSEN THE FINAL 2'
+              : `${evicteeVotes.toFixed(1)}% OF THE PUBLIC VOTE`,
+            subtitle: isFinalThree
+              ? `With ${evicteeVotes.toFixed(1)}% of the vote to eliminate, ${evictee.name} finishes in third place. The house lights now belong to the Final 2.`
+              : `${evictee.name}, the audience has decided that you must leave The Big Eye house.`,
+          }
+        }
         const evicteeUnitIds = expandCupidIds(game, [evictee.id])
         const evicteeNames = evicteeUnitIds
           .map((id) => game.players.find((player) => player.id === id)?.name)
@@ -316,7 +337,10 @@ export function useEvictionFlow({
         }
       })()
       const voteAnnouncement =
-        game.doubleEviction?.weekActive && game.voteResults && secondPendingEvictionId
+        game.voteResultsMode !== 'public' &&
+        game.doubleEviction?.weekActive &&
+        game.voteResults &&
+        secondPendingEvictionId
           ? buildDoubleEvictionPostVoteAnnouncement({
               voteResults: game.voteResults,
               pendingEvictionId: game.pendingEviction.evicteeId,
@@ -327,11 +351,19 @@ export function useEvictionFlow({
             })
           : defaultAnnouncement
       setPostVoteAnnouncement({
-        key: 'eviction_vote_result',
+        key:
+          game.voteResultsMode === 'public' &&
+          game.voxPopuli?.publicVoteContext === 'final3'
+            ? 'vox_final_three_verdict'
+            : 'eviction_vote_result',
         title: voteAnnouncement.title,
         subtitle: voteAnnouncement.subtitle,
         isLive: true,
-        autoDismissMs: POST_VOTE_ANNOUNCEMENT_MS,
+        autoDismissMs:
+          game.voteResultsMode === 'public' &&
+          game.voxPopuli?.publicVoteContext === 'final3'
+            ? null
+            : POST_VOTE_ANNOUNCEMENT_MS,
       })
       // Dismiss vote results only — eviction splash is gated on postVoteAnnouncement
       proceedAfterVoteResults()

@@ -96,7 +96,7 @@ const CALENDAR_EVENT_META: Record<TimelineCheckpoint['kind'], { icon: string; na
 
 function getMajorEventImpact(event: TimelineCheckpoint): string | null {
   if (event.kind === 'twist') {
-    return 'The expected eviction order broke here, reshaping the endgame.';
+    return 'The expected elimination order broke here, reshaping the endgame.';
   }
   if (event.kind === 'milestone') {
     return 'Every vote after this point helped decide the eventual winner.';
@@ -379,36 +379,48 @@ function getSeasonDayCount(recapData: RecapData, week: number): number {
 function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineCheckpoint[] {
   const totalDays = getSeasonDayCount(recapData, week);
   const latestPreFinaleDay = Math.max(1, totalDays - 1);
-  const evictions = recapData.evictionLadder;
+  // A runner-up is announced beside the champion, not archived as an exit.
+  // The Final 3 public verdict gets its own bronze-medalist moment instead of
+  // being mistaken for a double elimination when it shares finale night.
+  const evictions = recapData.evictionLadder.filter(
+    (player) => player.seasonPlacement !== 2 && player.finalRank !== 2,
+  );
   const checkpoints = evictions.map((player, index) => {
     const inferredDay = Math.round(((index + 1) / (evictions.length + 1)) * totalDays);
     const day = Math.max(1, Math.min(latestPreFinaleDay, player.evictedAtWeek ?? inferredDay));
+    const isBronzeMedalist = player.seasonPlacement === 3 || player.finalRank === 3;
     return {
       id: `eviction-${player.id}-${index}`,
       day,
       player,
-      kind: 'eviction' as const,
+      kind: isBronzeMedalist ? 'milestone' as const : 'eviction' as const,
       title: player.name,
-      label: 'Exit',
-      detail: `${player.name}'s season ended here.`,
+      label: isBronzeMedalist ? 'Bronze medalist' : 'Exit',
+      detail: isBronzeMedalist
+        ? `${player.name} finished third after the final public verdict.`
+        : `${player.name}'s season ended here.`,
     };
   });
   const knownTwists: TimelineCheckpoint[] = [];
   const evictionsByDay = new Map<number, TimelineCheckpoint[]>();
-  checkpoints.forEach((checkpoint) => {
+  checkpoints.filter((checkpoint) => checkpoint.kind === 'eviction').forEach((checkpoint) => {
     const entries = evictionsByDay.get(checkpoint.day) ?? [];
     entries.push(checkpoint);
     evictionsByDay.set(checkpoint.day, entries);
   });
   evictionsByDay.forEach((entries, day) => {
     if (entries.length < 2) return;
+    const names = entries.map((entry) => entry.player?.name).filter(Boolean) as string[];
+    const nameList = names.length === 2
+      ? `${names[0]} and ${names[1]}`
+      : `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
     knownTwists.push({
       id: `twist-eviction-${day}`,
       day,
       kind: 'twist',
-      title: entries.length === 2 ? 'Double eviction' : 'Triple eviction',
-      label: 'Twist night',
-      detail: `${entries.length} housemates left the game on the same night.`,
+      title: entries.length === 2 ? 'Double elimination' : 'Triple elimination',
+      label: 'Elimination night',
+      detail: `${nameList} were eliminated on the same night, changing the shape of the endgame.`,
     });
   });
   if (totalDays >= 6) {
@@ -435,6 +447,9 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
     });
   });
   const finalePlayer = recapData.finalists.find((player) => player.isWinner) ?? recapData.finalists[0] ?? evictions.at(-1);
+  const runnerUp = recapData.finalists.find(
+    (player) => player.seasonPlacement === 2 || player.finalRank === 2,
+  );
 
   if (!finalePlayer) return [...checkpoints, ...knownTwists].sort((a, b) => a.day - b.day);
 
@@ -449,7 +464,7 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
       title: finalePlayer.name,
       label: finalePlayer.isWinner ? 'Winner crowned' : 'Final vote',
       detail: finalePlayer.isWinner
-        ? `${finalePlayer.name} closed the season with the final crown.`
+        ? `${finalePlayer.name} closed the season with the final crown${runnerUp ? `, with ${runnerUp.name} announced as runner-up` : ''}.`
         : `The final vote put ${finalePlayer.name} in the spotlight.`,
     },
   ].sort((a, b) => a.day - b.day || (a.kind === 'twist' ? -1 : 1));
@@ -507,6 +522,64 @@ function FinaleCalendarFocus({
   const voteCounts = exitData?.voteCounts && typeof exitData.voteCounts === 'object'
     ? exitData.voteCounts as Record<string, unknown>
     : {};
+  const recordedVoteTotal = Object.values(voteCounts).reduce<number>(
+    (total, count) => total + (typeof count === 'number' ? count : 0),
+    0,
+  );
+  const isVoxExit =
+    exitData?.voxPopuli === true ||
+    (
+      leaderIds.length === 0 &&
+      decisionMakerId == null &&
+      recordedVoteTotal >= 99.5 &&
+      recordedVoteTotal <= 100.5
+    );
+  const nominationVoteCounts =
+    exitData?.nominationVoteCounts && typeof exitData.nominationVoteCounts === 'object'
+      ? exitData.nominationVoteCounts as Record<string, unknown>
+      : {};
+  const publicVotePercentages =
+    exitData?.publicVotePercentages && typeof exitData.publicVotePercentages === 'object'
+      ? exitData.publicVotePercentages as Record<string, unknown>
+      : voteCounts;
+  const exitNomineeIds = Array.isArray(exitData?.nomineeIds)
+    ? exitData.nomineeIds.filter((id: unknown): id is string => typeof id === 'string')
+    : [];
+  const otherNomineeNames = player
+    ? exitNomineeIds
+        .filter((id) => id !== player.id)
+        .map((id) => allPlayers.find((candidate) => candidate.id === id)?.name)
+        .filter((name): name is string => Boolean(name))
+    : [];
+  const nominationVotes =
+    player && typeof nominationVoteCounts[player.id] === 'number'
+      ? nominationVoteCounts[player.id] as number
+      : 0;
+  const publicVotePercent =
+    player && typeof publicVotePercentages[player.id] === 'number'
+      ? publicVotePercentages[player.id] as number
+      : null;
+  const automaticNomineeId =
+    typeof exitData?.automaticNomineeId === 'string' ? exitData.automaticNomineeId : null;
+  const voxPunchLines = [
+    'The audience had the final word.',
+    'The spotlight narrowed, and the public closed this chapter.',
+    'One public verdict changed the shape of the house.',
+  ];
+  const voxPunchLine = player
+    ? voxPunchLines[(day + player.id.length) % voxPunchLines.length]
+    : voxPunchLines[0];
+  const voxNominationStory = player
+    ? Object.keys(nominationVoteCounts).length === 0
+      ? `${player.name} was nominated on Day ${day} before facing the audience.`
+      : player.id === automaticNomineeId
+      ? `${player.name} finished last in the Day ${day} immunity competition and went onto the block${otherNomineeNames.length > 0 ? ` alongside ${otherNomineeNames.join(' and ')}` : ''}.`
+      : `${player.name} was nominated on Day ${day} with ${nominationVotes} secret nomination vote${nominationVotes === 1 ? '' : 's'}${otherNomineeNames.length > 0 ? `, alongside ${otherNomineeNames.join(' and ')}` : ''}.`
+    : null;
+  const voxEliminationStory =
+    player && publicVotePercent != null
+      ? `${player.name} was eliminated with ${publicVotePercent.toFixed(1)}% of the audience vote.`
+      : null;
   const votesAgainst = player && typeof voteCounts[player.id] === 'number'
     ? voteCounts[player.id] as number
     : null;
@@ -535,24 +608,95 @@ function FinaleCalendarFocus({
     .filter((name): name is string => Boolean(name));
   const helpedEliminateNames = namesForIds(helpedEliminateIds);
   const controlledExitNames = namesForIds(controlledExitIds);
-  const storyFacts = player
-    ? [
-        decisionMakerName
-          ? { label: 'Exit decision', value: `${decisionMakerName} made the direct decision to eliminate ${player.name}.` }
-          : leaderNames.length > 0
-            ? { label: 'Round control', value: `${player.name} was eliminated during ${leaderNames.join(' & ')}'s leadership.` }
-            : null,
-        votesAgainst != null && totalBallots > 0
-          ? { label: 'Final ballot', value: `${votesAgainst} of ${totalBallots} recorded votes were cast against ${player.name}.` }
-          : null,
-        controlledExitNames.length > 0
-          ? { label: 'Power moves', value: `${player.name}'s leadership rounds ended ${controlledExitNames.join(', ')}'s run${controlledExitNames.length === 1 ? '' : 's'}.` }
-          : null,
-        helpedEliminateNames.length > 0
-          ? { label: 'Direct impact', value: `${player.name}'s recorded votes helped eliminate ${helpedEliminateNames.join(', ')}.` }
-          : null,
-      ].filter((fact): fact is { label: string; value: string } => Boolean(fact))
+  const groupedEliminationFacts = !player && leadEvent.kind === 'twist'
+    ? involvedPlayers.map((involvedPlayer) => {
+        const record = [...exitRecords]
+          .reverse()
+          .find((event: GameHistoryEvent) => event.data.playerId === involvedPlayer.id);
+        const data = record?.data;
+        const nominationCounts =
+          data?.nominationVoteCounts && typeof data.nominationVoteCounts === 'object'
+            ? data.nominationVoteCounts as Record<string, unknown>
+            : {};
+        const percentages =
+          data?.publicVotePercentages && typeof data.publicVotePercentages === 'object'
+            ? data.publicVotePercentages as Record<string, unknown>
+            : {};
+        const nomineeIds = Array.isArray(data?.nomineeIds)
+          ? data.nomineeIds.filter((id: unknown): id is string => typeof id === 'string')
+          : [];
+        const companions = nomineeIds
+          .filter((id) => id !== involvedPlayer.id)
+          .map((id) => allPlayers.find((candidate) => candidate.id === id)?.name)
+          .filter((name): name is string => Boolean(name));
+        const nominationCount =
+          typeof nominationCounts[involvedPlayer.id] === 'number'
+            ? nominationCounts[involvedPlayer.id] as number
+            : null;
+        const publicPercent =
+          typeof percentages[involvedPlayer.id] === 'number'
+            ? percentages[involvedPlayer.id] as number
+            : null;
+        const nominationLine = nominationCount != null
+          ? `${involvedPlayer.name} was nominated on Day ${day} with ${nominationCount} vote${nominationCount === 1 ? '' : 's'}${companions.length > 0 ? ` alongside ${companions.join(' and ')}` : ''}.`
+          : `${involvedPlayer.name} entered the elimination vote on Day ${day}${companions.length > 0 ? ` alongside ${companions.join(' and ')}` : ''}.`;
+        const resultLine = publicPercent != null
+          ? ` ${involvedPlayer.name} was eliminated with ${publicPercent.toFixed(1)}% of the audience vote.`
+          : ' Their exit was confirmed during the same live elimination.';
+        return {
+          label: involvedPlayer.name,
+          value: `${nominationLine}${resultLine}`,
+        };
+      })
     : [];
+  const finaleFacts = player && leadEvent.kind === 'finale'
+    ? [
+        {
+          label: 'Final result',
+          value: player.isWinner || player.finalRank === 1
+            ? `${player.name} was crowned the season winner after the final audience decision.`
+            : `${player.name} reached the Final 2 and finished ${placement}.`,
+        },
+        {
+          label: 'Season record',
+          value: `${player.name} won ${player.stats?.lohWins ?? 0} immunity competition${(player.stats?.lohWins ?? 0) === 1 ? '' : 's'}, ${player.stats?.posWins ?? 0} Safety competition${(player.stats?.posWins ?? 0) === 1 ? '' : 's'}, and faced nomination ${player.stats?.timesNominated ?? 0} time${(player.stats?.timesNominated ?? 0) === 1 ? '' : 's'}.`,
+        },
+        {
+          label: 'The last word',
+          value: 'The audience closed the season and completed the final finishing order.',
+        },
+      ]
+    : [];
+  const storyFacts = player
+    ? isVoxExit
+      ? [
+          voxNominationStory
+            ? { label: 'Nomination', value: voxNominationStory }
+            : null,
+          voxEliminationStory
+            ? { label: 'Public verdict', value: voxEliminationStory }
+            : null,
+          { label: 'The moment', value: voxPunchLine },
+        ].filter((fact): fact is { label: string; value: string } => Boolean(fact))
+      : leadEvent.kind === 'finale'
+        ? finaleFacts
+        : [
+          decisionMakerName
+            ? { label: 'Exit decision', value: `${decisionMakerName} made the direct decision to eliminate ${player.name}.` }
+            : leaderNames.length > 0
+              ? { label: 'Round control', value: `${player.name} was eliminated during ${leaderNames.join(' & ')}'s leadership.` }
+              : null,
+          votesAgainst != null && totalBallots > 0
+            ? { label: 'Final ballot', value: `${votesAgainst} of ${totalBallots} recorded votes were cast against ${player.name}.` }
+            : null,
+          controlledExitNames.length > 0
+            ? { label: 'Power moves', value: `${player.name}'s leadership rounds ended ${controlledExitNames.join(', ')}'s run${controlledExitNames.length === 1 ? '' : 's'}.` }
+            : null,
+          helpedEliminateNames.length > 0
+            ? { label: 'Direct impact', value: `${player.name}'s recorded votes helped eliminate ${helpedEliminateNames.join(', ')}.` }
+            : null,
+        ].filter((fact): fact is { label: string; value: string } => Boolean(fact))
+    : groupedEliminationFacts;
 
   return (
     <motion.article
@@ -578,7 +722,7 @@ function FinaleCalendarFocus({
         <div>
           <p>Day {day} · {leadEvent.label}</p>
           <h2>{leadEvent.kind === 'eviction' && player ? player.name : leadEvent.title}</h2>
-          <span>{leadEvent.detail}{player && placement !== '—' ? ` Finished ${placement}.` : ''}</span>
+          <span>{isVoxExit ? voxPunchLine : leadEvent.detail}{player && placement !== '—' ? ` Finished ${placement}.` : ''}</span>
         </div>
       </div>
       {storyFacts.length > 0 && (

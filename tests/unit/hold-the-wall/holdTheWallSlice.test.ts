@@ -217,6 +217,27 @@ describe('holdTheWallSlice — dropPlayer', () => {
     expect(state.status).toBe('complete');
     expect(state.winnerId).toBe('ai2');
   });
+
+  it('never changes the winner after the last player standing is locked', () => {
+    const store = makeStore();
+    store.dispatch(
+      startHoldTheWall({
+        participantIds: ['human', 'ai1', 'ai2'],
+        humanId: 'human',
+        prizeType: 'LOH',
+        seed: 1,
+      }),
+    );
+    store.dispatch(dropPlayer('ai1'));
+    store.dispatch(dropPlayer('human'));
+
+    expect(store.getState().holdTheWall.winnerId).toBe('ai2');
+
+    // Late pointer/timer events are inert once the authoritative winner exists.
+    store.dispatch(dropPlayer('ai2'));
+    expect(store.getState().holdTheWall.status).toBe('complete');
+    expect(store.getState().holdTheWall.winnerId).toBe('ai2');
+  });
 });
 
 describe('holdTheWallSlice — outcomeResolved idempotency', () => {

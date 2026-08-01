@@ -10,7 +10,7 @@
 //  - Legacy single-slot saves are migrated into the Classic slot on read.
 
 import type { GameState } from '../types';
-import type { GameMode } from '../modes/modeTypes';
+import type { GameMode, SeasonExpansionMode } from '../modes/modeTypes';
 import { normalizeGameMode } from '../modes/gameModes';
 import { isSurvivorRunTerminal } from '../modes/survivorRun';
 import {
@@ -80,13 +80,15 @@ export interface SavedRunProfileStats {
   survivorAchievementsUnlocked: SurvivorAchievementUnlockMap;
 }
 
+export type SavedRunSlot = GameMode | SeasonExpansionMode;
+
 export interface SavedRunProfile {
   version: 2;
   profileId: string;
   savedAt: string;
   activeRunId: string | null;
   lastPlayedRunId: string | null;
-  runs: Partial<Record<GameMode, SavedSeasonSnapshot>>;
+  runs: Partial<Record<SavedRunSlot, SavedSeasonSnapshot>>;
   stats: SavedRunProfileStats;
 }
 
@@ -121,6 +123,15 @@ function isRunSnapshotResumable(snapshot: SavedSeasonSnapshot | undefined): snap
   return snapshot.game.status !== 'completed' && snapshot.game.status !== 'failed';
 }
 
+/** Resolve the independent save slot for a run without confusing organic Cupid with its menu expansion. */
+export function getSavedRunSlot(game: GameState): SavedRunSlot {
+  if (normalizeGameMode(game.mode) === 'survival') return 'survival';
+  if (game.expansionMode === 'cupidArrow' || game.expansionMode === 'voxPopuli') {
+    return game.expansionMode;
+  }
+  return 'classic';
+}
+
 function coerceSnapshot(raw: unknown, profileId: string): SavedSeasonSnapshot | null {
   if (!raw || typeof raw !== 'object') return null;
   const parsed = raw as Partial<SavedSeasonSnapshot>;
@@ -149,11 +160,15 @@ function coerceSnapshot(raw: unknown, profileId: string): SavedSeasonSnapshot | 
 
 function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>): SavedRunProfile | null {
   if (parsed.version !== 2 || parsed.profileId !== profileId) return null;
-  const runs = parsed.runs as Partial<Record<GameMode | 'survivor', SavedSeasonSnapshot>> | undefined;
+  const runs = parsed.runs as Partial<Record<SavedRunSlot | 'survivor', SavedSeasonSnapshot>> | undefined;
   const classic = coerceSnapshot(runs?.classic, profileId) ?? undefined;
   const survivor = coerceSnapshot(runs?.survival ?? runs?.survivor, profileId) ?? undefined;
+  const cupidArrow = coerceSnapshot(runs?.cupidArrow, profileId) ?? undefined;
+  const voxPopuli = coerceSnapshot(runs?.voxPopuli, profileId) ?? undefined;
   const resumableClassic = isRunSnapshotResumable(classic) ? classic : undefined;
   const resumableSurvivor = isRunSnapshotResumable(survivor) ? survivor : undefined;
+  const resumableCupidArrow = isRunSnapshotResumable(cupidArrow) ? cupidArrow : undefined;
+  const resumableVoxPopuli = isRunSnapshotResumable(voxPopuli) ? voxPopuli : undefined;
   const maxSurvivorDaysSurvived = Math.max(
     typeof parsed.stats?.maxSurvivorDaysSurvived === 'number' ? parsed.stats.maxSurvivorDaysSurvived : 0,
     getSurvivorProgressDay(survivor?.game),
@@ -167,6 +182,8 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
     runs: {
       ...(resumableClassic ? { classic: resumableClassic } : {}),
       ...(resumableSurvivor ? { survival: resumableSurvivor } : {}),
+      ...(resumableCupidArrow ? { cupidArrow: resumableCupidArrow } : {}),
+      ...(resumableVoxPopuli ? { voxPopuli: resumableVoxPopuli } : {}),
     },
     stats: {
       maxSurvivorDaysSurvived,
@@ -268,6 +285,7 @@ export function saveRunProfile(profile: SavedRunProfile): boolean {
 
 export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot): boolean {
   const mode = normalizeGameMode(snapshot.game.mode);
+  const slot = getSavedRunSlot(snapshot.game);
   const current = loadSavedRunProfile(profileId);
   const runId = getRunId(snapshot);
   const survivorBest = mode === 'survival'
@@ -285,9 +303,9 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const nextRuns = { ...current.runs };
   const resumable = isRunSnapshotResumable(snapshot);
   if (resumable) {
-    nextRuns[mode] = snapshot;
+    nextRuns[slot] = snapshot;
   } else {
-    delete nextRuns[mode];
+    delete nextRuns[slot];
   }
   const next: SavedRunProfile = {
     ...current,
@@ -327,8 +345,8 @@ export function markSurvivorAchievementCelebrationSeen(
   });
 }
 
-export function getSavedRun(profileId: string, mode: GameMode): SavedSeasonSnapshot | null {
-  return loadSavedRunProfile(profileId).runs[mode] ?? null;
+export function getSavedRun(profileId: string, slot: SavedRunSlot): SavedSeasonSnapshot | null {
+  return loadSavedRunProfile(profileId).runs[slot] ?? null;
 }
 
 export function getLastPlayedRun(profileId: string): SavedSeasonSnapshot | null {
@@ -341,7 +359,7 @@ export function getLastPlayedRun(profileId: string): SavedSeasonSnapshot | null 
   return runs.sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))[0] ?? null;
 }
 
-export function clearSavedRun(profileId: string, mode: GameMode): void {
+export function clearSavedRun(profileId: string, mode: SavedRunSlot): void {
   const current = loadSavedRunProfile(profileId);
   const nextRuns = { ...current.runs };
   delete nextRuns[mode];

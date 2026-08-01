@@ -44,6 +44,8 @@ export function useEndgameFlow({
   const isF3Part3SpectatorPhase =
     game.phase === 'final3_comp3' &&
     !!humanPlayer &&
+    (game.voxPopuli?.status !== 'active' ||
+      game.voxPopuli.finalThreePacingSeen?.includes('part3_spectator_ready') === true) &&
     humanPlayer.id !== game.f3Part1WinnerId &&
     humanPlayer.id !== game.f3Part2WinnerId
 
@@ -85,7 +87,11 @@ export function useEndgameFlow({
   const spectatorF3Part2AdvancedRef = useRef(false)
 
   const isF3Part2SpectatorPhase =
-    game.phase === 'final3_comp2' && !!humanPlayer && humanPlayer.id === game.f3Part1WinnerId
+    game.phase === 'final3_comp2' &&
+    !!humanPlayer &&
+    (game.voxPopuli?.status !== 'active' ||
+      game.voxPopuli.finalThreePacingSeen?.includes('part2_spectator_ready') === true) &&
+    humanPlayer.id === game.f3Part1WinnerId
 
   useEffect(() => {
     if (

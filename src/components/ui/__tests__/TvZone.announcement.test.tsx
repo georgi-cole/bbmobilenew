@@ -190,6 +190,182 @@ describe('TvZone — announcement overlay', () => {
     expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
   });
 
+  it('keeps a critical game result on the faux TV until Play dismisses it', () => {
+    const store = makeStore();
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'critical-nomination-result',
+            text: 'Lia is nominated with 6 votes. Ivy is nominated with 4 votes.',
+            meta: { week: 1, broadcastPriority: 'critical' },
+          }),
+        ),
+      );
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'later-social-beat',
+            text: 'A conversation is unfolding in the kitchen.',
+            meta: { week: 1 },
+          }),
+        ),
+      );
+    });
+
+    renderTvZone(store);
+
+    expect(document.querySelector('.tv-zone__now')?.textContent).toContain(
+      'Lia is nominated with 6 votes',
+    );
+
+    let playWasAccepted = true;
+    act(() => {
+      playWasAccepted = window.dispatchEvent(
+        new CustomEvent('ui:playPressed', { cancelable: true }),
+      );
+    });
+
+    expect(playWasAccepted).toBe(false);
+
+    expect(document.querySelector('.tv-zone__now')?.textContent).toContain(
+      'A conversation is unfolding in the kitchen',
+    );
+  });
+
+  it('does not replay a dismissed critical major broadcast as ordinary TV copy', () => {
+    vi.useFakeTimers();
+    const store = makeStore();
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'vox-final-three-result',
+            text: 'Ash has final immunity. Zed and Ivy now face the audience.',
+            meta: {
+              week: 1,
+              major: 'vox_final3_result',
+              broadcastPriority: 'critical',
+              announcementTitle: 'FINAL IMMUNITY: ASH',
+              announcementSubtitle: 'Ash is safe. Zed and Ivy face the audience.',
+            },
+          }),
+        ),
+      );
+    });
+
+    renderTvZone(store);
+
+    expect(screen.getByRole('dialog', { name: /Announcement: FINAL IMMUNITY: ASH/i })).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed', { cancelable: true }));
+      vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS);
+    });
+
+    expect(document.querySelector('.tv-zone__now')?.textContent).not.toContain(
+      'Ash has final immunity. Zed and Ivy now face the audience.',
+    );
+    expect(document.body.textContent).not.toContain('Welcome to The Big Eye – AI Edition');
+    vi.useRealTimers();
+  });
+
+  it('uses the Final 4 result copy instead of repeating the generic rules card', () => {
+    const store = makeStore();
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'vox-final-four-result',
+            text: 'Quinn wins the Final 4 competition, but there is no immunity today.',
+            meta: {
+              week: 10,
+              major: 'vox_final4_immunity_comp',
+              broadcastPriority: 'critical',
+            },
+          }),
+        ),
+      );
+    });
+
+    renderTvZone(store);
+
+    const resultCard = screen.getByRole('dialog', {
+      name: /Announcement: Quinn Wins the Final 4 Competition/i,
+    });
+    expect(resultCard).toBeDefined();
+    expect(resultCard.textContent).toContain('There is no immunity today');
+    expect(
+      screen.queryByRole('dialog', { name: /^Announcement: Final 4 Competition$/i }),
+    ).toBeNull();
+  });
+
+  it('keeps the finale-ready call to action on screen until its own Play press', () => {
+    const store = makeStore();
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'vox-finale-ready',
+            text: 'Ready for the Finale? Make your move.',
+            meta: {
+              week: 1,
+              major: 'vox_populi_finale_ready',
+              broadcastPriority: 'critical',
+            },
+          }),
+        ),
+      );
+    });
+    renderTvZone(store);
+
+    expect(
+      screen.getByRole('dialog', { name: 'Announcement: Ready for the Finale?' }),
+    ).toBeDefined();
+
+    let playWasAccepted = false;
+    act(() => {
+      playWasAccepted = window.dispatchEvent(
+        new CustomEvent('ui:playPressed', { cancelable: true }),
+      );
+    });
+
+    expect(playWasAccepted).toBe(false);
+    expect(
+      screen.queryByRole('dialog', { name: 'Announcement: Ready for the Finale?' }),
+    ).toBeNull();
+  });
+
+  it('drops an obsolete Final 3 vote warning after the Final 2 has formed', () => {
+    const store = makeStore();
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'stale-final-three-warning',
+            text: 'Ash has final immunity. The audience must eliminate Zed or Ivy.',
+            meta: {
+              week: 1,
+              major: 'vox_populi_final_three_vote',
+              broadcastPriority: 'critical',
+            },
+          }),
+        ),
+      );
+    });
+    renderTvZone(store);
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Announcement: The Final Three Verdict' }),
+    ).toBeNull();
+    expect(document.querySelector('.tv-zone__now')?.textContent).not.toContain(
+      'Ash has final immunity',
+    );
+  });
+
   it('streams Detox safety beats on the main TV before the final nominee message', () => {
     vi.useFakeTimers();
     const store = makeStore();
@@ -628,11 +804,7 @@ describe('TvZone — announcement overlay', () => {
       })));
     });
 
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
 
     expect(screen.getByRole('dialog', { name: /Congrats all, you've just made it to tribunal/i })).toBeDefined();
 
@@ -1182,11 +1354,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDoubleEviction()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeNull();
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
 
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
     vi.useRealTimers();
@@ -1203,11 +1371,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDemocracia()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
+    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
 
     expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
     expect(store.getState().game.phase).toBe('loh_comp_announcement');
@@ -1215,48 +1379,26 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('keeps shock announcements fullscreen before rolling them back into the main TV', () => {
+  it('keeps shock announcements inside the faux TV without a fullscreen interstitial', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
-
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-    expect(document.body.querySelector('.shock-intro .tv-announcement')).not.toBeNull();
-    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).not.toBeNull();
-    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).toBeNull();
-
-    act(() => {
-      vi.advanceTimersByTime(320);
-    });
 
     expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
     expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).not.toBeNull();
     vi.useRealTimers();
   });
 
-  it('plays the Double Eviction TV spotlight after the fullscreen shock intro completes, then returns the surrounding UI to normal', () => {
+  it('plays the Double Elimination TV spotlight without requiring a fullscreen shock intro', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
 
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
-
-    expect(document.body.querySelector('.tv-zone-de-backdrop')).toBeNull();
-    expect(screen.getByLabelText('Game action zone').className).not.toContain('tv-zone--de-spotlight');
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
 
     expect(document.body.querySelector('.tv-zone-de-backdrop')).not.toBeNull();
     expect(screen.getByLabelText('Game action zone').className).toContain('tv-zone--de-spotlight');

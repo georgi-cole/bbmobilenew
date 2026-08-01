@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
 import StoreProductModal from '../../components/StoreProductModal/StoreProductModal'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { initializeVip, purchaseStoreItem, restoreVip, selectVip } from '../../store/vipSlice'
 import { setGameUX } from '../../store/settingsSlice'
 import {
+  EXPANSION_PRODUCT_KEYS,
+  FEATURE_PRODUCT_KEYS,
   STANDALONE_PRODUCT_KEYS,
   getStoreProductDefinition,
   type StoreProductKey,
@@ -23,6 +25,7 @@ function CheckIcon() {
 
 export default function Store() {
   const navigate = useNavigate()
+  const location = useLocation()
   const dispatch = useAppDispatch()
   const storeState = useAppSelector(selectVip)
   const [notice, setNotice] = useState<string | null>(null)
@@ -35,6 +38,16 @@ export default function Store() {
     storeState.status === 'restoring'
   const vipProduct = storeState.products.vip
   const vipDefinition = getStoreProductDefinition('vip')
+  const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo
+  const hasReturnDestination = typeof returnTo === 'string' && returnTo.startsWith('/')
+
+  function goBack() {
+    if (hasReturnDestination) {
+      navigate(returnTo, { replace: true })
+      return
+    }
+    navigate(-1)
+  }
 
   useEffect(() => {
     if (storeState.status === 'idle') void dispatch(initializeVip())
@@ -107,7 +120,7 @@ export default function Store() {
         <button
           type="button"
           className="vip-store__back"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           aria-label="Go back"
         >
           &larr;
@@ -170,7 +183,7 @@ export default function Store() {
         </div>
 
         <div className="vip-store__product-grid">
-          {STANDALONE_PRODUCT_KEYS.map((productKey) => {
+          {FEATURE_PRODUCT_KEYS.map((productKey) => {
             const definition = getStoreProductDefinition(productKey)
             const product = storeState.products[productKey]
             const owned = ownsProduct(productKey)
@@ -192,6 +205,51 @@ export default function Store() {
                   <span className="vip-store__product-title">
                     {product?.title || definition.title}
                   </span>
+                  <span className="vip-store__product-description">{definition.shortTagline}</span>
+                </span>
+                <span className="vip-store__product-footer">
+                  <strong>
+                    {includedWithVip
+                      ? 'Included with VIP'
+                      : owned
+                        ? 'Owned'
+                        : product?.price || 'Price unavailable'}
+                  </strong>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="vip-store__standalone" aria-labelledby="season-expansions-title">
+        <div className="vip-store__section-heading">
+          <p className="vip-store__eyebrow">Season expansions</p>
+          <h2 id="season-expansions-title">Change the rules of the house</h2>
+          <p>Complete seasonal formats with their own ceremonies, strategy, and finale journey.</p>
+        </div>
+
+        <div className="vip-store__product-grid">
+          {EXPANSION_PRODUCT_KEYS.map((productKey) => {
+            const definition = getStoreProductDefinition(productKey)
+            const product = storeState.products[productKey]
+            const owned = ownsProduct(productKey)
+            const includedWithVip = storeState.isActive && !storeState.entitlements[productKey]
+            return (
+              <button
+                type="button"
+                className="vip-store__product"
+                data-theme={definition.visualTheme}
+                key={productKey}
+                onClick={() => selectProduct(productKey)}
+                disabled={busy}
+                aria-label={`Open ${definition.title}`}
+              >
+                <span className="vip-store__product-icon" aria-hidden="true">
+                  <StoreProductIcon name={definition.icon} />
+                </span>
+                <span className="vip-store__product-copy">
+                  <span className="vip-store__product-title">{definition.title}</span>
                   <span className="vip-store__product-description">{definition.shortTagline}</span>
                 </span>
                 <span className="vip-store__product-footer">

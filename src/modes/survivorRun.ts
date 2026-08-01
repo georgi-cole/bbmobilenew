@@ -2,6 +2,7 @@ import type { GameState, Player, TvEvent } from '../types';
 import type { SurvivorModeState } from './modeTypes';
 import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition';
 import { createInitialGameState } from '../store/gameSlice';
+import { createInitialVoxPopuliState } from '../features/twists/voxPopuli';
 
 const ROBO_NAMES = [
   'Lira', 'Kang', 'Sora', 'Mako', 'Venn', 'Rika', 'Nexo', 'Zari', 'Kiro', 'Tavi',
@@ -148,6 +149,7 @@ export function createSurvivorRun(): GameState {
     gameId: runId,
     runId,
     mode: 'survival',
+    expansionMode: null,
     status: 'active',
     createdAt: now,
     lastPlayedAt: now,
@@ -155,6 +157,16 @@ export function createSurvivorRun(): GameState {
     season: 1,
     week: 1,
     publicModeEnabled: false,
+    cupidArrow: {
+      scheduledSeason: null,
+      status: 'inactive',
+      activatedSeason: null,
+      activatedWeek: null,
+      pairs: [],
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
+    },
+    voxPopuli: createInitialVoxPopuliState(null),
     cfg: {
       ...(base.cfg ?? {}),
       jurySize: 0,

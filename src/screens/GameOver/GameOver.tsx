@@ -91,7 +91,8 @@ function buildSummaries(
 function buildArchive(
   season: number,
   summaries: PlayerSeasonSummary[],
-  cupidArrowActivated: boolean
+  cupidArrowActivated: boolean,
+  voxPopuliActivated: boolean
 ): SeasonArchive {
   return {
     seasonIndex: season,
@@ -99,6 +100,7 @@ function buildArchive(
     endAt: new Date().toISOString(),
     playerSummaries: summaries,
     cupidArrowActivated,
+    voxPopuliActivated,
   }
 }
 
@@ -113,6 +115,9 @@ export default function GameOver() {
   const week = useAppSelector((s) => s.game.week)
   const cupidArrowActivated = useAppSelector(
     (s) => s.game.cupidArrow?.activatedSeason === s.game.season
+  )
+  const voxPopuliActivated = useAppSelector(
+    (s) => s.game.voxPopuli?.activatedSeason === s.game.season
   )
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? [])
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null)
@@ -160,7 +165,11 @@ export default function GameOver() {
   function archiveCompletedSeason() {
     if (!archivedRef.current) {
       archivedRef.current = true
-      dispatch(archiveSeason(buildArchive(season, summaries, cupidArrowActivated)))
+      dispatch(
+        archiveSeason(
+          buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated)
+        )
+      )
     }
   }
 

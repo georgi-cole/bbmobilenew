@@ -381,6 +381,42 @@ export interface CupidArrowState {
   pendingPartnerEvictionId: string | null
 }
 
+export interface VoxPopuliState {
+  /** Season selected for this full-season format shock. */
+  scheduledSeason: number | null
+  status: 'inactive' | 'scheduled' | 'active' | 'complete'
+  activatedSeason: number | null
+  activatedWeek: number | null
+  /** Secret nomination ballots keyed by voter ID. Ballots are never exposed in the house feed. */
+  nominationBallots: Record<string, string[]>
+  /** Aggregate nomination totals used for ties and POS backup nominees. */
+  nominationVoteCounts: Record<string, number>
+  /** Days on which each housemate faced the block, used for short-lived nomination momentum. */
+  nominationDaysByPlayerId?: Record<string, number[]>
+  /** Number of Safety saves received during this Vox season. */
+  safetySaveCounts?: Record<string, number>
+  /** Backup nominees actually added after the latest Safety save. Empty means no replacement occurred. */
+  lastReplacementNomineeIds: string[]
+  /** Daily competition winner. They are immune, but hold no nomination or eviction power. */
+  immunityWinnerId: string | null
+  /** Last-place competition finisher, placed on the block for the day. */
+  autoNomineeId: string | null
+  /** The audience vote is resolved outside the game reducer from Public Opinion profiles. */
+  awaitingPublicVote: boolean
+  publicVoteContext: 'eviction' | 'final3' | null
+  publicVotePercentages: Record<string, number> | null
+  /** Once-per-day rewarded snapshot of the audience mood before the vote closes. */
+  audiencePreviewWeek?: number | null
+  audiencePreviewNomineeIds?: string[]
+  audiencePreviewPercentages?: Record<string, number> | null
+  /** Vox finale sequence. A legacy pre-vote recap may resume from older saves. */
+  finaleStage: 'showcase' | 'ready' | 'recap' | 'final_vote' | null
+  finalistIds: string[]
+  winnerId: string | null
+  /** Finale interludes already shown; stored so repeated taps cannot skip their pacing beats. */
+  finalThreePacingSeen?: string[]
+}
+
 export interface SpecialVetoState {
   /** Whether any special veto has been used this season (once true, no more can activate). */
   seasonUsed: boolean
@@ -821,6 +857,8 @@ export interface GameState {
   democracia?: DemocraciaState
   /** Full-season Cupid's Arrow pairing shock. */
   cupidArrow?: CupidArrowState
+  /** Full-season audience-led format shock. */
+  voxPopuli?: VoxPopuliState
   /**
    * When Democracia resolves to a tie with public mode OFF, both tied players
    * become co-LOHs.  This array holds their IDs; null on normal days.
@@ -894,6 +932,8 @@ export interface GameState {
    * Cleared by `dismissVoteResults`.
    */
   voteResults?: Record<string, number> | null
+  /** Controls whether voteResults are rendered as house vote counts or audience percentages. */
+  voteResultsMode?: 'house' | 'public'
   /**
    * When set, the EvictionSplash animation is shown for this player ID
    * before the game advances. Cleared by `dismissEvictionSplash`.

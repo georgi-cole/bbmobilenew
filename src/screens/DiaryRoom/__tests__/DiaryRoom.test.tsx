@@ -701,7 +701,7 @@ describe('DiaryRoom', () => {
     const autoNomineeName = state.players.find((player) => player.id === autoNomineeId)?.name ?? 'Unknown';
 
     expect(
-      screen.getByText(new RegExp(`${autoNomineeName} is automatically added as the public auto-nominee`, 'i')),
+      screen.getByText(new RegExp(`${autoNomineeName} is already the last-place nominee`, 'i')),
     ).toBeTruthy();
     expect(screen.getByText(/your choice has been recorded\. the ceremony will proceed\./i)).toBeTruthy();
     expect(store.getState().game.nomineeIds).toContain(autoNomineeId);

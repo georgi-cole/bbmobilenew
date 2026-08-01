@@ -30,6 +30,7 @@ const CreatePlayer = lazy(() => import('./screens/CreatePlayer/CreatePlayer'))
 const GameOver = lazy(() => import('./screens/GameOver/GameOver'))
 const SelfEvicted = lazy(() => import('./screens/SelfEvicted/SelfEvicted'))
 const Rules = lazy(() => import('./screens/Rules/Rules'))
+const VoxPopuliRules = lazy(() => import('./screens/Rules/VoxPopuliRules'))
 const PublicMeter = lazy(() => import('./screens/PublicMeter/PublicMeter'))
 const Settings = lazy(() => import('./screens/Settings/Settings'))
 const Store = lazy(() => import('./screens/Store/Store'))
@@ -142,6 +143,7 @@ export const router = createHashRouter([
       { path: 'game-over', element: load(<GameOver />) },
       { path: 'self-evicted', element: load(<SelfEvicted />) },
       { path: 'rules', element: load(<Rules />) },
+      { path: 'vox-populi-rules', element: load(<VoxPopuliRules />) },
       { path: 'public-meter', element: load(<PublicMeter />) },
       { path: 'settings', element: load(<Settings />) },
       { path: 'store', element: load(<Store />) },

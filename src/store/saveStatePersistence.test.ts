@@ -100,4 +100,38 @@ describe('saveStatePersistence survivor progression', () => {
       true,
     );
   });
+
+  it('keeps Classic, Surveyeval, Cupid, and Vox Populi in independent save slots', () => {
+    const makeSnapshot = (
+      runId: string,
+      mode: 'classic' | 'survival',
+      expansionMode: 'cupidArrow' | 'voxPopuli' | null,
+    ) => ({
+      version: 1,
+      profileId: 'profile-1',
+      savedAt: `2026-07-01T12:00:0${runId.length}.000Z`,
+      game: {
+        mode,
+        expansionMode,
+        week: 2,
+        status: 'active',
+        runId,
+        gameId: runId,
+        players: [{ id: 'user', name: 'You', avatar: 'P', status: 'active', isUser: true }],
+      },
+      finale: {},
+      social: {},
+    }) as SavedSeasonSnapshot;
+
+    expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null))).toBe(true);
+    expect(saveRunSnapshot('profile-1', makeSnapshot('survival-run', 'survival', null))).toBe(true);
+    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(true);
+    expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true);
+
+    const runs = loadSavedRunProfile('profile-1').runs;
+    expect(runs.classic?.game.runId).toBe('classic-run');
+    expect(runs.survival?.game.runId).toBe('survival-run');
+    expect(runs.cupidArrow?.game.runId).toBe('cupid-run');
+    expect(runs.voxPopuli?.game.runId).toBe('vox-run');
+  });
 });

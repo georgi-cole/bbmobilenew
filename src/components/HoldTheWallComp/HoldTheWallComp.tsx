@@ -38,6 +38,12 @@ interface ParticipantProp {
   isHuman: boolean;
 }
 
+interface HoldTheWallCompletion {
+  authoritativeWinnerId?: string | null;
+  authoritativeLastPlaceId?: string | null;
+  rawValue?: number;
+}
+
 interface Props {
   participantIds: string[];
   /** Optional rich participant info (name, isHuman). Used as a fallback when
@@ -45,7 +51,7 @@ interface Props {
   participants?: ParticipantProp[];
   prizeType: HoldTheWallPrizeType;
   seed: number;
-  onComplete?: () => void;
+  onComplete?: (completion?: HoldTheWallCompletion) => void;
 }
 
 interface GamePlayer {
@@ -186,6 +192,10 @@ export default function HoldTheWallComp({
   const [narrativeMsg, setNarrativeMsg] = useState('Get ready to hold on for dear life…');
   const startTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  // Pointer-down and pointer-up can occur before React has committed the
+  // isHolding state update. Keep the competition rule in a synchronous ref so
+  // a quick release is still an immediate, authoritative fall.
+  const isHoldingRef = useRef(false);
   const humanDroppedRef = useRef(false);
   // Seeded RNG for narrative — advanced per message so each pick is different
   const rngRef = useRef<(() => number) | null>(null);
@@ -269,6 +279,8 @@ export default function HoldTheWallComp({
       // dispatch the drop so the Redux store reflects the authoritative result.
       unsubElim = ctrl.on('PLAYER_ELIMINATED', (payload) => {
         if (payload.reason === 'no_initial_hold' && payload.playerId === humanId) {
+          isHoldingRef.current = false;
+          setIsHolding(false);
           humanDroppedRef.current = true;
           dispatch(dropPlayer(humanId));
         }
@@ -348,7 +360,15 @@ export default function HoldTheWallComp({
   // ── Notify parent after a short delay so the winner screen is visible ─────
   useEffect(() => {
     if (htw.status !== 'complete') return;
-    const t = window.setTimeout(() => onComplete?.(), WINNER_SCREEN_DURATION_MS);
+    const t = window.setTimeout(
+      () =>
+        onComplete?.({
+          authoritativeWinnerId: htw.winnerId,
+          authoritativeLastPlaceId: htw.droppedIds[0] ?? null,
+          rawValue: htw.winnerId ? 1 : 0,
+        }),
+      WINNER_SCREEN_DURATION_MS
+    );
     return () => window.clearTimeout(t);
   }, [htw.status, onComplete]);
 
@@ -419,6 +439,7 @@ export default function HoldTheWallComp({
     (e: React.PointerEvent) => {
       if (htw.status !== 'active' || humanDroppedRef.current) return;
       e.currentTarget.setPointerCapture(e.pointerId);
+      isHoldingRef.current = true;
       setIsHolding(true);
       // Notify the controller — cancels the 2-second auto-drop timer
       controllerRef.current?.onPlayerHoldStart();
@@ -428,13 +449,14 @@ export default function HoldTheWallComp({
 
   const handleHoldEnd = useCallback(() => {
     if (htw.status !== 'active' || humanDroppedRef.current) return;
-    if (!isHolding) return;
+    if (!isHoldingRef.current) return;
+    isHoldingRef.current = false;
     humanDroppedRef.current = true;
     setIsHolding(false);
     if (humanId) {
       dispatch(dropPlayer(humanId));
     }
-  }, [htw.status, isHolding, humanId, dispatch]);
+  }, [htw.status, humanId, dispatch]);
 
   // Prevent context menu on long press (mobile)
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -557,7 +579,9 @@ export default function HoldTheWallComp({
           aria-pressed={canHoldWall ? isHolding : undefined}
           onPointerDown={canHoldWall ? handleHoldStart : undefined}
           onPointerUp={canHoldWall ? handleHoldEnd : undefined}
+          onPointerCancel={canHoldWall ? handleHoldEnd : undefined}
           onPointerLeave={canHoldWall ? handleHoldEnd : undefined}
+          onLostPointerCapture={canHoldWall ? handleHoldEnd : undefined}
           onContextMenu={handleContextMenu}
         >
           <div className="htw-wall__arena-glow" aria-hidden="true" />

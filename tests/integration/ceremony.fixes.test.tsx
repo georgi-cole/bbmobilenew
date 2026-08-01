@@ -536,7 +536,10 @@ describe('Ceremony fix: live badge choreography for save and replacement', () =>
     ).toHaveLength(1)
     expect(
       document.querySelectorAll('.ceremony-overlay__badge[data-badge-origin="tile"]')
-    ).toHaveLength(1)
+    ).toHaveLength(2)
+    expect(
+      document.querySelector('[aria-label="Player 4 named backup nominee"]')
+    ).not.toBeNull()
     expect(document.querySelectorAll('[title="Nominated"]')).toHaveLength(1)
   })
 })

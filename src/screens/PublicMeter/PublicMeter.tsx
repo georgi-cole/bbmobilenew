@@ -123,8 +123,15 @@ function stableTargetIndex(seed: string, length: number): number {
 function getDirectionDescription(
   direction: PublicDirection,
   players: readonly Player[],
-  currentLohId?: string | null
+  currentLohId?: string | null,
+  voxPopuliActive = false
 ): string {
+  if (voxPopuliActive && direction.type === 'influence_hoh') {
+    return 'Make your loyalties clear in a way viewers will remember.'
+  }
+  if (voxPopuliActive && direction.type === 'flip_vote') {
+    return 'Create a visible social moment that can shift audience opinion.'
+  }
   if (direction.type !== 'influence_hoh') return direction.description
   const activeCandidates = players.filter(
     (player) =>
@@ -218,6 +225,7 @@ export default function PublicMeter() {
   const allDirections = useAppSelector(selectAllDirections)
 
   const game = useAppSelector((s) => s.game)
+  const isVoxPopuli = game.voxPopuli?.status === 'active'
   const userPlayer = game.players.find((p) => p.isUser)
   const userProfile = userPlayer ? publicOpinion.profiles[userPlayer.id] : undefined
   const userFeed = useMemo(
@@ -321,6 +329,19 @@ export default function PublicMeter() {
         </div>
       </div>
 
+      {isVoxPopuli && (
+        <div className="public-meter__section public-meter__section--vox">
+          <div className="public-meter__section-heading">
+            <h2 className="public-meter__section-title">🗳️ Audience Voting Active</h2>
+            <span className="public-meter__section-caption">Vox Populi</span>
+          </div>
+          <p className="public-meter__vox-copy">
+            The public eliminates nominees in this format. Follow your approval trend and Public
+            Requests for clues about which visible choices could improve your standing.
+          </p>
+        </div>
+      )}
+
       <div className="public-meter__tabs" role="tablist" aria-label="Public meter views">
         <button
           className={`public-meter__tab${activeTab === 'overview' ? ' public-meter__tab--active' : ''}`}
@@ -410,7 +431,12 @@ export default function PublicMeter() {
               <p className="public-meter__next-opportunity">
                 <strong>Next opportunity:</strong>{' '}
                 {userActiveDirections.length > 0
-                  ? getDirectionDescription(userActiveDirections[0], game.players, game.lohId)
+                  ? getDirectionDescription(
+                      userActiveDirections[0],
+                      game.players,
+                      game.lohId,
+                      isVoxPopuli
+                    )
                   : 'A strong competition, a smart save or a memorable social move.'}
               </p>
             </div>
@@ -534,7 +560,12 @@ export default function PublicMeter() {
                               </span>
                             </div>
                             <p className="direction-card__description">
-                              {getDirectionDescription(direction, game.players, game.lohId)}
+                              {getDirectionDescription(
+                                direction,
+                                game.players,
+                                game.lohId,
+                                isVoxPopuli
+                              )}
                             </p>
                             <div className="direction-card__meta">
                               <span>{getDirectionWindowLabel(direction)}</span>

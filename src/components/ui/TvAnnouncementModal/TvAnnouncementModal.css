@@ -205,6 +205,19 @@
   line-height: 1.65;
 }
 
+.tv-ann-modal__rules-link {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(129, 140, 248, 0.48);
+  border-radius: 8px;
+  background: rgba(79, 70, 229, 0.2);
+  color: #e0e7ff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .tv-ann-modal__backdrop,

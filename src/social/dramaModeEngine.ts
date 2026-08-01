@@ -718,11 +718,20 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
     if (rumour.status === 'circulating' && rumour.expiresWeek < input.week) rumour.status = 'dead'
   })
 
+  const activeIds = new Set(
+    input.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury').map((p) => p.id)
+  )
+
   let publicAnnouncement: string | undefined
 
   for (const arc of network.arcs.filter(
     (entry) => entry.status === 'active' && entry.lastAdvancedWeek < input.week
   )) {
+    if (arc.participantIds.some((participantId) => !activeIds.has(participantId))) {
+      arc.stage = 'resolved'
+      arc.status = 'resolved'
+      continue
+    }
     const [a, b] = arc.participantIds
     const previousStage = arc.stage
     const mutual = (relation(input.relationships, a, b) + relation(input.relationships, b, a)) / 2
@@ -786,9 +795,6 @@ export function advanceDramaNetwork(input: DramaAdvanceInput): DramaAdvanceResul
     }
   }
 
-  const activeIds = new Set(
-    input.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury').map((p) => p.id)
-  )
   if (input.phase === 'social_1') {
     const lia = input.players.find((player) => player.name.toLowerCase() === 'lia')
     const ali = input.players.find((player) => player.name.toLowerCase() === 'ali')

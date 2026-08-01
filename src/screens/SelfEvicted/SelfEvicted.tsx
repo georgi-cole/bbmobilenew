@@ -7,8 +7,8 @@ import {
   savedStateKeyForProfile,
   clearSeasonSnapshot,
   clearSavedRun,
+  getSavedRunSlot,
 } from '../../store/saveStatePersistence';
-import type { GameMode } from '../../modes/modeTypes';
 import './SelfEvicted.css';
 
 /**
@@ -22,21 +22,21 @@ export default function SelfEvicted() {
   const playerName = useAppSelector(
     (s) => s.game.players.find((p) => p.isUser)?.name ?? 'Housemate',
   );
-  const currentMode = useAppSelector((s): GameMode => s.game.mode ?? 'classic');
+  const currentRunSlot = useAppSelector((s) => getSavedRunSlot(s.game));
   const activeProfileId = useAppSelector(selectActiveProfileId);
   const isGuest = useAppSelector(selectIsGuest);
 
   useEffect(() => {
     if (isGuest || !activeProfileId) return;
-    clearSavedRun(activeProfileId, currentMode);
+    clearSavedRun(activeProfileId, currentRunSlot);
     clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
-  }, [activeProfileId, currentMode, isGuest]);
+  }, [activeProfileId, currentRunSlot, isGuest]);
 
   function startNewSeason() {
     // Clear any stale mid-season snapshot so the Play prompt won't offer to
     // resume an outdated save after a self-eviction.
     if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, currentMode);
+      clearSavedRun(activeProfileId, currentRunSlot);
       clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
     }
     dispatch(resetGame());

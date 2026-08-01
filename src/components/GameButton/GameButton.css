@@ -80,6 +80,48 @@
   line-height: 1;
 }
 
+.btn-badge {
+  position: absolute;
+  /* Sit inside the upper-right bevel: this badge is an in-button lock, not
+     an attached sticker, so it must never cross the SVG silhouette. */
+  top: 0.36rem;
+  right: 3.25rem;
+  display: block;
+  width: 1.3rem;
+  height: 1.3rem;
+  filter: drop-shadow(0 0.15rem 0.26rem rgba(10, 7, 28, 0.6));
+  transform: rotate(7deg);
+  transition: filter 0.15s ease, transform 0.15s ease;
+  z-index: 2;
+}
+
+/* Make room for the in-bevel lock without making the label appear off-centre. */
+.game-btn--has-badge .btn-content {
+  transform: translateX(-0.35rem);
+}
+
+.btn-badge .store-product-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #d9b86c;
+  stroke-width: 2.2;
+}
+
+.btn-badge .store-product-icon__surface {
+  fill: rgba(32, 24, 66, 0.96);
+}
+
+.btn-badge .store-product-icon__core {
+  fill: #f0dda4;
+}
+
+.game-btn:hover:not(.game-btn--disabled) .btn-badge {
+  filter: drop-shadow(0 0 0.34rem rgba(185, 167, 255, 0.78));
+  transform: rotate(2deg) scale(1.07);
+}
+
 /* Disabled state: slightly reduce label/content opacity for extra legibility feedback */
 .game-btn--disabled .btn-content {
   opacity: 0.7;

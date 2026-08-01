@@ -27,6 +27,7 @@ import type { Player } from '../../types'
 import type { RequiredConfessionalPresentation } from './requiredConfessionalPresentation'
 import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
+import { buildVoxFirstImpressions, type VoxFirstImpression } from './voxFirstImpression'
 
 interface Props {
   decision: ActiveConfessionalDecision
@@ -41,6 +42,7 @@ interface PlayerCardProps {
   danger?: boolean
   disabled?: boolean
   tag?: string
+  impression?: VoxFirstImpression
 }
 
 function PlayerCard({
@@ -50,6 +52,7 @@ function PlayerCard({
   danger = false,
   disabled = false,
   tag,
+  impression,
 }: PlayerCardProps) {
   return (
     <button
@@ -59,7 +62,13 @@ function PlayerCard({
       aria-pressed={selected}
       disabled={disabled}
     >
-      <PlayerAvatar player={player} selected={selected} size="md" />
+      <span
+        className={`rcd-player__avatar${impression ? ` rcd-player__avatar--${impression.tone}` : ''}`}
+        aria-label={impression?.label}
+        title={impression?.label}
+      >
+        <PlayerAvatar player={player} selected={selected} size="md" />
+      </span>
       <span className="rcd-player__copy">
         <strong>{player.name}</strong>
         {tag && <small>{tag}</small>}
@@ -78,6 +87,7 @@ interface DecisionUnitCardProps {
   danger?: boolean
   disabled?: boolean
   tag?: string
+  impressionsByPlayerId?: Record<string, VoxFirstImpression>
 }
 
 function DecisionUnitCard({
@@ -87,6 +97,7 @@ function DecisionUnitCard({
   danger = false,
   disabled = false,
   tag,
+  impressionsByPlayerId,
 }: DecisionUnitCardProps) {
   if (unit.players.length === 1) {
     return (
@@ -97,6 +108,7 @@ function DecisionUnitCard({
         danger={danger}
         disabled={disabled}
         tag={tag}
+        impression={impressionsByPlayerId?.[unit.players[0].id]}
       />
     )
   }
@@ -179,12 +191,47 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const game = useAppSelector((state) => state.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const isDoubleEviction = game.doubleEviction?.weekActive === true
-  const required = isDoubleEviction ? 3 : 2
+  const isVoxPopuli = game.voxPopuli?.status === 'active'
+  const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
+  const relationships = useAppSelector((state) => state.social.relationships)
   const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
-  const options = alivePlayers.filter((player) => !lohIds.has(player.id))
+  const humanId = alivePlayers.find((player) => player.isUser)?.id
+  const voxAutoNomineeId = isVoxPopuli
+    ? (game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId)
+    : null
+  const voxImmunityWinnerId = isVoxPopuli && !isVoxFinalFour
+    ? (game.voxPopuli?.immunityWinnerId ?? game.lohId)
+    : null
+  const options = alivePlayers.filter(
+    (player) =>
+      (!isVoxPopuli || !voxImmunityWinnerId || player.id !== voxImmunityWinnerId) &&
+      (isVoxPopuli || !lohIds.has(player.id)) &&
+      (!isVoxPopuli || (player.id !== humanId && player.id !== voxAutoNomineeId))
+  )
   const optionUnits = buildConfessionalDecisionUnits(game, options)
+  const showFirstImpressions = isVoxPopuli && game.week <= 2 && Boolean(humanId)
+  const impressionsByPlayerId = useMemo(
+    () =>
+      showFirstImpressions && humanId
+        ? buildVoxFirstImpressions({
+            seed: game.seed,
+            week: game.week,
+            humanId,
+            candidates: options.map((player) => ({
+              id: player.id,
+              affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
+            })),
+          })
+        : {},
+    [game.seed, game.week, humanId, options, relationships, showFirstImpressions]
+  )
+  const required = isVoxPopuli
+    ? Math.min(isVoxFinalFour ? 1 : 2, optionUnits.length)
+    : isDoubleEviction
+      ? 3
+      : 2
   const autoNomineeId =
-    game.publicModeEnabled === true && !isDoubleEviction
+    !isVoxPopuli && game.publicModeEnabled === true && !isDoubleEviction
       ? (game.lastHohCompFinisherId ?? null)
       : null
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -205,7 +252,7 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const ready = selectedIds.length === required
   const review = ready
     ? autoNomineeName
-      ? `${formatNameList(selectedNames)} · ${autoNomineeName} is automatically added`
+      ? `${formatNameList(selectedNames)} · ${autoNomineeName} finished last`
       : formatNameList(selectedNames)
     : `Choose ${required - selectedIds.length} more`
 
@@ -226,18 +273,30 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
     setCommitting(true)
     dispatch(commitNominees(selectedIds))
     onDecisionCommitted(
-      autoNomineeName
-        ? `Nominated ${formatNameList(selectedNames)}; ${autoNomineeName} was added automatically.`
+      isVoxPopuli
+        ? `Secret votes cast for ${formatNameList(selectedNames)}.`
+        : autoNomineeName
+        ? `Nominated ${formatNameList(selectedNames)}; ${autoNomineeName} is the last-place nominee.`
         : `Nominated ${formatNameList(selectedNames)}.`
     )
   }
 
   return (
-    <div className="rcd-layout" data-testid="required-confessional-decision">
+    <div
+      className={`rcd-layout${isVoxPopuli ? ' rcd-layout--vox' : ''}`}
+      data-testid="required-confessional-decision"
+    >
+      {showFirstImpressions && (
+        <div className="rcd-first-impression" role="note">
+          <strong>Your first impression</strong>
+          <span>Green feels close · gold is mixed · red signals tension</span>
+          <small>This private guide disappears after Day 2.</small>
+        </div>
+      )}
       {autoNomineeUnit && (
         <div
           className="rcd-auto-nominee"
-          aria-label={`Automatic nominee: ${autoNomineeUnit.label}`}
+          aria-label={`Last-place nominee: ${autoNomineeUnit.label}`}
         >
           <span className="rcd-auto-nominee__avatars" aria-hidden="true">
             {autoNomineeUnit.players.map((player) => (
@@ -245,9 +304,9 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
             ))}
           </span>
           <span className="rcd-auto-nominee__copy">
-            <small>Automatic nominee</small>
+            <small>Last-place nominee</small>
             <strong>{autoNomineeUnit.label}</strong>
-            <em>This pair is already on the block.</em>
+            <em>Already on the block after finishing last.</em>
           </span>
           <span
             className="rcd-auto-nominee__pair-dot"
@@ -268,6 +327,7 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
               onSelect={() => togglePlayer(unit.id)}
               disabled={committing}
               danger
+              impressionsByPlayerId={impressionsByPlayerId}
             />
           )
         })}

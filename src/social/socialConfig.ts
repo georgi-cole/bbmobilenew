@@ -43,6 +43,8 @@ export const socialConfig = {
       'compliment',
       'proposeAlliance',
       'group_chat',
+      'build_quiet_bond',
+      'share_personal_story',
       'reassure',
       'apologize',
       'share_intel',
@@ -207,6 +209,10 @@ export const socialConfig = {
       social_2: 0.65,
       live_vote: 0.95,
       eviction_results: 0.85,
+      final3_comp1: 0.82,
+      final3_comp2: 0.9,
+      final3_comp3: 1,
+      final3_decision: 1,
     } as Record<string, number>,
     /** Additional event pressure bonuses per phase. */
     phaseEventPressure: {
@@ -219,6 +225,10 @@ export const socialConfig = {
       pos_results: 0.1,
       pos_ceremony_results: 0.2,
       social_2: 0.15,
+      final3_comp1: 0.2,
+      final3_comp2: 0.26,
+      final3_comp3: 0.35,
+      final3_decision: 0.4,
     } as Record<string, number>,
     /** Affinity thresholds that drive interaction type selection. */
     interactionTypeThresholds: {

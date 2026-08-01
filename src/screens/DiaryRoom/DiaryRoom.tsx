@@ -22,6 +22,7 @@ import {
   type FormEvent,
 } from 'react'
 import { useBlocker, useNavigate } from 'react-router'
+import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
@@ -66,6 +67,7 @@ import {
   type BigEyeVipStatus,
 } from '../../services/bigEyeVip'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
+import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import { useConfessionalTicTacToeTrigger } from './useConfessionalTicTacToeTrigger'
 import {
   buildEvictionVoteBreakdownPlayerNamesById,
@@ -75,6 +77,18 @@ import {
   updateEvictionVoteBreakdownStatus,
   type EvictionVoteBreakdownUnlock,
 } from '../../features/evictionVoteBreakdownStorage'
+import {
+  buildVoxNominationRevealRows,
+  consumeVoxNominationRevealEducationPending,
+  isVoxNominationRevealActive,
+  isVoxNominationRevealPhrase,
+  loadVoxNominationReveal,
+  updateVoxNominationRevealStatus,
+  type VoxNominationReveal,
+} from '../../features/voxNominationRevealStorage'
+import { recordAdShown } from '../../store/adsSlice'
+import { showRewarded } from '../../services/ads/adsService'
+import type { RootState } from '../../store/store'
 import './DiaryRoom.css'
 
 /** Delivery status of a user-sent message. */
@@ -478,6 +492,7 @@ function ChatBubbles({
 export default function DiaryRoom() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const reduxStore = useStore<RootState>()
   const gameState = useAppSelector((s) => s.game)
   const socialRelationships = useAppSelector((s) => s.social.relationships)
   const realityDomain = useAppSelector((s) => s.social.reality)
@@ -492,6 +507,7 @@ export default function DiaryRoom() {
   const players = useAppSelector((s) => s.game.players)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury'
+  const voxPopuliActive = gameState.voxPopuli?.status === 'active'
 
   // ── Active ceremony decision routed to the confessional ───────────────────
   // When non-null the player must complete the decision before leaving.
@@ -512,6 +528,10 @@ export default function DiaryRoom() {
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false)
   const [voteBreakdownUnlock, setVoteBreakdownUnlock] =
     useState<EvictionVoteBreakdownUnlock | null>(() => loadEvictionVoteBreakdownUnlock())
+  const [voxNominationReveal, setVoxNominationReveal] =
+    useState<VoxNominationReveal | null>(() => loadVoxNominationReveal())
+  const [showVoxNominationAdPrompt, setShowVoxNominationAdPrompt] = useState(false)
+  const [voxNominationAdPending, setVoxNominationAdPending] = useState(false)
   const [conversationState, setConversationState] =
     useState<BigEyeConversationState>(createInitialBigEyeState)
   const [vipStatus, setVipStatus] = useState<BigEyeVipStatus | null>(null)
@@ -527,19 +547,28 @@ export default function DiaryRoom() {
   )
   const [ticTacToeNextTurn, setTicTacToeNextTurn] = useState<TicTacToeMark>('X')
   const [ticTacToeThinking, setTicTacToeThinking] = useState(false)
-  const activeVoteBreakdown = isEvictionVoteBreakdownActive(
-    voteBreakdownUnlock,
-    currentWeekForMission,
-    phase
-  )
-    ? voteBreakdownUnlock
-    : null
+  const activeVoteBreakdown =
+    gameState.voxPopuli?.status !== 'active' &&
+    isEvictionVoteBreakdownActive(voteBreakdownUnlock, currentWeekForMission, phase)
+      ? voteBreakdownUnlock
+      : null
   const voteBreakdownPlayerNamesById = useMemo(
     () => buildEvictionVoteBreakdownPlayerNamesById(players),
     [players]
   )
   const voteBreakdownRows = activeVoteBreakdown
     ? buildEvictionVoteBreakdownRows(activeVoteBreakdown.votes, voteBreakdownPlayerNamesById)
+    : []
+  const activeVoxNominationReveal =
+    gameState.voxPopuli?.status === 'active' &&
+    isVoxNominationRevealActive(voxNominationReveal, currentWeekForMission, phase)
+      ? voxNominationReveal
+      : null
+  const voxNominationRows = activeVoxNominationReveal
+    ? buildVoxNominationRevealRows(
+        activeVoxNominationReveal.ballots,
+        voteBreakdownPlayerNamesById
+      )
     : []
   const vipConfigured = isBigEyeVipConfigured()
   const vipSeasonId = `${gameState.gameId ?? 'local'}:${gameState.season}`
@@ -734,20 +763,37 @@ export default function DiaryRoom() {
     let cancelled = false
     void loadChat(playerId).then((storedMessages) => {
       if (cancelled) return
-      if (storedMessages.length > 0) {
-        setMessages(storedMessages)
-        return
-      }
-      const visitCount = recordConfessionalVisit(playerId)
-      const greeting = buildEntryGreeting(playerNameRef.current, seedRef.current ?? 0, visitCount)
-      setMessages([greeting])
-      saveChat(playerId, [greeting])
+      const baseMessages =
+        storedMessages.length > 0
+          ? storedMessages
+          : [
+              buildEntryGreeting(
+                playerNameRef.current,
+                seedRef.current ?? 0,
+                recordConfessionalVisit(playerId)
+              ),
+            ]
+      const shouldTeachRevealPhrase =
+        voxPopuliActive && consumeVoxNominationRevealEducationPending()
+      const nextMessages = shouldTeachRevealPhrase
+        ? [
+            ...baseMessages,
+            {
+              id: crypto.randomUUID(),
+              role: 'bb' as const,
+              text: 'From now on, after secret nominations are complete, come here and type “Reveal nominations.” I will then give you the chance to uncover every ballot.',
+              timestamp: Date.now(),
+            },
+          ]
+        : baseMessages
+      setMessages(nextMessages)
+      saveChat(playerId, nextMessages)
     })
 
     return () => {
       cancelled = true
     }
-  }, [confessionalLocked, playerId])
+  }, [confessionalLocked, playerId, voxPopuliActive])
 
   useEffect(() => {
     if (confessionalLocked || !activeDecisionPresentation) return
@@ -966,6 +1012,32 @@ export default function DiaryRoom() {
       return updated
     })
 
+    if (voxPopuliActive && isVoxNominationRevealPhrase(text)) {
+      setMessages((prev) => {
+        const withSeen = prev.map((message) =>
+          message.role === 'user' && message.status !== 'seen'
+            ? { ...message, status: 'seen' as MessageStatus }
+            : message
+        )
+        saveChat(playerId, withSeen)
+        return withSeen
+      })
+      if (!activeVoxNominationReveal) {
+        pushBigEyeMessage(
+          'There is no nomination trail available right now. Return after today’s secret nominations are complete.'
+        )
+      } else if (activeVoxNominationReveal.status === 'revealed') {
+        pushBigEyeMessage('Today’s secret nomination trail is already open below.')
+      } else {
+        pushBigEyeMessage(
+          'I have today’s sealed ballots. Watch the short message that follows, and I will uncover the full nomination trail.'
+        )
+        setShowVoxNominationAdPrompt(true)
+      }
+      setLoading(false)
+      return
+    }
+
     const latentTwinShockGuess =
       activeConfessionalDecision?.type !== 'twin_shock' &&
       gameState.twinShock?.status === 'day4_asked_no_correct_guess' &&
@@ -1174,8 +1246,49 @@ export default function DiaryRoom() {
     [playerId]
   )
 
+  const revealVoxNominationsAfterAd = useCallback(() => {
+    setVoxNominationReveal(updateVoxNominationRevealStatus('revealed'))
+    setShowVoxNominationAdPrompt(false)
+    setVoxNominationAdPending(false)
+    pushBigEyeMessage('The seal is broken. Every secret nomination is now on the record below.')
+  }, [pushBigEyeMessage])
+
   return (
     <div className="diary-room">
+      {showVoxNominationAdPrompt && !confessionalLocked && (
+        <AdPrompt
+          icon="🗳️"
+          title="Unseal Today’s Ballots?"
+          description="Watch a short ad and The Big Eye will reveal which two housemates every player nominated."
+          watchLabel="Watch Ad to Reveal"
+          skipLabel="Keep Them Secret"
+          pending={voxNominationAdPending}
+          onWatch={() => {
+            if (voxNominationAdPending) return
+            setVoxNominationAdPending(true)
+            const state = reduxStore.getState()
+            if (!window.GameAds?.showRewarded) {
+              dispatch(recordAdShown('vox_nomination_breakdown'))
+              revealVoxNominationsAfterAd()
+              return
+            }
+            const requested = showRewarded(
+              'vox_nomination_breakdown',
+              state,
+              dispatch,
+              revealVoxNominationsAfterAd
+            )
+            if (!requested) revealVoxNominationsAfterAd()
+          }}
+          onSkip={() => {
+            setShowVoxNominationAdPrompt(false)
+            setVoxNominationAdPending(false)
+            pushBigEyeMessage(
+              'Very well. Today’s nomination trail will remain behind the curtain.'
+            )
+          }}
+        />
+      )}
       {!confessionalLocked && showEntryAnimation && (
         <div
           className="diary-room__entry-overlay"
@@ -1455,6 +1568,78 @@ export default function DiaryRoom() {
                           role="cell"
                         >
                           {row.targetName}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {false && activeVoxNominationReveal?.status === 'available' && (
+                <div
+                  className="diary-room__vote-reveal-card"
+                  aria-label="Secret nomination reveal offer"
+                >
+                  <span className="diary-room__vote-reveal-eyebrow">📺 The Big Eye</span>
+                  <p className="diary-room__vote-reveal-copy">
+                    I have the full secret nomination trail. Do you want to see who named whom?
+                  </p>
+                  <div className="diary-room__vote-reveal-actions">
+                    <button
+                      className="diary-room__mission-btn diary-room__mission-btn--accept"
+                      type="button"
+                      onClick={() => {
+                        setVoxNominationReveal(updateVoxNominationRevealStatus('revealed'))
+                        pushBigEyeMessage(
+                          'Then look closely. Every secret nomination is now on the record.'
+                        )
+                      }}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      className="diary-room__mission-btn diary-room__mission-btn--decline"
+                      type="button"
+                      onClick={() => {
+                        setVoxNominationReveal(updateVoxNominationRevealStatus('declined'))
+                        pushBigEyeMessage(
+                          'Very well. The nomination trail will remain behind the curtain.'
+                        )
+                      }}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+              )}
+              {activeVoxNominationReveal?.status === 'revealed' && (
+                <section
+                  className="diary-room__vote-chart"
+                  aria-label="Secret nomination breakdown"
+                >
+                  <div className="diary-room__vote-chart-header">
+                    <span className="diary-room__vote-reveal-eyebrow">
+                      Secret Nomination Trail
+                    </span>
+                    <strong>Who nominated whom</strong>
+                  </div>
+                  <div
+                    className="diary-room__vote-chart-table"
+                    role="table"
+                    aria-label="Secret nomination chart"
+                  >
+                    {voxNominationRows.map((row) => (
+                      <div key={row.voterId} className="diary-room__vote-chart-row" role="row">
+                        <span className="diary-room__vote-chart-cell" role="cell">
+                          {row.voterName}
+                        </span>
+                        <span className="diary-room__vote-chart-arrow" aria-hidden="true">
+                          →
+                        </span>
+                        <span
+                          className="diary-room__vote-chart-cell diary-room__vote-chart-cell--target"
+                          role="cell"
+                        >
+                          {row.targetNames.join(' and ')}
                         </span>
                       </div>
                     ))}

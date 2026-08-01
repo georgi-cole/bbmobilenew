@@ -6,6 +6,8 @@ export const STORE_PRODUCT_ICON_NAMES: readonly StoreProductIconName[] = [
   'publicMode',
   'tribunalHouse',
   'dramaMode',
+  'cupidArrow',
+  'voxPopuli',
   'noAds',
   'fallback',
 ]

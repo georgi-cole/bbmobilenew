@@ -28,6 +28,7 @@ type ActivityVisibilityEvent = {
   channels?: ActivityChannel[]
   type?: string
   text?: string
+  meta?: { suppressTv?: boolean; [key: string]: unknown }
 }
 
 /**
@@ -65,6 +66,7 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   if (isBattleBackReturnResultEvent(ev)) return false
+  if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true
   return ev.channels.includes('tv') || ev.channels.includes('mainLog')
 }

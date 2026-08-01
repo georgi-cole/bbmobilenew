@@ -30,17 +30,40 @@ export function getConfessionalDecisionPresentation(
 
   switch (decision.type) {
     case 'nominations': {
-      const required = game.doubleEviction?.weekActive ? 3 : 2
+      const isVoxPopuli = game.voxPopuli?.status === 'active'
+      const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
+      const humanId = alivePlayers.find((player) => player.isUser)?.id
+      const voxExcludedIds = new Set(
+        [
+          humanId,
+          isVoxFinalFour ? null : (game.voxPopuli?.immunityWinnerId ?? game.lohId),
+          game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId,
+        ].filter((id): id is string => Boolean(id))
+      )
+      const voxEligibleCount = alivePlayers.filter(
+        (player) => !voxExcludedIds.has(player.id)
+      ).length
+      const required = isVoxPopuli
+        ? Math.min(isVoxFinalFour ? 1 : 2, voxEligibleCount)
+        : game.doubleEviction?.weekActive
+          ? 3
+          : 2
       const alivePlayerIdsCsv = alivePlayers.map((player) => player.id).join(',')
       prompt =
-        required === 3
+        isVoxPopuli
+          ? isVoxFinalFour
+            ? 'Cast one secret nomination vote. Last place is already on the block, and nobody has immunity.'
+            : `Cast ${required === 1 ? 'your secret nomination vote' : 'two secret nomination votes'}. You cannot choose yourself, today’s immunity winner, or the last-place nominee.`
+          : required === 3
           ? 'Choose the three players you want to nominate for the Double Elimination.'
           : 'Choose the two players you want to nominate.'
       keyParts.push(
         `required=${required}`,
         `loh=${game.lohId ?? 'none'}`,
         `auto=${
-          game.publicModeEnabled && !game.doubleEviction?.weekActive
+          isVoxPopuli
+            ? (game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId ?? 'none')
+            : game.publicModeEnabled && !game.doubleEviction?.weekActive
             ? (game.lastHohCompFinisherId ?? 'none')
             : 'none'
         }`,

@@ -1,7 +1,8 @@
 import type { AppDispatch, RootState } from '../../store/store'
 import type { ExecuteActionResult } from '../SocialManeuvers'
 import { executeAction, executeGroupAction, getActionById } from '../SocialManeuvers'
-import { replaceRealityDomain, replaceRealitySimulation } from '../socialSlice'
+import { replaceRealityDomain, replaceRealitySimulation, updateRelationship } from '../socialSlice'
+import { ALLIANCE_TAG } from '../socialAlliance'
 import { getEffectiveSocialMode } from '../socialMode'
 import { resolveActionTargetMode } from '../socialActions'
 import {
@@ -313,6 +314,29 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     // is not counted a second time by the compatibility relationship write.
     dispatch(replaceRealityDomain(orchestration.domain))
     dispatch(replaceRealitySimulation(orchestration.simulation))
+    // An accepted human alliance is authoritative in both relationship models.
+    // Projecting the Reality domain can otherwise leave one legacy direction
+    // just below the threshold used by badges and action eligibility.
+    if (succeeded && input.actionId === 'proposeAlliance' && targetIds.length === 1) {
+      dispatch(
+        updateRelationship({
+          source: input.actorId,
+          target: input.targetId,
+          delta: 0,
+          tags: [ALLIANCE_TAG],
+          actionSource: 'manual',
+        })
+      )
+      dispatch(
+        updateRelationship({
+          source: input.targetId,
+          target: input.actorId,
+          delta: 0,
+          tags: [ALLIANCE_TAG],
+          actionSource: 'manual',
+        })
+      )
+    }
     return {
       ...compatibility,
       summary:

@@ -63,6 +63,7 @@ export interface AnimatedVoteResultsModalProps {
   postRevealDelayMs?: number;
   countdownMs?: number;
   variant?: 'modal' | 'tv';
+  resultMode?: 'house' | 'public';
 }
 
 const MIN_BAR_PCT = 4;
@@ -70,7 +71,7 @@ const TV_RING_RADIUS = 42;
 const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
 const DEFAULT_PUBLIC_TIEBREAK_DELAY_MS = 3000;
 
-interface VoteRingAvatarProps {
+export interface VoteRingAvatarProps {
   player: Player;
   partner?: Player;
   pairColor?: string;
@@ -80,7 +81,7 @@ interface VoteRingAvatarProps {
   tone: 'leading' | 'trailing';
 }
 
-function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRingAvatarProps) {
+export function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRingAvatarProps) {
   const clampedProgress = Math.max(0, Math.min(progress, 1));
   const dashOffset = TV_RING_CIRCUMFERENCE * (1 - clampedProgress);
 
@@ -121,7 +122,9 @@ function VoteRingAvatar({ player, partner, pairColor, progress, tone }: VoteRing
  */
 function buildVoteSequence(tallies: VoteTally[]): string[] {
   // Create per-nominee pools of vote tokens.
-  const pools = tallies.map((t) => Array<string>(t.voteCount).fill(t.nominee.id));
+  const pools = tallies.map((t) =>
+    Array<string>(Math.max(0, Math.round(t.voteCount))).fill(t.nominee.id)
+  );
   const seq: string[] = [];
   const maxLen = Math.max(0, ...pools.map((p) => p.length));
   for (let i = 0; i < maxLen; i++) {
@@ -140,10 +143,11 @@ export default function AnimatedVoteResultsModal({
   publicTiebreak = null,
   onPublicTiebreakResolved,
   onDone,
-  revealIntervalMs = 700,
+  revealIntervalMs,
   postRevealDelayMs = 1000,
   countdownMs = 4000,
   variant = 'modal',
+  resultMode = 'house',
 }: AnimatedVoteResultsModalProps) {
   const [revealStep, setRevealStep] = useState(0);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
@@ -152,6 +156,7 @@ export default function AnimatedVoteResultsModal({
   const firedRef = useRef(false);
   const publicResolvedRef = useRef(false);
   const showVoteStage = !publicTiebreakVisible;
+  const effectiveRevealIntervalMs = revealIntervalMs ?? (resultMode === 'public' ? 28 : 700);
 
   const totalVotes = useMemo(() => nominees.reduce((s, t) => s + t.voteCount, 0), [nominees]);
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
@@ -212,9 +217,9 @@ export default function AnimatedVoteResultsModal({
   // Advance reveal step one vote at a time.
   useEffect(() => {
     if (allRevealed) return;
-    const id = setTimeout(() => setRevealStep((s) => s + 1), revealIntervalMs);
+    const id = setTimeout(() => setRevealStep((s) => s + 1), effectiveRevealIntervalMs);
     return () => clearTimeout(id);
-  }, [revealStep, allRevealed, revealIntervalMs]);
+  }, [revealStep, allRevealed, effectiveRevealIntervalMs]);
 
   // After all votes revealed: wait, then show outcome.
   useEffect(() => {
@@ -267,21 +272,28 @@ export default function AnimatedVoteResultsModal({
       className={`avrm${variant === 'tv' ? ' avrm--tv' : ''}`}
       role={variant === 'tv' ? 'status' : 'dialog'}
       aria-modal={variant === 'tv' ? undefined : 'true'}
-      aria-label="Vote results"
+      aria-label={resultMode === 'public' ? 'Audience vote result' : 'Vote results'}
       onClick={variant === 'tv' ? undefined : outcomeVisible ? fire : undefined}
     >
       <div className={`avrm__card${variant === 'tv' ? ' avrm__card--tv' : ''}`}>
         <header className="avrm__header">
           {variant !== 'tv' && <span className="avrm__header-icon">🗳️</span>}
-          <h2 className="avrm__title">VOTE RESULTS</h2>
+          <h2 className="avrm__title">
+            {resultMode === 'public' ? 'PUBLIC VERDICT' : 'VOTE RESULTS'}
+          </h2>
           {variant === 'tv' && <span className="avrm__live-badge">Live</span>}
         </header>
 
         {showVoteStage && variant === 'tv' ? (
           <div className="avrm__tv-stage">
-            <div className="avrm__tallies avrm__tallies--tv">
+            <div
+              className="avrm__tallies avrm__tallies--tv"
+              data-nominee-count={nominees.length}
+            >
               {nominees.map((t, index) => {
                 const shown = displayedCounts[t.nominee.id] ?? 0;
+                const shownLabel =
+                  resultMode === 'public' && allRevealed ? t.voteCount.toFixed(1) : String(shown);
                 const isEvictee =
                   resolvedEvicteeIds.has(t.nominee.id) ||
                   (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
@@ -319,9 +331,14 @@ export default function AnimatedVoteResultsModal({
                       </span>
                       <span
                         className="avrm__tally-count"
-                        aria-label={`${shown} vote${shown === 1 ? '' : 's'}`}
+                        aria-label={
+                          resultMode === 'public'
+                            ? `${shownLabel} percent`
+                            : `${shown} vote${shown === 1 ? '' : 's'}`
+                        }
                       >
-                        {shown}
+                        {shownLabel}
+                        {resultMode === 'public' ? '%' : ''}
                       </span>
                     </div>
                   </Fragment>
@@ -333,6 +350,8 @@ export default function AnimatedVoteResultsModal({
           <div className="avrm__tallies">
             {nominees.map((t) => {
               const shown = displayedCounts[t.nominee.id] ?? 0;
+              const shownLabel =
+                resultMode === 'public' && allRevealed ? t.voteCount.toFixed(1) : String(shown);
               const isEvictee =
                 resolvedEvicteeIds.has(t.nominee.id) ||
                 (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
@@ -372,7 +391,10 @@ export default function AnimatedVoteResultsModal({
                       }}
                     />
                   </div>
-                  <span className="avrm__tally-count">{shown}</span>
+                  <span className="avrm__tally-count">
+                    {shownLabel}
+                    {resultMode === 'public' ? '%' : ''}
+                  </span>
                 </div>
               );
             })}
@@ -403,7 +425,11 @@ export default function AnimatedVoteResultsModal({
           variant !== 'tv' && (
             <div className="avrm__tie-banner" role="status" aria-live="assertive">
               <span className="avrm__tie-icon">⚖️</span>
-              <span className="avrm__tie-text">It&rsquo;s a tie! LOH must break the tie.</span>
+              <span className="avrm__tie-text">
+                {resultMode === 'public'
+                  ? 'The official audience tie-break is being verified.'
+                  : `It's a tie! LOH must break the tie.`}
+              </span>
             </div>
           )}
 

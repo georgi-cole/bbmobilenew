@@ -119,6 +119,15 @@ function buildStore(context: AutonomyContext): AutonomyStore & {
 }
 
 describe('incomingInteractionAutonomy thematic routing', () => {
+  it('does not add Vox-only Final 3 contacts to Classic', () => {
+    const context = buildContext({ phase: 'final3_comp1' })
+    const store = buildStore(context)
+
+    scheduleIncomingInteractionsForPhase('final3_comp1', store, context)
+
+    expect(store.social.scheduledIncomingInteractions).toEqual([])
+  })
+
   it('routes nominees to plea only when the player is HOH', () => {
     const context = buildContext({
       phase: 'nominations',

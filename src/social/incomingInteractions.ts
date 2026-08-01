@@ -279,7 +279,19 @@ function buildOrdinaryResponseOutcome(
       return `The exchange with ${fromName} sharpened into open tension.`
     return `You walked away, and ${fromName} was left to decide whether silence meant restraint or contempt.`
   }
-  if (interaction.type === 'nomination_plea' || interaction.type === 'deal_offer') {
+  if (interaction.type === 'deal_offer') {
+    if (responseType === 'neutral') {
+      if (/ask for terms|demand proof|counteroffer|buy some time/i.test(responseLabel ?? '')) {
+        return `${fromName} laid out what they need before making any promise. The conversation is still open.`
+      }
+      return `${fromName} heard the hesitation and left the offer on the table for now.`
+    }
+    if (responseType === 'negative' || responseType === 'decline')
+      return `${fromName} heard your answer and withdrew the offer without pretending it was fine.`
+    if (responseType === 'dismiss')
+      return `${fromName} left the conversation frustrated that their pitch never got a real hearing.`
+  }
+  if (interaction.type === 'nomination_plea') {
     if (responseType === 'neutral')
       return `${fromName} left without a guarantee and will keep looking for certainty elsewhere.`
     if (responseType === 'negative' || responseType === 'decline')

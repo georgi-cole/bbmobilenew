@@ -493,7 +493,14 @@ const socialSlice = createSlice({
       const { deliveries, remainingScheduled, phase, week } = action.payload
       state.scheduledIncomingInteractions = remainingScheduled
       if (deliveries.length > 0) {
-        const deliveredInteractions = deliveries.map((entry) => entry.interaction)
+        const deliveredInteractions = deliveries.map((entry) => ({
+          ...entry.interaction,
+          payload: {
+            ...(entry.interaction.payload ?? {}),
+            deliveredWeek: week,
+            deliveredPhase: phase,
+          },
+        }))
         state.incomingInteractions = [...deliveredInteractions, ...state.incomingInteractions]
       }
 

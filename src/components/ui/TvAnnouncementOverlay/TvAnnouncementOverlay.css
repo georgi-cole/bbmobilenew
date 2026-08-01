@@ -202,6 +202,41 @@
     linear-gradient(120deg, rgba(120, 36, 52, 0.06) 0%, rgba(120, 36, 52, 0) 32%);
 }
 
+.tv-announcement--vox-final-three {
+  --announcement-base-top: rgba(5, 5, 16, 0.99);
+  --announcement-base-mid: rgba(29, 18, 52, 0.97);
+  --announcement-base-bottom: rgba(4, 4, 12, 1);
+  --announcement-main-glow: rgba(139, 92, 246, 0.34);
+  --announcement-secondary-glow: rgba(250, 204, 21, 0.18);
+  --announcement-horizontal-band: rgba(216, 180, 254, 0.18);
+  --announcement-title-color: #fff1b8;
+  --announcement-title-glow: rgba(250, 204, 21, 0.62);
+  --announcement-title-ambient: rgba(139, 92, 246, 0.34);
+  --announcement-subtitle-color: rgba(242, 234, 255, 0.84);
+}
+
+.tv-announcement--vox-final-three::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 10%,
+      rgba(250, 204, 21, 0.13) 10% 12%,
+      transparent 12% 32%,
+      rgba(196, 181, 253, 0.12) 32% 34%,
+      transparent 34% 100%
+    );
+  animation: voxFinalThreeSpotlight 3.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes voxFinalThreeSpotlight {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Battle Back variant (orange spotlight) ──────────────────────────────── */
 .tv-announcement--battle-back {
   --announcement-title-color: #ffd8a8;

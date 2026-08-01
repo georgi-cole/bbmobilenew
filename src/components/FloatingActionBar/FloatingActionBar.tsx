@@ -82,17 +82,18 @@ export default function FloatingActionBar({
     game.aiReplacementStep ?? 0,
     game.aiReplacementWaiting ? 'waiting-for-replacement-render' : 'replacement-ready',
     game.specialVeto?.vipUseStage ?? 0,
+    game.voxPopuli?.finalThreePacingSeen?.join(',') ?? 'no-final-three-pacing',
     isWaiting ? 'waiting-for-input' : 'ready',
   ].join(':')
   const advancedProgressRef = useRef<string | null>(null)
-  const battleBackAnnouncementActive =
-    game.battleBack?.active === true && game.battleBack.competitionActive !== true
-
   useEffect(() => {
     advancedProgressRef.current = null
   }, [advanceProgressKey])
   const isSurvivorMode = game.mode === 'survival'
   const survivorTerminalActive = isSurvivorRunTerminal(game)
+  const battleBackAnnouncementActive =
+    game.battleBack?.active === true && game.battleBack.competitionActive !== true
+  const voxPopuliActive = game.voxPopuli?.status === 'active'
 
   const humanPlayer = players.find((p) => p.isUser)
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null
@@ -268,11 +269,12 @@ export default function FloatingActionBar({
     showSurvivorBlockedMessage,
   ])
 
-  const dispatchPlayPressedEvent = useCallback(() => {
+  const dispatchPlayPressedEvent = useCallback((): boolean => {
     try {
-      window.dispatchEvent(new CustomEvent('ui:playPressed'))
+      return window.dispatchEvent(new CustomEvent('ui:playPressed', { cancelable: true }))
     } catch (error) {
       console.warn('Failed to dispatch ui:playPressed event.', error)
+      return true
     }
   }, [])
 
@@ -289,17 +291,24 @@ export default function FloatingActionBar({
       return
     }
     if (advancedProgressRef.current === advanceProgressKey) {
-      // Repeated presses are needed only while the local staged Back 2 the Game
-      // announcement owns progression. Once the competition opens, never emit a
-      // stale play event that can restart or flash that announcement sequence.
       if (battleBackAnnouncementActive) {
+        dispatchPlayPressedEvent()
+        return
+      }
+      // Vox Populi can intentionally queue several manual broadcast cards
+      // within one reducer phase. Repeated Play presses reveal those cards
+      // without repeating the underlying phase transition.
+      if (voxPopuliActive) {
         dispatchPlayPressedEvent()
       }
       return
     }
+    // Faux TV gets first refusal on Play. A persistent major/critical card can
+    // consume the press so its queued story beat is actually seen before the
+    // reducer is allowed to generate the next phase behind it.
+    if (!dispatchPlayPressedEvent()) return
     advancedProgressRef.current = advanceProgressKey
     dispatch(advance())
-    dispatchPlayPressedEvent()
   }, [
     activeConfessionalDecisionKey,
     advanceProgressKey,
@@ -309,6 +318,7 @@ export default function FloatingActionBar({
     hasPendingConfessionalDecision,
     hasSeenConfessionalSpotlight,
     survivorTerminalActive,
+    voxPopuliActive,
   ])
 
   const handleToolClick = useCallback(() => {

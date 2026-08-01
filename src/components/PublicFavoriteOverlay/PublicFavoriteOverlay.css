@@ -246,6 +246,63 @@
   pointer-events: none;
 }
 
+.pf-overlay__audience-feed {
+  min-height: 0;
+  padding: 0.65rem;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 0.85rem;
+  background: rgba(8, 6, 18, 0.72);
+}
+
+.pf-overlay__audience-feed > header {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: #f8f5ff;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.pf-overlay__audience-feed > header small {
+  margin-left: auto;
+  color: rgba(232, 226, 241, 0.56);
+  font-size: 0.58rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pf-overlay__audience-feed-list {
+  display: grid;
+  gap: 0.32rem;
+  margin-top: 0.5rem;
+}
+
+.pf-overlay__audience-feed-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem;
+  margin: 0;
+  color: rgba(247, 243, 255, 0.88);
+  font-size: clamp(0.62rem, 1.8vw, 0.72rem);
+  line-height: 1.3;
+}
+
+.pf-overlay__audience-feed-item > span {
+  color: #bda7ff;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.pf-overlay__audience-feed-item--service {
+  color: #f5d894;
+}
+
+.pf-overlay__audience-feed-item--service > span {
+  color: #ffbf5a;
+}
+
 .pf-overlay__board-shell--intro {
   filter: saturate(0.92);
 }
@@ -595,6 +652,27 @@
   height: 2rem;
 }
 
+.pf-overlay__runner-up {
+  margin: 0.35rem 0 0;
+  color: rgba(255, 244, 206, 0.84);
+  font-size: clamp(0.8rem, 2.7vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pf-overlay__portrait--sealed {
+  display: grid;
+  place-items: center;
+  border-color: rgba(196, 181, 253, 0.28);
+  color: rgba(237, 233, 254, 0.88);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(196, 181, 253, 0.22), transparent 25%),
+    linear-gradient(145deg, rgba(29, 24, 54, 0.98), rgba(8, 9, 20, 0.98));
+  font-size: 1.15rem;
+  font-weight: 900;
+  box-shadow: inset 0 0 18px rgba(139, 92, 246, 0.16);
+}
+
 .pf-overlay__avatar-img {
   width: 100%;
   height: 100%;
@@ -707,6 +785,57 @@
   max-width: 19rem;
   font-size: 0.92rem;
   line-height: 1.35;
+}
+
+.pf-overlay__spotlight--sealed {
+  border-color: rgba(167, 139, 250, 0.24);
+  background:
+    radial-gradient(circle at 84% 50%, rgba(139, 92, 246, 0.19), transparent 30%),
+    linear-gradient(135deg, rgba(22, 19, 48, 0.98), rgba(8, 9, 20, 0.98));
+}
+
+.pf-overlay__sealed-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.pf-overlay__sealed-pair {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+}
+
+.pf-overlay__sealed-pair span {
+  display: grid;
+  place-items: center;
+  width: 3.1rem;
+  height: 3.1rem;
+  margin-left: -0.7rem;
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  border-radius: 50%;
+  color: rgba(237, 233, 254, 0.86);
+  background: linear-gradient(145deg, rgba(48, 38, 88, 0.98), rgba(8, 9, 20, 0.98));
+  font-size: 1.15rem;
+  font-weight: 900;
+  box-shadow: 0 0 26px rgba(139, 92, 246, 0.18);
+}
+
+.pf-overlay__moment-stat--final-countdown {
+  color: #fff2b2;
+  animation: pfFinalCountdownPulse 900ms ease-in-out infinite alternate;
+}
+
+.pf-overlay__moment-stat--final-countdown strong {
+  font-size: 1.08rem;
+  text-shadow: 0 0 16px rgba(253, 224, 121, 0.48);
+}
+
+@keyframes pfFinalCountdownPulse {
+  from { opacity: 0.76; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .pf-overlay__winner-stage {

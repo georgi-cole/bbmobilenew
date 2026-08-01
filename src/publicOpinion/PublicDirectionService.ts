@@ -87,6 +87,8 @@ export function generateDirectionsForCycle(params: {
   seed: number
   count?: number
   relationships?: RelationshipsMap
+  /** Removes LOH/house-vote missions when the audience controls the format. */
+  voxPopuliActive?: boolean
 }): PublicDirection[] {
   const {
     players,
@@ -94,6 +96,7 @@ export function generateDirectionsForCycle(params: {
     seed,
     count = publicOpinionConfig.directionsPerCycle,
     relationships,
+    voxPopuliActive = false,
   } = params
 
   const activePlayers = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
@@ -104,9 +107,17 @@ export function generateDirectionsForCycle(params: {
   const directions: PublicDirection[] = []
 
   const selectedPlayers = seededPickN(rng, activePlayers, Math.min(count, activePlayers.length))
+  const humanPlayer = voxPopuliActive ? activePlayers.find((player) => player.isUser) : undefined
+  if (humanPlayer && !selectedPlayers.some((player) => player.id === humanPlayer.id)) {
+    if (selectedPlayers.length === 0) selectedPlayers.push(humanPlayer)
+    else selectedPlayers[selectedPlayers.length - 1] = humanPlayer
+  }
 
   for (const player of selectedPlayers) {
     let dirType: DirectionType = seededPick(rng, DIRECTION_TYPES)
+    if (voxPopuliActive && (dirType === 'influence_hoh' || dirType === 'flip_vote')) {
+      dirType = rng() < 0.5 ? 'make_bold_move' : 'show_loyalty'
+    }
     const repairCandidates = activePlayers.filter(
       (candidate) =>
         candidate.id !== player.id &&

@@ -5,7 +5,7 @@
  * that have been rerouted into the Confessional.
  */
 
-import { useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   commitNominees,
@@ -34,6 +34,7 @@ import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import { expandCupidIds, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import { getConfessionalPowerName } from './confessionalDecisionPresentation'
 import { buildConfessionalDecisionUnits, type ConfessionalDecisionUnit } from './cupidDecisionUnits'
+import { buildVoxFirstImpressions, type VoxFirstImpression } from './voxFirstImpression'
 import './ConfessionalDecisionPanel.css'
 
 interface DecisionPanelProps {
@@ -52,6 +53,7 @@ function PlayerRow({
   onClick,
   danger = false,
   label,
+  impression,
   disabled = false,
 }: {
   player: Player
@@ -59,6 +61,7 @@ function PlayerRow({
   onClick: () => void
   danger?: boolean
   label?: string
+  impression?: VoxFirstImpression
   disabled?: boolean
 }) {
   return (
@@ -75,7 +78,13 @@ function PlayerRow({
       aria-pressed={selected}
       disabled={disabled}
     >
-      <PlayerAvatar player={player} selected={selected} size="md" />
+      <span
+        className={`cdp-option__avatar${impression ? ` cdp-option__avatar--${impression.tone}` : ''}`}
+        aria-label={impression?.label}
+        title={impression?.label}
+      >
+        <PlayerAvatar player={player} selected={selected} size="md" />
+      </span>
       <span className="cdp-option__name">{player.name}</span>
       {label && <span className="cdp-option__tag">{label}</span>}
     </button>
@@ -88,6 +97,7 @@ function DecisionUnitRow({
   onClick,
   danger = false,
   label,
+  impressionsByPlayerId,
   disabled = false,
 }: {
   unit: ConfessionalDecisionUnit
@@ -95,6 +105,7 @@ function DecisionUnitRow({
   onClick: () => void
   danger?: boolean
   label?: string
+  impressionsByPlayerId?: Record<string, VoxFirstImpression>
   disabled?: boolean
 }) {
   if (unit.players.length === 1) {
@@ -105,6 +116,7 @@ function DecisionUnitRow({
         onClick={onClick}
         danger={danger}
         label={label}
+        impression={impressionsByPlayerId?.[unit.players[0].id]}
         disabled={disabled}
       />
     )
@@ -146,11 +158,38 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
   const game = useAppSelector((s) => s.game)
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const isDoubleEviction = Boolean(game.doubleEviction?.weekActive)
-  const required = isDoubleEviction ? 3 : 2
+  const isVoxPopuli = game.voxPopuli?.status === 'active'
+  const relationships = useAppSelector((s) => s.social.relationships)
   const lohIds = new Set(expandCupidIds(game, game.lohId ? [game.lohId] : []))
-  const options = alivePlayers.filter((p) => !lohIds.has(p.id))
+  const humanId = alivePlayers.find((player) => player.isUser)?.id
+  const voxAutoNomineeId = isVoxPopuli
+    ? (game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId)
+    : null
+  const options = alivePlayers.filter(
+    (player) =>
+      !lohIds.has(player.id) &&
+      (!isVoxPopuli || (player.id !== humanId && player.id !== voxAutoNomineeId))
+  )
   const optionUnits = buildConfessionalDecisionUnits(game, options)
-  const canUsePublicNomineeRule = (game.publicModeEnabled ?? false) && !isDoubleEviction
+  const showFirstImpressions = isVoxPopuli && game.week <= 2 && Boolean(humanId)
+  const impressionsByPlayerId = useMemo(
+    () =>
+      showFirstImpressions && humanId
+        ? buildVoxFirstImpressions({
+            seed: game.seed,
+            week: game.week,
+            humanId,
+            candidates: options.map((player) => ({
+              id: player.id,
+              affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
+            })),
+          })
+        : {},
+    [game.seed, game.week, humanId, options, relationships, showFirstImpressions]
+  )
+  const required = isVoxPopuli ? Math.min(2, optionUnits.length) : isDoubleEviction ? 3 : 2
+  const canUsePublicNomineeRule =
+    !isVoxPopuli && (game.publicModeEnabled ?? false) && !isDoubleEviction
   const autoNomineeId = canUsePublicNomineeRule ? (game.lastHohCompFinisherId ?? null) : null
 
   const [selected, setSelected] = useState<string[]>([])
@@ -176,8 +215,10 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
     const autoNomineeName = autoNomineeId
       ? (optionUnits.find((unit) => unit.memberIds.includes(autoNomineeId))?.label ?? null)
       : null
-    const nominationSummary = autoNomineeName
-      ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is automatically added as the public auto-nominee.`
+    const nominationSummary = isVoxPopuli
+      ? `I cast my secret nomination votes for ${formatNameList(selectedNames)}.`
+      : autoNomineeName
+      ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is already the last-place nominee.`
       : `I nominate ${formatNameList(selectedNames)}.`
     onDecisionCommitted?.(nominationSummary)
     dispatch(commitNominees(selected))
@@ -185,6 +226,17 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
 
   return (
     <div className="cdp-shell" data-testid="confessional-decision-options">
+      {showFirstImpressions && (
+        <div className="cdp-first-impression" role="note">
+          <strong>Your first impression</strong>
+          <span>
+            <i className="cdp-first-impression__dot cdp-first-impression__dot--warm" /> closer
+            <i className="cdp-first-impression__dot cdp-first-impression__dot--neutral" /> unsure
+            <i className="cdp-first-impression__dot cdp-first-impression__dot--wary" /> tension
+          </span>
+          <small>This private guide disappears after Day 2.</small>
+        </div>
+      )}
       <div className="cdp-option-grid" role="group" aria-label="Nomination choices">
         {optionUnits.map((unit) => {
           const isAuto = autoNomineeId ? unit.memberIds.includes(autoNomineeId) : false
@@ -195,6 +247,7 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
               selected={selected.includes(unit.id) || isAuto}
               onClick={() => toggle(unit.id)}
               label={isAuto ? 'Auto-Nominee' : undefined}
+              impressionsByPlayerId={impressionsByPlayerId}
               disabled={submitting || isAuto}
             />
           )

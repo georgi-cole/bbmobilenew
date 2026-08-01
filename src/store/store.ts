@@ -20,6 +20,7 @@ import {
   savedStateKeyForProfile,
   clearSeasonSnapshot,
   clearSavedRun,
+  getSavedRunSlot,
   saveRunSnapshot,
 } from './saveStatePersistence'
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice'
@@ -214,7 +215,7 @@ store.subscribe(() => {
       // the previous in-progress save snapshot is now stale — clear it automatically.
       if (sameProfile && newLength > prevSeasonArchivesLength && archivesProfileId) {
         clearSeasonSnapshot(savedStateKeyForProfile(archivesProfileId))
-        clearSavedRun(archivesProfileId, 'classic')
+        clearSavedRun(archivesProfileId, getSavedRunSlot(current.game))
       }
     }
     prevSeasonArchivesLength = newLength

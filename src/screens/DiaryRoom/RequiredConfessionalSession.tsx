@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useBlocker } from 'react-router'
 import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
 import { useAppSelector } from '../../store/hooks'
+import {
+  selectDramaNetwork,
+  selectPersistentSocialHistory,
+  selectWeekStartRelSnapshot,
+} from '../../social/socialSlice'
+import { getEffectiveSocialMode } from '../../social/socialMode'
+import HousePulse from '../../components/HousePulse/HousePulse'
 import RequiredConfessionalDecision from './RequiredConfessionalDecision'
 import { getRequiredConfessionalPresentation } from './requiredConfessionalPresentation'
 import './DiaryRoom.css'
@@ -20,14 +27,25 @@ const CONFESSIONAL_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/conf
 
 export default function RequiredConfessionalSession({ decision, onReturnToGame }: Props) {
   const game = useAppSelector((state) => state.game)
+  const settings = useAppSelector((state) => state.settings)
+  const vip = useAppSelector((state) => state.vip)
+  const socialState = useAppSelector((state) => state.social)
+  const dramaNetwork = useAppSelector(selectDramaNetwork)
+  const actionHistory = useAppSelector(selectPersistentSocialHistory)
+  const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot)
   const survival = game.mode === 'survival'
+  const humanPlayer = game.players.find((player) => player.isUser)
+  const showVoxMyGame =
+    decision?.type === 'nominations' &&
+    game.voxPopuli?.status === 'active' &&
+    humanPlayer != null &&
+    getEffectiveSocialMode({ game, settings, vip }) === 'drama'
   const [entryActive, setEntryActive] = useState(true)
   const [lastReturnCue, setLastReturnCue] = useState('game')
   const [lastDecisionType, setLastDecisionType] = useState<
     ActiveConfessionalDecision['type'] | null
   >(decision?.type ?? null)
   const navigationBlocker = useBlocker(decision !== null)
-
   const presentation = useMemo(
     () => (decision ? getRequiredConfessionalPresentation(decision, game) : null),
     [decision, game]
@@ -112,6 +130,25 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
             <p className="diary-room__prompt">
               &quot;You are now in the Confessional. No one can hear you. Speak freely.&quot;
             </p>
+
+            {showVoxMyGame && humanPlayer && (
+              <aside
+                className="required-confessional__my-game"
+                aria-label="My Game"
+              >
+                <p>Review your relationships before locking in your secret nominations.</p>
+                <HousePulse
+                  network={dramaNetwork}
+                  players={game.players}
+                  humanId={humanPlayer.id}
+                  actionHistory={actionHistory}
+                  relationships={socialState.relationships ?? {}}
+                  weekStartRelSnapshot={weekStartRelSnapshot}
+                  currentWeek={game.week}
+                  reality={socialState.reality}
+                />
+              </aside>
+            )}
 
             <div className="diary-room__chat required-confessional__chat" aria-live="polite">
               {decision && presentation ? (

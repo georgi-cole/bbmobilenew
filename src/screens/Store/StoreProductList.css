@@ -51,6 +51,16 @@
   background: rgba(251, 113, 133, 0.11);
 }
 
+.vip-store__product[data-theme='cupid'] .vip-store__product-icon {
+  color: #ff8fb7;
+  background: linear-gradient(145deg, rgba(244, 63, 94, 0.22), rgba(190, 24, 93, 0.1));
+}
+
+.vip-store__product[data-theme='vox'] .vip-store__product-icon {
+  color: #a5b4fc;
+  background: linear-gradient(145deg, rgba(99, 102, 241, 0.24), rgba(37, 99, 235, 0.1));
+}
+
 .vip-store__product[data-theme='quiet'] .vip-store__product-icon {
   color: #6ee7b7;
   background: rgba(52, 211, 153, 0.11);

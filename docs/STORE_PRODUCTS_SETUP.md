@@ -1,6 +1,6 @@
 # Store products release setup
 
-The 1.0 release includes four permanent, one-time products for iOS and Android.
+The release includes six permanent, one-time products for iOS and Android.
 Every released product must be configured as **non-consumable** in Apple App Store Connect and
 as a **one-time, non-consumable product** in Google Play Console.
 
@@ -25,18 +25,20 @@ Use the same IDs on both platforms:
 | Survival Mode   | `com.georgicole.thebigeye.survival`   | Survival Mode only                            |
 | Public Mode     | `com.georgicole.thebigeye.publicmode` | Public Mode only                              |
 | Reality Mode    | `com.georgicole.thebigeye.dramamode`  | Reality Mode only                             |
+| Cupid's Arrow   | `com.georgicole.thebigeye.cupidarrow` | Cupid's Arrow seasonal expansion              |
+| Vox Populi      | `com.georgicole.thebigeye.voxpopuli`  | Vox Populi seasonal expansion                 |
 
 The IDs can be overridden with the matching `VITE_*_PRODUCT_ID` values in the
 platform environment files. The app always displays the localized title and
 price returned by Apple or Google.
 
-Set the VIP price below the combined price of the three standalone products.
+Set the VIP price below the combined price of the standalone products.
 VIP is a permanent bundle, not a subscription.
 
 ## Apple App Store Connect
 
 1. Accept the Paid Apps agreement and complete banking and tax information.
-2. Under the app's In-App Purchases, create the four released products as
+2. Under the app's In-App Purchases, create the six released products as
    **Non-Consumable**.
 3. Add localization, price, review screenshot, and review notes to each product.
 4. In Xcode, confirm that the app target has the In-App Purchase capability.
@@ -50,7 +52,7 @@ https://developer.apple.com/help/app-store-connect/manage-in-app-purchases/creat
 ## Google Play Console
 
 1. Complete the payments profile.
-2. Under Monetize > Products > In-app products, create all five IDs.
+2. Under Monetize > Products > In-app products, create all six released IDs.
 3. Make each product active and assign its one-time price.
 4. Upload a signed build to an internal test track.
 5. Add license testers and test purchase, pending payment, refund, reinstall,

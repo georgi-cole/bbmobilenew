@@ -64,6 +64,29 @@ function IconArtwork({ name }: { name: StoreProductIconName }) {
           <path d="M11 17h3m5 1h3m-10 7c3 3 6 3 9 0m8-5h3m5-1h2m-10 9c3-3 6-3 9 0" />
         </>
       )
+    case 'cupidArrow':
+      return (
+        <>
+          <path
+            className="store-product-icon__surface"
+            d="M24 40S7 30 7 17c0-6 4-10 10-10 3.6 0 6 2 7 4 1-2 3.4-4 7-4 6 0 10 4 10 10 0 13-17 23-17 23Z"
+          />
+          <path d="M24 40S7 30 7 17c0-6 4-10 10-10 3.6 0 6 2 7 4 1-2 3.4-4 7-4 6 0 10 4 10 10 0 13-17 23-17 23Z" />
+          <path d="M8 38 40 8M33 8h7v7M8 31v7h7" />
+        </>
+      )
+    case 'voxPopuli':
+      return (
+        <>
+          <path
+            className="store-product-icon__surface"
+            d="M5 21s7-10 19-10 19 10 19 10-7 10-19 10S5 21 5 21Z"
+          />
+          <path d="M5 21s7-10 19-10 19 10 19 10-7 10-19 10S5 21 5 21Z" />
+          <circle className="store-product-icon__core" cx="24" cy="21" r="6" />
+          <path d="M12 39h24M16 35v8m8-10v10m8-8v8" />
+        </>
+      )
     case 'noAds':
       return (
         <>

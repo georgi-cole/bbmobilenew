@@ -176,6 +176,8 @@ export interface SocialActionDefinition {
   requiredArcStages?: readonly DramaArcStage[]
   requiredArcPublic?: boolean
   requiresKnownSecret?: boolean
+  /** Expansion-specific relationship action shown only during Vox Populi seasons. */
+  voxOnly?: boolean
 }
 
 /** Resolve the target shape without leaking Drama Mode behavior into Normal Mode. */
@@ -246,6 +248,49 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     energyPerTarget: 1,
     successWeight: 2,
     yields: { influence: 0.03 },
+  },
+  {
+    id: 'build_quiet_bond',
+    title: 'Heart-to-Heart',
+    icon: '☕',
+    description: 'Step away from the noise and deepen a genuine one-to-one bond.',
+    category: 'friendly',
+    kind: 'rapport',
+    baseCost: { energy: 2 },
+    targetMode: 'primary',
+    successWeight: 3,
+    yields: { influence: 0.04 },
+    allowedPhases: ['social_1', 'social_2'],
+    voxOnly: true,
+  },
+  {
+    id: 'share_personal_story',
+    title: 'Open Up',
+    icon: '💭',
+    description: 'Share something personal and give this relationship room to become real.',
+    category: 'friendly',
+    kind: 'rapport',
+    baseCost: { energy: 2 },
+    targetMode: 'primary',
+    successWeight: 2,
+    yields: { influence: 0.03 },
+    allowedPhases: ['social_1', 'social_2'],
+    voxOnly: true,
+  },
+  {
+    id: 'read_the_room',
+    title: 'Read the Room',
+    icon: '👁️',
+    description: 'Watch the house dynamics without discussing nominations or pushing a target.',
+    category: 'strategic',
+    kind: 'intel_gain',
+    baseCost: { energy: 1 },
+    targetMode: 'none',
+    needsTargets: false,
+    successWeight: 3,
+    yields: { info: 1 },
+    allowedPhases: ['social_1', 'social_2'],
+    voxOnly: true,
   },
   // ── Alliance & relationship actions ───────────────────────────────────────
   {

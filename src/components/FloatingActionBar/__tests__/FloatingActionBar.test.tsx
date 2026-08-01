@@ -32,6 +32,7 @@ import { resolveBalancedDockBottom } from '../floatingActionBarLayout'
 import type { RootState } from '../../../store/store'
 import type { PublicDirection } from '../../../publicOpinion/types'
 import { createSecretMissionState } from '../../../bb/secretMission'
+import { createInitialVoxPopuliState } from '../../../features/twists/voxPopuli'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -377,6 +378,56 @@ describe('FloatingActionBar – layout', () => {
 
     expect(store.getState().game.week).toBe(2)
     expect(store.getState().game.phase).toBe('week_start')
+  })
+
+  it('lets a blocking Faux TV card consume Play before advancing the reducer', () => {
+    const store = makeStore(true, { phase: 'week_end', week: 1 })
+    const consumePlay = (event: Event) => event.preventDefault()
+    window.addEventListener('ui:playPressed', consumePlay, { capture: true })
+    renderFAB(store)
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' })
+    act(() => playButton.click())
+
+    expect(store.getState().game.phase).toBe('week_end')
+    expect(store.getState().game.week).toBe(1)
+
+    window.removeEventListener('ui:playPressed', consumePlay, { capture: true })
+    act(() => playButton.click())
+
+    expect(store.getState().game.phase).toBe('week_start')
+    expect(store.getState().game.week).toBe(2)
+  })
+
+  it('starts Vox Final 3 Part 1 without dispatching the challenge twice', () => {
+    const initial = makeStore().getState().game
+    const finalists = initial.players.slice(0, 3)
+    const store = makeStore(true, {
+      phase: 'final3_comp1',
+      players: initial.players.map((player) => ({
+        ...player,
+        status: finalists.some((finalist) => finalist.id === player.id)
+          ? ('active' as const)
+          : ('evicted' as const),
+      })),
+      voxPopuli: {
+        ...createInitialVoxPopuliState(initial.season),
+        status: 'active',
+        finalThreePacingSeen: [],
+      },
+      tvFeed: [],
+    })
+    renderFAB(store)
+
+    const playButton = screen.getByRole('button', { name: 'Advance to next phase' })
+    act(() => playButton.click())
+
+    expect(store.getState().game.phase).toBe('final3_comp1_minigame')
+
+    act(() => playButton.click())
+
+    expect(store.getState().game.phase).toBe('final3_comp1_minigame')
+    expect(store.getState().game.minigameContext?.phaseKey).toBe('final3_comp1')
   })
 
   it('continues every deterministic AI Safety result step once without locking the phase', () => {

@@ -117,9 +117,15 @@ export function isIncomingInteractionInvalidated(
   game: InteractionValidityGameState
 ): boolean {
   const sender = getPlayer(game, interaction.fromId)
-  if (isEvictedOrGone(sender)) return true
-
   const human = humanPlayer(game)
+  const activePlayers = (game.players ?? []).filter((player) => !isEvictedOrGone(player))
+  // Production interactions always have a roster sender, but scheduler tests
+  // and migrated saves can contain legacy/unknown IDs. Do not discard those
+  // solely because the current roster cannot resolve the sender.
+  if (sender && isEvictedOrGone(sender)) return true
+  if (human && interaction.fromId === human.id) return true
+  if (activePlayers.length <= 2) return true
+
   if (
     interaction.payload?.originActionId === 'nominate' &&
     human &&

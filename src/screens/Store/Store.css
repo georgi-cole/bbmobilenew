@@ -422,7 +422,7 @@
   min-width: 0;
 }
 
-@media (max-width: 360px) {
+@media (max-width: 520px) {
   .vip-store__benefits {
     grid-template-columns: 1fr;
   }
@@ -453,7 +453,15 @@
     grid-column: 2;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .vip-store__product-footer > strong {
+    max-width: 100%;
+    font-size: 0.76rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
   }
 }
 

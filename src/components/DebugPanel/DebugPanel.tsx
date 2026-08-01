@@ -8,6 +8,7 @@ import {
   forceNominees,
   forcePovWinner,
   forcePlayerStatus,
+  prepareVoxFinalThreeTest,
   forcePhase,
   finalizeFinal4Eviction,
   clearBlockingFlags,
@@ -20,8 +21,11 @@ import {
   queueForcedShock,
   clearForcedShock,
   completeMission,
+  activateCupidArrowNow,
   setCupidArrowSchedule,
   breakCupidArrowNow,
+  activateVoxPopuliNow,
+  setVoxPopuliSchedule,
 } from '../../store/gameSlice';
 import { DEFAULT_SETTINGS, setSim } from '../../store/settingsSlice';
 import {
@@ -43,6 +47,10 @@ import SimulationDebugControls from './SimulationDebugControls';
 import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode';
 import type { ForcedShockType, Phase } from '../../types';
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types';
+import {
+  selectDebugExpansionUnlocks,
+  setDebugExpansionUnlock,
+} from '../../store/uiSlice';
 import './DebugPanel.css';
 
 const PHASES: Phase[] = [
@@ -186,6 +194,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
   const game = useAppSelector((s) => s.game);
   const settings = useAppSelector((s) => s.settings ?? DEFAULT_SETTINGS);
   const incomingLogs = useAppSelector(selectIncomingInteractionLogs);
+  const debugExpansionUnlocks = useAppSelector(selectDebugExpansionUnlocks);
 
   const [isOpen, setIsOpen] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState<Phase>(game.phase);
@@ -198,6 +207,9 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
   const [selectedForcedShock, setSelectedForcedShock] = useState<ForcedShockType>('doubleEviction');
   const [cupidSeasonInput, setCupidSeasonInput] = useState(
     settings.sim.cupidArrowSeasonOverride?.toString() ?? ''
+  );
+  const [voxSeasonInput, setVoxSeasonInput] = useState(
+    settings.sim.voxPopuliSeasonOverride?.toString() ?? ''
   );
 
   useEffect(() => {
@@ -314,6 +326,14 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
     dispatch(setSim({ cupidArrowSeasonOverride: season }));
     dispatch(setCupidArrowSchedule(season));
     setCupidSeasonInput(season?.toString() ?? '');
+  }
+
+  function handleVoxSeasonSchedule() {
+    const parsed = Number(voxSeasonInput);
+    const season = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    dispatch(setSim({ voxPopuliSeasonOverride: season }));
+    dispatch(setVoxPopuliSchedule(season));
+    setVoxSeasonInput(season?.toString() ?? '');
   }
 
   return (
@@ -597,6 +617,59 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 >
                   Clear
                 </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() => dispatch(activateCupidArrowNow())}
+                  disabled={
+                    game.cupidArrow?.status === 'active' ||
+                    game.voxPopuli?.status === 'scheduled' ||
+                    game.voxPopuli?.status === 'active'
+                  }
+                >
+                  Activate Cupid
+                </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() => dispatch(activateVoxPopuliNow())}
+                  disabled={
+                    game.voxPopuli?.status === 'active' ||
+                    game.voxPopuli?.status === 'complete' ||
+                    game.cupidArrow?.status === 'scheduled' ||
+                    game.cupidArrow?.status === 'active'
+                  }
+                >
+                  Activate Vox
+                </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() =>
+                    dispatch(
+                      setDebugExpansionUnlock({
+                        expansion: 'cupidArrow',
+                        unlocked: !debugExpansionUnlocks.cupidArrow,
+                      })
+                    )
+                  }
+                >
+                  {debugExpansionUnlocks.cupidArrow ? 'Lock Cupid Test' : 'Unlock Cupid Test'}
+                </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() =>
+                    dispatch(
+                      setDebugExpansionUnlock({
+                        expansion: 'voxPopuli',
+                        unlocked: !debugExpansionUnlocks.voxPopuli,
+                      })
+                    )
+                  }
+                >
+                  {debugExpansionUnlocks.voxPopuli ? 'Lock Vox Test' : 'Unlock Vox Test'}
+                </button>
               </div>
 
               {game.pendingForcedShock && (
@@ -627,7 +700,12 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                     value={cupidSeasonInput}
                     onChange={(event) => setCupidSeasonInput(event.target.value)}
                   />
-                  <button className="dbg-btn" type="button" onClick={handleCupidSeasonSchedule}>
+                  <button
+                    className="dbg-btn"
+                    type="button"
+                    aria-label="Schedule Cupid season"
+                    onClick={handleCupidSeasonSchedule}
+                  >
                     Schedule
                   </button>
                   <button
@@ -662,7 +740,61 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 )}
               </div>
 
+              <div className="dbg-row dbg-row--col">
+                <label className="dbg-label" htmlFor="dbg-vox-season">
+                  Vox Populi Season
+                </label>
+                <div className="dbg-row">
+                  <input
+                    id="dbg-vox-season"
+                    className="dbg-select"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="e.g. 4"
+                    value={voxSeasonInput}
+                    onChange={(event) => setVoxSeasonInput(event.target.value)}
+                  />
+                  <button
+                    className="dbg-btn"
+                    type="button"
+                    aria-label="Schedule Vox season"
+                    onClick={handleVoxSeasonSchedule}
+                  >
+                    Schedule
+                  </button>
+                  <button
+                    className="dbg-btn"
+                    type="button"
+                    onClick={() => {
+                      setVoxSeasonInput('');
+                      dispatch(setSim({ voxPopuliSeasonOverride: null }));
+                      dispatch(setVoxPopuliSchedule(null));
+                    }}
+                  >
+                    Disable
+                  </button>
+                </div>
+                <span className="dbg-help">
+                  {game.voxPopuli?.status === 'active'
+                    ? 'Active · audience-led format'
+                    : game.voxPopuli?.status === 'complete'
+                      ? 'Season complete'
+                      : game.voxPopuli?.scheduledSeason
+                        ? `Scheduled for Season ${game.voxPopuli.scheduledSeason}`
+                        : 'Not scheduled'}
+                </span>
+              </div>
+
               <div className="dbg-row">
+                <button
+                  className="dbg-btn dbg-btn--wide"
+                  onClick={() => dispatch(prepareVoxFinalThreeTest())}
+                  disabled={game.voxPopuli?.status !== 'active'}
+                >
+                  Prepare Vox Final 3 Test
+                </button>
                 <button
                   className="dbg-btn dbg-btn--wide"
                   onClick={() => dispatch(forcePhase('final4_eviction'))}
