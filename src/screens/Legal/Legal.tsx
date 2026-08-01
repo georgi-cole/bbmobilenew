@@ -6,9 +6,15 @@ function externalUrl(value: string | undefined): string | null {
   return url && /^https:\/\//i.test(url) ? url : null
 }
 
-const privacyUrl = externalUrl(import.meta.env.VITE_PRIVACY_POLICY_URL)
-const termsUrl = externalUrl(import.meta.env.VITE_TERMS_URL)
-const supportUrl = externalUrl(import.meta.env.VITE_SUPPORT_URL)
+const privacyUrl =
+  externalUrl(import.meta.env.VITE_PRIVACY_POLICY_URL) ??
+  'https://georgi-cole.github.io/big-eye-legal/privacy-policy.html'
+const termsUrl =
+  externalUrl(import.meta.env.VITE_TERMS_URL) ??
+  'https://georgi-cole.github.io/big-eye-legal/terms-of-use.html'
+const supportUrl =
+  externalUrl(import.meta.env.VITE_SUPPORT_URL) ??
+  'https://georgi-cole.github.io/big-eye-legal/support.html'
 
 export default function Legal() {
   const navigate = useNavigate()
@@ -71,8 +77,8 @@ export default function Legal() {
       <section>
         <h2>Support</h2>
         <p>
-          For purchase, privacy, accessibility, or gameplay help, use the official support contact
-          shown on the app&apos;s store listing.
+          For purchase, privacy, accessibility, or gameplay help, visit the official support page or
+          email kolequant@gmail.com.
         </p>
         {supportUrl && (
           <a href={supportUrl} target="_blank" rel="noreferrer">
