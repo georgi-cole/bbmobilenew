@@ -905,4 +905,156 @@ export default function FamousFiguresComp({
           <p className="ff-base-clue">{figure.baseClueFact}</p>
           {effectiveHintsRevealed > 0 && (
             <ul className="ff-hint-list" aria-label="Revealed hints">
-              {Array.from({ le
+              {Array.from({ length: effectiveHintsRevealed }, (_, i) => (
+                <li key={i} className="ff-hint-item">
+                  <span className="ff-hint-num">#{i + 1}</span>
+                  <span>
+                    {i === VISIBLE_HINT_INDICES.length
+                      ? getFinalNameHintText(figure)
+                      : getHintText(figure, VISIBLE_HINT_INDICES[i])}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Request hint button */}
+      <button
+        className="ff-hint-btn"
+        onClick={handleRequestHint}
+        disabled={!canRequestHint}
+        aria-label={`Request hint (${MAX_VISIBLE_HINTS - effectiveHintsRevealed} remaining)`}
+      >
+        💡 Request Hint ({effectiveHintsRevealed}/{MAX_VISIBLE_HINTS} used)
+      </button>
+
+      {/* Success confirmation overlay — shown for CONFIRM_MS after a correct guess */}
+      {successOverlay && (
+        <div
+          className="ff-success-overlay"
+          role="status"
+          aria-live="assertive"
+          data-testid="ff-success-overlay"
+        >
+          <div className="ff-success-overlay-inner">
+            <div className="ff-success-checkmark" aria-hidden="true">
+              ✅
+            </div>
+            <div className="ff-success-title">Correct!</div>
+            <div className="ff-success-figure">{successOverlay.figureName}</div>
+            <div className="ff-success-points">+{successOverlay.points} points</div>
+          </div>
+        </div>
+      )}
+
+      {humanCorrect && successOverlay === null && ff.status === 'round_active' && (
+        <button className="ff-fastforward-btn" onClick={handleFastForwardRound} type="button">
+          {ff.currentRound + 1 >= ff.totalRounds ? 'Finish Round' : 'Next Round'}
+        </button>
+      )}
+
+      {/* Guess input */}
+      <div className="ff-input-area">
+        <div className="ff-input-row">
+          <input
+            ref={inputRef}
+            className={inputFieldClass}
+            type="text"
+            value={guessInput}
+            onChange={(e) => setGuessInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your guess…"
+            aria-label="Guess the famous figure"
+            disabled={
+              ff.status !== 'round_active' ||
+              successOverlay !== null ||
+              humanCorrect ||
+              humanId === null ||
+              humanCursor >= ff.totalRounds
+            }
+          />
+          <button
+            className="ff-submit-btn"
+            onClick={handleSubmitGuess}
+            disabled={
+              ff.status !== 'round_active' ||
+              successOverlay !== null ||
+              humanCorrect ||
+              humanId === null ||
+              guessInput.trim().length === 0 ||
+              humanCursor >= ff.totalRounds
+            }
+            aria-label="Submit guess"
+          >
+            Submit
+          </button>
+        </div>
+        <div className={feedbackClass} aria-live="assertive">
+          {feedbackMsg}
+        </div>
+      </div>
+
+      {/* Scoreboard */}
+      {renderScoreboard(ff, participantIds, humanId, displayName, playerAvatar)}
+    </div>
+  )
+}
+
+// ─── Scoreboard helper ────────────────────────────────────────────────────────
+
+function renderScoreboard(
+  ff: FamousFiguresState,
+  participantIds: string[],
+  humanId: string | null,
+  displayName: (id: string) => string,
+  playerAvatar: (id: string) => string
+) {
+  const sorted = [...participantIds].sort(
+    (a, b) => (ff.playerScores[b] ?? 0) - (ff.playerScores[a] ?? 0)
+  )
+
+  return (
+    <div className="ff-scoreboard" aria-label="Scoreboard">
+      <div className="ff-scoreboard-title">Scoreboard</div>
+      <div className="ff-scoreboard-list">
+        {sorted.map((id) => {
+          const isHuman = id === humanId
+          const name = displayName(id)
+          const total = ff.playerScores[id] ?? 0
+          const roundScores = ff.playerRoundScores[id] ?? []
+          const correct = ff.playerCorrect[id]
+          return (
+            <div key={id} className="ff-scoreboard-row">
+              <span className="ff-scoreboard-avatar-wrap">
+                <img
+                  className="ff-scoreboard-avatar"
+                  src={playerAvatar(id)}
+                  alt=""
+                  aria-hidden="true"
+                  onError={(e) => {
+                    const img = e.currentTarget
+                    // one-shot fallback to Dicebear to avoid infinite onError loop
+                    img.onerror = null
+                    img.src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(name)}`
+                  }}
+                />
+              </span>
+              <span className={`ff-scoreboard-name${isHuman ? ' ff-scoreboard-name--you' : ''}`}>
+                {isHuman ? 'You' : name}
+              </span>
+              <span className="ff-scoreboard-round">[{roundScores.join(', ')}]</span>
+              <span className="ff-scoreboard-total">{total}</span>
+              {correct && (
+                <span className="ff-scoreboard-correct" aria-label="Correct this round">
+                  ✓
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
