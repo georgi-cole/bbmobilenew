@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   aiReplacementRendered,
   setReplacementNominee,
@@ -254,9 +254,8 @@ export function useSafetyFlow({
       ]
     }
 
-    presentedSaveIdRef.current = savedId
     const savedNames = savedPlayers.map((player) => player.name).join(' & ')
-    setPendingSaveCeremony({
+    const ceremony = {
       tiles: [
         ...(sourceIsDistinctHolder ? [{ rect: holderRect, glowTone: 'gold' as const }] : []),
         ...savedPlayers.map((player) => ({
@@ -272,7 +271,12 @@ export function useSafetyFlow({
       caption: `${savedNames} ${savedPlayers.length > 1 ? 'have' : 'has'} been saved!`,
       subtitle: '🛡️ Safety used',
       savedId,
-    })
+    }
+    const timer = window.setTimeout(() => {
+      presentedSaveIdRef.current = savedId
+      setPendingSaveCeremony(ceremony)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [game, getTileRect, pendingSaveCeremony])
 
   // Hide the save modal while the save ceremony is playing.
@@ -473,7 +477,7 @@ export function useSafetyFlow({
     game.gameId ?? `season-${game.season}`
   )
 
-  const aiReplacementKey = useMemo(() => {
+  const aiReplacementKey = (() => {
     // Only trigger on pos_ceremony_results phase when nominees just changed (replacement happened)
     // and no human decision is pending.
     if (game.phase !== 'pos_ceremony_results') return ''
@@ -493,20 +497,7 @@ export function useSafetyFlow({
     const lohPlayer = game.players.find((p) => p.id === game.lohId)
     if (lohPlayer?.isUser) return '' // human LOH handles this differently
     return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
-  }, [
-    game.phase,
-    game.week,
-    game.nomineeIds,
-    game.replacementNeeded,
-    game.awaitingPovDecision,
-    game.awaitingPovSaveTarget,
-    game.lohId,
-    game.players,
-    game.povSavedId,
-    game.aiReplacementStep,
-    game.voxPopuli?.status,
-    game.voxPopuli?.lastReplacementNomineeIds,
-  ])
+  })()
 
   const showAiReplacementAnim =
     aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
