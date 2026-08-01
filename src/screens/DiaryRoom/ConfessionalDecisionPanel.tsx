@@ -5,7 +5,7 @@
  * that have been rerouted into the Confessional.
  */
 
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   commitNominees,
@@ -172,21 +172,18 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
   )
   const optionUnits = buildConfessionalDecisionUnits(game, options)
   const showFirstImpressions = isVoxPopuli && game.week <= 2 && Boolean(humanId)
-  const impressionsByPlayerId = useMemo(
-    () =>
-      showFirstImpressions && humanId
-        ? buildVoxFirstImpressions({
-            seed: game.seed,
-            week: game.week,
-            humanId,
-            candidates: options.map((player) => ({
-              id: player.id,
-              affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
-            })),
-          })
-        : {},
-    [game.seed, game.week, humanId, options, relationships, showFirstImpressions]
-  )
+  const impressionsByPlayerId =
+    showFirstImpressions && humanId
+      ? buildVoxFirstImpressions({
+          seed: game.seed,
+          week: game.week,
+          humanId,
+          candidates: options.map((player) => ({
+            id: player.id,
+            affinity: relationships[humanId]?.[player.id]?.affinity ?? 0,
+          })),
+        })
+      : {}
   const required = isVoxPopuli ? Math.min(2, optionUnits.length) : isDoubleEviction ? 3 : 2
   const canUsePublicNomineeRule =
     !isVoxPopuli && (game.publicModeEnabled ?? false) && !isDoubleEviction

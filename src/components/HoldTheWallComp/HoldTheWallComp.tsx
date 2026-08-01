@@ -370,7 +370,7 @@ export default function HoldTheWallComp({
       WINNER_SCREEN_DURATION_MS
     );
     return () => window.clearTimeout(t);
-  }, [htw.status, onComplete]);
+  }, [htw.status, htw.winnerId, htw.droppedIds, onComplete]);
 
   // ── Narration: start message + periodic holding updates ───────────────────
   useEffect(() => {

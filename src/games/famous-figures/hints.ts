@@ -32,6 +32,18 @@ function parseNameParts(canonicalName: string): {
 }
 
 /**
+ * Final name clue shown after the four useful curated hints. Two leading
+ * letters preserve a small challenge while still making the last guess fair.
+ */
+export function getFinalNameHintText(figure: FigureRow): string {
+  const { first, isMononym } = parseNameParts(figure.canonicalName);
+  const prefix = first.slice(0, 2) || '?';
+  return isMononym
+    ? `Name starts with '${prefix}'`
+    : `First name starts with '${prefix}'`;
+}
+
+/**
  * Returns the display text for the hint at `hintIndex` (0-based).
  */
 export function getHintText(figure: FigureRow, hintIndex: number): string {
@@ -67,3 +79,4 @@ export function getHintText(figure: FigureRow, hintIndex: number): string {
   const lastInitial = (last[0] ?? '?').toUpperCase();
   return `First name: ${first}. Last name starts with '${lastInitial}'.`;
 }
+
