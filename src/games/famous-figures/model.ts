@@ -28,7 +28,8 @@ export interface FigureRow {
  * commonly repeats the broad setup clue without adding useful information.
  */
 export const VISIBLE_HINT_INDICES = [1, 2, 3, 4] as const
-export const MAX_VISIBLE_HINTS = VISIBLE_HINT_INDICES.length
+/** The fifth visible hint is a generated name-start clue. */
+export const MAX_VISIBLE_HINTS = VISIBLE_HINT_INDICES.length + 1
 
 // â”€â”€â”€ Game state enums / unions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -39,6 +40,7 @@ export type HintStage =
   | 'hint_3'
   | 'hint_4'
   | 'hint_5'
+  | 'hint_6'
   | 'overtime'
   | 'done'
 
