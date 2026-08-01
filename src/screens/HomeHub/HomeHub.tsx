@@ -292,7 +292,6 @@ export default function HomeHub() {
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame)
-  const [debugLaunch, setDebugLaunch] = useState(false)
   const shouldRestorePlayMenu = new URLSearchParams(location.search).get('menu') === 'play'
   const [playSelectionOpen, setPlaySelectionOpen] = useState(shouldRestorePlayMenu)
   const [housematesBioOpen, setHousematesBioOpen] = useState(false)
@@ -591,17 +590,6 @@ export default function HomeHub() {
           ownsCupidArrow || debugExpansionUnlocks.cupidArrow
         ),
     },
-    ...(false
-      ? [
-          {
-            key: 'debug-launch',
-            label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
-            icon: <span aria-hidden="true">🛠️</span>,
-            variant: 'secondary_wide' as const,
-            onClick: () => setDebugLaunch((enabled) => !enabled),
-          },
-        ]
-      : []),
     {
       key: 'back',
       label: 'Back',
