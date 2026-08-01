@@ -39,6 +39,14 @@ npm run cinematic:render
 
 The finished file is written to `renders/big-eye-cinematic.mp4`. The render script uses PNG intermediate frames for cleaner gradients and explicit BT.709 output. `remotion.config.ts` selects ANGLE because it is the supported Chromium OpenGL backend for Three.js capture.
 
+For the silent 720 × 1280 background used by the in-app credits player:
+
+```sh
+npm run cinematic:render-background
+```
+
+This writes `public/assets/credits/big-eye-cinematic-background.mp4`. Credits text and music remain external and editable, so this delivery asset only needs to be regenerated when the cinematic imagery changes.
+
 Full-resolution WebGL rendering is intentionally heavier than the embedded preview. Lower Remotion concurrency if GPU memory is constrained:
 
 ```sh
@@ -107,6 +115,7 @@ Suggested eye prompt:
 - `src/cinematic/credits/`: configurable final credit overlay
 - `src/cinematic/components/`: shared composition and optional-asset handling
 - `src/remotion/`: Remotion registration and composition metadata
+
 ## Version archive
 
 The approved first WebGL credits cut is preserved by the annotated Git tag

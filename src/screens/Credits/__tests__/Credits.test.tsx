@@ -2,22 +2,16 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import Credits from '../Credits'
-import { CINEMATIC_CONFIG } from '../../../cinematic/config/cinematicConfig'
 
 const EXIT_FADE_MS = 420
 
 const soundtrackMock = vi.hoisted(() => ({
-  getFrame: vi.fn(() => 0),
+  fadeOut: vi.fn(),
+  getTime: vi.fn(() => 0),
   isPlaying: vi.fn(() => true),
   start: vi.fn(() => Promise.resolve()),
   stop: vi.fn(),
-  reset: () => {
-    soundtrackMock.getFrame.mockReturnValue(0)
-    soundtrackMock.isPlaying.mockReturnValue(true)
-    soundtrackMock.start.mockClear()
-    soundtrackMock.start.mockResolvedValue(undefined)
-    soundtrackMock.stop.mockClear()
-  },
+  sync: vi.fn(),
 }))
 
 const contentMock = vi.hoisted(() => ({
@@ -35,93 +29,15 @@ const contentMock = vi.hoisted(() => ({
       url: '/config/credits.json',
     })
   ),
-  reset: () => {
-    contentMock.load.mockClear()
-  },
 }))
 
-const playerMock = vi.hoisted(() => {
-  type PlayerListener = (event: { detail: undefined }) => void
-  let endedListener: PlayerListener | null = null
-  let playListener: PlayerListener | null = null
-  let latestProps: Record<string, unknown> = {}
-
-  const pause = vi.fn()
-  const seekTo = vi.fn()
-  const isPlaying = vi.fn(() => true)
-  const play = vi.fn(() => {
-    playListener?.({ detail: undefined })
-  })
-  const addEventListener = vi.fn((name: string, listener: PlayerListener) => {
-    if (name === 'ended') endedListener = listener
-    if (name === 'play') playListener = listener
-  })
-  const removeEventListener = vi.fn((name: string, listener: PlayerListener) => {
-    if (name === 'ended' && endedListener === listener) endedListener = null
-    if (name === 'play' && playListener === listener) playListener = null
-  })
-
-  return {
-    pause,
-    seekTo,
-    play,
-    isPlaying,
-    addEventListener,
-    removeEventListener,
-    setLatestProps: (props: Record<string, unknown>) => {
-      latestProps = props
-    },
-    getLatestProps: () => latestProps,
-    emitEnded: () => endedListener?.({ detail: undefined }),
-    emitPlay: () => playListener?.({ detail: undefined }),
-    reset: () => {
-      endedListener = null
-      playListener = null
-      latestProps = {}
-      pause.mockClear()
-      seekTo.mockClear()
-      play.mockClear()
-      isPlaying.mockReset()
-      isPlaying.mockReturnValue(true)
-      addEventListener.mockClear()
-      removeEventListener.mockClear()
-    },
-  }
-})
-
-vi.mock('@remotion/player', async () => {
-  const React = await import('react')
-
-  type MockPlayerProps = {
-    autoPlay?: boolean
-    inputProps?: unknown
-  }
-
-  const Player = React.forwardRef<unknown, MockPlayerProps>((props, ref) => {
-    playerMock.setLatestProps(props as Record<string, unknown>)
-    React.useImperativeHandle(ref, () => ({
-      pause: playerMock.pause,
-      seekTo: playerMock.seekTo,
-      play: playerMock.play,
-      isPlaying: playerMock.isPlaying,
-      addEventListener: playerMock.addEventListener,
-      removeEventListener: playerMock.removeEventListener,
-    }))
-
-    return React.createElement('div', {
-      'aria-label': 'WebGL credits player',
-      'data-autoplay': String(Boolean(props.autoPlay)),
-    })
-  })
-
-  return { Player }
-})
-
 vi.mock('../../../cinematic/audio/creditsSoundtrack', () => ({
-  getCreditsSoundtrackFrame: soundtrackMock.getFrame,
+  fadeOutCreditsSoundtrack: soundtrackMock.fadeOut,
+  getCreditsSoundtrackTime: soundtrackMock.getTime,
   isCreditsSoundtrackPlaying: soundtrackMock.isPlaying,
   startCreditsSoundtrackFromGesture: soundtrackMock.start,
   stopCreditsSoundtrack: soundtrackMock.stop,
+  syncCreditsSoundtrackToTime: soundtrackMock.sync,
 }))
 
 vi.mock('../../../cinematic/credits/creditsContent', () => ({
@@ -141,165 +57,99 @@ function renderCredits(props: { autoPlay?: boolean; onComplete?: () => void } = 
 
 describe('Credits', () => {
   beforeEach(() => {
-    playerMock.reset()
-    soundtrackMock.reset()
-    contentMock.reset()
+    soundtrackMock.fadeOut.mockClear()
+    soundtrackMock.getTime.mockReset()
+    soundtrackMock.getTime.mockReturnValue(0)
+    soundtrackMock.isPlaying.mockReset()
+    soundtrackMock.isPlaying.mockReturnValue(true)
+    soundtrackMock.start.mockClear()
+    soundtrackMock.stop.mockClear()
+    soundtrackMock.sync.mockClear()
+    contentMock.load.mockClear()
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
-  it('renders the WebGL composition and an explicit skip control', () => {
+  it('uses the pre-rendered muted video and starts it immediately', () => {
     renderCredits()
 
+    const video = screen.getByLabelText('Credits background video')
+    expect(video).toHaveAttribute('autoplay')
+    expect(video).toHaveAttribute('playsinline')
+    expect(video).toHaveProperty('muted', true)
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Skip credits' })).toBeInTheDocument()
-    expect(screen.getByLabelText('WebGL credits cinematic')).toBeInTheDocument()
-    expect(screen.getByLabelText('WebGL credits player')).toHaveAttribute('data-autoplay', 'true')
-    expect(playerMock.getLatestProps()).toMatchObject({
-      compositionWidth: CINEMATIC_CONFIG.width,
-      compositionHeight: CINEMATIC_CONFIG.height,
-    })
-    expect(screen.queryByLabelText('Credits video')).not.toBeInTheDocument()
-    expect(playerMock.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function))
+    expect(screen.queryByRole('button', { name: 'Tap to start credits' })).toBeNull()
   })
 
-  it('exits only through the explicit skip control after playback has started', () => {
-    vi.useFakeTimers()
-    renderCredits()
-
-    act(() => {
-      playerMock.emitPlay()
-      fireEvent.click(screen.getByLabelText('Credits cinematic'))
-    })
-    expect(screen.queryByText('Home screen')).not.toBeInTheDocument()
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Skip credits' }))
-      vi.advanceTimersByTime(EXIT_FADE_MS)
-    })
-
-    expect(playerMock.pause).toHaveBeenCalled()
-    expect(screen.getByText('Home screen')).toBeInTheDocument()
-  })
-
-  it('offers a synchronized tap-to-start fallback when autoplay is blocked', () => {
-    vi.useFakeTimers()
-    soundtrackMock.isPlaying.mockReturnValue(false)
-    renderCredits()
-
-    const startButton = screen.getByRole('button', { name: 'Tap to start credits' })
-    expect(screen.getByText('Tap to begin')).toBeInTheDocument()
-    expect(screen.getByLabelText('WebGL credits player')).toHaveAttribute('data-autoplay', 'false')
-
-    act(() => {
-      fireEvent.click(startButton)
-    })
-
-    expect(soundtrackMock.start).toHaveBeenCalled()
-    expect(playerMock.seekTo).toHaveBeenCalledWith(0)
-    expect(playerMock.play).toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: 'Tap to start credits' })).not.toBeInTheDocument()
-  })
-
-  it('continues visual playback when the soundtrack is blocked', async () => {
-    soundtrackMock.isPlaying.mockReturnValue(false)
-    soundtrackMock.start.mockRejectedValueOnce(new Error('Audio playback blocked'))
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    renderCredits()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Tap to start credits' }))
-
-    await waitFor(() => {
-      expect(warn).toHaveBeenCalledWith(
-        '[Credits] Soundtrack playback was blocked.',
-        expect.any(Error)
-      )
-    })
-    expect(playerMock.play).toHaveBeenCalled()
-    expect(playerMock.pause).not.toHaveBeenCalled()
-
-    warn.mockRestore()
-  })
-
-  it('passes the runtime-loaded credit cards into the composition', async () => {
+  it('keeps runtime-loaded credit cards above the video', async () => {
     renderCredits()
 
     await waitFor(() => expect(contentMock.load).toHaveBeenCalledTimes(1))
-    await waitFor(() => {
-      const props = playerMock.getLatestProps()
-      const inputProps = props.inputProps as { credits?: Array<{ id: string }> } | undefined
-      expect(inputProps?.credits?.[0]?.id).toBe('runtime-producer')
-    })
-
-    expect(screen.getByLabelText('WebGL credits cinematic')).toHaveAttribute(
+    await waitFor(() => expect(screen.getByText('Runtime Producer')).toBeInTheDocument())
+    expect(screen.getByLabelText('Credits background video').parentElement).toHaveAttribute(
       'data-content-source',
       'runtime'
     )
   })
 
-  it('exits when Escape is pressed', () => {
-    vi.useFakeTimers()
+  it('uses the logo-free city-lights fallback when the video fails', () => {
     renderCredits()
 
-    act(() => {
-      fireEvent.keyDown(window, { key: 'Escape' })
-      vi.advanceTimersByTime(EXIT_FADE_MS)
-    })
+    fireEvent.error(screen.getByLabelText('Credits background video'))
 
-    expect(playerMock.pause).toHaveBeenCalled()
-    expect(screen.getByText('Home screen')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Credits background video')).toBeNull()
+    expect(screen.getByLabelText('City lights credits background')).toBeInTheDocument()
+    expect(screen.queryByAltText('Kolequant')).toBeNull()
   })
 
-  it('returns home after the WebGL composition finishes', () => {
-    vi.useFakeTimers()
-    renderCredits()
-
-    act(() => {
-      playerMock.emitEnded()
-    })
-
-    expect(playerMock.pause).toHaveBeenCalled()
-    expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible', 'is-instant')
-
-    act(() => {
-      vi.advanceTimersByTime(EXIT_FADE_MS)
-    })
-
-    expect(screen.getByText('Home screen')).toBeInTheDocument()
-  })
-
-  it('autoplays the embedded finale credits and reports completion without navigating home', () => {
-    vi.useFakeTimers()
+  it('starts external music when video playback begins and no music is active', () => {
     soundtrackMock.isPlaying.mockReturnValue(false)
-    const onComplete = vi.fn()
-    renderCredits({ autoPlay: true, onComplete })
+    renderCredits()
 
-    expect(screen.queryByRole('button', { name: 'Tap to start credits' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('WebGL credits player')).toHaveAttribute('data-autoplay', 'true')
-    expect(soundtrackMock.start).toHaveBeenCalled()
+    const video = screen.getByLabelText('Credits background video')
+    Object.defineProperty(video, 'currentTime', { configurable: true, value: 2.5 })
+    fireEvent.play(video)
 
-    act(() => {
-      playerMock.emitEnded()
-      vi.advanceTimersByTime(EXIT_FADE_MS)
-    })
-
-    expect(onComplete).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('Home screen')).not.toBeInTheDocument()
+    expect(soundtrackMock.start).toHaveBeenCalledWith(2.5)
   })
 
-  it('completes embedded credits immediately when Skip is pressed', () => {
+  it('fades music and returns home when skipped', () => {
     vi.useFakeTimers()
-    const onComplete = vi.fn()
-    renderCredits({ autoPlay: true, onComplete })
+    renderCredits()
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip credits' }))
+    expect(soundtrackMock.fadeOut).toHaveBeenCalledWith(EXIT_FADE_MS)
 
-    expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible', 'is-instant')
-    act(() => {
-      vi.advanceTimersByTime(0)
-    })
+    act(() => vi.advanceTimersByTime(EXIT_FADE_MS))
+    expect(screen.getByText('Home screen')).toBeInTheDocument()
+  })
 
+  it('finishes embedded finale credits after the video ends', () => {
+    vi.useFakeTimers()
+    const onComplete = vi.fn()
+    renderCredits({ autoPlay: true, onComplete })
+
+    fireEvent.ended(screen.getByLabelText('Credits background video'))
+    expect(soundtrackMock.stop).toHaveBeenCalled()
+    expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible')
+
+    act(() => vi.advanceTimersByTime(EXIT_FADE_MS))
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('exits on Escape', () => {
+    vi.useFakeTimers()
+    renderCredits()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    act(() => vi.advanceTimersByTime(EXIT_FADE_MS))
+
+    expect(screen.getByText('Home screen')).toBeInTheDocument()
   })
 })

@@ -17,6 +17,7 @@ import type { CompGame, CompSelectionPayload } from '../../components/compSelect
 import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { restartApp } from '../../utils/restartApp'
 import { APP_VERSION } from '../../appVersion'
+import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack'
 import {
   REALITY_MODE_PRESETS,
   getProfileRealityAgeEligibility,
@@ -745,7 +746,13 @@ export default function SettingsAdmin() {
             <p className="settings-about__version">Version {APP_VERSION}</p>
             <p className="settings-about__tagline">AI Edition — React + TypeScript + Vite</p>
 
-            <button className="settings-about__credits-btn" onClick={() => navigate('/credits')}>
+            <button
+              className="settings-about__credits-btn"
+              onClick={() => {
+                void startCreditsSoundtrackFromGesture().catch(() => undefined)
+                navigate('/credits')
+              }}
+            >
               🎬 View Credits
             </button>
           </section>
