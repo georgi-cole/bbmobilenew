@@ -287,4 +287,19 @@ describe('Credits', () => {
     expect(onComplete).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Home screen')).not.toBeInTheDocument()
   })
+
+  it('completes embedded credits immediately when Skip is pressed', () => {
+    vi.useFakeTimers()
+    const onComplete = vi.fn()
+    renderCredits({ autoPlay: true, onComplete })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip credits' }))
+
+    expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible', 'is-instant')
+    act(() => {
+      vi.advanceTimersByTime(0)
+    })
+
+    expect(onComplete).toHaveBeenCalledTimes(1)
+  })
 })
