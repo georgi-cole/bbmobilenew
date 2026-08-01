@@ -2,8 +2,8 @@
  * Redux slice for the "Famous Figures" trivia competition.
  *
  * State machine:
- *   idle → round_active → round_reveal → round_active  (repeat for each round)
- *                                      → complete       (after all rounds)
+ *   idle â†’ round_active â†’ round_reveal â†’ round_active  (repeat for each round)
+ *                                      â†’ complete       (after all rounds)
  *
  * Three rounds per match. Each round players guess a historical figure from
  * progressive clues. Fewer hints used means more points. The player with the
@@ -19,7 +19,7 @@ import {
 import { isAcceptedGuess, normalizeForMatching } from '../../games/famous-figures/fuzzy'
 import figuresData from '../../games/famous-figures/data/famous_figures.json'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type FamousFiguresPrizeType = 'LOH' | 'POS'
 export type FamousFiguresStatus = 'idle' | 'round_active' | 'round_reveal' | 'complete'
@@ -30,6 +30,7 @@ export type FamousFiguresTimerPhase =
   | 'hint_3'
   | 'hint_4'
   | 'hint_5'
+  | 'hint_6'
   | 'done'
 
 export interface FamousFiguresState {
@@ -51,7 +52,7 @@ export interface FamousFiguresState {
   seed: number
   outcomeResolved: boolean
   winnerId: string | null
-  /** round (0-indexed) → playerId → whether AI answered correctly */
+  /** round (0-indexed) â†’ playerId â†’ whether AI answered correctly */
   aiSubmissions: Record<number, Record<string, boolean>>
   timerPhase: FamousFiguresTimerPhase
   roundComplete: boolean
@@ -70,25 +71,25 @@ export interface FamousFiguresState {
   /**
    * Per-player cursor counting how many personal rounds have been resolved
    * for that player (answered correctly, or the global round advanced past
-   * them). Range: 0…totalRounds. Incremented on correct guess; also bumped to
-   * `currentRound + 1` when `nextRound` advances so the cursor is always ≥
+   * them). Range: 0â€¦totalRounds. Incremented on correct guess; also bumped to
+   * `currentRound + 1` when `nextRound` advances so the cursor is always â‰¥
    * the upcoming global round.
    */
   playerRoundCursor: Record<string, number>
   /**
    * Per-player per-round points, indexed by round number (0-based).
    * Written at `playerPersonalRoundScores[id][roundIndex]` immediately on each
-   * correct guess — not deferred to `doEndRound`. Missed rounds default to 0
+   * correct guess â€” not deferred to `doEndRound`. Missed rounds default to 0
    * when read. Used by the waiting screen for the per-round breakdown.
    */
   playerPersonalRoundScores: Record<string, number[]>
 }
 
-// ─── Dataset ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Dataset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const FAMOUS_FIGURES: FigureRow[] = figuresData as FigureRow[]
 
-// ─── Initial state ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Initial state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const initialState: FamousFiguresState = {
   competitionType: 'LOH',
@@ -117,9 +118,9 @@ const initialState: FamousFiguresState = {
   playerPersonalRoundScores: {},
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-/** Fisher-Yates shuffle of [0 … length-1] using the given RNG. */
+/** Fisher-Yates shuffle of [0 â€¦ length-1] using the given RNG. */
 function shuffleIndices(rng: () => number, length: number): number[] {
   const arr = Array.from({ length }, (_, i) => i)
   for (let i = arr.length - 1; i > 0; i--) {
@@ -144,6 +145,8 @@ export function getPointsForHintsUsed(hintsRevealed: number): number {
     case 3:
       return 3
     case 4:
+      return 2
+    case 5:
       return 1
     default:
       return 1 // Cap scoring at the final clue value.
@@ -211,7 +214,7 @@ export function getFamousFiguresAiPlan(
   return { clueNumber, delayMs: Math.round(clampAiValue(reactionDelay, 1800, 9500)) }
 }
 
-/** FNV-1a 32-bit hash — stable string → uint32. */
+/** FNV-1a 32-bit hash â€” stable string â†’ uint32. */
 function fnv1a32(s: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
@@ -223,7 +226,7 @@ function fnv1a32(s: string): number {
 
 /**
  * Build deterministic AI submissions for a single round.
- * Returns a map of playerId → correct (boolean).
+ * Returns a map of playerId â†’ correct (boolean).
  *
  * Probability combines the figure's five-level recognizability band, a stable
  * general-knowledge profile for each AI, and a figure-specific familiarity or
@@ -322,7 +325,7 @@ function resetRoundPlayerState(state: FamousFiguresState): void {
 
 /**
  * Record per-round scores and transition the match to round_reveal.
- * Safe to call multiple times — guards against status !== round_active.
+ * Safe to call multiple times â€” guards against status !== round_active.
  *
  * Prefers `playerPersonalRoundScores[id][currentRound]` over the cumulative
  * diff calculation so that scores are always correct even when a player
@@ -342,7 +345,7 @@ function doEndRound(state: FamousFiguresState): void {
 
       let roundScore: number
       if (personalScore !== undefined) {
-        // Use the per-player personal score recorded at guess-time — this is
+        // Use the per-player personal score recorded at guess-time â€” this is
         // accurate even when the player answered ahead of the global round.
         roundScore = personalScore
       } else {
@@ -359,7 +362,7 @@ function doEndRound(state: FamousFiguresState): void {
   state.roundComplete = true
 }
 
-// ─── Slice ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Slice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const famousFiguresSlice = createSlice({
   name: 'famousFigures',
@@ -367,7 +370,7 @@ const famousFiguresSlice = createSlice({
   reducers: {
     /**
      * Initialise the competition: shuffle figure order, set up player state,
-     * transition idle → round_active.
+     * transition idle â†’ round_active.
      */
     startFamousFigures(
       state,
@@ -388,7 +391,7 @@ const famousFiguresSlice = createSlice({
       state.totalRounds = 6
       state.hintsRevealed = 0
       state.figureOrder = order
-      // Select exactly totalRounds figures from the shuffle — shared by all
+      // Select exactly totalRounds figures from the shuffle â€” shared by all
       // players so the competition is apples-to-apples.
       const matchFigureOrder = order.slice(0, state.totalRounds)
       state.matchFigureOrder = matchFigureOrder
@@ -434,7 +437,7 @@ const famousFiguresSlice = createSlice({
       if (state.roundComplete) return
       if (state.hintsRevealed >= MAX_VISIBLE_HINTS) return
       state.hintsRevealed += 1
-      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_3', 'hint_4', 'hint_5']
+      const phases: FamousFiguresTimerPhase[] = ['clue', 'hint_1', 'hint_3', 'hint_4', 'hint_5', 'hint_6']
       const phaseIdx = Math.min(state.hintsRevealed, phases.length - 1)
       state.timerPhase = phases[phaseIdx]
     },
@@ -452,6 +455,7 @@ const famousFiguresSlice = createSlice({
         'hint_3',
         'hint_4',
         'hint_5',
+        'hint_6',
         'done',
       ]
       const idx = order.indexOf(state.timerPhase)
@@ -476,7 +480,7 @@ const famousFiguresSlice = createSlice({
      * Checks fuzzy match, awards points, suppresses duplicates.
      * On correct guess: marks the player solved and awards points.
      * Closes the round (transitions to round_reveal) only when every
-     * registered participant has advanced their cursor past currentRound —
+     * registered participant has advanced their cursor past currentRound â€”
      * otherwise the round stays active so remaining players can still answer.
      */
     submitPlayerGuess(
@@ -503,7 +507,7 @@ const famousFiguresSlice = createSlice({
         state.playerCorrect[playerId] = false
       }
 
-      // Guard: enforce monotonic per-player progression — targetRound must be
+      // Guard: enforce monotonic per-player progression â€” targetRound must be
       // the player's next unanswered round; this prevents skipping rounds.
       if (targetRound !== (state.playerRoundCursor[playerId] ?? 0)) return
 
@@ -515,7 +519,7 @@ const famousFiguresSlice = createSlice({
       const trimmed = guess.trim()
       if (trimmed.length === 0) return
 
-      // Duplicate suppression — only apply for the current global round where
+      // Duplicate suppression â€” only apply for the current global round where
       // playerGuesses is actively maintained; for ahead rounds skip to avoid
       // false positives from previous round's guess history.
       if (targetRound === state.currentRound) {
@@ -525,7 +529,7 @@ const famousFiguresSlice = createSlice({
         state.playerGuesses[playerId] = [...already, trimmed]
       }
 
-      // All players share matchFigureOrder — look up the figure for targetRound.
+      // All players share matchFigureOrder â€” look up the figure for targetRound.
       const figureIdx =
         state.matchFigureOrder[targetRound] ??
         state.playerFigureQueues[playerId]?.[targetRound] ??
@@ -559,7 +563,7 @@ const famousFiguresSlice = createSlice({
         } else {
           // For ahead rounds (targetRound > currentRound): advance cursor
           // immediately since no overlay is shown for ahead-play answers.
-          // doEndRound is NOT called here — it fires from advancePlayerCursor
+          // doEndRound is NOT called here â€” it fires from advancePlayerCursor
           // once all participants have advanced past the current global round.
           state.playerRoundCursor[playerId] = (state.playerRoundCursor[playerId] ?? 0) + 1
         }
@@ -617,8 +621,8 @@ const famousFiguresSlice = createSlice({
 
     /**
      * Advance to the next round or complete the match.
-     * round_reveal → round_active  (if rounds remain)
-     * round_reveal → complete       (after all rounds)
+     * round_reveal â†’ round_active  (if rounds remain)
+     * round_reveal â†’ complete       (after all rounds)
      */
     nextRound(state) {
       if (state.status !== 'round_reveal') return
@@ -627,8 +631,8 @@ const famousFiguresSlice = createSlice({
       const allIds = Object.keys(state.playerScores)
 
       // Advance cursor for any player whose cursor is still at or behind the
-      // current round (they missed it — didn't answer correctly in time).
-      // This ensures every player's cursor is always ≥ the upcoming round so
+      // current round (they missed it â€” didn't answer correctly in time).
+      // This ensures every player's cursor is always â‰¥ the upcoming round so
       // they can participate and the monotonic targetRound guard doesn't block them.
       for (const id of allIds) {
         const cursor = state.playerRoundCursor[id] ?? 0
@@ -645,7 +649,7 @@ const famousFiguresSlice = createSlice({
       }
 
       if (nextRoundIndex >= state.totalRounds) {
-        // All rounds complete — determine winner
+        // All rounds complete â€” determine winner
         state.status = 'complete'
         state.winnerId = determineWinner(allIds, state.playerScores, state.playerRoundScores)
         return
@@ -714,9 +718,9 @@ const famousFiguresSlice = createSlice({
      *
      * For each remaining round:
      *   1. Apply any pre-computed AI submissions for players who haven't yet
-     *      answered that round (cursor ≤ round).
-     *   2. End the round (doEndRound → round_reveal).
-     *   3. Advance (nextRound logic) until all rounds done → complete.
+     *      answered that round (cursor â‰¤ round).
+     *   2. End the round (doEndRound â†’ round_reveal).
+     *   3. Advance (nextRound logic) until all rounds done â†’ complete.
      *
      * This is dispatched by the "Finish Match" button in the waiting screen so
      * the human doesn't have to wait for all global timers to expire.
@@ -773,7 +777,7 @@ const famousFiguresSlice = createSlice({
           }
 
           if (!aiSubs[id]) {
-            // AI submission was incorrect — record 0 for this round.
+            // AI submission was incorrect â€” record 0 for this round.
             if (state.playerPersonalRoundScores[id][roundIdx] === undefined) {
               state.playerPersonalRoundScores[id][roundIdx] = 0
             }
@@ -807,7 +811,7 @@ const famousFiguresSlice = createSlice({
           return
         }
         // Otherwise, prepare state for the next iteration of the loop.
-        // (round_reveal → will be transitioned to round_active at top of next iteration)
+        // (round_reveal â†’ will be transitioned to round_active at top of next iteration)
       }
 
       // Fallback: ensure we always end in complete state.
@@ -815,7 +819,7 @@ const famousFiguresSlice = createSlice({
       state.winnerId = determineWinner(allIds, state.playerScores, state.playerRoundScores)
     },
 
-    /** Idempotency guard — prevents outcome thunk from firing twice. */
+    /** Idempotency guard â€” prevents outcome thunk from firing twice. */
     markFamousFiguresOutcomeResolved(state) {
       state.outcomeResolved = true
     },
@@ -845,7 +849,7 @@ export const {
 /**
  * Return the figure index for the given `round`.
  * With the shared `matchFigureOrder` design all players see the same figure
- * per round — the `playerId` parameter is accepted for backward compatibility
+ * per round â€” the `playerId` parameter is accepted for backward compatibility
  * but is no longer used for figure selection.
  */
 export function getPlayerFigureIndex(
@@ -867,3 +871,4 @@ export function getPlayerFigureIndex(
 }
 
 export default famousFiguresSlice.reducer
+
