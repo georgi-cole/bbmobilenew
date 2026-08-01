@@ -99,11 +99,6 @@ const HUB_BUTTONS = [
 type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null;
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null;
 
-const DEBUG_GAME_ROUTE = '/game?debug=1&qa=1';
-// Temporary QA switch: keep the launcher available in web, emulator, and native
-// builds. Set to false before producing the public store release.
-const ENABLE_PUBLIC_DEBUG_LAUNCHER = true;
-
 interface HubAssetState {
   ready: boolean;
   progress: number;
@@ -256,14 +251,13 @@ export default function HomeHub() {
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame);
-  const [debugLaunch, setDebugLaunch] = useState(false);
   const [playSelectionOpen, setPlaySelectionOpen] = useState(false);
   const [housematesBioOpen, setHousematesBioOpen] = useState(false);
   const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null);
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null);
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false);
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId);
-  const gameRoute = debugLaunch ? DEBUG_GAME_ROUTE : '/game';
+  const gameRoute = '/game';
 
   const savedRuns = useMemo(
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
@@ -470,15 +464,6 @@ export default function HomeHub() {
         setHousematesBioOpen(true);
       },
     },
-    ...(ENABLE_PUBLIC_DEBUG_LAUNCHER
-      ? [{
-          key: 'debug-launch',
-          label: `Debug Menu: ${debugLaunch ? 'On' : 'Off'}`,
-          icon: <span aria-hidden="true">🛠️</span>,
-          variant: 'secondary_wide' as const,
-          onClick: () => setDebugLaunch((enabled) => !enabled),
-        }]
-      : []),
     {
       key: 'back',
       label: 'Back',
