@@ -210,7 +210,8 @@ export default function Credits({ onComplete }: CreditsProps) {
             <video
               ref={videoRef}
               className={`credits-video${videoReady ? ' is-ready' : ''}`}
-              aria-label="Credits background video"
+              aria-hidden="true"
+              data-testid="credits-background-video"
               src={CREDITS_VIDEO_SOURCES[0]}
               poster={CREDITS_POSTER_SOURCES[0]}
               autoPlay

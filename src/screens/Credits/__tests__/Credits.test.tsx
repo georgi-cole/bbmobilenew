@@ -78,7 +78,7 @@ describe('Credits', () => {
   it('uses the pre-rendered muted video and starts it immediately', () => {
     renderCredits()
 
-    const video = screen.getByLabelText('Credits background video')
+    const video = screen.getByTestId('credits-background-video')
     expect(video).toHaveAttribute('autoplay')
     expect(video).toHaveAttribute('playsinline')
     expect(video).toHaveProperty('muted', true)
@@ -92,7 +92,7 @@ describe('Credits', () => {
 
     await waitFor(() => expect(contentMock.load).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.getByText('Runtime Producer')).toBeInTheDocument())
-    expect(screen.getByLabelText('Credits background video').parentElement).toHaveAttribute(
+    expect(screen.getByTestId('credits-background-video').parentElement).toHaveAttribute(
       'data-content-source',
       'runtime'
     )
@@ -101,10 +101,10 @@ describe('Credits', () => {
   it('uses the logo-free city-lights fallback when the video fails', () => {
     renderCredits()
 
-    fireEvent.error(screen.getByLabelText('Credits background video'))
+    fireEvent.error(screen.getByTestId('credits-background-video'))
 
-    expect(screen.queryByLabelText('Credits background video')).toBeNull()
-    expect(screen.getByLabelText('City lights credits background')).toBeInTheDocument()
+    expect(screen.queryByTestId('credits-background-video')).toBeNull()
+    expect(screen.getByTestId('credits-background-fallback')).toBeInTheDocument()
     expect(screen.queryByAltText('Kolequant')).toBeNull()
   })
 
@@ -112,7 +112,7 @@ describe('Credits', () => {
     soundtrackMock.isPlaying.mockReturnValue(false)
     renderCredits()
 
-    const video = screen.getByLabelText('Credits background video')
+    const video = screen.getByTestId('credits-background-video')
     Object.defineProperty(video, 'currentTime', { configurable: true, value: 2.5 })
     fireEvent.play(video)
 
@@ -135,7 +135,7 @@ describe('Credits', () => {
     const onComplete = vi.fn()
     renderCredits({ autoPlay: true, onComplete })
 
-    fireEvent.ended(screen.getByLabelText('Credits background video'))
+    fireEvent.ended(screen.getByTestId('credits-background-video'))
     expect(soundtrackMock.stop).toHaveBeenCalled()
     expect(screen.getByTestId('credits-end-guard')).toHaveClass('is-visible')
 
