@@ -118,11 +118,11 @@ describe('minigame logic revamps', () => {
 
   it('restricts Trap Auction to rosters of at least 8 and removes it from endgame', () => {
     expect(getGame('trapAuction')?.minPlayers).toBe(8)
-    expect(getClassicCampaignPoolForContext({ day: 5, playerCount: 8, compType: 'LOH' })).toContain(
+    expect(getClassicCampaignPoolForContext({ day: 7, playerCount: 8, compType: 'LOH' })).toContain(
       'trapAuction'
     )
     expect(
-      getClassicCampaignPoolForContext({ day: 5, playerCount: 7, compType: 'LOH' })
+      getClassicCampaignPoolForContext({ day: 8, playerCount: 7, compType: 'LOH' })
     ).not.toContain('trapAuction')
     expect(
       getClassicCampaignPoolForContext({ day: 12, playerCount: 4, compType: 'LOH' })
