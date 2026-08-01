@@ -21,7 +21,7 @@ test.describe('Credits cinematic @core-journey', () => {
     const cinematic = page.locator('.credits-media')
     await expect(cinematic).toBeVisible({ timeout: 15_000 })
     await expect(cinematic).toHaveAttribute('data-cinematic-renderer', 'prerendered-video')
-    await expect(page.getByLabel('Credits background video')).toBeVisible()
+    await expect(page.getByTestId('credits-background-video')).toBeVisible()
     await expect(page.locator('.credits-webgl canvas')).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Tap to start credits' })).toHaveCount(0)
 
