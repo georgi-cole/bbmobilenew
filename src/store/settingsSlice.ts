@@ -12,6 +12,7 @@ import {
   normalizeRealityModePreset,
   type RealityModePreset,
 } from '../modes/realityMode'
+import { normalizeLanguagePreference, type LanguagePreference } from '../i18n/languages'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
@@ -27,6 +28,10 @@ export interface SettingsState {
     musicConfigOverrides: MusicConfigOverrides
     /** Optional local URL overrides for semantic tracks. */
     musicTrackAssets: MusicTrackAssetOverride[]
+  }
+  localization: {
+    /** Device-following or explicit UI language preference. */
+    language: LanguagePreference
   }
   display: {
     themePreset: ThemePreset
@@ -139,6 +144,14 @@ function normalizeAudio(audio?: Partial<SettingsState['audio']>): SettingsState[
   }
 }
 
+function normalizeLocalization(
+  localization?: Partial<SettingsState['localization']>
+): SettingsState['localization'] {
+  return {
+    language: normalizeLanguagePreference(localization?.language),
+  }
+}
+
 function normalizeGameUX(gameUX?: Partial<SettingsState['gameUX']>): SettingsState['gameUX'] {
   const legacyCompactRosterLayout = (gameUX as { compactRosterLayout?: unknown } | undefined)
     ?.compactRosterLayout
@@ -159,6 +172,9 @@ export const DEFAULT_SETTINGS: SettingsState = {
     sfxVolume: 0.8,
     musicConfigOverrides: {},
     musicTrackAssets: [],
+  },
+  localization: {
+    language: 'system',
   },
   display: {
     themePreset: 'midnight',
@@ -235,6 +251,7 @@ export function loadSettings(): SettingsState {
     const mergedSim = { ...DEFAULT_SETTINGS.sim, ...normalizedSim }
     return {
       audio: normalizeAudio(parsed.audio),
+      localization: normalizeLocalization(parsed.localization),
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX: mergedGameUX,
       sim: mergedSim,
@@ -289,6 +306,11 @@ const settingsSlice = createSlice({
     resetMusicTrackAssets(state) {
       state.audio.musicTrackAssets = []
     },
+    setLocalization(state, action: PayloadAction<Partial<SettingsState['localization']>>) {
+      if (action.payload.language !== undefined) {
+        state.localization.language = normalizeLanguagePreference(action.payload.language)
+      }
+    },
     setDisplay(state, action: PayloadAction<Partial<SettingsState['display']>>) {
       Object.assign(state.display, action.payload)
     },
@@ -310,6 +332,7 @@ const settingsSlice = createSlice({
     importSettings(_state, action: PayloadAction<SettingsState>) {
       return {
         audio: normalizeAudio(action.payload.audio),
+        localization: normalizeLocalization(action.payload.localization),
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
         gameUX: normalizeGameUX(action.payload.gameUX),
         sim: { ...DEFAULT_SETTINGS.sim, ...action.payload.sim },
@@ -325,6 +348,7 @@ export const {
   resetMusicConfigOverrides,
   setMusicTrackAssets,
   resetMusicTrackAssets,
+  setLocalization,
   setDisplay,
   setGameUX,
   setSim,
@@ -334,5 +358,6 @@ export const {
 } = settingsSlice.actions
 
 export const selectSettings = (state: RootState) => state.settings
+export const selectLanguagePreference = (state: RootState) => state.settings.localization.language
 
 export default settingsSlice.reducer

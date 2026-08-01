@@ -3,6 +3,7 @@
  *
  * Wraps the entire app in:
  *   <Provider store>  – Redux store provider
+ *   <I18nProvider>     – resolved language, messages, and locale formatting
  *   <RouterProvider>  – React Router v6 browser router
  *
  * To add global providers (auth, theme, etc.) wrap them here.
@@ -19,6 +20,7 @@ import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice';
 import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics';
 import LiveOpsController from './components/LiveOpsController/LiveOpsController';
 import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSync';
+import { I18nProvider } from './i18n';
 
 if (import.meta.env.DEV) {
   console.log('[router] bundle:', import.meta.url, '| pathname:', window.location.pathname, '| hash:', window.location.hash);
@@ -49,13 +51,15 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <LiveOpsController />
-      <AudioStateSync />
-      <VipEntitlementSync />
-      {/* AudioGate is suppressed on the Intro/Home route because HomeHub
-          unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
-      {!suppressesAudioGate(hash) && <AudioGate />}
-      <RouterProvider router={router} />
+      <I18nProvider>
+        <LiveOpsController />
+        <AudioStateSync />
+        <VipEntitlementSync />
+        {/* AudioGate is suppressed on the Intro/Home route because HomeHub
+            unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
+        {!suppressesAudioGate(hash) && <AudioGate />}
+        <RouterProvider router={router} />
+      </I18nProvider>
     </Provider>
   );
 }
