@@ -2,7 +2,7 @@
  * Domain types for the "Famous Figures" minigame.
  */
 
-// ─── Figure data ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Figure data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type FigureDifficulty = 'very_easy' | 'easy' | 'medium' | 'hard' | 'very_hard'
 
@@ -13,7 +13,7 @@ export interface FigureRow {
   acceptedAliases: string[]
   /** Pre-normalised aliases (same transformation as normalizedName). */
   normalizedAliases: string[]
-  /** Exactly 5 hints, from vague → specific. */
+  /** Exactly 5 hints, from vague â†’ specific. */
   hints: [string, string, string, string, string]
   /** Single-sentence clue shown before any hints are requested. */
   baseClueFact: string
@@ -24,13 +24,13 @@ export interface FigureRow {
 }
 
 /**
- * The second curated hint is deliberately omitted from play. It commonly
- * repeats the broad setup clue without adding useful information.
+ * The first curated follow-up hint is deliberately omitted from play. It
+ * commonly repeats the broad setup clue without adding useful information.
  */
-export const VISIBLE_HINT_INDICES = [0, 2, 3, 4] as const
+export const VISIBLE_HINT_INDICES = [1, 2, 3, 4] as const
 export const MAX_VISIBLE_HINTS = VISIBLE_HINT_INDICES.length
 
-// ─── Game state enums / unions ────────────────────────────────────────────────
+// â”€â”€â”€ Game state enums / unions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type HintStage =
   | 'clue'
@@ -46,7 +46,7 @@ export type RoundPhase = 'round_active' | 'round_reveal'
 
 export type MatchStatus = 'idle' | 'round_active' | 'round_reveal' | 'complete'
 
-// ─── Per-player state (embedded in FamousFiguresState) ───────────────────────
+// â”€â”€â”€ Per-player state (embedded in FamousFiguresState) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface PlayerState {
   score: number
@@ -54,3 +54,4 @@ export interface PlayerState {
   correctThisRound: boolean
   guesses: string[]
 }
+
