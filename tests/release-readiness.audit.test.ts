@@ -48,6 +48,8 @@ const STORE_APP_ICON = join(ROOT, 'store-assets', 'apple', 'app-store-icon-1024.
 const LEGAL_SCREEN = join(SRC_DIR, 'screens', 'Legal', 'Legal.tsx')
 const PUBLIC_PRIVACY_POLICY = join(PUBLIC_DIR, 'legal', 'privacy-policy.html')
 const PUBLIC_TERMS = join(PUBLIC_DIR, 'legal', 'terms-of-use.html')
+const ANDROID_ENV_EXAMPLE = join(ROOT, '.env.android.example')
+const IOS_ENV_EXAMPLE = join(ROOT, '.env.ios.example')
 
 const PHASE_RANK: Record<string, number> = {
   week_start: 0,
@@ -445,6 +447,24 @@ describe('release readiness metadata', () => {
     expect(existsSync(LEGAL_SCREEN)).toBe(true)
     expect(existsSync(PUBLIC_PRIVACY_POLICY)).toBe(true)
     expect(existsSync(PUBLIC_TERMS)).toBe(true)
+  })
+
+  it('connects store builds to the separately hosted public legal site', () => {
+    const expectedUrls = [
+      'https://georgi-cole.github.io/big-eye-legal/privacy-policy.html',
+      'https://georgi-cole.github.io/big-eye-legal/terms-of-use.html',
+      'https://georgi-cole.github.io/big-eye-legal/support.html',
+    ]
+    const releaseSurfaces = [
+      readText(ANDROID_ENV_EXAMPLE),
+      readText(IOS_ENV_EXAMPLE),
+      readText(LEGAL_SCREEN),
+    ]
+
+    for (const url of expectedUrls) {
+      for (const surface of releaseSurfaces) expect(surface).toContain(url)
+    }
+    expect(readText(LEGAL_SCREEN)).toContain('kolequant@gmail.com')
   })
 
   it('does not offer unfinished or unavailable products in release 1.0', () => {
