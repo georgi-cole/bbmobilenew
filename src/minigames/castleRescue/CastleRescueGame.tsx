@@ -58,6 +58,7 @@ import {
   resolveCastleRescueRunSeed,
 } from './castleRescueSession';
 import type { CastleRescueEndReason } from './castleRescueSession';
+import type { FindYourTwinHumanTelemetry } from '../../experiments/findYourTwinHumanAi/findYourTwinHumanAi';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
 const CW = 800;           // canvas width
@@ -110,6 +111,7 @@ const PIT_DEATH_PAUSE_MS = 200;
 // ═══ Types ════════════════════════════════════════════════════════════════════
 type PipeType = 'correct' | WrongPipeType; // 'correct' | 'setback' | 'bonus' | 'ambush' | 'dead'
 type Phase = 'idle' | 'playing' | 'pipe_flash' | 'death_pause' | 'complete';
+type CastleRescueVariant = 'classic' | 'benny-lenny';
 
 interface Rect { x: number; y: number; w: number; h: number; }
 
@@ -210,6 +212,8 @@ interface LevelGeom {
 }
 
 interface GameState {
+  runSeed: number;
+  variant: CastleRescueVariant;
   phase: Phase;
   player: Player;
   geom: LevelGeom;
@@ -237,6 +241,21 @@ interface GameState {
    * pipe whose discovery depends on visiting this room.
    */
   lastRoomPipeSlot: number | null;
+  /** Seeded housemate portraits shown in the sequel's gallery room. */
+  galleryPortraits: number[];
+  telemetry: {
+    pipeEntries: number;
+    roomsEntered: number;
+    deaths: number;
+    jumps: number;
+    directionChanges: number;
+    lastDirection: number;
+    coinsCollected: number;
+    enemiesStomped: number;
+    bricksBroken: number;
+    checkpointsActivated: number;
+    longestFrameMs: number;
+  };
 }
 
 // ═══ mulberry32 RNG (inline to keep component self-contained) ═════════════════
@@ -430,6 +449,7 @@ function buildLevel(seed: number): LevelGeom {
 // ═══ Damage player ════════════════════════════════════════════════════════════
 function damagePlayer(gs: GameState, now: number, isPit: boolean): void {
   if (!isPit && now < gs.player.invincibleUntil) return;
+  gs.telemetry.deaths += 1;
   if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
   gs.player.invincibleUntil = now + INVINCIBLE_MS;
   // Always move player to spawn so they're safe during the pause
@@ -492,13 +512,26 @@ function updateGame(
   // ── Input ─────────────────────────────────────────────────────────────────
   const goLeft  = keys.has('ArrowLeft')  || keys.has('KeyA');
   const goRight = keys.has('ArrowRight') || keys.has('KeyD');
-  const jump    = keys.has('ArrowUp')    || keys.has('KeyW') || keys.has('Space') || keys.has('KeyZ');
+  const enterRoute = gs.variant === 'benny-lenny'
+    ? keys.has('ArrowUp') || keys.has('KeyW')
+    : keys.has('ArrowDown') || keys.has('KeyS');
+  const jump = gs.variant === 'benny-lenny'
+    ? keys.has('Space') || keys.has('KeyZ')
+    : keys.has('ArrowUp') || keys.has('KeyW') || keys.has('Space') || keys.has('KeyZ');
   const goDown  = keys.has('ArrowDown')  || keys.has('KeyS');
+
+  const direction = goLeft ? -1 : goRight ? 1 : 0;
+  if (direction !== 0 && gs.telemetry.lastDirection !== 0 && direction !== gs.telemetry.lastDirection) {
+    gs.telemetry.directionChanges += 1;
+  }
+  if (direction !== 0) gs.telemetry.lastDirection = direction;
 
   player.vx = goLeft ? -WALK : goRight ? WALK : 0;
   if (goLeft)  player.facingRight = false;
   if (goRight) player.facingRight = true;
-  if (jump && player.onGround) { player.vy = JUMP_VY; player.onGround = false; }
+  if (jump && player.onGround) {
+    player.vy = JUMP_VY; player.onGround = false; gs.telemetry.jumps += 1;
+  }
 
   // ── Physics ───────────────────────────────────────────────────────────────
   player.vy = Math.min(player.vy + GRAVITY * sc, MAX_FALL);
@@ -538,6 +571,7 @@ function updateGame(
 
   // ── Pipe solidity (pipes are full solid — top landing + side block) ───────
   for (const pipe of geom.pipes) {
+    if (gs.variant === 'benny-lenny') continue;
     const pipeSolidRect: CollisionRect = { x: pipe.x, y: pipe.y, w: pipe.width, h: pipe.height };
     // Land on top of pipe
     if (playerLandsOnSurfaceTop(pRect, prevY, player.vy, pipeSolidRect)) {
@@ -578,6 +612,7 @@ function updateGame(
           brick.breakableFromBelow, brick.broken)) {
       brick.broken = true; brick.bounceTimer = 300;
       gs.score += S_BRICK;
+      gs.telemetry.bricksBroken += 1;
       player.vy = Math.abs(player.vy) * 0.3;
     }
     if (brick.bounceTimer > 0) brick.bounceTimer -= dt;
@@ -601,6 +636,7 @@ function updateGame(
       if (player.vy > 0 && player.y + PH < enemy.y + EH * 0.45 + player.vy * sc + 4) {
         enemy.alive = false; enemy.squishTimer = 500;
         gs.score += S_ENEMY; player.vy = -8;
+        gs.telemetry.enemiesStomped += 1;
       } else if (now >= player.invincibleUntil) {
         damagePlayer(gs, now, false); return;
       }
@@ -614,6 +650,7 @@ function updateGame(
     if (coin.collected) continue;
     if (overlaps(pR, { x: coin.x-COIN_R, y: coin.y-COIN_R, w: COIN_R*2, h: COIN_R*2 })) {
       coin.collected = true; gs.score += S_COIN;
+      gs.telemetry.coinsCollected += 1;
     }
   }
 
@@ -624,6 +661,7 @@ function updateGame(
       gs.spawnX      = cp.respawnX;
       gs.spawnY      = cp.respawnY;
       gs.score      += S_CHECKPOINT;
+      gs.telemetry.checkpointsActivated += 1;
       for (const o of geom.checkpoints) { if (o.id !== cp.id) o.activated = false; }
     }
   }
@@ -638,13 +676,21 @@ function updateGame(
   }
 
   // ── Pipe entry (main level) — deliberate down + standing on pipe top ──────
-  if (goDown) {
+  if (enterRoute) {
     for (const pipe of geom.pipes) {
-      if (!tryEnterPipe(
-        player.x, player.y, PW, PH,
-        player.onGround, player.vy, goDown,
-        pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
-      )) continue;
+      const canEnter = gs.variant === 'benny-lenny'
+        ? player.onGround &&
+          Math.abs(player.vy) < 0.01 &&
+          player.x + PW / 2 >= pipe.x &&
+          player.x + PW / 2 <= pipe.x + pipe.width
+        : tryEnterPipe(
+          player.x, player.y, PW, PH,
+          player.onGround, player.vy, goDown,
+          pipe.x, pipe.y, pipe.width, pipe.entryZoneWidth,
+        );
+      if (!canEnter) continue;
+
+      gs.telemetry.pipeEntries += 1;
 
       // Locked pipes cannot be entered — give brief visual feedback only.
       if (pipe.locked) {
@@ -658,10 +704,12 @@ function updateGame(
       if (result === 'enter_bonus') {
         // Teleport to the bonus treasure room.
         gs.lastRoomPipeSlot = pipe.slotIndex;
+        gs.galleryPortraits = chooseGalleryPortraits(gs.runSeed, gs.telemetry.roomsEntered);
         gs.room = buildBonusRoom();
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
         gs.camera = 0;
+        gs.telemetry.roomsEntered += 1;
       } else if (result === 'enter_ambush') {
         // Teleport to the ambush trap room.
         gs.lastRoomPipeSlot = pipe.slotIndex;
@@ -669,6 +717,7 @@ function updateGame(
         gs.player.x = 40; gs.player.y = GROUND_TOP - PH;
         gs.player.vx = 0; gs.player.vy = 0;
         gs.camera = 0;
+        gs.telemetry.roomsEntered += 1;
       }
       return;
     }
@@ -678,6 +727,13 @@ function updateGame(
   if (!gs.princessRescued) {
     if (overlaps(pR, { x:geom.princessX, y:geom.princessY, w:PW, h:PH })) {
       gs.princessRescued = true;
+      // Finish with the twins standing side by side instead of overlapping.
+      player.x = geom.princessX - PW - 8;
+      player.y = geom.princessY;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = true;
+      player.facingRight = true;
       const el = now - gs.startTime;
       gs.finalElapsedMs = el;
       gs.finalScore     = computePlatformerFinalScore(gs, el);
@@ -705,13 +761,20 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
 
   const goLeft  = keys.has('ArrowLeft')  || keys.has('KeyA');
   const goRight = keys.has('ArrowRight') || keys.has('KeyD');
-  const jump    = keys.has('ArrowUp')    || keys.has('KeyW') || keys.has('Space') || keys.has('KeyZ');
+  const enterRoute = gs.variant === 'benny-lenny'
+    ? keys.has('ArrowUp') || keys.has('KeyW')
+    : keys.has('ArrowDown') || keys.has('KeyS');
+  const jump = gs.variant === 'benny-lenny'
+    ? keys.has('Space') || keys.has('KeyZ')
+    : keys.has('ArrowUp') || keys.has('KeyW') || keys.has('Space') || keys.has('KeyZ');
   const goDown  = keys.has('ArrowDown')  || keys.has('KeyS');
 
   player.vx = goLeft ? -WALK : goRight ? WALK : 0;
   if (goLeft)  player.facingRight = false;
   if (goRight) player.facingRight = true;
-  if (jump && player.onGround) { player.vy = JUMP_VY; player.onGround = false; }
+  if (jump && player.onGround) {
+    player.vy = JUMP_VY; player.onGround = false; gs.telemetry.jumps += 1;
+  }
 
   // Physics
   player.vy = Math.min(player.vy + GRAVITY * sc, MAX_FALL);
@@ -747,13 +810,15 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
   rPRect.x = player.x;
 
   // Exit pipe solid collision (full-solid — top landing + side block).
-  const exitPipeRect: CollisionRect = { x: room.exitX, y: room.exitY, w: PIPE_W, h: PIPE_H };
-  const exitRes = resolveFullSolidCollision(rPRect, prevX, prevY, player.vx, player.vy, exitPipeRect);
-  if (exitRes.x !== rPRect.x || exitRes.y !== rPRect.y) {
-    player.x = exitRes.x; player.y = exitRes.y;
-    player.vx = exitRes.vx; player.vy = exitRes.vy;
-    if (exitRes.onGround) player.onGround = true;
-    rPRect.x = player.x; rPRect.y = player.y;
+  if (gs.variant !== 'benny-lenny') {
+    const exitPipeRect: CollisionRect = { x: room.exitX, y: room.exitY, w: PIPE_W, h: PIPE_H };
+    const exitRes = resolveFullSolidCollision(rPRect, prevX, prevY, player.vx, player.vy, exitPipeRect);
+    if (exitRes.x !== rPRect.x || exitRes.y !== rPRect.y) {
+      player.x = exitRes.x; player.y = exitRes.y;
+      player.vx = exitRes.vx; player.vy = exitRes.vy;
+      if (exitRes.onGround) player.onGround = true;
+      rPRect.x = player.x; rPRect.y = player.y;
+    }
   }
 
   // Brick collisions (room)
@@ -769,12 +834,14 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
           brick.breakableFromBelow, brick.broken)) {
       brick.broken = true; brick.bounceTimer = 300;
       gs.score += S_BRICK; player.vy = Math.abs(player.vy) * 0.3;
+      gs.telemetry.bricksBroken += 1;
     }
     if (brick.bounceTimer > 0) brick.bounceTimer -= dt;
   }
 
   // Pit death in room → respawn at room entrance with damage
   if (player.y > PLAY_H + 60) {
+    gs.telemetry.deaths += 1;
     if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
     player.invincibleUntil = now + INVINCIBLE_MS;
     player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
@@ -796,7 +863,9 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
       if (player.vy > 0 && player.y + PH < enemy.y + EH * 0.45 + player.vy * sc + 4) {
         enemy.alive = false; enemy.squishTimer = 500;
         gs.score += S_ENEMY; player.vy = -8;
+        gs.telemetry.enemiesStomped += 1;
       } else if (now >= player.invincibleUntil) {
+        gs.telemetry.deaths += 1;
         if (applyCastleRescueLifeLoss(gs, now, P_DEATH, P_OUT_OF_LIVES)) return;
         player.invincibleUntil = now + INVINCIBLE_MS;
         player.x = 40; player.y = GROUND_TOP - PH; player.vx = 0; player.vy = 0;
@@ -810,15 +879,23 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
     if (coin.collected) continue;
     if (overlaps(pR, { x: coin.x-COIN_R, y: coin.y-COIN_R, w: COIN_R*2, h: COIN_R*2 })) {
       coin.collected = true; gs.score += S_COIN;
+      gs.telemetry.coinsCollected += 1;
     }
   }
 
   // Exit pipe detection — deliberate down + standing on exit pipe top
-  if (tryEnterPipe(
-    player.x, player.y, PW, PH,
-    player.onGround, player.vy, goDown,
-    room.exitX, room.exitY, PIPE_W, PIPE_W,
-  )) {
+  const canExitRoom = gs.variant === 'benny-lenny'
+    ? enterRoute &&
+      player.onGround &&
+      Math.abs(player.vy) < 0.01 &&
+      player.x + PW / 2 >= room.exitX &&
+      player.x + PW / 2 <= room.exitX + PIPE_W
+    : tryEnterPipe(
+      player.x, player.y, PW, PH,
+      player.onGround, player.vy, goDown,
+      room.exitX, room.exitY, PIPE_W, PIPE_W,
+    );
+  if (canExitRoom) {
     // Unlock any locked correct pipe whose key was the room just visited.
     if (gs.lastRoomPipeSlot !== null) {
       const roomPipe = gs.geom.pipes.find(p => p.slotIndex === gs.lastRoomPipeSlot);
@@ -835,6 +912,263 @@ function updateRoom(gs: GameState, keys: Set<string>, dt: number, now: number): 
 }
 
 // ═══ Renderer ════════════════════════════════════════════════════════════════
+function drawSequelCastleBackdrop(ctx: CanvasRenderingContext2D, camera: number): void {
+  ctx.strokeStyle = 'rgba(234, 179, 8, 0.09)';
+  ctx.lineWidth = 1;
+  for (let y = HUD_H + 34; y < CH; y += 42) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CW, y); ctx.stroke();
+    const offset = Math.floor(y / 42) % 2 === 0 ? 0 : 54;
+    for (let x = offset; x < CW; x += 108) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 42); ctx.stroke();
+    }
+  }
+
+  for (let index = 0; index < 4; index++) {
+    const x = ((index * 260 - camera * 0.12) % (CW + 260) + CW + 260) % (CW + 260) - 80;
+    ctx.fillStyle = '#111a34';
+    ctx.fillRect(x, HUD_H + 66, 74, 142);
+    ctx.beginPath(); ctx.arc(x + 37, HUD_H + 66, 37, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = '#8b6f47'; ctx.lineWidth = 5;
+    ctx.strokeRect(x, HUD_H + 65, 74, 143);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.18)';
+    ctx.fillRect(x + 8, HUD_H + 73, 27, 126);
+    ctx.fillStyle = 'rgba(244, 114, 182, 0.14)';
+    ctx.fillRect(x + 40, HUD_H + 73, 26, 126);
+  }
+
+  for (let index = 0; index < 5; index++) {
+    const x = 90 + index * 170;
+    const flame = Math.sin(index * 2.1 + camera * 0.002) * 2;
+    ctx.fillStyle = '#713f12'; ctx.fillRect(x - 3, HUD_H + 236, 6, 42);
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath(); ctx.arc(x + flame, HUD_H + 228, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.arc(x, HUD_H + 228, 4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+const GALLERY_HOUSEMATES = [
+  { name: 'LIA', file: 'Lia_avatar.webp' },
+  { name: 'REMY', file: 'Remy_avatar.webp' },
+  { name: 'NICO', file: 'Nico_avatar.webp' },
+  { name: 'VEE', file: 'Vee_avatar.webp' },
+  { name: 'QUINN', file: 'Quinn_avatar.webp' },
+  { name: 'ECHO', file: 'Echo_avatar.webp' },
+  { name: 'RUNE', file: 'Rune_avatar.webp' },
+  { name: 'KIAN', file: 'Kian_avatar.webp' },
+  { name: 'RAE', file: 'Rae_avatar.webp' },
+  { name: 'LUX', file: 'Lux_avatar.webp' },
+  { name: 'BLUE', file: 'Blue_avatar.webp' },
+  { name: 'DEX', file: 'Dex_avatar.webp' },
+  { name: 'FINN', file: 'Finn_avatar.webp' },
+  { name: 'MIMI', file: 'mimi_avatar.webp' },
+  { name: 'ZED', file: 'Zed_avatar.webp' },
+] as const;
+
+const galleryImageCache = new Map<string, HTMLImageElement>();
+const galleryPixelCache = new Map<string, HTMLCanvasElement>();
+
+export interface GalleryPortraitSpec {
+  name: string;
+  file: string;
+  mirrored: boolean;
+}
+
+function chooseGalleryPortraits(seed: number, visit: number): number[] {
+  const rng = rng32(((seed >>> 0) ^ Math.imul(visit + 1, 0x45d9f3b)) >>> 0);
+  const indices = GALLERY_HOUSEMATES.map((_, index) => index);
+  for (let index = indices.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(rng() * (index + 1));
+    [indices[index], indices[swapIndex]] = [indices[swapIndex], indices[index]];
+  }
+  return indices.slice(0, 4);
+}
+
+/** Part 1's Twin Shock clue: Lia and her mirrored counterpart are guaranteed. */
+export function chooseClassicTwinHintPortraits(
+  galleryPortraits: readonly number[],
+): GalleryPortraitSpec[] {
+  const randomIndices = [...galleryPortraits, ...GALLERY_HOUSEMATES.map((_, index) => index)]
+    .filter((index, position, all) => index !== 0 && all.indexOf(index) === position)
+    .slice(0, 2);
+  const lia = GALLERY_HOUSEMATES[0];
+  return [
+    { name: 'LIA', file: lia.file, mirrored: false },
+    { name: 'ALI', file: lia.file, mirrored: true },
+    ...randomIndices.map((index) => ({
+      name: GALLERY_HOUSEMATES[index].name,
+      file: GALLERY_HOUSEMATES[index].file,
+      mirrored: false,
+    })),
+  ];
+}
+
+function getGalleryImage(file: string): HTMLImageElement | null {
+  if (typeof Image === 'undefined') return null;
+  const src = `${import.meta.env.BASE_URL}assets/skins/${file}`;
+  const cached = galleryImageCache.get(src);
+  if (cached) return cached;
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = src;
+  galleryImageCache.set(src, image);
+  return image;
+}
+
+function getPixelatedGalleryImage(file: string): HTMLCanvasElement | null {
+  const cached = galleryPixelCache.get(file);
+  if (cached) return cached;
+
+  const image = getGalleryImage(file);
+  if (!image?.complete || image.naturalWidth <= 0) return null;
+
+  // Render once at deliberately tiny resolution, then enlarge with smoothing
+  // disabled in the gallery. This keeps the portraits aligned with the game's
+  // pixel-art style without adding duplicate or heavier image assets.
+  const pixelCanvas = document.createElement('canvas');
+  pixelCanvas.width = 24;
+  pixelCanvas.height = 27;
+  const pixelCtx = pixelCanvas.getContext('2d');
+  if (!pixelCtx) return null;
+  const scale = Math.max(24 / image.naturalWidth, 27 / image.naturalHeight);
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
+  pixelCtx.drawImage(image, (24 - width) / 2, (27 - height) / 2, width, height);
+  galleryPixelCache.set(file, pixelCanvas);
+  return pixelCanvas;
+}
+
+function drawCastleDoor(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  isLocked: boolean,
+  isDone: boolean,
+  wasCorrect: boolean,
+  exit = false,
+): void {
+  const doorX = x - 8;
+  const doorY = y - 24;
+  const doorW = 64;
+  const doorH = 88;
+  const frame = exit ? '#166534' : isLocked ? '#2a2134' : '#76613f';
+  const wood = exit ? '#15803d' : isDone ? '#3f3428' : '#7c4a2d';
+  ctx.fillStyle = frame;
+  ctx.fillRect(doorX - 4, doorY - 5, doorW + 8, doorH + 5);
+  ctx.beginPath(); ctx.arc(doorX + doorW / 2, doorY + 3, doorW / 2 + 4, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = wood;
+  ctx.fillRect(doorX + 3, doorY + 5, doorW - 6, doorH - 5);
+  ctx.beginPath(); ctx.arc(doorX + doorW / 2, doorY + 7, doorW / 2 - 3, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2;
+  for (let plank = 11; plank < doorW; plank += 12) {
+    ctx.beginPath(); ctx.moveTo(doorX + plank, doorY + 6); ctx.lineTo(doorX + plank, doorY + doorH); ctx.stroke();
+  }
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath(); ctx.arc(doorX + doorW - 11, doorY + doorH * 0.62, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = exit || (isDone && wasCorrect) ? '#bbf7d0' : '#f8fafc';
+  ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const label = exit ? 'EXIT' : isLocked ? '🔒' : isDone ? (wasCorrect ? '✓' : '✕') : '?';
+  ctx.fillText(label, doorX + doorW / 2, doorY + doorH * 0.35);
+}
+
+function drawSequelRoomDecor(
+  ctx: CanvasRenderingContext2D,
+  roomType: RoomInstance['type'],
+  galleryPortraits: readonly number[],
+): void {
+  if (roomType === 'bonus') {
+    const portraits = galleryPortraits
+      .map((index) => GALLERY_HOUSEMATES[index])
+      .filter((portrait): portrait is (typeof GALLERY_HOUSEMATES)[number] => portrait != null);
+    portraits.forEach((portrait, index) => {
+      const x = 78 + index * 182;
+      ctx.fillStyle = '#a16207'; ctx.fillRect(x, HUD_H + 46, 108, 128);
+      ctx.fillStyle = '#fef3c7'; ctx.fillRect(x + 7, HUD_H + 53, 94, 114);
+      const pixelImage = getPixelatedGalleryImage(portrait.file);
+      if (pixelImage) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x + 7, HUD_H + 53, 94, 106);
+        ctx.clip();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(pixelImage, x + 7, HUD_H + 53, 94, 106);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#6d5c88'; ctx.fillRect(x + 15, HUD_H + 61, 78, 94);
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath(); ctx.arc(x + 54, HUD_H + 91, 25, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#713f12'; ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center'; ctx.fillText(portrait.name, x + 54, HUD_H + 164);
+    });
+  } else {
+    ctx.save();
+    ctx.translate(CW / 2, HUD_H + 122);
+    ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(55, -25); ctx.lineTo(42, 46);
+    ctx.lineTo(0, 68); ctx.lineTo(-42, 46); ctx.lineTo(-55, -25); ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = 'rgba(124, 58, 237, 0.18)'; ctx.fill();
+    ctx.fillStyle = '#f5f3ff'; ctx.font = '900 22px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('KOLEQUANT', 0, 4);
+    ctx.fillStyle = '#c4b5fd'; ctx.font = 'bold 10px monospace';
+    ctx.fillText('CASTLE VAULT', 0, 25);
+    ctx.restore();
+  }
+}
+
+function drawClassicTwinHintRoomDecor(
+  ctx: CanvasRenderingContext2D,
+  galleryPortraits: readonly number[],
+): void {
+  // Bright studio-like memory wall: intentionally distinct from Part 2's castle gallery.
+  const wallColors = ['#ec4899', '#8b5cf6', '#06b6d4', '#f59e0b'];
+  for (let stripe = 0; stripe < 8; stripe++) {
+    ctx.fillStyle = `${wallColors[stripe % wallColors.length]}33`;
+    ctx.fillRect(stripe * 110, HUD_H + 28, 110, 168);
+  }
+  ctx.fillStyle = '#fef3c7';
+  for (let flag = 0; flag < 13; flag++) {
+    ctx.beginPath();
+    ctx.moveTo(18 + flag * 66, HUD_H + 30);
+    ctx.lineTo(40 + flag * 66, HUD_H + 53);
+    ctx.lineTo(62 + flag * 66, HUD_H + 30);
+    ctx.fill();
+  }
+
+  chooseClassicTwinHintPortraits(galleryPortraits).forEach((portrait, index) => {
+    const x = 78 + index * 182;
+    ctx.fillStyle = wallColors[index % wallColors.length];
+    ctx.fillRect(x, HUD_H + 46, 108, 128);
+    ctx.fillStyle = '#fff7ed';
+    ctx.fillRect(x + 7, HUD_H + 53, 94, 114);
+    const pixelImage = getPixelatedGalleryImage(portrait.file);
+    if (pixelImage) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x + 7, HUD_H + 53, 94, 106);
+      ctx.clip();
+      ctx.imageSmoothingEnabled = false;
+      if (portrait.mirrored) {
+        ctx.translate(x + 101, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(pixelImage, 0, HUD_H + 53, 94, 106);
+      } else {
+        ctx.drawImage(pixelImage, x + 7, HUD_H + 53, 94, 106);
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = wallColors[(index + 1) % wallColors.length];
+      ctx.fillRect(x + 15, HUD_H + 61, 78, 94);
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.arc(x + 54, HUD_H + 91, 25, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#4c1d95';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(portrait.name, x + 54, HUD_H + 164);
+  });
+}
+
 function renderGame(
   ctx: CanvasRenderingContext2D,
   gs: GameState,
@@ -849,20 +1183,27 @@ function renderGame(
 
   ctx.clearRect(0, 0, CW, CH);
 
+  const isSequel = gs.variant === 'benny-lenny';
+
   // Background
   const bg = ctx.createLinearGradient(0, HUD_H, 0, CH);
-  bg.addColorStop(0, '#1a1a2e'); bg.addColorStop(1, '#0f1320');
+  bg.addColorStop(0, isSequel ? '#312643' : '#1a1a2e');
+  bg.addColorStop(1, isSequel ? '#151325' : '#0f1320');
   ctx.fillStyle = bg;
   ctx.fillRect(0, HUD_H, CW, PLAY_H);
 
   // Parallax castle silhouettes
-  ctx.fillStyle = '#16213e';
-  for (let i = 0; i < 6; i++) {
-    const bx = ((i * 220 - gs.camera * 0.25) % (CW + 220) + CW + 220) % (CW + 220) - 220;
-    ctx.fillRect(bx, HUD_H + 120, 60, 250);
-    ctx.fillRect(bx + 20, HUD_H + 80, 20, 45);
-    ctx.fillRect(bx - 10, HUD_H + 135, 10, 235);
-    ctx.fillRect(bx + 65, HUD_H + 135, 10, 235);
+  if (isSequel) {
+    drawSequelCastleBackdrop(ctx, gs.camera);
+  } else {
+    ctx.fillStyle = '#16213e';
+    for (let i = 0; i < 6; i++) {
+      const bx = ((i * 220 - gs.camera * 0.25) % (CW + 220) + CW + 220) % (CW + 220) - 220;
+      ctx.fillRect(bx, HUD_H + 120, 60, 250);
+      ctx.fillRect(bx + 20, HUD_H + 80, 20, 45);
+      ctx.fillRect(bx - 10, HUD_H + 135, 10, 235);
+      ctx.fillRect(bx + 65, HUD_H + 135, 10, 235);
+    }
   }
 
   // World transform (camera)
@@ -871,18 +1212,18 @@ function renderGame(
 
   // Ground
   const [gnd] = gs.geom.platforms;
-  ctx.fillStyle = '#5c3d20';
+  ctx.fillStyle = isSequel ? '#3f3a4d' : '#5c3d20';
   ctx.fillRect(gnd.x, gnd.y, gnd.w, gnd.h);
-  ctx.fillStyle = '#6e4c2a';
+  ctx.fillStyle = isSequel ? '#625b70' : '#6e4c2a';
   for (let tx = 0; tx < gnd.w; tx += 32)
     ctx.fillRect(tx, gnd.y, 30, 5);
 
   // Elevated platforms
   for (let i = 1; i < gs.geom.platforms.length; i++) {
     const p = gs.geom.platforms[i];
-    ctx.fillStyle = '#7a6045'; ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = '#9a7855'; ctx.fillRect(p.x, p.y, p.w, 4);
-    ctx.strokeStyle = '#5a4033'; ctx.lineWidth = 1;
+    ctx.fillStyle = isSequel ? '#5b5369' : '#7a6045'; ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = isSequel ? '#8b819b' : '#9a7855'; ctx.fillRect(p.x, p.y, p.w, 4);
+    ctx.strokeStyle = isSequel ? '#393344' : '#5a4033'; ctx.lineWidth = 1;
     for (let sx = p.x; sx < p.x + p.w; sx += 32)
       ctx.strokeRect(sx, p.y, Math.min(32, p.x + p.w - sx), p.h);
   }
@@ -911,6 +1252,17 @@ function renderGame(
   for (const pipe of gs.geom.pipes) {
     const isDone   = pipe.done;
     const isLocked = pipe.locked;
+    if (isSequel) {
+      drawCastleDoor(
+        ctx,
+        pipe.x,
+        pipe.y,
+        isLocked,
+        isDone,
+        pipe.pipeType === 'correct',
+      );
+      continue;
+    }
     // Body color: locked = very dark, done = darker neutral, active = neutral teal-slate
     ctx.fillStyle = isLocked ? '#151c2a' : (isDone ? '#1a3028' : '#1e5045');
     ctx.fillRect(pipe.x+4, pipe.y+14, PIPE_W-8, PIPE_H-14);
@@ -953,7 +1305,7 @@ function renderGame(
   }
 
   // Twin figure
-  if (!gs.princessRescued) {
+  if (!gs.princessRescued || gs.endReason === 'rescued') {
     const { princessX: tx, princessY: ty } = gs.geom;
     // Twin — same style as the player (BB contestant) but in a teal shirt
     // Shoes
@@ -976,11 +1328,14 @@ function renderGame(
     ctx.fillStyle = '#b45309'; ctx.fillRect(tx+4, ty-2, PW-8, 8);
     // Face eye
     ctx.fillStyle = '#000'; ctx.fillRect(tx+5, ty+5, 4, 4);
-    // Wave animation when gate open
-    if (gs.gateOpen) {
+    // Wave while waiting; raise both arms for the sequel reunion.
+    if (gs.gateOpen || gs.princessRescued) {
       const wave = Math.sin(now * 0.005) * 3;
       ctx.strokeStyle = '#0ea5e9'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(tx+PW-2, ty+6); ctx.lineTo(tx+PW+12, ty+wave); ctx.stroke();
+      if (gs.princessRescued) {
+        ctx.beginPath(); ctx.moveTo(tx+2, ty+8); ctx.lineTo(tx-10, ty+wave); ctx.stroke();
+      }
     }
   }
 
@@ -1039,6 +1394,27 @@ function renderGame(
     ctx.fillStyle = '#92400e'; ctx.fillRect(px+4, py-2, PW-8, 8);
     // Face eye (direction-aware)
     ctx.fillStyle = '#000'; ctx.fillRect(px+(fr?PW-10:5), py+5, 4, 4);
+
+    if (gs.princessRescued) {
+      const cheer = Math.sin(now * 0.007) * 3;
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px+2, py+10); ctx.lineTo(px-10, py+cheer); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px+PW-2, py+10); ctx.lineTo(px+PW+10, py+cheer); ctx.stroke();
+    }
+  }
+
+  // Low-cost deterministic confetti: simple canvas rectangles, no assets or DOM nodes.
+  if (gs.phase === 'complete' && gs.endReason === 'rescued') {
+    const colors = ['#fbbf24', '#a78bfa', '#22d3ee', '#fb7185', '#4ade80'];
+    const centerX = (gs.player.x + gs.geom.princessX + PW) / 2;
+    for (let i = 0; i < 28; i++) {
+      const spread = ((i * 47) % 220) - 110;
+      const fall = ((now * 0.045 + i * 31) % 190);
+      const x = centerX + spread;
+      const y = Math.max(6, gs.geom.princessY - 180 + fall);
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(Math.round(x), Math.round(y), i % 2 === 0 ? 5 : 3, 4);
+    }
   }
 
   // Pipe flash overlay (correct / setback / dead)
@@ -1059,10 +1435,10 @@ function renderGame(
     let flashLabel: string;
     if (gs.pipeFlashType === 'correct') {
       flashLabel = gs.pipesComplete === 3
-        ? '🗝️ All pipes found! Gate opens!'
-        : `✅ Pipe ${['Ⅰ','Ⅱ','Ⅲ'][idx]} found — ${gs.pipesComplete}/3`;
+        ? (isSequel ? '🗝️ All doors found! The great gate opens!' : '🗝️ All pipes found! Gate opens!')
+        : `✅ ${isSequel ? 'Door' : 'Pipe'} ${['Ⅰ','Ⅱ','Ⅲ'][idx]} found — ${gs.pipesComplete}/3`;
     } else if (gs.pipeFlashType === 'setback') {
-      flashLabel = '❌ Wrong pipe! Back to spawn…';
+      flashLabel = `❌ Wrong ${isSequel ? 'door' : 'pipe'}! Back to spawn…`;
     } else {
       flashLabel = '💀 Dead end! No progress made.';
     }
@@ -1105,9 +1481,9 @@ function drawHUD(
   ctx.font = '15px sans-serif'; ctx.textAlign = 'right';
   ctx.fillText('❤'.repeat(gs.hearts) + '♡'.repeat(Math.max(0,MAX_HEARTS-gs.hearts)), CW-110, midY);
 
-  // Pipe progress
+  // Route progress
   ctx.fillStyle = '#a78bfa'; ctx.font = 'bold 14px monospace';
-  ctx.fillText(`🔑 ${gs.pipesComplete}/3`, CW-16, midY);
+  ctx.fillText(`${gs.variant === 'benny-lenny' ? '🚪' : '🔑'} ${gs.pipesComplete}/3`, CW-16, midY);
 }
 
 // ═══ Room renderer ════════════════════════════════════════════════════════════
@@ -1124,24 +1500,40 @@ function renderRoom(
   const room = gs.room;
   if (!room) return;
   const { player } = gs;
+  const isSequel = gs.variant === 'benny-lenny';
 
   ctx.clearRect(0, 0, CW, CH);
 
   // Distinct background per room type
   const bg = ctx.createLinearGradient(0, HUD_H, 0, CH);
   if (room.type === 'bonus') {
-    bg.addColorStop(0, '#2d1b00'); bg.addColorStop(1, '#1a0e00');
+    bg.addColorStop(0, isSequel ? '#3b2b23' : '#f472b6');
+    bg.addColorStop(0.5, isSequel ? '#291e20' : '#7c3aed');
+    bg.addColorStop(1, isSequel ? '#18131d' : '#0891b2');
   } else {
-    bg.addColorStop(0, '#2d0000'); bg.addColorStop(1, '#1a0000');
+    bg.addColorStop(0, isSequel ? '#211338' : '#2d0000');
+    bg.addColorStop(1, isSequel ? '#0d0a18' : '#1a0000');
   }
   ctx.fillStyle = bg;
   ctx.fillRect(0, HUD_H, CW, PLAY_H);
+
+  if (isSequel) {
+    drawSequelRoomDecor(ctx, room.type, gs.galleryPortraits);
+  } else if (room.type === 'bonus') {
+    drawClassicTwinHintRoomDecor(ctx, gs.galleryPortraits);
+  }
 
   // Room-type banner (just below HUD)
   ctx.fillStyle = room.type === 'bonus' ? '#fbbf24' : '#ef4444';
   ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillText(
-    room.type === 'bonus' ? '✨ BONUS ROOM — collect Eyeoleans & break bricks!' : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
+    isSequel
+      ? room.type === 'bonus'
+        ? '🖼️ HOUSEMATE GALLERY — collect Eyeoleans among the portraits!'
+        : '♛ KOLEQUANT VAULT — defeat the guards or reach the exit door!'
+      : room.type === 'bonus'
+        ? '✨ MEMORY WALL — collect Eyeoleans among four familiar faces!'
+        : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
     CW / 2, HUD_H + 4,
   );
 
@@ -1150,15 +1542,15 @@ function renderRoom(
 
   // Ground
   const [gnd] = room.platforms;
-  ctx.fillStyle = room.type === 'bonus' ? '#78501a' : '#5c1a1a';
+  ctx.fillStyle = room.type === 'bonus' ? (isSequel ? '#78501a' : '#4c1d95') : '#5c1a1a';
   ctx.fillRect(gnd.x, gnd.y, gnd.w, gnd.h);
 
   // Elevated platforms
   for (let i = 1; i < room.platforms.length; i++) {
     const p = room.platforms[i];
-    ctx.fillStyle = room.type === 'bonus' ? '#9a7030' : '#7a3030';
+    ctx.fillStyle = room.type === 'bonus' ? (isSequel ? '#9a7030' : '#db2777') : '#7a3030';
     ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = room.type === 'bonus' ? '#c09040' : '#9a4040';
+    ctx.fillStyle = room.type === 'bonus' ? (isSequel ? '#c09040' : '#22d3ee') : '#9a4040';
     ctx.fillRect(p.x, p.y, p.w, 4);
   }
 
@@ -1182,13 +1574,17 @@ function renderRoom(
     ctx.stroke();
   }
 
-  // Exit pipe (always green — the way out)
-  ctx.fillStyle = '#1a5c1a'; ctx.fillRect(room.exitX+4, room.exitY+14, PIPE_W-8, PIPE_H-14);
-  ctx.fillStyle = '#28a028'; ctx.fillRect(room.exitX, room.exitY, PIPE_W, 14);
-  ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(room.exitX+8, room.exitY+16, 8, PIPE_H-18);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('EXIT', room.exitX + PIPE_W/2, room.exitY + PIPE_H * 0.62);
+  // Exit route (always green — the way out)
+  if (isSequel) {
+    drawCastleDoor(ctx, room.exitX, room.exitY, false, false, true, true);
+  } else {
+    ctx.fillStyle = '#1a5c1a'; ctx.fillRect(room.exitX+4, room.exitY+14, PIPE_W-8, PIPE_H-14);
+    ctx.fillStyle = '#28a028'; ctx.fillRect(room.exitX, room.exitY, PIPE_W, 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(room.exitX+8, room.exitY+16, 8, PIPE_H-18);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('EXIT', room.exitX + PIPE_W/2, room.exitY + PIPE_H * 0.62);
+  }
 
   // Eyeoleans
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1290,6 +1686,12 @@ interface CastleRescueGameProps {
   timeLimitMs?: number;
   onFinish?: (score: number) => void;
   autoStart?: boolean;
+  /** Optional visual-only spin-off theme. Core mechanics and scoring are shared. */
+  variant?: CastleRescueVariant;
+  /** Dev-only measurement hook used by the isolated human/AI experiment. */
+  experimental?: {
+    onFinish: (result: FindYourTwinHumanTelemetry) => void;
+  };
 }
 
 export default function CastleRescueGame({
@@ -1297,6 +1699,8 @@ export default function CastleRescueGame({
   timeLimitMs = TIME_LIMIT_MS,
   onFinish,
   autoStart = true,
+  variant = 'classic',
+  experimental,
 }: CastleRescueGameProps) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const stateRef    = useRef<GameState | null>(null);
@@ -1304,6 +1708,8 @@ export default function CastleRescueGame({
   const rafRef      = useRef(0);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const experimentalRef = useRef(experimental);
+  experimentalRef.current = experimental;
   const finishedRef = useRef(false);
 
   const [phase, setPhase]       = useState<Phase>('idle');
@@ -1339,6 +1745,8 @@ export default function CastleRescueGame({
     const geom   = buildLevel(runSeed);
     const spawnY = GROUND_TOP - PH;
     return {
+      runSeed,
+      variant,
       phase: 'playing',
       player: { x:80, y:spawnY, vx:0, vy:0, onGround:false, facingRight:true, invincibleUntil:0 },
       geom, camera:0, score:0, hearts:MAX_HEARTS,
@@ -1351,8 +1759,22 @@ export default function CastleRescueGame({
       room: null,
       endReason: 'timeout',
       lastRoomPipeSlot: null,
+      galleryPortraits: chooseGalleryPortraits(runSeed, 0),
+      telemetry: {
+        pipeEntries: 0,
+        roomsEntered: 0,
+        deaths: 0,
+        jumps: 0,
+        directionChanges: 0,
+        lastDirection: 0,
+        coinsCollected: 0,
+        enemiesStomped: 0,
+        bricksBroken: 0,
+        checkpointsActivated: 0,
+        longestFrameMs: 0,
+      },
     };
-  }, []);
+  }, [variant]);
 
   const startGame = useCallback(() => {
     // Follow the minigame-host convention: seed=0 means "no explicit seed",
@@ -1408,7 +1830,8 @@ export default function CastleRescueGame({
     let lastFrameTime = performance.now();
 
     function loop(now: number): void {
-      const dt = Math.min(now - lastFrameTime, 40);
+      const rawDt = Math.max(0, now - lastFrameTime);
+      const dt = Math.min(rawDt, 40);
       lastFrameTime = now;
       const gs = stateRef.current;
 
@@ -1418,10 +1841,16 @@ export default function CastleRescueGame({
         ctx.fillStyle = '#111827'; ctx.fillRect(0, 0, CW, CH);
         ctx.fillStyle = '#f3f4f6'; ctx.font = 'bold 36px serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('🏰 Castle Rescue', CW/2, CH/2-40);
+        ctx.fillText(variant === 'benny-lenny' ? '🏰 Find Your Twin 2' : '🏰 Castle Rescue', CW/2, CH/2-40);
         ctx.fillStyle = '#9ca3af'; ctx.font = '16px sans-serif';
         ctx.fillText('Arrow Keys / WASD to move · Space/Up to jump', CW/2, CH/2+10);
-        ctx.fillText('↓ or S at a pipe entrance to enter it', CW/2, CH/2+36);
+        ctx.fillText(
+          variant === 'benny-lenny'
+            ? 'Walk in front of a door and press ↑ or W to enter'
+            : '↓ or S at a pipe entrance to enter it',
+          CW/2,
+          CH/2+36,
+        );
         rafRef.current = requestAnimationFrame(loop); return;
       }
 
@@ -1430,12 +1859,34 @@ export default function CastleRescueGame({
           finishedRef.current = true;
           setPhase('complete');
           setEndStats({ score: gs.finalScore, endReason: gs.endReason });
+          if (import.meta.env.DEV && experimentalRef.current) {
+            experimentalRef.current.onFinish({
+              seed: gs.runSeed,
+              finalScore: gs.finalScore,
+              elapsedMs: Math.round(gs.finalElapsedMs),
+              endReason: gs.endReason,
+              rescued: gs.princessRescued,
+              pipesComplete: gs.pipesComplete,
+              pipeEntries: gs.telemetry.pipeEntries,
+              wrongPipes: gs.wrongPipes,
+              roomsEntered: gs.telemetry.roomsEntered,
+              deaths: gs.telemetry.deaths,
+              jumps: gs.telemetry.jumps,
+              directionChanges: gs.telemetry.directionChanges,
+              coinsCollected: gs.telemetry.coinsCollected,
+              enemiesStomped: gs.telemetry.enemiesStomped,
+              bricksBroken: gs.telemetry.bricksBroken,
+              checkpointsActivated: gs.telemetry.checkpointsActivated,
+              longestFrameMs: gs.telemetry.longestFrameMs,
+            });
+          }
           onFinishRef.current?.(gs.finalScore);
         }
         renderGame(ctx, gs, now, timeLimitMs);
         rafRef.current = requestAnimationFrame(loop); return;
       }
 
+      gs.telemetry.longestFrameMs = Math.max(gs.telemetry.longestFrameMs, rawDt);
       updateGame(gs, keysRef.current, dt, now, timeLimitMs);
       renderGame(ctx, gs, now, timeLimitMs);
       rafRef.current = requestAnimationFrame(loop);
@@ -1512,7 +1963,13 @@ export default function CastleRescueGame({
   const canvasCssH = Math.round(CH * scale);
 
   return (
-    <div style={outerStyle}>
+    <div
+      style={
+        variant === 'benny-lenny'
+          ? { ...outerStyle, position: 'fixed', inset: 0, zIndex: 9000 }
+          : outerStyle
+      }
+    >
       {/* Landscape: LEFT/RIGHT buttons anchored to bottom-left of viewport */}
       {landscape && (
         <div style={{
@@ -1535,7 +1992,7 @@ export default function CastleRescueGame({
           ...ctrlGroupStyle,
           zIndex: 10,
         }} aria-label="Action controls">
-          {btnWrap(<TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
+          {btnWrap(<TouchBtn code={variant === 'benny-lenny' ? 'ArrowUp' : 'ArrowDown'} label={variant === 'benny-lenny' ? '↑' : '↓'} ariaLabel={variant === 'benny-lenny' ? 'Enter door' : 'Enter pipe'} onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
           {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
         </div>
       )}
@@ -1561,7 +2018,7 @@ export default function CastleRescueGame({
               display: 'block',
               width: canvasCssW,
               height: canvasCssH,
-              border: '2px solid #1e3a8a',
+              border: `2px solid ${variant === 'benny-lenny' ? '#a78bfa' : '#1e3a8a'}`,
               borderRadius: 8,
               // Prevent default touch scroll/zoom gestures on the game canvas.
               touchAction: 'none',
@@ -1569,15 +2026,19 @@ export default function CastleRescueGame({
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
             }}
             tabIndex={0}
-            aria-label="Find Your Twin platformer game"
+            aria-label={variant === 'benny-lenny' ? 'Find Your Twin 2 Benny and Lenny castle game' : 'Find Your Twin platformer game'}
           />
 
           {/* End-of-run result — overlaid on the scaled canvas */}
           {phase === 'complete' && endStats && (
-            <div style={endOverlayStyle}>
+            <div style={
+              endStats.endReason === 'rescued'
+                ? { ...endOverlayStyle, top: 54, transform: 'translateX(-50%)', padding: '10px 22px' }
+                : endOverlayStyle
+            }>
               <p style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
                 {endStats.endReason === 'rescued'
-                  ? '🎉 Twin Found!'
+                  ? variant === 'benny-lenny' ? '🎉 Benny Found Lenny!' : '🎉 Twin Found!'
                   : endStats.endReason === 'out_of_lives'
                     ? '💔 Out of lives!'
                     : '⏱ Time\'s Up!'}
@@ -1600,7 +2061,7 @@ export default function CastleRescueGame({
               {btnWrap(<TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
             <div style={ctrlGroupStyle}>
-              {btnWrap(<TouchBtn code="ArrowDown"  label="↓" ariaLabel="Enter pipe" onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
+              {btnWrap(<TouchBtn code={variant === 'benny-lenny' ? 'ArrowUp' : 'ArrowDown'} label={variant === 'benny-lenny' ? '↑' : '↓'} ariaLabel={variant === 'benny-lenny' ? 'Enter door' : 'Enter pipe'} onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
               {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
           </div>
@@ -1608,6 +2069,13 @@ export default function CastleRescueGame({
       </div>
     </div>
   );
+}
+
+/** Competition-host adapter for the castle sequel. */
+export function BennyLennyCastleRescueGame(
+  props: Omit<CastleRescueGameProps, 'variant'>,
+) {
+  return <CastleRescueGame {...props} variant="benny-lenny" />;
 }
 
 // ── Sub-components & styles ────────────────────────────────────────────────────

@@ -219,6 +219,26 @@ describe('getClassicCampaignPoolForContext', () => {
     expect(lateDay).not.toContain('gridOfLuck')
   })
 
+  it('only unlocks Find Your Twin 2 after Find Your Twin has been played', () => {
+    const beforePartOne = getClassicCampaignPoolForContext({
+      day: 11,
+      playerCount: 5,
+      compType: 'LOH',
+      phase: 'loh_comp',
+      playedGameKeys: [],
+    })
+    const afterPartOne = getClassicCampaignPoolForContext({
+      day: 11,
+      playerCount: 5,
+      compType: 'LOH',
+      phase: 'loh_comp',
+      playedGameKeys: ['castleRescue'],
+    })
+
+    expect(beforePartOne).not.toContain('castleRescue2')
+    expect(afterPartOne).toContain('castleRescue2')
+  })
+
   it('uses a disjoint, escalating pool for each Final 3 part', () => {
     const resolve = (
       phase: 'final3_comp1_minigame' | 'final3_comp2_minigame' | 'final3_comp3_minigame'

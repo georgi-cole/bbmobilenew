@@ -30,6 +30,8 @@ export interface ClassicCampaignContext {
   playerCount: number
   compType: 'LOH' | 'POS'
   phase?: Phase
+  /** All games already completed in this season. */
+  playedGameKeys?: readonly string[]
 }
 
 /**
@@ -58,6 +60,7 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'dontGoOver',
   'capitalization',
   'castleRescue',
+  'castleRescue2',
   'glass_bridge_brutal',
   'crystal_path_shattered',
   'wildcardWestern',
@@ -74,6 +77,15 @@ export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
 > = {
   // Social reads only feel earned after several days with the housemates.
   silentSaboteur: 4,
+  // Part 2 belongs after the original has had a chance to appear.
+  castleRescue2: 9,
+}
+
+/** Narrative prerequisites that cannot be represented by day alone. */
+export const CLASSIC_CAMPAIGN_GAME_REQUIRED_PREVIOUS: Partial<
+  Record<(typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number], string>
+> = {
+  castleRescue2: 'castleRescue',
 }
 
 export function getApprovedCompetitionGameKeys(
@@ -287,6 +299,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minDay: 9,
     maxDay: 9,
     loh: [
+      'castleRescue2',
       'memoryMatch',
       'famousFigures',
       'timingBar',
@@ -318,6 +331,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     maxDay: 10,
     loh: [
       'castleRescue',
+      'castleRescue2',
       'memoryMatch',
       'timingBar',
       'estimationGame',
@@ -347,6 +361,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minDay: 11,
     maxDay: 11,
     loh: [
+      'castleRescue2',
       'memoryMatch',
       'famousFigures',
       'timingBar',
@@ -379,6 +394,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minDay: 12,
     maxDay: 12,
     loh: [
+      'castleRescue2',
       'memoryMatch',
       'famousFigures',
       'timingBar',
@@ -458,11 +474,21 @@ function matchesCampaignContext(band: BracketBand, context: ClassicCampaignConte
   return true
 }
 
-function applyGameStoryPrerequisites(pool: string[], day: number): string[] {
+function applyGameStoryPrerequisites(
+  pool: string[],
+  day: number,
+  playedGameKeys: readonly string[] = [],
+): string[] {
+  const played = new Set(playedGameKeys)
   return pool.filter((key) => {
     const minDay =
       CLASSIC_CAMPAIGN_GAME_MIN_DAY[key as (typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number]]
-    return minDay === undefined || day >= minDay
+    if (minDay !== undefined && day < minDay) return false
+    const requiredPrevious =
+      CLASSIC_CAMPAIGN_GAME_REQUIRED_PREVIOUS[
+        key as (typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number]
+      ]
+    return requiredPrevious === undefined || played.has(requiredPrevious)
   })
 }
 
@@ -513,7 +539,7 @@ export function getClassicCampaignPoolForContext(
     })[0]
   if (matched) {
     const pool = context.compType === 'POS' ? matched.pos : matched.loh
-    return applyGameStoryPrerequisites(pool, context.day)
+    return applyGameStoryPrerequisites(pool, context.day, context.playedGameKeys)
   }
 
   // A twist can put the roster outside a day's +/- 1 guide. Use the closest
@@ -521,7 +547,7 @@ export function getClassicCampaignPoolForContext(
   const fallback = getRosterFallbackBand(context.playerCount, template)
   if (fallback) {
     const pool = context.compType === 'POS' ? fallback.pos : fallback.loh
-    return applyGameStoryPrerequisites(pool, context.day)
+    return applyGameStoryPrerequisites(pool, context.day, context.playedGameKeys)
   }
 
   return []

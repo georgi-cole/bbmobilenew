@@ -1083,6 +1083,30 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  castleRescue2: {
+    key: 'castleRescue2',
+    title: 'Find Your Twin 2',
+    description: 'Help Benny navigate an enchanted castle and reunite with Lenny.',
+    instructions: [
+      'Move left and right, and jump over hazards and enemies.',
+      'Stand in front of a door and press Up to enter it.',
+      'Find the three correct doors in order to unlock Lenny\'s wing.',
+      'Collect Eyeoleans and reach Lenny before time runs out.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue2',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
+
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',
     title: 'The Crystal Path',
