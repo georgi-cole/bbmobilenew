@@ -2024,6 +2024,7 @@ export default function CastleRescueGame({
           ...ctrlGroupStyle,
           zIndex: 10,
         }} aria-label="Action controls">
+          {/* i18n-ignore: Existing English-only accessibility copy for this canvas minigame. */}
           {btnWrap(<TouchBtn code={variant === 'benny-lenny' ? 'ArrowUp' : 'ArrowDown'} label={variant === 'benny-lenny' ? '↑' : '↓'} ariaLabel={variant === 'benny-lenny' ? 'Enter door' : 'Enter pipe'} onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
           {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
         </div>
@@ -2058,7 +2059,10 @@ export default function CastleRescueGame({
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
             }}
             tabIndex={0}
-            aria-label={variant === 'benny-lenny' ? 'Find Your Twin 2 Lost Again Benny and Lenny castle game' : 'Find Your Twin platformer game'}
+            aria-label={
+              // i18n-ignore: Official titles identify this English-only canvas minigame to assistive technology.
+              variant === 'benny-lenny' ? 'Find Your Twin 2 Lost Again Benny and Lenny castle game' : 'Find Your Twin platformer game'
+            }
           />
 
           {/* End-of-run result — overlaid on the scaled canvas */}
@@ -2070,6 +2074,7 @@ export default function CastleRescueGame({
             }>
               <p style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>
                 {endStats.endReason === 'rescued'
+                  /* i18n-ignore: Existing English-only result copy for this canvas minigame. */
                   ? variant === 'benny-lenny' ? '🎉 Benny Found Lenny!' : '🎉 Twin Found!'
                   : endStats.endReason === 'out_of_lives'
                     ? '💔 Out of lives!'
@@ -2093,6 +2098,7 @@ export default function CastleRescueGame({
               {btnWrap(<TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
             <div style={ctrlGroupStyle}>
+              {/* i18n-ignore: Existing English-only accessibility copy for this canvas minigame. */}
               {btnWrap(<TouchBtn code={variant === 'benny-lenny' ? 'ArrowUp' : 'ArrowDown'} label={variant === 'benny-lenny' ? '↑' : '↓'} ariaLabel={variant === 'benny-lenny' ? 'Enter door' : 'Enter pipe'} onPress={touchPress} onRelease={touchRelease} color="#4c1d95" size={btnSize} />)}
               {btnWrap(<TouchBtn code="Space"      label="▲" ariaLabel="Jump"       onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
