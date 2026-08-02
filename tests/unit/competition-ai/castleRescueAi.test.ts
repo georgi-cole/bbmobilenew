@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getMinigameAiModel, simulateAiPerformance } from '../../../src/ai/competition';
+import {
+  getMinigameAiModel,
+  simulateAiPerformance,
+  simulateMinigameAiScore,
+} from '../../../src/ai/competition';
 
 describe('castleRescue AI calibration', () => {
   const model = getMinigameAiModel('castleRescue');
@@ -35,6 +39,37 @@ describe('castleRescue AI calibration', () => {
     expect(first).toBe(second);
     expect(first).toBeGreaterThanOrEqual(0);
     expect(first).toBeLessThanOrEqual(2000);
+  });
+
+  it('uses the legal Castle Rescue simulation for real competition results', () => {
+    const first = simulateMinigameAiScore({
+      gameKey: 'castleRescue',
+      seed: 424242,
+      playerId: 'housemate-1',
+    });
+    const second = simulateMinigameAiScore({
+      gameKey: 'castleRescue',
+      seed: 424242,
+      playerId: 'housemate-1',
+    });
+
+    expect(second).toBe(first);
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(first).toBeLessThanOrEqual(2500);
+  });
+
+  it('keeps real AI scores overlapping the observed human scoring range', () => {
+    const scores = Array.from({ length: 120 }, (_, index) =>
+      simulateMinigameAiScore({
+        gameKey: index % 2 === 0 ? 'castleRescue' : 'castleRescue2',
+        seed: index + 1,
+        playerId: `housemate-${index % 12}`,
+      }),
+    );
+
+    expect(scores.some((score) => score < 905)).toBe(true);
+    expect(scores.some((score) => score >= 905 && score <= 1220)).toBe(true);
+    expect(scores.some((score) => score > 1220)).toBe(true);
   });
 
   it('roughly follows the configured Castle Rescue score bands over many samples', () => {

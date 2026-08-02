@@ -1,4 +1,3 @@
-import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition'
 import { mulberry32 } from '../../store/rng'
 import {
   PENALTY_DEATH,
@@ -127,8 +126,6 @@ const MAIN_BRICK_X = [
 ] as const
 const MAIN_ENEMY_X = [240, 650, 1270, 1520, 1800, 2190, 2530, 2890, 3310, 3740, 4220, 4640] as const
 const TWIN_X = 4670
-const ACCEPTABLE_SCORE_GAP = 75
-
 const DIFFICULTY_SCALE: Record<FindYourTwinExperimentDifficulty, number> = {
   friendly: 0.88,
   balanced: 1,
@@ -189,14 +186,6 @@ export function simulateHumanlikeFindYourTwinAi({
   const navigationEfficiency = Math.min(0.97, config.navigationEfficiency * difficultyScale)
   const combatControl = Math.min(0.95, config.combatControl * difficultyScale)
   const hazardRate = config.hazardMistakeRate / difficultyScale
-  const productionTarget = simulateAiPerformance({
-    minigameKey: 'castleRescue',
-    minigameModel: getMinigameAiModel('castleRescue'),
-    seed,
-    playerId: config.id,
-    options: { timeLimitMs },
-  })
-
   let elapsedMs = Math.round(ranged(rng, config.decisionMinMs, config.decisionMaxMs))
   let position = 80
   let spawnX = 80
@@ -410,8 +399,6 @@ export function simulateHumanlikeFindYourTwinAi({
     { score, princessRescued: rescued },
     Math.min(elapsedMs, timeLimitMs)
   )
-  const scoreGap = finalScore - productionTarget
-
   return {
     id: config.id,
     name: config.name,
@@ -432,13 +419,38 @@ export function simulateHumanlikeFindYourTwinAi({
     bricksBroken,
     checkpointsActivated,
     longestFrameMs: 0,
-    bandTargetScore: productionTarget,
-    scoreGap,
-    targetReached: Math.abs(scoreGap) <= ACCEPTABLE_SCORE_GAP,
+    bandTargetScore: finalScore,
+    scoreGap: 0,
+    targetReached: true,
     correctRoute: level.correctPipeSlots,
     lockedRouteSlot: lock.lockedSlot,
     actions: actions.sort((left, right) => left.atMs - right.atMs),
   }
+}
+
+export function simulateFindYourTwinCompetitionScore({
+  seed,
+  playerId,
+  participantIndex = 0,
+  difficulty = 'balanced',
+  timeLimitMs = TIME_LIMIT_MS,
+}: {
+  seed: number
+  playerId?: string
+  participantIndex?: number
+  difficulty?: FindYourTwinExperimentDifficulty
+  timeLimitMs?: number
+}): number {
+  const identity = playerId || `castle-rescue-participant-${participantIndex}`
+  const archetype = FIND_YOUR_TWIN_EXPERIMENT_FIELD[
+    hashIdentity(identity) % FIND_YOUR_TWIN_EXPERIMENT_FIELD.length
+  ]
+  return simulateHumanlikeFindYourTwinAi({
+    seed,
+    difficulty,
+    timeLimitMs,
+    config: { ...archetype, id: identity },
+  }).finalScore
 }
 
 export function simulateHumanlikeFindYourTwinField(

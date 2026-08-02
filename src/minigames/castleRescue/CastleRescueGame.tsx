@@ -995,12 +995,17 @@ export function chooseClassicTwinHintPortraits(
   const lia = GALLERY_HOUSEMATES[0];
   return [
     { name: 'LIA', file: lia.file, mirrored: false },
-    { name: 'ALI', file: lia.file, mirrored: true },
-    ...randomIndices.map((index) => ({
-      name: GALLERY_HOUSEMATES[index].name,
-      file: GALLERY_HOUSEMATES[index].file,
+    {
+      name: GALLERY_HOUSEMATES[randomIndices[0]].name,
+      file: GALLERY_HOUSEMATES[randomIndices[0]].file,
       mirrored: false,
-    })),
+    },
+    { name: 'ALI', file: lia.file, mirrored: true },
+    {
+      name: GALLERY_HOUSEMATES[randomIndices[1]].name,
+      file: GALLERY_HOUSEMATES[randomIndices[1]].file,
+      mirrored: false,
+    },
   ];
 }
 
@@ -1174,10 +1179,6 @@ function drawClassicTwinHintRoomDecor(
       ctx.fillStyle = '#fde68a';
       ctx.beginPath(); ctx.arc(x + 54, HUD_H + 91, 25, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = '#4c1d95';
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(portrait.name, x + 54, HUD_H + 164);
   });
 }
 

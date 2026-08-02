@@ -28,7 +28,7 @@ type StandingHumanResult = Pick<
 
 type StandingAiResult = Pick<
   FindYourTwinAiResult,
-  'id' | 'name' | 'bandTargetScore' | 'rescued' | 'elapsedMs'
+  'id' | 'name' | 'finalScore' | 'rescued' | 'elapsedMs'
 >
 
 export interface FindYourTwinStanding {
@@ -58,7 +58,7 @@ export function buildFindYourTwinStandings(
     ...aiResults.map((result) => ({
       id: result.id,
       name: result.name,
-      score: result.bandTargetScore,
+      score: result.finalScore,
       rescued: result.rescued,
       elapsedMs: result.elapsedMs,
       isHuman: false,
@@ -198,7 +198,7 @@ export default function FindYourTwinExperiment() {
                   </span>
                   <strong>{entry.score} pts</strong>
                   <small>
-                    {entry.isHuman ? 'your played score' : 'production AI score'} ·{' '}
+                    {entry.isHuman ? 'your played score' : 'AI action score'} ·{' '}
                     {entry.rescued
                       ? `rescued in ${(entry.elapsedMs / 1000).toFixed(1)}s`
                       : 'did not rescue'}
@@ -239,17 +239,8 @@ export default function FindYourTwinExperiment() {
               <article key={result.id} className="fyt-experiment__report">
                 <h3>{result.name}</h3>
                 <p className="fyt-experiment__scoreline">
-                  <strong>{result.bandTargetScore} competition pts</strong>
-                  <span>Action trace produced {result.finalScore}</span>
-                </p>
-                <p
-                  className={
-                    result.targetReached ? 'fyt-experiment__reachable' : 'fyt-experiment__gap'
-                  }
-                >
-                  {result.targetReached
-                    ? `Trace reproduced the assigned score within ${Math.abs(result.scoreGap)} points.`
-                    : `Trace audit differs by ${result.scoreGap > 0 ? '+' : ''}${result.scoreGap} points.`}
+                  <strong>{result.finalScore} competition pts</strong>
+                  <span>Earned from the legal action trace</span>
                 </p>
                 <p>
                   {result.rescued

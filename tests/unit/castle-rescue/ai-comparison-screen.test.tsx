@@ -17,28 +17,28 @@ describe('Find Your Twin AI comparison entry points', () => {
     expect(gameSelect).toHaveValue('benny-lenny');
   });
 
-  it('ranks the player against production-assigned AI scores, not action-trace audit scores', () => {
+  it('ranks the player against scores earned by the AI action traces', () => {
     const standings = buildFindYourTwinStandings(
       { finalScore: 790, rescued: true, elapsedMs: 122_300 },
       [
         {
           id: 'nova',
           name: 'Nova',
-          bandTargetScore: 1145,
+          finalScore: 1145,
           rescued: true,
           elapsedMs: 57_600,
         },
         {
           id: 'milo',
           name: 'Milo',
-          bandTargetScore: 695,
+          finalScore: 695,
           rescued: true,
           elapsedMs: 65_400,
         },
         {
           id: 'zara',
           name: 'Zara',
-          bandTargetScore: 658,
+          finalScore: 658,
           rescued: true,
           elapsedMs: 83_300,
         },

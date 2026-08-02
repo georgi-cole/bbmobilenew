@@ -1,4 +1,8 @@
 import type { GameRegistryEntry } from '../../minigames/registry';
+import {
+  simulateFindYourTwinCompetitionScore,
+  type FindYourTwinExperimentDifficulty,
+} from '../../experiments/findYourTwinHumanAi/findYourTwinHumanAi';
 import { DEFAULT_TAPRACE_OPTIONS } from '../../store/minigame';
 import { mulberry32 } from '../../store/rng';
 import { minigameAiRegistry } from './minigameAiRegistry';
@@ -661,6 +665,29 @@ export function simulateMinigameAiScore({
   timeLimitMs,
   minigameModel,
 }: SimulateMinigameAiScoreArgs): number {
+  if (gameKey === 'castleRescue' || gameKey === 'castleRescue2') {
+    const resolvedProfile = profile ?? getDefaultCompetitionProfile();
+    const baseAbility =
+      (resolvedProfile.physical +
+        resolvedProfile.mental +
+        resolvedProfile.precision +
+        resolvedProfile.nerve) /
+      4;
+    const adjustedAbility =
+      baseAbility +
+      getCompetitionSeasonModifiers(seasonState ?? DEFAULT_SEASON_STATE).totalAdjustment * 100;
+    const difficulty: FindYourTwinExperimentDifficulty =
+      adjustedAbility >= 62 ? 'competitive' : adjustedAbility <= 42 ? 'friendly' : 'balanced';
+
+    return simulateFindYourTwinCompetitionScore({
+      seed,
+      playerId,
+      participantIndex,
+      difficulty,
+      timeLimitMs,
+    });
+  }
+
   if (gameKey === 'quickTap' || gameKey === 'laneRacers') {
     const timeLimit =
       typeof timeLimitSeconds === 'number'

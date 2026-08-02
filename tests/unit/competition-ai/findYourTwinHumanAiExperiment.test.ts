@@ -79,14 +79,34 @@ describe('Find Your Twin human-AI experiment', () => {
     expect(rescues.competitive).toBeGreaterThanOrEqual(rescues.balanced)
   })
 
-  it('audits production score bands without replacing the earned result', () => {
+  it('uses the legally earned action score as the competition score', () => {
     const results = Array.from({ length: 100 }, (_, index) =>
       simulateHumanlikeFindYourTwinField(index + 1, 'balanced')
     ).flat()
 
-    expect(results.some((result) => !result.targetReached)).toBe(true)
     expect(
-      results.every((result) => result.scoreGap === result.finalScore - result.bandTargetScore)
+      results.every(
+        (result) =>
+          result.bandTargetScore === result.finalScore &&
+          result.scoreGap === 0 &&
+          result.targetReached
+      )
     ).toBe(true)
+  })
+
+  it('gives both the human and AI field plausible wins across the three calibration runs', () => {
+    const runs = [
+      { seed: 424242, humanScore: 1220 },
+      { seed: 1036148016, humanScore: 1035 },
+      { seed: 1567981262, humanScore: 905 },
+    ]
+    const humanWins = runs.filter(({ seed, humanScore }) =>
+      simulateHumanlikeFindYourTwinField(seed, 'balanced').every(
+        (result) => humanScore > result.finalScore
+      )
+    ).length
+
+    expect(humanWins).toBeGreaterThan(0)
+    expect(humanWins).toBeLessThan(runs.length)
   })
 })
