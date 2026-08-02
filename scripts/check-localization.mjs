@@ -823,6 +823,10 @@ function shouldScanFile(file) {
     'e2e/',
     'node_modules/',
     'scripts/',
+    // Development-only experiment and preview routes are never shipped to players.
+    'src/experiments/',
+    'src/screens/FindYourTwin2/',
+    'src/screens/FindYourTwinExperiment/',
     'src/i18n/',
     'src/test/',
     'tests/',
