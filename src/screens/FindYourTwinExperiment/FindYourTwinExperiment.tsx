@@ -21,6 +21,51 @@ function freshSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000)
 }
 
+type StandingHumanResult = Pick<
+  FindYourTwinHumanTelemetry,
+  'finalScore' | 'rescued' | 'elapsedMs'
+>
+
+type StandingAiResult = Pick<
+  FindYourTwinAiResult,
+  'id' | 'name' | 'bandTargetScore' | 'rescued' | 'elapsedMs'
+>
+
+export interface FindYourTwinStanding {
+  id: string
+  name: string
+  score: number
+  rescued: boolean
+  elapsedMs: number
+  isHuman: boolean
+}
+
+export function buildFindYourTwinStandings(
+  humanResult: StandingHumanResult | null,
+  aiResults: StandingAiResult[],
+): FindYourTwinStanding[] {
+  if (!humanResult) return []
+
+  return [
+    {
+      id: 'human',
+      name: 'You',
+      score: humanResult.finalScore,
+      rescued: humanResult.rescued,
+      elapsedMs: humanResult.elapsedMs,
+      isHuman: true,
+    },
+    ...aiResults.map((result) => ({
+      id: result.id,
+      name: result.name,
+      score: result.bandTargetScore,
+      rescued: result.rescued,
+      elapsedMs: result.elapsedMs,
+      isHuman: false,
+    })),
+  ].sort((left, right) => right.score - left.score || left.elapsedMs - right.elapsedMs)
+}
+
 export default function FindYourTwinExperiment() {
   const [seed, setSeed] = useState(424242)
   const [difficulty, setDifficulty] = useState<FindYourTwinExperimentDifficulty>('balanced')
@@ -37,27 +82,10 @@ export default function FindYourTwinExperiment() {
     setPhase('playing')
   }
 
-  const standings = useMemo(() => {
-    if (!humanResult) return []
-    return [
-      {
-        id: 'human',
-        name: 'You',
-        score: humanResult.finalScore,
-        rescued: humanResult.rescued,
-        elapsedMs: humanResult.elapsedMs,
-        isHuman: true,
-      },
-      ...aiResults.map((result) => ({
-        id: result.id,
-        name: result.name,
-        score: result.finalScore,
-        rescued: result.rescued,
-        elapsedMs: result.elapsedMs,
-        isHuman: false,
-      })),
-    ].sort((left, right) => right.score - left.score || left.elapsedMs - right.elapsedMs)
-  }, [aiResults, humanResult])
+  const standings = useMemo(
+    () => buildFindYourTwinStandings(humanResult, aiResults),
+    [aiResults, humanResult],
+  )
 
   if (phase === 'playing') {
     return (
@@ -160,7 +188,7 @@ export default function FindYourTwinExperiment() {
               {gameVersion === 'classic' ? 'Part 1' : 'Part 2'} · Seed {seed} · {difficulty}
             </p>
             <h2>
-              {standings[0]?.isHuman ? 'You won the experiment' : `${standings[0]?.name} won`}
+              {standings[0]?.isHuman ? 'You won this comparison' : `${standings[0]?.name} won`}
             </h2>
             <ol className="fyt-experiment__standings">
               {standings.map((entry, index) => (
@@ -170,6 +198,7 @@ export default function FindYourTwinExperiment() {
                   </span>
                   <strong>{entry.score} pts</strong>
                   <small>
+                    {entry.isHuman ? 'your played score' : 'production AI score'} ·{' '}
                     {entry.rescued
                       ? `rescued in ${(entry.elapsedMs / 1000).toFixed(1)}s`
                       : 'did not rescue'}
@@ -210,8 +239,8 @@ export default function FindYourTwinExperiment() {
               <article key={result.id} className="fyt-experiment__report">
                 <h3>{result.name}</h3>
                 <p className="fyt-experiment__scoreline">
-                  <strong>{result.finalScore} legal-action pts</strong>
-                  <span>Production assigned {result.bandTargetScore}</span>
+                  <strong>{result.bandTargetScore} competition pts</strong>
+                  <span>Action trace produced {result.finalScore}</span>
                 </p>
                 <p
                   className={
@@ -219,8 +248,8 @@ export default function FindYourTwinExperiment() {
                   }
                 >
                   {result.targetReached
-                    ? `Action trace reproduced the band within ${Math.abs(result.scoreGap)} points.`
-                    : `Band was not reproduced: ${result.scoreGap > 0 ? '+' : ''}${result.scoreGap} point gap.`}
+                    ? `Trace reproduced the assigned score within ${Math.abs(result.scoreGap)} points.`
+                    : `Trace audit differs by ${result.scoreGap > 0 ? '+' : ''}${result.scoreGap} points.`}
                 </p>
                 <p>
                   {result.rescued
