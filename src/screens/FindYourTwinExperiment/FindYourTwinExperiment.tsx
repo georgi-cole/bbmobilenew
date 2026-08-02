@@ -21,10 +21,7 @@ function freshSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000)
 }
 
-type StandingHumanResult = Pick<
-  FindYourTwinHumanTelemetry,
-  'finalScore' | 'rescued' | 'elapsedMs'
->
+type StandingHumanResult = Pick<FindYourTwinHumanTelemetry, 'finalScore' | 'rescued' | 'elapsedMs'>
 
 type StandingAiResult = Pick<
   FindYourTwinAiResult,
@@ -42,7 +39,7 @@ export interface FindYourTwinStanding {
 
 export function buildFindYourTwinStandings(
   humanResult: StandingHumanResult | null,
-  aiResults: StandingAiResult[],
+  aiResults: StandingAiResult[]
 ): FindYourTwinStanding[] {
   if (!humanResult) return []
 
@@ -84,7 +81,7 @@ export default function FindYourTwinExperiment() {
 
   const standings = useMemo(
     () => buildFindYourTwinStandings(humanResult, aiResults),
-    [aiResults, humanResult],
+    [aiResults, humanResult]
   )
 
   if (phase === 'playing') {

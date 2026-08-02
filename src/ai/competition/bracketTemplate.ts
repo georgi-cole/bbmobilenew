@@ -477,7 +477,7 @@ function matchesCampaignContext(band: BracketBand, context: ClassicCampaignConte
 function applyGameStoryPrerequisites(
   pool: string[],
   day: number,
-  playedGameKeys: readonly string[] = [],
+  playedGameKeys: readonly string[] = []
 ): string[] {
   const played = new Set(playedGameKeys)
   return pool.filter((key) => {

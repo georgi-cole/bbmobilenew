@@ -442,9 +442,8 @@ export function simulateFindYourTwinCompetitionScore({
   timeLimitMs?: number
 }): number {
   const identity = playerId || `castle-rescue-participant-${participantIndex}`
-  const archetype = FIND_YOUR_TWIN_EXPERIMENT_FIELD[
-    hashIdentity(identity) % FIND_YOUR_TWIN_EXPERIMENT_FIELD.length
-  ]
+  const archetype =
+    FIND_YOUR_TWIN_EXPERIMENT_FIELD[hashIdentity(identity) % FIND_YOUR_TWIN_EXPERIMENT_FIELD.length]
   return simulateHumanlikeFindYourTwinAi({
     seed,
     difficulty,
