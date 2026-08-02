@@ -148,6 +148,36 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  quickTapSeasons: {
+    key: 'quickTapSeasons',
+    // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+    title: 'Quick Tap Race 2: Seasons',
+    description:
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Race through a shifting year where every season changes the rhythm and value of your taps.',
+    instructions: [
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Wait for the start signal, then tap the play area as quickly as you can.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Adapt when the season changes because each one affects your score differently.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Open mystery boxes to transform the race conditions.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Keep tapping until the 40-second race ends. The highest score wins.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Points', // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+    timeLimitMs: 40_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    implementation: 'react' as const,
+    reactComponentKey: 'QuickTapSeasons',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   laneRacers: {
     key: 'laneRacers',
     title: 'Lane Racers',

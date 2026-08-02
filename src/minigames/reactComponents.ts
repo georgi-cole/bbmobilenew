@@ -33,6 +33,7 @@ import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverCo
 import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
 import CastleRescueGame, { BennyLennyCastleRescueGame } from './castleRescue/CastleRescueGame';
 import QuickTapRace from './quickTapRace/QuickTapRaceCanvasGame';
+import QuickTapSeasons from '../screens/QuickTapSeasons/QuickTapSeasons';
 import LaneRacers from './laneRacers/LaneRacersCanvasGame';
 import TravelingDots from '../components/TravelingDots/TravelingDots';
 import EstimationGame from '../components/EstimationGame/EstimationGame';
@@ -96,6 +97,7 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   CastleRescue: CastleRescueGame as ComponentType<GenericMinigameProps>,
   CastleRescue2: BennyLennyCastleRescueGame as ComponentType<GenericMinigameProps>,
   QuickTapRace: QuickTapRace as ComponentType<GenericMinigameProps>,
+  QuickTapSeasons: QuickTapSeasons as ComponentType<GenericMinigameProps>,
   LaneRacers: LaneRacers as ComponentType<GenericMinigameProps>,
   TravelingDots: TravelingDots as ComponentType<GenericMinigameProps>,
   EstimationGame: EstimationGame as ComponentType<GenericMinigameProps>,

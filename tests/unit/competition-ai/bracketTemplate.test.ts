@@ -169,6 +169,31 @@ describe('getBracketPoolForContext compatibility resolver', () => {
 })
 
 describe('getClassicCampaignPoolForContext', () => {
+  it('adds Seasons only to POS after jury begins', () => {
+    const preJuryPos = getClassicCampaignPoolForContext({
+      day: 6,
+      playerCount: 10,
+      compType: 'POS',
+      phase: 'pos_comp',
+    })
+    const juryPos = getClassicCampaignPoolForContext({
+      day: 7,
+      playerCount: 9,
+      compType: 'POS',
+      phase: 'pos_comp',
+    })
+    const juryLoh = getClassicCampaignPoolForContext({
+      day: 7,
+      playerCount: 9,
+      compType: 'LOH',
+      phase: 'loh_comp',
+    })
+
+    expect(preJuryPos).not.toContain('quickTapSeasons')
+    expect(juryPos).toContain('quickTapSeasons')
+    expect(juryLoh).not.toContain('quickTapSeasons')
+  })
+
   it('uses the fixed premiere pool on day 1', () => {
     expect(
       getClassicCampaignPoolForContext({
