@@ -59,6 +59,10 @@ import {
 } from './castleRescueSession';
 import type { CastleRescueEndReason } from './castleRescueSession';
 import type { FindYourTwinHumanTelemetry } from '../../experiments/findYourTwinHumanAi/findYourTwinHumanAi';
+import {
+  GALLERY_HOUSEMATES,
+  chooseClassicTwinHintPortraits,
+} from './castleRescueGallery';
 
 // ═══ Canvas geometry ══════════════════════════════════════════════════════════
 const CW = 800;           // canvas width
@@ -947,34 +951,10 @@ function drawSequelCastleBackdrop(ctx: CanvasRenderingContext2D, camera: number)
   }
 }
 
-const GALLERY_HOUSEMATES = [
-  { name: 'LIA', file: 'Lia_avatar.webp' },
-  { name: 'REMY', file: 'Remy_avatar.webp' },
-  { name: 'NICO', file: 'Nico_avatar.webp' },
-  { name: 'VEE', file: 'Vee_avatar.webp' },
-  { name: 'QUINN', file: 'Quinn_avatar.webp' },
-  { name: 'ECHO', file: 'Echo_avatar.webp' },
-  { name: 'RUNE', file: 'Rune_avatar.webp' },
-  { name: 'KIAN', file: 'Kian_avatar.webp' },
-  { name: 'RAE', file: 'Rae_avatar.webp' },
-  { name: 'LUX', file: 'Lux_avatar.webp' },
-  { name: 'BLUE', file: 'Blue_avatar.webp' },
-  { name: 'DEX', file: 'Dex_avatar.webp' },
-  { name: 'FINN', file: 'Finn_avatar.webp' },
-  { name: 'MIMI', file: 'mimi_avatar.webp' },
-  { name: 'ZED', file: 'Zed_avatar.webp' },
-] as const;
-
 const galleryImageCache = new Map<string, HTMLImageElement>();
 const galleryPixelCache = new Map<string, HTMLCanvasElement>();
 let kolequantLogoImage: HTMLImageElement | null = null;
 let kolequantLogoPixelCanvas: HTMLCanvasElement | null = null;
-
-export interface GalleryPortraitSpec {
-  name: string;
-  file: string;
-  mirrored: boolean;
-}
 
 function chooseGalleryPortraits(seed: number, visit: number): number[] {
   const rng = rng32(((seed >>> 0) ^ Math.imul(visit + 1, 0x45d9f3b)) >>> 0);
@@ -984,30 +964,6 @@ function chooseGalleryPortraits(seed: number, visit: number): number[] {
     [indices[index], indices[swapIndex]] = [indices[swapIndex], indices[index]];
   }
   return indices.slice(0, 4);
-}
-
-/** Part 1's Twin Shock clue: Lia and her mirrored counterpart are guaranteed. */
-export function chooseClassicTwinHintPortraits(
-  galleryPortraits: readonly number[],
-): GalleryPortraitSpec[] {
-  const randomIndices = [...galleryPortraits, ...GALLERY_HOUSEMATES.map((_, index) => index)]
-    .filter((index, position, all) => index !== 0 && all.indexOf(index) === position)
-    .slice(0, 2);
-  const lia = GALLERY_HOUSEMATES[0];
-  return [
-    { name: 'LIA', file: lia.file, mirrored: false },
-    {
-      name: GALLERY_HOUSEMATES[randomIndices[0]].name,
-      file: GALLERY_HOUSEMATES[randomIndices[0]].file,
-      mirrored: false,
-    },
-    { name: 'ALI', file: lia.file, mirrored: true },
-    {
-      name: GALLERY_HOUSEMATES[randomIndices[1]].name,
-      file: GALLERY_HOUSEMATES[randomIndices[1]].file,
-      mirrored: false,
-    },
-  ];
 }
 
 function getGalleryImage(file: string): HTMLImageElement | null {
@@ -1926,7 +1882,7 @@ export default function CastleRescueGame({
 
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [timeLimitMs]);
+  }, [timeLimitMs, variant]);
 
   // Auto-start
   useEffect(() => {
@@ -2095,6 +2051,7 @@ export default function CastleRescueGame({
           <div style={portraitCtrlsStyle} aria-label="Game controls">
             <div style={ctrlGroupStyle}>
               {btnWrap(<TouchBtn code="ArrowLeft"  label="◀" ariaLabel="Move left"  onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
+              {/* i18n-ignore: Existing English-only accessibility copy for this canvas minigame. */}
               {btnWrap(<TouchBtn code="ArrowRight" label="▶" ariaLabel="Move right" onPress={touchPress} onRelease={touchRelease} size={btnSize} />)}
             </div>
             <div style={ctrlGroupStyle}>

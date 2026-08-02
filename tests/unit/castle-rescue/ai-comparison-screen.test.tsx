@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import FindYourTwin2 from '../../../src/screens/FindYourTwin2/FindYourTwin2'
-import FindYourTwinExperiment, {
-  buildFindYourTwinStandings,
-} from '../../../src/screens/FindYourTwinExperiment/FindYourTwinExperiment'
+import FindYourTwinExperiment from '../../../src/screens/FindYourTwinExperiment/FindYourTwinExperiment'
+import { buildFindYourTwinStandings } from '../../../src/experiments/findYourTwinHumanAi/findYourTwinStandings'
 
 describe('Find Your Twin AI comparison entry points', () => {
   it('lets the player choose Part 1 or Part 2 before playing against the AIs', () => {

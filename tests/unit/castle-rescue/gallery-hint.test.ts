@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chooseClassicTwinHintPortraits } from '../../../src/minigames/castleRescue/CastleRescueGame'
+import { chooseClassicTwinHintPortraits } from '../../../src/minigames/castleRescue/castleRescueGallery'
 
 describe('Find Your Twin classic memory-wall hint', () => {
   it('always separates Lia from her mirrored counterpart with another portrait', () => {
