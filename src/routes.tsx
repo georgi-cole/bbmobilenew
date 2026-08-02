@@ -110,6 +110,11 @@ const FindYourTwin2 = import.meta.env.DEV
   ? lazy(() => import('./screens/FindYourTwin2/FindYourTwin2'))
   : null
 
+// Dev-only, fully isolated Quick Tap AI experiment.
+const QuickTapExperiment = import.meta.env.DEV
+  ? lazy(() => import('./screens/QuickTapExperiment/QuickTapExperiment'))
+  : null
+
 export const router = createHashRouter([
   {
     path: '/cinematic',
@@ -305,6 +310,18 @@ export const router = createHashRouter([
               element: (
                 <Suspense fallback={null}>
                   <FindYourTwin2 />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && QuickTapExperiment != null
+        ? [
+            {
+              path: 'quick-tap-experiment',
+              element: (
+                <Suspense fallback={null}>
+                  <QuickTapExperiment />
                 </Suspense>
               ),
             },
