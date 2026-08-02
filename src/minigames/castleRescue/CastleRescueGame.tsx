@@ -967,6 +967,7 @@ const GALLERY_HOUSEMATES = [
 
 const galleryImageCache = new Map<string, HTMLImageElement>();
 const galleryPixelCache = new Map<string, HTMLCanvasElement>();
+let kolequantLogoImage: HTMLImageElement | null = null;
 
 export interface GalleryPortraitSpec {
   name: string;
@@ -1038,6 +1039,16 @@ function getPixelatedGalleryImage(file: string): HTMLCanvasElement | null {
   return pixelCanvas;
 }
 
+function getKolequantLogoImage(): HTMLImageElement | null {
+  if (typeof Image === 'undefined') return null;
+  if (kolequantLogoImage) return kolequantLogoImage;
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = `${import.meta.env.BASE_URL}assets/kolequant.png`;
+  kolequantLogoImage = image;
+  return image;
+}
+
 function drawCastleDoor(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -1102,17 +1113,18 @@ function drawSequelRoomDecor(
       ctx.textAlign = 'center'; ctx.fillText(portrait.name, x + 54, HUD_H + 164);
     });
   } else {
-    ctx.save();
-    ctx.translate(CW / 2, HUD_H + 122);
-    ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(55, -25); ctx.lineTo(42, 46);
-    ctx.lineTo(0, 68); ctx.lineTo(-42, 46); ctx.lineTo(-55, -25); ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = 'rgba(124, 58, 237, 0.18)'; ctx.fill();
-    ctx.fillStyle = '#f5f3ff'; ctx.font = '900 22px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('KOLEQUANT', 0, 4);
-    ctx.fillStyle = '#c4b5fd'; ctx.font = 'bold 10px monospace';
-    ctx.fillText('CASTLE VAULT', 0, 25);
-    ctx.restore();
+    const logo = getKolequantLogoImage();
+    if (logo?.complete && logo.naturalWidth > 0) {
+      const logoWidth = 340;
+      const logoHeight = logoWidth * (logo.naturalHeight / logo.naturalWidth);
+      const logoX = (CW - logoWidth) / 2;
+      const logoY = HUD_H + 72;
+      ctx.save();
+      ctx.shadowColor = 'rgba(34, 211, 238, 0.48)';
+      ctx.shadowBlur = 18;
+      ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+      ctx.restore();
+    }
   }
 }
 
@@ -1523,19 +1535,20 @@ function renderRoom(
     drawClassicTwinHintRoomDecor(ctx, gs.galleryPortraits);
   }
 
-  // Room-type banner (just below HUD)
-  ctx.fillStyle = room.type === 'bonus' ? '#fbbf24' : '#ef4444';
-  ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  ctx.fillText(
-    isSequel
-      ? room.type === 'bonus'
+  // Room-type banner (just below HUD). The real logo identifies the sequel's
+  // Kolequant room, so it does not need a competing red text label.
+  if (!(isSequel && room.type === 'ambush')) {
+    ctx.fillStyle = room.type === 'bonus' ? '#fbbf24' : '#ef4444';
+    ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(
+      isSequel
         ? '🖼️ HOUSEMATE GALLERY — collect Eyeoleans among the portraits!'
-        : '♛ KOLEQUANT VAULT — defeat the guards or reach the exit door!'
-      : room.type === 'bonus'
-        ? '✨ MEMORY WALL — collect Eyeoleans among four familiar faces!'
-        : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
-    CW / 2, HUD_H + 4,
-  );
+        : room.type === 'bonus'
+          ? '✨ MEMORY WALL — collect Eyeoleans among four familiar faces!'
+          : '⚔️ AMBUSH! Stomp enemies or escape through the exit pipe.',
+      CW / 2, HUD_H + 4,
+    );
+  }
 
   ctx.save();
   ctx.translate(0, HUD_H);

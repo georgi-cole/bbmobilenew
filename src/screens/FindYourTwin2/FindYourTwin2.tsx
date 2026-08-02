@@ -69,6 +69,9 @@ export default function FindYourTwin2() {
           <button type="button" className="fyt2__secondary" onClick={() => setSeed(freshSeed())}>
             New castle
           </button>
+          <a className="fyt2__secondary" href="#/find-your-twin-experiment">
+            Play against AIs
+          </a>
           <button type="button" className="fyt2__start" onClick={() => setPlaying(true)}>
             Help Benny find Lenny
           </button>

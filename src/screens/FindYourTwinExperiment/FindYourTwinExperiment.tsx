@@ -15,6 +15,8 @@ const DIFFICULTY_COPY: Record<FindYourTwinExperimentDifficulty, string> = {
     'Faster reactions and cleaner control, still without route knowledge or impossible actions.',
 }
 
+type FindYourTwinGameVersion = 'classic' | 'benny-lenny'
+
 function freshSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000)
 }
@@ -22,6 +24,7 @@ function freshSeed(): number {
 export default function FindYourTwinExperiment() {
   const [seed, setSeed] = useState(424242)
   const [difficulty, setDifficulty] = useState<FindYourTwinExperimentDifficulty>('balanced')
+  const [gameVersion, setGameVersion] = useState<FindYourTwinGameVersion>('classic')
   const [phase, setPhase] = useState<'setup' | 'playing' | 'results'>('setup')
   const [runKey, setRunKey] = useState(0)
   const [aiResults, setAiResults] = useState<FindYourTwinAiResult[]>([])
@@ -62,6 +65,7 @@ export default function FindYourTwinExperiment() {
         key={runKey}
         seed={seed}
         autoStart
+        variant={gameVersion}
         onFinish={() => {}}
         experimental={{
           onFinish: (result) => {
@@ -77,17 +81,30 @@ export default function FindYourTwinExperiment() {
     <main className="fyt-experiment" data-testid="find-your-twin-experiment">
       <section className="fyt-experiment__hero">
         <p className="fyt-experiment__eyebrow">Dev-only sandbox · production unchanged</p>
-        <h1>Find Your Twin: Human AI Lab</h1>
+        <h1>Play Find Your Twin Against the AIs</h1>
         <p>
-          You and three simulated opponents receive the same hidden pipe layout. The AIs must move,
-          jump, explore unknown pipes, survive rooms, collect points, and reach the twin within the
-          real 2:30 limit. Their legal action score is audited against today&apos;s fixed AI score
-          band.
+          Choose Part 1 or Part 2, then play a complete run yourself. You and three simulated
+          opponents receive the same hidden route, timer, scoring rules, rooms, enemies, and
+          pickups. When your run ends, your real score is ranked directly against theirs.
         </p>
       </section>
 
       {phase === 'setup' ? (
         <section className="fyt-experiment__panel" aria-label="Experiment setup">
+          <label>
+            <span>Game</span>
+            <select
+              aria-label="Game"
+              value={gameVersion}
+              onChange={(event) =>
+                setGameVersion(event.currentTarget.value as FindYourTwinGameVersion)
+              }
+            >
+              <option value="classic">Find Your Twin — Part 1</option>
+              <option value="benny-lenny">Find Your Twin 2 — Benny &amp; Lenny</option>
+            </select>
+          </label>
+
           <label>
             <span>Shared seed</span>
             <input
@@ -133,14 +150,14 @@ export default function FindYourTwinExperiment() {
           </div>
 
           <button type="button" className="fyt-experiment__start" onClick={startRun}>
-            Start experimental run
+            Play against the AIs
           </button>
         </section>
       ) : (
         <>
           <section className="fyt-experiment__panel" aria-label="Experiment results">
             <p className="fyt-experiment__eyebrow">
-              Seed {seed} · {difficulty}
+              {gameVersion === 'classic' ? 'Part 1' : 'Part 2'} · Seed {seed} · {difficulty}
             </p>
             <h2>
               {standings[0]?.isHuman ? 'You won the experiment' : `${standings[0]?.name} won`}
