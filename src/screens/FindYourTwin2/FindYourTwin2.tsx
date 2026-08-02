@@ -23,7 +23,7 @@ export default function FindYourTwin2() {
       </div>
       <section className="fyt2__card">
         <p className="fyt2__eyebrow">A Find Your Twin spin-off</p>
-        <h1>Find Your Twin 2</h1>
+        <h1>Find Your Twin 2: Lost Again</h1>
         <h2>Benny &amp; Lenny: The Lost Castle</h2>
         <p className="fyt2__story">
           Meet twin brothers Benny and Lenny for the first time. While exploring an ancient castle,

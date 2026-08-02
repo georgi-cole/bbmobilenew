@@ -129,7 +129,7 @@ export default function FindYourTwinExperiment() {
               }
             >
               <option value="classic">Find Your Twin — Part 1</option>
-              <option value="benny-lenny">Find Your Twin 2 — Benny &amp; Lenny</option>
+              <option value="benny-lenny">Find Your Twin 2: Lost Again</option>
             </select>
           </label>
 

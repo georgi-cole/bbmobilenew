@@ -1062,12 +1062,12 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   castleRescue: {
     key: 'castleRescue',
     title: 'Find Your Twin',
-    description: 'Run through the castle, find the correct route, and reach your twin.',
+    description:
+      'Twin brothers Benny and Lenny went for a night walk through South Park, but somewhere along the way Lenny disappeared. Benny refuses to leave without him and must find his brother before time runs out.',
     instructions: [
-      'Use the movement controls to run, jump, and explore the castle.',
-      'Enter the correct pipes in the right order to advance.',
-      'Wrong routes set you back, so use what you learn on the next attempt.',
-      'Collect useful items and reach your twin before time runs out.',
+      'Benny and Lenny are twin brothers who set out together for a quiet night walk.',
+      'Lenny is now lost somewhere in South Park, with the night growing late.',
+      'Help Benny reunite with Lenny before their time runs out.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -1085,13 +1085,13 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   castleRescue2: {
     key: 'castleRescue2',
-    title: 'Find Your Twin 2',
-    description: 'Help Benny navigate an enchanted castle and reunite with Lenny.',
+    title: 'Find Your Twin 2: Lost Again',
+    description:
+      'Benny and Lenny travelled to Romania to visit an old castle, but before closing time Lenny vanished somewhere inside its halls. Benny must find his brother before the castle closes for the night.',
     instructions: [
-      'Move left and right, and jump over hazards and enemies.',
-      'Stand in front of a door and press Up to enter it.',
-      'Find the three correct doors in order to unlock Lenny\'s wing.',
-      'Collect Eyeoleans and reach Lenny before time runs out.',
+      'The twins came to Romania for a castle visit they would never forget.',
+      'Lenny is lost inside, and closing time is getting dangerously close.',
+      'Help Benny find Lenny before the castle doors close for the night.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',

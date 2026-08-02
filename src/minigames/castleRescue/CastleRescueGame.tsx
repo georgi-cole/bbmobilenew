@@ -968,6 +968,7 @@ const GALLERY_HOUSEMATES = [
 const galleryImageCache = new Map<string, HTMLImageElement>();
 const galleryPixelCache = new Map<string, HTMLCanvasElement>();
 let kolequantLogoImage: HTMLImageElement | null = null;
+let kolequantLogoPixelCanvas: HTMLCanvasElement | null = null;
 
 export interface GalleryPortraitSpec {
   name: string;
@@ -1054,6 +1055,22 @@ function getKolequantLogoImage(): HTMLImageElement | null {
   return image;
 }
 
+function getPixelatedKolequantLogo(): HTMLCanvasElement | null {
+  if (kolequantLogoPixelCanvas) return kolequantLogoPixelCanvas;
+  const image = getKolequantLogoImage();
+  if (!image?.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) return null;
+
+  const pixelCanvas = document.createElement('canvas');
+  pixelCanvas.width = 88;
+  pixelCanvas.height = Math.max(1, Math.round(88 * (image.naturalHeight / image.naturalWidth)));
+  const pixelCtx = pixelCanvas.getContext('2d');
+  if (!pixelCtx) return null;
+  pixelCtx.imageSmoothingEnabled = false;
+  pixelCtx.drawImage(image, 0, 0, pixelCanvas.width, pixelCanvas.height);
+  kolequantLogoPixelCanvas = pixelCanvas;
+  return pixelCanvas;
+}
+
 function drawCastleDoor(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -1118,15 +1135,16 @@ function drawSequelRoomDecor(
       ctx.textAlign = 'center'; ctx.fillText(portrait.name, x + 54, HUD_H + 164);
     });
   } else {
-    const logo = getKolequantLogoImage();
-    if (logo?.complete && logo.naturalWidth > 0) {
+    const logo = getPixelatedKolequantLogo();
+    if (logo) {
       const logoWidth = 340;
-      const logoHeight = logoWidth * (logo.naturalHeight / logo.naturalWidth);
+      const logoHeight = logoWidth * (logo.height / logo.width);
       const logoX = (CW - logoWidth) / 2;
       const logoY = HUD_H + 72;
       ctx.save();
       ctx.shadowColor = 'rgba(34, 211, 238, 0.48)';
       ctx.shadowBlur = 18;
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
       ctx.restore();
     }
@@ -1855,7 +1873,7 @@ export default function CastleRescueGame({
         ctx.fillStyle = '#111827'; ctx.fillRect(0, 0, CW, CH);
         ctx.fillStyle = '#f3f4f6'; ctx.font = 'bold 36px serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(variant === 'benny-lenny' ? '🏰 Find Your Twin 2' : '🏰 Castle Rescue', CW/2, CH/2-40);
+        ctx.fillText(variant === 'benny-lenny' ? '🏰 Find Your Twin 2: Lost Again' : '🏰 Castle Rescue', CW/2, CH/2-40);
         ctx.fillStyle = '#9ca3af'; ctx.font = '16px sans-serif';
         ctx.fillText('Arrow Keys / WASD to move · Space/Up to jump', CW/2, CH/2+10);
         ctx.fillText(
@@ -2040,7 +2058,7 @@ export default function CastleRescueGame({
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
             }}
             tabIndex={0}
-            aria-label={variant === 'benny-lenny' ? 'Find Your Twin 2 Benny and Lenny castle game' : 'Find Your Twin platformer game'}
+            aria-label={variant === 'benny-lenny' ? 'Find Your Twin 2 Lost Again Benny and Lenny castle game' : 'Find Your Twin platformer game'}
           />
 
           {/* End-of-run result — overlaid on the scaled canvas */}
