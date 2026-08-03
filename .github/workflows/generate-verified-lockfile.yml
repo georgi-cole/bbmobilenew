@@ -1,0 +1,36 @@
+name: Generate verified dependency lockfile
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerate package-lock.json
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-package-lock
+          path: package-lock.json
+          retention-days: 3
+
+      - name: Verify npm clean install
+        run: npm ci --ignore-scripts --no-fund
+
+      - name: Verify production dependency audit
+        run: npm audit --omit=dev --audit-level=high
