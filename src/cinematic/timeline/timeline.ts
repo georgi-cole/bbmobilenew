@@ -69,11 +69,15 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   const apertureClosure = Math.min(apertureClose, 1 - apertureOpen);
   // The celestial texture changes only while the aperture is fully closed.
   const sunMorph = easedRange(frame, 1344, 1374);
-  // Keep both the sun and its building reflections dark until the shutter is
-  // visibly opening; the sunrise illumination then follows the reveal.
+  // Reveal the transformed iris before its light begins affecting the city.
   const sunRevealProgress = easedRange(frame, 1480, 1542);
   const sunPositionProgress = easedRange(frame, 1438, 1545);
-  const sunHorizonProgress = easedRange(frame, 1606, 1662);
+  // As the eye outline fades, move the already-transformed iris directly to
+  // the final coastal horizon. There is no later secondary correction.
+  const sunHorizonProgress = easedRange(frame, 1545, 1588);
+  // Reflections and environmental sunlight begin only after the iris has
+  // completed its horizon handoff and clearly reads as the sun.
+  const sunIlluminationProgress = easedRange(frame, 1588, 1628);
   // Establish a restrained pre-dawn before the shutter opens, then let full
   // daylight arrive with the revealed sun and coastline.
   const preDawn = easedRange(frame, 1328, 1438);
@@ -154,7 +158,7 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
     ambientIntensity: (0.34 - stormShade * 0.08 + lightning * 0.72 + dawnProgress * 0.7)
       * (1 - sunsetProgress * 0.66),
     sunIntensity: sunMorph
-      * sunRevealProgress
+      * sunIlluminationProgress
       * (0.42 + dawnProgress * 0.95)
       * (1 - sunsetProgress * 0.38),
     sunWarmth: clamp01(0.48 + (1 - dawnProgress) * 0.44 + sunsetProgress * 0.46),
@@ -165,7 +169,7 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
     vehicleLightIntensity: nightLightFade * (1.9 + stormShade * 0.82),
     lightning,
     lightningBolt,
-    eyeOpacity: easedRange(frame, 990, 1140) * (1 - easedRange(frame, 1578, 1622)),
+    eyeOpacity: easedRange(frame, 990, 1140) * (1 - easedRange(frame, 1545, 1588)),
     creditsOpacity: 1 - easedRange(frame, 1588, 1635),
     fadeToDark: finalDarkness,
   };
