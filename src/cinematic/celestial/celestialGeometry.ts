@@ -11,7 +11,11 @@ export const getCelestialBreath = (frame: number): number =>
 export const getCelestialEyePosition = (state: TimelineState): readonly [number, number] => {
   const moonY = lerp(-42, 138, state.moonProgress);
   return [
-    lerp(moonY, 15, state.sunPositionProgress),
-    lerp(-540, -760, state.sunPositionProgress),
+    // Preserve the existing eye/iris movement, but make their shared authored
+    // landing point the real coastal horizon instead of the temporary
+    // in-water position. Both visual layers already consume this helper, so
+    // they remain coupled throughout the move and morph.
+    lerp(moonY, 7.5, state.sunPositionProgress),
+    lerp(-540, -1135, state.sunPositionProgress),
   ];
 };
