@@ -5,9 +5,7 @@
       "id": "thank-you",
       "fromSecond": 0,
       "toSecond": 3.15,
-      "lines": [
-        { "text": "THANK YOU FOR PLAYING", "style": "title" }
-      ]
+      "lines": [{ "text": "THANK YOU FOR PLAYING", "style": "title" }]
     },
     {
       "id": "created-by",
