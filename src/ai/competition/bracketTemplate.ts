@@ -40,6 +40,7 @@ export interface ClassicCampaignContext {
  */
 export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'quickTap',
+  'quickTapSeasons',
   'memoryMatch',
   'timingBar',
   'estimationGame',
@@ -252,6 +253,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'wildcardWestern',
     ],
     pos: [
+      'quickTapSeasons',
       'logicLocks',
       'hangman',
       'tiltLabyrinth',
@@ -283,6 +285,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'houseOfDarkness',
     ],
     pos: [
+      'quickTapSeasons',
       'bigSpender',
       'logicLocks',
       'hangman',
@@ -311,6 +314,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'houseOfDarkness',
     ],
     pos: [
+      'quickTapSeasons',
       'bigSpender',
       'logicLocks',
       'hangman',
@@ -342,6 +346,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'houseOfDarkness',
     ],
     pos: [
+      'quickTapSeasons',
       'bigSpender',
       'logicLocks',
       'hangman',
@@ -375,6 +380,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'houseOfDarkness',
     ],
     pos: [
+      'quickTapSeasons',
       'bigSpender',
       'logicLocks',
       'hangman',
@@ -408,6 +414,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'houseOfDarkness',
     ],
     pos: [
+      'quickTapSeasons',
       'bigSpender',
       'logicLocks',
       'hangman',

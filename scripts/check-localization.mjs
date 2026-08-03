@@ -827,6 +827,7 @@ function shouldScanFile(file) {
     'src/experiments/',
     'src/screens/FindYourTwin2/',
     'src/screens/FindYourTwinExperiment/',
+    'src/screens/QuickTapExperiment/',
     'src/i18n/',
     'src/test/',
     'tests/',

@@ -128,6 +128,16 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Routing via simulateMinigameAiScore() ensures both session and challenge flows ' +
       'use the same authoritative scorer.',
   },
+  quickTapSeasons: {
+    key: 'quickTapSeasons',
+    category: 'physical',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: WEIGHTS_PHYSICAL_TAP,
+    minScore: 120,
+    maxScore: 320,
+    notes: 'Season effects add strategic volatility to a 40-second tapping race.',
+  },
   laneRacers: {
     key: 'laneRacers',
     category: 'physical',

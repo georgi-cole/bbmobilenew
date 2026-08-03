@@ -6,6 +6,7 @@ import type {
   QTREngineSnapshot,
   QTRLayout,
   QTRParticle,
+  QTRTimingDiagnostics,
 } from './types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -173,6 +174,28 @@ export class QuickTapRaceCanvasEngine {
 
   private finishReported = false;
 
+  private playingStartedAtMs: number | null = null;
+
+  private strictDeadlineMs: number | null = null;
+
+  private longestFrameMs = 0;
+
+  private staleTapsRejected = 0;
+
+  private afterDeadlineTapsRejected = 0;
+
+  private lastLowLatencyUiUpdateMs = 0;
+
+  private readonly acceptedTapTimesMs: number[] = [];
+
+  private readonly uniquePointerIds = new Set<number>();
+
+  private readonly activePointerIds = new Set<number>();
+
+  private maxConcurrentPointers = 0;
+
+  private readonly pointerTypeCounts: Record<string, number> = {};
+
   private readonly boosterTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   constructor(canvas: HTMLCanvasElement, options: QTREngineOptions) {
@@ -244,12 +267,24 @@ export class QuickTapRaceCanvasEngine {
    * to the engine for hit testing against the tap button and booster prompt.
    */
   handlePointerDown(
-    _pointerId: number,
+    pointerId: number,
     point: { x: number; y: number },
     eventTimeStampMs?: number,
     nowMs: number = performance.now(),
+    pointerType = 'unknown',
   ): void {
     if (this.isDestroyed || this.phase !== 'playing') return;
+
+    if (
+      this.options.strictWallClock &&
+      this.strictDeadlineMs !== null &&
+      nowMs >= this.strictDeadlineMs
+    ) {
+      this.afterDeadlineTapsRejected += 1;
+      this.timeLeftMs = 0;
+      this.finishGame(nowMs);
+      return;
+    }
 
     // Ignore stale, backlogged taps that the browser delivered late after a
     // main-thread jank, so old taps don't "catch up" once the player has lifted
@@ -257,6 +292,7 @@ export class QuickTapRaceCanvasEngine {
     if (typeof eventTimeStampMs === 'number') {
       const latency = nowMs - eventTimeStampMs;
       if (latency > STALE_TAP_MIN_LATENCY_MS && latency < STALE_TAP_MAX_LATENCY_MS) {
+        this.staleTapsRejected += 1;
         return;
       }
     }
@@ -281,23 +317,48 @@ export class QuickTapRaceCanvasEngine {
     const dy = point.y - this.layout.tapBtnCy;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist <= this.layout.tapBtnRadius * 1.2) {
-      this.registerTap(point);
+      this.registerTap(pointerId, point, nowMs, pointerType);
     }
+  }
+
+  handlePointerUp(pointerId: number): void {
+    this.activePointerIds.delete(pointerId);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
-  private registerTap(point: { x: number; y: number }): void {
+  private registerTap(
+    pointerId: number,
+    point: { x: number; y: number },
+    nowMs: number,
+    pointerType: string,
+  ): void {
     this.recentTapTimestamps.push(this.gameElapsedMs);
     this.lastTapMs = this.gameElapsedMs;
 
     const multiplier = this.activeMultiplier ?? 1;
     this.tapCount += 1;
     this.effectiveScore += multiplier;
+    this.acceptedTapTimesMs.push(nowMs);
+    this.uniquePointerIds.add(pointerId);
+    this.activePointerIds.add(pointerId);
+    this.maxConcurrentPointers = Math.max(this.maxConcurrentPointers, this.activePointerIds.size);
+    const normalizedPointerType = pointerType || 'unknown';
+    this.pointerTypeCounts[normalizedPointerType] =
+      (this.pointerTypeCounts[normalizedPointerType] ?? 0) + 1;
 
-    this.spawnParticles(point.x, point.y);
-    this.options.onTap?.();
-    this.emitTick();
+    if (this.options.lowLatencyInput) {
+      // Keep the hot path light enough that the measurement does not create its
+      // own event backlog. Canvas feedback still renders on the regular RAF.
+      if (this.gameElapsedMs - this.lastLowLatencyUiUpdateMs >= 100) {
+        this.lastLowLatencyUiUpdateMs = this.gameElapsedMs;
+        this.emitTick();
+      }
+    } else {
+      this.spawnParticles(point.x, point.y);
+      this.options.onTap?.();
+      this.emitTick();
+    }
   }
 
   private activateBooster(booster: ScheduledBoosterPrompt): void {
@@ -305,6 +366,9 @@ export class QuickTapRaceCanvasEngine {
 
     if (booster.kind === 'time' && typeof booster.timeDelta === 'number') {
       this.timeLeftMs = Math.max(0, this.timeLeftMs + booster.timeDelta * 1000);
+      if (this.options.strictWallClock && this.strictDeadlineMs !== null) {
+        this.strictDeadlineMs += booster.timeDelta * 1000;
+      }
       this.appliedModifiers.push(booster.label);
     } else if (booster.kind === 'multiplier' && typeof booster.multiplier === 'number') {
       this.activeMultiplier = booster.multiplier;
@@ -339,6 +403,10 @@ export class QuickTapRaceCanvasEngine {
 
   private startPlaying(): void {
     this.phase = 'playing';
+    this.playingStartedAtMs = performance.now();
+    if (this.options.strictWallClock) {
+      this.strictDeadlineMs = this.playingStartedAtMs + this.timeLeftMs;
+    }
     this.scheduleBoosterPrompts();
     this.emitTick();
   }
@@ -371,7 +439,7 @@ export class QuickTapRaceCanvasEngine {
     });
   }
 
-  private finishGame(): void {
+  private finishGame(nowMs: number = performance.now()): void {
     if (this.finishReported) return;
     this.finishReported = true;
     this.phase = 'finished';
@@ -384,10 +452,47 @@ export class QuickTapRaceCanvasEngine {
     this.boosterTimeouts.length = 0;
     this.visibleBooster = null;
     this.render();
+    const wallClockElapsedMs =
+      this.playingStartedAtMs === null ? 0 : Math.max(0, nowMs - this.playingStartedAtMs);
+    const intervals = this.acceptedTapTimesMs
+      .slice(1)
+      .map((time, index) => Math.max(0, time - this.acceptedTapTimesMs[index]))
+      .sort((left, right) => left - right);
+    let peakOneSecondTaps = 0;
+    let windowStart = 0;
+    for (let windowEnd = 0; windowEnd < this.acceptedTapTimesMs.length; windowEnd += 1) {
+      while (
+        this.acceptedTapTimesMs[windowEnd] - this.acceptedTapTimesMs[windowStart] >= 1000
+      ) {
+        windowStart += 1;
+      }
+      peakOneSecondTaps = Math.max(peakOneSecondTaps, windowEnd - windowStart + 1);
+    }
+    const averageTapsPerSecond =
+      wallClockElapsedMs > 0 ? this.tapCount / (wallClockElapsedMs / 1000) : 0;
+    const medianInterTapMs =
+      intervals.length === 0 ? null : intervals[Math.floor(intervals.length / 2)];
+    const fastestInterTapMs = intervals.length === 0 ? null : intervals[0];
+    const timing: QTRTimingDiagnostics = {
+      wallClockElapsedMs,
+      longestFrameMs: this.longestFrameMs,
+      staleTapsRejected: this.staleTapsRejected,
+      afterDeadlineTapsRejected: this.afterDeadlineTapsRejected,
+      averageTapsPerSecond: Number(averageTapsPerSecond.toFixed(2)),
+      peakOneSecondTaps,
+      medianInterTapMs: medianInterTapMs === null ? null : Number(medianInterTapMs.toFixed(1)),
+      fastestInterTapMs: fastestInterTapMs === null ? null : Number(fastestInterTapMs.toFixed(1)),
+      uniquePointerCount: this.uniquePointerIds.size,
+      maxConcurrentPointers: this.maxConcurrentPointers,
+      pointerTypeCounts: { ...this.pointerTypeCounts },
+      inputRateFlag:
+        averageTapsPerSecond > 12 || peakOneSecondTaps > 14 ? 'high-rate-review' : 'typical',
+    };
     this.options.onFinish(
       Math.round(this.effectiveScore),
       this.tapCount,
       [...this.appliedModifiers],
+      timing,
     );
   }
 
@@ -404,7 +509,8 @@ export class QuickTapRaceCanvasEngine {
     }
     if (this.lastTimestamp === 0) this.lastTimestamp = timestamp;
     const rawDt = Math.max(0, timestamp - this.lastTimestamp || 16.67);
-    const dt = Math.min(48, rawDt);
+    this.longestFrameMs = Math.max(this.longestFrameMs, rawDt);
+    const dt = this.options.strictWallClock ? rawDt : Math.min(48, rawDt);
     this.lastTimestamp = timestamp;
     this.update(dt);
     this.render();

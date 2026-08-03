@@ -328,4 +328,65 @@ describe('QuickTapRaceCanvasEngine', () => {
     engine.handlePointerDown(1, { x: 160, y: 280 }, 0, 1_700_000_000_000);
     expect(engine.getSnapshot().tapCount).toBe(beforeTaps + 1);
   });
+
+  it('strict wall-clock mode rejects queued input after the real deadline', async () => {
+    const onFinish = vi.fn();
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      duration: 1,
+      strictWallClock: true,
+      onTick: vi.fn(),
+      onFinish,
+    });
+
+    engine.resize(320, 400, 1);
+    engine.start();
+    await vi.advanceTimersByTimeAsync(32);
+
+    engine.handlePointerDown(1, { x: 160, y: 280 }, 900, performance.now() + 2_000);
+
+    expect(engine.getSnapshot().tapCount).toBe(0);
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(onFinish.mock.calls[0][3]).toEqual(
+      expect.objectContaining({ afterDeadlineTapsRejected: 1 }),
+    );
+  });
+
+  it('reports input-rate and pointer telemetry without changing the score', async () => {
+    const onFinish = vi.fn();
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      duration: 1,
+      strictWallClock: true,
+      lowLatencyInput: true,
+      onTick: vi.fn(),
+      onFinish,
+    });
+
+    engine.resize(320, 400, 1);
+    engine.start();
+    await vi.advanceTimersByTimeAsync(32);
+    const clock = performance.now();
+    engine.handlePointerDown(10, { x: 160, y: 280 }, clock + 100, clock + 100, 'touch');
+    engine.handlePointerUp(10);
+    engine.handlePointerDown(11, { x: 160, y: 280 }, clock + 200, clock + 200, 'touch');
+    engine.handlePointerUp(11);
+    await vi.advanceTimersByTimeAsync(1_100);
+
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(onFinish.mock.calls[0][1]).toBe(2);
+    expect(onFinish.mock.calls[0][3]).toEqual(
+      expect.objectContaining({
+        peakOneSecondTaps: 2,
+        medianInterTapMs: 100,
+        uniquePointerCount: 2,
+        maxConcurrentPointers: 1,
+        pointerTypeCounts: { touch: 2 },
+      }),
+    );
+  });
 });
