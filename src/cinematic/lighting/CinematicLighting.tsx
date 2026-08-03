@@ -163,16 +163,20 @@ const CelestialBody = ({ state, sunX, quality }: { state: TimelineState; sunX: n
   const sunMorph = state.sunMorph;
   const lunarStrength = 1 - sunMorph;
   const moonVisibility = state.moonIntensity * lunarStrength;
-  const sunVisibility = state.sunIntensity * state.sunRevealProgress;
-  const celestialVisibility = Math.min(1, moonVisibility + sunVisibility) * sunsetOcclusion;
+  // The disc is allowed to appear before its environmental lighting, so the
+  // iris visibly becomes the sun before any reflection reaches the buildings.
+  const sunDiscVisibility = sunMorph * state.sunRevealProgress;
+  const celestialVisibility = Math.min(1, moonVisibility + sunDiscVisibility) * sunsetOcclusion;
   const x = lerp(0, sunX, state.sunHorizonProgress);
   const [eyeY, eyeZ] = getCelestialEyePosition(state);
   const y = lerp(eyeY, 7.5, state.sunHorizonProgress) - state.sunsetProgress * 34;
   const breathe = getCelestialBreath(state.frame);
   const z = lerp(eyeZ, -1135, state.sunHorizonProgress);
   const bodyScale = breathe;
-  const sunVisualScale = lerp(1, 3.15, state.sunHorizonProgress);
-  const haloScale = lerp(1, 2.25, state.sunHorizonProgress);
+  // Compensate only for the increased camera distance. The apparent disc size
+  // stays stable instead of visibly growing while crossing the waterline.
+  const sunVisualScale = lerp(1, 1.5, state.sunHorizonProgress);
+  const haloScale = lerp(1, 1.42, state.sunHorizonProgress);
   const glowColor = mixColor(
     mixColor('#afc9e3', '#ffc25f', sunMorph),
     '#ff5b24',
@@ -219,7 +223,7 @@ const CelestialBody = ({ state, sunX, quality }: { state: TimelineState; sunX: n
       </mesh>
       <pointLight
         color={glowColor}
-        intensity={(moonVisibility * 0.62 + sunVisibility * 1.3) * sunsetOcclusion}
+        intensity={(moonVisibility * 0.62 + state.sunIntensity * 1.3) * sunsetOcclusion}
         distance={390}
       />
       <CelestialAperture closure={state.apertureClosure} quality={quality} />
