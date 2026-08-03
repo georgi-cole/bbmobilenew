@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CINEMATIC_CREDITS } from '../../src/cinematic/config/cinematicConfig'
 import {
@@ -21,6 +22,10 @@ const VALID_DOCUMENT = {
   ],
 }
 
+const BUNDLED_RUNTIME_CREDITS = JSON.parse(
+  readFileSync(new URL('../../public/config/credits.json', import.meta.url), 'utf8')
+) as unknown
+
 afterEach(() => {
   delete (window as Window & { __BIG_EYE_CREDITS_URL__?: string }).__BIG_EYE_CREDITS_URL__
   document.querySelector('meta[name="big-eye-credits-url"]')?.remove()
@@ -31,6 +36,10 @@ describe('runtime credits content', () => {
     const parsed = parseCreditsContent(VALID_DOCUMENT)
     expect(parsed).toHaveLength(1)
     expect(parsed?.[0]?.lines[1]?.text).toBe('New Producer')
+  })
+
+  it('keeps the bundled runtime document synchronized with the fallback copy', () => {
+    expect(parseCreditsContent(BUNDLED_RUNTIME_CREDITS)).toEqual(CINEMATIC_CREDITS)
   })
 
   it('rejects overlapping, duplicate, or out-of-range cards as a whole', () => {
