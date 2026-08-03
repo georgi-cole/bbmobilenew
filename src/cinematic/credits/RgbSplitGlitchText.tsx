@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { getRgbSplitGlitchState } from './rgbSplitGlitchState';
+import './rgbSplitGlitch.css';
 
 type RgbSplitGlitchTextProps = {
   children: ReactNode;
@@ -40,32 +41,11 @@ export const RgbSplitGlitchText = ({
   } as CSSProperties;
 
   return (
-    <span
-      className="big-eye-credits__glitch-text"
-      data-glitch-phase={glitch.phase}
-      style={rootStyle}
-    >
-      <span className={`${className} big-eye-credits__glitch-shadow`} aria-hidden="true">
-        {children}
-      </span>
-      <span
-        className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--red`}
-        aria-hidden="true"
-      >
-        {children}
-      </span>
-      <span
-        className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--green`}
-        aria-hidden="true"
-      >
-        {children}
-      </span>
-      <span
-        className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--blue`}
-        aria-hidden="true"
-      >
-        {children}
-      </span>
+    <span className="big-eye-credits__glitch-text" data-glitch-phase={glitch.phase} style={rootStyle}>
+      <span className={`${className} big-eye-credits__glitch-shadow`} aria-hidden="true">{children}</span>
+      <span className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--red`} aria-hidden="true">{children}</span>
+      <span className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--green`} aria-hidden="true">{children}</span>
+      <span className={`${className} big-eye-credits__glitch-channel big-eye-credits__glitch-channel--blue`} aria-hidden="true">{children}</span>
       <span className={`${className} big-eye-credits__glitch-base`}>{children}</span>
     </span>
   );
