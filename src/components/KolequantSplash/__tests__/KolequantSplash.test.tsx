@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import KolequantSplash from '../KolequantSplash';
 
@@ -23,6 +23,7 @@ describe('KolequantSplash', () => {
     expect(container.querySelector('.kq-splash__dna-glow')).toBeInTheDocument();
     expect(container.querySelector('.kq-splash__electric')).toBeNull();
     expect(container.querySelector('.kq-splash__logo-frame')).toBeNull();
+    expect(container.firstChild).not.toHaveClass('kq-splash--artwork-ready');
     expect(container.firstChild).toHaveStyle({
       '--kq-splash-min-duration': '2400ms',
       '--kq-splash-progress': '42%',
@@ -33,6 +34,15 @@ describe('KolequantSplash', () => {
     const onFinish = vi.fn();
 
     const view = render(<KolequantSplash duration={1500} ready={false} onFinish={onFinish} />);
+
+    fireEvent.load(view.container.querySelector('.kq-splash__skyline img')!);
+    expect(view.container.firstChild).not.toHaveClass('kq-splash--artwork-ready');
+
+    fireEvent.load(view.container.querySelector('.kq-splash__logo')!);
+    expect(view.container.firstChild).not.toHaveClass('kq-splash--artwork-ready');
+
+    fireEvent.load(view.container.querySelector('.kq-splash__dna-glow')!);
+    expect(view.container.firstChild).toHaveClass('kq-splash--artwork-ready');
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -45,5 +55,35 @@ describe('KolequantSplash', () => {
       await vi.advanceTimersByTimeAsync(400);
     });
     expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows caller status instead of rotating generic messages', () => {
+    render(<KolequantSplash status="Loading the house exterior." progress={18} />);
+
+    expect(screen.getByText('Loading the house exterior.')).toBeInTheDocument();
+    expect(screen.queryByText('Starting the Kolequant engine.')).toBeNull();
+  });
+
+  it('keeps the latest finish callback without cancelling an active exit', async () => {
+    const firstFinish = vi.fn();
+    const latestFinish = vi.fn();
+    const view = render(<KolequantSplash duration={0} ready onFinish={firstFinish} />);
+
+    fireEvent.load(view.container.querySelector('.kq-splash__skyline img')!);
+    fireEvent.load(view.container.querySelector('.kq-splash__logo')!);
+    fireEvent.load(view.container.querySelector('.kq-splash__dna-glow')!);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    view.rerender(<KolequantSplash duration={0} ready onFinish={latestFinish} />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+
+    expect(firstFinish).not.toHaveBeenCalled();
+    expect(latestFinish).toHaveBeenCalledTimes(1);
   });
 });

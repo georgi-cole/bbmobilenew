@@ -169,7 +169,7 @@ describe('HomeHub', () => {
     delete (window as Window & { game?: Record<string, unknown> }).game;
   });
 
-  it('shows the Kolequant splash only once per app session', async () => {
+  it('uses five seconds initially and no minimum on later in-app loads', async () => {
     const firstRender = renderHomeHub();
 
     expect(screen.getByTestId('kolequant-splash')).toBeInTheDocument();
@@ -185,13 +185,14 @@ describe('HomeHub', () => {
 
     renderHomeHub();
 
-    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '0');
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
   });
 
-  it('does not show the Kolequant splash again after a new season starts', async () => {
+  it('shows a zero-minimum readiness splash after a new season starts', async () => {
     const firstRender = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -205,18 +206,20 @@ describe('HomeHub', () => {
 
     renderHomeHub();
 
-    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '0');
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
   });
 
-  it('shows the hub buttons immediately after quitting a run without saving', async () => {
+  it('uses a zero-minimum readiness splash after quitting a run without saving', async () => {
     sessionStorage.setItem('bb:homeHubSplashShownThisSession', 'true');
 
     renderHomeHub();
 
-    expect(screen.queryByTestId('kolequant-splash')).toBeNull();
+    expect(screen.getByTestId('kolequant-splash')).toHaveAttribute('data-duration', '0');
+    fireEvent.click(screen.getByTestId('kolequant-splash'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
