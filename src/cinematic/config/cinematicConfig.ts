@@ -100,7 +100,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     id: 'thank-you',
     fromSecond: 0,
     toSecond: 3.15,
-    lines: [{ text: 'Thank you for playing', style: 'title' }],
+    lines: [{ text: 'THANK YOU FOR PLAYING', style: 'title' }],
   },
   {
     id: 'created-by',
@@ -117,7 +117,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 9.45,
     lines: [
       { text: 'Art Direction', style: 'label' },
-      { text: 'I.C.O LTD.', style: 'name', gapBefore: true },
+      { text: 'I.C.O. LTD.', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -164,8 +164,8 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     fromSecond: 28.8,
     toSecond: 31.5,
     lines: [
-      { text: 'Special Thanks', style: 'label' },
-      { text: 'Ana-Luna Nieves', style: 'name', gapBefore: true },
+      { text: 'Housemates theme by:', style: 'label' },
+      { text: 'Jay Someday - Midnight', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -174,7 +174,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 34.2,
     lines: [
       { text: 'Special Thanks', style: 'label' },
-      { text: 'Candy Albert', style: 'name', gapBefore: true },
+      { text: 'New Note Music', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -183,19 +183,10 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 36.9,
     lines: [
       { text: 'Special Thanks', style: 'label' },
-      { text: 'Atiste House', style: 'name', gapBefore: true },
+      { text: 'Dr. Mina T.K.', style: 'name', gapBefore: true },
     ],
   },
-  {
-    id: 'thanks-braun',
-    fromSecond: 36.9,
-    toSecond: 39.6,
-    lines: [
-      { text: 'Special Thanks', style: 'label' },
-      { text: 'BBraun EMEA', style: 'name', gapBefore: true },
-    ],
-  },
-  {
+    {
     id: 'disclaimer',
     fromSecond: 39.6,
     toSecond: 43.2,
