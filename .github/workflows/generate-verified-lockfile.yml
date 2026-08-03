@@ -19,26 +19,27 @@ jobs:
         with:
           node-version: 22
 
-      - name: Apply ajv-specific patched fast-uri override
+      - name: Remove failed fast-uri override
         run: |
           node <<'NODE'
           const fs = require('node:fs')
           const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'))
           packageJson.overrides = {
             ...(packageJson.overrides ?? {}),
-            postcss: '8.5.23',
-            ajv: {
-              'fast-uri': '2.4.3'
-            }
+            postcss: '8.5.23'
           }
           delete packageJson.overrides['fast-uri']
+          delete packageJson.overrides.ajv
           fs.writeFileSync('package.json', `${JSON.stringify(packageJson, null, 2)}\n`)
           NODE
 
       - name: Regenerate package-lock.json
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - name: Upload generated dependency files
+      - name: Apply npm nonbreaking audit fix
+        run: npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund
+
+      - name: Upload remediated dependency files
         uses: actions/upload-artifact@v4
         with:
           name: verified-dependency-files
