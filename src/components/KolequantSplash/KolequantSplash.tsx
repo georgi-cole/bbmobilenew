@@ -71,7 +71,6 @@ export default function KolequantSplash({
 
   useEffect(() => {
     if (!artworkReady) return;
-    setMinimumElapsed(false);
     const timer = window.setTimeout(() => setMinimumElapsed(true), duration);
     return () => window.clearTimeout(timer);
   }, [artworkReady, duration]);
@@ -85,15 +84,14 @@ export default function KolequantSplash({
   }, [activeMessages.length, exiting, status]);
 
   useEffect(() => {
-    if (!ready || !artworkReady || !minimumElapsed || exiting) return;
-    setExiting(true);
-  }, [artworkReady, exiting, minimumElapsed, ready]);
-
-  useEffect(() => {
-    if (!exiting) return;
-    const timer = window.setTimeout(() => onFinishRef.current?.(), EXIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [exiting]);
+    if (!ready || !artworkReady || !minimumElapsed) return;
+    const exitTimer = window.setTimeout(() => setExiting(true), 0);
+    const finishTimer = window.setTimeout(() => onFinishRef.current?.(), EXIT_MS);
+    return () => {
+      window.clearTimeout(exitTimer);
+      window.clearTimeout(finishTimer);
+    };
+  }, [artworkReady, minimumElapsed, ready]);
 
   const splashStyle = {
     '--kq-splash-min-duration': `${duration}ms`,
