@@ -207,10 +207,10 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
 
 export const CINEMATIC_AUDIO = {
   source: 'assets/sounds/move_into_me_alternative.mp3',
-  sourceStartInSeconds: 40,
+  sourceStartInSeconds: 46,
   fadeInSeconds: 1.2,
   fadeOutSeconds: 1.8,
-  volume: 0.82,
+  volume: 0.75,
 } as const;
 
 export const OPTIONAL_ASSETS = {
