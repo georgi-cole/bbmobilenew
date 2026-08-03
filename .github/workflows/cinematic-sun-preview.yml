@@ -46,7 +46,7 @@ jobs:
           --color-space=bt709
           --frames=1250-1540
           --concurrency=2
-          --gl=angle
+          --gl=swangle
 
       - name: Upload preview video
         uses: actions/upload-artifact@v4
