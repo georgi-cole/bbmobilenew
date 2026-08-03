@@ -117,7 +117,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     toSecond: 9.45,
     lines: [
       { text: 'Art Direction', style: 'label' },
-      { text: 'I.C.O. LTD.', style: 'name', gapBefore: true },
+      { text: 'I.C.O. LTD', style: 'name', gapBefore: true },
     ],
   },
   {
@@ -134,7 +134,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     fromSecond: 12.6,
     toSecond: 17.1,
     lines: [
-      { text: 'Music', style: 'label' },
+      { text: 'Main theme', style: 'label' },
       { text: '“Move Into Me”', style: 'music-title', gapBefore: true },
       { text: 'The Red Collective · Indigoe · JQ', style: 'body' },
     ],
@@ -142,7 +142,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
   {
     id: 'album',
     fromSecond: 17.1,
-    toSecond: 24.3,
+    toSecond: 21.3,
     lines: [
       { text: 'From the album', style: 'small' },
       { text: 'Crushed Velvet', style: 'italic', gapBefore: true },
@@ -151,8 +151,8 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
   },
   {
     id: 'music-producers',
-    fromSecond: 24.3,
-    toSecond: 28.8,
+    fromSecond: 22.5,
+    toSecond: 27.8,
     lines: [
       { text: 'Music producers', style: 'label' },
       { text: 'Joshua Ryan Collopy', style: 'name', gapBefore: true },
@@ -160,7 +160,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     ],
   },
   {
-    id: 'thanks-rado',
+    id: 'thanks-jaysomeday',
     fromSecond: 28.8,
     toSecond: 31.5,
     lines: [
@@ -169,7 +169,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     ],
   },
   {
-    id: 'thanks-candy',
+    id: 'thanks-newnote',
     fromSecond: 31.5,
     toSecond: 34.2,
     lines: [
@@ -178,7 +178,7 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     ],
   },
   {
-    id: 'thanks-atiste',
+    id: 'thanks-mina',
     fromSecond: 34.2,
     toSecond: 36.9,
     lines: [
@@ -189,17 +189,17 @@ export const CINEMATIC_CREDITS: readonly CreditCard[] = [
     {
     id: 'disclaimer',
     fromSecond: 39.6,
-    toSecond: 43.2,
+    toSecond: 45.2,
     lines: [
       { text: 'Any resemblance to actual persons or events is purely coincidental.', style: 'legal' },
     ],
   },
   {
     id: 'closing',
-    fromSecond: 43.2,
-    toSecond: 48,
+    fromSecond: 45.8,
+    toSecond: 49.9,
     lines: [
-      { text: 'The Big eye is still scanning...', style: 'closing-title' },
+      { text: 'THE BIG EYE IS STILL SCANNING...', style: 'closing-title' },
       { text: 'More is coming soon', style: 'closing-subtitle', gapBefore: true },
     ],
   },
