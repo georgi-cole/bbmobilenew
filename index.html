@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Fetch the complete splash artwork before React/CSS evaluation so the
+         first branded frame can be presented as one composition. -->
+    <link rel="preload" as="image" href="%BASE_URL%assets/kolequant.png" />
+    <link rel="preload" as="image" href="%BASE_URL%assets/splash-city-skyline-photographic.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>The Big Eye</title>
     <!-- iOS PWA / A2HS support -->

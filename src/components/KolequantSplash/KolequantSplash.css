@@ -51,6 +51,23 @@
   animation: kq-splash-exit 360ms ease forwards;
 }
 
+.kq-splash__composition {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: inherit;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.kq-splash--artwork-ready .kq-splash__composition {
+  opacity: 1;
+}
+
 .kq-splash__skyline {
   position: absolute;
   z-index: 0;
@@ -58,11 +75,19 @@
   height: min(36dvh, 340px);
   overflow: hidden;
   opacity: 0.78;
-  background:
-    linear-gradient(to top, rgba(1, 3, 10, 0.92), rgba(3, 8, 24, 0.36) 52%, transparent),
-    url('/assets/splash-city-skyline-photographic.png') center bottom / cover no-repeat;
+  background: linear-gradient(to top, rgba(1, 3, 10, 0.92), rgba(3, 8, 24, 0.36) 52%, transparent);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 29%, #000 100%);
   pointer-events: none;
+}
+
+.kq-splash__skyline > img {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
 }
 
 .kq-splash__skyline::after {
@@ -89,6 +114,7 @@
   opacity: 0;
   transform: scale(0.96) translateY(8px);
   animation: kq-logo-in 640ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards;
+  animation-play-state: paused;
 }
 
 .kq-splash__logo {
@@ -109,6 +135,7 @@
   opacity: 0.25;
   filter: brightness(1.35) saturate(1.35) drop-shadow(0 0 8px rgba(85, 211, 255, 0.7));
   animation: kq-dna-pulse 1800ms ease-in-out 720ms infinite alternate;
+  animation-play-state: paused;
 }
 
 .kq-splash__preload {
@@ -120,6 +147,7 @@
   opacity: 0;
   transform: translateY(8px);
   animation: kq-preload-in 560ms ease 420ms forwards;
+  animation-play-state: paused;
 }
 
 .kq-splash__preload-row {
@@ -179,6 +207,14 @@
   text-transform: uppercase;
   opacity: 0;
   animation: kq-preload-in 560ms ease 560ms forwards;
+  animation-play-state: paused;
+}
+
+.kq-splash--artwork-ready .kq-splash__logo-wrap,
+.kq-splash--artwork-ready .kq-splash__dna-glow,
+.kq-splash--artwork-ready .kq-splash__preload,
+.kq-splash--artwork-ready .kq-splash__copyright {
+  animation-play-state: running;
 }
 
 @keyframes kq-logo-in {
