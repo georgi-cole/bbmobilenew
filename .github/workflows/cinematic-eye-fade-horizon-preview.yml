@@ -41,7 +41,7 @@ jobs:
           --pixel-format=yuv420p
           --image-format=png
           --color-space=bt709
-          --frames=1410-1665
+          --frames=1370-1619
           --concurrency=2
           --gl=swangle
 
