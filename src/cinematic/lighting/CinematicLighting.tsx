@@ -1,8 +1,9 @@
 import { AdditiveBlending, Color } from 'three';
 import {
   CELESTIAL_DISC_RADIUS,
+  CELESTIAL_SUN_X,
   getCelestialBreath,
-  getCelestialEyePosition,
+  getCelestialHandoffPosition,
 } from '../celestial/celestialGeometry';
 import type { CinematicQuality } from '../config/cinematicQuality';
 import type { TimelineState } from '../timeline/timeline';
@@ -158,18 +159,15 @@ const CelestialAperture = ({ closure, quality }: { closure: number; quality: Cin
     </group>
   );
 };
-const CelestialBody = ({ state, sunX, quality }: { state: TimelineState; sunX: number; quality: CinematicQuality }) => {
+const CelestialBody = ({ state, quality }: { state: TimelineState; quality: CinematicQuality }) => {
   const sunsetOcclusion = 1 - smootherstep(clamp01((state.sunsetProgress - 0.72) / 0.28));
   const sunMorph = state.sunMorph;
   const lunarStrength = 1 - sunMorph;
   const moonVisibility = state.moonIntensity * lunarStrength;
   const sunVisibility = state.sunIntensity * state.sunRevealProgress;
   const celestialVisibility = Math.min(1, moonVisibility + sunVisibility) * sunsetOcclusion;
-  const x = lerp(0, sunX, state.sunHorizonProgress);
-  const [eyeY, eyeZ] = getCelestialEyePosition(state);
-  const y = lerp(eyeY, 7.5, state.sunHorizonProgress) - state.sunsetProgress * 34;
+  const [x, y, z] = getCelestialHandoffPosition(state);
   const breathe = getCelestialBreath(state.frame);
-  const z = lerp(eyeZ, -1135, state.sunHorizonProgress);
   const bodyScale = breathe;
   const sunVisualScale = lerp(1, 3.15, state.sunHorizonProgress);
   const haloScale = lerp(1, 2.25, state.sunHorizonProgress);
@@ -228,7 +226,6 @@ const CelestialBody = ({ state, sunX, quality }: { state: TimelineState; sunX: n
 };
 
 export const CinematicLighting = ({ state, quality }: { state: TimelineState; quality: CinematicQuality }) => {
-  const sunX = 22;
   const sunY = 15;
   const moonY = lerp(-42, 138, state.moonProgress);
   const sunColor = mixColor('#d8efff', '#ff8a48', state.sunWarmth);
@@ -243,14 +240,14 @@ export const CinematicLighting = ({ state, quality }: { state: TimelineState; qu
       <directionalLight
         color={sunColor}
         intensity={state.sunIntensity * 1.45}
-        position={[sunX, sunY, 100]}
+        position={[CELESTIAL_SUN_X, sunY, 100]}
       />
       <directionalLight
         color="#91b7ff"
         intensity={state.moonIntensity * 0.36}
         position={[-120, moonY, -310]}
       />
-      <CelestialBody state={state} sunX={sunX} quality={quality} />
+      <CelestialBody state={state} quality={quality} />
     </>
   );
 };
