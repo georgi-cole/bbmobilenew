@@ -73,7 +73,10 @@ export const getTimelineState = (inputFrame: number): TimelineState => {
   // visibly opening; the sunrise illumination then follows the reveal.
   const sunRevealProgress = easedRange(frame, 1480, 1542);
   const sunPositionProgress = easedRange(frame, 1438, 1545);
-  const sunHorizonProgress = easedRange(frame, 1606, 1662);
+  // Complete the eye-to-horizon relocation as part of the same reveal. The
+  // yacht camera inspection begins later, so the sun is already anchored to
+  // the real horizon instead of correcting its position during the zoom.
+  const sunHorizonProgress = sunPositionProgress;
   // Establish a restrained pre-dawn before the shutter opens, then let full
   // daylight arrive with the revealed sun and coastline.
   const preDawn = easedRange(frame, 1328, 1438);
