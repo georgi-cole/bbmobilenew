@@ -16,7 +16,7 @@ import {
   CELESTIAL_EYE_SCALE,
   CELESTIAL_PUPIL_RADIUS,
   getCelestialBreath,
-  getCelestialEyePosition,
+  getCelestialHandoffPosition,
 } from '../celestial/celestialGeometry';
 import { easedRange } from '../utils/math';
 import { createSeededRandom, randomBetween } from '../utils/seededRandom';
@@ -323,7 +323,7 @@ const CelestialEye = ({ opacity, frame, state }: {
   const outline = useMemo(() => createEyeOutline(), []);
   if (opacity <= 0.001) return null;
 
-  const [y, z] = getCelestialEyePosition(state);
+  const [x, y, z] = getCelestialHandoffPosition(state);
   const revealOpen = Math.min(1, opacity * 1.25);
   const narrativeEyeOpen = 1 - easedRange(frame, 1545, 1588);
   const open = revealOpen * narrativeEyeOpen;
@@ -332,7 +332,7 @@ const CelestialEye = ({ opacity, frame, state }: {
 
   return (
     <group
-      position={[0, y, z]}
+      position={[x, y, z]}
       scale={[
         CELESTIAL_EYE_SCALE * breathe,
         CELESTIAL_EYE_SCALE * breathe * (0.035 + open * 0.965),
