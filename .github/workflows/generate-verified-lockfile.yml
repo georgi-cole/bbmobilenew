@@ -19,14 +19,19 @@ jobs:
         with:
           node-version: 22
 
+      - name: Pin patched fast-uri line for verification
+        run: npm pkg set overrides.fast-uri=2.4.3
+
       - name: Regenerate package-lock.json
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - name: Upload generated lockfile
+      - name: Upload generated dependency files
         uses: actions/upload-artifact@v4
         with:
-          name: verified-package-lock
-          path: package-lock.json
+          name: verified-dependency-files
+          path: |
+            package.json
+            package-lock.json
           retention-days: 3
 
       - name: Verify npm clean install
