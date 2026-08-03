@@ -19,8 +19,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Pin compatible patched fast-uri line for verification
-        run: npm pkg set overrides.fast-uri=3.1.4
+      - name: Apply ajv-specific patched fast-uri override
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+          const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          packageJson.overrides = {
+            ...(packageJson.overrides ?? {}),
+            postcss: '8.5.23',
+            ajv: {
+              'fast-uri': '2.4.3'
+            }
+          }
+          delete packageJson.overrides['fast-uri']
+          fs.writeFileSync('package.json', `${JSON.stringify(packageJson, null, 2)}\n`)
+          NODE
 
       - name: Regenerate package-lock.json
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
@@ -39,3 +52,9 @@ jobs:
 
       - name: Verify production dependency audit
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Verify typecheck
+        run: npm run typecheck
+
+      - name: Verify production build
+        run: npm run build
