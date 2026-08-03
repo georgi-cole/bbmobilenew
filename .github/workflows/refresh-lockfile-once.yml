@@ -28,13 +28,7 @@ jobs:
       - name: Regenerate package lock
         run: npm install --package-lock-only --ignore-scripts
 
-      - name: Verify clean install
-        run: npm ci --ignore-scripts
-
-      - name: Verify production audit
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Commit lockfile
+      - name: Commit synchronized lockfile
         run: |
           if git diff --quiet -- package-lock.json; then
             echo 'package-lock.json is already synchronized.'
@@ -45,3 +39,9 @@ jobs:
           git add package-lock.json
           git commit -m 'Sync lockfile with dependency security overrides'
           git push origin HEAD:main
+
+      - name: Verify clean install
+        run: npm ci --ignore-scripts
+
+      - name: Verify production audit
+        run: npm audit --omit=dev --audit-level=high
