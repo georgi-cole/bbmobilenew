@@ -9,6 +9,13 @@ import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
 import { useAppSelector } from '../../store/hooks'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 
+const ADULT_REALITY_ACTION_IDS = new Set([
+  'kiss_under_covers',
+  'pool_makeout',
+  'spend_night',
+  'skinny_dip',
+])
+
 export interface ActionGridProps {
   onActionClick?: (actionId: string) => void
   onPreview?: (actionId: string) => void
@@ -57,6 +64,7 @@ export default function ActionGrid({
 }: ActionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const game = useAppSelector((state) => state.game)
+  const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -100,8 +108,13 @@ export default function ActionGrid({
     return energyOverride === undefined ? costs : { ...costs, energy: energyOverride }
   }
 
+  function isAdultActionAllowed(actionId: string): boolean {
+    return !ADULT_REALITY_ACTION_IDS.has(actionId) || realityModePreset === 'adult'
+  }
+
   function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
+      isAdultActionAllowed(action.id) &&
       isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&
       !hiddenActionIds.has(action.id) &&
       evaluateSocialActionEligibility({
@@ -121,6 +134,7 @@ export default function ActionGrid({
   function isRelevantRealityPreview(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
       !dramaMode &&
+      !ADULT_REALITY_ACTION_IDS.has(action.id) &&
       isRealityExclusiveAction(action) &&
       !action.aiOnly &&
       !hiddenActionIds.has(action.id) &&
