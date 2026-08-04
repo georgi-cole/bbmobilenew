@@ -162,17 +162,14 @@ export default function TvAnnouncementOverlay({
   const isPaused = () => hoverPausedRef.current || paused || shockPreludeVisible;
 
   useEffect(() => {
-    if (!shouldPlayShockPrelude) {
-      setShockPreludeKey(null);
-      return undefined;
-    }
-    setShockPreludeKey(announcement.key);
+    if (!shockPreludeKey) return undefined;
+    const activeShockKey = shockPreludeKey;
     const timer = window.setTimeout(
-      () => setShockPreludeKey((current) => (current === announcement.key ? null : current)),
+      () => setShockPreludeKey((current) => (current === activeShockKey ? null : current)),
       SHOCK_PRELUDE_DURATION_MS
     );
     return () => window.clearTimeout(timer);
-  }, [announcement.key, shouldPlayShockPrelude]);
+  }, [shockPreludeKey]);
 
   useLayoutEffect(() => {
     tickRef.current = () => {
