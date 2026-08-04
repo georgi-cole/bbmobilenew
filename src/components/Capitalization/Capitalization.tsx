@@ -428,8 +428,7 @@ export default function Capitalization({
                   <CapitalizationGlobe question={currentQuestion} phase={phase} />
                   <div className="capitalization__globe-caption" aria-live="polite">
                     {t('capitalization.finding', {
-                      continent:
-                        currentQuestion?.continent ?? t('capitalization.unknownContinent'),
+                      continent: currentQuestion?.continent ?? t('capitalization.unknownContinent'),
                     })}
                   </div>
                 </div>
