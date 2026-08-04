@@ -137,9 +137,7 @@ function result(
 
 function playerName(state: RootState, playerId: string | null | undefined): string {
   if (!playerId) return 'that nominee'
-  return (
-    state.game.players.find((player) => player.id === playerId)?.name ?? 'that nominee'
-  )
+  return state.game.players.find((player) => player.id === playerId)?.name ?? 'that nominee'
 }
 
 /**
@@ -188,9 +186,7 @@ function buildLohConsultationSummary(
         ? plan.currentTargetId
         : null) ?? nominees[0]
     const backupId =
-      plan?.backupTargetId && !nominees.includes(plan.backupTargetId)
-        ? plan.backupTargetId
-        : null
+      plan?.backupTargetId && !nominees.includes(plan.backupTargetId) ? plan.backupTargetId : null
 
     if (backupId) {
       const saveId = nominees.find((id) => id !== currentTargetId) ?? nominees[0]
@@ -327,10 +323,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         anchor: 'negative',
       })
     }
-    const actionTargetMode = resolveActionTargetMode(
-      action,
-      context.socialIntensity === 'REALITY'
-    )
+    const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
     const compatibility =
       direction === 'GROUP' && actionTargetMode === 'multi'
         ? executeGroupAction(input.actorId, targetIds, input.actionId, {
