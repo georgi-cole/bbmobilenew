@@ -57,6 +57,8 @@ describe('PR 1346 additional integration guards', () => {
   it('prevents minimum-zone Pressure Plank damage from sub-pixel drift', () => {
     const logic = source('src/components/PressurePlank/pressurePlankLogic.ts')
     expect(logic).toContain('PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE')
-    expect(logic).toContain('safeZoneHalfWidth + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE')
+    expect(logic).toContain(
+      'safeZoneHalfWidth + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE'
+    )
   })
 })
