@@ -1,4 +1,5 @@
 ﻿import { useRef } from 'react'
+import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../social/socialActions'
 import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
@@ -62,6 +63,7 @@ export default function ActionGrid({
   hiddenActionIds = new Set(),
   energyCostOverrides,
 }: ActionGridProps) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const game = useAppSelector((state) => state.game)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
@@ -168,9 +170,8 @@ export default function ActionGrid({
     if (safetyConsultationOpen) {
       return {
         ...action,
-        title: 'Ask LOH for POS Advice',
-        description:
-          'Ask the LOH whether to leave the block alone or use Safety to open a backdoor target.',
+        title: t('social.action.askLohSafety.title'),
+        description: t('social.action.askLohSafety.description'),
       }
     }
     if (
@@ -187,15 +188,14 @@ export default function ActionGrid({
     ) {
       return {
         ...action,
-        title: 'Ask Who Goes Now',
-        description:
-          'Ask which locked nominee the LOH currently wants eliminated from the final block.',
+        title: t('social.action.askWhoGoes.title'),
+        description: t('social.action.askWhoGoes.description'),
       }
     }
     return {
       ...action,
-      title: 'Ask LOH Plan',
-      description: 'Ask who the LOH is considering before nominations are locked.',
+      title: t('social.action.askLohPlan.title'),
+      description: t('social.action.askLohPlan.description'),
     }
   }
 
