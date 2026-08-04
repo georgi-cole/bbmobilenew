@@ -14,6 +14,7 @@ import { runRealityOpportunity } from './orchestrator'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
 import type { RealityContext } from './types'
+import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 
 export interface HumanRealityActionInput {
   actorId: string
@@ -134,6 +135,75 @@ function result(
   return { success, summary, newEnergy, delta, label, score }
 }
 
+function playerName(state: RootState, playerId: string | null | undefined): string {
+  if (!playerId) return 'that nominee'
+  return state.game.players.find((player) => player.id === playerId)?.name ?? 'that nominee'
+}
+
+/**
+ * The generic narrative used to keep describing a hypothetical Safety change
+ * after the ceremony had already locked. Build the reply from the authoritative
+ * block and persisted LOH plan instead.
+ */
+function buildLohConsultationSummary(
+  state: RootState,
+  input: HumanRealityActionInput,
+  fallback: string
+): string {
+  if (input.actionId !== 'ask_loh_target' || state.game.lohId !== input.targetId) return fallback
+
+  const plan =
+    state.game.lohSocialPlan?.week === state.game.week &&
+    state.game.lohSocialPlan.lohId === state.game.lohId
+      ? state.game.lohSocialPlan
+      : null
+  const nominees = state.game.nomineeIds.filter((id) =>
+    state.game.players.some(
+      (player) => player.id === id && player.status !== 'evicted' && player.status !== 'jury'
+    )
+  )
+  const finalBlockLocked = ['pos_ceremony_results', 'social_2', 'live_vote'].includes(
+    state.game.phase
+  )
+  const actorHoldsSafety =
+    state.game.posWinnerId === input.actorId ||
+    getCupidPartnerId(state.game, state.game.posWinnerId) === input.actorId
+  const safetyDecisionOpen =
+    actorHoldsSafety && ['pos_results', 'pos_ceremony'].includes(state.game.phase)
+
+  if (finalBlockLocked && nominees.length > 0) {
+    const lockedTargetId =
+      (plan?.currentTargetId && nominees.includes(plan.currentTargetId)
+        ? plan.currentTargetId
+        : null) ?? nominees[0]
+    const lockedTarget = playerName(state, lockedTargetId)
+    return `The block is locked. ${lockedTarget} is my main target, and that is who I want eliminated.`
+  }
+
+  if (safetyDecisionOpen && nominees.length > 0) {
+    const currentTargetId =
+      (plan?.currentTargetId && nominees.includes(plan.currentTargetId)
+        ? plan.currentTargetId
+        : null) ?? nominees[0]
+    const backupId =
+      plan?.backupTargetId && !nominees.includes(plan.backupTargetId) ? plan.backupTargetId : null
+
+    if (backupId) {
+      const saveId = nominees.find((id) => id !== currentTargetId) ?? nominees[0]
+      return `Use it on ${playerName(state, saveId)}. Let's open the seat and backdoor ${playerName(
+        state,
+        backupId
+      )}.`
+    }
+    return `No—do not use it. I want the nominations to stay the same, with ${playerName(
+      state,
+      currentTargetId
+    )} as the target.`
+  }
+
+  return fallback
+}
+
 export function executeHumanRealityAction(input: HumanRealityActionInput) {
   return (dispatch: AppDispatch, getState: () => RootState): ExecuteActionResult => {
     const state = getState()
@@ -203,13 +273,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         deriveRealitySimulationSeed(state.game.seed ?? 0, state.game.gameId ?? '')
       )
     }
+    const context = buildContext(state)
     const orchestration = runRealityOpportunity({
       domain: state.social.reality,
       simulation,
       opportunity: {
         actorId: input.actorId,
         direction,
-        context: buildContext(state),
+        context,
         actors: buildActors(state),
         candidates: [
           {
@@ -252,16 +323,13 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         anchor: 'negative',
       })
     }
-    const actionTargetMode = resolveActionTargetMode(
-      action,
-      buildContext(state).socialIntensity === 'REALITY'
-    )
+    const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
     const compatibility =
       direction === 'GROUP' && actionTargetMode === 'multi'
         ? executeGroupAction(input.actorId, targetIds, input.actionId, {
             source: 'manual',
             outcome: succeeded ? 'success' : 'failure',
-            costOverride: input.costOverride ?? contract.costs[buildContext(state).socialIntensity],
+            costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
           })
         : direction === 'GROUP'
           ? targetIds
@@ -274,7 +342,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                   waiveCosts: index > 0,
                   costOverride:
                     index === 0
-                      ? (input.costOverride ?? contract.costs[buildContext(state).socialIntensity])
+                      ? (input.costOverride ?? contract.costs[context.socialIntensity])
                       : { energy: 0, influence: 0, info: 0 },
                 })
               )
@@ -305,8 +373,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                 subjectId: input.subjectId,
                 outcome: succeeded ? 'success' : 'failure',
                 repetitionAlreadyResolved: true,
-                costOverride:
-                  input.costOverride ?? contract.costs[buildContext(state).socialIntensity],
+                costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
               }
             )
     // Legacy execution preserves specialized ceremony copy and existing game
@@ -337,18 +404,19 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         })
       )
     }
+    const baseSummary =
+      input.actionId === 'warn_about_danger' && succeeded
+        ? dangerWarningDiscovered
+          ? `${
+              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+            } appreciated the warning, but the LOH found out you leaked the plan.`
+          : `${
+              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+            } appreciated the warning and kept your source private.`
+        : compatibility.summary
     return {
       ...compatibility,
-      summary:
-        input.actionId === 'warn_about_danger' && succeeded
-          ? dangerWarningDiscovered
-            ? `${
-                state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-              } appreciated the warning, but the LOH found out you leaked the plan.`
-            : `${
-                state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-              } appreciated the warning and kept your source private.`
-          : compatibility.summary,
+      summary: buildLohConsultationSummary(state, input, baseSummary),
       label: orchestration.response?.kind ?? compatibility.label,
       score: orchestration.score?.total ?? compatibility.score,
     }

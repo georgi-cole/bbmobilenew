@@ -1,4 +1,5 @@
 ﻿import { useRef } from 'react'
+import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../social/socialActions'
 import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
@@ -6,6 +7,15 @@ import { evaluateSocialActionEligibility } from '../../social/socialActionEligib
 import ActionCard from './ActionCard'
 import type { Player, PlayerStatus } from '../../types'
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
+import { useAppSelector } from '../../store/hooks'
+import { getCupidPartnerId } from '../../features/twists/cupidArrow'
+
+const ADULT_REALITY_ACTION_IDS = new Set([
+  'kiss_under_covers',
+  'pool_makeout',
+  'spend_night',
+  'skinny_dip',
+])
 
 export interface ActionGridProps {
   onActionClick?: (actionId: string) => void
@@ -53,7 +63,10 @@ export default function ActionGrid({
   hiddenActionIds = new Set(),
   energyCostOverrides,
 }: ActionGridProps) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
+  const game = useAppSelector((state) => state.game)
+  const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -97,8 +110,13 @@ export default function ActionGrid({
     return energyOverride === undefined ? costs : { ...costs, energy: energyOverride }
   }
 
+  function isAdultActionAllowed(actionId: string): boolean {
+    return !ADULT_REALITY_ACTION_IDS.has(actionId) || realityModePreset === 'adult'
+  }
+
   function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
+      isAdultActionAllowed(action.id) &&
       isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&
       !hiddenActionIds.has(action.id) &&
       evaluateSocialActionEligibility({
@@ -118,6 +136,7 @@ export default function ActionGrid({
   function isRelevantRealityPreview(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
     return (
       !dramaMode &&
+      !ADULT_REALITY_ACTION_IDS.has(action.id) &&
       isRealityExclusiveAction(action) &&
       !action.aiOnly &&
       !hiddenActionIds.has(action.id) &&
@@ -136,8 +155,12 @@ export default function ActionGrid({
     )
   }
 
+  // The Social panel passes the non-human roster into ActionGrid, so looking up
+  // the actor in `players` misses the human POS holder. Read the authoritative
+  // winner from game state instead, including Cupid's shared-holder rule.
   const actorHasSafety = Boolean(
-    players?.find((player) => player.id === actorId)?.status.includes('pos')
+    actorId &&
+    (game.posWinnerId === actorId || getCupidPartnerId(game, game.posWinnerId) === actorId)
   )
   const safetyConsultationOpen =
     actorHasSafety && (currentPhase === 'pos_results' || currentPhase === 'pos_ceremony')
@@ -147,8 +170,8 @@ export default function ActionGrid({
     if (safetyConsultationOpen) {
       return {
         ...action,
-        title: 'Ask LOH for POS Advice',
-        description: 'Ask the LOH whether to use Safety and how they want the ceremony handled.',
+        title: t('social.action.askLohSafety.title'),
+        description: t('social.action.askLohSafety.description'),
       }
     }
     if (
@@ -165,15 +188,14 @@ export default function ActionGrid({
     ) {
       return {
         ...action,
-        title: 'Ask Who Goes Now',
-        description:
-          'Ask which current nominee the LOH wants out now that the block may have changed.',
+        title: t('social.action.askWhoGoes.title'),
+        description: t('social.action.askWhoGoes.description'),
       }
     }
     return {
       ...action,
-      title: 'Ask LOH Plan',
-      description: 'Ask who the LOH is considering before nominations are locked.',
+      title: t('social.action.askLohPlan.title'),
+      description: t('social.action.askLohPlan.description'),
     }
   }
 

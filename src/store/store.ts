@@ -11,6 +11,7 @@ import profilesReducer, {
 } from './profilesSlice'
 import socialReducer from '../social/socialSlice'
 import { socialMiddleware } from '../social/socialMiddleware'
+import { realityIntegrityMiddleware } from '../social/realityIntegrityMiddleware'
 import { survivorMiddleware } from '../modes/survivorMiddleware'
 import { tribunalEligibilityMiddleware } from './tribunalEligibilityMiddleware'
 import { soundMiddleware } from './soundMiddleware'
@@ -89,6 +90,7 @@ export const store = configureStore({
     getDefaultMiddleware().concat(
       survivorMiddleware,
       tribunalEligibilityMiddleware,
+      realityIntegrityMiddleware,
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,
@@ -116,7 +118,7 @@ let prevSettings = store.getState().settings
 let prevUserProfile = store.getState().userProfile
 // Persist profiles state to localStorage whenever it changes
 let prevProfiles = store.getState().profiles
-// Persist ads state to localStorage whenever it changes
+// Persist ads state to localStorage whenever they change
 let prevAds = store.getState().ads
 // Persist permanent purchase entitlements whenever they change.
 let prevVip = store.getState().vip

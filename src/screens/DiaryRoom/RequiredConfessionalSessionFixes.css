@@ -1,0 +1,52 @@
+/* Focused fixes for required Confessional decisions on narrow mobile screens. */
+
+.required-confessional .rcd-player__copy strong {
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.required-confessional[data-decision-type='eviction_vote'] .rcd-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * SingleUnitDecision still owns the selected review copy. While no choice is
+ * selected, replace its generic pair wording with mode-correct guidance.
+ */
+.required-confessional[data-decision-type='eviction_vote']
+  .rcd-confirm:has(.rcd-confirm__button:disabled)
+  .rcd-confirm__copy
+  strong {
+  font-size: 0;
+}
+
+.required-confessional[data-decision-type='eviction_vote'][data-cupid-pairs='false']
+  .rcd-confirm:has(.rcd-confirm__button:disabled)
+  .rcd-confirm__copy
+  strong::after {
+  content: 'Select a nominee';
+  font-size: 0.86rem;
+}
+
+.required-confessional[data-decision-type='eviction_vote'][data-cupid-pairs='true']
+  .rcd-confirm:has(.rcd-confirm__button:disabled)
+  .rcd-confirm__copy
+  strong::after {
+  content: 'Select a pair';
+  font-size: 0.86rem;
+}
+
+@media (min-width: 600px) {
+  .required-confessional[data-decision-type='eviction_vote'] .rcd-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 820px) {
+  .required-confessional[data-decision-type='eviction_vote'] .rcd-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

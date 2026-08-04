@@ -13,6 +13,7 @@ import RequiredConfessionalDecision from './RequiredConfessionalDecision'
 import { getRequiredConfessionalPresentation } from './requiredConfessionalPresentation'
 import './DiaryRoom.css'
 import './RequiredConfessionalSession.css'
+import './RequiredConfessionalSessionFixes.css'
 
 interface Props {
   decision: ActiveConfessionalDecision | null
@@ -35,6 +36,7 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot)
   const survival = game.mode === 'survival'
   const humanPlayer = game.players.find((player) => player.isUser)
+  const cupidPairsActive = game.cupidArrow?.status === 'active'
   const showVoxMyGame =
     decision?.type === 'nominations' &&
     game.voxPopuli?.status === 'active' &&
@@ -76,6 +78,7 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
       className="diary-room required-confessional"
       data-testid="required-confessional-session"
       data-decision-type={decision?.type ?? lastDecisionType ?? undefined}
+      data-cupid-pairs={cupidPairsActive ? 'true' : 'false'}
     >
       {entryActive && (
         <div

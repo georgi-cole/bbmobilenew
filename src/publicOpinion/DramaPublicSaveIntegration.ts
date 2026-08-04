@@ -81,10 +81,11 @@ function buildContextualInteraction(
   } else {
     // Avoid inbox clutter when the human has no meaningful connection to the saved player.
     if (Math.abs(affinity) < 20) return null
+    // The saved housemate is the speaker, so their copy must use first person.
     text =
       affinity >= 20
-        ? `${savedPlayer.name} has serious support outside. Keeping them close may matter.`
-        : `${savedPlayer.name} just became a much bigger threat.`
+        ? 'I have serious support outside. Keeping me close may matter for both of us.'
+        : 'That save just made me a much bigger threat in your game, and we both know it.'
   }
 
   return {

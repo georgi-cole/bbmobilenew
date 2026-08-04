@@ -45,13 +45,31 @@ export function isBattleBackReturnResultEvent(ev: ActivityVisibilityEvent): bool
 }
 
 /**
+ * Legacy phase-prelude events duplicate dedicated major announcement overlays
+ * and add no new result, rule, or decision. Hide them from both broadcast
+ * surfaces so each transition is announced once.
+ */
+export function isRedundantCompetitionPreludeEvent(ev: ActivityVisibilityEvent): boolean {
+  if (typeof ev.text !== 'string') return false
+  const text = ev.text.replace(/\s+/g, ' ').trim()
+  return (
+    /the leader of the house comp(?:etition)? is about to begin/i.test(text) ||
+    /(?:it is|it's) time for the power of safety competition/i.test(text) ||
+    /^final 3!?\s*three players remain\b/i.test(text) ||
+    /^final 3\s*[—-]\s*day \d+!?\s*the three-part loh competition begins\b/i.test(text)
+  )
+}
+
+/**
  * Returns true when the event should appear in the main-screen TVLog strip.
  *
  * Rules:
+ *  - Redundant competition/finale preludes: false.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'mainLog' or 'tv' is included.
  */
 export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
+  if (isRedundantCompetitionPreludeEvent(ev)) return false
   if (!ev.channels) return true
   return ev.channels.includes('mainLog') || ev.channels.includes('tv')
 }
@@ -61,11 +79,13 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
  *
  * Rules:
  *  - Back 2 the Game winner/result event: false; it remains available to mainLog.
+ *  - Redundant competition/finale preludes: false.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'tv' or 'mainLog' is included.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   if (isBattleBackReturnResultEvent(ev)) return false
+  if (isRedundantCompetitionPreludeEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true
   return ev.channels.includes('tv') || ev.channels.includes('mainLog')
