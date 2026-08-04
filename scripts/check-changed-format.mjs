@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
+import { basename, join } from 'node:path'
 import prettier from 'prettier'
 
 const cwd = process.cwd()
@@ -96,28 +97,14 @@ for (const file of files) {
   if (!currentClean) {
     violations.push(file)
     const formatted = await prettier.format(currentSource, options)
-    let firstDifference = 0
-    while (
-      firstDifference < currentSource.length &&
-      firstDifference < formatted.length &&
-      currentSource[firstDifference] === formatted[firstDifference]
-    ) {
-      firstDifference += 1
-    }
-    diagnostics.push({
-      file,
-      currentLength: currentSource.length,
-      formattedLength: formatted.length,
-      firstDifference,
-      currentSnippet: currentSource.slice(
-        Math.max(0, firstDifference - 180),
-        firstDifference + 360
-      ),
-      formattedSnippet: formatted.slice(
-        Math.max(0, firstDifference - 180),
-        firstDifference + 360
-      ),
-    })
+    const temporaryPath = join('/tmp', `${basename(file)}.${process.pid}.formatted`)
+    await writeFile(temporaryPath, formatted, 'utf8')
+    const diff = spawnSync(
+      'diff',
+      ['-u', '--label', `${file}:current`, '--label', `${file}:prettier`, file, temporaryPath],
+      { cwd, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }
+    )
+    diagnostics.push({ file, diff: diff.stdout })
   }
 }
 
@@ -129,7 +116,9 @@ if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
   for (const diagnostic of diagnostics) {
-    console.error(`FORMAT_DIAGNOSTIC ${JSON.stringify(diagnostic)}`)
+    console.error(`--- PRETTIER DIFF ${diagnostic.file} ---`)
+    console.error(diagnostic.diff)
+    console.error(`--- END PRETTIER DIFF ${diagnostic.file} ---`)
   }
   process.exit(1)
 }
