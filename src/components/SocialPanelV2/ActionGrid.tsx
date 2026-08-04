@@ -6,6 +6,8 @@ import { evaluateSocialActionEligibility } from '../../social/socialActionEligib
 import ActionCard from './ActionCard'
 import type { Player, PlayerStatus } from '../../types'
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
+import { useAppSelector } from '../../store/hooks'
+import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 
 export interface ActionGridProps {
   onActionClick?: (actionId: string) => void
@@ -54,6 +56,7 @@ export default function ActionGrid({
   energyCostOverrides,
 }: ActionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const game = useAppSelector((state) => state.game)
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -136,8 +139,12 @@ export default function ActionGrid({
     )
   }
 
+  // The Social panel passes the non-human roster into ActionGrid, so looking up
+  // the actor in `players` misses the human POS holder. Read the authoritative
+  // winner from game state instead, including Cupid's shared-holder rule.
   const actorHasSafety = Boolean(
-    players?.find((player) => player.id === actorId)?.status.includes('pos')
+    actorId &&
+      (game.posWinnerId === actorId || getCupidPartnerId(game, game.posWinnerId) === actorId)
   )
   const safetyConsultationOpen =
     actorHasSafety && (currentPhase === 'pos_results' || currentPhase === 'pos_ceremony')
@@ -148,7 +155,8 @@ export default function ActionGrid({
       return {
         ...action,
         title: 'Ask LOH for POS Advice',
-        description: 'Ask the LOH whether to use Safety and how they want the ceremony handled.',
+        description:
+          'Ask the LOH whether to leave the block alone or use Safety to open a backdoor target.',
       }
     }
     if (
@@ -167,7 +175,7 @@ export default function ActionGrid({
         ...action,
         title: 'Ask Who Goes Now',
         description:
-          'Ask which current nominee the LOH wants out now that the block may have changed.',
+          'Ask which locked nominee the LOH currently wants eliminated from the final block.',
       }
     }
     return {
