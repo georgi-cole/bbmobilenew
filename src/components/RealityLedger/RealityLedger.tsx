@@ -103,8 +103,7 @@ function liveRelationshipMetrics(
     broken ? Math.min(edge.loyalty, affinity) : edge.loyalty * 0.55 + affinity * 0.45
   )
   const respect = clampRelationship(edge.respect * 0.7 + affinity * 0.3)
-  const liveTension =
-    affinity < 0 ? Math.min(100, Math.abs(affinity) + (broken ? 30 : 8)) : 0
+  const liveTension = affinity < 0 ? Math.min(100, Math.abs(affinity) + (broken ? 30 : 8)) : 0
   return [
     ['Trust', trust],
     ['Warmth', warmth],
