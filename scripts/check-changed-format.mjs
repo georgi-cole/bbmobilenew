@@ -60,7 +60,6 @@ if (files.length === 0) process.exit(0)
 const violations = []
 const legacyExceptions = []
 const checked = []
-const formattedViolations = new Map()
 
 async function isPrettierClean(source, options) {
   try {
@@ -82,10 +81,7 @@ for (const file of files) {
 
   if (baseSource == null) {
     checked.push(file)
-    if (!currentClean) {
-      violations.push(file)
-      formattedViolations.set(file, await prettier.format(currentSource, options))
-    }
+    if (!currentClean) violations.push(file)
     continue
   }
 
@@ -96,10 +92,7 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) {
-    violations.push(file)
-    formattedViolations.set(file, await prettier.format(currentSource, options))
-  }
+  if (!currentClean) violations.push(file)
 }
 
 console.log(`Strictly checked: ${checked.length}`)
@@ -108,12 +101,7 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
-  for (const file of violations) {
-    console.error(`  ${file}`)
-    console.error(`--- PRETTIER OUTPUT: ${file} ---`)
-    console.error(formattedViolations.get(file))
-    console.error(`--- END PRETTIER OUTPUT: ${file} ---`)
-  }
+  for (const file of violations) console.error(`  ${file}`)
   process.exit(1)
 }
 
