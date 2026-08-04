@@ -1,3 +1,4 @@
+import { resolveLanguagePreference, translate, type TranslationKey } from '../i18n'
 import { addTvEvent } from '../store/gameSlice'
 import { updateApproval } from '../publicOpinion/publicOpinionSlice'
 import { socialConfig } from './socialConfig'
@@ -36,6 +37,11 @@ interface CommitmentState {
     relationships?: RelationshipsMap
     influenceBank?: Record<string, number>
   }
+  settings?: {
+    localization?: {
+      language?: unknown
+    }
+  }
 }
 
 export interface CommitmentStore {
@@ -55,13 +61,10 @@ const KIND_DUE_COPY: Record<SocialCommitmentKind, string> = {
   vote_to_keep: 'Checked when your eviction vote locks',
 }
 
-const BROKEN_PROMISE_REACTION_COPY: Record<SocialCommitmentKind, string> = {
-  protect_from_nomination:
-    'You promised to keep me off the block, then put me in danger. I need to know why your word meant so little.',
-  use_safety_on_player:
-    'You promised to use Safety on me and chose not to. Do not expect me to pretend that did not happen.',
-  vote_to_keep:
-    'You promised me your vote. Something about tonight does not add up, and I am going to remember it.',
+const BROKEN_PROMISE_REACTION_KEYS: Record<SocialCommitmentKind, TranslationKey> = {
+  protect_from_nomination: 'social.commitment.reaction.nomination',
+  use_safety_on_player: 'social.commitment.reaction.safety',
+  vote_to_keep: 'social.commitment.reaction.vote',
 }
 
 function scenarioKey(interaction: IncomingInteraction): string {
@@ -179,7 +182,10 @@ function queueBrokenPromiseReaction(
       id: `broken-promise-reaction-${commitment.id}`,
       fromId: commitment.beneficiaryId,
       type: 'warning',
-      text: BROKEN_PROMISE_REACTION_COPY[commitment.kind],
+      text: translate(
+        resolveLanguagePreference(state.settings?.localization?.language),
+        BROKEN_PROMISE_REACTION_KEYS[commitment.kind]
+      ),
       payload: {
         source: 'broken_promise',
         commitmentId: commitment.id,
