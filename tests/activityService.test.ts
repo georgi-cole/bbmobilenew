@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isBattleBackReturnResultEvent,
+  isRedundantCompetitionPreludeEvent,
   isVisibleInMainLog,
   isVisibleOnTv,
   isVisibleInDr,
@@ -37,6 +38,24 @@ describe('isVisibleInMainLog', () => {
 
   it('returns false when channels is ["recentActivity"] only', () => {
     expect(isVisibleInMainLog({ channels: ['recentActivity'] })).toBe(false)
+  })
+
+  it('removes redundant LOH and POS prelude messages from the log', () => {
+    const lohPrelude = {
+      type: 'game',
+      text: 'The Leader of the House comp is about to begin! All eligible players will now battle for the title.',
+      channels: ['tv', 'mainLog'] as ActivityChannel[],
+    }
+    const posPrelude = {
+      type: 'game',
+      text: 'It is time for the Power of Safety competition! Housemates, get ready.',
+      channels: ['tv', 'mainLog'] as ActivityChannel[],
+    }
+
+    expect(isRedundantCompetitionPreludeEvent(lohPrelude)).toBe(true)
+    expect(isRedundantCompetitionPreludeEvent(posPrelude)).toBe(true)
+    expect(isVisibleInMainLog(lohPrelude)).toBe(false)
+    expect(isVisibleInMainLog(posPrelude)).toBe(false)
   })
 })
 
@@ -78,6 +97,17 @@ describe('isVisibleOnTv', () => {
 
     expect(isBattleBackReturnResultEvent(activationEvent)).toBe(false)
     expect(isVisibleOnTv(activationEvent)).toBe(true)
+  })
+
+  it('removes redundant LOH and POS prelude messages from the TV viewport', () => {
+    expect(
+      isVisibleOnTv({
+        text: 'The Leader of the House competition is about to begin! All eligible players will now battle for the title.',
+      })
+    ).toBe(false)
+    expect(
+      isVisibleOnTv({ text: "It's time for the Power of Safety competition!" })
+    ).toBe(false)
   })
 })
 
