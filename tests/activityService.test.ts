@@ -57,6 +57,24 @@ describe('isVisibleInMainLog', () => {
     expect(isVisibleInMainLog(lohPrelude)).toBe(false)
     expect(isVisibleInMainLog(posPrelude)).toBe(false)
   })
+
+  it('removes both redundant Final 3 follow-up messages after the major card', () => {
+    const remaining = {
+      type: 'game',
+      text: 'Final 3! Three players remain. 🏆',
+      channels: ['tv', 'mainLog'] as ActivityChannel[],
+    }
+    const competition = {
+      type: 'game',
+      text: 'Final 3 — Day 14! The three-part LOH competition begins. 🏆',
+      channels: ['tv', 'mainLog'] as ActivityChannel[],
+    }
+
+    expect(isRedundantCompetitionPreludeEvent(remaining)).toBe(true)
+    expect(isRedundantCompetitionPreludeEvent(competition)).toBe(true)
+    expect(isVisibleInMainLog(remaining)).toBe(false)
+    expect(isVisibleInMainLog(competition)).toBe(false)
+  })
 })
 
 // ── isVisibleOnTv ─────────────────────────────────────────────────────────────
@@ -105,8 +123,15 @@ describe('isVisibleOnTv', () => {
         text: 'The Leader of the House competition is about to begin! All eligible players will now battle for the title.',
       })
     ).toBe(false)
+    expect(isVisibleOnTv({ text: "It's time for the Power of Safety competition!" })).toBe(false)
+  })
+
+  it('removes redundant Final 3 messages from the TV viewport', () => {
+    expect(isVisibleOnTv({ text: 'Final 3! Three players remain. 🏆' })).toBe(false)
     expect(
-      isVisibleOnTv({ text: "It's time for the Power of Safety competition!" })
+      isVisibleOnTv({
+        text: 'Final 3 — Day 14! The three-part LOH competition begins. 🏆',
+      })
     ).toBe(false)
   })
 })
@@ -141,7 +166,7 @@ describe('isVisibleInDr', () => {
   })
 
   it('returns false when channels is ["mainLog"] with source "manual"', () => {
-    const ev: { channels: ActivityChannel[]; source: ActivitySource; type: string } = {
+    const ev: { channels: ActivityChannel[]; source?: ActivitySource; type: string } = {
       channels: ['mainLog'],
       source: 'manual',
       type: 'game',
