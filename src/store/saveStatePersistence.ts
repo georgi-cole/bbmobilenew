@@ -263,8 +263,14 @@ function loadSlotRuns(profileId: string): SavedRunProfile['runs'] {
 }
 
 function metadataFromProfile(profile: SavedRunProfile): SavedRunProfileMetadata {
-  const { runs: _runs, ...metadata } = profile;
-  return metadata;
+  return {
+    version: profile.version,
+    profileId: profile.profileId,
+    savedAt: profile.savedAt,
+    activeRunId: profile.activeRunId,
+    lastPlayedRunId: profile.lastPlayedRunId,
+    stats: profile.stats,
+  };
 }
 
 function persistSplitProfile(profile: SavedRunProfile): boolean {
