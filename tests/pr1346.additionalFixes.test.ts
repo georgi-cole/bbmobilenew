@@ -22,9 +22,7 @@ describe('PR 1346 additional integration guards', () => {
   })
 
   it('restores fullscreen Shock preludes before the inline faux-TV card', () => {
-    const overlay = source(
-      'src/components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay.tsx'
-    )
+    const overlay = source('src/components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay.tsx')
     expect(overlay).toContain('FULLSCREEN_SHOCK_KEYS')
     expect(overlay).toContain("'double_eviction'")
     expect(overlay).toContain("'battle_back'")
@@ -57,8 +55,6 @@ describe('PR 1346 additional integration guards', () => {
   it('prevents minimum-zone Pressure Plank damage from sub-pixel drift', () => {
     const logic = source('src/components/PressurePlank/pressurePlankLogic.ts')
     expect(logic).toContain('PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE')
-    expect(logic).toContain(
-      'safeZoneHalfWidth + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE'
-    )
+    expect(logic).toContain('safeZoneHalfWidth + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE')
   })
 })
