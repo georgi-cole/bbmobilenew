@@ -277,7 +277,12 @@ export default function HousePulse({
             ))}
 
           {tab === 'ledger' && reality && (
-            <RealityLedger reality={reality} players={players} humanId={humanId} />
+            <RealityLedger
+              reality={reality}
+              players={players}
+              humanId={humanId}
+              relationships={relationships}
+            />
           )}
         </div>
       </section>
