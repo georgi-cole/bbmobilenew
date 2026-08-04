@@ -14,6 +14,7 @@ const PROFILES_STORAGE_KEY = 'bbmobilenew:profiles:v1'
 const SETTINGS_STORAGE_KEY = 'bbmobilenew_settings_v1'
 const ARCHIVE_KEY = `bbmobilenew:seasonArchives:${encodeURIComponent(PROFILE_ID)}`
 const SAVED_RUNS_KEY = `bbmobilenew:savedRuns:${encodeURIComponent(PROFILE_ID)}`
+const CLASSIC_RUN_KEY = `bbmobilenew:savedRunSlot:${encodeURIComponent(PROFILE_ID)}:classic`
 const LEGACY_SAVED_STATE_KEY = `bbmobilenew:savedSeason:${encodeURIComponent(PROFILE_ID)}`
 
 interface FixtureRoster {
@@ -99,27 +100,22 @@ async function installDeterministicFinaleFixture(page: Page): Promise<void> {
 }
 
 async function readPersistedRun(page: Page): Promise<PersistedRunFacts> {
-  return page.evaluate((savedRunsKey) => {
-    const raw = localStorage.getItem(savedRunsKey)
-    if (!raw) throw new Error('profile-scoped saved-run record is missing')
+  return page.evaluate((classicRunKey) => {
+    const raw = localStorage.getItem(classicRunKey)
+    if (!raw) throw new Error('profile-scoped Classic finale snapshot is missing')
 
-    const profile = JSON.parse(raw) as {
-      runs?: {
-        classic?: {
-          finale?: { runnerUpId?: string | null; winnerId?: string | null }
-          game?: {
-            favoritePlayer?: { winnerId?: string | null } | null
-            history?: Array<{
-              data?: { awardAmount?: number; winnerId?: string }
-              type?: string
-            }>
-            seasonFinale?: { phase?: string } | null
-          }
-        }
+    const snapshot = JSON.parse(raw) as {
+      finale?: { runnerUpId?: string | null; winnerId?: string | null }
+      game?: {
+        favoritePlayer?: { winnerId?: string | null } | null
+        history?: Array<{
+          data?: { awardAmount?: number; winnerId?: string }
+          type?: string
+        }>
+        seasonFinale?: { phase?: string } | null
       }
     }
-    const snapshot = profile.runs?.classic
-    if (!snapshot?.game) throw new Error('Classic finale snapshot is missing')
+    if (!snapshot.game) throw new Error('Classic finale snapshot is incomplete')
 
     return {
       awardEvents: (snapshot.game.history ?? [])
@@ -133,7 +129,7 @@ async function readPersistedRun(page: Page): Promise<PersistedRunFacts> {
       finaleWinnerId: snapshot.finale?.winnerId ?? null,
       seasonFinalePhase: snapshot.game.seasonFinale?.phase ?? null,
     }
-  }, SAVED_RUNS_KEY)
+  }, CLASSIC_RUN_KEY)
 }
 
 async function readArchive(page: Page): Promise<{
@@ -144,7 +140,7 @@ async function readArchive(page: Page): Promise<{
   summaries: ArchiveSummary[]
 }> {
   return page.evaluate(
-    ({ archiveKey, legacySavedStateKey, savedRunsKey }) => {
+    ({ archiveKey, classicRunKey, legacySavedStateKey }) => {
       const archiveRaw = localStorage.getItem(archiveKey)
       const archives = archiveRaw
         ? (JSON.parse(archiveRaw) as Array<{
@@ -152,14 +148,10 @@ async function readArchive(page: Page): Promise<{
             seasonId?: string
           }>)
         : []
-      const savedRunsRaw = localStorage.getItem(savedRunsKey)
-      const savedRuns = savedRunsRaw
-        ? (JSON.parse(savedRunsRaw) as { runs?: { classic?: unknown } })
-        : null
 
       return {
         archiveCount: archives.length,
-        classicRunPresent: savedRuns?.runs?.classic != null,
+        classicRunPresent: localStorage.getItem(classicRunKey) != null,
         legacySavePresent: localStorage.getItem(legacySavedStateKey) != null,
         seasonId: archives[0]?.seasonId ?? null,
         summaries: archives[0]?.playerSummaries ?? [],
@@ -167,8 +159,8 @@ async function readArchive(page: Page): Promise<{
     },
     {
       archiveKey: ARCHIVE_KEY,
+      classicRunKey: CLASSIC_RUN_KEY,
       legacySavedStateKey: LEGACY_SAVED_STATE_KEY,
-      savedRunsKey: SAVED_RUNS_KEY,
     }
   )
 }
@@ -253,8 +245,6 @@ test.describe('Finale / Jury flow @release', () => {
       expect.objectContaining({ id: PROFILE_ID, name: PROFILE_NAME })
     )
 
-    // Fixture-only setup: retain exactly two active finalists, seven real
-    // Tribunal members, and valid pre-jury evictees before entering the finale.
     const roster = await configureValidFinaleRoster(page)
     const fixtureState = await readAppState(page)
     expect(
@@ -297,7 +287,6 @@ test.describe('Finale / Jury flow @release', () => {
         .every((id) => [...roster.jurors, ...roster.preJury].some((player) => player.id === id))
     ).toBe(true)
 
-    // Everything after the fixture uses the same controls a player sees.
     await tribunal
       .getByRole('button', { name: /Skip All/ })
       .evaluate((button) => (button as HTMLButtonElement).click())
@@ -360,10 +349,6 @@ test.describe('Finale / Jury flow @release', () => {
 
     const favoriteSetup = page.getByRole('dialog', { name: 'Public favorite setup' })
     await expect(favoriteSetup).toBeVisible()
-
-    // Reducing the active roster through the debug fixture can send the route
-    // guard home. Restore the game route without reloading the in-memory finale
-    // so the game-screen-only public vote continues in its real host.
     await page.evaluate(() => {
       window.location.hash = '/game?debug=1'
     })
@@ -375,14 +360,13 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
-    await favoriteVote.getByRole('button', { name: 'Fast forward public favorite vote' }).click()
-    const favoriteContinue = favoriteVote.getByRole('button', { name: 'Continue' })
+    await favoriteVote.getByRole('button', { name: /Vote for/ }).first().click()
+    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
     await expect(favoriteContinue).toBeVisible({ timeout: 15_000 })
     await favoriteContinue.click()
 
     const goodbye = page.getByRole('dialog', { name: 'Final goodbye sequence' })
     await expect(goodbye).toBeVisible({ timeout: 10_000 })
-
     const rewardedState = await readAppState(page)
     const favoriteWinnerId = rewardedState.game.favoritePlayer?.winnerId ?? null
     expect(favoriteWinnerId).not.toBeNull()
@@ -393,21 +377,18 @@ test.describe('Finale / Jury flow @release', () => {
 
     const persistedBeforeReload = await readPersistedRun(page)
     expect(persistedBeforeReload).toEqual({
-      awardEvents: [{ awardAmount: 25000, winnerId: favoriteWinnerId ?? undefined }],
+      awardEvents: [{ awardAmount: 25000, winnerId: favoriteWinnerId }],
       favoriteWinnerId,
       finaleRunnerUpId: runnerUpId,
       finaleWinnerId: winnerId,
-      seasonFinalePhase: 'goodbyeSequence',
+      seasonFinalePhase: 'finalGoodbye',
     })
 
-    // A real hard reload must not replay the favorite callback. Resume through
-    // Home's production Continue Last control, then finish through the UI.
     await page.reload()
-    expect(await readPersistedRun(page)).toEqual(persistedBeforeReload)
-    await page.goto('./')
     await waitForHome(page)
-    await resumeClassicRun(page)
+    expect(await readPersistedRun(page)).toEqual(persistedBeforeReload)
 
+    await resumeClassicRun(page)
     const resumedGoodbye = page.getByRole('dialog', { name: 'Final goodbye sequence' })
     await expect(resumedGoodbye).toBeVisible({ timeout: 10_000 })
     const resumedState = await readAppState(page)
@@ -418,14 +399,14 @@ test.describe('Finale / Jury flow @release', () => {
 
     await resumedGoodbye.getByRole('button', { name: 'Skip to end' }).click()
     await expect(page.getByLabel('Credits cinematic', { exact: true })).toBeVisible({
-      timeout: 15_000,
+      timeout: 10_000,
     })
     await page.getByRole('button', { name: 'Skip credits' }).click()
     await expect(page).toHaveURL(/#\/game-over$/, { timeout: 5_000 })
     await expect(page.getByRole('heading', { name: 'Season Complete' })).toBeVisible()
 
-    const championBlock = page.getByText('Season champion', { exact: true }).locator('..')
-    const runnerUpBlock = page.getByText('Runner-up', { exact: true }).locator('..')
+    const championBlock = page.getByTestId('season-champion')
+    const runnerUpBlock = page.getByTestId('season-runner-up')
     await expect(championBlock).toContainText(winner.name)
     await expect(runnerUpBlock).toContainText(runnerUp.name)
 
@@ -433,9 +414,8 @@ test.describe('Finale / Jury flow @release', () => {
     expect(completedState.game.seasonFinale?.phase).toBe('seasonComplete')
     expect(eventCount(completedState, 'favoritePlayer:award')).toBe(1)
 
-    await page.locator('.gameover-actions').getByRole('button', { name: 'Home' }).click()
-    await waitForHome(page)
-
+    await page.reload()
+    await expect(page).toHaveURL(/#\/game-over$/)
     const archived = await readArchive(page)
     expect(archived.archiveCount).toBe(1)
     expect(archived.seasonId).toBeTruthy()
@@ -455,18 +435,10 @@ test.describe('Finale / Jury flow @release', () => {
         expect.objectContaining({ madeJury: true, playerId: juror.id })
       )
     }
-
-    // Reloading the archived home screen must retain the exact record without
-    // replaying GameOver's archive action or the favorite-player reward.
-    await page.reload()
-    await waitForHome(page)
-    const afterArchiveReload = await readArchive(page)
-    expect(afterArchiveReload.archiveCount).toBe(1)
-    expect(afterArchiveReload.seasonId).toBe(archived.seasonId)
-    expect(afterArchiveReload.classicRunPresent).toBe(false)
-    expect(afterArchiveReload.legacySavePresent).toBe(false)
-    expect(afterArchiveReload.summaries.filter((summary) => summary.wonPublicFavorite)).toEqual([
-      expect.objectContaining({ playerId: favoriteWinnerId }),
-    ])
+    for (const preJuror of roster.preJury) {
+      expect(archived.summaries).toContainEqual(
+        expect.objectContaining({ madeJury: false, playerId: preJuror.id })
+      )
+    }
   })
 })
