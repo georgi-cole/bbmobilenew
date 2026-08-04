@@ -64,7 +64,9 @@ export default function ActionGrid({
 }: ActionGridProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const game = useAppSelector((state) => state.game)
-  const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
+  const realityModePreset = useAppSelector(
+    (state) => state.settings.gameUX.realityModePreset
+  )
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
