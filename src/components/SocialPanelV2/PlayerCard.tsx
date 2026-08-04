@@ -24,7 +24,13 @@ function formatStatus(status: Player['status']): string {
   return status
     .split('+')
     .map((part) =>
-      part === 'nominated' ? 'Nom' : part === 'active' ? 'Active' : part.toUpperCase()
+      part === 'nominated'
+        ? 'Nom'
+        : part === 'active'
+          ? 'Active'
+          : part === 'jury'
+            ? '⚖ Tribunal'
+            : part.toUpperCase()
     )
     .join(' + ')
 }
@@ -54,6 +60,15 @@ export default function PlayerCard({
   const affinityDisplay = affinity !== undefined ? `${Math.round(affinity)}%` : '—'
   const mood = getPlayerMood(player.id, affinity)
   const moodClass = getMoodClass(mood)
+  const hasBetrayal =
+    relationshipTags.includes('betrayal') || relationshipTags.includes('broken_promise')
+  const hasBrokenRomance =
+    relationshipTags.includes('ex') || relationshipTags.includes('broken_romance')
+  const hasBrokenAlliance =
+    relationshipTags.includes('broken_alliance') ||
+    (hasBetrayal &&
+      (relationshipTags.includes('alliance') || relationshipTags.includes('bromance')))
+  const positiveBondIsCurrent = !hasBetrayal && !hasBrokenRomance && !hasBrokenAlliance
 
   function handleClick(e: React.MouseEvent) {
     if (disabled) return
@@ -114,18 +129,18 @@ export default function PlayerCard({
             </span>
           )}
           <span className={`pc__mood pc__mood--${moodClass}`}>{mood}</span>
-          {relationshipTags.includes('alliance') && (
+          {positiveBondIsCurrent && relationshipTags.includes('alliance') && (
             <span className="pc__bond-chip pc__bond-chip--ally">{'\uD83E\uDD1D Ally'}</span>
           )}
-          {relationshipTags.includes('cupid_partner') && (
+          {positiveBondIsCurrent && relationshipTags.includes('cupid_partner') && (
             <span className="pc__bond-chip pc__bond-chip--romance">
               {'\uD83D\uDC98 Cupid pair'}
             </span>
           )}
-          {relationshipTags.includes('romance') && (
+          {positiveBondIsCurrent && relationshipTags.includes('romance') && (
             <span className="pc__bond-chip pc__bond-chip--romance">{'\uD83D\uDC95 Romance'}</span>
           )}
-          {relationshipTags.includes('bromance') && (
+          {positiveBondIsCurrent && relationshipTags.includes('bromance') && (
             <span className="pc__bond-chip pc__bond-chip--bromance">
               {'\uD83E\uDD1D Ride-or-die'}
             </span>
@@ -133,7 +148,15 @@ export default function PlayerCard({
           {(relationshipTags.includes('rivalry') || relationshipTags.includes('target')) && (
             <span className="pc__bond-chip pc__bond-chip--rival">{'\u26A1 Rival'}</span>
           )}
-          {relationshipTags.includes('betrayal') && (
+          {hasBrokenRomance && (
+            <span className="pc__bond-chip pc__bond-chip--betrayal">{'\uD83D\uDC94 Ex'}</span>
+          )}
+          {!hasBrokenRomance && hasBrokenAlliance && (
+            <span className="pc__bond-chip pc__bond-chip--betrayal">
+              {'\uD83D\uDC94 Broken alliance'}
+            </span>
+          )}
+          {hasBetrayal && (
             <span className="pc__bond-chip pc__bond-chip--betrayal">{'\uD83D\uDDE1 Betrayed'}</span>
           )}
         </div>
