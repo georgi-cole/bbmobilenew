@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import type { GenericMinigameProps } from '../../minigames/reactComponents'
+import MinigameRules from '../MinigameRules/MinigameRules'
+import { getGame } from '../../minigames/registry'
 import {
   CAPITALIZATION_CONTINENT_STYLES,
   CAPITALIZATION_LAND_SHAPES,
@@ -115,9 +117,11 @@ export default function Capitalization({
   const [scoreboard, setScoreboard] = useState<CapitalizationScoreboard | null>(null)
   const [nowMs, setNowMs] = useState(0)
   const [questionStartedAtMs, setQuestionStartedAtMs] = useState(0)
+  const [rulesOpen, setRulesOpen] = useState(context === 'battleBack')
   const inputRef = useRef<HTMLInputElement | null>(null)
   const questionStartedAtRef = useRef(0)
   const completionFiredRef = useRef(false)
+  const rulesGame = getGame('capitalization')
 
   const currentQuestion = questionSet.questions[questionIndex]
   const currentContinentIndex =
@@ -131,7 +135,7 @@ export default function Capitalization({
     phase === 'question' && questionStartedAtMs > 0 ? nowMs - questionStartedAtMs : 0
 
   useEffect(() => {
-    if (phase !== 'spinning' || !currentQuestion) return
+    if (rulesOpen || phase !== 'spinning' || !currentQuestion) return
 
     const timer = window.setTimeout(() => {
       questionStartedAtRef.current = Date.now()
@@ -143,7 +147,7 @@ export default function Capitalization({
     }, SPIN_DURATION_MS)
 
     return () => window.clearTimeout(timer)
-  }, [currentQuestion, phase])
+  }, [currentQuestion, phase, rulesOpen])
 
   useEffect(() => {
     if (phase !== 'question') return
@@ -356,173 +360,182 @@ export default function Capitalization({
   const rootClassName = ['capitalization', `capitalization--${phase}`].join(' ')
 
   return (
-    <div className={rootClassName} data-testid="capitalization-root">
-      <div className="capitalization__shell">
-        <header className="capitalization__header">
-          <div>
-            <p className="capitalization__eyebrow">
-              {isBattleBackContext ? 'Back 2 the Game' : 'Capitalization'}
-            </p>
-            <h2 className="capitalization__title">
-              {phase === 'spinning'
-                ? 'Globe spin'
-                : phase === 'scoreboard' && scoreboard?.final
-                  ? 'Final scoreboard'
-                  : phase === 'scoreboard'
-                    ? 'Checkpoint'
-                    : phase === 'answerReview'
-                      ? 'Answer revealed'
-                      : 'Name the capital'}
-            </h2>
-          </div>
-          <div className="capitalization__meta" aria-live="polite">
-            <span>
-              Question {currentQuestion?.questionNumber ?? 0}/{CAPITALIZATION_TOTAL_QUESTIONS}
-            </span>
-            <span>
-              Continent {Math.min(currentContinentIndex, CAPITALIZATION_TOTAL_CONTINENTS)}/
-              {CAPITALIZATION_TOTAL_CONTINENTS}
-            </span>
-            <span>{activeCount} alive</span>
-          </div>
-        </header>
+    <>
+      {rulesOpen && rulesGame && (
+        <MinigameRules
+          game={rulesGame}
+          confirmLabel="Start Back 2 the Game"
+          onConfirm={() => setRulesOpen(false)}
+        />
+      )}
+      <div className={rootClassName} data-testid="capitalization-root">
+        <div className="capitalization__shell">
+          <header className="capitalization__header">
+            <div>
+              <p className="capitalization__eyebrow">
+                {isBattleBackContext ? 'Back 2 the Game' : 'Capitalization'}
+              </p>
+              <h2 className="capitalization__title">
+                {phase === 'spinning'
+                  ? 'Globe spin'
+                  : phase === 'scoreboard' && scoreboard?.final
+                    ? 'Final scoreboard'
+                    : phase === 'scoreboard'
+                      ? 'Checkpoint'
+                      : phase === 'answerReview'
+                        ? 'Answer revealed'
+                        : 'Name the capital'}
+              </h2>
+            </div>
+            <div className="capitalization__meta" aria-live="polite">
+              <span>
+                Question {currentQuestion?.questionNumber ?? 0}/{CAPITALIZATION_TOTAL_QUESTIONS}
+              </span>
+              <span>
+                Continent {Math.min(currentContinentIndex, CAPITALIZATION_TOTAL_CONTINENTS)}/
+                {CAPITALIZATION_TOTAL_CONTINENTS}
+              </span>
+              <span>{activeCount} alive</span>
+            </div>
+          </header>
 
-        {showCheckpoint ? (
-          <Scoreboard
-            scoreboard={scoreboard}
-            winner={winner}
-            onContinue={continueFromScoreboard}
-            context={context}
-          />
-        ) : (
-          <section
-            className={[
-              'capitalization__arena',
-              showGlobe ? 'capitalization__arena--spinning' : 'capitalization__arena--focused',
-            ].join(' ')}
-            aria-label="Capitalization game"
-          >
-            {showGlobe && (
-              <div className="capitalization__globe-panel">
-                <CapitalizationGlobe question={currentQuestion} phase={phase} />
-                <div className="capitalization__globe-caption" aria-live="polite">
-                  {`Finding ${currentQuestion?.continent ?? 'a continent'}`}
-                </div>
-              </div>
-            )}
-
-            {!showGlobe && (
-              <section className="capitalization__question-panel" aria-label="Capital question">
-                <div className="capitalization__country-strip">
-                  <span
-                    className="capitalization__flag"
-                    aria-label={currentQuestion ? `${currentQuestion.name} flag` : 'Flag'}
-                  >
-                    {currentQuestion?.flag ?? '?'}
-                  </span>
-                  <div>
-                    <p className="capitalization__continent-label">
-                      {currentQuestion?.continent ?? 'Awaiting continent'}
-                    </p>
-                    <h3 className="capitalization__country-name">
-                      {currentQuestion?.name ?? 'Country'}
-                    </h3>
+          {showCheckpoint ? (
+            <Scoreboard
+              scoreboard={scoreboard}
+              winner={winner}
+              onContinue={continueFromScoreboard}
+              context={context}
+            />
+          ) : (
+            <section
+              className={[
+                'capitalization__arena',
+                showGlobe ? 'capitalization__arena--spinning' : 'capitalization__arena--focused',
+              ].join(' ')}
+              aria-label="Capitalization game"
+            >
+              {showGlobe && (
+                <div className="capitalization__globe-panel">
+                  <CapitalizationGlobe question={currentQuestion} phase={phase} />
+                  <div className="capitalization__globe-caption" aria-live="polite">
+                    {`Finding ${currentQuestion?.continent ?? 'a continent'}`}
                   </div>
                 </div>
+              )}
 
-                <div className="capitalization__stats" aria-label="Your round stats">
-                  <div>
-                    <span>Timer</span>
-                    <strong>{formatCapitalizationTimeMs(elapsedMs)}</strong>
-                  </div>
-                  <div>
-                    <span>Attempts</span>
-                    <strong>{attempts}</strong>
-                  </div>
-                  <div>
-                    <span>Your score</span>
-                    <strong>{humanStanding?.cumulativeScore ?? 0}</strong>
-                  </div>
-                </div>
-
-                {phase === 'question' && (
-                  <form
-                    className="capitalization__answer-form"
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      submitAnswer()
-                    }}
-                  >
-                    <label htmlFor="capitalization-answer">Capital city</label>
-                    <div className="capitalization__answer-row">
-                      <input
-                        ref={inputRef}
-                        id="capitalization-answer"
-                        type="text"
-                        value={answerInput}
-                        disabled={inputDisabled}
-                        onChange={(event) => setAnswerInput(event.target.value)}
-                        aria-label="Capital city answer"
-                      />
-                      <button type="submit" disabled={inputDisabled}>
-                        Submit
-                      </button>
-                      <button type="button" disabled={inputDisabled} onClick={skipQuestion}>
-                        Skip
-                      </button>
-                      <button
-                        type="button"
-                        disabled={inputDisabled || hintUsed}
-                        onClick={requestHint}
-                      >
-                        Hint −50%
-                      </button>
+              {!showGlobe && (
+                <section className="capitalization__question-panel" aria-label="Capital question">
+                  <div className="capitalization__country-strip">
+                    <span
+                      className="capitalization__flag"
+                      aria-label={currentQuestion ? `${currentQuestion.name} flag` : 'Flag'}
+                    >
+                      {currentQuestion?.flag ?? '?'}
+                    </span>
+                    <div>
+                      <p className="capitalization__continent-label">
+                        {currentQuestion?.continent ?? 'Awaiting continent'}
+                      </p>
+                      <h3 className="capitalization__country-name">
+                        {currentQuestion?.name ?? 'Country'}
+                      </h3>
                     </div>
-                    {hintOptions && (
-                      <div
-                        className="capitalization__hint-options"
-                        aria-label="Capital hint options"
-                      >
-                        {hintOptions.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => submitHintOption(option)}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {inputError && <p className="capitalization__error">{inputError}</p>}
-                  </form>
-                )}
-
-                <div className="capitalization__feedback" aria-live="polite">
-                  {feedback}
-                </div>
-
-                {phase === 'answerReview' && scoreboard && (
-                  <AnswerReview scoreboard={scoreboard} onContinue={continueFromScoreboard} />
-                )}
-
-                {currentQuestion && (
-                  <div className="capitalization__location">
-                    <span>Location</span>
-                    <strong>
-                      {Math.abs(currentQuestion.latitude).toFixed(1)} deg
-                      {currentQuestion.latitude >= 0 ? 'N' : 'S'}{' '}
-                      {Math.abs(currentQuestion.longitude).toFixed(1)} deg
-                      {currentQuestion.longitude >= 0 ? 'E' : 'W'}
-                    </strong>
                   </div>
-                )}
-              </section>
-            )}
-          </section>
-        )}
+
+                  <div className="capitalization__stats" aria-label="Your round stats">
+                    <div>
+                      <span>Timer</span>
+                      <strong>{formatCapitalizationTimeMs(elapsedMs)}</strong>
+                    </div>
+                    <div>
+                      <span>Attempts</span>
+                      <strong>{attempts}</strong>
+                    </div>
+                    <div>
+                      <span>Your score</span>
+                      <strong>{humanStanding?.cumulativeScore ?? 0}</strong>
+                    </div>
+                  </div>
+
+                  {phase === 'question' && (
+                    <form
+                      className="capitalization__answer-form"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        submitAnswer()
+                      }}
+                    >
+                      <label htmlFor="capitalization-answer">Capital city</label>
+                      <div className="capitalization__answer-row">
+                        <input
+                          ref={inputRef}
+                          id="capitalization-answer"
+                          type="text"
+                          value={answerInput}
+                          disabled={inputDisabled}
+                          onChange={(event) => setAnswerInput(event.target.value)}
+                          aria-label="Capital city answer"
+                        />
+                        <button type="submit" disabled={inputDisabled}>
+                          Submit
+                        </button>
+                        <button type="button" disabled={inputDisabled} onClick={skipQuestion}>
+                          Skip
+                        </button>
+                        <button
+                          type="button"
+                          disabled={inputDisabled || hintUsed}
+                          onClick={requestHint}
+                        >
+                          Hint −50%
+                        </button>
+                      </div>
+                      {hintOptions && (
+                        <div
+                          className="capitalization__hint-options"
+                          aria-label="Capital hint options"
+                        >
+                          {hintOptions.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => submitHintOption(option)}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {inputError && <p className="capitalization__error">{inputError}</p>}
+                    </form>
+                  )}
+
+                  <div className="capitalization__feedback" aria-live="polite">
+                    {feedback}
+                  </div>
+
+                  {phase === 'answerReview' && scoreboard && (
+                    <AnswerReview scoreboard={scoreboard} onContinue={continueFromScoreboard} />
+                  )}
+
+                  {currentQuestion && (
+                    <div className="capitalization__location">
+                      <span>Location</span>
+                      <strong>
+                        {Math.abs(currentQuestion.latitude).toFixed(1)} deg
+                        {currentQuestion.latitude >= 0 ? 'N' : 'S'}{' '}
+                        {Math.abs(currentQuestion.longitude).toFixed(1)} deg
+                        {currentQuestion.longitude >= 0 ? 'E' : 'W'}
+                      </strong>
+                    </div>
+                  )}
+                </section>
+              )}
+            </section>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
