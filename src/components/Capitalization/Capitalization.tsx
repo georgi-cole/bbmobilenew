@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import type { GenericMinigameProps } from '../../minigames/reactComponents'
+import { useI18n } from '../../i18n'
 import MinigameRules from '../MinigameRules/MinigameRules'
 import { getGame } from '../../minigames/registry'
 import {
@@ -87,6 +88,7 @@ export default function Capitalization({
   seed,
   context = 'loh',
 }: CapitalizationProps) {
+  const { t } = useI18n()
   const resolvedParticipants = useMemo(
     () => resolveParticipants(participantIds, participants),
     [participantIds, participants]
@@ -364,7 +366,7 @@ export default function Capitalization({
       {rulesOpen && rulesGame && (
         <MinigameRules
           game={rulesGame}
-          confirmLabel="Start Back 2 the Game"
+          confirmLabel={t('capitalization.startBattleBack')}
           onConfirm={() => setRulesOpen(false)}
         />
       )}
@@ -373,29 +375,36 @@ export default function Capitalization({
           <header className="capitalization__header">
             <div>
               <p className="capitalization__eyebrow">
-                {isBattleBackContext ? 'Back 2 the Game' : 'Capitalization'}
+                {isBattleBackContext
+                  ? t('capitalization.mode.battleBack')
+                  : t('capitalization.mode.standard')}
               </p>
               <h2 className="capitalization__title">
                 {phase === 'spinning'
-                  ? 'Globe spin'
+                  ? t('capitalization.phase.globeSpin')
                   : phase === 'scoreboard' && scoreboard?.final
-                    ? 'Final scoreboard'
+                    ? t('capitalization.phase.finalScoreboard')
                     : phase === 'scoreboard'
-                      ? 'Checkpoint'
+                      ? t('capitalization.phase.checkpoint')
                       : phase === 'answerReview'
-                        ? 'Answer revealed'
-                        : 'Name the capital'}
+                        ? t('capitalization.phase.answerRevealed')
+                        : t('capitalization.phase.nameCapital')}
               </h2>
             </div>
             <div className="capitalization__meta" aria-live="polite">
               <span>
-                Question {currentQuestion?.questionNumber ?? 0}/{CAPITALIZATION_TOTAL_QUESTIONS}
+                {t('capitalization.meta.question', {
+                  current: currentQuestion?.questionNumber ?? 0,
+                  total: CAPITALIZATION_TOTAL_QUESTIONS,
+                })}
               </span>
               <span>
-                Continent {Math.min(currentContinentIndex, CAPITALIZATION_TOTAL_CONTINENTS)}/
-                {CAPITALIZATION_TOTAL_CONTINENTS}
+                {t('capitalization.meta.continent', {
+                  current: Math.min(currentContinentIndex, CAPITALIZATION_TOTAL_CONTINENTS),
+                  total: CAPITALIZATION_TOTAL_CONTINENTS,
+                })}
               </span>
-              <span>{activeCount} alive</span>
+              <span>{t('capitalization.meta.alive', { count: activeCount })}</span>
             </div>
           </header>
 
@@ -412,47 +421,60 @@ export default function Capitalization({
                 'capitalization__arena',
                 showGlobe ? 'capitalization__arena--spinning' : 'capitalization__arena--focused',
               ].join(' ')}
-              aria-label="Capitalization game"
+              aria-label={t('capitalization.aria.game')}
             >
               {showGlobe && (
                 <div className="capitalization__globe-panel">
                   <CapitalizationGlobe question={currentQuestion} phase={phase} />
                   <div className="capitalization__globe-caption" aria-live="polite">
-                    {`Finding ${currentQuestion?.continent ?? 'a continent'}`}
+                    {t('capitalization.finding', {
+                      continent:
+                        currentQuestion?.continent ?? t('capitalization.unknownContinent'),
+                    })}
                   </div>
                 </div>
               )}
 
               {!showGlobe && (
-                <section className="capitalization__question-panel" aria-label="Capital question">
+                <section
+                  className="capitalization__question-panel"
+                  aria-label={t('capitalization.aria.question')}
+                >
                   <div className="capitalization__country-strip">
                     <span
                       className="capitalization__flag"
-                      aria-label={currentQuestion ? `${currentQuestion.name} flag` : 'Flag'}
+                      aria-label={
+                        currentQuestion
+                          ? t('capitalization.aria.flag', { country: currentQuestion.name })
+                          : t('capitalization.flag')
+                      }
                     >
                       {currentQuestion?.flag ?? '?'}
                     </span>
                     <div>
                       <p className="capitalization__continent-label">
-                        {currentQuestion?.continent ?? 'Awaiting continent'}
+                        {currentQuestion?.continent ?? t('capitalization.awaitingContinent')}
                       </p>
                       <h3 className="capitalization__country-name">
-                        {currentQuestion?.name ?? 'Country'}
+                        {currentQuestion?.name ?? t('capitalization.country')}
                       </h3>
                     </div>
                   </div>
 
-                  <div className="capitalization__stats" aria-label="Your round stats">
+                  <div
+                    className="capitalization__stats"
+                    aria-label={t('capitalization.aria.roundStats')}
+                  >
                     <div>
-                      <span>Timer</span>
+                      <span>{t('capitalization.timer')}</span>
                       <strong>{formatCapitalizationTimeMs(elapsedMs)}</strong>
                     </div>
                     <div>
-                      <span>Attempts</span>
+                      <span>{t('capitalization.attempts')}</span>
                       <strong>{attempts}</strong>
                     </div>
                     <div>
-                      <span>Your score</span>
+                      <span>{t('capitalization.yourScore')}</span>
                       <strong>{humanStanding?.cumulativeScore ?? 0}</strong>
                     </div>
                   </div>
@@ -465,7 +487,9 @@ export default function Capitalization({
                         submitAnswer()
                       }}
                     >
-                      <label htmlFor="capitalization-answer">Capital city</label>
+                      <label htmlFor="capitalization-answer">
+                        {t('capitalization.capitalCity')}
+                      </label>
                       <div className="capitalization__answer-row">
                         <input
                           ref={inputRef}
@@ -474,26 +498,26 @@ export default function Capitalization({
                           value={answerInput}
                           disabled={inputDisabled}
                           onChange={(event) => setAnswerInput(event.target.value)}
-                          aria-label="Capital city answer"
+                          aria-label={t('capitalization.aria.capitalAnswer')}
                         />
                         <button type="submit" disabled={inputDisabled}>
-                          Submit
+                          {t('common.submit')}
                         </button>
                         <button type="button" disabled={inputDisabled} onClick={skipQuestion}>
-                          Skip
+                          {t('common.skip')}
                         </button>
                         <button
                           type="button"
                           disabled={inputDisabled || hintUsed}
                           onClick={requestHint}
                         >
-                          Hint −50%
+                          {t('capitalization.hintHalf')}
                         </button>
                       </div>
                       {hintOptions && (
                         <div
                           className="capitalization__hint-options"
-                          aria-label="Capital hint options"
+                          aria-label={t('capitalization.aria.hintOptions')}
                         >
                           {hintOptions.map((option) => (
                             <button
@@ -520,12 +544,22 @@ export default function Capitalization({
 
                   {currentQuestion && (
                     <div className="capitalization__location">
-                      <span>Location</span>
+                      <span>{t('capitalization.location')}</span>
                       <strong>
-                        {Math.abs(currentQuestion.latitude).toFixed(1)} deg
-                        {currentQuestion.latitude >= 0 ? 'N' : 'S'}{' '}
-                        {Math.abs(currentQuestion.longitude).toFixed(1)} deg
-                        {currentQuestion.longitude >= 0 ? 'E' : 'W'}
+                        {Math.abs(currentQuestion.latitude).toFixed(1)}
+                        {t('capitalization.degrees')}{' '}
+                        {t(
+                          currentQuestion.latitude >= 0
+                            ? 'capitalization.direction.north'
+                            : 'capitalization.direction.south'
+                        )}{' '}
+                        {Math.abs(currentQuestion.longitude).toFixed(1)}
+                        {t('capitalization.degrees')}{' '}
+                        {t(
+                          currentQuestion.longitude >= 0
+                            ? 'capitalization.direction.east'
+                            : 'capitalization.direction.west'
+                        )}
                       </strong>
                     </div>
                   )}
