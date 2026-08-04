@@ -114,10 +114,18 @@ export function useSafetyFlow({
     savedId: string
   } | null>(null)
   const pendingSaveDispatchRef = useRef<(() => void) | null>(null)
-  // A save can also be chosen in the Confessional.  That route commits to
-  // Redux immediately, so remember ceremony IDs already shown to avoid a
-  // second animation after the state change.
+  // The GameScreen unmounts while the Confessional is open. Persist the consumed
+  // ceremony key so returning to the game cannot replay the same badge flight.
+  const [consumedSaveCeremonyKey, setConsumedSaveCeremonyKey] = usePersistedGameScreenKey(
+    'safety-save-ceremony',
+    game.gameId ?? `season-${game.season}`
+  )
   const presentedSaveIdRef = useRef<string | null>(null)
+  const getSaveCeremonyKey = useCallback(
+    (savedId: string) =>
+      `w${game.week}-save-${savedId}-${game.posWinnerId ?? 'none'}-${activeSpecialVeto ?? 'standard'}`,
+    [activeSpecialVeto, game.posWinnerId, game.week]
+  )
 
   const handleSaveCeremonyDone = useCallback(() => {
     pendingSaveDispatchRef.current?.()
@@ -204,6 +212,7 @@ export function useSafetyFlow({
 
       const savedNames = savedPlayers.map((player) => player.name).join(' & ')
       presentedSaveIdRef.current = id
+      setConsumedSaveCeremonyKey(getSaveCeremonyKey(id))
       pendingSaveDispatchRef.current = () => dispatch(submitSaveAction)
       setPendingSaveCeremony({
         tiles,
@@ -213,19 +222,33 @@ export function useSafetyFlow({
         savedId: id,
       })
     },
-    [dispatch, game, activeSpecialVeto, getTileRect]
+    [
+      dispatch,
+      game,
+      activeSpecialVeto,
+      getTileRect,
+      getSaveCeremonyKey,
+      setConsumedSaveCeremonyKey,
+    ]
   )
 
   // Confessional and AI Safety choices commit synchronously rather than going
-  // through handlePovSaveTarget above.  Give those saves the same visual beat:
-  // the nominee comes off the block and receives the Safety badge on their tile.
+  // through handlePovSaveTarget above. Give those saves the same visual beat,
+  // but only once for the whole game session.
   useEffect(() => {
     const savedId = game.povSavedId ?? null
     if (!savedId) {
       presentedSaveIdRef.current = null
       return
     }
-    if (presentedSaveIdRef.current === savedId || pendingSaveCeremony) return
+    const ceremonyKey = getSaveCeremonyKey(savedId)
+    if (
+      presentedSaveIdRef.current === savedId ||
+      consumedSaveCeremonyKey === ceremonyKey ||
+      pendingSaveCeremony
+    ) {
+      return
+    }
 
     const savedPlayers = expandCupidIds(game, [savedId])
       .map((id) => game.players.find((player) => player.id === id))
@@ -274,10 +297,18 @@ export function useSafetyFlow({
     }
     const timer = window.setTimeout(() => {
       presentedSaveIdRef.current = savedId
+      setConsumedSaveCeremonyKey(ceremonyKey)
       setPendingSaveCeremony(ceremony)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [game, getTileRect, pendingSaveCeremony])
+  }, [
+    consumedSaveCeremonyKey,
+    game,
+    getSaveCeremonyKey,
+    getTileRect,
+    pendingSaveCeremony,
+    setConsumedSaveCeremonyKey,
+  ])
 
   // Hide the save modal while the save ceremony is playing.
   const isAwaitingAnySave =
@@ -323,7 +354,7 @@ export function useSafetyFlow({
   // ── Replacement nominee ceremony animation ─────────────────────────────
   // When the human LOH picks a replacement nominee via TvDecisionModal,
   // we defer the setReplacementNominee dispatch until the CeremonyOverlay
-  // animation completes.  The badge (❓) flies from the saved nominee's
+  // animation completes. The badge (❓) flies from the saved nominee's
   // tile to the replacement nominee's tile.
   const [pendingReplacementCeremony, setPendingReplacementCeremony] = useState<{
     tiles: CeremonyTile[]
