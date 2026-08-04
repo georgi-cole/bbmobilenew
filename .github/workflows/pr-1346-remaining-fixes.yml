@@ -1,0 +1,388 @@
+name: PR 1346 remaining fixes
+
+on:
+  push:
+    branches:
+      - agent/fix-broadcast-and-eviction-ui
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    if: github.event.head_commit.message == 'Run remaining PR fixes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-broadcast-and-eviction-ui
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply guarded source patches
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding='utf-8-sig')
+
+          def write(path: str, value: str) -> None:
+              Path(path).write_text(value, encoding='utf-8')
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          # 1) Restore fullscreen Shock intros before their major faux-TV cards.
+          path = 'src/components/ui/TvZone.tsx'
+          text = read(path)
+          text = replace_once(
+              text,
+              "const SHOCK_ANNOUNCEMENT_KEYS = new Set<string>()",
+              """const SHOCK_ANNOUNCEMENT_KEYS = new Set<string>([
+            'battle_back',
+            'double_eviction',
+            'vox_double_eviction',
+            'vip_veto',
+            'diamond_pov',
+            'coup_detat',
+            'spotlight_veto',
+            'democracia',
+            'cupid_arrow',
+            'cupid_arrow_broken',
+            'vox_populi',
+            'twist',
+          ])""",
+              'TvZone shock keys',
+          )
+          write(path, text)
+
+          # 2) Prevent evicted/Tribunal housemates from generating fresh house shocks,
+          # and turn bonded nominations/replacements into explicit severe betrayals.
+          path = 'src/social/socialMiddleware.ts'
+          text = read(path)
+          marker = '/** Advance the premium story graph once per phase and feed consequences back into gameplay. */'
+          helper = r'''function escapeAnnouncementName(value: string): string {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          }
+
+          export function publicAnnouncementReferencesInactivePlayer(
+            state: StateWithGame,
+            text: string
+          ): boolean {
+            return (state.game.players ?? []).some((player) => {
+              if (player.status !== 'evicted' && player.status !== 'jury') return false
+              const name = player.name?.trim()
+              if (!name) return false
+              return new RegExp(`\\b${escapeAnnouncementName(name)}\\b`, 'i').test(text)
+            })
+          }
+
+          '''
+          if helper.strip() not in text:
+              text = replace_once(text, marker, helper + marker, 'inactive announcement helper')
+          text = replace_once(
+              text,
+              '  if (result.publicAnnouncement) {',
+              '  if (\n    result.publicAnnouncement &&\n    !publicAnnouncementReferencesInactivePlayer(state, result.publicAnnouncement)\n  ) {',
+              'inactive announcement gate',
+          )
+
+          block_start = "    if (\n      newPhase === 'nomination_results' &&"
+          block_end = '    // Social engine lifecycle\n'
+          start = text.find(block_start)
+          end = text.find(block_end, start)
+          if start < 0 or end < 0:
+              raise RuntimeError('relationship betrayal block was not found')
+          replacement_block = r'''    const newlyAddedNominees = afterState.game.nomineeIds.filter(
+              (id) => !prevNominees.includes(id)
+            )
+            const isBondBetrayalWindow =
+              newPhase === 'nomination_results' || newPhase === 'pos_ceremony_results'
+
+            if (
+              isBondBetrayalWindow &&
+              newlyAddedNominees.length > 0 &&
+              getEffectiveSocialMode(afterState) === 'drama' &&
+              afterState.game?.lohId &&
+              afterState.game.voxPopuli?.status !== 'active'
+            ) {
+              const lohId = afterState.game.lohId
+              for (const nomineeId of newlyAddedNominees) {
+                const outward = prevState.social?.relationships?.[lohId]?.[nomineeId]
+                const inward = prevState.social?.relationships?.[nomineeId]?.[lohId]
+                const tags = new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])])
+                const wasRomance = tags.has('romance')
+                const wasAlliance = tags.has('alliance') || tags.has('bromance')
+                if (!wasRomance && !wasAlliance) continue
+
+                const ruptureTags = [
+                  'betrayal',
+                  ...(wasRomance ? ['ex', 'broken_romance'] : []),
+                  ...(wasAlliance ? ['broken_alliance'] : []),
+                ]
+                const lohName =
+                  afterState.game.players.find((player) => player.id === lohId)?.name ?? lohId
+                const nomineeName =
+                  afterState.game.players.find((player) => player.id === nomineeId)?.name ?? nomineeId
+                const outwardDelta = Math.min(-60, -55 - (outward?.affinity ?? 0))
+                const inwardDelta = Math.min(-70, -60 - (inward?.affinity ?? 0))
+
+                api.dispatch(
+                  updateRelationship({
+                    source: lohId,
+                    target: nomineeId,
+                    delta: outwardDelta,
+                    tags: ruptureTags,
+                    actionSource: 'system',
+                  })
+                )
+                api.dispatch(
+                  updateRelationship({
+                    source: nomineeId,
+                    target: lohId,
+                    delta: inwardDelta,
+                    tags: ruptureTags,
+                    actionSource: 'system',
+                  })
+                )
+                api.dispatch(
+                  applyDramaAction({
+                    actionId: 'betray',
+                    actorId: lohId,
+                    targetId: nomineeId,
+                    actorName: lohName,
+                    targetName: nomineeName,
+                    week: afterState.game.week,
+                    phase: newPhase,
+                    success: true,
+                  })
+                )
+                api.dispatch({
+                  type: 'game/addTvEvent',
+                  payload: {
+                    text: `HOUSE SHOCK: ${lohName} put ${nomineeName} in danger despite their bond. The relationship has ruptured into a public betrayal.`,
+                    type: 'social',
+                    source: 'system',
+                    channels: ['tv', 'mainLog'],
+                    meta: { dramaEvent: true, week: afterState.game.week },
+                  },
+                })
+              }
+            }
+
+          '''
+          text = text[:start] + replacement_block + text[end:]
+          write(path, text)
+
+          # 3) Make every AI replacement use the same relationship-aware target score
+          # as normal nominations instead of a random eligible pick.
+          path = 'src/store/gameSlice.ts'
+          text = read(path)
+          insertion_point = 'function pickStrategicAiPlayers(\n'
+          replacement_helper = r'''function pickStrategicReplacementNominee(
+            state: GameState,
+            candidates: Player[],
+            rng: () => number,
+            actorId?: string | null
+          ): Player | null {
+            if (candidates.length === 0) return null
+            const specialActor =
+              state.specialVeto?.activeType === 'diamond' ||
+              state.specialVeto?.activeType === 'coup'
+                ? state.posWinnerId
+                : state.lohId
+            const decisionMakerId = actorId ?? specialActor
+            if (!decisionMakerId) return seededPick(rng, candidates)
+            return candidates
+              .map((player) => ({
+                player,
+                score: getNominationTargetScore(state, decisionMakerId, player) + rng() * 6,
+              }))
+              .sort((left, right) => right.score - left.score)[0]?.player ?? null
+          }
+
+          '''
+          if replacement_helper.strip() not in text:
+              text = replace_once(
+                  text,
+                  insertion_point,
+                  replacement_helper + insertion_point,
+                  'strategic replacement helper',
+              )
+          random_pick = 'const replacement = seededPick(rng, eligible)'
+          replacement_count = text.count(random_pick)
+          if replacement_count < 3:
+              raise RuntimeError(
+                  f'expected at least three random AI replacement picks, found {replacement_count}'
+              )
+          text = text.replace(
+              random_pick,
+              'const replacement = pickStrategicReplacementNominee(state, eligible, rng)',
+          )
+          write(path, text)
+
+          # 4) Make Adult Reality mode visibly unlock mature romance actions.
+          path = 'src/social/socialActions.ts'
+          text = read(path)
+          text = replace_once(
+              text,
+              '  /** Only available while the premium Drama Mode simulation is enabled. */\n  dramaOnly?: boolean',
+              '  /** Only available while the premium Drama Mode simulation is enabled. */\n  dramaOnly?: boolean\n  /** Mature Reality action shown only when the Adult preset is active. */\n  adultOnly?: boolean',
+              'adultOnly action field',
+          )
+          write(path, text)
+
+          path = 'src/social/dramaModeConfig.ts'
+          text = read(path)
+          adult_actions = {
+              'kiss_under_covers': "requiredArcStages: ['building', 'established', 'climax']",
+              'pool_makeout': "requiredArcStages: ['building', 'established', 'climax']",
+              'spend_night': "requiredArcStages: ['established', 'climax']",
+          }
+          for action_id, stages in adult_actions.items():
+              anchor = f"    id: '{action_id}',"
+              start = text.find(anchor)
+              if start < 0:
+                  raise RuntimeError(f'{action_id} action not found')
+              end = text.find('\n  },', start)
+              block = text[start:end]
+              if 'adultOnly: true' not in block:
+                  block = block.replace('    dramaOnly: true,', '    dramaOnly: true,\n    adultOnly: true,', 1)
+              block_lines = block.splitlines()
+              for index, line in enumerate(block_lines):
+                  if 'requiredArcStages:' in line:
+                      block_lines[index] = f'    {stages},'
+                      break
+              else:
+                  raise RuntimeError(f'{action_id} stage gate not found')
+              text = text[:start] + '\n'.join(block_lines) + text[end:]
+          write(path, text)
+
+          path = 'src/components/SocialPanelV2/ActionGrid.tsx'
+          text = read(path)
+          text = replace_once(
+              text,
+              '  const game = useAppSelector((state) => state.game)',
+              "  const game = useAppSelector((state) => state.game)\n  const realityModePreset = useAppSelector(\n    (state) => state.settings.gameUX.realityModePreset\n  )",
+              'ActionGrid reality preset',
+          )
+          text = replace_once(
+              text,
+              "    return (\n      isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&",
+              "    return (\n      (!action.adultOnly || realityModePreset === 'adult') &&\n      isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&",
+              'adult action visibility',
+          )
+          text = replace_once(
+              text,
+              '      !dramaMode &&\n      isRealityExclusiveAction(action) &&',
+              '      !dramaMode &&\n      !action.adultOnly &&\n      isRealityExclusiveAction(action) &&',
+              'adult preview hiding',
+          )
+          write(path, text)
+
+          # 5) Add source-level guard tests for the restored integration points.
+          test_path = Path('tests/pr1346.additionalFixes.test.ts')
+          test_path.write_text(r'''import { readFileSync } from 'node:fs'
+          import { join } from 'node:path'
+          import { describe, expect, it } from 'vitest'
+
+          function source(path: string): string {
+            return readFileSync(join(process.cwd(), path), 'utf8')
+          }
+
+          describe('PR 1346 integration guards', () => {
+            it('restores fullscreen shock announcement keys', () => {
+              const tvZone = source('src/components/ui/TvZone.tsx')
+              expect(tvZone).toContain("'double_eviction'")
+              expect(tvZone).toContain("'battle_back'")
+              expect(tvZone).not.toContain('const SHOCK_ANNOUNCEMENT_KEYS = new Set<string>()')
+            })
+
+            it('suppresses new public shocks that name eliminated players', () => {
+              const middleware = source('src/social/socialMiddleware.ts')
+              expect(middleware).toContain('publicAnnouncementReferencesInactivePlayer')
+              expect(middleware).toContain('player.status !== \'evicted\'')
+              expect(middleware).toContain('player.status !== \'jury\'')
+            })
+
+            it('uses relationship-aware AI replacement targeting and severe betrayal tags', () => {
+              const gameSlice = source('src/store/gameSlice.ts')
+              const middleware = source('src/social/socialMiddleware.ts')
+              expect(gameSlice).toContain('pickStrategicReplacementNominee')
+              expect(gameSlice).not.toContain('const replacement = seededPick(rng, eligible)')
+              expect(middleware).toContain("'broken_romance'")
+              expect(middleware).toContain("'broken_alliance'")
+              expect(middleware).toContain('Math.min(-70')
+            })
+
+            it('gates mature romance actions behind the Adult preset', () => {
+              const catalog = source('src/social/dramaModeConfig.ts')
+              const grid = source('src/components/SocialPanelV2/ActionGrid.tsx')
+              expect(catalog).toContain("id: 'pool_makeout'")
+              expect(catalog).toContain('adultOnly: true')
+              expect(grid).toContain("realityModePreset === 'adult'")
+            })
+
+            it('shows rules before the Back 2 the Game minigame starts', () => {
+              const capitalization = source('src/components/Capitalization/Capitalization.tsx')
+              expect(capitalization).toContain('context === \'battleBack\'')
+              expect(capitalization).toContain('<MinigameRules')
+              expect(capitalization).toContain('if (rulesOpen || phase !== \'spinning\'')
+            })
+          })
+          ''', encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format touched files
+        run: |
+          npx prettier --write \
+            src/components/ui/TvZone.tsx \
+            src/social/socialMiddleware.ts \
+            src/store/gameSlice.ts \
+            src/social/socialActions.ts \
+            src/social/dramaModeConfig.ts \
+            src/components/SocialPanelV2/ActionGrid.tsx \
+            src/components/Capitalization/Capitalization.tsx \
+            src/social/reality/humanFlow.ts \
+            src/screens/GameScreen/flows/useSafetyFlow.ts \
+            src/publicOpinion/DramaPublicSaveIntegration.ts \
+            src/social/socialCommitments.ts \
+            src/components/SocialPanelV2/PlayerCard.tsx \
+            src/components/RealityLedger/RealityLedger.tsx \
+            src/components/HousePulse/HousePulse.tsx \
+            tests/activityService.test.ts \
+            tests/social/socialCommitments.unit.test.ts \
+            tests/unit/minigameLogicRevamps.test.ts \
+            tests/pr1346.additionalFixes.test.ts
+
+      - name: Run focused tests
+        run: >-
+          npx vitest run
+          tests/activityService.test.ts
+          tests/social/socialCommitments.unit.test.ts
+          tests/unit/minigameLogicRevamps.test.ts
+          tests/pr1346.additionalFixes.test.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Commit verified fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src tests
+          git commit -m 'Complete Reality flow and ceremony fixes'
+          git push origin HEAD:agent/fix-broadcast-and-eviction-ui
