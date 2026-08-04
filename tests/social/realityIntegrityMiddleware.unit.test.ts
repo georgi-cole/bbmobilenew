@@ -5,7 +5,17 @@ import {
   realityIntegrityMiddleware,
 } from '../../src/social/realityIntegrityMiddleware'
 
-function state(overrides: Record<string, unknown> = {}) {
+type TestState = ReturnType<typeof makeState>
+type DispatchedAction = {
+  type: string
+  payload?: {
+    tags?: string[]
+    delta?: number
+    meta?: { bondBetrayal?: boolean }
+  }
+}
+
+function makeState() {
   return {
     game: {
       week: 6,
@@ -19,6 +29,7 @@ function state(overrides: Record<string, unknown> = {}) {
         { id: 'nominee-b', name: 'Vee', status: 'nominated' },
         { id: 'jax', name: 'Jax', status: 'jury' },
       ],
+      dramaSocialMode: true,
       voxPopuli: { status: 'inactive' },
     },
     social: {
@@ -29,13 +40,12 @@ function state(overrides: Record<string, unknown> = {}) {
     },
     settings: { gameUX: { dramaMode: true } },
     vip: { isActive: true, entitlements: { dramaMode: true } },
-    ...overrides,
   }
 }
 
 describe('Reality integrity middleware', () => {
   it('recognizes public shocks that reference evicted or Tribunal players', () => {
-    const players = state().game.players
+    const players = makeState().game.players
     expect(eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Jax's voting bloc is public.")).toBe(
       true
     )
@@ -56,10 +66,10 @@ describe('Reality integrity middleware', () => {
   it('suppresses a fresh public shock about an inactive player', () => {
     const next = vi.fn()
     const api = {
-      getState: () => state(),
+      getState: () => makeState(),
       dispatch: vi.fn(),
     }
-    const invoke = realityIntegrityMiddleware(api as never)(next)
+    const invoke = realityIntegrityMiddleware(api as never)(next as never)
 
     invoke({
       type: 'game/addTvEvent',
@@ -74,36 +84,33 @@ describe('Reality integrity middleware', () => {
   })
 
   it('records a severe betrayal when the LOH replacement-nominates a romance', () => {
-    let current = state()
-    const after = state({
-      game: {
-        ...state().game,
-        nomineeIds: ['nominee-a', 'nominee-b', 'human'],
-      },
-    })
+    let current: TestState = makeState()
+    const after = makeState()
+    after.game.nomineeIds = ['nominee-a', 'nominee-b', 'human']
     const dispatch = vi.fn()
     const api = {
       getState: () => current,
       dispatch,
     }
-    const invoke = realityIntegrityMiddleware(api as never)((action) => {
+    const invoke = realityIntegrityMiddleware(api as never)(((action: unknown) => {
       current = after
       return action
-    })
+    }) as never)
 
     invoke({ type: 'game/advance' })
 
-    const relationshipActions = dispatch.mock.calls
-      .map(([action]) => action)
-      .filter((action) => action.type === 'social/updateRelationship')
+    const dispatched = dispatch.mock.calls.map(([action]) => action as DispatchedAction)
+    const relationshipActions = dispatched.filter(
+      (action) => action.type === 'social/updateRelationship'
+    )
     expect(relationshipActions).toHaveLength(2)
-    expect(relationshipActions[0].payload.tags).toContain('broken_romance')
-    expect(relationshipActions[0].payload.tags).toContain('betrayal')
-    expect(relationshipActions[1].payload.delta).toBeLessThanOrEqual(-55)
+    expect(relationshipActions[0].payload?.tags).toContain('broken_romance')
+    expect(relationshipActions[0].payload?.tags).toContain('betrayal')
+    expect(relationshipActions[1].payload?.delta).toBeLessThanOrEqual(-55)
     expect(
-      dispatch.mock.calls.some(
-        ([action]) =>
-          action.type === 'game/addTvEvent' && action.payload.meta?.bondBetrayal === true
+      dispatched.some(
+        (action) =>
+          action.type === 'game/addTvEvent' && action.payload?.meta?.bondBetrayal === true
       )
     ).toBe(true)
   })
