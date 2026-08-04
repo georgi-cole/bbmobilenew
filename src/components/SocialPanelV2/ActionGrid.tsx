@@ -158,7 +158,7 @@ export default function ActionGrid({
   // winner from game state instead, including Cupid's shared-holder rule.
   const actorHasSafety = Boolean(
     actorId &&
-      (game.posWinnerId === actorId || getCupidPartnerId(game, game.posWinnerId) === actorId)
+    (game.posWinnerId === actorId || getCupidPartnerId(game, game.posWinnerId) === actorId)
   )
   const safetyConsultationOpen =
     actorHasSafety && (currentPhase === 'pos_results' || currentPhase === 'pos_ceremony')
