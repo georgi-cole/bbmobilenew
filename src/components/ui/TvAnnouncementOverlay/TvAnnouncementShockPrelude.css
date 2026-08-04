@@ -5,7 +5,9 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+  padding:
+    max(24px, env(safe-area-inset-top)) 22px
+    max(24px, env(safe-area-inset-bottom));
   color: #fff;
   background:
     radial-gradient(circle at 50% 42%, rgba(183, 88, 255, 0.3), transparent 34%),
@@ -24,12 +26,11 @@
 
 .tv-shock-prelude::before {
   inset: -30%;
-  background:
-    repeating-conic-gradient(
-      from 0deg,
-      rgba(255, 255, 255, 0) 0 12deg,
-      rgba(216, 180, 254, 0.07) 12deg 13deg
-    );
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0 12deg,
+    rgba(216, 180, 254, 0.07) 12deg 13deg
+  );
   animation: tvShockPreludeSweep 7s linear infinite;
 }
 
@@ -129,22 +130,42 @@
 }
 
 @keyframes tvShockPreludeEnter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes tvShockPreludeContent {
-  from { opacity: 0; transform: scale(0.86) translateY(18px); filter: blur(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(18px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
 }
 
 @keyframes tvShockPreludeSweep {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes tvShockPreludePulse {
-  from { opacity: 0.45; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1.18); }
+  from {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.18);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
