@@ -4,10 +4,12 @@
 // Separate from season archives (which store completed seasons).
 //
 // Key behaviours:
-//  - Each profile can keep one Classic and one Survival run side by side.
+//  - Each profile can keep Classic, Survival and expansion runs side by side.
+//  - Each run slot is stored independently so adding game types does not create
+//    one increasingly large localStorage value.
 //  - Guest mode never writes or reads snapshots.
 //  - Stale/invalid snapshots are silently discarded on load.
-//  - Legacy single-slot saves are migrated into the Classic slot on read.
+//  - Legacy single-slot and embedded multi-run saves are migrated safely.
 
 import type { GameState } from '../types';
 import type { GameMode, SeasonExpansionMode } from '../modes/modeTypes';
@@ -24,22 +26,44 @@ import type { PublicOpinionState } from '../publicOpinion/types';
 import type { ChallengeState } from './challengeSlice';
 import type { SurvivorAchievementUnlockMap } from '../modes/survivorAchievements';
 
-/** Prefix for per-profile saved-season localStorage keys. */
 export const SAVED_STATE_KEY_PREFIX = 'bbmobilenew:savedSeason:';
 export const SAVED_RUNS_KEY_PREFIX = 'bbmobilenew:savedRuns:';
+export const SAVED_RUN_SLOT_KEY_PREFIX = 'bbmobilenew:savedRunSlot:';
 export const SAVE_PERSISTENCE_ISSUE_EVENT = 'bb:save-persistence-issue';
 export const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave';
+
+export type SaveFailureReason =
+  | 'quota_exceeded'
+  | 'storage_unavailable'
+  | 'serialization_failed'
+  | 'unknown_write_failure';
 
 export type SavePersistenceIssue = {
   kind: 'write_failed' | 'corrupt_recovered';
   occurredAt: string;
+  reason?: SaveFailureReason;
 };
 
 let lastSavePersistenceIssue: SavePersistenceIssue | null = null;
 
-function reportSavePersistenceIssue(kind: SavePersistenceIssue['kind']): void {
-  if (lastSavePersistenceIssue?.kind === kind) return;
-  lastSavePersistenceIssue = { kind, occurredAt: new Date().toISOString() };
+function classifyWriteFailure(error: unknown): SaveFailureReason {
+  if (error instanceof DOMException) {
+    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      return 'quota_exceeded';
+    }
+    if (error.name === 'SecurityError' || error.name === 'InvalidStateError') {
+      return 'storage_unavailable';
+    }
+  }
+  return 'unknown_write_failure';
+}
+
+function reportSavePersistenceIssue(
+  kind: SavePersistenceIssue['kind'],
+  reason?: SaveFailureReason,
+): void {
+  if (lastSavePersistenceIssue?.kind === kind && lastSavePersistenceIssue.reason === reason) return;
+  lastSavePersistenceIssue = { kind, reason, occurredAt: new Date().toISOString() };
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent<SavePersistenceIssue>(SAVE_PERSISTENCE_ISSUE_EVENT, {
       detail: lastSavePersistenceIssue,
@@ -55,23 +79,14 @@ export function clearLastSavePersistenceIssue(): void {
   lastSavePersistenceIssue = null;
 }
 
-/** Shape of what we persist for a manual season save. */
 export interface SavedSeasonSnapshot {
-  /** Snapshot format version - bump when the shape changes incompatibly. */
   version: 1;
-  /** Profile ID that created this snapshot (cross-profile safety check). */
   profileId: string;
-  /** ISO timestamp when the snapshot was taken. */
   savedAt: string;
-  /** Full game-slice state at the time of save. */
   game: GameState;
-  /** Finale-slice state at the time of save. */
   finale: FinaleState;
-  /** Social-slice state at the time of save. */
   social: SocialState;
-  /** Optional for backward compatibility with snapshots created before public-mode persistence. */
   publicOpinion?: PublicOpinionState;
-  /** Restores the selected challenge; an in-progress game restarts from its rules screen. */
   challenge?: ChallengeState;
 }
 
@@ -92,13 +107,20 @@ export interface SavedRunProfile {
   stats: SavedRunProfileStats;
 }
 
-/** Build the localStorage key for a specific profile's saved-season snapshot. */
+type SavedRunProfileMetadata = Omit<SavedRunProfile, 'runs'> & { runs?: never };
+
+const ALL_RUN_SLOTS: SavedRunSlot[] = ['classic', 'survival', 'cupidArrow', 'voxPopuli'];
+
 export function savedStateKeyForProfile(profileId: string): string {
   return `${SAVED_STATE_KEY_PREFIX}${encodeURIComponent(profileId)}`;
 }
 
 export function savedRunsKeyForProfile(profileId: string): string {
   return `${SAVED_RUNS_KEY_PREFIX}${encodeURIComponent(profileId)}`;
+}
+
+export function savedRunSlotKeyForProfile(profileId: string, slot: SavedRunSlot): string {
+  return `${SAVED_RUN_SLOT_KEY_PREFIX}${encodeURIComponent(profileId)}:${slot}`;
 }
 
 function emptySavedRunProfile(profileId: string): SavedRunProfile {
@@ -123,7 +145,6 @@ function isRunSnapshotResumable(snapshot: SavedSeasonSnapshot | undefined): snap
   return snapshot.game.status !== 'completed' && snapshot.game.status !== 'failed';
 }
 
-/** Resolve the independent save slot for a run without confusing organic Cupid with its menu expansion. */
 export function getSavedRunSlot(game: GameState): SavedRunSlot {
   if (normalizeGameMode(game.mode) === 'survival') return 'survival';
   if (game.expansionMode === 'cupidArrow' || game.expansionMode === 'voxPopuli') {
@@ -149,9 +170,7 @@ function coerceSnapshot(raw: unknown, profileId: string): SavedSeasonSnapshot | 
   };
   const mode = normalizeGameMode(legacyGame.mode);
   legacyGame.mode = mode;
-  if (legacyGame.modeSpecific?.kind === 'survivor') {
-    legacyGame.modeSpecific.kind = 'survival';
-  }
+  if (legacyGame.modeSpecific?.kind === 'survivor') legacyGame.modeSpecific.kind = 'survival';
   if (legacyGame.modeSpecific?.replacementTransition?.mode === 'survivor') {
     legacyGame.modeSpecific.replacementTransition.mode = 'survival';
   }
@@ -194,40 +213,99 @@ function normalizeRunProfile(profileId: string, parsed: Partial<SavedRunProfile>
   };
 }
 
-/**
- * Persist a season snapshot to localStorage.
- * Returns `true` on success, `false` if storage is unavailable or quota exceeded.
- */
-export function saveSeasonSnapshot(key: string, snapshot: SavedSeasonSnapshot): boolean {
+function serialize(value: unknown): string | null {
   try {
-    localStorage.setItem(key, JSON.stringify(snapshot));
-    return true;
+    return JSON.stringify(value);
   } catch {
-    // Storage unavailable or quota exceeded.
-    reportSavePersistenceIssue('write_failed');
+    reportSavePersistenceIssue('write_failed', 'serialization_failed');
+    return null;
+  }
+}
+
+function writeStorage(key: string, serialized: string): boolean {
+  try {
+    localStorage.setItem(key, serialized);
+    if (import.meta.env.DEV) {
+      console.debug(`[save] wrote ${key} (${new Blob([serialized]).size} bytes)`);
+    }
+    return true;
+  } catch (error) {
+    reportSavePersistenceIssue('write_failed', classifyWriteFailure(error));
     return false;
   }
 }
 
-/**
- * Load a season snapshot from localStorage.
- * Returns null when the key is absent, the data is unparseable, or the version
- * does not match (indicating an incompatible format change).
- */
+export function saveSeasonSnapshot(key: string, snapshot: SavedSeasonSnapshot): boolean {
+  const serialized = serialize(snapshot);
+  return serialized !== null && writeStorage(key, serialized);
+}
+
 export function loadSeasonSnapshot(key: string): SavedSeasonSnapshot | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SavedSeasonSnapshot>;
-    // Basic structural validation.
     if (parsed.version !== 1) return null;
-    if (!parsed.profileId || !parsed.savedAt || !parsed.game || !parsed.finale || !parsed.social) {
-      return null;
-    }
+    if (!parsed.profileId || !parsed.savedAt || !parsed.game || !parsed.finale || !parsed.social) return null;
     return coerceSnapshot(parsed, parsed.profileId) ?? null;
   } catch {
     return null;
   }
+}
+
+function loadSlotRuns(profileId: string): SavedRunProfile['runs'] {
+  const runs: SavedRunProfile['runs'] = {};
+  for (const slot of ALL_RUN_SLOTS) {
+    const snapshot = loadSeasonSnapshot(savedRunSlotKeyForProfile(profileId, slot));
+    if (snapshot && isRunSnapshotResumable(snapshot)) runs[slot] = snapshot;
+  }
+  return runs;
+}
+
+function metadataFromProfile(profile: SavedRunProfile): SavedRunProfileMetadata {
+  const { runs: _runs, ...metadata } = profile;
+  return metadata;
+}
+
+function persistSplitProfile(profile: SavedRunProfile): boolean {
+  const metadataRaw = serialize(metadataFromProfile(profile));
+  if (metadataRaw === null) return false;
+
+  const previousMetadata = localStorage.getItem(savedRunsKeyForProfile(profile.profileId));
+  const previousSlots = new Map<SavedRunSlot, string | null>();
+  for (const slot of ALL_RUN_SLOTS) {
+    previousSlots.set(slot, localStorage.getItem(savedRunSlotKeyForProfile(profile.profileId, slot)));
+  }
+
+  // Shrink an old embedded multi-run value first. This frees the duplicated space
+  // needed to migrate its snapshots into independent keys.
+  if (!writeStorage(savedRunsKeyForProfile(profile.profileId), metadataRaw)) return false;
+
+  for (const slot of ALL_RUN_SLOTS) {
+    const key = savedRunSlotKeyForProfile(profile.profileId, slot);
+    const snapshot = profile.runs[slot];
+    if (!snapshot) {
+      localStorage.removeItem(key);
+      continue;
+    }
+    const raw = serialize(snapshot);
+    if (raw === null || !writeStorage(key, raw)) {
+      try {
+        for (const rollbackSlot of ALL_RUN_SLOTS) {
+          const oldValue = previousSlots.get(rollbackSlot);
+          const rollbackKey = savedRunSlotKeyForProfile(profile.profileId, rollbackSlot);
+          if (oldValue === null) localStorage.removeItem(rollbackKey);
+          else localStorage.setItem(rollbackKey, oldValue);
+        }
+        if (previousMetadata === null) localStorage.removeItem(savedRunsKeyForProfile(profile.profileId));
+        else localStorage.setItem(savedRunsKeyForProfile(profile.profileId), previousMetadata);
+      } catch {
+        // Keep the original failure classification; the active Redux run remains open.
+      }
+      return false;
+    }
+  }
+  return true;
 }
 
 export function loadSavedRunProfile(profileId: string): SavedRunProfile {
@@ -236,9 +314,13 @@ export function loadSavedRunProfile(profileId: string): SavedRunProfile {
   try {
     const raw = localStorage.getItem(key);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<SavedRunProfile>;
+      const parsed = JSON.parse(raw) as Partial<SavedRunProfile> & SavedRunProfileMetadata;
+      const splitRuns = loadSlotRuns(profileId);
+      if (parsed.version === 2 && parsed.profileId === profileId && !('runs' in parsed)) {
+        return normalizeRunProfile(profileId, { ...parsed, runs: splitRuns }) ?? emptySavedRunProfile(profileId);
+      }
       const normalized = normalizeRunProfile(profileId, parsed);
-      if (normalized) return normalized;
+      if (normalized) return { ...normalized, runs: { ...normalized.runs, ...splitRuns } };
       malformedRaw = raw;
     }
   } catch {
@@ -259,6 +341,11 @@ export function loadSavedRunProfile(profileId: string): SavedRunProfile {
     reportSavePersistenceIssue('corrupt_recovered');
   }
 
+  const splitRuns = loadSlotRuns(profileId);
+  if (Object.keys(splitRuns).length > 0) {
+    return { ...emptySavedRunProfile(profileId), runs: splitRuns };
+  }
+
   const legacy = loadSeasonSnapshot(savedStateKeyForProfile(profileId));
   if (legacy && legacy.profileId === profileId) {
     return {
@@ -274,13 +361,15 @@ export function loadSavedRunProfile(profileId: string): SavedRunProfile {
 }
 
 export function saveRunProfile(profile: SavedRunProfile): boolean {
-  try {
-    localStorage.setItem(savedRunsKeyForProfile(profile.profileId), JSON.stringify(profile));
-    return true;
-  } catch {
-    reportSavePersistenceIssue('write_failed');
-    return false;
+  const saved = persistSplitProfile(profile);
+  if (saved) {
+    try {
+      localStorage.removeItem(savedStateKeyForProfile(profile.profileId));
+    } catch {
+      // Legacy cleanup is best-effort only.
+    }
   }
+  return saved;
 }
 
 export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot): boolean {
@@ -291,23 +380,20 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
   const survivorBest = mode === 'survival'
     ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorProgressDay(snapshot.game))
     : current.stats.maxSurvivorDaysSurvived;
-  const survivorAchievementsUnlocked =
-    mode === 'survival'
-      ? applySurvivorAchievementProgress(
-          current.stats.survivorAchievementsUnlocked,
-          getSurvivorProgressDay(snapshot.game),
-          runId,
-          snapshot.savedAt,
-        ).unlocks
-      : current.stats.survivorAchievementsUnlocked;
+  const survivorAchievementsUnlocked = mode === 'survival'
+    ? applySurvivorAchievementProgress(
+        current.stats.survivorAchievementsUnlocked,
+        getSurvivorProgressDay(snapshot.game),
+        runId,
+        snapshot.savedAt,
+      ).unlocks
+    : current.stats.survivorAchievementsUnlocked;
   const nextRuns = { ...current.runs };
   const resumable = isRunSnapshotResumable(snapshot);
-  if (resumable) {
-    nextRuns[slot] = snapshot;
-  } else {
-    delete nextRuns[slot];
-  }
-  const next: SavedRunProfile = {
+  if (resumable) nextRuns[slot] = snapshot;
+  else delete nextRuns[slot];
+
+  return saveRunProfile({
     ...current,
     savedAt: snapshot.savedAt,
     activeRunId: resumable ? runId : null,
@@ -318,8 +404,7 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
       maxSurvivorDaysSurvived: survivorBest,
       survivorAchievementsUnlocked,
     },
-  };
-  return saveRunProfile(next);
+  });
 }
 
 export function markSurvivorAchievementCelebrationSeen(
@@ -329,17 +414,13 @@ export function markSurvivorAchievementCelebrationSeen(
   const current = loadSavedRunProfile(profileId);
   const unlock = current.stats.survivorAchievementsUnlocked[achievementId];
   if (!unlock || unlock.celebrationSeen) return false;
-
   return saveRunProfile({
     ...current,
     stats: {
       ...current.stats,
       survivorAchievementsUnlocked: {
         ...current.stats.survivorAchievementsUnlocked,
-        [achievementId]: {
-          ...unlock,
-          celebrationSeen: true,
-        },
+        [achievementId]: { ...unlock, celebrationSeen: true },
       },
     },
   });
@@ -373,7 +454,6 @@ export function clearSavedRun(profileId: string, mode: SavedRunSlot): void {
   });
 }
 
-/** Remove a season snapshot from localStorage. */
 export function clearSeasonSnapshot(key: string): void {
   try {
     localStorage.removeItem(key);
