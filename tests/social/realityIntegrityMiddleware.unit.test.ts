@@ -46,12 +46,12 @@ function makeState() {
 describe('Reality integrity middleware', () => {
   it('recognizes public shocks that reference evicted or Tribunal players', () => {
     const players = makeState().game.players
-    expect(eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Jax's voting bloc is public.")).toBe(
-      true
-    )
-    expect(eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Rune's plan is public.")).toBe(
-      false
-    )
+    expect(
+      eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Jax's voting bloc is public.")
+    ).toBe(true)
+    expect(
+      eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Rune's plan is public.")
+    ).toBe(false)
   })
 
   it('converts positive bond tags into explicit rupture tags', () => {
@@ -92,10 +92,12 @@ describe('Reality integrity middleware', () => {
       getState: () => current,
       dispatch,
     }
-    const invoke = realityIntegrityMiddleware(api as never)(((action: unknown) => {
-      current = after
-      return action
-    }) as never)
+    const invoke = realityIntegrityMiddleware(api as never)(
+      ((action: unknown) => {
+        current = after
+        return action
+      }) as never
+    )
 
     invoke({ type: 'game/advance' })
 
