@@ -49,9 +49,9 @@ describe('Reality integrity middleware', () => {
     expect(
       eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Jax's voting bloc is public.")
     ).toBe(true)
-    expect(
-      eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Rune's plan is public.")
-    ).toBe(false)
+    expect(eventReferencesInactivePlayer(players, "HOUSE EXPOSED: Rune's plan is public.")).toBe(
+      false
+    )
   })
 
   it('converts positive bond tags into explicit rupture tags', () => {
@@ -92,12 +92,10 @@ describe('Reality integrity middleware', () => {
       getState: () => current,
       dispatch,
     }
-    const invoke = realityIntegrityMiddleware(api as never)(
-      ((action: unknown) => {
-        current = after
-        return action
-      }) as never
-    )
+    const invoke = realityIntegrityMiddleware(api as never)(((action: unknown) => {
+      current = after
+      return action
+    }) as never)
 
     invoke({ type: 'game/advance' })
 
@@ -111,8 +109,7 @@ describe('Reality integrity middleware', () => {
     expect(relationshipActions[1].payload?.delta).toBeLessThanOrEqual(-55)
     expect(
       dispatched.some(
-        (action) =>
-          action.type === 'game/addTvEvent' && action.payload?.meta?.bondBetrayal === true
+        (action) => action.type === 'game/addTvEvent' && action.payload?.meta?.bondBetrayal === true
       )
     ).toBe(true)
   })
