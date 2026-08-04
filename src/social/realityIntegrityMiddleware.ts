@@ -1,4 +1,5 @@
 import type { Middleware } from '@reduxjs/toolkit'
+import { resolveLanguagePreference, translate } from '../i18n'
 import { applyDramaAction, updateRelationship } from './socialSlice'
 import { getEffectiveSocialMode } from './socialMode'
 import type { RelationshipsMap } from './types'
@@ -23,6 +24,9 @@ interface IntegrityState {
     relationships?: RelationshipsMap
   }
   settings?: {
+    localization?: {
+      language?: unknown
+    }
     gameUX?: {
       dramaMode?: boolean
       dramaModeAdminOverride?: boolean
@@ -174,7 +178,11 @@ export const realityIntegrityMiddleware: Middleware = (api) => (next) => (action
     api.dispatch({
       type: 'game/addTvEvent',
       payload: {
-        text: `HOUSE SHOCK: ${lohName} put ${nomineeName} in danger despite their bond. The relationship has ruptured into a public betrayal.`,
+        text: translate(
+          resolveLanguagePreference(after.settings?.localization?.language),
+          'social.event.bondBetrayal',
+          { lohName, nomineeName }
+        ),
         type: 'social',
         source: 'system',
         channels: ['tv', 'mainLog'],
