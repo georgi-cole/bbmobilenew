@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Player } from '../../types'
+import type { RelationshipsMap } from '../../social/types'
 import {
   canHumanKnowFact,
   type DirectedRelationship,
@@ -14,6 +15,8 @@ export interface RealityLedgerProps {
   reality: RealityDomainState
   players: readonly Player[]
   humanId: string
+  /** Live social graph used to keep labels/meters synchronized after actions. */
+  relationships?: RelationshipsMap
 }
 
 function confidenceLabel(confidence: number): string {
@@ -30,10 +33,84 @@ function titleCase(value: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
+function clampRelationship(value: number): number {
+  return Math.max(-100, Math.min(100, Math.round(value)))
+}
+
 function tension(edge: DirectedRelationship): number {
   return Math.round(
     Math.max(0, Math.min(100, edge.resentment * 0.45 + edge.suspicion * 0.35 + edge.fear * 0.2))
   )
+}
+
+function combinedLiveRelationship(
+  relationships: RelationshipsMap | undefined,
+  humanId: string,
+  otherId: string
+): { affinity: number; tags: Set<string> } | null {
+  const outward = relationships?.[humanId]?.[otherId]
+  const inward = relationships?.[otherId]?.[humanId]
+  if (!outward && !inward) return null
+  return {
+    affinity: Math.round(((outward?.affinity ?? 0) + (inward?.affinity ?? 0)) / 2),
+    tags: new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])]),
+  }
+}
+
+function liveRelationshipLabel(
+  edge: DirectedRelationship,
+  live: ReturnType<typeof combinedLiveRelationship>
+): string {
+  if (!live) return titleCase(edge.perceivedLabel)
+  const tags = live.tags
+  if (tags.has('ex') || tags.has('broken_romance')) return '💔 Ex'
+  if (tags.has('betrayal') || tags.has('broken_promise')) return 'Betrayed'
+  if (tags.has('broken_alliance')) return 'Broken alliance'
+  if (tags.has('rivalry') || tags.has('target')) return 'Rival'
+  if (tags.has('romance')) return 'Romance'
+  if (tags.has('bromance')) return 'Ride-or-die'
+  if (tags.has('alliance') || tags.has('cupid_partner')) return 'Ally'
+  if (live.affinity >= 55) return 'Close'
+  if (live.affinity >= 20) return 'Friendly'
+  if (live.affinity <= -45) return 'Hostile'
+  if (live.affinity <= -15) return 'Tense'
+  return titleCase(edge.perceivedLabel)
+}
+
+function liveRelationshipMetrics(
+  edge: DirectedRelationship,
+  live: ReturnType<typeof combinedLiveRelationship>
+): Array<[string, number]> {
+  if (!live) {
+    return [
+      ['Trust', edge.trust],
+      ['Warmth', edge.warmth],
+      ['Loyalty', edge.loyalty],
+      ['Respect', edge.respect],
+      ['Tension', tension(edge)],
+    ]
+  }
+  const broken =
+    live.tags.has('ex') ||
+    live.tags.has('broken_romance') ||
+    live.tags.has('broken_alliance') ||
+    live.tags.has('betrayal') ||
+    live.tags.has('broken_promise')
+  const affinity = broken ? Math.min(-50, live.affinity) : live.affinity
+  const trust = clampRelationship(edge.trust * 0.6 + affinity * 0.4)
+  const warmth = clampRelationship(edge.warmth * 0.5 + affinity * 0.5)
+  const loyalty = clampRelationship(
+    broken ? Math.min(edge.loyalty, affinity) : edge.loyalty * 0.55 + affinity * 0.45
+  )
+  const respect = clampRelationship(edge.respect * 0.7 + affinity * 0.3)
+  const liveTension = affinity < 0 ? Math.min(100, Math.abs(affinity) + (broken ? 30 : 8)) : 0
+  return [
+    ['Trust', trust],
+    ['Warmth', warmth],
+    ['Loyalty', loyalty],
+    ['Respect', respect],
+    ['Tension', Math.max(tension(edge), liveTension)],
+  ]
 }
 
 function beliefSource(
@@ -53,9 +130,26 @@ function beliefSource(
   return sourceId ? `Heard through ${playerName(sourceId)}` : 'Hearsay'
 }
 
-export default function RealityLedger({ reality, players, humanId }: RealityLedgerProps) {
+export default function RealityLedger({
+  reality,
+  players,
+  humanId,
+  relationships: liveRelationships,
+}: RealityLedgerProps) {
   const [tab, setTab] = useState<LedgerTab>('relationships')
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const activePlayerIds = useMemo(
+    () =>
+      new Set(
+        players
+          .filter(
+            (player) =>
+              player.id !== humanId && player.status !== 'evicted' && player.status !== 'jury'
+          )
+          .map((player) => player.id)
+      ),
+    [humanId, players]
+  )
   const playerName = (id: string) =>
     id === humanId ? 'You' : (players.find((player) => player.id === id)?.name ?? 'Unknown')
 
@@ -109,13 +203,18 @@ export default function RealityLedger({ reality, players, humanId }: RealityLedg
   )
   const relationships = useMemo(
     () =>
-      Object.values(reality.relationships[humanId] ?? {}).sort(
-        (left, right) => right.familiarity - left.familiarity || left.toId.localeCompare(right.toId)
-      ),
-    [humanId, reality.relationships]
+      Object.values(reality.relationships[humanId] ?? {})
+        .filter((edge) => activePlayerIds.has(edge.toId))
+        .sort(
+          (left, right) => right.familiarity - left.familiarity || left.toId.localeCompare(right.toId)
+        ),
+    [activePlayerIds, humanId, reality.relationships]
   )
   const selectedRelationship =
     relationships.find((edge) => edge.toId === selectedPlayerId) ?? relationships[0]
+  const selectedLiveRelationship = selectedRelationship
+    ? combinedLiveRelationship(liveRelationships, humanId, selectedRelationship.toId)
+    : null
 
   return (
     <section className="reality-ledger" aria-label="Reality ledger">
@@ -271,41 +370,42 @@ export default function RealityLedger({ reality, players, humanId }: RealityLedg
             ) : (
               <>
                 <div className="reality-ledger__people" role="list">
-                  {relationships.map((edge) => (
-                    <button
-                      role="listitem"
-                      key={edge.toId}
-                      type="button"
-                      className={selectedRelationship?.toId === edge.toId ? 'is-active' : ''}
-                      onClick={() => setSelectedPlayerId(edge.toId)}
-                    >
-                      <strong>{playerName(edge.toId)}</strong>
-                      <small>{titleCase(edge.perceivedLabel)}</small>
-                    </button>
-                  ))}
+                  {relationships.map((edge) => {
+                    const live = combinedLiveRelationship(liveRelationships, humanId, edge.toId)
+                    return (
+                      <button
+                        role="listitem"
+                        key={edge.toId}
+                        type="button"
+                        className={selectedRelationship?.toId === edge.toId ? 'is-active' : ''}
+                        onClick={() => setSelectedPlayerId(edge.toId)}
+                      >
+                        <strong>{playerName(edge.toId)}</strong>
+                        <small>{liveRelationshipLabel(edge, live)}</small>
+                      </button>
+                    )
+                  })}
                 </div>
                 {selectedRelationship && (
                   <article className="reality-ledger__relationship">
                     <div>
                       <strong>{playerName(selectedRelationship.toId)}</strong>
-                      <span>{titleCase(selectedRelationship.perceivedLabel)}</span>
+                      <span>
+                        {liveRelationshipLabel(selectedRelationship, selectedLiveRelationship)}
+                      </span>
                     </div>
-                    {[
-                      ['Trust', selectedRelationship.trust],
-                      ['Warmth', selectedRelationship.warmth],
-                      ['Loyalty', selectedRelationship.loyalty],
-                      ['Respect', selectedRelationship.respect],
-                      ['Tension', tension(selectedRelationship)],
-                    ].map(([label, rawValue]) => {
-                      const value = Number(rawValue)
-                      const normalized = label === 'Tension' ? value : (value + 100) / 2
-                      return (
-                        <label key={String(label)}>
-                          <span>{label}</span>
-                          <meter min="0" max="100" value={normalized} />
-                        </label>
-                      )
-                    })}
+                    {liveRelationshipMetrics(selectedRelationship, selectedLiveRelationship).map(
+                      ([label, rawValue]) => {
+                        const value = Number(rawValue)
+                        const normalized = label === 'Tension' ? value : (value + 100) / 2
+                        return (
+                          <label key={String(label)}>
+                            <span>{label}</span>
+                            <meter min="0" max="100" value={normalized} />
+                          </label>
+                        )
+                      }
+                    )}
                     <small>
                       This is your character’s read. Their private opinion of you remains hidden.
                     </small>
