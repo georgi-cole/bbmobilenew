@@ -1,5 +1,6 @@
 import type { Middleware } from '@reduxjs/toolkit'
 import { applyDramaAction, updateRelationship } from './socialSlice'
+import { getEffectiveSocialMode } from './socialMode'
 import type { RelationshipsMap } from './types'
 
 interface IntegrityPlayer {
@@ -15,6 +16,7 @@ interface IntegrityState {
     lohId: string | null
     nomineeIds: string[]
     players: IntegrityPlayer[]
+    dramaSocialMode?: boolean
     voxPopuli?: { status?: string } | null
   }
   social: {
@@ -23,6 +25,7 @@ interface IntegrityState {
   settings?: {
     gameUX?: {
       dramaMode?: boolean
+      dramaModeAdminOverride?: boolean
     }
   }
   vip?: {
@@ -72,13 +75,6 @@ function combinedTags(
   ]
 }
 
-function isDramaMode(state: IntegrityState): boolean {
-  return Boolean(
-    state.settings?.gameUX?.dramaMode &&
-      (state.vip?.isActive === true || state.vip?.entitlements?.dramaMode === true)
-  )
-}
-
 /**
  * Guards two cross-cutting Reality invariants:
  *
@@ -120,7 +116,7 @@ export const realityIntegrityMiddleware: Middleware = (api) => (next) => (action
 
   const after = api.getState() as IntegrityState
   if (
-    !isDramaMode(after) ||
+    getEffectiveSocialMode(after) !== 'drama' ||
     after.game.voxPopuli?.status === 'active' ||
     after.game.phase !== 'pos_ceremony_results' ||
     !after.game.lohId
