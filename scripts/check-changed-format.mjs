@@ -60,6 +60,7 @@ if (files.length === 0) process.exit(0)
 const violations = []
 const legacyExceptions = []
 const checked = []
+const diagnostics = []
 
 async function isPrettierClean(source, options) {
   try {
@@ -92,7 +93,34 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) violations.push(file)
+  if (!currentClean) {
+    violations.push(file)
+    const formatted = await prettier.format(currentSource, options)
+    let firstDifference = 0
+    while (
+      firstDifference < currentSource.length &&
+      firstDifference < formatted.length &&
+      currentSource[firstDifference] === formatted[firstDifference]
+    ) {
+      firstDifference += 1
+    }
+    diagnostics.push({
+      file,
+      currentLength: currentSource.length,
+      formattedLength: formatted.length,
+      firstDifference,
+      currentCodePoint: currentSource.codePointAt(firstDifference),
+      formattedCodePoint: formatted.codePointAt(firstDifference),
+      currentSnippet: currentSource.slice(
+        Math.max(0, firstDifference - 120),
+        firstDifference + 240
+      ),
+      formattedSnippet: formatted.slice(
+        Math.max(0, firstDifference - 120),
+        firstDifference + 240
+      ),
+    })
+  }
 }
 
 console.log(`Strictly checked: ${checked.length}`)
@@ -102,6 +130,9 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
+  for (const diagnostic of diagnostics) {
+    console.error(`FORMAT_DIAGNOSTIC ${JSON.stringify(diagnostic)}`)
+  }
   process.exit(1)
 }
 
