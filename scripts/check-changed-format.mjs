@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { readFile } from 'node:fs/promises'
 import prettier from 'prettier'
 
 const cwd = process.cwd()
@@ -61,7 +60,6 @@ if (files.length === 0) process.exit(0)
 const violations = []
 const legacyExceptions = []
 const checked = []
-const diagnostics = []
 
 async function isPrettierClean(source, options) {
   try {
@@ -94,18 +92,7 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) {
-    violations.push(file)
-    const formatted = await prettier.format(currentSource, options)
-    const temporaryPath = join('/tmp', `${basename(file)}.${process.pid}.formatted`)
-    await writeFile(temporaryPath, formatted, 'utf8')
-    const diff = spawnSync(
-      'diff',
-      ['-u', '--label', `${file}:current`, '--label', `${file}:prettier`, file, temporaryPath],
-      { cwd, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 }
-    )
-    diagnostics.push({ file, diff: diff.stdout })
-  }
+  if (!currentClean) violations.push(file)
 }
 
 console.log(`Strictly checked: ${checked.length}`)
@@ -115,11 +102,6 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
-  for (const diagnostic of diagnostics) {
-    console.error(`--- PRETTIER DIFF ${diagnostic.file} ---`)
-    console.error(diagnostic.diff)
-    console.error(`--- END PRETTIER DIFF ${diagnostic.file} ---`)
-  }
   process.exit(1)
 }
 
