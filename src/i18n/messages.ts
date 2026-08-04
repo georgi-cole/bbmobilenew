@@ -750,8 +750,7 @@ const ZH_CN_MESSAGES = {
   'social.action.askLohSafety.description':
     '询问 LOH 是维持提名席位不变，还是使用 Safety 打开后门目标。',
   'social.action.askWhoGoes.title': '询问现在淘汰谁',
-  'social.action.askWhoGoes.description':
-    '询问 LOH 想从最终提名席位中淘汰哪位已锁定的提名人。',
+  'social.action.askWhoGoes.description': '询问 LOH 想从最终提名席位中淘汰哪位已锁定的提名人。',
   'social.action.askLohPlan.title': '询问 LOH 的计划',
   'social.action.askLohPlan.description': '在提名锁定前询问 LOH 正在考虑谁。',
   'social.relationship.ex': '💔 前任',
@@ -765,8 +764,7 @@ const ZH_CN_MESSAGES = {
     '你答应不把我放上提名席，却又让我陷入危险。我需要知道你的承诺为什么如此不值一提。',
   'social.commitment.reaction.safety':
     '你答应用 Safety 救我，却选择不这么做。别指望我假装这件事没有发生。',
-  'social.commitment.reaction.vote':
-    '你答应把票投给我。今晚的事情对不上，我会记住的。',
+  'social.commitment.reaction.vote': '你答应把票投给我。今晚的事情对不上，我会记住的。',
 } satisfies MessageCatalog
 
 const BG_BG_MESSAGES = {
