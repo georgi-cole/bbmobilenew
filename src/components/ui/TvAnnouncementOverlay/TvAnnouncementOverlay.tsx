@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useI18n } from '../../../i18n';
 import './TvAnnouncementOverlay.css';
 import './TvAnnouncementShockPrelude.css';
 
@@ -125,6 +126,7 @@ export default function TvAnnouncementOverlay({
   infoButtonRef,
   showInfoButton = true,
 }: TvAnnouncementOverlayProps) {
+  const { t } = useI18n();
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const shouldPlayShockPrelude = FULLSCREEN_SHOCK_KEYS.has(announcement.key);
   const [shockPreludeKey, setShockPreludeKey] = useState<string | null>(() =>
@@ -263,14 +265,14 @@ export default function TvAnnouncementOverlay({
         className={`tv-shock-prelude tv-shock-prelude--${tone}`}
         role="dialog"
         aria-modal="true"
-        aria-label={`Shock announcement: ${title}`}
+        aria-label={t('broadcast.shock.aria', { title })}
         data-testid="tv-shock-prelude"
       >
         <div className="tv-shock-prelude__content">
-          <span className="tv-shock-prelude__eyebrow">The Big Eye Shock</span>
+          <span className="tv-shock-prelude__eyebrow">{t('broadcast.shock.eyebrow')}</span>
           <h1>{title}</h1>
           {subtitle && <p>{subtitle}</p>}
-          <span className="tv-shock-prelude__handoff">Live broadcast incoming</span>
+          <span className="tv-shock-prelude__handoff">{t('broadcast.shock.handoff')}</span>
         </div>
       </div>,
       document.body
