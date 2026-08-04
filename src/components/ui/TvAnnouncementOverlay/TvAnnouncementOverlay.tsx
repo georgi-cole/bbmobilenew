@@ -1,5 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, type FocusEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
 import './TvAnnouncementOverlay.css';
+import './TvAnnouncementShockPrelude.css';
 
 export interface Announcement {
   key: string;
@@ -21,6 +30,23 @@ export interface TvAnnouncementOverlayProps {
   /** When false, the info button is not rendered. */
   showInfoButton?: boolean;
 }
+
+const SHOCK_PRELUDE_DURATION_MS = 2320;
+const FULLSCREEN_SHOCK_KEYS = new Set([
+  'battle_back',
+  'battle_back_shock',
+  'double_eviction',
+  'vox_double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
+  'democracia',
+  'cupid_arrow',
+  'cupid_arrow_broken',
+  'vox_populi',
+  'twist',
+]);
 
 function getAnnouncementThemeClass(key: string): string {
   const isBattleBackAnnouncement = key === 'battle_back' || key.startsWith('battle_back_');
@@ -61,14 +87,34 @@ function getAnnouncementThemeClass(key: string): string {
   return 'tv-announcement--standard';
 }
 
+function getShockPreludeTone(key: string): string {
+  if (key === 'double_eviction' || key === 'vox_double_eviction' || key === 'coup_detat') {
+    return 'eviction';
+  }
+  if (
+    key === 'battle_back' ||
+    key === 'battle_back_shock' ||
+    key === 'vip_veto' ||
+    key === 'diamond_pov' ||
+    key === 'spotlight_veto'
+  ) {
+    return 'power';
+  }
+  if (key === 'cupid_arrow' || key === 'cupid_arrow_broken') return 'cupid';
+  return 'standard';
+}
+
 /**
  * TvAnnouncementOverlay — broadcast stinger rendered inside the TV viewport.
+ *
+ * Shock announcements first receive a short fullscreen broadcast prelude, then
+ * hand back to the established faux-TV major card. The main announcement timer
+ * stays paused until that prelude completes.
  *
  * - If `autoDismissMs` is a positive number, the overlay auto-dismisses when
  *   the countdown reaches zero (silently — no visible progress bar).
  * - The countdown pauses while the component is hovered, when focus was reached
- *   via keyboard navigation, or when `paused` is true (e.g. while the info
- *   modal is open). Pointer/touch-driven focus does not pause the countdown.
+ *   via keyboard navigation, or when `paused` is true (e.g. while info modal is open).
  * - The info button calls `onInfo`; `onDismiss` hides the overlay.
  */
 export default function TvAnnouncementOverlay({
@@ -80,7 +126,13 @@ export default function TvAnnouncementOverlay({
   showInfoButton = true,
 }: TvAnnouncementOverlayProps) {
   const { title, subtitle, isLive, autoDismissMs } = announcement;
-  const isBattleBack = announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
+  const shouldPlayShockPrelude = FULLSCREEN_SHOCK_KEYS.has(announcement.key);
+  const [shockPreludeKey, setShockPreludeKey] = useState<string | null>(() =>
+    shouldPlayShockPrelude ? announcement.key : null
+  );
+  const shockPreludeVisible = shockPreludeKey === announcement.key;
+  const isBattleBack =
+    announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
   const isDoubleEviction = announcement.key === 'double_eviction';
   const isVipVeto = announcement.key === 'vip_veto';
   const isDiamondPov = announcement.key === 'diamond_pov';
@@ -103,17 +155,23 @@ export default function TvAnnouncementOverlay({
   const startTimeRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
-  // Stable ref to the tick function — updated after every render via
-  // useLayoutEffect so it always closes over the latest props/state.
-  // Using a ref avoids the self-referencing useCallback pattern that the
-  // react-hooks/immutability rule rejects.
   const tickRef = useRef<() => void>(() => {});
 
-  const isPaused = () => hoverPausedRef.current || paused;
+  const isPaused = () => hoverPausedRef.current || paused || shockPreludeVisible;
 
-  // Keep tickRef.current pointing at the latest implementation.
-  // useLayoutEffect runs synchronously after DOM mutations but before any
-  // browser paint or RAF callbacks, ensuring the function is always fresh.
+  useEffect(() => {
+    if (!shouldPlayShockPrelude) {
+      setShockPreludeKey(null);
+      return undefined;
+    }
+    setShockPreludeKey(announcement.key);
+    const timer = window.setTimeout(
+      () => setShockPreludeKey((current) => (current === announcement.key ? null : current)),
+      SHOCK_PRELUDE_DURATION_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [announcement.key, shouldPlayShockPrelude]);
+
   useLayoutEffect(() => {
     tickRef.current = () => {
       if (!isAuto) return;
@@ -130,27 +188,25 @@ export default function TvAnnouncementOverlay({
       }
       rafRef.current = requestAnimationFrame(tickRef.current);
     };
-  }); // No deps — intentionally runs after every render
+  });
 
-  // Start the RAF countdown when isAuto becomes true
   useEffect(() => {
     if (!isAuto) return;
     startTimeRef.current = performance.now();
     elapsedRef.current = 0;
     rafRef.current = requestAnimationFrame(tickRef.current);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isAuto]); // tickRef is a stable ref object; .current is always fresh
+  }, [isAuto]);
 
-  // Cancel/restart RAF when `paused` prop changes
   useEffect(() => {
     if (!isAuto) return;
-    if (paused) {
+    if (paused || shockPreludeVisible) {
       cancelAnimationFrame(rafRef.current);
     } else {
       startTimeRef.current = performance.now();
       rafRef.current = requestAnimationFrame(tickRef.current);
     }
-  }, [paused, isAuto]); // tickRef is a stable ref object; .current is always fresh
+  }, [paused, shockPreludeVisible, isAuto]);
 
   useEffect(() => {
     const handleKeyboardInput = () => {
@@ -200,22 +256,45 @@ export default function TvAnnouncementOverlay({
     }
   };
 
+  if (shockPreludeVisible && typeof document !== 'undefined') {
+    const tone = getShockPreludeTone(announcement.key);
+    return createPortal(
+      <div
+        className={`tv-shock-prelude tv-shock-prelude--${tone}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Shock announcement: ${title}`}
+        data-testid="tv-shock-prelude"
+      >
+        <div className="tv-shock-prelude__content">
+          <span className="tv-shock-prelude__eyebrow">The Big Eye Shock</span>
+          <h1>{title}</h1>
+          {subtitle && <p>{subtitle}</p>}
+          <span className="tv-shock-prelude__handoff">Live broadcast incoming</span>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   return (
     <div className="tv-announcement-wrap">
       <div
         className={[
-            'tv-announcement',
-            themeClass,
-            isBattleBack ? 'tv-announcement--battle-back' : '',
-            isDoubleEviction ? 'tv-announcement--double-eviction' : '',
-            isVipVeto ? 'tv-announcement--vip-veto' : '',
-            isDiamondPov ? 'tv-announcement--diamond-pov' : '',
-            isCoupDetat ? 'tv-announcement--coup-detat' : '',
-            isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
-            isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
-            isRoyalPurple ? 'tv-announcement--royal-purple' : '',
-            isVoxFinalThreeVerdict ? 'tv-announcement--vox-final-three' : '',
-          ].filter(Boolean).join(' ')}
+          'tv-announcement',
+          themeClass,
+          isBattleBack ? 'tv-announcement--battle-back' : '',
+          isDoubleEviction ? 'tv-announcement--double-eviction' : '',
+          isVipVeto ? 'tv-announcement--vip-veto' : '',
+          isDiamondPov ? 'tv-announcement--diamond-pov' : '',
+          isCoupDetat ? 'tv-announcement--coup-detat' : '',
+          isSpotlightVeto ? 'tv-announcement--spotlight-veto' : '',
+          isPublicSaveResult || isConfessionalRequired ? 'tv-announcement--standard' : '',
+          isRoyalPurple ? 'tv-announcement--royal-purple' : '',
+          isVoxFinalThreeVerdict ? 'tv-announcement--vox-final-three' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="false"
         aria-live="polite"
