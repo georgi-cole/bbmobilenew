@@ -6,6 +6,7 @@ on:
       - fix/minigame-bugs-20260806
     paths:
       - scripts/apply-minigame-bugfixes.mjs
+      - tests/unit/chain-of-greed/ChainOfGreed.component.test.tsx
       - .github/workflows/apply-minigame-bugfixes.yml
 
 permissions:
