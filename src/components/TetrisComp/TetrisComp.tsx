@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useI18n } from '../../i18n/I18nContext'
 import { useAppDispatch } from '../../store/hooks'
 import {
   completeTetrisTournament,
@@ -256,6 +257,10 @@ function uniqueIds(ids: readonly string[]): string[] {
   return [...new Set(ids)]
 }
 
+function placementLabel(index: number): string {
+  return String(index + 1).concat('.')
+}
+
 function formatTimer(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000))
   const minutes = Math.floor(totalSeconds / 60)
@@ -279,6 +284,7 @@ export default function TetrisComp({
   onComplete,
 }: TetrisCompProps) {
   const dispatch = useAppDispatch()
+  const { t } = useI18n()
 
   const participantRecords = useMemo<MinigameParticipant[]>(() => {
     const supplied = new Map(
@@ -950,15 +956,16 @@ export default function TetrisComp({
       <div className={`tetris-tournament-results tetris-tension-${roundResult.plan.tensionLevel}`}>
         <div className="tetris-round-results-card">
           <p className="tetris-round-results-kicker">
-            Round {roundResult.plan.roundNumber} of {roundResult.plan.totalRounds}
+            {t('fitMeIn.round.progress', {
+              current: roundResult.plan.roundNumber,
+              total: roundResult.plan.totalRounds,
+            })}
           </p>
-          <h2>{roundResult.plan.label} complete</h2>
+          <h2>{t('fitMeIn.round.complete', { round: t(roundResult.plan.labelKey) })}</h2>
           <p className="tetris-round-results-summary">
-            {humanStillActive
-              ? 'You are through to the next round.'
-              : 'You have been eliminated. The remaining houseguests will finish the tournament.'}
+            {humanStillActive ? t('fitMeIn.round.qualified') : t('fitMeIn.round.eliminatedMessage')}
           </p>
-          <ol className="tetris-round-standings" aria-label="Round standings">
+          <ol className="tetris-round-standings" aria-label={t('fitMeIn.round.standings')}>
             {roundResult.split.standings.map((entry, index) => {
               const participant = participantById.get(entry.playerId)
               const eliminated = !roundResult.split.survivorIds.includes(entry.playerId)
@@ -974,16 +981,16 @@ export default function TetrisComp({
                     .join(' ')}
                 >
                   <span className="tetris-round-standing-rank">
-                    {MEDALS[index] ?? `${index + 1}.`}
+                    {MEDALS[index] ?? placementLabel(index)}
                   </span>
                   <HouseguestAvatar participant={participant} />
                   <span className="tetris-round-standing-name">
                     {participant?.name ?? entry.playerId}
-                    {participant?.isHuman ? ' (you)' : ''}
+                    {participant?.isHuman ? ` ${t('fitMeIn.youTag')}` : ''}
                   </span>
                   <strong>{entry.score.toLocaleString()}</strong>
                   <span className="tetris-round-standing-status">
-                    {eliminated ? 'ELIMINATED' : 'SAFE'}
+                    {eliminated ? t('fitMeIn.status.eliminated') : t('fitMeIn.status.safe')}
                   </span>
                 </li>
               )
@@ -996,12 +1003,12 @@ export default function TetrisComp({
             disabled={simulatingRemainder}
           >
             {simulatingRemainder
-              ? 'Finishing tournament…'
+              ? t('fitMeIn.finishingTournament')
               : humanStillActive
                 ? currentRoundIndex + 1 === tournamentPlan.length - 1
-                  ? 'Enter the Final'
-                  : 'Next Round'
-                : 'Reveal the Winner'}
+                  ? t('fitMeIn.enterFinal')
+                  : t('fitMeIn.nextRound')
+                : t('fitMeIn.revealWinner')}
           </button>
         </div>
       </div>
@@ -1039,11 +1046,15 @@ export default function TetrisComp({
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <span className="tetris-results-rank">{MEDALS[index] ?? `${index + 1}.`}</span>
+                  <span className="tetris-results-rank">
+                    {MEDALS[index] ?? placementLabel(index)}
+                  </span>
                   <HouseguestAvatar participant={participant} />
                   <span className="tetris-results-name">
                     {participant?.name ?? playerId}
-                    {participant?.isHuman && <span className="tetris-results-you-tag"> (you)</span>}
+                    {participant?.isHuman && (
+                      <span className="tetris-results-you-tag"> {t('fitMeIn.youTag')}</span>
+                    )}
                   </span>
                   <span className="tetris-results-score">
                     {(finalResult.visibleScores[playerId] ?? 0).toLocaleString()}
@@ -1059,11 +1070,13 @@ export default function TetrisComp({
         <div className="tetris-results-hero">
           <div className="tetris-results-trophy">🏆</div>
           <h2 className="tetris-results-title">
-            {winner?.isHuman ? 'You Win!' : `${winner?.name ?? finalResult.winnerId} Wins!`}
+            {winner?.isHuman
+              ? t('fitMeIn.youWin')
+              : t('fitMeIn.playerWins', { name: winner?.name ?? finalResult.winnerId })}
           </h2>
-          <p className="tetris-results-subtitle">The Houseguest Mosaic Final is complete.</p>
+          <p className="tetris-results-subtitle">{t('fitMeIn.finalComplete')}</p>
           <div className="tetris-results-your-score">
-            Your last score: <strong>{finalResult.humanScore.toLocaleString()}</strong>
+            {t('fitMeIn.yourLastScore')} <strong>{finalResult.humanScore.toLocaleString()}</strong>
           </div>
         </div>
       </MinigameCompleteWrapper>
@@ -1091,8 +1104,8 @@ export default function TetrisComp({
           <span className="tetris-round-number">
             ROUND {currentRound.roundNumber}/{currentRound.totalRounds}
           </span>
-          <strong>{currentRound.label}</strong>
-          <small>{currentRound.subtitle}</small>
+          <strong>{t(currentRound.labelKey)}</strong>
+          <small>{t(currentRound.subtitleKey)}</small>
         </div>
         <div className="tetris-round-timer" aria-live="polite">
           {formatTimer(remainingMs)}
@@ -1105,17 +1118,17 @@ export default function TetrisComp({
 
       {levelUpEffects.map((effect) => (
         <div key={effect.id} className="tetris-levelup-overlay" aria-live="polite">
-          ⬆ LEVEL {effect.level}!
+          {t('fitMeIn.levelUp', { level: effect.level })}
         </div>
       ))}
 
       {isGameOver && (
         <div className="tetris-gameover-overlay" aria-live="assertive">
           <div className="tetris-gameover-text">
-            {roundEndReason === 'time' ? 'TIME!' : 'TOPPED OUT'}
+            {roundEndReason === 'time' ? t('fitMeIn.timeUp') : t('fitMeIn.toppedOut')}
           </div>
           <div className="tetris-gameover-score">{score.toLocaleString()}</div>
-          <div className="tetris-gameover-sub">Calculating round standings…</div>
+          <div className="tetris-gameover-sub">{t('fitMeIn.calculatingStandings')}</div>
         </div>
       )}
 
@@ -1193,7 +1206,7 @@ export default function TetrisComp({
         <div className="tetris-touch-row">
           <ControlButton
             className="tetris-btn--hold"
-            label="Hold"
+            label={t('fitMeIn.control.hold')}
             disabled={isGameOver}
             onPress={holdPiece}
           >
@@ -1201,7 +1214,7 @@ export default function TetrisComp({
           </ControlButton>
           <ControlButton
             className="tetris-btn--rotate"
-            label="Rotate"
+            label={t('fitMeIn.control.rotate')}
             disabled={isGameOver}
             onPress={tryRotate}
           >
@@ -1209,7 +1222,7 @@ export default function TetrisComp({
           </ControlButton>
           <ControlButton
             className="tetris-btn--hard-drop"
-            label="Hard drop"
+            label={t('fitMeIn.control.hardDrop')}
             disabled={isGameOver}
             onPress={hardDrop}
           >
@@ -1217,13 +1230,25 @@ export default function TetrisComp({
           </ControlButton>
         </div>
         <div className="tetris-touch-row">
-          <ControlButton label="Move left" disabled={isGameOver} onPress={() => tryMove(-1, 0)}>
+          <ControlButton
+            label={t('fitMeIn.control.moveLeft')}
+            disabled={isGameOver}
+            onPress={() => tryMove(-1, 0)}
+          >
             ◀
           </ControlButton>
-          <ControlButton label="Soft drop" disabled={isGameOver} onPress={softDrop}>
+          <ControlButton
+            label={t('fitMeIn.control.softDrop')}
+            disabled={isGameOver}
+            onPress={softDrop}
+          >
             ▼
           </ControlButton>
-          <ControlButton label="Move right" disabled={isGameOver} onPress={() => tryMove(1, 0)}>
+          <ControlButton
+            label={t('fitMeIn.control.moveRight')}
+            disabled={isGameOver}
+            onPress={() => tryMove(1, 0)}
+          >
             ▶
           </ControlButton>
         </div>

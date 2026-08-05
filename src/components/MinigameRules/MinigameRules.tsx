@@ -63,7 +63,9 @@ export default function MinigameRules({
       aria-modal="true"
       aria-label={`${game.title} rules`}
     >
-      <div className={`minigame-rules-modal ${isReference ? 'minigame-rules-modal--reference' : ''}`}>
+      <div
+        className={`minigame-rules-modal ${isReference ? 'minigame-rules-modal--reference' : ''}`}
+      >
         <p className="minigame-rules-kicker">
           {isReference ? 'Quick reference' : 'Competition briefing'}
         </p>
