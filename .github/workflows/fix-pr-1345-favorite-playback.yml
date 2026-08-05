@@ -34,6 +34,14 @@ jobs:
       - name: Run focused finale journey
         run: npx playwright test e2e/playwright/finale.spec.ts --project=mobile-chromium --workers=1
 
+      - name: Upload focused failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: focused-finale-failure
+          path: test-results
+          retention-days: 7
+
       - name: Commit validated fix and remove temporary workflow
         run: |
           git rm .github/workflows/fix-pr-1345-favorite-playback.yml
