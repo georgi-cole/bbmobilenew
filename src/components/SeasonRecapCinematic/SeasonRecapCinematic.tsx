@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useTranslate, type Translate } from '../../i18n';
 import type { GameHistoryEvent, Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
@@ -377,7 +378,7 @@ function getSeasonDayCount(recapData: RecapData, week: number): number {
   return Math.max(1, Math.round(week), latestRecordedExit);
 }
 
-function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineCheckpoint[] {
+function buildTimelineCheckpoints(recapData: RecapData, week: number, t: Translate): TimelineCheckpoint[] {
   const totalDays = getSeasonDayCount(recapData, week);
   const latestPreFinaleDay = Math.max(1, totalDays - 1);
   // A runner-up is announced beside the champion, not archived as an exit.
@@ -462,11 +463,14 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
       day: totalDays,
       players: finalists.length > 0 ? finalists : [fallbackFinalist],
       kind: 'finale' as const,
-      title: 'Finale',
-      label: 'Finale',
+      title: t('seasonRecap.finale.title'),
+      label: t('seasonRecap.finale.title'),
       detail: finalists.length === 2
-        ? `${finalists[0].name} and ${finalists[1].name} entered the final decision.`
-        : 'The season reached its final decision.',
+        ? t('seasonRecap.finale.detail.two', {
+            first: finalists[0].name,
+            second: finalists[1].name,
+          })
+        : t('seasonRecap.finale.detail.one'),
     },
   ].sort((a, b) => a.day - b.day || (a.kind === 'twist' ? -1 : 1));
 }
@@ -775,7 +779,11 @@ function FinaleTimeline({
   history: GameHistoryEvent[];
   onBack: () => void;
 }) {
-  const checkpoints = useMemo(() => buildTimelineCheckpoints(recapData, week), [recapData, week]);
+  const t = useTranslate();
+  const checkpoints = useMemo(
+    () => buildTimelineCheckpoints(recapData, week, t),
+    [recapData, t, week],
+  );
   const totalDays = getSeasonDayCount(recapData, week);
   const windowSize = 28;
   const calendarWindows = Array.from({ length: Math.ceil(totalDays / windowSize) }, (_, index) => {

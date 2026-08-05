@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslate } from '../../i18n';
 import type { GenericMinigameProps } from '../../minigames/reactComponents';
 import {
   applyRoundReset,
@@ -360,6 +361,7 @@ function buildInitialState(props: GenericMinigameProps): ChainOfGreedState {
 }
 
 export default function ChainOfGreed(props: GenericMinigameProps) {
+  const t = useTranslate();
   const [state, setState] = useState<ChainOfGreedState>(() => buildInitialState(props));
   const [isLadderSheetOpen, setIsLadderSheetOpen] = useState(false);
   const [isInsightsSheetOpen, setIsInsightsSheetOpen] = useState(false);
@@ -1274,10 +1276,10 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
               exit={{ opacity: 0, scale: 0.97 }}
               transition={{ duration: 0.24, ease: 'easeOut' }}
             >
-              <span>Round {state.roundNumber}</span>
-              <h2 id="chain-round-intro-title">Build the chain.</h2>
-              <p>Bank before it breaks.</p>
-              <small>Tap outside to continue</small>
+              <span>{t('chainOfGreed.round', { round: state.roundNumber })}</span>
+              <h2 id="chain-round-intro-title">{t('chainOfGreed.roundIntro.title')}</h2>
+              <p>{t('chainOfGreed.roundIntro.warning')}</p>
+              <small>{t('chainOfGreed.roundIntro.dismiss')}</small>
             </motion.div>
           </motion.div>
         )}

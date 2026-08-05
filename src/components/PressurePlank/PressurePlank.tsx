@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslate } from '../../i18n'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { completeMinigame } from '../../store/gameSlice'
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types'
@@ -141,6 +142,7 @@ export default function PressurePlank({
   onFinish,
   autoStart = false,
 }: Props) {
+  const t = useTranslate()
   const dispatch = useAppDispatch()
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id)
 
@@ -590,7 +592,8 @@ export default function PressurePlank({
 
             {/* Safe zone width indicator */}
             <div className="pp__safe-hint">
-              Safe zone: <strong>{safeZoneBounds.widthPercent.toFixed(0)}%</strong>
+              {t('pressurePlank.safeZone')}{' '}
+              <strong>{safeZoneBounds.widthPercent.toFixed(0)}%</strong>
             </div>
           </div>
         )}
