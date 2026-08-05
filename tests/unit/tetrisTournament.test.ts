@@ -43,7 +43,7 @@ describe('buildTetrisTournamentPlan', () => {
     const plan = buildTetrisTournamentPlan(10)
     expect(plan).toHaveLength(4)
     expect(plan.map((round) => round.survivorCount)).toEqual([9, 8, 2, 1])
-    expect(plan[2].subtitle).toBe('Top 2 advance')
+    expect(plan[2].subtitleKey).toBe('fitMeIn.round.topTwoAdvance')
   })
 })
 
