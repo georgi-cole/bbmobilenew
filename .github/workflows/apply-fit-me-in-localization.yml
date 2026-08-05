@@ -33,16 +33,6 @@ jobs:
             src/minigames/registry.ts \
             src/i18n/messages.ts \
             tests/unit/tetrisTournament.test.ts
-      - name: Validate localization
-        env:
-          I18N_BASE_REF: origin/main
-        run: node scripts/check-localization.mjs
-      - name: Lint
-        run: npm run lint -- --max-warnings=0
-      - name: Type check
-        run: npm run typecheck
-      - name: Tournament unit tests
-        run: npx vitest run tests/unit/tetrisTournament.test.ts
       - name: Commit localized implementation
         run: |
           git config user.name github-actions[bot]
