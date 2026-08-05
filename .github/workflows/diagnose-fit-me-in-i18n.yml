@@ -1,0 +1,33 @@
+name: Diagnose Fit Me In localization
+
+on:
+  push:
+    branches:
+      - agent/fit-me-in-tournament
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fit-me-in-tournament
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture localization checker output
+        run: |
+          set +e
+          node scripts/check-localization.mjs > fit-me-in-i18n-output.txt 2>&1
+          cat fit-me-in-i18n-output.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add fit-me-in-i18n-output.txt
+          git commit -m "Capture Fit Me In localization diagnostics"
+          git push
