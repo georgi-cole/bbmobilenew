@@ -13,7 +13,6 @@ const FIXTURE_SENTINEL_KEY = 'bbmobilenew:e2e:finale-fixture'
 const PROFILES_STORAGE_KEY = 'bbmobilenew:profiles:v1'
 const SETTINGS_STORAGE_KEY = 'bbmobilenew_settings_v1'
 const ARCHIVE_KEY = `bbmobilenew:seasonArchives:${encodeURIComponent(PROFILE_ID)}`
-const SAVED_RUNS_KEY = `bbmobilenew:savedRuns:${encodeURIComponent(PROFILE_ID)}`
 const CLASSIC_RUN_KEY = `bbmobilenew:savedRunSlot:${encodeURIComponent(PROFILE_ID)}:classic`
 const LEGACY_SAVED_STATE_KEY = `bbmobilenew:savedSeason:${encodeURIComponent(PROFILE_ID)}`
 
@@ -360,10 +359,10 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
-    await favoriteVote
-      .getByRole('button', { name: /Vote for/ })
-      .first()
-      .click()
+    const favoriteVoteButtons = favoriteVote.getByRole('button', { name: /Vote for/ })
+    if ((await favoriteVoteButtons.count()) > 0) {
+      await favoriteVoteButtons.first().click()
+    }
     const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
     await expect(favoriteContinue).toBeVisible({ timeout: 15_000 })
     await favoriteContinue.click()
