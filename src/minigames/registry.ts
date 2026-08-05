@@ -46,8 +46,7 @@ function applyRegistryOverrides(
   return {
     ...game,
     // i18n-ignore: Canonical English fallback; the rules modal uses fitMeIn.description.
-    description:
-      'Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final.',
+    description: 'Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final.',
     instructions: FIT_ME_IN_INSTRUCTIONS,
     resultMode: 'placement',
     descriptionKey: 'fitMeIn.description',
