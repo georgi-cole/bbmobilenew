@@ -1,0 +1,13 @@
+file:///home/runner/work/bbmobilenew/bbmobilenew/scripts/check-localization.mjs:172
+  throw new Error('Unable to resolve an i18n comparison base. Set I18N_BASE_REF explicitly.')
+        ^
+
+Error: Unable to resolve an i18n comparison base. Set I18N_BASE_REF explicitly.
+    at resolveBase (file:///home/runner/work/bbmobilenew/bbmobilenew/scripts/check-localization.mjs:172:9)
+    at main (file:///home/runner/work/bbmobilenew/bbmobilenew/scripts/check-localization.mjs:956:36)
+    at file:///home/runner/work/bbmobilenew/bbmobilenew/scripts/check-localization.mjs:1026:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.1
