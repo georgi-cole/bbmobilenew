@@ -1,3 +1,5 @@
+import type { TranslationKey } from '../../i18n/messages'
+
 export type TetrisRoundKind = 'qualifier' | 'semifinal' | 'final'
 
 export interface TetrisRoundPlan {
@@ -5,8 +7,8 @@ export interface TetrisRoundPlan {
   totalRounds: number
   durationMs: number
   kind: TetrisRoundKind
-  label: string
-  subtitle: string
+  labelKey: TranslationKey
+  subtitleKey: TranslationKey
   survivorCount: number
   speedMultiplier: number
   tensionLevel: 1 | 2 | 3 | 4
@@ -52,8 +54,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
       {
         durationMs: 90_000,
         kind: 'semifinal',
-        label: 'Semifinal',
-        subtitle: 'Top 2 advance',
+        labelKey: 'fitMeIn.round.semifinal',
+        subtitleKey: 'fitMeIn.round.topTwoAdvance',
         survivorCount: 2,
         speedMultiplier: 0.74,
         tensionLevel: 3,
@@ -62,8 +64,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
       {
         durationMs: 90_000,
         kind: 'final',
-        label: 'Houseguest Mosaic Final',
-        subtitle: 'Highest score wins',
+        labelKey: 'fitMeIn.round.mosaicFinal',
+        subtitleKey: 'fitMeIn.round.highestScoreWins',
         survivorCount: 1,
         speedMultiplier: 0.6,
         tensionLevel: 4,
@@ -77,8 +79,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
       {
         durationMs: 60_000,
         kind: 'qualifier',
-        label: 'Opening Heat',
-        subtitle: 'Last place is eliminated',
+        labelKey: 'fitMeIn.round.openingHeat',
+        subtitleKey: 'fitMeIn.round.lastPlaceEliminated',
         survivorCount: 3,
         speedMultiplier: 0.94,
         tensionLevel: 1,
@@ -87,8 +89,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
       {
         durationMs: 60_000,
         kind: 'semifinal',
-        label: 'Semifinal',
-        subtitle: 'Top 2 advance',
+        labelKey: 'fitMeIn.round.semifinal',
+        subtitleKey: 'fitMeIn.round.topTwoAdvance',
         survivorCount: 2,
         speedMultiplier: 0.74,
         tensionLevel: 3,
@@ -97,8 +99,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
       {
         durationMs: 60_000,
         kind: 'final',
-        label: 'Houseguest Mosaic Final',
-        subtitle: 'Highest score wins',
+        labelKey: 'fitMeIn.round.mosaicFinal',
+        subtitleKey: 'fitMeIn.round.highestScoreWins',
         survivorCount: 1,
         speedMultiplier: 0.6,
         tensionLevel: 4,
@@ -111,8 +113,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
     {
       durationMs: 60_000,
       kind: 'qualifier',
-      label: 'Opening Heat',
-      subtitle: 'Last place is eliminated',
+      labelKey: 'fitMeIn.round.openingHeat',
+      subtitleKey: 'fitMeIn.round.lastPlaceEliminated',
       survivorCount: playerCount - 1,
       speedMultiplier: 1,
       tensionLevel: 1,
@@ -121,8 +123,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
     {
       durationMs: 60_000,
       kind: 'qualifier',
-      label: 'Pressure Round',
-      subtitle: 'Last place is eliminated',
+      labelKey: 'fitMeIn.round.pressureRound',
+      subtitleKey: 'fitMeIn.round.lastPlaceEliminated',
       survivorCount: playerCount - 2,
       speedMultiplier: 0.86,
       tensionLevel: 2,
@@ -131,8 +133,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
     {
       durationMs: 60_000,
       kind: 'semifinal',
-      label: 'Semifinal',
-      subtitle: 'Top 2 advance',
+      labelKey: 'fitMeIn.round.semifinal',
+      subtitleKey: 'fitMeIn.round.topTwoAdvance',
       survivorCount: 2,
       speedMultiplier: 0.72,
       tensionLevel: 3,
@@ -141,8 +143,8 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
     {
       durationMs: 60_000,
       kind: 'final',
-      label: 'Houseguest Mosaic Final',
-      subtitle: 'Highest score wins',
+      labelKey: 'fitMeIn.round.mosaicFinal',
+      subtitleKey: 'fitMeIn.round.highestScoreWins',
       survivorCount: 1,
       speedMultiplier: 0.58,
       tensionLevel: 4,
