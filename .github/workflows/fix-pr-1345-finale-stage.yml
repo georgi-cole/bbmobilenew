@@ -11,15 +11,55 @@ jobs:
         with:
           ref: fix/prod-debug-and-multimode-saves
           fetch-depth: 0
-      - run: |
-          node -e "const fs=require('fs');const p='e2e/playwright/finale.spec.ts';let s=fs.readFileSync(p,'utf8');const a=\"    await favoriteVote\\n      .getByRole('button', { name: /Vote for/ })\\n      .first()\\n      .click()\\n    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })\\n\";const b=\"    const favoriteVoteButtons = favoriteVote.getByRole('button', { name: /Vote for/ })\\n    if ((await favoriteVoteButtons.count()) > 0) {\\n      await favoriteVoteButtons.first().click()\\n    }\\n    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })\\n\";if(!s.includes(a))throw new Error('target block not found');fs.writeFileSync(p,s.replace(a,b));"
-          npm ci
+      - name: Apply targeted finale test fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('e2e/playwright/finale.spec.ts')
+          text = path.read_text()
+
+          text = text.replace(
+              "const SAVED_RUNS_KEY = `bbmobilenew:savedRuns:${encodeURIComponent(PROFILE_ID)}`\n",
+              "",
+              1,
+          )
+
+          old = """    await favoriteVote
+      .getByRole('button', { name: /Vote for/ })
+      .first()
+      .click()
+    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
+"""
+          new = """    const favoriteVoteButtons = favoriteVote.getByRole('button', { name: /Vote for/ })
+    if ((await favoriteVoteButtons.count()) > 0) {
+      await favoriteVoteButtons.first().click()
+    }
+    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
+"""
+
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('favorite vote block not found')
+
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate
+        run: |
           npx prettier --write e2e/playwright/finale.spec.ts
           npm run lint:ci
           npm run format:check
+
+      - name: Commit fix and remove temporary workflow
+        run: |
           git rm .github/workflows/fix-pr-1345-finale-stage.yml
           git add e2e/playwright/finale.spec.ts
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git commit -m "test: handle resolved favorite reveal in finale journey"
+          git commit -m "test: stabilize finale favorite stage"
           git push origin HEAD:fix/prod-debug-and-multimode-saves
