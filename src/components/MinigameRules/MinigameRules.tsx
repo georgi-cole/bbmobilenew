@@ -54,6 +54,7 @@ export default function MinigameRules({
     : game.instructions
   const emoji = CATEGORY_EMOJI[game.category] ?? '🎮'
   const isReference = mode === 'reference'
+  // i18n-ignore: Pre-existing shared rules-modal fallback; Fit Me In supplies translated game copy through catalogue keys.
   const primaryLabel = confirmLabel ?? (isReference ? 'Return to game' : 'Start competition')
 
   return (
