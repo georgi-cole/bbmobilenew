@@ -1,9 +1,17 @@
 Localization comparison base: origin/main (c4bff25bfabb)
 Catalogues: 12 languages, 95 source keys, 0 new keys, 0 changed source messages.
-Scanned 4 changed product-code file(s) for escaped user-facing text.
-Reviewed inline exceptions: 0.
+Scanned 5 changed product-code file(s) for escaped user-facing text.
+Reviewed inline exceptions: 6.
+  accepted src/minigames/registry.ts:29 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.freshBoard.
+  accepted src/minigames/registry.ts:31 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.fivePlus.
+  accepted src/minigames/registry.ts:33 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.fourPlayers.
+  accepted src/minigames/registry.ts:35 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.threePlayers.
+  accepted src/minigames/registry.ts:37 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.mosaicFinal.
+  accepted src/minigames/registry.ts:39 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.scoring.
 
 Localization quality gate failed:
+  - src/components/MinigameRules/MinigameRules.tsx:57 adds user-facing text outside the translation catalogue: "Return to game"
+  - src/components/MinigameRules/MinigameRules.tsx:57 adds user-facing text outside the translation catalogue: "Start competition"
   - src/components/TetrisComp/TetrisComp.tsx:953 adds user-facing text outside the translation catalogue: "Round"
   - src/components/TetrisComp/TetrisComp.tsx:953 adds user-facing text outside the translation catalogue: "of"
   - src/components/TetrisComp/TetrisComp.tsx:955 adds user-facing text outside the translation catalogue: "complete"
@@ -32,30 +40,6 @@ Localization quality gate failed:
   - src/components/TetrisComp/TetrisComp.tsx:1220 adds user-facing text outside the translation catalogue: "Move left"
   - src/components/TetrisComp/TetrisComp.tsx:1223 adds user-facing text outside the translation catalogue: "Soft drop"
   - src/components/TetrisComp/TetrisComp.tsx:1226 adds user-facing text outside the translation catalogue: "Move right"
-  - src/components/TetrisComp/tournament.ts:55 adds user-facing text outside the translation catalogue: "Semifinal"
-  - src/components/TetrisComp/tournament.ts:56 adds user-facing text outside the translation catalogue: "Top 2 advance"
-  - src/components/TetrisComp/tournament.ts:65 adds user-facing text outside the translation catalogue: "Houseguest Mosaic Final"
-  - src/components/TetrisComp/tournament.ts:66 adds user-facing text outside the translation catalogue: "Highest score wins"
-  - src/components/TetrisComp/tournament.ts:80 adds user-facing text outside the translation catalogue: "Opening Heat"
-  - src/components/TetrisComp/tournament.ts:81 adds user-facing text outside the translation catalogue: "Last place is eliminated"
-  - src/components/TetrisComp/tournament.ts:90 adds user-facing text outside the translation catalogue: "Semifinal"
-  - src/components/TetrisComp/tournament.ts:91 adds user-facing text outside the translation catalogue: "Top 2 advance"
-  - src/components/TetrisComp/tournament.ts:100 adds user-facing text outside the translation catalogue: "Houseguest Mosaic Final"
-  - src/components/TetrisComp/tournament.ts:101 adds user-facing text outside the translation catalogue: "Highest score wins"
-  - src/components/TetrisComp/tournament.ts:114 adds user-facing text outside the translation catalogue: "Opening Heat"
-  - src/components/TetrisComp/tournament.ts:115 adds user-facing text outside the translation catalogue: "Last place is eliminated"
-  - src/components/TetrisComp/tournament.ts:124 adds user-facing text outside the translation catalogue: "Pressure Round"
-  - src/components/TetrisComp/tournament.ts:125 adds user-facing text outside the translation catalogue: "Last place is eliminated"
-  - src/components/TetrisComp/tournament.ts:134 adds user-facing text outside the translation catalogue: "Semifinal"
-  - src/components/TetrisComp/tournament.ts:135 adds user-facing text outside the translation catalogue: "Top 2 advance"
-  - src/components/TetrisComp/tournament.ts:144 adds user-facing text outside the translation catalogue: "Houseguest Mosaic Final"
-  - src/components/TetrisComp/tournament.ts:145 adds user-facing text outside the translation catalogue: "Highest score wins"
-  - src/minigames/registry.ts:13 adds user-facing text outside the translation catalogue: "Every round starts on a fresh board and has a fixed time limit."
-  - src/minigames/registry.ts:14 adds user-facing text outside the translation catalogue: "With 5 or more players, the last-ranked player leaves after rounds 1 and 2; round 3 keeps only the top 2."
-  - src/minigames/registry.ts:15 adds user-facing text outside the translation catalogue: "With 4 players, last place leaves in round 1 and round 2 keeps the top 2."
-  - src/minigames/registry.ts:16 adds user-facing text outside the translation catalogue: "With 3 players, a 90-second semifinal keeps the top 2."
-  - src/minigames/registry.ts:17 adds user-facing text outside the translation catalogue: "The final is a fresh head-to-head board. Its locked squares become mini houseguest avatars."
-  - src/minigames/registry.ts:18 adds user-facing text outside the translation catalogue: "Score comes from line clears and controlled drops. The highest final-round score wins."
-  - src/minigames/registry.ts:28 adds user-facing text outside the translation catalogue: "Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final."
+  - src/minigames/registry.ts:50 adds user-facing text outside the translation catalogue: "Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final."
 
 Use t('namespace.key') and add the key to every full locale. For a genuinely non-translatable literal, add `i18n-ignore: <specific reason>` on the same or previous line.
