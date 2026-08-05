@@ -1,0 +1,17 @@
+Localization comparison base: origin/main (c4bff25bfabb)
+Catalogues: 12 languages, 135 source keys, 40 new keys, 0 changed source messages.
+Scanned 5 changed product-code file(s) for escaped user-facing text.
+Reviewed inline exceptions: 6.
+  accepted src/minigames/registry.ts:29 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.freshBoard.
+  accepted src/minigames/registry.ts:31 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.fivePlus.
+  accepted src/minigames/registry.ts:33 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.fourPlayers.
+  accepted src/minigames/registry.ts:35 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.threePlayers.
+  accepted src/minigames/registry.ts:37 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.mosaicFinal.
+  accepted src/minigames/registry.ts:39 — Canonical English fallback; the shared rules modal uses fitMeIn.rules.scoring.
+
+Localization quality gate failed:
+  - src/components/MinigameRules/MinigameRules.tsx:57 adds user-facing text outside the translation catalogue: "Return to game"
+  - src/components/MinigameRules/MinigameRules.tsx:57 adds user-facing text outside the translation catalogue: "Start competition"
+  - src/minigames/registry.ts:50 adds user-facing text outside the translation catalogue: "Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final."
+
+Use t('namespace.key') and add the key to every full locale. For a genuinely non-translatable literal, add `i18n-ignore: <specific reason>` on the same or previous line.
