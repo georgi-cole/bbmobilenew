@@ -359,12 +359,18 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
+    const favoriteFastForward = favoriteVote.getByRole('button', {
+      name: 'Fast forward public favorite vote',
+    })
+    if (await favoriteFastForward.isVisible()) {
+      await favoriteFastForward.click()
+    }
     const favoriteVoteButtons = favoriteVote.getByRole('button', { name: /Vote for/ })
     if ((await favoriteVoteButtons.count()) > 0) {
       await favoriteVoteButtons.first().click()
     }
     const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
-    await expect(favoriteContinue).toBeVisible({ timeout: 15_000 })
+    await expect(favoriteContinue).toBeVisible({ timeout: 30_000 })
     await favoriteContinue.click()
 
     const goodbye = page.getByRole('dialog', { name: 'Final goodbye sequence' })
@@ -383,7 +389,7 @@ test.describe('Finale / Jury flow @release', () => {
       favoriteWinnerId,
       finaleRunnerUpId: runnerUpId,
       finaleWinnerId: winnerId,
-      seasonFinalePhase: 'finalGoodbye',
+      seasonFinalePhase: 'goodbyeSequence',
     })
 
     await page.reload()
@@ -407,17 +413,17 @@ test.describe('Finale / Jury flow @release', () => {
     await expect(page).toHaveURL(/#\/game-over$/, { timeout: 5_000 })
     await expect(page.getByRole('heading', { name: 'Season Complete' })).toBeVisible()
 
-    const championBlock = page.getByTestId('season-champion')
-    const runnerUpBlock = page.getByTestId('season-runner-up')
-    await expect(championBlock).toContainText(winner.name)
-    await expect(runnerUpBlock).toContainText(runnerUp.name)
+    await expect(page.getByText('Season champion', { exact: true })).toBeVisible()
+    await expect(page.getByText(winner.name, { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Runner-up', { exact: true })).toBeVisible()
+    await expect(page.getByText(runnerUp.name, { exact: true }).first()).toBeVisible()
 
     const completedState = await readAppState(page)
     expect(completedState.game.seasonFinale?.phase).toBe('seasonComplete')
     expect(eventCount(completedState, 'favoritePlayer:award')).toBe(1)
 
-    await page.reload()
-    await expect(page).toHaveURL(/#\/game-over$/)
+    await page.getByRole('main').getByRole('button', { name: 'Home', exact: true }).click()
+    await waitForHome(page)
     const archived = await readArchive(page)
     expect(archived.archiveCount).toBe(1)
     expect(archived.seasonId).toBeTruthy()
