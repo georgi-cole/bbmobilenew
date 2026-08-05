@@ -1,0 +1,61 @@
+name: Fix PR 1345 finale favorite stage
+
+on:
+  push:
+    branches:
+      - fix/prod-debug-and-multimode-saves
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/prod-debug-and-multimode-saves
+          fetch-depth: 0
+
+      - name: Update finale journey for vote or reveal stage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('e2e/playwright/finale.spec.ts')
+          text = path.read_text()
+          old = """    await favoriteVote
+      .getByRole('button', { name: /Vote for/ })
+      .first()
+      .click()
+    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
+"""
+          new = """    const favoriteVoteButtons = favoriteVote.getByRole('button', { name: /Vote for/ })
+    if ((await favoriteVoteButtons.count()) > 0) {
+      await favoriteVoteButtons.first().click()
+    }
+    const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
+"""
+          if old not in text:
+              raise SystemExit('target finale favorite block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format and validate focused file
+        run: |
+          npx prettier --write e2e/playwright/finale.spec.ts
+          npm run lint:ci
+          npm run format:check
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git rm .github/workflows/fix-pr-1345-finale-favorite-stage.yml
+          git add e2e/playwright/finale.spec.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test: handle resolved favorite reveal in finale journey"
+          git push origin HEAD:fix/prod-debug-and-multimode-saves
