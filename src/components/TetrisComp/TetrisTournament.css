@@ -130,13 +130,21 @@
 }
 
 @keyframes tetris-urgent-timer {
-  from { transform: scale(1); }
-  to { transform: scale(1.09); }
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.09);
+  }
 }
 
 @keyframes tetris-urgent-board {
-  from { filter: brightness(1); }
-  to { filter: brightness(1.14); }
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.14);
+  }
 }
 
 .tetris-root--mosaic-final .tetris-board-wrap {
@@ -183,9 +191,17 @@
 }
 
 @keyframes tetris-avatar-lock {
-  0% { transform: scale(0.7) rotate(-4deg); filter: brightness(1.8); }
-  70% { transform: scale(1.08) rotate(1deg); }
-  100% { transform: scale(1) rotate(0); filter: brightness(1); }
+  0% {
+    transform: scale(0.7) rotate(-4deg);
+    filter: brightness(1.8);
+  }
+  70% {
+    transform: scale(1.08) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    filter: brightness(1);
+  }
 }
 
 .tetris-tournament-results {
@@ -197,8 +213,7 @@
   justify-content: center;
   padding: 1rem;
   background:
-    radial-gradient(circle at 50% 12%, rgba(84, 133, 255, 0.22), transparent 38%),
-    #060b18;
+    radial-gradient(circle at 50% 12%, rgba(84, 133, 255, 0.22), transparent 38%), #060b18;
   color: #edf3ff;
 }
 

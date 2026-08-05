@@ -10,7 +10,7 @@ import {
 function performance(
   playerId: string,
   score: number,
-  overrides: Partial<TetrisRoundPerformance> = {},
+  overrides: Partial<TetrisRoundPerformance> = {}
 ): TetrisRoundPerformance {
   return {
     playerId,
@@ -65,17 +65,18 @@ describe('Fit Me In ranking', () => {
         performance('third', 200),
         performance('fourth', 100),
       ],
-      2,
+      2
     )
     expect(split.survivorIds).toEqual(['first', 'second'])
     expect(split.eliminatedWorstFirst).toEqual(['fourth', 'third'])
   })
 
   it('encodes placement ahead of visible round score for authoritative results', () => {
-    const scores = buildTetrisOutcomeScores(
-      ['winner', 'runnerUp', 'last'],
-      { winner: 100, runnerUp: 5000, last: 9000 },
-    )
+    const scores = buildTetrisOutcomeScores(['winner', 'runnerUp', 'last'], {
+      winner: 100,
+      runnerUp: 5000,
+      last: 9000,
+    })
     expect(scores.winner).toBeGreaterThan(scores.runnerUp)
     expect(scores.runnerUp).toBeGreaterThan(scores.last)
   })

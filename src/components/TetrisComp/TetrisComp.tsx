@@ -6,14 +6,7 @@
  * 5+ players: two qualifiers + semifinal + final, 60 seconds each.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAppDispatch } from '../../store/hooks'
 import {
   completeTetrisTournament,
@@ -25,10 +18,7 @@ import { resolveTetrisOutcome } from '../../features/tetris/thunks'
 import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index'
 import { mulberry32 } from '../../store/rng'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
-import type {
-  MinigameParticipant,
-  ReactMinigameCompletion,
-} from '../MinigameHost/MinigameHost'
+import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
 import {
   buildTetrisOutcomeScores,
   buildTetrisTournamentPlan,
@@ -203,7 +193,7 @@ function spawnFalling(key: PieceKey): FallingPiece {
 function lockPiece(
   board: Board,
   piece: FallingPiece,
-  createCell: (color: string) => BoardCell,
+  createCell: (color: string) => BoardCell
 ): Board {
   const next = board.map((row) => [...row])
   for (let row = 0; row < piece.shape.length; row++) {
@@ -291,7 +281,9 @@ export default function TetrisComp({
   const dispatch = useAppDispatch()
 
   const participantRecords = useMemo<MinigameParticipant[]>(() => {
-    const supplied = new Map((participants ?? []).map((participant) => [participant.id, participant]))
+    const supplied = new Map(
+      (participants ?? []).map((participant) => [participant.id, participant])
+    )
     return participantIds.map(
       (id) =>
         supplied.get(id) ?? {
@@ -300,19 +292,22 @@ export default function TetrisComp({
           isHuman: false,
           precomputedScore: 0,
           previousPR: null,
-        },
+        }
     )
   }, [participantIds, participants])
 
   const participantById = useMemo(
     () => new Map(participantRecords.map((participant) => [participant.id, participant])),
-    [participantRecords],
+    [participantRecords]
   )
   const humanId = participantRecords.find((participant) => participant.isHuman)?.id ?? null
-  const avatarIds = useMemo(() => participantRecords.map((participant) => participant.id), [participantRecords])
+  const avatarIds = useMemo(
+    () => participantRecords.map((participant) => participant.id),
+    [participantRecords]
+  )
   const tournamentPlan = useMemo(
     () => buildTetrisTournamentPlan(Math.max(3, participantIds.length)),
-    [participantIds.length],
+    [participantIds.length]
   )
 
   const [screen, setScreen] = useState<TournamentScreen>('playing')
@@ -372,7 +367,7 @@ export default function TetrisComp({
 
   useEffect(() => {
     const participantNames = Object.fromEntries(
-      participantRecords.map((participant) => [participant.id, participant.name]),
+      participantRecords.map((participant) => [participant.id, participant.name])
     )
     dispatch(
       initTetris({
@@ -382,7 +377,7 @@ export default function TetrisComp({
         competitionType: prizeType,
         seed,
         aiScores: {},
-      }),
+      })
     )
 
     return () => {
@@ -419,7 +414,7 @@ export default function TetrisComp({
       setCurrent(piece)
       return true
     },
-    [dequeue],
+    [dequeue]
   )
 
   const createLockedCell = useCallback(
@@ -428,7 +423,7 @@ export default function TetrisComp({
       const avatarIndex = Math.floor(avatarRngRef.current() * avatarIds.length)
       return { color, avatarId: avatarIds[avatarIndex] }
     },
-    [avatarIds, currentRound.useHouseguestCells],
+    [avatarIds, currentRound.useHouseguestCells]
   )
 
   const simulateAiRound = useCallback(
@@ -460,10 +455,13 @@ export default function TetrisComp({
         const blended = legacyScore > 0 ? simulated * 0.78 + legacyScore * 0.22 : simulated
         const scoreValue = Math.max(
           minimumScore,
-          Math.min(Math.round(maximumScore * 1.18), Math.round(blended)),
+          Math.min(Math.round(maximumScore * 1.18), Math.round(blended))
         )
         const linesValue = Math.max(0, Math.floor(scoreValue / (235 + detailRng() * 95)))
-        const piecesValue = Math.max(linesValue * 3, Math.floor(scoreValue / (43 + detailRng() * 16)))
+        const piecesValue = Math.max(
+          linesValue * 3,
+          Math.floor(scoreValue / (43 + detailRng() * 16))
+        )
         const maxStackHeight = Math.max(2, Math.min(18, Math.round(5 + detailRng() * 10)))
 
         return {
@@ -477,13 +475,13 @@ export default function TetrisComp({
         }
       })
     },
-    [participantById, seed, tournamentPlan],
+    [participantById, seed, tournamentPlan]
   )
 
   const commitTournamentOutcome = useCallback(
     (
       finalStandings: readonly TetrisRoundPerformance[],
-      priorEliminationsWorstFirst: readonly string[],
+      priorEliminationsWorstFirst: readonly string[]
     ) => {
       const finalRankingBestFirst = uniqueIds([
         ...finalStandings.map((entry) => entry.playerId),
@@ -493,7 +491,7 @@ export default function TetrisComp({
       const outcomeScores = buildTetrisOutcomeScores(finalRankingBestFirst, visibleScores)
       const winnerId = finalRankingBestFirst[0]
       const lastPlaceId = finalRankingBestFirst[finalRankingBestFirst.length - 1]
-      const humanScore = humanId ? visibleScores[humanId] ?? humanLastScoreRef.current : 0
+      const humanScore = humanId ? (visibleScores[humanId] ?? humanLastScoreRef.current) : 0
 
       if (!winnerId || !lastPlaceId) return
 
@@ -503,7 +501,7 @@ export default function TetrisComp({
           winnerId,
           lastPlaceId,
           humanScore: humanId ? humanScore : null,
-        }),
+        })
       )
       dispatch(resolveTetrisOutcome())
       setFinalResult({
@@ -517,7 +515,7 @@ export default function TetrisComp({
       setScreen('finalResults')
       setSimulatingRemainder(false)
     },
-    [dispatch, humanId],
+    [dispatch, humanId]
   )
 
   const finishRound = useCallback(
@@ -538,8 +536,7 @@ export default function TetrisComp({
               maxStackHeight: maxStackHeightRef.current,
               previousScore: previousRoundScoresRef.current[humanId] ?? 0,
               tieBreaker: mulberry32(
-                (seed ^ Math.imul(currentRoundIndex + 1, 0x9e3779b1) ^ hashString(humanId)) >>>
-                  0,
+                (seed ^ Math.imul(currentRoundIndex + 1, 0x9e3779b1) ^ hashString(humanId)) >>> 0
               )(),
             }
           : null
@@ -559,16 +556,13 @@ export default function TetrisComp({
       if (currentRound.kind === 'final') {
         window.setTimeout(
           () => commitTournamentOutcome(split.standings, eliminationOrderWorstFirst),
-          700,
+          700
         )
         return
       }
 
       setActiveIds(split.survivorIds)
-      setEliminationOrderWorstFirst((previous) => [
-        ...previous,
-        ...split.eliminatedWorstFirst,
-      ])
+      setEliminationOrderWorstFirst((previous) => [...previous, ...split.eliminatedWorstFirst])
       setRoundResult({
         plan: currentRound,
         split,
@@ -586,7 +580,7 @@ export default function TetrisComp({
       humanId,
       seed,
       simulateAiRound,
-    ],
+    ]
   )
 
   const lockCurrentPiece = useCallback(() => {
@@ -610,7 +604,7 @@ export default function TetrisComp({
       setLineEffects((previous) => [...previous, effect])
       window.setTimeout(
         () => setLineEffects((previous) => previous.filter((item) => item.id !== effect.id)),
-        600,
+        600
       )
     }
 
@@ -621,7 +615,7 @@ export default function TetrisComp({
       setLevelUpEffects((previous) => [...previous, effect])
       window.setTimeout(
         () => setLevelUpEffects((previous) => previous.filter((item) => item.id !== effect.id)),
-        1200,
+        1200
       )
     }
 
@@ -632,10 +626,7 @@ export default function TetrisComp({
     linesRef.current = nextLines
     levelRef.current = nextLevel
     piecesRef.current = nextPieces
-    maxStackHeightRef.current = Math.max(
-      maxStackHeightRef.current,
-      boardStackHeight(clearedBoard),
-    )
+    maxStackHeightRef.current = Math.max(maxStackHeightRef.current, boardStackHeight(clearedBoard))
     canHoldRef.current = true
 
     setBoard(clearedBoard)
@@ -785,14 +776,7 @@ export default function TetrisComp({
     }
     setUpcoming([...upcomingRef.current])
     spawnPiece(startBoard)
-  }, [
-    currentRound.durationMs,
-    currentRoundIndex,
-    refillBag,
-    screen,
-    seed,
-    spawnPiece,
-  ])
+  }, [currentRound.durationMs, currentRoundIndex, refillBag, screen, seed, spawnPiece])
 
   useEffect(() => {
     if (screen !== 'playing' || gamePhase !== 'playing') return
@@ -812,17 +796,20 @@ export default function TetrisComp({
 
   useEffect(() => {
     if (screen !== 'playing' || gamePhase !== 'playing') return
-    const timer = window.setInterval(() => {
-      const piece = currentRef.current
-      if (!piece || gamePhaseRef.current !== 'playing') return
-      if (!collides(boardRef.current, piece.shape, piece.x, piece.y + 1)) {
-        const moved = { ...piece, y: piece.y + 1 }
-        currentRef.current = moved
-        setCurrent(moved)
-      } else {
-        lockCurrentPiece()
-      }
-    }, dropIntervalMs(level, currentRound.speedMultiplier))
+    const timer = window.setInterval(
+      () => {
+        const piece = currentRef.current
+        if (!piece || gamePhaseRef.current !== 'playing') return
+        if (!collides(boardRef.current, piece.shape, piece.x, piece.y + 1)) {
+          const moved = { ...piece, y: piece.y + 1 }
+          currentRef.current = moved
+          setCurrent(moved)
+        } else {
+          lockCurrentPiece()
+        }
+      },
+      dropIntervalMs(level, currentRound.speedMultiplier)
+    )
 
     return () => window.clearInterval(timer)
   }, [currentRound.speedMultiplier, gamePhase, level, lockCurrentPiece, screen])
@@ -918,9 +905,9 @@ export default function TetrisComp({
   }, [board, current, gamePhase])
 
   const visibleBoard = useMemo<(DisplayCell | null)[][]>(() => {
-    const display = board.slice(BUFFER_ROWS).map((row) =>
-      row.map((cell) => (cell ? { ...cell, kind: 'locked' as const } : null)),
-    )
+    const display: (DisplayCell | null)[][] = board
+      .slice(BUFFER_ROWS)
+      .map((row) => row.map((cell) => (cell ? { ...cell, kind: 'locked' as const } : null)))
 
     if (ghost && gamePhase === 'playing') {
       for (let row = 0; row < ghost.shape.length; row++) {
@@ -986,7 +973,9 @@ export default function TetrisComp({
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <span className="tetris-round-standing-rank">{MEDALS[index] ?? `${index + 1}.`}</span>
+                  <span className="tetris-round-standing-rank">
+                    {MEDALS[index] ?? `${index + 1}.`}
+                  </span>
                   <HouseguestAvatar participant={participant} />
                   <span className="tetris-round-standing-name">
                     {participant?.name ?? entry.playerId}
@@ -1145,10 +1134,7 @@ export default function TetrisComp({
         </div>
 
         <div
-          className={[
-            'tetris-board-wrap',
-            lockFlash ? 'tetris-board-wrap--flash' : '',
-          ]
+          className={['tetris-board-wrap', lockFlash ? 'tetris-board-wrap--flash' : '']
             .filter(Boolean)
             .join(' ')}
           aria-label="Fit Me In board"
@@ -1167,9 +1153,7 @@ export default function TetrisComp({
             {visibleBoard.map((row, rowIndex) => {
               const lineClearing = lineEffects.some((effect) => effect.rows.includes(rowIndex))
               return row.map((cell, columnIndex) => {
-                const participant = cell?.avatarId
-                  ? participantById.get(cell.avatarId)
-                  : undefined
+                const participant = cell?.avatarId ? participantById.get(cell.avatarId) : undefined
                 return (
                   <div
                     key={`${rowIndex}-${columnIndex}`}
@@ -1182,9 +1166,7 @@ export default function TetrisComp({
                     ]
                       .filter(Boolean)
                       .join(' ')}
-                    style={
-                      cell ? ({ '--cell-color': cell.color } as CSSProperties) : undefined
-                    }
+                    style={cell ? ({ '--cell-color': cell.color } as CSSProperties) : undefined}
                     aria-hidden="true"
                   >
                     {cell?.kind === 'locked' && cell.avatarId && (
@@ -1336,10 +1318,7 @@ function MiniPieceGrid({ piece, dimmed = false }: MiniPieceGridProps) {
   const columns = piece.shape[0]?.length ?? 0
   return (
     <div
-      className={[
-        'tetris-mini-grid',
-        dimmed ? 'tetris-mini-grid--dimmed' : '',
-      ]
+      className={['tetris-mini-grid', dimmed ? 'tetris-mini-grid--dimmed' : '']
         .filter(Boolean)
         .join(' ')}
       style={{ '--mini-rows': rows, '--mini-cols': columns } as CSSProperties}
@@ -1355,7 +1334,7 @@ function MiniPieceGrid({ piece, dimmed = false }: MiniPieceGridProps) {
             ].join(' ')}
             style={cell ? ({ '--cell-color': piece.color } as CSSProperties) : undefined}
           />
-        )),
+        ))
       )}
     </div>
   )

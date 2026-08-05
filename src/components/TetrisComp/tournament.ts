@@ -32,7 +32,7 @@ export interface TetrisRoundSplit {
 const MIN_PLAYERS = 3
 
 function createPlan(
-  definitions: Array<Omit<TetrisRoundPlan, 'roundNumber' | 'totalRounds'>>,
+  definitions: Array<Omit<TetrisRoundPlan, 'roundNumber' | 'totalRounds'>>
 ): TetrisRoundPlan[] {
   const totalRounds = definitions.length
   return definitions.map((definition, index) => ({
@@ -152,7 +152,7 @@ export function buildTetrisTournamentPlan(playerCount: number): TetrisRoundPlan[
 }
 
 export function rankTetrisRound(
-  performances: readonly TetrisRoundPerformance[],
+  performances: readonly TetrisRoundPerformance[]
 ): TetrisRoundPerformance[] {
   return [...performances].sort((a, b) => {
     if (a.score !== b.score) return b.score - a.score
@@ -167,7 +167,7 @@ export function rankTetrisRound(
 
 export function splitTetrisRound(
   performances: readonly TetrisRoundPerformance[],
-  survivorCount: number,
+  survivorCount: number
 ): TetrisRoundSplit {
   const standings = rankTetrisRound(performances)
   const safeSurvivorCount = Math.max(1, Math.min(survivorCount, standings.length))
@@ -182,7 +182,7 @@ export function splitTetrisRound(
 
 export function buildTetrisOutcomeScores(
   finalRankingBestFirst: readonly string[],
-  latestRoundScores: Readonly<Record<string, number>>,
+  latestRoundScores: Readonly<Record<string, number>>
 ): Record<string, number> {
   const totalPlayers = finalRankingBestFirst.length
   const scores: Record<string, number> = {}

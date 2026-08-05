@@ -18,7 +18,9 @@ const FIT_ME_IN_INSTRUCTIONS = [
   'Score comes from line clears and controlled drops. The highest final-round score wins.',
 ]
 
-function applyRegistryOverrides(game: GameRegistryEntry | undefined): GameRegistryEntry | undefined {
+function applyRegistryOverrides(
+  game: GameRegistryEntry | undefined
+): GameRegistryEntry | undefined {
   if (!game || game.key !== 'tetris') return game
   return {
     ...game,
@@ -47,7 +49,7 @@ export function getPoolByFilter(filter: {
 
 export function pickRandomGame(
   seed: number,
-  opts: { category?: GameCategory; excludeKeys?: string[] } = {},
+  opts: { category?: GameCategory; excludeKeys?: string[] } = {}
 ): GameRegistryEntry {
   return applyRegistryOverrides(pickBaseRandomGame(seed, opts))!
 }

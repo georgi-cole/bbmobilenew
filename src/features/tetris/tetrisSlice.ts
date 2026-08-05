@@ -48,7 +48,7 @@ const initialState: TetrisState = {
 
 function deriveWinnerAndLastPlace(
   scores: Record<string, number>,
-  participantIds: string[],
+  participantIds: string[]
 ): { winnerId: string | null; lastPlaceId: string | null } {
   const eligible = participantIds.filter((id) => id in scores)
   if (eligible.length === 0) return { winnerId: null, lastPlaceId: null }
