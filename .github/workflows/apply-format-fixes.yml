@@ -1,0 +1,61 @@
+name: Apply formatting fixes
+
+on:
+  push:
+    branches:
+      - fix/minigame-bugs-20260806
+    paths:
+      - .github/workflows/apply-format-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/minigame-bugs-20260806
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed files
+        run: >-
+          npx prettier --write
+          src/components/TiltLabyrinthComp/TiltLabyrinthComp.tsx
+          src/screens/GameOver/GameOver.tsx
+          tests/unit/chain-of-greed/ChainOfGreed.component.test.tsx
+          src/screens/GameOver/AftermathTabloid.css
+          tests/unit/minigameBugfixes.regression.test.ts
+
+      - name: Verify changed-file formatting
+        run: npm run format:check
+
+      - name: Commit formatting fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/TiltLabyrinthComp/TiltLabyrinthComp.tsx \
+            src/screens/GameOver/GameOver.tsx \
+            tests/unit/chain-of-greed/ChainOfGreed.component.test.tsx \
+            src/screens/GameOver/AftermathTabloid.css \
+            tests/unit/minigameBugfixes.regression.test.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit."
+            exit 0
+          fi
+          git commit -m "style: format minigame bug fixes"
+          git push origin HEAD:fix/minigame-bugs-20260806
