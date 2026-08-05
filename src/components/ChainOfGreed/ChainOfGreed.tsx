@@ -157,6 +157,7 @@ const FAST_FINAL_BANK_PIPELINE_DURATIONS: Record<TurnPipelineStage, number> = {
 };
 
 const STANDARD_ROUND_COUNT = 5;
+const ROUND_INTRO_DURATION_MS = 5_000;
 
 function emitSoundCue(cue: string) {
   if (typeof window === 'undefined') return;
@@ -886,6 +887,18 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
     });
   }
 
+  const dismissRoundIntro = useCallback(() => {
+    setState((previous) => {
+      if (previous.phase !== 'roundIntro') return previous;
+      return {
+        ...previous,
+        phase: 'playerTurn',
+        statusText: getPlayerTurnMessage(previous.players, previous.turnOrder),
+        helperText: nextHelper(TURN_HELPERS),
+      };
+    });
+  }, [nextHelper]);
+
   useEffect(() => {
     if (!pendingTurn) return;
     const timer = window.setTimeout(() => {
@@ -956,14 +969,9 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
 
   useEffect(() => {
     if (state.phase !== 'roundIntro') return;
-    const timer = window.setTimeout(() => {
-      setPhase('playerTurn', {
-        statusText: getPlayerTurnMessage(state.players, state.turnOrder),
-        helperText: nextHelper(TURN_HELPERS),
-      });
-    }, 950);
+    const timer = window.setTimeout(dismissRoundIntro, ROUND_INTRO_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [nextHelper, state.phase, state.players, state.turnOrder]);
+  }, [dismissRoundIntro, state.phase]);
 
   useEffect(() => {
     if (state.phase !== 'semifinalTurn' || !semifinalPlayer || semifinalPlayer.isHuman || pendingTurn) return;
@@ -1241,6 +1249,39 @@ export default function ChainOfGreed(props: GenericMinigameProps) {
   return (
     <div className="chain-of-greed" data-testid="chain-of-greed">
       <div className="chain-of-greed__backdrop" />
+      <AnimatePresence>
+        {state.phase === 'roundIntro' && (
+          <motion.div
+            className="chain-of-greed__round-intro-overlay"
+            data-testid="chain-round-intro"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              dismissRoundIntro();
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="chain-of-greed__round-intro-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="chain-round-intro-title"
+              onPointerDown={(event) => event.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.24, ease: 'easeOut' }}
+            >
+              <span>Round {state.roundNumber}</span>
+              <h2 id="chain-round-intro-title">Build the chain.</h2>
+              <p>Bank before it breaks.</p>
+              <small>Tap outside to continue</small>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="chain-of-greed__shell">
         <header className="chain-of-greed__header">
           <div className="chain-of-greed__header-row">

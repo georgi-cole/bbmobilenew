@@ -33,3 +33,16 @@ export function getPressurePlankStabilityDamagePerSecond(
   const dangerRatio = Math.min(1, outside / availableDangerRange)
   return 10 + dangerRatio * 38
 }
+
+export function getPressurePlankGaugeSafeZoneBounds(
+  safeZoneHalfWidth: number,
+  maxBalance: number
+): { leftPercent: number; widthPercent: number } {
+  const safeMaxBalance = Math.max(1, Math.abs(maxBalance))
+  const clampedHalfWidth = Math.min(safeMaxBalance, Math.max(0, safeZoneHalfWidth))
+  const halfWidthPercent = (clampedHalfWidth / (2 * safeMaxBalance)) * 100
+  return {
+    leftPercent: 50 - halfWidthPercent,
+    widthPercent: halfWidthPercent * 2,
+  }
+}

@@ -670,3 +670,48 @@
     animation: none;
   }
 }
+
+/* Cohesive image transition gate */
+.gameover-overlay .gameover-aftermath {
+  position: relative;
+}
+
+.gameover-overlay .gameover-aftermath__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: #fff4dc;
+  background:
+    radial-gradient(circle, rgba(142, 23, 33, 0.28), transparent 52%),
+    rgba(14, 7, 8, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+.gameover-overlay .gameover-aftermath__loading strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gameover-overlay .gameover-aftermath__loading-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 244, 220, 0.22);
+  border-top-color: #f0cf91;
+  border-radius: 50%;
+  animation: aftermath-image-loading 760ms linear infinite;
+}
+
+@keyframes aftermath-image-loading {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gameover-overlay .gameover-aftermath__loading-spinner {
+    animation: none;
+  }
+}

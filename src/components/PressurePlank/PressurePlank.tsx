@@ -22,8 +22,10 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { completeMinigame } from '../../store/gameSlice'
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types'
 import {
+  PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE,
   PRESSURE_PLANK_SAFE_ZONE_INITIAL_HALF_WIDTH,
   PRESSURE_PLANK_STABILITY_MAX,
+  getPressurePlankGaugeSafeZoneBounds,
   getPressurePlankSafeZoneHalfWidth,
   getPressurePlankStabilityDamagePerSecond,
 } from './pressurePlankLogic'
@@ -421,14 +423,15 @@ export default function PressurePlank({
   // ── Derived UI values ──────────────────────────────────────────────────────
 
   const absBalance = Math.abs(balance)
-  const outsideSafeZone = absBalance > safeZone
+  const outsideSafeZone = absBalance > safeZone + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE
   const isDanger = absBalance > DANGER_THRESHOLD || stability <= 35
   const isWarning = outsideSafeZone && !isDanger
   const survivalSeconds = (survivalMs / 1000).toFixed(1)
-  /** Needle position as percentage (0 = far left, 50 = centre, 100 = far right). */
+  /** Needle and safe-zone positions share the same -MAX_BALANCE..+MAX_BALANCE scale. */
   const needlePct = ((balance + MAX_BALANCE) / (2 * MAX_BALANCE)) * 100
-  const safeLeft = 50 - safeZone
-  const safeRight = 50 + safeZone
+  const safeZoneBounds = getPressurePlankGaugeSafeZoneBounds(safeZone, MAX_BALANCE)
+  const safeLeft = safeZoneBounds.leftPercent
+  const safeRight = safeLeft + safeZoneBounds.widthPercent
 
   const medals = ['🥇', '🥈', '🥉']
 
@@ -587,7 +590,7 @@ export default function PressurePlank({
 
             {/* Safe zone width indicator */}
             <div className="pp__safe-hint">
-              Safe zone: <strong>{(safeZone * 2).toFixed(0)}%</strong>
+              Safe zone: <strong>{safeZoneBounds.widthPercent.toFixed(0)}%</strong>
             </div>
           </div>
         )}
