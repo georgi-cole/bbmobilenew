@@ -77,7 +77,7 @@ export default function MinigameRules({
 
         {!isReference && (
           <div className="minigame-rules-meta">
-            <span>⏱ {formatTime(game.timeLimitMs)}</span>
+            {game.key !== 'tetris' && <span>⏱ {formatTime(game.timeLimitMs)}</span>}
             <span>📊 {game.metricLabel}</span>
             <span>🏷️ {game.category}</span>
           </div>
