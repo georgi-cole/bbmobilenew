@@ -1,0 +1,71 @@
+name: Apply minigame localization fixes
+
+on:
+  push:
+    branches:
+      - fix/minigame-bugs-20260806
+    paths:
+      - scripts/apply-minigame-i18n-fix.mjs
+      - .github/workflows/apply-minigame-i18n-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/minigame-bugs-20260806
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply localization patch
+        run: node scripts/apply-minigame-i18n-fix.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format strict files
+        run: >-
+          npx prettier --write
+          src/i18n/I18nContext.ts
+          src/i18n/index.ts
+          src/i18n/messages.ts
+          src/components/PressurePlank/PressurePlank.tsx
+
+      - name: Verify formatting
+        run: npm run format:check
+
+      - name: Verify localization
+        run: npm run validate:i18n
+
+      - name: Run focused tests
+        run: >-
+          npm test --
+          tests/unit/chain-of-greed/ChainOfGreed.component.test.tsx
+          tests/unit/minigameBugfixes.regression.test.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Commit verified localization fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          if git diff --cached --quiet; then
+            echo "No localization changes to commit."
+            exit 0
+          fi
+          git commit -m "fix: localize new minigame and finale copy"
+          git push origin HEAD:fix/minigame-bugs-20260806
