@@ -360,7 +360,10 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
-    await favoriteVote.getByRole('button', { name: /Vote for/ }).first().click()
+    await favoriteVote
+      .getByRole('button', { name: /Vote for/ })
+      .first()
+      .click()
     const favoriteContinue = favoriteVote.getByRole('button', { name: /Continue/ })
     await expect(favoriteContinue).toBeVisible({ timeout: 15_000 })
     await favoriteContinue.click()
