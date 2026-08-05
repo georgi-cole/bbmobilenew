@@ -1,0 +1,45 @@
+name: Fix PR 1345 unused constant
+
+on:
+  push:
+    branches:
+      - fix/prod-debug-and-multimode-saves
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/prod-debug-and-multimode-saves
+          fetch-depth: 0
+
+      - name: Remove unused constant
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('e2e/playwright/finale.spec.ts')
+          text = path.read_text()
+          target = "const SAVED_RUNS_KEY = `bbmobilenew:savedRuns:${encodeURIComponent(PROFILE_ID)}`\n"
+          if target not in text:
+              raise SystemExit('target line not found')
+          path.write_text(text.replace(target, '', 1))
+          PY
+
+      - name: Verify lint
+        run: |
+          npm ci
+          npm run lint:ci
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git rm .github/workflows/fix-pr-1345-unused-constant.yml
+          git add e2e/playwright/finale.spec.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test: remove unused finale save key"
+          git push origin HEAD:fix/prod-debug-and-multimode-saves
