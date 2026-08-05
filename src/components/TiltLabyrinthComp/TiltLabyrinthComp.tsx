@@ -49,6 +49,7 @@ import {
   resolveCollisions,
   type TiltLabyrinthMazeCell as MazeCell,
 } from './tiltLabyrinthCollision';
+import { normalizeTiltDelta } from './tiltLabyrinthInput';
 import './TiltLabyrinthComp.css';
 
 const EMPTY_GAME_PLAYERS: RootState['game']['players'] = [];
@@ -88,7 +89,6 @@ const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 const HINT_PATH_DURATION_MS = 3_000;
-const ORIENTATION_DEAD_ZONE_DEGREES = 1.5;
 const MAX_MAZE_RESEED_ATTEMPTS = 4;
 const MAZE_RESEED_STEP = 0x9e3779b9;
 
@@ -167,15 +167,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function normalizeTiltDelta(
-  deltaDegrees: number,
-  deadZoneDegrees = ORIENTATION_DEAD_ZONE_DEGREES,
-): number {
-  if (!Number.isFinite(deltaDegrees)) return 0;
-  if (Math.abs(deltaDegrees) <= deadZoneDegrees) return 0;
-  const adjusted = deltaDegrees - Math.sign(deltaDegrees) * deadZoneDegrees;
-  return clamp(adjusted / 30, -1, 1);
-}
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);

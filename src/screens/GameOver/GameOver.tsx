@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import RecapImage, { preloadRecapImageSources } from '../../components/SeasonRecapCinematic/RecapImage'
+import RecapImage from '../../components/SeasonRecapCinematic/RecapImage'
+import { preloadRecapImageSources } from '../../components/SeasonRecapCinematic/recapImagePreload'
 import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData'
 import type { PublicOpinionState } from '../../publicOpinion/types'
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime'
@@ -28,6 +29,7 @@ import './AftermathTabloid.css'
 
 const CAROUSEL_INTERVAL_MS = 5000
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`
+const EMPTY_AFTERMATH_STORIES: AftermathIssue['stories'] = []
 
 function buildTitleMap(
   players: Player[],
@@ -147,7 +149,7 @@ export default function GameOver() {
     [activeProfileId, gameId, season]
   )
   const editorial = aftermathIssue?.editorial ?? getBundledAftermathConfig().editorial
-  const aftermathStories = aftermathIssue?.stories ?? []
+  const aftermathStories = aftermathIssue?.stories ?? EMPTY_AFTERMATH_STORIES
   const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0]
   const aftermathProgress =
     aftermathStories.length > 0 ? ((storyIndex + 1) / aftermathStories.length) * 100 : 0

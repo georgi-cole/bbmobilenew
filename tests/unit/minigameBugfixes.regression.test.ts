@@ -4,7 +4,7 @@ import {
   getPressurePlankGaugeSafeZoneBounds,
   getPressurePlankStabilityDamagePerSecond,
 } from '../../src/components/PressurePlank/pressurePlankLogic'
-import { normalizeTiltDelta } from '../../src/components/TiltLabyrinthComp/TiltLabyrinthComp'
+import { normalizeTiltDelta } from '../../src/components/TiltLabyrinthComp/tiltLabyrinthInput'
 
 describe('minigame bug-fix regressions', () => {
   it('renders the minimum Pressure Plank safe zone on the same scale as its damage bounds', () => {
