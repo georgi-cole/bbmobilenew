@@ -1,19 +1,26 @@
 // MODULE: src/components/MinigameRules/MinigameRules.tsx
 // Shared rules modal shown before play and available again as an in-game reference.
 
-import type { GameRegistryEntry } from '../../minigames/registry';
-import './MinigameRules.css';
+import type { TranslationKey } from '../../i18n/messages'
+import { useI18n } from '../../i18n/I18nContext'
+import type { GameRegistryEntry } from '../../minigames/registry'
+import './MinigameRules.css'
 
 interface Props {
-  game: GameRegistryEntry;
+  game: GameRegistryEntry
   /** Called when the player starts or returns to the competition. */
-  onConfirm: () => void;
+  onConfirm: () => void
   /** Optional debug-only rules bypass. */
-  onSkip?: () => void;
+  onSkip?: () => void
   /** Custom primary-action label for intro/reference contexts. */
-  confirmLabel?: string;
+  confirmLabel?: string
   /** Reference mode is used when the player reopens rules during a competition. */
-  mode?: 'intro' | 'reference';
+  mode?: 'intro' | 'reference'
+}
+
+interface LocalizedRegistryMetadata {
+  descriptionKey?: TranslationKey
+  instructionKeys?: TranslationKey[]
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -21,13 +28,13 @@ const CATEGORY_EMOJI: Record<string, string> = {
   endurance: '💪',
   logic: '🧠',
   trivia: '❓',
-};
+}
 
 function formatTime(ms: number): string {
-  if (ms === 0) return 'No limit';
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim();
+  if (ms === 0) return 'No limit'
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${s % 60 > 0 ? `${s % 60}s` : ''}`.trim()
 }
 
 export default function MinigameRules({
@@ -37,9 +44,17 @@ export default function MinigameRules({
   confirmLabel,
   mode = 'intro',
 }: Props) {
-  const emoji = CATEGORY_EMOJI[game.category] ?? '🎮';
-  const isReference = mode === 'reference';
-  const primaryLabel = confirmLabel ?? (isReference ? 'Return to game' : 'Start competition');
+  const { t } = useI18n()
+  const localizedGame = game as GameRegistryEntry & LocalizedRegistryMetadata
+  const description = localizedGame.descriptionKey
+    ? t(localizedGame.descriptionKey)
+    : game.description
+  const instructions = localizedGame.instructionKeys
+    ? localizedGame.instructionKeys.map((key) => t(key))
+    : game.instructions
+  const emoji = CATEGORY_EMOJI[game.category] ?? '🎮'
+  const isReference = mode === 'reference'
+  const primaryLabel = confirmLabel ?? (isReference ? 'Return to game' : 'Start competition')
 
   return (
     <div
@@ -55,7 +70,7 @@ export default function MinigameRules({
         <h2 className="minigame-rules-title">
           {emoji} {game.title}
         </h2>
-        <p className="minigame-rules-description">{game.description}</p>
+        <p className="minigame-rules-description">{description}</p>
 
         {!isReference && (
           <div className="minigame-rules-meta">
@@ -67,8 +82,8 @@ export default function MinigameRules({
 
         <p className="minigame-rules-section-title">How to Play</p>
         <ul className="minigame-rules-list">
-          {game.instructions.map((instr, i) => (
-            <li key={i}>{instr}</li>
+          {instructions.map((instruction, index) => (
+            <li key={index}>{instruction}</li>
           ))}
         </ul>
 
@@ -84,5 +99,5 @@ export default function MinigameRules({
         </div>
       </div>
     </div>
-  );
+  )
 }
