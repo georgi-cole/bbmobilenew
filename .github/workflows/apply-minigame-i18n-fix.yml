@@ -38,6 +38,7 @@ jobs:
       - name: Format strict files
         run: >-
           npx prettier --write
+          scripts/apply-minigame-i18n-fix.mjs
           src/i18n/I18nContext.ts
           src/i18n/index.ts
           src/i18n/messages.ts
