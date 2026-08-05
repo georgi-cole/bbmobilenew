@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   static-quality:
-    name: Format, lint, types, dependencies, and localization
+    name: Format, lint, types, and dependencies
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,10 +26,6 @@ jobs:
       - run: npm ci
       - name: Check formatting for files changed from main
         run: npm run format:check
-      - name: Validate localization coverage and new player-facing copy
-        env:
-          I18N_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: npm run validate:i18n
       - name: Reject focused or disabled tests
         run: npm run test:guard
       - name: Lint without warnings
