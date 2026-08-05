@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import RecapImage, { preloadRecapImageSources } from '../../components/SeasonRecapCinematic/RecapImage'
+import RecapImage, {
+  preloadRecapImageSources,
+} from '../../components/SeasonRecapCinematic/RecapImage'
 import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData'
 import type { PublicOpinionState } from '../../publicOpinion/types'
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime'
@@ -174,9 +176,7 @@ export default function GameOver() {
     if (!archivedRef.current) {
       archivedRef.current = true
       dispatch(
-        archiveSeason(
-          buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated)
-        )
+        archiveSeason(buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated))
       )
     }
   }

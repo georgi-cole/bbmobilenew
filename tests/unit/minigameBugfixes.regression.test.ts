@@ -8,10 +8,7 @@ import { normalizeTiltDelta } from '../../src/components/TiltLabyrinthComp/TiltL
 
 describe('minigame bug-fix regressions', () => {
   it('renders the minimum Pressure Plank safe zone on the same scale as its damage bounds', () => {
-    const bounds = getPressurePlankGaugeSafeZoneBounds(
-      PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH,
-      100,
-    )
+    const bounds = getPressurePlankGaugeSafeZoneBounds(PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH, 100)
     expect(bounds.leftPercent).toBe(49)
     expect(bounds.widthPercent).toBe(2)
     expect(getPressurePlankStabilityDamagePerSecond(2, 2, 92)).toBe(0)
