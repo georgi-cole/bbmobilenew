@@ -16,12 +16,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: agent/fit-me-in-tournament
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Capture localization checker output
+        env:
+          I18N_BASE_REF: origin/main
         run: |
           set +e
           node scripts/check-localization.mjs > fit-me-in-i18n-output.txt 2>&1
@@ -29,5 +32,8 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add fit-me-in-i18n-output.txt
+          if git diff --cached --quiet; then
+            exit 0
+          fi
           git commit -m "Capture Fit Me In localization diagnostics"
           git push
