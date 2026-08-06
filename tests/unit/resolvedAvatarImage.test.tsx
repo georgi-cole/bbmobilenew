@@ -44,13 +44,15 @@ describe('ResolvedAvatarImage', () => {
     expect(mockedImageIdToDataUrl).toHaveBeenCalledWith('photo-1')
   })
 
-  it('advances through avatar candidates when an image source fails', () => {
+  it('advances through avatar candidates when an image source fails', async () => {
     render(<ResolvedAvatarImage id="kian" name="Kian" avatar="kian" alt="Kian" />)
 
     const image = screen.getByRole('img', { name: 'Kian' })
     const firstSource = image.getAttribute('src')
     fireEvent.error(image)
 
-    expect(image.getAttribute('src')).not.toBe(firstSource)
+    await waitFor(() => {
+      expect(image.getAttribute('src')).not.toBe(firstSource)
+    })
   })
 })
