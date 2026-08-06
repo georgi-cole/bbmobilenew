@@ -13,6 +13,18 @@ type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   isUser?: boolean
 }
 
+type FailedSourceState = {
+  resolutionKey: string
+  sources: ReadonlySet<string>
+}
+
+type ProfilePhotoState = {
+  id: string
+  url: string | null
+}
+
+const EMPTY_SOURCES: ReadonlySet<string> = new Set()
+
 export default function ResolvedAvatarImage({
   id,
   name,
@@ -22,6 +34,7 @@ export default function ResolvedAvatarImage({
   ...imageProps
 }: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatar)
+  const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}`
   const fallback = useMemo(() => getLocalAvatarFallback(name, isUser), [isUser, name])
   const candidates = useMemo(
     () =>
@@ -39,20 +52,23 @@ export default function ResolvedAvatarImage({
           ],
     [avatar, id, isUser, name, profilePhotoId]
   )
-  const [candidateIndex, setCandidateIndex] = useState(0)
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [failedSourceState, setFailedSourceState] = useState<FailedSourceState>(() => ({
+    resolutionKey,
+    sources: new Set(),
+  }))
+  const [profilePhotoState, setProfilePhotoState] = useState<ProfilePhotoState>({
+    id: '',
+    url: null,
+  })
 
   useEffect(() => {
-    setCandidateIndex(0)
-  }, [avatar, id, isUser, name])
-
-  useEffect(() => {
-    let cancelled = false
-    setProfilePhotoUrl(null)
     if (!profilePhotoId) return undefined
 
+    let cancelled = false
     void imageIdToDataUrl(profilePhotoId).then((url) => {
-      if (!cancelled) setProfilePhotoUrl(url)
+      if (!cancelled) {
+        setProfilePhotoState({ id: profilePhotoId, url })
+      }
     })
 
     return () => {
@@ -60,19 +76,32 @@ export default function ResolvedAvatarImage({
     }
   }, [profilePhotoId])
 
-  const src =
-    profilePhotoUrl ?? (profilePhotoId ? fallback : (candidates[candidateIndex] ?? fallback))
+  const failedSources =
+    failedSourceState.resolutionKey === resolutionKey
+      ? failedSourceState.sources
+      : EMPTY_SOURCES
+  const profilePhotoUrl =
+    profilePhotoState.id === profilePhotoId ? profilePhotoState.url : null
+  const candidateSrc = candidates.find((candidate) => !failedSources.has(candidate)) ?? fallback
+  const src = profilePhotoUrl ?? (profilePhotoId ? fallback : candidateSrc)
 
   const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
     onError?.(event)
     if (event.defaultPrevented) return
 
     if (profilePhotoId && profilePhotoUrl) {
-      setProfilePhotoUrl(null)
+      setProfilePhotoState({ id: profilePhotoId, url: null })
       return
     }
 
-    setCandidateIndex((current) => Math.min(current + 1, Math.max(0, candidates.length - 1)))
+    setFailedSourceState((current) => {
+      const sources =
+        current.resolutionKey === resolutionKey
+          ? new Set(current.sources)
+          : new Set<string>()
+      sources.add(src)
+      return { resolutionKey, sources }
+    })
   }
 
   return <img {...imageProps} src={src} onError={handleError} />
