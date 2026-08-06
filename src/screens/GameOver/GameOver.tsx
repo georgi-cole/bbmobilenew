@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import RecapImage from '../../components/SeasonRecapCinematic/RecapImage'
+import { preloadRecapImageSources } from '../../components/SeasonRecapCinematic/recapImagePreload'
 import { buildSeasonRecapData } from '../../components/SeasonRecapCinematic/seasonRecapData'
 import type { PublicOpinionState } from '../../publicOpinion/types'
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime'
@@ -28,6 +29,8 @@ import './AftermathTabloid.css'
 
 const CAROUSEL_INTERVAL_MS = 5000
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`
+// i18n-ignore: Internal TypeScript property name; this identifier is never rendered to players.
+const EMPTY_AFTERMATH_STORIES: AftermathIssue['stories'] = []
 
 function buildTitleMap(
   players: Player[],
@@ -127,12 +130,14 @@ export default function GameOver() {
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
   const archivedRef = useRef(false)
+  const aftermathStoryRequestRef = useRef(0)
 
   const [carouselSlide, setCarouselSlide] = useState(0)
   const [panel, setPanel] = useState<GameOverPanel>('results')
   const [storyIndex, setStoryIndex] = useState(0)
   const [aftermathIssue, setAftermathIssue] = useState<AftermathIssue | null>(null)
   const [isAftermathLoading, setIsAftermathLoading] = useState(false)
+  const [isAftermathStoryLoading, setIsAftermathStoryLoading] = useState(false)
 
   const winner = players.find((p) => p.isWinner) ?? players.find((p) => p.finalRank === 1)
   const runnerUp = players.find((p) => p.finalRank === 2)
@@ -145,7 +150,7 @@ export default function GameOver() {
     [activeProfileId, gameId, season]
   )
   const editorial = aftermathIssue?.editorial ?? getBundledAftermathConfig().editorial
-  const aftermathStories = aftermathIssue?.stories ?? []
+  const aftermathStories = aftermathIssue?.stories ?? EMPTY_AFTERMATH_STORIES
   const activeStory = aftermathStories[storyIndex] ?? aftermathStories[0]
   const aftermathProgress =
     aftermathStories.length > 0 ? ((storyIndex + 1) / aftermathStories.length) * 100 : 0
@@ -161,6 +166,12 @@ export default function GameOver() {
     setAftermathIssue(readPersistedAftermathIssue(issueStorageKey))
     void loadAftermathConfig()
   }, [issueStorageKey])
+
+  useEffect(() => {
+    if (panel !== 'aftermath') return
+    const nextStory = aftermathStories[storyIndex + 1]
+    if (nextStory) void preloadRecapImageSources(nextStory.imageSources)
+  }, [aftermathStories, panel, storyIndex])
 
   function archiveCompletedSeason() {
     if (!archivedRef.current) {
@@ -197,6 +208,8 @@ export default function GameOver() {
   }
 
   function closeOverlay() {
+    aftermathStoryRequestRef.current += 1
+    setIsAftermathStoryLoading(false)
     setPanel('results')
     setStoryIndex(0)
   }
@@ -226,16 +239,37 @@ export default function GameOver() {
         persistAftermathIssue(issueStorageKey, issue)
       }
 
+      const firstStory = issue.stories[0]
+      if (firstStory) await preloadRecapImageSources(firstStory.imageSources)
+
       setAftermathIssue(issue)
       setStoryIndex(0)
       setPanel('aftermath')
+
+      const nextStory = issue.stories[1]
+      if (nextStory) void preloadRecapImageSources(nextStory.imageSources)
     } finally {
       setIsAftermathLoading(false)
     }
   }
 
+  async function selectAftermathStory(index: number) {
+    const targetStory = aftermathStories[index]
+    if (!targetStory || index === storyIndex || isAftermathStoryLoading) return
+
+    const requestId = aftermathStoryRequestRef.current + 1
+    aftermathStoryRequestRef.current = requestId
+    setIsAftermathStoryLoading(true)
+    try {
+      await preloadRecapImageSources(targetStory.imageSources)
+      if (aftermathStoryRequestRef.current === requestId) setStoryIndex(index)
+    } finally {
+      if (aftermathStoryRequestRef.current === requestId) setIsAftermathStoryLoading(false)
+    }
+  }
+
   function showPreviousStory() {
-    setStoryIndex((current) => Math.max(current - 1, 0))
+    void selectAftermathStory(Math.max(storyIndex - 1, 0))
   }
 
   function showNextStory() {
@@ -243,7 +277,7 @@ export default function GameOver() {
       closeOverlay()
       return
     }
-    setStoryIndex((current) => Math.min(current + 1, aftermathStories.length - 1))
+    void selectAftermathStory(Math.min(storyIndex + 1, aftermathStories.length - 1))
   }
 
   return (
@@ -406,6 +440,12 @@ export default function GameOver() {
               key={activeStory.playerId}
               className={`gameover-aftermath gameover-aftermath--${activeStory.tone}`}
             >
+              {isAftermathStoryLoading && (
+                <div className="gameover-aftermath__loading" role="status" aria-live="polite">
+                  <span className="gameover-aftermath__loading-spinner" aria-hidden="true" />
+                  <strong>{editorial.loadingLabel}</strong>
+                </div>
+              )}
               <div className="gameover-aftermath__topbar">
                 <span className="gameover-aftermath__edition">{editorial.editionLabel}</span>
                 <span className="gameover-aftermath__masthead">{editorial.publicationName}</span>
@@ -454,6 +494,8 @@ export default function GameOver() {
                           className="gameover-aftermath__photo"
                           sources={activeStory.imageSources}
                           alt={activeStory.playerName}
+                          loading="eager"
+                          decoding="async"
                         />
                         <span className="gameover-aftermath__exclusive">
                           {editorial.exclusiveLabel}
@@ -494,7 +536,7 @@ export default function GameOver() {
                     <button
                       key={story.playerId}
                       className={index === storyIndex ? 'is-active' : ''}
-                      onClick={() => setStoryIndex(index)}
+                      onClick={() => void selectAftermathStory(index)}
                       aria-label={`Open ${story.playerName}'s aftermath story`}
                       aria-current={index === storyIndex ? 'page' : undefined}
                       title={story.playerName}
@@ -517,7 +559,7 @@ export default function GameOver() {
                 <button
                   className="gameover-btn gameover-btn--ghost"
                   onClick={showPreviousStory}
-                  disabled={storyIndex === 0}
+                  disabled={storyIndex === 0 || isAftermathStoryLoading}
                   type="button"
                 >
                   Previous
@@ -525,6 +567,7 @@ export default function GameOver() {
                 <button
                   className="gameover-btn gameover-btn--primary"
                   onClick={showNextStory}
+                  disabled={isAftermathStoryLoading}
                   type="button"
                 >
                   {storyIndex === aftermathStories.length - 1 ? 'Done' : 'Next'}

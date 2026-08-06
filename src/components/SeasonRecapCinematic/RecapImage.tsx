@@ -1,29 +1,42 @@
-import { useMemo, useState, type ImgHTMLAttributes, type SyntheticEvent } from 'react';
+import { useMemo, useState, type ImgHTMLAttributes, type SyntheticEvent } from 'react'
+import { isRecapImageSourceDecoded, markRecapImageSourceDecoded } from './recapImagePreload'
 
 interface RecapImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
-  sources: string[];
+  sources: string[]
 }
 
-export default function RecapImage({ sources, onError, onLoad, style, ...imgProps }: RecapImageProps) {
-  const safeSources = useMemo(() => sources.filter(Boolean), [sources]);
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const [resolved, setResolved] = useState(false);
+interface RecapImageInstanceProps extends Omit<RecapImageProps, 'sources'> {
+  safeSources: string[]
+}
 
-  const src = safeSources[Math.min(sourceIndex, Math.max(safeSources.length - 1, 0))] ?? '';
+function RecapImageInstance({
+  safeSources,
+  onError,
+  onLoad,
+  style,
+  ...imgProps
+}: RecapImageInstanceProps) {
+  const cachedSourceIndex = safeSources.findIndex(isRecapImageSourceDecoded)
+  const [sourceIndex, setSourceIndex] = useState(() => Math.max(0, cachedSourceIndex))
+  const [status, setStatus] = useState<'pending' | 'loaded' | 'failed'>(
+    cachedSourceIndex >= 0 ? 'loaded' : 'pending'
+  )
+  const src = safeSources[Math.min(sourceIndex, Math.max(safeSources.length - 1, 0))] ?? ''
 
   function handleLoad(event: SyntheticEvent<HTMLImageElement, Event>) {
-    setResolved(true);
-    onLoad?.(event);
+    markRecapImageSourceDecoded(src)
+    setStatus('loaded')
+    onLoad?.(event)
   }
 
   function handleError(event: SyntheticEvent<HTMLImageElement, Event>) {
     if (sourceIndex < safeSources.length - 1) {
-      setResolved(false);
-      setSourceIndex((current) => current + 1);
-      return;
+      setStatus('pending')
+      setSourceIndex((current) => current + 1)
+      return
     }
-    setResolved(true);
-    onError?.(event);
+    setStatus('failed')
+    onError?.(event)
   }
 
   return (
@@ -32,11 +45,19 @@ export default function RecapImage({ sources, onError, onLoad, style, ...imgProp
       src={src}
       onLoad={handleLoad}
       onError={handleError}
-      data-image-state={resolved ? 'resolved' : 'pending'}
+      data-image-state={status}
       style={{
         ...style,
-        opacity: resolved ? (typeof style?.opacity === 'number' ? style.opacity : 1) : 0,
+        opacity: status === 'loaded' ? (typeof style?.opacity === 'number' ? style.opacity : 1) : 0,
+        visibility: status === 'failed' ? 'hidden' : style?.visibility,
       }}
     />
-  );
+  )
+}
+
+export default function RecapImage({ sources, ...imgProps }: RecapImageProps) {
+  const safeSources = useMemo(() => [...new Set(sources.filter(Boolean))], [sources])
+  const sourceKey = safeSources.join('\u0000')
+
+  return <RecapImageInstance key={sourceKey} safeSources={safeSources} {...imgProps} />
 }

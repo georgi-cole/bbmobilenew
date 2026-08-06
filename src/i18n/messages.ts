@@ -1,6 +1,14 @@
 import type { AppLanguage } from './languages'
 
 export const EN_US_MESSAGES = {
+  'chainOfGreed.round': 'Round {round}',
+  'chainOfGreed.roundIntro.title': 'Build the chain.',
+  'chainOfGreed.roundIntro.warning': 'Bank before it breaks.',
+  'chainOfGreed.roundIntro.dismiss': 'Tap outside to continue',
+  'pressurePlank.safeZone': 'Safe zone:',
+  'seasonRecap.finale.title': 'Finale',
+  'seasonRecap.finale.detail.two': '{first} and {second} entered the final decision.',
+  'seasonRecap.finale.detail.one': 'The season reached its final decision.',
   'fitMeIn.description':
     'Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final.',
   'fitMeIn.rules.freshBoard': 'Every round starts on a fresh board and has a fixed time limit.',
@@ -166,6 +174,14 @@ const EN_GB_MESSAGES = {
 } satisfies PartialMessageCatalog
 
 const FR_FR_MESSAGES = {
+  'chainOfGreed.round': 'Manche {round}',
+  'chainOfGreed.roundIntro.title': 'Construisez la chaîne.',
+  'chainOfGreed.roundIntro.warning': 'Mettez en banque avant qu’elle ne se brise.',
+  'chainOfGreed.roundIntro.dismiss': 'Touchez à l’extérieur pour continuer',
+  'pressurePlank.safeZone': 'Zone sûre :',
+  'seasonRecap.finale.title': 'Finale',
+  'seasonRecap.finale.detail.two': '{first} et {second} ont accédé à la décision finale.',
+  'seasonRecap.finale.detail.one': 'La saison a atteint sa décision finale.',
   'fitMeIn.description':
     'Survivez à un tournoi adaptatif en plusieurs manches et atteignez la finale Mosaïque des candidats.',
   'fitMeIn.rules.freshBoard':
@@ -323,6 +339,14 @@ const FR_FR_MESSAGES = {
 } satisfies MessageCatalog
 
 const IT_IT_MESSAGES = {
+  'chainOfGreed.round': 'Round {round}',
+  'chainOfGreed.roundIntro.title': 'Costruisci la catena.',
+  'chainOfGreed.roundIntro.warning': 'Metti in banca prima che si spezzi.',
+  'chainOfGreed.roundIntro.dismiss': 'Tocca fuori per continuare',
+  'pressurePlank.safeZone': 'Zona sicura:',
+  'seasonRecap.finale.title': 'Finale',
+  'seasonRecap.finale.detail.two': '{first} e {second} hanno raggiunto la decisione finale.',
+  'seasonRecap.finale.detail.one': 'La stagione è arrivata alla decisione finale.',
   'fitMeIn.description':
     'Sopravvivi a un torneo adattivo a più round e raggiungi la finale Mosaico dei concorrenti.',
   'fitMeIn.rules.freshBoard':
@@ -480,6 +504,14 @@ const IT_IT_MESSAGES = {
 } satisfies MessageCatalog
 
 const ES_ES_MESSAGES = {
+  'chainOfGreed.round': 'Ronda {round}',
+  'chainOfGreed.roundIntro.title': 'Construye la cadena.',
+  'chainOfGreed.roundIntro.warning': 'Guarda los puntos antes de que se rompa.',
+  'chainOfGreed.roundIntro.dismiss': 'Toca fuera para continuar',
+  'pressurePlank.safeZone': 'Zona segura:',
+  'seasonRecap.finale.title': 'Final',
+  'seasonRecap.finale.detail.two': '{first} y {second} llegaron a la decisión final.',
+  'seasonRecap.finale.detail.one': 'La temporada llegó a su decisión final.',
   'fitMeIn.description':
     'Sobrevive a un torneo adaptativo de varias rondas y llega a la final Mosaico de concursantes.',
   'fitMeIn.rules.freshBoard':
@@ -637,6 +669,14 @@ const ES_ES_MESSAGES = {
 } satisfies MessageCatalog
 
 const PT_PT_MESSAGES = {
+  'chainOfGreed.round': 'Ronda {round}',
+  'chainOfGreed.roundIntro.title': 'Constrói a cadeia.',
+  'chainOfGreed.roundIntro.warning': 'Guarda os pontos antes que se quebre.',
+  'chainOfGreed.roundIntro.dismiss': 'Toca fora para continuar',
+  'pressurePlank.safeZone': 'Zona segura:',
+  'seasonRecap.finale.title': 'Final',
+  'seasonRecap.finale.detail.two': '{first} e {second} chegaram à decisão final.',
+  'seasonRecap.finale.detail.one': 'A temporada chegou à decisão final.',
   'fitMeIn.description':
     'Sobrevive a um torneio adaptativo de várias rondas e chega à final Mosaico dos concorrentes.',
   'fitMeIn.rules.freshBoard':
@@ -794,6 +834,14 @@ const PT_PT_MESSAGES = {
 } satisfies MessageCatalog
 
 const DE_DE_MESSAGES = {
+  'chainOfGreed.round': 'Runde {round}',
+  'chainOfGreed.roundIntro.title': 'Baue die Kette auf.',
+  'chainOfGreed.roundIntro.warning': 'Sichere die Punkte, bevor sie reißt.',
+  'chainOfGreed.roundIntro.dismiss': 'Tippe außerhalb, um fortzufahren',
+  'pressurePlank.safeZone': 'Sicherer Bereich:',
+  'seasonRecap.finale.title': 'Finale',
+  'seasonRecap.finale.detail.two': '{first} und {second} traten zur letzten Entscheidung an.',
+  'seasonRecap.finale.detail.one': 'Die Staffel erreichte ihre letzte Entscheidung.',
   'fitMeIn.description':
     'Überstehe ein adaptives Turnier über mehrere Runden und erreiche das Hausgast-Mosaik-Finale.',
   'fitMeIn.rules.freshBoard':
@@ -950,6 +998,14 @@ const DE_DE_MESSAGES = {
 } satisfies MessageCatalog
 
 const ZH_CN_MESSAGES = {
+  'chainOfGreed.round': '第 {round} 轮',
+  'chainOfGreed.roundIntro.title': '建立连胜链。',
+  'chainOfGreed.roundIntro.warning': '在连胜链中断前锁定积分。',
+  'chainOfGreed.roundIntro.dismiss': '点击外部继续',
+  'pressurePlank.safeZone': '安全区：',
+  'seasonRecap.finale.title': '总决赛',
+  'seasonRecap.finale.detail.two': '{first} 和 {second} 进入最终决选。',
+  'seasonRecap.finale.detail.one': '本季进入最终决选。',
   'fitMeIn.description': '在自适应多轮拼图淘汰赛中坚持到底，晋级“住客马赛克”决赛。',
   'fitMeIn.rules.freshBoard': '每轮都从空棋盘开始，并设有固定时间限制。',
   'fitMeIn.rules.fivePlus': '5名或更多玩家参赛时，第1轮和第2轮各淘汰排名最后者；第3轮只保留前2名。',
@@ -1094,6 +1150,14 @@ const ZH_CN_MESSAGES = {
 } satisfies MessageCatalog
 
 const BG_BG_MESSAGES = {
+  'chainOfGreed.round': 'Рунд {round}',
+  'chainOfGreed.roundIntro.title': 'Изгради веригата.',
+  'chainOfGreed.roundIntro.warning': 'Прибери точките, преди да се прекъсне.',
+  'chainOfGreed.roundIntro.dismiss': 'Докосни извън прозореца, за да продължиш',
+  'pressurePlank.safeZone': 'Безопасна зона:',
+  'seasonRecap.finale.title': 'Финал',
+  'seasonRecap.finale.detail.two': '{first} и {second} стигнаха до финалното решение.',
+  'seasonRecap.finale.detail.one': 'Сезонът стигна до финалното решение.',
   'fitMeIn.description':
     'Оцелей в адаптивен турнир от няколко рунда и стигни до финала „Мозайка от съквартиранти“.',
   'fitMeIn.rules.freshBoard': 'Всеки рунд започва с празно поле и има фиксирано времетраене.',
@@ -1248,6 +1312,14 @@ const BG_BG_MESSAGES = {
 } satisfies MessageCatalog
 
 const RU_RU_MESSAGES = {
+  'chainOfGreed.round': 'Раунд {round}',
+  'chainOfGreed.roundIntro.title': 'Постройте цепочку.',
+  'chainOfGreed.roundIntro.warning': 'Зафиксируйте очки, пока цепочка не оборвалась.',
+  'chainOfGreed.roundIntro.dismiss': 'Коснитесь за пределами окна, чтобы продолжить',
+  'pressurePlank.safeZone': 'Безопасная зона:',
+  'seasonRecap.finale.title': 'Финал',
+  'seasonRecap.finale.detail.two': '{first} и {second} вышли на финальное решение.',
+  'seasonRecap.finale.detail.one': 'Сезон подошёл к финальному решению.',
   'fitMeIn.description':
     'Пройдите адаптивный турнир из нескольких раундов и доберитесь до финала «Мозаика участников».',
   'fitMeIn.rules.freshBoard':
@@ -1403,6 +1475,14 @@ const RU_RU_MESSAGES = {
 } satisfies MessageCatalog
 
 const UK_UA_MESSAGES = {
+  'chainOfGreed.round': 'Раунд {round}',
+  'chainOfGreed.roundIntro.title': 'Побудуйте ланцюжок.',
+  'chainOfGreed.roundIntro.warning': 'Зафіксуйте очки, доки ланцюжок не обірвався.',
+  'chainOfGreed.roundIntro.dismiss': 'Торкніться поза вікном, щоб продовжити',
+  'pressurePlank.safeZone': 'Безпечна зона:',
+  'seasonRecap.finale.title': 'Фінал',
+  'seasonRecap.finale.detail.two': '{first} і {second} вийшли на фінальне рішення.',
+  'seasonRecap.finale.detail.one': 'Сезон дійшов до фінального рішення.',
   'fitMeIn.description':
     'Пройдіть адаптивний турнір із кількох раундів і дістаньтеся фіналу «Мозаїка учасників».',
   'fitMeIn.rules.freshBoard':
@@ -1559,6 +1639,14 @@ const UK_UA_MESSAGES = {
 } satisfies MessageCatalog
 
 const TR_TR_MESSAGES = {
+  'chainOfGreed.round': 'Tur {round}',
+  'chainOfGreed.roundIntro.title': 'Zinciri oluştur.',
+  'chainOfGreed.roundIntro.warning': 'Zincir kırılmadan puanları bankaya al.',
+  'chainOfGreed.roundIntro.dismiss': 'Devam etmek için dışarı dokun',
+  'pressurePlank.safeZone': 'Güvenli bölge:',
+  'seasonRecap.finale.title': 'Final',
+  'seasonRecap.finale.detail.two': '{first} ve {second} son karar aşamasına kaldı.',
+  'seasonRecap.finale.detail.one': 'Sezon son karar aşamasına ulaştı.',
   'fitMeIn.description':
     'Uyarlanan çok turlu yerleştirme turnuvasında hayatta kal ve Ev Sakini Mozaik Finali’ne ulaş.',
   'fitMeIn.rules.freshBoard': 'Her tur boş bir tahtayla başlar ve sabit bir süre sınırı vardır.',

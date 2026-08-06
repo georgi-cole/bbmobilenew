@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useTranslate, type Translate } from '../../i18n';
 import type { GameHistoryEvent, Player } from '../../types';
 import type { PublicOpinionState } from '../../publicOpinion/types';
 import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage';
@@ -81,6 +82,7 @@ interface TimelineCheckpoint {
   id: string;
   day: number;
   player?: Player;
+  players?: Player[];
   kind: 'eviction' | 'milestone' | 'twist' | 'finale';
   title: string;
   label: string;
@@ -102,7 +104,7 @@ function getMajorEventImpact(event: TimelineCheckpoint): string | null {
     return 'Every vote after this point helped decide the eventual winner.';
   }
   if (event.kind === 'finale') {
-    return 'The final vote closed the season and locked the finishing order.';
+    return 'The final two entered the season’s closing decision.';
   }
   return null;
 }
@@ -376,7 +378,7 @@ function getSeasonDayCount(recapData: RecapData, week: number): number {
   return Math.max(1, Math.round(week), latestRecordedExit);
 }
 
-function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineCheckpoint[] {
+function buildTimelineCheckpoints(recapData: RecapData, week: number, t: Translate): TimelineCheckpoint[] {
   const totalDays = getSeasonDayCount(recapData, week);
   const latestPreFinaleDay = Math.max(1, totalDays - 1);
   // A runner-up is announced beside the champion, not archived as an exit.
@@ -446,26 +448,29 @@ function buildTimelineCheckpoints(recapData: RecapData, week: number): TimelineC
       detail: `${player.name} fought their way back into the story.`,
     });
   });
-  const finalePlayer = recapData.finalists.find((player) => player.isWinner) ?? recapData.finalists[0] ?? evictions.at(-1);
-  const runnerUp = recapData.finalists.find(
-    (player) => player.seasonPlacement === 2 || player.finalRank === 2,
-  );
+  const finalists = [...recapData.finalists]
+    .slice(0, 2)
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  const fallbackFinalist = finalists[0] ?? evictions.at(-1);
 
-  if (!finalePlayer) return [...checkpoints, ...knownTwists].sort((a, b) => a.day - b.day);
+  if (!fallbackFinalist) return [...checkpoints, ...knownTwists].sort((a, b) => a.day - b.day);
 
   return [
     ...checkpoints,
     ...knownTwists,
     {
-      id: `finale-${finalePlayer.id}`,
+      id: `finale-${finalists.map((player) => player.id).join('-') || fallbackFinalist.id}`,
       day: totalDays,
-      player: finalePlayer,
+      players: finalists.length > 0 ? finalists : [fallbackFinalist],
       kind: 'finale' as const,
-      title: finalePlayer.name,
-      label: finalePlayer.isWinner ? 'Winner crowned' : 'Final vote',
-      detail: finalePlayer.isWinner
-        ? `${finalePlayer.name} closed the season with the final crown${runnerUp ? `, with ${runnerUp.name} announced as runner-up` : ''}.`
-        : `The final vote put ${finalePlayer.name} in the spotlight.`,
+      title: t('seasonRecap.finale.title'),
+      label: t('seasonRecap.finale.title'),
+      detail: finalists.length === 2
+        ? t('seasonRecap.finale.detail.two', {
+            first: finalists[0].name,
+            second: finalists[1].name,
+          })
+        : t('seasonRecap.finale.detail.one'),
     },
   ].sort((a, b) => a.day - b.day || (a.kind === 'twist' ? -1 : 1));
 }
@@ -499,9 +504,14 @@ function FinaleCalendarFocus({
         ? `#${player.finalRank}`
         : '—';
   const impact = getMajorEventImpact(leadEvent);
-  const involvedPlayers = events
-    .map((event) => event.player)
-    .filter((eventPlayer): eventPlayer is Player => Boolean(eventPlayer));
+  const involvedPlayers = [...new Map(
+    events
+      .flatMap((event) => [
+        ...(event.players ?? []),
+        ...(event.player ? [event.player] : []),
+      ])
+      .map((eventPlayer) => [eventPlayer.id, eventPlayer] as const),
+  ).values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   const exitRecords = history.filter((event) => event.type === 'seasonExit');
   const exitRecord = player
     ? [...exitRecords].reverse().find((event: GameHistoryEvent) => event.data.playerId === player.id)
@@ -769,7 +779,11 @@ function FinaleTimeline({
   history: GameHistoryEvent[];
   onBack: () => void;
 }) {
-  const checkpoints = useMemo(() => buildTimelineCheckpoints(recapData, week), [recapData, week]);
+  const t = useTranslate();
+  const checkpoints = useMemo(
+    () => buildTimelineCheckpoints(recapData, week, t),
+    [recapData, t, week],
+  );
   const totalDays = getSeasonDayCount(recapData, week);
   const windowSize = 28;
   const calendarWindows = Array.from({ length: Math.ceil(totalDays / windowSize) }, (_, index) => {

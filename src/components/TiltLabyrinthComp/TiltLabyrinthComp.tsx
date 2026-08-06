@@ -49,6 +49,7 @@ import {
   resolveCollisions,
   type TiltLabyrinthMazeCell as MazeCell,
 } from './tiltLabyrinthCollision';
+import { normalizeTiltDelta } from './tiltLabyrinthInput';
 import './TiltLabyrinthComp.css';
 
 const EMPTY_GAME_PLAYERS: RootState['game']['players'] = [];
@@ -88,6 +89,8 @@ const KEY_RADIUS = 7;
 const DOOR_RADIUS = 12;
 const GOAL_RADIUS = 10;
 const HINT_PATH_DURATION_MS = 3_000;
+const MAX_MAZE_RESEED_ATTEMPTS = 4;
+const MAZE_RESEED_STEP = 0x9e3779b9;
 
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -163,6 +166,7 @@ function makeRng(seed: number): () => number {
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
+
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
@@ -319,6 +323,67 @@ function shortestPathLength(maze: MazeCell[][], start: FeaturePoint, end: Featur
     }
   }
   return MAZE_COLS * MAZE_ROWS;
+}
+
+interface ValidatedMazeSetup {
+  maze: MazeCell[][];
+  keyPos: FeaturePoint;
+  doorPos: FeaturePoint;
+  goalPos: FeaturePoint;
+  hazards: Hazard[];
+  routeCells: number;
+}
+
+function createValidatedMazeSetup(seed: number): ValidatedMazeSetup {
+  const unreachablePathLength = MAZE_COLS * MAZE_ROWS;
+
+  for (let attempt = 0; attempt < MAX_MAZE_RESEED_ATTEMPTS; attempt += 1) {
+    const attemptSeed = (
+      (seed >>> 0) ^
+      0xfeedcafe ^
+      Math.imul(attempt, MAZE_RESEED_STEP)
+    ) >>> 0;
+    const rng = makeRng(attemptSeed);
+    const maze = generateMaze(MAZE_COLS, MAZE_ROWS, rng);
+    const goalPos = cellCenter(MAZE_COLS - 1, MAZE_ROWS - 1);
+    const keyPos = pickFeaturePoint(
+      rng,
+      Math.floor(MAZE_COLS * 0.3),
+      Math.floor(MAZE_COLS * 0.55),
+      Math.floor(MAZE_ROWS * 0.18),
+      Math.floor(MAZE_ROWS * 0.55),
+      (point) =>
+        distance(point.x, point.y, CELL_PX / 2, CELL_PX / 2) > CELL_PX * 4 &&
+        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 5,
+    );
+    const doorPos = pickFeaturePoint(
+      rng,
+      MAZE_COLS - 5,
+      MAZE_COLS - 3,
+      MAZE_ROWS - 6,
+      MAZE_ROWS - 3,
+      (point) =>
+        distance(point.x, point.y, keyPos.x, keyPos.y) > CELL_PX * 4 &&
+        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 1.75,
+    );
+    const routeSegments = [
+      shortestPathLength(maze, cellCenter(0, 0), keyPos),
+      shortestPathLength(maze, keyPos, doorPos),
+      shortestPathLength(maze, doorPos, goalPos),
+    ];
+    if (routeSegments.every((length) => length < unreachablePathLength)) {
+      return {
+        maze,
+        keyPos,
+        doorPos,
+        goalPos,
+        hazards: createHazards(rng, keyPos, doorPos, goalPos),
+        routeCells: routeSegments.reduce((total, length) => total + length, 0),
+      };
+    }
+  }
+
+  throw new Error('Tilt Labyrinth failed to generate a playable maze after automatic reseeding.');
 }
 
 function findMazePath(
@@ -659,6 +724,7 @@ export default function TiltLabyrinthComp({
   const resolvedRef = useRef(false);
   const initializedCompetitionRef = useRef<string | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
+  const orientationBaselineRef = useRef<{ gamma: number; beta: number } | null>(null);
   const hintStatusTimerRef = useRef<number | null>(null);
 
   const [useTilt, setUseTilt] = useState(false);
@@ -686,41 +752,21 @@ export default function TiltLabyrinthComp({
     ) return;
     initializedCompetitionRef.current = competitionIdentity;
 
-    const rng = makeRng((seed >>> 0) ^ 0xfeedcafe);
-    const maze = generateMaze(MAZE_COLS, MAZE_ROWS, rng);
+    const {
+      maze,
+      keyPos,
+      doorPos,
+      goalPos,
+      hazards,
+      routeCells,
+    } = createValidatedMazeSetup(seed);
     mazeRef.current = maze;
-    const goalPos = cellCenter(MAZE_COLS - 1, MAZE_ROWS - 1);
-    const keyPos = pickFeaturePoint(
-      rng,
-      Math.floor(MAZE_COLS * 0.3),
-      Math.floor(MAZE_COLS * 0.55),
-      Math.floor(MAZE_ROWS * 0.18),
-      Math.floor(MAZE_ROWS * 0.55),
-      (point) =>
-        distance(point.x, point.y, CELL_PX / 2, CELL_PX / 2) > CELL_PX * 4 &&
-        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 5,
-    );
-    const doorPos = pickFeaturePoint(
-      rng,
-      MAZE_COLS - 5,
-      MAZE_COLS - 3,
-      MAZE_ROWS - 6,
-      MAZE_ROWS - 3,
-      (point) =>
-        distance(point.x, point.y, keyPos.x, keyPos.y) > CELL_PX * 4 &&
-        distance(point.x, point.y, goalPos.x, goalPos.y) > CELL_PX * 1.75,
-    );
-    const hazards = createHazards(rng, keyPos, doorPos, goalPos);
 
     // Compute AI scores (completion times in ms â€” lower is better)
     const aiScores: Record<string, number> = {};
     const humanParticipant = participants?.find((p) => p.isHuman);
     const humanId = humanParticipant?.id ?? null;
 
-    const routeCells =
-      shortestPathLength(maze, cellCenter(0, 0), keyPos) +
-      shortestPathLength(maze, keyPos, doorPos) +
-      shortestPathLength(maze, doorPos, goalPos);
     const runDetails: Record<string, SimulatedRun> = {};
 
     participants?.forEach((p, idx) => {
@@ -991,6 +1037,17 @@ export default function TiltLabyrinthComp({
 
   // â”€â”€ Keyboard controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
+    const clearTransientInput = () => {
+      const gs = gameRef.current;
+      if (gs) {
+        gs.keys.clear();
+        gs.touchDrag.active = false;
+        gs.tiltX = 0;
+        gs.tiltY = 0;
+      }
+      orientationBaselineRef.current = null;
+      setUseTilt(false);
+    };
     const onKeyDown = (e: KeyboardEvent) => {
       const gs = gameRef.current;
       if (!gs) return;
@@ -1005,12 +1062,20 @@ export default function TiltLabyrinthComp({
       if (!gs) return;
       gs.keys.delete(e.code);
     };
+    const onVisibilityChange = () => {
+      if (document.hidden) clearTransientInput();
+    };
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', clearTransientInput);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
+      clearTransientInput();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', clearTransientInput);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -1019,11 +1084,16 @@ export default function TiltLabyrinthComp({
     const handleOrientation = (e: DeviceOrientationEvent) => {
       const gs = gameRef.current;
       if (!gs) return;
-      const gamma = e.gamma ?? 0; // left/right tilt
-      const beta = e.beta ?? 0;   // front/back tilt
-      gs.tiltX = Math.max(-1, Math.min(1, gamma / 30));
-      gs.tiltY = Math.max(-1, Math.min(1, (beta - 45) / 30));
-      setUseTilt(true);
+      if (e.gamma == null || e.beta == null) return;
+      if (!orientationBaselineRef.current) {
+        orientationBaselineRef.current = { gamma: e.gamma, beta: e.beta };
+        gs.tiltX = 0;
+        gs.tiltY = 0;
+        return;
+      }
+      gs.tiltX = normalizeTiltDelta(e.gamma - orientationBaselineRef.current.gamma);
+      gs.tiltY = normalizeTiltDelta(e.beta - orientationBaselineRef.current.beta);
+      setUseTilt(gs.tiltX !== 0 || gs.tiltY !== 0);
     };
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1059,46 +1129,56 @@ export default function TiltLabyrinthComp({
     };
   }, []);
 
-  // â”€â”€ Touch controls â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Pointer controls (mouse, touch, and pen) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const onTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
+    const stopDrag = () => {
+      const gs = gameRef.current;
+      if (gs) gs.touchDrag.active = false;
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+      event.preventDefault();
       const gs = gameRef.current;
       if (!gs) return;
-      const t = e.touches[0];
+      canvas.setPointerCapture?.(event.pointerId);
       gs.touchDrag = {
         active: true,
-        startX: t.clientX,
-        startY: t.clientY,
-        lastX: t.clientX,
-        lastY: t.clientY,
+        startX: event.clientX,
+        startY: event.clientY,
+        lastX: event.clientX,
+        lastY: event.clientY,
       };
     };
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
+    const onPointerMove = (event: PointerEvent) => {
       const gs = gameRef.current;
-      if (!gs || !gs.touchDrag.active) return;
-      const t = e.touches[0];
-      gs.touchDrag.lastX = t.clientX;
-      gs.touchDrag.lastY = t.clientY;
+      if (!gs || !gs.touchDrag.active || !event.isPrimary) return;
+      event.preventDefault();
+      gs.touchDrag.lastX = event.clientX;
+      gs.touchDrag.lastY = event.clientY;
     };
-    const onTouchEnd = () => {
-      const gs = gameRef.current;
-      if (!gs) return;
-      gs.touchDrag.active = false;
+    const onPointerEnd = (event: PointerEvent) => {
+      if (canvas.hasPointerCapture?.(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+      stopDrag();
     };
 
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerEnd);
+    canvas.addEventListener('pointercancel', onPointerEnd);
+    canvas.addEventListener('lostpointercapture', stopDrag);
 
     return () => {
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
+      stopDrag();
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerEnd);
+      canvas.removeEventListener('pointercancel', onPointerEnd);
+      canvas.removeEventListener('lostpointercapture', stopDrag);
     };
   }, []);
 

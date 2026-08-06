@@ -163,7 +163,12 @@
   height: 100%;
   image-rendering: pixelated;
   touch-action: none;
-  cursor: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.tilt-labyrinth-canvas:active {
+  cursor: grabbing;
 }
 
 .tilt-labyrinth-canvas-wrap::before,

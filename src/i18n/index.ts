@@ -1,4 +1,4 @@
-export { useI18n, type I18nContextValue } from './I18nContext'
+export { useI18n, useTranslate, type I18nContextValue } from './I18nContext'
 export { I18nProvider } from './I18nProvider'
 export {
   DEFAULT_APP_LANGUAGE,

@@ -8,6 +8,7 @@ import {
 } from '../../../src/components/ChainOfGreed/chainOfGreedLogic';
 
 const TURN_PIPELINE_MS = Object.values(CHAIN_TURN_PIPELINE_DURATIONS).reduce((total, value) => total + value, 0);
+const ROUND_INTRO_MS = 5_000;
 
 const participants = [
   { id: 'human', name: 'You', isHuman: true, precomputedScore: 75, previousPR: null },
@@ -25,7 +26,7 @@ describe('ChainOfGreed component', () => {
     vi.useRealTimers();
   });
 
-  it('starts round one automatically after a brief round intro flash', () => {
+  it('keeps the round intro visible for five seconds before starting round one', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
@@ -33,14 +34,16 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start Round' })).not.toBeInTheDocument();
     expect(screen.getByText('Round starting…')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Build the chain.' })).toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(900);
+      vi.advanceTimersByTime(ROUND_INTRO_MS - 1);
     });
+    expect(screen.getByRole('dialog', { name: 'Build the chain.' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Higher' })).not.toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(50);
+      vi.advanceTimersByTime(1);
     });
 
     expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
@@ -81,12 +84,24 @@ describe('ChainOfGreed component', () => {
     expect(screen.queryByText(/Step 0\/8 • Pot 0 • Next 50/i)).not.toBeInTheDocument();
   });
 
+  it('allows the player to dismiss the round intro by tapping outside its card', () => {
+    vi.useFakeTimers();
+    render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
+
+    const introOverlay = screen.getByTestId('chain-round-intro');
+    fireEvent.pointerDown(introOverlay);
+
+    expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lower' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bank' })).toBeDisabled();
+  });
+
   it('wraps back to the start of the turn order instead of stalling after every player has acted once', () => {
     vi.useFakeTimers();
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
     act(() => {
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(ROUND_INTRO_MS);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Higher' }));
@@ -117,6 +132,7 @@ describe('ChainOfGreed component', () => {
   it('expands the full ladder sheet from the compact preview card', async () => {
     render(<ChainOfGreed participants={participants} seed={5} onFinish={() => {}} />);
 
+    fireEvent.pointerDown(screen.getByTestId('chain-round-intro'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Higher' })).toBeInTheDocument();
     });
@@ -136,7 +152,7 @@ describe('ChainOfGreed component', () => {
     render(<ChainOfGreed participants={imageTextParticipants} seed={42} onFinish={() => {}} />);
 
     act(() => {
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(ROUND_INTRO_MS);
     });
 
     expect(screen.queryByText(/profile photo/i)).not.toBeInTheDocument();
@@ -185,7 +201,7 @@ describe('ChainOfGreed component', () => {
     render(<ChainOfGreed participants={participants} seed={42} onFinish={() => {}} />);
 
     act(() => {
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(ROUND_INTRO_MS);
     });
 
     const bankButton = screen.getByRole('button', { name: 'Bank' });

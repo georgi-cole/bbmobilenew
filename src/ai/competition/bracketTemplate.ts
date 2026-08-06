@@ -342,6 +342,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
       'holdWall',
       'pressurePlank',
       'capitalization',
+      'chainOfGreed',
       'batteryLow',
       'houseOfDarkness',
     ],
