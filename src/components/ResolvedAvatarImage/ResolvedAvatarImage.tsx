@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ImgHTMLAttributes,
-  type SyntheticEvent,
-} from 'react'
+import { useEffect, useMemo, useState, type ImgHTMLAttributes, type SyntheticEvent } from 'react'
 import {
   getLocalAvatarFallback,
   getProfilePhotoAvatarId,
