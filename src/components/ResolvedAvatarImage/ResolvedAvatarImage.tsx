@@ -38,7 +38,7 @@ export default function ResolvedAvatarImage({
               resolveAvatarCandidates({
                 id,
                 name,
-                avatar,
+                avatar: avatar ?? '',
                 isUser,
               })
             ),
