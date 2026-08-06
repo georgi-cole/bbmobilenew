@@ -19,6 +19,7 @@ import { resolveTetrisOutcome } from '../../features/tetris/thunks'
 import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index'
 import { mulberry32 } from '../../store/rng'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
+import ResolvedAvatarImage from '../ResolvedAvatarImage/ResolvedAvatarImage'
 import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
 import {
   buildTetrisOutcomeScores,
@@ -1305,8 +1306,15 @@ function HouseguestAvatar({ participant }: { participant?: MinigameParticipant }
 
   return (
     <span className="tetris-houseguest-avatar" aria-hidden="true">
-      {participant?.avatar ? (
-        <img src={participant.avatar} alt="" draggable={false} />
+      {participant ? (
+        <ResolvedAvatarImage
+          id={participant.id}
+          name={participant.name}
+          avatar={participant.avatar}
+          isUser={participant.isHuman}
+          alt=""
+          draggable={false}
+        />
       ) : (
         initials || '?'
       )}
@@ -1322,8 +1330,16 @@ function AvatarCell({ participant }: { participant?: MinigameParticipant }) {
     .map((part) => part[0]?.toUpperCase())
     .join('')
 
-  return participant?.avatar ? (
-    <img className="tetris-avatar-cell-image" src={participant.avatar} alt="" draggable={false} />
+  return participant ? (
+    <ResolvedAvatarImage
+      id={participant.id}
+      name={participant.name}
+      avatar={participant.avatar}
+      isUser={participant.isHuman}
+      className="tetris-avatar-cell-image"
+      alt=""
+      draggable={false}
+    />
   ) : (
     <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
   )
