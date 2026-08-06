@@ -1,0 +1,107 @@
+name: Apply Fit Me In avatar fix
+
+on:
+  push:
+    branches:
+      - fix/fit-me-in-avatar-thumbnails
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/fit-me-in-avatar-thumbnails
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Integrate resolved avatar images into Fit Me In
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/TetrisComp/TetrisComp.tsx')
+          source = path.read_text()
+
+          import_anchor = "import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'\n"
+          import_line = "import ResolvedAvatarImage from '../ResolvedAvatarImage/ResolvedAvatarImage'\n"
+          if import_line not in source:
+              if import_anchor not in source:
+                  raise SystemExit('Tetris import anchor not found')
+              source = source.replace(import_anchor, import_anchor + import_line, 1)
+
+          old_houseguest = '''      {participant?.avatar ? (
+                  <img src={participant.avatar} alt="" draggable={false} />
+                ) : (
+                  initials || '?'
+                )}'''
+          new_houseguest = '''      {participant ? (
+                  <ResolvedAvatarImage
+                    id={participant.id}
+                    name={participant.name}
+                    avatar={participant.avatar}
+                    isUser={participant.isHuman}
+                    alt=""
+                    draggable={false}
+                  />
+                ) : (
+                  initials || '?'
+                )}'''
+          if old_houseguest not in source:
+              raise SystemExit('HouseguestAvatar image block not found')
+          source = source.replace(old_houseguest, new_houseguest, 1)
+
+          old_cell = '''  return participant?.avatar ? (
+            <img className="tetris-avatar-cell-image" src={participant.avatar} alt="" draggable={false} />
+          ) : (
+            <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
+          )'''
+          new_cell = '''  return participant ? (
+            <ResolvedAvatarImage
+              id={participant.id}
+              name={participant.name}
+              avatar={participant.avatar}
+              isUser={participant.isHuman}
+              className="tetris-avatar-cell-image"
+              alt=""
+              draggable={false}
+            />
+          ) : (
+            <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
+          )'''
+          if old_cell not in source:
+              raise SystemExit('AvatarCell image block not found')
+          source = source.replace(old_cell, new_cell, 1)
+
+          path.write_text(source)
+          PY
+      - name: Format changed files
+        run: |
+          npx prettier --write \
+            src/components/TetrisComp/TetrisComp.tsx \
+            src/components/ResolvedAvatarImage/ResolvedAvatarImage.tsx \
+            tests/unit/resolvedAvatarImage.test.tsx
+      - name: Run focused avatar tests
+        run: npx vitest run tests/unit/resolvedAvatarImage.test.tsx
+      - name: Type check
+        run: npm run typecheck
+      - name: Commit integration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            src/components/TetrisComp/TetrisComp.tsx \
+            src/components/ResolvedAvatarImage/ResolvedAvatarImage.tsx \
+            tests/unit/resolvedAvatarImage.test.tsx
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Resolve Fit Me In houseguest thumbnails"
+          git push
