@@ -29,6 +29,7 @@ import './AftermathTabloid.css'
 
 const CAROUSEL_INTERVAL_MS = 5000
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`
+// i18n-ignore: Internal TypeScript property name; this identifier is never rendered to players.
 const EMPTY_AFTERMATH_STORIES: AftermathIssue['stories'] = []
 
 function buildTitleMap(
