@@ -25,6 +25,22 @@ import './styles/houseOfCardsBrightThemePriority.css'
 
 const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? 'local'
 
+// Layout diagnostics are a development-only facility. Clear both activation
+// paths before React mounts so a stale browser flag or copied debug URL can
+// never expose the responsive-layout overlay in a production build.
+if (!import.meta.env.DEV) {
+  try {
+    localStorage.removeItem('bbmobile:debugLayout')
+  } catch {
+    // Storage may be blocked; the URL guard below still removes the other path.
+  }
+  const url = new URL(window.location.href)
+  if (url.searchParams.has('debugLayout')) {
+    url.searchParams.delete('debugLayout')
+    window.history.replaceState(window.history.state, '', url)
+  }
+}
+
 // Apply html class flags (is-standalone, is-webkit, is-chrome-android) as
 // early as possible so CSS selectors in _ios-standalone-fixes.css and
 // _introhub-buttons.css are active before the first paint.

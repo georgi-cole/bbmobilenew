@@ -7,6 +7,7 @@ const PROFILES_STORAGE_KEY = 'bbmobilenew:profiles:v1'
 const SETTINGS_STORAGE_KEY = 'bbmobilenew_settings_v1'
 const ADS_STORAGE_KEY = 'bbmobilenew_ads_v1'
 const SAVED_RUNS_KEY = `bbmobilenew:savedRuns:${encodeURIComponent(PROFILE_ID)}`
+const CLASSIC_RUN_KEY = `bbmobilenew:savedRunSlot:${encodeURIComponent(PROFILE_ID)}:classic`
 const SCREEN_TIMEOUT_MS = 30_000
 
 type RewardBridgeWindow = Window & {
@@ -153,38 +154,32 @@ async function closePhaseInformationIfPresent(page: Page): Promise<void> {
 
 async function createWeekTwoEnergyFixture(page: Page): Promise<{ humanId: string; lohId: string }> {
   return page.evaluate(
-    ({ adsStorageKey, savedRunsKey }) => {
-      const raw = localStorage.getItem(savedRunsKey)
+    ({ adsStorageKey, classicRunKey, savedRunsKey }) => {
+      const raw = localStorage.getItem(classicRunKey)
       if (!raw) throw new Error('profile-scoped Classic save is missing')
 
-      const savedRuns = JSON.parse(raw) as {
+      const snapshot = JSON.parse(raw) as {
         savedAt?: string
-        runs?: {
-          classic?: {
-            savedAt?: string
-            game?: {
-              lohId?: string | null
-              nomineeIds?: string[]
-              phase?: string
-              players?: Array<{
-                id: string
-                isUser?: boolean
-                stats?: { lohWins?: number }
-                status?: string
-              }>
-              posWinnerId?: string | null
-              povSavedId?: string | null
-              prevHohId?: string | null
-              week?: number
-            }
-            social?: {
-              energyBank?: Record<string, number>
-              panelOpen?: boolean
-            }
-          }
+        game?: {
+          lohId?: string | null
+          nomineeIds?: string[]
+          phase?: string
+          players?: Array<{
+            id: string
+            isUser?: boolean
+            stats?: { lohWins?: number }
+            status?: string
+          }>
+          posWinnerId?: string | null
+          povSavedId?: string | null
+          prevHohId?: string | null
+          week?: number
+        }
+        social?: {
+          energyBank?: Record<string, number>
+          panelOpen?: boolean
         }
       }
-      const snapshot = savedRuns.runs?.classic
       const game = snapshot?.game
       const social = snapshot?.social
       if (!snapshot || !game || !social || !game.players || !social.energyBank) {
@@ -214,13 +209,23 @@ async function createWeekTwoEnergyFixture(page: Page): Promise<{ humanId: string
 
       const savedAt = '2026-07-21T00:01:00.000Z'
       snapshot.savedAt = savedAt
-      savedRuns.savedAt = savedAt
-      localStorage.setItem(savedRunsKey, JSON.stringify(savedRuns))
+      localStorage.setItem(classicRunKey, JSON.stringify(snapshot))
+
+      const metadataRaw = localStorage.getItem(savedRunsKey)
+      if (metadataRaw) {
+        const metadata = JSON.parse(metadataRaw) as { savedAt?: string }
+        metadata.savedAt = savedAt
+        localStorage.setItem(savedRunsKey, JSON.stringify(metadata))
+      }
       localStorage.removeItem(adsStorageKey)
 
       return { humanId: human.id, lohId: loh.id }
     },
-    { adsStorageKey: ADS_STORAGE_KEY, savedRunsKey: SAVED_RUNS_KEY }
+    {
+      adsStorageKey: ADS_STORAGE_KEY,
+      classicRunKey: CLASSIC_RUN_KEY,
+      savedRunsKey: SAVED_RUNS_KEY,
+    }
   )
 }
 
