@@ -77,9 +77,7 @@ export default function ResolvedAvatarImage({
   }, [profilePhotoId])
 
   const failedSources =
-    failedSourceState.resolutionKey === resolutionKey
-      ? failedSourceState.sources
-      : EMPTY_SOURCES
+    failedSourceState.resolutionKey === resolutionKey ? failedSourceState.sources : EMPTY_SOURCES
   const profilePhotoUrl =
     profilePhotoState.id === profilePhotoId ? profilePhotoState.url : null
   const candidateSrc = candidates.find((candidate) => !failedSources.has(candidate)) ?? fallback
@@ -96,9 +94,7 @@ export default function ResolvedAvatarImage({
 
     setFailedSourceState((current) => {
       const sources =
-        current.resolutionKey === resolutionKey
-          ? new Set(current.sources)
-          : new Set<string>()
+        current.resolutionKey === resolutionKey ? new Set(current.sources) : new Set<string>()
       sources.add(src)
       return { resolutionKey, sources }
     })
