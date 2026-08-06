@@ -33,12 +33,16 @@ export default function ResolvedAvatarImage({
     () =>
       profilePhotoId
         ? []
-        : resolveAvatarCandidates({
-            id,
-            name,
-            avatar,
-            isUser,
-          }),
+        : [
+            ...new Set(
+              resolveAvatarCandidates({
+                id,
+                name,
+                avatar,
+                isUser,
+              })
+            ),
+          ],
     [avatar, id, isUser, name, profilePhotoId]
   )
   const [candidateIndex, setCandidateIndex] = useState(0)
@@ -62,8 +66,8 @@ export default function ResolvedAvatarImage({
     }
   }, [profilePhotoId])
 
-  const src = profilePhotoUrl ??
-    (profilePhotoId ? fallback : (candidates[candidateIndex] ?? fallback))
+  const src =
+    profilePhotoUrl ?? (profilePhotoId ? fallback : (candidates[candidateIndex] ?? fallback))
 
   const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
     onError?.(event)
