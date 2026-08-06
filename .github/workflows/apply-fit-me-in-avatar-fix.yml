@@ -38,44 +38,44 @@ jobs:
               source = source.replace(import_anchor, import_anchor + import_line, 1)
 
           old_houseguest = '''      {participant?.avatar ? (
-                  <img src={participant.avatar} alt="" draggable={false} />
-                ) : (
-                  initials || '?'
-                )}'''
+        <img src={participant.avatar} alt="" draggable={false} />
+      ) : (
+        initials || '?'
+      )}'''
           new_houseguest = '''      {participant ? (
-                  <ResolvedAvatarImage
-                    id={participant.id}
-                    name={participant.name}
-                    avatar={participant.avatar}
-                    isUser={participant.isHuman}
-                    alt=""
-                    draggable={false}
-                  />
-                ) : (
-                  initials || '?'
-                )}'''
+        <ResolvedAvatarImage
+          id={participant.id}
+          name={participant.name}
+          avatar={participant.avatar}
+          isUser={participant.isHuman}
+          alt=""
+          draggable={false}
+        />
+      ) : (
+        initials || '?'
+      )}'''
           if old_houseguest not in source:
               raise SystemExit('HouseguestAvatar image block not found')
           source = source.replace(old_houseguest, new_houseguest, 1)
 
           old_cell = '''  return participant?.avatar ? (
-            <img className="tetris-avatar-cell-image" src={participant.avatar} alt="" draggable={false} />
-          ) : (
-            <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
-          )'''
+    <img className="tetris-avatar-cell-image" src={participant.avatar} alt="" draggable={false} />
+  ) : (
+    <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
+  )'''
           new_cell = '''  return participant ? (
-            <ResolvedAvatarImage
-              id={participant.id}
-              name={participant.name}
-              avatar={participant.avatar}
-              isUser={participant.isHuman}
-              className="tetris-avatar-cell-image"
-              alt=""
-              draggable={false}
-            />
-          ) : (
-            <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
-          )'''
+    <ResolvedAvatarImage
+      id={participant.id}
+      name={participant.name}
+      avatar={participant.avatar}
+      isUser={participant.isHuman}
+      className="tetris-avatar-cell-image"
+      alt=""
+      draggable={false}
+    />
+  ) : (
+    <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
+  )'''
           if old_cell not in source:
               raise SystemExit('AvatarCell image block not found')
           source = source.replace(old_cell, new_cell, 1)
