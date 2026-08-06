@@ -78,8 +78,7 @@ export default function ResolvedAvatarImage({
 
   const failedSources =
     failedSourceState.resolutionKey === resolutionKey ? failedSourceState.sources : EMPTY_SOURCES
-  const profilePhotoUrl =
-    profilePhotoState.id === profilePhotoId ? profilePhotoState.url : null
+  const profilePhotoUrl = profilePhotoState.id === profilePhotoId ? profilePhotoState.url : null
   const candidateSrc = candidates.find((candidate) => !failedSources.has(candidate)) ?? fallback
   const src = profilePhotoUrl ?? (profilePhotoId ? fallback : candidateSrc)
 
