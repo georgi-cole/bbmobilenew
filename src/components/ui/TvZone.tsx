@@ -18,7 +18,7 @@ import {
   selectAlivePlayers,
   syncPhaseBroadcasts,
 } from '../../store/gameSlice'
-import { saveRunSnapshot } from '../../store/saveStatePersistence'
+import { createSavedSeasonSnapshot, saveRunSnapshot } from '../../store/saveStatePersistence'
 import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import GameTopChip from '../GameTopChip/GameTopChip'
@@ -396,11 +396,17 @@ function buildAnnouncement(
     title:
       typeof eventTitle === 'string' && eventTitle.trim()
         ? eventTitle
-        : (registryOverride?.title ?? migratedFinalFourTitle ?? registryTemplate?.title ?? meta.title),
+        : (registryOverride?.title ??
+          migratedFinalFourTitle ??
+          registryTemplate?.title ??
+          meta.title),
     subtitle:
       typeof eventSubtitle === 'string' && eventSubtitle.trim()
         ? eventSubtitle
-        : (registryOverride?.text ?? migratedFinalFourSubtitle ?? registryTemplate?.text ?? meta.subtitle),
+        : (registryOverride?.text ??
+          migratedFinalFourSubtitle ??
+          registryTemplate?.text ??
+          meta.subtitle),
   }
 }
 
@@ -430,11 +436,7 @@ function getPhaseAnnouncementKey(
   if (phase === 'democracia_vote') return 'democracia'
   if (phase === 'pos_comp_announcement') return 'pos_comp_announcement'
   if (phase === 'pos_ceremony')
-    return voxPopuliActive
-      ? 'vox_safety_ceremony'
-      : aliveCount === 4
-        ? 'final4'
-        : 'veto_ceremony'
+    return voxPopuliActive ? 'vox_safety_ceremony' : aliveCount === 4 ? 'final4' : 'veto_ceremony'
   if (phase === 'nominations' && voxPopuliActive) return 'vox_nominations'
   if (phase === 'nominations')
     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony'
@@ -468,7 +470,8 @@ const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
 ])
 
 const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon… ✨$/
-const LEGACY_DAY_START_EVENT = /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
+const LEGACY_DAY_START_EVENT =
+  /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
 
 function getDailyTransitionPhase(event: TvEvent): Phase | null {
   if (event.meta?.key === 'day_start') return 'week_start'
@@ -591,7 +594,7 @@ export default function TvZone(props: TvZoneProps) {
   const mainLogFeed = useMemo(() => gameState.tvFeed.filter(isVisibleInMainLog), [gameState.tvFeed])
   const queuedBroadcastEvent = useMemo(() => {
     const queuedId = gameState.broadcastQueue?.[0]
-    return queuedId ? gameState.tvFeed.find((event) => event.id === queuedId) ?? null : null
+    return queuedId ? (gameState.tvFeed.find((event) => event.id === queuedId) ?? null) : null
   }, [gameState.broadcastQueue, gameState.tvFeed])
   const queuedBroadcastLevel = queuedBroadcastEvent?.meta?.broadcastLevel as
     | 'minor'
@@ -604,10 +607,7 @@ export default function TvZone(props: TvZoneProps) {
     const id = gameState.lastPlainBroadcastEventId
     if (!id) return null
     const event = gameState.tvFeed.find((candidate) => candidate.id === id)
-    if (
-      event?.meta?.phase !== gameState.phase ||
-      event?.meta?.week !== gameState.week
-    ) return null
+    if (event?.meta?.phase !== gameState.phase || event?.meta?.week !== gameState.week) return null
     return event
   }, [gameState.lastPlainBroadcastEventId, gameState.phase, gameState.tvFeed, gameState.week])
   const mainLogMaxVisible = props.mainLogMaxVisible ?? 2
@@ -860,7 +860,8 @@ export default function TvZone(props: TvZoneProps) {
       announcementEvent !== queuedBroadcastEvent &&
       announcementEvent.id === dismissedEventId &&
       !isUndismissedCriticalBroadcast
-    ) return null
+    )
+      return null
     const majorKey = extractMajorKey(announcementEvent)
     return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null
   }, [
@@ -1073,10 +1074,8 @@ export default function TvZone(props: TvZoneProps) {
     }
     const skipPostDismissFade =
       currentAnnouncement != null &&
-      (
-        CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key) ||
-        currentAnnouncement === managedEventAnnouncement
-      )
+      (CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key) ||
+        currentAnnouncement === managedEventAnnouncement)
     if (cupidBreakAnnouncement) {
       setCupidBreakAnnouncement(null)
     } else if (queuedShockAnnouncement) {
@@ -1349,8 +1348,7 @@ export default function TvZone(props: TvZoneProps) {
         ? 'Final Immunity'
         : formatPhaseLabel(gameState.phase)
   const isAtGameStart =
-    gameState.week === 1 &&
-    (gameState.phase === 'season_start' || gameState.phase === 'week_start')
+    gameState.week === 1 && (gameState.phase === 'season_start' || gameState.phase === 'week_start')
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge
   const saveChipAriaLabel = isGuest
     ? 'Save (unavailable in guest mode)'
@@ -1387,16 +1385,10 @@ export default function TvZone(props: TvZoneProps) {
     if (!canSave || !activeProfileId) return
 
     const currentState = reduxStore.getState()
-    const ok = saveRunSnapshot(activeProfileId, {
-      version: 1,
-      profileId: activeProfileId,
-      savedAt: new Date().toISOString(),
-      game: currentState.game,
-      finale: currentState.finale,
-      social: currentState.social,
-      publicOpinion: currentState.publicOpinion,
-      challenge: currentState.challenge,
-    })
+    const ok = saveRunSnapshot(
+      activeProfileId,
+      createSavedSeasonSnapshot(activeProfileId, currentState)
+    )
     setSaveStatus(ok ? 'saved' : 'error')
     setSaveFeedbackIsError(!ok)
     setSaveFeedbackOpen(true)

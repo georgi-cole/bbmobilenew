@@ -673,6 +673,33 @@ test.describe('Real player core journeys', () => {
     await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   })
 
+  test('a completed LOH competition can be saved and resumed @persistence @release', async ({
+    page,
+  }) => {
+    const playerName = 'LOH Resume Player'
+    await startFreshCampaign(page, playerName)
+
+    await advanceToLohAnnouncement(page)
+    await closePhaseInformationIfPresent(page)
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await advance.click()
+    await resolveCompetitionThroughPlayerControls(page, 'loh_comp')
+    await expect
+      .poll(() => readAppState(page).then((state) => state.game.phase), {
+        timeout: SCREEN_TIMEOUT_MS,
+      })
+      .toBe('loh_results')
+
+    await saveAndReturnHome(page)
+    await page.reload()
+    await waitForHome(page)
+    await resumeLastRun(page, 'LOH results')
+
+    await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
+  })
+
   test('production navigation returns to the active game and an unknown deep link recovers home @smoke @core-journey @mobile @release', async ({
     page,
   }) => {

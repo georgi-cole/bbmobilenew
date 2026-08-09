@@ -22,6 +22,7 @@ import {
   clearSeasonSnapshot,
   clearSavedRun,
   getSavedRunSlot,
+  createSavedSeasonSnapshot,
   saveRunSnapshot,
 } from './saveStatePersistence'
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice'
@@ -206,21 +207,7 @@ store.subscribe(() => {
     prevChallenge = current.challenge
     const activeProfileId = current.profiles.activeProfileId
     if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
-      saveRunSnapshot(activeProfileId, {
-        version: 1,
-        profileId: activeProfileId,
-        savedAt: new Date().toISOString(),
-        game: {
-          ...current.game,
-          mode: current.game.mode ?? 'classic',
-          lastPlayedAt: Date.now(),
-          saveVersion: current.game.saveVersion ?? 2,
-        },
-        finale: current.finale,
-        social: current.social,
-        publicOpinion: current.publicOpinion,
-        challenge: current.challenge,
-      })
+      saveRunSnapshot(activeProfileId, createSavedSeasonSnapshot(activeProfileId, current))
     }
   }
   if (current.game.seasonArchives !== prevSeasonArchives) {
@@ -260,16 +247,7 @@ if (typeof document !== 'undefined') {
     const activeProfileId = current.profiles.activeProfileId
     if (current.profiles.isGuest || !activeProfileId || !hasMeaningfulGameProgress(current.game))
       return
-    saveRunSnapshot(activeProfileId, {
-      version: 1,
-      profileId: activeProfileId,
-      savedAt: new Date().toISOString(),
-      game: { ...current.game, lastPlayedAt: Date.now() },
-      finale: current.finale,
-      social: current.social,
-      publicOpinion: current.publicOpinion,
-      challenge: current.challenge,
-    })
+    saveRunSnapshot(activeProfileId, createSavedSeasonSnapshot(activeProfileId, current))
   })
 }
 

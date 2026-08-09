@@ -8,7 +8,10 @@ import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { resetGame } from '../../store/gameSlice';
 import { selectPendingChallenge } from '../../store/challengeSlice';
 import { selectMusicScene } from '../../store/uiSlice';
-import { saveRunSnapshot } from '../../store/saveStatePersistence';
+import {
+  createSavedSeasonSnapshot,
+  saveRunSnapshot,
+} from '../../store/saveStatePersistence';
 import type { RootState } from '../../store/store';
 import GameBottomNav, { type NavTab } from '../GameBottomNav/GameBottomNav';
 
@@ -89,19 +92,10 @@ export default function NavBar() {
   function saveActiveRun(): boolean {
     if (!activeProfileId || isGuest) return false;
     const currentState = reduxStore.getState();
-    return saveRunSnapshot(activeProfileId, {
-      version: 1,
-      profileId: activeProfileId,
-      savedAt: new Date().toISOString(),
-      game: {
-        ...currentState.game,
-        mode: currentState.game.mode ?? 'classic',
-        lastPlayedAt: Date.now(),
-        saveVersion: currentState.game.saveVersion ?? 2,
-      },
-      finale: currentState.finale,
-      social: currentState.social,
-    });
+    return saveRunSnapshot(
+      activeProfileId,
+      createSavedSeasonSnapshot(activeProfileId, currentState),
+    );
   }
 
   function returnHome() {

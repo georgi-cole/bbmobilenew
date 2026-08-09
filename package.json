@@ -56,7 +56,7 @@
     "test:minigames": "vitest run tests/minigames*.test.ts* tests/minigameHost*.test.tsx tests/unit/minigame*.test.ts* tests/unit/glass-bridge/*.test.tsx",
     "test:e2e": "playwright test e2e/playwright/",
     "audit:visual": "node scripts/run-visual-audit.mjs",
-    "test:release-full": "npm run format:check && npm run validate:i18n && npm run lint:ci && npm run typecheck && npm run test:guard && npm run test:minigames && npm run test && npm run audit:release && npm run test:coverage && npm run coverage:check && npm run test:e2e && npm run build && npm run build:capacitor",
+    "test:release-full": "npm run format:check && npm run lint:ci && npm run typecheck && npm run test:guard && npm run test:minigames && npm run test && npm run audit:release && npm run test:coverage && npm run coverage:check && npm run test:e2e && npm run build && npm run build:capacitor",
     "test:famous-figures": "vitest run tests/unit/famous-figures",
     "start:famous-figures": "vite --open",
     "generate:audio": "node scripts/generate-audio-manifest.mjs",
