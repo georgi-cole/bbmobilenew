@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
+import { FEATURE_LOCALIZATION_SETTINGS } from '../../config/featureFlags'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { AppDispatch } from '../../store/store'
 import {
@@ -46,10 +47,6 @@ const LOCKED_FEATURE_KEYS: Record<LockedFeature, TranslationKey> = {
   vipThemes: 'settings.feature.vipThemes',
 }
 
-// ── Setting item types ─────────────────────────────────────────────────────────
-// Add a new member to this union + a matching case in renderItem() to support
-// a new control type (e.g. 'number-input', 'radio-group', …).
-
 type ToggleItem = {
   type: 'toggle'
   id: string
@@ -77,8 +74,6 @@ interface SettingSection {
   id: string
   items: SettingItem[]
 }
-
-// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function Settings() {
   const dispatch = useAppDispatch()
@@ -113,24 +108,28 @@ export default function Settings() {
     label: t(REALITY_PRESET_LABEL_KEYS[value]),
   }))
 
-  // Keep the screen data-driven so future language packs only translate keys;
-  // they never need to change settings behavior or Redux wiring.
-  const sections: SettingSection[] = [
-    {
-      id: 'localization',
-      items: [
+  const localizationSections: SettingSection[] = FEATURE_LOCALIZATION_SETTINGS
+    ? [
         {
-          type: 'dropdown',
-          id: 'language',
-          label: t('settings.language'),
-          options: languageOptions,
-          get: (s) => s.localization.language,
-          onChange: (settingsDispatch, val) =>
-            settingsDispatch(setLocalization({ language: val as LanguagePreference })),
-          description: t('settings.language.description'),
+          id: 'localization',
+          items: [
+            {
+              type: 'dropdown',
+              id: 'language',
+              label: t('settings.language'),
+              options: languageOptions,
+              get: (s) => s.localization.language,
+              onChange: (settingsDispatch, val) =>
+                settingsDispatch(setLocalization({ language: val as LanguagePreference })),
+              description: t('settings.language.description'),
+            },
+          ],
         },
-      ],
-    },
+      ]
+    : []
+
+  const sections: SettingSection[] = [
+    ...localizationSections,
     {
       id: 'audio',
       items: [
@@ -249,8 +248,6 @@ export default function Settings() {
           onChange: (settingsDispatch, val) => settingsDispatch(setDisplay({ reduceMotion: val })),
         },
         {
-          // Disables spotlights, badge animations, dimmers, eviction sequences,
-          // and all other purely-visual effects (body.no-animations).
           type: 'toggle',
           id: 'animations',
           label: t('settings.animations'),

@@ -3,8 +3,8 @@
  *
  * Vite only exposes VITE_* variables on import.meta.env by default.
  *
- * Convention: a flag is "enabled" (true) unless the env var is explicitly set
- * to the string "false".
+ * Most established flags are enabled unless explicitly set to "false".
+ * Features that are not release-ready must opt in explicitly.
  */
 
 /**
@@ -13,7 +13,7 @@
  * Set VITE_FEATURE_SOCIAL_V2=false in .env to re-enable the old module.
  */
 export const FEATURE_SOCIAL_V2: boolean =
-  (import.meta.env.VITE_FEATURE_SOCIAL_V2 ?? 'true') !== 'false';
+  (import.meta.env.VITE_FEATURE_SOCIAL_V2 ?? 'true') !== 'false'
 
 /**
  * FEATURE_SPECTATOR_REACT — when true (default) the React SpectatorView
@@ -23,4 +23,13 @@ export const FEATURE_SOCIAL_V2: boolean =
  * Set VITE_FEATURE_SPECTATOR_REACT=false in .env to disable it.
  */
 export const FEATURE_SPECTATOR_REACT: boolean =
-  (import.meta.env.VITE_FEATURE_SPECTATOR_REACT ?? 'true') !== 'false';
+  (import.meta.env.VITE_FEATURE_SPECTATOR_REACT ?? 'true') !== 'false'
+
+/**
+ * FEATURE_LOCALIZATION_SETTINGS — exposes the language selector in Settings.
+ * Localization infrastructure remains active while this is disabled, but
+ * players cannot select a partial language pack before the full game is ready.
+ * Set VITE_FEATURE_LOCALIZATION_SETTINGS=true for development or a later release.
+ */
+export const FEATURE_LOCALIZATION_SETTINGS: boolean =
+  (import.meta.env.VITE_FEATURE_LOCALIZATION_SETTINGS ?? 'false') === 'true'
