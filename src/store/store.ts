@@ -113,7 +113,24 @@ export const store = configureStore({
     ),
 })
 
-setRuntimeSocialActionOverrides(store.getState().settings.social.actionOverrides)
+const initialRemoteSocialManager = store.getState().remoteConfig.config?.socialManager
+setRuntimeSocialActionOverrides({
+  ...store.getState().settings.social.actionOverrides,
+  ...(initialRemoteSocialManager?.enabled ? initialRemoteSocialManager.actionOverrides : {}),
+})
+
+// A cached remote configuration is available before the first network refresh.
+// Apply its central Broadcast Manager data immediately so a newly opened game
+// behaves the same way as a game that receives a later refresh.
+const initialRemoteBroadcastManager = store.getState().remoteConfig.config?.broadcastManager
+if (initialRemoteBroadcastManager?.enabled) {
+  store.dispatch(
+    replaceBroadcastConfig({
+      overrides: initialRemoteBroadcastManager.overrides ?? {},
+      customMessages: initialRemoteBroadcastManager.customMessages ?? [],
+    })
+  )
+}
 
 // The Broadcast Manager is commonly kept open beside the game. localStorage
 // persists its authoring data; this listener makes a save in that manager tab
@@ -159,6 +176,8 @@ let prevVip = store.getState().vip
 let prevGame = store.getState().game
 let prevBroadcastOverrides = store.getState().game.broadcastOverrides
 let prevCustomBroadcasts = store.getState().game.customBroadcasts
+let prevRemoteBroadcastManager = store.getState().remoteConfig.config?.broadcastManager
+let prevRemoteSocialManager = store.getState().remoteConfig.config?.socialManager
 let prevFinale = store.getState().finale
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
@@ -173,6 +192,28 @@ let prevSeasonArchivesLength = prevSeasonArchives?.length ?? 0
 let prevArchiveProfileId: string | null = store.getState().profiles?.activeProfileId ?? null
 store.subscribe(() => {
   const current = store.getState()
+  const remoteBroadcastManager = current.remoteConfig.config?.broadcastManager
+  if (
+    remoteBroadcastManager !== prevRemoteBroadcastManager &&
+    remoteBroadcastManager?.enabled === true
+  ) {
+    prevRemoteBroadcastManager = remoteBroadcastManager
+    store.dispatch(
+      replaceBroadcastConfig({
+        overrides: remoteBroadcastManager.overrides ?? {},
+        customMessages: remoteBroadcastManager.customMessages ?? [],
+      })
+    )
+  } else if (remoteBroadcastManager !== prevRemoteBroadcastManager) {
+    prevRemoteBroadcastManager = remoteBroadcastManager
+  }
+  if (current.remoteConfig.config?.socialManager !== prevRemoteSocialManager) {
+    prevRemoteSocialManager = current.remoteConfig.config?.socialManager
+    setRuntimeSocialActionOverrides({
+      ...current.settings.social.actionOverrides,
+      ...(prevRemoteSocialManager?.enabled ? prevRemoteSocialManager.actionOverrides : {}),
+    })
+  }
   if (
     current.game.broadcastOverrides !== prevBroadcastOverrides ||
     current.game.customBroadcasts !== prevCustomBroadcasts
@@ -188,7 +229,12 @@ store.subscribe(() => {
     // settings so that mute controls and Settings screen are the canonical source
     // of truth and stale localStorage flags cannot silently disable audio.
     syncRuntimeAudioSettings(current.settings.audio)
-    setRuntimeSocialActionOverrides(current.settings.social.actionOverrides)
+    setRuntimeSocialActionOverrides({
+      ...current.settings.social.actionOverrides,
+      ...(current.remoteConfig.config?.socialManager?.enabled
+        ? current.remoteConfig.config.socialManager.actionOverrides
+        : {}),
+    })
   }
   if (current.userProfile !== prevUserProfile) {
     prevUserProfile = current.userProfile

@@ -130,6 +130,54 @@ describe('sanitiseRemoteConfig', () => {
     })
   })
 
+  it('sanitises the centrally managed Broadcast and Social Manager data', () => {
+    const result = sanitiseRemoteConfig({
+      broadcastManager: {
+        enabled: true,
+        overrides: {
+          'week-start.house-update': { text: 'A new house update.', level: 'critical' },
+          ignored: { level: 'not-a-level' },
+        },
+        customMessages: [
+          {
+            id: 'remote-week-start',
+            key: 'remote.week-start',
+            phase: 'week_start',
+            text: 'The live feed starts now.',
+            type: 'game',
+            level: 'major',
+            enabled: true,
+          },
+          { id: 'invalid', phase: 'not-a-phase', text: 'Ignored' },
+        ],
+      },
+      socialManager: {
+        enabled: true,
+        actionOverrides: { compliment: { title: 'Praise', enabled: false } },
+      },
+    })
+
+    expect(result?.broadcastManager).toEqual({
+      enabled: true,
+      overrides: { 'week-start.house-update': { text: 'A new house update.', level: 'critical' } },
+      customMessages: [
+        {
+          id: 'remote-week-start',
+          key: 'remote.week-start',
+          phase: 'week_start',
+          text: 'The live feed starts now.',
+          type: 'game',
+          level: 'major',
+          enabled: true,
+        },
+      ],
+    })
+    expect(result?.socialManager).toEqual({
+      enabled: true,
+      actionOverrides: { compliment: { title: 'Praise', enabled: false } },
+    })
+  })
+
   it('drops javascript: and data: URLs', () => {
     const raw = {
       season: {

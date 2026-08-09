@@ -3,7 +3,18 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { MUSIC_TRACK_IDS, type CatalogMusicTrack } from '../../services/sound/musicCatalog'
 import type { MusicTrackAssetOverride } from '../../services/sound/musicCatalog'
+import { DEFAULT_PHASE_MUSIC_POLICY } from '../../services/sound/musicConfig'
 import type { SocialRuntimeOverride } from '../../social/socialRuntimeConfig'
+import {
+  buildEffectiveSocialActions,
+  sanitiseSocialActionOverrides,
+  type SocialActionOverride,
+} from '../../social/socialActionManager'
+import {
+  ALL_BROADCAST_PHASES,
+  getBroadcastTemplatesForPhase,
+} from '../../broadcasting/broadcastTemplateCatalog'
+import type { BroadcastLevel, CustomBroadcastMessage, Phase, TvEvent } from '../../types'
 import type { GameManagerRule } from '../../gameManager/gameManager'
 import {
   DEFAULT_REMOTE_CONFIG_URL,
@@ -19,7 +30,7 @@ import {
 import { isDebugAccessGranted } from '../../utils/debugMode'
 import './RemoteManager.css'
 
-type Section = 'broadcast' | 'music' | 'game' | 'social' | 'json' | 'publish'
+type Section = 'broadcast' | 'music' | 'game' | 'social' | 'tutorial' | 'json' | 'publish'
 
 const DEFAULT_TARGET: GitHubPublishTarget = {
   owner: 'georgi-cole',
@@ -32,8 +43,10 @@ const CATEGORIES: GameCategory[] = ['arcade', 'logic', 'trivia', 'endurance']
 function initialConfig(): RemoteConfig {
   return {
     broadcast: { enabled: false, title: 'Big Brother Update', message: '', priority: 'normal' },
+    broadcastManager: { enabled: false, overrides: {}, customMessages: [] },
     season: { music: { tracks: [] } },
     gameManager: { enabled: false, rules: [] },
+    socialManager: { enabled: false, actionOverrides: {} },
     social: {
       schemaVersion: 1,
       revision: 'remote-1',
@@ -76,6 +89,9 @@ export default function RemoteManager() {
   const [target, setTarget] = useState(DEFAULT_TARGET)
   const [status, setStatus] = useState('Loading the currently published configuration…')
   const [busy, setBusy] = useState(false)
+  const [broadcastPhase, setBroadcastPhase] = useState<Phase>('week_start')
+  const [socialActionId, setSocialActionId] = useState('compliment')
+  const [socialActionJson, setSocialActionJson] = useState('')
   const games = useMemo(() => getAllGames().filter((game) => !game.retired), [])
 
   const refreshJson = (next = config) => setJsonDraft(JSON.stringify(next, null, 2))
@@ -106,7 +122,17 @@ export default function RemoteManager() {
 
   const broadcast = config.broadcast ?? {}
   const tracks = config.season?.music?.tracks ?? []
+  const phaseMusic = config.season?.music?.assignments?.phaseMusic ?? {}
   const gameManager = config.gameManager ?? { enabled: false, rules: [] }
+  const broadcastManager = config.broadcastManager ?? {
+    enabled: false,
+    overrides: {},
+    customMessages: [],
+  }
+  const socialManager = config.socialManager ?? { enabled: false, actionOverrides: {} }
+  const remoteActions = buildEffectiveSocialActions(socialManager.actionOverrides)
+  const selectedSocialAction =
+    remoteActions.find((action) => action.id === socialActionId) ?? remoteActions[0]
   const social = config.social ?? {}
   const economy = social.economy ?? {}
 
@@ -121,6 +147,62 @@ export default function RemoteManager() {
         music: { ...current.season?.music, tracks: next },
       },
     }))
+
+  const updatePhaseMusic = (phase: Phase, value: string) =>
+    setConfig((current) => ({
+      ...current,
+      season: {
+        ...current.season,
+        music: {
+          ...current.season?.music,
+          assignments: {
+            ...current.season?.music?.assignments,
+            phaseMusic: {
+              ...current.season?.music?.assignments?.phaseMusic,
+              [phase]:
+                value === 'silence'
+                  ? { kind: 'silence' }
+                  : value === 'inherit'
+                    ? { kind: 'inherit' }
+                    : { kind: 'track', track: value },
+            },
+          },
+        },
+      },
+    }))
+
+  const updateBroadcastManager = (
+    changes: Partial<NonNullable<RemoteConfig['broadcastManager']>>
+  ) =>
+    setConfig((current) => ({
+      ...current,
+      broadcastManager: { ...current.broadcastManager, ...changes },
+    }))
+
+  const updateTemplateOverride = (id: string, changes: Record<string, unknown>) =>
+    updateBroadcastManager({
+      overrides: {
+        ...broadcastManager.overrides,
+        [id]: { ...broadcastManager.overrides?.[id], ...changes },
+      },
+    })
+
+  const updateCustomMessages = (customMessages: CustomBroadcastMessage[]) =>
+    updateBroadcastManager({ customMessages })
+
+  const updateSocialActions = (
+    actionOverrides: NonNullable<RemoteConfig['socialManager']>['actionOverrides']
+  ) =>
+    setConfig((current) => ({
+      ...current,
+      socialManager: { enabled: current.socialManager?.enabled ?? false, actionOverrides },
+    }))
+
+  const updateSocialAction = (id: string, changes: SocialActionOverride) =>
+    updateSocialActions({
+      ...socialManager.actionOverrides,
+      [id]: { ...socialManager.actionOverrides?.[id], ...changes },
+    })
 
   const updateRules = (rules: GameManagerRule[]) =>
     setConfig((current) => ({
@@ -212,25 +294,30 @@ export default function RemoteManager() {
       </aside>
 
       <nav className="remote-manager__tabs" aria-label="Remote manager sections">
-        {(['broadcast', 'music', 'game', 'social', 'json', 'publish'] as Section[]).map((item) => (
-          <button
-            type="button"
-            className={section === item ? 'is-active' : ''}
-            onClick={() => {
-              if (item === 'json') refreshJson()
-              setSection(item)
-            }}
-            key={item}
-          >
-            {item === 'json' ? 'Advanced JSON' : item[0].toUpperCase() + item.slice(1)}
-          </button>
-        ))}
+        {(['broadcast', 'music', 'game', 'social', 'tutorial', 'json', 'publish'] as Section[]).map(
+          (item) => (
+            <button
+              type="button"
+              className={section === item ? 'is-active' : ''}
+              onClick={() => {
+                if (item === 'json') refreshJson()
+                setSection(item)
+              }}
+              key={item}
+            >
+              {item === 'json' ? 'Advanced JSON' : item[0].toUpperCase() + item.slice(1)}
+            </button>
+          )
+        )}
       </nav>
 
       {section === 'broadcast' && (
         <section className="remote-manager__card">
-          <h2>Broadcast message</h2>
-          <p>Active games refresh this file every five minutes. Date fields are optional.</p>
+          <h2>Broadcast Manager</h2>
+          <p>
+            Global alert plus the same built-in phase templates and custom messages used by the
+            local Broadcast Manager.
+          </p>
           <label className="remote-manager__check">
             <input
               type="checkbox"
@@ -298,6 +385,208 @@ export default function RemoteManager() {
               />
             </label>
           </div>
+          <hr className="remote-manager__divider" />
+          <div className="remote-manager__heading-row">
+            <div>
+              <h3>Phase broadcast library</h3>
+              <p>
+                Enable this only when you want the central configuration to replace each player's
+                local Broadcast Manager data.
+              </p>
+            </div>
+            <label className="remote-manager__check">
+              <input
+                type="checkbox"
+                checked={broadcastManager.enabled ?? false}
+                onChange={(event) => updateBroadcastManager({ enabled: event.target.checked })}
+              />
+              Use central phase broadcasts
+            </label>
+          </div>
+          <label className="remote-manager__phase-picker">
+            Phase
+            <select
+              value={broadcastPhase}
+              onChange={(event) => setBroadcastPhase(event.target.value as Phase)}
+            >
+              {ALL_BROADCAST_PHASES.map((phase) => (
+                <option value={phase} key={phase}>
+                  {phase.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="remote-manager__template-list">
+            {getBroadcastTemplatesForPhase(broadcastPhase).map((template) => {
+              const override = broadcastManager.overrides?.[template.id] ?? {}
+              return (
+                <article className="remote-manager__template" key={template.id}>
+                  <div>
+                    <strong>{template.title ?? template.id}</strong>
+                    <code>{template.id}</code>
+                  </div>
+                  <label>
+                    Message
+                    <textarea
+                      rows={3}
+                      value={override.text ?? template.text}
+                      onChange={(event) =>
+                        updateTemplateOverride(template.id, { text: event.target.value })
+                      }
+                    />
+                  </label>
+                  <div className="remote-manager__grid remote-manager__grid--compact">
+                    <label>
+                      TV title
+                      <input
+                        value={override.title ?? template.title ?? ''}
+                        onChange={(event) =>
+                          updateTemplateOverride(template.id, { title: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Level
+                      <select
+                        value={override.level ?? template.level}
+                        onChange={(event) =>
+                          updateTemplateOverride(template.id, {
+                            level: event.target.value as BroadcastLevel,
+                          })
+                        }
+                      >
+                        <option value="minor">Minor</option>
+                        <option value="major">Major</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </label>
+                    <label className="remote-manager__check">
+                      <input
+                        type="checkbox"
+                        checked={override.disabled === true}
+                        onChange={(event) =>
+                          updateTemplateOverride(template.id, { disabled: event.target.checked })
+                        }
+                      />
+                      Disable template
+                    </label>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+          <div className="remote-manager__heading-row remote-manager__subhead">
+            <div>
+              <h3>Custom messages for this phase</h3>
+              <p>These are emitted automatically whenever the phase begins.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                updateCustomMessages([
+                  ...(broadcastManager.customMessages ?? []),
+                  {
+                    id: `remote-broadcast-${Date.now()}`,
+                    key: `custom.remote-${Date.now()}`,
+                    phase: broadcastPhase,
+                    text: 'New broadcast message',
+                    type: 'game' as TvEvent['type'],
+                    level: 'minor',
+                    enabled: true,
+                    forceOnTv: true,
+                  },
+                ])
+              }
+            >
+              Add phase message
+            </button>
+          </div>
+          {(broadcastManager.customMessages ?? [])
+            .filter((message) => message.phase === broadcastPhase)
+            .map((message) => (
+              <article className="remote-manager__template" key={message.id}>
+                <div className="remote-manager__heading-row">
+                  <code>{message.key ?? message.id}</code>
+                  <button
+                    type="button"
+                    className="remote-manager__danger"
+                    onClick={() =>
+                      updateCustomMessages(
+                        (broadcastManager.customMessages ?? []).filter(
+                          (item) => item.id !== message.id
+                        )
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+                <label>
+                  Message
+                  <textarea
+                    rows={3}
+                    value={message.text}
+                    onChange={(event) =>
+                      updateCustomMessages(
+                        (broadcastManager.customMessages ?? []).map((item) =>
+                          item.id === message.id ? { ...item, text: event.target.value } : item
+                        )
+                      )
+                    }
+                  />
+                </label>
+                <div className="remote-manager__grid remote-manager__grid--compact">
+                  <label>
+                    Key
+                    <input
+                      value={message.key ?? ''}
+                      onChange={(event) =>
+                        updateCustomMessages(
+                          (broadcastManager.customMessages ?? []).map((item) =>
+                            item.id === message.id ? { ...item, key: event.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                  </label>
+                  <label>
+                    Level
+                    <select
+                      value={message.level}
+                      onChange={(event) =>
+                        updateCustomMessages(
+                          (broadcastManager.customMessages ?? []).map((item) =>
+                            item.id === message.id
+                              ? { ...item, level: event.target.value as BroadcastLevel }
+                              : item
+                          )
+                        )
+                      }
+                    >
+                      <option value="minor">Minor</option>
+                      <option value="major">Major</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </label>
+                  <label className="remote-manager__check">
+                    <input
+                      type="checkbox"
+                      checked={message.enabled}
+                      onChange={(event) =>
+                        updateCustomMessages(
+                          (broadcastManager.customMessages ?? []).map((item) =>
+                            item.id === message.id
+                              ? { ...item, enabled: event.target.checked }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                    Enabled
+                  </label>
+                </div>
+              </article>
+            ))}
         </section>
       )}
 
@@ -386,6 +675,39 @@ export default function RemoteManager() {
               </button>
             </div>
           ))}
+          <hr className="remote-manager__divider" />
+          <h3>Phase score assignments</h3>
+          <p>
+            These are the central equivalent of the local Music Manager’s Phase Score tab. Choose a
+            track, silence, or inherit the bundled policy for each phase.
+          </p>
+          <div className="remote-manager__assignment-list">
+            {(Object.keys(DEFAULT_PHASE_MUSIC_POLICY) as Phase[]).map((phase) => {
+              const selection = phaseMusic[phase]
+              const value =
+                selection?.kind === 'track' ? selection.track : (selection?.kind ?? 'inherit')
+              return (
+                <label className="remote-manager__assignment" key={phase}>
+                  <span>
+                    <strong>{phase.replace(/_/g, ' ')}</strong>
+                    <code>{phase}</code>
+                  </span>
+                  <select
+                    value={value}
+                    onChange={(event) => updatePhaseMusic(phase, event.target.value)}
+                  >
+                    <option value="inherit">Bundled default</option>
+                    <option value="silence">Silence</option>
+                    {MUSIC_TRACK_IDS.map((track) => (
+                      <option key={track} value={track}>
+                        {track}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )
+            })}
+          </div>
         </section>
       )}
 
@@ -572,7 +894,7 @@ export default function RemoteManager() {
 
       {section === 'social' && (
         <section className="remote-manager__card">
-          <h2>Social economy</h2>
+          <h2>Social Manager</h2>
           <p>
             Tune the most common Social and Drama limits. Advanced content remains available in the
             JSON tab.
@@ -642,6 +964,189 @@ export default function RemoteManager() {
               />
             </label>
           </div>
+          <hr className="remote-manager__divider" />
+          <div className="remote-manager__heading-row">
+            <div>
+              <h3>Action catalog</h3>
+              <p>
+                This is the remotely applied version of the local Social Manager. Central overrides
+                take precedence over each player’s local action settings while enabled.
+              </p>
+            </div>
+            <label className="remote-manager__check">
+              <input
+                type="checkbox"
+                checked={socialManager.enabled ?? false}
+                onChange={(event) =>
+                  setConfig((current) => ({
+                    ...current,
+                    socialManager: { ...current.socialManager, enabled: event.target.checked },
+                  }))
+                }
+              />
+              Use central action settings
+            </label>
+          </div>
+          {selectedSocialAction && (
+            <div className="remote-manager__social-editor">
+              <label>
+                Choose action
+                <select
+                  value={selectedSocialAction.id}
+                  onChange={(event) => {
+                    setSocialActionId(event.target.value)
+                    setSocialActionJson(
+                      JSON.stringify(
+                        socialManager.actionOverrides?.[event.target.value] ?? {},
+                        null,
+                        2
+                      )
+                    )
+                  }}
+                >
+                  <option value="">Choose an action</option>
+                  {remoteActions.map((action) => (
+                    <option key={action.id} value={action.id}>
+                      {action.title} · {action.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="remote-manager__grid">
+                <label>
+                  Display title
+                  <input
+                    value={selectedSocialAction.title}
+                    onChange={(event) =>
+                      updateSocialAction(selectedSocialAction.id, { title: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="remote-manager__check">
+                  <input
+                    type="checkbox"
+                    checked={selectedSocialAction.enabled !== false}
+                    onChange={(event) =>
+                      updateSocialAction(selectedSocialAction.id, { enabled: event.target.checked })
+                    }
+                  />
+                  Action enabled
+                </label>
+                <label className="remote-manager__wide">
+                  Description
+                  <textarea
+                    rows={3}
+                    value={selectedSocialAction.description ?? ''}
+                    onChange={(event) =>
+                      updateSocialAction(selectedSocialAction.id, {
+                        description: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <label>
+                Full action override JSON
+                <textarea
+                  className="remote-manager__json remote-manager__json--short"
+                  rows={10}
+                  value={
+                    socialActionJson ||
+                    JSON.stringify(
+                      socialManager.actionOverrides?.[selectedSocialAction.id] ?? {},
+                      null,
+                      2
+                    )
+                  }
+                  onChange={(event) => setSocialActionJson(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const parsed = sanitiseSocialActionOverrides({
+                      [selectedSocialAction.id]: JSON.parse(socialActionJson || '{}'),
+                    })
+                    updateSocialActions({ ...socialManager.actionOverrides, ...parsed })
+                    setStatus(
+                      `${selectedSocialAction.title} action override validated and applied.`
+                    )
+                  } catch {
+                    setStatus('That action JSON is not valid.')
+                  }
+                }}
+              >
+                Validate and apply this action
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {section === 'tutorial' && (
+        <section className="remote-manager__card remote-manager__tutorial">
+          <h2>How remote changes reach the real game</h2>
+          <p>
+            This screen is your central production desk. Nothing changes for players until you
+            publish the draft.
+          </p>
+          <ol>
+            <li>
+              <strong>Edit a manager tab.</strong> Broadcast edits update template messages and
+              custom phase lines; Music edits update remote tracks and phase score; Game edits
+              update future competition scheduling; Social edits update rules and action
+              definitions.
+            </li>
+            <li>
+              <strong>Review your draft.</strong> Use Advanced JSON if you need a field not shown in
+              the form. “Validate and apply” removes unsafe or unsupported values.
+            </li>
+            <li>
+              <strong>Open Publish.</strong> Enter a fine-grained GitHub token for this repository
+              only. The token lives only in this browser tab.
+            </li>
+            <li>
+              <strong>Choose Create review PR.</strong> This is the normal workflow: review the
+              generated JSON change on GitHub and merge it when ready. Use direct publishing only
+              for an urgent live notice.
+            </li>
+            <li>
+              <strong>GitHub Pages deploys the JSON.</strong> After the workflow finishes, the
+              public endpoint changes. A player opening the game reads it immediately; an
+              already-open game checks again every five minutes.
+            </li>
+          </ol>
+          <h3>Examples</h3>
+          <ul>
+            <li>
+              <strong>Emergency announcement:</strong> Broadcast → enable the global alert → write
+              title/message → Publish. Set an end time so it removes itself automatically.
+            </li>
+            <li>
+              <strong>Change a ceremony song:</strong> Music → Phase score assignments → choose the
+              phase and a track → Publish. The bundled song remains the fallback if an external URL
+              fails.
+            </li>
+            <li>
+              <strong>Schedule a specific LOH game:</strong> Game → Add rule → Day, LOH, Exact game
+              → Publish. The rule applies when the matching competition is created.
+            </li>
+            <li>
+              <strong>Disable or rename a social action:</strong> Social → enable central action
+              settings → choose the action → change its fields or full JSON → Validate and apply →
+              Publish.
+            </li>
+            <li>
+              <strong>Edit a phase broadcast:</strong> Broadcast → enable central phase broadcasts →
+              choose a phase → change the exact template text or add a custom line → Publish.
+            </li>
+          </ul>
+          <p className="remote-manager__notice">
+            <strong>Important:</strong> remote controls are data only. They cannot execute code. If
+            a remote file is unavailable or invalid, the game uses its last valid cached
+            configuration and then bundled defaults.
+          </p>
         </section>
       )}
 
