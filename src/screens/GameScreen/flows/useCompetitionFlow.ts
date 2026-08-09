@@ -16,6 +16,7 @@ import { computeScores } from '../../../minigames/scoring'
 import { isPlacementRankingGame } from '../../../minigames/registry'
 import { statusBadgeImageSrc } from '../../../utils/statusBadges'
 import { expandCupidIds, isCupidArrowActive } from '../../../features/twists/cupidArrow'
+import { rankPressurePlankResults } from '../../../components/PressurePlank/pressurePlankLogic'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
@@ -242,17 +243,28 @@ export function useCompetitionFlow({
                   ? { tiebreaker: pendingChallenge.aiTiebreakers[id] }
                   : {}),
             }))
-      const explicitWinnerId =
+      const reportedWinnerId =
         reactCompletion?.authoritativeWinnerId != null &&
         capturedParticipants.includes(reactCompletion.authoritativeWinnerId)
           ? reactCompletion.authoritativeWinnerId
           : null
-      const explicitLastPlaceId =
+      const reportedLastPlaceId =
         reactCompletion?.authoritativeLastPlaceId != null &&
         capturedParticipants.includes(reactCompletion.authoritativeLastPlaceId) &&
-        reactCompletion.authoritativeLastPlaceId !== explicitWinnerId
+        reactCompletion.authoritativeLastPlaceId !== reportedWinnerId
           ? reactCompletion.authoritativeLastPlaceId
           : null
+      const pressurePlankRanking =
+        capturedGameKey === 'pressurePlank'
+          ? rankPressurePlankResults(
+              capturedParticipants,
+              Object.fromEntries(rawResults.map((result) => [result.playerId, result.rawValue])),
+              pendingChallenge.seed
+            )
+          : null
+      const explicitWinnerId = pressurePlankRanking?.[0]?.playerId ?? reportedWinnerId
+      const explicitLastPlaceId =
+        pressurePlankRanking?.[pressurePlankRanking.length - 1]?.playerId ?? reportedLastPlaceId
       // An abandoned placement competition has no component-owned completion
       // payload because the game was unmounted. The pre-ranked partial results
       // are authoritative for that exit: the human is last and the best

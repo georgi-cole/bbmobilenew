@@ -16,7 +16,7 @@ import {
   type TetrisPrizeType,
 } from '../../features/tetris/tetrisSlice'
 import { resolveTetrisOutcome } from '../../features/tetris/thunks'
-import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index'
+import { simulateTetrisAiScores } from '../../ai/competition/tetrisSimulation'
 import { mulberry32 } from '../../store/rng'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
 import ResolvedAvatarImage from '../ResolvedAvatarImage/ResolvedAvatarImage'
@@ -439,31 +439,20 @@ export default function TetrisComp({
       const durationScale = round.durationMs / 60_000
       const minimumScore = Math.round(320 * durationScale)
       const maximumScore = Math.round(2700 * durationScale * (1 + round.tensionLevel * 0.025))
-      const model = {
-        ...getMinigameAiModel('tetris'),
+      const roundSeed = (seed ^ Math.imul(roundIndex + 1, 0x9e3779b1)) >>> 0
+      const simulatedScores = simulateTetrisAiScores({
+        seed: roundSeed,
         minScore: minimumScore,
         maxScore: maximumScore,
-      }
+        participants: ids.map((playerId) => ({
+          id: playerId,
+          baselineScore: participantById.get(playerId)?.precomputedScore,
+        })),
+      })
 
-      return ids.map((playerId, participantIndex) => {
-        const participant = participantById.get(playerId)
-        const roundSeed =
-          (seed ^ Math.imul(roundIndex + 1, 0x9e3779b1) ^ hashString(playerId)) >>> 0
-        const detailRng = mulberry32(roundSeed ^ 0x51a7e)
-        const simulated = simulateAiPerformance({
-          minigameKey: 'tetris',
-          seed: roundSeed,
-          playerId,
-          participantIndex,
-          profile: undefined,
-          minigameModel: model,
-        })
-        const legacyScore = Math.max(0, participant?.precomputedScore ?? 0) * durationScale
-        const blended = legacyScore > 0 ? simulated * 0.78 + legacyScore * 0.22 : simulated
-        const scoreValue = Math.max(
-          minimumScore,
-          Math.min(Math.round(maximumScore * 1.18), Math.round(blended))
-        )
+      return ids.map((playerId) => {
+        const detailRng = mulberry32((roundSeed ^ hashString(playerId) ^ 0x51a7e) >>> 0)
+        const scoreValue = simulatedScores[playerId] ?? minimumScore
         const linesValue = Math.max(0, Math.floor(scoreValue / (235 + detailRng() * 95)))
         const piecesValue = Math.max(
           linesValue * 3,

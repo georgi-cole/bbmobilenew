@@ -162,7 +162,8 @@ export function rankTetrisRound(
     if (a.pieces !== b.pieces) return b.pieces - a.pieces
     if (a.maxStackHeight !== b.maxStackHeight) return a.maxStackHeight - b.maxStackHeight
     if (a.previousScore !== b.previousScore) return b.previousScore - a.previousScore
-    if (a.tieBreaker !== b.tieBreaker) return b.tieBreaker - a.tieBreaker
+    // A genuine score tie is resolved consistently by the roster identifier;
+    // never let a hidden random roll override the visible result.
     return a.playerId.localeCompare(b.playerId)
   })
 }

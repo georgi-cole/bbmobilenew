@@ -7,11 +7,11 @@
  *
  * Supports two rendering modes:
  *  1. LOH/POS path: receives `session` + `players`; dispatches `completeMinigame`
- *     with a canonical `CompleteMinigamePayload` (humanScore + lastPlaceId).
- *  2. MinigameHost (challenge) path: receives `onFinish`; calls `onFinish(score)`.
+ *     with canonical survival standings and winner/last-place IDs.
+ *  2. MinigameHost path: receives participant data and reports the same standings.
  *
  * Scoring semantics:
- *  - Score = survival time in seconds, scaled to 0–100 range (cap at 120 s → 100).
+ *  - Score = survival time in seconds, preserved to millisecond precision.
  *  - Higher score = better (matches AI registry: scoreDirection = 'higher-is-better').
  *  - Last-place finisher = lowest score = shortest survival time.
  *  - The component derives lastPlaceId authoritatively and passes it to the store.
@@ -25,17 +25,18 @@ import type { CompleteMinigamePayload, MinigameSession, Player } from '../../typ
 import {
   PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE,
   PRESSURE_PLANK_SAFE_ZONE_INITIAL_HALF_WIDTH,
+  PRESSURE_PLANK_ROUND_SECONDS,
   PRESSURE_PLANK_STABILITY_MAX,
   getPressurePlankGaugeSafeZoneBounds,
   getPressurePlankSafeZoneHalfWidth,
   getPressurePlankStabilityDamagePerSecond,
+  hasPressurePlankRoundExpired,
+  normalizePressurePlankSurvivalSeconds,
+  rankPressurePlankResults,
 } from './pressurePlankLogic'
 import './PressurePlank.css'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-/** Max survival time for a perfect score of 100. */
-const SCORE_CAP_SECONDS = 120
 
 /** Countdown seconds before game starts. */
 const READY_COUNT = 3
@@ -106,7 +107,7 @@ interface ScoreEntry {
   name: string
   /** Survival time in seconds. */
   survivalSeconds: number
-  /** Normalised score 0–100. */
+  /** Native survival time in seconds. */
   score: number
   isHuman: boolean
   eliminated: boolean
@@ -119,19 +120,28 @@ interface Props {
   session?: MinigameSession
   /** LOH/POS minigame path: all game players (for name lookup). */
   players?: Player[]
-  /** MinigameHost path: called with the human's final score. */
-  onFinish?: (value: number) => void
+  /** MinigameHost path: called with the human result plus canonical standings. */
+  onFinish?: (
+    value: number,
+    tiebreakerMs?: number,
+    completion?: {
+      authoritativeWinnerId?: string | null
+      authoritativeLastPlaceId?: string | null
+      rawValue?: number
+      rawResults?: Record<string, number>
+    }
+  ) => void
   /** MinigameHost path: competition seed (reserved). */
   seed?: number
   /** MinigameHost path: when true, skip the start countdown delay. */
   autoStart?: boolean
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Scale survival seconds to a 0–100 score. */
-function survivalToScore(seconds: number): number {
-  return Math.round(Math.min(100, (seconds / SCORE_CAP_SECONDS) * 100))
+  participantIds?: string[]
+  participants?: Array<{
+    id: string
+    name: string
+    isHuman: boolean
+    precomputedScore: number
+  }>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -140,7 +150,10 @@ export default function PressurePlank({
   session,
   players = [],
   onFinish,
+  seed = 0,
   autoStart = false,
+  participantIds = [],
+  participants = [],
 }: Props) {
   const t = useTranslate()
   const dispatch = useAppDispatch()
@@ -159,6 +172,7 @@ export default function PressurePlank({
   const [stability, setStability] = useState(PRESSURE_PLANK_STABILITY_MAX)
   const [activeSurge, setActiveSurge] = useState<SurgeEvent | null>(null)
   const [results, setResults] = useState<ScoreEntry[]>([])
+  const [completedRound, setCompletedRound] = useState(false)
 
   // ── Refs for game loop (avoid stale closures) ──────────────────────────────
 
@@ -171,6 +185,7 @@ export default function PressurePlank({
   const activeSurgeRef = useRef<SurgeEvent | null>(null)
   const rafRef = useRef<number | null>(null)
   const surgeTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const endedRef = useRef(false)
 
   /**
    * Keep stable refs for props that are read inside the RAF loop.
@@ -181,6 +196,8 @@ export default function PressurePlank({
   const humanIdRef = useRef(humanId)
   const playersRef = useRef(players)
   const onFinishRef = useRef(onFinish)
+  const participantIdsRef = useRef(participantIds)
+  const participantsRef = useRef(participants)
   useEffect(() => {
     sessionRef.current = session
   })
@@ -192,6 +209,12 @@ export default function PressurePlank({
   })
   useEffect(() => {
     onFinishRef.current = onFinish
+  })
+  useEffect(() => {
+    participantIdsRef.current = participantIds
+  })
+  useEffect(() => {
+    participantsRef.current = participants
   })
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
@@ -256,7 +279,9 @@ export default function PressurePlank({
   // ── Game over handler ──────────────────────────────────────────────────────
 
   const endGame = useCallback(
-    (finalStartTime: number) => {
+    (finalStartTime: number, completed: boolean) => {
+      if (endedRef.current) return
+      endedRef.current = true
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
@@ -264,44 +289,53 @@ export default function PressurePlank({
       surgeTimeoutsRef.current.forEach(clearTimeout)
       surgeTimeoutsRef.current = []
 
-      const elapsed = Date.now() - finalStartTime
-      const survivalSec = elapsed / 1000
-      const humanScore = survivalToScore(survivalSec)
+      const survivalSec = normalizePressurePlankSurvivalSeconds(
+        completed ? PRESSURE_PLANK_ROUND_SECONDS : (Date.now() - finalStartTime) / 1000
+      )
 
       const currentSession = sessionRef.current
-      const currentHumanId = humanIdRef.current
+      const hostedParticipants = participantsRef.current
+      const currentHumanId =
+        humanIdRef.current ?? hostedParticipants.find((participant) => participant.isHuman)?.id
       const currentPlayers = playersRef.current
-
-      if (currentSession) {
-        // LOH/POS path: build full leaderboard
-        const allScores: Record<string, number> = { ...currentSession.aiScores }
-        if (currentHumanId) allScores[currentHumanId] = humanScore
-
-        const entries: ScoreEntry[] = currentSession.participants.map((id) => {
-          const p = currentPlayers.find((pl) => pl.id === id)
-          const sc = allScores[id] ?? 0
-          const survival = (sc / 100) * SCORE_CAP_SECONDS
-          return {
-            id,
-            name: p?.name ?? id,
-            survivalSeconds: id === currentHumanId ? survivalSec : survival,
-            score: sc,
-            isHuman: id === currentHumanId,
-            eliminated: true,
-          }
-        })
-
-        const ranked = [...entries].sort((a, b) => b.score - a.score)
-        setResults(ranked)
-        setGamePhase('results')
-      } else {
-        // MinigameHost path
-        const cb = onFinishRef.current
-        if (cb) cb(humanScore)
+      const currentParticipantIds = currentSession?.participants ?? participantIdsRef.current
+      const allScores: Record<string, number> = currentSession
+        ? { ...currentSession.aiScores }
+        : Object.fromEntries(
+            hostedParticipants
+              .filter((participant) => !participant.isHuman)
+              .map((participant) => [participant.id, participant.precomputedScore])
+          )
+      if (currentHumanId && currentParticipantIds.includes(currentHumanId)) {
+        allScores[currentHumanId] = survivalSec
       }
+
+      const ordered = rankPressurePlankResults(
+        currentParticipantIds,
+        allScores,
+        currentSession?.seed ?? seed
+      )
+      const entries: ScoreEntry[] = ordered.map((result) => {
+        const gamePlayer = currentPlayers.find((player) => player.id === result.playerId)
+        const hostedPlayer = hostedParticipants.find(
+          (participant) => participant.id === result.playerId
+        )
+        return {
+          id: result.playerId,
+          name: gamePlayer?.name ?? hostedPlayer?.name ?? result.playerId,
+          survivalSeconds: result.survivalSeconds,
+          score: result.survivalSeconds,
+          isHuman: result.playerId === currentHumanId,
+          eliminated: result.survivalSeconds < PRESSURE_PLANK_ROUND_SECONDS,
+        }
+      })
+      setSurvivalMs(survivalSec * 1000)
+      setCompletedRound(completed)
+      setResults(entries)
+      setGamePhase('results')
     },
     // Only refs and stable setters — no prop dependencies needed.
-    []
+    [seed]
   )
 
   // ── RAF game loop ──────────────────────────────────────────────────────────
@@ -313,6 +347,7 @@ export default function PressurePlank({
     balanceRef.current = 0
     velocityRef.current = 0
     stabilityRef.current = PRESSURE_PLANK_STABILITY_MAX
+    endedRef.current = false
     driftBiasRef.current = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 4)
     const startTime = Date.now()
     const startPerf = performance.now()
@@ -382,11 +417,16 @@ export default function PressurePlank({
         setStability(Number(stabilityRef.current.toFixed(1)))
       }
 
+      if (hasPressurePlankRoundExpired(elapsed)) {
+        endGame(startTime, true)
+        return
+      }
+
       // Game over: the physical edge is instant death; stability reaching zero also ends the run.
       if (Math.abs(balanceRef.current) >= FALL_THRESHOLD || stabilityRef.current <= 0) {
         setBalance(balanceRef.current > 0 ? FALL_THRESHOLD : -FALL_THRESHOLD)
         setSurvivalMs(Date.now() - startTime)
-        endGame(startTime)
+        endGame(startTime, false)
         return
       }
 
@@ -415,11 +455,21 @@ export default function PressurePlank({
   // ── Done handler (LOH path: dispatches to store) ───────────────────────────
 
   const handleDone = useCallback(() => {
-    if (!session) return
     const humanScore = results.find((e) => e.isHuman)?.score ?? 0
+    const winnerId = results[0]?.id
     const lastPlaceId = results.length > 0 ? results[results.length - 1].id : undefined
-    const payload: CompleteMinigamePayload = { humanScore, lastPlaceId }
-    dispatch(completeMinigame(payload))
+    const rawResults = Object.fromEntries(results.map((result) => [result.id, result.score]))
+    if (session) {
+      const payload: CompleteMinigamePayload = { humanScore, winnerId, lastPlaceId }
+      dispatch(completeMinigame(payload))
+      return
+    }
+    onFinishRef.current?.(humanScore, undefined, {
+      authoritativeWinnerId: winnerId,
+      authoritativeLastPlaceId: lastPlaceId,
+      rawValue: humanScore,
+      rawResults,
+    })
   }, [dispatch, results, session])
 
   // ── Derived UI values ──────────────────────────────────────────────────────
@@ -601,7 +651,9 @@ export default function PressurePlank({
         {/* ── Results phase ─────────────────────────────────────────────── */}
         {gamePhase === 'results' && (
           <div className="pp__results">
-            <div className="pp__results-fell">🫸 You fell off!</div>
+            <div className="pp__results-fell">
+              {completedRound ? '🏁 You survived the full round!' : '🫸 You fell off!'}
+            </div>
             <div className="pp__results-time">Survived: {survivalSeconds}s</div>
 
             <ol className="pp__leaderboard" aria-label="Competition results">
@@ -628,7 +680,7 @@ export default function PressurePlank({
               ))}
             </ol>
 
-            {session && (
+            {(session || onFinish) && (
               <button className="pp__continue" onClick={handleDone} type="button">
                 Continue ▶
               </button>
