@@ -2,7 +2,12 @@ import { configureStore } from '@reduxjs/toolkit'
 import gameReducer, { replaceBroadcastConfig } from './gameSlice'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
-import settingsReducer, { loadSettings, saveSettings } from './settingsSlice'
+import settingsReducer, {
+  STORAGE_KEY as SETTINGS_STORAGE_KEY,
+  importSettings,
+  loadSettings,
+  saveSettings,
+} from './settingsSlice'
 import userProfileReducer, { loadUserProfile, saveUserProfile } from './userProfileSlice'
 import profilesReducer, {
   loadProfilesState,
@@ -55,6 +60,7 @@ import {
   loadBroadcastConfig,
   saveBroadcastConfig,
 } from '../broadcasting/broadcastConfigPersistence'
+import { setRuntimeSocialActionOverrides } from '../social/socialActionManager'
 
 export const store = configureStore({
   reducer: {
@@ -107,6 +113,8 @@ export const store = configureStore({
     ),
 })
 
+setRuntimeSocialActionOverrides(store.getState().settings.social.actionOverrides)
+
 // The Broadcast Manager is commonly kept open beside the game. localStorage
 // persists its authoring data; this listener makes a save in that manager tab
 // immediately update the live game tab and its ordered presentation queue.
@@ -115,6 +123,14 @@ if (typeof window !== 'undefined') {
     if (event.key !== BROADCAST_CONFIG_STORAGE_KEY) return
     const config = loadBroadcastConfig()
     store.dispatch(replaceBroadcastConfig(config))
+  })
+}
+
+// Keep Social Manager edits synchronized with a game running in another tab.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== SETTINGS_STORAGE_KEY) return
+    store.dispatch(importSettings(loadSettings()))
   })
 }
 
@@ -172,6 +188,7 @@ store.subscribe(() => {
     // settings so that mute controls and Settings screen are the canonical source
     // of truth and stale localStorage flags cannot silently disable audio.
     syncRuntimeAudioSettings(current.settings.audio)
+    setRuntimeSocialActionOverrides(current.settings.social.actionOverrides)
   }
   if (current.userProfile !== prevUserProfile) {
     prevUserProfile = current.userProfile

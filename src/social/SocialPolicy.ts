@@ -7,6 +7,11 @@ import { normalizeAffinity } from './affinityUtils'
 import { hasAllianceBetween } from './socialAlliance'
 import { getSocialPersonality } from './socialPersonalityBank'
 import { getSocialRuntimeConfig } from './socialRuntimeConfig'
+import {
+  getActionAffinityEffects,
+  getActionScoreEffects,
+  getRuntimeSocialActionById,
+} from './socialActionManager'
 import type { PolicyContext, RelationshipsMap, SocialActionLogEntry } from './types'
 
 // ── Evaluator configuration ───────────────────────────────────────────────
@@ -80,7 +85,11 @@ function recentCount(
  */
 export function chooseActionFor(playerId: string, rawContext: PolicyContext): string {
   const context = rawContext as RichPolicyContext
-  const configuredWeights = socialConfig.actionWeights
+  const configuredWeights = { ...socialConfig.actionWeights }
+  for (const actionId of context.availableActionIds ?? []) {
+    const managedWeight = getRuntimeSocialActionById(actionId)?.aiWeight
+    if (managedWeight !== undefined) configuredWeights[actionId] = managedWeight
+  }
   const configuredEntries = Object.entries(configuredWeights)
   if (configuredEntries.length === 0) return 'idle'
 
@@ -96,9 +105,13 @@ export function chooseActionFor(playerId: string, rawContext: PolicyContext): st
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories
 
   const candidates = configuredEntries
-    .filter(([actionId]) => !allowed || allowed.has(actionId))
+    .filter(
+      ([actionId]) =>
+        getRuntimeSocialActionById(actionId) !== undefined && (!allowed || allowed.has(actionId))
+    )
     .map(([actionId, authoredWeight]) => {
-      let utility = runtime.ai.basicActionWeights[actionId] ?? authoredWeight
+      const managedWeight = getRuntimeSocialActionById(actionId)?.aiWeight
+      let utility = managedWeight ?? runtime.ai.basicActionWeights[actionId] ?? authoredWeight
       const repeats = recentCount(context, playerId, actionId)
 
       if (friendlyActions.includes(actionId)) {
@@ -299,6 +312,11 @@ export function computeOutcomeDelta(
   _targetId: string,
   outcome: string
 ): number {
+  const action = getRuntimeSocialActionById(actionId)
+  if (action) {
+    const effects = getActionAffinityEffects(action)
+    return outcome === 'success' ? effects.success : effects.failure
+  }
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories
   const deltas = socialConfig.affinityDeltas
 
@@ -338,16 +356,22 @@ export function computeOutcomeScore(
   const { friendlyActions, aggressiveActions } = socialConfig.actionCategories
   const deltas = socialConfig.scoreDeltas
   const runtime = getSocialRuntimeConfig()
+  const action = getRuntimeSocialActionById(actionId)
 
-  const baseScore: number = friendlyActions.includes(actionId)
-    ? outcome === 'success'
-      ? deltas.friendlySuccess
-      : deltas.friendlyFailure
-    : aggressiveActions.includes(actionId)
+  const baseScore: number = action
+    ? (() => {
+        const effects = getActionScoreEffects(action)
+        return outcome === 'success' ? effects.success : effects.failure
+      })()
+    : friendlyActions.includes(actionId)
       ? outcome === 'success'
-        ? deltas.aggressiveSuccess
-        : deltas.aggressiveFailure
-      : 0
+        ? deltas.friendlySuccess
+        : deltas.friendlyFailure
+      : aggressiveActions.includes(actionId)
+        ? outcome === 'success'
+          ? deltas.aggressiveSuccess
+          : deltas.aggressiveFailure
+        : 0
 
   const existingAffinity = relationships?.[actorId]?.[targetId]?.affinity ?? 0
   const actorBias = outcomeAffinity(existingAffinity) * runtime.ai.outcomeAffinityBiasWeight

@@ -2,6 +2,12 @@ import { SOCIAL_ACTIONS, resolveActionTargetMode } from '../socialActions'
 import type { SocialActionDefinition } from '../socialActions'
 import { normalizeActionCosts } from '../smExecNormalize'
 import { actorHasBelief } from './knowledge'
+import {
+  getDefaultRealityEffects,
+  getRuntimeSocialActionById,
+  getRuntimeSocialActions,
+  type EffectiveRealityEffects,
+} from '../socialActionManager'
 import type {
   RealityContext,
   RealityDirection,
@@ -56,6 +62,7 @@ export interface RealityActionContract {
   outcomeResolverId: string
   memoryTemplateId: string
   dialogueSetId: string
+  relationshipEffects: EffectiveRealityEffects
   targetMode: ReturnType<typeof resolveActionTargetMode>
   dramaTargetMode: ReturnType<typeof resolveActionTargetMode>
   aiOnly: boolean
@@ -85,6 +92,41 @@ export interface RealityCandidateEvaluation {
 }
 
 const BROAD_PHASES = ['*']
+const REALITY_PURPOSES = new Set<RealityActionPurpose>([
+  'BOND',
+  'REPAIR',
+  'INFORMATION',
+  'PERSUADE',
+  'COMMITMENT',
+  'PROTECT',
+  'CONFLICT',
+  'ROMANCE',
+  'PERFORM',
+  'WITHDRAW',
+])
+const REALITY_DIRECTIONS = new Set<RealityDirection>([
+  'AI_TO_AI',
+  'AI_TO_HUMAN',
+  'HUMAN_TO_AI',
+  'GROUP',
+  'SELF',
+])
+const REALITY_VISIBILITIES = new Set<RealityVisibility>([
+  'PRIVATE',
+  'PAIR_ONLY',
+  'GROUP_VISIBLE',
+  'HOUSE_PUBLIC',
+  'CEREMONY_PUBLIC',
+  'VIEWER_ONLY',
+  'JURY_ONLY',
+])
+
+function filteredValues<T extends string>(
+  values: readonly string[] | undefined,
+  allowed: Set<T>
+): T[] {
+  return (values ?? []).filter((value): value is T => allowed.has(value as T))
+}
 
 function purposesFor(action: SocialActionDefinition): RealityActionPurpose[] {
   if (action.id === 'idle') return ['WITHDRAW']
@@ -131,15 +173,26 @@ export function adaptLegacyActionContract(action: SocialActionDefinition): Reali
       : dramaTargetMode === 'multi'
         ? ['GROUP']
         : ['AI_TO_AI', 'AI_TO_HUMAN', 'HUMAN_TO_AI', 'GROUP']
+  const configuredDirections = filteredValues(action.realityAllowedDirections, REALITY_DIRECTIONS)
+  const configuredPurposes = filteredValues(action.realityPurposes, REALITY_PURPOSES)
+  const configuredModes = filteredValues(
+    action.realityAllowedGameModes,
+    new Set<'CLASSIC' | 'SURVIVAL'>(['CLASSIC', 'SURVIVAL'])
+  )
+  const configuredVisibility = REALITY_VISIBILITIES.has(
+    action.realityVisibility as RealityVisibility
+  )
+    ? (action.realityVisibility as RealityVisibility)
+    : undefined
   return {
     id: action.id,
     legacyActionId: action.id,
     title: action.title,
     category: action.category,
-    purposes: purposesFor(action),
-    allowedDirections: directions,
+    purposes: configuredPurposes.length > 0 ? configuredPurposes : purposesFor(action),
+    allowedDirections: configuredDirections.length > 0 ? configuredDirections : directions,
     allowedPhases: [...(action.dramaAllowedPhases ?? action.allowedPhases ?? BROAD_PHASES)],
-    allowedGameModes: ['CLASSIC', 'SURVIVAL'],
+    allowedGameModes: configuredModes.length > 0 ? configuredModes : ['CLASSIC', 'SURVIVAL'],
     allowedIntensities: action.dramaOnly ? ['REALITY'] : ['NORMAL', 'REALITY'],
     baseWeight: Math.max(0.05, action.successWeight ?? 1),
     requiredActorRoles: [...(action.requiredActorStatus ?? [])],
@@ -171,12 +224,13 @@ export function adaptLegacyActionContract(action: SocialActionDefinition): Reali
       NORMAL: normalizeActionCosts(action, 1, false),
       REALITY: normalizeActionCosts(action, 1, true),
     },
-    cooldownPhases: action.category === 'aggressive' ? 3 : 1,
-    visibility: visibilityFor(action),
-    responseSetId: responseSetFor(action),
-    outcomeResolverId: `legacy:${action.id}`,
-    memoryTemplateId: `memory:${action.category}`,
-    dialogueSetId: `dialogue:${action.id}`,
+    cooldownPhases: action.realityCooldownPhases ?? (action.category === 'aggressive' ? 3 : 1),
+    visibility: configuredVisibility ?? visibilityFor(action),
+    responseSetId: action.responseSetId ?? responseSetFor(action),
+    outcomeResolverId: action.outcomeResolverId ?? `legacy:${action.id}`,
+    memoryTemplateId: action.memoryTemplateId ?? `memory:${action.category}`,
+    dialogueSetId: action.dialogueSetId ?? `dialogue:${action.id}`,
+    relationshipEffects: getDefaultRealityEffects(action),
     targetMode,
     dramaTargetMode,
     aiOnly: action.aiOnly === true,
@@ -187,6 +241,16 @@ export const REALITY_ACTION_CONTRACTS = SOCIAL_ACTIONS.map(adaptLegacyActionCont
 export const REALITY_ACTION_BY_ID = new Map(
   REALITY_ACTION_CONTRACTS.map((action) => [action.id, action])
 )
+
+/** Runtime-aware contracts used by gameplay after Social Manager overrides. */
+export function getRealityActionContracts(): RealityActionContract[] {
+  return getRuntimeSocialActions().map(adaptLegacyActionContract)
+}
+
+export function getRealityActionContract(id: string): RealityActionContract | undefined {
+  const action = getRuntimeSocialActionById(id)
+  return action ? adaptLegacyActionContract(action) : undefined
+}
 
 export function validateRealityActionContract(action: RealityActionContract): string[] {
   const errors: string[] = []

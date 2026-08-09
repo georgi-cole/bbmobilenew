@@ -1,0 +1,33 @@
+{
+  "broadcast": {
+    "enabled": false,
+    "title": "Big Brother Update",
+    "message": "",
+    "priority": "normal"
+  },
+  "season": {
+    "music": {
+      "tracks": []
+    }
+  },
+  "gameManager": {
+    "enabled": false,
+    "rules": []
+  },
+  "social": {
+    "schemaVersion": 1,
+    "revision": "remote-1",
+    "economy": {
+      "normal": {
+        "weeklyEnergy": 5,
+        "energyCap": 5
+      },
+      "drama": {
+        "weeklyEnergy": 10,
+        "energyCap": 30
+      },
+      "influenceCap": 10000,
+      "infoCap": 10000
+    }
+  }
+}

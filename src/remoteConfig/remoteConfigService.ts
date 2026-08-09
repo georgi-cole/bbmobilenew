@@ -27,10 +27,13 @@ import {
   sanitiseMusicConfigOverrides,
   sanitiseMusicTrackAssetOverrides,
 } from '../services/sound/musicConfigSanitizer'
+import type { GameManagerConfig, GameManagerRule } from '../gameManager/gameManager'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const REMOTE_CONFIG_STORAGE_KEY = 'bbmobilenew_remote_config_v1'
+export const GITHUB_PAGES_REMOTE_CONFIG_URL =
+  'https://georgi-cole.github.io/bbmobilenew/config/live-config.json'
 
 /** TTL for the localStorage cache (1 hour). */
 const CACHE_TTL_MS = 60 * 60 * 1000
@@ -43,7 +46,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000
 export const DEFAULT_REMOTE_CONFIG_URL: string =
   (typeof import.meta !== 'undefined' &&
     (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
-  apiUrl('/api/live-config')
+  (import.meta.env.DEV ? apiUrl('/api/live-config') : GITHUB_PAGES_REMOTE_CONFIG_URL)
 
 const FETCH_TIMEOUT_MS = 8000
 
@@ -89,6 +92,84 @@ function safeOpacity(value: unknown): number | undefined {
 function safePercentage(value: unknown): number | undefined {
   if (typeof value !== 'number' || !isFinite(value)) return undefined
   return Math.max(0, Math.min(100, value))
+}
+
+function sanitiseBroadcast(raw: unknown): RemoteConfig['broadcast'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const broadcast: NonNullable<RemoteConfig['broadcast']> = {}
+  if (typeof value.enabled === 'boolean') broadcast.enabled = value.enabled
+  const title = safeStr(value.title)
+  if (title) broadcast.title = title.slice(0, 100)
+  const message = safeStr(value.message)
+  if (message) broadcast.message = message.slice(0, 500)
+  if (value.priority === 'normal' || value.priority === 'critical') {
+    broadcast.priority = value.priority
+  }
+  const startsAt = safeStr(value.startsAt)
+  if (startsAt && !Number.isNaN(Date.parse(startsAt))) broadcast.startsAt = startsAt
+  const endsAt = safeStr(value.endsAt)
+  if (endsAt && !Number.isNaN(Date.parse(endsAt))) broadcast.endsAt = endsAt
+  return Object.keys(broadcast).length > 0 ? broadcast : undefined
+}
+
+function sanitiseGameManager(raw: unknown): GameManagerConfig | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const rules: GameManagerRule[] = []
+  if (Array.isArray(value.rules)) {
+    for (const entry of value.rules.slice(0, 100)) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+      const rule = entry as Record<string, unknown>
+      const id = safeStr(rule.id)
+      if (!id) continue
+      if (rule.trigger !== 'day' && rule.trigger !== 'players') continue
+      if (rule.competition !== 'LOH' && rule.competition !== 'POS' && rule.competition !== 'any') {
+        continue
+      }
+      if (
+        rule.selection !== 'random' &&
+        rule.selection !== 'category' &&
+        rule.selection !== 'game'
+      ) {
+        continue
+      }
+      if (rule.outcome !== 'play' && rule.outcome !== 'random' && rule.outcome !== 'player')
+        continue
+      const next: GameManagerRule = {
+        id: id.slice(0, 80),
+        enabled: rule.enabled !== false,
+        priority:
+          typeof rule.priority === 'number' && Number.isFinite(rule.priority)
+            ? Math.max(-1000, Math.min(1000, Math.round(rule.priority)))
+            : 0,
+        trigger: rule.trigger,
+        competition: rule.competition,
+        selection: rule.selection,
+        outcome: rule.outcome,
+      }
+      if (rule.trigger === 'day' && typeof rule.day === 'number') {
+        next.day = Math.max(1, Math.min(100, Math.round(rule.day)))
+      }
+      if (rule.trigger === 'players' && typeof rule.playerCount === 'number') {
+        next.playerCount = Math.max(2, Math.min(50, Math.round(rule.playerCount)))
+      }
+      if (
+        rule.category === 'arcade' ||
+        rule.category === 'logic' ||
+        rule.category === 'trivia' ||
+        rule.category === 'endurance'
+      ) {
+        next.category = rule.category
+      }
+      const gameKey = safeStr(rule.gameKey)
+      if (gameKey) next.gameKey = gameKey.slice(0, 100)
+      const winnerId = safeStr(rule.winnerId)
+      if (winnerId) next.winnerId = winnerId.slice(0, 100)
+      rules.push(next)
+    }
+  }
+  return { enabled: value.enabled !== false, rules }
 }
 
 /** Returns true when the URL is an absolute http(s) URL. */
@@ -138,6 +219,12 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
 
   const r = raw as Record<string, unknown>
   const config: RemoteConfig = {}
+
+  const broadcast = sanitiseBroadcast(r.broadcast)
+  if (broadcast) config.broadcast = broadcast
+
+  const gameManager = sanitiseGameManager(r.gameManager)
+  if (gameManager) config.gameManager = gameManager
 
   // season
   if (r.season && typeof r.season === 'object' && !Array.isArray(r.season)) {
@@ -335,7 +422,7 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig | null> {
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
   try {
-    const res = await fetch(url, { signal: controller.signal })
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json: unknown = await res.json()
     const config = sanitiseRemoteConfig(json)

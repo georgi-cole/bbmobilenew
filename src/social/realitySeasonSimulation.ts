@@ -1,5 +1,5 @@
 import {
-  REALITY_ACTION_CONTRACTS,
+  getRealityActionContracts,
   createInitialRealityDomainState,
   ensureRealityActors,
   recordRealityCeremonyOutcome,
@@ -120,7 +120,7 @@ export function simulateRealitySeason(
   let deadlockDays = 0
   const selectedActions: string[] = []
 
-  const candidateActions = REALITY_ACTION_CONTRACTS.filter(
+  const candidateActions = getRealityActionContracts().filter(
     (action) =>
       action.allowedDirections.includes('AI_TO_AI') &&
       action.dramaTargetMode !== 'multi' &&

@@ -4,7 +4,7 @@ import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
 import { selectFinale } from '../../store/finaleSlice'
 import { selectSettings } from '../../store/settingsSlice'
-import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice'
+import { selectRemoteBroadcast, selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice'
 import useGameMode from '../../hooks/useGameMode'
 import { buildViewportMetaContent } from './viewportMeta'
 import PortraitOrientationGuard from './PortraitOrientationGuard'
@@ -15,9 +15,7 @@ const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean']
 const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'))
 const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'))
 const SeasonFinaleOverlay = lazy(() => import('../SeasonFinale/SeasonFinaleOverlay'))
-const VoxPopuliFinaleOverlay = lazy(
-  () => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay')
-)
+const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay'))
 
 /**
  * AppShell — persistent wrapper around every screen.
@@ -43,6 +41,7 @@ export default function AppShell() {
   const settings = useAppSelector(selectSettings)
   const { display } = settings
   const remoteConfig = useAppSelector(selectRemoteConfig)
+  const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
 
   useGameMode()
 
@@ -104,6 +103,16 @@ export default function AppShell() {
 
   return (
     <div className="app-shell">
+      {remoteBroadcast && (
+        <aside
+          className={`app-shell__broadcast app-shell__broadcast--${remoteBroadcast.priority ?? 'normal'}`}
+          role="status"
+          aria-label={remoteBroadcast.title ?? 'Broadcast announcement'}
+        >
+          {remoteBroadcast.title && <strong>{remoteBroadcast.title}</strong>}
+          <span>{remoteBroadcast.message}</span>
+        </aside>
+      )}
       <main className="app-shell__main">
         <Outlet />
       </main>

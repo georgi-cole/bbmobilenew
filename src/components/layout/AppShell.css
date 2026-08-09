@@ -29,3 +29,27 @@ body:has(.game-screen-shell) .app-shell {
   padding-bottom: 0;
   padding-left: var(--safe-left);
 }
+
+.app-shell__broadcast {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  background: var(--color-accent, #7c3aed);
+  border-bottom: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  z-index: 20;
+}
+
+.app-shell__broadcast strong {
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.app-shell__broadcast--critical {
+  background: #b91c1c;
+}

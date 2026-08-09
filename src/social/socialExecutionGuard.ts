@@ -3,6 +3,7 @@ import { evaluateSocialActionEligibility } from './socialActionEligibility'
 import { resolveActionTargetMode, type SocialActionDefinition } from './socialActions'
 import { getEffectiveSocialMode } from './socialMode'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
+import { isActionAllowedForRealityPreset } from './socialActionManager'
 
 interface SocialExecutionState {
   game?: {
@@ -11,7 +12,7 @@ interface SocialExecutionState {
     dramaSocialMode?: boolean
     players?: Array<{ id: string; status: string; isUser?: boolean }>
   }
-  settings?: { gameUX?: { dramaMode?: boolean } }
+  settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
   vip?: {
     isActive?: boolean
     entitlements?: { dramaMode?: boolean }
@@ -40,6 +41,10 @@ export function validateSocialExecution(
   state: SocialExecutionState,
   selection: SocialExecutionSelection
 ) {
+  const realityPreset = state.settings?.gameUX?.realityModePreset
+  if (realityPreset && !isActionAllowedForRealityPreset(selection.action, realityPreset)) {
+    return { eligible: false, reason: 'Unavailable for the selected Reality intensity.' }
+  }
   const dramaMode = getEffectiveSocialMode(state) === 'drama'
   const targetMode = resolveActionTargetMode(selection.action, dramaMode)
   const targetIds = targetMode === 'none' ? [] : (selection.targetIds ?? [])

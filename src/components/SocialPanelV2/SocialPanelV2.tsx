@@ -27,8 +27,9 @@ import RecentActivity from './RecentActivity'
 import HousePulse from '../HousePulse/HousePulse'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import type { Player } from '../../types'
-import { resolveActionTargetMode, SOCIAL_ACTIONS } from '../../social/socialActions'
+import { resolveActionTargetMode } from '../../social/socialActions'
 import type { SubjectPool } from '../../social/socialActions'
+import { buildEffectiveSocialActions } from '../../social/socialActionManager'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import { validateSocialExecution } from '../../social/socialExecutionGuard'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
@@ -107,6 +108,10 @@ export default function SocialPanelV2() {
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot)
   const dramaNetwork = useAppSelector(selectDramaNetwork)
   const dramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
+  const socialActions = useMemo(
+    () => buildEffectiveSocialActions(settings?.social?.actionOverrides ?? {}),
+    [settings?.social?.actionOverrides]
+  )
 
   const humanPlayer = game.players.find((player) => player.isUser)
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game])
@@ -369,7 +374,7 @@ export default function SocialPanelV2() {
       hidden.add('suggest_replacement')
       hidden.add('rally_votes_against')
     } else {
-      SOCIAL_ACTIONS.filter((action) => action.voxOnly).forEach((action) => hidden.add(action.id))
+      socialActions.filter((action) => action.voxOnly).forEach((action) => hidden.add(action.id))
     }
     if (!beforeNominations) hidden.add('pitch_target')
     if (!lohPlanOpen || !game.lohId) hidden.add('ask_loh_target')
@@ -403,6 +408,7 @@ export default function SocialPanelV2() {
     humanPlayer?.status,
     primaryTargetId,
     actionHistory,
+    socialActions,
   ])
 
   const handleActionClick = useCallback(

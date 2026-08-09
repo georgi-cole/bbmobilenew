@@ -47,7 +47,7 @@ import type {
 } from './types'
 import type { RealityDomainState } from './reality'
 import {
-  REALITY_ACTION_BY_ID,
+  getRealityActionContract,
   projectRealityAffinity,
   runRealityOpportunity,
   type RealityActorSnapshot,
@@ -162,7 +162,7 @@ function executeRealityCandidate(
   candidate: CandidateMove
 ): boolean {
   if (!_store) return false
-  const contract = REALITY_ACTION_BY_ID.get(candidate.actionId)
+  const contract = getRealityActionContract(candidate.actionId)
   if (!contract || !state.social.realitySimulation.rng) return false
   const action = getActionById(candidate.actionId)
   if (!action) return false
@@ -509,7 +509,7 @@ function routeHumanFacingAction(
       deriveRealitySimulationSeed(current.game.seed ?? 0, `social:${current.game.week}`)
     )
   }
-  const contract = REALITY_ACTION_BY_ID.get(actionId)
+  const contract = getRealityActionContract(actionId)
   if (!contract) return 'blocked'
   const targetIds = sceneTargetIds?.length ? sceneTargetIds : [human.id]
   const realityResult = runRealityOpportunity({
