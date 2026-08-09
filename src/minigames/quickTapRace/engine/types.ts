@@ -55,6 +55,21 @@ export interface QTREngineSnapshot {
   visibleBooster: ScheduledBoosterPrompt | null;
 }
 
+export interface QTRTimingDiagnostics {
+  wallClockElapsedMs: number;
+  longestFrameMs: number;
+  staleTapsRejected: number;
+  afterDeadlineTapsRejected: number;
+  averageTapsPerSecond: number;
+  peakOneSecondTaps: number;
+  medianInterTapMs: number | null;
+  fastestInterTapMs: number | null;
+  uniquePointerCount: number;
+  maxConcurrentPointers: number;
+  pointerTypeCounts: Record<string, number>;
+  inputRateFlag: 'typical' | 'high-rate-review';
+}
+
 // ── Options ───────────────────────────────────────────────────────────────────
 
 export interface QTREngineOptions {
@@ -63,10 +78,19 @@ export interface QTREngineOptions {
   duration?: number;
   /** When true the ready countdown is skipped entirely. */
   autoStart?: boolean;
+  /** Dev-lab mode: the deadline follows elapsed wall time even when rendering stalls. */
+  strictWallClock?: boolean;
+  /** Dev-lab mode: reduce per-tap rendering/audio/state work while measuring input speed. */
+  lowLatencyInput?: boolean;
   /** Fired on every meaningful state change. */
   onTick: (snapshot: QTREngineSnapshot) => void;
   /** Fired when the game timer reaches zero. */
-  onFinish: (finalScore: number, rawTaps: number, modifiers: string[]) => void;
+  onFinish: (
+    finalScore: number,
+    rawTaps: number,
+    modifiers: string[],
+    timing: QTRTimingDiagnostics,
+  ) => void;
   /** Audio callback: fired on every player tap. */
   onTap?: () => void;
   /** Audio callback: fired when a booster is activated. */

@@ -16,6 +16,7 @@
     "validate:after-eye": "node scripts/validate-after-the-eye-config.mjs",
     "cinematic:preview": "remotion studio src/remotion/index.ts",
     "cinematic:render": "remotion render src/remotion/index.ts BigEyeCinematic renders/big-eye-cinematic.mp4 --codec=h264 --pixel-format=yuv420p --image-format=png --color-space=bt709",
+    "cinematic:render-background": "remotion render src/remotion/index.ts BigEyeCinematicBackground public/assets/credits/big-eye-cinematic-background.mp4 --codec=h264 --pixel-format=yuv420p --image-format=png --color-space=bt709",
     "cinematic:frames": "remotion render src/remotion/index.ts BigEyeCinematic renders/frames --sequence --image-format=png --image-sequence-pattern=renders/frames/frame-[frame].[ext]",
     "cinematic:encode": "ffmpeg -framerate 30 -start_number 0 -i renders/frames/frame-%06d.png -c:v libx264 -crf 17 -pix_fmt yuv420p -r 30 renders/big-eye-cinematic-frames.mp4",
     "build": "npm run generate:audio && npm run generate:after-eye && tsc -b && vite build && npm run check:production-debug-globals",
@@ -111,6 +112,6 @@
     "vitest": "^4.1.2"
   },
   "overrides": {
-    "postcss": "8.5.18"
+    "postcss": "8.5.23"
   }
 }

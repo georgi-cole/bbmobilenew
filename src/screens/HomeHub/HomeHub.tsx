@@ -216,8 +216,8 @@ function HomeHubAssetLayer({
                         : to === '/credits'
                           ? () => {
                               void startCreditsSoundtrackFromGesture().catch(() => {
-                                // The Credits screen keeps a direct-link tap fallback for browsers
-                                // that still reject media playback during route navigation.
+                                // The muted video still starts immediately if a browser rejects
+                                // soundtrack playback during route navigation.
                               })
                               onNavigate(to)
                             }
@@ -287,7 +287,7 @@ export default function HomeHub() {
     progress: 0,
     status: 'Opening the house doors.',
   })
-  const splashDone = !isInitialAppSplash || (splashExitRequested && hubAssetState.ready)
+  const splashDone = splashExitRequested && hubAssetState.ready
   // Seed preloading from transient route state so "Start New Season" can
   // reuse the existing Play → preloader → /game flow without setting state in
   // an effect on mount.
@@ -624,9 +624,9 @@ export default function HomeHub() {
     })
   }, [])
 
-  function handleSplashFinish() {
+  const handleSplashFinish = useCallback(() => {
     setSplashExitRequested(true)
-  }
+  }, [])
 
   useEffect(() => {
     if (!splashDone) {

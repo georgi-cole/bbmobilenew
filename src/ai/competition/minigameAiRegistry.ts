@@ -128,6 +128,16 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       'Routing via simulateMinigameAiScore() ensures both session and challenge flows ' +
       'use the same authoritative scorer.',
   },
+  quickTapSeasons: {
+    key: 'quickTapSeasons',
+    category: 'physical',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: WEIGHTS_PHYSICAL_TAP,
+    minScore: 120,
+    maxScore: 320,
+    notes: 'Season effects add strategic volatility to a 40-second tapping race.',
+  },
   laneRacers: {
     key: 'laneRacers',
     category: 'physical',
@@ -452,6 +462,25 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     notes:
       'Castle Rescue — AI score bands normalized from the requested 25/25/40/25/20/10/5 ' +
       'ratio across 0–500, 501–600, 601–800, 801–1000, 1001–1200, 1201–1500, and 1501–2000.',
+  },
+  castleRescue2: {
+    key: 'castleRescue2',
+    category: 'hybrid',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: WEIGHTS_HYBRID,
+    minScore: 0,
+    maxScore: 2000,
+    scoreBuckets: [
+      { minScore: 0, maxScore: 500, weight: 25 / 150 },
+      { minScore: 501, maxScore: 600, weight: 25 / 150 },
+      { minScore: 601, maxScore: 800, weight: 40 / 150 },
+      { minScore: 801, maxScore: 1000, weight: 25 / 150 },
+      { minScore: 1001, maxScore: 1200, weight: 20 / 150 },
+      { minScore: 1201, maxScore: 1500, weight: 10 / 150 },
+      { minScore: 1501, maxScore: 2000, weight: 5 / 150 },
+    ],
+    notes: 'Find Your Twin 2 uses the calibrated Find Your Twin score distribution.',
   },
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',

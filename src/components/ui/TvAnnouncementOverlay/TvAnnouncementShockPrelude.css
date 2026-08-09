@@ -1,0 +1,172 @@
+.tv-shock-prelude {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(183, 88, 255, 0.3), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(198, 31, 73, 0.26), transparent 42%),
+    linear-gradient(145deg, #070812 0%, #130b25 48%, #05060c 100%);
+  isolation: isolate;
+  animation: tvShockPreludeEnter 280ms ease-out both;
+}
+
+.tv-shock-prelude::before,
+.tv-shock-prelude::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.tv-shock-prelude::before {
+  inset: -30%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0 12deg,
+    rgba(216, 180, 254, 0.07) 12deg 13deg
+  );
+  animation: tvShockPreludeSweep 7s linear infinite;
+}
+
+.tv-shock-prelude::after {
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 24%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px);
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.72);
+}
+
+.tv-shock-prelude__content {
+  position: relative;
+  z-index: 1;
+  width: min(680px, 100%);
+  text-align: center;
+  animation: tvShockPreludeContent 440ms cubic-bezier(0.18, 0.9, 0.28, 1.18) both;
+}
+
+.tv-shock-prelude__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  color: #f0abfc;
+  font-size: clamp(0.72rem, 2.4vw, 0.9rem);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.tv-shock-prelude__eyebrow::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.9);
+  animation: tvShockPreludePulse 780ms ease-in-out infinite alternate;
+}
+
+.tv-shock-prelude h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 8vw, 4.8rem);
+  font-weight: 1000;
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 24px rgba(216, 180, 254, 0.44),
+    0 12px 42px rgba(0, 0, 0, 0.72);
+}
+
+.tv-shock-prelude p {
+  max-width: 580px;
+  margin: 24px auto 0;
+  color: rgba(245, 243, 255, 0.82);
+  font-size: clamp(0.92rem, 3vw, 1.2rem);
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.tv-shock-prelude__handoff {
+  display: block;
+  margin-top: 30px;
+  color: rgba(216, 180, 254, 0.58);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tv-shock-prelude--eviction {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(190, 24, 93, 0.3), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(239, 68, 68, 0.22), transparent 42%),
+    linear-gradient(145deg, #08080d 0%, #210b17 48%, #050509 100%);
+}
+
+.tv-shock-prelude--power {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(59, 130, 246, 0.32), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.25), transparent 42%),
+    linear-gradient(145deg, #050a16 0%, #0b1c43 48%, #040712 100%);
+}
+
+.tv-shock-prelude--cupid {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(244, 114, 182, 0.4), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(168, 85, 247, 0.28), transparent 44%),
+    linear-gradient(145deg, #130811 0%, #32102c 48%, #09050d 100%);
+}
+
+@keyframes tvShockPreludeEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tvShockPreludeContent {
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(18px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes tvShockPreludeSweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tvShockPreludePulse {
+  from {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-shock-prelude,
+  .tv-shock-prelude__content,
+  .tv-shock-prelude::before,
+  .tv-shock-prelude__eyebrow::before {
+    animation: none;
+  }
+}

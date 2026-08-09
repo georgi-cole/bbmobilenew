@@ -43,9 +43,9 @@ function makeStore(nomineeIds: string[] = []): {
     povSavedId: null,
     votes: {},
     players: [
-      { id: 'user', name: 'You', isUser: true },
-      { id: 'lia', name: 'Lia' },
-      { id: 'nova', name: 'Nova' },
+      { id: 'user', name: 'You', isUser: true, status: 'active' },
+      { id: 'lia', name: 'Lia', status: 'active' },
+      { id: 'nova', name: 'Nova', status: 'active' },
     ],
   }
   const store: CommitmentStore = {
@@ -89,7 +89,7 @@ describe('social commitments', () => {
     expect(vague).toBeNull()
   })
 
-  it('breaks a safety promise when the beneficiary is nominated and applies lasting consequences', () => {
+  it('breaks a safety promise, applies lasting consequences, and queues a reaction', () => {
     const { store, social } = makeStore(['lia', 'nova'])
     const commitment = createCommitmentFromInteraction({
       interaction: interaction(),
@@ -108,6 +108,15 @@ describe('social commitments', () => {
     expect(social().relationships.lia?.user?.affinity).toBe(-16)
     expect(social().socialMemory.lia?.user?.resentment).toBe(5)
     expect(social().influenceBank.user).toBe(50)
+    expect(social().incomingInteractions).toContainEqual(
+      expect.objectContaining({
+        id: `broken-promise-reaction-${commitment.id}`,
+        fromId: 'lia',
+        type: 'warning',
+        requiresResponse: true,
+        resolved: false,
+      })
+    )
     expect(getSocialCredibility(social().commitments)).toMatchObject({
       score: 40,
       label: 'Early read',
@@ -135,6 +144,7 @@ describe('social commitments', () => {
     expect(social().relationships.lia?.user?.affinity ?? 0).toBe(0)
     expect(social().socialMemory.lia?.user?.gratitude ?? 0).toBe(0)
     expect(social().influenceBank.user).toBe(200)
+    expect(social().incomingInteractions).toHaveLength(0)
     expect(getSocialCredibility(social().commitments)).toMatchObject({
       score: 50,
       label: 'Unproven',

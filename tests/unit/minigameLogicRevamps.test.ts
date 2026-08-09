@@ -6,6 +6,7 @@ import glassBridgeReducer, {
 } from '../../src/features/glassBridge/glassBridgeSlice'
 import type { GlassBridgeState } from '../../src/features/glassBridge/glassBridgeSlice'
 import {
+  PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE,
   PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH,
   getPressurePlankSafeZoneHalfWidth,
   getPressurePlankStabilityDamagePerSecond,
@@ -22,6 +23,20 @@ describe('minigame logic revamps', () => {
     expect(getPressurePlankSafeZoneHalfWidth(10_000)).toBe(PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH)
     expect(PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH * 2).toBe(4)
     expect(getPressurePlankStabilityDamagePerSecond(1, 2, 92)).toBe(0)
+    expect(
+      getPressurePlankStabilityDamagePerSecond(
+        PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE,
+        PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH,
+        92
+      )
+    ).toBe(0)
+    expect(
+      getPressurePlankStabilityDamagePerSecond(
+        PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE + 0.1,
+        PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH,
+        92
+      )
+    ).toBeGreaterThan(0)
     expect(getPressurePlankStabilityDamagePerSecond(70, 2, 92)).toBeGreaterThan(
       getPressurePlankStabilityDamagePerSecond(10, 2, 92)
     )

@@ -326,6 +326,7 @@ export const startChallenge =
         playerCount: bracketPlayerCount,
         compType: bracketCompType,
         phase: state.game.phase,
+        playedGameKeys: allHistoryGameKeys,
       })
       if (bracketKeys.length === 0) return []
 

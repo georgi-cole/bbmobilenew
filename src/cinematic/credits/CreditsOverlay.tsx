@@ -6,6 +6,7 @@ import {
 } from '../config/cinematicConfig';
 import type { TimelineState } from '../timeline/timeline';
 import { easedRange, lerp, rangeProgress } from '../utils/math';
+import { RgbSplitGlitchText } from './RgbSplitGlitchText';
 
 type CreditsOverlayProps = {
   frame: number;
@@ -67,30 +68,30 @@ export const CreditsOverlay = ({
         className={`big-eye-credits__card big-eye-credits__card--${card.id} big-eye-credits__card--motion-${cardIndex % motionPresets.length}`}
         style={cardStyle}
       >
-        <div className="big-eye-credits__signal" aria-hidden="true">
-          <span />
-          <i />
-          <span />
-        </div>
         {card.lines.map((line, index) => {
           const lineFrom = from + 4 + index * 5;
           const lineReveal = easedRange(frame, lineFrom, lineFrom + 13);
           const lineOffset = (1 - lineReveal) * (index % 2 === 0 ? 10 : -10);
+          const className = `big-eye-credits__line big-eye-credits__line--${line.style}${line.gapBefore ? ' has-gap' : ''}`;
+
           return (
-            <p
-              className={`big-eye-credits__line big-eye-credits__line--${line.style}${line.gapBefore ? ' has-gap' : ''}`}
+            <RgbSplitGlitchText
               key={`${card.id}-${line.text}-${index}`}
+              className={className}
+              frame={frame}
+              enterFrame={lineFrom}
+              exitFrame={to - Math.max(4, index * 2)}
+              seed={cardIndex * 11 + index * 5 + 1}
               style={{
                 opacity: lineReveal,
-                filter: `blur(${(1 - lineReveal) * 6}px)`,
-                transform: `translate3d(${lineOffset}px, ${(1 - lineReveal) * 14}px, 0)`,
+                filter: `blur(${(1 - lineReveal) * 3}px)`,
+                transform: `translate3d(${lineOffset}px, ${(1 - lineReveal) * 8}px, 0)`,
               }}
             >
               {line.text}
-            </p>
+            </RgbSplitGlitchText>
           );
         })}
-        <div className="big-eye-credits__scan" aria-hidden="true" />
       </div>
     </div>
   );

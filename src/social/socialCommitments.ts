@@ -1,8 +1,10 @@
+import { resolveLanguagePreference, translate, type TranslationKey } from '../i18n'
 import { addTvEvent } from '../store/gameSlice'
 import { updateApproval } from '../publicOpinion/publicOpinionSlice'
 import { socialConfig } from './socialConfig'
 import {
   applyInfluenceDelta,
+  pushIncomingInteraction,
   resolveSocialCommitment,
   updateRelationship,
   updateSocialMemory,
@@ -19,6 +21,7 @@ interface CommitmentPlayer {
   id: string
   name?: string
   isUser?: boolean
+  status?: string
 }
 
 interface CommitmentState {
@@ -33,6 +36,11 @@ interface CommitmentState {
     commitments?: SocialCommitment[]
     relationships?: RelationshipsMap
     influenceBank?: Record<string, number>
+  }
+  settings?: {
+    localization?: {
+      language?: unknown
+    }
   }
 }
 
@@ -51,6 +59,12 @@ const KIND_DUE_COPY: Record<SocialCommitmentKind, string> = {
   protect_from_nomination: 'Checked when nominations lock',
   use_safety_on_player: 'Checked when the safety decision locks',
   vote_to_keep: 'Checked when your eviction vote locks',
+}
+
+const BROKEN_PROMISE_REACTION_KEYS: Record<SocialCommitmentKind, TranslationKey> = {
+  protect_from_nomination: 'social.commitment.reaction.nomination',
+  use_safety_on_player: 'social.commitment.reaction.safety',
+  vote_to_keep: 'social.commitment.reaction.vote',
 }
 
 function scenarioKey(interaction: IncomingInteraction): string {
@@ -145,6 +159,48 @@ function playerName(state: CommitmentState, playerId: string): string {
   return state.game.players?.find((player) => player.id === playerId)?.name ?? playerId
 }
 
+function queueBrokenPromiseReaction(
+  store: CommitmentStore,
+  state: CommitmentState,
+  commitment: SocialCommitment,
+  week: number,
+  now: number
+): void {
+  const promisor = state.game.players?.find((player) => player.id === commitment.promisorId)
+  const beneficiary = state.game.players?.find((player) => player.id === commitment.beneficiaryId)
+  if (
+    promisor?.isUser !== true ||
+    !beneficiary ||
+    beneficiary.status === 'evicted' ||
+    beneficiary.status === 'jury'
+  ) {
+    return
+  }
+
+  store.dispatch(
+    pushIncomingInteraction({
+      id: `broken-promise-reaction-${commitment.id}`,
+      fromId: commitment.beneficiaryId,
+      type: 'warning',
+      text: translate(
+        resolveLanguagePreference(state.settings?.localization?.language),
+        BROKEN_PROMISE_REACTION_KEYS[commitment.kind]
+      ),
+      payload: {
+        source: 'broken_promise',
+        commitmentId: commitment.id,
+        commitmentKind: commitment.kind,
+      },
+      createdAt: now,
+      createdWeek: week,
+      expiresAtWeek: week + 1,
+      read: false,
+      requiresResponse: true,
+      resolved: false,
+    })
+  )
+}
+
 function resolvePromise(
   store: CommitmentStore,
   commitment: SocialCommitment,
@@ -203,6 +259,7 @@ function resolvePromise(
         applyInfluenceDelta({ playerId: commitment.promisorId, delta: influenceDelta })
       )
     }
+    if (!kept) queueBrokenPromiseReaction(store, state, commitment, week, now)
   } else if (!options.suppressPublicReaction) {
     store.dispatch(
       updateApproval({

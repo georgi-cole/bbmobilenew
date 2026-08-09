@@ -28,7 +28,7 @@ import { useQuickTapRaceAudio } from '../../hooks/useQuickTapRaceAudio';
 import { resolveHybridAiScores } from '../../ai/competition/hybridScoreResolver';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { QuickTapRaceCanvasEngine } from './engine/quickTapRaceCanvasEngine';
-import type { QTREngineSnapshot } from './engine/types';
+import type { QTREngineSnapshot, QTRTimingDiagnostics } from './engine/types';
 import './QuickTapRaceCanvasGame.css';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -73,6 +73,16 @@ interface Props {
     precomputedScore: number;
     previousPR: number | null;
   }>;
+  /** Dev-only experiment hook. Ignored in production builds. */
+  experimental?: {
+    seed: number;
+    onFinish: (result: {
+      effectiveScore: number;
+      rawTaps: number;
+      modifiers: string[];
+      timing: QTRTimingDiagnostics;
+    }) => void;
+  };
 }
 
 // Stable empty-array sentinels.
@@ -99,6 +109,7 @@ export default function QuickTapRaceCanvasGame({
   onFinish,
   seed: _seed,
   autoStart = false,
+  experimental,
 }: Props) {
   const dispatch = useAppDispatch();
   const humanId = useAppSelector((s) => s.game.players.find((p) => p.isUser)?.id);
@@ -123,7 +134,11 @@ export default function QuickTapRaceCanvasGame({
   // In the LOH/POS path session.seed is already a fresh invocationSeed generated
   // by startMinigame, so determinism is preserved there.
   const [resolvedSeed] = useState(() =>
-    (session?.seed && session.seed !== 0) ? session.seed : cryptoSeed(),
+    import.meta.env.DEV && experimental
+      ? experimental.seed
+      : session?.seed && session.seed !== 0
+        ? session.seed
+        : cryptoSeed(),
   );
   const [resolvedDuration] = useState(() => session?.options.timeLimit ?? GAME_DURATION);
   const [resolvedAutoStart] = useState(() => autoStart);
@@ -132,6 +147,7 @@ export default function QuickTapRaceCanvasGame({
     players,
     humanId,
     onFinish,
+    experimental,
   });
   const latestAudioRef = useRef({
     playTap: () => {},
@@ -150,8 +166,9 @@ export default function QuickTapRaceCanvasGame({
       players,
       humanId,
       onFinish,
+      experimental,
     };
-  }, [session, players, humanId, onFinish]);
+  }, [session, players, humanId, onFinish, experimental]);
 
   useEffect(() => {
     latestAudioRef.current = {
@@ -164,12 +181,26 @@ export default function QuickTapRaceCanvasGame({
   // ── Finish handler ─────────────────────────────────────────────────────────
 
   const handleEngineFinish = useCallback(
-    (finalScore: number, rawTaps: number, modifiers: string[]) => {
-      const { session: currentSession, players: currentPlayers, humanId: currentHumanId, onFinish: currentOnFinish } =
-        latestFinishContextRef.current;
+    (
+      finalScore: number,
+      rawTaps: number,
+      modifiers: string[],
+      timing: QTRTimingDiagnostics,
+    ) => {
+      const {
+        session: currentSession,
+        players: currentPlayers,
+        humanId: currentHumanId,
+        onFinish: currentOnFinish,
+        experimental: currentExperiment,
+      } = latestFinishContextRef.current;
       if (completionRef.current) return;
       completionRef.current = true;
       setAppliedModifiers(modifiers);
+
+      if (import.meta.env.DEV && currentExperiment) {
+        currentExperiment.onFinish({ effectiveScore: finalScore, rawTaps, modifiers, timing });
+      }
 
       if (currentSession) {
         // LOH/POS path — build full leaderboard and transition to results.
@@ -251,10 +282,12 @@ export default function QuickTapRaceCanvasGame({
     let engine: QuickTapRaceCanvasEngine | null = null;
 
     try {
-        engine = new QuickTapRaceCanvasEngine(canvas, {
+      engine = new QuickTapRaceCanvasEngine(canvas, {
         seed: resolvedSeed,
         duration: resolvedDuration,
         autoStart: resolvedAutoStart,
+        strictWallClock: Boolean(import.meta.env.DEV && experimental),
+        lowLatencyInput: Boolean(import.meta.env.DEV && experimental),
         onTick: (next) => {
           setSnapshot(next);
         },
@@ -321,7 +354,7 @@ export default function QuickTapRaceCanvasGame({
       engine?.destroy();
       return undefined;
     }
-  }, [handleEngineFinish, resolvedAutoStart, resolvedDuration, resolvedSeed]);
+  }, [experimental, handleEngineFinish, resolvedAutoStart, resolvedDuration, resolvedSeed]);
 
   // ── Pointer forwarding to engine ───────────────────────────────────────────
 
@@ -332,7 +365,11 @@ export default function QuickTapRaceCanvasGame({
     engineRef.current.handlePointerDown(e.pointerId, {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-    }, e.timeStamp);
+    }, e.timeStamp, performance.now(), e.pointerType);
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    engineRef.current?.handlePointerUp(e.pointerId);
   }, []);
 
   // ── Derived HUD values ─────────────────────────────────────────────────────
@@ -508,6 +545,8 @@ export default function QuickTapRaceCanvasGame({
               data-testid="quick-tap-race-canvas"
               aria-label="Quick Tap Race canvas — tap the button as fast as possible"
               onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
             />
             {uiPhase === 'fallback' && (
               <div className="qtr-canvas__fallback" role="alert">

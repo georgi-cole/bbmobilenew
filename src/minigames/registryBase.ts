@@ -148,6 +148,36 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     retired: false,
   },
 
+  quickTapSeasons: {
+    key: 'quickTapSeasons',
+    // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+    title: 'Quick Tap Race 2: Seasons',
+    description:
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Race through a shifting year where every season changes the rhythm and value of your taps.',
+    instructions: [
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Wait for the start signal, then tap the play area as quickly as you can.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Adapt when the season changes because each one affects your score differently.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Open mystery boxes to transform the race conditions.',
+      // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+      'Keep tapping until the 40-second race ends. The highest score wins.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Points', // i18n-ignore: Minigame registry metadata is localized centrally once the shared rules modal supports translation keys.
+    timeLimitMs: 40_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    implementation: 'react' as const,
+    reactComponentKey: 'QuickTapSeasons',
+    legacy: false,
+    weight: 1,
+    category: 'arcade',
+    retired: false,
+  },
+
   laneRacers: {
     key: 'laneRacers',
     title: 'Lane Racers',
@@ -1062,12 +1092,16 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
   castleRescue: {
     key: 'castleRescue',
     title: 'Find Your Twin',
-    description: 'Run through the castle, find the correct route, and reach your twin.',
+    description:
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Twin brothers Benny and Lenny went for a night walk through South Park, but somewhere along the way Lenny disappeared. Benny refuses to leave without him and must find his brother before time runs out.',
     instructions: [
-      'Use the movement controls to run, jump, and explore the castle.',
-      'Enter the correct pipes in the right order to advance.',
-      'Wrong routes set you back, so use what you learn on the next attempt.',
-      'Collect useful items and reach your twin before time runs out.',
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Benny and Lenny are twin brothers who set out together for a quiet night walk.',
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Lenny is now lost somewhere in South Park, with the night growing late.',
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Help Benny reunite with Lenny before their time runs out.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -1077,6 +1111,36 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     scoringParams: { minRaw: 0, maxRaw: 5000 },
     implementation: 'react',
     reactComponentKey: 'CastleRescue',
+    legacy: false,
+    weight: 1,
+    category: 'logic',
+    retired: false,
+  },
+
+  castleRescue2: {
+    key: 'castleRescue2',
+    // i18n-ignore: Official English minigame title and canonical registry fallback.
+    title: 'Find Your Twin 2: Lost Again',
+    description:
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Benny and Lenny travelled to Romania to visit an old castle, but before closing time Lenny vanished somewhere inside its halls. Benny must find his brother before the castle closes for the night.',
+    instructions: [
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'The twins came to Romania for a castle visit they would never forget.',
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Lenny is lost inside, and closing time is getting dangerously close.',
+      // i18n-ignore: Canonical English registry fallback for an English-only minigame rules surface.
+      'Help Benny find Lenny before the castle doors close for the night.',
+    ],
+    metricKind: 'points',
+    // i18n-ignore: Canonical English registry metric label shared by existing minigames.
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue2',
     legacy: false,
     weight: 1,
     category: 'logic',

@@ -1,58 +1,104 @@
 /**
- * TetrisComp — Modernised native React "Fit Me In" competition minigame.
+ * Fit Me In — adaptive knockout tournament.
  *
- * Features:
- *  - Ghost piece (shows where the falling piece will land)
- *  - Hold piece (swap current piece to hold, once per piece)
- *  - Next-piece preview (shows 3 upcoming pieces)
- *  - Standard 7-bag random piece generation (no repeats within a bag)
- *  - Wall-kick rotation (SRS-inspired)
- *  - Standard scoring: 1=100, 2=300, 3=500, 4=800 (four-line clear!), × level
- *  - Soft drop (+1/row) and hard drop (+2/row) bonus
- *  - Level up every 10 lines; speed increases with level
- *  - Visual effects: line-clear flash, level-up pulse, danger state above row 4,
- *    lock-flash on piece placement
- *  - Touch + keyboard controls
- *  - Results screen showing full ranked leaderboard (human + AI)
- *
- * Competition integration:
- *  - On mount, dispatches initTetris with pre-computed AI scores.
- *  - On game-over, dispatches setHumanScore then resolveTetrisOutcome.
- *  - After the user taps Continue on the results screen, calls onComplete.
+ * 3 players: 90-second semifinal + 90-second final.
+ * 4 players: qualifier + semifinal + final, 60 seconds each.
+ * 5+ players: two qualifiers + semifinal + final, 60 seconds each.
  */
 
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useI18n } from '../../i18n/I18nContext'
+import { useAppDispatch } from '../../store/hooks'
 import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import type { RootState } from '../../store/store';
-import { initTetris, setHumanScore, resetTetris } from '../../features/tetris/tetrisSlice';
-import { resolveTetrisOutcome } from '../../features/tetris/thunks';
-import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index';
-import { mulberry32 } from '../../store/rng';
-import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
-import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
-import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
-import type { TetrisPrizeType } from '../../features/tetris/tetrisSlice';
-import './TetrisComp.css';
+  completeTetrisTournament,
+  initTetris,
+  resetTetris,
+  type TetrisPrizeType,
+} from '../../features/tetris/tetrisSlice'
+import { resolveTetrisOutcome } from '../../features/tetris/thunks'
+import { getMinigameAiModel, simulateAiPerformance } from '../../ai/competition/index'
+import { mulberry32 } from '../../store/rng'
+import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
+import ResolvedAvatarImage from '../ResolvedAvatarImage/ResolvedAvatarImage'
+import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
+import {
+  buildTetrisOutcomeScores,
+  buildTetrisTournamentPlan,
+  splitTetrisRound,
+  type TetrisRoundPerformance,
+  type TetrisRoundPlan,
+  type TetrisRoundSplit,
+} from './tournament'
+import './TetrisComp.css'
+import './TetrisTournament.css'
 
-// ─── Game constants ────────────────────────────────────────────────────────────
+const COLS = 10
+const ROWS = 20
+const BUFFER_ROWS = 2
+const TOTAL_ROWS = ROWS + BUFFER_ROWS
+const CELL_PX = 28
+const DANGER_ROW = 4
+const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800]
+const SOFT_DROP_PER_ROW = 1
+const HARD_DROP_PER_ROW = 2
+const LINES_PER_LEVEL = 10
+const WALL_KICK_OFFSETS = [0, -1, 1, -2, 2]
+const MEDALS = ['🥇', '🥈', '🥉']
 
-const COLS = 10;
-const ROWS = 20;
-/** Cells in the hidden buffer above row 0 (for piece spawning). */
-const BUFFER_ROWS = 2;
-const TOTAL_ROWS = ROWS + BUFFER_ROWS;
-const CELL_PX = 28;
-const DANGER_ROW = 4; // rows from top; board flashes red when stack reaches here
+type PieceKey = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L'
+type GamePhase = 'playing' | 'gameover'
+type TournamentScreen = 'playing' | 'roundResults' | 'finalResults'
+type RoundEndReason = 'time' | 'topout'
 
-// ─── Tetromino definitions ─────────────────────────────────────────────────────
+interface Piece {
+  key: PieceKey
+  shape: number[][]
+  color: string
+}
 
-type PieceKey = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
+interface FallingPiece extends Piece {
+  x: number
+  y: number
+  rotationIndex: number
+}
+
+interface BoardCell {
+  color: string
+  avatarId?: string
+}
+
+type Board = (BoardCell | null)[][]
+
+interface DisplayCell extends BoardCell {
+  kind: 'locked' | 'active' | 'ghost'
+}
+
+interface LineEffect {
+  id: number
+  rows: number[]
+  kind: 'single' | 'double' | 'triple' | 'tetris'
+}
+
+interface LevelUpEffect {
+  id: number
+  level: number
+}
+
+interface RoundResult {
+  plan: TetrisRoundPlan
+  split: TetrisRoundSplit
+  humanScore: number
+  reason: RoundEndReason
+}
+
+interface FinalResult {
+  rankingBestFirst: string[]
+  visibleScores: Record<string, number>
+  outcomeScores: Record<string, number>
+  winnerId: string
+  lastPlaceId: string
+  humanScore: number
+}
 
 const SHAPES: Record<PieceKey, number[][]> = {
   I: [[1, 1, 1, 1]],
@@ -80,7 +126,7 @@ const SHAPES: Record<PieceKey, number[][]> = {
     [0, 0, 1],
     [1, 1, 1],
   ],
-};
+}
 
 const COLORS: Record<PieceKey, string> = {
   I: '#00d4ff',
@@ -90,162 +136,146 @@ const COLORS: Record<PieceKey, string> = {
   Z: '#ff4444',
   J: '#4477ff',
   L: '#ff9000',
-};
-
-const PIECE_KEYS: PieceKey[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
-
-// ─── Scoring ──────────────────────────────────────────────────────────────────
-
-const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800];
-const SOFT_DROP_PER_ROW = 1;
-const HARD_DROP_PER_ROW = 2;
-const LINES_PER_LEVEL = 10;
-
-/** Drop interval in ms at each level (capped at level 20). */
-function dropIntervalMs(level: number): number {
-  return Math.max(80, 1000 - (Math.min(level, 20) - 1) * 47);
 }
 
-// ─── SRS wall-kick offsets ─────────────────────────────────────────────────────
-// Simplified wall kicks: try up to 2 shifts left and right when rotation collides.
-const WALL_KICK_OFFSETS = [0, -1, 1, -2, 2];
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Board = (string | null)[][];
-type GamePhase = 'playing' | 'gameover';
-
-interface Piece {
-  key: PieceKey;
-  shape: number[][];
-  color: string;
-}
-
-interface FallingPiece extends Piece {
-  x: number;
-  y: number;
-  rotationIndex: number;
-}
-
-interface LineEffect {
-  id: number;
-  rows: number[];
-  kind: 'single' | 'double' | 'triple' | 'tetris';
-}
-
-interface LevelUpEffect {
-  id: number;
-  level: number;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const PIECE_KEYS: PieceKey[] = ['I', 'O', 'T', 'S', 'Z', 'J', 'L']
+let effectIdCounter = 0
 
 function emptyBoard(): Board {
-  return Array.from({ length: TOTAL_ROWS }, () => Array<string | null>(COLS).fill(null));
+  return Array.from({ length: TOTAL_ROWS }, () => Array<BoardCell | null>(COLS).fill(null))
 }
 
-/** Rotate a shape matrix 90° clockwise. */
 function rotateShape(shape: number[][]): number[][] {
-  return shape[0].map((_, col) => shape.map((row) => row[col]).reverse());
+  return shape[0].map((_, column) => shape.map((row) => row[column]).reverse())
 }
 
-/** Check if placing `shape` at (x, y) collides with the board or walls. */
 function collides(board: Board, shape: number[][], x: number, y: number): boolean {
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (!shape[r][c]) continue;
-      const nx = x + c;
-      const ny = y + r;
-      if (nx < 0 || nx >= COLS) return true;
-      if (ny >= TOTAL_ROWS) return true;
-      if (ny >= 0 && board[ny][nx] !== null) return true;
+  for (let row = 0; row < shape.length; row++) {
+    for (let column = 0; column < shape[row].length; column++) {
+      if (!shape[row][column]) continue
+      const nextX = x + column
+      const nextY = y + row
+      if (nextX < 0 || nextX >= COLS) return true
+      if (nextY >= TOTAL_ROWS) return true
+      if (nextY >= 0 && board[nextY][nextX] !== null) return true
     }
   }
-  return false;
+  return false
 }
 
-/** Compute the Y position where the piece would land (for ghost). */
 function ghostY(board: Board, piece: FallingPiece): number {
-  let gy = piece.y;
-  while (!collides(board, piece.shape, piece.x, gy + 1)) gy++;
-  return gy;
+  let y = piece.y
+  while (!collides(board, piece.shape, piece.x, y + 1)) y++
+  return y
 }
 
-/** Build a 7-bag from a seeded RNG. */
 function buildBag(rng: () => number): PieceKey[] {
-  const bag = [...PIECE_KEYS];
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [bag[i], bag[j]] = [bag[j], bag[i]];
+  const bag = [...PIECE_KEYS]
+  for (let index = bag.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(rng() * (index + 1))
+    ;[bag[index], bag[swapIndex]] = [bag[swapIndex], bag[index]]
   }
-  return bag;
+  return bag
 }
 
 function makePiece(key: PieceKey): Piece {
-  return { key, shape: SHAPES[key].map((r) => [...r]), color: COLORS[key] };
+  return { key, shape: SHAPES[key].map((row) => [...row]), color: COLORS[key] }
 }
 
 function spawnFalling(key: PieceKey): FallingPiece {
-  const piece = makePiece(key);
-  const x = Math.floor((COLS - piece.shape[0].length) / 2);
-  // Spawn in the buffer rows (above visible area)
-  const y = BUFFER_ROWS - piece.shape.length;
-  return { ...piece, x, y, rotationIndex: 0 };
+  const piece = makePiece(key)
+  return {
+    ...piece,
+    x: Math.floor((COLS - piece.shape[0].length) / 2),
+    y: BUFFER_ROWS - piece.shape.length,
+    rotationIndex: 0,
+  }
 }
 
-/** Lock piece onto board, returns new board (immutable). */
-function lockPiece(board: Board, piece: FallingPiece): Board {
-  const next = board.map((row) => [...row]);
-  for (let r = 0; r < piece.shape.length; r++) {
-    for (let c = 0; c < piece.shape[r].length; c++) {
-      if (!piece.shape[r][c]) continue;
-      const ny = piece.y + r;
-      const nx = piece.x + c;
-      if (ny >= 0 && ny < TOTAL_ROWS && nx >= 0 && nx < COLS) {
-        next[ny][nx] = piece.color;
+function lockPiece(
+  board: Board,
+  piece: FallingPiece,
+  createCell: (color: string) => BoardCell
+): Board {
+  const next = board.map((row) => [...row])
+  for (let row = 0; row < piece.shape.length; row++) {
+    for (let column = 0; column < piece.shape[row].length; column++) {
+      if (!piece.shape[row][column]) continue
+      const boardY = piece.y + row
+      const boardX = piece.x + column
+      if (boardY >= 0 && boardY < TOTAL_ROWS && boardX >= 0 && boardX < COLS) {
+        next[boardY][boardX] = createCell(piece.color)
       }
     }
   }
-  return next;
+  return next
 }
 
-/** Clear full lines, return { clearedBoard, clearedRowIndices }. */
 function clearFullLines(board: Board): { clearedBoard: Board; clearedRows: number[] } {
-  const clearedRows: number[] = [];
-  let remaining = board.filter((row, i) => {
-    const full = row.every((cell) => cell !== null);
-    if (full) clearedRows.push(i);
-    return !full;
-  });
-  // Add empty rows at the top
+  const clearedRows: number[] = []
+  let remaining = board.filter((row, index) => {
+    const full = row.every((cell) => cell !== null)
+    if (full) clearedRows.push(index)
+    return !full
+  })
+
   while (remaining.length < TOTAL_ROWS) {
-    remaining = [Array<string | null>(COLS).fill(null), ...remaining];
+    remaining = [Array<BoardCell | null>(COLS).fill(null), ...remaining]
   }
-  return { clearedBoard: remaining, clearedRows };
+
+  return { clearedBoard: remaining, clearedRows }
 }
 
-/** True if the stack has reached the danger zone (any cell in visible rows 0–DANGER_ROW). */
 function boardInDanger(board: Board): boolean {
-  for (let r = BUFFER_ROWS; r < BUFFER_ROWS + DANGER_ROW; r++) {
-    if (board[r].some((c) => c !== null)) return true;
+  for (let row = BUFFER_ROWS; row < BUFFER_ROWS + DANGER_ROW; row++) {
+    if (board[row].some((cell) => cell !== null)) return true
   }
-  return false;
+  return false
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+function boardStackHeight(board: Board): number {
+  for (let row = BUFFER_ROWS; row < TOTAL_ROWS; row++) {
+    if (board[row].some((cell) => cell !== null)) return TOTAL_ROWS - row
+  }
+  return 0
+}
+
+function dropIntervalMs(level: number, speedMultiplier: number): number {
+  const standardInterval = 1000 - (Math.min(level, 20) - 1) * 47
+  return Math.max(65, Math.round(standardInterval * speedMultiplier))
+}
+
+function hashString(value: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function uniqueIds(ids: readonly string[]): string[] {
+  return [...new Set(ids)]
+}
+
+function placementLabel(index: number): string {
+  return String(index + 1).concat('.')
+}
+
+function formatTimer(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
 
 export interface TetrisCompProps {
-  participantIds: string[];
-  participants: MinigameParticipant[] | undefined;
-  prizeType: TetrisPrizeType;
-  seed: number;
-  onComplete: (completion?: ReactMinigameCompletion) => void;
+  participantIds: string[]
+  participants: MinigameParticipant[] | undefined
+  prizeType: TetrisPrizeType
+  seed: number
+  onComplete: (completion?: ReactMinigameCompletion) => void
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-const MEDALS = ['🥇', '🥈', '🥉'];
-let effectIdCounter = 0;
 
 export default function TetrisComp({
   participantIds,
@@ -254,56 +284,98 @@ export default function TetrisComp({
   seed,
   onComplete,
 }: TetrisCompProps) {
-  const dispatch = useAppDispatch();
-  const tetrisState = useAppSelector((s: RootState) =>
-    (s as RootState & { tetris?: ReturnType<typeof import('../../features/tetris/tetrisSlice').default> }).tetris,
-  );
+  const dispatch = useAppDispatch()
+  const { t } = useI18n()
 
-  // ── Initialise on mount ──────────────────────────────────────────────────
+  const participantRecords = useMemo<MinigameParticipant[]>(() => {
+    const supplied = new Map(
+      (participants ?? []).map((participant) => [participant.id, participant])
+    )
+    return participantIds.map(
+      (id) =>
+        supplied.get(id) ?? {
+          id,
+          name: id,
+          isHuman: false,
+          precomputedScore: 0,
+          previousPR: null,
+        }
+    )
+  }, [participantIds, participants])
+
+  const participantById = useMemo(
+    () => new Map(participantRecords.map((participant) => [participant.id, participant])),
+    [participantRecords]
+  )
+  const humanId = participantRecords.find((participant) => participant.isHuman)?.id ?? null
+  const avatarIds = useMemo(
+    () => participantRecords.map((participant) => participant.id),
+    [participantRecords]
+  )
+  const tournamentPlan = useMemo(
+    () => buildTetrisTournamentPlan(Math.max(3, participantIds.length)),
+    [participantIds.length]
+  )
+
+  const [screen, setScreen] = useState<TournamentScreen>('playing')
+  const [currentRoundIndex, setCurrentRoundIndex] = useState(0)
+  const [activeIds, setActiveIds] = useState<string[]>(participantIds)
+  const [eliminationOrderWorstFirst, setEliminationOrderWorstFirst] = useState<string[]>([])
+  const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
+  const [finalResult, setFinalResult] = useState<FinalResult | null>(null)
+  const [gamePhase, setGamePhase] = useState<GamePhase>('playing')
+  const [roundEndReason, setRoundEndReason] = useState<RoundEndReason>('time')
+  const [remainingMs, setRemainingMs] = useState(tournamentPlan[0].durationMs)
+  const [board, setBoard] = useState<Board>(emptyBoard)
+  const [current, setCurrent] = useState<FallingPiece | null>(null)
+  const [held, setHeld] = useState<Piece | null>(null)
+  const [canHold, setCanHold] = useState(true)
+  const [score, setScore] = useState(0)
+  const [lines, setLines] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [pieces, setPieces] = useState(0)
+  const [lineEffects, setLineEffects] = useState<LineEffect[]>([])
+  const [levelUpEffects, setLevelUpEffects] = useState<LevelUpEffect[]>([])
+  const [lockFlash, setLockFlash] = useState(false)
+  const [isDanger, setIsDanger] = useState(false)
+  const [simulatingRemainder, setSimulatingRemainder] = useState(false)
+  const [upcoming, setUpcoming] = useState<PieceKey[]>([])
+
+  const currentRound = tournamentPlan[currentRoundIndex]
+  const rngRef = useRef<() => number>(mulberry32(seed >>> 0))
+  const avatarRngRef = useRef<() => number>(mulberry32((seed ^ 0xa11ce) >>> 0))
+  const bagRef = useRef<PieceKey[]>([])
+  const upcomingRef = useRef<PieceKey[]>([])
+  const boardRef = useRef<Board>(emptyBoard())
+  const currentRef = useRef<FallingPiece | null>(null)
+  const scoreRef = useRef(0)
+  const linesRef = useRef(0)
+  const levelRef = useRef(1)
+  const piecesRef = useRef(0)
+  const maxStackHeightRef = useRef(0)
+  const canHoldRef = useRef(true)
+  const heldRef = useRef<Piece | null>(null)
+  const gamePhaseRef = useRef<GamePhase>('playing')
+  const remainingMsRef = useRef(currentRound.durationMs)
+  const roundEndingRef = useRef(false)
+  const previousRoundScoresRef = useRef<Record<string, number>>({})
+  const humanLastScoreRef = useRef(0)
+
+  boardRef.current = board
+  currentRef.current = current
+  scoreRef.current = score
+  linesRef.current = lines
+  levelRef.current = level
+  piecesRef.current = pieces
+  canHoldRef.current = canHold
+  heldRef.current = held
+  gamePhaseRef.current = gamePhase
+  remainingMsRef.current = remainingMs
+
   useEffect(() => {
-    // Compute AI scores using simulateAiPerformance
-    const aiScores: Record<string, number> = {};
-    const humanParticipant = participants?.find((p) => p.isHuman);
-    const humanId = humanParticipant?.id ?? null;
-
-    const rng = mulberry32((seed >>> 0) ^ 0xdeadcafe);
-
-    const tetrisAiModel = {
-      ...getMinigameAiModel('tetris'),
-      minScore: 0,
-      maxScore: 2000,
-    };
-
-    participants?.forEach((p, idx) => {
-      if (p.isHuman) return;
-      aiScores[p.id] = simulateAiPerformance({
-        minigameKey: 'tetris',
-        seed,
-        playerId: p.id,
-        participantIndex: idx,
-        profile: undefined,
-        minigameModel: tetrisAiModel,
-      });
-    });
-
-    // If no participants provided (fallback), generate minimal AI scores
-    if (!participants || participants.length === 0) {
-      for (let i = 0; i < participantIds.length; i++) {
-        const id = participantIds[i];
-        if (id === humanId) continue;
-        aiScores[id] = Math.floor(rng() * 1500);
-      }
-    }
-
-    const participantNames: Record<string, string> = {};
-    for (const p of participants ?? []) {
-      participantNames[p.id] = p.name;
-    }
-    // Fallback names for IDs not in participants
-    for (const id of participantIds) {
-      if (!participantNames[id]) participantNames[id] = id;
-    }
-
+    const participantNames = Object.fromEntries(
+      participantRecords.map((participant) => [participant.id, participant.name])
+    )
     dispatch(
       initTetris({
         participantIds,
@@ -311,426 +383,686 @@ export default function TetrisComp({
         humanPlayerId: humanId,
         competitionType: prizeType,
         seed,
-        aiScores,
-      }),
-    );
+        aiScores: {},
+      })
+    )
 
     return () => {
-      dispatch(resetTetris());
-    };
+      dispatch(resetTetris())
+    }
+    // Competition inputs are immutable for the mounted minigame instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Game state ────────────────────────────────────────────────────────────
-  const [gamePhase, setGamePhase] = useState<GamePhase>('playing');
-  const [board, setBoard] = useState<Board>(emptyBoard);
-  const [current, setCurrent] = useState<FallingPiece | null>(null);
-  const [held, setHeld] = useState<Piece | null>(null);
-  const [canHold, setCanHold] = useState(true);
-  const [score, setScore] = useState(0);
-  const [lines, setLines] = useState(0);
-  const [level, setLevel] = useState(1);
-  const [lineEffects, setLineEffects] = useState<LineEffect[]>([]);
-  const [levelUpEffects, setLevelUpEffects] = useState<LevelUpEffect[]>([]);
-  const [lockFlash, setLockFlash] = useState(false);
-  const [isDanger, setIsDanger] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-
-  // Bag + upcoming pieces
-  const rngRef = useRef<() => number>(mulberry32(seed >>> 0));
-  const bagRef = useRef<PieceKey[]>([]);
-  const upcomingRef = useRef<PieceKey[]>([]);
-  const [upcoming, setUpcoming] = useState<PieceKey[]>([]);
-
-  const boardRef = useRef<Board>(emptyBoard());
-  const currentRef = useRef<FallingPiece | null>(null);
-  const scoreRef = useRef(0);
-  const linesRef = useRef(0);
-  const levelRef = useRef(1);
-  const canHoldRef = useRef(true);
-  const heldRef = useRef<Piece | null>(null);
-  const gamePhaseRef = useRef<GamePhase>('playing');
-
-  // Keep refs in sync with state for use inside callbacks
-  boardRef.current = board;
-  currentRef.current = current;
-  scoreRef.current = score;
-  linesRef.current = lines;
-  levelRef.current = level;
-  canHoldRef.current = canHold;
-  heldRef.current = held;
-  gamePhaseRef.current = gamePhase;
-
-  // ── Piece queue helpers ──────────────────────────────────────────────────
+  }, [dispatch])
 
   const refillBag = useCallback(() => {
-    if (bagRef.current.length === 0) {
-      bagRef.current = buildBag(rngRef.current);
-    }
-  }, []);
+    if (bagRef.current.length === 0) bagRef.current = buildBag(rngRef.current)
+  }, [])
 
   const dequeue = useCallback((): PieceKey => {
-    // Ensure there is at least one piece available in the upcoming queue
     while (upcomingRef.current.length < 1) {
-      refillBag();
-      if (bagRef.current.length === 0) break;
-      upcomingRef.current.push(bagRef.current.shift()!);
+      refillBag()
+      upcomingRef.current.push(bagRef.current.shift()!)
     }
 
-    // Take the next active piece from the upcoming queue
-    const key = upcomingRef.current.shift()!;
-
-    // Replenish upcoming queue back to 3 preview pieces
+    const key = upcomingRef.current.shift()!
     while (upcomingRef.current.length < 3) {
-      refillBag();
-      if (bagRef.current.length === 0) break;
-      upcomingRef.current.push(bagRef.current.shift()!);
+      refillBag()
+      upcomingRef.current.push(bagRef.current.shift()!)
     }
-    setUpcoming([...upcomingRef.current]);
-    return key;
-  }, [refillBag]);
-
-  // ── Spawn a new piece ─────────────────────────────────────────────────────
+    setUpcoming([...upcomingRef.current])
+    return key
+  }, [refillBag])
 
   const spawnPiece = useCallback(
     (currentBoard: Board): boolean => {
-      const key = dequeue();
-      const piece = spawnFalling(key);
-      if (collides(currentBoard, piece.shape, piece.x, piece.y)) {
-        // Game over — collision on spawn
-        return false;
+      const piece = spawnFalling(dequeue())
+      if (collides(currentBoard, piece.shape, piece.x, piece.y)) return false
+      currentRef.current = piece
+      setCurrent(piece)
+      return true
+    },
+    [dequeue]
+  )
+
+  const createLockedCell = useCallback(
+    (color: string): BoardCell => {
+      if (!currentRound.useHouseguestCells || avatarIds.length === 0) return { color }
+      const avatarIndex = Math.floor(avatarRngRef.current() * avatarIds.length)
+      return { color, avatarId: avatarIds[avatarIndex] }
+    },
+    [avatarIds, currentRound.useHouseguestCells]
+  )
+
+  const simulateAiRound = useCallback(
+    (ids: readonly string[], roundIndex: number): TetrisRoundPerformance[] => {
+      const round = tournamentPlan[roundIndex]
+      const durationScale = round.durationMs / 60_000
+      const minimumScore = Math.round(320 * durationScale)
+      const maximumScore = Math.round(2700 * durationScale * (1 + round.tensionLevel * 0.025))
+      const model = {
+        ...getMinigameAiModel('tetris'),
+        minScore: minimumScore,
+        maxScore: maximumScore,
       }
-      setCurrent(piece);
-      return true;
-    },
-    [dequeue],
-  );
 
-  const endGame = useCallback(
-    (finalScore?: number) => {
-      setGamePhase('gameover');
-      gamePhaseRef.current = 'gameover';
-      const s = finalScore ?? scoreRef.current;
-      dispatch(setHumanScore(s));
-      dispatch(resolveTetrisOutcome());
-      // Show results after a brief pause
-      setTimeout(() => setShowResults(true), 800);
-    },
-    [dispatch],
-  );
+      return ids.map((playerId, participantIndex) => {
+        const participant = participantById.get(playerId)
+        const roundSeed =
+          (seed ^ Math.imul(roundIndex + 1, 0x9e3779b1) ^ hashString(playerId)) >>> 0
+        const detailRng = mulberry32(roundSeed ^ 0x51a7e)
+        const simulated = simulateAiPerformance({
+          minigameKey: 'tetris',
+          seed: roundSeed,
+          playerId,
+          participantIndex,
+          profile: undefined,
+          minigameModel: model,
+        })
+        const legacyScore = Math.max(0, participant?.precomputedScore ?? 0) * durationScale
+        const blended = legacyScore > 0 ? simulated * 0.78 + legacyScore * 0.22 : simulated
+        const scoreValue = Math.max(
+          minimumScore,
+          Math.min(Math.round(maximumScore * 1.18), Math.round(blended))
+        )
+        const linesValue = Math.max(0, Math.floor(scoreValue / (235 + detailRng() * 95)))
+        const piecesValue = Math.max(
+          linesValue * 3,
+          Math.floor(scoreValue / (43 + detailRng() * 16))
+        )
+        const maxStackHeight = Math.max(2, Math.min(18, Math.round(5 + detailRng() * 10)))
 
-  // ── Lock current piece and process line clears ────────────────────────────
+        return {
+          playerId,
+          score: scoreValue,
+          lines: linesValue,
+          pieces: piecesValue,
+          maxStackHeight,
+          previousScore: previousRoundScoresRef.current[playerId] ?? 0,
+          tieBreaker: detailRng(),
+        }
+      })
+    },
+    [participantById, seed, tournamentPlan]
+  )
+
+  const commitTournamentOutcome = useCallback(
+    (
+      finalStandings: readonly TetrisRoundPerformance[],
+      priorEliminationsWorstFirst: readonly string[]
+    ) => {
+      const finalRankingBestFirst = uniqueIds([
+        ...finalStandings.map((entry) => entry.playerId),
+        ...[...priorEliminationsWorstFirst].reverse(),
+      ])
+      const visibleScores = { ...previousRoundScoresRef.current }
+      const outcomeScores = buildTetrisOutcomeScores(finalRankingBestFirst, visibleScores)
+      const winnerId = finalRankingBestFirst[0]
+      const lastPlaceId = finalRankingBestFirst[finalRankingBestFirst.length - 1]
+      const humanScore = humanId ? (visibleScores[humanId] ?? humanLastScoreRef.current) : 0
+
+      if (!winnerId || !lastPlaceId) return
+
+      dispatch(
+        completeTetrisTournament({
+          finalScores: outcomeScores,
+          winnerId,
+          lastPlaceId,
+          humanScore: humanId ? humanScore : null,
+        })
+      )
+      dispatch(resolveTetrisOutcome())
+      setFinalResult({
+        rankingBestFirst: finalRankingBestFirst,
+        visibleScores,
+        outcomeScores,
+        winnerId,
+        lastPlaceId,
+        humanScore,
+      })
+      setScreen('finalResults')
+      setSimulatingRemainder(false)
+    },
+    [dispatch, humanId]
+  )
+
+  const finishRound = useCallback(
+    (reason: RoundEndReason) => {
+      if (roundEndingRef.current || gamePhaseRef.current !== 'playing') return
+      roundEndingRef.current = true
+      setRoundEndReason(reason)
+      setGamePhase('gameover')
+      gamePhaseRef.current = 'gameover'
+
+      const humanPerformance: TetrisRoundPerformance | null =
+        humanId && activeIds.includes(humanId)
+          ? {
+              playerId: humanId,
+              score: scoreRef.current,
+              lines: linesRef.current,
+              pieces: piecesRef.current,
+              maxStackHeight: maxStackHeightRef.current,
+              previousScore: previousRoundScoresRef.current[humanId] ?? 0,
+              tieBreaker: mulberry32(
+                (seed ^ Math.imul(currentRoundIndex + 1, 0x9e3779b1) ^ hashString(humanId)) >>> 0
+              )(),
+            }
+          : null
+
+      if (humanPerformance) humanLastScoreRef.current = humanPerformance.score
+      const aiIds = activeIds.filter((id) => id !== humanId)
+      const performances = [
+        ...simulateAiRound(aiIds, currentRoundIndex),
+        ...(humanPerformance ? [humanPerformance] : []),
+      ]
+      const split = splitTetrisRound(performances, currentRound.survivorCount)
+
+      for (const performance of performances) {
+        previousRoundScoresRef.current[performance.playerId] = performance.score
+      }
+
+      if (currentRound.kind === 'final') {
+        window.setTimeout(
+          () => commitTournamentOutcome(split.standings, eliminationOrderWorstFirst),
+          700
+        )
+        return
+      }
+
+      setActiveIds(split.survivorIds)
+      setEliminationOrderWorstFirst((previous) => [...previous, ...split.eliminatedWorstFirst])
+      setRoundResult({
+        plan: currentRound,
+        split,
+        humanScore: humanPerformance?.score ?? humanLastScoreRef.current,
+        reason,
+      })
+      window.setTimeout(() => setScreen('roundResults'), 650)
+    },
+    [
+      activeIds,
+      commitTournamentOutcome,
+      currentRound,
+      currentRoundIndex,
+      eliminationOrderWorstFirst,
+      humanId,
+      seed,
+      simulateAiRound,
+    ]
+  )
 
   const lockCurrentPiece = useCallback(() => {
-    const piece = currentRef.current;
-    const currentBoard = boardRef.current;
-    if (!piece) return;
+    const piece = currentRef.current
+    if (!piece || gamePhaseRef.current !== 'playing') return
 
-    const newBoard = lockPiece(currentBoard, piece);
-    const { clearedBoard, clearedRows } = clearFullLines(newBoard);
+    const lockedBoard = lockPiece(boardRef.current, piece, createLockedCell)
+    const { clearedBoard, clearedRows } = clearFullLines(lockedBoard)
+    const cleared = clearedRows.length
+    let addedScore = 0
 
-    // Score for line clears
-    const cleared = clearedRows.length;
-    let addScore = 0;
     if (cleared > 0) {
-      addScore += LINE_CLEAR_POINTS[Math.min(cleared, 4)] * levelRef.current;
+      addedScore = LINE_CLEAR_POINTS[Math.min(cleared, 4)] * levelRef.current
       const kind =
-        cleared === 1 ? 'single' : cleared === 2 ? 'double' : cleared === 3 ? 'triple' : 'tetris';
+        cleared === 1 ? 'single' : cleared === 2 ? 'double' : cleared === 3 ? 'triple' : 'tetris'
       const effect: LineEffect = {
         id: ++effectIdCounter,
-        rows: clearedRows.map((r) => r - BUFFER_ROWS), // convert to visible row indices
+        rows: clearedRows.map((row) => row - BUFFER_ROWS),
         kind,
-      };
-      setLineEffects((prev) => [...prev, effect]);
-      setTimeout(() => {
-        setLineEffects((prev) => prev.filter((e) => e.id !== effect.id));
-      }, 600);
+      }
+      setLineEffects((previous) => [...previous, effect])
+      window.setTimeout(
+        () => setLineEffects((previous) => previous.filter((item) => item.id !== effect.id)),
+        600
+      )
     }
 
-    const newLines = linesRef.current + cleared;
-    const newLevel = Math.floor(newLines / LINES_PER_LEVEL) + 1;
-    const leveledUp = newLevel > levelRef.current;
-
-    if (leveledUp) {
-      const lvlEffect: LevelUpEffect = { id: ++effectIdCounter, level: newLevel };
-      setLevelUpEffects((prev) => [...prev, lvlEffect]);
-      setTimeout(() => {
-        setLevelUpEffects((prev) => prev.filter((e) => e.id !== lvlEffect.id));
-      }, 1200);
+    const nextLines = linesRef.current + cleared
+    const nextLevel = Math.floor(nextLines / LINES_PER_LEVEL) + 1
+    if (nextLevel > levelRef.current) {
+      const effect: LevelUpEffect = { id: ++effectIdCounter, level: nextLevel }
+      setLevelUpEffects((previous) => [...previous, effect])
+      window.setTimeout(
+        () => setLevelUpEffects((previous) => previous.filter((item) => item.id !== effect.id)),
+        1200
+      )
     }
 
-    const newScore = scoreRef.current + addScore;
+    const nextScore = scoreRef.current + addedScore
+    const nextPieces = piecesRef.current + 1
+    boardRef.current = clearedBoard
+    scoreRef.current = nextScore
+    linesRef.current = nextLines
+    levelRef.current = nextLevel
+    piecesRef.current = nextPieces
+    maxStackHeightRef.current = Math.max(maxStackHeightRef.current, boardStackHeight(clearedBoard))
+    canHoldRef.current = true
 
-    setBoard(clearedBoard);
-    boardRef.current = clearedBoard;
-    setScore(newScore);
-    scoreRef.current = newScore;
-    setLines(newLines);
-    linesRef.current = newLines;
-    setLevel(newLevel);
-    levelRef.current = newLevel;
-    setCanHold(true);
-    canHoldRef.current = true;
-    setIsDanger(boardInDanger(clearedBoard));
+    setBoard(clearedBoard)
+    setScore(nextScore)
+    setLines(nextLines)
+    setLevel(nextLevel)
+    setPieces(nextPieces)
+    setCanHold(true)
+    setIsDanger(boardInDanger(clearedBoard))
+    setLockFlash(true)
+    window.setTimeout(() => setLockFlash(false), 100)
 
-    // Lock flash effect
-    setLockFlash(true);
-    setTimeout(() => setLockFlash(false), 100);
+    if (!spawnPiece(clearedBoard)) finishRound('topout')
+  }, [createLockedCell, finishRound, spawnPiece])
 
-    // Spawn next piece
-    const spawned = spawnPiece(clearedBoard);
-    if (!spawned) {
-      endGame(newScore);
-    }
-  }, [endGame, spawnPiece]);
+  const tryMove = useCallback((deltaX: number, deltaY: number): boolean => {
+    const piece = currentRef.current
+    if (!piece || gamePhaseRef.current !== 'playing') return false
+    if (collides(boardRef.current, piece.shape, piece.x + deltaX, piece.y + deltaY)) return false
 
-  // ── Movement helpers ──────────────────────────────────────────────────────
-
-  const tryMove = useCallback((dx: number, dy: number): boolean => {
-    const piece = currentRef.current;
-    const currentBoard = boardRef.current;
-    if (!piece || gamePhaseRef.current !== 'playing') return false;
-    if (!collides(currentBoard, piece.shape, piece.x + dx, piece.y + dy)) {
-      const moved = { ...piece, x: piece.x + dx, y: piece.y + dy };
-      setCurrent(moved);
-      return true;
-    }
-    return false;
-  }, []);
+    const moved = { ...piece, x: piece.x + deltaX, y: piece.y + deltaY }
+    currentRef.current = moved
+    setCurrent(moved)
+    return true
+  }, [])
 
   const tryRotate = useCallback(() => {
-    const piece = currentRef.current;
-    const currentBoard = boardRef.current;
-    if (!piece || gamePhaseRef.current !== 'playing') return;
-    const newShape = rotateShape(piece.shape);
-    const newRotIndex = (piece.rotationIndex + 1) % 4;
-    for (const dx of WALL_KICK_OFFSETS) {
-      if (!collides(currentBoard, newShape, piece.x + dx, piece.y)) {
-        setCurrent({ ...piece, shape: newShape, rotationIndex: newRotIndex, x: piece.x + dx });
-        return;
+    const piece = currentRef.current
+    if (!piece || gamePhaseRef.current !== 'playing') return
+    const rotatedShape = rotateShape(piece.shape)
+    const rotationIndex = (piece.rotationIndex + 1) % 4
+
+    for (const deltaX of WALL_KICK_OFFSETS) {
+      if (!collides(boardRef.current, rotatedShape, piece.x + deltaX, piece.y)) {
+        const rotated = {
+          ...piece,
+          shape: rotatedShape,
+          rotationIndex,
+          x: piece.x + deltaX,
+        }
+        currentRef.current = rotated
+        setCurrent(rotated)
+        return
       }
     }
-  }, []);
+  }, [])
 
   const softDrop = useCallback(() => {
-    const piece = currentRef.current;
-    const currentBoard = boardRef.current;
-    if (!piece || gamePhaseRef.current !== 'playing') return;
-    if (!collides(currentBoard, piece.shape, piece.x, piece.y + 1)) {
-      const moved = { ...piece, y: piece.y + 1 };
-      setCurrent(moved);
-      setScore((s) => s + SOFT_DROP_PER_ROW);
-      scoreRef.current += SOFT_DROP_PER_ROW;
+    const piece = currentRef.current
+    if (!piece || gamePhaseRef.current !== 'playing') return
+
+    if (!collides(boardRef.current, piece.shape, piece.x, piece.y + 1)) {
+      const moved = { ...piece, y: piece.y + 1 }
+      currentRef.current = moved
+      scoreRef.current += SOFT_DROP_PER_ROW
+      setCurrent(moved)
+      setScore(scoreRef.current)
     } else {
-      lockCurrentPiece();
+      lockCurrentPiece()
     }
-  }, [lockCurrentPiece]);
+  }, [lockCurrentPiece])
 
   const hardDrop = useCallback(() => {
-    const piece = currentRef.current;
-    const currentBoard = boardRef.current;
-    if (!piece || gamePhaseRef.current !== 'playing') return;
-    const gy = ghostY(currentBoard, piece);
-    const dropped = gy - piece.y;
-    const bonus = dropped * HARD_DROP_PER_ROW;
-    const landed = { ...piece, y: gy };
-    setCurrent(landed);
-    currentRef.current = landed;
-    setScore((s) => s + bonus);
-    scoreRef.current += bonus;
-    lockCurrentPiece();
-  }, [lockCurrentPiece]);
+    const piece = currentRef.current
+    if (!piece || gamePhaseRef.current !== 'playing') return
+    const landingY = ghostY(boardRef.current, piece)
+    const bonus = (landingY - piece.y) * HARD_DROP_PER_ROW
+    const landed = { ...piece, y: landingY }
+    currentRef.current = landed
+    scoreRef.current += bonus
+    setCurrent(landed)
+    setScore(scoreRef.current)
+    lockCurrentPiece()
+  }, [lockCurrentPiece])
 
   const holdPiece = useCallback(() => {
-    if (!canHoldRef.current || gamePhaseRef.current !== 'playing') return;
-    const piece = currentRef.current;
-    if (!piece) return;
+    const piece = currentRef.current
+    if (!piece || !canHoldRef.current || gamePhaseRef.current !== 'playing') return
 
-    const currentHeld = heldRef.current;
-    const newHeld: Piece = { key: piece.key, shape: SHAPES[piece.key].map((r) => [...r]), color: piece.color };
-
-    setHeld(newHeld);
-    heldRef.current = newHeld;
-    setCanHold(false);
-    canHoldRef.current = false;
-
-    if (currentHeld) {
-      const spawned = spawnFalling(currentHeld.key);
-      if (!collides(boardRef.current, spawned.shape, spawned.x, spawned.y)) {
-        setCurrent(spawned);
-      } else {
-        endGame();
-      }
-    } else {
-      spawnPiece(boardRef.current);
+    const nextHeld: Piece = {
+      key: piece.key,
+      shape: SHAPES[piece.key].map((row) => [...row]),
+      color: piece.color,
     }
-  }, [spawnPiece, endGame]);
+    const previousHeld = heldRef.current
+    heldRef.current = nextHeld
+    canHoldRef.current = false
+    setHeld(nextHeld)
+    setCanHold(false)
 
-  // ── Gravity timer ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (gamePhase !== 'playing') return;
-    const interval = setInterval(() => {
-      if (gamePhaseRef.current !== 'playing') return;
-      const piece = currentRef.current;
-      const currentBoard = boardRef.current;
-      if (!piece) return;
-      if (!collides(currentBoard, piece.shape, piece.x, piece.y + 1)) {
-        setCurrent((p) => (p ? { ...p, y: p.y + 1 } : p));
+    if (previousHeld) {
+      const swapped = spawnFalling(previousHeld.key)
+      if (collides(boardRef.current, swapped.shape, swapped.x, swapped.y)) {
+        finishRound('topout')
       } else {
-        lockCurrentPiece();
+        currentRef.current = swapped
+        setCurrent(swapped)
       }
-    }, dropIntervalMs(level));
-
-    return () => clearInterval(interval);
-  }, [gamePhase, level, lockCurrentPiece]);
-
-  // ── Initial spawn ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    // Pre-fill the upcoming queue then spawn first piece
-    refillBag();
-    while (upcomingRef.current.length < 3 && bagRef.current.length > 0) {
-      upcomingRef.current.push(bagRef.current.shift()!);
+    } else if (!spawnPiece(boardRef.current)) {
+      finishRound('topout')
     }
-    setUpcoming([...upcomingRef.current]);
-    const startBoard = emptyBoard();
-    setBoard(startBoard);
-    boardRef.current = startBoard;
-    spawnPiece(startBoard);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Keyboard input ────────────────────────────────────────────────────────
+  }, [finishRound, spawnPiece])
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (gamePhaseRef.current !== 'playing') return;
-      switch (e.key) {
+    if (screen !== 'playing') return
+
+    const roundSeed = (seed ^ Math.imul(currentRoundIndex + 1, 0x9e3779b1)) >>> 0
+    rngRef.current = mulberry32(roundSeed)
+    avatarRngRef.current = mulberry32(roundSeed ^ 0xa11ce)
+    bagRef.current = []
+    upcomingRef.current = []
+    const startBoard = emptyBoard()
+
+    boardRef.current = startBoard
+    currentRef.current = null
+    scoreRef.current = 0
+    linesRef.current = 0
+    levelRef.current = 1
+    piecesRef.current = 0
+    maxStackHeightRef.current = 0
+    heldRef.current = null
+    canHoldRef.current = true
+    gamePhaseRef.current = 'playing'
+    remainingMsRef.current = currentRound.durationMs
+    roundEndingRef.current = false
+
+    setBoard(startBoard)
+    setCurrent(null)
+    setHeld(null)
+    setCanHold(true)
+    setScore(0)
+    setLines(0)
+    setLevel(1)
+    setPieces(0)
+    setIsDanger(false)
+    setLineEffects([])
+    setLevelUpEffects([])
+    setLockFlash(false)
+    setRoundEndReason('time')
+    setRemainingMs(currentRound.durationMs)
+    setGamePhase('playing')
+
+    refillBag()
+    while (upcomingRef.current.length < 3) {
+      refillBag()
+      upcomingRef.current.push(bagRef.current.shift()!)
+    }
+    setUpcoming([...upcomingRef.current])
+    spawnPiece(startBoard)
+  }, [currentRound.durationMs, currentRoundIndex, refillBag, screen, seed, spawnPiece])
+
+  useEffect(() => {
+    if (screen !== 'playing' || gamePhase !== 'playing') return
+
+    const deadline = Date.now() + currentRound.durationMs
+    const tick = () => {
+      const nextRemaining = Math.max(0, deadline - Date.now())
+      remainingMsRef.current = nextRemaining
+      setRemainingMs(nextRemaining)
+      if (nextRemaining <= 0) finishRound('time')
+    }
+
+    tick()
+    const timer = window.setInterval(tick, 100)
+    return () => window.clearInterval(timer)
+  }, [currentRound.durationMs, finishRound, gamePhase, screen])
+
+  useEffect(() => {
+    if (screen !== 'playing' || gamePhase !== 'playing') return
+    const timer = window.setInterval(
+      () => {
+        const piece = currentRef.current
+        if (!piece || gamePhaseRef.current !== 'playing') return
+        if (!collides(boardRef.current, piece.shape, piece.x, piece.y + 1)) {
+          const moved = { ...piece, y: piece.y + 1 }
+          currentRef.current = moved
+          setCurrent(moved)
+        } else {
+          lockCurrentPiece()
+        }
+      },
+      dropIntervalMs(level, currentRound.speedMultiplier)
+    )
+
+    return () => window.clearInterval(timer)
+  }, [currentRound.speedMultiplier, gamePhase, level, lockCurrentPiece, screen])
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (screen !== 'playing' || gamePhaseRef.current !== 'playing') return
+      switch (event.key) {
         case 'ArrowLeft':
-          e.preventDefault();
-          tryMove(-1, 0);
-          break;
+          event.preventDefault()
+          tryMove(-1, 0)
+          break
         case 'ArrowRight':
-          e.preventDefault();
-          tryMove(1, 0);
-          break;
+          event.preventDefault()
+          tryMove(1, 0)
+          break
         case 'ArrowDown':
-          e.preventDefault();
-          softDrop();
-          break;
+          event.preventDefault()
+          softDrop()
+          break
         case 'ArrowUp':
         case 'x':
         case 'X':
-          e.preventDefault();
-          tryRotate();
-          break;
+          event.preventDefault()
+          tryRotate()
+          break
         case ' ':
-          e.preventDefault();
-          hardDrop();
-          break;
+          event.preventDefault()
+          hardDrop()
+          break
         case 'c':
         case 'C':
         case 'Shift':
-          e.preventDefault();
-          holdPiece();
-          break;
+          event.preventDefault()
+          holdPiece()
+          break
         default:
-          break;
+          break
       }
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [tryMove, tryRotate, softDrop, hardDrop, holdPiece]);
 
-  // ── Ghost piece ───────────────────────────────────────────────────────────
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [gamePhase, hardDrop, holdPiece, screen, softDrop, tryMove, tryRotate])
+
+  const simulateRemainingTournament = useCallback(() => {
+    setSimulatingRemainder(true)
+    let simulatedActiveIds = [...activeIds]
+    let simulatedEliminations = [...eliminationOrderWorstFirst]
+
+    for (let roundIndex = currentRoundIndex + 1; roundIndex < tournamentPlan.length; roundIndex++) {
+      const round = tournamentPlan[roundIndex]
+      const performances = simulateAiRound(simulatedActiveIds, roundIndex)
+      const split = splitTetrisRound(performances, round.survivorCount)
+      for (const performance of performances) {
+        previousRoundScoresRef.current[performance.playerId] = performance.score
+      }
+
+      if (round.kind === 'final') {
+        commitTournamentOutcome(split.standings, simulatedEliminations)
+        return
+      }
+
+      simulatedActiveIds = split.survivorIds
+      simulatedEliminations = [...simulatedEliminations, ...split.eliminatedWorstFirst]
+    }
+  }, [
+    activeIds,
+    commitTournamentOutcome,
+    currentRoundIndex,
+    eliminationOrderWorstFirst,
+    simulateAiRound,
+    tournamentPlan,
+  ])
+
+  const continueAfterRound = useCallback(() => {
+    if (!roundResult) return
+    const humanStillActive = humanId ? activeIds.includes(humanId) : false
+    if (!humanStillActive) {
+      simulateRemainingTournament()
+      return
+    }
+
+    setRoundResult(null)
+    setCurrentRoundIndex((index) => index + 1)
+    setScreen('playing')
+  }, [activeIds, humanId, roundResult, simulateRemainingTournament])
 
   const ghost = useMemo<FallingPiece | null>(() => {
-    if (!current || gamePhase !== 'playing') return null;
-    const gy = ghostY(board, current);
-    if (gy === current.y) return null; // same position, skip
-    return { ...current, y: gy };
-  }, [current, board, gamePhase]);
+    if (!current || gamePhase !== 'playing') return null
+    const landingY = ghostY(board, current)
+    return landingY === current.y ? null : { ...current, y: landingY }
+  }, [board, current, gamePhase])
 
-  // ── Render board ──────────────────────────────────────────────────────────
+  const visibleBoard = useMemo<(DisplayCell | null)[][]>(() => {
+    const display: (DisplayCell | null)[][] = board
+      .slice(BUFFER_ROWS)
+      .map((row) => row.map((cell) => (cell ? { ...cell, kind: 'locked' as const } : null)))
 
-  /** Visible board = rows BUFFER_ROWS..TOTAL_ROWS-1 */
-  const visibleBoard = useMemo<(string | null)[][]>(() => {
-    const base = board.slice(BUFFER_ROWS);
-    // Overlay current piece
-    const display = base.map((row) => [...row]);
     if (ghost && gamePhase === 'playing') {
-      for (let r = 0; r < ghost.shape.length; r++) {
-        for (let c = 0; c < ghost.shape[r].length; c++) {
-          if (!ghost.shape[r][c]) continue;
-          const vy = ghost.y - BUFFER_ROWS + r;
-          const vx = ghost.x + c;
-          if (vy >= 0 && vy < ROWS && vx >= 0 && vx < COLS && !display[vy][vx]) {
-            display[vy][vx] = '__ghost__' + ghost.color;
+      for (let row = 0; row < ghost.shape.length; row++) {
+        for (let column = 0; column < ghost.shape[row].length; column++) {
+          if (!ghost.shape[row][column]) continue
+          const displayY = ghost.y - BUFFER_ROWS + row
+          const displayX = ghost.x + column
+          if (
+            displayY >= 0 &&
+            displayY < ROWS &&
+            displayX >= 0 &&
+            displayX < COLS &&
+            !display[displayY][displayX]
+          ) {
+            display[displayY][displayX] = { color: ghost.color, kind: 'ghost' }
           }
         }
       }
     }
+
     if (current && gamePhase === 'playing') {
-      for (let r = 0; r < current.shape.length; r++) {
-        for (let c = 0; c < current.shape[r].length; c++) {
-          if (!current.shape[r][c]) continue;
-          const vy = current.y - BUFFER_ROWS + r;
-          const vx = current.x + c;
-          if (vy >= 0 && vy < ROWS && vx >= 0 && vx < COLS) {
-            display[vy][vx] = current.color;
+      for (let row = 0; row < current.shape.length; row++) {
+        for (let column = 0; column < current.shape[row].length; column++) {
+          if (!current.shape[row][column]) continue
+          const displayY = current.y - BUFFER_ROWS + row
+          const displayX = current.x + column
+          if (displayY >= 0 && displayY < ROWS && displayX >= 0 && displayX < COLS) {
+            display[displayY][displayX] = { color: current.color, kind: 'active' }
           }
         }
       }
     }
-    return display;
-  }, [board, current, ghost, gamePhase]);
 
-  // ── Build sorted leaderboard ──────────────────────────────────────────────
+    return display
+  }, [board, current, gamePhase, ghost])
 
-  const leaderboard = useMemo(() => {
-    if (!tetrisState || tetrisState.phase !== 'complete') return [];
-    const allScores = tetrisState.finalScores;
-    return tetrisState.participants
-      .map((p) => ({ ...p, score: allScores[p.id] ?? 0 }))
-      .sort((a, b) => b.score - a.score);
-  }, [tetrisState]);
+  if (screen === 'roundResults' && roundResult) {
+    const humanStillActive = humanId ? roundResult.split.survivorIds.includes(humanId) : false
+    return (
+      <div className={`tetris-tournament-results tetris-tension-${roundResult.plan.tensionLevel}`}>
+        <div className="tetris-round-results-card">
+          <p className="tetris-round-results-kicker">
+            {t('fitMeIn.round.progress', {
+              current: roundResult.plan.roundNumber,
+              total: roundResult.plan.totalRounds,
+            })}
+          </p>
+          <h2>{t('fitMeIn.round.complete', { round: t(roundResult.plan.labelKey) })}</h2>
+          <p className="tetris-round-results-summary">
+            {humanStillActive ? t('fitMeIn.round.qualified') : t('fitMeIn.round.eliminatedMessage')}
+          </p>
+          <ol className="tetris-round-standings" aria-label={t('fitMeIn.round.standings')}>
+            {roundResult.split.standings.map((entry, index) => {
+              const participant = participantById.get(entry.playerId)
+              const eliminated = !roundResult.split.survivorIds.includes(entry.playerId)
+              return (
+                <li
+                  key={entry.playerId}
+                  className={[
+                    'tetris-round-standing',
+                    participant?.isHuman ? 'tetris-round-standing--you' : '',
+                    eliminated ? 'tetris-round-standing--eliminated' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className="tetris-round-standing-rank">
+                    {MEDALS[index] ?? placementLabel(index)}
+                  </span>
+                  <HouseguestAvatar participant={participant} />
+                  <span className="tetris-round-standing-name">
+                    {participant?.name ?? entry.playerId}
+                    {participant?.isHuman ? ` ${t('fitMeIn.youTag')}` : ''}
+                  </span>
+                  <strong>{entry.score.toLocaleString()}</strong>
+                  <span className="tetris-round-standing-status">
+                    {eliminated ? t('fitMeIn.status.eliminated') : t('fitMeIn.status.safe')}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+          <button
+            type="button"
+            className="tetris-round-continue"
+            onClick={continueAfterRound}
+            disabled={simulatingRemainder}
+          >
+            {simulatingRemainder
+              ? t('fitMeIn.finishingTournament')
+              : humanStillActive
+                ? currentRoundIndex + 1 === tournamentPlan.length - 1
+                  ? t('fitMeIn.enterFinal')
+                  : t('fitMeIn.nextRound')
+                : t('fitMeIn.revealWinner')}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-  // ── Results screen ────────────────────────────────────────────────────────
-
-  if (showResults && tetrisState?.phase === 'complete') {
-    const winnerEntry = leaderboard[0];
+  if (screen === 'finalResults' && finalResult) {
+    const winner = participantById.get(finalResult.winnerId)
     return (
       <MinigameCompleteWrapper
         className="tetris-results"
-        onContinue={() => onComplete({ rawValue: score })}
+        onContinue={() =>
+          onComplete({
+            rawValue: finalResult.humanScore,
+            rawResults: finalResult.outcomeScores,
+            authoritativeWinnerId: finalResult.winnerId,
+            authoritativeLastPlaceId: finalResult.lastPlaceId,
+          })
+        }
         placementsNode={
           <ol className="tetris-results-list" role="list" aria-label="Final rankings">
-            {leaderboard.map((entry, i) => (
-              <li
-                key={entry.id}
-                className={[
-                  'tetris-results-entry',
-                  entry.isHuman ? 'tetris-results-entry--you' : '',
-                  i === 0 ? 'tetris-results-entry--winner' : '',
-                  i === leaderboard.length - 1 ? 'tetris-results-entry--last' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                role="listitem"
-              >
-                <span className="tetris-results-rank">{MEDALS[i] ?? `${i + 1}.`}</span>
-                <span className="tetris-results-name">
-                  {entry.name}
-                  {entry.isHuman && (
-                    <span className="tetris-results-you-tag" aria-label="(you)">
-                      {' '}(you)
-                    </span>
-                  )}
-                </span>
-                <span className="tetris-results-score">{entry.score.toLocaleString()}</span>
-              </li>
-            ))}
+            {finalResult.rankingBestFirst.map((playerId, index) => {
+              const participant = participantById.get(playerId)
+              return (
+                <li
+                  key={playerId}
+                  className={[
+                    'tetris-results-entry',
+                    participant?.isHuman ? 'tetris-results-entry--you' : '',
+                    index === 0 ? 'tetris-results-entry--winner' : '',
+                    index === finalResult.rankingBestFirst.length - 1
+                      ? 'tetris-results-entry--last'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className="tetris-results-rank">
+                    {MEDALS[index] ?? placementLabel(index)}
+                  </span>
+                  <HouseguestAvatar participant={participant} />
+                  <span className="tetris-results-name">
+                    {participant?.name ?? playerId}
+                    {participant?.isHuman && (
+                      <span className="tetris-results-you-tag"> {t('fitMeIn.youTag')}</span>
+                    )}
+                  </span>
+                  <span className="tetris-results-score">
+                    {(finalResult.visibleScores[playerId] ?? 0).toLocaleString()}
+                  </span>
+                </li>
+              )
+            })}
           </ol>
         }
         placementsRole="list"
@@ -739,202 +1071,312 @@ export default function TetrisComp({
         <div className="tetris-results-hero">
           <div className="tetris-results-trophy">🏆</div>
           <h2 className="tetris-results-title">
-            {winnerEntry?.isHuman ? 'You Win!' : `${winnerEntry?.name ?? '?'} Wins!`}
+            {winner?.isHuman
+              ? t('fitMeIn.youWin')
+              : t('fitMeIn.playerWins', { name: winner?.name ?? finalResult.winnerId })}
           </h2>
-          <p className="tetris-results-subtitle">
-            {winnerEntry?.isHuman
-              ? 'You achieved the highest score!'
-              : 'Better luck next time…'}
-          </p>
+          <p className="tetris-results-subtitle">{t('fitMeIn.finalComplete')}</p>
           <div className="tetris-results-your-score">
-            Your score: <strong>{score.toLocaleString()}</strong>
+            {t('fitMeIn.yourLastScore')} <strong>{finalResult.humanScore.toLocaleString()}</strong>
           </div>
         </div>
       </MinigameCompleteWrapper>
-    );
+    )
   }
 
-  // ── Playing / game-over screen ────────────────────────────────────────────
-
-  const isGameOver = gamePhase === 'gameover';
+  const isGameOver = gamePhase === 'gameover'
+  const urgent = remainingMs <= 10_000 && !isGameOver
+  const progressPercent = Math.max(0, Math.min(100, (remainingMs / currentRound.durationMs) * 100))
 
   return (
-    <div className={['tetris-root', isDanger && !isGameOver ? 'tetris-root--danger' : ''].filter(Boolean).join(' ')}>
-      {/* Level-up overlay effects */}
-      {levelUpEffects.map((ef) => (
-        <div key={ef.id} className="tetris-levelup-overlay" aria-live="polite">
-          ⬆ LEVEL {ef.level}!
+    <div
+      className={[
+        'tetris-root',
+        `tetris-root--tension-${currentRound.tensionLevel}`,
+        currentRound.useHouseguestCells ? 'tetris-root--mosaic-final' : '',
+        isDanger && !isGameOver ? 'tetris-root--danger' : '',
+        urgent ? 'tetris-root--urgent' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <header className="tetris-round-bar">
+        <div>
+          <span className="tetris-round-number">
+            ROUND {currentRound.roundNumber}/{currentRound.totalRounds}
+          </span>
+          <strong>{t(currentRound.labelKey)}</strong>
+          <small>{t(currentRound.subtitleKey)}</small>
+        </div>
+        <div className="tetris-round-timer" aria-live="polite">
+          {formatTimer(remainingMs)}
+        </div>
+        <div className="tetris-round-field">{activeIds.length} PLAYING</div>
+        <div className="tetris-round-progress" aria-hidden="true">
+          <span style={{ width: `${progressPercent}%` }} />
+        </div>
+      </header>
+
+      {levelUpEffects.map((effect) => (
+        <div key={effect.id} className="tetris-levelup-overlay" aria-live="polite">
+          {t('fitMeIn.levelUp', { level: effect.level })}
         </div>
       ))}
 
-      {/* Game-over overlay */}
       {isGameOver && (
         <div className="tetris-gameover-overlay" aria-live="assertive">
-          <div className="tetris-gameover-text">GAME OVER</div>
+          <div className="tetris-gameover-text">
+            {roundEndReason === 'time' ? t('fitMeIn.timeUp') : t('fitMeIn.toppedOut')}
+          </div>
           <div className="tetris-gameover-score">{score.toLocaleString()}</div>
-          <div className="tetris-gameover-sub">Calculating results…</div>
+          <div className="tetris-gameover-sub">{t('fitMeIn.calculatingStandings')}</div>
         </div>
       )}
 
-      {/* Main layout */}
       <div className="tetris-layout">
-        {/* Left panel: hold + stats */}
         <div className="tetris-panel tetris-panel--left">
           <section className="tetris-hold" aria-label="Hold piece">
             <div className="tetris-panel-label">HOLD</div>
             <MiniPieceGrid piece={held} dimmed={!canHold} />
           </section>
           <section className="tetris-stats" aria-label="Game stats">
-            <div className="tetris-stat">
-              <span className="tetris-stat-label">SCORE</span>
-              <span className="tetris-stat-value">{score.toLocaleString()}</span>
-            </div>
-            <div className="tetris-stat">
-              <span className="tetris-stat-label">LINES</span>
-              <span className="tetris-stat-value">{lines}</span>
-            </div>
-            <div className="tetris-stat">
-              <span className="tetris-stat-label">LEVEL</span>
-              <span className="tetris-stat-value">{level}</span>
-            </div>
+            <Stat label="SCORE" value={score.toLocaleString()} />
+            <Stat label="LINES" value={String(lines)} />
+            <Stat label="PIECES" value={String(pieces)} />
+            <Stat label="LEVEL" value={String(level)} />
           </section>
         </div>
 
-        {/* Board */}
         <div
-          className={['tetris-board-wrap', lockFlash ? 'tetris-board-wrap--flash' : ''].filter(Boolean).join(' ')}
+          className={['tetris-board-wrap', lockFlash ? 'tetris-board-wrap--flash' : '']
+            .filter(Boolean)
+            .join(' ')}
           aria-label="Fit Me In board"
           role="img"
         >
           <div
             className="tetris-board"
-            style={{ '--cols': COLS, '--rows': ROWS, '--cell': `${CELL_PX}px` } as React.CSSProperties}
+            style={
+              {
+                '--cols': COLS,
+                '--rows': ROWS,
+                '--cell': `${CELL_PX}px`,
+              } as CSSProperties
+            }
           >
-            {visibleBoard.map((row, ry) => {
-              const isLineClear = lineEffects.some((ef) => ef.rows.includes(ry));
-              return row.map((cell, cx) => {
-                const isGhost = cell?.startsWith('__ghost__') ?? false;
-                const color = isGhost ? cell!.slice(9) : cell;
+            {visibleBoard.map((row, rowIndex) => {
+              const lineClearing = lineEffects.some((effect) => effect.rows.includes(rowIndex))
+              return row.map((cell, columnIndex) => {
+                const participant = cell?.avatarId ? participantById.get(cell.avatarId) : undefined
                 return (
                   <div
-                    key={`${ry}-${cx}`}
+                    key={`${rowIndex}-${columnIndex}`}
                     className={[
                       'tetris-cell',
                       cell ? 'tetris-cell--filled' : 'tetris-cell--empty',
-                      isGhost ? 'tetris-cell--ghost' : '',
-                      isLineClear && cell && !isGhost ? 'tetris-cell--clear' : '',
+                      cell?.kind === 'ghost' ? 'tetris-cell--ghost' : '',
+                      cell?.kind === 'locked' && cell.avatarId ? 'tetris-cell--avatar' : '',
+                      lineClearing && cell?.kind === 'locked' ? 'tetris-cell--clear' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
-                    style={color ? ({ '--cell-color': color } as React.CSSProperties) : undefined}
+                    style={cell ? ({ '--cell-color': cell.color } as CSSProperties) : undefined}
                     aria-hidden="true"
-                  />
-                );
-              });
+                  >
+                    {cell?.kind === 'locked' && cell.avatarId && (
+                      <AvatarCell participant={participant} />
+                    )}
+                  </div>
+                )
+              })
             })}
           </div>
         </div>
 
-        {/* Right panel: next pieces */}
         <div className="tetris-panel tetris-panel--right">
           <section className="tetris-next" aria-label="Next pieces">
             <div className="tetris-panel-label">NEXT</div>
-            {upcoming.slice(0, 3).map((key, i) => (
-              <MiniPieceGrid key={i} piece={makePiece(key)} />
+            {upcoming.slice(0, 3).map((key, index) => (
+              <MiniPieceGrid key={`${key}-${index}`} piece={makePiece(key)} />
             ))}
           </section>
         </div>
       </div>
 
-      {/* Touch controls */}
       <div className="tetris-touch-controls" aria-label="Touch controls">
         <div className="tetris-touch-row">
-          <button
-            className="tetris-btn tetris-btn--hold"
-            onPointerDown={(e) => { e.preventDefault(); holdPiece(); }}
-            aria-label="Hold"
+          <ControlButton
+            className="tetris-btn--hold"
+            label={t('fitMeIn.control.hold')}
             disabled={isGameOver}
+            onPress={holdPiece}
           >
             HOLD
-          </button>
-          <button
-            className="tetris-btn tetris-btn--rotate"
-            onPointerDown={(e) => { e.preventDefault(); tryRotate(); }}
-            aria-label="Rotate"
+          </ControlButton>
+          <ControlButton
+            className="tetris-btn--rotate"
+            label={t('fitMeIn.control.rotate')}
             disabled={isGameOver}
+            onPress={tryRotate}
           >
             ↻
-          </button>
-          <button
-            className="tetris-btn tetris-btn--hard-drop"
-            onPointerDown={(e) => { e.preventDefault(); hardDrop(); }}
-            aria-label="Hard drop"
+          </ControlButton>
+          <ControlButton
+            className="tetris-btn--hard-drop"
+            label={t('fitMeIn.control.hardDrop')}
             disabled={isGameOver}
+            onPress={hardDrop}
           >
             ⬇
-          </button>
+          </ControlButton>
         </div>
         <div className="tetris-touch-row">
-          <button
-            className="tetris-btn tetris-btn--left"
-            onPointerDown={(e) => { e.preventDefault(); tryMove(-1, 0); }}
-            aria-label="Move left"
+          <ControlButton
+            label={t('fitMeIn.control.moveLeft')}
             disabled={isGameOver}
+            onPress={() => tryMove(-1, 0)}
           >
             ◀
-          </button>
-          <button
-            className="tetris-btn tetris-btn--soft-drop"
-            onPointerDown={(e) => { e.preventDefault(); softDrop(); }}
-            aria-label="Soft drop"
+          </ControlButton>
+          <ControlButton
+            label={t('fitMeIn.control.softDrop')}
             disabled={isGameOver}
+            onPress={softDrop}
           >
             ▼
-          </button>
-          <button
-            className="tetris-btn tetris-btn--right"
-            onPointerDown={(e) => { e.preventDefault(); tryMove(1, 0); }}
-            aria-label="Move right"
+          </ControlButton>
+          <ControlButton
+            label={t('fitMeIn.control.moveRight')}
             disabled={isGameOver}
+            onPress={() => tryMove(1, 0)}
           >
             ▶
-          </button>
+          </ControlButton>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-// ─── MiniPieceGrid ─────────────────────────────────────────────────────────────
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="tetris-stat">
+      <span className="tetris-stat-label">{label}</span>
+      <span className="tetris-stat-value">{value}</span>
+    </div>
+  )
+}
+
+function ControlButton({
+  className = '',
+  label,
+  disabled,
+  onPress,
+  children,
+}: {
+  className?: string
+  label: string
+  disabled: boolean
+  onPress: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      className={['tetris-btn', className].filter(Boolean).join(' ')}
+      onPointerDown={(event) => {
+        event.preventDefault()
+        onPress()
+      }}
+      aria-label={label}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  )
+}
+
+function HouseguestAvatar({ participant }: { participant?: MinigameParticipant }) {
+  const initials = participant?.name
+    ?.split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+
+  return (
+    <span className="tetris-houseguest-avatar" aria-hidden="true">
+      {participant ? (
+        <ResolvedAvatarImage
+          id={participant.id}
+          name={participant.name}
+          avatar={participant.avatar}
+          isUser={participant.isHuman}
+          alt=""
+          draggable={false}
+        />
+      ) : (
+        initials || '?'
+      )}
+    </span>
+  )
+}
+
+function AvatarCell({ participant }: { participant?: MinigameParticipant }) {
+  const initials = participant?.name
+    ?.split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+
+  return participant ? (
+    <ResolvedAvatarImage
+      id={participant.id}
+      name={participant.name}
+      avatar={participant.avatar}
+      isUser={participant.isHuman}
+      className="tetris-avatar-cell-image"
+      alt=""
+      draggable={false}
+    />
+  ) : (
+    <span className="tetris-avatar-cell-initials">{initials || '?'}</span>
+  )
+}
 
 interface MiniPieceGridProps {
-  piece: Piece | null;
-  dimmed?: boolean;
+  piece: Piece | null
+  dimmed?: boolean
 }
 
 function MiniPieceGrid({ piece, dimmed = false }: MiniPieceGridProps) {
   if (!piece) {
-    return <div className="tetris-mini-grid tetris-mini-grid--empty" aria-hidden="true" />;
+    return <div className="tetris-mini-grid tetris-mini-grid--empty" aria-hidden="true" />
   }
 
-  const rows = piece.shape.length;
-  const cols = piece.shape[0]?.length ?? 0;
-
+  const rows = piece.shape.length
+  const columns = piece.shape[0]?.length ?? 0
   return (
     <div
-      className={['tetris-mini-grid', dimmed ? 'tetris-mini-grid--dimmed' : ''].filter(Boolean).join(' ')}
-      style={{ '--mini-rows': rows, '--mini-cols': cols } as React.CSSProperties}
+      className={['tetris-mini-grid', dimmed ? 'tetris-mini-grid--dimmed' : '']
+        .filter(Boolean)
+        .join(' ')}
+      style={{ '--mini-rows': rows, '--mini-cols': columns } as CSSProperties}
       aria-hidden="true"
     >
-      {piece.shape.map((row, ri) =>
-        row.map((cell, ci) => (
+      {piece.shape.map((row, rowIndex) =>
+        row.map((cell, columnIndex) => (
           <div
-            key={`${ri}-${ci}`}
-            className={['tetris-mini-cell', cell ? 'tetris-mini-cell--filled' : 'tetris-mini-cell--empty'].join(' ')}
-            style={cell ? ({ '--cell-color': piece.color } as React.CSSProperties) : undefined}
+            key={`${rowIndex}-${columnIndex}`}
+            className={[
+              'tetris-mini-cell',
+              cell ? 'tetris-mini-cell--filled' : 'tetris-mini-cell--empty',
+            ].join(' ')}
+            style={cell ? ({ '--cell-color': piece.color } as CSSProperties) : undefined}
           />
-        )),
+        ))
       )}
     </div>
-  );
+  )
 }

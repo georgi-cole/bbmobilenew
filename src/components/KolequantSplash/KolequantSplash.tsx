@@ -13,6 +13,7 @@ interface Props {
 }
 
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
+const SKYLINE_SRC = `${import.meta.env.BASE_URL}assets/splash-city-skyline-photographic.png`;
 const EXIT_MS = 360;
 
 const DEFAULT_MESSAGES = [
@@ -41,51 +42,62 @@ export default function KolequantSplash({
   const [minimumElapsed, setMinimumElapsed] = useState(false);
   const [exiting, setExiting] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
-  const exitStartedRef = useRef(false);
+  const [loadedArtwork, setLoadedArtwork] = useState(0);
+  const onFinishRef = useRef(onFinish);
   const clampedProgress = clampProgress(progress);
   const activeMessages = useMemo(
     () => (messages.length > 0 ? messages : DEFAULT_MESSAGES),
     [messages],
   );
   const progressLabel = status ?? activeMessages[messageIndex];
+  const artworkReady = loadedArtwork === 7;
+
+  function markArtworkSettled(bit: number) {
+    setLoadedArtwork((current) => current | bit);
+  }
+
+  function markArtworkDecoded(image: HTMLImageElement, bit: number) {
+    if (typeof image.decode !== 'function') {
+      markArtworkSettled(bit);
+      return;
+    }
+
+    void image.decode().catch(() => undefined).then(() => markArtworkSettled(bit));
+  }
 
   useEffect(() => {
-    exitStartedRef.current = false;
+    onFinishRef.current = onFinish;
+  }, [onFinish]);
+
+  useEffect(() => {
+    if (!artworkReady) return;
     const timer = window.setTimeout(() => setMinimumElapsed(true), duration);
     return () => window.clearTimeout(timer);
-  }, [duration]);
+  }, [artworkReady, duration]);
 
   useEffect(() => {
-    if (activeMessages.length <= 1 || exiting) return;
+    if (status || activeMessages.length <= 1 || exiting) return;
     const timer = window.setInterval(() => {
       setMessageIndex((current) => (current + 1) % activeMessages.length);
     }, 1350);
     return () => window.clearInterval(timer);
-  }, [activeMessages.length, exiting]);
+  }, [activeMessages.length, exiting, status]);
 
   useEffect(() => {
-    if (!ready || !minimumElapsed || exitStartedRef.current) return;
-
-    exitStartedRef.current = true;
-    let finishTimer: number | undefined;
-    const exitTimer = window.setTimeout(() => {
-      setExiting(true);
-      finishTimer = window.setTimeout(() => onFinish?.(), EXIT_MS);
-    }, 0);
-
+    if (!ready || !artworkReady || !minimumElapsed) return;
+    const exitTimer = window.setTimeout(() => setExiting(true), 0);
+    const finishTimer = window.setTimeout(() => onFinishRef.current?.(), EXIT_MS);
     return () => {
       window.clearTimeout(exitTimer);
-      if (finishTimer != null) {
-        window.clearTimeout(finishTimer);
-      }
+      window.clearTimeout(finishTimer);
     };
-  }, [minimumElapsed, onFinish, ready]);
+  }, [artworkReady, minimumElapsed, ready]);
 
   const splashStyle = {
     '--kq-splash-min-duration': `${duration}ms`,
     '--kq-splash-progress': `${clampedProgress}%`,
   } as CSSProperties;
-  const className = `kq-splash${exiting ? ' kq-splash--exiting' : ''}`;
+  const className = `kq-splash${artworkReady ? ' kq-splash--artwork-ready' : ''}${exiting ? ' kq-splash--exiting' : ''}`;
 
   return (
     <div
@@ -95,33 +107,51 @@ export default function KolequantSplash({
       aria-live="polite"
       aria-label={`${progressLabel} ${clampedProgress}%`}
     >
-      <div className="kq-splash__skyline" aria-hidden="true" />
-      <div className="kq-splash__logo-wrap">
-        <img
-          src={LOGO_SRC}
-          alt="Kolequant"
-          className="kq-splash__logo"
-          draggable={false}
-          decoding="async"
-        />
-        <img
-          src={LOGO_SRC}
-          alt=""
-          className="kq-splash__dna-glow"
-          draggable={false}
-          aria-hidden="true"
-        />
-      </div>
-      <div className="kq-splash__preload" aria-hidden="true">
-        <div className="kq-splash__preload-row">
-          <span>{activeMessages[messageIndex]}</span>
-          <span>{clampedProgress}%</span>
+      <div className="kq-splash__composition">
+        <div className="kq-splash__skyline" aria-hidden="true">
+          <img
+            src={SKYLINE_SRC}
+            alt=""
+            draggable={false}
+            decoding="async"
+            fetchPriority="high"
+            onLoad={(event) => markArtworkDecoded(event.currentTarget, 1)}
+            onError={() => markArtworkSettled(1)}
+          />
         </div>
-        <div className="kq-splash__bar-track">
-          <div className="kq-splash__bar-fill" />
+        <div className="kq-splash__logo-wrap">
+          <img
+            src={LOGO_SRC}
+            alt="Kolequant"
+            className="kq-splash__logo"
+            draggable={false}
+            decoding="async"
+            fetchPriority="high"
+            onLoad={(event) => markArtworkDecoded(event.currentTarget, 2)}
+            onError={() => markArtworkSettled(2)}
+          />
+          <img
+            src={LOGO_SRC}
+            alt=""
+            className="kq-splash__dna-glow"
+            draggable={false}
+            aria-hidden="true"
+            decoding="async"
+            onLoad={(event) => markArtworkDecoded(event.currentTarget, 4)}
+            onError={() => markArtworkSettled(4)}
+          />
         </div>
+        <div className="kq-splash__preload" aria-hidden="true">
+          <div className="kq-splash__preload-row">
+            <span>{progressLabel}</span>
+            <span>{clampedProgress}%</span>
+          </div>
+          <div className="kq-splash__bar-track">
+            <div className="kq-splash__bar-fill" />
+          </div>
+        </div>
+        <div className="kq-splash__copyright">© 2026</div>
       </div>
-      <div className="kq-splash__copyright">© 2026</div>
     </div>
   );
 }

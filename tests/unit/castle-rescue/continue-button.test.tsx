@@ -181,4 +181,19 @@ describe('CastleRescueGame — Continue / Play Again button', () => {
     fireEvent(jumpBtn, dragStartEvent);
     expect(dragStartEvent.defaultPrevented).toBe(true);
   });
+
+  it('keeps the original pipe presentation as the default variant', () => {
+    renderActiveGame();
+    expect(screen.getByLabelText('Find Your Twin platformer game')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /enter pipe/i })).toHaveTextContent('↓');
+  });
+
+  it('exposes door controls and Benny/Lenny labeling only in the sequel variant', () => {
+    render(<CastleRescueGame seed={42} autoStart={false} variant="benny-lenny" />);
+    expect(
+      screen.getByLabelText('Find Your Twin 2 Lost Again Benny and Lenny castle game'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /enter door/i })).toHaveTextContent('↑');
+    expect(screen.queryByRole('button', { name: /enter pipe/i })).not.toBeInTheDocument();
+  });
 });

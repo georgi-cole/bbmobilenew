@@ -101,6 +101,25 @@ const MinigameLab = import.meta.env.DEV
   ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
   : null
 
+// Dev-only, fully isolated Find Your Twin AI experiment. Production behavior is untouched.
+const FindYourTwinExperiment = import.meta.env.DEV
+  ? lazy(() => import('./screens/FindYourTwinExperiment/FindYourTwinExperiment'))
+  : null
+
+const FindYourTwin2 = import.meta.env.DEV
+  ? lazy(() => import('./screens/FindYourTwin2/FindYourTwin2'))
+  : null
+
+// Dev-only, fully isolated Quick Tap AI experiment.
+const QuickTapExperiment = import.meta.env.DEV
+  ? lazy(() => import('./screens/QuickTapExperiment/QuickTapExperiment'))
+  : null
+
+// Dev-only direct route for tuning the Seasons spin-off.
+const QuickTapSeasons = import.meta.env.DEV
+  ? lazy(() => import('./screens/QuickTapSeasons/QuickTapSeasons'))
+  : null
+
 export const router = createHashRouter([
   {
     path: '/cinematic',
@@ -272,6 +291,54 @@ export const router = createHashRouter([
               element: (
                 <Suspense fallback={null}>
                   <MinigameLab />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && FindYourTwinExperiment != null
+        ? [
+            {
+              path: 'find-your-twin-experiment',
+              element: (
+                <Suspense fallback={null}>
+                  <FindYourTwinExperiment />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && FindYourTwin2 != null
+        ? [
+            {
+              path: 'find-your-twin-2',
+              element: (
+                <Suspense fallback={null}>
+                  <FindYourTwin2 />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && QuickTapExperiment != null
+        ? [
+            {
+              path: 'quick-tap-experiment',
+              element: (
+                <Suspense fallback={null}>
+                  <QuickTapExperiment />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && QuickTapSeasons != null
+        ? [
+            {
+              path: 'quick-tap-seasons',
+              element: (
+                <Suspense fallback={null}>
+                  <QuickTapSeasons />
                 </Suspense>
               ),
             },

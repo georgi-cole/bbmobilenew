@@ -6,8 +6,8 @@ describe('shouldShowGameControlDock', () => {
     expect(shouldShowGameControlDock(true, [false, false, false])).toBe(true);
   });
 
-  it('hides the dock whenever a fullscreen blocker is active', () => {
-    expect(shouldShowGameControlDock(true, [false, true, false])).toBe(false);
+  it('keeps the dock mounted on the main game screen even while flows are blocking', () => {
+    expect(shouldShowGameControlDock(true, [false, true, false])).toBe(true);
   });
 
   it('hides the dock before gameplay starts', () => {

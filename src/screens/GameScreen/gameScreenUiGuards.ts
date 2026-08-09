@@ -1,7 +1,10 @@
 export function shouldShowGameControlDock(
   hasStartedGame: boolean,
-  blockers: readonly boolean[],
+  _blockers: readonly boolean[],
   allowWhenInactive = false,
 ): boolean {
-  return (hasStartedGame || allowWhenInactive) && !blockers.some(Boolean);
+  // The control dock is persistent chrome for the main game screen. Gameplay
+  // overlays may block interaction above it, but they must never unmount the
+  // navbar and leave the player without navigation after a stale flow flag.
+  return hasStartedGame || allowWhenInactive;
 }
