@@ -29,6 +29,7 @@ import type { RawResult } from '../minigames/scoring'
 import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice'
 import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
 import type { MusicMinigameVariant } from '../services/sound/musicConfig'
+import { rankPressurePlankResults } from '../components/PressurePlank/pressurePlankLogic'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ export interface ChallengeRun {
   rawScores: Record<string, number>
   /** Per-player canonical higher-is-better scores used for ranking; usually 0-1000, but unbounded raw games may exceed it. */
   canonicalScores: Record<string, number>
+  ranking?: string[]
   winnerId: string
   timestamp: number
   /** Whether the winner was determined by the game authoritatively. */
@@ -595,7 +597,23 @@ export const completeChallenge =
 
     const { game, seed, participants } = pending
 
-    const ranked = computeScores(game.scoringAdapter, rawResults, game.scoringParams ?? {})
+    const ranked =
+      game.key === 'pressurePlank'
+        ? rankPressurePlankResults(
+            participants,
+            Object.fromEntries(rawResults.map((result) => [result.playerId, result.rawValue])),
+            seed
+          ).map((result) => ({
+            ...(rawResults.find((raw) => raw.playerId === result.playerId) ?? {
+              playerId: result.playerId,
+              rawValue: result.survivalSeconds,
+            }),
+            rawValue: result.survivalSeconds,
+            score: result.survivalSeconds,
+            points: Math.round(result.survivalSeconds),
+            rank: result.rank,
+          }))
+        : computeScores(game.scoringAdapter, rawResults, game.scoringParams ?? {})
 
     const canonicalScores: Record<string, number> = {}
     for (const r of ranked) canonicalScores[r.playerId] = r.score
@@ -605,7 +623,9 @@ export const completeChallenge =
     const positiveWinner = ranked.find((r) => r.score > 0)
     const winner = positiveWinner ?? ranked[0]
     const explicitWinnerId =
-      options?.authoritativeWinnerId && participants.includes(options.authoritativeWinnerId)
+      game.key !== 'pressurePlank' &&
+      options?.authoritativeWinnerId &&
+      participants.includes(options.authoritativeWinnerId)
         ? options.authoritativeWinnerId
         : null
     const winnerId = explicitWinnerId ?? winner?.playerId ?? participants[0] ?? ''
@@ -617,9 +637,13 @@ export const completeChallenge =
       participants,
       rawScores: Object.fromEntries(rawResults.map((r) => [r.playerId, r.rawValue])),
       canonicalScores,
+      ranking: ranked.map((result) => result.playerId),
       winnerId,
       timestamp: Date.now(),
-      authoritative: explicitWinnerId !== null || winner?.authoritativeWinner === true,
+      authoritative:
+        game.key === 'pressurePlank' ||
+        explicitWinnerId !== null ||
+        winner?.authoritativeWinner === true,
       partial: options?.partial === true,
     }
 

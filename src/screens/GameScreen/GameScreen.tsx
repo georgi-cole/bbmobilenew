@@ -47,6 +47,7 @@ import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBina
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
 import LaneRacersCanvasGame from '../../minigames/laneRacers/LaneRacersCanvasGame'
 import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import { rankPressurePlankResults } from '../../components/PressurePlank/pressurePlankLogic'
 import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
@@ -887,11 +888,18 @@ export default function GameScreen() {
     const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
     const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null
     const finalWinnerId = scoreWinnerId ?? pendingChallenge.participants[0]
-    const ranked = computeScores(
-      pendingChallenge.game.scoringAdapter,
-      rawResults,
-      pendingChallenge.game.scoringParams ?? {}
-    )
+    const ranked =
+      pendingChallenge.game.key === 'pressurePlank'
+        ? rankPressurePlankResults(
+            pendingChallenge.participants,
+            pendingChallenge.aiScores,
+            pendingChallenge.seed
+          )
+        : computeScores(
+            pendingChallenge.game.scoringAdapter,
+            rawResults,
+            pendingChallenge.game.scoringParams ?? {}
+          )
     const lastNonWinner = [...ranked].reverse().find((result) => result.playerId !== finalWinnerId)
 
     dispatch(

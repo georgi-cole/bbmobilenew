@@ -22,6 +22,7 @@ import gameReducer, {
 import settingsReducer from '../src/store/settingsSlice';
 import publicOpinionReducer from '../src/publicOpinion/publicOpinionSlice';
 import type { GameState, Player, CompleteMinigamePayload } from '../src/types';
+import { rankPressurePlankResults } from '../src/components/PressurePlank/pressurePlankLogic';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ describe('Pressure Plank — last-place finisher correctness', () => {
     expect(state.lohId).not.toBe(state.lastHohCompFinisherId);
   });
 
-  it('explicit lastPlaceId from the component overrides score-based derivation', () => {
+  it('canonical score order rejects an inconsistent lastPlaceId override', () => {
     const players = makePlayers(4);
     const store = makeStore({ players });
     // Score-based would pick p3 (score=30), but component says p2 is last
@@ -211,7 +212,7 @@ describe('Pressure Plank — last-place finisher correctness', () => {
       completeMinigame({ humanScore: 90, lastPlaceId: 'p2' } as CompleteMinigamePayload),
     );
 
-    expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
+    expect(store.getState().game.lastHohCompFinisherId).toBe('p3');
   });
 
   it('invalid lastPlaceId (equals winner) falls back to score-based derivation', () => {
@@ -426,7 +427,7 @@ describe('Pressure Plank — score and survival semantics', () => {
     expect(store.getState().game.lastHohCompFinisherId).toBe('p2');
   });
 
-  it('tie in score does not crash — a winner is still picked', () => {
+  it('tie in survival time uses the shared deterministic ordering', () => {
     const players = makePlayers(3);
     const store = makeStore({ players });
     // All tied
@@ -435,8 +436,23 @@ describe('Pressure Plank — score and survival semantics', () => {
     store.dispatch(completeMinigame({ humanScore: 70 } as CompleteMinigamePayload));
 
     const state = store.getState().game;
-    expect(['p0', 'p1', 'p2']).toContain(state.lohId);
+    const expectedWinner = rankPressurePlankResults(
+      ['p0', 'p1', 'p2'],
+      { p0: 70, p1: 70, p2: 70 },
+      42,
+    )[0].playerId;
+    expect(state.lohId).toBe(expectedWinner);
     expect(state.phase).toBe('loh_results');
+  });
+
+  it('ignores a stale winner override and keeps the longest survival authoritative', () => {
+    const players = makePlayers(3);
+    const store = makeStore({ players });
+    setupPressurePlankSession(store, ['p0', 'p1', 'p2'], { p1: 80, p2: 50 });
+    store.dispatch(
+      completeMinigame({ humanScore: 96.487, winnerId: 'p1' } as CompleteMinigamePayload),
+    );
+    expect(store.getState().game.lohId).toBe('p0');
   });
 
   it('two participants — winner and last-place are different players', () => {

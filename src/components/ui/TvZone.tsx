@@ -20,6 +20,7 @@ import {
 } from '../../store/gameSlice'
 import { saveRunSnapshot } from '../../store/saveStatePersistence'
 import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice'
+import { setMusicMix } from '../../store/uiSlice'
 import type { RootState } from '../../store/store'
 import GameTopChip from '../GameTopChip/GameTopChip'
 import TVLog from '../TVLog/TVLog'
@@ -973,6 +974,18 @@ export default function TvZone(props: TvZoneProps) {
     !voteResultsRevealActive &&
     !democraciaResultsRevealActive &&
     !audiencePreviewRevealActive
+  // Keep the Safety Ceremony bed present through the title card, then duck it
+  // under voting and reveal audio until the next phase resumes normal volume.
+  useEffect(() => {
+    const liveVoteTitleCardActive =
+      showInlineAnnouncement &&
+      (activeAnnouncement?.key === 'live_eviction' || activeAnnouncement?.key === 'vox_public_vote')
+    const shouldDuckSafetyMusic =
+      (gameState.phase === 'live_vote' && !liveVoteTitleCardActive) ||
+      gameState.phase === 'eviction_results'
+
+    dispatch(setMusicMix(shouldDuckSafetyMusic ? 'ducked' : 'normal'))
+  }, [activeAnnouncement?.key, dispatch, gameState.phase, showInlineAnnouncement])
 
   const showOccupancyChip =
     occupancyChip != null && !showInlineAnnouncement && winnerBroadcast == null

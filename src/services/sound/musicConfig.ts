@@ -197,10 +197,12 @@ export const DEFAULT_PHASE_MUSIC_POLICY: Readonly<Record<Phase, MusicSelection>>
   pos_results: COMPETITION_MUSIC,
   pos_ceremony: VETO_MUSIC,
   pos_ceremony_results: VETO_MUSIC,
-  social_2: SILENT_MUSIC,
-  live_vote: SILENT_MUSIC,
-  eviction_results: SILENT_MUSIC,
-  week_end: SILENT_MUSIC,
+  // Keep the Safety Ceremony bed continuous through final pitches, the live
+  // vote, the elimination reveal, and the closing message for the day.
+  social_2: VETO_MUSIC,
+  live_vote: VETO_MUSIC,
+  eviction_results: VETO_MUSIC,
+  week_end: VETO_MUSIC,
   final4_eviction: SILENT_MUSIC,
   final3: SILENT_MUSIC,
   final3_comp1: SILENT_MUSIC,
@@ -707,16 +709,23 @@ export function resolveMusicCue(
     if (spectatorCue) return spectatorCue
   }
 
-  if (context.socialOpen) {
-    const socialCue = resolveSelection(config.contextMusic.social, 'context.social', 'social')
-    if (socialCue) return socialCue
-  }
-
   const phaseCue = resolveSelection(
     getModePhaseSelection(context.mode, context.gamePhase, config),
     `phase.${context.mode}.${context.gamePhase}`,
     'phase'
   )
+
+  // Social themes are a silence fallback, not an interruption. If the current
+  // game phase already owns music, opening either social surface leaves that
+  // cue playing. A social theme is selected only when the parent phase is
+  // otherwise silent.
+  if (phaseCue && phaseCue.track !== 'none') return phaseCue
+
+  if (context.socialOpen) {
+    const socialCue = resolveSelection(config.contextMusic.social, 'context.social', 'social')
+    if (socialCue) return socialCue
+  }
+
   if (phaseCue) return phaseCue
 
   return (

@@ -252,10 +252,18 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_ENDURANCE_BALANCE,
     weights: WEIGHTS_ENDURANCE_BALANCE,
     minScore: 12,
-    maxScore: 92,
+    maxScore: 120,
+    scoreBuckets: [
+      { minScore: 12, maxScore: 29, weight: 0.14 },
+      { minScore: 30, maxScore: 54, weight: 0.26 },
+      { minScore: 55, maxScore: 79, weight: 0.32 },
+      { minScore: 80, maxScore: 103, weight: 0.22 },
+      { minScore: 104, maxScore: 116, weight: 0.05 },
+      { minScore: 120, maxScore: 120, weight: 0.01 },
+    ],
     notes:
-      'Pressure Plank uses a dedicated survival band after the stability redesign; ' +
-      'scores map to roughly 14-110 seconds and idle play is no longer viable.',
+      'Pressure Plank scores are native survival seconds. Skill-weighted bands follow the ' +
+      'escalating surge schedule, with varied early falls and rare 120-second completions.',
   },
   rainBarrelBalance: {
     key: 'rainBarrelBalance',

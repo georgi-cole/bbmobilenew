@@ -32,6 +32,7 @@ import {
 } from '../ai/competition'
 import { isHybridScoredGame, resolveHybridAiScores } from '../ai/competition/hybridScoreResolver'
 import { simulateSnakeAiScore } from '../ai/competition/snakeAiSimulator'
+import { rankPressurePlankResults } from '../components/PressurePlank/pressurePlankLogic'
 import HOUSEGUESTS from '../data/houseguests'
 import { loadActiveProfile, archiveKeyForActiveProfile, loadProfilesState } from './profilesSlice'
 import { loadSettings } from './settingsSlice'
@@ -3215,8 +3216,14 @@ const gameSlice = createSlice({
       // displayed leaderboard and the applied state transition stay aligned.
       // When using the hybrid resolver the component also calls it with the
       // same inputs, so the winnerId it supplies will be consistent.
-      const derivedWinnerId = determineWinner(session.participants, scores)
-      const winnerId = payload.winnerId ?? derivedWinnerId
+      const pressurePlankRanking =
+        session.key === 'pressurePlank'
+          ? rankPressurePlankResults(session.participants, scores, session.seed)
+          : null
+      const derivedWinnerId =
+        pressurePlankRanking?.[0]?.playerId ?? determineWinner(session.participants, scores)
+      const winnerId =
+        session.key === 'pressurePlank' ? derivedWinnerId : (payload.winnerId ?? derivedWinnerId)
 
       if (import.meta.env.DEV) {
         console.log('[completeMinigame] winner resolution', {
@@ -3275,7 +3282,13 @@ const gameSlice = createSlice({
             payload.lastPlaceId != null && nonWinners.includes(payload.lastPlaceId)
               ? payload.lastPlaceId
               : null
+          const canonicalPressurePlankLast = pressurePlankRanking
+            ? [...pressurePlankRanking]
+                .reverse()
+                .find((result) => nonWinners.includes(result.playerId))?.playerId
+            : null
           state.lastHohCompFinisherId =
+            canonicalPressurePlankLast ??
             explicitLastPlace ??
             nonWinners.reduce(
               (worst, id) => ((scores[id] ?? 0) < (scores[worst] ?? 0) ? id : worst),
@@ -9280,7 +9293,11 @@ export const startMinigame =
       // AI-only: determine winner immediately and return the result directly.
       // We do NOT dispatch completeMinigame here — that would write a stale
       // minigameResult that could later be consumed by an unrelated advance().
-      const winnerId = determineWinner(opts.participants, aiScores)
+      const winnerId =
+        opts.key === 'pressurePlank'
+          ? rankPressurePlankResults(opts.participants, aiScores, invocationSeed)[0]?.playerId
+          : determineWinner(opts.participants, aiScores)
+      if (!winnerId) throw new Error('startMinigame could not resolve a winner')
       const result: MinigameResult = { seedUsed: invocationSeed, scores: aiScores, winnerId }
       dispatch(
         applyCompetitionSeasonUpdate({
