@@ -237,6 +237,9 @@ export interface TvEvent {
 
 export type BroadcastLevel = 'minor' | 'major' | 'critical'
 
+/** Campaign filter used by the Broadcast Manager. Undefined means shared by every campaign. */
+export type BroadcastCampaign = 'classic' | 'survival' | 'cupid' | 'vox_populi'
+
 /** Per-save changes to a built-in broadcast definition. */
 export interface BroadcastOverride {
   text?: string
@@ -257,6 +260,8 @@ export interface CustomBroadcastMessage {
   /** Human-readable authoring key shown in the manager and emitted metadata. */
   key?: string
   phase: Phase
+  /** Limit this authored message to one campaign. Omit it to use the message everywhere. */
+  campaign?: BroadcastCampaign
   text: string
   title?: string
   type: TvEvent['type']

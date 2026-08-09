@@ -16,6 +16,7 @@ import type {
   SpecialVetoType,
   ForcedShockType,
   BroadcastOverride,
+  BroadcastCampaign,
   BroadcastLevel,
   CustomBroadcastMessage,
 } from '../types'
@@ -448,6 +449,11 @@ export function createInitialGameState(options?: {
     isDev: import.meta.env.DEV,
     hasSpecialAccess: canAccessSpecialSettings(),
   })
+  const initialBroadcastCampaign: BroadcastCampaign = cupidArrowIsScheduled
+    ? 'cupid'
+    : voxPopuliIsScheduled
+      ? 'vox_populi'
+      : 'classic'
 
   // Season-opening broadcasts are built from the same persistent registry as
   // every later phase. This makes edits, disabling, and mixed built-in/custom
@@ -488,7 +494,13 @@ export function createInitialGameState(options?: {
     ]
   })
   const seasonStartCustom = broadcastConfig.customMessages
-    .filter((message) => message.enabled && message.phase === 'season_start' && message.text.trim())
+    .filter(
+      (message) =>
+        message.enabled &&
+        message.phase === 'season_start' &&
+        (!message.campaign || message.campaign === initialBroadcastCampaign) &&
+        message.text.trim()
+    )
     .map((message) => ({
       id: message.id,
       order: message.order ?? 10000,
@@ -676,6 +688,23 @@ function inferObservedBroadcastSource(state: GameState, phase: Phase, text: stri
   })
   const sourceHash = (hashString(`${phase}|${sourceText}`) >>> 0).toString(36)
   return { id: `observed.${phase}.${sourceHash}`, sourceText, variables }
+}
+
+function currentBroadcastCampaign(state: GameState): BroadcastCampaign {
+  if (state.mode === 'survival') return 'survival'
+  if (
+    state.cupidArrow?.status === 'scheduled' ||
+    state.cupidArrow?.status === 'active' ||
+    state.expansionMode === 'cupidArrow'
+  )
+    return 'cupid'
+  if (
+    state.voxPopuli?.status === 'scheduled' ||
+    state.voxPopuli?.status === 'active' ||
+    state.expansionMode === 'voxPopuli'
+  )
+    return 'vox_populi'
+  return 'classic'
 }
 
 function buildTvMeta(
@@ -1076,7 +1105,11 @@ function activateCupidArrowForSeason(state: GameState) {
     state,
     `🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: ${pairNames}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘`,
     'twist',
-    { major: 'cupid_arrow' }
+    {
+      major: 'cupid_arrow',
+      broadcastTemplateId: 'cupid.activation',
+      phase: 'loh_comp_announcement',
+    }
   )
 }
 
@@ -1124,7 +1157,11 @@ function breakCupidArrowSpell(state: GameState) {
     state,
     `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
     'twist',
-    { major: 'cupid_arrow_broken' }
+    {
+      major: 'cupid_arrow_broken',
+      broadcastTemplateId: 'cupid.spell-broken',
+      phase: 'eviction_results',
+    }
   )
 }
 
@@ -1214,7 +1251,8 @@ function resolveCupidPairEviction(state: GameState): boolean {
     pushEvent(
       state,
       `The nominated pairs are tied. ${tieBreaker.name}, your LOH pair must decide which pair leaves. 🗳️`,
-      'game'
+      'game',
+      { broadcastTemplateId: 'cupid.pair-tiebreak-prompt', phase: 'eviction_results' }
     )
     return true
   }
@@ -1908,6 +1946,7 @@ function beginPhaseBroadcastSequence(state: GameState, phase: Phase) {
       (custom) =>
         custom.enabled &&
         custom.phase === phase &&
+        (!custom.campaign || custom.campaign === currentBroadcastCampaign(state)) &&
         custom.text.trim() &&
         !state.tvFeed.some(
           (event) => event.meta?.week === state.week && event.meta?.customBroadcastId === custom.id
@@ -4496,7 +4535,23 @@ const gameSlice = createSlice({
       state.pendingEviction = null
       state.dayStartShock = null
 
-      pushEvent(state, msg, 'game')
+      const cupidEvictionTemplateId = msg.includes(
+        "Cupid's Arrow means you are eliminated together"
+      )
+        ? msg.includes(' breaks the tie. ')
+          ? 'cupid.pair-tiebreak-eviction'
+          : 'cupid.pair-eviction'
+        : wasCupidPartnerFollowup
+          ? 'cupid.partner-eviction'
+          : undefined
+      pushEvent(
+        state,
+        msg,
+        'game',
+        cupidEvictionTemplateId
+          ? { broadcastTemplateId: cupidEvictionTemplateId, phase: 'eviction_results' }
+          : undefined
+      )
 
       if (
         cupidPartner &&
@@ -4641,7 +4696,10 @@ const gameSlice = createSlice({
         partner
           ? `${player.name} has chosen to self-evict. Cupid's Arrow also eliminates ${partner}. 🚪💔`
           : `${player.name} has chosen to self-evict from The Big Eye house. 🚪`,
-        'game'
+        'game',
+        partner
+          ? { broadcastTemplateId: 'cupid.self-eviction-pair', phase: 'eviction_results' }
+          : undefined
       )
     },
 
