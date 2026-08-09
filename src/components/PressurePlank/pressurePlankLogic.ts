@@ -49,7 +49,8 @@ export function rankPressurePlankResults(
     .sort((a, b) => {
       const timeDifference = b.survivalSeconds - a.survivalSeconds
       if (timeDifference !== 0) return timeDifference
-      const tieDifference = pressurePlankTieKey(seed, a.playerId) - pressurePlankTieKey(seed, b.playerId)
+      const tieDifference =
+        pressurePlankTieKey(seed, a.playerId) - pressurePlankTieKey(seed, b.playerId)
       return tieDifference !== 0 ? tieDifference : a.playerId.localeCompare(b.playerId)
     })
     .map((result, index) => ({ ...result, rank: index + 1 }))

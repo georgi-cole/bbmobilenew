@@ -54,7 +54,8 @@ export function simulateTetrisAiScores({
   let previousScore = ceiling + minGap
 
   ordered.forEach((participant, rank) => {
-    const position = participants.length === 1 ? 0.5 : (rank + 0.35) / (participants.length - 1 + 0.7)
+    const position =
+      participants.length === 1 ? 0.5 : (rank + 0.35) / (participants.length - 1 + 0.7)
     // 86% -> 14% of the range, with slightly compressed extremes in small heats.
     const expectedRatio = 0.86 - position * 0.72
     const rng = mulberry32(((seed >>> 0) ^ hashString(participant.id) ^ 0xf17e1e) >>> 0)

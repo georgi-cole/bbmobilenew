@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { simulateTetrisAiScores } from '../../src/ai/competition/tetrisSimulation'
-import { rankTetrisRound, type TetrisRoundPerformance } from '../../src/components/TetrisComp/tournament'
+import {
+  rankTetrisRound,
+  type TetrisRoundPerformance,
+} from '../../src/components/TetrisComp/tournament'
 
 const field = Array.from({ length: 6 }, (_, index) => ({
   id: `ai-${index + 1}`,
@@ -13,8 +16,18 @@ function performance(playerId: string, score: number, tieBreaker: number): Tetri
 
 describe('Fit Me In AI distribution', () => {
   it('is deterministic and makes a full field meaningfully spread out', () => {
-    const first = simulateTetrisAiScores({ seed: 42, participants: field, minScore: 320, maxScore: 2_700 })
-    const second = simulateTetrisAiScores({ seed: 42, participants: field, minScore: 320, maxScore: 2_700 })
+    const first = simulateTetrisAiScores({
+      seed: 42,
+      participants: field,
+      minScore: 320,
+      maxScore: 2_700,
+    })
+    const second = simulateTetrisAiScores({
+      seed: 42,
+      participants: field,
+      minScore: 320,
+      maxScore: 2_700,
+    })
     const ordered = Object.values(first).sort((a, b) => b - a)
 
     expect(second).toEqual(first)
@@ -26,7 +39,10 @@ describe('Fit Me In AI distribution', () => {
   })
 
   it('uses a stable, non-random tie resolution after all visible metrics tie', () => {
-    const ranked = rankTetrisRound([performance('zeta', 1000, 0.99), performance('alpha', 1000, 0.01)])
+    const ranked = rankTetrisRound([
+      performance('zeta', 1000, 0.99),
+      performance('alpha', 1000, 0.01),
+    ])
     expect(ranked.map((entry) => entry.playerId)).toEqual(['alpha', 'zeta'])
   })
 })
