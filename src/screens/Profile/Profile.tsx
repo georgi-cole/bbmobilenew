@@ -19,6 +19,7 @@ import './Profile.css';
 const HOLD_REVEAL_DELAY_MS = 360;
 
 const PHASE_SHORT_LABELS: Partial<Record<Phase, string>> = {
+  season_start: 'Season',
   week_start: 'Start',
   loh_comp_announcement: 'LOH',
   loh_comp: 'LOH',
@@ -499,7 +500,7 @@ export default function Profile() {
   const survivorUnlockedCount = Object.keys(survivorUnlocks).length;
   const survivorAchievementCards = buildUnlockedSurvivorAchievementDisplayModels(survivorUnlocks);
 
-  const gameInProgress = isGameActive || week > 1 || phase !== 'week_start';
+  const gameInProgress = isGameActive || week > 1 || (phase !== 'season_start' && phase !== 'week_start');
   const returnTo = ((location.state as { from?: string } | null)?.from === '/'
     ? '/'
     : '/game');

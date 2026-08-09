@@ -368,7 +368,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
+    expect(state.tvFeed).toHaveLength(0);
   });
 
   it('skips pre_veto_public_save and still announces POS when public mode is off', () => {
@@ -385,7 +385,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
+    expect(state.tvFeed).toHaveLength(0);
   });
 
   it('skips pre_veto_public_save when the block is not exactly 3 nominees', () => {
@@ -402,7 +402,7 @@ describe('pre_veto_public_save phase', () => {
 
     expect(state.phase).toBe('pos_comp_announcement');
     expect(state.awaitingPublicSave).toBeFalsy();
-    expect(state.tvFeed[0]?.text).toContain('It is time for the Power of Safety competition');
+    expect(state.tvFeed).toHaveLength(0);
   });
 
   it('commitPublicSave removes saved nominee, records publicSavedNomineeId, and advances phase', () => {
@@ -419,7 +419,7 @@ describe('pre_veto_public_save phase', () => {
       players,
     });
 
-    store.dispatch(commitPublicSave({ savedId: 'p1', supportPercent: 52 }));
+    store.dispatch(commitPublicSave({ savedId: 'p1' }));
     const state = store.getState().game;
 
     expect(state.phase).toBe('pos_comp_announcement');
@@ -431,15 +431,9 @@ describe('pre_veto_public_save phase', () => {
     expect(state.nomineeIds).toContain('p5');
     // Saved player reverts to active
     expect(state.players.find((p) => p.id === 'p1')?.status).toBe('active');
-    expect(state.tvFeed[0]?.text).toBe(
-      'Player 1 was saved with 52% of the public support. Player 2 and Player 5 are still in danger.',
-    );
-    expect(state.tvFeed[0]?.meta?.suppressPhaseAnnouncementKey).toBe('pos_comp_announcement');
-    expect(
-      state.tvFeed.some((event) =>
-        event.text.includes('It is time for the Power of Safety competition'),
-      ),
-    ).toBe(true);
+    // The result has already played in the Public Save reveal; committing it
+    // updates gameplay only and does not repeat that reveal in the TV feed.
+    expect(state.tvFeed).toHaveLength(0);
   });
 
   it('commitPublicSave is a no-op when phase is not pre_veto_public_save', () => {

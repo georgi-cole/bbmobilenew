@@ -88,7 +88,7 @@ describe('GameOver screen', () => {
     expect(archives).toHaveLength(1);
     expect(archives[0].seasonIndex).toBe(3);
     expect(archives[0].playerSummaries.some((summary) => summary.playerId === 'user')).toBe(true);
-    expect(store.getState().game.phase).toBe('week_start');
+    expect(store.getState().game.phase).toBe('season_start');
     expect(store.getState().game.seasonFinale).toBeNull();
   });
 
@@ -116,7 +116,7 @@ describe('GameOver screen', () => {
     });
 
     expect(store.getState().game.week).toBe(1);
-    expect(store.getState().game.phase).toBe('week_start');
+    expect(store.getState().game.phase).toBe('season_start');
 
     const archives = store.getState().game.seasonArchives ?? [];
     expect(archives).toHaveLength(1);

@@ -381,6 +381,12 @@
   pointer-events: none;
 }
 
+/* Manager-driven plain messages keep the signal-lock blur, but resolve fast
+   enough that consecutive queue items never resemble an empty TV frame. */
+.tv-zone__now--quick-transition {
+  animation-duration: 120ms, 120ms;
+}
+
 .tv-zone__now--detox-stream {
   border: 1px solid rgba(255, 255, 255, 0.08);
   text-shadow:

@@ -1,6 +1,7 @@
 import type { Phase } from '../types';
 
 const PHASE_LABELS: Partial<Record<Phase, string>> = {
+  season_start: 'Season start',
   week_start: 'Day start',
   loh_comp_announcement: 'LOH competition',
   loh_comp: 'LOH competition',

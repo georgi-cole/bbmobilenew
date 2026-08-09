@@ -15,6 +15,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import gameReducer, {
   advance,
   addTvEvent,
+  setPhase,
   setReplacementNominee,
   submitPovSaveTarget,
   aiReplacementRendered,
@@ -82,6 +83,45 @@ describe('tvFeed — event ID uniqueness', () => {
     const uniqueIds = new Set(ids)
 
     expect(uniqueIds.size).toBe(ids.length)
+  })
+
+  it('does not repeat an exact broadcast line if a phase is resumed', () => {
+    const store = makeStore({
+      phase: 'loh_results',
+      week: 2,
+      lohId: 'p1',
+      players: makePlayers(6).map((player) =>
+        player.id === 'p1' ? { ...player, status: 'loh' as const } : player
+      ),
+    })
+
+    store.dispatch(advance())
+    store.dispatch(setPhase('loh_results'))
+    store.dispatch(advance())
+
+    expect(
+      store
+        .getState()
+        .game.tvFeed.filter(
+          (event) => event.text === 'Housemates congratulate Player 1. Alliances are already forming… 💬'
+        )
+    ).toHaveLength(1)
+  })
+
+  it('adds exactly one fresh day-start line after day end', () => {
+    const store = makeStore({ phase: 'week_end', week: 1, tvFeed: [] })
+
+    store.dispatch(advance())
+
+    const dayStarts = store
+      .getState()
+      .game.tvFeed.filter((event) => event.meta?.key === 'day_start')
+
+    expect(dayStarts).toHaveLength(1)
+    expect(dayStarts[0]).toMatchObject({
+      text: 'Day 2 has begun. Get ready.',
+      meta: { phase: 'week_start', week: 2 },
+    })
   })
 
   it('addTvEvent produces unique IDs for rapid-fire dispatches', () => {

@@ -156,6 +156,8 @@ export function createSurvivorRun(): GameState {
     saveVersion: SAVE_VERSION,
     season: 1,
     week: 1,
+    // Surveyeval has its own opening feed and begins directly on Day 1.
+    phase: 'week_start',
     publicModeEnabled: false,
     cupidArrow: {
       scheduledSeason: null,

@@ -368,6 +368,7 @@ export default function ShockIntroOverlay({
             announcement={displayAnnouncement}
             paused
             showInfoButton={false}
+            playShockPrelude={false}
           />
         </div>
       )}

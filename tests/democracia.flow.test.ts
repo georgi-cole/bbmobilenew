@@ -376,6 +376,17 @@ describe('Democracia twist', () => {
       // Advance from democracia_results → social_1
       store.dispatch(advance())
       expect(store.getState().game.phase).toBe('social_1')
+
+      // The Democracia result already announced the social beat. Leaving the
+      // normal social phase must not broadcast the same congratulations again.
+      store.dispatch(advance())
+      const congratulations = store
+        .getState()
+        .game.tvFeed.filter(
+          (event) =>
+            event.text === 'Housemates congratulate Player 1. Alliances are already forming… 💬'
+        )
+      expect(congratulations).toHaveLength(1)
     })
   })
 

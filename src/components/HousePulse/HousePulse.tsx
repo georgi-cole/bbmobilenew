@@ -29,6 +29,7 @@ const RUMOUR_LABEL: Record<string, string> = {
 }
 
 const PHASE_LABEL: Record<string, string> = {
+  season_start: 'Season opening',
   week_start: 'Start of the day',
   loh_results: 'After the LOH competition',
   social_1: 'Before nominations',

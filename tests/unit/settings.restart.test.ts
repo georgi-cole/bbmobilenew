@@ -246,14 +246,14 @@ describe('resetGame() uses fresh settings', () => {
     expect(players).toHaveLength(16);
   });
 
-  it('resets to week 1, phase week_start', () => {
+  it('resets to week 1, phase season_start', () => {
     const store = makeStore();
     persistSettings(DEFAULT_SETTINGS);
     store.dispatch(resetGame());
 
     const { week, phase } = store.getState().game;
     expect(week).toBe(1);
-    expect(phase).toBe('week_start');
+    expect(phase).toBe('season_start');
   });
 
   it('preserves existing seasonArchives when no payload is provided', () => {
@@ -285,11 +285,11 @@ describe('createInitialGameState() factory', () => {
     expect(state2.players).toHaveLength(10);
   });
 
-  it('always starts at week 1, phase week_start', () => {
+  it('always starts at week 1, phase season_start', () => {
     persistSettings(DEFAULT_SETTINGS);
     const state = createInitialGameState();
     expect(state.week).toBe(1);
-    expect(state.phase).toBe('week_start');
+    expect(state.phase).toBe('season_start');
   });
 
   it('reads publicMode from persisted settings', () => {

@@ -16,6 +16,12 @@ interface PhaseCopy {
 }
 
 const PHASE_COPY: Record<string, PhaseCopy> = {
+  season_start: {
+    icon: '🏠',
+    label: 'SEASON START',
+    category: 'Game Event',
+    body: 'The house opens and the season rules are introduced before Day 1 begins.',
+  },
   week_start: {
     icon: '📅',
     label: 'NEW DAY',
