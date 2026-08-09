@@ -46,9 +46,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000
 export const DEFAULT_REMOTE_CONFIG_URL: string =
   (typeof import.meta !== 'undefined' &&
     (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
-  (import.meta.env.DEV
-    ? apiUrl('/api/live-config')
-    : GITHUB_PAGES_REMOTE_CONFIG_URL)
+  (import.meta.env.DEV ? apiUrl('/api/live-config') : GITHUB_PAGES_REMOTE_CONFIG_URL)
 
 const FETCH_TIMEOUT_MS = 8000
 
