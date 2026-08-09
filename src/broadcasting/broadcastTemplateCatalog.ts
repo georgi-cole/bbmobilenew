@@ -47,7 +47,18 @@ const feed = (
   note?: string,
   forceOnTv = true,
   campaign?: BroadcastCampaign
-): BroadcastTemplate => ({ id, phase, kind: 'feed', text, type, level, major, forceOnTv, campaign, note })
+): BroadcastTemplate => ({
+  id,
+  phase,
+  kind: 'feed',
+  text,
+  type,
+  level,
+  major,
+  forceOnTv,
+  campaign,
+  note,
+})
 
 const card = (
   id: string,
@@ -133,8 +144,28 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'vox_populi',
     'Vox Populi seasons only'
   ),
-  feed('survival.opening', 'week_start', 'Surveyeval Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.', 'game', 'major', 'surveyeval_opening', 'Surveyeval opening', true, 'survival'),
-  feed('survival.rules', 'week_start', '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible', 'game', 'minor', undefined, 'Surveyeval opening', true, 'survival'),
+  feed(
+    'survival.opening',
+    'week_start',
+    'Surveyeval Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
+    'game',
+    'major',
+    'surveyeval_opening',
+    'Surveyeval opening',
+    true,
+    'survival'
+  ),
+  feed(
+    'survival.rules',
+    'week_start',
+    '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible',
+    'game',
+    'minor',
+    undefined,
+    'Surveyeval opening',
+    true,
+    'survival'
+  ),
   feed(
     'week.tribunal-start',
     'week_start',
@@ -209,7 +240,17 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     undefined,
     "Cupid's Arrow branch"
   ),
-  feed('cupid.activation', 'loh_comp_announcement', '🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: {pairs}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘', 'twist', 'critical', 'cupid_arrow', "Cupid's Arrow opening", true, 'cupid'),
+  feed(
+    'cupid.activation',
+    'loh_comp_announcement',
+    '🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: {pairs}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘',
+    'twist',
+    'critical',
+    'cupid_arrow',
+    "Cupid's Arrow opening",
+    true,
+    'cupid'
+  ),
   feed(
     'loh.vox-last-place',
     'loh_results',
@@ -460,13 +501,83 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'eviction_results',
     '{evictee}, you have been eliminated from The Big Eye house. 🚪'
   ),
-  feed('cupid.spell-broken', 'eviction_results', '💔 Four pairs have fallen. Cracks race through Cupid\'s hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.', 'twist', 'critical', 'cupid_arrow_broken', "Cupid's Arrow ending", true, 'cupid'),
-  feed('cupid.pair-eviction', 'eviction_results', "{players}, Cupid's Arrow means you are eliminated together. 💔", 'game', 'major', 'cupid_pair_eviction', "Cupid's Arrow eviction", true, 'cupid'),
-  feed('cupid.pair-tiebreak-eviction', 'eviction_results', "{leader} breaks the tie. {players}, Cupid's Arrow means you are eliminated together. 💔", 'game', 'major', 'cupid_pair_eviction', "Cupid's Arrow tie-break eviction", true, 'cupid'),
-  feed('cupid.partner-eviction', 'eviction_results', "{partner} is bound to {evictee} by Cupid's Arrow and is eliminated too. 💔", 'game', 'major', 'cupid_partner_eviction', "Cupid's Arrow paired exit", true, 'cupid'),
-  feed('cupid.self-eviction-pair', 'eviction_results', "{player} has chosen to self-evict. Cupid's Arrow also eliminates {partner}. 🚪💔", 'game', 'major', 'cupid_pair_eviction', "Cupid's Arrow paired exit", true, 'cupid'),
-  feed('cupid.pair-tiebreak-prompt', 'eviction_results', 'The nominated pairs are tied. {leader}, your LOH pair must decide which pair leaves. 🗳️', 'game', 'major', 'cupid_pair_tiebreak', "Cupid's Arrow tie-break", true, 'cupid'),
-  feed('survival.run-ended', 'eviction_results', 'Surveyeval run ended. You were eliminated on Day {day}.', 'game', 'major', 'surveyeval_ended', 'Surveyeval ending', true, 'survival'),
+  feed(
+    'cupid.spell-broken',
+    'eviction_results',
+    "💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.",
+    'twist',
+    'critical',
+    'cupid_arrow_broken',
+    "Cupid's Arrow ending",
+    true,
+    'cupid'
+  ),
+  feed(
+    'cupid.pair-eviction',
+    'eviction_results',
+    "{players}, Cupid's Arrow means you are eliminated together. 💔",
+    'game',
+    'major',
+    'cupid_pair_eviction',
+    "Cupid's Arrow eviction",
+    true,
+    'cupid'
+  ),
+  feed(
+    'cupid.pair-tiebreak-eviction',
+    'eviction_results',
+    "{leader} breaks the tie. {players}, Cupid's Arrow means you are eliminated together. 💔",
+    'game',
+    'major',
+    'cupid_pair_eviction',
+    "Cupid's Arrow tie-break eviction",
+    true,
+    'cupid'
+  ),
+  feed(
+    'cupid.partner-eviction',
+    'eviction_results',
+    "{partner} is bound to {evictee} by Cupid's Arrow and is eliminated too. 💔",
+    'game',
+    'major',
+    'cupid_partner_eviction',
+    "Cupid's Arrow paired exit",
+    true,
+    'cupid'
+  ),
+  feed(
+    'cupid.self-eviction-pair',
+    'eviction_results',
+    "{player} has chosen to self-evict. Cupid's Arrow also eliminates {partner}. 🚪💔",
+    'game',
+    'major',
+    'cupid_pair_eviction',
+    "Cupid's Arrow paired exit",
+    true,
+    'cupid'
+  ),
+  feed(
+    'cupid.pair-tiebreak-prompt',
+    'eviction_results',
+    'The nominated pairs are tied. {leader}, your LOH pair must decide which pair leaves. 🗳️',
+    'game',
+    'major',
+    'cupid_pair_tiebreak',
+    "Cupid's Arrow tie-break",
+    true,
+    'cupid'
+  ),
+  feed(
+    'survival.run-ended',
+    'eviction_results',
+    'Surveyeval run ended. You were eliminated on Day {day}.',
+    'game',
+    'major',
+    'surveyeval_ended',
+    'Surveyeval ending',
+    true,
+    'survival'
+  ),
   feed('week.day-end', 'week_end', 'Day {day} has come to an end. A new day begins soon… ✨'),
   card(
     'card.final4',

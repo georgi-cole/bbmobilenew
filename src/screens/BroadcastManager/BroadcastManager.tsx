@@ -11,7 +11,13 @@ import {
   updateTvEvent,
 } from '../../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import type { BroadcastCampaign, BroadcastLevel, CustomBroadcastMessage, Phase, TvEvent } from '../../types'
+import type {
+  BroadcastCampaign,
+  BroadcastLevel,
+  CustomBroadcastMessage,
+  Phase,
+  TvEvent,
+} from '../../types'
 import { isDebugAccessGranted } from '../../utils/debugMode'
 import {
   ALL_BROADCAST_PHASES,
@@ -126,23 +132,53 @@ export default function BroadcastManager() {
   const overrides = useMemo(() => game.broadcastOverrides ?? {}, [game.broadcastOverrides])
   const customMessages = useMemo(() => game.customBroadcasts ?? [], [game.customBroadcasts])
   const templates = useMemo(
-    () => getBroadcastTemplatesForPhase(selectedPhase).filter((template) => matchesBroadcastCampaign(template, selectedCampaign)),
+    () =>
+      getBroadcastTemplatesForPhase(selectedPhase).filter((template) =>
+        matchesBroadcastCampaign(template, selectedCampaign)
+      ),
     [selectedCampaign, selectedPhase]
   )
   const phaseCustom = useMemo(
     () =>
       customMessages
         .filter((message) => message.phase === selectedPhase)
-        .filter((message) => selectedCampaign === 'all' || !message.campaign || message.campaign === selectedCampaign)
+        .filter(
+          (message) =>
+            selectedCampaign === 'all' || !message.campaign || message.campaign === selectedCampaign
+        )
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [customMessages, selectedCampaign, selectedPhase]
   )
   const liveMessages = useMemo(
-    () => game.tvFeed.filter((event) => eventPhase(event) === selectedPhase && (selectedCampaign === 'all' || !eventCampaign(event) || eventCampaign(event) === selectedCampaign)),
+    () =>
+      game.tvFeed.filter(
+        (event) =>
+          eventPhase(event) === selectedPhase &&
+          (selectedCampaign === 'all' ||
+            !eventCampaign(event) ||
+            eventCampaign(event) === selectedCampaign)
+      ),
     [game.tvFeed, selectedCampaign, selectedPhase]
   )
   const visiblePhases = useMemo(
-    () => ALL_BROADCAST_PHASES.filter((phase) => selectedCampaign === 'all' || getBroadcastTemplatesForPhase(phase).some((template) => matchesBroadcastCampaign(template, selectedCampaign)) || customMessages.some((message) => message.phase === phase && (!message.campaign || message.campaign === selectedCampaign)) || game.tvFeed.some((event) => eventPhase(event) === phase && (!eventCampaign(event) || eventCampaign(event) === selectedCampaign))),
+    () =>
+      ALL_BROADCAST_PHASES.filter(
+        (phase) =>
+          selectedCampaign === 'all' ||
+          getBroadcastTemplatesForPhase(phase).some((template) =>
+            matchesBroadcastCampaign(template, selectedCampaign)
+          ) ||
+          customMessages.some(
+            (message) =>
+              message.phase === phase &&
+              (!message.campaign || message.campaign === selectedCampaign)
+          ) ||
+          game.tvFeed.some(
+            (event) =>
+              eventPhase(event) === phase &&
+              (!eventCampaign(event) || eventCampaign(event) === selectedCampaign)
+          )
+      ),
     [customMessages, game.tvFeed, selectedCampaign]
   )
   const observedSources = useMemo(() => {
@@ -448,13 +484,21 @@ export default function BroadcastManager() {
             const campaign = event.target.value as BroadcastCampaign | 'all'
             setSelectedCampaign(campaign)
             const nextPhase = ALL_BROADCAST_PHASES.find(
-              (phase) => campaign === 'all' || getBroadcastTemplatesForPhase(phase).some((template) => matchesBroadcastCampaign(template, campaign))
+              (phase) =>
+                campaign === 'all' ||
+                getBroadcastTemplatesForPhase(phase).some((template) =>
+                  matchesBroadcastCampaign(template, campaign)
+                )
             )
             if (nextPhase) setSelectedPhase(nextPhase)
           }}
         >
           <option value="all">All campaigns</option>
-          {BROADCAST_CAMPAIGNS.map((campaign) => <option key={campaign} value={campaign}>{BROADCAST_CAMPAIGN_LABELS[campaign]}</option>)}
+          {BROADCAST_CAMPAIGNS.map((campaign) => (
+            <option key={campaign} value={campaign}>
+              {BROADCAST_CAMPAIGN_LABELS[campaign]}
+            </option>
+          ))}
         </select>
       </label>
 
@@ -462,9 +506,23 @@ export default function BroadcastManager() {
         {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
         <nav className="broadcast-manager__phases" aria-label="Broadcast phases">
           {visiblePhases.map((phase) => {
-            const builtInCount = getBroadcastTemplatesForPhase(phase).filter((template) => matchesBroadcastCampaign(template, selectedCampaign)).length
-            const customCount = customMessages.filter((message) => message.phase === phase && (selectedCampaign === 'all' || !message.campaign || message.campaign === selectedCampaign)).length
-            const liveCount = game.tvFeed.filter((event) => eventPhase(event) === phase && (selectedCampaign === 'all' || !eventCampaign(event) || eventCampaign(event) === selectedCampaign)).length
+            const builtInCount = getBroadcastTemplatesForPhase(phase).filter((template) =>
+              matchesBroadcastCampaign(template, selectedCampaign)
+            ).length
+            const customCount = customMessages.filter(
+              (message) =>
+                message.phase === phase &&
+                (selectedCampaign === 'all' ||
+                  !message.campaign ||
+                  message.campaign === selectedCampaign)
+            ).length
+            const liveCount = game.tvFeed.filter(
+              (event) =>
+                eventPhase(event) === phase &&
+                (selectedCampaign === 'all' ||
+                  !eventCampaign(event) ||
+                  eventCampaign(event) === selectedCampaign)
+            ).length
             return (
               <button
                 key={phase}
@@ -892,44 +950,60 @@ export default function BroadcastManager() {
             </label>
             {(editor.mode === 'new' || editor.mode === 'custom') && (
               <>
-              <label>
-                Campaign
-                <select value={editor.campaign} onChange={(event) => setEditor({ ...editor, campaign: event.target.value as BroadcastCampaign | '' })}>
-                  <option value="">All campaigns</option>
-                  {BROADCAST_CAMPAIGNS.map((campaign) => <option key={campaign} value={campaign}>{BROADCAST_CAMPAIGN_LABELS[campaign]}</option>)}
-                </select>
-                <small>This message emits only in the selected campaign. Choose All campaigns for shared copy.</small>
-              </label>
-              <label>
-                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
-                Message key / name
-                <input
-                  value={editor.key}
-                  placeholder={MESSAGE_KEY_PLACEHOLDER}
-                  onChange={(event) => setEditor({ ...editor, key: event.target.value })}
-                />
-                <small>
+                <label>
+                  Campaign
+                  <select
+                    value={editor.campaign}
+                    onChange={(event) =>
+                      setEditor({
+                        ...editor,
+                        campaign: event.target.value as BroadcastCampaign | '',
+                      })
+                    }
+                  >
+                    <option value="">All campaigns</option>
+                    {BROADCAST_CAMPAIGNS.map((campaign) => (
+                      <option key={campaign} value={campaign}>
+                        {BROADCAST_CAMPAIGN_LABELS[campaign]}
+                      </option>
+                    ))}
+                  </select>
+                  <small>
+                    This message emits only in the selected campaign. Choose All campaigns for
+                    shared copy.
+                  </small>
+                </label>
+                <label>
                   {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
-                  Use a readable stable key such as <code>social.alliance-warning</code>. Spaces are
-                  converted to dashes; a key without a prefix becomes <code>custom.your-key</code>.
-                </small>
-                {!normalizeMessageKey(editor.key) && (
-                  <small className="broadcast-manager__field-error">
+                  Message key / name
+                  <input
+                    value={editor.key}
+                    placeholder={MESSAGE_KEY_PLACEHOLDER}
+                    onChange={(event) => setEditor({ ...editor, key: event.target.value })}
+                  />
+                  <small>
                     {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
-                    A message key is required.
+                    Use a readable stable key such as <code>social.alliance-warning</code>. Spaces
+                    are converted to dashes; a key without a prefix becomes{' '}
+                    <code>custom.your-key</code>.
                   </small>
-                )}
-                {customMessages.some(
-                  (message) =>
-                    message.id !== editor.id &&
-                    (message.key ?? '') === normalizeMessageKey(editor.key)
-                ) && (
-                  <small className="broadcast-manager__field-error">
-                    {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
-                    That key is already in use.
-                  </small>
-                )}
-              </label>
+                  {!normalizeMessageKey(editor.key) && (
+                    <small className="broadcast-manager__field-error">
+                      {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+                      A message key is required.
+                    </small>
+                  )}
+                  {customMessages.some(
+                    (message) =>
+                      message.id !== editor.id &&
+                      (message.key ?? '') === normalizeMessageKey(editor.key)
+                  ) && (
+                    <small className="broadcast-manager__field-error">
+                      {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+                      That key is already in use.
+                    </small>
+                  )}
+                </label>
               </>
             )}
             {(editor.isCard || editor.forceOnTv || editor.level !== 'minor') && (
