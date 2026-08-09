@@ -162,10 +162,7 @@ store.subscribe(() => {
   ) {
     prevBroadcastOverrides = current.game.broadcastOverrides
     prevCustomBroadcasts = current.game.customBroadcasts
-    saveBroadcastConfig(
-      current.game.broadcastOverrides ?? {},
-      current.game.customBroadcasts ?? []
-    )
+    saveBroadcastConfig(current.game.broadcastOverrides ?? {}, current.game.customBroadcasts ?? [])
   }
   if (current.settings !== prevSettings) {
     prevSettings = current.settings

@@ -111,7 +111,9 @@ describe('broadcast manager reducers', () => {
     state = gameReducer(state, advance())
 
     expect(state.phase).toBe('loh_comp')
-    expect(state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'loh.competition-start')).toBe(false)
+    expect(
+      state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'loh.competition-start')
+    ).toBe(false)
   })
 
   it('emits a custom message once when Play processes its phase', () => {
@@ -130,7 +132,9 @@ describe('broadcast manager reducers', () => {
 
     state = gameReducer(state, advance())
 
-    expect(state.tvFeed.filter((event) => event.meta?.customBroadcastId === 'qa-custom')).toHaveLength(1)
+    expect(
+      state.tvFeed.filter((event) => event.meta?.customBroadcastId === 'qa-custom')
+    ).toHaveLength(1)
   })
 
   it('starts a fresh season separately and enters Day 1 without incrementing the day', () => {
@@ -138,14 +142,20 @@ describe('broadcast manager reducers', () => {
 
     expect(state.phase).toBe('season_start')
     expect(state.week).toBe(1)
-    expect(state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'season.welcome')).toBe(true)
-    expect(state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'season.public-mode-rule')).toBe(true)
+    expect(state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'season.welcome')).toBe(
+      true
+    )
+    expect(
+      state.tvFeed.some((event) => event.meta?.broadcastTemplateId === 'season.public-mode-rule')
+    ).toBe(true)
 
     state = gameReducer(state, advance())
 
     expect(state.phase).toBe('week_start')
     expect(state.week).toBe(1)
-    expect(state.tvFeed.filter((event) => event.meta?.broadcastTemplateId === 'season.welcome')).toHaveLength(1)
+    expect(
+      state.tvFeed.filter((event) => event.meta?.broadcastTemplateId === 'season.welcome')
+    ).toHaveLength(1)
     expect(state.tvFeed[0]).toMatchObject({
       text: 'Day 1 has begun. Get ready.',
       meta: { phase: 'week_start', broadcastTemplateId: 'week.day-start' },
@@ -174,20 +184,25 @@ describe('broadcast manager reducers', () => {
 
   it('applies manager changes from another tab to the active phase queue', () => {
     let state = gameReducer(undefined, { type: 'init' })
-    state = gameReducer(state, replaceBroadcastConfig({
-      overrides: state.broadcastOverrides ?? {},
-      customMessages: [{
-        id: 'cross-tab-message',
-        key: 'custom.cross-tab-message',
-        phase: 'season_start',
-        text: 'Saved in the manager tab.',
-        type: 'game',
-        level: 'minor',
-        enabled: true,
-        forceOnTv: true,
-        order: 10,
-      }],
-    }))
+    state = gameReducer(
+      state,
+      replaceBroadcastConfig({
+        overrides: state.broadcastOverrides ?? {},
+        customMessages: [
+          {
+            id: 'cross-tab-message',
+            key: 'custom.cross-tab-message',
+            phase: 'season_start',
+            text: 'Saved in the manager tab.',
+            type: 'game',
+            level: 'minor',
+            enabled: true,
+            forceOnTv: true,
+            order: 10,
+          },
+        ],
+      })
+    )
 
     const event = state.tvFeed.find(
       (candidate) => candidate.meta?.customBroadcastId === 'cross-tab-message'
@@ -198,14 +213,33 @@ describe('broadcast manager reducers', () => {
 
   it('honors custom sequence order and can force a minor line onto the faux TV', () => {
     let state = gameReducer(undefined, { type: 'init' })
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'second', key: 'custom.second', phase: 'week_start', text: 'Second line', type: 'game', level: 'minor',
-      enabled: true, order: 20,
-    }))
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'first', key: 'custom.first', phase: 'week_start', text: 'First line', type: 'game', level: 'minor',
-      enabled: true, order: 10, forceOnTv: true,
-    }))
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'second',
+        key: 'custom.second',
+        phase: 'week_start',
+        text: 'Second line',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        order: 20,
+      })
+    )
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'first',
+        key: 'custom.first',
+        phase: 'week_start',
+        text: 'First line',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        order: 10,
+        forceOnTv: true,
+      })
+    )
 
     state = gameReducer(state, advance())
 
@@ -229,18 +263,40 @@ describe('broadcast manager reducers', () => {
 
   it('reorders a phase atomically', () => {
     let state = gameReducer(undefined, { type: 'init' })
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'one', key: 'custom.one', phase: 'social_1', text: 'One', type: 'game',
-      level: 'minor', enabled: true, order: 10,
-    }))
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'two', key: 'custom.two', phase: 'social_1', text: 'Two', type: 'game',
-      level: 'minor', enabled: true, order: 20,
-    }))
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'one',
+        key: 'custom.one',
+        phase: 'social_1',
+        text: 'One',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        order: 10,
+      })
+    )
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'two',
+        key: 'custom.two',
+        phase: 'social_1',
+        text: 'Two',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        order: 20,
+      })
+    )
 
-    state = gameReducer(state, reorderCustomBroadcasts({
-      phase: 'social_1', orderedIds: ['two', 'one'],
-    }))
+    state = gameReducer(
+      state,
+      reorderCustomBroadcasts({
+        phase: 'social_1',
+        orderedIds: ['two', 'one'],
+      })
+    )
 
     expect(
       [...(state.customBroadcasts ?? [])]
@@ -259,14 +315,17 @@ describe('broadcast manager reducers', () => {
       { id: 'critical-card', level: 'critical' as const, forceOnTv: true, order: 40 },
     ]
     for (const message of messages) {
-      state = gameReducer(state, addCustomBroadcast({
-        ...message,
-        key: `custom.${message.id}`,
-        phase: 'season_start',
-        text: message.id,
-        type: 'game',
-        enabled: true,
-      }))
+      state = gameReducer(
+        state,
+        addCustomBroadcast({
+          ...message,
+          key: `custom.${message.id}`,
+          phase: 'season_start',
+          text: message.id,
+          type: 'game',
+          enabled: true,
+        })
+      )
     }
 
     state = gameReducer(state, syncPhaseBroadcasts({ phase: 'season_start' }))
@@ -291,24 +350,32 @@ describe('broadcast manager reducers', () => {
       },
     })
     expect(state.broadcastQueue).not.toContain(byCustomId('plain-log')?.id)
-    expect(state.broadcastQueue).toEqual(expect.arrayContaining([
-      byCustomId('plain-tv')?.id,
-      byCustomId('major-card')?.id,
-      byCustomId('critical-card')?.id,
-    ]))
+    expect(state.broadcastQueue).toEqual(
+      expect.arrayContaining([
+        byCustomId('plain-tv')?.id,
+        byCustomId('major-card')?.id,
+        byCustomId('critical-card')?.id,
+      ])
+    )
   })
 
   it('lets a built-in phase card be reclassified by the manager', () => {
     let state = gameReducer(undefined, { type: 'init' })
     state = { ...state, phase: 'loh_comp_announcement' }
-    state = gameReducer(state, setBroadcastOverride({
-      id: 'card.loh',
-      changes: { level: 'minor', forceOnTv: false },
-    }))
-    state = gameReducer(state, syncPhaseBroadcasts({
-      phase: 'loh_comp_announcement',
-      cardMajor: 'loh_comp_announcement',
-    }))
+    state = gameReducer(
+      state,
+      setBroadcastOverride({
+        id: 'card.loh',
+        changes: { level: 'minor', forceOnTv: false },
+      })
+    )
+    state = gameReducer(
+      state,
+      syncPhaseBroadcasts({
+        phase: 'loh_comp_announcement',
+        cardMajor: 'loh_comp_announcement',
+      })
+    )
 
     const card = state.tvFeed.find((event) => event.meta?.broadcastTemplateId === 'card.loh')
     expect(card).toMatchObject({
@@ -318,14 +385,20 @@ describe('broadcast manager reducers', () => {
     expect(card?.meta?.forceOnTv).toBeUndefined()
     expect(state.broadcastQueue).not.toContain(card?.id)
 
-    state = gameReducer(state, setBroadcastOverride({
-      id: 'card.loh',
-      changes: { level: 'critical', forceOnTv: true },
-    }))
-    state = gameReducer(state, syncPhaseBroadcasts({
-      phase: 'loh_comp_announcement',
-      cardMajor: 'loh_comp_announcement',
-    }))
+    state = gameReducer(
+      state,
+      setBroadcastOverride({
+        id: 'card.loh',
+        changes: { level: 'critical', forceOnTv: true },
+      })
+    )
+    state = gameReducer(
+      state,
+      syncPhaseBroadcasts({
+        phase: 'loh_comp_announcement',
+        cardMajor: 'loh_comp_announcement',
+      })
+    )
 
     expect(state.tvFeed.find((event) => event.id === card?.id)).toMatchObject({
       meta: { broadcastLevel: 'critical', broadcastPriority: 'critical' },
@@ -335,17 +408,20 @@ describe('broadcast manager reducers', () => {
 
   it('preserves a manager-authored Season Start item before the welcome after reset', () => {
     let state = gameReducer(undefined, { type: 'init' })
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'opening-first',
-      key: 'custom.opening-first',
-      phase: 'season_start',
-      text: 'Opening first.',
-      type: 'game',
-      level: 'minor',
-      enabled: true,
-      forceOnTv: true,
-      order: 10,
-    }))
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'opening-first',
+        key: 'custom.opening-first',
+        phase: 'season_start',
+        text: 'Opening first.',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
 
     state = gameReducer(state, resetGame())
 
@@ -362,30 +438,40 @@ describe('broadcast manager reducers', () => {
 
   it('places a custom message before the built-in day-start line in the full phase sequence', () => {
     let state = gameReducer(undefined, { type: 'init' })
-    state = gameReducer(state, addCustomBroadcast({
-      id: 'before-day-start',
-      key: 'week.before-day-start',
-      phase: 'week_start',
-      text: 'This runs before the day starts.',
-      type: 'game',
-      level: 'minor',
-      enabled: true,
-      order: 100,
-    }))
-    state = gameReducer(state, reorderPhaseBroadcasts({
-      phase: 'week_start',
-      items: [
-        { id: 'before-day-start', kind: 'custom' },
-        { id: 'week.tribunal-start', kind: 'source' },
-        { id: 'week.day-start', kind: 'source' },
-      ],
-    }))
+    state = gameReducer(
+      state,
+      addCustomBroadcast({
+        id: 'before-day-start',
+        key: 'week.before-day-start',
+        phase: 'week_start',
+        text: 'This runs before the day starts.',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        order: 100,
+      })
+    )
+    state = gameReducer(
+      state,
+      reorderPhaseBroadcasts({
+        phase: 'week_start',
+        items: [
+          { id: 'before-day-start', kind: 'custom' },
+          { id: 'week.tribunal-start', kind: 'source' },
+          { id: 'week.day-start', kind: 'source' },
+        ],
+      })
+    )
     state = { ...state, phase: 'week_end' }
 
     state = gameReducer(state, advance())
 
-    const custom = state.tvFeed.find((event) => event.meta?.customBroadcastId === 'before-day-start')
-    const dayStart = state.tvFeed.find((event) => event.meta?.broadcastTemplateId === 'week.day-start')
+    const custom = state.tvFeed.find(
+      (event) => event.meta?.customBroadcastId === 'before-day-start'
+    )
+    const dayStart = state.tvFeed.find(
+      (event) => event.meta?.broadcastTemplateId === 'week.day-start'
+    )
     expect(custom?.meta?.broadcastOrder).toBeLessThan(Number(dayStart?.meta?.broadcastOrder))
   })
 })

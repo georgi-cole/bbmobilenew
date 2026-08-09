@@ -38,7 +38,6 @@ describe('isVisibleInMainLog', () => {
   it('returns false when channels is ["recentActivity"] only', () => {
     expect(isVisibleInMainLog({ channels: ['recentActivity'] })).toBe(false)
   })
-
 })
 
 // ── isVisibleOnTv ─────────────────────────────────────────────────────────────
@@ -80,7 +79,6 @@ describe('isVisibleOnTv', () => {
     expect(isBattleBackReturnResultEvent(activationEvent)).toBe(false)
     expect(isVisibleOnTv(activationEvent)).toBe(true)
   })
-
 })
 
 // ── isVisibleInDr ─────────────────────────────────────────────────────────────

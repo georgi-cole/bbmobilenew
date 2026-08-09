@@ -29,6 +29,7 @@ const RUMOUR_LABEL: Record<string, string> = {
 }
 
 const PHASE_LABEL: Record<string, string> = {
+  // i18n-ignore: Legacy phase-label registry stores canonical English copy
   season_start: 'Season opening',
   week_start: 'Start of the day',
   loh_results: 'After the LOH competition',

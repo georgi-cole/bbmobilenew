@@ -1,6 +1,7 @@
 import type { Phase } from '../types';
 
 const PHASE_LABELS: Partial<Record<Phase, string>> = {
+  // i18n-ignore: Legacy status-label registry stores canonical English copy
   season_start: 'Season start',
   week_start: 'Day start',
   loh_comp_announcement: 'LOH competition',

@@ -19,9 +19,9 @@ describe('broadcast template catalog', () => {
       'social_1'
     )
     expect(match?.template.id).toBe('social.loh-congratulations')
-    expect(renderBroadcastTemplate('The house congratulates {winner}.', match?.variables ?? [])).toBe(
-      'The house congratulates Rune.'
-    )
+    expect(
+      renderBroadcastTemplate('The house congratulates {winner}.', match?.variables ?? [])
+    ).toBe('The house congratulates Rune.')
   })
 
   it('routes every built-in feed message onto the faux TV by default', () => {

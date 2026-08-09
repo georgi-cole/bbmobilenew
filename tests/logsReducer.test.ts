@@ -103,7 +103,8 @@ describe('tvFeed — event ID uniqueness', () => {
       store
         .getState()
         .game.tvFeed.filter(
-          (event) => event.text === 'Housemates congratulate Player 1. Alliances are already forming… 💬'
+          (event) =>
+            event.text === 'Housemates congratulate Player 1. Alliances are already forming… 💬'
         )
     ).toHaveLength(1)
   })

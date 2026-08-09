@@ -47,11 +47,19 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'phase-scoped-plain', key: 'custom.phase-scoped-plain', phase: 'season_start',
-      text: 'Only visible during season start', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 10,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'phase-scoped-plain',
+        key: 'custom.phase-scoped-plain',
+        phase: 'season_start',
+        text: 'Only visible during season start',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
     const eventId = store.getState().game.broadcastQueue?.[0]
     expect(eventId).toBeTruthy()
@@ -60,21 +68,25 @@ describe('manager-driven faux-TV queue', () => {
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
 
-    expect(screen.getByRole('region', { name: 'Live game events display' }))
-      .toHaveTextContent('Only visible during season start')
+    expect(screen.getByRole('region', { name: 'Live game events display' })).toHaveTextContent(
+      'Only visible during season start'
+    )
 
     act(() => {
       store.dispatch(setPhase('week_start'))
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Live game events display' }))
-        .not.toHaveTextContent('Only visible during season start')
+      expect(
+        screen.getByRole('region', { name: 'Live game events display' })
+      ).not.toHaveTextContent('Only visible during season start')
     })
     expect(store.getState().game.lastPlainBroadcastEventId).toBeNull()
   })
@@ -84,23 +96,41 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'unchecked-only', key: 'custom.unchecked-only', phase: 'democracia_results',
-      text: 'This belongs only in the log', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: false, order: 10,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'eligible-next', key: 'custom.eligible-next', phase: 'democracia_results',
-      text: 'This is the next eligible message', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 20,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'unchecked-only',
+        key: 'custom.unchecked-only',
+        phase: 'democracia_results',
+        text: 'This belongs only in the log',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: false,
+        order: 10,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'eligible-next',
+        key: 'custom.eligible-next',
+        phase: 'democracia_results',
+        text: 'This is the next eligible message',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 20,
+      })
+    )
     store.dispatch(setPhase('democracia_results'))
     store.dispatch(syncPhaseBroadcasts({ phase: 'democracia_results' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
@@ -117,17 +147,27 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'final-plain', key: 'custom.final-plain', phase: 'season_start',
-      text: 'Final plain message', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 10,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'final-plain',
+        key: 'custom.final-plain',
+        phase: 'season_start',
+        text: 'Final plain message',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
@@ -146,22 +186,40 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'plain-one', key: 'custom.plain-one', phase: 'season_start',
-      text: 'First consecutive message', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 10,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'plain-two', key: 'custom.plain-two', phase: 'season_start',
-      text: 'Second consecutive message', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 20,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'plain-one',
+        key: 'custom.plain-one',
+        phase: 'season_start',
+        text: 'First consecutive message',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'plain-two',
+        key: 'custom.plain-two',
+        phase: 'season_start',
+        text: 'Second consecutive message',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 20,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
@@ -186,23 +244,35 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'final-major', key: 'custom.final-major', phase: 'season_start',
-      text: 'Final major card', title: 'Final major title', type: 'game',
-      level: 'major', enabled: true, forceOnTv: true, order: 10,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'final-major',
+        key: 'custom.final-major',
+        phase: 'season_start',
+        text: 'Final major card',
+        title: 'Final major title',
+        type: 'game',
+        level: 'major',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
     await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: /Announcement: Final major title/i }))
-        .toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: /Announcement: Final major title/i })
+      ).toBeInTheDocument()
     })
 
     let accepted = false
@@ -219,28 +289,48 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'major-before-plain', key: 'custom.major-before-plain', phase: 'season_start',
-      text: 'Ceremony card copy', title: 'Ceremony card title', type: 'game',
-      level: 'major', enabled: true, forceOnTv: true, order: 10,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'plain-after-major', key: 'custom.plain-after-major', phase: 'season_start',
-      text: 'Immediate message after ceremony', type: 'game', level: 'minor',
-      enabled: true, forceOnTv: true, order: 20,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'major-before-plain',
+        key: 'custom.major-before-plain',
+        phase: 'season_start',
+        text: 'Ceremony card copy',
+        title: 'Ceremony card title',
+        type: 'game',
+        level: 'major',
+        enabled: true,
+        forceOnTv: true,
+        order: 10,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'plain-after-major',
+        key: 'custom.plain-after-major',
+        phase: 'season_start',
+        text: 'Immediate message after ceremony',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 20,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
     await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: /Announcement: Ceremony card title/i }))
-        .toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: /Announcement: Ceremony card title/i })
+      ).toBeInTheDocument()
     })
 
     let accepted = true
@@ -259,33 +349,73 @@ describe('manager-driven faux-TV queue', () => {
     for (const id of store.getState().game.broadcastQueue ?? []) {
       store.dispatch(consumeBroadcastEvent(id))
     }
-    store.dispatch(addCustomBroadcast({
-      id: 'minor-log', key: 'custom.minor-log', phase: 'season_start', text: 'Log only',
-      type: 'game', level: 'minor', enabled: true, forceOnTv: false, order: 10,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'minor-tv', key: 'custom.minor-tv', phase: 'season_start', text: 'Plain faux TV',
-      type: 'game', level: 'minor', enabled: true, forceOnTv: true, order: 20,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'major-tv', key: 'custom.major-tv', phase: 'season_start', text: 'Major copy',
-      title: 'Major title', type: 'game', level: 'major', enabled: true, order: 30,
-    }))
-    store.dispatch(addCustomBroadcast({
-      id: 'critical-tv', key: 'custom.critical-tv', phase: 'season_start', text: 'Critical copy',
-      title: 'Critical title', type: 'game', level: 'critical', enabled: true, order: 40,
-    }))
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'minor-log',
+        key: 'custom.minor-log',
+        phase: 'season_start',
+        text: 'Log only',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: false,
+        order: 10,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'minor-tv',
+        key: 'custom.minor-tv',
+        phase: 'season_start',
+        text: 'Plain faux TV',
+        type: 'game',
+        level: 'minor',
+        enabled: true,
+        forceOnTv: true,
+        order: 20,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'major-tv',
+        key: 'custom.major-tv',
+        phase: 'season_start',
+        text: 'Major copy',
+        title: 'Major title',
+        type: 'game',
+        level: 'major',
+        enabled: true,
+        order: 30,
+      })
+    )
+    store.dispatch(
+      addCustomBroadcast({
+        id: 'critical-tv',
+        key: 'custom.critical-tv',
+        phase: 'season_start',
+        text: 'Critical copy',
+        title: 'Critical title',
+        type: 'game',
+        level: 'critical',
+        enabled: true,
+        order: 40,
+      })
+    )
     store.dispatch(syncPhaseBroadcasts({ phase: 'season_start' }))
 
     render(
       <I18nContext.Provider value={TEST_I18N}>
         <Provider store={store}>
-          <MemoryRouter><TvZone /></MemoryRouter>
+          <MemoryRouter>
+            <TvZone />
+          </MemoryRouter>
         </Provider>
       </I18nContext.Provider>
     )
 
-    expect(screen.getByRole('region', { name: 'Live game events display' })).toHaveTextContent('Plain faux TV')
+    expect(screen.getByRole('region', { name: 'Live game events display' })).toHaveTextContent(
+      'Plain faux TV'
+    )
     expect(screen.queryByText('Log only')).not.toBeNull()
 
     let accepted = true

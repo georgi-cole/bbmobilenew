@@ -22,7 +22,7 @@ function readableKeyFromText(text: string): string {
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/-{2,}/g, '-')
     .replace(/^[.-]+|[.-]+$/g, '')
-  return `custom.${slug || 'message'}`
+  return `custom.${slug || 'message'}` // i18n-ignore: Internal storage key, never shown as player-facing copy
 }
 
 function migrateCustomKeys(messages: CustomBroadcastMessage[]): CustomBroadcastMessage[] {

@@ -19,6 +19,7 @@ import './Profile.css';
 const HOLD_REVEAL_DELAY_MS = 360;
 
 const PHASE_SHORT_LABELS: Partial<Record<Phase, string>> = {
+  // i18n-ignore: Legacy compact phase-label registry stores canonical English copy
   season_start: 'Season',
   week_start: 'Start',
   loh_comp_announcement: 'LOH',

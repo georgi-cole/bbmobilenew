@@ -59,7 +59,7 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
 async function assertCampaignReady(page: Page, playerName: string): Promise<void> {
   const actionZone = page.getByRole('region', { name: 'Game action zone' })
   await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await expect(actionZone.getByLabel('Day start', { exact: true })).toBeVisible()
+  await expect(actionZone.getByLabel('Season start', { exact: true })).toBeVisible()
   await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()

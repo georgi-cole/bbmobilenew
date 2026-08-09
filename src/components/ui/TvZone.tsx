@@ -111,18 +111,21 @@ const ANNOUNCEMENT_META: Record<
   { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }
 > = {
   custom_broadcast: {
+    // i18n-ignore: Canonical in-world broadcast branding
     title: 'BIG EYE BROADCAST',
     subtitle: '',
     isLive: true,
     autoDismissMs: null,
   },
   custom_major: {
+    // i18n-ignore: Canonical in-world broadcast branding
     title: 'BIG EYE BROADCAST',
     subtitle: '',
     isLive: true,
     autoDismissMs: null,
   },
   custom_critical: {
+    // i18n-ignore: Canonical in-world broadcast branding
     title: 'SHOCK ANNOUNCEMENT',
     subtitle: '',
     isLive: true,
@@ -339,6 +342,11 @@ const ANNOUNCEMENT_META: Record<
     autoDismissMs: null,
   },
 }
+
+// i18n-ignore: Canonical in-world winner announcement copy
+const AUDIENCE_WINNER_SUBTITLE = 'The audience has spoken. The season champion is official.'
+// i18n-ignore: Canonical in-world winner announcement copy
+const TRIBUNAL_WINNER_SUBTITLE = 'The Tribunal has spoken. The season champion is official.'
 
 /**
  * Extract the major key from a TvEvent using explicit meta.major or ev.major
@@ -1600,11 +1608,12 @@ export default function TvZone(props: TvZoneProps) {
               <TvAnnouncementOverlay
                 announcement={{
                   key: 'season_winner',
+                  // i18n-ignore: Canonical in-world winner announcement title
                   title: `${winnerBroadcast.name} Wins The Big Eye`,
                   subtitle:
                     gameState.voxPopuli?.winnerId === winnerBroadcast.id
-                      ? 'The audience has spoken. The season champion is official.'
-                      : 'The Tribunal has spoken. The season champion is official.',
+                      ? AUDIENCE_WINNER_SUBTITLE
+                      : TRIBUNAL_WINNER_SUBTITLE,
                   isLive: true,
                   autoDismissMs: null,
                 }}

@@ -397,6 +397,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 type="button"
                 onClick={() => navigate('/broadcast-manager?debug=1')}
               >
+                {/* i18n-ignore: Debug-only navigation control intentionally uses canonical English */}
                 Open Broadcast Manager
               </button>
 
