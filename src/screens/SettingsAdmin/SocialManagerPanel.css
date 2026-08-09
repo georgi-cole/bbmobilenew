@@ -1,0 +1,460 @@
+.social-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.social-manager button,
+.social-manager input,
+.social-manager select,
+.social-manager textarea {
+  font: inherit;
+}
+
+.social-manager__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 36%, var(--color-line));
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, #ec4899 17%, transparent),
+      transparent 48%
+    ),
+    var(--color-card);
+}
+
+.social-manager__hero h2,
+.social-manager__hero p,
+.social-manager__section-heading h3,
+.social-manager__section-heading p,
+.social-manager__editor-header h3,
+.social-manager__editor-header p {
+  margin: 0;
+}
+
+.social-manager__hero h2 {
+  font-size: 1.25rem;
+}
+
+.social-manager__hero > div > p:last-child {
+  max-width: 50rem;
+  margin-top: 0.45rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.social-manager__eyebrow {
+  margin-bottom: 0.22rem !important;
+  color: #f472b6 !important;
+  font-size: 0.62rem !important;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.social-manager__health {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-content: center;
+  gap: 0.05rem 0.65rem;
+  min-width: 11rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+  background: rgba(0 0 0 / 0.14);
+  text-align: center;
+}
+
+.social-manager__health strong {
+  font-size: 0.9rem;
+}
+
+.social-manager__health span {
+  grid-row: 2;
+  color: var(--color-text-muted);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.social-manager__view-tabs,
+.social-manager__segments,
+.social-manager__filters,
+.social-manager__data-actions,
+.social-manager__editor-actions,
+.social-manager__checks {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.social-manager__view-tabs,
+.social-manager__segments {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.social-manager__view-tabs button,
+.social-manager__segments button,
+.social-manager__data-actions button,
+.social-manager__editor-actions button {
+  flex: 0 0 auto;
+  padding: 0.42rem 0.68rem;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.social-manager__view-tabs button.is-active,
+.social-manager__segments button.is-active {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.social-manager__message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, var(--color-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-card));
+  font-size: 0.72rem;
+}
+
+.social-manager__message button {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.social-manager__filters {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.social-manager__filters > input,
+.social-manager__filters > select,
+.social-manager__field input,
+.social-manager__field select,
+.social-manager__field textarea,
+.social-manager__data > textarea,
+.social-manager__price-row input,
+.social-manager__effect-row input {
+  min-width: 0;
+  padding: 0.44rem 0.55rem;
+  border: 1px solid var(--color-line);
+  border-radius: 7px;
+  outline: none;
+  background: var(--color-card-2, var(--color-card));
+  color: var(--color-text);
+}
+
+.social-manager__filters > input:focus,
+.social-manager__field input:focus,
+.social-manager__field select:focus,
+.social-manager__field textarea:focus {
+  border-color: var(--color-accent);
+}
+
+.social-manager__filters > input {
+  flex: 1 1 12rem;
+  max-width: 22rem;
+}
+
+.social-manager__workspace {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.31fr) minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+}
+
+.social-manager__catalog {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: min(72vh, 46rem);
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.social-manager__catalog-count {
+  padding: 0.25rem 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.social-manager__catalog > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid var(--color-line);
+  border-radius: 9px;
+  background: var(--color-card);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.social-manager__catalog > button.is-selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 11%, var(--color-card));
+}
+
+.social-manager__catalog > button.is-disabled {
+  opacity: 0.5;
+}
+
+.social-manager__catalog > button span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+}
+
+.social-manager__catalog strong,
+.social-manager__catalog small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-manager__catalog strong {
+  font-size: 0.72rem;
+}
+
+.social-manager__catalog small {
+  color: var(--color-text-muted);
+  font-size: 0.58rem;
+}
+
+.social-manager__catalog i {
+  color: #f472b6;
+  font-size: 0.55rem;
+}
+
+.social-manager__catalog-icon {
+  font-size: 1rem;
+}
+
+.social-manager__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.social-manager__editor-header,
+.social-manager__editor details,
+.social-manager__data {
+  padding: 0.8rem;
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+  background: var(--color-card);
+}
+
+.social-manager__editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.social-manager__editor-header p,
+.social-manager__editor-header code {
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+}
+
+.social-manager__editor-header h3 {
+  margin-top: 0.15rem;
+  font-size: 1rem;
+}
+
+.social-manager__switch,
+.social-manager__checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.social-manager__switch input,
+.social-manager__checks input {
+  accent-color: var(--color-accent);
+}
+
+.social-manager__editor details > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.social-manager__field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.social-manager__field-grid--compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.social-manager__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.social-manager__field > span {
+  color: var(--color-text-muted);
+  font-size: 0.61rem;
+  font-weight: 750;
+}
+
+.social-manager__field small {
+  color: var(--color-text-muted);
+  font-size: 0.55rem;
+}
+
+.social-manager__checks {
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--color-line);
+}
+
+.social-manager__price-table,
+.social-manager__effect-table {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1.3fr) repeat(3, minmax(4rem, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  overflow-x: auto;
+}
+
+.social-manager__price-heading,
+.social-manager__effect-heading {
+  color: var(--color-text-muted);
+  font-size: 0.57rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.social-manager__price-row {
+  display: contents;
+}
+
+.social-manager__price-row strong,
+.social-manager__effect-row strong {
+  align-self: center;
+  font-size: 0.65rem;
+}
+
+.social-manager__resolved,
+.social-manager__effect-legend {
+  margin: 0.6rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
+.social-manager__editor h4 {
+  margin: 0.9rem 0 -0.15rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.social-manager__effect-table {
+  grid-template-columns: minmax(7rem, 1.5fr) repeat(4, minmax(4.2rem, 1fr));
+}
+
+.social-manager__effect-row {
+  display: contents;
+}
+
+.social-manager__data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.social-manager__section-heading p {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+}
+
+.social-manager__data > textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.65rem;
+  resize: vertical;
+}
+
+.social-manager__data-actions {
+  flex-wrap: wrap;
+}
+
+.social-manager__danger {
+  border-color: color-mix(in srgb, #ef4444 60%, var(--color-line)) !important;
+  color: #fca5a5 !important;
+}
+
+@media (max-width: 760px) {
+  .social-manager__hero,
+  .social-manager__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .social-manager__catalog {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 17rem;
+  }
+
+  .social-manager__catalog-count {
+    grid-column: 1 / -1;
+  }
+
+  .social-manager__field-grid--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .social-manager__field-grid,
+  .social-manager__field-grid--compact,
+  .social-manager__catalog {
+    grid-template-columns: 1fr;
+  }
+
+  .social-manager__editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

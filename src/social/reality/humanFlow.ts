@@ -9,7 +9,7 @@ import {
   createInitialRealitySimulationState,
   deriveRealitySimulationSeed,
 } from '../realitySimulation'
-import { REALITY_ACTION_BY_ID, type RealityActorSnapshot } from './actionContract'
+import { getRealityActionContract, type RealityActorSnapshot } from './actionContract'
 import { runRealityOpportunity } from './orchestrator'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
@@ -33,7 +33,7 @@ function getHumanRepetitionSuccessChances(actionId: string): readonly number[] |
   if (legacyAction?.kind === 'intel_gain' && legacyAction.targetMode !== 'none') {
     return INFORMATION_REPETITION_SUCCESS_CHANCES
   }
-  const contract = REALITY_ACTION_BY_ID.get(actionId)
+  const contract = getRealityActionContract(actionId)
   if (
     contract?.purposes.includes('BOND') &&
     !contract.purposes.includes('COMMITMENT') &&
@@ -263,7 +263,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       )
     }
 
-    const contract = REALITY_ACTION_BY_ID.get(input.actionId)
+    const contract = getRealityActionContract(input.actionId)
     if (!contract) return result(false, 'Unknown action', energy)
     const direction =
       targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'

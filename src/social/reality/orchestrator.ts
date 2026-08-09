@@ -5,8 +5,8 @@ import {
   type RealitySimulationState,
 } from '../realitySimulation'
 import {
-  REALITY_ACTION_BY_ID,
   evaluateRealityCandidate,
+  getRealityActionContract,
   type RealityActionContract,
   type RealityActorSnapshot,
 } from './actionContract'
@@ -86,27 +86,12 @@ function selectWeighted<T extends { weight: number; id: string }>(
 function relationshipDeltas(action: RealityActionContract, response: RealityResponseResolution) {
   if (action.purposes.includes('CONFLICT')) {
     return response.kind === 'DE_ESCALATE'
-      ? { warmth: -2, trust: -2, resentment: 3, familiarity: 2 }
-      : { warmth: -8, trust: -9, resentment: 14, suspicion: 6, familiarity: 3 }
-  }
-  if (action.purposes.includes('ROMANCE')) {
-    return response.accepted
-      ? { warmth: 6, trust: 3, attraction: 12, intimacy: 9, familiarity: 3 }
-      : { warmth: -2, attraction: -3, embarrassment: 0, familiarity: 2 }
-  }
-  if (action.purposes.includes('COMMITMENT')) {
-    return response.accepted
-      ? { trust: 8, loyalty: 10, strategicValue: 7, familiarity: 2 }
-      : { trust: -3, suspicion: 4, familiarity: 2 }
-  }
-  if (action.purposes.includes('INFORMATION')) {
-    return response.accepted
-      ? { trust: 4, strategicValue: 4, familiarity: 2 }
-      : { suspicion: 3, familiarity: 1 }
+      ? action.relationshipEffects.deEscalated
+      : action.relationshipEffects.escalated
   }
   return response.accepted
-    ? { warmth: 6, trust: 3, familiarity: 3 }
-    : { warmth: -2, familiarity: 1 }
+    ? action.relationshipEffects.accepted
+    : action.relationshipEffects.rejected
 }
 
 function makeMemory(input: {
@@ -723,7 +708,7 @@ export function resolvePendingHumanRealityInteraction(input: {
   if (!interaction || interaction.status !== 'AWAITING_HUMAN') {
     return { domain, event: null }
   }
-  const action = REALITY_ACTION_BY_ID.get(interaction.actionId)
+  const action = getRealityActionContract(interaction.actionId)
   if (!action) {
     interaction.status = 'INVALIDATED'
     return { domain, event: null }
