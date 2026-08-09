@@ -546,7 +546,7 @@ test.describe('Real player core journeys', () => {
     const initialState = await readAppState(page)
     expect(initialState.game.seed).toBe(E2E_NEW_SEASON_FIXTURE.seasonSeed)
     expect(initialState.game.week).toBe(1)
-    expect(initialState.game.phase).toBe('week_start')
+    expect(initialState.game.phase).toBe('season_start')
     const initialActiveIds = initialState.game.players
       .filter((player) => player.status === 'active')
       .map((player) => player.id)
@@ -635,6 +635,8 @@ test.describe('Real player core journeys', () => {
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })
+    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    await expect(actionZone.getByLabel('Day start', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Advance to next phase' }).click()
     await expect(actionZone.getByLabel('LOH competition', { exact: true })).toBeVisible()
     await closePhaseInformationIfPresent(page)

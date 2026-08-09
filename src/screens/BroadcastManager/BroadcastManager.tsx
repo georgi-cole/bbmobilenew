@@ -27,6 +27,28 @@ const EVENT_TYPES: TvEvent['type'][] = ['game', 'social', 'vote', 'twist', 'diar
 const FULL_PHASE_SEQUENCE_LABEL = 'Full phase broadcast sequence'
 // i18n-ignore: Debug-only accessibility label intentionally uses canonical English
 const BUILT_IN_FLOW_LABEL = 'Built-in flow messages'
+// i18n-ignore: Debug-only accessibility label intentionally uses canonical English
+const OBSERVED_PLAY_SOURCES_LABEL = 'Observed Play sources'
+// i18n-ignore: Debug-only accessibility label intentionally uses canonical English
+const CUSTOM_PHASE_MESSAGES_LABEL = 'Custom phase messages'
+// i18n-ignore: Debug-only accessibility label intentionally uses canonical English
+const EDIT_BROADCAST_MESSAGE_LABEL = 'Edit broadcast message'
+// i18n-ignore: Debug-only accessibility label intentionally uses canonical English
+const CLOSE_EDITOR_LABEL = 'Close editor'
+// i18n-ignore: Debug-only editor heading intentionally uses canonical English
+const ADD_PHASE_MESSAGE_LABEL = 'Add phase message'
+// i18n-ignore: Debug-only editor heading intentionally uses canonical English
+const EDIT_BUILT_IN_SOURCE_LABEL = 'Edit built-in source'
+// i18n-ignore: Debug-only editor heading intentionally uses canonical English
+const EDIT_MESSAGE_LABEL = 'Edit broadcast message'
+// i18n-ignore: Debug-only form label intentionally uses canonical English
+const CARD_TITLE_LABEL = 'Card title'
+// i18n-ignore: Debug-only form label intentionally uses canonical English
+const OPTIONAL_FAUX_TV_TITLE_LABEL = 'Faux-TV title (optional)'
+// i18n-ignore: Debug-only authoring placeholder intentionally uses canonical key syntax
+const MESSAGE_KEY_PLACEHOLDER = 'social.alliance-warning'
+// i18n-ignore: Canonical in-world broadcast branding
+const DEFAULT_CARD_TITLE_PLACEHOLDER = 'BIG EYE BROADCAST'
 
 type EditorState = {
   mode: 'builtin' | 'custom' | 'new' | 'live'
@@ -552,6 +574,7 @@ export default function BroadcastManager() {
                             type="button"
                             onClick={() => dispatch(resetBroadcastOverride(template.id))}
                           >
+                            {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                             Restore default
                           </button>
                         )}
@@ -564,10 +587,15 @@ export default function BroadcastManager() {
           </section>
 
           {observedSources.length > 0 && (
-            <section className="broadcast-manager__live-section" aria-label="Observed Play sources">
+            <section
+              className="broadcast-manager__live-section"
+              aria-label={OBSERVED_PLAY_SOURCES_LABEL}
+            >
               <div>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 <h3>Observed Play sources</h3>
                 <p>
+                  {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                   Branch messages discovered in this run. Editing one changes the same source on
                   future Play presses.
                 </p>
@@ -593,11 +621,17 @@ export default function BroadcastManager() {
                         </span>
                         <span>{override?.type ?? event.type}</span>
                         <code>{id}</code>
-                        {override && <span className="broadcast-manager__edited">edited</span>}
+                        {override && (
+                          <span className="broadcast-manager__edited">
+                            {/* i18n-ignore: Debug-only authoring metadata intentionally uses canonical English labels */}
+                            edited
+                          </span>
+                        )}
                       </div>
                       <p>{override?.text ?? sourceText}</p>
                       <div className="broadcast-manager__message-actions">
                         <button type="button" onClick={() => editObservedSource(event)}>
+                          {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                           Edit source
                         </button>
                         <button
@@ -611,6 +645,7 @@ export default function BroadcastManager() {
                             )
                           }
                         >
+                          {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                           {override?.disabled ? 'Enable' : 'Disable'}
                         </button>
                         {override && (
@@ -618,6 +653,7 @@ export default function BroadcastManager() {
                             type="button"
                             onClick={() => dispatch(resetBroadcastOverride(id))}
                           >
+                            {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                             Restore default
                           </button>
                         )}
@@ -629,13 +665,23 @@ export default function BroadcastManager() {
             </section>
           )}
 
-          <section className="broadcast-manager__live-section" aria-label="Custom phase messages">
+          <section
+            className="broadcast-manager__live-section"
+            aria-label={CUSTOM_PHASE_MESSAGES_LABEL}
+          >
             <div>
+              {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
               <h3>Custom phase messages</h3>
-              <p>These automatically emit once per day when Play processes this phase.</p>
+              <p>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+                These automatically emit once per day when Play processes this phase.
+              </p>
             </div>
             {phaseCustom.length === 0 ? (
-              <p className="broadcast-manager__empty">No custom messages for this phase.</p>
+              <p className="broadcast-manager__empty">
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+                No custom messages for this phase.
+              </p>
             ) : (
               <ol className="broadcast-manager__message-list">
                 {phaseCustom.map((message) => (
@@ -649,21 +695,32 @@ export default function BroadcastManager() {
                       >
                         {message.level}
                       </span>
-                      <span>type: {message.type}</span>
+                      <span>
+                        {/* i18n-ignore: Debug-only authoring metadata intentionally uses canonical English labels */}
+                        type: {message.type}
+                      </span>
                       <code>{message.key ?? suggestMessageKey(message.text)}</code>
                       <span>
+                        {/* i18n-ignore: Debug-only authoring metadata intentionally uses canonical English labels */}
                         position {phaseCustom.findIndex((item) => item.id === message.id) + 1}
                       </span>
                       {message.forceOnTv && (
-                        <span className="broadcast-manager__edited">faux TV</span>
+                        <span className="broadcast-manager__edited">
+                          {/* i18n-ignore: Debug-only authoring metadata intentionally uses canonical English labels */}
+                          faux TV
+                        </span>
                       )}
                       {!message.enabled && (
-                        <span className="broadcast-manager__disabled">disabled</span>
+                        <span className="broadcast-manager__disabled">
+                          {/* i18n-ignore: Debug-only authoring metadata intentionally uses canonical English labels */}
+                          disabled
+                        </span>
                       )}
                     </div>
                     <p>{message.text}</p>
                     <div className="broadcast-manager__message-actions">
                       <button type="button" onClick={() => editCustom(message)}>
+                        {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                         Edit
                       </button>
                       <button
@@ -672,6 +729,7 @@ export default function BroadcastManager() {
                           dispatch(updateCustomBroadcast({ ...message, enabled: !message.enabled }))
                         }
                       >
+                        {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                         {message.enabled ? 'Disable' : 'Enable'}
                       </button>
                       <button
@@ -682,6 +740,7 @@ export default function BroadcastManager() {
                           dispatch(removeCustomBroadcast(message.id))
                         }
                       >
+                        {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                         Delete
                       </button>
                     </div>
@@ -692,8 +751,12 @@ export default function BroadcastManager() {
           </section>
 
           <details className="broadcast-manager__history">
-            <summary>Live history ({liveMessages.length})</summary>
+            <summary>
+              {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+              Live history ({liveMessages.length})
+            </summary>
             <p>
+              {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
               Already-emitted rows can still be corrected or removed without changing the source
               definition.
             </p>
@@ -709,6 +772,7 @@ export default function BroadcastManager() {
                   <p>{event.text}</p>
                   <div className="broadcast-manager__message-actions">
                     <button type="button" onClick={() => editLive(event)}>
+                      {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                       Edit emitted row
                     </button>
                     <button
@@ -719,6 +783,7 @@ export default function BroadcastManager() {
                         dispatch(removeTvEvent(event.id))
                       }
                     >
+                      {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                       Remove row
                     </button>
                   </div>
@@ -730,7 +795,9 @@ export default function BroadcastManager() {
           {unassignedMessages.length > 0 && (
             <details className="broadcast-manager__unassigned">
               <summary>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 {unassignedMessages.length} legacy row{unassignedMessages.length === 1 ? '' : 's'}{' '}
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 without a phase
               </summary>
               {unassignedMessages.map((event) => (
@@ -749,21 +816,23 @@ export default function BroadcastManager() {
             className="broadcast-manager__editor"
             role="dialog"
             aria-modal="true"
-            aria-label="Edit broadcast message"
+            aria-label={EDIT_BROADCAST_MESSAGE_LABEL}
           >
             <header>
               <h2>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 {editor.mode === 'new'
-                  ? 'Add phase message'
+                  ? ADD_PHASE_MESSAGE_LABEL
                   : editor.mode === 'builtin'
-                    ? 'Edit built-in source'
-                    : 'Edit broadcast message'}
+                    ? EDIT_BUILT_IN_SOURCE_LABEL
+                    : EDIT_MESSAGE_LABEL}
               </h2>
-              <button type="button" aria-label="Close editor" onClick={() => setEditor(null)}>
+              <button type="button" aria-label={CLOSE_EDITOR_LABEL} onClick={() => setEditor(null)}>
                 ×
               </button>
             </header>
             <label>
+              {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
               Ceremony phase
               <select
                 disabled={editor.mode === 'builtin'}
@@ -779,18 +848,21 @@ export default function BroadcastManager() {
             </label>
             {(editor.mode === 'new' || editor.mode === 'custom') && (
               <label>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Message key / name
                 <input
                   value={editor.key}
-                  placeholder="social.alliance-warning"
+                  placeholder={MESSAGE_KEY_PLACEHOLDER}
                   onChange={(event) => setEditor({ ...editor, key: event.target.value })}
                 />
                 <small>
+                  {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                   Use a readable stable key such as <code>social.alliance-warning</code>. Spaces are
                   converted to dashes; a key without a prefix becomes <code>custom.your-key</code>.
                 </small>
                 {!normalizeMessageKey(editor.key) && (
                   <small className="broadcast-manager__field-error">
+                    {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                     A message key is required.
                   </small>
                 )}
@@ -800,6 +872,7 @@ export default function BroadcastManager() {
                     (message.key ?? '') === normalizeMessageKey(editor.key)
                 ) && (
                   <small className="broadcast-manager__field-error">
+                    {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                     That key is already in use.
                   </small>
                 )}
@@ -807,17 +880,19 @@ export default function BroadcastManager() {
             )}
             {(editor.isCard || editor.forceOnTv || editor.level !== 'minor') && (
               <label>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 {editor.isCard || editor.level !== 'minor'
-                  ? 'Card title'
-                  : 'Faux-TV title (optional)'}
+                  ? CARD_TITLE_LABEL
+                  : OPTIONAL_FAUX_TV_TITLE_LABEL}
                 <input
                   value={editor.title}
-                  placeholder="BIG EYE BROADCAST"
+                  placeholder={DEFAULT_CARD_TITLE_PLACEHOLDER}
                   onChange={(event) => setEditor({ ...editor, title: event.target.value })}
                 />
               </label>
             )}
             <label>
+              {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
               {editor.isCard ? 'Card subtitle' : 'Message'}
               <textarea
                 value={editor.text}
@@ -825,12 +900,14 @@ export default function BroadcastManager() {
                 onChange={(event) => setEditor({ ...editor, text: event.target.value })}
               />
               <small>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Keep placeholders such as {'{winner}'} if the live player value should remain
                 dynamic.
               </small>
             </label>
             <div className="broadcast-manager__editor-grid">
               <label>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Event type
                 <select
                   value={editor.type}
@@ -846,6 +923,7 @@ export default function BroadcastManager() {
                 </select>
               </label>
               <label>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Broadcast level
                 <select
                   value={editor.level}
@@ -858,8 +936,11 @@ export default function BroadcastManager() {
                     })
                   }}
                 >
+                  {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                   <option value="minor">Minor · normal log line</option>
+                  {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                   <option value="major">Major · faux-TV card</option>
+                  {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                   <option value="critical">Critical · fullscreen shock + card</option>
                 </select>
               </label>
@@ -870,14 +951,19 @@ export default function BroadcastManager() {
                 checked={editor.forceOnTv}
                 onChange={(event) => setEditor({ ...editor, forceOnTv: event.target.checked })}
               />
-              <span>Force this message onto the faux TV</span>
+              <span>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
+                Force this message onto the faux TV
+              </span>
               <small>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 No announcement key is needed. If unchecked, minor messages stay in the log; major
                 and critical messages always use the faux TV.
               </small>
             </label>
             <footer>
               <button type="button" onClick={() => setEditor(null)}>
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Cancel
               </button>
               <button
@@ -895,6 +981,7 @@ export default function BroadcastManager() {
                 }
                 onClick={saveEditor}
               >
+                {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
                 Save
               </button>
             </footer>
