@@ -782,34 +782,6 @@ export default function TvZone(props: TvZoneProps) {
   const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false)
   // Ref forwarded to the TvAnnouncementOverlay info button for spotlight targeting.
   const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null)
-  // The end of Cupid's Arrow is a season climax, not an ordinary feed item.
-  // Keep an explicit broadcast alive so a Confessional prompt or phase card
-  // cannot bury the full-screen dissociation sequence.
-  const [cupidBreakAnnouncement, setCupidBreakAnnouncement] = useState<Announcement | null>(null)
-  const previousCupidStatusRef = useRef(gameState.cupidArrow?.status ?? 'inactive')
-
-  useEffect(() => {
-    const previousStatus = previousCupidStatusRef.current
-    const nextStatus = gameState.cupidArrow?.status ?? 'inactive'
-    previousCupidStatusRef.current = nextStatus
-
-    if (previousStatus === 'active' && nextStatus === 'broken') {
-      startTransition(() => {
-        setCupidBreakAnnouncement(
-          buildAnnouncement('cupid_arrow_broken', {
-            id: `cupid-arrow-break-${Date.now()}`,
-            text: "Cupid's Arrow has ended.",
-            type: 'twist',
-            timestamp: Date.now(),
-            meta: { major: 'cupid_arrow_broken' },
-          })
-        )
-      })
-    } else if (nextStatus !== 'broken') {
-      startTransition(() => setCupidBreakAnnouncement(null))
-    }
-  }, [gameState.cupidArrow?.status])
-
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
   // Also allows an in-place upgrade for nomination-phase overlays when
@@ -948,7 +920,6 @@ export default function TvZone(props: TvZoneProps) {
   // before a simultaneous phase card (for example the first LOH competition)
   // is allowed to take over the TV.
   const activeAnnouncement =
-    cupidBreakAnnouncement ??
     queuedShockAnnouncement?.announcement ??
     (eventAnnouncementHasShockPriority ? eventAnnouncement : null) ??
     priorityAnnouncement ??
@@ -1089,9 +1060,7 @@ export default function TvZone(props: TvZoneProps) {
       currentAnnouncement != null &&
       (CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key) ||
         currentAnnouncement === managedEventAnnouncement)
-    if (cupidBreakAnnouncement) {
-      setCupidBreakAnnouncement(null)
-    } else if (queuedShockAnnouncement) {
+    if (queuedShockAnnouncement) {
       setDismissedEventId(queuedShockAnnouncement.eventId)
       setShockAnnouncementQueue((queue) => queue.slice(1))
     } else if (
@@ -1140,7 +1109,6 @@ export default function TvZone(props: TvZoneProps) {
   }, [
     activeAnnouncement,
     dispatch,
-    cupidBreakAnnouncement,
     queuedShockAnnouncement,
     managedEventAnnouncement,
     queuedBroadcastEvent,
