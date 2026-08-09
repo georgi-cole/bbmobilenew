@@ -17,9 +17,7 @@ function readSystemLanguageTags(): readonly string[] {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const storedPreference = useAppSelector(selectLanguagePreference)
-  const preference: LanguagePreference = FEATURE_LOCALIZATION_SETTINGS
-    ? storedPreference
-    : 'en-US'
+  const preference: LanguagePreference = FEATURE_LOCALIZATION_SETTINGS ? storedPreference : 'en-US'
   const [systemLanguageTags, setSystemLanguageTags] =
     useState<readonly string[]>(readSystemLanguageTags)
 
