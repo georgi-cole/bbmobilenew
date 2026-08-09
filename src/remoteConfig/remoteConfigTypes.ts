@@ -15,6 +15,8 @@ import type { SocialRuntimeOverride } from '../social/socialRuntimeConfig'
 import type { MusicConfigOverrides } from '../services/sound/musicConfig'
 import type { MusicTrackAssetOverride } from '../services/sound/musicCatalog'
 import type { GameManagerConfig } from '../gameManager/gameManager'
+import type { BroadcastOverride, CustomBroadcastMessage } from '../types'
+import type { SocialActionOverrides } from '../social/socialActionManager'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -88,6 +90,19 @@ export interface RemoteBroadcast {
   priority?: 'normal' | 'critical'
   startsAt?: string
   endsAt?: string
+}
+
+/** Centrally managed equivalents of the local Broadcast Manager's saved data. */
+export interface RemoteBroadcastManager {
+  enabled?: boolean
+  overrides?: Record<string, BroadcastOverride>
+  customMessages?: CustomBroadcastMessage[]
+}
+
+/** Centrally managed equivalents of the local Social Manager action overrides. */
+export interface RemoteSocialManager {
+  enabled?: boolean
+  actionOverrides?: SocialActionOverrides
 }
 
 // ── Challenge scheduling ──────────────────────────────────────────────────────
@@ -168,6 +183,8 @@ export interface RemoteConfig {
   }
   /** Global, optionally scheduled message shown to every active client. */
   broadcast?: RemoteBroadcast
+  /** Template and custom phase broadcasts authored in the Remote Manager. */
+  broadcastManager?: RemoteBroadcastManager
   /** Producer-authored competition schedule; remote rules override local rules. */
   gameManager?: GameManagerConfig
   challenge?: RemoteChallenge
@@ -181,6 +198,8 @@ export interface RemoteConfig {
    * are discarded before this object reaches the simulation.
    */
   social?: SocialRuntimeOverride
+  /** Action-level Social Manager settings, applied above local settings while enabled. */
+  socialManager?: RemoteSocialManager
   /** Release controls for gradual UI rollout, rollback and product measurement. */
   operations?: RemoteOperations
 }

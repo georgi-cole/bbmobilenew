@@ -28,6 +28,9 @@ import {
   sanitiseMusicTrackAssetOverrides,
 } from '../services/sound/musicConfigSanitizer'
 import type { GameManagerConfig, GameManagerRule } from '../gameManager/gameManager'
+import type { BroadcastOverride, CustomBroadcastMessage, Phase, TvEvent } from '../types'
+import { ALL_BROADCAST_PHASES, BROADCAST_CAMPAIGNS } from '../broadcasting/broadcastTemplateCatalog'
+import { sanitiseSocialActionOverrides } from '../social/socialActionManager'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -172,6 +175,104 @@ function sanitiseGameManager(raw: unknown): GameManagerConfig | undefined {
   return { enabled: value.enabled !== false, rules }
 }
 
+function sanitiseBroadcastManager(raw: unknown): RemoteConfig['broadcastManager'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const result: NonNullable<RemoteConfig['broadcastManager']> = {}
+  if (typeof value.enabled === 'boolean') result.enabled = value.enabled
+  if (value.overrides && typeof value.overrides === 'object' && !Array.isArray(value.overrides)) {
+    const overrides: Record<string, BroadcastOverride> = {}
+    for (const [id, entry] of Object.entries(value.overrides).slice(0, 400)) {
+      if (!safeStr(id) || !entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+      const source = entry as Record<string, unknown>
+      const override: BroadcastOverride = {}
+      const text = safeStr(source.text)
+      const title = safeStr(source.title)
+      const major = safeStr(source.major)
+      if (text) override.text = text.slice(0, 500)
+      if (title) override.title = title.slice(0, 120)
+      if (major) override.major = major.slice(0, 120)
+      if (source.major === null) override.major = null
+      if (
+        source.type === 'game' ||
+        source.type === 'social' ||
+        source.type === 'vote' ||
+        source.type === 'twist' ||
+        source.type === 'diary'
+      )
+        override.type = source.type
+      if (source.level === 'minor' || source.level === 'major' || source.level === 'critical')
+        override.level = source.level
+      if (typeof source.disabled === 'boolean') override.disabled = source.disabled
+      if (typeof source.forceOnTv === 'boolean') override.forceOnTv = source.forceOnTv
+      if (typeof source.order === 'number' && Number.isFinite(source.order))
+        override.order = Math.round(source.order)
+      if (Object.keys(override).length > 0) overrides[id.slice(0, 120)] = override
+    }
+    if (Object.keys(overrides).length > 0) result.overrides = overrides
+  }
+  if (Array.isArray(value.customMessages)) {
+    const messages: CustomBroadcastMessage[] = []
+    for (const rawMessage of value.customMessages.slice(0, 200)) {
+      if (!rawMessage || typeof rawMessage !== 'object' || Array.isArray(rawMessage)) continue
+      const entry = rawMessage as Record<string, unknown>
+      const id = safeStr(entry.id)
+      const text = safeStr(entry.text)
+      if (
+        !id ||
+        !text ||
+        typeof entry.phase !== 'string' ||
+        !ALL_BROADCAST_PHASES.includes(entry.phase as Phase)
+      )
+        continue
+      if (
+        entry.type !== 'game' &&
+        entry.type !== 'social' &&
+        entry.type !== 'vote' &&
+        entry.type !== 'twist' &&
+        entry.type !== 'diary'
+      )
+        continue
+      if (entry.level !== 'minor' && entry.level !== 'major' && entry.level !== 'critical') continue
+      const message: CustomBroadcastMessage = {
+        id: id.slice(0, 120),
+        phase: entry.phase as Phase,
+        text: text.slice(0, 500),
+        type: entry.type as TvEvent['type'],
+        level: entry.level,
+        enabled: entry.enabled !== false,
+      }
+      const key = safeStr(entry.key)
+      const title = safeStr(entry.title)
+      const major = safeStr(entry.major)
+      if (key) message.key = key.slice(0, 120)
+      if (title) message.title = title.slice(0, 120)
+      if (major) message.major = major.slice(0, 120)
+      if (typeof entry.forceOnTv === 'boolean') message.forceOnTv = entry.forceOnTv
+      if (typeof entry.order === 'number' && Number.isFinite(entry.order))
+        message.order = Math.round(entry.order)
+      if (
+        typeof entry.campaign === 'string' &&
+        BROADCAST_CAMPAIGNS.includes(entry.campaign as (typeof BROADCAST_CAMPAIGNS)[number])
+      )
+        message.campaign = entry.campaign as CustomBroadcastMessage['campaign']
+      messages.push(message)
+    }
+    if (messages.length > 0) result.customMessages = messages
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+function sanitiseSocialManager(raw: unknown): RemoteConfig['socialManager'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const actionOverrides = sanitiseSocialActionOverrides(value.actionOverrides)
+  const result: NonNullable<RemoteConfig['socialManager']> = {}
+  if (typeof value.enabled === 'boolean') result.enabled = value.enabled
+  if (Object.keys(actionOverrides).length > 0) result.actionOverrides = actionOverrides
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
 /** Returns true when the URL is an absolute http(s) URL. */
 function isAbsoluteHttpUrl(value: string): boolean {
   try {
@@ -222,6 +323,9 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
 
   const broadcast = sanitiseBroadcast(r.broadcast)
   if (broadcast) config.broadcast = broadcast
+
+  const broadcastManager = sanitiseBroadcastManager(r.broadcastManager)
+  if (broadcastManager) config.broadcastManager = broadcastManager
 
   const gameManager = sanitiseGameManager(r.gameManager)
   if (gameManager) config.gameManager = gameManager
@@ -321,6 +425,9 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
   // social: pure-data rules and content overlays with a bundled fallback.
   const social = sanitiseSocialRuntimeOverride(r.social)
   if (social && Object.keys(social).length > 0) config.social = social
+
+  const socialManager = sanitiseSocialManager(r.socialManager)
+  if (socialManager) config.socialManager = socialManager
 
   // operations: gradual UI rollout, kill switches and privacy-safe telemetry.
   if (r.operations && typeof r.operations === 'object' && !Array.isArray(r.operations)) {

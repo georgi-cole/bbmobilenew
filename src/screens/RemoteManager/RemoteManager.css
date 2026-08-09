@@ -144,6 +144,77 @@
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace !important;
   line-height: 1.5;
 }
+.remote-manager__json--short {
+  min-height: 0;
+}
+.remote-manager__divider {
+  border: 0;
+  border-top: 1px solid #344361;
+  margin: 28px 0;
+}
+.remote-manager__subhead {
+  margin-top: 24px;
+}
+.remote-manager__phase-picker {
+  max-width: 320px;
+  margin: 14px 0;
+}
+.remote-manager__template-list,
+.remote-manager__assignment-list {
+  display: grid;
+  gap: 12px;
+}
+.remote-manager__template {
+  border: 1px solid #303f5d;
+  border-radius: 13px;
+  padding: 16px;
+  background: rgba(2, 8, 20, 0.38);
+}
+.remote-manager__template > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.remote-manager code {
+  color: #8edcf4;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.76rem;
+}
+.remote-manager__grid--compact {
+  margin-top: 12px;
+}
+.remote-manager__assignment {
+  display: grid !important;
+  grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.3fr);
+  align-items: center;
+  gap: 16px !important;
+  border: 1px solid #303f5d;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(2, 8, 20, 0.38);
+}
+.remote-manager__assignment span {
+  display: grid;
+  gap: 3px;
+}
+.remote-manager__social-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  border: 1px solid #303f5d;
+  border-radius: 13px;
+  padding: 16px;
+  background: rgba(2, 8, 20, 0.38);
+}
+.remote-manager__tutorial ol,
+.remote-manager__tutorial ul {
+  display: grid;
+  gap: 12px;
+  max-width: 900px;
+  color: #dce5f8;
+  line-height: 1.55;
+}
 .remote-manager__publish-actions {
   display: flex;
   gap: 12px;
@@ -170,5 +241,8 @@
   }
   .remote-manager__publish-actions {
     flex-direction: column;
+  }
+  .remote-manager__assignment {
+    grid-template-columns: 1fr;
   }
 }
