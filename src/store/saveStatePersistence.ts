@@ -92,6 +92,50 @@ export interface SavedSeasonSnapshot {
   challenge?: ChallengeState
 }
 
+export interface SavedSeasonState {
+  game: GameState
+  finale: FinaleState
+  social: SocialState
+  publicOpinion?: PublicOpinionState
+  challenge?: ChallengeState
+}
+
+/**
+ * Build the durable campaign payload shared by automatic and manual saves.
+ *
+ * Completed-season history and Broadcast Manager authoring data have their own
+ * localStorage keys. Keeping them out of every run snapshot avoids duplicating
+ * large, unrelated values and prevents a runtime-only authoring value from
+ * blocking an otherwise valid campaign save.
+ */
+export function createSavedSeasonSnapshot(
+  profileId: string,
+  state: SavedSeasonState,
+  savedAt = new Date().toISOString()
+): SavedSeasonSnapshot {
+  const campaignGame = { ...state.game }
+  delete campaignGame.seasonArchives
+  delete campaignGame.broadcastOverrides
+  delete campaignGame.customBroadcasts
+  const savedAtMs = Date.parse(savedAt)
+
+  return {
+    version: 1,
+    profileId,
+    savedAt,
+    game: {
+      ...campaignGame,
+      mode: state.game.mode ?? 'classic',
+      lastPlayedAt: Number.isFinite(savedAtMs) ? savedAtMs : Date.now(),
+      saveVersion: state.game.saveVersion ?? 2,
+    },
+    finale: state.finale,
+    social: state.social,
+    publicOpinion: state.publicOpinion,
+    challenge: state.challenge,
+  }
+}
+
 export interface SavedRunProfileStats {
   maxSurvivorDaysSurvived: number
   survivorAchievementsUnlocked: SurvivorAchievementUnlockMap
@@ -230,10 +274,31 @@ function normalizeRunProfile(
   }
 }
 
+function createPersistenceReplacer(): (this: unknown, key: string, value: unknown) => unknown {
+  const ancestors: object[] = []
+
+  return function persistenceReplacer(this: unknown, _key: string, value: unknown): unknown {
+    // Redux state should not contain bigint values, but browser/native bridges
+    // can introduce one. Preserve the value instead of failing the entire save.
+    if (typeof value === 'bigint') return value.toString()
+    if (value === null || typeof value !== 'object') return value
+
+    // Keep only the active ancestor chain. Repeated sibling references are safe
+    // and should still be serialized; only an actual back-edge is omitted.
+    while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+      ancestors.pop()
+    }
+    if (ancestors.includes(value)) return undefined
+    ancestors.push(value)
+    return value
+  }
+}
+
 function serialize(value: unknown): string | null {
   try {
-    return JSON.stringify(value)
-  } catch {
+    return JSON.stringify(value, createPersistenceReplacer())
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn('[save] snapshot serialization failed', error)
     reportSavePersistenceIssue('write_failed', 'serialization_failed')
     return null
   }
