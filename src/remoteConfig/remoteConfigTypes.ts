@@ -14,6 +14,7 @@ import type { CompSelectionMode } from '../components/compSelectionUtils'
 import type { SocialRuntimeOverride } from '../social/socialRuntimeConfig'
 import type { MusicConfigOverrides } from '../services/sound/musicConfig'
 import type { MusicTrackAssetOverride } from '../services/sound/musicCatalog'
+import type { GameManagerConfig } from '../gameManager/gameManager'
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,17 @@ export interface RemoteMainTv {
   headline?: string
   /** Optional secondary line (reserved for future expansion). */
   subtext?: string
+}
+
+// ── Broadcast ───────────────────────────────────────────────────────────────
+
+export interface RemoteBroadcast {
+  enabled?: boolean
+  title?: string
+  message?: string
+  priority?: 'normal' | 'critical'
+  startsAt?: string
+  endsAt?: string
 }
 
 // ── Challenge scheduling ──────────────────────────────────────────────────────
@@ -154,6 +166,10 @@ export interface RemoteConfig {
     music?: RemoteMusic
     mainTv?: RemoteMainTv
   }
+  /** Global, optionally scheduled message shown to every active client. */
+  broadcast?: RemoteBroadcast
+  /** Producer-authored competition schedule; remote rules override local rules. */
+  gameManager?: GameManagerConfig
   challenge?: RemoteChallenge
   /**
    * Overrides for individual AI houseguest profiles.

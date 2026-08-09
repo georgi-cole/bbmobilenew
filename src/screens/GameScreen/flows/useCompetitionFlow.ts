@@ -90,7 +90,12 @@ export function useCompetitionFlow({
   // When the human player is the outgoing LOH, no challenge is started at all
   // (the winner is determined randomly via advance() instead).
   useEffect(() => {
-    const isCompPhase = game.phase === 'loh_comp' || game.phase === 'pos_comp'
+    const democraciaOverridesLoh =
+      game.phase === 'loh_comp' &&
+      game.democracia?.active === true &&
+      game.democracia.activatedDay === game.week
+    const isCompPhase =
+      (game.phase === 'loh_comp' || game.phase === 'pos_comp') && !democraciaOverridesLoh
     // Do not start a challenge when the human player is the outgoing LOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
     // Also skip when a CeremonyOverlay is pending (challenge result already
@@ -107,6 +112,9 @@ export function useCompetitionFlow({
     hohCompParticipants,
     aliveIds,
     game.seed,
+    game.week,
+    game.democracia?.active,
+    game.democracia?.activatedDay,
     dispatch,
     humanIsOutgoingHoh,
     pendingWinnerCeremony,
@@ -200,6 +208,7 @@ export function useCompetitionFlow({
       // pendingChallenge from Redux, but this closure still holds it.
       const capturedParticipants = pendingChallenge.participants
       const capturedGameKey = pendingChallenge.game.key
+      const scheduledWinnerId = pendingChallenge.forcedWinnerId
       // prizeType was recorded at challenge-start and is reliable even
       // after the phase advances (feature thunks can transition
       // loh_comp → loh_results before this callback fires).
@@ -292,7 +301,7 @@ export function useCompetitionFlow({
 
       const scoreWinnerId = dispatch(
         completeChallenge(rawResults, {
-          authoritativeWinnerId,
+          authoritativeWinnerId: scheduledWinnerId ?? authoritativeWinnerId,
           partial: partial === true,
         })
       ) as string | null
@@ -355,6 +364,7 @@ export function useCompetitionFlow({
       const liveState = store.getState()
       const featureAppliedWinner = isHohComp ? liveState.game.lohId : liveState.game.posWinnerId
       const finalWinnerId =
+        scheduledWinnerId ??
         explicitWinnerId ??
         (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner)
           ? featureAppliedWinner
@@ -456,11 +466,12 @@ export function useCompetitionFlow({
         rect: getTileRect(winnerPlayer.id),
         badge: winSymbol,
         badgeImageSrc: isHohComp && !isVoxComp ? LOH_BADGE_SRC : undefined,
-        badgeVariant: !isVoxComp && isCupidArrowActive(game)
-          ? isHohComp
-            ? 'cupid-kiss'
-            : 'cupid-hug'
-          : undefined,
+        badgeVariant:
+          !isVoxComp && isCupidArrowActive(game)
+            ? isHohComp
+              ? 'cupid-kiss'
+              : 'cupid-hug'
+            : undefined,
         badgeStart: 'center',
         badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
       }))
@@ -482,7 +493,16 @@ export function useCompetitionFlow({
         measureA: () => getTileRect(finalWinnerId),
       })
     },
-    [aliveIds.length, dispatch, game, getTileRect, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
+    [
+      aliveIds.length,
+      dispatch,
+      game,
+      getTileRect,
+      humanPlayer,
+      isF3MinigamePhase,
+      pendingChallenge,
+      store,
+    ]
   )
 
   return {

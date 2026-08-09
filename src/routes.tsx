@@ -49,6 +49,8 @@ const load = (element: ReactNode) => (
 // while production testers can audit every minigame through the central panel.
 const GameDebug = lazy(() => import('./screens/GameDebug/GameDebug'))
 const BroadcastManager = lazy(() => import('./screens/BroadcastManager/BroadcastManager'))
+const GameManager = lazy(() => import('./screens/GameManager/GameManager'))
+const RemoteManager = lazy(() => import('./screens/RemoteManager/RemoteManager'))
 
 // Manual QA page. Normal release builds omit it; local production previews can
 // opt in with VITE_ENABLE_QA_ROUTES=true.
@@ -358,6 +360,22 @@ export const router = createHashRouter([
         element: (
           <Suspense fallback={null}>
             <BroadcastManager />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'game-manager',
+        element: (
+          <Suspense fallback={null}>
+            <GameManager />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'remote-manager',
+        element: (
+          <Suspense fallback={null}>
+            <RemoteManager />
           </Suspense>
         ),
       },

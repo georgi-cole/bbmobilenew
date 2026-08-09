@@ -17,6 +17,11 @@ import {
   sanitiseSocialActionOverrides,
   type SocialActionOverrides,
 } from '../social/socialActionManager'
+import {
+  DEFAULT_GAME_MANAGER_CONFIG,
+  normalizeGameManagerConfig,
+  type GameManagerConfig,
+} from '../gameManager/gameManager'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
@@ -65,6 +70,8 @@ export interface SettingsState {
     castSize: number
     /** Comp Selection configuration: which games are eligible, optional weekly draw limit, and category filter. */
     compSelection: CompSelectionPayload
+    /** Producer controls for scheduling individual LOH and POS competitions. */
+    gameManager: GameManagerConfig
   }
   sim: {
     /** Enables the public-influence ruleset (3rd nominee + pre-veto public save). */
@@ -172,6 +179,7 @@ function normalizeGameUX(gameUX?: Partial<SettingsState['gameUX']>): SettingsSta
   const merged = { ...DEFAULT_SETTINGS.gameUX, ...(gameUX ?? {}) }
   merged.realityModePreset = normalizeRealityModePreset(gameUX?.realityModePreset)
   merged.compSelection = normalizeCompSelection(gameUX?.compSelection)
+  merged.gameManager = normalizeGameManagerConfig(gameUX?.gameManager)
   if (legacyCompactRosterLayout === 'small') {
     merged.compactRoster = true
   }
@@ -217,6 +225,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
       weeklyLimit: null,
       filterCategory: null,
     },
+    gameManager: DEFAULT_GAME_MANAGER_CONFIG,
   },
   sim: {
     publicMode: false,
@@ -346,6 +355,9 @@ const settingsSlice = createSlice({
       Object.assign(state.gameUX, action.payload)
       if (action.payload.compSelection !== undefined) {
         state.gameUX.compSelection = normalizeCompSelection(action.payload.compSelection)
+      }
+      if (action.payload.gameManager !== undefined) {
+        state.gameUX.gameManager = normalizeGameManagerConfig(action.payload.gameManager)
       }
     },
     setSim(state, action: PayloadAction<Partial<SettingsState['sim']>>) {

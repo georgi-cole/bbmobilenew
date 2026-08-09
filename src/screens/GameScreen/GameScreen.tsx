@@ -334,9 +334,7 @@ export default function GameScreen() {
   const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false)
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const preJuryGameOver =
-    game.mode !== 'survival' &&
-    humanPlayer?.status === 'evicted' &&
-    !spectatingAfterElimination
+    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination
   const isVoxPopuli = game.voxPopuli?.status === 'active'
   const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
   const voxAudiencePreviewWindow =
@@ -537,11 +535,7 @@ export default function GameScreen() {
       ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
       status: 'ready',
     })
-  }, [
-    game.voxPopuli?.nominationBallots,
-    game.week,
-    voxNominationRevealReady,
-  ])
+  }, [game.voxPopuli?.nominationBallots, game.week, voxNominationRevealReady])
 
   useEffect(() => {
     if (!voxNominationRevealReady || hasSeenVoxNominationRevealIntro()) return
@@ -886,8 +880,11 @@ export default function GameScreen() {
 
     aiOnlyChallengeResolvedRef.current = pendingChallenge.id
     const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
-    const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null
-    const finalWinnerId = scoreWinnerId ?? pendingChallenge.participants[0]
+    const scoreWinnerId = dispatch(
+      completeChallenge(rawResults, { authoritativeWinnerId: pendingChallenge.forcedWinnerId })
+    ) as string | null
+    const finalWinnerId =
+      pendingChallenge.forcedWinnerId ?? scoreWinnerId ?? pendingChallenge.participants[0]
     const ranked =
       pendingChallenge.game.key === 'pressurePlank'
         ? rankPressurePlankResults(
@@ -1146,7 +1143,8 @@ export default function GameScreen() {
   // Final Three is a closed ceremony. Do not surface fresh social actions or
   // inbox requests once only three housemates remain.
   const isSocialPhase =
-    (isVoxPopuli && alivePlayers.length > 3) || (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
+    (isVoxPopuli && alivePlayers.length > 3) ||
+    (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
   const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
   // The individual controllers publish presentation signals; this coordinator
@@ -1155,7 +1153,10 @@ export default function GameScreen() {
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
   const showFinal3Ceremony =
-    !isVoxPopuli && game.awaitingFinal3Plea === true && game.phase === 'final3_decision' && !!game.lohId
+    !isVoxPopuli &&
+    game.awaitingFinal3Plea === true &&
+    game.phase === 'final3_decision' &&
+    !!game.lohId
   const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const favoriteAnnouncementPending =
     game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
@@ -1568,8 +1569,8 @@ export default function GameScreen() {
                 ? '🗳️ The secret nominations have been counted'
                 : nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] ===
                     'Last in LOH Comp'
-                ? '🎯 Nominations are set — including the LOH comp last-place finisher'
-                : '🎯 Nominations are set'
+                  ? '🎯 Nominations are set — including the LOH comp last-place finisher'
+                  : '🎯 Nominations are set'
             }
             onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
             ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
@@ -1879,9 +1880,7 @@ export default function GameScreen() {
                   badge: isVoxFinalFour ? '🏆' : isVoxPopuli ? '🛡️' : '👑',
                   badgeImageSrc: isVoxPopuli ? undefined : LOH_BADGE_SRC,
                   badgeVariant:
-                    !isVoxPopuli && isCupidArrowActive(game)
-                      ? ('cupid-kiss' as const)
-                      : undefined,
+                    !isVoxPopuli && isCupidArrowActive(game) ? ('cupid-kiss' as const) : undefined,
                   badgeStart: 'center' as const,
                   badgeLabel: `${winnerPlayer?.name ?? roleWinnerId} wins ${
                     isVoxFinalFour
@@ -1896,9 +1895,7 @@ export default function GameScreen() {
             caption={`${expandCupidIds(game, [game.lohId])
               .map((id) => game.players.find((player) => player.id === id)?.name)
               .filter(Boolean)
-              .join(' & ')} ${
-              !isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'
-            } ${
+              .join(' & ')} ${!isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'} ${
               isVoxFinalFour
                 ? 'the Final 4 competition!'
                 : isVoxPopuli
@@ -1977,8 +1974,7 @@ export default function GameScreen() {
               isVoxPopuli
                 ? `${activeReplacementAnimationTargetIds
                     .map((id) => {
-                      const name =
-                        game.players.find((player) => player.id === id)?.name ?? id
+                      const name = game.players.find((player) => player.id === id)?.name ?? id
                       const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0
                       return `${name} (${votes} vote${votes === 1 ? '' : 's'})`
                     })
@@ -1991,8 +1987,8 @@ export default function GameScreen() {
               isVoxPopuli
                 ? 'Next-highest secret-ballot rank'
                 : game.specialVeto?.activeType === 'diamond'
-                ? '😇 Halo Exchange names the backup nominee'
-                : '🎯 Nominations are set'
+                  ? '😇 Halo Exchange names the backup nominee'
+                  : '🎯 Nominations are set'
             }
             onDone={handleAiReplacementDone}
             ariaLabel="Backup nominee ceremony"
@@ -2160,9 +2156,7 @@ export default function GameScreen() {
           secondaryLabel={isVoxPopuli ? 'Return Home' : undefined}
           onConfirm={handleStartNewSeason}
           onCancel={
-            isVoxPopuli
-              ? () => setSpectatingAfterElimination(true)
-              : handlePreJuryReturnHome
+            isVoxPopuli ? () => setSpectatingAfterElimination(true) : handlePreJuryReturnHome
           }
           onSecondary={isVoxPopuli ? handlePreJuryReturnHome : undefined}
         />
