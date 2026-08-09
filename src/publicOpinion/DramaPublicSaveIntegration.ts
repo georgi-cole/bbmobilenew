@@ -213,7 +213,6 @@ export function completeDramaPublicSave(
     store.dispatch(
       commitPublicSave({
         savedId: outcome.savedId,
-        supportPercent: outcome.winningShare,
       })
     )
   }

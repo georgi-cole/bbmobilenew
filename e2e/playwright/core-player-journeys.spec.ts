@@ -59,7 +59,7 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
 async function assertCampaignReady(page: Page, playerName: string): Promise<void> {
   const actionZone = page.getByRole('region', { name: 'Game action zone' })
   await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await expect(actionZone.getByLabel('Day start', { exact: true })).toBeVisible()
+  await expect(actionZone.getByLabel('Season start', { exact: true })).toBeVisible()
   await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
@@ -280,6 +280,26 @@ async function advanceToFirstSocialPhase(page: Page): Promise<void> {
   }
 
   throw new Error('The first social phase was not reachable through player controls.')
+}
+
+async function advanceToLohAnnouncement(page: Page): Promise<void> {
+  for (let step = 0; step < 12; step += 1) {
+    await closePhaseInformationIfPresent(page)
+    if ((await readAppState(page)).game.phase === 'loh_comp_announcement') return
+
+    const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
+    if (await optionalContinue.isVisible()) {
+      await optionalContinue.click()
+      continue
+    }
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await expect(advance).toBeEnabled()
+    await advance.click()
+  }
+
+  throw new Error('The LOH competition announcement was not reachable through player controls.')
 }
 
 async function playOneCompleteWeek(page: Page): Promise<{
@@ -546,7 +566,7 @@ test.describe('Real player core journeys', () => {
     const initialState = await readAppState(page)
     expect(initialState.game.seed).toBe(E2E_NEW_SEASON_FIXTURE.seasonSeed)
     expect(initialState.game.week).toBe(1)
-    expect(initialState.game.phase).toBe('week_start')
+    expect(initialState.game.phase).toBe('season_start')
     const initialActiveIds = initialState.game.players
       .filter((player) => player.status === 'active')
       .map((player) => player.id)
@@ -635,7 +655,7 @@ test.describe('Real player core journeys', () => {
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })
-    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    await advanceToLohAnnouncement(page)
     await expect(actionZone.getByLabel('LOH competition', { exact: true })).toBeVisible()
     await closePhaseInformationIfPresent(page)
 
@@ -721,7 +741,7 @@ test.describe('Real player core journeys', () => {
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })
-    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    await advanceToLohAnnouncement(page)
     await expect(actionZone.getByLabel('LOH competition', { exact: true })).toBeVisible()
     await closePhaseInformationIfPresent(page)
 

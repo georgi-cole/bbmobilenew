@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import gameReducer from './gameSlice'
+import gameReducer, { replaceBroadcastConfig } from './gameSlice'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, { loadSettings, saveSettings } from './settingsSlice'
@@ -49,6 +49,11 @@ import { secretMissionMiddleware } from './secretMissionMiddleware'
 import { gameDiagnosticsMiddleware } from '../services/diagnostics/gameDiagnostics'
 import vipReducer, { loadVipState } from './vipSlice'
 import { saveCachedVipEntitlement } from '../vip/vipStorage'
+import {
+  BROADCAST_CONFIG_STORAGE_KEY,
+  loadBroadcastConfig,
+  saveBroadcastConfig,
+} from '../broadcasting/broadcastConfigPersistence'
 
 export const store = configureStore({
   reducer: {
@@ -101,11 +106,22 @@ export const store = configureStore({
     ),
 })
 
+// The Broadcast Manager is commonly kept open beside the game. localStorage
+// persists its authoring data; this listener makes a save in that manager tab
+// immediately update the live game tab and its ordered presentation queue.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== BROADCAST_CONFIG_STORAGE_KEY) return
+    const config = loadBroadcastConfig()
+    store.dispatch(replaceBroadcastConfig(config))
+  })
+}
+
 function hasMeaningfulGameProgress(game: ReturnType<typeof store.getState>['game']): boolean {
   return (
     game.mode === 'survival' ||
     game.week > 1 ||
-    game.phase !== 'week_start' ||
+    (game.phase !== 'season_start' && game.phase !== 'week_start') ||
     Boolean(game.runId) ||
     Boolean(game.pendingEviction) ||
     Boolean(game.seasonFinale)
@@ -124,6 +140,8 @@ let prevAds = store.getState().ads
 let prevVip = store.getState().vip
 // Persist active mode runs whenever the game slice changes.
 let prevGame = store.getState().game
+let prevBroadcastOverrides = store.getState().game.broadcastOverrides
+let prevCustomBroadcasts = store.getState().game.customBroadcasts
 let prevFinale = store.getState().finale
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
@@ -138,6 +156,14 @@ let prevSeasonArchivesLength = prevSeasonArchives?.length ?? 0
 let prevArchiveProfileId: string | null = store.getState().profiles?.activeProfileId ?? null
 store.subscribe(() => {
   const current = store.getState()
+  if (
+    current.game.broadcastOverrides !== prevBroadcastOverrides ||
+    current.game.customBroadcasts !== prevCustomBroadcasts
+  ) {
+    prevBroadcastOverrides = current.game.broadcastOverrides
+    prevCustomBroadcasts = current.game.customBroadcasts
+    saveBroadcastConfig(current.game.broadcastOverrides ?? {}, current.game.customBroadcasts ?? [])
+  }
   if (current.settings !== prevSettings) {
     prevSettings = current.settings
     saveSettings(current.settings)

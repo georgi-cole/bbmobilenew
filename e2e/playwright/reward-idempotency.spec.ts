@@ -113,7 +113,7 @@ async function startCampaign(page: Page): Promise<void> {
 
   const actionZone = page.getByRole('region', { name: 'Game action zone' })
   await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await expect(actionZone.getByLabel('Day start', { exact: true })).toBeVisible()
+  await expect(actionZone.getByLabel('Season start', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: PROFILE_NAME, exact: true })).toBeVisible()
 }
 

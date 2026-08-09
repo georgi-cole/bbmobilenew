@@ -181,6 +181,7 @@ const VETO_MUSIC = musicTrack('veto')
  * Phase now produces a TypeScript error until its music behavior is declared.
  */
 export const DEFAULT_PHASE_MUSIC_POLICY: Readonly<Record<Phase, MusicSelection>> = {
+  season_start: SILENT_MUSIC,
   week_start: SILENT_MUSIC,
   loh_comp_announcement: SILENT_MUSIC,
   loh_comp: COMPETITION_MUSIC,

@@ -76,7 +76,7 @@ describe('social memory integration for incoming interactions', () => {
     expect(entry.recentEvents[0].type).toBe('ignored_compliment')
   })
 
-  it('adds one cheerful TV summary when multiple incoming interactions expire together', () => {
+  it('keeps expired messages in the social inbox history without adding a TV reminder', () => {
     const store = makeStore()
     const { players, week } = store.getState().game
     const aiPlayers = players.filter((p) => !p.isUser)
@@ -106,18 +106,26 @@ describe('social memory integration for incoming interactions', () => {
 
     store.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week + 1) as never)
 
-    const socialEvents = store
-      .getState()
-      .game.tvFeed.filter((event) => event.type === 'social' && event.source === 'system')
-
-    expect(socialEvents).toHaveLength(1)
-    expect(socialEvents[0].channels).toEqual(['tv', 'mainLog'])
-    expect(socialEvents[0].text).toBe(
+    expect(store.getState().game.tvFeed.map((event) => event.text)).not.toContain(
       "Several players' deal offer and nomination plea required answers and passed their deadlines."
     )
+    expect(
+      store
+        .getState()
+        .social.incomingInteractions.filter((interaction) => interaction.resolved)
+        .map((interaction) => interaction.id)
+        .sort()
+    ).toEqual(['i-expired-deal', 'i-expired-plea'])
+    expect(
+      store
+        .getState()
+        .social.incomingInteractionLogs.filter(
+          (entry) => entry.reason === 'auto_resolved_ignored' && entry.stage === 'auto_resolution'
+        )
+    ).toHaveLength(2)
   })
 
-  it('uses singular player wording when multiple expired interactions came from one sender', () => {
+  it('records every expired required message even when they came from one sender', () => {
     const store = makeStore()
     const { players, week } = store.getState().game
     const ai = players.find((p) => !p.isUser)!
@@ -147,13 +155,15 @@ describe('social memory integration for incoming interactions', () => {
 
     store.dispatch(autoResolveExpiredIncomingInteractionsForWeek(week + 1) as never)
 
-    const socialEvents = store
-      .getState()
-      .game.tvFeed.filter((event) => event.type === 'social' && event.source === 'system')
-
-    expect(socialEvents).toHaveLength(1)
-    expect(socialEvents[0].text).toBe(
+    expect(store.getState().game.tvFeed.map((event) => event.text)).not.toContain(
       "One player's deal offer and nomination plea required an answer and passed its deadline."
     )
+    expect(
+      store
+        .getState()
+        .social.incomingInteractionLogs.filter(
+          (entry) => entry.reason === 'auto_resolved_ignored' && entry.actorId === ai.id
+        )
+    ).toHaveLength(2)
   })
 })

@@ -54,6 +54,7 @@ import {
 import './DebugPanel.css';
 
 const PHASES: Phase[] = [
+  'season_start',
   'week_start',
   'loh_comp_announcement',
   'loh_comp',
@@ -391,6 +392,14 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 <dt>Alive</dt> <dd>{alive.length}</dd>
                 <dt>Evicted</dt> <dd>{evicted.length}</dd>
               </dl>
+              <button
+                className="dbg-btn dbg-btn--wide"
+                type="button"
+                onClick={() => navigate('/broadcast-manager?debug=1')}
+              >
+                {/* i18n-ignore: Debug-only navigation control intentionally uses canonical English */}
+                Open Broadcast Manager
+              </button>
 
               <details className="dbg-players">
                 <summary>Players ({game.players.length})</summary>

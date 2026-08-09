@@ -30,6 +30,8 @@ export interface TvAnnouncementOverlayProps {
   infoButtonRef?: RefObject<HTMLButtonElement | null>;
   /** When false, the info button is not rendered. */
   showInfoButton?: boolean;
+  /** Override legacy key-based shock detection when the runtime owns priority. */
+  playShockPrelude?: boolean;
 }
 
 const SHOCK_PRELUDE_DURATION_MS = 2320;
@@ -47,6 +49,7 @@ const FULLSCREEN_SHOCK_KEYS = new Set([
   'cupid_arrow_broken',
   'vox_populi',
   'twist',
+  'custom_critical',
 ]);
 
 function getAnnouncementThemeClass(key: string): string {
@@ -70,6 +73,8 @@ function getAnnouncementThemeClass(key: string): string {
     key === 'final3_announcement' ||
     key === 'final_hoh' ||
     key === 'jury' ||
+    key === 'custom_major' ||
+    key === 'custom_critical' ||
     key.startsWith('loh_tiebreak_')
   ) {
     return 'tv-announcement--theme-loh';
@@ -125,10 +130,12 @@ export default function TvAnnouncementOverlay({
   paused = false,
   infoButtonRef,
   showInfoButton = true,
+  playShockPrelude,
 }: TvAnnouncementOverlayProps) {
   const { t } = useI18n();
   const { title, subtitle, isLive, autoDismissMs } = announcement;
-  const shouldPlayShockPrelude = FULLSCREEN_SHOCK_KEYS.has(announcement.key);
+  const shouldPlayShockPrelude =
+    playShockPrelude ?? FULLSCREEN_SHOCK_KEYS.has(announcement.key);
   const [shockPreludeKey, setShockPreludeKey] = useState<string | null>(() =>
     shouldPlayShockPrelude ? announcement.key : null
   );

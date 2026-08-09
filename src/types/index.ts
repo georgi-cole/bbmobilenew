@@ -149,6 +149,8 @@ export interface MinigameContext {
 
 // Canonical weekly-game phase list (in execution order)
 export type Phase =
+  /** One-time opening phase before Day 1 begins. */
+  | 'season_start'
   | 'week_start'
   /** Pre-competition TV announcement before the LOH competition begins. */
   | 'loh_comp_announcement'
@@ -231,6 +233,38 @@ export interface TvEvent {
    * background / AI-driven events. Required when channels includes 'dr'.
    */
   source?: ActivitySource
+}
+
+export type BroadcastLevel = 'minor' | 'major' | 'critical'
+
+/** Per-save changes to a built-in broadcast definition. */
+export interface BroadcastOverride {
+  text?: string
+  title?: string
+  type?: TvEvent['type']
+  level?: BroadcastLevel
+  major?: string | null
+  disabled?: boolean
+  /** Put this message on the faux TV. This does not change its visual level. */
+  forceOnTv?: boolean
+  /** Author-defined position within its phase. Lower values appear first. */
+  order?: number
+}
+
+/** A user-authored line that is emitted whenever its assigned phase is entered. */
+export interface CustomBroadcastMessage {
+  id: string
+  /** Human-readable authoring key shown in the manager and emitted metadata. */
+  key?: string
+  phase: Phase
+  text: string
+  title?: string
+  type: TvEvent['type']
+  level: BroadcastLevel
+  major?: string
+  enabled: boolean
+  forceOnTv?: boolean
+  order?: number
 }
 
 // ─── Spectator overlay ────────────────────────────────────────────────────────
@@ -608,6 +642,14 @@ export interface GameState {
    */
   competitionSeasonStateByPlayerId?: Record<string, CompetitionSeasonState>
   tvFeed: TvEvent[]
+  /** Ordered event IDs waiting to be presented by the faux-TV player. */
+  broadcastQueue?: string[]
+  /** Last consumed plain faux-TV message, retained until another message replaces it. */
+  lastPlainBroadcastEventId?: string | null
+  /** Editable built-in broadcast copy, keyed by the stable registry ID. */
+  broadcastOverrides?: Record<string, BroadcastOverride>
+  /** Additional phase messages authored in the Broadcast Manager. */
+  customBroadcasts?: CustomBroadcastMessage[]
   isLive: boolean
   /** One-time per-season tutorial flag for the confessional FAB spotlight. */
   hasSeenConfessionalSpotlight?: boolean

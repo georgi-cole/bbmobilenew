@@ -19,7 +19,7 @@
 
 import React, { type ComponentProps } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render as testingLibraryRender, screen, act, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -28,6 +28,7 @@ import gameReducer, {
   activateDemocracia,
   activateDoubleEviction,
   addTvEvent,
+  consumeBroadcastEvent,
   setPhase,
   updatePlayer,
 } from '../../../store/gameSlice';
@@ -41,11 +42,26 @@ import TvZone from '../TvZone';
 import TvAnnouncementOverlay from '../TvAnnouncementOverlay/TvAnnouncementOverlay';
 import TvAnnouncementModal from '../TvAnnouncementModal/TvAnnouncementModal';
 import type { Player, TvEvent } from '../../../types';
+import { I18nContext, type I18nContextValue } from '../../../i18n/I18nContext';
+import { translate } from '../../../i18n/messages';
+
+const TEST_I18N: I18nContextValue = {
+  preference: 'en-US',
+  language: 'en-US',
+  systemLanguage: 'en-US',
+  t: (key, params) => translate('en-US', key, params),
+  formatNumber: (value) => String(value),
+  formatDate: (value) => String(value),
+};
+
+function render(ui: React.ReactNode) {
+  return testingLibraryRender(<I18nContext.Provider value={TEST_I18N}>{ui}</I18nContext.Provider>);
+}
 
 // ── Store helpers ─────────────────────────────────────────────────────────────
 
 function makeStore() {
-  return configureStore({
+  const store = configureStore({
     reducer: {
       game: gameReducer,
       social: socialReducer,
@@ -54,10 +70,16 @@ function makeStore() {
       finale: finaleReducer,
     },
   });
+  // These integration tests inject their own event/phase under test. Clear the
+  // real Season Start playback queue so it cannot mask that fixture.
+  for (const id of store.getState().game.broadcastQueue ?? []) {
+    store.dispatch(consumeBroadcastEvent(id));
+  }
+  return store;
 }
 
 function makeStoreWithSettings() {
-  return configureStore({
+  const store = configureStore({
     reducer: {
       game: gameReducer,
       social: socialReducer,
@@ -67,6 +89,10 @@ function makeStoreWithSettings() {
       settings: settingsReducer,
     },
   });
+  for (const id of store.getState().game.broadcastQueue ?? []) {
+    store.dispatch(consumeBroadcastEvent(id));
+  }
+  return store;
 }
 
 function renderTvZone(
@@ -610,20 +636,11 @@ describe('TvZone — announcement overlay', () => {
     );
   });
 
-  it('shows the POS announcement overlay and restores the public save result after dismissal', () => {
+  it('shows the POS announcement overlay without replaying the public save result', () => {
     const store = makeStore();
     renderTvZone(store);
 
     act(() => {
-      store.dispatch(
-        addTvEvent(
-          makeEvent({
-            id: 'ev-public-save-result',
-            text: 'Blue was saved with 50% of the public support. Kian and Georgi are still in danger.',
-            meta: { suppressPhaseAnnouncementKey: 'pos_comp_announcement' },
-          }),
-        ),
-      );
       store.dispatch(setPhase('pos_comp_announcement'));
     });
 
@@ -633,7 +650,7 @@ describe('TvZone — announcement overlay', () => {
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Power of Safety/i })).toBeNull();
-    expect(screen.getByText(/Blue was saved with 50% of the public support/i)).toBeTruthy();
+    expect(screen.queryByText(/Blue was saved with 50% of the public support/i)).toBeNull();
   });
 
   it('keeps the final pitches message hidden once live voting begins', () => {
@@ -789,6 +806,7 @@ describe('TvZone — announcement overlay', () => {
     renderTvZone(store);
 
     act(() => {
+      store.dispatch(setPhase('week_start'));
       store.dispatch(addTvEvent(makeEvent({
         id: 'tribunal-phase-preroll',
         text: `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
@@ -1106,6 +1124,52 @@ describe('TvZone — TVLog usage', () => {
   });
 });
 
+describe('TvZone day-transition broadcasts', () => {
+  it('shows each daily transition only in its own phase, including saved legacy events', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'legacy-day-end',
+            text: 'Day 1 has come to an end. A new day begins soon… ✨',
+          }),
+        ),
+      );
+      store.dispatch(setPhase('week_start'));
+    });
+
+    expect(document.querySelector('.tv-zone__now')?.textContent).not.toContain(
+      'Day 1 has come to an end.',
+    );
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'day-start',
+            text: 'Day 2 has begun. Get ready.',
+            meta: { key: 'day_start' },
+          }),
+        ),
+      );
+    });
+
+    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Day 2 has begun. Get ready.');
+
+    act(() => {
+      store.dispatch(setPhase('loh_comp'));
+    });
+
+    expect(document.querySelector('.tv-zone__now')?.textContent).not.toContain('Day 2 has begun.');
+    expect(document.querySelector('.tv-zone__now')?.textContent).not.toContain(
+      'Day 1 has come to an end.',
+    );
+  });
+});
+
 // ── TvAnnouncementOverlay countdown unit tests ─────────────────────────────────
 
 describe('TvAnnouncementOverlay — countdown logic', () => {
@@ -1371,7 +1435,11 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDemocracia()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
+    expect(screen.getByTestId('tv-shock-prelude')).toHaveTextContent('DEMOCRACIA');
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50);
+    });
 
     expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
     expect(store.getState().game.phase).toBe('loh_comp_announcement');
@@ -1379,7 +1447,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('keeps shock announcements inside the faux TV without a fullscreen interstitial', () => {
+  it('keeps a major Double Elimination announcement inside the faux TV', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
@@ -1387,8 +1455,9 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
 
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
-    expect(document.body.querySelector('.tv-zone__viewport .tv-announcement')).not.toBeNull();
+    expect(screen.queryByTestId('shock-intro-overlay')).toBeNull();
+    expect(screen.queryByTestId('tv-shock-prelude')).toBeNull();
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
     vi.useRealTimers();
   });
 
