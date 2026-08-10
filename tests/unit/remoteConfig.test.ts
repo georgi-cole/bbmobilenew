@@ -30,6 +30,7 @@ import remoteConfigReducer, {
   selectRemotePlayerOverrides,
 } from '../../src/remoteConfig/remoteConfigSlice'
 import {
+  repairRemoteConfigTextEncoding,
   sanitiseRemoteConfig,
   shouldFetchRemoteConfig,
 } from '../../src/remoteConfig/remoteConfigService'
@@ -316,6 +317,15 @@ describe('sanitiseRemoteConfig', () => {
 })
 
 // ─── remote config endpoint policy ────────────────────────────────────────────
+
+describe('repairRemoteConfigTextEncoding', () => {
+  it('repairs mojibake emoji before export and publish', () => {
+    const result = repairRemoteConfigTextEncoding({
+      broadcastManager: { overrides: { 'season.welcome': { text: 'Welcome ð ' } } },
+    })
+    expect(result.broadcastManager?.overrides?.['season.welcome']?.text).toBe('Welcome 🏠')
+  })
+})
 
 describe('shouldFetchRemoteConfig', () => {
   it('allows the dev proxy path during development', () => {
