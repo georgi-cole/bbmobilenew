@@ -88,18 +88,10 @@ export default function QaManagerShortcuts() {
 
   return createPortal(
     <>
-      <button
-        className="dbg-btn dbg-btn--wide"
-        type="button"
-        onClick={() => openManager('music')}
-      >
+      <button className="dbg-btn dbg-btn--wide" type="button" onClick={() => openManager('music')}>
         Open Music Manager
       </button>
-      <button
-        className="dbg-btn dbg-btn--wide"
-        type="button"
-        onClick={() => openManager('social')}
-      >
+      <button className="dbg-btn dbg-btn--wide" type="button" onClick={() => openManager('social')}>
         Open Social Manager
       </button>
     </>,
