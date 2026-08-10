@@ -5,12 +5,14 @@ import {
   isCurrentPhaseBroadcastEvent,
 } from '../tvZoneBroadcastGuards'
 
-function makeEvent(options: {
+type EventOptions = {
   major?: string
   level?: 'minor' | 'major' | 'critical'
   phase?: Phase
   week?: number
-} = {}): TvEvent {
+}
+
+function makeEvent(options: EventOptions = {}): TvEvent {
   const { major, level, phase = 'social_1', week = 2 } = options
   return {
     id: 'test-event',
@@ -31,20 +33,14 @@ describe('tvZoneBroadcastGuards', () => {
   it.each(['twin_shock_clue', 'twin_shock_confessional', 'twin_shock_bond'])(
     'presents ambient Twin Shock beat %s as minor even when legacy metadata says major',
     (major) => {
-      expect(
-        getTvPresentationBroadcastLevel(
-          makeEvent({ major, level: 'major' })
-        )
-      ).toBe('minor')
+      const event = makeEvent({ major, level: 'major' })
+      expect(getTvPresentationBroadcastLevel(event)).toBe('minor')
     }
   )
 
   it('preserves major presentation for unrelated broadcasts', () => {
-    expect(
-      getTvPresentationBroadcastLevel(
-        makeEvent({ major: 'double_eviction', level: 'major' })
-      )
-    ).toBe('major')
+    const event = makeEvent({ major: 'double_eviction', level: 'major' })
+    expect(getTvPresentationBroadcastLevel(event)).toBe('major')
   })
 
   it('accepts a queued event from the current day and phase', () => {
