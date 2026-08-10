@@ -10,6 +10,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.85rem;
   align-items: start;
+  min-width: 0;
   padding: 0.9rem;
   border: 1px solid color-mix(in srgb, var(--color-accent) 30%, var(--color-line));
   border-radius: 14px;
@@ -239,6 +240,7 @@
 .music-manager__row-main {
   justify-content: space-between;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .music-manager__row-main > div {
@@ -290,6 +292,8 @@
 .music-manager__row-controls,
 .music-manager__event-controls {
   align-items: stretch;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .music-manager__select,
@@ -389,6 +393,8 @@
 
 .music-manager__asset-editor {
   align-items: stretch;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .music-manager__asset-editor input {
@@ -465,6 +471,14 @@
   .music-manager__event-controls,
   .music-manager__asset-editor {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .music-manager__row-controls > *,
+  .music-manager__event-controls > *,
+  .music-manager__asset-editor > * {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .music-manager__select {
@@ -480,6 +494,24 @@
   .music-manager__preview,
   .music-manager__asset-editor button {
     min-height: 2.15rem;
+  }
+}
+
+@media (max-width: 460px) {
+  .settings-content {
+    padding: 0.7rem;
+  }
+
+  .music-manager__hero,
+  .music-manager__cue-library,
+  .music-manager__cue-editor {
+    padding: 0.75rem;
+  }
+
+  .music-manager__tabs,
+  .music-manager__stage-tabs {
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
   }
 }
 
