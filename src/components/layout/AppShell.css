@@ -15,6 +15,30 @@ body:has(.game-screen-shell) .app-shell {
   background: var(--color-bg);
 }
 
+/* The player UI intentionally uses a phone-width shell, but Broadcast Manager
+   is a desktop QA authoring surface with a two-column phase/message layout.
+   Give it the available desktop canvas instead of squeezing it into 480px. */
+@media (min-width: 900px) {
+  body:has(.broadcast-manager) .app-shell {
+    width: min(1180px, calc(100vw - 2rem));
+    max-width: none;
+  }
+
+  /* When the QA drawer is open, reserve its 28rem width instead of letting it
+     cover the authoring surface. */
+  body:has(.broadcast-manager):has(.dbg-panel) .app-shell {
+    width: calc(100vw - 28rem);
+    max-width: none;
+    margin-left: 0;
+    margin-right: 28rem;
+  }
+
+  body:has(.broadcast-manager) .broadcast-manager__messages,
+  body:has(.broadcast-manager) .broadcast-manager__layout > * {
+    min-width: 0;
+  }
+}
+
 .app-shell__main {
   position: relative;
   flex: 1 1 0;
