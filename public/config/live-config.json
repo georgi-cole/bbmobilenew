@@ -38,7 +38,7 @@
                              "enabled":  true,
                              "overrides":  {
                                                "season.welcome":  {
-                                                                      "text":  "Welcome to The Big Eye hub! ð  Season {season} is about to begin.",
+                                                                      "text":  "Welcome to The Big Eye hub! 🏠 Season {season} is about to begin.",
                                                                       "title":  "",
                                                                       "type":  "game",
                                                                       "level":  "minor",
@@ -109,7 +109,7 @@
                                                                                    "forceOnTv":  true
                                                                                },
                                                "loh.competition-start":  {
-                                                                             "text":  "The Leader of the Hub competition is underway! ð Who will win control today?",
+                                                                             "text":  "The Leader of the Hub competition is underway! 🏆 Who will win control today?",
                                                                              "title":  "",
                                                                              "type":  "game",
                                                                              "level":  "minor",
@@ -117,7 +117,7 @@
                                                                              "forceOnTv":  true
                                                                          },
                                                "loh.democracia-vote-start":  {
-                                                                                 "text":  "ð³ï¸ Today\u0027s Leader of the Hub will be chosen by popular vote! Cast your votes now.",
+                                                                                 "text":  "🗳️ Today\u0027s Leader of the Hub will be chosen by popular vote! Cast your votes now.",
                                                                                  "title":  "",
                                                                                  "type":  "game",
                                                                                  "level":  "major",
@@ -125,7 +125,7 @@
                                                                                  "forceOnTv":  true
                                                                              },
                                                "loh.winner":  {
-                                                                  "text":  "{winner} has won Leader of the Hub! ð",
+                                                                  "text":  "{winner} has won Leader of the Hub! 👑",
                                                                   "title":  "",
                                                                   "type":  "game",
                                                                   "level":  "minor",
@@ -133,7 +133,7 @@
                                                                   "forceOnTv":  true
                                                               },
                                                "loh.cupid-winners":  {
-                                                                         "text":  "{winner} won Leader of the Hub, making {partner} co-LOH under Cupid\u0027s Arrow! ðð",
+                                                                         "text":  "{winner} won Leader of the Hub, making {partner} co-LOH under Cupid\u0027s Arrow! 👑💘",
                                                                          "title":  "",
                                                                          "type":  "game",
                                                                          "level":  "minor",
@@ -149,7 +149,7 @@
                                                                             "forceOnTv":  true
                                                                         },
                                                "democracia.winner":  {
-                                                                         "text":  "ð³ï¸ {winner} has been elected Leader of the Hub! ð",
+                                                                         "text":  "🗳️ {winner} has been elected Leader of the Hub! 👑",
                                                                          "title":  "",
                                                                          "type":  "game",
                                                                          "level":  "minor",
@@ -157,7 +157,7 @@
                                                                          "forceOnTv":  true
                                                                      },
                                                "democracia.co-leaders":  {
-                                                                             "text":  "ð³ï¸ The votes remain tied! {players} will BOTH serve as co-Leaders of the Hub! ðð",
+                                                                             "text":  "🗳️ The votes remain tied! {players} will BOTH serve as co-Leaders of the Hub! 👑👑",
                                                                              "title":  "",
                                                                              "type":  "game",
                                                                              "level":  "major",
@@ -165,7 +165,7 @@
                                                                              "forceOnTv":  true
                                                                          },
                                                "democracia.no-voters":  {
-                                                                            "text":  "â ï¸ No eligible voters available for ballotage. The winner is decided by the Big Eye gods!",
+                                                                            "text":  "⚠️ No eligible voters available for ballotage. The winner is decided by the Big Eye gods!",
                                                                             "title":  "",
                                                                             "type":  "game",
                                                                             "level":  "major",
@@ -173,7 +173,7 @@
                                                                             "forceOnTv":  true
                                                                         },
                                                "democracia.ballotage":  {
-                                                                            "text":  "ð³ï¸ It\u0027s a tie between {players}! We go to BALLOTAGE! All other players must revote between the tied candidates. ð³ï¸",
+                                                                            "text":  "🗳️ It\u0027s a tie between {players}! We go to BALLOTAGE! All other players must revote between the tied candidates. 🗳️",
                                                                             "title":  "",
                                                                             "type":  "game",
                                                                             "level":  "minor",
@@ -181,7 +181,7 @@
                                                                             "forceOnTv":  true
                                                                         },
                                                "democracia.co-loh-social":  {
-                                                                                "text":  "{players} are now co-Leaders of the Hub! ðð Alliances are already formingâ¦",
+                                                                                "text":  "{players} are now co-Leaders of the Hub! 👑👑 Alliances are already forming…",
                                                                                 "title":  "",
                                                                                 "type":  "social",
                                                                                 "level":  "minor",
@@ -189,7 +189,7 @@
                                                                                 "forceOnTv":  true
                                                                             },
                                                "democracia.social":  {
-                                                                         "text":  "Hubmates congratulate {winner}. Alliances are already formingâ¦ ð¬ \nBetter stay alert!",
+                                                                         "text":  "Hubmates congratulate {winner}. Alliances are already forming… 💬 \nBetter stay alert!",
                                                                          "title":  "",
                                                                          "type":  "social",
                                                                          "level":  "minor",
@@ -197,7 +197,7 @@
                                                                          "forceOnTv":  true
                                                                      },
                                                "democracia.vox-social":  {
-                                                                             "text":  "Everyone congratulates {winner} on winning immunity. The secret nomination conversations begin. ð¬ You better mingle fast!",
+                                                                             "text":  "Everyone congratulates {winner} on winning immunity. The secret nomination conversations begin. 💬 You better mingle fast!",
                                                                              "title":  "",
                                                                              "type":  "social",
                                                                              "level":  "minor",
@@ -205,7 +205,7 @@
                                                                              "forceOnTv":  true
                                                                          },
                                                "social.loh-congratulations":  {
-                                                                                  "text":  "Players congratulate {winner}. Alliances are already formingâ¦ ð¬\nGotta stay alert!",
+                                                                                  "text":  "Players congratulate {winner}. Alliances are already forming… 💬\nGotta stay alert!",
                                                                                   "title":  "",
                                                                                   "type":  "social",
                                                                                   "level":  "minor",
@@ -237,7 +237,7 @@
                                                                             "forceOnTv":  true
                                                                         },
                                                "nominations.vox-confessional":  {
-                                                                                    "text":  "Players are being called to the Confessional one by one to nominate in secret. ð³ï¸",
+                                                                                    "text":  "Players are being called to the Confessional one by one to nominate in secret. 🗳️",
                                                                                     "title":  "",
                                                                                     "type":  "game",
                                                                                     "level":  "minor",
@@ -245,7 +245,7 @@
                                                                                     "forceOnTv":  true
                                                                                 },
                                                "nominations.co-loh-prompt":  {
-                                                                                 "text":  "{leader}, as co-Leader of the Hub, you must nominate one houseguest for elimination. ð¯",
+                                                                                 "text":  "{leader}, as co-Leader of the Hub, you must nominate one houseguest for elimination. 🎯",
                                                                                  "title":  "",
                                                                                  "type":  "game",
                                                                                  "level":  "minor",
@@ -277,7 +277,7 @@
                                                                           "forceOnTv":  true
                                                                       },
                                                "vote.evicted":  {
-                                                                    "text":  "{evictee}, you have been eliminated from The Big Eye hub. ðª",
+                                                                    "text":  "{evictee}, you have been eliminated from The Big Eye hub. 🚪",
                                                                     "title":  "",
                                                                     "type":  "game",
                                                                     "level":  "minor",
@@ -285,7 +285,7 @@
                                                                     "forceOnTv":  true
                                                                 },
                                                "cupid.spell-broken":  {
-                                                                          "text":  "ð Four pairs have fallen. Cracks race through Cupid\u0027s hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye couple\u0027s house. The rose glow fades: every survivor now plays alone. What the pairs felt - and what they did to each other - remains.",
+                                                                          "text":  "💔 Four pairs have fallen. Cracks race through Cupid\u0027s hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye couple\u0027s house. The rose glow fades: every survivor now plays alone. What the pairs felt - and what they did to each other - remains.",
                                                                           "title":  "",
                                                                           "type":  "twist",
                                                                           "level":  "critical",
@@ -293,7 +293,7 @@
                                                                           "forceOnTv":  true
                                                                       },
                                                "week.day-end":  {
-                                                                    "text":  "Day {day} has come to an end.  Sun has set over the hub and the players enjoy golden hour. \nA new day begins soonâ¦ â¨",
+                                                                    "text":  "Day {day} has come to an end.  Sun has set over the hub and the players enjoy golden hour. \nA new day begins soon… ✨",
                                                                     "title":  "",
                                                                     "type":  "game",
                                                                     "level":  "minor",
@@ -325,7 +325,7 @@
                                                                           "forceOnTv":  true
                                                                       },
                                                "final3.part1-result":  {
-                                                                           "text":  "Part 1 result: {winner} wins and advances directly to Part 3! The other two players will compete in Part 2. ð",
+                                                                           "text":  "Part 1 result: {winner} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆",
                                                                            "title":  "",
                                                                            "type":  "game",
                                                                            "level":  "minor",
@@ -333,7 +333,7 @@
                                                                            "forceOnTv":  true
                                                                        },
                                                "final3.part2-start":  {
-                                                                          "text":  "Part 2 of the Grand Finale is underway! The remaining two players battle to join the Part 1 winner in Part 3. ð",
+                                                                          "text":  "Part 2 of the Grand Finale is underway! The remaining two players battle to join the Part 1 winner in Part 3. 🏁",
                                                                           "title":  "",
                                                                           "type":  "game",
                                                                           "level":  "minor",
@@ -341,7 +341,7 @@
                                                                           "forceOnTv":  true
                                                                       },
                                                "final3.part3-start":  {
-                                                                          "text":  "Part 3 of the Grand Finale is underway! {first} (Part 1 winner) vs {second} (Part 2 winner) â the winner becomes the Final Leader of the Hub! ð",
+                                                                          "text":  "Part 3 of the Grand Finale is underway! {first} (Part 1 winner) vs {second} (Part 2 winner) — the winner becomes the Final Leader of the Hub! 🏁",
                                                                           "title":  "",
                                                                           "type":  "game",
                                                                           "level":  "minor",
@@ -349,7 +349,7 @@
                                                                           "forceOnTv":  true
                                                                       },
                                                "final3.part3-result":  {
-                                                                           "text":  "Final 3 Part 3: {winner} wins and is crowned the Final Leader of the Hub! ð",
+                                                                           "text":  "Final 3 Part 3: {winner} wins and is crowned the Final Leader of the Hub! 👑",
                                                                            "title":  "",
                                                                            "type":  "game",
                                                                            "level":  "minor",
@@ -357,7 +357,7 @@
                                                                            "forceOnTv":  true
                                                                        },
                                                "final3.part3-human-decision":  {
-                                                                                   "text":  "{winner}, you must now eliminate either {nominees} to set the Final duo. ð¯",
+                                                                                   "text":  "{winner}, you must now eliminate either {nominees} to set the Final duo. 🎯",
                                                                                    "title":  "",
                                                                                    "type":  "game",
                                                                                    "level":  "minor",
