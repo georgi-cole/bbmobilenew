@@ -39,6 +39,27 @@ body:has(.game-screen-shell) .app-shell {
   }
 }
 
+/* On medium desktop widths the open QA drawer leaves less room for two useful
+   columns, so switch the manager to the same horizontal phase-strip pattern
+   used by its mobile layout. */
+@media (min-width: 900px) and (max-width: 1200px) {
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__layout {
+    grid-template-columns: 1fr;
+  }
+
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__phases {
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+    padding: 0.45rem;
+  }
+
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__phases button {
+    min-width: max-content;
+    width: auto;
+  }
+}
+
 .app-shell__main {
   position: relative;
   flex: 1 1 0;
