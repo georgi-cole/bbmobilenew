@@ -26,7 +26,8 @@ export default function QaManagerShortcuts() {
         host.style.display = 'grid'
         host.style.gap = '0.5rem'
 
-        const remoteManagerButton = [...inspector.querySelectorAll<HTMLButtonElement>('button')].find(
+        const inspectorButtons = inspector.querySelectorAll<HTMLButtonElement>('button')
+        const remoteManagerButton = [...inspectorButtons].find(
           (button) => button.textContent?.trim() === 'Open Remote Manager'
         )
         if (remoteManagerButton) {
@@ -52,13 +53,15 @@ export default function QaManagerShortcuts() {
   useEffect(() => {
     if (location.pathname !== '/remote-manager') return undefined
 
-    const requestedSection = new URLSearchParams(location.search).get('section') as ManagerSection | null
+    const requestedSection = new URLSearchParams(location.search).get('section')
     if (requestedSection !== 'music' && requestedSection !== 'social') return undefined
 
     let attempts = 0
     const selectRequestedSection = () => {
       attempts += 1
-      const button = [...document.querySelectorAll<HTMLButtonElement>('.remote-manager__tabs button')].find(
+      const tabSelector = '.remote-manager__tabs button'
+      const tabButtons = document.querySelectorAll<HTMLButtonElement>(tabSelector)
+      const button = [...tabButtons].find(
         (candidate) => candidate.textContent?.trim().toLowerCase() === requestedSection
       )
 
