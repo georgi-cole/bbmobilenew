@@ -44,6 +44,7 @@ import {
 import MusicCueEditor from './MusicCueEditor'
 import type { MusicCueDefinition } from '../../services/sound/musicCue'
 import './MusicManagerPanel.css'
+import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
 
 type ManagerSection = 'phases' | 'minigames' | 'events' | 'tracks' | 'cues' | 'data'
 type EditableMode = Exclude<MusicConfigMode, 'any'>
@@ -437,6 +438,18 @@ export default function MusicManagerPanel() {
 
   return (
     <section className="music-manager" aria-label="Music Manager">
+      <ManagerPublishBar
+        managerName="Music Manager"
+        exportFileName="music-manager-remote-config.json"
+        getPatch={() => ({
+          season: {
+            music: {
+              assignments: localOverrides,
+              tracks: localAssets,
+            },
+          },
+        })}
+      />
       <header className="music-manager__hero">
         <div>
           <p className="music-manager__eyebrow">Advanced audio direction</p>

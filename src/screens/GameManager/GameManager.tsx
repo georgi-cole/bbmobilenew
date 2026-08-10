@@ -10,6 +10,7 @@ import {
   type GameManagerRule,
 } from '../../gameManager/gameManager'
 import './GameManager.css'
+import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
 
 const CATEGORIES: GameCategory[] = ['arcade', 'logic', 'trivia', 'endurance']
 
@@ -66,6 +67,11 @@ export default function GameManager() {
           Back to game
         </button>
       </header>
+      <ManagerPublishBar
+        managerName="Game Manager"
+        exportFileName="game-manager-remote-config.json"
+        getPatch={() => ({ gameManager: { enabled: config.enabled, rules: config.rules } })}
+      />
 
       <section className="game-manager__safety" aria-label="Rule priority">
         <strong>Priority protection</strong>
