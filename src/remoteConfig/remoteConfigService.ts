@@ -97,6 +97,30 @@ function safePercentage(value: unknown): number | undefined {
   return Math.max(0, Math.min(100, value))
 }
 
+/** Repairs UTF-8 text that was incorrectly interpreted as Latin-1. */
+function repairMojibakeString(value: string): string {
+  if (!/[ðÃÂâ]/.test(value)) return value
+  try {
+    const bytes = Uint8Array.from(Array.from(value, (character) => character.charCodeAt(0) & 0xff))
+    return new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    return value
+  }
+}
+
+function repairMojibakeValue(value: unknown): unknown {
+  if (typeof value === 'string') return repairMojibakeString(value)
+  if (Array.isArray(value)) return value.map(repairMojibakeValue)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, repairMojibakeValue(entry)])
+  )
+}
+
+export function repairRemoteConfigTextEncoding(config: RemoteConfig): RemoteConfig {
+  return repairMojibakeValue(config) as RemoteConfig
+}
+
 function sanitiseBroadcast(raw: unknown): RemoteConfig['broadcast'] | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
   const value = raw as Record<string, unknown>

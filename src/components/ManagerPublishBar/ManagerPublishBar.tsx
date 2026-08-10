@@ -9,6 +9,7 @@ import {
   type GitHubPublishTarget,
 } from '../../remoteConfig/githubConfigPublisher'
 import type { RemoteConfig } from '../../remoteConfig/remoteConfigTypes'
+import { repairRemoteConfigTextEncoding } from '../../remoteConfig/remoteConfigService'
 import './ManagerPublishBar.css'
 
 const DEFAULT_TARGET: GitHubPublishTarget = {
@@ -58,7 +59,7 @@ export default function ManagerPublishBar({ managerName, exportFileName, getPatc
   const [busy, setBusy] = useState(false)
 
   const exportChanges = () => {
-    downloadJson(exportFileName, getPatch())
+    downloadJson(exportFileName, repairRemoteConfigTextEncoding(getPatch() as RemoteConfig))
     setStatus('Export downloaded. You can keep it as a backup or inspect it before publishing.')
   }
 

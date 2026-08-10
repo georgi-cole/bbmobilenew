@@ -1,4 +1,5 @@
 import type { RemoteConfig } from './remoteConfigTypes'
+import { repairRemoteConfigTextEncoding } from './remoteConfigService'
 
 export interface GitHubPublishTarget {
   owner: string
@@ -77,6 +78,7 @@ async function writeConfig(
   config: RemoteConfig
 ): Promise<{ html_url: string }> {
   const sha = await readFileSha(token, target, branch)
+  const safeConfig = repairRemoteConfigTextEncoding(config)
   const response = await githubRequest<{
     content?: { html_url?: string }
     commit: { html_url: string }
@@ -87,7 +89,7 @@ async function writeConfig(
       method: 'PUT',
       body: JSON.stringify({
         message: 'Update remote manager configuration',
-        content: encodeUtf8Base64(`${JSON.stringify(config, null, 2)}\n`),
+        content: encodeUtf8Base64(`${JSON.stringify(safeConfig, null, 2)}\n`),
         branch,
         ...(sha ? { sha } : {}),
       }),
