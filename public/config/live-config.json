@@ -1,33 +1,388 @@
 {
-  "broadcast": {
-    "enabled": false,
-    "title": "Big Brother Update",
-    "message": "",
-    "priority": "normal"
-  },
-  "season": {
-    "music": {
-      "tracks": []
-    }
-  },
-  "gameManager": {
-    "enabled": false,
-    "rules": []
-  },
-  "social": {
-    "schemaVersion": 1,
-    "revision": "remote-1",
-    "economy": {
-      "normal": {
-        "weeklyEnergy": 5,
-        "energyCap": 5
-      },
-      "drama": {
-        "weeklyEnergy": 10,
-        "energyCap": 30
-      },
-      "influenceCap": 10000,
-      "infoCap": 10000
-    }
-  }
+    "broadcast":  {
+                      "enabled":  false,
+                      "title":  "Big Brother Update",
+                      "message":  "",
+                      "priority":  "normal"
+                  },
+    "season":  {
+                   "music":  {
+                                 "tracks":  [
+
+                                            ]
+                             }
+               },
+    "gameManager":  {
+                        "enabled":  false,
+                        "rules":  [
+
+                                  ]
+                    },
+    "social":  {
+                   "schemaVersion":  1,
+                   "revision":  "remote-1",
+                   "economy":  {
+                                   "normal":  {
+                                                  "weeklyEnergy":  5,
+                                                  "energyCap":  5
+                                              },
+                                   "drama":  {
+                                                 "weeklyEnergy":  10,
+                                                 "energyCap":  30
+                                             },
+                                   "influenceCap":  10000,
+                                   "infoCap":  10000
+                               }
+               },
+    "broadcastManager":  {
+                             "enabled":  true,
+                             "overrides":  {
+                                               "season.welcome":  {
+                                                                      "text":  "Welcome to The Big Eye hub! ð  Season {season} is about to begin.",
+                                                                      "title":  "",
+                                                                      "type":  "game",
+                                                                      "level":  "minor",
+                                                                      "major":  null,
+                                                                      "forceOnTv":  true
+                                                                  },
+                                               "survival.opening":  {
+                                                                        "text":  "Surveyeval Mode activated\nEight contestants enter; synthetic players keep the board full after every robo eviction.",
+                                                                        "title":  "",
+                                                                        "type":  "game",
+                                                                        "level":  "major",
+                                                                        "major":  "surveyeval_opening",
+                                                                        "forceOnTv":  true
+                                                                    },
+                                               "week.tribunal-start":  {
+                                                                           "text":  "Congrats all, you\u0027ve just made it to tribunal. Your decision will select the winner.",
+                                                                           "title":  "",
+                                                                           "type":  "game",
+                                                                           "level":  "major",
+                                                                           "major":  "tribunal_phase",
+                                                                           "forceOnTv":  true
+                                                                       },
+                                               "week.day-start":  {
+                                                                      "text":  "The Earth has made another spin. \nDay {day} has begun. Get ready.",
+                                                                      "title":  "",
+                                                                      "type":  "game",
+                                                                      "level":  "minor",
+                                                                      "major":  null,
+                                                                      "forceOnTv":  true
+                                                                  },
+                                               "survival.rules":  {
+                                                                      "text":  "[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible",
+                                                                      "type":  "game",
+                                                                      "level":  "minor",
+                                                                      "major":  null,
+                                                                      "forceOnTv":  false
+                                                                  },
+                                               "card.loh":  {
+                                                                "text":  "The control is up for grabs - who will become Leader of the Hub?",
+                                                                "title":  "LOH Competition",
+                                                                "type":  "game",
+                                                                "level":  "major",
+                                                                "major":  "loh_comp_announcement",
+                                                                "forceOnTv":  true
+                                                            },
+                                               "card.democracia":  {
+                                                                       "text":  "The players will elect the new Leader of the Hub by secret vote. \nTie will trigger a ballotage.",
+                                                                       "title":  "DEMOCRACIA!",
+                                                                       "type":  "game",
+                                                                       "level":  "critical",
+                                                                       "major":  "democracia",
+                                                                       "forceOnTv":  true
+                                                                   },
+                                               "card.vox-immunity":  {
+                                                                         "text":  "One player can earn safety from the public vote.",
+                                                                         "title":  "Immunity Competition",
+                                                                         "type":  "game",
+                                                                         "level":  "major",
+                                                                         "major":  "vox_immunity_comp",
+                                                                         "forceOnTv":  true
+                                                                     },
+                                               "card.vox-final4-competition":  {
+                                                                                   "text":  "No immunity is awarded today. Last place gets nominated; the other three each cast one secret vote.",
+                                                                                   "title":  "Final 4 Competition",
+                                                                                   "type":  "game",
+                                                                                   "level":  "major",
+                                                                                   "major":  "vox_final4_immunity_comp",
+                                                                                   "forceOnTv":  true
+                                                                               },
+                                               "loh.competition-start":  {
+                                                                             "text":  "The Leader of the Hub competition is underway! ð Who will win control today?",
+                                                                             "title":  "",
+                                                                             "type":  "game",
+                                                                             "level":  "minor",
+                                                                             "major":  null,
+                                                                             "forceOnTv":  true
+                                                                         },
+                                               "loh.democracia-vote-start":  {
+                                                                                 "text":  "ð³ï¸ Today\u0027s Leader of the Hub will be chosen by popular vote! Cast your votes now.",
+                                                                                 "title":  "",
+                                                                                 "type":  "game",
+                                                                                 "level":  "major",
+                                                                                 "major":  "democracia",
+                                                                                 "forceOnTv":  true
+                                                                             },
+                                               "loh.winner":  {
+                                                                  "text":  "{winner} has won Leader of the Hub! ð",
+                                                                  "title":  "",
+                                                                  "type":  "game",
+                                                                  "level":  "minor",
+                                                                  "major":  null,
+                                                                  "forceOnTv":  true
+                                                              },
+                                               "loh.cupid-winners":  {
+                                                                         "text":  "{winner} won Leader of the Hub, making {partner} co-LOH under Cupid\u0027s Arrow! ðð",
+                                                                         "title":  "",
+                                                                         "type":  "game",
+                                                                         "level":  "minor",
+                                                                         "major":  null,
+                                                                         "forceOnTv":  true
+                                                                     },
+                                               "card.democracia-vote":  {
+                                                                            "text":  "The house votes by secret ballot to elect the Leader of the Hub.",
+                                                                            "title":  "DEMOCRACIA!",
+                                                                            "type":  "game",
+                                                                            "level":  "critical",
+                                                                            "major":  "democracia",
+                                                                            "forceOnTv":  true
+                                                                        },
+                                               "democracia.winner":  {
+                                                                         "text":  "ð³ï¸ {winner} has been elected Leader of the Hub! ð",
+                                                                         "title":  "",
+                                                                         "type":  "game",
+                                                                         "level":  "minor",
+                                                                         "major":  null,
+                                                                         "forceOnTv":  true
+                                                                     },
+                                               "democracia.co-leaders":  {
+                                                                             "text":  "ð³ï¸ The votes remain tied! {players} will BOTH serve as co-Leaders of the Hub! ðð",
+                                                                             "title":  "",
+                                                                             "type":  "game",
+                                                                             "level":  "major",
+                                                                             "major":  null,
+                                                                             "forceOnTv":  true
+                                                                         },
+                                               "democracia.no-voters":  {
+                                                                            "text":  "â ï¸ No eligible voters available for ballotage. The winner is decided by the Big Eye gods!",
+                                                                            "title":  "",
+                                                                            "type":  "game",
+                                                                            "level":  "major",
+                                                                            "major":  null,
+                                                                            "forceOnTv":  true
+                                                                        },
+                                               "democracia.ballotage":  {
+                                                                            "text":  "ð³ï¸ It\u0027s a tie between {players}! We go to BALLOTAGE! All other players must revote between the tied candidates. ð³ï¸",
+                                                                            "title":  "",
+                                                                            "type":  "game",
+                                                                            "level":  "minor",
+                                                                            "major":  null,
+                                                                            "forceOnTv":  true
+                                                                        },
+                                               "democracia.co-loh-social":  {
+                                                                                "text":  "{players} are now co-Leaders of the Hub! ðð Alliances are already formingâ¦",
+                                                                                "title":  "",
+                                                                                "type":  "social",
+                                                                                "level":  "minor",
+                                                                                "major":  null,
+                                                                                "forceOnTv":  true
+                                                                            },
+                                               "democracia.social":  {
+                                                                         "text":  "Hubmates congratulate {winner}. Alliances are already formingâ¦ ð¬ \nBetter stay alert!",
+                                                                         "title":  "",
+                                                                         "type":  "social",
+                                                                         "level":  "minor",
+                                                                         "major":  null,
+                                                                         "forceOnTv":  true
+                                                                     },
+                                               "democracia.vox-social":  {
+                                                                             "text":  "Everyone congratulates {winner} on winning immunity. The secret nomination conversations begin. ð¬ You better mingle fast!",
+                                                                             "title":  "",
+                                                                             "type":  "social",
+                                                                             "level":  "minor",
+                                                                             "major":  null,
+                                                                             "forceOnTv":  true
+                                                                         },
+                                               "social.loh-congratulations":  {
+                                                                                  "text":  "Players congratulate {winner}. Alliances are already formingâ¦ ð¬\nGotta stay alert!",
+                                                                                  "title":  "",
+                                                                                  "type":  "social",
+                                                                                  "level":  "minor",
+                                                                                  "major":  null,
+                                                                                  "forceOnTv":  true
+                                                                              },
+                                               "card.nominations":  {
+                                                                        "text":  "The Leader of the Hub will reveal who is in danger.",
+                                                                        "title":  "Nomination Ceremony",
+                                                                        "type":  "game",
+                                                                        "level":  "major",
+                                                                        "major":  "nomination_ceremony",
+                                                                        "forceOnTv":  true
+                                                                    },
+                                               "card.double-eviction":  {
+                                                                            "text":  "Tonight, not one but two players will leave the game!",
+                                                                            "title":  "Double Elimination!",
+                                                                            "type":  "game",
+                                                                            "level":  "major",
+                                                                            "major":  "double_eviction",
+                                                                            "forceOnTv":  true
+                                                                        },
+                                               "card.vox-nominations":  {
+                                                                            "text":  "Hubmates nominate privately in the Confessional.",
+                                                                            "title":  "Secret Nominations",
+                                                                            "type":  "game",
+                                                                            "level":  "major",
+                                                                            "major":  "vox_nominations",
+                                                                            "forceOnTv":  true
+                                                                        },
+                                               "nominations.vox-confessional":  {
+                                                                                    "text":  "Players are being called to the Confessional one by one to nominate in secret. ð³ï¸",
+                                                                                    "title":  "",
+                                                                                    "type":  "game",
+                                                                                    "level":  "minor",
+                                                                                    "major":  null,
+                                                                                    "forceOnTv":  true
+                                                                                },
+                                               "nominations.co-loh-prompt":  {
+                                                                                 "text":  "{leader}, as co-Leader of the Hub, you must nominate one houseguest for elimination. ð¯",
+                                                                                 "title":  "",
+                                                                                 "type":  "game",
+                                                                                 "level":  "minor",
+                                                                                 "major":  null,
+                                                                                 "forceOnTv":  true
+                                                                             },
+                                               "public-save.intro":  {
+                                                                         "text":  "The final list of nominees today will be decided with the public\u0027s help. Better put your best clothes and smile at the cameras.",
+                                                                         "title":  "",
+                                                                         "type":  "game",
+                                                                         "level":  "minor",
+                                                                         "major":  null,
+                                                                         "forceOnTv":  true
+                                                                     },
+                                               "card.live-vote":  {
+                                                                      "text":  "The players will vote to eliminate.",
+                                                                      "title":  "Live Elimination",
+                                                                      "type":  "game",
+                                                                      "level":  "major",
+                                                                      "major":  "live_eviction",
+                                                                      "forceOnTv":  true
+                                                                  },
+                                               "vote.final-pitches":  {
+                                                                          "text":  "The nominated players give their last plea before voting begins.",
+                                                                          "title":  "",
+                                                                          "type":  "social",
+                                                                          "level":  "minor",
+                                                                          "major":  null,
+                                                                          "forceOnTv":  true
+                                                                      },
+                                               "vote.evicted":  {
+                                                                    "text":  "{evictee}, you have been eliminated from The Big Eye hub. ðª",
+                                                                    "title":  "",
+                                                                    "type":  "game",
+                                                                    "level":  "minor",
+                                                                    "major":  null,
+                                                                    "forceOnTv":  true
+                                                                },
+                                               "cupid.spell-broken":  {
+                                                                          "text":  "ð Four pairs have fallen. Cracks race through Cupid\u0027s hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye couple\u0027s house. The rose glow fades: every survivor now plays alone. What the pairs felt - and what they did to each other - remains.",
+                                                                          "title":  "",
+                                                                          "type":  "twist",
+                                                                          "level":  "critical",
+                                                                          "major":  "cupid_arrow_broken",
+                                                                          "forceOnTv":  true
+                                                                      },
+                                               "week.day-end":  {
+                                                                    "text":  "Day {day} has come to an end.  Sun has set over the hub and the players enjoy golden hour. \nA new day begins soonâ¦ â¨",
+                                                                    "title":  "",
+                                                                    "type":  "game",
+                                                                    "level":  "minor",
+                                                                    "major":  null,
+                                                                    "forceOnTv":  true
+                                                                },
+                                               "card.final3":  {
+                                                                   "text":  "Three players remain - the grand Finale battle begins.",
+                                                                   "title":  "The Finale",
+                                                                   "type":  "game",
+                                                                   "level":  "major",
+                                                                   "major":  "final3_announcement",
+                                                                   "forceOnTv":  true
+                                                               },
+                                               "card.vox-final3":  {
+                                                                       "text":  "One player will win immunity. The audience will decide who will join them in the Final 2.",
+                                                                       "title":  "Final 3",
+                                                                       "type":  "game",
+                                                                       "level":  "major",
+                                                                       "major":  "vox_final3",
+                                                                       "forceOnTv":  true
+                                                                   },
+                                               "final3.part1-start":  {
+                                                                          "text":  "Part One of the Finale is underway! \nAll three players compete for a chance of being the final Leader of the Hub!",
+                                                                          "title":  "",
+                                                                          "type":  "game",
+                                                                          "level":  "minor",
+                                                                          "major":  null,
+                                                                          "forceOnTv":  true
+                                                                      },
+                                               "final3.part1-result":  {
+                                                                           "text":  "Part 1 result: {winner} wins and advances directly to Part 3! The other two players will compete in Part 2. ð",
+                                                                           "title":  "",
+                                                                           "type":  "game",
+                                                                           "level":  "minor",
+                                                                           "major":  null,
+                                                                           "forceOnTv":  true
+                                                                       },
+                                               "final3.part2-start":  {
+                                                                          "text":  "Part 2 of the Grand Finale is underway! The remaining two players battle to join the Part 1 winner in Part 3. ð",
+                                                                          "title":  "",
+                                                                          "type":  "game",
+                                                                          "level":  "minor",
+                                                                          "major":  null,
+                                                                          "forceOnTv":  true
+                                                                      },
+                                               "final3.part3-start":  {
+                                                                          "text":  "Part 3 of the Grand Finale is underway! {first} (Part 1 winner) vs {second} (Part 2 winner) â the winner becomes the Final Leader of the Hub! ð",
+                                                                          "title":  "",
+                                                                          "type":  "game",
+                                                                          "level":  "minor",
+                                                                          "major":  null,
+                                                                          "forceOnTv":  true
+                                                                      },
+                                               "final3.part3-result":  {
+                                                                           "text":  "Final 3 Part 3: {winner} wins and is crowned the Final Leader of the Hub! ð",
+                                                                           "title":  "",
+                                                                           "type":  "game",
+                                                                           "level":  "minor",
+                                                                           "major":  null,
+                                                                           "forceOnTv":  true
+                                                                       },
+                                               "final3.part3-human-decision":  {
+                                                                                   "text":  "{winner}, you must now eliminate either {nominees} to set the Final duo. ð¯",
+                                                                                   "title":  "",
+                                                                                   "type":  "game",
+                                                                                   "level":  "minor",
+                                                                                   "major":  null,
+                                                                                   "forceOnTv":  true
+                                                                               },
+                                               "card.jury-announcement":  {
+                                                                              "text":  "The finalists will face the Tribunal. Ta-da-da-dum!",
+                                                                              "title":  "Tribunal Votes",
+                                                                              "type":  "game",
+                                                                              "level":  "major",
+                                                                              "major":  "jury",
+                                                                              "forceOnTv":  true
+                                                                          },
+                                               "jury.cinematic":  {
+                                                                      "text":  "The Tribunal prepares to elect a winner.",
+                                                                      "title":  "",
+                                                                      "type":  "game",
+                                                                      "level":  "critical",
+                                                                      "major":  "jury",
+                                                                      "forceOnTv":  true
+                                                                  }
+                                           },
+                             "customMessages":  [
+
+                                                ]
+                         }
 }
