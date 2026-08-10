@@ -19,6 +19,7 @@ import type {
   TvEvent,
 } from '../../types'
 import { isDebugAccessGranted } from '../../utils/debugMode'
+import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
 import {
   ALL_BROADCAST_PHASES,
   BROADCAST_CAMPAIGNS,
@@ -475,6 +476,17 @@ export default function BroadcastManager() {
           Back to game
         </button>
       </header>
+      <ManagerPublishBar
+        managerName="Broadcast Manager"
+        exportFileName="broadcast-manager-remote-config.json"
+        getPatch={() => ({
+          broadcastManager: {
+            enabled: true,
+            overrides: game.broadcastOverrides ?? {},
+            customMessages: game.customBroadcasts ?? [],
+          },
+        })}
+      />
 
       <label className="broadcast-manager__campaign-filter">
         Campaign filter

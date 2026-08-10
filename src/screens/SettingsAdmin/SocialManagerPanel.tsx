@@ -17,6 +17,7 @@ import {
 import { adaptLegacyActionContract } from '../../social/reality/actionContract'
 import { normalizeActionCosts, normalizeActionYields } from '../../social/smExecNormalize'
 import './SocialManagerPanel.css'
+import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
 
 type ManagerView = 'catalog' | 'data'
 type CostKey = 'baseCost' | 'dramaCost'
@@ -315,6 +316,13 @@ export default function SocialManagerPanel() {
 
   return (
     <section className="social-manager" aria-label="Social Manager">
+      <ManagerPublishBar
+        managerName="Social Manager"
+        exportFileName="social-manager-remote-config.json"
+        getPatch={() => ({
+          socialManager: { enabled: true, actionOverrides: overrides },
+        })}
+      />
       <header className="social-manager__hero">
         <div>
           <p className="social-manager__eyebrow">Central action contract</p>
