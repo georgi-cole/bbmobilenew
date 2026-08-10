@@ -13,6 +13,7 @@ import './AppShell.css'
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean']
 const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'))
+const QaManagerShortcuts = lazy(() => import('../DebugPanel/QaManagerShortcuts'))
 const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'))
 const SeasonFinaleOverlay = lazy(() => import('../SeasonFinale/SeasonFinaleOverlay'))
 const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay'))
@@ -119,6 +120,7 @@ export default function AppShell() {
       <NavBar />
       <Suspense fallback={null}>
         <DebugPanel />
+        <QaManagerShortcuts />
       </Suspense>
       {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
           Also remount it for the rare recovery case where jury voting already
