@@ -38,6 +38,10 @@ import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityServic
 import type { TvEvent } from '../../types'
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton'
 import { getViewportMessageKey } from './tvZoneKeys'
+import {
+  getTvPresentationBroadcastLevel,
+  isCurrentPhaseBroadcastEvent,
+} from './tvZoneBroadcastGuards'
 import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents'
 import { getPhaseCardTemplate } from '../../broadcasting/broadcastTemplateCatalog'
 import {
@@ -595,13 +599,11 @@ export default function TvZone(props: TvZoneProps) {
   const mainLogFeed = useMemo(() => gameState.tvFeed.filter(isVisibleInMainLog), [gameState.tvFeed])
   const queuedBroadcastEvent = useMemo(() => {
     const queuedId = gameState.broadcastQueue?.[0]
-    return queuedId ? (gameState.tvFeed.find((event) => event.id === queuedId) ?? null) : null
-  }, [gameState.broadcastQueue, gameState.tvFeed])
-  const queuedBroadcastLevel = queuedBroadcastEvent?.meta?.broadcastLevel as
-    | 'minor'
-    | 'major'
-    | 'critical'
-    | undefined
+    if (!queuedId) return null
+    const event = gameState.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
+    return isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week) ? event : null
+  }, [gameState.broadcastQueue, gameState.phase, gameState.tvFeed, gameState.week])
+  const queuedBroadcastLevel = getTvPresentationBroadcastLevel(queuedBroadcastEvent)
   const queuedBroadcastIsCard =
     queuedBroadcastLevel === 'major' || queuedBroadcastLevel === 'critical'
   const lastPlainBroadcastEvent = useMemo(() => {
