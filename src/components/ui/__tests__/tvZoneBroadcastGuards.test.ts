@@ -6,6 +6,7 @@ import {
 } from '../tvZoneBroadcastGuards'
 
 type EventOptions = {
+  text?: string
   major?: string
   level?: 'minor' | 'major' | 'critical'
   phase?: Phase
@@ -13,10 +14,10 @@ type EventOptions = {
 }
 
 function makeEvent(options: EventOptions = {}): TvEvent {
-  const { major, level, phase = 'social_1', week = 2 } = options
+  const { text = 'Test broadcast', major, level, phase = 'social_1', week = 2 } = options
   return {
     id: 'test-event',
-    text: 'Test broadcast',
+    text,
     type: 'social',
     timestamp: 1,
     ...(major ? { major } : {}),
@@ -37,6 +38,15 @@ describe('tvZoneBroadcastGuards', () => {
       expect(getTvPresentationBroadcastLevel(event)).toBe('minor')
     }
   )
+
+  it('keeps a canonical Lia clue minor after managed refresh rewrites its key to custom_major', () => {
+    const event = makeEvent({
+      text: 'Someone mentioned that Lia looked different in the garden, but nobody pushed it further.',
+      major: 'custom_major',
+      level: 'major',
+    })
+    expect(getTvPresentationBroadcastLevel(event)).toBe('minor')
+  })
 
   it('preserves major presentation for unrelated broadcasts', () => {
     const event = makeEvent({ major: 'double_eviction', level: 'major' })
