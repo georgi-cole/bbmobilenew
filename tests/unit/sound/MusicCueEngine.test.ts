@@ -124,6 +124,39 @@ describe('MusicCueEngine', () => {
     expect(pauseSpy).toHaveBeenCalledTimes(1)
   })
 
+  it('rejects an older promoted cue that is superseded while its crossfade is running', async () => {
+    vi.useFakeTimers()
+    const engine = new MusicCueEngine()
+    const asset = {
+      key: 'music:test',
+      track: 'competition' as const,
+      src: '/test.mp3',
+      volume: 1,
+      loop: true,
+    }
+
+    await engine.play(asset, { ...createDefaultMusicCue('competition'), id: 'base' })
+    const middle = engine.play(asset, {
+      ...createDefaultMusicCue('competition'),
+      id: 'middle',
+      crossfadeMs: 400,
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(engine.currentCue?.id).toBe('middle')
+
+    const newest = engine.play(asset, {
+      ...createDefaultMusicCue('competition'),
+      id: 'newest',
+      crossfadeMs: 0,
+    })
+    await newest
+    await vi.runAllTimersAsync()
+
+    await expect(middle).rejects.toMatchObject({ name: 'MusicCueSupersededError' })
+    expect(engine.currentCue?.id).toBe('newest')
+  })
+
   it('does not allow an explicitly stopped pending cue to become active later', async () => {
     const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
     let releasePlay!: () => void
