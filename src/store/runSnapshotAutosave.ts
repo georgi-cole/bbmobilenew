@@ -1,6 +1,6 @@
 import {
   getSavedRunSlot,
-  savedRunSlotKeyForProfile,
+  savedRunsKeyForProfile,
   type SavedRunSlot,
   type SavedSeasonSnapshot,
 } from './saveStatePersistence'
@@ -27,15 +27,29 @@ function pendingKey(profileId: string, slot: SavedRunSlot): string {
   return `${profileId}:${slot}`
 }
 
-function readPersistenceRevision(
-  profileId: string,
-  slot: SavedRunSlot
-): string | null | undefined {
+function snapshotRunId(snapshot: SavedSeasonSnapshot): string | null {
+  return snapshot.game.runId ?? snapshot.game.gameId ?? null
+}
+
+/**
+ * Read only the two run-identity fields from the small split-profile metadata.
+ * This avoids reading/copying a potentially large campaign slot on the Play
+ * path while still detecting explicit clears/replacements of the active run.
+ */
+function readPersistenceRevision(profileId: string): string | null | undefined {
   try {
-    return localStorage.getItem(savedRunSlotKeyForProfile(profileId, slot))
+    const raw = localStorage.getItem(savedRunsKeyForProfile(profileId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as {
+      activeRunId?: unknown
+      lastPlayedRunId?: unknown
+    }
+    const activeRunId = typeof parsed.activeRunId === 'string' ? parsed.activeRunId : ''
+    const lastPlayedRunId = typeof parsed.lastPlayedRunId === 'string' ? parsed.lastPlayedRunId : ''
+    return `${activeRunId}\u0000${lastPlayedRunId}`
   } catch {
-    // Storage-unavailable environments should keep the existing best-effort save
-    // behavior. The persistence layer will report the actual write failure.
+    // Storage-unavailable or malformed legacy metadata should keep the existing
+    // best-effort save behavior. The persistence layer owns recovery/reporting.
     return undefined
   }
 }
@@ -46,10 +60,10 @@ function readPersistenceRevision(
  * current JavaScript task. The latest snapshot wins inside that burst and
  * `flush()` remains synchronous for lifecycle boundaries such as visibility loss.
  *
- * The current split run-slot value also acts as a persistence revision. If
- * another flow clears or replaces that exact run after a snapshot was queued,
- * the revision changes and the stale timer is ignored instead of resurrecting
- * the just-cleared save. Metadata-only changes do not invalidate gameplay work.
+ * The small profile metadata's active/last run identity acts as a persistence
+ * revision. If another flow clears or replaces the active run after a snapshot
+ * was queued, stale work is ignored instead of resurrecting that run. Unrelated
+ * metadata-only changes, such as achievement bookkeeping, do not invalidate it.
  */
 export function createRunSnapshotAutosaveController(
   saveRunSnapshot: SaveRunSnapshot,
@@ -68,16 +82,18 @@ export function createRunSnapshotAutosaveController(
     const saves = [...pending.values()]
     pending.clear()
 
-    // Freeze persisted revisions before writing anything. This lets multiple
-    // legitimate slots flush together without one save affecting another.
+    // Freeze the persisted revision once per profile before writing anything.
+    // This lets multiple legitimate slots flush together without the first save
+    // making the second look stale merely because it updated shared metadata.
     const persistedRevisions = new Map<string, string | null | undefined>()
     for (const save of saves) {
-      const key = pendingKey(save.profileId, save.slot)
-      persistedRevisions.set(key, readPersistenceRevision(save.profileId, save.slot))
+      if (!persistedRevisions.has(save.profileId)) {
+        persistedRevisions.set(save.profileId, readPersistenceRevision(save.profileId))
+      }
     }
 
     for (const save of saves) {
-      const currentRevision = persistedRevisions.get(pendingKey(save.profileId, save.slot))
+      const currentRevision = persistedRevisions.get(save.profileId)
       if (
         save.persistenceRevision !== undefined &&
         currentRevision !== undefined &&
@@ -91,11 +107,19 @@ export function createRunSnapshotAutosaveController(
 
   const schedule = (profileId: string, snapshot: SavedSeasonSnapshot) => {
     const slot = getSavedRunSlot(snapshot.game)
-    pending.set(pendingKey(profileId, slot), {
+    const key = pendingKey(profileId, slot)
+    const existing = pending.get(key)
+    const sameRun = existing && snapshotRunId(existing.snapshot) === snapshotRunId(snapshot)
+    pending.set(key, {
       profileId,
       slot,
       snapshot,
-      persistenceRevision: readPersistenceRevision(profileId, slot),
+      // Rapid Redux updates from one physical Play press reuse the same tiny
+      // revision lookup. A genuinely new run re-reads it so a fresh season can
+      // save normally after an explicit clear in the same JavaScript task.
+      persistenceRevision: sameRun
+        ? existing.persistenceRevision
+        : readPersistenceRevision(profileId),
     })
     if (timer !== null) return
     timer = setTimeout(flush, Math.max(0, delayMs))
