@@ -1,5 +1,6 @@
 import {
   getSavedRunSlot,
+  savedRunsKeyForProfile,
   type SavedRunSlot,
   type SavedSeasonSnapshot,
 } from './saveStatePersistence'
@@ -12,6 +13,7 @@ type PendingSave = {
   profileId: string
   slot: SavedRunSlot
   snapshot: SavedSeasonSnapshot
+  persistenceRevision: string | null | undefined
 }
 
 export interface RunSnapshotAutosaveController {
@@ -25,11 +27,26 @@ function pendingKey(profileId: string, slot: SavedRunSlot): string {
   return `${profileId}:${slot}`
 }
 
+function readPersistenceRevision(profileId: string): string | null | undefined {
+  try {
+    return localStorage.getItem(savedRunsKeyForProfile(profileId))
+  } catch {
+    // Storage-unavailable environments should keep the existing best-effort save
+    // behavior. The persistence layer will report the actual write failure.
+    return undefined
+  }
+}
+
 /**
  * Coalesces a synchronous burst of Redux updates into one durable save per
  * profile/run slot without keeping gameplay progress pending longer than the
  * current JavaScript task. The latest snapshot wins inside that burst and
  * `flush()` remains synchronous for lifecycle boundaries such as visibility loss.
+ *
+ * The tiny split-profile metadata value also acts as a persistence revision.
+ * If another flow clears or replaces the run after this snapshot was queued,
+ * the revision changes and the stale timer is ignored instead of resurrecting
+ * the just-cleared save. A later schedule captures the new revision normally.
  */
 export function createRunSnapshotAutosaveController(
   saveRunSnapshot: SaveRunSnapshot,
@@ -48,13 +65,26 @@ export function createRunSnapshotAutosaveController(
     const saves = [...pending.values()]
     pending.clear()
     for (const save of saves) {
+      const currentRevision = readPersistenceRevision(save.profileId)
+      if (
+        save.persistenceRevision !== undefined &&
+        currentRevision !== undefined &&
+        currentRevision !== save.persistenceRevision
+      ) {
+        continue
+      }
       saveRunSnapshot(save.profileId, save.snapshot)
     }
   }
 
   const schedule = (profileId: string, snapshot: SavedSeasonSnapshot) => {
     const slot = getSavedRunSlot(snapshot.game)
-    pending.set(pendingKey(profileId, slot), { profileId, slot, snapshot })
+    pending.set(pendingKey(profileId, slot), {
+      profileId,
+      slot,
+      snapshot,
+      persistenceRevision: readPersistenceRevision(profileId),
+    })
     if (timer !== null) return
     timer = setTimeout(flush, Math.max(0, delayMs))
   }
