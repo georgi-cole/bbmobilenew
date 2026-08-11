@@ -88,9 +88,7 @@ export function getPlayableLastRun(
     if (lastPlayed) return lastPlayed
   }
 
-  return (
-    [...candidates].sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))[0] ?? null
-  )
+  return [...candidates].sort((a, b) => Date.parse(b.savedAt) - Date.parse(a.savedAt))[0] ?? null
 }
 
 export function getEligibleSeasonRulesets(access: SeasonRulesetAccess): SeasonRuleset[] {
