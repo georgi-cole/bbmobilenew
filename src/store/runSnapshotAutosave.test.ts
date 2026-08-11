@@ -76,6 +76,26 @@ describe('runSnapshotAutosave', () => {
     ])
   })
 
+  it('does not let the first slot write invalidate another slot in the same flush', () => {
+    vi.useFakeTimers()
+    const metadataKey = savedRunsKeyForProfile('profile-1')
+    localStorage.setItem(metadataKey, '{"revision":"before"}')
+    const save = vi.fn<SaveRunSnapshot>((profileId, nextSnapshot) => {
+      localStorage.setItem(
+        savedRunsKeyForProfile(profileId),
+        JSON.stringify({ revision: nextSnapshot.game.runId })
+      )
+      return true
+    })
+    const controller = createRunSnapshotAutosaveController(save)
+
+    controller.schedule('profile-1', snapshot('classic-run', 2, 'classic'))
+    controller.schedule('profile-1', snapshot('survival-run', 9, 'survival'))
+    vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
+
+    expect(save).toHaveBeenCalledTimes(2)
+  })
+
   it('flushes synchronously for lifecycle boundaries', () => {
     vi.useFakeTimers()
     const save = createSaveSpy()
