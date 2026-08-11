@@ -199,6 +199,12 @@ async function completeActiveConfessionalDecision(page: Page): Promise<void> {
     throw new Error(`Unsupported Confessional decision in ${before.game.phase}.`)
   }
 
+  const returnToHouse = session.getByRole('button', { name: 'Return to the House' })
+  await expect(returnToHouse).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await expect(session).toBeVisible()
+  await returnToHouse.click()
+  await expect(session).toBeHidden({ timeout: SCREEN_TIMEOUT_MS })
+
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
   })
