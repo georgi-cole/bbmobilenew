@@ -203,7 +203,11 @@ export class MusicCueEngine {
     // fade is still running. Reject that stale request too; otherwise the older
     // SoundManager promise can resolve later and its stale-success guard may stop
     // the newer active cue. Explicit stop/fade remains a quiet cancellation.
-    if (generation !== this._playGeneration || this._active !== incoming || incoming.stopped) {
+    if (
+      generation !== this._playGeneration ||
+      this._active !== incoming ||
+      incoming.stopped
+    ) {
       if (incoming.stopCause === 'cancelled') return
       throw new MusicCueSupersededError()
     }
