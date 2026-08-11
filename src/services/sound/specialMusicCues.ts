@@ -11,6 +11,20 @@ import type { MusicCueDefinition } from './musicCue'
 const GENERAL_TRACK = 'move_into_me_instrumental_general' as CatalogMusicTrack
 const CONFESSIONAL_TRACK = 'move_into_me_confessional' as CatalogMusicTrack
 
+const COMPETITION_TO_NOMINATION_CUE: MusicCueDefinition = {
+  id: 'ceremony:competition-to-nominations',
+  displayName: 'Competition bed — hold to nominations',
+  track: 'competition',
+  startAtSec: 0,
+  loop: true,
+  volume: 1,
+  fadeInMs: 0,
+  fadeOutMs: 650,
+  crossfadeMs: 650,
+  restartPolicy: 'continue',
+  effectPreset: 'none',
+}
+
 const NOMINATION_CEREMONY_CUE: MusicCueDefinition = {
   id: 'ceremony:nominations-soft-exit',
   displayName: 'Nominations ceremony — soft exit',
@@ -130,6 +144,17 @@ export function resolveSpecialMusicCue({
   // Preserve server/admin overrides. These ceremony replacements only take over
   // while the phase still resolves to the legacy default bed they replace.
   if (baseCue.source !== 'phase') return null
+
+  // The LOH competition bed should not drop out during the brief post-result
+  // social beat. Keep it running at full continuity until the nomination
+  // ceremony takes ownership and crossfades to its own bed.
+  if (gamePhase === 'social_1' && baseCue.selection.kind === 'silence') {
+    return resolvedCue(
+      COMPETITION_TO_NOMINATION_CUE,
+      COMPETITION_TO_NOMINATION_CUE.id,
+      'phase'
+    )
+  }
 
   if (
     baseCue.track === 'nominations' &&
