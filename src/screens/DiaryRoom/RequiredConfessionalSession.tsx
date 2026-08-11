@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useBlocker } from 'react-router'
 import type { ActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
-import { useAppSelector } from '../../store/hooks'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { setConfessionalMusicMode } from '../../store/uiSlice'
 import {
   selectDramaNetwork,
   selectPersistentSocialHistory,
@@ -10,7 +11,10 @@ import {
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import HousePulse from '../../components/HousePulse/HousePulse'
 import RequiredConfessionalDecision from './RequiredConfessionalDecision'
-import { getRequiredConfessionalPresentation } from './requiredConfessionalPresentation'
+import {
+  getRequiredConfessionalPresentation,
+  type RequiredConfessionalPresentation,
+} from './requiredConfessionalPresentation'
 import './DiaryRoom.css'
 import './RequiredConfessionalSession.css'
 import './RequiredConfessionalSessionFixes.css'
@@ -22,11 +26,15 @@ interface Props {
 
 const CLASSIC_ENTRY_MS = 1320
 const SURVIVAL_ENTRY_MS = 900
-const CLASSIC_RETURN_MS = 1050
-const SURVIVAL_RETURN_MS = 560
 const CONFESSIONAL_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/confessional-locked-door.png`
+const VOTE_DECISION_TYPES = new Set<ActiveConfessionalDecision['type']>([
+  'eviction_vote',
+  'double_vote',
+  'tie_break',
+])
 
 export default function RequiredConfessionalSession({ decision, onReturnToGame }: Props) {
+  const dispatch = useAppDispatch()
   const game = useAppSelector((state) => state.game)
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
@@ -47,13 +55,26 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   const [lastDecisionType, setLastDecisionType] = useState<
     ActiveConfessionalDecision['type'] | null
   >(decision?.type ?? null)
+  const [completedDecision, setCompletedDecision] = useState<ActiveConfessionalDecision | null>(null)
+  const [completedPresentation, setCompletedPresentation] =
+    useState<RequiredConfessionalPresentation | null>(null)
+  const [decisionComplete, setDecisionComplete] = useState(false)
   const navigationBlocker = useBlocker(decision !== null)
   const presentation = useMemo(
     () => (decision ? getRequiredConfessionalPresentation(decision, game) : null),
     [decision, game]
   )
+  const displayDecision = decision ?? completedDecision
+  const displayPresentation = presentation ?? completedPresentation
 
   const entryDuration = survival ? SURVIVAL_ENTRY_MS : CLASSIC_ENTRY_MS
+
+  useEffect(() => {
+    dispatch(setConfessionalMusicMode('normal'))
+    return () => {
+      dispatch(setConfessionalMusicMode('normal'))
+    }
+  }, [dispatch])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setEntryActive(false), entryDuration)
@@ -65,19 +86,24 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   }, [navigationBlocker])
 
   useEffect(() => {
-    if (decision !== null) return
-    const timeout = window.setTimeout(
-      () => onReturnToGame(lastReturnCue),
-      survival ? SURVIVAL_RETURN_MS : CLASSIC_RETURN_MS
-    )
-    return () => window.clearTimeout(timeout)
-  }, [decision, lastReturnCue, onReturnToGame, survival])
+    if (!decision) return
+    setDecisionComplete(false)
+    setCompletedDecision(null)
+    setCompletedPresentation(null)
+    setLastDecisionType(decision.type)
+    dispatch(setConfessionalMusicMode('normal'))
+  }, [decision, dispatch])
+
+  const handleReturnToGame = () => {
+    dispatch(setConfessionalMusicMode('normal'))
+    onReturnToGame(lastReturnCue)
+  }
 
   return (
     <main
       className="diary-room required-confessional"
       data-testid="required-confessional-session"
-      data-decision-type={decision?.type ?? lastDecisionType ?? undefined}
+      data-decision-type={displayDecision?.type ?? lastDecisionType ?? undefined}
       data-cupid-pairs={cupidPairsActive ? 'true' : 'false'}
     >
       {entryActive && (
@@ -135,10 +161,7 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
             </p>
 
             {showVoxMyGame && humanPlayer && (
-              <aside
-                className="required-confessional__my-game"
-                aria-label="My Game"
-              >
+              <aside className="required-confessional__my-game" aria-label="My Game">
                 <p>Review your relationships before locking in your secret nominations.</p>
                 <HousePulse
                   network={dramaNetwork}
@@ -154,34 +177,55 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
             )}
 
             <div className="diary-room__chat required-confessional__chat" aria-live="polite">
-              {decision && presentation ? (
+              {displayDecision && displayPresentation ? (
                 <div className="diary-room__bubble diary-room__bubble--bb diary-room__bubble--decision required-confessional__decision-bubble">
                   <span className="diary-room__bubble-author">📺 The Big Eye</span>
                   <strong className="required-confessional__decision-title">
-                    {presentation.title}
+                    {displayPresentation.title}
                   </strong>
-                  <span className="diary-room__bubble-text">{presentation.prompt}</span>
+                  <span className="diary-room__bubble-text">{displayPresentation.prompt}</span>
 
                   <RequiredConfessionalDecision
-                    key={presentation.key}
-                    decision={decision}
-                    presentation={presentation}
+                    key={displayPresentation.key}
+                    decision={displayDecision}
+                    presentation={displayPresentation}
                     onDecisionCommitted={() => {
-                      setLastReturnCue(presentation.returnCue)
-                      setLastDecisionType(decision.type)
+                      setLastReturnCue(displayPresentation.returnCue)
+                      setLastDecisionType(displayDecision.type)
+                      setCompletedDecision(displayDecision)
+                      setCompletedPresentation(displayPresentation)
+                      setDecisionComplete(true)
+                      if (VOTE_DECISION_TYPES.has(displayDecision.type)) {
+                        dispatch(setConfessionalMusicMode('vote-committed'))
+                      }
                     }}
                   />
+
+                  {decisionComplete && (
+                    <div className="required-confessional__complete">
+                      <span className="diary-room__bubble-text">
+                        Your decision has been recorded. Return to the house when you are ready.
+                      </span>
+                      <button
+                        className="diary-room__submit required-confessional__return"
+                        type="button"
+                        onClick={handleReturnToGame}
+                      >
+                        Return to the House
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="diary-room__bubble diary-room__bubble--bb required-confessional__complete">
                   <span className="diary-room__bubble-author">📺 The Big Eye</span>
                   <span className="diary-room__bubble-text">
-                    Your decision has been recorded. Return to the house.
+                    Your decision has been recorded. Return to the house when you are ready.
                   </span>
                   <button
                     className="diary-room__submit required-confessional__return"
                     type="button"
-                    onClick={() => onReturnToGame(lastReturnCue)}
+                    onClick={handleReturnToGame}
                   >
                     Return to the House
                   </button>
