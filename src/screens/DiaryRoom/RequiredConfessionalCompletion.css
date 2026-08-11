@@ -1,0 +1,24 @@
+.required-confessional__decision-bubble--complete .rcd-confirm__button:disabled {
+  opacity: 0.76;
+}
+
+.required-confessional__decision-bubble--complete .rcd-confirm__button {
+  font-size: 0;
+}
+
+.required-confessional__decision-bubble--complete .rcd-confirm__button::after {
+  content: 'Confirmed ✓';
+  font-size: 0.78rem;
+}
+
+.required-confessional[data-decision-type='eviction_vote']
+  .required-confessional__decision-bubble--complete
+  .rcd-confirm__button::after,
+.required-confessional[data-decision-type='double_vote']
+  .required-confessional__decision-bubble--complete
+  .rcd-confirm__button::after,
+.required-confessional[data-decision-type='tie_break']
+  .required-confessional__decision-bubble--complete
+  .rcd-confirm__button::after {
+  content: 'Vote sealed ✓';
+}
