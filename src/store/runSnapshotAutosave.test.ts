@@ -5,6 +5,8 @@ import {
   RUN_SNAPSHOT_AUTOSAVE_DELAY_MS,
 } from './runSnapshotAutosave'
 
+type SaveRunSnapshot = (profileId: string, snapshot: SavedSeasonSnapshot) => boolean
+
 function snapshot(
   runId: string,
   week: number,
@@ -24,7 +26,11 @@ function snapshot(
     },
     finale: {},
     social: {},
-  } as SavedSeasonSnapshot
+  } as unknown as SavedSeasonSnapshot
+}
+
+function createSaveSpy() {
+  return vi.fn<SaveRunSnapshot>(() => true)
 }
 
 afterEach(() => {
@@ -35,7 +41,7 @@ afterEach(() => {
 describe('runSnapshotAutosave', () => {
   it('coalesces rapid updates for one run and persists only the newest snapshot', () => {
     vi.useFakeTimers()
-    const save = vi.fn(() => true)
+    const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
 
     controller.schedule('profile-1', snapshot('classic-run', 2))
@@ -48,13 +54,13 @@ describe('runSnapshotAutosave', () => {
     vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
 
     expect(save).toHaveBeenCalledTimes(1)
-    expect(save.mock.calls[0]?.[1].game.week).toBe(4)
+    expect(save.mock.calls[0]![1].game.week).toBe(4)
     expect(controller.pendingCount()).toBe(0)
   })
 
   it('keeps different run slots independent inside the same save window', () => {
     vi.useFakeTimers()
-    const save = vi.fn(() => true)
+    const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
 
     controller.schedule('profile-1', snapshot('classic-run', 2, 'classic'))
@@ -71,21 +77,21 @@ describe('runSnapshotAutosave', () => {
 
   it('flushes synchronously for lifecycle boundaries', () => {
     vi.useFakeTimers()
-    const save = vi.fn(() => true)
+    const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
 
     controller.schedule('profile-1', snapshot('classic-run', 5))
     controller.flush()
 
     expect(save).toHaveBeenCalledTimes(1)
-    expect(save.mock.calls[0]?.[1].game.week).toBe(5)
+    expect(save.mock.calls[0]![1].game.week).toBe(5)
     vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
     expect(save).toHaveBeenCalledTimes(1)
   })
 
   it('can discard a run that was cleared before its pending autosave fires', () => {
     vi.useFakeTimers()
-    const save = vi.fn(() => true)
+    const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
 
     controller.schedule('profile-1', snapshot('classic-run', 6))
