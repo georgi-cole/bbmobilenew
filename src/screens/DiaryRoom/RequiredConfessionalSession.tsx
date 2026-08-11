@@ -25,6 +25,11 @@ interface Props {
   onReturnToGame: (returnCue: string) => void
 }
 
+interface CompletedDecisionState {
+  decision: ActiveConfessionalDecision
+  presentation: RequiredConfessionalPresentation
+}
+
 const CLASSIC_ENTRY_MS = 1320
 const SURVIVAL_ENTRY_MS = 900
 const CONFESSIONAL_DOOR_SRC = `${import.meta.env.BASE_URL}assets/diary-room/confessional-locked-door.png`
@@ -56,17 +61,15 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   const [lastDecisionType, setLastDecisionType] = useState<
     ActiveConfessionalDecision['type'] | null
   >(decision?.type ?? null)
-  const [completedDecision, setCompletedDecision] = useState<ActiveConfessionalDecision | null>(null)
-  const [completedPresentation, setCompletedPresentation] =
-    useState<RequiredConfessionalPresentation | null>(null)
-  const [decisionComplete, setDecisionComplete] = useState(false)
+  const [completedDecision, setCompletedDecision] = useState<CompletedDecisionState | null>(null)
   const navigationBlocker = useBlocker(decision !== null)
   const presentation = useMemo(
     () => (decision ? getRequiredConfessionalPresentation(decision, game) : null),
     [decision, game]
   )
-  const displayDecision = decision ?? completedDecision
-  const displayPresentation = presentation ?? completedPresentation
+  const displayDecision = decision ?? completedDecision?.decision ?? null
+  const displayPresentation = presentation ?? completedDecision?.presentation ?? null
+  const decisionComplete = decision === null && completedDecision !== null
 
   const entryDuration = survival ? SURVIVAL_ENTRY_MS : CLASSIC_ENTRY_MS
 
@@ -87,12 +90,7 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   }, [navigationBlocker])
 
   useEffect(() => {
-    if (!decision) return
-    setDecisionComplete(false)
-    setCompletedDecision(null)
-    setCompletedPresentation(null)
-    setLastDecisionType(decision.type)
-    dispatch(setConfessionalMusicMode('normal'))
+    if (decision) dispatch(setConfessionalMusicMode('normal'))
   }, [decision, dispatch])
 
   const handleReturnToGame = () => {
@@ -195,9 +193,10 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
                     onDecisionCommitted={() => {
                       setLastReturnCue(displayPresentation.returnCue)
                       setLastDecisionType(displayDecision.type)
-                      setCompletedDecision(displayDecision)
-                      setCompletedPresentation(displayPresentation)
-                      setDecisionComplete(true)
+                      setCompletedDecision({
+                        decision: displayDecision,
+                        presentation: displayPresentation,
+                      })
                       if (VOTE_DECISION_TYPES.has(displayDecision.type)) {
                         dispatch(setConfessionalMusicMode('vote-committed'))
                       }
