@@ -22,8 +22,7 @@ function snapshot(
       gameId: runId,
       runId,
       mode: slot === 'survival' ? 'survival' : 'classic',
-      expansionMode:
-        slot === 'cupidArrow' || slot === 'voxPopuli' ? slot : null,
+      expansionMode: slot === 'cupidArrow' || slot === 'voxPopuli' ? slot : null,
     } as SavedSeasonSnapshot['game'],
     finale: {} as SavedSeasonSnapshot['finale'],
     social: {} as SavedSeasonSnapshot['social'],
