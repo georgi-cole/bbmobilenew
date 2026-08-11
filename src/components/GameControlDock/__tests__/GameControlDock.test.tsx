@@ -4,30 +4,21 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import GameControlDock from '../GameControlDock';
 
 describe('GameControlDock', () => {
-  it('uses the clean glassy dock shell, play, and icon assets', () => {
+  it('renders the mockup-faithful three-zone command surface', () => {
     const { container } = render(<GameControlDock />);
 
-    const shell = container.querySelector<HTMLImageElement>('.game-control-dock__shell');
-    expect(shell).not.toBeNull();
-    expect(shell?.getAttribute('src')).toContain('/assets/clean_glassy_dock/fab_shell_clean.svg');
-
-    const play = container.querySelector<HTMLImageElement>('.game-control-dock__play');
-    expect(play).not.toBeNull();
-    expect(play?.getAttribute('src')).toContain('/assets/clean_glassy_dock/fab_center_play_clean.svg');
-
-    const glyphs = Array.from(
-      container.querySelectorAll<HTMLImageElement>('.game-control-dock__icon'),
-    ).map((glyph) => glyph.getAttribute('src'));
-
-    expect(glyphs).toEqual([
-      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_social_clean.svg'),
-      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_requests_clean.svg'),
-      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_stats_clean.svg'),
-      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_confessional_clean.svg'),
-    ]);
+    expect(container.querySelector('.game-command-dock')).not.toBeNull();
+    expect(screen.getByText('FEED')).toBeInTheDocument();
+    expect(screen.getByText('CONTINUE')).toBeInTheDocument();
+    expect(screen.getByText('Advance to Results')).toBeInTheDocument();
+    expect(screen.getByText('STRATEGY')).toBeInTheDocument();
+    expect(container.querySelector('.game-command-dock__top-chevron')).not.toBeNull();
+    expect(container.querySelector('.game-command-dock__honeycomb')).not.toBeNull();
+    expect(container.querySelector('.game-control-dock__shell')).toBeNull();
+    expect(container.querySelector('.game-control-dock__play')).toBeNull();
   });
 
-  it('preserves dock hit areas, badges, and disabled behavior', () => {
+  it('preserves all five existing actions, badges, and disabled behavior', () => {
     const onChatClick = vi.fn();
     const onRequestsClick = vi.fn();
     const onPrimaryActionClick = vi.fn();
@@ -44,6 +35,7 @@ describe('GameControlDock', () => {
         chatBadgeCount={3}
         incomingRequestsBadgeCount={7}
         publicMeterBadgeCount={11}
+        confessionalBadgeCount={2}
       />,
     );
 
@@ -51,7 +43,7 @@ describe('GameControlDock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Incoming requests (7)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Advance to next phase' }));
     fireEvent.click(screen.getByRole('button', { name: 'Public meter (11)' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Confessional' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confessional (2)' }));
 
     expect(onChatClick).toHaveBeenCalledTimes(1);
     expect(onRequestsClick).toHaveBeenCalledTimes(1);
@@ -68,13 +60,27 @@ describe('GameControlDock', () => {
     expect(screen.getByRole('button', { name: 'Confessional' })).toBeDisabled();
   });
 
-  it('forwards the confessional icon ref for spotlight targeting', () => {
+  it('preserves unavailable module semantics without disabling the visual shell', () => {
+    render(
+      <GameControlDock
+        socialDisabled
+        incomingRequestsDisabled
+        publicMeterDisabled
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Social' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Incoming requests' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Public meter' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('forwards the confessional spotlight ref to the strategy icon target', () => {
     const confessionalIconRef = createRef<HTMLImageElement>();
 
     const { container } = render(<GameControlDock confessionalIconRef={confessionalIconRef} />);
 
     expect(confessionalIconRef.current).toBe(
-      container.querySelector<HTMLImageElement>('.fab-icon.confessional'),
+      container.querySelector<HTMLImageElement>('.game-command-dock__spotlight-target'),
     );
   });
 });
