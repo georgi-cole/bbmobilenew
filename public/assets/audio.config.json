@@ -15,7 +15,7 @@
   ],
   "bindings": [
     {
-      "path": "sounds/minigame_all_3_seconds_timer.mp3",
+      "path": "sounds/minigames/minigame_all_3_seconds_timer.mp3",
       "key": "minigame:all_3_seconds_timer",
       "category": "minigame",
       "preload": false,
@@ -23,7 +23,7 @@
       "loop": false
     },
     {
-      "path": "sounds/cinematic_thunder.wav",
+      "path": "sounds/cinematic/cinematic_thunder.wav",
       "key": "minigame:cinematic_thunder",
       "category": "minigame",
       "preload": false,
@@ -31,7 +31,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_gb_death.mp3",
+      "path": "sounds/minigames/minigame_gb_death.mp3",
       "key": "minigame:gb_death",
       "category": "minigame",
       "preload": false,
@@ -39,7 +39,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_gb_new_turn.mp3",
+      "path": "sounds/minigames/minigame_gb_new_turn.mp3",
       "key": "minigame:gb_new_turn",
       "category": "minigame",
       "preload": false,
@@ -47,7 +47,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_gb_safe_step.mp3",
+      "path": "sounds/minigames/minigame_gb_safe_step.mp3",
       "key": "minigame:gb_safe_step",
       "category": "minigame",
       "preload": false,
@@ -55,7 +55,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_gb_winner.mp3",
+      "path": "sounds/minigames/minigame_gb_winner.mp3",
       "key": "minigame:gb_winner",
       "category": "minigame",
       "preload": false,
@@ -63,7 +63,7 @@
       "loop": false
     },
     {
-      "path": "sounds/move_into_me_alternative.mp3",
+      "path": "sounds/minigames/move_into_me_alternative.mp3",
       "key": "minigame:move_into_me_alternative",
       "category": "minigame",
       "preload": false,
@@ -71,7 +71,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_quicktap_booster.mp3",
+      "path": "sounds/minigames/minigame_quicktap_booster.mp3",
       "key": "minigame:quicktap_booster",
       "category": "minigame",
       "preload": false,
@@ -79,7 +79,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_quicktap_half_tap.mp3",
+      "path": "sounds/minigames/minigame_quicktap_half_tap.mp3",
       "key": "minigame:quicktap_half_tap",
       "category": "minigame",
       "preload": false,
@@ -87,7 +87,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_quicktap_tap.mp3",
+      "path": "sounds/minigames/minigame_quicktap_tap.mp3",
       "key": "minigame:quicktap_tap",
       "category": "minigame",
       "preload": false,
@@ -95,7 +95,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_scoreboard.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_scoreboard.mp3",
       "key": "minigame:results",
       "category": "minigame",
       "preload": false,
@@ -103,7 +103,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_666.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_666.mp3",
       "key": "minigame:risk_wheel_666",
       "category": "minigame",
       "preload": false,
@@ -111,7 +111,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_bad.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_bad.mp3",
       "key": "minigame:risk_wheel_bad",
       "category": "minigame",
       "preload": false,
@@ -119,7 +119,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_bankrupt_or_skip.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_bankrupt_or_skip.mp3",
       "key": "minigame:risk_wheel_bankrupt_or_skip",
       "category": "minigame",
       "preload": false,
@@ -127,7 +127,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_good.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_good.mp3",
       "key": "minigame:risk_wheel_good",
       "category": "minigame",
       "preload": false,
@@ -135,7 +135,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_scoreboard.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_scoreboard.mp3",
       "key": "minigame:risk_wheel_scoreboard",
       "category": "minigame",
       "preload": false,
@@ -143,7 +143,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_risk_wheel_spin.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_spin.mp3",
       "key": "minigame:risk_wheel_spin",
       "category": "minigame",
       "preload": false,
@@ -151,7 +151,7 @@
       "loop": true
     },
     {
-      "path": "sounds/minigame_risk_wheel_winner.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_winner.mp3",
       "key": "minigame:risk_wheel_winner",
       "category": "minigame",
       "preload": false,
@@ -159,7 +159,7 @@
       "loop": false
     },
     {
-      "path": "sounds/social_module_original.mp3",
+      "path": "sounds/minigames/social_module_original.mp3",
       "key": "minigame:social_module_original",
       "category": "minigame",
       "preload": false,
@@ -167,7 +167,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_all_3_seconds_timer.mp3",
+      "path": "sounds/minigames/minigame_all_3_seconds_timer.mp3",
       "key": "minigame:start",
       "category": "minigame",
       "preload": false,
@@ -175,7 +175,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigame_wildcard_winner.mp3",
+      "path": "sounds/minigames/minigame_wildcard_winner.mp3",
       "key": "minigame:wildcard_winner",
       "category": "minigame",
       "preload": false,
@@ -359,7 +359,7 @@
       "loop": true
     },
     {
-      "path": "sounds/player_evicted.mp3",
+      "path": "sounds/events/player_evicted.mp3",
       "key": "player:evicted",
       "category": "player",
       "preload": false,
@@ -367,7 +367,7 @@
       "loop": false
     },
     {
-      "path": "sounds/player_wildcard_eliminated.mp3",
+      "path": "sounds/events/player_wildcard_eliminated.mp3",
       "key": "player:wildcard_eliminated",
       "category": "player",
       "preload": false,
@@ -375,7 +375,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_battleback.mp3",
+      "path": "sounds/tv/tv_battleback.mp3",
       "key": "tv:battleback",
       "category": "tv",
       "preload": false,
@@ -383,7 +383,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_winner_reveal.mp3",
+      "path": "sounds/tv/tv_winner_reveal.mp3",
       "key": "tv:event",
       "category": "tv",
       "preload": false,
@@ -391,7 +391,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_finale_winner_stinger.mp3",
+      "path": "sounds/tv/tv_finale_winner_stinger.mp3",
       "key": "tv:finale_winner_stinger",
       "category": "tv",
       "preload": false,
@@ -399,7 +399,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_live_vote.mp3",
+      "path": "sounds/tv/tv_live_vote.mp3",
       "key": "tv:live_vote",
       "category": "tv",
       "preload": false,
@@ -407,7 +407,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_winner_reveal.mp3",
+      "path": "sounds/tv/tv_winner_reveal.mp3",
       "key": "tv:public_favorite",
       "category": "tv",
       "preload": false,
@@ -415,7 +415,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_winner_reveal.mp3",
+      "path": "sounds/tv/tv_winner_reveal.mp3",
       "key": "tv:veto_ceremony",
       "category": "tv",
       "preload": false,
@@ -423,7 +423,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_voting_eviction.mp3",
+      "path": "sounds/tv/tv_voting_eviction.mp3",
       "key": "tv:voting_eviction",
       "category": "tv",
       "preload": false,
@@ -431,7 +431,7 @@
       "loop": false
     },
     {
-      "path": "sounds/tv_winner_reveal.mp3",
+      "path": "sounds/tv/tv_winner_reveal.mp3",
       "key": "tv:winner_reveal",
       "category": "tv",
       "preload": false,
@@ -439,7 +439,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_confirm.mp3",
+      "path": "sounds/ui/ui_confirm.mp3",
       "key": "ui:confirm",
       "category": "ui",
       "preload": false,
@@ -447,7 +447,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_navigate.mp3",
+      "path": "sounds/ui/ui_navigate.mp3",
       "key": "ui:error",
       "category": "ui",
       "preload": false,
@@ -455,7 +455,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_jury_vote.mp3",
+      "path": "sounds/ui/ui_jury_vote.mp3",
       "key": "ui:jury_vote",
       "category": "ui",
       "preload": false,
@@ -463,7 +463,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_navigate.mp3",
+      "path": "sounds/ui/ui_navigate.mp3",
       "key": "ui:navigate",
       "category": "ui",
       "preload": false,
@@ -471,7 +471,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_risk_wheel_click.mp3",
+      "path": "sounds/ui/ui_risk_wheel_click.mp3",
       "key": "ui:risk_wheel_click",
       "category": "ui",
       "preload": false,
@@ -479,7 +479,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_risk_wheel_stop_and_bank.mp3",
+      "path": "sounds/ui/ui_risk_wheel_stop_and_bank.mp3",
       "key": "ui:risk_wheel_stop_and_bank",
       "category": "ui",
       "preload": false,
@@ -487,7 +487,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_jury_vote.mp3",
+      "path": "sounds/ui/ui_jury_vote.mp3",
       "key": "ui:tribunal_vote_reveal",
       "category": "ui",
       "preload": false,
@@ -495,7 +495,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_western_new_round.mp3",
+      "path": "sounds/ui/ui_western_new_round.mp3",
       "key": "ui:western_new_round",
       "category": "ui",
       "preload": false,
@@ -503,7 +503,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_wildcard_continue.mp3",
+      "path": "sounds/ui/ui_wildcard_continue.mp3",
       "key": "ui:wildcard_continue",
       "category": "ui",
       "preload": false,
@@ -511,7 +511,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_wildcard_draw.mp3",
+      "path": "sounds/ui/ui_wildcard_draw.mp3",
       "key": "ui:wildcard_draw",
       "category": "ui",
       "preload": false,
@@ -519,7 +519,7 @@
       "loop": false
     },
     {
-      "path": "sounds/ui_wildcard_select.mp3",
+      "path": "sounds/ui/ui_wildcard_select.mp3",
       "key": "ui:wildcard_select",
       "category": "ui",
       "preload": false,

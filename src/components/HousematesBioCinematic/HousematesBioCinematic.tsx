@@ -283,7 +283,7 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
     document.body.style.overflow = 'hidden';
     SoundManager.panicStopAllMusic();
 
-    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78, { loop: true });
+    const audio = createCinematicAudio(asset('/assets/sounds/cinematic/HousematesBio.mp4'), 0.78, { loop: true });
     audioRef.current = audio;
     if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) audio.play();
 
