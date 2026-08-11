@@ -43,6 +43,35 @@ jobs:
           PY
       - name: Apply refactor
         run: python3 scripts/agent_apply_season_ruleset_refactor.py
+      - name: Clean transformed declarations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          home = Path('src/screens/HomeHub/HomeHub.tsx')
+          text = home.read_text()
+          text = text.replace('  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null)\n', '')
+          text = text.replace('  const [expansionPrompt, setExpansionPrompt] = useState<ExpansionSelection | null>(null)\n', '')
+          home.write_text(text)
+
+          picker = Path('src/screens/ProfilePicker/ProfilePicker.tsx')
+          text = picker.read_text()
+          text = text.replace('  const [pendingHome, setPendingHome] = useState(false);\n', '')
+          text = text.replace('\n  // Resume-save prompt: triggered when switching to a profile that has a saved season.\n  // Holds the profile ID to switch to so the confirm/cancel handlers can act on it.\n  const [pendingResumeId, setPendingResumeId] = useState<string | null>(null);\n', '')
+          picker.write_text(text)
+
+          test = Path('src/store/saveStatePersistence.test.ts')
+          lines = test.read_text().splitlines(keepends=True)
+          seen = False
+          cleaned = []
+          for line in lines:
+              if line.strip() == 'savedRunSlotKeyForProfile,':
+                  if seen:
+                      continue
+                  seen = True
+              cleaned.append(line)
+          test.write_text(''.join(cleaned))
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Typecheck
