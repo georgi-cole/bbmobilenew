@@ -73,6 +73,7 @@ export default function AudioStateSync() {
       socialPanelOpen: root.social.panelOpen,
       incomingInboxOpen: root.social.incomingInboxOpen,
       musicScene: root.ui.musicScene,
+      confessionalMusicMode: root.ui.confessionalMusicMode ?? 'normal',
       musicOn: root.settings.audio.musicOn,
       musicVolume: root.settings.audio.musicVolume,
       localMusicOverrides: root.settings.audio.musicConfigOverrides,
@@ -161,6 +162,7 @@ export default function AudioStateSync() {
       },
       ui: {
         musicScene: musicState.musicScene,
+        confessionalMusicMode: musicState.confessionalMusicMode,
       },
     }),
     [musicState]
