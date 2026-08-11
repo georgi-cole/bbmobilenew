@@ -149,11 +149,7 @@ export function resolveSpecialMusicCue({
   // social beat. Keep it running at full continuity until the nomination
   // ceremony takes ownership and crossfades to its own bed.
   if (gamePhase === 'social_1' && baseCue.selection.kind === 'silence') {
-    return resolvedCue(
-      COMPETITION_TO_NOMINATION_CUE,
-      COMPETITION_TO_NOMINATION_CUE.id,
-      'phase'
-    )
+    return resolvedCue(COMPETITION_TO_NOMINATION_CUE, COMPETITION_TO_NOMINATION_CUE.id, 'phase')
   }
 
   if (
