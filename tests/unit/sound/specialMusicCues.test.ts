@@ -12,6 +12,16 @@ function phaseCue(track: 'nominations' | 'veto' | 'competition'): ResolvedMusicC
   }
 }
 
+function silentPhaseCue(assignmentId = 'phase:social_1'): ResolvedMusicCue {
+  return {
+    track: 'none',
+    selection: { kind: 'silence' },
+    assignmentId,
+    source: 'phase',
+    inheritedAssignments: [],
+  }
+}
+
 describe('specialMusicCues', () => {
   it('loops the confessional bed from 2:48 to 3:35', () => {
     const cue = resolveSpecialMusicCue({
@@ -47,6 +57,34 @@ describe('specialMusicCues', () => {
       loopEndSec: 215,
       crossfadeMs: 300,
     })
+  })
+
+  it('holds the competition bed through social_1 until nominations takes over', () => {
+    const cue = resolveSpecialMusicCue({
+      baseCue: silentPhaseCue(),
+      gamePhase: 'social_1',
+      hash: '#/',
+      confessionalMusicMode: 'normal',
+    })
+
+    expect(cue?.track).toBe('competition')
+    expect(cue?.playbackCue).toMatchObject({
+      id: 'ceremony:competition-to-nominations',
+      loop: true,
+      restartPolicy: 'continue',
+      crossfadeMs: 650,
+    })
+  })
+
+  it('does not overwrite a configured social_1 track while extending the default competition bed', () => {
+    const cue = resolveSpecialMusicCue({
+      baseCue: phaseCue('competition'),
+      gamePhase: 'social_1',
+      hash: '#/',
+      confessionalMusicMode: 'normal',
+    })
+
+    expect(cue).toBeNull()
   })
 
   it('uses the general track from 0:01 through the Power of Safety sequence', () => {
