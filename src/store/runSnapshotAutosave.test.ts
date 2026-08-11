@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { SavedSeasonSnapshot } from './saveStatePersistence'
+import { savedRunsKeyForProfile, type SavedSeasonSnapshot } from './saveStatePersistence'
 import {
   createRunSnapshotAutosaveController,
   RUN_SNAPSHOT_AUTOSAVE_DELAY_MS,
@@ -36,6 +36,7 @@ function createSaveSpy() {
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
+  localStorage.clear()
 })
 
 describe('runSnapshotAutosave', () => {
@@ -100,5 +101,36 @@ describe('runSnapshotAutosave', () => {
 
     expect(save).not.toHaveBeenCalled()
     expect(controller.pendingCount()).toBe(0)
+  })
+
+  it('does not resurrect a run when persistence is cleared after autosave was queued', () => {
+    vi.useFakeTimers()
+    const save = createSaveSpy()
+    const controller = createRunSnapshotAutosaveController(save)
+    const metadataKey = savedRunsKeyForProfile('profile-1')
+    localStorage.setItem(metadataKey, '{"savedAt":"before-clear"}')
+
+    controller.schedule('profile-1', snapshot('classic-run', 7))
+    localStorage.setItem(metadataKey, '{"savedAt":"after-clear"}')
+    vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
+
+    expect(save).not.toHaveBeenCalled()
+    expect(controller.pendingCount()).toBe(0)
+  })
+
+  it('allows a genuinely newer snapshot scheduled after persistence changes', () => {
+    vi.useFakeTimers()
+    const save = createSaveSpy()
+    const controller = createRunSnapshotAutosaveController(save)
+    const metadataKey = savedRunsKeyForProfile('profile-1')
+    localStorage.setItem(metadataKey, '{"savedAt":"before-clear"}')
+
+    controller.schedule('profile-1', snapshot('old-run', 7))
+    localStorage.setItem(metadataKey, '{"savedAt":"after-clear"}')
+    controller.schedule('profile-1', snapshot('new-run', 1))
+    vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
+
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save.mock.calls[0]![1].game.runId).toBe('new-run')
   })
 })
