@@ -50,8 +50,11 @@ jobs:
 
           home = Path('src/screens/HomeHub/HomeHub.tsx')
           text = home.read_text()
+          text = text.replace("type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null\n", '')
           text = text.replace('  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null)\n', '')
           text = text.replace('  const [expansionPrompt, setExpansionPrompt] = useState<ExpansionSelection | null>(null)\n', '')
+          text = text.replace('    setClassicPrompt(null)\n', '')
+          text = text.replace('    setExpansionPrompt(null)\n', '')
           home.write_text(text)
 
           picker = Path('src/screens/ProfilePicker/ProfilePicker.tsx')
