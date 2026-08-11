@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearLastSavePersistenceIssue,
   CORRUPT_SAVE_RECOVERY_KEY,
@@ -8,6 +8,7 @@ import {
   markSurvivorAchievementCelebrationSeen,
   saveRunSnapshot,
   savedRunsKeyForProfile,
+  savedRunSlotKeyForProfile,
   type SavedSeasonSnapshot,
   type SavedSeasonState,
 } from './saveStatePersistence'
@@ -20,6 +21,7 @@ describe('saveStatePersistence survivor progression', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     localStorage.clear()
     sessionStorage.clear()
     clearLastSavePersistenceIssue()
@@ -136,6 +138,56 @@ describe('saveStatePersistence survivor progression', () => {
 
     const runs = loadSavedRunProfile('profile-1').runs
     expect(runs.classic?.game.runId).toBe('classic-run')
+    expect(runs.survival?.game.runId).toBe('survival-run')
+    expect(runs.cupidArrow?.game.runId).toBe('cupid-run')
+    expect(runs.voxPopuli?.game.runId).toBe('vox-run')
+  })
+
+  it('rewrites only the active split run slot during routine autosaves', () => {
+    const makeSnapshot = (
+      runId: string,
+      mode: 'classic' | 'survival',
+      expansionMode: 'cupidArrow' | 'voxPopuli' | null,
+      week = 2
+    ) =>
+      ({
+        version: 1,
+        profileId: 'profile-1',
+        savedAt: `2026-08-11T20:00:${String(week).padStart(2, '0')}.000Z`,
+        game: {
+          mode,
+          expansionMode,
+          week,
+          status: 'active',
+          runId,
+          gameId: runId,
+          players: [{ id: 'user', name: 'You', avatar: 'P', status: 'active', isUser: true }],
+        },
+        finale: {},
+        social: {},
+      }) as SavedSeasonSnapshot
+
+    expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null))).toBe(true)
+    expect(saveRunSnapshot('profile-1', makeSnapshot('survival-run', 'survival', null))).toBe(true)
+    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(
+      true
+    )
+    expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true)
+
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    setItemSpy.mockClear()
+
+    expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null, 3))).toBe(true)
+
+    const writtenKeys = setItemSpy.mock.calls.map(([key]) => key)
+    expect(writtenKeys).toContain(savedRunsKeyForProfile('profile-1'))
+    expect(writtenKeys).toContain(savedRunSlotKeyForProfile('profile-1', 'classic'))
+    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'survival'))
+    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'cupidArrow'))
+    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'voxPopuli'))
+
+    const runs = loadSavedRunProfile('profile-1').runs
+    expect(runs.classic?.game.week).toBe(3)
     expect(runs.survival?.game.runId).toBe('survival-run')
     expect(runs.cupidArrow?.game.runId).toBe('cupid-run')
     expect(runs.voxPopuli?.game.runId).toBe('vox-run')
