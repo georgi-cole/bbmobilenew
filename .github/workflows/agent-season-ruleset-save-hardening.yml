@@ -1,0 +1,66 @@
+name: Agent Season Ruleset Save Hardening
+
+on:
+  push:
+    branches:
+      - agent/season-ruleset-save-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/season-ruleset-save-hardening
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply refactor
+        run: python3 scripts/agent_apply_season_ruleset_refactor.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Focused ESLint
+        run: >-
+          npx eslint
+          src/modes/modeTypes.ts
+          src/modes/seasonRulesets.ts
+          src/modes/seasonRulesets.test.ts
+          src/modes/survivorExpansionIsolation.test.ts
+          src/store/gameSlice.ts
+          src/store/saveStatePersistence.ts
+          src/store/saveStatePersistence.test.ts
+          src/store/runSnapshotAutosave.ts
+          src/store/runSnapshotAutosave.test.ts
+          src/store/store.ts
+          src/screens/HomeHub/HomeHub.tsx
+          src/screens/ProfilePicker/ProfilePicker.tsx
+          src/screens/ProfilePicker/ProfilePicker.test.tsx
+          src/screens/SelfEvicted/SelfEvicted.tsx
+          --max-warnings=0
+      - name: Focused tests
+        run: >-
+          npx vitest run
+          src/modes/seasonRulesets.test.ts
+          src/modes/survivorExpansionIsolation.test.ts
+          src/store/saveStatePersistence.test.ts
+          src/store/runSnapshotAutosave.test.ts
+          src/screens/ProfilePicker/ProfilePicker.test.tsx
+      - name: Commit validated source changes
+        run: |
+          if git diff --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Harden season rulesets and save lifecycle"
+          git push origin HEAD:agent/season-ruleset-save-hardening
