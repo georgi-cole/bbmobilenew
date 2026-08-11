@@ -20,10 +20,14 @@ import { hydratePublicOpinion } from '../../publicOpinion/publicOpinionSlice';
 import { hydrateChallenge } from '../../store/challengeSlice';
 import { loadSeasonArchives } from '../../store/archivePersistence';
 import {
-  savedStateKeyForProfile,
-  loadSeasonSnapshot,
-  clearSeasonSnapshot,
+  clearSavedRunProfile,
+  getLastPlayedRun,
+  type SavedSeasonSnapshot,
 } from '../../store/saveStatePersistence';
+import {
+  invalidateRunSnapshotAutosaves,
+  suspendRunSnapshotAutosave,
+} from '../../store/runSnapshotAutosave';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { resizeAndCompressImage } from '../../utils/imageUtils';
 import { imageIdToDataUrl, saveImage, deleteImage } from '../../utils/imageDb';
@@ -90,11 +94,6 @@ export default function ProfilePicker() {
   const [pendingGuest, setPendingGuest] = useState(false);
   // Confirmation for delete
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingHome, setPendingHome] = useState(false);
-
-  // Resume-save prompt: triggered when switching to a profile that has a saved season.
-  // Holds the profile ID to switch to so the confirm/cancel handlers can act on it.
-  const [pendingResumeId, setPendingResumeId] = useState<string | null>(null);
 
   const atLimit = profiles.length >= MAX_PROFILES;
 
@@ -140,56 +139,28 @@ export default function ProfilePicker() {
     }
   }
 
+  function hydrateProfileSnapshot(snapshot: SavedSeasonSnapshot) {
+    dispatch(hydrateGame(snapshot.game));
+    dispatch(hydrateFinale(snapshot.finale));
+    dispatch(hydrateSocial(snapshot.social));
+    if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion));
+    if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge));
+  }
+
   function commitSwitch(id: string) {
-    dispatch(selectActiveProfile(id));
-    // Load archives for the newly-selected profile so they are not cross-contaminated
-    // with the previous profile's in-memory archives.
-    // After dispatch(selectActiveProfile), store.subscribe has already flushed the new
-    // activeProfileId to localStorage, so the key below resolves to the right profile.
-
-    // Check if there's a saved in-progress season for this profile.
-    const saveKey = savedStateKeyForProfile(id);
-    const snapshot = loadSeasonSnapshot(saveKey);
-    if (snapshot && snapshot.profileId === id) {
-      // A saved season exists — prompt the user to resume or start fresh.
-      setPendingResumeId(id);
-    } else {
-      // No saved season — start fresh immediately.
-      const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
-      dispatch(resetGame(archives));
-      navigate('/profile', { replace: true, state: { from: returnTo } });
-    }
-  }
-
-  function commitResume(id: string) {
-    const saveKey = savedStateKeyForProfile(id);
-    const snapshot = loadSeasonSnapshot(saveKey);
-    if (!snapshot || snapshot.profileId !== id) {
-      // Snapshot vanished or is from wrong profile — fall back to fresh start.
-      commitStartFresh(id);
-      return;
-    }
-    try {
-      dispatch(hydrateGame(snapshot.game));
-      dispatch(hydrateFinale(snapshot.finale));
-      dispatch(hydrateSocial(snapshot.social));
-      if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion));
-      if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge));
-      navigate('/game', { replace: true });
-    } catch {
-      // If hydration fails for any reason, gracefully fall back to a fresh season
-      // and clear the bad snapshot so it doesn't keep reappearing.
-      clearSeasonSnapshot(saveKey);
-      commitStartFresh(id);
-    }
-  }
-
-  function commitStartFresh(id: string) {
-    const saveKey = savedStateKeyForProfile(id);
-    clearSeasonSnapshot(saveKey);
+    // Resolve the target before changing activeProfileId. The current profile's
+    // pending autosave remains explicitly scoped to its own ID by the controller.
+    const snapshot = getLastPlayedRun(id);
     const archives = loadSeasonArchives(archiveKeyForProfile(id)) ?? [];
-    dispatch(resetGame(archives));
-    navigate('/profile', { replace: true, state: { from: returnTo } });
+    const releaseAutosave = suspendRunSnapshotAutosave();
+    try {
+      dispatch(selectActiveProfile(id));
+      if (snapshot?.profileId === id) hydrateProfileSnapshot(snapshot);
+      else dispatch(resetGame(archives));
+    } finally {
+      releaseAutosave();
+    }
+    navigate('/', { replace: true });
   }
 
   function handleGuestMode() {
@@ -201,20 +172,7 @@ export default function ProfilePicker() {
   }
 
   function handleHome() {
-    if (returnTo === '/game') {
-      navigate('/game', { replace: true });
-      return;
-    }
-    if (isGameActive) {
-      setPendingHome(true);
-      return;
-    }
-    navigate(returnTo, { replace: true });
-  }
-
-  function commitHome() {
-    dispatch(resetGame());
-    setPendingHome(false);
+    // HomeHub is the canonical resume surface; navigation never destroys a save.
     navigate(returnTo, { replace: true });
   }
 
@@ -244,9 +202,15 @@ export default function ProfilePicker() {
         photoId = undefined;
       }
     }
-    // A newly created profile has no archives yet.
-    dispatch(createProfile({ name: newName.trim(), avatar: newAvatar, photoId }));
-    dispatch(resetGame([]));
+    // A newly created profile should not get a fake resumable Classic save merely
+    // because its clean runtime state is initialized.
+    const releaseAutosave = suspendRunSnapshotAutosave();
+    try {
+      dispatch(createProfile({ name: newName.trim(), avatar: newAvatar, photoId }));
+      dispatch(resetGame([]));
+    } finally {
+      releaseAutosave();
+    }
     setShowCreateForm(false);
     setNewName('');
     setNewAvatar('🧑');
@@ -302,14 +266,30 @@ export default function ProfilePicker() {
   }
 
   async function commitDelete(id: string) {
-    // Also remove the photo from IndexedDB
     const profile = profiles.find((p) => p.id === id);
-    if (profile?.photoId) {
-      await deleteImage(profile.photoId);
+    if (profile?.photoId) await deleteImage(profile.photoId);
+
+    const deletingActive = !isGuest && activeProfileId === id;
+    const fallbackProfileId = deletingActive
+      ? (profiles.find((candidate) => candidate.id !== id)?.id ?? null)
+      : null;
+    const fallbackSnapshot = fallbackProfileId ? getLastPlayedRun(fallbackProfileId) : null;
+    const fallbackArchives = fallbackProfileId
+      ? (loadSeasonArchives(archiveKeyForProfile(fallbackProfileId)) ?? [])
+      : [];
+
+    invalidateRunSnapshotAutosaves(id);
+    const releaseAutosave = suspendRunSnapshotAutosave();
+    try {
+      clearSavedRunProfile(id);
+      dispatch(deleteProfile(id));
+      if (deletingActive) {
+        if (fallbackSnapshot?.profileId === fallbackProfileId) hydrateProfileSnapshot(fallbackSnapshot);
+        else dispatch(resetGame(fallbackArchives));
+      }
+    } finally {
+      releaseAutosave();
     }
-    // Clear any saved season snapshot for this profile.
-    clearSeasonSnapshot(savedStateKeyForProfile(id));
-    dispatch(deleteProfile(id));
     setPendingDeleteId(null);
   }
 
@@ -515,7 +495,7 @@ export default function ProfilePicker() {
       <ConfirmExitModal
         open={Boolean(pendingSwitchId)}
         title="Switch Profile?"
-        description={`Switching to "${switchTarget?.name ?? ''}" will leave your current season. Save your game first if you want to resume it later.`}
+        description={`Your current progress is saved. Switch to "${switchTarget?.name ?? ''}" and open that profile?`}
         confirmLabel="Switch"
         cancelLabel="Keep Playing"
         onConfirm={() => {
@@ -525,43 +505,18 @@ export default function ProfilePicker() {
         onCancel={() => setPendingSwitchId(null)}
       />
 
-      {/* Resume saved season prompt */}
-      <ConfirmExitModal
-        open={Boolean(pendingResumeId)}
-        title="Resume season?"
-        description="Pick up where you left off, or start fresh."
-        confirmLabel="Resume"
-        cancelLabel="New Season"
-        onConfirm={() => {
-          if (pendingResumeId) commitResume(pendingResumeId);
-          setPendingResumeId(null);
-        }}
-        onCancel={() => {
-          if (pendingResumeId) commitStartFresh(pendingResumeId);
-          setPendingResumeId(null);
-        }}
-      />
 
       {/* Guest mode confirmation modal */}
       <ConfirmExitModal
         open={pendingGuest}
         title="Enter Guest Mode?"
-        description="Switching to guest mode will leave the current season. Stats and archives will not be saved."
+        description="Your current profile progress will stay saved. Guest stats and archives will not be saved."
         confirmLabel="Guest Mode"
         cancelLabel="Keep Playing"
         onConfirm={() => { setPendingGuest(false); commitGuest(); }}
         onCancel={() => setPendingGuest(false)}
       />
 
-      <ConfirmExitModal
-        open={pendingHome}
-        title="Leave for Home?"
-        description="Returning home now will reset the current game. Save first if you want to resume this season later."
-        confirmLabel="Go Home"
-        cancelLabel="Stay Here"
-        onConfirm={commitHome}
-        onCancel={() => setPendingHome(false)}
-      />
 
       {/* Delete confirmation modal */}
       <ConfirmExitModal

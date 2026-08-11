@@ -1,14 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  activateFiniteSeasonRun,
   clearLastSavePersistenceIssue,
+  clearSavedRunProfile,
   CORRUPT_SAVE_RECOVERY_KEY,
   createSavedSeasonSnapshot,
+  getFiniteSeasonRunChoices,
   getLastSavePersistenceIssue,
   loadSavedRunProfile,
   markSurvivorAchievementCelebrationSeen,
   saveRunSnapshot,
-  savedRunsKeyForProfile,
+  saveSeasonSnapshot,
   savedRunSlotKeyForProfile,
+  savedRunsKeyForProfile,
   type SavedSeasonSnapshot,
   type SavedSeasonState,
 } from './saveStatePersistence'
@@ -106,7 +110,7 @@ describe('saveStatePersistence survivor progression', () => {
     ).toBe(true)
   })
 
-  it('keeps Classic, Surveyeval, Cupid, and Vox Populi in independent save slots', () => {
+  it('keeps one visible finite season while Surveyeval stays independent', () => {
     const makeSnapshot = (
       runId: string,
       mode: 'classic' | 'survival',
@@ -131,19 +135,89 @@ describe('saveStatePersistence survivor progression', () => {
 
     expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null))).toBe(true)
     expect(saveRunSnapshot('profile-1', makeSnapshot('survival-run', 'survival', null))).toBe(true)
-    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(
-      true
-    )
-    expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true)
+    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(true)
 
-    const runs = loadSavedRunProfile('profile-1').runs
-    expect(runs.classic?.game.runId).toBe('classic-run')
-    expect(runs.survival?.game.runId).toBe('survival-run')
-    expect(runs.cupidArrow?.game.runId).toBe('cupid-run')
-    expect(runs.voxPopuli?.game.runId).toBe('vox-run')
+    const profile = loadSavedRunProfile('profile-1')
+    expect(profile.activeSeasonSlot).toBe('cupidArrow')
+    expect(profile.retiredFiniteSlots).toEqual(['classic'])
+    expect(profile.runs.survival?.game.runId).toBe('survival-run')
+    expect(profile.runs.cupidArrow?.game.runId).toBe('cupid-run')
+    expect(profile.runs.classic).toBeUndefined()
+    expect(localStorage.getItem(savedRunSlotKeyForProfile('profile-1', 'classic'))).not.toBeNull()
   })
 
-  it('rewrites only the active split run slot during routine autosaves', () => {
+  it('lets an old multi-finite profile choose the season to keep live', () => {
+    const makeSnapshot = (runId: string, expansionMode: 'cupidArrow' | 'voxPopuli' | null, savedAt: string) =>
+      ({
+        version: 1,
+        profileId: 'profile-1',
+        savedAt,
+        game: {
+          mode: 'classic',
+          expansionMode,
+          week: 3,
+          status: 'active',
+          runId,
+          gameId: runId,
+          players: [{ id: 'user', name: 'You', avatar: 'P', status: 'active', isUser: true }],
+        },
+        finale: {},
+        social: {},
+      }) as SavedSeasonSnapshot
+
+    localStorage.setItem(
+      savedRunsKeyForProfile('profile-1'),
+      JSON.stringify({
+        version: 2,
+        profileId: 'profile-1',
+        savedAt: '2026-08-01T00:00:00.000Z',
+        activeRunId: null,
+        lastPlayedRunId: null,
+        stats: { maxSurvivorDaysSurvived: 0, survivorAchievementsUnlocked: {} },
+      })
+    )
+    saveSeasonSnapshot(savedRunSlotKeyForProfile('profile-1', 'classic'), makeSnapshot('classic-old', null, '2026-08-01T10:00:00.000Z'))
+    saveSeasonSnapshot(savedRunSlotKeyForProfile('profile-1', 'cupidArrow'), makeSnapshot('cupid-old', 'cupidArrow', '2026-08-02T10:00:00.000Z'))
+    saveSeasonSnapshot(savedRunSlotKeyForProfile('profile-1', 'voxPopuli'), makeSnapshot('vox-old', 'voxPopuli', '2026-08-03T10:00:00.000Z'))
+
+    expect(getFiniteSeasonRunChoices(loadSavedRunProfile('profile-1')).map((choice) => choice.slot)).toEqual([
+      'voxPopuli',
+      'cupidArrow',
+      'classic',
+    ])
+    expect(activateFiniteSeasonRun('profile-1', 'cupidArrow')).toBe(true)
+
+    const migrated = loadSavedRunProfile('profile-1')
+    expect(migrated.activeSeasonSlot).toBe('cupidArrow')
+    expect(migrated.retiredFiniteSlots).toEqual(['classic', 'voxPopuli'])
+    expect(getFiniteSeasonRunChoices(migrated).map((choice) => choice.slot)).toEqual(['cupidArrow'])
+    expect(localStorage.getItem(savedRunSlotKeyForProfile('profile-1', 'classic'))).not.toBeNull()
+    expect(localStorage.getItem(savedRunSlotKeyForProfile('profile-1', 'voxPopuli'))).not.toBeNull()
+  })
+
+  it('removes active and recovery-only run data when a profile is deleted', () => {
+    const snapshot = {
+      version: 1,
+      profileId: 'profile-1',
+      savedAt: '2026-08-05T10:00:00.000Z',
+      game: {
+        mode: 'classic',
+        week: 2,
+        status: 'active',
+        runId: 'classic-run',
+        gameId: 'classic-run',
+        players: [{ id: 'user', name: 'You', avatar: 'P', status: 'active', isUser: true }],
+      },
+      finale: {},
+      social: {},
+    } as SavedSeasonSnapshot
+    saveRunSnapshot('profile-1', snapshot)
+    clearSavedRunProfile('profile-1')
+    expect(localStorage.getItem(savedRunsKeyForProfile('profile-1'))).toBeNull()
+    expect(localStorage.getItem(savedRunSlotKeyForProfile('profile-1', 'classic'))).toBeNull()
+  })
+
+  it('rewrites only the canonical finite slot while preserving independent/recovery blobs', () => {
     const makeSnapshot = (
       runId: string,
       mode: 'classic' | 'survival',
@@ -169,28 +243,37 @@ describe('saveStatePersistence survivor progression', () => {
 
     expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null))).toBe(true)
     expect(saveRunSnapshot('profile-1', makeSnapshot('survival-run', 'survival', null))).toBe(true)
-    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(
-      true
-    )
+    expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(true)
     expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true)
 
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
-    setItemSpy.mockClear()
+    const metadataKey = savedRunsKeyForProfile('profile-1')
+    const classicKey = savedRunSlotKeyForProfile('profile-1', 'classic')
+    const survivalKey = savedRunSlotKeyForProfile('profile-1', 'survival')
+    const cupidKey = savedRunSlotKeyForProfile('profile-1', 'cupidArrow')
+    const voxKey = savedRunSlotKeyForProfile('profile-1', 'voxPopuli')
+    const before = {
+      metadata: localStorage.getItem(metadataKey),
+      classic: localStorage.getItem(classicKey),
+      survival: localStorage.getItem(survivalKey),
+      cupid: localStorage.getItem(cupidKey),
+      vox: localStorage.getItem(voxKey),
+    }
 
     expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null, 3))).toBe(true)
 
-    const writtenKeys = setItemSpy.mock.calls.map(([key]) => key)
-    expect(writtenKeys).toContain(savedRunsKeyForProfile('profile-1'))
-    expect(writtenKeys).toContain(savedRunSlotKeyForProfile('profile-1', 'classic'))
-    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'survival'))
-    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'cupidArrow'))
-    expect(writtenKeys).not.toContain(savedRunSlotKeyForProfile('profile-1', 'voxPopuli'))
+    expect(localStorage.getItem(metadataKey)).not.toBe(before.metadata)
+    expect(localStorage.getItem(classicKey)).not.toBe(before.classic)
+    expect(localStorage.getItem(survivalKey)).toBe(before.survival)
+    expect(localStorage.getItem(cupidKey)).toBe(before.cupid)
+    expect(localStorage.getItem(voxKey)).toBe(before.vox)
 
-    const runs = loadSavedRunProfile('profile-1').runs
-    expect(runs.classic?.game.week).toBe(3)
-    expect(runs.survival?.game.runId).toBe('survival-run')
-    expect(runs.cupidArrow?.game.runId).toBe('cupid-run')
-    expect(runs.voxPopuli?.game.runId).toBe('vox-run')
+    const profile = loadSavedRunProfile('profile-1')
+    expect(profile.activeSeasonSlot).toBe('classic')
+    expect(profile.retiredFiniteSlots).toEqual(['cupidArrow', 'voxPopuli'])
+    expect(profile.runs.classic?.game.week).toBe(3)
+    expect(profile.runs.survival?.game.runId).toBe('survival-run')
+    expect(profile.runs.cupidArrow).toBeUndefined()
+    expect(profile.runs.voxPopuli).toBeUndefined()
   })
 
   it('prepares one complete campaign snapshot without independently persisted authoring data', () => {

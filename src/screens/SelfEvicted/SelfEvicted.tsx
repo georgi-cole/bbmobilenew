@@ -9,6 +9,7 @@ import {
   clearSavedRun,
   getSavedRunSlot,
 } from '../../store/saveStatePersistence';
+import { invalidateRunSnapshotAutosaves } from '../../store/runSnapshotAutosave';
 import './SelfEvicted.css';
 
 /**
@@ -28,6 +29,7 @@ export default function SelfEvicted() {
 
   useEffect(() => {
     if (isGuest || !activeProfileId) return;
+    invalidateRunSnapshotAutosaves(activeProfileId);
     clearSavedRun(activeProfileId, currentRunSlot);
     clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
   }, [activeProfileId, currentRunSlot, isGuest]);

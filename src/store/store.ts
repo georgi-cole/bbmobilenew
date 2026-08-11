@@ -30,7 +30,10 @@ import {
   createSavedSeasonSnapshot,
   saveRunSnapshot,
 } from './saveStatePersistence'
-import { createRunSnapshotAutosaveController } from './runSnapshotAutosave'
+import {
+  createRunSnapshotAutosaveController,
+  isRunSnapshotAutosaveSuspended,
+} from './runSnapshotAutosave'
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice'
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice'
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic'
@@ -275,7 +278,12 @@ store.subscribe(() => {
     prevPublicOpinion = current.publicOpinion
     prevChallenge = current.challenge
     const activeProfileId = current.profiles.activeProfileId
-    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
+    if (
+      !current.profiles.isGuest &&
+      activeProfileId &&
+      hasMeaningfulGameProgress(current.game) &&
+      !isRunSnapshotAutosaveSuspended()
+    ) {
       runSnapshotAutosave.schedule(
         activeProfileId,
         createSavedSeasonSnapshot(activeProfileId, current)

@@ -4,7 +4,8 @@
 // Separate from season archives (which store completed seasons).
 //
 // Key behaviours:
-//  - Each profile can keep Classic, Survival and expansion runs side by side.
+//  - Each profile exposes one canonical finite season plus one independent Survival run.
+//  - Legacy finite slots can be retained as recovery-only data after one is selected.
 //  - Each run slot is stored independently so adding game types does not create
 //    one increasingly large localStorage value.
 //  - Guest mode never writes or reads snapshots.
@@ -142,6 +143,7 @@ export interface SavedRunProfileStats {
 }
 
 export type SavedRunSlot = GameMode | SeasonExpansionMode
+export type FiniteSeasonRunSlot = Exclude<SavedRunSlot, 'survival'>
 
 export interface SavedRunProfile {
   version: 2
@@ -149,13 +151,32 @@ export interface SavedRunProfile {
   savedAt: string
   activeRunId: string | null
   lastPlayedRunId: string | null
+  activeSeasonSlot: FiniteSeasonRunSlot | null
+  retiredFiniteSlots: FiniteSeasonRunSlot[]
   runs: Partial<Record<SavedRunSlot, SavedSeasonSnapshot>>
   stats: SavedRunProfileStats
+}
+
+export interface FiniteSeasonRunChoice {
+  slot: FiniteSeasonRunSlot
+  snapshot: SavedSeasonSnapshot
 }
 
 type SavedRunProfileMetadata = Omit<SavedRunProfile, 'runs'> & { runs?: never }
 
 const ALL_RUN_SLOTS: SavedRunSlot[] = ['classic', 'survival', 'cupidArrow', 'voxPopuli']
+const FINITE_RUN_SLOTS: FiniteSeasonRunSlot[] = ['classic', 'cupidArrow', 'voxPopuli']
+
+function normalizeRetiredFiniteSlots(raw: unknown): FiniteSeasonRunSlot[] {
+  if (!Array.isArray(raw)) return []
+  return Array.from(
+    new Set(
+      raw.filter((slot): slot is FiniteSeasonRunSlot =>
+        FINITE_RUN_SLOTS.includes(slot as FiniteSeasonRunSlot)
+      )
+    )
+  )
+}
 
 export function savedStateKeyForProfile(profileId: string): string {
   return `${SAVED_STATE_KEY_PREFIX}${encodeURIComponent(profileId)}`
@@ -176,6 +197,8 @@ function emptySavedRunProfile(profileId: string): SavedRunProfile {
     savedAt: new Date(0).toISOString(),
     activeRunId: null,
     lastPlayedRunId: null,
+    activeSeasonSlot: null,
+    retiredFiniteSlots: [],
     runs: {},
     stats: { maxSurvivorDaysSurvived: 0, survivorAchievementsUnlocked: {} },
   }
@@ -236,6 +259,7 @@ function normalizeRunProfile(
   parsed: Partial<SavedRunProfile>
 ): SavedRunProfile | null {
   if (parsed.version !== 2 || parsed.profileId !== profileId) return null
+  const retiredFiniteSlots = normalizeRetiredFiniteSlots(parsed.retiredFiniteSlots)
   const runs = parsed.runs as
     | Partial<Record<SavedRunSlot | 'survivor', SavedSeasonSnapshot>>
     | undefined
@@ -243,10 +267,17 @@ function normalizeRunProfile(
   const survivor = coerceSnapshot(runs?.survival ?? runs?.survivor, profileId) ?? undefined
   const cupidArrow = coerceSnapshot(runs?.cupidArrow, profileId) ?? undefined
   const voxPopuli = coerceSnapshot(runs?.voxPopuli, profileId) ?? undefined
-  const resumableClassic = isRunSnapshotResumable(classic) ? classic : undefined
+  const resumableClassic =
+    !retiredFiniteSlots.includes('classic') && isRunSnapshotResumable(classic) ? classic : undefined
   const resumableSurvivor = isRunSnapshotResumable(survivor) ? survivor : undefined
-  const resumableCupidArrow = isRunSnapshotResumable(cupidArrow) ? cupidArrow : undefined
-  const resumableVoxPopuli = isRunSnapshotResumable(voxPopuli) ? voxPopuli : undefined
+  const resumableCupidArrow =
+    !retiredFiniteSlots.includes('cupidArrow') && isRunSnapshotResumable(cupidArrow)
+      ? cupidArrow
+      : undefined
+  const resumableVoxPopuli =
+    !retiredFiniteSlots.includes('voxPopuli') && isRunSnapshotResumable(voxPopuli)
+      ? voxPopuli
+      : undefined
   const maxSurvivorDaysSurvived = Math.max(
     typeof parsed.stats?.maxSurvivorDaysSurvived === 'number'
       ? parsed.stats.maxSurvivorDaysSurvived
@@ -259,6 +290,11 @@ function normalizeRunProfile(
     savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
     activeRunId: typeof parsed.activeRunId === 'string' ? parsed.activeRunId : null,
     lastPlayedRunId: typeof parsed.lastPlayedRunId === 'string' ? parsed.lastPlayedRunId : null,
+    activeSeasonSlot:
+      parsed.activeSeasonSlot && FINITE_RUN_SLOTS.includes(parsed.activeSeasonSlot)
+        ? parsed.activeSeasonSlot
+        : null,
+    retiredFiniteSlots,
     runs: {
       ...(resumableClassic ? { classic: resumableClassic } : {}),
       ...(resumableSurvivor ? { survival: resumableSurvivor } : {}),
@@ -336,9 +372,13 @@ export function loadSeasonSnapshot(key: string): SavedSeasonSnapshot | null {
   }
 }
 
-function loadSlotRuns(profileId: string): SavedRunProfile['runs'] {
+function loadSlotRuns(
+  profileId: string,
+  retiredFiniteSlots: FiniteSeasonRunSlot[] = []
+): SavedRunProfile['runs'] {
   const runs: SavedRunProfile['runs'] = {}
   for (const slot of ALL_RUN_SLOTS) {
+    if (slot !== 'survival' && retiredFiniteSlots.includes(slot)) continue
     const snapshot = loadSeasonSnapshot(savedRunSlotKeyForProfile(profileId, slot))
     if (snapshot && isRunSnapshotResumable(snapshot)) runs[slot] = snapshot
   }
@@ -352,6 +392,8 @@ function metadataFromProfile(profile: SavedRunProfile): SavedRunProfileMetadata 
     savedAt: profile.savedAt,
     activeRunId: profile.activeRunId,
     lastPlayedRunId: profile.lastPlayedRunId,
+    activeSeasonSlot: profile.activeSeasonSlot,
+    retiredFiniteSlots: profile.retiredFiniteSlots,
     stats: profile.stats,
   }
 }
@@ -396,6 +438,9 @@ function persistSplitProfile(profile: SavedRunProfile): boolean {
     const key = savedRunSlotKeyForProfile(profile.profileId, slot)
     const snapshot = profile.runs[slot]
     if (!snapshot) {
+      // Keep unselected legacy finite seasons as recovery-only raw data. The loader
+      // skips retired keys, so they add no normal runtime parse or autosave cost.
+      if (slot !== 'survival' && profile.retiredFiniteSlots.includes(slot)) continue
       localStorage.removeItem(key)
       continue
     }
@@ -479,7 +524,7 @@ export function loadSavedRunProfile(profileId: string): SavedRunProfile {
     const raw = localStorage.getItem(key)
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SavedRunProfile> & SavedRunProfileMetadata
-      const splitRuns = loadSlotRuns(profileId)
+      const splitRuns = loadSlotRuns(profileId, normalizeRetiredFiniteSlots(parsed.retiredFiniteSlots))
       if (parsed.version === 2 && parsed.profileId === profileId && !('runs' in parsed)) {
         return (
           normalizeRunProfile(profileId, { ...parsed, runs: splitRuns }) ??
@@ -520,6 +565,8 @@ export function loadSavedRunProfile(profileId: string): SavedRunProfile {
       savedAt: legacy.savedAt,
       activeRunId: getRunId(legacy),
       lastPlayedRunId: getRunId(legacy),
+      activeSeasonSlot: 'classic',
+      retiredFiniteSlots: [],
       runs: { classic: { ...legacy, game: { ...legacy.game, mode: 'classic' } } },
     }
   }
@@ -564,11 +611,23 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
           ).unlocks
         : metadata.stats.survivorAchievementsUnlocked
 
+    const retiredFiniteSlots = new Set(metadata.retiredFiniteSlots)
+    let activeSeasonSlot = metadata.activeSeasonSlot
+    if (slot !== 'survival') {
+      if (activeSeasonSlot && activeSeasonSlot !== slot) retiredFiniteSlots.add(activeSeasonSlot)
+      retiredFiniteSlots.delete(slot)
+      activeSeasonSlot = resumable ? slot : activeSeasonSlot === slot ? null : activeSeasonSlot
+    }
+
     return persistSingleRunSnapshot(profileId, slot, resumable ? snapshot : null, {
       ...metadata,
       savedAt: snapshot.savedAt,
       activeRunId: resumable ? runId : null,
       lastPlayedRunId: resumable ? runId : metadata.lastPlayedRunId,
+      activeSeasonSlot,
+      retiredFiniteSlots: FINITE_RUN_SLOTS.filter((finiteSlot) =>
+        retiredFiniteSlots.has(finiteSlot)
+      ),
       stats: {
         ...metadata.stats,
         maxSurvivorDaysSurvived: survivorBest,
@@ -592,6 +651,19 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
         ).unlocks
       : current.stats.survivorAchievementsUnlocked
   const nextRuns = { ...current.runs }
+  const retiredFiniteSlots = new Set(current.retiredFiniteSlots)
+  let activeSeasonSlot = current.activeSeasonSlot
+  if (slot !== 'survival') {
+    for (const finiteSlot of FINITE_RUN_SLOTS) {
+      if (finiteSlot === slot) continue
+      if (current.runs[finiteSlot]) {
+        retiredFiniteSlots.add(finiteSlot)
+        delete nextRuns[finiteSlot]
+      }
+    }
+    retiredFiniteSlots.delete(slot)
+    activeSeasonSlot = resumable ? slot : activeSeasonSlot === slot ? null : activeSeasonSlot
+  }
   if (resumable) nextRuns[slot] = snapshot
   else delete nextRuns[slot]
 
@@ -600,6 +672,10 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
     savedAt: snapshot.savedAt,
     activeRunId: resumable ? runId : null,
     lastPlayedRunId: resumable ? runId : current.lastPlayedRunId,
+    activeSeasonSlot,
+    retiredFiniteSlots: FINITE_RUN_SLOTS.filter((finiteSlot) =>
+      retiredFiniteSlots.has(finiteSlot)
+    ),
     runs: nextRuns,
     stats: {
       ...current.stats,
@@ -632,6 +708,53 @@ export function getSavedRun(profileId: string, slot: SavedRunSlot): SavedSeasonS
   return loadSavedRunProfile(profileId).runs[slot] ?? null
 }
 
+export function getFiniteSeasonRunChoices(profile: SavedRunProfile): FiniteSeasonRunChoice[] {
+  const choices = FINITE_RUN_SLOTS.flatMap((slot) => {
+    const snapshot = profile.runs[slot]
+    return snapshot ? [{ slot, snapshot }] : []
+  }).sort((a, b) => Date.parse(b.snapshot.savedAt) - Date.parse(a.snapshot.savedAt))
+
+  if (profile.activeSeasonSlot) {
+    const active = choices.find((choice) => choice.slot === profile.activeSeasonSlot)
+    if (active) return [active]
+  }
+  return choices
+}
+
+export function activateFiniteSeasonRun(
+  profileId: string,
+  slot: FiniteSeasonRunSlot
+): boolean {
+  const current = loadSavedRunProfile(profileId)
+  const chosen = current.runs[slot]
+  if (!chosen) return false
+
+  const nextRuns = { ...current.runs }
+  const retiredFiniteSlots = new Set(current.retiredFiniteSlots)
+  for (const finiteSlot of FINITE_RUN_SLOTS) {
+    if (finiteSlot === slot) {
+      retiredFiniteSlots.delete(finiteSlot)
+      continue
+    }
+    if (current.runs[finiteSlot]) {
+      retiredFiniteSlots.add(finiteSlot)
+      delete nextRuns[finiteSlot]
+    }
+  }
+  const runId = getRunId(chosen)
+  return saveRunProfile({
+    ...current,
+    activeRunId: runId,
+    lastPlayedRunId: runId,
+    activeSeasonSlot: slot,
+    retiredFiniteSlots: FINITE_RUN_SLOTS.filter((finiteSlot) =>
+      retiredFiniteSlots.has(finiteSlot)
+    ),
+    runs: nextRuns,
+    savedAt: new Date().toISOString(),
+  })
+}
+
 export function getLastPlayedRun(profileId: string): SavedSeasonSnapshot | null {
   const profile = loadSavedRunProfile(profileId)
   const runs = Object.values(profile.runs).filter(Boolean) as SavedSeasonSnapshot[]
@@ -652,8 +775,21 @@ export function clearSavedRun(profileId: string, mode: SavedRunSlot): void {
     runs: nextRuns,
     activeRunId: current.activeRunId === removedRunId ? null : current.activeRunId,
     lastPlayedRunId: current.lastPlayedRunId === removedRunId ? null : current.lastPlayedRunId,
+    activeSeasonSlot: current.activeSeasonSlot === mode ? null : current.activeSeasonSlot,
     savedAt: new Date().toISOString(),
   })
+}
+
+export function clearSavedRunProfile(profileId: string): void {
+  try {
+    localStorage.removeItem(savedRunsKeyForProfile(profileId))
+    localStorage.removeItem(savedStateKeyForProfile(profileId))
+    for (const slot of ALL_RUN_SLOTS) {
+      localStorage.removeItem(savedRunSlotKeyForProfile(profileId, slot))
+    }
+  } catch {
+    // Best-effort cleanup; profile deletion must still complete if storage is unavailable.
+  }
 }
 
 export function clearSeasonSnapshot(key: string): void {

@@ -7,6 +7,31 @@ import {
 
 export const RUN_SNAPSHOT_AUTOSAVE_DELAY_MS = 0
 
+let autosaveSuspensionDepth = 0
+const invalidationGeneration = new Map<string, number>()
+
+export function suspendRunSnapshotAutosave(): () => void {
+  autosaveSuspensionDepth += 1
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    autosaveSuspensionDepth = Math.max(0, autosaveSuspensionDepth - 1)
+  }
+}
+
+export function isRunSnapshotAutosaveSuspended(): boolean {
+  return autosaveSuspensionDepth > 0
+}
+
+export function invalidateRunSnapshotAutosaves(profileId: string): void {
+  invalidationGeneration.set(profileId, (invalidationGeneration.get(profileId) ?? 0) + 1)
+}
+
+function getInvalidationGeneration(profileId: string): number {
+  return invalidationGeneration.get(profileId) ?? 0
+}
+
 type SaveRunSnapshot = (profileId: string, snapshot: SavedSeasonSnapshot) => boolean
 
 type PendingSave = {
@@ -14,6 +39,7 @@ type PendingSave = {
   slot: SavedRunSlot
   snapshot: SavedSeasonSnapshot
   persistenceRevision: string | null | undefined
+  invalidationGeneration: number
 }
 
 export interface RunSnapshotAutosaveController {
@@ -93,6 +119,7 @@ export function createRunSnapshotAutosaveController(
     }
 
     for (const save of saves) {
+      if (save.invalidationGeneration !== getInvalidationGeneration(save.profileId)) continue
       const currentRevision = persistedRevisions.get(save.profileId)
       if (
         save.persistenceRevision !== undefined &&
@@ -120,6 +147,7 @@ export function createRunSnapshotAutosaveController(
       persistenceRevision: sameRun
         ? existing.persistenceRevision
         : readPersistenceRevision(profileId),
+      invalidationGeneration: getInvalidationGeneration(profileId),
     })
     if (timer !== null) return
     timer = setTimeout(flush, Math.max(0, delayMs))

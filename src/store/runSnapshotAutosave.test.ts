@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { savedRunsKeyForProfile, type SavedSeasonSnapshot } from './saveStatePersistence'
 import {
   createRunSnapshotAutosaveController,
+  invalidateRunSnapshotAutosaves,
   RUN_SNAPSHOT_AUTOSAVE_DELAY_MS,
 } from './runSnapshotAutosave'
 
@@ -165,6 +166,18 @@ describe('runSnapshotAutosave', () => {
 
     expect(save).toHaveBeenCalledTimes(1)
     expect(save.mock.calls[0]![1].game.runId).toBe('new-run')
+  })
+
+  it('can invalidate all pending work for a profile even when no metadata exists yet', () => {
+    vi.useFakeTimers()
+    const save = createSaveSpy()
+    const controller = createRunSnapshotAutosaveController(save)
+
+    controller.schedule('profile-1', snapshot('fresh-run', 1))
+    invalidateRunSnapshotAutosaves('profile-1')
+    vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
+
+    expect(save).not.toHaveBeenCalled()
   })
 
   it('does not invalidate a queued save when only unrelated metadata changes', () => {

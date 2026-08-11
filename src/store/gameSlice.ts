@@ -416,14 +416,14 @@ export function createInitialGameState(options?: {
     seed,
     seasonOverride: freshSettings.sim.cupidArrowSeasonOverride,
   }
-  // Cupid may organically enter a Classic season only for an owner. An explicit
-  // debug season override remains available for testing, but DEV alone is not ownership.
+  // Paid season rulesets are explicit choices. Owning Cupid's Arrow must not
+  // silently turn a directly selected Classic season into paid expansion gameplay.
+  // The developer override remains available for deterministic testing.
   const cupidArrowIsScheduled =
     !forceClassicLocal &&
-    ((hasCachedStoreAccess('cupidArrow') && shouldScheduleCupidArrowSeason(cupidScheduleOptions)) ||
-      (expansionDebugAccess &&
-        freshSettings.sim.cupidArrowSeasonOverride === season &&
-        shouldScheduleCupidArrowSeason(cupidScheduleOptions)))
+    expansionDebugAccess &&
+    freshSettings.sim.cupidArrowSeasonOverride === season &&
+    shouldScheduleCupidArrowSeason(cupidScheduleOptions)
   // Vox Populi is a separately launched expansion. It never enters Classic just
   // because the product is owned; only the explicit debug override can pre-schedule it.
   const voxPopuliIsScheduled =
@@ -5022,6 +5022,14 @@ const gameSlice = createSlice({
       state.expansionMode = action.payload
     },
 
+    setSeasonSelectionMethod(state, action: PayloadAction<'direct' | 'surprise'>) {
+      if (state.mode === 'survival') {
+        state.seasonSelectionMethod = undefined
+        return
+      }
+      state.seasonSelectionMethod = action.payload
+    },
+
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
       const type = action.payload
       if (
@@ -8529,6 +8537,7 @@ export const {
   setVoxPopuliSchedule,
   activateVoxPopuliNow,
   setSeasonExpansion,
+  setSeasonSelectionMethod,
   queueForcedShock,
   clearForcedShock,
   consumeForcedShock,
