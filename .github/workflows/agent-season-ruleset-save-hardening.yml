@@ -75,6 +75,80 @@ jobs:
               cleaned.append(line)
           test.write_text(''.join(cleaned))
           PY
+      - name: Align split-save regression with canonical finite season
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path('src/store/saveStatePersistence.test.ts')
+          text = path.read_text()
+          pattern = r"  it\('rewrites only the active split run slot during routine autosaves', \(\) => \{.*?\n  \}\)\n\n  it\('prepares one complete campaign snapshot"
+          replacement = """  it('rewrites only the canonical finite slot while preserving independent/recovery blobs', () => {
+              const makeSnapshot = (
+                runId: string,
+                mode: 'classic' | 'survival',
+                expansionMode: 'cupidArrow' | 'voxPopuli' | null,
+                week = 2
+              ) =>
+                ({
+                  version: 1,
+                  profileId: 'profile-1',
+                  savedAt: `2026-08-11T20:00:${String(week).padStart(2, '0')}.000Z`,
+                  game: {
+                    mode,
+                    expansionMode,
+                    week,
+                    status: 'active',
+                    runId,
+                    gameId: runId,
+                    players: [{ id: 'user', name: 'You', avatar: 'P', status: 'active', isUser: true }],
+                  },
+                  finale: {},
+                  social: {},
+                }) as SavedSeasonSnapshot
+
+              expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null))).toBe(true)
+              expect(saveRunSnapshot('profile-1', makeSnapshot('survival-run', 'survival', null))).toBe(true)
+              expect(saveRunSnapshot('profile-1', makeSnapshot('cupid-run', 'classic', 'cupidArrow'))).toBe(true)
+              expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true)
+
+              const metadataKey = savedRunsKeyForProfile('profile-1')
+              const classicKey = savedRunSlotKeyForProfile('profile-1', 'classic')
+              const survivalKey = savedRunSlotKeyForProfile('profile-1', 'survival')
+              const cupidKey = savedRunSlotKeyForProfile('profile-1', 'cupidArrow')
+              const voxKey = savedRunSlotKeyForProfile('profile-1', 'voxPopuli')
+              const before = {
+                metadata: localStorage.getItem(metadataKey),
+                classic: localStorage.getItem(classicKey),
+                survival: localStorage.getItem(survivalKey),
+                cupid: localStorage.getItem(cupidKey),
+                vox: localStorage.getItem(voxKey),
+              }
+
+              expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null, 3))).toBe(true)
+
+              expect(localStorage.getItem(metadataKey)).not.toBe(before.metadata)
+              expect(localStorage.getItem(classicKey)).not.toBe(before.classic)
+              expect(localStorage.getItem(survivalKey)).toBe(before.survival)
+              expect(localStorage.getItem(cupidKey)).toBe(before.cupid)
+              expect(localStorage.getItem(voxKey)).toBe(before.vox)
+
+              const profile = loadSavedRunProfile('profile-1')
+              expect(profile.activeSeasonSlot).toBe('classic')
+              expect(profile.retiredFiniteSlots).toEqual(['cupidArrow', 'voxPopuli'])
+              expect(profile.runs.classic?.game.week).toBe(3)
+              expect(profile.runs.survival?.game.runId).toBe('survival-run')
+              expect(profile.runs.cupidArrow).toBeUndefined()
+              expect(profile.runs.voxPopuli).toBeUndefined()
+            })
+
+            it('prepares one complete campaign snapshot"""
+          updated, count = re.subn(pattern, replacement, text, count=1, flags=re.DOTALL)
+          if count != 1:
+              raise SystemExit(f'expected one split-save regression block, found {count}')
+          path.write_text(updated)
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Typecheck
