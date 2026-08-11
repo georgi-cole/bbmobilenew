@@ -192,12 +192,20 @@ export class MusicCueEngine {
         this._fadeDeck(outgoing, 0, cue.crossfadeMs),
         this._fadeDeck(incoming, 1, cue.crossfadeMs),
       ])
-      // Even if another cue took over while this crossfade was running, this
-      // request still owns cleanup of its original outgoing deck.
-      this._stopDeck(outgoing)
+      // The request that replaced this outgoing deck owns its cleanup.
+      this._stopDeck(outgoing, 'superseded')
     } else {
-      if (outgoing) this._stopDeck(outgoing)
+      if (outgoing) this._stopDeck(outgoing, 'superseded')
       if (transitionMs > 0) await this._fadeDeck(incoming, 1, transitionMs)
+    }
+
+    // A newer cue can arrive after this deck has already been promoted while its
+    // fade is still running. Reject that stale request too; otherwise the older
+    // SoundManager promise can resolve later and its stale-success guard may stop
+    // the newer active cue. Explicit stop/fade remains a quiet cancellation.
+    if (generation !== this._playGeneration || this._active !== incoming || incoming.stopped) {
+      if (incoming.stopCause === 'cancelled') return
+      throw new MusicCueSupersededError()
     }
   }
 
