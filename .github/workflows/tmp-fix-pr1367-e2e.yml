@@ -1,0 +1,40 @@
+name: Temporary PR 1367 E2E fix
+
+on:
+  push:
+    branches:
+      - agent/single-active-season-rulesets
+
+permissions:
+  contents: write
+
+jobs:
+  patch-obsolete-campaign-selector:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/single-active-season-rulesets
+          fetch-depth: 0
+
+      - name: Patch Classic selector and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -Fxc "  await playMenu.getByRole('button', { name: 'Campaign', exact: true }).click()" e2e/playwright/core-player-journeys.spec.ts)" -eq 1
+          sed -i "s/name: 'Campaign', exact: true/name: 'Classic', exact: true/" e2e/playwright/core-player-journeys.spec.ts
+          grep -F "name: 'Classic', exact: true" e2e/playwright/core-player-journeys.spec.ts
+          ! grep -F "name: 'Campaign', exact: true" e2e/playwright/core-player-journeys.spec.ts
+          rm .github/workflows/tmp-fix-pr1367-e2e.yml
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add e2e/playwright/core-player-journeys.spec.ts .github/workflows/tmp-fix-pr1367-e2e.yml
+          git diff --cached --check
+          git commit -m "test: align core journeys with Classic ruleset"
+          git push origin HEAD:agent/single-active-season-rulesets
