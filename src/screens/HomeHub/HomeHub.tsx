@@ -93,21 +93,6 @@ function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
   )
 }
 
-/**
- * HomeHub — entry screen with BB hero branding and button stack.
- *
- * Buttons map to named routes in src/routes.tsx.
- * To add a new hub button: add an entry to HUB_BUTTONS.
- *
- * Load ordering:
- *   1. KolequantSplash shown — logo only, no dialogs, hub preloads in background.
- *   2. Hub assets preload during the splash: background, buttons, fonts, and
- *      the intro-hub runtime are all loaded before the screen is revealed.
- *   3. If the splash finishes first, a loading overlay stays up until the full
- *      hub bundle is ready so the UI never appears half-built.
- *   4. After the hub is ready, PermissionPrompts appear over the hub (location only).
- *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
- */
 const HUB_BUTTONS = [
   { to: '/game', label: 'Play', icon: 'play', variant: 'primary_large' },
   { to: '/rules', label: 'Rules', icon: 'rules', variant: 'secondary_medium' },
@@ -123,7 +108,6 @@ const HUB_BUTTONS = [
 }>
 
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null
-
 type ExpansionSelection = 'cupidArrow' | 'voxPopuli'
 
 interface HubAssetState {
@@ -185,10 +169,8 @@ function HomeHubAssetLayer({
   return (
     <>
       {splashDone && assetReady && <PermissionPrompts showSoundPrompt={false} />}
-
       <div className="homehub-content home-hub">
         <div className="home-hub__hero" aria-hidden="true" />
-
         {splashDone && assetReady && (
           <nav
             className="home-hub__buttons"
@@ -273,9 +255,6 @@ export default function HomeHub() {
       }),
     [cupidArrowAvailable, voxPopuliAvailable]
   )
-
-  // `game.week` is the legacy state field name, but in the current game flow it
-  // represents the current in-game day count.
   const dayCount = week
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
@@ -392,8 +371,6 @@ export default function HomeHub() {
   function startSeasonRun(ruleset: SeasonRuleset) {
     SoundManager.unlockFromGesture()
 
-    // Defense in depth: stale UI, deep links or future callers must never use
-    // an unowned expansion and must never create a second finite season.
     if (ruleset === 'cupidArrow' && !cupidArrowAvailable) {
       openStoreFromPlayMenu()
       return
@@ -407,22 +384,27 @@ export default function HomeHub() {
       return
     }
 
-    if (!isGuest && activeProfileId) {
-      const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
-      dispatch(resetGame(archives))
-    } else {
-      dispatch(resetGame(undefined))
-    }
+    // resetGame creates the new run ID. Keep reset + ruleset selection inside a
+    // single autosave-suspended operation so an expansion never briefly saves a
+    // second Classic slot before expansionMode is applied.
+    withRunAutosaveSuspended(() => {
+      if (!isGuest && activeProfileId) {
+        const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
+        dispatch(resetGame(archives))
+      } else {
+        dispatch(resetGame(undefined))
+      }
 
-    const expansion = rulesetExpansion(ruleset)
-    dispatch(setSeasonExpansion(expansion))
-    if (expansion === 'cupidArrow') {
-      dispatch(setVoxPopuliSchedule(null))
-      dispatch(activateCupidArrowNow())
-    } else if (expansion === 'voxPopuli') {
-      dispatch(setCupidArrowSchedule(null))
-      dispatch(activateVoxPopuliNow())
-    }
+      const expansion = rulesetExpansion(ruleset)
+      dispatch(setSeasonExpansion(expansion))
+      if (expansion === 'cupidArrow') {
+        dispatch(setVoxPopuliSchedule(null))
+        dispatch(activateCupidArrowNow())
+      } else if (expansion === 'voxPopuli') {
+        dispatch(setCupidArrowSchedule(null))
+        dispatch(activateVoxPopuliNow())
+      }
+    })
 
     setPlaySelectionOpen(false)
     setPreloading(true)
@@ -617,7 +599,6 @@ export default function HomeHub() {
       ) {
         return current
       }
-
       return nextState
     })
   }, [])
@@ -627,10 +608,7 @@ export default function HomeHub() {
   }, [])
 
   useEffect(() => {
-    if (!splashDone) {
-      return
-    }
-
+    if (!splashDone) return
     markHomeHubSplashSeenForGame(gameId)
   }, [gameId, splashDone])
 
