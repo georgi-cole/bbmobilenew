@@ -4,7 +4,7 @@ import {
   type SavedSeasonSnapshot,
 } from './saveStatePersistence'
 
-export const RUN_SNAPSHOT_AUTOSAVE_DELAY_MS = 120
+export const RUN_SNAPSHOT_AUTOSAVE_DELAY_MS = 0
 
 type SaveRunSnapshot = (profileId: string, snapshot: SavedSeasonSnapshot) => boolean
 
@@ -26,12 +26,10 @@ function pendingKey(profileId: string, slot: SavedRunSlot): string {
 }
 
 /**
- * Coalesces a burst of Redux updates into one durable save per profile/run slot.
- *
- * The first change arms a short timer instead of resetting it on every update,
- * so continuous gameplay is still persisted regularly. The latest snapshot wins
- * inside that window. `flush()` remains synchronous for lifecycle boundaries
- * such as document visibility loss.
+ * Coalesces a synchronous burst of Redux updates into one durable save per
+ * profile/run slot without keeping gameplay progress pending longer than the
+ * current JavaScript task. The latest snapshot wins inside that burst and
+ * `flush()` remains synchronous for lifecycle boundaries such as visibility loss.
  */
 export function createRunSnapshotAutosaveController(
   saveRunSnapshot: SaveRunSnapshot,
