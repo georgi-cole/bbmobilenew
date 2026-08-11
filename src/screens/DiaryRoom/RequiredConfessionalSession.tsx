@@ -18,6 +18,7 @@ import {
 import './DiaryRoom.css'
 import './RequiredConfessionalSession.css'
 import './RequiredConfessionalSessionFixes.css'
+import './RequiredConfessionalCompletion.css'
 
 interface Props {
   decision: ActiveConfessionalDecision | null
@@ -178,7 +179,9 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
 
             <div className="diary-room__chat required-confessional__chat" aria-live="polite">
               {displayDecision && displayPresentation ? (
-                <div className="diary-room__bubble diary-room__bubble--bb diary-room__bubble--decision required-confessional__decision-bubble">
+                <div
+                  className={`diary-room__bubble diary-room__bubble--bb diary-room__bubble--decision required-confessional__decision-bubble${decisionComplete ? ' required-confessional__decision-bubble--complete' : ''}`}
+                >
                   <span className="diary-room__bubble-author">📺 The Big Eye</span>
                   <strong className="required-confessional__decision-title">
                     {displayPresentation.title}
