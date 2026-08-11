@@ -34,7 +34,7 @@ export interface MusicResolverState {
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>
   ui: {
     musicScene: MusicScene
-    confessionalMusicMode: ConfessionalMusicMode
+    confessionalMusicMode?: ConfessionalMusicMode
   }
 }
 
@@ -70,7 +70,7 @@ export function resolveDesiredMusicCue(
       baseCue,
       gamePhase: state.game.phase,
       hash,
-      confessionalMusicMode: state.ui.confessionalMusicMode,
+      confessionalMusicMode: state.ui.confessionalMusicMode ?? 'normal',
     }) ?? baseCue
   )
 }
