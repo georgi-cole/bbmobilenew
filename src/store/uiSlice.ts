@@ -30,11 +30,13 @@ export type MusicScene =
   | 'public_voting'
 
 export type MusicMix = 'normal' | 'ducked'
+export type ConfessionalMusicMode = 'normal' | 'vote-committed'
 
 interface UIState {
   socialSummaryOpen: boolean
   musicScene: MusicScene
   musicMix: MusicMix
+  confessionalMusicMode: ConfessionalMusicMode
   debugExpansionUnlocks: {
     cupidArrow: boolean
     voxPopuli: boolean
@@ -45,6 +47,7 @@ const initialState: UIState = {
   socialSummaryOpen: false,
   musicScene: 'none',
   musicMix: 'normal',
+  confessionalMusicMode: 'normal',
   // Intentionally Redux-only: debug access disappears with the app session and
   // is never written into the permanent VIP entitlement cache.
   debugExpansionUnlocks: {
@@ -69,6 +72,9 @@ const uiSlice = createSlice({
     setMusicMix(state, action: { payload: MusicMix }) {
       state.musicMix = action.payload
     },
+    setConfessionalMusicMode(state, action: { payload: ConfessionalMusicMode }) {
+      state.confessionalMusicMode = action.payload
+    },
     setDebugExpansionUnlock(
       state,
       action: { payload: { expansion: 'cupidArrow' | 'voxPopuli'; unlocked: boolean } }
@@ -87,6 +93,7 @@ export const {
   closeSocialSummary,
   setMusicScene,
   setMusicMix,
+  setConfessionalMusicMode,
   setDebugExpansionUnlock,
   clearDebugExpansionUnlocks,
 } = uiSlice.actions
@@ -96,6 +103,8 @@ export const selectSocialSummaryOpen = (state: { ui: UIState }) =>
   state.ui?.socialSummaryOpen ?? false
 export const selectMusicScene = (state: { ui: UIState }) => state.ui?.musicScene ?? 'none'
 export const selectMusicMix = (state: { ui: UIState }) => state.ui?.musicMix ?? 'normal'
+export const selectConfessionalMusicMode = (state: { ui: UIState }) =>
+  state.ui?.confessionalMusicMode ?? 'normal'
 const EMPTY_DEBUG_EXPANSION_UNLOCKS = { cupidArrow: false, voxPopuli: false } as const
 export const selectDebugExpansionUnlocks = (state: { ui: UIState }) =>
   state.ui?.debugExpansionUnlocks ?? EMPTY_DEBUG_EXPANSION_UNLOCKS
