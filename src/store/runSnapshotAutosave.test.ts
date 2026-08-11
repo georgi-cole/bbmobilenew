@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { savedRunSlotKeyForProfile, type SavedSeasonSnapshot } from './saveStatePersistence'
+import { savedRunsKeyForProfile, type SavedSeasonSnapshot } from './saveStatePersistence'
 import {
   createRunSnapshotAutosaveController,
   RUN_SNAPSHOT_AUTOSAVE_DELAY_MS,
@@ -31,6 +31,13 @@ function snapshot(
 
 function createSaveSpy() {
   return vi.fn<SaveRunSnapshot>(() => true)
+}
+
+function setRunIdentity(activeRunId: string | null, lastPlayedRunId: string | null, extra = {}) {
+  localStorage.setItem(
+    savedRunsKeyForProfile('profile-1'),
+    JSON.stringify({ version: 2, profileId: 'profile-1', activeRunId, lastPlayedRunId, ...extra })
+  )
 }
 
 afterEach(() => {
@@ -78,16 +85,9 @@ describe('runSnapshotAutosave', () => {
 
   it('does not let the first slot write invalidate another slot in the same flush', () => {
     vi.useFakeTimers()
-    const classicKey = savedRunSlotKeyForProfile('profile-1', 'classic')
-    const survivalKey = savedRunSlotKeyForProfile('profile-1', 'survival')
-    localStorage.setItem(classicKey, '{"revision":"classic-before"}')
-    localStorage.setItem(survivalKey, '{"revision":"survival-before"}')
-    const save = vi.fn<SaveRunSnapshot>((profileId, nextSnapshot) => {
-      const slot = nextSnapshot.game.mode === 'survival' ? 'survival' : 'classic'
-      localStorage.setItem(
-        savedRunSlotKeyForProfile(profileId, slot),
-        JSON.stringify({ revision: nextSnapshot.game.runId })
-      )
+    setRunIdentity('classic-run', 'classic-run')
+    const save = vi.fn<SaveRunSnapshot>((_profileId, nextSnapshot) => {
+      setRunIdentity(nextSnapshot.game.runId ?? null, nextSnapshot.game.runId ?? null)
       return true
     })
     const controller = createRunSnapshotAutosaveController(save)
@@ -126,30 +126,40 @@ describe('runSnapshotAutosave', () => {
     expect(controller.pendingCount()).toBe(0)
   })
 
-  it('does not resurrect a run when that slot is cleared after autosave was queued', () => {
+  it('does not resurrect an active run when persistence clears it after autosave was queued', () => {
     vi.useFakeTimers()
+    setRunIdentity('classic-run', 'classic-run')
     const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
-    const slotKey = savedRunSlotKeyForProfile('profile-1', 'classic')
-    localStorage.setItem(slotKey, '{"savedAt":"before-clear"}')
 
     controller.schedule('profile-1', snapshot('classic-run', 7))
-    localStorage.removeItem(slotKey)
+    setRunIdentity(null, null)
     vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
 
     expect(save).not.toHaveBeenCalled()
     expect(controller.pendingCount()).toBe(0)
   })
 
-  it('allows a genuinely newer snapshot scheduled after its slot is cleared', () => {
+  it('detects a legacy-run clear that migrates the profile metadata', () => {
     vi.useFakeTimers()
     const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
-    const slotKey = savedRunSlotKeyForProfile('profile-1', 'classic')
-    localStorage.setItem(slotKey, '{"savedAt":"before-clear"}')
+
+    controller.schedule('profile-1', snapshot('legacy-run', 7))
+    setRunIdentity(null, null)
+    vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
+
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('allows a genuinely newer snapshot scheduled after persistence changes', () => {
+    vi.useFakeTimers()
+    setRunIdentity('old-run', 'old-run')
+    const save = createSaveSpy()
+    const controller = createRunSnapshotAutosaveController(save)
 
     controller.schedule('profile-1', snapshot('old-run', 7))
-    localStorage.removeItem(slotKey)
+    setRunIdentity(null, null)
     controller.schedule('profile-1', snapshot('new-run', 1))
     vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
 
@@ -159,13 +169,12 @@ describe('runSnapshotAutosave', () => {
 
   it('does not invalidate a queued save when only unrelated metadata changes', () => {
     vi.useFakeTimers()
+    setRunIdentity('classic-run', 'classic-run', { stats: { achievement: 'before' } })
     const save = createSaveSpy()
     const controller = createRunSnapshotAutosaveController(save)
-    const slotKey = savedRunSlotKeyForProfile('profile-1', 'classic')
-    localStorage.setItem(slotKey, '{"savedAt":"same-run"}')
 
     controller.schedule('profile-1', snapshot('classic-run', 8))
-    localStorage.setItem('bbmobilenew:savedRuns:profile-1', '{"achievement":"updated"}')
+    setRunIdentity('classic-run', 'classic-run', { stats: { achievement: 'after' } })
     vi.advanceTimersByTime(RUN_SNAPSHOT_AUTOSAVE_DELAY_MS)
 
     expect(save).toHaveBeenCalledTimes(1)
