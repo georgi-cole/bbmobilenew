@@ -14,6 +14,8 @@ interface EffectGraph {
   filter: BiquadFilterNode
 }
 
+type CueStopCause = 'superseded' | 'cancelled' | null
+
 interface CueDeck {
   element: HTMLAudioElement
   asset: MusicCueAsset
@@ -22,6 +24,7 @@ interface CueDeck {
   mixGain: number
   boundaryHandled: boolean
   stopped: boolean
+  stopCause: CueStopCause
   cleanup: () => void
 }
 
@@ -134,7 +137,7 @@ export class MusicCueEngine {
     if (this._standby && this._standby !== this._active) {
       const staleStandby = this._standby
       this._standby = null
-      this._stopDeck(staleStandby)
+      this._stopDeck(staleStandby, 'superseded')
     }
 
     // If the latest intent is the currently-active cue, cancelling a conflicting
@@ -171,7 +174,13 @@ export class MusicCueEngine {
       this._assertPendingOwnership(incoming, generation)
     } catch (error) {
       if (this._standby === incoming) this._standby = null
-      this._stopDeck(incoming)
+      const cancelled = incoming.stopCause === 'cancelled'
+      this._stopDeck(incoming, incoming.stopCause)
+      // Explicit stop/fade/navigation is normal control flow. Resolve quietly so
+      // SoundManager can reconcile its now-cleared desired cue without marking a
+      // perfectly valid asset as failed. A newer competing cue still rejects so
+      // the stale SoundManager request cannot stop the newer active deck.
+      if (cancelled && error instanceof MusicCueSupersededError) return
       throw error
     }
 
@@ -197,7 +206,7 @@ export class MusicCueEngine {
     if (this._standby && this._standby !== this._active) {
       const staleStandby = this._standby
       this._standby = null
-      this._stopDeck(staleStandby)
+      this._stopDeck(staleStandby, 'cancelled')
     }
 
     const deck = this._active
@@ -207,14 +216,14 @@ export class MusicCueEngine {
     // A newer play request may have taken ownership of this deck as its outgoing
     // crossfade source. In that case the newer request is responsible for cleanup.
     if (generation !== this._playGeneration || this._active !== deck) return
-    this._stopDeck(deck)
+    this._stopDeck(deck, 'cancelled')
     this._active = null
   }
 
   stop(): void {
     this._playGeneration += 1
-    if (this._active) this._stopDeck(this._active)
-    if (this._standby) this._stopDeck(this._standby)
+    if (this._active) this._stopDeck(this._active, 'cancelled')
+    if (this._standby) this._stopDeck(this._standby, 'cancelled')
     this._active = null
     this._standby = null
   }
@@ -250,6 +259,7 @@ export class MusicCueEngine {
       mixGain: 1,
       boundaryHandled: false,
       stopped: false,
+      stopCause: null,
       cleanup: () => {},
     }
 
@@ -307,9 +317,13 @@ export class MusicCueEngine {
     })
   }
 
-  private _stopDeck(deck: CueDeck): void {
-    if (deck.stopped) return
+  private _stopDeck(deck: CueDeck, cause: CueStopCause = deck.stopCause): void {
+    if (deck.stopped) {
+      if (deck.stopCause === null && cause !== null) deck.stopCause = cause
+      return
+    }
     deck.stopped = true
+    deck.stopCause = cause
     this._cancelFade(deck)
     if (deck.cue.restartPolicy === 'resume') {
       this._resumePositions.set(deck.cue.id, deck.element.currentTime)
