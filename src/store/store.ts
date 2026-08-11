@@ -30,6 +30,7 @@ import {
   createSavedSeasonSnapshot,
   saveRunSnapshot,
 } from './saveStatePersistence'
+import { createRunSnapshotAutosaveController } from './runSnapshotAutosave'
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice'
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice'
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic'
@@ -162,6 +163,11 @@ function hasMeaningfulGameProgress(game: ReturnType<typeof store.getState>['game
   )
 }
 
+// Autosaves are coalesced so a single Play transition can update several Redux
+// slices without repeatedly serializing/writing the campaign on the same input
+// turn. Lifecycle boundaries still flush synchronously below.
+const runSnapshotAutosave = createRunSnapshotAutosaveController(saveRunSnapshot)
+
 // Persist settings to localStorage whenever they change
 let prevSettings = store.getState().settings
 // Persist userProfile to localStorage whenever it changes
@@ -270,7 +276,10 @@ store.subscribe(() => {
     prevChallenge = current.challenge
     const activeProfileId = current.profiles.activeProfileId
     if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
-      saveRunSnapshot(activeProfileId, createSavedSeasonSnapshot(activeProfileId, current))
+      runSnapshotAutosave.schedule(
+        activeProfileId,
+        createSavedSeasonSnapshot(activeProfileId, current)
+      )
     }
   }
   if (current.game.seasonArchives !== prevSeasonArchives) {
@@ -292,8 +301,10 @@ store.subscribe(() => {
       // When a new season is archived (archive count increases on the same profile),
       // the previous in-progress save snapshot is now stale — clear it automatically.
       if (sameProfile && newLength > prevSeasonArchivesLength && archivesProfileId) {
+        const completedSlot = getSavedRunSlot(current.game)
+        runSnapshotAutosave.discard(archivesProfileId, completedSlot)
         clearSeasonSnapshot(savedStateKeyForProfile(archivesProfileId))
-        clearSavedRun(archivesProfileId, getSavedRunSlot(current.game))
+        clearSavedRun(archivesProfileId, completedSlot)
       }
     }
     prevSeasonArchivesLength = newLength
@@ -301,17 +312,26 @@ store.subscribe(() => {
   }
 })
 
-// Android may reclaim a background WebView without another Redux action. Force
-// the latest serializable campaign state to storage as soon as the app hides.
+// Android/iOS may reclaim a background WebView without another Redux action.
+// Queue the latest current state and synchronously flush every pending run as
+// soon as the document hides. This preserves the previous durability guarantee.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return
     const current = store.getState()
     const activeProfileId = current.profiles.activeProfileId
-    if (current.profiles.isGuest || !activeProfileId || !hasMeaningfulGameProgress(current.game))
-      return
-    saveRunSnapshot(activeProfileId, createSavedSeasonSnapshot(activeProfileId, current))
+    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
+      runSnapshotAutosave.schedule(
+        activeProfileId,
+        createSavedSeasonSnapshot(activeProfileId, current)
+      )
+    }
+    runSnapshotAutosave.flush()
   })
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => runSnapshotAutosave.flush())
 }
 
 export type RootState = ReturnType<typeof store.getState>
