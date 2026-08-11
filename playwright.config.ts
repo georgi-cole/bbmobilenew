@@ -3,8 +3,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-const nodeBin = process.execPath
-const viteScript = path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js')
 const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
 const chromiumLaunchOptions = chromiumExecutablePath
@@ -23,7 +21,11 @@ export default defineConfig({
     video: process.env.VISUAL_AUDIT_WRITE === '1' ? 'off' : 'retain-on-failure',
   },
   webServer: {
-    command: `"${nodeBin}" "${viteScript}" --host 127.0.0.1 --port 4173 --strictPort`,
+    // Start through the repository's normal dev lifecycle instead of invoking
+    // Vite directly. `npm run dev` executes `predev`, which regenerates the
+    // audio catalog (and other generated runtime config) before the browser
+    // ever imports it.
+    command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
