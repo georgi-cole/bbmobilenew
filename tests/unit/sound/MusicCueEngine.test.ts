@@ -124,7 +124,7 @@ describe('MusicCueEngine', () => {
     expect(pauseSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('does not allow a stopped pending cue to become active later', async () => {
+  it('does not allow an explicitly stopped pending cue to become active later', async () => {
     const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
     let releasePlay!: () => void
     playSpy.mockImplementationOnce(
@@ -143,7 +143,7 @@ describe('MusicCueEngine', () => {
     engine.stop()
     releasePlay()
 
-    await expect(pending).rejects.toMatchObject({ name: 'MusicCueSupersededError' })
+    await expect(pending).resolves.toBeUndefined()
     expect(engine.currentElement).toBeNull()
     expect(engine.currentCue).toBeNull()
   })
