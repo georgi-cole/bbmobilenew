@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Format new persistence code
+        run: npx prettier --write src/store/saveStatePersistence.ts src/store/saveStatePersistence.test.ts
       - name: Changed-file formatting
         run: npm run format:check
       - name: Repo-wide lint
@@ -56,14 +58,14 @@ jobs:
           )
           path.write_text(text)
           PY
-      - name: Commit cleanup
+      - name: Commit validated cleanup
         run: |
-          if git diff --quiet -- src/services/sound/generatedAudioManifest.ts src/screens/ProfilePicker/ProfilePicker.tsx; then
-            echo "No cleanup changes to commit."
+          if git diff --quiet -- src; then
+            echo "No source cleanup changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/services/sound/generatedAudioManifest.ts src/screens/ProfilePicker/ProfilePicker.tsx
-          git commit -m "Clean season hardening diff"
+          git add src/store/saveStatePersistence.ts src/store/saveStatePersistence.test.ts src/services/sound/generatedAudioManifest.ts src/screens/ProfilePicker/ProfilePicker.tsx
+          git commit -m "Polish season save hardening"
           git push origin HEAD:agent/season-ruleset-save-hardening
