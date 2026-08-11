@@ -1,6 +1,6 @@
 import {
   getSavedRunSlot,
-  savedRunsKeyForProfile,
+  savedRunSlotKeyForProfile,
   type SavedRunSlot,
   type SavedSeasonSnapshot,
 } from './saveStatePersistence'
@@ -27,9 +27,12 @@ function pendingKey(profileId: string, slot: SavedRunSlot): string {
   return `${profileId}:${slot}`
 }
 
-function readPersistenceRevision(profileId: string): string | null | undefined {
+function readPersistenceRevision(
+  profileId: string,
+  slot: SavedRunSlot
+): string | null | undefined {
   try {
-    return localStorage.getItem(savedRunsKeyForProfile(profileId))
+    return localStorage.getItem(savedRunSlotKeyForProfile(profileId, slot))
   } catch {
     // Storage-unavailable environments should keep the existing best-effort save
     // behavior. The persistence layer will report the actual write failure.
@@ -43,10 +46,10 @@ function readPersistenceRevision(profileId: string): string | null | undefined {
  * current JavaScript task. The latest snapshot wins inside that burst and
  * `flush()` remains synchronous for lifecycle boundaries such as visibility loss.
  *
- * The tiny split-profile metadata value also acts as a persistence revision.
- * If another flow clears or replaces the run after this snapshot was queued,
+ * The current split run-slot value also acts as a persistence revision. If
+ * another flow clears or replaces that exact run after a snapshot was queued,
  * the revision changes and the stale timer is ignored instead of resurrecting
- * the just-cleared save. A later schedule captures the new revision normally.
+ * the just-cleared save. Metadata-only changes do not invalidate gameplay work.
  */
 export function createRunSnapshotAutosaveController(
   saveRunSnapshot: SaveRunSnapshot,
@@ -65,18 +68,16 @@ export function createRunSnapshotAutosaveController(
     const saves = [...pending.values()]
     pending.clear()
 
-    // Freeze the persisted revision once per profile before writing anything.
-    // This lets multiple legitimate slots flush together without the first save
-    // making the second look stale merely because it updated shared metadata.
+    // Freeze persisted revisions before writing anything. This lets multiple
+    // legitimate slots flush together without one save affecting another.
     const persistedRevisions = new Map<string, string | null | undefined>()
     for (const save of saves) {
-      if (!persistedRevisions.has(save.profileId)) {
-        persistedRevisions.set(save.profileId, readPersistenceRevision(save.profileId))
-      }
+      const key = pendingKey(save.profileId, save.slot)
+      persistedRevisions.set(key, readPersistenceRevision(save.profileId, save.slot))
     }
 
     for (const save of saves) {
-      const currentRevision = persistedRevisions.get(save.profileId)
+      const currentRevision = persistedRevisions.get(pendingKey(save.profileId, save.slot))
       if (
         save.persistenceRevision !== undefined &&
         currentRevision !== undefined &&
@@ -94,7 +95,7 @@ export function createRunSnapshotAutosaveController(
       profileId,
       slot,
       snapshot,
-      persistenceRevision: readPersistenceRevision(profileId),
+      persistenceRevision: readPersistenceRevision(profileId, slot),
     })
     if (timer !== null) return
     timer = setTimeout(flush, Math.max(0, delayMs))
