@@ -21,6 +21,26 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Tighten stacked applicator target
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/agent_apply_season_ruleset_refactor.py')
+          text = path.read_text()
+          old = '''replace_once(
+              "src/store/store.ts",
+              """    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {\\n      runSnapshotAutosave.schedule(\\n""",
+              """    if (\\n      !current.profiles.isGuest &&\\n      activeProfileId &&\\n      hasMeaningfulGameProgress(current.game) &&\\n      !isRunSnapshotAutosaveSuspended()\\n    ) {\\n      runSnapshotAutosave.schedule(\\n""",
+          )'''
+          new = '''replace_once(
+              "src/store/store.ts",
+              """  if (resumableStateChanged) {\\n    prevGame = current.game\\n    prevFinale = current.finale\\n    prevSocial = current.social\\n    prevPublicOpinion = current.publicOpinion\\n    prevChallenge = current.challenge\\n    const activeProfileId = current.profiles.activeProfileId\\n    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {\\n      runSnapshotAutosave.schedule(\\n""",
+              """  if (resumableStateChanged) {\\n    prevGame = current.game\\n    prevFinale = current.finale\\n    prevSocial = current.social\\n    prevPublicOpinion = current.publicOpinion\\n    prevChallenge = current.challenge\\n    const activeProfileId = current.profiles.activeProfileId\\n    if (\\n      !current.profiles.isGuest &&\\n      activeProfileId &&\\n      hasMeaningfulGameProgress(current.game) &&\\n      !isRunSnapshotAutosaveSuspended()\\n    ) {\\n      runSnapshotAutosave.schedule(\\n""",
+          )'''
+          if old not in text:
+              raise SystemExit('stacked store target not found in applicator')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Apply refactor
         run: python3 scripts/agent_apply_season_ruleset_refactor.py
       - name: Install dependencies
@@ -55,7 +75,7 @@ jobs:
           src/screens/ProfilePicker/ProfilePicker.test.tsx
       - name: Commit validated source changes
         run: |
-          if git diff --quiet; then
+          if git diff --quiet -- src; then
             echo "No source changes to commit."
             exit 0
           fi
