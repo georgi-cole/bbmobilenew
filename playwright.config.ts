@@ -1,8 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
 const chromiumLaunchOptions = chromiumExecutablePath
