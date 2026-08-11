@@ -5,7 +5,7 @@
 import type { GameMode } from '../../modes/modeTypes'
 import type { GameCategory } from '../../minigames/registry'
 import type { RootState } from '../../store/store'
-import type { MusicScene } from '../../store/uiSlice'
+import type { ConfessionalMusicMode, MusicScene } from '../../store/uiSlice'
 import {
   DEFAULT_MUSIC_CONFIG,
   resolveMusicCue,
@@ -14,6 +14,7 @@ import {
   type ResolvedMusicCue,
 } from './musicConfig'
 import type { MusicTrack } from './musicTracks'
+import { resolveSpecialMusicCue } from './specialMusicCues'
 
 export interface MusicResolverState {
   game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
@@ -31,7 +32,10 @@ export interface MusicResolverState {
     } | null
   }
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>
-  ui: { musicScene: MusicScene }
+  ui: {
+    musicScene: MusicScene
+    confessionalMusicMode: ConfessionalMusicMode
+  }
 }
 
 export function resolveDesiredMusicCue(
@@ -40,8 +44,7 @@ export function resolveDesiredMusicCue(
   config: MusicConfigDocument = DEFAULT_MUSIC_CONFIG
 ): ResolvedMusicCue {
   const pendingChallenge = state.challenge.pending
-
-  return resolveMusicCue(
+  const baseCue = resolveMusicCue(
     {
       mode: state.game.mode ?? 'classic',
       gamePhase: state.game.phase,
@@ -60,6 +63,15 @@ export function resolveDesiredMusicCue(
         : null,
     },
     config
+  )
+
+  return (
+    resolveSpecialMusicCue({
+      baseCue,
+      gamePhase: state.game.phase,
+      hash,
+      confessionalMusicMode: state.ui.confessionalMusicMode,
+    }) ?? baseCue
   )
 }
 
