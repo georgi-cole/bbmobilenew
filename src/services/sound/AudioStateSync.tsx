@@ -58,7 +58,20 @@ function enrichMinigameTransition(
 }
 
 export default function AudioStateSync() {
-  const musicMix = useSelector((root: RootState) => root.ui.musicMix ?? 'normal')
+  const musicMix = useSelector((root: RootState) => {
+    const evictionOverlayPlayerId = root.game.evictionOverlayPlayerId ?? null
+    const battleBackReturnActive =
+      evictionOverlayPlayerId != null &&
+      root.game.battleBack?.used === true &&
+      root.game.battleBack?.winnerId === evictionOverlayPlayerId
+    const voteResultsRevealActive = root.game.voteResults != null
+    const evictionCinematicActive = evictionOverlayPlayerId != null && !battleBackReturnActive
+
+    // Music only makes room for the two SFX-heavy reveal sequences themselves.
+    // Live-vote title cards, Confessional prompts and other surrounding screens
+    // stay at full strength even though they share the same game phases.
+    return voteResultsRevealActive || evictionCinematicActive ? 'ducked' : 'normal'
+  })
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
