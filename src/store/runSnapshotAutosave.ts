@@ -64,8 +64,19 @@ export function createRunSnapshotAutosaveController(
 
     const saves = [...pending.values()]
     pending.clear()
+
+    // Freeze the persisted revision once per profile before writing anything.
+    // This lets multiple legitimate slots flush together without the first save
+    // making the second look stale merely because it updated shared metadata.
+    const persistedRevisions = new Map<string, string | null | undefined>()
     for (const save of saves) {
-      const currentRevision = readPersistenceRevision(save.profileId)
+      if (!persistedRevisions.has(save.profileId)) {
+        persistedRevisions.set(save.profileId, readPersistenceRevision(save.profileId))
+      }
+    }
+
+    for (const save of saves) {
+      const currentRevision = persistedRevisions.get(save.profileId)
       if (
         save.persistenceRevision !== undefined &&
         currentRevision !== undefined &&
