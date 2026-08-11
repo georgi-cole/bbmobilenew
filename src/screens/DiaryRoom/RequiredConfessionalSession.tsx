@@ -149,7 +149,24 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
         data-testid="required-confessional-shell"
       >
         <header className="diary-room__header required-confessional__header">
-          <span className="required-confessional__header-spacer" aria-hidden="true" />
+          {decisionComplete || decision === null ? (
+            <button
+              className="diary-room__back"
+              type="button"
+              onClick={handleReturnToGame}
+              aria-label="Return to the House"
+            >
+              ‹ Back
+            </button>
+          ) : (
+            <span
+              className="diary-room__back diary-room__back--locked"
+              aria-label="Decision required — complete your choice before leaving"
+              title="You must complete your decision before leaving the Confessional."
+            >
+              🔒 Locked
+            </span>
+          )}
           <h1 className="diary-room__title">🚪 Confessional</h1>
         </header>
 
@@ -202,35 +219,11 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
                       }
                     }}
                   />
-
-                  {decisionComplete && (
-                    <div className="required-confessional__complete">
-                      <span className="diary-room__bubble-text">
-                        Your decision has been recorded. Return to the house when you are ready.
-                      </span>
-                      <button
-                        className="diary-room__submit required-confessional__return"
-                        type="button"
-                        onClick={handleReturnToGame}
-                      >
-                        Return to the House
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
-                <div className="diary-room__bubble diary-room__bubble--bb required-confessional__complete">
+                <div className="diary-room__bubble diary-room__bubble--bb">
                   <span className="diary-room__bubble-author">📺 The Big Eye</span>
-                  <span className="diary-room__bubble-text">
-                    Your decision has been recorded. Return to the house when you are ready.
-                  </span>
-                  <button
-                    className="diary-room__submit required-confessional__return"
-                    type="button"
-                    onClick={handleReturnToGame}
-                  >
-                    Return to the House
-                  </button>
+                  <span className="diary-room__bubble-text">Your decision has been recorded.</span>
                 </div>
               )}
             </div>
