@@ -1,12 +1,13 @@
-/* ── GameControlDock ────────────────────────────────────────────────────── */
+/* ── Mockup-faithful premium command dock ──────────────────────────────── */
 .game-control-dock {
   position: absolute;
-  bottom: var(--game-action-dock-gap, 8px);
   left: 50%;
+  bottom: var(--game-action-dock-gap, 8px);
   z-index: 100;
-  width: min(calc(80% * var(--game-action-dock-scale, 1)), calc(340px * var(--game-action-dock-scale, 1)));
-  aspect-ratio: 980 / 220;
+  width: min(calc(90% * var(--game-action-dock-scale, 1)), calc(410px * var(--game-action-dock-scale, 1)));
+  aspect-ratio: 820 / 190;
   transform: translateX(-50%);
+  box-sizing: border-box;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -14,7 +15,7 @@
 .floating-action-bar__blocked-message {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--game-action-dock-height, clamp(56px, 16vw, 76px)) + var(--game-action-dock-gap, 6px) + 12px);
+  bottom: calc(var(--game-action-dock-height, clamp(64px, 19vw, 92px)) + var(--game-action-dock-gap, 8px) + 12px);
   z-index: 115;
   width: min(88%, 420px);
   transform: translateX(-50%);
@@ -31,316 +32,519 @@
   pointer-events: none;
 }
 
-.fab-clean {
-  position: absolute;
+.game-command-dock {
+  display: grid;
+  grid-template-columns: 1fr 2.58fr 1fr;
+  align-items: stretch;
+  gap: clamp(4px, 1vw, 8px);
+  padding: clamp(8px, 2.2vw, 11px) clamp(10px, 2.5vw, 14px);
+  border: 1.5px solid rgba(151, 91, 255, 0.78);
+  border-radius: clamp(27px, 7vw, 38px);
+  background:
+    radial-gradient(ellipse at 50% 115%, rgba(91, 49, 202, 0.42) 0%, rgba(91, 49, 202, 0) 51%),
+    linear-gradient(180deg, rgba(38, 24, 78, 0.985) 0%, rgba(25, 16, 55, 0.99) 56%, rgba(12, 12, 34, 0.995) 100%);
+  box-shadow:
+    0 0 0 1px rgba(208, 172, 255, 0.16),
+    0 0 18px rgba(123, 63, 255, 0.58),
+    0 0 36px rgba(71, 64, 255, 0.23),
+    0 14px 30px rgba(0, 0, 0, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(104, 79, 189, 0.36),
+    inset 0 0 22px rgba(87, 53, 169, 0.28);
+  overflow: visible;
+  isolation: isolate;
 }
 
-.fab-shell,
-.fab-play,
-.fab-icon {
+.game-command-dock::before {
+  content: '';
   position: absolute;
-  display: block;
-  height: auto;
+  inset: 5px;
+  z-index: -1;
+  border: 1px solid rgba(125, 84, 225, 0.52);
+  border-radius: calc(clamp(27px, 7vw, 38px) - 5px);
+  background:
+    linear-gradient(180deg, rgba(104, 69, 177, 0.17), rgba(18, 14, 42, 0.1)),
+    radial-gradient(circle at 17% 0%, rgba(128, 96, 239, 0.18), transparent 34%),
+    radial-gradient(circle at 84% 0%, rgba(128, 96, 239, 0.14), transparent 34%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 10px rgba(111, 65, 225, 0.28);
   pointer-events: none;
-  user-select: none;
 }
 
-.fab-shell {
-  inset: 0;
-  width: 100%;
-}
-
-.fab-play {
-  width: 19.2%;
-  left: 40.4%;
-  top: 1.5%;
-}
-
-.fab-icon {
-  width: 5.3%;
-  transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 6px rgba(116, 132, 255, 0.22));
-}
-
-.fab-icon.social {
-  left: 23%;
-  top: 50.5%;
-}
-
-.fab-icon.requests {
-  left: 36.5%;
-  top: 50.5%;
-}
-
-.fab-icon.stats {
-  left: 63.5%;
-  top: 50.5%;
-}
-
-.fab-icon.confessional {
-  left: 77%;
-  top: 50.5%;
-}
-
-.dock-hit-area {
+.game-command-dock::after {
+  content: '';
   position: absolute;
-  display: block;
-  min-width: 44px;
-  min-height: 44px;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
+  left: 3.5%;
+  right: 3.5%;
+  bottom: -3px;
+  z-index: -2;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(78, 67, 255, 0), rgba(85, 74, 255, 0.36), rgba(194, 75, 255, 0.5), rgba(85, 74, 255, 0.34), rgba(78, 67, 255, 0));
+  filter: blur(5px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.game-command-dock__inner-rim {
+  position: absolute;
+  inset: 2px;
+  z-index: 0;
+  border-radius: inherit;
+  border-top: 1px solid rgba(219, 186, 255, 0.38);
+  border-bottom: 1px solid rgba(79, 55, 172, 0.28);
+  pointer-events: none;
+}
+
+.game-command-dock__top-chevron {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  z-index: 8;
+  width: 38px;
+  height: 14px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 6px rgba(255, 188, 49, 0.35));
+  pointer-events: none;
+}
+
+.game-command-dock__top-chevron::before,
+.game-command-dock__top-chevron::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 22px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f6b62c, #ffd96a);
+  box-shadow: 0 0 5px rgba(255, 190, 49, 0.24);
+}
+
+.game-command-dock__top-chevron::before {
+  left: 1px;
+  transform: rotate(18deg);
+  transform-origin: right center;
+}
+
+.game-command-dock__top-chevron::after {
+  right: 1px;
+  transform: rotate(-18deg);
+  transform-origin: left center;
+}
+
+.game-command-dock__side,
+.game-command-dock__primary,
+.game-command-dock__subhit {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  transition: transform 120ms ease, opacity 120ms ease;
+  font: inherit;
 }
 
-.hit-social {
-  left: 17.5%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+.game-command-dock__side {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #f3eefb;
+  cursor: pointer;
+  transition: transform 140ms ease, filter 160ms ease, opacity 160ms ease;
 }
 
-.hit-requests {
-  left: 31%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+.game-command-dock__side:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
 }
 
-.hit-play {
-  left: 40%;
-  top: 0;
-  width: 20%;
-  height: 66%;
+.game-command-dock__side:active {
+  transform: translateY(0) scale(0.97);
 }
 
-.hit-stats {
-  left: 58%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+.game-command-dock__side--unavailable {
+  opacity: 0.45;
 }
 
-.hit-confessional {
-  left: 71.5%;
-  top: 31%;
-  width: 11%;
-  height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+.game-command-dock__hex {
+  position: relative;
+  display: grid;
+  width: clamp(45px, 12vw, 56px);
+  height: clamp(45px, 12vw, 56px);
+  place-items: center;
+  clip-path: polygon(50% 0, 92% 24%, 92% 76%, 50% 100%, 8% 76%, 8% 24%);
+  background: linear-gradient(180deg, rgba(140, 104, 255, 0.95), rgba(74, 40, 154, 0.96));
+  filter: drop-shadow(0 0 7px rgba(128, 77, 255, 0.5));
 }
 
-.dock-hit-area:hover {
-  transform: scale(1.02);
+.game-command-dock__hex::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  clip-path: inherit;
+  background: linear-gradient(180deg, rgba(30, 29, 62, 0.99), rgba(15, 16, 39, 0.99));
 }
 
-.dock-hit-area:active {
-  transform: scale(0.985);
+.game-command-dock__hex::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  clip-path: inherit;
+  border: 1px solid rgba(184, 166, 255, 0.12);
+  background: radial-gradient(circle at 50% 15%, rgba(133, 106, 255, 0.12), transparent 58%);
 }
 
-.dock-hit-area:disabled,
-.dock-hit-area--unavailable {
+.game-command-dock__hex-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 60%;
+  height: 60%;
+  place-items: center;
+}
+
+.game-command-dock__hex-inner svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: rgba(227, 225, 245, 0.9);
+  stroke: rgba(242, 241, 255, 0.94);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.58));
+}
+
+.game-command-dock__hex-inner--crown svg {
+  fill: rgba(216, 215, 235, 0.82);
+  stroke-width: 1.8;
+}
+
+.game-command-dock__side-label {
+  margin-top: 1px;
+  color: rgba(244, 239, 252, 0.92);
+  font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(0.62rem, 2.6vw, 0.79rem);
+  font-stretch: condensed;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72);
+}
+
+.game-command-dock__side-underline {
+  width: clamp(20px, 6vw, 28px);
+  height: 2px;
+  margin-top: 2px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(121, 73, 255, 0.25), #9d55ff, rgba(121, 73, 255, 0.25));
+  box-shadow: 0 0 5px rgba(157, 85, 255, 0.5);
+}
+
+.game-command-dock__primary {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.5px solid #ffd15b;
+  border-radius: clamp(23px, 6vw, 31px);
+  padding: 4px 12px 5px;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 225, 113, 0.58) 0%, rgba(255, 204, 65, 0.12) 45%, rgba(255, 204, 65, 0) 68%),
+    linear-gradient(180deg, #e4a71e 0%, #ca8610 44%, #a66108 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 227, 130, 0.22),
+    0 0 11px rgba(255, 181, 25, 0.9),
+    0 0 24px rgba(255, 157, 0, 0.31),
+    0 9px 18px rgba(0, 0, 0, 0.48),
+    inset 0 2px 0 rgba(255, 247, 193, 0.52),
+    inset 0 -3px 10px rgba(104, 51, 0, 0.48),
+    inset 0 0 18px rgba(255, 213, 91, 0.25);
+  color: #fff8e8;
+  cursor: pointer;
+  transition: transform 140ms ease, filter 160ms ease, box-shadow 180ms ease;
+}
+
+.game-command-dock__primary::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  z-index: 1;
+  border: 1px solid rgba(255, 240, 177, 0.24);
+  border-radius: calc(clamp(23px, 6vw, 31px) - 3px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 34%, rgba(119, 59, 0, 0.06));
+  pointer-events: none;
+}
+
+.game-command-dock__primary::after {
+  content: '';
+  position: absolute;
+  top: -55%;
+  left: -28%;
+  width: 35%;
+  height: 210%;
+  z-index: 3;
+  transform: rotate(17deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 249, 211, 0.2), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.game-command-dock__primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06) saturate(1.04);
+}
+
+.game-command-dock__primary:hover::after {
+  animation: command-dock-sheen 900ms ease-out;
+}
+
+.game-command-dock__primary:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.game-command-dock__honeycomb {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.13;
+  background-image:
+    linear-gradient(30deg, rgba(104, 49, 0, 0.42) 12%, transparent 12.5%, transparent 87%, rgba(104, 49, 0, 0.42) 87.5%, rgba(104, 49, 0, 0.42)),
+    linear-gradient(150deg, rgba(104, 49, 0, 0.42) 12%, transparent 12.5%, transparent 87%, rgba(104, 49, 0, 0.42) 87.5%, rgba(104, 49, 0, 0.42)),
+    linear-gradient(30deg, rgba(104, 49, 0, 0.42) 12%, transparent 12.5%, transparent 87%, rgba(104, 49, 0, 0.42) 87.5%, rgba(104, 49, 0, 0.42)),
+    linear-gradient(150deg, rgba(104, 49, 0, 0.42) 12%, transparent 12.5%, transparent 87%, rgba(104, 49, 0, 0.42) 87.5%, rgba(104, 49, 0, 0.42)),
+    linear-gradient(60deg, rgba(255, 242, 181, 0.34) 25%, transparent 25.5%, transparent 75%, rgba(255, 242, 181, 0.34) 75%, rgba(255, 242, 181, 0.34));
+  background-position: 0 0, 0 0, 8px 14px, 8px 14px, 0 0;
+  background-size: 16px 28px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.game-command-dock__primary-title,
+.game-command-dock__primary-subtitle {
+  position: relative;
+  z-index: 4;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.game-command-dock__primary-title {
+  font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(1.06rem, 5vw, 1.48rem);
+  font-stretch: condensed;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-shadow:
+    0 2px 1px rgba(89, 45, 0, 0.78),
+    0 0 6px rgba(255, 246, 210, 0.25);
+}
+
+.game-command-dock__primary-subtitle {
+  margin-top: 4px;
+  color: rgba(255, 239, 189, 0.92);
+  font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(0.58rem, 2.5vw, 0.78rem);
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(92, 44, 0, 0.8);
+}
+
+.game-command-dock__badge,
+.game-command-dock__public-count {
+  position: absolute;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid rgba(234, 204, 255, 0.7);
+  border-radius: 999px;
+  background: linear-gradient(145deg, #a94dff, #6927c8);
+  box-shadow:
+    0 0 0 1px rgba(49, 20, 87, 0.65),
+    0 4px 8px rgba(0, 0, 0, 0.42),
+    0 0 8px rgba(169, 77, 255, 0.48);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.game-command-dock__badge {
+  top: -5px;
+  right: -4px;
+}
+
+.game-command-dock__badge--mission {
+  border-color: rgba(185, 248, 255, 0.65);
+  background: linear-gradient(145deg, #56c3d4, #27778d);
+  box-shadow:
+    0 0 0 1px rgba(18, 64, 76, 0.8),
+    0 4px 8px rgba(0, 0, 0, 0.42),
+    0 0 8px rgba(86, 195, 212, 0.42);
+}
+
+.game-command-dock__public-count {
+  right: 6%;
+  bottom: 6%;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.5rem;
+}
+
+.game-command-dock__subhit {
+  position: absolute;
+  z-index: 7;
+  width: clamp(45px, 12vw, 56px);
+  height: clamp(45px, 12vw, 56px);
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.game-command-dock__subhit--inbox {
+  left: clamp(10px, 4.7%, 20px);
+  top: 17%;
+}
+
+.game-command-dock__subhit--diary {
+  right: clamp(10px, 4.7%, 20px);
+  top: 17%;
+}
+
+.game-command-dock__subhit:focus-visible,
+.game-command-dock__side:focus-visible,
+.game-command-dock__primary:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.game-command-dock__spotlight-target {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.game-command-dock button:disabled {
   cursor: not-allowed;
 }
 
-.dock-hit-area__badge {
-  position: absolute;
-  top: var(--dock-badge-y, 9%);
-  left: var(--dock-badge-x, 64%);
-  transform: translate(-50%, -50%);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  border-radius: 8px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 0.58rem;
-  font-weight: 800;
-  line-height: 16px;
-  text-align: center;
-  pointer-events: none;
-}
-
-/* Turkish blue variant — secret mission badge on the Confessional FAB button */
-.dock-hit-area__badge--mission {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #62bfd0 0%, #2f7e91 100%);
-  color: #f8fdff;
-  line-height: 18px;
+.game-command-dock__primary:disabled {
+  border-color: rgba(154, 139, 101, 0.35);
+  background: linear-gradient(180deg, #75694f, #4a4134);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 8px 18px rgba(23, 65, 74, 0.34);
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: rgba(255, 248, 232, 0.44);
+  filter: saturate(0.3);
 }
 
-.dock-hit-area:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.72);
-  outline-offset: 2px;
-  border-radius: 999px;
+@keyframes command-dock-sheen {
+  0% { left: -28%; opacity: 0; }
+  25% { opacity: 1; }
+  100% { left: 115%; opacity: 0; }
 }
 
-.game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
-.game-control-dock:has(.dock-hit-area--social:active) .fab-icon.social,
-.game-control-dock:has(.dock-hit-area--requests:hover) .fab-icon.requests,
-.game-control-dock:has(.dock-hit-area--requests:active) .fab-icon.requests,
-.game-control-dock:has(.dock-hit-area--stats:hover) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--stats:active) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional,
-.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional,
-.game-control-dock:has(.dock-hit-area--play:hover) .fab-play,
-.game-control-dock:has(.dock-hit-area--play:active) .fab-play {
-  transition: transform 120ms ease, opacity 120ms ease;
-}
-
-.game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
-.game-control-dock:has(.dock-hit-area--requests:hover) .fab-icon.requests,
-.game-control-dock:has(.dock-hit-area--stats:hover) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:hover) .fab-icon.confessional {
-  transform: translate(-50%, -50%) scale(1.02);
-}
-
-.game-control-dock:has(.dock-hit-area--social:active) .fab-icon.social,
-.game-control-dock:has(.dock-hit-area--requests:active) .fab-icon.requests,
-.game-control-dock:has(.dock-hit-area--stats:active) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional {
-  transform: translate(-50%, -50%) scale(0.985);
-}
-
-.game-control-dock:has(.dock-hit-area--play:hover) .fab-play {
-  transform: scale(1.02);
-}
-
-.game-control-dock:has(.dock-hit-area--play:active) .fab-play {
-  transform: scale(0.985);
-}
-
-@keyframes dock-play-pulse {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px rgba(116, 132, 255, 0.18));
+@keyframes command-dock-primary-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 227, 130, 0.22),
+      0 0 10px rgba(255, 181, 25, 0.72),
+      0 0 22px rgba(255, 157, 0, 0.24),
+      0 9px 18px rgba(0, 0, 0, 0.48),
+      inset 0 2px 0 rgba(255, 247, 193, 0.5),
+      inset 0 -3px 10px rgba(104, 51, 0, 0.48);
   }
   50% {
-    filter: drop-shadow(0 0 12px rgba(116, 132, 255, 0.38));
-  }
-}
-
-.game-control-dock__play--pulse {
-  animation: dock-play-pulse 1.8s ease-in-out infinite;
-}
-
-.game-control-dock__play--disabled,
-.game-control-dock__icon--unavailable,
-.game-control-dock:has(.dock-hit-area--play:disabled) .fab-play,
-.game-control-dock:has(.dock-hit-area--social:disabled) .fab-icon.social,
-.game-control-dock:has(.dock-hit-area--requests:disabled) .fab-icon.requests,
-.game-control-dock:has(.dock-hit-area--stats:disabled) .fab-icon.stats,
-.game-control-dock:has(.dock-hit-area--confessional:disabled) .fab-icon.confessional {
-  opacity: 0.5;
-}
-
-.game-control-dock__icon--unavailable {
-  filter: grayscale(1) drop-shadow(0 0 3px rgba(75, 85, 99, 0.18));
-}
-
-.dock-hit-area--unavailable:hover,
-.dock-hit-area--unavailable:active {
-  transform: none;
-}
-
-@keyframes dock-icon-flash {
-  0% {
-    filter: drop-shadow(0 0 4px rgba(116, 132, 255, 0.16));
-  }
-  35% {
-    filter: drop-shadow(0 0 12px rgba(116, 132, 255, 0.42));
-  }
-  100% {
-    filter: drop-shadow(0 0 4px rgba(116, 132, 255, 0.16));
-  }
-}
-
-.game-control-dock__icon--flash {
-  animation: dock-icon-flash 0.6s ease-out;
-}
-
-@keyframes confessional-badge-announce {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.18),
-      0 8px 18px rgba(23, 65, 74, 0.34);
-  }
-  28% {
-    transform: translate(-50%, -50%) translateY(-1px) scale(1.16);
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.22),
-      0 10px 20px rgba(47, 126, 145, 0.42);
-  }
-  52% {
-    transform: translate(-50%, -50%) scale(0.96);
-  }
-  76% {
-    transform: translate(-50%, -50%) scale(1.08);
+      0 0 0 1px rgba(255, 237, 165, 0.5),
+      0 0 17px rgba(255, 188, 39, 1),
+      0 0 32px rgba(255, 160, 0, 0.42),
+      0 10px 20px rgba(0, 0, 0, 0.5),
+      inset 0 2px 0 rgba(255, 250, 213, 0.65),
+      inset 0 -3px 10px rgba(104, 51, 0, 0.48);
   }
 }
 
-@keyframes confessional-icon-announce {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    filter: drop-shadow(0 0 6px rgba(116, 132, 255, 0.22));
+.game-command-dock__primary--pulse:not(:disabled) {
+  animation: command-dock-primary-pulse 1.9s ease-in-out infinite;
+}
+
+@keyframes command-dock-side-flash {
+  0%, 100% { filter: drop-shadow(0 0 7px rgba(128, 77, 255, 0.5)); transform: scale(1); }
+  45% { filter: drop-shadow(0 0 15px rgba(173, 112, 255, 0.88)); transform: scale(1.08); }
+}
+
+.game-command-dock__side--flash .game-command-dock__hex,
+.game-command-dock__hex--flash,
+.game-command-dock__hex--persistent {
+  animation: command-dock-side-flash 0.9s cubic-bezier(0.22, 1, 0.36, 1) 2;
+}
+
+.game-command-dock__hex--persistent {
+  animation-iteration-count: infinite;
+}
+
+@media (max-width: 350px) {
+  .game-control-dock {
+    width: min(calc(94% * var(--game-action-dock-scale, 1)), calc(350px * var(--game-action-dock-scale, 1)));
   }
-  35% {
-    transform: translate(-50%, -50%) scale(1.1);
-    filter: drop-shadow(0 0 12px rgba(98, 191, 208, 0.46));
+
+  .game-command-dock {
+    gap: 3px;
+    padding-inline: 8px;
   }
-  70% {
-    transform: translate(-50%, -50%) scale(0.98);
+
+  .game-command-dock__side-label {
+    font-size: 0.56rem;
+    letter-spacing: 0.045em;
   }
-}
 
-.dock-hit-area--confessional-flash-0 .dock-hit-area__badge--mission,
-.dock-hit-area--confessional-flash-1 .dock-hit-area__badge--mission {
-  animation: confessional-badge-announce 0.9s cubic-bezier(0.22, 1, 0.36, 1) 2;
-}
+  .game-command-dock__primary-title {
+    font-size: 0.96rem;
+  }
 
-.game-control-dock__icon--confessional-flash-0,
-.game-control-dock__icon--confessional-flash-1 {
-  animation: confessional-icon-announce 0.9s cubic-bezier(0.22, 1, 0.36, 1) 2;
-}
-
-.dock-hit-area--confessional-persistent .dock-hit-area__badge--mission {
-  animation: confessional-badge-announce 1.05s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-}
-
-.game-control-dock__icon--confessional-persistent {
-  animation: confessional-icon-announce 1.05s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  .game-command-dock__primary-subtitle {
+    margin-top: 2px;
+    font-size: 0.53rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dock-hit-area--confessional-flash-0 .dock-hit-area__badge--mission,
-  .dock-hit-area--confessional-flash-1 .dock-hit-area__badge--mission,
-  .dock-hit-area--confessional-persistent .dock-hit-area__badge--mission,
-  .game-control-dock__icon--confessional-flash-0,
-  .game-control-dock__icon--confessional-flash-1,
-  .game-control-dock__icon--confessional-persistent {
+  .game-command-dock__primary--pulse,
+  .game-command-dock__side--flash .game-command-dock__hex,
+  .game-command-dock__hex--flash,
+  .game-command-dock__hex--persistent {
+    animation: none;
+  }
+
+  .game-command-dock__primary:hover::after {
     animation: none;
   }
 }
 
+/* ── Confessional spotlight overlay ────────────────────────────────────── */
 .confessional-spotlight {
   position: absolute;
   inset: 0;
