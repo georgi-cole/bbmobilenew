@@ -109,7 +109,7 @@ async function startCampaign(page: Page): Promise<void> {
 
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
-  await playMenu.getByRole('button', { name: 'Campaign', exact: true }).click()
+  await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
 
   const actionZone = page.getByRole('region', { name: 'Game action zone' })
   await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
