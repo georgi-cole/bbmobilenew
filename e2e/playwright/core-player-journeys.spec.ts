@@ -75,7 +75,7 @@ async function startCampaignFromHome(page: Page, playerName: string): Promise<vo
 
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
-  await playMenu.getByRole('button', { name: 'Campaign', exact: true }).click()
+  await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
   await assertCampaignReady(page, playerName)
 }
 

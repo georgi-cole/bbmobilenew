@@ -32,6 +32,12 @@ jobs:
         run: npm run lint:ci
       - name: Type check
         run: npm run typecheck
+      - name: Run season/profile lifecycle regressions
+        run: >-
+          npx vitest run
+          src/modes/seasonRulesets.test.ts
+          src/screens/ProfilePicker/ProfilePicker.test.tsx
+          src/screens/HomeHub/__tests__/HomeHub.test.tsx
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
