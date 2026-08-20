@@ -57,9 +57,7 @@ test.describe('Housemate biographies @core-journey', () => {
     // contract rather than requiring >72vh on tall desktops, which contradicts
     // the explicit desktop cap.
     const minimumPortraitHeight =
-      viewport.width >= 700
-        ? Math.min(viewport.height * 0.71, 760) - 2
-        : viewport.height * 0.72
+      viewport.width >= 700 ? Math.min(viewport.height * 0.71, 760) - 2 : viewport.height * 0.72
     expect(portraitBox.height).toBeGreaterThanOrEqual(minimumPortraitHeight)
     expect(portraitBox.y).toBeGreaterThanOrEqual(80)
     expect(portraitBox.y + portraitBox.height).toBeLessThanOrEqual(viewport.height - 50)

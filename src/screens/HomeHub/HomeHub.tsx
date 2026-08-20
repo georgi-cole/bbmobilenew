@@ -22,13 +22,21 @@ import {
 } from '../../store/profilesSlice'
 import {
   clearSavedRun,
-  getLastPlayedRun,
-  getSavedRun,
   loadSavedRunProfile,
   type SavedSeasonSnapshot,
 } from '../../store/saveStatePersistence'
-import type { GameMode } from '../../modes/modeTypes'
 import { createSurvivorRun, isSurvivorRunTerminal } from '../../modes/survivorRun'
+import {
+  canOfferSurpriseMe,
+  getActiveFiniteSeason,
+  getEligibleSeasonRulesets,
+  getPlayableLastRun,
+  pickSurpriseRuleset,
+  rulesetExpansion,
+  rulesetLabel,
+  type SeasonRuleset,
+} from '../../modes/seasonRulesets'
+import { withRunAutosaveSuspended } from '../../store/runAutosaveGate'
 import useBackgroundTheme from '../../hooks/useBackgroundTheme'
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash'
 import AssetPreloaderOverlay from '../../components/AssetPreloaderOverlay/AssetPreloaderOverlay'
@@ -85,21 +93,6 @@ function HomeHubButtonIcon({ name }: { name: HomeHubIconName }) {
   )
 }
 
-/**
- * HomeHub — entry screen with BB hero branding and button stack.
- *
- * Buttons map to named routes in src/routes.tsx.
- * To add a new hub button: add an entry to HUB_BUTTONS.
- *
- * Load ordering:
- *   1. KolequantSplash shown — logo only, no dialogs, hub preloads in background.
- *   2. Hub assets preload during the splash: background, buttons, fonts, and
- *      the intro-hub runtime are all loaded before the screen is revealed.
- *   3. If the splash finishes first, a loading overlay stays up until the full
- *      hub bundle is ready so the UI never appears half-built.
- *   4. After the hub is ready, PermissionPrompts appear over the hub (location only).
- *   5. When Play is pressed AssetPreloaderOverlay runs then navigates to /game.
- */
 const HUB_BUTTONS = [
   { to: '/game', label: 'Play', icon: 'play', variant: 'primary_large' },
   { to: '/rules', label: 'Rules', icon: 'rules', variant: 'secondary_medium' },
@@ -114,7 +107,6 @@ const HUB_BUTTONS = [
   variant: GameButtonVariant
 }>
 
-type ClassicPrompt = 'resume-or-new' | 'confirm-new' | null
 type SurvivorPrompt = 'resume-or-new' | 'ended' | 'confirm-new' | null
 type ExpansionSelection = 'cupidArrow' | 'voxPopuli'
 
@@ -177,14 +169,8 @@ function HomeHubAssetLayer({
   return (
     <>
       {splashDone && assetReady && <PermissionPrompts showSoundPrompt={false} />}
-
-      {/* Foreground content — hidden until the full hub asset bundle is ready. */}
       <div className="homehub-content home-hub">
-        {/* Hero / icon area (no branding text — logo is shown in the splash) */}
         <div className="home-hub__hero" aria-hidden="true" />
-
-        {/* Button stack: only rendered once the splash has dismissed and the
-            full hub bundle is ready. */}
         {splashDone && assetReady && (
           <nav
             className="home-hub__buttons"
@@ -259,8 +245,16 @@ export default function HomeHub() {
   const ownsSurvivalMode = useAppSelector(selectHasSurvivalModeAccess)
   const ownsVoxPopuli = useAppSelector(selectHasVoxPopuliAccess)
   const debugExpansionUnlocks = useAppSelector(selectDebugExpansionUnlocks)
-  // `game.week` is the legacy state field name, but in the current game flow it
-  // represents the current in-game day count.
+  const cupidArrowAvailable = ownsCupidArrow || debugExpansionUnlocks.cupidArrow
+  const voxPopuliAvailable = ownsVoxPopuli || debugExpansionUnlocks.voxPopuli
+  const eligibleSeasonRulesets = useMemo(
+    () =>
+      getEligibleSeasonRulesets({
+        cupidArrow: cupidArrowAvailable,
+        voxPopuli: voxPopuliAvailable,
+      }),
+    [cupidArrowAvailable, voxPopuliAvailable]
+  )
   const dayCount = week
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
@@ -278,7 +272,6 @@ export default function HomeHub() {
       }),
     [dayCount, introHubPlayer, phase, seasonArchives]
   )
-  // Remote background takes priority over weather/time-of-day background.
   const effectiveBgUrl = introHubBgUrl ?? remoteBgUrl ?? bgUrl
   const [isInitialAppSplash] = useState(() => !hasShownHomeHubSplashThisSession())
   const [splashExitRequested, setSplashExitRequested] = useState(false)
@@ -288,17 +281,12 @@ export default function HomeHub() {
     status: 'Opening the house doors.',
   })
   const splashDone = splashExitRequested && hubAssetState.ready
-  // Seed preloading from transient route state so "Start New Season" can
-  // reuse the existing Play → preloader → /game flow without setting state in
-  // an effect on mount.
   const [preloading, setPreloading] = useState(autoStartGame)
   const shouldRestorePlayMenu = new URLSearchParams(location.search).get('menu') === 'play'
   const [playSelectionOpen, setPlaySelectionOpen] = useState(shouldRestorePlayMenu)
   const [housematesBioOpen, setHousematesBioOpen] = useState(false)
-  const [classicPrompt, setClassicPrompt] = useState<ClassicPrompt>(null)
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null)
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false)
-  const [expansionPrompt, setExpansionPrompt] = useState<ExpansionSelection | null>(null)
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId)
   const gameRoute = '/game'
 
@@ -306,19 +294,16 @@ export default function HomeHub() {
     () => (!isGuest && activeProfileId ? loadSavedRunProfile(activeProfileId) : null),
     [activeProfileId, isGuest]
   )
-  const classicSnapshot = savedRuns?.runs.classic ?? null
+  const activeSeason = useMemo(() => getActiveFiniteSeason(savedRuns), [savedRuns])
+  const activeSeasonSnapshot = activeSeason?.snapshot ?? null
   const survivorSnapshot = savedRuns?.runs.survival ?? null
-  const cupidArrowSnapshot = savedRuns?.runs.cupidArrow ?? null
-  const voxPopuliSnapshot = savedRuns?.runs.voxPopuli ?? null
-  const lastSnapshot = !isGuest && activeProfileId ? getLastPlayedRun(activeProfileId) : null
+  const lastSnapshot = useMemo(() => getPlayableLastRun(savedRuns), [savedRuns])
   const hasEndedSurvivorRecord =
     !survivorSnapshot && (savedRuns?.stats.maxSurvivorDaysSurvived ?? 0) > 0
 
   useEffect(() => {
     const gameWindow = window as Window & { game?: Record<string, unknown> }
     gameWindow.game = gameWindow.game ?? {}
-    // Legacy IntroHub/achievements scripts still read from window.game, so keep
-    // the specific season fields they depend on in sync while HomeHub is mounted.
     Object.assign(gameWindow.game, {
       season,
       day: dayCount,
@@ -344,10 +329,9 @@ export default function HomeHub() {
 
   useEffect(() => {
     if (!autoStartGame) return
-    // Clear the transient route state after mount so browser back/refresh
-    // doesn't auto-start another season from the same history entry.
     navigate('/', { replace: true })
   }, [autoStartGame, navigate])
+
   useEffect(() => {
     if (!splashDone || !requestedHubUtility) return undefined
     let attempts = 0
@@ -373,32 +357,55 @@ export default function HomeHub() {
       setPlaySelectionOpen(true)
       return
     }
-    dispatch(hydrateGame(snapshot.game))
-    dispatch(hydrateFinale(snapshot.finale))
-    dispatch(hydrateSocial(snapshot.social))
-    if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion))
-    if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge))
+
+    withRunAutosaveSuspended(() => {
+      dispatch(hydrateGame(snapshot.game))
+      dispatch(hydrateFinale(snapshot.finale))
+      dispatch(hydrateSocial(snapshot.social))
+      if (snapshot.publicOpinion) dispatch(hydratePublicOpinion(snapshot.publicOpinion))
+      if (snapshot.challenge) dispatch(hydrateChallenge(snapshot.challenge))
+    })
     navigate(gameRoute)
   }
 
-  function startClassicRun(expansion: ExpansionSelection | null = null) {
-    if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, expansion ?? 'classic')
-      const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
-      dispatch(resetGame(archives))
-    } else {
-      dispatch(resetGame(undefined))
+  function startSeasonRun(ruleset: SeasonRuleset) {
+    SoundManager.unlockFromGesture()
+
+    if (ruleset === 'cupidArrow' && !cupidArrowAvailable) {
+      openStoreFromPlayMenu()
+      return
     }
-    dispatch(setSeasonExpansion(expansion))
-    if (expansion === 'cupidArrow') {
-      dispatch(setVoxPopuliSchedule(null))
-      dispatch(activateCupidArrowNow())
-    } else if (expansion === 'voxPopuli') {
-      dispatch(setCupidArrowSchedule(null))
-      dispatch(activateVoxPopuliNow())
+    if (ruleset === 'voxPopuli' && !voxPopuliAvailable) {
+      openStoreFromPlayMenu()
+      return
     }
-    setClassicPrompt(null)
-    setExpansionPrompt(null)
+    if (activeSeasonSnapshot) {
+      hydrateSnapshot(activeSeasonSnapshot)
+      return
+    }
+
+    // resetGame creates the new run ID. Keep reset + ruleset selection inside a
+    // single autosave-suspended operation so an expansion never briefly saves a
+    // second Classic slot before expansionMode is applied.
+    withRunAutosaveSuspended(() => {
+      if (!isGuest && activeProfileId) {
+        const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
+        dispatch(resetGame(archives))
+      } else {
+        dispatch(resetGame(undefined))
+      }
+
+      const expansion = rulesetExpansion(ruleset)
+      dispatch(setSeasonExpansion(expansion))
+      if (expansion === 'cupidArrow') {
+        dispatch(setVoxPopuliSchedule(null))
+        dispatch(activateCupidArrowNow())
+      } else if (expansion === 'voxPopuli') {
+        dispatch(setCupidArrowSchedule(null))
+        dispatch(activateVoxPopuliNow())
+      }
+    })
+
     setPlaySelectionOpen(false)
     setPreloading(true)
   }
@@ -409,44 +416,23 @@ export default function HomeHub() {
       openStoreFromPlayMenu()
       return
     }
-    const savedExpansion = expansion === 'cupidArrow' ? cupidArrowSnapshot : voxPopuliSnapshot
-    if (savedExpansion) {
-      setExpansionPrompt(expansion)
-      return
-    }
-    startClassicRun(expansion)
+    startSeasonRun(expansion)
   }
 
-  function resumeExpansionRun(expansion: ExpansionSelection) {
-    const snapshot = expansion === 'cupidArrow' ? cupidArrowSnapshot : voxPopuliSnapshot
-    if (!snapshot) {
-      startClassicRun(expansion)
-      return
-    }
-    try {
-      setExpansionPrompt(null)
-      hydrateSnapshot(snapshot)
-    } catch {
-      startClassicRun(expansion)
-    }
+  function startSurpriseSeason() {
+    const ruleset = pickSurpriseRuleset(eligibleSeasonRulesets)
+    if (!ruleset) return
+    startSeasonRun(ruleset)
   }
 
   function openStoreFromPlayMenu() {
     navigate('/store', { state: { returnTo: '/?menu=play' } })
   }
 
-  function resumeClassicRun() {
-    if (!classicSnapshot) {
-      setClassicPrompt(null)
-      startClassicRun()
-      return
-    }
-    try {
-      setClassicPrompt(null)
-      hydrateSnapshot(classicSnapshot)
-    } catch {
-      startClassicRun()
-    }
+  function resumeActiveSeason() {
+    SoundManager.unlockFromGesture()
+    if (!activeSeasonSnapshot) return
+    hydrateSnapshot(activeSeasonSnapshot)
   }
 
   function startSurvivorRun() {
@@ -497,24 +483,6 @@ export default function HomeHub() {
     requestSurvivorRunStart()
   }
 
-  function startOrResumeMode(mode: GameMode) {
-    SoundManager.unlockFromGesture()
-    if (mode === 'survival') {
-      openSurvivorMode()
-      return
-    }
-
-    if (!isGuest && activeProfileId) {
-      const snapshot = getSavedRun(activeProfileId, mode)
-      if (snapshot?.profileId === activeProfileId) {
-        setClassicPrompt('resume-or-new')
-        return
-      }
-    }
-
-    startClassicRun()
-  }
-
   function continueLastRun() {
     SoundManager.unlockFromGesture()
     if (lastSnapshot?.profileId === activeProfileId) {
@@ -537,14 +505,61 @@ export default function HomeHub() {
       onClick: continueLastRun,
     })
   }
+
+  if (activeSeason) {
+    const activeRunId = activeSeasonSnapshot?.game.runId ?? activeSeasonSnapshot?.game.gameId
+    const lastRunId = lastSnapshot?.game.runId ?? lastSnapshot?.game.gameId
+    if (!lastSnapshot || activeRunId !== lastRunId) {
+      playSelectionButtons.push({
+        key: 'active-season',
+        label: `Continue ${rulesetLabel(activeSeason.ruleset)} Season`,
+        icon: <HomeHubButtonIcon name="campaign" />,
+        variant: 'secondary_wide',
+        onClick: resumeActiveSeason,
+      })
+    }
+  } else {
+    playSelectionButtons.push(
+      {
+        key: 'classic',
+        label: 'Classic',
+        icon: <HomeHubButtonIcon name="campaign" />,
+        variant: 'secondary_wide',
+        onClick: () => startSeasonRun('classic'),
+      },
+      {
+        key: 'vox-populi',
+        label: 'Vox Populi',
+        icon: <StoreProductIcon name="voxPopuli" className="home-hub__expansion-icon" />,
+        badge: voxPopuliAvailable ? undefined : <StoreProductIcon name="vip" />,
+        variant: 'secondary_wide',
+        className: 'home-hub__mode-button home-hub__mode-button--vox',
+        onClick: () => openExpansion('voxPopuli', voxPopuliAvailable),
+      },
+      {
+        key: 'cupid-arrow',
+        label: "Cupid's Arrow",
+        icon: <StoreProductIcon name="cupidArrow" className="home-hub__expansion-icon" />,
+        badge: cupidArrowAvailable ? undefined : <StoreProductIcon name="vip" />,
+        variant: 'secondary_wide',
+        className: 'home-hub__mode-button home-hub__mode-button--cupid',
+        onClick: () => openExpansion('cupidArrow', cupidArrowAvailable),
+      }
+    )
+
+    if (canOfferSurpriseMe(eligibleSeasonRulesets)) {
+      playSelectionButtons.push({
+        key: 'surprise-me',
+        label: 'Surprise Me',
+        icon: <HomeHubButtonIcon name="campaign" />,
+        variant: 'secondary_wide',
+        className: 'home-hub__mode-button',
+        onClick: startSurpriseSeason,
+      })
+    }
+  }
+
   playSelectionButtons.push(
-    {
-      key: 'classic',
-      label: 'Campaign',
-      icon: <HomeHubButtonIcon name="campaign" />,
-      variant: 'secondary_wide',
-      onClick: () => startOrResumeMode('classic'),
-    },
     {
       key: 'survival',
       label: 'Surveyeval',
@@ -558,37 +573,8 @@ export default function HomeHub() {
           openStoreFromPlayMenu()
           return
         }
-        startOrResumeMode('survival')
+        openSurvivorMode()
       },
-    },
-    {
-      key: 'vox-populi',
-      label: 'Vox Populi',
-      icon: <StoreProductIcon name="voxPopuli" className="home-hub__expansion-icon" />,
-      badge:
-        ownsVoxPopuli || debugExpansionUnlocks.voxPopuli ? undefined : (
-          <StoreProductIcon name="vip" />
-        ),
-      variant: 'secondary_wide',
-      className: 'home-hub__mode-button home-hub__mode-button--vox',
-      onClick: () =>
-        openExpansion('voxPopuli', ownsVoxPopuli || debugExpansionUnlocks.voxPopuli),
-    },
-    {
-      key: 'cupid-arrow',
-      label: "Cupid's Arrow",
-      icon: <StoreProductIcon name="cupidArrow" className="home-hub__expansion-icon" />,
-      badge:
-        ownsCupidArrow || debugExpansionUnlocks.cupidArrow ? undefined : (
-          <StoreProductIcon name="vip" />
-        ),
-      variant: 'secondary_wide',
-      className: 'home-hub__mode-button home-hub__mode-button--cupid',
-      onClick: () =>
-        openExpansion(
-          'cupidArrow',
-          ownsCupidArrow || debugExpansionUnlocks.cupidArrow
-        ),
     },
     {
       key: 'back',
@@ -600,12 +586,6 @@ export default function HomeHub() {
   )
 
   const handlePlay = () => {
-    // Unlock audio in the gesture context.  We intentionally do NOT follow up
-    // with SoundManager.panicStopAllMusic() here — that used to race with the
-    // syncMusic() call inside unlockFromGesture() (play-then-stop glitch) and
-    // also violated the single-source-of-truth rule: BGM state is owned by
-    // AudioStateSync via the resolver, which will transition the track
-    // naturally when the route/phase changes below.
     SoundManager.unlockFromGesture()
     setPlaySelectionOpen(true)
   }
@@ -619,7 +599,6 @@ export default function HomeHub() {
       ) {
         return current
       }
-
       return nextState
     })
   }, [])
@@ -629,17 +608,12 @@ export default function HomeHub() {
   }, [])
 
   useEffect(() => {
-    if (!splashDone) {
-      return
-    }
-
+    if (!splashDone) return
     markHomeHubSplashSeenForGame(gameId)
   }, [gameId, splashDone])
 
   return (
     <>
-      {/* Cold-load intro splash — logo only, hub preloads in background.
-          Exits automatically after the animation completes (~1.2s). */}
       {!splashDone && (
         <KolequantSplash
           duration={isInitialAppSplash ? 5000 : 0}
@@ -650,46 +624,11 @@ export default function HomeHub() {
         />
       )}
 
-      {/* Asset preloader overlay — shown when Play is pressed (fresh start or new season) */}
       {preloading && <AssetPreloaderOverlay destination={gameRoute} />}
 
       {housematesBioOpen && (
         <HousematesBioCinematic onComplete={() => setHousematesBioOpen(false)} />
       )}
-
-      <ConfirmExitModal
-        open={classicPrompt === 'resume-or-new'}
-        title="Classic Campaign"
-        description="Resume your saved Classic campaign or start over?"
-        confirmLabel="Resume"
-        secondaryLabel="Start New"
-        cancelLabel="Cancel"
-        onConfirm={resumeClassicRun}
-        onSecondary={() => setClassicPrompt('confirm-new')}
-        onCancel={() => setClassicPrompt(null)}
-      />
-
-      <ConfirmExitModal
-        open={classicPrompt === 'confirm-new'}
-        title="Start new Classic campaign?"
-        description="This will replace your saved Classic campaign only. Survivor progress will not be affected."
-        confirmLabel="Start New"
-        cancelLabel="Cancel"
-        onConfirm={startClassicRun}
-        onCancel={() => setClassicPrompt('resume-or-new')}
-      />
-
-      <ConfirmExitModal
-        open={expansionPrompt !== null}
-        title={expansionPrompt === 'cupidArrow' ? "Cupid's Arrow" : 'Vox Populi'}
-        description="Resume this expansion season or begin a new one? Your Classic campaign and Surveyeval run stay untouched."
-        confirmLabel="Resume"
-        secondaryLabel="Start New"
-        cancelLabel="Cancel"
-        onConfirm={() => expansionPrompt && resumeExpansionRun(expansionPrompt)}
-        onSecondary={() => expansionPrompt && startClassicRun(expansionPrompt)}
-        onCancel={() => setExpansionPrompt(null)}
-      />
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
@@ -719,7 +658,7 @@ export default function HomeHub() {
       <ConfirmExitModal
         open={survivorPrompt === 'confirm-new'}
         title="Start new Surveyeval run?"
-        description="This will replace your saved Surveyeval run only. Classic progress will not be affected."
+        description="This will replace your saved Surveyeval run only. Your active season will not be affected."
         confirmLabel="Start New"
         cancelLabel="Cancel"
         onConfirm={requestSurvivorRunStart}
@@ -766,7 +705,6 @@ export default function HomeHub() {
             onAssetStateChange={handleHubAssetStateChange}
           />
 
-          {/* Intro hub overlay — chips rendered only while HomeHub is mounted */}
           <div id="intro-hub" />
         </div>
       </div>

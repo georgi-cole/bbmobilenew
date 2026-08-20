@@ -31,6 +31,7 @@ import {
   saveRunSnapshot,
 } from './saveStatePersistence'
 import { createRunSnapshotAutosaveController } from './runSnapshotAutosave'
+import { isRunAutosaveSuspended } from './runAutosaveGate'
 import cwgoReducer from '../features/cwgo/cwgoCompetitionSlice'
 import holdTheWallReducer from '../features/holdTheWall/holdTheWallSlice'
 import biographyBlitzReducer from '../features/biographyBlitz/biography_blitz_logic'
@@ -275,7 +276,12 @@ store.subscribe(() => {
     prevPublicOpinion = current.publicOpinion
     prevChallenge = current.challenge
     const activeProfileId = current.profiles.activeProfileId
-    if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {
+    if (
+      !isRunAutosaveSuspended() &&
+      !current.profiles.isGuest &&
+      activeProfileId &&
+      hasMeaningfulGameProgress(current.game)
+    ) {
       runSnapshotAutosave.schedule(
         activeProfileId,
         createSavedSeasonSnapshot(activeProfileId, current)
@@ -317,7 +323,7 @@ store.subscribe(() => {
 // soon as the document hides. This preserves the previous durability guarantee.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return
+    if (document.visibilityState !== 'hidden' || isRunAutosaveSuspended()) return
     const current = store.getState()
     const activeProfileId = current.profiles.activeProfileId
     if (!current.profiles.isGuest && activeProfileId && hasMeaningfulGameProgress(current.game)) {

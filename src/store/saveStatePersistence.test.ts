@@ -174,7 +174,7 @@ describe('saveStatePersistence survivor progression', () => {
     )
     expect(saveRunSnapshot('profile-1', makeSnapshot('vox-run', 'classic', 'voxPopuli'))).toBe(true)
 
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    const setItemSpy = vi.spyOn(localStorage, 'setItem')
     setItemSpy.mockClear()
 
     expect(saveRunSnapshot('profile-1', makeSnapshot('classic-run', 'classic', null, 3))).toBe(true)

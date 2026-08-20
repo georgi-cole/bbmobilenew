@@ -141,6 +141,9 @@ describe('MusicCueEngine', () => {
       id: 'middle',
       crossfadeMs: 400,
     })
+    const middleRejection = expect(middle).rejects.toMatchObject({
+      name: 'MusicCueSupersededError',
+    })
     await Promise.resolve()
     await Promise.resolve()
     expect(engine.currentCue?.id).toBe('middle')
@@ -153,7 +156,7 @@ describe('MusicCueEngine', () => {
     await newest
     await vi.runAllTimersAsync()
 
-    await expect(middle).rejects.toMatchObject({ name: 'MusicCueSupersededError' })
+    await middleRejection
     expect(engine.currentCue?.id).toBe('newest')
   })
 
