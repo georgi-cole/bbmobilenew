@@ -92,6 +92,8 @@ button.game-top-chip:focus-visible {
   line-height: 1;
 }
 
+.game-top-chip__label--compact { display: none; }
+
 /* Semantic tones keep context chips quieter than actionable or urgent state. */
 .game-top-chip--neutral {
   border-color: rgba(255, 255, 255, 0.12);

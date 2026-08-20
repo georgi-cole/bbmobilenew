@@ -83,7 +83,6 @@ import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
-import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
@@ -229,7 +228,6 @@ export default function GameScreen() {
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
-  const remoteMainTvHeadline = useAppSelector(selectRemoteMainTvHeadline)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
@@ -1248,28 +1246,6 @@ export default function GameScreen() {
   })
   const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
-  // ── Viewport fallback message for blank-TV states ────────────────────────
-  // Provides a meaningful holding message while the live vote is waiting for
-  // the human decision or for the remaining house votes to finish.
-  const tvViewportFallbackMessage = useMemo(() => {
-    if (game.phase === 'live_vote') {
-      if (isVoxPopuli) return 'The audience vote is being counted.'
-      if (game.awaitingHumanVote) {
-        return activeConfessionalDecision
-          ? 'The Big Eye requires your vote in the Confessional.'
-          : 'Waiting for your vote.'
-      }
-      return 'Players are casting their votes.'
-    }
-    // Fall back to the remote-config headline when no phase-specific message applies.
-    return remoteMainTvHeadline ?? undefined
-  }, [
-    game.phase,
-    game.awaitingHumanVote,
-    isVoxPopuli,
-    activeConfessionalDecision,
-    remoteMainTvHeadline,
-  ])
   function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
@@ -1348,7 +1324,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1381,7 +1356,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1417,7 +1391,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1452,7 +1425,6 @@ export default function GameScreen() {
                         : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={

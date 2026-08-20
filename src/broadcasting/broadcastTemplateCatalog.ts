@@ -142,7 +142,9 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'twist',
     'critical',
     'vox_populi',
-    'Vox Populi seasons only'
+    'Vox Populi seasons only',
+    true,
+    'vox_populi'
   ),
   feed(
     'survival.opening',
@@ -207,7 +209,9 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Immunity Competition',
     'One housemate can earn safety from the public vote.',
     'vox_immunity_comp',
-    'Vox Populi branch'
+    'Vox Populi branch',
+    'major',
+    'vox_populi'
   ),
   card(
     'card.vox-final4-competition',
@@ -215,7 +219,9 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Final 4 Competition',
     'No immunity is awarded today. Last place begins on the block; the other three each cast one secret vote.',
     'vox_final4_immunity_comp',
-    'Vox Populi Final 4 branch'
+    'Vox Populi Final 4 branch',
+    'major',
+    'vox_populi'
   ),
   feed(
     'loh.competition-start',
@@ -254,10 +260,13 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'loh.vox-last-place',
     'loh_results',
-    '{player} finished last and is automatically nominated. 🎯',
+    "{player} finished in last place in the immunity competition and is now on the block for today's audience vote.",
     'game',
-    'major',
-    'vox_last_place'
+    'minor',
+    undefined,
+    'Vox Populi automatic nominee; ordinary result copy, never a shock card',
+    true,
+    'vox_populi'
   ),
   card(
     'card.democracia-vote',
@@ -309,7 +318,12 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'democracia.vox-social',
     'democracia_results',
     'Housemates congratulate {winner} on winning immunity. The secret nomination conversations begin. 💬',
-    'social'
+    'social',
+    'minor',
+    undefined,
+    'Vox Populi branch',
+    true,
+    'vox_populi'
   ),
   feed(
     'social.loh-congratulations',
@@ -338,13 +352,21 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Secret Nominations',
     'Housemates nominate privately in the Confessional.',
     'vox_nominations',
-    'Vox Populi branch'
+    'Vox Populi branch',
+    'major',
+    'vox_populi'
   ),
   feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),
   feed(
     'nominations.vox-confessional',
     'nominations',
-    'Housemates are being called to the Confessional one by one to nominate in secret. 🗳️'
+    'Housemates are being called to the Confessional one by one to nominate in secret. 🗳️',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi branch',
+    true,
+    'vox_populi'
   ),
   feed(
     'nominations.human-prompt',
@@ -362,8 +384,55 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'nomination_results',
     '{player}, cast {ballot} in the Confessional.',
     'diary',
-    'major',
-    'vox_populi_ballot'
+    'minor',
+    undefined,
+    'Vox Populi ballot confirmation; ordinary copy retained on the TV until the result follows',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'nominations.vox-result-with-auto',
+    'nomination_results',
+    'The secret ballot is complete: {summary}. {nominees} {verb} {automaticNominee} on the block. They will face the audience vote.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi secret-ballot result; ordinary copy, never a shock card',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'nominations.vox-result',
+    'nomination_results',
+    'The secret ballot is complete: {summary}. {nominees} {verb} nominated for the audience vote.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi secret-ballot result; ordinary copy, never a shock card',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'nominations.vox-auto-remains',
+    'nomination_results',
+    '{automaticNominee} remains on the block for the audience vote.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi secret-ballot result',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'nominations.vox-ballot-complete',
+    'nomination_results',
+    'The secret ballot is complete.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi secret-ballot result',
+    true,
+    'vox_populi'
   ),
   feed(
     'nominations.result',
@@ -405,7 +474,9 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Safety Ceremony',
     'The safety decision can reshape the public vote.',
     'vox_safety_ceremony',
-    'Vox Populi branch'
+    'Vox Populi branch',
+    'major',
+    'vox_populi'
   ),
   feed('safety.holder', 'pos_ceremony', '{holder} is holding the Safety Ceremony. ⚡'),
   feed(
@@ -417,6 +488,61 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'safety.self-save',
     'pos_ceremony_results',
     '{holder} used the Power of Safety and saved themselves! ⚡'
+  ),
+  feed(
+    'safety.vox-self-save',
+    'pos_ceremony_results',
+    '{saved} has saved {reflexive} from the block. {nominees} will now face the audience, who will decide whose game ends tonight.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi Safety result; ordinary copy, never a shock card',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'safety.vox-save',
+    'pos_ceremony_results',
+    '{holder} has saved {saved} from the block. {nominees} will now face the audience, who will decide whose game ends tonight.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi Safety result; ordinary copy, never a shock card',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'safety.vox-self-save-double',
+    'pos_ceremony_results',
+    '{saved} has saved {reflexive} from the block. {nominees} will now face the audience, and two of them will leave tonight.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi Double Elimination Safety result; ordinary copy',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'safety.vox-save-double',
+    'pos_ceremony_results',
+    '{holder} has saved {saved} from the block. {nominees} will now face the audience, and two of them will leave tonight.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi Double Elimination Safety result; ordinary copy',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'safety.vox-hold',
+    'pos_ceremony_results',
+    '{holder} has chosen not to use the Power of Safety. {nominees} {verb} on the block and will face the audience.',
+    'game',
+    'minor',
+    undefined,
+    'Vox Populi Safety stand-pat result; ordinary copy, never a shock card',
+    true,
+    'vox_populi'
   ),
   feed(
     'safety.save',
@@ -465,6 +591,28 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'The nominees make their final pitches before the vote.',
     'social'
   ),
+  feed(
+    'vox.social-tearful-apology',
+    'social_2',
+    "A nominee's tearful apology turned into an argument when someone challenged the timing. {nominees} now have the whole house watching.",
+    'social',
+    'minor',
+    undefined,
+    'Vox Populi social colour; emitted only after the final block is confirmed',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'vox.social-final-appeals',
+    'social_2',
+    '{nominees} have made their final appeals. The house can offer support, but only the audience will decide.',
+    'social',
+    'minor',
+    undefined,
+    'Last pre-vote Vox Populi social beat',
+    true,
+    'vox_populi'
+  ),
   card(
     'card.live-vote',
     'live_vote',
@@ -478,7 +626,9 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Public Vote',
     'The audience decides who leaves.',
     'vox_public_vote',
-    'Vox Populi branch'
+    'Vox Populi branch',
+    'major',
+    'vox_populi'
   ),
   feed(
     'vote.final-pitches',
@@ -578,7 +728,78 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     true,
     'survival'
   ),
-  feed('week.day-end', 'week_end', 'Day {day} has come to an end. A new day begins soon… ✨'),
+  feed(
+    'survival.replacement-enters',
+    'week_start',
+    '{player} enters as a replacement synthetic contestant.',
+    'game',
+    'minor',
+    undefined,
+    'Surveyeval replacement arrival.',
+    true,
+    'survival'
+  ),
+  feed(
+    'week.day-start-mood.sunny',
+    'week_start',
+    'Sunlight found every window this morning. The house feels ready for something good.',
+    'social',
+    'minor',
+    undefined,
+    'Day-start mood copy · sunny variant',
+    false
+  ),
+  feed(
+    'week.day-start-mood.cloudy',
+    'week_start',
+    'Soft clouds are drifting past outside. Inside, the house is taking its sweet time waking up.',
+    'social',
+    'minor',
+    undefined,
+    'Day-start mood copy · cloudy variant',
+    false
+  ),
+  feed(
+    'week.day-start-mood.rainy',
+    'week_start',
+    'Rain is tapping at the windows, but hot cocoa is waiting in the kitchen — courtesy of {friend}.',
+    'social',
+    'minor',
+    undefined,
+    'Day-start mood copy · rainy variant',
+    false
+  ),
+  feed('week.day-end', 'week_end', 'Day {day} has come to an end. A new day begins soon…'),
+  feed(
+    'week.day-end-mood.sunset',
+    'week_end',
+    'The last warm light is slipping behind the house. Everything can wait until morning.',
+    'social',
+    'minor',
+    undefined,
+    'Day-end mood copy · sunset variant',
+    false
+  ),
+  feed(
+    'week.day-end-mood.starry',
+    'week_end',
+    'The house has gone quiet beneath a clear night sky. Even the game seems far away for a moment.',
+    'social',
+    'minor',
+    undefined,
+    'Day-end mood copy · starry variant',
+    false
+  ),
+  feed(
+    'week.day-end-mood.rainy',
+    'week_end',
+    'Rain hums softly beyond the glass. Somewhere inside, {friend} has left the kettle warm.',
+    'social',
+    'minor',
+    undefined,
+    'Day-end mood copy · rainy variant',
+    false
+  ),
   card(
     'card.final4',
     'final4_eviction',
@@ -601,7 +822,20 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Final 3',
     'One housemate will win immunity. The audience will decide third place.',
     'vox_final3',
-    'Vox Populi branch'
+    'Vox Populi branch',
+    'major',
+    'vox_populi'
+  ),
+  feed(
+    'vox.final3-start',
+    'final3',
+    'Final 3! {finalists} remain. The final immunity journey begins now.',
+    'game',
+    'major',
+    'vox_final3',
+    'Vox Populi final-three transition.',
+    true,
+    'vox_populi'
   ),
   feed(
     'final3.part1-start',

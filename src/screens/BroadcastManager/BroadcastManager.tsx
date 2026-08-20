@@ -115,6 +115,13 @@ function eventLevel(event: TvEvent): BroadcastLevel {
 }
 
 function eventCampaign(event: TvEvent): BroadcastCampaign | null {
+  const authoredCampaign = event.meta?.broadcastCampaign
+  if (
+    typeof authoredCampaign === 'string' &&
+    BROADCAST_CAMPAIGNS.includes(authoredCampaign as BroadcastCampaign)
+  ) {
+    return authoredCampaign as BroadcastCampaign
+  }
   const templateId = event.meta?.broadcastTemplateId
   if (typeof templateId === 'string') return getBroadcastTemplate(templateId)?.campaign ?? null
   return event.meta?.mode === 'survival' ? 'survival' : null
@@ -399,7 +406,7 @@ export default function BroadcastManager() {
             type: editor.type,
             level: editor.level,
             major: major ?? null,
-            forceOnTv: editor.forceOnTv || editor.level === 'critical',
+            forceOnTv: editor.forceOnTv,
           },
         })
       )
@@ -416,7 +423,7 @@ export default function BroadcastManager() {
           level: editor.level,
           major,
           enabled: previous?.enabled ?? true,
-          forceOnTv: editor.forceOnTv || editor.level === 'critical',
+          forceOnTv: editor.forceOnTv,
           order: previous?.order ?? 0,
           campaign: editor.campaign || undefined,
         })
@@ -432,7 +439,7 @@ export default function BroadcastManager() {
           level: editor.level,
           major,
           enabled: true,
-          forceOnTv: editor.forceOnTv || editor.level === 'critical',
+          forceOnTv: editor.forceOnTv,
           order: Math.max(0, ...sequenceItems.map((item) => item.order)) + 100,
           campaign: editor.campaign || undefined,
         })
@@ -446,7 +453,7 @@ export default function BroadcastManager() {
           phase: editor.phase,
           major: major ?? null,
           broadcastPriority: editor.level === 'critical' ? 'critical' : null,
-          forceOnTv: editor.forceOnTv || editor.level === 'critical',
+          forceOnTv: editor.forceOnTv,
           announcementTitle: editor.title.trim() || undefined,
         })
       )
@@ -1097,8 +1104,8 @@ export default function BroadcastManager() {
               </span>
               <small>
                 {/* i18n-ignore: Debug-only authoring tool intentionally uses canonical English labels */}
-                No announcement key is needed. If unchecked, minor messages stay in the log; major
-                and critical messages always use the faux TV.
+                No announcement key is needed. If unchecked, this message stays in the log even when
+                its level is major or critical.
               </small>
             </label>
             <footer>

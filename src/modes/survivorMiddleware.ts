@@ -9,6 +9,7 @@ import {
   createSurvivorModeState,
   isSurvivorHumanEliminated,
   isSurvivorRunTerminal,
+  managedSurvivalEvent,
   SURVIVOR_STARTING_CAST_SIZE,
   terminalizeSurvivorRun,
 } from './survivorRun';
@@ -195,13 +196,14 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const startedAt = Date.now();
   const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
-  const replacementEvent = {
-    id: `survivor-replacement-${replacement.id}`,
-    text: `${replacement.name} enters as a replacement synthetic contestant.`,
-    type: 'game' as const,
-    timestamp: startedAt,
-    meta: { phase: game.phase, week: game.week, mode: 'survival' },
-  };
+  const replacementEvent = managedSurvivalEvent(
+    `survivor-replacement-${replacement.id}`,
+    'survival.replacement-enters',
+    [replacement.name],
+    startedAt,
+    game.phase,
+    game.week,
+  );
 
   return {
     ...game,
