@@ -28,11 +28,11 @@ function isPlayerExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
 }
 
-function managedSurvivalEvent(id: string, templateId: string, variables: string[], timestamp: number, phase: GameState['phase']): TvEvent {
+export function managedSurvivalEvent(id: string, templateId: string, variables: string[], timestamp: number, phase: GameState['phase'], week = 1): TvEvent {
   const template = getBroadcastTemplate(templateId);
   if (!template) throw new Error(`Missing Broadcast Manager template: ${templateId}`);
   const text = renderBroadcastTemplate(template.text, variables);
-  return { id, text, type: template.type, timestamp, ...(template.major ? { major: template.major } : {}), meta: { phase, week: 1, mode: 'survival', broadcastTemplateId: templateId, broadcastVariables: variables, broadcastOrder: getDefaultBroadcastOrder(template), broadcastLevel: template.level, broadcastManaged: true, ...(template.forceOnTv ? { forceOnTv: true } : {}), ...(template.major ? { major: template.major } : {}), ...(template.level === 'critical' ? { broadcastPriority: 'critical' } : {}), ...(template.level !== 'minor' ? { announcementSubtitle: text } : {}) } };
+  return { id, text, type: template.type, timestamp, ...(template.major ? { major: template.major } : {}), meta: { phase, week, mode: 'survival', broadcastCampaign: 'survival', broadcastTemplateId: templateId, broadcastVariables: variables, broadcastOrder: getDefaultBroadcastOrder(template), broadcastLevel: template.level, broadcastManaged: true, ...(template.forceOnTv ? { forceOnTv: true } : {}), ...(template.major ? { major: template.major } : {}), ...(template.level === 'critical' ? { broadcastPriority: 'critical' } : {}), ...(template.level !== 'minor' ? { announcementSubtitle: text } : {}) } };
 }
 
 function getSurvivorModeState(state: GameState): SurvivorModeState {

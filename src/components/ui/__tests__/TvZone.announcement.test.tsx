@@ -1744,122 +1744,44 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.getByRole('dialog', { name: /Announcement: Nomination Ceremony/i })).toBeDefined();
   });
 
-  // ── viewportFallbackMessage tests ─────────────────────────────────────────
-
-  it('shows the viewportFallbackMessage instead of the suppressed pitch event in live_vote phase', () => {
-    vi.useFakeTimers();
+  it('uses the current-phase managed log message instead of rendering an empty viewport', () => {
     const store = makeStore();
-    renderTvZone(store, {
-      viewportFallbackMessage: 'Houseguests are casting their votes.',
-    });
+    renderTvZone(store);
 
-    // Add a LIVE_VOTE_PITCHES event and set live_vote phase — this triggers suppression
     act(() => {
+      store.dispatch(setPhase('social_1'));
       store.dispatch(
         addTvEvent(
           makeEvent({
-            id: 'ev-pitches',
-            text: LIVE_VOTE_PITCHES_TEXT,
+            id: 'ev-current-phase-log',
+            text: 'Housemates compare notes before the next ceremony.',
             type: 'social',
-            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
-          }),
-        ),
-      );
-      store.dispatch(setPhase('live_vote'));
-    });
-
-    // Dismiss the live_eviction announcement
-    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
-
-    // The fallback should be visible instead of blank
-    const nowEl = document.querySelector('.tv-zone__now');
-    expect(nowEl).not.toHaveStyle({ opacity: '0' });
-    expect(nowEl).toHaveTextContent('Houseguests are casting their votes.');
-
-    vi.useRealTimers();
-  });
-
-  it('shows the viewportFallbackMessage during the post-dismiss fade when postDismissBlocked would hide the viewport', () => {
-    vi.useFakeTimers();
-    const store = makeStore();
-    renderTvZone(store, {
-      viewportFallbackMessage: 'Please wait while the houseguest says their goodbyes.',
-    });
-
-    // Trigger an external announcement and dismiss it
-    act(() => {
-      store.dispatch(
-        addTvEvent(
-          makeEvent({
-            id: 'ev-vote-result',
-            text: 'By a vote of 5 to 4, Blue has been evicted.',
           }),
         ),
       );
     });
-
-    // After event fires, the viewport shows its text normally.
-    // Now simulate dismissing a phase overlay to trigger postDismissBlocked.
-    act(() => { store.dispatch(setPhase('nominations')); });
-    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-
-    // During the post-dismiss fade, the fallback should be visible (not hidden)
-    expect(document.querySelector('.tv-zone__now')).not.toHaveStyle({ opacity: '0' });
-
-    vi.useRealTimers();
-  });
-
-  it('prefers latestEvent text over viewportFallbackMessage when a fresh non-suppressed event exists', () => {
-    const store = makeStore();
-    renderTvZone(store, {
-      viewportFallbackMessage: 'Houseguests are casting their votes.',
-    });
-
-    act(() => {
-      store.dispatch(
-        addTvEvent(
-          makeEvent({
-            id: 'ev-fresh',
-            text: 'Houseguests have voted.',
-          }),
-        ),
-      );
-    });
-
-    expect(screen.getByText('Houseguests have voted.')).toBeTruthy();
-    expect(screen.queryByText('Houseguests are casting their votes.')).toBeNull();
-  });
-
-  it('also applies the fallback to the postVoteDelay copy when the pitch event is suppressed in live_vote', () => {
-    vi.useFakeTimers();
-    const store = makeStore();
-    renderTvZone(store, {
-      viewportFallbackMessage: 'Please wait while the houseguest says their goodbyes.',
-    });
-
-    act(() => {
-      store.dispatch(
-        addTvEvent(
-          makeEvent({
-            id: 'ev-pitches-2',
-            text: LIVE_VOTE_PITCHES_TEXT,
-            type: 'social',
-            meta: { key: LIVE_VOTE_PITCHES_EVENT_KEY },
-          }),
-        ),
-      );
-      store.dispatch(setPhase('live_vote'));
-    });
-
-    act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
-    act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
 
     const nowEl = document.querySelector('.tv-zone__now');
     expect(nowEl).not.toHaveStyle({ opacity: '0' });
-    expect(nowEl).toHaveTextContent('Please wait while the houseguest says their goodbyes.');
+    expect(nowEl).toHaveTextContent('Housemates compare notes before the next ceremony.');
+  });
 
-    vi.useRealTimers();
+  it('keeps an acknowledged Major phase card as steady viewport copy', () => {
+    const store = makeStore();
+    renderTvZone(store);
+
+    act(() => {
+      store.dispatch(setPhase('live_vote'));
+    });
+    expect(screen.getByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeDefined();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+    });
+
+    const nowEl = document.querySelector('.tv-zone__now');
+    expect(nowEl).not.toHaveStyle({ opacity: '0' });
+    expect(nowEl).toHaveTextContent('The house will vote to eliminate.');
   });
 });
 

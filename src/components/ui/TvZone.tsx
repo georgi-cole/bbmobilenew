@@ -33,6 +33,11 @@ import AnimatedVoteResultsModal, {
   type PublicEvictionTiebreakDisplay,
   type VoteTally,
 } from '../AnimatedVoteResultsModal/AnimatedVoteResultsModal'
+import {
+  calculateEvictionVoteRevealIntervalMs,
+  EVICTION_PUBLIC_ESTIMATE_STEPS,
+  getEvictionVotingAudioDurationMs,
+} from '../../services/sound/publicVotingAudioTiming'
 import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal'
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService'
 import type { TvEvent } from '../../types'
@@ -42,8 +47,8 @@ import {
   getTvPresentationBroadcastLevel,
   isCurrentPhaseBroadcastEvent,
 } from './tvZoneBroadcastGuards'
-import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents'
 import { getPhaseCardTemplate } from '../../broadcasting/broadcastTemplateCatalog'
+import { getDailyAtmosphere, getDailyMoodCopy } from '../../broadcasting/dailyMoodSystem'
 import {
   formatCycleAriaLabel,
   formatCycleLabel,
@@ -455,16 +460,12 @@ function getPhaseAnnouncementKey(
 
 // Duration (ms) the main viewport text stays faded after an announcement is dismissed,
 // preventing jarring text transitions between the overlay disappearing and new text.
-const POST_DISMISS_FADE_MS = 300
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700
 const LIVE_VOTE_CUTOUT_PADDING = 12
 const LIVE_VOTE_CUTOUT_RADIUS = 18
 const DETOX_MESSAGE_HOLD_MS = 1500
-const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
-  'loh_tiebreak_tie',
-  'loh_tiebreak_deciding',
-  'loh_tiebreak_decision',
-])
+const VOTE_RESULTS_POST_REVEAL_MS = 1000
+const VOTE_RESULTS_OUTCOME_MS = 3000
 const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
   'vox_populi',
   'vox_final3',
@@ -474,7 +475,7 @@ const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
   'vox_populi_final_two',
 ])
 
-const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon… ✨$/
+const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon…(?: ✨)?$/
 const LEGACY_DAY_START_EVENT =
   /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
 
@@ -486,6 +487,25 @@ function getDailyTransitionPhase(event: TvEvent): Phase | null {
   if (LEGACY_DAY_START_EVENT.test(event.text)) return 'week_start'
   if (LEGACY_DAY_END_EVENT.test(event.text)) return 'week_end'
   return null
+}
+
+function compactPhaseLabel(phase: Phase): string {
+  if (phase.startsWith('loh_')) return 'LOH'
+  if (phase.startsWith('pos_') || phase === 'pre_veto_public_save') return 'Safety'
+  if (phase.startsWith('nomination')) return 'Noms'
+  if (phase.startsWith('social')) return 'Social'
+  if (phase.startsWith('final3') || phase === 'final4_eviction') return 'Finale'
+  if (phase.startsWith('jury')) return 'Tribunal'
+  const labels: Partial<Record<Phase, string>> = {
+    season_start: 'Season',
+    week_start: 'Day',
+    week_end: 'Day End',
+    live_vote: 'Vote',
+    eviction_results: 'Results',
+    democracia_vote: 'Vote',
+    democracia_results: 'Results',
+  }
+  return labels[phase] ?? formatPhaseLabel(phase)
 }
 
 // Major events now stay entirely inside the faux-TV presentation. Keeping this
@@ -548,8 +568,6 @@ type TvZoneProps = {
   onPriorityAnnouncementDismiss?: () => void
   externalAnnouncement?: Announcement | null
   onExternalAnnouncementDismiss?: () => void
-  /** Fallback text shown in the viewport when no fresh event is available and the screen would otherwise go blank. */
-  viewportFallbackMessage?: string
   /** Compact board occupancy chip shown when the roster header yields space to the board. */
   occupancyChip?: {
     label: string
@@ -624,9 +642,23 @@ export default function TvZone(props: TvZoneProps) {
   }, [latestEvent, tvVisibleFeed])
   const publicSaveRevealActive = Boolean(props.publicSaveReveal)
   const voteResultsRevealActive = Boolean(props.voteResultsReveal)
+  const [voteResultsAudioDurationMs, setVoteResultsAudioDurationMs] = useState<number | null>(null)
   const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal)
   const priorityAnnouncement = props.priorityAnnouncement ?? null
   const externalAnnouncement = props.externalAnnouncement ?? null
+
+  useEffect(() => {
+    if (!voteResultsRevealActive) {
+      return
+    }
+    let cancelled = false
+    void getEvictionVotingAudioDurationMs().then((durationMs) => {
+      if (!cancelled) setVoteResultsAudioDurationMs(durationMs)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [voteResultsRevealActive])
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -647,8 +679,6 @@ export default function TvZone(props: TvZoneProps) {
   const [, setDismissedPhase] = useState<Phase | null>(null)
   // Phase-triggered announcement (set on phase transition, cleared on dismiss or non-popup phase).
   const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null)
-  // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
-  const [postDismissBlocked, setPostDismissBlocked] = useState(false)
   // Short-lived TV spotlight effect for Double Eviction special announcements.
   const [deSpotlightActive, setDeSpotlightActive] = useState(false)
   const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null)
@@ -666,7 +696,6 @@ export default function TvZone(props: TvZoneProps) {
   const [shockAnnouncementQueue, setShockAnnouncementQueue] = useState<QueuedShockAnnouncement[]>(
     []
   )
-  const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -750,10 +779,26 @@ export default function TvZone(props: TvZoneProps) {
       tvVisibleFeed.find(
         (event) =>
           isBroadcastRelevant(event) &&
+          event.meta?.phase === gameState.phase &&
+          event.meta?.week === gameState.week &&
           event.meta?.broadcastManaged !== true &&
           !(event.meta?.broadcastPriority === 'critical' && dismissedPriorityEventIds.has(event.id))
       ) ?? null,
-    [dismissedPriorityEventIds, isBroadcastRelevant, tvVisibleFeed]
+    [dismissedPriorityEventIds, gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
+  )
+  // Once a phase card has been acknowledged it leaves the announcement queue,
+  // but its copy remains the canonical content for that phase. Include every
+  // current-phase source here (not only Minor sources) so dismissing a Major
+  // card can never reveal an empty screen.
+  const latestCurrentPhaseMessage = useMemo(
+    () =>
+      tvVisibleFeed.find(
+        (event) =>
+          event.meta?.phase === gameState.phase &&
+          event.meta?.week === gameState.week &&
+          isBroadcastRelevant(event)
+      ) ?? null,
+    [gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
   )
   const priorityBroadcastEvent = useMemo(
     () =>
@@ -774,7 +819,36 @@ export default function TvZone(props: TvZoneProps) {
     (!queuedBroadcastIsCard ? queuedBroadcastEvent : null) ??
     priorityBroadcastEvent ??
     latestRelevantEvent ??
-    lastPlainBroadcastEvent
+    lastPlainBroadcastEvent ??
+    latestCurrentPhaseMessage
+  const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
+  const dailyAtmosphere = dailyTransitionPhase
+    ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase)
+    : null
+  const dailyMoodCopy = getDailyMoodCopy({
+    atmosphere: dailyAtmosphere,
+    phase: dailyTransitionPhase ?? gameState.phase,
+    week: gameState.week,
+    players: gameState.players,
+    relationships: gameState.strategicRelationships,
+    overrides: gameState.broadcastOverrides,
+  })
+  const voteResultsTotal =
+    props.voteResultsReveal?.nominees.reduce(
+      (sum, nominee) => sum + Math.max(0, Math.round(nominee.voteCount)),
+      0
+    ) ?? 0
+  const syncedVoteRevealIntervalMs =
+    props.voteResultsReveal?.resultMode === 'public' &&
+    voteResultsAudioDurationMs &&
+    voteResultsTotal > 0
+      ? calculateEvictionVoteRevealIntervalMs(
+          voteResultsAudioDurationMs,
+          EVICTION_PUBLIC_ESTIMATE_STEPS,
+          VOTE_RESULTS_POST_REVEAL_MS,
+          VOTE_RESULTS_OUTCOME_MS
+        )
+      : undefined
   const detoxMessageActive = Boolean(activeDetoxEvent)
 
   // ── Shock announcement sequence state ────────────────────────────────────────
@@ -876,6 +950,7 @@ export default function TvZone(props: TvZoneProps) {
     const newEventCount = previousIndex === -1 ? 1 : previousIndex
     const newEvents = tvVisibleFeed.slice(0, newEventCount)
     const queued = [...newEvents].reverse().flatMap((event) => {
+      if (event.meta?.broadcastManaged === true && event.meta?.forceOnTv !== true) return []
       const key = extractMajorKey(event)
       if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
       // Phase-card branches used to emit a second legacy major event beside
@@ -963,26 +1038,15 @@ export default function TvZone(props: TvZoneProps) {
 
   const showOccupancyChip =
     occupancyChip != null && !showInlineAnnouncement && winnerBroadcast == null
-  const suppressStaleLiveVotePitchMessage =
-    displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY && gameState.phase !== 'social_2'
-  const viewportFallbackMessage = props.viewportFallbackMessage?.trim()
-  const hasFallbackViewportMessage = Boolean(viewportFallbackMessage)
   const hideViewportMessage =
-    (postDismissBlocked && !hasFallbackViewportMessage) ||
-    (suppressStaleLiveVotePitchMessage && !hasFallbackViewportMessage) ||
-    (!displayedEvent && !hasFallbackViewportMessage) ||
+    !displayedEvent ||
     !!activeAnnouncement ||
     winnerBroadcast != null ||
     publicSaveRevealActive ||
     voteResultsRevealActive ||
     democraciaResultsRevealActive ||
     audiencePreviewRevealActive
-  // When the stale pitch message is suppressed but a fallback is available, use the
-  // fallback instead of the suppressed event text so the viewport stays meaningful.
-  const viewportDisplayText =
-    suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage
-      ? viewportFallbackMessage
-      : (displayedEvent?.text ?? viewportFallbackMessage)
+  const viewportDisplayText = displayedEvent?.text
   const baseViewportMessageKey = getViewportMessageKey(displayedEvent)
   const viewportMessageKey = detoxMessageActive
     ? `${baseViewportMessageKey}-${detoxMessageIndex}`
@@ -992,8 +1056,6 @@ export default function TvZone(props: TvZoneProps) {
     mainTvMessage = winnerBroadcast.name + ' wins The Big Eye'
   } else if (activeAnnouncement) {
     mainTvMessage = activeAnnouncement.title
-  } else if (suppressStaleLiveVotePitchMessage) {
-    mainTvMessage = viewportFallbackMessage
   } else {
     mainTvMessage = displayedEvent?.text
   }
@@ -1058,10 +1120,6 @@ export default function TvZone(props: TvZoneProps) {
         return next
       })
     }
-    const skipPostDismissFade =
-      currentAnnouncement != null &&
-      (CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key) ||
-        currentAnnouncement === managedEventAnnouncement)
     if (queuedShockAnnouncement) {
       setDismissedEventId(queuedShockAnnouncement.eventId)
       setShockAnnouncementQueue((queue) => queue.slice(1))
@@ -1094,20 +1152,6 @@ export default function TvZone(props: TvZoneProps) {
     } else if (eventAnnouncementSource) {
       setDismissedEventId(eventAnnouncementSource.id)
     }
-    if (skipPostDismissFade) {
-      setPostDismissBlocked(false)
-      if (dismissBlockTimerRef.current !== null) {
-        clearTimeout(dismissBlockTimerRef.current)
-        dismissBlockTimerRef.current = null
-      }
-      return
-    }
-    setPostDismissBlocked(true)
-    if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
-    dismissBlockTimerRef.current = setTimeout(
-      () => setPostDismissBlocked(false),
-      POST_DISMISS_FADE_MS
-    )
   }, [
     activeAnnouncement,
     dispatch,
@@ -1124,13 +1168,6 @@ export default function TvZone(props: TvZoneProps) {
     onExternalAnnouncementDismiss,
     priorityBroadcastEvent,
   ])
-
-  // Cleanup post-dismiss timer on unmount
-  useEffect(() => {
-    return () => {
-      if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
-    }
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -1330,6 +1367,35 @@ export default function TvZone(props: TvZoneProps) {
       : gameState.voxPopuli?.status === 'active' && gameState.phase.startsWith('final3_comp')
         ? 'Final Immunity'
         : formatPhaseLabel(gameState.phase)
+  const shortPhaseLabel = compactPhaseLabel(gameState.phase)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const headerPillsRef = useRef<HTMLUListElement>(null)
+  const headerActionsRef = useRef<HTMLDivElement>(null)
+  const phaseMeasureRef = useRef<HTMLSpanElement>(null)
+  const [compactPhaseChip, setCompactPhaseChip] = useState(false)
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    const pills = headerPillsRef.current
+    const actions = headerActionsRef.current
+    const phaseMeasure = phaseMeasureRef.current
+    if (!header || !pills || !actions || !phaseMeasure) return
+
+    const measure = () => {
+      // Full phase text + chip padding, status-chip content, action controls,
+      // header padding and inter-column gaps. Shorten only if that real total
+      // cannot fit; viewport width alone is deliberately not used.
+      const fullPhaseWidth = phaseMeasure.getBoundingClientRect().width + 14
+      const requiredWidth = fullPhaseWidth + pills.scrollWidth + actions.offsetWidth + 20
+      setCompactPhaseChip(requiredWidth > header.clientWidth + 0.5)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(header)
+    observer.observe(pills)
+    observer.observe(actions)
+    return () => observer.disconnect()
+  })
   const isAtGameStart =
     gameState.week === 1 && (gameState.phase === 'season_start' || gameState.phase === 'week_start')
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge
@@ -1462,14 +1528,26 @@ export default function TvZone(props: TvZoneProps) {
         )}
 
       {/* ── Head bar ────────────────────────────────────────────────────── */}
-      <div className="tv-zone__head">
+      <div
+        ref={headerRef}
+        className={`tv-zone__head${compactPhaseChip ? ' tv-zone__head--compact-phase' : ''}`}
+      >
         {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <GameTopChip label={phaseLabel} tone="accent" className="tv-zone__head-chip" />
+          <span ref={phaseMeasureRef} className="tv-zone__phase-measure" aria-hidden="true">
+            {phaseLabel}
+          </span>
+          <GameTopChip
+            label={phaseLabel}
+            compactLabel={shortPhaseLabel}
+            ariaLabel={phaseLabel}
+            tone="accent"
+            className="tv-zone__head-chip tv-zone__phase-chip"
+          />
         </div>
 
         {/* Center: scrollable single-row status chips */}
-        <ul className="tv-zone__head-pills" aria-label="Game status chips">
+        <ul ref={headerPillsRef} className="tv-zone__head-pills" aria-label="Game status chips">
           <li>
             <GameTopChip
               label={formatCycleLabel(gameState.season, gameState.week)}
@@ -1500,7 +1578,7 @@ export default function TvZone(props: TvZoneProps) {
           )}
         </ul>
 
-        <div className="tv-zone__head-actions">
+        <div ref={headerActionsRef} className="tv-zone__head-actions">
           {gameState.isLive && (
             <span className="tv-zone__live-badge" aria-live="polite">
               LIVE
@@ -1541,27 +1619,64 @@ export default function TvZone(props: TvZoneProps) {
           )}
 
           <div
-            className="tv-zone__viewport"
+            className={[
+              'tv-zone__viewport',
+              dailyTransitionPhase && dailyAtmosphere
+                ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${dailyAtmosphere}`
+                : '',
+              voteResultsRevealActive ? 'tv-zone__viewport--vote-results' : '',
+              props.voteResultsReveal?.resultMode === 'public'
+                ? 'tv-zone__viewport--public-results'
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             role="region"
             aria-label="Live game events display"
             aria-live="polite"
             aria-atomic="true"
           >
-            <p
-              key={viewportMessageKey}
-              aria-hidden={hideViewportMessage}
+            <div
               className={[
-                'tv-zone__now',
-                !detoxMessageActive && displayedEvent ? 'tv-zone__now--quick-transition' : '',
-                detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
-                hideViewportMessage ? 'tv-zone__now--hidden' : '',
+                'tv-zone__message-stage',
+                dailyTransitionPhase && dailyAtmosphere
+                  ? `tv-zone__daily-card tv-zone__daily-card--${dailyAtmosphere}`
+                  : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
-              {viewportDisplayText}
-            </p>
+              {dailyTransitionPhase && dailyAtmosphere && (
+                <div
+                  className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${dailyAtmosphere}`}
+                  aria-hidden="true"
+                >
+                  <span className="tv-zone__daily-orb" />
+                  <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
+                  <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
+                  <span className="tv-zone__daily-rain" />
+                  <span className="tv-zone__daily-horizon" />
+                </div>
+              )}
+              <p
+                key={viewportMessageKey}
+                aria-hidden={hideViewportMessage}
+                className={[
+                  'tv-zone__now',
+                  !detoxMessageActive && displayedEvent ? 'tv-zone__now--quick-transition' : '',
+                  detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
+                  hideViewportMessage ? 'tv-zone__now--hidden' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={hideViewportMessage ? { opacity: 0 } : undefined}
+              >
+                {viewportDisplayText}
+              </p>
+              {dailyMoodCopy && !hideViewportMessage && (
+                <p className="tv-zone__daily-mood">{dailyMoodCopy}</p>
+              )}
+            </div>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
             {props.audiencePreviewReveal && (
@@ -1642,8 +1757,10 @@ export default function TvZone(props: TvZoneProps) {
                 publicTiebreak={props.voteResultsReveal.publicTiebreak}
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
                 onDone={props.voteResultsReveal.onDone}
+                revealIntervalMs={syncedVoteRevealIntervalMs}
+                postRevealDelayMs={VOTE_RESULTS_POST_REVEAL_MS}
+                countdownMs={VOTE_RESULTS_OUTCOME_MS}
                 variant="tv"
-                countdownMs={3000}
               />
             )}
           </div>

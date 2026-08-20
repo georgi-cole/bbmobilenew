@@ -546,12 +546,7 @@ export function createInitialGameState(options?: {
     },
   }))
   const initialBroadcastQueue = initialTvFeed
-    .filter(
-      (event) =>
-        event.meta?.forceOnTv === true ||
-        event.meta?.broadcastLevel === 'major' ||
-        event.meta?.broadcastLevel === 'critical'
-    )
+    .filter((event) => event.meta?.forceOnTv === true)
     .map((event) => event.id)
   return {
     gameId: crypto.randomUUID(),
@@ -746,17 +741,17 @@ function managedBroadcastOrder(state: GameState, event: TvEvent): number {
 }
 
 function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
-  const level = event.meta?.broadcastLevel as BroadcastLevel | undefined
-  const shouldShow = event.meta?.forceOnTv === true || level === 'major' || level === 'critical'
+  const shouldShow = event.meta?.forceOnTv === true
   if (!shouldShow || event.meta?.broadcastConsumed === true) return
-  const queue = [...(state.broadcastQueue ?? [])].filter((id) =>
-    state.tvFeed.some(
-      (candidate) => candidate.id === id && candidate.meta?.broadcastConsumed !== true
-    )
+  const activeEventsById = new Map(
+    state.tvFeed
+      .filter((candidate) => candidate.meta?.broadcastConsumed !== true)
+      .map((candidate) => [candidate.id, candidate] as const)
   )
+  const queue = [...(state.broadcastQueue ?? [])].filter((id) => activeEventsById.has(id))
   if (!queue.includes(event.id)) queue.push(event.id)
   const orderFor = (id: string) => {
-    const candidate = state.tvFeed.find((item) => item.id === id)
+    const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
   queue.sort((left, right) => orderFor(left) - orderFor(right))
@@ -778,8 +773,7 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
     if (event.meta?.phase !== phase || event.meta?.week !== state.week) return false
     if (event.meta?.broadcastManaged !== true || event.meta?.broadcastConsumed === true)
       return false
-    const level = event.meta?.broadcastLevel as BroadcastLevel | undefined
-    if (event.meta?.forceOnTv !== true && level !== 'major' && level !== 'critical') return false
+    if (event.meta?.forceOnTv !== true) return false
     const templateId = event.meta?.broadcastTemplateId
     if (typeof templateId === 'string' && state.broadcastOverrides?.[templateId]?.disabled)
       return false
@@ -806,7 +800,21 @@ function refreshManagedBroadcastDefinition(state: GameState, event: TvEvent) {
     typeof customId === 'string'
       ? state.customBroadcasts?.find((message) => message.id === customId)
       : undefined
-  const templateId = event.meta?.broadcastTemplateId
+  let templateId = event.meta?.broadcastTemplateId
+  const eventMajor = event.meta?.major ?? event.major
+  if (
+    event.meta?.phase === 'season_start' &&
+    eventMajor === 'vox_populi' &&
+    templateId !== 'season.vox-populi-intro'
+  ) {
+    templateId = 'season.vox-populi-intro'
+    event.meta = {
+      ...(event.meta ?? {}),
+      broadcastTemplateId: templateId,
+      broadcastVariables: [],
+    }
+    delete event.meta.broadcastSourceText
+  }
   const template = typeof templateId === 'string' ? getBroadcastTemplate(templateId) : undefined
   const override =
     typeof templateId === 'string' ? state.broadcastOverrides?.[templateId] : undefined
@@ -865,7 +873,13 @@ function pushEvent(
   type: TvEvent['type'],
   meta?: TvEvent['meta']
 ): TvEvent | undefined {
-  const explicitTemplateId = meta?.broadcastTemplateId ?? meta?.templateId
+  const legacyVoxIntro =
+    (meta?.phase ?? _activeBroadcastPhase ?? state.phase) === 'season_start' &&
+    (meta?.major === 'vox_populi' || meta?.announcementKey === 'vox_populi')
+  const explicitTemplateId =
+    meta?.broadcastTemplateId ??
+    meta?.templateId ??
+    (legacyVoxIntro ? 'season.vox-populi-intro' : undefined)
   const hintedPhase =
     typeof meta?.phase === 'string' ? (meta.phase as Phase) : (_activeBroadcastPhase ?? state.phase)
   const matched = matchBroadcastTemplate(text, hintedPhase, explicitTemplateId)
@@ -874,6 +888,7 @@ function pushEvent(
   const observed =
     template || authoredTemplateId ? null : inferObservedBroadcastSource(state, hintedPhase, text)
   const templateId = template?.id ?? authoredTemplateId ?? observed?.id
+  const isDeclaredSource = Boolean(template || authoredTemplateId || meta?.customBroadcastId)
   const variables = matched?.variables ?? observed?.variables ?? []
   const override = templateId ? state.broadcastOverrides?.[templateId] : undefined
   if (override?.disabled) return undefined
@@ -884,15 +899,19 @@ function pushEvent(
   const defaultMajor = template?.major ?? (typeof meta?.major === 'string' ? meta.major : undefined)
   const finalLevel =
     override?.level ??
-    template?.level ??
-    authoredLevel ??
-    (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor')
+    (isDeclaredSource
+      ? (template?.level ??
+        authoredLevel ??
+        (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor'))
+      : 'minor')
   const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
   const forceOnTv =
     override?.forceOnTv ??
-    (typeof meta?.forceOnTv === 'boolean' ? meta.forceOnTv : undefined) ??
-    template?.forceOnTv ??
-    true
+    (isDeclaredSource
+      ? ((typeof meta?.forceOnTv === 'boolean' ? meta.forceOnTv : undefined) ??
+        template?.forceOnTv ??
+        true)
+      : false)
   const finalMajor =
     finalLevel === 'critical'
       ? (selectedMajor ?? 'custom_critical')
@@ -918,6 +937,7 @@ function pushEvent(
   const finalMeta: TvEvent['meta'] = {
     ...meta,
     phase: intendedPhase,
+    broadcastCampaign: template?.campaign ?? currentBroadcastCampaign(state),
     ...(templateId ? { broadcastTemplateId: templateId } : {}),
     ...(observed ? { broadcastSourceText: observed.sourceText } : {}),
     broadcastVariables: variables,
@@ -928,6 +948,7 @@ function pushEvent(
     ...(finalLevel !== 'minor' && override?.title ? { announcementTitle: override.title } : {}),
     ...(finalLevel !== 'minor' ? { announcementSubtitle: finalText } : {}),
   }
+  if (!forceOnTv) delete finalMeta.forceOnTv
   if (finalLevel === 'minor' || !finalMajor) delete finalMeta.major
   else finalMeta.major = finalMajor
   if (finalLevel === 'critical') finalMeta.broadcastPriority = 'critical'
@@ -1140,12 +1161,13 @@ function activateVoxPopuliForSeason(state: GameState) {
       timestamp: Date.now(),
     },
   ]
-  pushEvent(
-    state,
-    `VOX POPULI is now in force. The competition winner earns immunity, the last-place finisher goes onto the block, every housemate casts two secret nomination votes, and the audience decides who leaves. Public Mode can reveal audience standings and guidance, but it never saves a nominee or changes the official result.`,
-    'twist',
-    { major: 'vox_populi', broadcastPriority: 'critical' }
-  )
+  const intro = getBroadcastTemplate('season.vox-populi-intro')
+  if (intro) {
+    pushEvent(state, intro.text, intro.type, {
+      broadcastTemplateId: intro.id,
+      phase: intro.phase,
+    })
+  }
 }
 
 function breakCupidArrowSpell(state: GameState) {
@@ -1526,6 +1548,21 @@ function finalizeVoxNominations(state: GameState) {
   // classic LOH nomination record would create false revenge logic next day.
   state.currentWeekNominationRecord = null
 
+  // The Confessional instruction is actionable only while the human ballot is
+  // outstanding. Retire it before queuing the result so returning from the
+  // Confessional immediately hands the faux TV to the completed ballot.
+  const ballotPrompt = state.tvFeed.find(
+    (event) =>
+      event.meta?.week === state.week &&
+      event.meta?.broadcastTemplateId === 'nominations.vox-ballot' &&
+      event.meta?.broadcastConsumed !== true
+  )
+  if (ballotPrompt) {
+    ballotPrompt.meta = { ...(ballotPrompt.meta ?? {}), broadcastConsumed: true }
+    state.broadcastQueue = (state.broadcastQueue ?? []).filter((id) => id !== ballotPrompt.id)
+    if (state.lastPlainBroadcastEventId === ballotPrompt.id) state.lastPlainBroadcastEventId = null
+  }
+
   const automaticNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
   const automaticNominee = automaticNomineeId
     ? state.players.find((candidate) => candidate.id === automaticNomineeId)
@@ -1556,8 +1593,13 @@ function finalizeVoxNominations(state: GameState) {
         } nominated for the audience vote.`
       : 'The secret ballot is complete.'
   pushEvent(state, resultCopy, 'game', {
-    major: 'vox_populi_nomination_result',
-    broadcastPriority: 'critical',
+    broadcastTemplateId: automaticNominee
+      ? ballotNominees.length > 0
+        ? 'nominations.vox-result-with-auto'
+        : 'nominations.vox-auto-remains'
+      : ballotNominees.length > 0
+        ? 'nominations.vox-result'
+        : 'nominations.vox-ballot-complete',
   })
 }
 
@@ -1760,9 +1802,16 @@ function pushVoxSafetyOutcome(state: GameState, holderId: string | null, savedId
     state.doubleEviction?.weekActive && nomineeNames.length >= 3
       ? `${formatNameList(nomineeNames)} will now face the audience, and two of them will leave tonight.`
       : `${formatNameList(nomineeNames)} will now face the audience, who will decide whose game ends tonight.`
+  const isSelfSave = holder?.id === savedId
+  const isDouble = Boolean(state.doubleEviction?.weekActive && nomineeNames.length >= 3)
   pushEvent(state, `${saveLine} ${publicLine}`, 'game', {
-    major: 'vox_populi_safety_outcome',
-    broadcastPriority: 'critical',
+    broadcastTemplateId: isSelfSave
+      ? isDouble
+        ? 'safety.vox-self-save-double'
+        : 'safety.vox-self-save'
+      : isDouble
+        ? 'safety.vox-save-double'
+        : 'safety.vox-save',
     savedId,
     nomineeIds: [...state.nomineeIds],
   })
@@ -1781,8 +1830,7 @@ function pushVoxSafetyStandPat(state: GameState, holderId: string | null): void 
     } on the block and will face the audience.`,
     'game',
     {
-      major: 'vox_populi_safety_outcome',
-      broadcastPriority: 'critical',
+      broadcastTemplateId: 'safety.vox-hold',
       nomineeIds: [...state.nomineeIds],
     }
   )
@@ -2323,18 +2371,7 @@ function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
 }
 
 function pushTwinShockAnnouncement(state: GameState, text: string, major: string) {
-  const ts = Date.now()
-  state.tvFeed = [
-    {
-      id: `${state.phase}-w${state.week}-${ts}-${major}`,
-      text,
-      type: 'twist' as const,
-      timestamp: ts,
-      major,
-      meta: buildTvMeta(state, { major }),
-    },
-    ...state.tvFeed,
-  ].slice(0, MAX_GAME_HISTORY_EVENTS)
+  pushEvent(state, text, 'twist', { major })
 }
 
 function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
@@ -2643,8 +2680,7 @@ function announceVoxLastPlaceNominee(state: GameState): void {
     `${lastPlaceName} finished in last place in the immunity competition and is now on the block for today's audience vote.`,
     'game',
     {
-      major: 'vox_populi_last_place_nominee',
-      broadcastPriority: 'critical',
+      broadcastTemplateId: 'loh.vox-last-place',
       playerId: state.lastHohCompFinisherId,
     }
   )
@@ -2914,13 +2950,14 @@ const gameSlice = createSlice({
       state.lohSafetyAdvice = action.payload
     },
     addTvEvent(state, action: PayloadAction<Omit<TvEvent, 'id' | 'timestamp'>>) {
-      const event: TvEvent = {
-        ...action.payload,
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-        meta: buildTvMeta(state, action.payload.meta),
+      const event = pushEvent(state, action.payload.text, action.payload.type, {
+        ...(action.payload.meta ?? {}),
+        ...(action.payload.major ? { major: action.payload.major } : {}),
+      })
+      if (event) {
+        event.channels = action.payload.channels
+        event.source = action.payload.source
       }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
     },
     /** Update one existing broadcast without replacing its identity or position in the timeline. */
     updateTvEvent(
@@ -2995,11 +3032,27 @@ const gameSlice = createSlice({
         ...(state.broadcastOverrides[action.payload.id] ?? {}),
         ...action.payload.changes,
       }
+      state.tvFeed.forEach((event) => {
+        const isLegacyVoxIntro =
+          action.payload.id === 'season.vox-populi-intro' &&
+          event.meta?.phase === 'season_start' &&
+          (event.meta?.major ?? event.major) === 'vox_populi'
+        if (event.meta?.broadcastTemplateId === action.payload.id || isLegacyVoxIntro) {
+          refreshManagedBroadcastDefinition(state, event)
+        }
+      })
+      rebuildManagedBroadcastQueue(state, state.phase)
     },
     /** Restore a built-in message to its source copy and classification. */
     resetBroadcastOverride(state, action: PayloadAction<string>) {
       if (!state.broadcastOverrides) return
       delete state.broadcastOverrides[action.payload]
+      state.tvFeed.forEach((event) => {
+        if (event.meta?.broadcastTemplateId === action.payload) {
+          refreshManagedBroadcastDefinition(state, event)
+        }
+      })
+      rebuildManagedBroadcastQueue(state, state.phase)
     },
     /**
      * Apply authoring changes saved by another browser tab. The storage event
@@ -4245,16 +4298,12 @@ const gameSlice = createSlice({
       state.democracia.resultDisplay = null
       state.twistActive = true
       state.twistActivatedThisWeek = true
-      const ts = Date.now()
-      const event: TvEvent = {
-        id: `democracia-w${state.week}-${ts}`,
-        text: `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
-        type: 'twist',
-        major: 'democracia',
-        meta: buildTvMeta(state, { major: 'democracia' }),
-        timestamp: ts,
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
+        'twist',
+        { major: 'democracia' }
+      )
     },
 
     /**
@@ -4789,16 +4838,12 @@ const gameSlice = createSlice({
       state.battleBack = bb
       state.twistActive = true
       // Push event WITH major: 'battle_back' so TvZone shows the TvAnnouncementOverlay.
-      const ts = Date.now()
-      const event = {
-        id: `${state.phase}-w${state.week}-${ts}-bb`,
-        text: `🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆`,
-        type: 'twist' as const,
-        timestamp: ts,
-        major: 'battle_back',
-        meta: buildTvMeta(state, { major: 'battle_back' }),
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        `🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆`,
+        'twist',
+        { major: 'battle_back' }
+      )
     },
 
     /**
@@ -4884,21 +4929,17 @@ const gameSlice = createSlice({
       state.twistActive = true
       state.twistActivatedThisWeek = true
       // Push event WITH major: 'double_eviction' so TvZone shows the overlay.
-      const ts = Date.now()
       const voxDoubleEvictionText = isVoxPopuliActive(state)
         ? `DOUBLE ELIMINATION! The last-place nominee joins the secret ballot's top two and any cutoff ties. At least three nominees must remain after Safety before the audience can eliminate the two highest public vote-getters.`
         : null
       const announcementKey = voxDoubleEvictionText ? 'vox_double_eviction' : 'double_eviction'
-      const event: TvEvent = {
-        id: `nominations-w${state.week}-${ts}-de`,
-        text: `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE players. TWO will be eliminated live! ⚡`,
-        type: 'twist',
-        timestamp: ts,
-        major: announcementKey,
-        meta: buildTvMeta(state, { major: announcementKey }),
-      }
-      if (voxDoubleEvictionText) event.text = voxDoubleEvictionText
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        voxDoubleEvictionText ??
+          `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE players. TWO will be eliminated live! ⚡`,
+        'twist',
+        { major: announcementKey }
+      )
     },
 
     /**
@@ -4941,16 +4982,10 @@ const gameSlice = createSlice({
         coup: 'coup_detat',
         spotlight: 'spotlight_veto',
       }
-      const ts = Date.now()
-      const event: TvEvent = {
-        id: `special-veto-${type}-w${week}-${ts}`,
-        text: typeLabels[type],
-        type: 'twist',
+      pushEvent(state, typeLabels[type], 'twist', {
         major: majorKeys[type],
-        meta: buildTvMeta(state, { major: majorKeys[type] }),
-        timestamp: ts,
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+        week,
+      })
     },
 
     setCupidArrowSchedule(state, action: PayloadAction<number | null>) {
@@ -5272,16 +5307,12 @@ const gameSlice = createSlice({
       state.twistActive = true
       // Push a TV event WITH major: 'twist' so the TV filler shows the announcement
       // while the voting overlay waits for openFavoritePlayerVoting.
-      const ts = Date.now()
-      const event = {
-        id: `${state.phase}-w${state.week}-${ts}-fp`,
-        text: `⭐ THE PUBLIC DECIDES: Vote for your Public's Favorite Player! 🏆`,
-        type: 'twist' as const,
-        timestamp: ts,
-        major: 'twist',
-        meta: buildTvMeta(state, { major: 'twist' }),
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        `⭐ THE PUBLIC DECIDES: Vote for your Public's Favorite Player! 🏆`,
+        'twist',
+        { major: 'twist' }
+      )
       // Append a start event to game history
       if (!state.history) state.history = []
       state.history.push({
@@ -5908,6 +5939,10 @@ const gameSlice = createSlice({
         // campaign snapshot. Never let an older saved run overwrite it.
         broadcastOverrides: state.broadcastOverrides ?? {},
         customBroadcasts: state.customBroadcasts ?? [],
+        tvFeed: (action.payload.tvFeed ?? []).map((event) => ({
+          ...event,
+          meta: event.meta ? { ...event.meta } : undefined,
+        })),
         broadcastQueue: action.payload.broadcastQueue ?? [],
         lastPlainBroadcastEventId: action.payload.lastPlainBroadcastEventId ?? null,
         twinShock: action.payload.twinShock ?? createInitialTwinShockState(),
@@ -5959,6 +5994,8 @@ const gameSlice = createSlice({
           }
         }
       }
+      hydrated.tvFeed.forEach((event) => refreshManagedBroadcastDefinition(hydrated, event))
+      rebuildManagedBroadcastQueue(hydrated, hydrated.phase)
       return hydrated
     },
 
@@ -8005,12 +8042,10 @@ const gameSlice = createSlice({
           break
         }
         case 'week_end': {
-          pushEvent(
-            state,
-            `Day ${state.week} has come to an end. A new day begins soon… ✨`,
-            'game',
-            { key: 'day_end', phase: 'week_end' }
-          )
+          pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon…`, 'game', {
+            key: 'day_end',
+            phase: 'week_end',
+          })
           break
         }
       }

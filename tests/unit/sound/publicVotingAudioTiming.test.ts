@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateEvictionVoteRevealIntervalMs,
   calculatePublicVotingEliminationIntervalMs,
   PUBLIC_VOTING_REVEAL_RESERVE_MS,
 } from '../../../src/services/sound/publicVotingAudioTiming'
+
+describe('calculateEvictionVoteRevealIntervalMs', () => {
+  it('fits percentage steps and the closing result beat to the soundtrack', () => {
+    expect(calculateEvictionVoteRevealIntervalMs(14_000, 100, 1_000, 3_000)).toBe(100)
+  })
+
+  it('keeps the readable fallback when metadata is unavailable or too short', () => {
+    expect(calculateEvictionVoteRevealIntervalMs(null, 100, 1_000, 3_000)).toBe(28)
+    expect(calculateEvictionVoteRevealIntervalMs(2_000, 100, 1_000, 3_000)).toBe(28)
+  })
+})
 
 describe('calculatePublicVotingEliminationIntervalMs', () => {
   it('reserves the closing music phrase for final-two tension and reveal', () => {

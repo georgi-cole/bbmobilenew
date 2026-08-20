@@ -1,13 +1,18 @@
 import { SOUND_REGISTRY } from './sounds'
 
 const PUBLIC_VOTING_SOUND_KEY = 'music:public_voting'
+const EVICTION_VOTING_SOUND_KEY = 'tv:voting_eviction'
 const AUDIO_METADATA_TIMEOUT_MS = 5000
 const MIN_VALID_DURATION_MS = 1000
 const MIN_ELIMINATION_INTERVAL_MS = 650
 export const PUBLIC_VOTING_REVEAL_RESERVE_MS = 7500
+/** Number of live-estimate updates shown before audience percentages lock. */
+export const EVICTION_PUBLIC_ESTIMATE_STEPS = 12
 
 let cachedSource: string | null = null
 let cachedDurationPromise: Promise<number | null> | null = null
+let cachedEvictionSource: string | null = null
+let cachedEvictionDurationPromise: Promise<number | null> | null = null
 
 function readAudioDurationMs(src: string): Promise<number | null> {
   if (typeof document === 'undefined') return Promise.resolve(null)
@@ -60,9 +65,42 @@ export function getPublicVotingAudioDurationMs(): Promise<number | null> {
   return cachedDurationPromise
 }
 
+/** Duration of the faux-TV percentage/tally soundtrack. */
+export function getEvictionVotingAudioDurationMs(): Promise<number | null> {
+  const source = SOUND_REGISTRY[EVICTION_VOTING_SOUND_KEY]?.src
+  if (!source) return Promise.resolve(null)
+  if (cachedEvictionDurationPromise && cachedEvictionSource === source) {
+    return cachedEvictionDurationPromise
+  }
+  cachedEvictionSource = source
+  cachedEvictionDurationPromise = readAudioDurationMs(source).then((durationMs) => {
+    if (durationMs === null) {
+      cachedEvictionSource = null
+      cachedEvictionDurationPromise = null
+    }
+    return durationMs
+  })
+  return cachedEvictionDurationPromise
+}
+
+export function calculateEvictionVoteRevealIntervalMs(
+  audioDurationMs: number | null,
+  revealSteps: number,
+  postRevealMs: number,
+  outcomeMs: number,
+  fallbackIntervalMs = 28
+): number {
+  if (!audioDurationMs || !Number.isFinite(audioDurationMs) || revealSteps < 1) {
+    return fallbackIntervalMs
+  }
+  const availableMs = audioDurationMs - Math.max(0, postRevealMs) - Math.max(0, outcomeMs)
+  return Math.max(fallbackIntervalMs, Math.round(Math.max(0, availableMs) / revealSteps))
+}
+
 /** Warm the metadata cache well before the finale reaches the public vote. */
 export function preloadPublicVotingAudioDuration(): void {
   void getPublicVotingAudioDurationMs()
+  void getEvictionVotingAudioDurationMs()
 }
 
 /**

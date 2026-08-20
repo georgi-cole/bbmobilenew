@@ -16,6 +16,75 @@ import gameReducer, {
 } from '../src/store/gameSlice'
 
 describe('broadcast manager reducers', () => {
+  it('never lets an undeclared source force itself onto faux TV or become a shock', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    state = { ...state, tvFeed: [], broadcastQueue: [] }
+
+    state = gameReducer(
+      state,
+      addTvEvent({
+        text: 'A legacy hard-coded announcement.',
+        type: 'twist',
+        major: 'legacy_shock',
+        meta: { broadcastPriority: 'critical', forceOnTv: true },
+      })
+    )
+
+    expect(state.tvFeed[0]).toMatchObject({
+      major: undefined,
+      meta: { broadcastLevel: 'minor', broadcastManaged: true },
+    })
+    expect(state.tvFeed[0].meta?.broadcastTemplateId).toMatch(/^observed\./)
+    expect(state.tvFeed[0].meta?.forceOnTv).toBeUndefined()
+    expect(state.broadcastQueue).toEqual([])
+  })
+
+  it('adopts the legacy Vox intro so manager copy edits update resumed campaigns', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    state = { ...state, tvFeed: [], broadcastQueue: [], phase: 'season_start' }
+    state = gameReducer(
+      state,
+      addTvEvent({
+        text: 'VOX POPULI legacy rules copy that used to bypass the manager.',
+        type: 'twist',
+        major: 'vox_populi',
+        meta: { phase: 'season_start', major: 'vox_populi', broadcastPriority: 'critical' },
+      })
+    )
+    state = gameReducer(
+      state,
+      setBroadcastOverride({
+        id: 'season.vox-populi-intro',
+        changes: { text: 'Managed Vox intro.' },
+      })
+    )
+
+    expect(state.tvFeed[0]).toMatchObject({
+      text: 'Managed Vox intro.',
+      meta: { broadcastTemplateId: 'season.vox-populi-intro' },
+    })
+  })
+
+  it('persists an unchecked faux-TV override and removes even a critical message from the queue', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    const intro = state.tvFeed.find((event) => event.meta?.broadcastTemplateId === 'season.welcome')
+
+    state = gameReducer(
+      state,
+      setBroadcastOverride({
+        id: 'season.welcome',
+        changes: { level: 'critical', forceOnTv: false },
+      })
+    )
+
+    expect(state.broadcastOverrides?.['season.welcome']).toMatchObject({
+      level: 'critical',
+      forceOnTv: false,
+    })
+    expect(intro).toBeDefined()
+    expect(state.broadcastQueue).not.toContain(intro?.id)
+  })
+
   it('registers and queues the LOH winner as an LOH Results faux-TV message', () => {
     let state = gameReducer(undefined, { type: 'init' })
     state = { ...state, phase: 'loh_comp', seed: 42 }
@@ -351,12 +420,9 @@ describe('broadcast manager reducers', () => {
     })
     expect(state.broadcastQueue).not.toContain(byCustomId('plain-log')?.id)
     expect(state.broadcastQueue).toEqual(
-      expect.arrayContaining([
-        byCustomId('plain-tv')?.id,
-        byCustomId('major-card')?.id,
-        byCustomId('critical-card')?.id,
-      ])
+      expect.arrayContaining([byCustomId('plain-tv')?.id, byCustomId('critical-card')?.id])
     )
+    expect(state.broadcastQueue).not.toContain(byCustomId('major-card')?.id)
   })
 
   it('lets a built-in phase card be reclassified by the manager', () => {
