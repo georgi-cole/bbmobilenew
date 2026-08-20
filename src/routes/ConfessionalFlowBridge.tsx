@@ -20,7 +20,9 @@ export default function ConfessionalFlowBridge({ children }: Props) {
 
     const openRequiredConfessional = (event: Event) => {
       // This capture listener owns Play while a required decision is pending.
-      // Prevent GameScreen's legacy TV-prompt listener from adding an extra step.
+      // Cancel the normal game advance and prevent lower-priority Play listeners
+      // from reacting to the same physical press.
+      event.preventDefault()
       event.stopImmediatePropagation()
       navigate('/diary-room', {
         state: {

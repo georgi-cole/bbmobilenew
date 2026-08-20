@@ -94,6 +94,8 @@ export default function FloatingActionBar({
   const battleBackAnnouncementActive =
     game.battleBack?.active === true && game.battleBack.competitionActive !== true
   const voxPopuliActive = game.voxPopuli?.status === 'active'
+  const voxTransitionOwnsPlay =
+    game.voxPopuli?.awaitingPublicVote === true || game.voxPopuli?.finaleStage === 'ready'
 
   const humanPlayer = players.find((p) => p.isUser)
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null
@@ -290,11 +292,17 @@ export default function FloatingActionBar({
       dispatchPlayPressedEvent()
       return
     }
+
+    // Some presentation state machines use the global Play signal to perform
+    // their own authoritative transition. They must get the press without an
+    // additional generic advance() in the same event turn, even if an older
+    // listener forgot to call preventDefault().
+    if (battleBackAnnouncementActive || voxTransitionOwnsPlay) {
+      dispatchPlayPressedEvent()
+      return
+    }
+
     if (advancedProgressRef.current === advanceProgressKey) {
-      if (battleBackAnnouncementActive) {
-        dispatchPlayPressedEvent()
-        return
-      }
       // Vox Populi can intentionally queue several manual broadcast cards
       // within one reducer phase. Repeated Play presses reveal those cards
       // without repeating the underlying phase transition.
@@ -319,6 +327,7 @@ export default function FloatingActionBar({
     hasSeenConfessionalSpotlight,
     survivorTerminalActive,
     voxPopuliActive,
+    voxTransitionOwnsPlay,
   ])
 
   const handleToolClick = useCallback(() => {

@@ -14,6 +14,8 @@ interface EffectGraph {
   filter: BiquadFilterNode
 }
 
+type CueStopCause = 'superseded' | 'cancelled' | null
+
 interface CueDeck {
   element: HTMLAudioElement
   asset: MusicCueAsset
@@ -21,6 +23,8 @@ interface CueDeck {
   signature: string
   mixGain: number
   boundaryHandled: boolean
+  stopped: boolean
+  stopCause: CueStopCause
   cleanup: () => void
 }
 
@@ -31,6 +35,13 @@ export interface MusicCueEngineHooks {
 export interface MusicCuePlayOptions {
   /** Fade used when the outgoing deck is owned by the legacy music path. */
   entryFadeMs?: number
+}
+
+class MusicCueSupersededError extends Error {
+  constructor() {
+    super('Music cue request was superseded by a newer request.')
+    this.name = 'MusicCueSupersededError'
+  }
 }
 
 function clamp01(value: number): number {
@@ -57,6 +68,9 @@ export class MusicCueEngine {
   private _completedSignature: string | null = null
   private _audioContext: AudioContext | null = null
   private _effectGraphs = new WeakMap<HTMLAudioElement, EffectGraph>()
+  private _playGeneration = 0
+  private _fadeGeneration = 0
+  private _fadeTokens = new WeakMap<CueDeck, number>()
 
   private readonly _hooks: MusicCueEngineHooks
 
@@ -104,6 +118,30 @@ export class MusicCueEngine {
     options: MusicCuePlayOptions = {}
   ): Promise<void> {
     const signature = musicCueSignature(cue, asset.key)
+
+    // A repeated sync of the already-active cue is intentionally cheap. Do not
+    // invalidate an in-progress crossfade merely because Redux rendered again.
+    if (this._active?.signature === signature && !this._standby) {
+      if (cue.restartPolicy === 'restart') {
+        resetTime(this._active.element, cue.startAtSec)
+        await this._active.element.play()
+      }
+      this._applyDeckVolume(this._active)
+      return
+    }
+
+    // Every genuinely new request owns a generation. Any not-yet-promoted deck
+    // from an older request is stopped immediately so two async element.play()
+    // calls can never leave separate orphaned audio elements audible.
+    const generation = ++this._playGeneration
+    if (this._standby && this._standby !== this._active) {
+      const staleStandby = this._standby
+      this._standby = null
+      this._stopDeck(staleStandby, 'superseded')
+    }
+
+    // If the latest intent is the currently-active cue, cancelling a conflicting
+    // pending standby above is all that is required.
     if (this._active?.signature === signature) {
       if (cue.restartPolicy === 'restart') {
         resetTime(this._active.element, cue.startAtSec)
@@ -131,42 +169,77 @@ export class MusicCueEngine {
 
     try {
       await incoming.element.play()
+      this._assertPendingOwnership(incoming, generation)
       await this._applyEffect(incoming.element, cue.effectPreset)
+      this._assertPendingOwnership(incoming, generation)
     } catch (error) {
-      incoming.cleanup()
-      incoming.element.pause()
-      this._standby = null
+      if (this._standby === incoming) this._standby = null
+      const cancelled = incoming.stopCause === 'cancelled'
+      this._stopDeck(incoming, incoming.stopCause)
+      // Explicit stop/fade/navigation is normal control flow. Resolve quietly so
+      // SoundManager can reconcile its now-cleared desired cue without marking a
+      // perfectly valid asset as failed. A newer competing cue still rejects so
+      // the stale SoundManager request cannot stop the newer active deck.
+      if (cancelled && error instanceof MusicCueSupersededError) return
       throw error
     }
 
     this._active = incoming
-    this._standby = null
+    if (this._standby === incoming) this._standby = null
 
     if (outgoing && cue.crossfadeMs > 0) {
       await Promise.all([
         this._fadeDeck(outgoing, 0, cue.crossfadeMs),
         this._fadeDeck(incoming, 1, cue.crossfadeMs),
       ])
-      this._stopDeck(outgoing)
+      // The request that replaced this outgoing deck owns its cleanup.
+      this._stopDeck(outgoing, 'superseded')
     } else {
-      if (outgoing) this._stopDeck(outgoing)
+      if (outgoing) this._stopDeck(outgoing, 'superseded')
       if (transitionMs > 0) await this._fadeDeck(incoming, 1, transitionMs)
+    }
+
+    // A newer cue can arrive after this deck has already been promoted while its
+    // fade is still running. Reject that stale request too; otherwise the older
+    // SoundManager promise can resolve later and its stale-success guard may stop
+    // the newer active cue. Explicit stop/fade remains a quiet cancellation.
+    if (generation !== this._playGeneration || this._active !== incoming || incoming.stopped) {
+      if (incoming.stopCause === 'cancelled') return
+      throw new MusicCueSupersededError()
     }
   }
 
   async fadeOut(durationMs: number): Promise<void> {
+    const generation = ++this._playGeneration
+    if (this._standby && this._standby !== this._active) {
+      const staleStandby = this._standby
+      this._standby = null
+      this._stopDeck(staleStandby, 'cancelled')
+    }
+
     const deck = this._active
     if (!deck) return
     await this._fadeDeck(deck, 0, durationMs)
-    this._stopDeck(deck)
-    if (this._active === deck) this._active = null
+
+    // A newer play request may have taken ownership of this deck as its outgoing
+    // crossfade source. In that case the newer request is responsible for cleanup.
+    if (generation !== this._playGeneration || this._active !== deck) return
+    this._stopDeck(deck, 'cancelled')
+    this._active = null
   }
 
   stop(): void {
-    if (this._active) this._stopDeck(this._active)
-    if (this._standby) this._stopDeck(this._standby)
+    this._playGeneration += 1
+    if (this._active) this._stopDeck(this._active, 'cancelled')
+    if (this._standby) this._stopDeck(this._standby, 'cancelled')
     this._active = null
     this._standby = null
+  }
+
+  private _assertPendingOwnership(deck: CueDeck, generation: number): void {
+    if (generation !== this._playGeneration || this._standby !== deck || deck.stopped) {
+      throw new MusicCueSupersededError()
+    }
   }
 
   private _createDeck(
@@ -189,6 +262,8 @@ export class MusicCueEngine {
       signature,
       mixGain: 1,
       boundaryHandled: false,
+      stopped: false,
+      stopCause: null,
       cleanup: () => {},
     }
 
@@ -222,6 +297,7 @@ export class MusicCueEngine {
   }
 
   private _handleNaturalEnd(deck: CueDeck): void {
+    if (deck !== this._active && deck !== this._standby) return
     if (deck.cue.loop) {
       resetTime(deck.element, deck.cue.loopStartSec ?? deck.cue.startAtSec)
       void deck.element.play().catch(() => {})
@@ -231,10 +307,13 @@ export class MusicCueEngine {
   }
 
   private _finishDeck(deck: CueDeck): void {
-    if (deck.boundaryHandled) return
+    if (deck.boundaryHandled || deck.stopped) return
     deck.boundaryHandled = true
     this._completedSignature = deck.signature
     void this._fadeDeck(deck, 0, deck.cue.fadeOutMs).then(() => {
+      // If another cue took over during the fade, do not let this stale natural
+      // completion mutate the new cue or fire an obsolete onEnded callback.
+      if (deck.stopped || (this._active !== deck && this._standby !== deck)) return
       this._stopDeck(deck)
       if (this._active === deck) this._active = null
       if (this._standby === deck) this._standby = null
@@ -242,7 +321,14 @@ export class MusicCueEngine {
     })
   }
 
-  private _stopDeck(deck: CueDeck): void {
+  private _stopDeck(deck: CueDeck, cause: CueStopCause = deck.stopCause): void {
+    if (deck.stopped) {
+      if (deck.stopCause === null && cause !== null) deck.stopCause = cause
+      return
+    }
+    deck.stopped = true
+    deck.stopCause = cause
+    this._cancelFade(deck)
     if (deck.cue.restartPolicy === 'resume') {
       this._resumePositions.set(deck.cue.id, deck.element.currentTime)
     }
@@ -252,12 +338,18 @@ export class MusicCueEngine {
   }
 
   private _applyDeckVolume(deck: CueDeck): void {
+    if (deck.stopped) return
     deck.element.volume = clamp01(
       deck.asset.volume * deck.cue.volume * this._masterVolume * deck.mixGain
     )
   }
 
+  private _cancelFade(deck: CueDeck): void {
+    this._fadeTokens.set(deck, ++this._fadeGeneration)
+  }
+
   private async _fadeDeck(deck: CueDeck, target: number, durationMs: number): Promise<void> {
+    if (deck.stopped) return
     const start = deck.mixGain
     if (durationMs <= 0 || start === target) {
       deck.mixGain = target
@@ -265,11 +357,18 @@ export class MusicCueEngine {
       return
     }
 
+    const fadeToken = ++this._fadeGeneration
+    this._fadeTokens.set(deck, fadeToken)
     const steps = Math.max(1, Math.ceil(durationMs / 40))
     await new Promise<void>((resolve) => {
       let step = 0
       const timer = window.setInterval(
         () => {
+          if (deck.stopped || this._fadeTokens.get(deck) !== fadeToken) {
+            window.clearInterval(timer)
+            resolve()
+            return
+          }
           step += 1
           deck.mixGain = start + (target - start) * Math.min(1, step / steps)
           this._applyDeckVolume(deck)

@@ -245,6 +245,34 @@ export const GENERATED_AUDIO_ASSETS = [
     ]
   },
   {
+    "key": "music:move_into_me_confessional",
+    "category": "music",
+    "relativePath": "music/move into me confessional.mp3",
+    "preload": false,
+    "volume": 0.5,
+    "loop": true,
+    "trackId": "move_into_me_confessional",
+    "displayName": "Move Into Me Confessional",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
+    ]
+  },
+  {
+    "key": "music:move_into_me_instrumental_general",
+    "category": "music",
+    "relativePath": "music/move into me instrumental general.mp3",
+    "preload": false,
+    "volume": 0.5,
+    "loop": true,
+    "trackId": "move_into_me_instrumental_general",
+    "displayName": "Move Into Me Instrumental General",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
+    ]
+  },
+  {
     "key": "music:nominations_horror",
     "category": "music",
     "relativePath": "music/nominations_horror.mp3",
@@ -570,6 +598,8 @@ export const GENERATED_MUSIC_TRACK_IDS = [
   "glass_bridge",
   "competition",
   "jury_voting",
+  "move_into_me_confessional",
+  "move_into_me_instrumental_general",
   "nominations_horror",
   "nominations",
   "public_voting",
@@ -626,6 +656,22 @@ export const GENERATED_MUSIC_TRACKS = {
     "tags": [
       "ambient",
       "finale"
+    ]
+  },
+  "move_into_me_confessional": {
+    "displayName": "Move Into Me Confessional",
+    "soundKey": "music:move_into_me_confessional",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
+    ]
+  },
+  "move_into_me_instrumental_general": {
+    "displayName": "Move Into Me Instrumental General",
+    "soundKey": "music:move_into_me_instrumental_general",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
     ]
   },
   "nominations_horror": {
