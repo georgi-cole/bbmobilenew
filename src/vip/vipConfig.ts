@@ -5,6 +5,7 @@ export type StoreEntitlementKey =
   | 'dramaMode'
   | 'cupidArrow'
   | 'voxPopuli'
+  | 'premiumChallenges'
   | 'noAds'
 
 export type StoreProductKey = 'vip' | StoreEntitlementKey
@@ -73,6 +74,10 @@ export const VOX_POPULI_PRODUCT_ID =
   import.meta.env.VITE_VOX_POPULI_PRODUCT_ID?.trim() ||
   'com.georgicole.thebigeye.voxpopuli'
 
+export const PREMIUM_CHALLENGES_PRODUCT_ID =
+  import.meta.env.VITE_PREMIUM_CHALLENGES_PRODUCT_ID?.trim() ||
+  'com.georgicole.thebigeye.premiumchallenges'
+
 export const VIP_BENEFITS = [
   'Public Mode controls',
   'Surveyeval Mode',
@@ -80,6 +85,7 @@ export const VIP_BENEFITS = [
   "Cupid's Arrow expansion",
   'Vox Populi expansion',
   'VIP themes',
+  'Premium Challenges remasters',
 ] as const
 
 export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
@@ -103,6 +109,29 @@ export const STORE_PRODUCT_CATALOG: readonly StoreProductDefinition[] = [
     accessRoute: '/settings',
     accessLabel: 'Manage VIP features',
     legalNote: 'A permanent, non-consumable purchase.',
+    availableInRelease: true,
+  },
+  {
+    key: 'premiumChallenges',
+    productId: PREMIUM_CHALLENGES_PRODUCT_ID,
+    title: 'Premium Challenges Pack',
+    description: 'Unlock the remastered Find Your Twin adventures permanently.',
+    entitlement: 'premiumChallenges',
+    shortTagline: 'Two familiar rescues, rebuilt as premium adventures.',
+    fullDescription:
+      'Replaces Find Your Twin and Find Your Twin 2: Lost Again with their remastered editions while keeping the original gameplay, scoring, and season progression.',
+    benefits: [
+      'Find Your Twin — Remastered',
+      'Find Your Twin 2: Lost Again — Remastered',
+      'Automatic replacement in every competition',
+      'Original editions remain available without access',
+    ],
+    icon: 'premiumChallenges',
+    visualTheme: 'spotlight',
+    ownershipType: 'one-time',
+    category: 'game-mode',
+    badge: '2 VIP games',
+    accessInstructions: 'The remastered games launch automatically in competitions.',
     availableInRelease: true,
   },
   {

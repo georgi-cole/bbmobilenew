@@ -146,6 +146,8 @@ export const selectHasCupidArrowAccess = (state: RootState) =>
   selectHasEntitlement(state, 'cupidArrow')
 export const selectHasVoxPopuliAccess = (state: RootState) =>
   selectHasEntitlement(state, 'voxPopuli')
+export const selectHasPremiumChallengesAccess = (state: RootState) =>
+  selectHasEntitlement(state, 'premiumChallenges')
 export const selectHasNoAdsAccess = (state: RootState) => selectHasEntitlement(state, 'noAds')
 
 export const EMPTY_STORE_ENTITLEMENTS = createEmptyStoreEntitlements()

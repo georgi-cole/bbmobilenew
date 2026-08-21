@@ -1,6 +1,6 @@
 # Store products release setup
 
-The release includes six permanent, one-time products for iOS and Android.
+The release includes seven permanent, one-time products for iOS and Android.
 Every released product must be configured as **non-consumable** in Apple App Store Connect and
 as a **one-time, non-consumable product** in Google Play Console.
 
@@ -19,14 +19,15 @@ real advertising integration are present and tested.
 
 Use the same IDs on both platforms:
 
-| Product         | Product ID                            | Grants                                        |
-| --------------- | ------------------------------------- | --------------------------------------------- |
-| The Big Eye VIP | `com.georgicole.thebigeye.vip`        | All current standalone unlocks and VIP themes |
-| Survival Mode   | `com.georgicole.thebigeye.survival`   | Survival Mode only                            |
-| Public Mode     | `com.georgicole.thebigeye.publicmode` | Public Mode only                              |
-| Reality Mode    | `com.georgicole.thebigeye.dramamode`  | Reality Mode only                             |
-| Cupid's Arrow   | `com.georgicole.thebigeye.cupidarrow` | Cupid's Arrow seasonal expansion              |
-| Vox Populi      | `com.georgicole.thebigeye.voxpopuli`  | Vox Populi seasonal expansion                 |
+| Product            | Product ID                                   | Grants                                        |
+| ------------------ | -------------------------------------------- | --------------------------------------------- |
+| The Big Eye VIP    | `com.georgicole.thebigeye.vip`               | All current standalone unlocks and VIP themes |
+| Survival Mode      | `com.georgicole.thebigeye.survival`          | Survival Mode only                            |
+| Public Mode        | `com.georgicole.thebigeye.publicmode`        | Public Mode only                              |
+| Reality Mode       | `com.georgicole.thebigeye.dramamode`         | Reality Mode only                             |
+| Cupid's Arrow      | `com.georgicole.thebigeye.cupidarrow`        | Cupid's Arrow seasonal expansion              |
+| Vox Populi         | `com.georgicole.thebigeye.voxpopuli`         | Vox Populi seasonal expansion                 |
+| Premium Challenges | `com.georgicole.thebigeye.premiumchallenges` | Remastered Find Your Twin 1 & 2               |
 
 The IDs can be overridden with the matching `VITE_*_PRODUCT_ID` values in the
 platform environment files. The app always displays the localized title and
@@ -38,7 +39,7 @@ VIP is a permanent bundle, not a subscription.
 ## Apple App Store Connect
 
 1. Accept the Paid Apps agreement and complete banking and tax information.
-2. Under the app's In-App Purchases, create the six released products as
+2. Under the app's In-App Purchases, create the seven released products as
    **Non-Consumable**.
 3. Add localization, price, review screenshot, and review notes to each product.
 4. In Xcode, confirm that the app target has the In-App Purchase capability.
@@ -52,7 +53,7 @@ https://developer.apple.com/help/app-store-connect/manage-in-app-purchases/creat
 ## Google Play Console
 
 1. Complete the payments profile.
-2. Under Monetize > Products > In-app products, create all six released IDs.
+2. Under Monetize > Products > In-app products, create all seven released IDs.
 3. Make each product active and assign its one-time price.
 4. Upload a signed build to an internal test track.
 5. Add license testers and test purchase, pending payment, refund, reinstall,

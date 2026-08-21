@@ -1676,6 +1676,8 @@ interface CastleRescueGameProps {
   autoStart?: boolean;
   /** Optional visual-only spin-off theme. Core mechanics and scoring are shared. */
   variant?: CastleRescueVariant;
+  /** Enables the production remastered presentation while preserving mechanics. */
+  remastered?: boolean;
   /** Dev-only measurement hook used by the isolated human/AI experiment. */
   experimental?: {
     onFinish: (result: FindYourTwinHumanTelemetry) => void;
@@ -1688,6 +1690,7 @@ export default function CastleRescueGame({
   onFinish,
   autoStart = true,
   variant = 'classic',
+  remastered = false,
   experimental,
 }: CastleRescueGameProps) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -2013,6 +2016,8 @@ export default function CastleRescueGame({
               touchAction: 'none',
               // When the end overlay is visible, ensure the canvas doesn't swallow taps.
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
+              filter: remastered ? 'saturate(1.12) contrast(1.04)' : undefined,
+              boxShadow: remastered ? '0 18px 48px rgba(8, 15, 35, .55), inset 0 0 40px rgba(148, 163, 255, .08)' : undefined,
             }}
             tabIndex={0}
             aria-label={
@@ -2071,6 +2076,19 @@ export function BennyLennyCastleRescueGame(
   props: Omit<CastleRescueGameProps, 'variant'>,
 ) {
   return <CastleRescueGame {...props} variant="benny-lenny" />;
+}
+
+/** Premium adapters keep the shared physics/scoring and select the remastered art treatment. */
+export function RemasteredCastleRescueGame(
+  props: Omit<CastleRescueGameProps, 'variant' | 'remastered'>,
+) {
+  return <CastleRescueGame {...props} variant="classic" remastered />;
+}
+
+export function RemasteredBennyLennyCastleRescueGame(
+  props: Omit<CastleRescueGameProps, 'variant' | 'remastered'>,
+) {
+  return <CastleRescueGame {...props} variant="benny-lenny" remastered />;
 }
 
 // ── Sub-components & styles ────────────────────────────────────────────────────

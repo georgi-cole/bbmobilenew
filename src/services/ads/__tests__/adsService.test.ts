@@ -154,6 +154,7 @@ describe('canShowAd guard logic', () => {
             dramaMode: false,
             cupidArrow: false,
             voxPopuli: false,
+            premiumChallenges: false,
             noAds: true,
           },
         })
