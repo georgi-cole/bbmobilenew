@@ -47,20 +47,25 @@ function pauseIntroHubLoop(): void {
   for (const el of getIntroHubAudioElements()) el.pause()
 }
 
-async function reuseIntroHubLoop(musicVolume: number): Promise<boolean> {
+function resumeIntroHubLoop(musicVolume: number): boolean {
   cancelIntroHubFade()
   const el = getIntroHubAudioElements().find((candidate) => candidate.currentTime > 0)
   if (!el) return false
 
   el.volume = Math.max(0, Math.min(1, INTRO_HUB_VOLUME * musicVolume))
-  if (!el.paused) return true
+  if (el.paused) void el.play().catch(() => undefined)
+  return true
+}
 
-  try {
-    await el.play()
-    return true
-  } catch {
-    return false
-  }
+function startIntroHubLoop(musicVolume: number): void {
+  if (resumeIntroHubLoop(musicVolume)) return
+
+  // Keep this play request synchronous. Safari/iOS and some WebViews only
+  // allow media playback during the transient user-activation call stack.
+  SoundManager.stopAllMusic()
+  void SoundManager.play(INTRO_HUB_LOOP_KEY, {
+    volume: INTRO_HUB_VOLUME * musicVolume,
+  })
 }
 
 function fadeOutAndResetIntroHubLoop(durationMs = INTRO_HUB_FADE_MS): void {
@@ -189,25 +194,11 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       return
     }
 
-    let cancelled = false
-
-    const startIntroHubLoop = async () => {
-      if (await reuseIntroHubLoop(musicVolume)) return
-      if (cancelled) return
-
-      // The hub is outside gameplay. Clear stale gameplay BGM before starting
-      // its dedicated loop so returning home never layers two beds.
-      SoundManager.stopAllMusic()
-      void SoundManager.play(INTRO_HUB_LOOP_KEY, {
-        volume: INTRO_HUB_VOLUME * musicVolume,
-      })
-    }
-
     SoundManager.unlockOnUserGesture()
-    void startIntroHubLoop()
+    startIntroHubLoop(musicVolume)
 
     const startAfterGesture = () => {
-      void startIntroHubLoop()
+      startIntroHubLoop(musicVolume)
       document.removeEventListener('pointerdown', startAfterGesture)
       document.removeEventListener('keydown', startAfterGesture)
     }
@@ -215,7 +206,6 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     document.addEventListener('keydown', startAfterGesture, { once: true })
 
     return () => {
-      cancelled = true
       document.removeEventListener('pointerdown', startAfterGesture)
       document.removeEventListener('keydown', startAfterGesture)
     }
