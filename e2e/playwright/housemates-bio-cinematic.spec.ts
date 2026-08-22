@@ -26,7 +26,7 @@ test.describe('Housemate biographies @core-journey', () => {
     await closeDebugPanelIfOpen(page)
 
     await mainMenu
-      .getByRole('button', { name: 'Housemates', exact: true })
+      .getByRole('button', { name: 'Hubmates', exact: true })
       .evaluate((button) => (button as HTMLButtonElement).click())
 
     const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates' })
