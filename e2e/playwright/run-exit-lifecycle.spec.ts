@@ -2,6 +2,7 @@ import {
   closeDebugPanelIfOpen,
   dismissPermissionPromptIfPresent,
   expect,
+  readAppState,
   test,
   type Page,
 } from './support/test'
@@ -45,6 +46,32 @@ async function startClassicSeason(page: Page): Promise<void> {
   })
 }
 
+async function advanceToAutosavableProgress(page: Page): Promise<void> {
+  for (let step = 0; step < 6; step += 1) {
+    const phase = (await readAppState(page)).game.phase
+    if (phase !== 'season_start' && phase !== 'week_start') return
+
+    const phaseInformation = page.getByRole('dialog', { name: /^Phase info:/ })
+    if (await phaseInformation.isVisible()) {
+      await phaseInformation.getByRole('button', { name: 'Close' }).click()
+      await expect(phaseInformation).toBeHidden()
+    }
+
+    const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
+    if (await optionalContinue.isVisible()) {
+      await optionalContinue.click()
+      continue
+    }
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await expect(advance).toBeEnabled()
+    await advance.click()
+  }
+
+  throw new Error('Could not reach gameplay progress that is eligible for autosave.')
+}
+
 test.describe('Run exit lifecycle', () => {
   test('abandon season deletes an already-autosaved run and removes Continue Last @core-journey @mobile @release', async ({
     page,
@@ -54,10 +81,10 @@ test.describe('Run exit lifecycle', () => {
     await createProfileFromHome(page, 'Abandon Regression Player')
     await startClassicSeason(page)
 
-    // Season start intentionally has nothing meaningful to save. Advance once so
-    // the test reproduces the real bug: gameplay progress exists and autosave has
-    // persisted it even though the player never pressed Save manually.
-    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    // Season/week start are intentionally not durable checkpoints. Follow the
+    // same player-facing phase flow as the core journeys until gameplay becomes
+    // eligible for autosave, without ever pressing Save manually.
+    await advanceToAutosavableProgress(page)
 
     await expect
       .poll(
