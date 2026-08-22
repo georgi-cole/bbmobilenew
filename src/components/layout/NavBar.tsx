@@ -9,11 +9,19 @@ import { resetGame } from '../../store/gameSlice';
 import { selectPendingChallenge } from '../../store/challengeSlice';
 import { selectMusicScene } from '../../store/uiSlice';
 import {
+  clearSavedRun,
+  clearSeasonSnapshot,
   createSavedSeasonSnapshot,
+  getSavedRunSlot,
+  savedStateKeyForProfile,
   saveRunSnapshot,
 } from '../../store/saveStatePersistence';
+import { withRunAutosaveSuspended } from '../../store/runAutosaveGate';
 import type { RootState } from '../../store/store';
+import { SoundManager } from '../../services/sound/SoundManager';
 import GameBottomNav, { type NavTab } from '../GameBottomNav/GameBottomNav';
+
+const HOME_MUSIC_FADE_MS = 400;
 
 /**
  * NavBar — bottom tab bar.
@@ -33,6 +41,7 @@ export default function NavBar() {
   // active immediately.
   const isGameActive = useAppSelector((s) => s.game.status === 'active');
   const gameMode = useAppSelector((s) => s.game.mode);
+  const currentRunSlot = useAppSelector((s) => getSavedRunSlot(s.game));
   const pendingChallenge = useAppSelector(selectPendingChallenge);
   const pendingMinigame = useAppSelector((s) => s.game.pendingMinigame);
   const humanPlayer = useAppSelector((s) => s.game.players.find((player) => player.isUser));
@@ -98,23 +107,30 @@ export default function NavBar() {
     );
   }
 
-  function returnHome() {
+  function resetRuntimeAndReturnHome() {
     setConfirmOpen(false);
+    void SoundManager.fadeOutMusic(HOME_MUSIC_FADE_MS);
+    withRunAutosaveSuspended(() => dispatch(resetGame()));
     navigate('/');
   }
 
   function saveThenReturnHome() {
     if (saveActiveRun()) {
-      returnHome();
+      resetRuntimeAndReturnHome();
       return;
     }
     setSaveError(true);
   }
 
-  function quitWithoutSaving() {
-    dispatch(resetGame());
-    setConfirmOpen(false);
-    navigate('/');
+  function abandonSeason() {
+    if (!isGuest && activeProfileId) {
+      // Clear the durable slot before resetting runtime state. The autosave
+      // revision guard will reject any already-queued snapshot for this run,
+      // preventing "Abandon" from being resurrected as a Continue card.
+      clearSavedRun(activeProfileId, currentRunSlot);
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
+    }
+    resetRuntimeAndReturnHome();
   }
 
   // Derive the active tab from the current pathname.
@@ -132,7 +148,7 @@ export default function NavBar() {
   const modalDescription = saveError
     ? 'Your season is still open. Free some browser storage and try again.'
     : canPersistActiveRun
-      ? 'We will save your current week before returning to the Home hub.'
+      ? 'Save & Home keeps this season available to Continue. Abandon Season permanently removes this in-progress run.'
       : 'Guest seasons cannot be saved. Leaving will discard this run.';
 
   return (
@@ -150,11 +166,11 @@ export default function NavBar() {
         open={confirmOpen}
         title={modalTitle}
         description={modalDescription}
-        confirmLabel={canPersistActiveRun ? (saveError ? 'Try saving again' : 'Save & Home') : 'Quit without saving'}
-        secondaryLabel={canPersistActiveRun ? 'Quit without saving' : undefined}
+        confirmLabel={canPersistActiveRun ? (saveError ? 'Try saving again' : 'Save & Home') : 'Leave Season'}
+        secondaryLabel={canPersistActiveRun ? 'Abandon Season' : undefined}
         cancelLabel="Cancel"
-        onConfirm={canPersistActiveRun ? saveThenReturnHome : quitWithoutSaving}
-        onSecondary={canPersistActiveRun ? quitWithoutSaving : undefined}
+        onConfirm={canPersistActiveRun ? saveThenReturnHome : abandonSeason}
+        onSecondary={canPersistActiveRun ? abandonSeason : undefined}
         onCancel={() => setConfirmOpen(false)}
       />
       <SurvivorRulesModal
