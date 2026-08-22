@@ -416,6 +416,7 @@ export default function AvatarTile({
             .filter(Boolean)
             .join(' ')}
           layoutId={layoutId}
+          data-ceremony-tile="true"
           data-nomination-ceremony-state={nominationCeremonyState}
           animate={
             // Only apply opacity animation when layoutId is present (shared-layout path).

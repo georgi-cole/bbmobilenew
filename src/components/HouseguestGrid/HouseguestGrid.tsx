@@ -309,6 +309,7 @@ export default function HouseguestGrid({
         data-compact-layout={effectiveCompactLayout}
         data-roster-mode={rosterMode}
         data-header-mode={headerMode}
+        data-houseguest-roster="true"
       >
         <div key={headerSignal} className={styles.headerRow} aria-live="polite">
           <h3 id="houseguests-heading" className={styles.header}>

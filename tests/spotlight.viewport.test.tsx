@@ -114,8 +114,10 @@ describe('SpotlightAnimation — fast-path (no measure callbacks)', () => {
     const scrollCalls = (window.addEventListener as ReturnType<typeof vi.spyOn>).mock.calls.filter(
       ([type]) => type === 'scroll',
     );
-    expect(resizeCalls).toHaveLength(0);
-    expect(scrollCalls).toHaveLength(0);
+    // CeremonyOverlay owns one surface-coordinate listener pair even when the
+    // SpotlightAnimation wrapper itself has no live tile callbacks.
+    expect(resizeCalls).toHaveLength(1);
+    expect(scrollCalls).toHaveLength(1);
 
     unmount();
   });
@@ -311,7 +313,7 @@ describe('SpotlightAnimation — post-minigame layout settling', () => {
     });
 
     expect(measureTiles).toHaveBeenCalled();
-    expect(container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
+    expect(document.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
   });
 });
 
