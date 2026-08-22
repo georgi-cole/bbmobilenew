@@ -10,6 +10,7 @@ const PLAYER_EVICTION_LOOP_KEY = 'player:self_evict_loop'
 const INTRO_HUB_AUDIO_PATH = '/assets/sounds/cinematic/Intro_hub_loop.mp3'
 const INTRO_HUB_VOLUME = 0.55
 const INTRO_HUB_FADE_MS = 260
+const INTRO_HUB_GAMEPLAY_EXIT_EVENT = 'introhub:gameplay-exit'
 
 const INTRO_HUB_AUDIO_PATHS = new Set([
   '/',
@@ -89,16 +90,6 @@ function resetIntroHubLoop(): void {
   } catch {
     // Some WebViews reject currentTime while media state is settling.
   }
-}
-
-/**
- * Called when gameplay is actually being entered or resumed.
- * New-game preloading still uses an Intro Hub-family URL for a short time, so
- * route checks alone cannot distinguish that transition from normal hub use.
- */
-export function stopIntroHubAudioForGameplayExit(): void {
-  introHubGameplayExitPending = true
-  resetIntroHubLoop()
 }
 
 function primeIntroHubPermissionFromCreditsGesture(musicVolume: number): void {
@@ -245,6 +236,13 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       loop: true,
     })
 
+    const handleGameplayExit = () => {
+      // New-game preloading temporarily retains a hub-family URL. The preloader
+      // emits this event so gameplay takes audio ownership immediately.
+      introHubGameplayExitPending = true
+      resetIntroHubLoop()
+    }
+
     const enforceLiveRouteOwnership = () => {
       if (isIntroHubAudioHash(window.location.hash)) {
         // Entering any normal hub-family screen ends gameplay-exit suppression.
@@ -255,10 +253,12 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       resetIntroHubLoop()
     }
 
+    window.addEventListener(INTRO_HUB_GAMEPLAY_EXIT_EVENT, handleGameplayExit)
     window.addEventListener('hashchange', enforceLiveRouteOwnership)
     enforceLiveRouteOwnership()
 
     return () => {
+      window.removeEventListener(INTRO_HUB_GAMEPLAY_EXIT_EVENT, handleGameplayExit)
       window.removeEventListener('hashchange', enforceLiveRouteOwnership)
       resetIntroHubLoop()
       introHubGameplayExitPending = false
