@@ -59,9 +59,10 @@ test.describe('Run exit lifecycle', () => {
     await expect
       .poll(
         () =>
-          page.evaluate((prefix) =>
-            Object.keys(localStorage).some((key) => key.startsWith(prefix))
-          , SAVED_RUNS_KEY_PREFIX),
+          page.evaluate(
+            (prefix) => Object.keys(localStorage).some((key) => key.startsWith(prefix)),
+            SAVED_RUNS_KEY_PREFIX
+          ),
         { timeout: SCREEN_TIMEOUT_MS }
       )
       .toBe(true)
