@@ -16,6 +16,10 @@ function isSelfEvictedHash(hash: string): boolean {
   return /^#\/self-evicted(?:[/?#]|$)/.test(hash)
 }
 
+function isHumanEviction(humanId: string | null, overlayId: string | null): boolean {
+  return humanId != null && overlayId === humanId
+}
+
 /**
  * Owns the two long-form loops that are tied to route/overlay visibility rather
  * than a normal gameplay phase.
@@ -37,8 +41,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
 
   const introHubActive = isIntroHubHash(hash)
   const playerEvictionActive =
-    isSelfEvictedHash(hash) ||
-    (humanPlayerId != null && evictionOverlayPlayerId === humanPlayerId)
+    isSelfEvictedHash(hash) || isHumanEviction(humanPlayerId, evictionOverlayPlayerId)
 
   useEffect(() => {
     SoundManager.registerDynamic({
