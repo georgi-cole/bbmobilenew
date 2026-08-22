@@ -97,7 +97,7 @@ const HUB_BUTTONS = [
   { to: '/game', label: 'Play', icon: 'play', variant: 'primary_large' },
   { to: '/rules', label: 'Rules', icon: 'rules', variant: 'secondary_medium' },
   { to: '/profile', label: 'Profile', icon: 'profile', variant: 'secondary_medium' },
-  { to: '/housemates', label: 'Housemates', icon: 'housemates', variant: 'secondary_wide' },
+  { to: '/housemates', label: 'Hubmates', icon: 'housemates', variant: 'secondary_wide' },
   { to: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', variant: 'secondary_wide' },
   { to: '/credits', label: 'Credits', icon: 'credits', variant: 'secondary_small' },
 ] as const satisfies ReadonlyArray<{
