@@ -105,6 +105,11 @@ export interface RemoteSocialManager {
   actionOverrides?: SocialActionOverrides
 }
 
+export interface RemoteRulesManager {
+  enabled?: boolean
+  games?: Record<string, { description?: string; instructions?: string[] }>
+}
+
 // ── Challenge scheduling ──────────────────────────────────────────────────────
 
 export interface RemoteChallenge {
@@ -187,6 +192,8 @@ export interface RemoteConfig {
   broadcastManager?: RemoteBroadcastManager
   /** Producer-authored competition schedule; remote rules override local rules. */
   gameManager?: GameManagerConfig
+  /** Canonical player-facing minigame rules overrides. */
+  rulesManager?: RemoteRulesManager
   challenge?: RemoteChallenge
   /**
    * Overrides for individual AI houseguest profiles.

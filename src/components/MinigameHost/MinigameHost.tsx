@@ -174,12 +174,14 @@ export default function MinigameHost({
   const competitionRetryEnabled = competitionRetry?.enabled ?? false
   const rulesGame = useMemo(
     () =>
-      launchedGame.key === 'glass_bridge_brutal'
-        ? {
-            ...launchedGame,
-            timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length),
-          }
-        : launchedGame,
+      (() => {
+        const override =
+          store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
+        const resolved = override ? { ...launchedGame, ...override } : launchedGame
+        return resolved.key === 'glass_bridge_brutal'
+          ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
+          : resolved
+      })(),
     [launchedGame, participants]
   )
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -11,6 +11,7 @@ import {
 } from '../../gameManager/gameManager'
 import './GameManager.css'
 import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
+import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice'
 
 const CATEGORIES: GameCategory[] = ['arcade', 'logic', 'trivia', 'endurance']
 
@@ -35,10 +36,28 @@ export default function GameManager() {
   const config = useAppSelector((state) => state.settings.gameUX.gameManager)
   const hasAccess = isDebugAccessGranted(searchParams, window.location.hostname)
   const games = useMemo(() => getAllGames().filter((entry) => !entry.retired), [])
+  const remoteConfig = useAppSelector(selectRemoteConfig)
+  const [selectedRuleGame, setSelectedRuleGame] = useState(games[0]?.key ?? '')
+  const [ruleDrafts, setRuleDrafts] = useState<
+    Record<string, { description: string; instructions: string[] }>
+  >({})
   const activePlayers = useMemo(
     () => game.players.filter((player) => player.status === 'active'),
     [game.players]
   )
+  const selectedRuleEntry = games.find((entry) => entry.key === selectedRuleGame) ?? games[0]
+  const selectedRule = selectedRuleEntry
+    ? (ruleDrafts[selectedRuleEntry.key] ??
+      remoteConfig?.rulesManager?.games?.[selectedRuleEntry.key] ??
+      selectedRuleEntry)
+    : null
+  const saveRuleDraft = (description: string, instructions: string[]) => {
+    if (!selectedRuleEntry) return
+    setRuleDrafts((current) => ({
+      ...current,
+      [selectedRuleEntry.key]: { description, instructions },
+    }))
+  }
 
   if (!hasAccess) return <Navigate to="/" replace />
 
@@ -70,8 +89,63 @@ export default function GameManager() {
       <ManagerPublishBar
         managerName="Game Manager"
         exportFileName="game-manager-remote-config.json"
-        getPatch={() => ({ gameManager: { enabled: config.enabled, rules: config.rules } })}
+        getPatch={() => ({
+          gameManager: { enabled: config.enabled, rules: config.rules },
+          ...(Object.keys(ruleDrafts).length
+            ? { rulesManager: { enabled: true, games: ruleDrafts } }
+            : {}),
+        })}
       />
+
+      <section className="game-manager__rules-editor" aria-label="Rules Manager">
+        <div className="game-manager__rule-heading">
+          <div>
+            <h2>Rules Manager</h2>
+            <p>
+              Edit the player-facing rules modal for one or more games, then publish them with the
+              controls above.
+            </p>
+          </div>
+          <strong>{Object.keys(ruleDrafts).length} changed</strong>
+        </div>
+        {selectedRule && selectedRuleEntry && (
+          <>
+            <label>
+              Game
+              <select
+                value={selectedRuleEntry.key}
+                onChange={(event) => setSelectedRuleGame(event.target.value)}
+              >
+                {games.map((entry) => (
+                  <option key={entry.key} value={entry.key}>
+                    {entry.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Description
+              <textarea
+                rows={3}
+                value={selectedRule.description ?? ''}
+                onChange={(event) =>
+                  saveRuleDraft(event.target.value, selectedRule.instructions ?? [])
+                }
+              />
+            </label>
+            <label>
+              How to play <small>One instruction per line</small>
+              <textarea
+                rows={8}
+                value={(selectedRule.instructions ?? []).join('\n')}
+                onChange={(event) =>
+                  saveRuleDraft(selectedRule.description ?? '', event.target.value.split('\n'))
+                }
+              />
+            </label>
+          </>
+        )}
+      </section>
 
       <section className="game-manager__safety" aria-label="Rule priority">
         <strong>Priority protection</strong>
