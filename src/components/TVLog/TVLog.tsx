@@ -79,7 +79,9 @@ export default function TVLog({
     });
   }
 
-  const activityContent = (
+  const openFullLogFromInlineFeed = refined && inlineVisible;
+
+  const activityContent = (isInlineFeed = false) => (
     <>
       <div className="tv-log__toolbar">
         <div className="tv-log__heading-group">
@@ -121,9 +123,11 @@ export default function TVLog({
               <button
                 type="button"
                 className="tv-log__event"
-                onClick={() => toggleExpand(event.id)}
-                aria-expanded={isExpanded}
-                aria-label={`${TYPE_LABELS[event.type]} event: ${event.text}`}
+                onClick={() => isInlineFeed ? setLogOpen(true) : toggleExpand(event.id)}
+                aria-expanded={isInlineFeed ? undefined : isExpanded}
+                aria-label={isInlineFeed
+                  ? `Open game log from ${TYPE_LABELS[event.type]} event: ${event.text}`
+                  : `${TYPE_LABELS[event.type]} event: ${event.text}`}
               >
                 <span className="tv-log__icon" aria-hidden="true">{TYPE_ICONS[event.type]}</span>
                 <span className="tv-log__copy">
@@ -139,8 +143,21 @@ export default function TVLog({
     </>
   );
 
+  const logModal = logOpen && createPortal(
+    <div className="tv-log-modal__backdrop" role="presentation" onClick={() => setLogOpen(false)}>
+      <section className="tv-log-modal" role="dialog" aria-modal="true" aria-labelledby="tv-log-modal-title" onClick={(event) => event.stopPropagation()}>
+        <header className="tv-log-modal__header">
+          <div><span className="tv-log-modal__eyebrow">House history</span><h2 id="tv-log-modal-title">Game log</h2></div>
+          <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>×</button>
+        </header>
+        {activityContent()}
+      </section>
+    </div>,
+    document.body,
+  );
+
   if (!refined || inlineVisible) {
-    return <section className={`tv-log-shell${refined ? ' tv-log-shell--inline' : ''}`} aria-labelledby="tv-log-heading">{activityContent}</section>;
+    return <><section className={`tv-log-shell${refined ? ' tv-log-shell--inline' : ''}`} aria-labelledby="tv-log-heading">{activityContent(openFullLogFromInlineFeed)}</section>{logModal}</>;
   }
 
   return (
@@ -154,27 +171,7 @@ export default function TVLog({
         <span aria-hidden="true">☷</span>
         <span>Log</span>
       </button>
-      {logOpen && createPortal(
-        <div className="tv-log-modal__backdrop" role="presentation" onClick={() => setLogOpen(false)}>
-          <section
-            className="tv-log-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="tv-log-modal-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="tv-log-modal__header">
-              <div>
-                <span className="tv-log-modal__eyebrow">House history</span>
-                <h2 id="tv-log-modal-title">Game log</h2>
-              </div>
-              <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>×</button>
-            </header>
-            {activityContent}
-          </section>
-        </div>,
-        document.body,
-      )}
+      {logModal}
     </>
   );
 }
