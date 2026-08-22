@@ -26,6 +26,11 @@ import CeremonyOverlay from '../CeremonyOverlay/CeremonyOverlay';
 import type { CeremonyOverlayProps, CeremonyTile } from '../CeremonyOverlay/CeremonyOverlay';
 
 export interface SpotlightAnimationProps extends Omit<CeremonyOverlayProps, 'resolveTiles'> {
+  /**
+   * Rebuilds every spotlight tile from the live roster DOM. Prefer this for
+   * ceremonies that can start while another fullscreen surface is unmounting.
+   */
+  measureTiles?: () => CeremonyTile[];
   /** Re-measures tile A (index 0) position on viewport changes. */
   measureA?: () => DOMRect | null;
   /** Re-measures tile B (index 1) position on viewport changes. */
@@ -40,38 +45,64 @@ export interface SpotlightAnimationProps extends Omit<CeremonyOverlayProps, 'res
 
 export default function SpotlightAnimation({
   tiles: initialTiles,
+  measureTiles,
   measureA,
   measureB,
   tileRefs,
+  layoutSignal,
   onDone,
   ...rest
 }: SpotlightAnimationProps) {
-  const [tiles, setTiles] = useState<CeremonyTile[]>(initialTiles);
+  // A live resolver must get the first frame. Rendering captured rectangles
+  // here would briefly punch holes at the pre-minigame layout on mobile.
+  const [tiles, setTiles] = useState<CeremonyTile[]>(() =>
+    measureTiles ? [] : initialTiles,
+  );
+  const [hasInitialMeasurement, setHasInitialMeasurement] = useState(!measureTiles);
   const rafRef = useRef<number>(0);
+  const settleRafRef = useRef<number>(0);
   const activeRef = useRef(true);
 
-  const hasMeasure = measureA != null || measureB != null;
+  const hasMeasure = measureTiles != null || measureA != null || measureB != null;
   const hasRefs = (tileRefs?.length ?? 0) > 0;
+
+  const measureNow = useCallback((allowEmptyFallback = false) => {
+    if (!activeRef.current) return;
+    if (measureTiles) {
+      const measuredTiles = measureTiles();
+      setTiles(measuredTiles);
+      if (
+        allowEmptyFallback ||
+        measuredTiles.some((tile) =>
+          tile.rect != null && (tile.rect.width > 0 || tile.rect.height > 0)
+        )
+      ) {
+        setHasInitialMeasurement(true);
+      }
+      return;
+    }
+    setTiles((prev) =>
+      prev.map((tile, idx) => {
+        const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
+        const refEl = tileRefs?.[idx]?.current ?? null;
+        if (!measureFn && !refEl) return tile;
+        const rect = measureFn
+          ? measureFn()
+          : (refEl?.getBoundingClientRect() ?? null);
+        if (!rect) return tile;
+        return { ...tile, rect };
+      }),
+    );
+  }, [measureA, measureB, measureTiles, tileRefs]);
 
   const remeasure = useCallback(() => {
     if (!activeRef.current) return;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
       if (!activeRef.current) return;
-      setTiles((prev) =>
-        prev.map((tile, idx) => {
-          const measureFn = idx === 0 ? measureA : idx === 1 ? measureB : undefined;
-          const refEl = tileRefs?.[idx]?.current ?? null;
-          if (!measureFn && !refEl) return tile;
-          const rect = measureFn
-            ? measureFn()
-            : (refEl?.getBoundingClientRect() ?? null);
-          if (!rect) return tile;
-          return { ...tile, rect };
-        }),
-      );
+      measureNow();
     });
-  }, [measureA, measureB, tileRefs]);
+  }, [measureNow]);
 
   useEffect(() => {
     activeRef.current = true;
@@ -103,21 +134,44 @@ export default function SpotlightAnimation({
       }
     }
 
-    // Trigger an initial re-measure in case applying overflow:hidden caused a
-    // layout shift (e.g. scrollbar removal) that staled the passed-in DOMRects.
+    // Trigger an initial re-measure only after the minigame/unrelated fullscreen
+    // surface has committed its unmount. Keep sampling for the first few frames:
+    // Android WebView commonly settles the restored roster over multiple frames.
     remeasure();
+    if (measureTiles) {
+      let remainingSettleFrames = 24;
+      const sampleSettlingLayout = () => {
+        if (!activeRef.current || remainingSettleFrames <= 0) return;
+        remainingSettleFrames -= 1;
+        // If the roster never becomes measurable, let CeremonyOverlay use its
+        // normal empty-geometry fallback after the settling window expires.
+        measureNow(remainingSettleFrames === 0);
+        settleRafRef.current = requestAnimationFrame(sampleSettlingLayout);
+      };
+      settleRafRef.current = requestAnimationFrame(sampleSettlingLayout);
+    }
 
     return () => {
       activeRef.current = false;
       document.body.style.overflow = prevOverflow;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (settleRafRef.current) cancelAnimationFrame(settleRafRef.current);
       window.removeEventListener('resize', remeasure);
       window.removeEventListener('scroll', remeasure, { capture: true });
       window.visualViewport?.removeEventListener('resize', remeasure);
       window.visualViewport?.removeEventListener('scroll', remeasure);
       ro?.disconnect();
     };
-  }, [hasMeasure, hasRefs, remeasure, tileRefs]);
+  }, [hasMeasure, hasRefs, layoutSignal, measureNow, measureTiles, remeasure, tileRefs]);
 
-  return <CeremonyOverlay {...rest} tiles={tiles} onDone={onDone} />;
+  if (!hasInitialMeasurement) return null;
+
+  return (
+    <CeremonyOverlay
+      {...rest}
+      tiles={tiles}
+      layoutSignal={layoutSignal}
+      onDone={onDone}
+    />
+  );
 }

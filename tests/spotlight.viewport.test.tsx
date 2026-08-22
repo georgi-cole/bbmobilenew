@@ -282,6 +282,39 @@ describe('SpotlightAnimation — viewport tracking with measureA', () => {
   });
 });
 
+describe('SpotlightAnimation — post-minigame layout settling', () => {
+  it('does not render captured cutouts before measuring every live tile', async () => {
+    let rafCallback: FrameRequestCallback | null = null;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafCallback = callback;
+      return 1;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    const measureTiles = vi.fn(() => [
+      { rect: makeRect(90, 140), badge: '👑' },
+      { rect: makeRect(190, 140), badge: '👑' },
+    ] satisfies CeremonyTile[]);
+    const { container } = render(
+      <SpotlightAnimation
+        tiles={[{ rect: makeRect(1, 2), badge: '👑' }]}
+        measureTiles={measureTiles}
+        caption="Fresh geometry"
+        onDone={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.ceremony-overlay')).toBeNull();
+    expect(rafCallback).not.toBeNull();
+    await act(async () => {
+      rafCallback?.(0);
+    });
+
+    expect(measureTiles).toHaveBeenCalled();
+    expect(container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
+  });
+});
+
 describe('SpotlightAnimation — immediate fallback for null tiles', () => {
   it('fires onDone immediately when tile rect is null (headless fallback via CeremonyOverlay)', async () => {
     const onDone = vi.fn();
