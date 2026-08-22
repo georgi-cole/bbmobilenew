@@ -96,6 +96,13 @@ function fadeOutAndResetIntroHubLoop(durationMs = INTRO_HUB_FADE_MS): void {
   window.requestAnimationFrame(tick)
 }
 
+function isHubAudioTakeoverControl(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  const control = target.closest('button, a')
+  const label = control?.textContent?.trim().toLowerCase() ?? ''
+  return label.includes('credits') || label.includes('housemates') || label.includes('hubmates')
+}
+
 /**
  * Owns the two long-form loops that are tied to route/overlay visibility rather
  * than a normal gameplay phase.
@@ -154,6 +161,33 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     window.addEventListener(INTRO_HUB_AUDIO_SUPPRESSION_EVENT, handleSuppression)
     return () => window.removeEventListener(INTRO_HUB_AUDIO_SUPPRESSION_EVENT, handleSuppression)
   }, [])
+
+  useEffect(() => {
+    if (!introHubActive) return undefined
+
+    const handleTakeoverClick = (event: Event) => {
+      if (!isHubAudioTakeoverControl(event.target)) return
+      fadeOutAndResetIntroHubLoop()
+    }
+
+    // Capture phase runs before the destination's React click handler, so the
+    // hub bed starts fading before Credits/Hubmates starts its own soundtrack.
+    document.addEventListener('click', handleTakeoverClick, true)
+    return () => document.removeEventListener('click', handleTakeoverClick, true)
+  }, [introHubActive])
+
+  useEffect(() => {
+    if (!introHubActive) return undefined
+
+    const syncHubmatesSuppression = () => {
+      setIntroHubSuppressed(document.querySelector('.hbc') != null)
+    }
+
+    syncHubmatesSuppression()
+    const observer = new MutationObserver(syncHubmatesSuppression)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [introHubActive])
 
   useEffect(() => {
     if (!introHubActive || playerEvictionActive || introHubSuppressed) {
