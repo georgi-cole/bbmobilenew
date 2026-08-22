@@ -58,7 +58,7 @@ import FloatingActionBar from '../../components/FloatingActionBar/FloatingAction
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
 import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
-import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
+import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
@@ -104,7 +104,7 @@ import {
 import { usePersistedPromptDate } from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import { useResponsiveGameLayout } from './useResponsiveGameLayout'
-import { getCeremonyTileRect } from './ceremonyTileMeasurement'
+import { getCeremonyTileElement, getCeremonyTileRect } from './ceremonyTileMeasurement'
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
 import {
   hasSeenVoxNominationRevealIntro,
@@ -562,7 +562,6 @@ export default function GameScreen() {
     humanIsOutgoingHoh,
     spectatorReactEnabled,
     spectatorMode: settings.gameUX.spectatorMode,
-    getTileRect,
     dispatch,
   })
   const showAdvanceHohCeremony = advanceHohCeremonyEligible && pendingWinnerCeremony == null
@@ -1824,16 +1823,16 @@ export default function GameScreen() {
           <TravelingDots session={pendingMinigame} players={game.players} />
         )}
 
-        {/* ── SpotlightAnimation — LOH / POS winner reveal (viewport-tracking) ── */}
+        {/* ── Winner tile lift — LOH / POS result without coordinate-space cutouts ── */}
         {showWinnerCeremony && pendingWinnerCeremony && (
-          <SpotlightAnimation
+          <WinnerTileLiftAnimation
+            targetIds={pendingWinnerCeremony.targetIds}
             tiles={pendingWinnerCeremony.tiles}
             caption={pendingWinnerCeremony.caption}
             subtitle={pendingWinnerCeremony.subtitle}
             onDone={handleWinnerCeremonyDone}
             ariaLabel={pendingWinnerCeremony.ariaLabel}
-            layoutSignal={responsiveGameLayout.revision}
-            measureTiles={pendingWinnerCeremony.measureTiles}
+            resolveTarget={getCeremonyTileElement}
           />
         )}
 

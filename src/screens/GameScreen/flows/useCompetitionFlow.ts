@@ -21,8 +21,6 @@ import { rankPressurePlankResults } from '../../../components/PressurePlank/pres
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 
-type GetTileRect = (playerId: string) => DOMRect | null
-
 interface UseCompetitionFlowOptions {
   game: RootState['game']
   humanPlayer: Player | undefined
@@ -31,7 +29,6 @@ interface UseCompetitionFlowOptions {
   humanIsOutgoingHoh: boolean
   spectatorReactEnabled: boolean
   spectatorMode: boolean
-  getTileRect: GetTileRect
   dispatch: AppDispatch
 }
 
@@ -47,29 +44,25 @@ export function useCompetitionFlow({
   humanIsOutgoingHoh,
   spectatorReactEnabled,
   spectatorMode,
-  getTileRect,
   dispatch,
 }: UseCompetitionFlowOptions) {
   const store = useStore<RootState>()
   const pendingChallenge = useAppSelector(selectPendingChallenge)
-  // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
-  // When MinigameHost reports a winner, we show the CeremonyOverlay with a
-  // spotlight cutout over the winner's tile and a badge (👑/🛡️) that
-  // flies from screen centre to the tile.  Only after the animation completes
-  // do we dispatch applyMinigameWinner.  When DOMRects are unavailable
-  // (tests / headless) the overlay fires onDone immediately so the store
-  // mutation still happens — just without the visual.
+  // ── Lifted-tile reveal — deferred LOH / POS winner commit ────────────────
+  // When MinigameHost reports a winner, the live roster tile is cloned into a
+  // fixed animation layer, awarded its badge, and returned to its newly measured
+  // roster position. Only then do we dispatch applyMinigameWinner. If the live
+  // tile is unavailable (tests / headless), the store mutation continues safely.
   //
   // pendingWinnerDispatchRef stores the deferred thunk so handleCeremonyDone
   // can call it without stale-closure issues.
   const [pendingWinnerCeremony, setPendingWinnerCeremony] = useState<{
     winnerId: string
+    targetIds: string[]
     tiles: CeremonyTile[]
     caption: string
     subtitle?: string
     ariaLabel: string
-    /** Rebuilds every cutout from the live post-minigame roster layout. */
-    measureTiles: () => CeremonyTile[]
   } | null>(null)
   const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
 
@@ -473,11 +466,6 @@ export function useCompetitionFlow({
         badgeStart: 'center',
         badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
       }))
-      const measureWinnerTiles = (): CeremonyTile[] =>
-        winnerTileMetadata.map((tile, index) => ({
-          ...tile,
-          rect: getTileRect(winnerPlayers[index].id),
-        }))
       const winnerNames = winnerPlayers.map((player) => player.name).join(' & ')
       pendingWinnerDispatchRef.current = () =>
         dispatch(
@@ -489,25 +477,16 @@ export function useCompetitionFlow({
         )
       setPendingWinnerCeremony({
         winnerId: finalWinnerId,
-        // Metadata is available immediately, but geometry is deliberately null
-        // until SpotlightAnimation measures after MinigameHost has unmounted.
+        targetIds: winnerIds,
+        // Geometry is deliberately absent: the lift animation resolves and
+        // snapshots the live roster element after MinigameHost has unmounted.
         tiles: winnerTileMetadata,
         caption: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}!`,
         subtitle: winSymbol,
         ariaLabel: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}`,
-        measureTiles: measureWinnerTiles,
       })
     },
-    [
-      aliveIds.length,
-      dispatch,
-      game,
-      getTileRect,
-      humanPlayer,
-      isF3MinigamePhase,
-      pendingChallenge,
-      store,
-    ]
+    [aliveIds.length, dispatch, game, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
   )
 
   return {
