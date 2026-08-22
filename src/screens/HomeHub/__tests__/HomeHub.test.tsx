@@ -47,8 +47,7 @@ vi.mock('react-router', async () => {
 
 vi.mock('../../../store/hooks', () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector(mockState),
+  useAppSelector: (selector: (state: unknown) => unknown) => selector(mockState),
 }));
 
 vi.mock('../../../hooks/useBackgroundTheme', () => ({
@@ -413,7 +412,7 @@ describe('HomeHub', () => {
     view.unmount();
   });
 
-  it('opens the Housemates cinematic below Profile on the intro hub and returns there', async () => {
+  it('opens the Hubmates cinematic below Profile on the intro hub and returns there', async () => {
     renderHomeHub();
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
@@ -421,16 +420,16 @@ describe('HomeHub', () => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
     const profile = screen.getByRole('button', { name: 'Profile' });
-    const housemates = screen.getByRole('button', { name: 'Housemates' });
-    expect(profile.compareDocumentPosition(housemates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(housemates).toHaveAttribute('data-has-icon', 'true');
+    const hubmates = screen.getByRole('button', { name: 'Hubmates' });
+    expect(profile.compareDocumentPosition(hubmates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hubmates).toHaveAttribute('data-has-icon', 'true');
 
-    fireEvent.click(housemates);
+    fireEvent.click(hubmates);
     expect(screen.getByTestId('housemates-bio-cinematic')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Return to IntroHub' }));
     expect(screen.queryByTestId('housemates-bio-cinematic')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Housemates' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hubmates' })).toBeInTheDocument();
   });
 
   it('mirrors the current Redux game state onto window.game for the intro hub', async () => {
