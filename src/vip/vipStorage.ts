@@ -2,6 +2,13 @@ import type { StoreEntitlementKey } from './vipConfig'
 
 const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
 
+/**
+ * Temporary public testing switch. Set to false before the release build that
+ * connects store purchases or rewarded ads. It affects store entitlements only,
+ * never ordinary gameplay-state locks.
+ */
+export const TEMPORARY_STORE_UNLOCKS_ENABLED = true
+
 export interface StoreEntitlements {
   survivalMode: boolean
   publicMode: boolean
@@ -80,10 +87,12 @@ export function saveCachedVipEntitlement(value: PersistedVipEntitlement): void {
 }
 
 export function hasCachedVipAccess(): boolean {
+  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
   return loadCachedVipEntitlement().isActive
 }
 
 export function hasCachedStoreAccess(entitlement: StoreEntitlementKey): boolean {
+  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
   const cached = loadCachedVipEntitlement()
   return cached.isActive || cached.entitlements[entitlement]
 }
