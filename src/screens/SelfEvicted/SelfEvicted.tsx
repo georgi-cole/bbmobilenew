@@ -9,7 +9,11 @@ import {
   clearSavedRun,
   getSavedRunSlot,
 } from '../../store/saveStatePersistence';
+import { withRunAutosaveSuspended } from '../../store/runAutosaveGate';
+import { SoundManager } from '../../services/sound/SoundManager';
 import './SelfEvicted.css';
+
+const HOME_MUSIC_FADE_MS = 400;
 
 /**
  * SelfEvicted — shown when the human player voluntarily self-evicts from
@@ -28,23 +32,33 @@ export default function SelfEvicted() {
 
   useEffect(() => {
     if (isGuest || !activeProfileId) return;
+    // Self-eviction is terminal for this run. Clearing persistence immediately
+    // also changes the autosave revision, so any queued pre-eviction snapshot
+    // is rejected instead of recreating a Continue entry later.
     clearSavedRun(activeProfileId, currentRunSlot);
     clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
   }, [activeProfileId, currentRunSlot, isGuest]);
 
-  function startNewSeason() {
-    // Clear any stale mid-season snapshot so the Play prompt won't offer to
-    // resume an outdated save after a self-eviction.
-    if (!isGuest && activeProfileId) {
-      clearSavedRun(activeProfileId, currentRunSlot);
-      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
-    }
-    dispatch(resetGame());
+  function clearSelfEvictedRun() {
+    if (isGuest || !activeProfileId) return;
+    clearSavedRun(activeProfileId, currentRunSlot);
+    clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
+  }
+
+  function resetRuntimeAndReturnHome() {
+    void SoundManager.fadeOutMusic(HOME_MUSIC_FADE_MS);
+    withRunAutosaveSuspended(() => dispatch(resetGame()));
     navigate('/');
   }
 
+  function startNewSeason() {
+    clearSelfEvictedRun();
+    resetRuntimeAndReturnHome();
+  }
+
   function exitToHome() {
-    navigate('/');
+    clearSelfEvictedRun();
+    resetRuntimeAndReturnHome();
   }
 
   return (
