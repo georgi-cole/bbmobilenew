@@ -13,9 +13,14 @@ const INTRO_HUB_FADE_MS = 260
 
 let introHubAudio: HTMLAudioElement | null = null
 let introHubFadeGeneration = 0
+let introHubReturnPrimed = false
 
 function isIntroHubHash(hash: string): boolean {
   return hash === '' || hash === '#' || hash === '#/'
+}
+
+function isCreditsHash(hash: string): boolean {
+  return /^#\/credits(?:[/?#]|$)/.test(hash)
 }
 
 function isSelfEvictedHash(hash: string): boolean {
@@ -44,10 +49,33 @@ function ensureIntroHubAudio(musicVolume: number): HTMLAudioElement {
 
 function pauseIntroHubLoop(): void {
   cancelIntroHubFade()
+  introHubReturnPrimed = false
   introHubAudio?.pause()
   // #1375/#1376 used SoundManager.play(), which put this loop in the SFX pool.
   // Stop any legacy pooled copy so a stale duplicate can never survive mute.
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
+}
+
+function primeIntroHubReturnFromGesture(musicVolume: number): void {
+  cancelIntroHubFade()
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
+
+  const el = ensureIntroHubAudio(musicVolume)
+  try {
+    el.currentTime = 0
+  } catch {
+    // Some WebViews reject currentTime while media state is settling.
+  }
+
+  // Credits navigates home only after its exit fade, which is too late for
+  // Safari/iOS's transient user-activation window. Start the singleton hub
+  // element muted during the actual Skip/Escape gesture, then unmute/reset it
+  // when the Intro Hub route becomes active again.
+  el.muted = true
+  introHubReturnPrimed = true
+  void el.play().catch(() => {
+    introHubReturnPrimed = false
+  })
 }
 
 function startIntroHubLoop(musicVolume: number): void {
@@ -59,6 +87,19 @@ function startIntroHubLoop(musicVolume: number): void {
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 
   const el = ensureIntroHubAudio(musicVolume)
+  if (introHubReturnPrimed) {
+    introHubReturnPrimed = false
+    try {
+      el.currentTime = 0
+    } catch {
+      // Some WebViews reject currentTime while media state is settling.
+    }
+    el.muted = false
+    if (!el.paused) return
+  } else {
+    el.muted = false
+  }
+
   if (!el.paused) return
 
   // Keep play() in the user-activation call stack when this runs from the
@@ -68,11 +109,13 @@ function startIntroHubLoop(musicVolume: number): void {
 
 function resetIntroHubLoop(): void {
   cancelIntroHubFade()
+  introHubReturnPrimed = false
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 
   const el = introHubAudio
   if (!el) return
   el.pause()
+  el.muted = false
   try {
     el.currentTime = 0
   } catch {
@@ -118,6 +161,16 @@ function isHubAudioTakeoverControl(target: EventTarget | null): boolean {
   return label.includes('credits') || label.includes('housemates') || label.includes('hubmates')
 }
 
+function isCreditsExitControl(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  const control = target.closest('button, a')
+  if (!control) return false
+  const label = `${control.getAttribute('aria-label') ?? ''} ${control.textContent ?? ''}`
+    .trim()
+    .toLowerCase()
+  return control.classList.contains('credits-exit') || label.includes('skip credits')
+}
+
 /**
  * Owns the two long-form loops that are tied to route/overlay visibility rather
  * than a normal gameplay phase.
@@ -161,6 +214,29 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       SoundManager.stop(PLAYER_EVICTION_LOOP_KEY)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isCreditsHash(hash) || !musicOn) return undefined
+
+    const handleCreditsReturnClick = (event: Event) => {
+      if (!isCreditsExitControl(event.target)) return
+      primeIntroHubReturnFromGesture(musicVolume)
+    }
+    const handleCreditsReturnKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      primeIntroHubReturnFromGesture(musicVolume)
+    }
+
+    // Credits waits for its 420ms exit fade before navigating home. Prime the
+    // dedicated hub element during the actual exit gesture so returning home
+    // does not depend on a fresh tap to satisfy mobile autoplay policy.
+    document.addEventListener('click', handleCreditsReturnClick, true)
+    document.addEventListener('keydown', handleCreditsReturnKey, true)
+    return () => {
+      document.removeEventListener('click', handleCreditsReturnClick, true)
+      document.removeEventListener('keydown', handleCreditsReturnKey, true)
+    }
+  }, [hash, musicOn, musicVolume])
 
   useEffect(() => {
     if (!introHubActive) return undefined
