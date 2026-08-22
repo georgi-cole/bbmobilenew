@@ -11,6 +11,7 @@ const INTRO_HUB_AUDIO_PATH = '/assets/sounds/cinematic/Intro_hub_loop.mp3'
 const INTRO_HUB_VOLUME = 0.55
 const INTRO_HUB_FADE_MS = 260
 
+let introHubAudio: HTMLAudioElement | null = null
 let introHubFadeGeneration = 0
 
 function isIntroHubHash(hash: string): boolean {
@@ -25,75 +26,86 @@ function isHumanEviction(humanId: string | null, overlayId: string | null): bool
   return humanId != null && overlayId === humanId
 }
 
-function getIntroHubAudioElements(): HTMLAudioElement[] {
-  return Array.from(document.querySelectorAll<HTMLAudioElement>('audio')).filter((el) => {
-    const src = el.currentSrc || el.src
-    if (!src) return false
-
-    try {
-      return new URL(src, window.location.href).pathname.endsWith(INTRO_HUB_AUDIO_PATH)
-    } catch {
-      return src.includes('Intro_hub_loop.mp3')
-    }
-  })
-}
-
 function cancelIntroHubFade(): void {
   introHubFadeGeneration += 1
 }
 
-function pauseIntroHubLoop(): void {
-  cancelIntroHubFade()
-  for (const el of getIntroHubAudioElements()) el.pause()
+function ensureIntroHubAudio(musicVolume: number): HTMLAudioElement {
+  if (!introHubAudio) {
+    introHubAudio = document.createElement('audio')
+    introHubAudio.src = `${BASE}${INTRO_HUB_AUDIO_PATH}`
+    introHubAudio.loop = true
+    introHubAudio.preload = 'none'
+  }
+
+  introHubAudio.volume = Math.max(0, Math.min(1, INTRO_HUB_VOLUME * musicVolume))
+  return introHubAudio
 }
 
-function resumeIntroHubLoop(musicVolume: number): boolean {
+function pauseIntroHubLoop(): void {
   cancelIntroHubFade()
-  const el = getIntroHubAudioElements().find((candidate) => candidate.currentTime > 0)
-  if (!el) return false
-
-  el.volume = Math.max(0, Math.min(1, INTRO_HUB_VOLUME * musicVolume))
-  if (el.paused) void el.play().catch(() => undefined)
-  return true
+  introHubAudio?.pause()
+  // #1375/#1376 used SoundManager.play(), which put this loop in the SFX pool.
+  // Stop any legacy pooled copy so a stale duplicate can never survive mute.
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
 }
 
 function startIntroHubLoop(musicVolume: number): void {
-  if (resumeIntroHubLoop(musicVolume)) return
+  cancelIntroHubFade()
 
-  // Keep this play request synchronous. Safari/iOS and some WebViews only
-  // allow media playback during the transient user-activation call stack.
+  // The hub is outside gameplay. Clear central gameplay BGM and any legacy
+  // pooled Intro Hub copy before touching the one dedicated hub element.
   SoundManager.stopAllMusic()
-  void SoundManager.play(INTRO_HUB_LOOP_KEY, {
-    volume: INTRO_HUB_VOLUME * musicVolume,
-  })
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
+
+  const el = ensureIntroHubAudio(musicVolume)
+  if (!el.paused) return
+
+  // Keep play() in the user-activation call stack when this runs from the
+  // pointer/key retry below. Safari/iOS can reject delayed media playback.
+  void el.play().catch(() => undefined)
+}
+
+function resetIntroHubLoop(): void {
+  cancelIntroHubFade()
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
+
+  const el = introHubAudio
+  if (!el) return
+  el.pause()
+  try {
+    el.currentTime = 0
+  } catch {
+    // Some WebViews reject currentTime while media state is settling.
+  }
 }
 
 function fadeOutAndResetIntroHubLoop(durationMs = INTRO_HUB_FADE_MS): void {
-  const elements = getIntroHubAudioElements().filter((el) => !el.paused)
-  if (elements.length === 0 || durationMs <= 0) {
-    cancelIntroHubFade()
-    SoundManager.stop(INTRO_HUB_LOOP_KEY)
+  // Always clean up the old pooled path as well as the dedicated element.
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
+
+  const el = introHubAudio
+  if (!el || el.paused || durationMs <= 0) {
+    resetIntroHubLoop()
     return
   }
 
   const generation = ++introHubFadeGeneration
   const startedAt = performance.now()
-  const startVolumes = elements.map((el) => el.volume)
+  const startVolume = el.volume
 
   const tick = (now: number) => {
     if (generation !== introHubFadeGeneration) return
 
     const progress = Math.min(1, (now - startedAt) / durationMs)
-    elements.forEach((el, index) => {
-      el.volume = Math.max(0, startVolumes[index]! * (1 - progress))
-    })
+    el.volume = Math.max(0, startVolume * (1 - progress))
 
     if (progress < 1) {
       window.requestAnimationFrame(tick)
       return
     }
 
-    SoundManager.stop(INTRO_HUB_LOOP_KEY)
+    resetIntroHubLoop()
   }
 
   window.requestAnimationFrame(tick)
@@ -110,10 +122,10 @@ function isHubAudioTakeoverControl(target: EventTarget | null): boolean {
  * Owns the two long-form loops that are tied to route/overlay visibility rather
  * than a normal gameplay phase.
  *
- * The Intro Hub loop pauses in-place for the user's music toggle, but fades and
- * resets when another hub-owned soundtrack takes over. That makes mute/unmute
- * behave like a true pause/resume while returning from Credits or Hubmates feels
- * like re-entering the hub.
+ * Intro Hub deliberately uses one dedicated HTMLAudioElement instead of the
+ * generic SoundManager.play() pool. A looping background bed must be singleton:
+ * mute/unmute pauses/resumes that exact element, while route/cinematic takeover
+ * fades and resets it before the next owner starts.
  */
 export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   const musicOn = useSelector((state: RootState) => state.settings.audio.musicOn)
@@ -132,14 +144,8 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     isSelfEvictedHash(hash) || isHumanEviction(humanPlayerId, evictionOverlayPlayerId)
 
   useEffect(() => {
-    SoundManager.registerDynamic({
-      key: INTRO_HUB_LOOP_KEY,
-      category: 'music',
-      src: `${BASE}${INTRO_HUB_AUDIO_PATH}`,
-      preload: false,
-      volume: INTRO_HUB_VOLUME,
-      loop: true,
-    })
+    // Clean up any pooled Intro Hub instance left by the pre-hotfix implementation.
+    SoundManager.stop(INTRO_HUB_LOOP_KEY)
     SoundManager.registerDynamic({
       key: PLAYER_EVICTION_LOOP_KEY,
       category: 'player',
@@ -150,8 +156,8 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     })
 
     return () => {
-      cancelIntroHubFade()
-      SoundManager.stop(INTRO_HUB_LOOP_KEY)
+      resetIntroHubLoop()
+      introHubAudio = null
       SoundManager.stop(PLAYER_EVICTION_LOOP_KEY)
     }
   }, [])
