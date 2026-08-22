@@ -9,6 +9,7 @@ export interface StoreEntitlements {
   dramaMode: boolean
   cupidArrow: boolean
   voxPopuli: boolean
+  premiumChallenges: boolean
   noAds: boolean
 }
 
@@ -26,6 +27,7 @@ export function createEmptyStoreEntitlements(): StoreEntitlements {
     dramaMode: false,
     cupidArrow: false,
     voxPopuli: false,
+    premiumChallenges: false,
     noAds: false,
   }
 }
@@ -40,6 +42,7 @@ function normalizeEntitlements(raw: unknown): StoreEntitlements {
     dramaMode: value.dramaMode === true,
     cupidArrow: value.cupidArrow === true,
     voxPopuli: value.voxPopuli === true,
+    premiumChallenges: value.premiumChallenges === true,
     noAds: value.noAds === true,
   }
 }
