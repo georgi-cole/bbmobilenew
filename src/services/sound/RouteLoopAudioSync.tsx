@@ -11,12 +11,33 @@ const INTRO_HUB_AUDIO_PATH = '/assets/sounds/cinematic/Intro_hub_loop.mp3'
 const INTRO_HUB_VOLUME = 0.55
 const INTRO_HUB_FADE_MS = 260
 
+const INTRO_HUB_AUDIO_PATHS = new Set([
+  '/',
+  '/rules',
+  '/vox-populi-rules',
+  '/profile',
+  '/profile-edit',
+  '/profile-picker',
+  '/leaderboard',
+  '/settings',
+  '/store',
+  '/legal',
+  '/public-meter',
+])
+
 let introHubAudio: HTMLAudioElement | null = null
 let introHubFadeGeneration = 0
 let introHubGameplayExitPending = false
 
-function isIntroHubHash(hash: string): boolean {
-  return hash === '' || hash === '#' || hash === '#/'
+function normalizedHashPath(hash: string): string {
+  const withoutHash = hash.startsWith('#') ? hash.slice(1) : hash
+  const path = withoutHash.split(/[?#]/, 1)[0] || '/'
+  if (path === '/') return '/'
+  return path.replace(/\/+$/, '') || '/'
+}
+
+function isIntroHubAudioHash(hash: string): boolean {
+  return INTRO_HUB_AUDIO_PATHS.has(normalizedHashPath(hash))
 }
 
 function isCreditsHash(hash: string): boolean {
@@ -71,9 +92,9 @@ function resetIntroHubLoop(): void {
 }
 
 /**
- * Called by HomeHub when gameplay is actually being entered or resumed.
- * New-game preloading still uses the Intro Hub URL for a short time, so route
- * checks alone cannot distinguish that transition from an active Home Hub.
+ * Called when gameplay is actually being entered or resumed.
+ * New-game preloading still uses an Intro Hub-family URL for a short time, so
+ * route checks alone cannot distinguish that transition from normal hub use.
  */
 export function stopIntroHubAudioForGameplayExit(): void {
   introHubGameplayExitPending = true
@@ -96,7 +117,7 @@ function primeIntroHubPermissionFromCreditsGesture(musicVolume: number): void {
   void el
     .play()
     .then(() => {
-      if (!isIntroHubHash(window.location.hash)) {
+      if (!isIntroHubAudioHash(window.location.hash)) {
         el.pause()
         try {
           el.currentTime = 0
@@ -112,12 +133,12 @@ function primeIntroHubPermissionFromCreditsGesture(musicVolume: number): void {
 }
 
 function startIntroHubLoop(musicVolume: number): void {
-  // Hard ownership invariant: this soundtrack can only start while the live
-  // browser route is the Intro Hub, never from stale React state or a late
-  // gesture callback. Gameplay preloading is also explicitly excluded.
+  // Intro Hub music owns the whole hub utility family, but never gameplay or
+  // a screen/cinematic that owns its own audio. A late gesture callback must
+  // re-check the live route instead of trusting stale React state.
   if (
     introHubGameplayExitPending ||
-    !isIntroHubHash(window.location.hash) ||
+    !isIntroHubAudioHash(window.location.hash) ||
     document.querySelector('.hbc') != null
   ) {
     resetIntroHubLoop()
@@ -126,8 +147,8 @@ function startIntroHubLoop(musicVolume: number): void {
 
   cancelIntroHubFade()
 
-  // The hub is outside gameplay. Clear central gameplay BGM and any legacy
-  // pooled Intro Hub copy before touching the one dedicated hub element.
+  // Hub-family screens are outside gameplay. Clear central gameplay BGM and
+  // any legacy pooled Intro Hub copy before touching the dedicated singleton.
   SoundManager.stopAllMusic()
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 
@@ -186,14 +207,16 @@ function isCreditsExitControl(target: EventTarget | null): boolean {
 }
 
 /**
- * Owns the two long-form loops that are tied to route/overlay visibility rather
- * than a normal gameplay phase.
+ * Owns long-form loops tied to route/overlay visibility rather than a normal
+ * gameplay phase.
  *
  * Intro Hub deliberately uses one dedicated HTMLAudioElement instead of the
- * generic SoundManager.play() pool. The invariant is strict: that element may
- * play only while the live route is the Intro Hub and Hubmates is not covering
- * it. Every other route/flow hard-stops and resets it. Returning home starts the
- * same singleton fresh; the music toggle pauses/resumes it in-place.
+ * generic SoundManager.play() pool. That singleton belongs to the whole Intro
+ * Hub utility family (Home, Rules, Profile, Leaderboard, Settings, Store, etc.)
+ * and keeps playing continuously while navigating among those screens. Credits,
+ * Hubmates and gameplay take audio ownership, so they stop/reset it. Returning
+ * from one of those owners starts the singleton fresh once. The music toggle
+ * pauses/resumes the same instance in place.
  */
 export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   const musicOn = useSelector((state: RootState) => state.settings.audio.musicOn)
@@ -207,7 +230,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   )
   const [introHubSuppressed, setIntroHubSuppressed] = useState(false)
 
-  const introHubActive = isIntroHubHash(hash)
+  const introHubAudioEligible = isIntroHubAudioHash(hash)
   const playerEvictionActive =
     isSelfEvictedHash(hash) || isHumanEviction(humanPlayerId, evictionOverlayPlayerId)
 
@@ -223,8 +246,9 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     })
 
     const enforceLiveRouteOwnership = () => {
-      if (isIntroHubHash(window.location.hash)) {
-        // A real navigation back to Home ends any gameplay-exit suppression.
+      if (isIntroHubAudioHash(window.location.hash)) {
+        // Entering any normal hub-family screen ends gameplay-exit suppression.
+        // Navigation within the family leaves the same audio instance untouched.
         introHubGameplayExitPending = false
         return
       }
@@ -264,7 +288,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   }, [hash, musicOn, musicVolume])
 
   useEffect(() => {
-    if (!introHubActive) return undefined
+    if (!introHubAudioEligible) return undefined
 
     const handleTakeoverClick = (event: Event) => {
       if (!isHubAudioTakeoverControl(event.target)) return
@@ -273,10 +297,10 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
 
     document.addEventListener('click', handleTakeoverClick, true)
     return () => document.removeEventListener('click', handleTakeoverClick, true)
-  }, [introHubActive])
+  }, [introHubAudioEligible])
 
   useEffect(() => {
-    if (!introHubActive) return undefined
+    if (!introHubAudioEligible) return undefined
 
     const syncHubmatesSuppression = () => {
       const suppressed = document.querySelector('.hbc') != null
@@ -288,10 +312,10 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     const observer = new MutationObserver(syncHubmatesSuppression)
     observer.observe(document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
-  }, [introHubActive])
+  }, [introHubAudioEligible])
 
   useEffect(() => {
-    if (!introHubActive || playerEvictionActive || introHubSuppressed) {
+    if (!introHubAudioEligible || playerEvictionActive || introHubSuppressed) {
       resetIntroHubLoop()
       return
     }
@@ -314,7 +338,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       document.removeEventListener('click', startAfterGesture)
       document.removeEventListener('keydown', startAfterGesture)
     }
-  }, [introHubActive, introHubSuppressed, musicOn, musicVolume, playerEvictionActive])
+  }, [introHubAudioEligible, introHubSuppressed, musicOn, musicVolume, playerEvictionActive])
 
   useEffect(() => {
     if (playerEvictionActive && sfxOn) {
