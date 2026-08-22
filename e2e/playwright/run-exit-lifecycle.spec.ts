@@ -47,29 +47,29 @@ async function startClassicSeason(page: Page): Promise<void> {
 }
 
 async function advanceToAutosavableProgress(page: Page): Promise<void> {
+  const phaseInfo = page.getByRole('dialog', { name: /^Phase info:/ })
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true })
+  const advanceButton = page.getByRole('button', { name: 'Advance to next phase' })
+
   for (let step = 0; step < 6; step += 1) {
-    const phase = (await readAppState(page)).game.phase
+    const { phase } = (await readAppState(page)).game
     if (phase !== 'season_start' && phase !== 'week_start') return
 
-    const phaseInformation = page.getByRole('dialog', { name: /^Phase info:/ })
-    if (await phaseInformation.isVisible()) {
-      await phaseInformation.getByRole('button', { name: 'Close' }).click()
-      await expect(phaseInformation).toBeHidden()
+    if (await phaseInfo.isVisible()) {
+      await phaseInfo.getByRole('button', { name: 'Close' }).click()
+      await expect(phaseInfo).toBeHidden()
     }
 
-    const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
-    if (await optionalContinue.isVisible()) {
-      await optionalContinue.click()
-      continue
+    if (await continueButton.isVisible()) {
+      await continueButton.click()
+    } else {
+      await expect(advanceButton).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+      await expect(advanceButton).toBeEnabled()
+      await advanceButton.click()
     }
-
-    const advance = page.getByRole('button', { name: 'Advance to next phase' })
-    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-    await expect(advance).toBeEnabled()
-    await advance.click()
   }
 
-  throw new Error('Could not reach gameplay progress that is eligible for autosave.')
+  throw new Error('Autosavable gameplay progress was not reachable.')
 }
 
 test.describe('Run exit lifecycle', () => {
@@ -82,8 +82,7 @@ test.describe('Run exit lifecycle', () => {
     await startClassicSeason(page)
 
     // Season/week start are intentionally not durable checkpoints. Follow the
-    // same player-facing phase flow as the core journeys until gameplay becomes
-    // eligible for autosave, without ever pressing Save manually.
+    // player-facing phase flow until progress is eligible for background autosave.
     await advanceToAutosavableProgress(page)
 
     await expect
