@@ -5,11 +5,17 @@
  * real tile DOMRects.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-.ceremony-overlay {
+.ceremony-overlay-surface {
   position: fixed;
   inset: 0;
   z-index: 8700;
   pointer-events: none;
+  overflow: visible;
+}
+
+.ceremony-overlay {
+  position: absolute;
+  inset: 0;
   opacity: 0;
   transition: opacity 0.35s ease;
 }
@@ -35,7 +41,7 @@
 
 /* ── Animated badge ─────────────────────────────────────────────────────────── */
 .ceremony-overlay__badge {
-  position: fixed;
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -193,7 +199,7 @@
 
 /* ── Tile highlight glow (placed over cutout area) ─────────────────────────── */
 .ceremony-overlay__glow {
-  position: fixed;
+  position: absolute;
   border-radius: 10px;
   pointer-events: none;
   z-index: 8700;
@@ -238,7 +244,7 @@
 
 /* ── Optional tile label pills ─────────────────────────────────────────────── */
 .ceremony-overlay__tile-label {
-  position: fixed;
+  position: absolute;
   transform: translateX(-50%);
   z-index: 8702;
   pointer-events: none;
@@ -265,7 +271,7 @@
 
 /* ── Caption label ──────────────────────────────────────────────────────────── */
 .ceremony-overlay__caption {
-  position: fixed;
+  position: absolute;
   left: 50%;
   transform: translateX(-50%);
   z-index: 8702;

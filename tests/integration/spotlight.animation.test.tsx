@@ -245,6 +245,9 @@ describe('GameScreen – CeremonyOverlay defers LOH/POS store mutations', () => 
 
     // Simulate minigame completion.
     await act(async () => { capturedMinigameOnDone!(100); });
+    // SpotlightAnimation samples the restored roster for up to 24 frames before
+    // accepting an empty-geometry fallback.
+    await act(async () => { vi.advanceTimersByTime(500); });
 
     // Zero DOMRect → no animation → phase transitions immediately.
     expect(store.getState().game.phase).toBe('loh_results');
@@ -268,6 +271,8 @@ describe('GameScreen – CeremonyOverlay defers LOH/POS store mutations', () => 
 
     // Trigger minigame done.
     await act(async () => { capturedMinigameOnDone!(100); });
+    // Allow the first post-minigame roster measurement frame to run.
+    await act(async () => { vi.advanceTimersByTime(20); });
 
     // Valid DOMRect → CeremonyOverlay is showing → phase NOT yet committed.
     expect(store.getState().game.phase).toBe('loh_comp');
