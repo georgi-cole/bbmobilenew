@@ -102,6 +102,15 @@ function IconArtwork({ name }: { name: StoreProductIconName }) {
           <path d="M14 29V19h5l3 10m-7-4h6m6-6h4c4 0 6 2 6 5s-2 5-6 5h-4V19ZM8 41 40 7" />
         </>
       )
+    case 'premiumChallenges':
+      return (
+        <>
+          <path className="store-product-icon__surface" d="M7 39V18L24 7l17 11v21H7Z" />
+          <path d="M7 39V18L24 7l17 11v21H7ZM15 39V24h18v15M19 15h10M24 10v10" />
+          <circle className="store-product-icon__core" cx="18" cy="29" r="2.5" />
+          <circle className="store-product-icon__core" cx="30" cy="29" r="2.5" />
+        </>
+      )
     default:
       return (
         <>

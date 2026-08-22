@@ -12,6 +12,9 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry'
+import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
+import { store } from '../../store/store'
+import { selectHasPremiumChallengesAccess } from '../../store/vipSlice'
 import MinigameRules from '../MinigameRules/MinigameRules'
 import MinigameUtilityDock from '../MinigameUtilityDock/MinigameUtilityDock'
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper'
@@ -137,6 +140,10 @@ export default function MinigameHost({
   participants,
   competitionRetry,
 }: Props) {
+  const hasPremiumChallengesAccess = selectHasPremiumChallengesAccess(store.getState())
+  const launchedGame = useMemo(() => {
+    return resolvePremiumGameForAccess(game, hasPremiumChallengesAccess)
+  }, [game, hasPremiumChallengesAccess])
   const [phase, setPhase] = useState<HostPhase>(skipRules ? 'countdown' : 'rules')
   const [utilityView, setUtilityView] = useState<UtilityView>(null)
   const [countdown, setCountdown] = useState(3)
@@ -163,17 +170,18 @@ export default function MinigameHost({
     [onDone]
   )
 
-  const rankingOnly = isPlacementRankingGame(game)
+  const rankingOnly = isPlacementRankingGame(launchedGame)
   const competitionRetryEnabled = competitionRetry?.enabled ?? false
   const rulesGame = useMemo(
     () =>
-      game.key === 'glass_bridge_brutal'
-        ? {
-            ...game,
-            timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length),
-          }
-        : game,
-    [game, participants]
+      (() => {
+        const override = store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
+        const resolved = override ? { ...launchedGame, ...override } : launchedGame
+        return resolved.key === 'glass_bridge_brutal'
+          ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
+          : resolved
+      })(),
+    [launchedGame, participants]
   )
 
   useEffect(() => {
@@ -624,11 +632,11 @@ export default function MinigameHost({
       )
     }
 
-    if (game.implementation === 'react') {
-      const key = game.reactComponentKey
+    if (launchedGame.implementation === 'react') {
+      const key = launchedGame.reactComponentKey
       if (!key) {
         throw new Error(
-          `[MinigameHost] game '${game.key}' has implementation 'react' but no reactComponentKey defined. ` +
+          `[MinigameHost] game '${launchedGame.key}' has implementation 'react' but no reactComponentKey defined. ` +
             `React-implemented games must define reactComponentKey.`
         )
       }
@@ -679,7 +687,7 @@ export default function MinigameHost({
       className="minigame-host"
       role="dialog"
       aria-modal="true"
-      aria-label={`${game.title} minigame`}
+      aria-label={`${launchedGame.title} minigame`}
     >
       {phase !== 'results' && utilityView !== 'rules' && utilityView !== 'exit' && (
         <MinigameUtilityDock
@@ -703,7 +711,7 @@ export default function MinigameHost({
       {phase === 'countdown' && (
         <div className="minigame-host-ready">
           <span className="minigame-host-ready-label">Get Ready</span>
-          <span className="minigame-host-ready-game">{game.title}</span>
+          <span className="minigame-host-ready-game">{launchedGame.title}</span>
           {countdown > 0 ? (
             <span className="minigame-host-ready-count" key={countdown}>
               {countdown}

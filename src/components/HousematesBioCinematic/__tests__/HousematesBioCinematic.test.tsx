@@ -56,7 +56,7 @@ describe('Housemates archive', () => {
 
     const { createCinematicAudio } = await import('../../../services/sound/cinematicAudio');
     expect(createCinematicAudio).toHaveBeenCalledWith(
-      expect.stringContaining('/assets/sounds/HousematesBio.mp4'),
+      expect.stringContaining('/assets/sounds/cinematic/HousematesBio.mp4'),
       0.78,
       { loop: true },
     );

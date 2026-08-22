@@ -4,7 +4,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:all_3_seconds_timer",
     "category": "minigame",
-    "relativePath": "sounds/minigame_all_3_seconds_timer.mp3",
+    "relativePath": "sounds/minigames/minigame_all_3_seconds_timer.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -12,7 +12,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:cinematic_thunder",
     "category": "minigame",
-    "relativePath": "sounds/cinematic_thunder.wav",
+    "relativePath": "sounds/cinematic/cinematic_thunder.wav",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -20,7 +20,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:gb_death",
     "category": "minigame",
-    "relativePath": "sounds/minigame_gb_death.mp3",
+    "relativePath": "sounds/minigames/minigame_gb_death.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -28,7 +28,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:gb_new_turn",
     "category": "minigame",
-    "relativePath": "sounds/minigame_gb_new_turn.mp3",
+    "relativePath": "sounds/minigames/minigame_gb_new_turn.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -36,7 +36,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:gb_safe_step",
     "category": "minigame",
-    "relativePath": "sounds/minigame_gb_safe_step.mp3",
+    "relativePath": "sounds/minigames/minigame_gb_safe_step.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -44,7 +44,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:gb_winner",
     "category": "minigame",
-    "relativePath": "sounds/minigame_gb_winner.mp3",
+    "relativePath": "sounds/minigames/minigame_gb_winner.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -52,7 +52,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:move_into_me_alternative",
     "category": "minigame",
-    "relativePath": "sounds/move_into_me_alternative.mp3",
+    "relativePath": "sounds/minigames/move_into_me_alternative.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -60,7 +60,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:quicktap_booster",
     "category": "minigame",
-    "relativePath": "sounds/minigame_quicktap_booster.mp3",
+    "relativePath": "sounds/minigames/minigame_quicktap_booster.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -68,7 +68,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:quicktap_half_tap",
     "category": "minigame",
-    "relativePath": "sounds/minigame_quicktap_half_tap.mp3",
+    "relativePath": "sounds/minigames/minigame_quicktap_half_tap.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -76,7 +76,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:quicktap_tap",
     "category": "minigame",
-    "relativePath": "sounds/minigame_quicktap_tap.mp3",
+    "relativePath": "sounds/minigames/minigame_quicktap_tap.mp3",
     "preload": false,
     "volume": 0.8,
     "loop": false
@@ -84,7 +84,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:results",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_scoreboard.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_scoreboard.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -92,7 +92,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_666",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_666.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_666.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -100,7 +100,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_bad",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_bad.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_bad.mp3",
     "preload": false,
     "volume": 0.95,
     "loop": false
@@ -108,7 +108,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_bankrupt_or_skip",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_bankrupt_or_skip.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_bankrupt_or_skip.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -116,7 +116,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_good",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_good.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_good.mp3",
     "preload": false,
     "volume": 0.95,
     "loop": false
@@ -124,7 +124,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_scoreboard",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_scoreboard.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_scoreboard.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -132,7 +132,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_spin",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_spin.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_spin.mp3",
     "preload": false,
     "volume": 1,
     "loop": true
@@ -140,7 +140,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:risk_wheel_winner",
     "category": "minigame",
-    "relativePath": "sounds/minigame_risk_wheel_winner.mp3",
+    "relativePath": "sounds/minigames/minigame_risk_wheel_winner.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -148,7 +148,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:social_module_original",
     "category": "minigame",
-    "relativePath": "sounds/social_module_original.mp3",
+    "relativePath": "sounds/minigames/social_module_original.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -156,7 +156,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:start",
     "category": "minigame",
-    "relativePath": "sounds/minigame_all_3_seconds_timer.mp3",
+    "relativePath": "sounds/minigames/minigame_all_3_seconds_timer.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -164,7 +164,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "minigame:wildcard_winner",
     "category": "minigame",
-    "relativePath": "sounds/minigame_wildcard_winner.mp3",
+    "relativePath": "sounds/minigames/minigame_wildcard_winner.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -242,6 +242,34 @@ export const GENERATED_AUDIO_ASSETS = [
     "tags": [
       "ambient",
       "finale"
+    ]
+  },
+  {
+    "key": "music:move_into_me_confessional",
+    "category": "music",
+    "relativePath": "music/move into me confessional.mp3",
+    "preload": false,
+    "volume": 0.5,
+    "loop": true,
+    "trackId": "move_into_me_confessional",
+    "displayName": "Move Into Me Confessional",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
+    ]
+  },
+  {
+    "key": "music:move_into_me_instrumental_general",
+    "category": "music",
+    "relativePath": "music/move into me instrumental general.mp3",
+    "preload": false,
+    "volume": 0.5,
+    "loop": true,
+    "trackId": "move_into_me_instrumental_general",
+    "displayName": "Move Into Me Instrumental General",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
     ]
   },
   {
@@ -397,7 +425,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "player:evicted",
     "category": "player",
-    "relativePath": "sounds/player_evicted.mp3",
+    "relativePath": "sounds/events/player_evicted.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -405,7 +433,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "player:wildcard_eliminated",
     "category": "player",
-    "relativePath": "sounds/player_wildcard_eliminated.mp3",
+    "relativePath": "sounds/events/player_wildcard_eliminated.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -413,7 +441,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:battleback",
     "category": "tv",
-    "relativePath": "sounds/tv_battleback.mp3",
+    "relativePath": "sounds/tv/tv_battleback.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -421,7 +449,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:event",
     "category": "tv",
-    "relativePath": "sounds/tv_winner_reveal.mp3",
+    "relativePath": "sounds/tv/tv_winner_reveal.mp3",
     "preload": false,
     "volume": 0.8,
     "loop": false
@@ -429,7 +457,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:finale_winner_stinger",
     "category": "tv",
-    "relativePath": "sounds/tv_finale_winner_stinger.mp3",
+    "relativePath": "sounds/tv/tv_finale_winner_stinger.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -437,7 +465,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:live_vote",
     "category": "tv",
-    "relativePath": "sounds/tv_live_vote.mp3",
+    "relativePath": "sounds/tv/tv_live_vote.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -445,7 +473,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:public_favorite",
     "category": "tv",
-    "relativePath": "sounds/tv_winner_reveal.mp3",
+    "relativePath": "sounds/tv/tv_winner_reveal.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -453,7 +481,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:veto_ceremony",
     "category": "tv",
-    "relativePath": "sounds/tv_winner_reveal.mp3",
+    "relativePath": "sounds/tv/tv_winner_reveal.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -461,7 +489,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:voting_eviction",
     "category": "tv",
-    "relativePath": "sounds/tv_voting_eviction.mp3",
+    "relativePath": "sounds/tv/tv_voting_eviction.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -469,7 +497,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "tv:winner_reveal",
     "category": "tv",
-    "relativePath": "sounds/tv_winner_reveal.mp3",
+    "relativePath": "sounds/tv/tv_winner_reveal.mp3",
     "preload": false,
     "volume": 1,
     "loop": false
@@ -477,7 +505,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:confirm",
     "category": "ui",
-    "relativePath": "sounds/ui_confirm.mp3",
+    "relativePath": "sounds/ui/ui_confirm.mp3",
     "preload": false,
     "volume": 0.7,
     "loop": false
@@ -485,7 +513,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:error",
     "category": "ui",
-    "relativePath": "sounds/ui_navigate.mp3",
+    "relativePath": "sounds/ui/ui_navigate.mp3",
     "preload": false,
     "volume": 0.6,
     "loop": false
@@ -493,7 +521,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:jury_vote",
     "category": "ui",
-    "relativePath": "sounds/ui_jury_vote.mp3",
+    "relativePath": "sounds/ui/ui_jury_vote.mp3",
     "preload": false,
     "volume": 0.7,
     "loop": false
@@ -501,7 +529,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:navigate",
     "category": "ui",
-    "relativePath": "sounds/ui_navigate.mp3",
+    "relativePath": "sounds/ui/ui_navigate.mp3",
     "preload": false,
     "volume": 0.6,
     "loop": false
@@ -509,7 +537,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:risk_wheel_click",
     "category": "ui",
-    "relativePath": "sounds/ui_risk_wheel_click.mp3",
+    "relativePath": "sounds/ui/ui_risk_wheel_click.mp3",
     "preload": false,
     "volume": 0.7,
     "loop": false
@@ -517,7 +545,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:risk_wheel_stop_and_bank",
     "category": "ui",
-    "relativePath": "sounds/ui_risk_wheel_stop_and_bank.mp3",
+    "relativePath": "sounds/ui/ui_risk_wheel_stop_and_bank.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -525,7 +553,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:tribunal_vote_reveal",
     "category": "ui",
-    "relativePath": "sounds/ui_jury_vote.mp3",
+    "relativePath": "sounds/ui/ui_jury_vote.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -533,7 +561,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:western_new_round",
     "category": "ui",
-    "relativePath": "sounds/ui_western_new_round.mp3",
+    "relativePath": "sounds/ui/ui_western_new_round.mp3",
     "preload": false,
     "volume": 0.85,
     "loop": false
@@ -541,7 +569,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:wildcard_continue",
     "category": "ui",
-    "relativePath": "sounds/ui_wildcard_continue.mp3",
+    "relativePath": "sounds/ui/ui_wildcard_continue.mp3",
     "preload": false,
     "volume": 0.8,
     "loop": false
@@ -549,7 +577,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:wildcard_draw",
     "category": "ui",
-    "relativePath": "sounds/ui_wildcard_draw.mp3",
+    "relativePath": "sounds/ui/ui_wildcard_draw.mp3",
     "preload": false,
     "volume": 0.9,
     "loop": false
@@ -557,7 +585,7 @@ export const GENERATED_AUDIO_ASSETS = [
   {
     "key": "ui:wildcard_select",
     "category": "ui",
-    "relativePath": "sounds/ui_wildcard_select.mp3",
+    "relativePath": "sounds/ui/ui_wildcard_select.mp3",
     "preload": false,
     "volume": 0.8,
     "loop": false
@@ -570,6 +598,8 @@ export const GENERATED_MUSIC_TRACK_IDS = [
   "glass_bridge",
   "competition",
   "jury_voting",
+  "move_into_me_confessional",
+  "move_into_me_instrumental_general",
   "nominations_horror",
   "nominations",
   "public_voting",
@@ -626,6 +656,22 @@ export const GENERATED_MUSIC_TRACKS = {
     "tags": [
       "ambient",
       "finale"
+    ]
+  },
+  "move_into_me_confessional": {
+    "displayName": "Move Into Me Confessional",
+    "soundKey": "music:move_into_me_confessional",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
+    ]
+  },
+  "move_into_me_instrumental_general": {
+    "displayName": "Move Into Me Instrumental General",
+    "soundKey": "music:move_into_me_instrumental_general",
+    "fallbackTrack": "competition",
+    "tags": [
+      "ambient"
     ]
   },
   "nominations_horror": {

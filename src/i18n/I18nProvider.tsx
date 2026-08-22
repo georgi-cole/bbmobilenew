@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { FEATURE_LOCALIZATION_SETTINGS } from '../config/featureFlags'
 import { useAppSelector } from '../store/hooks'
 import { selectLanguagePreference } from '../store/settingsSlice'
 import { I18nContext, type I18nContextValue } from './I18nContext'
@@ -6,6 +7,7 @@ import {
   getSystemLanguageTags,
   resolveLanguagePreference,
   resolveSystemLanguage,
+  type LanguagePreference,
 } from './languages'
 import { translate, type TranslationKey, type TranslationParams } from './messages'
 
@@ -14,7 +16,8 @@ function readSystemLanguageTags(): readonly string[] {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const preference = useAppSelector(selectLanguagePreference)
+  const storedPreference = useAppSelector(selectLanguagePreference)
+  const preference: LanguagePreference = FEATURE_LOCALIZATION_SETTINGS ? storedPreference : 'en-US'
   const [systemLanguageTags, setSystemLanguageTags] =
     useState<readonly string[]>(readSystemLanguageTags)
 

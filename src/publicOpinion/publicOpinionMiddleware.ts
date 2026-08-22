@@ -378,6 +378,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       | {
           participants?: string[]
           canonicalScores?: Record<string, number>
+          ranking?: string[]
           winnerId?: string
           partial?: boolean
         }
@@ -392,9 +393,11 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       delta = publicOpinionConfig.competitionImpact.quitEarly
       reason = 'challenge_quit_early'
     } else {
-      const ranked = [...run.participants].sort(
-        (a, b) => (run.canonicalScores?.[b] ?? 0) - (run.canonicalScores?.[a] ?? 0)
-      )
+      const ranked =
+        run.ranking?.filter((playerId) => run.participants?.includes(playerId)) ??
+        [...run.participants].sort(
+          (a, b) => (run.canonicalScores?.[b] ?? 0) - (run.canonicalScores?.[a] ?? 0)
+        )
       const placement = ranked.indexOf(human.id) + 1
       if (placement === 1) {
         delta = publicOpinionConfig.competitionImpact.strongPerformance

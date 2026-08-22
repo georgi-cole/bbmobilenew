@@ -3,6 +3,7 @@ import type { SurvivorModeState } from './modeTypes';
 import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition';
 import { createInitialGameState } from '../store/gameSlice';
 import { createInitialVoxPopuliState } from '../features/twists/voxPopuli';
+import { getBroadcastTemplate, getDefaultBroadcastOrder, renderBroadcastTemplate } from '../broadcasting/broadcastTemplateCatalog';
 
 const ROBO_NAMES = [
   'Lira', 'Kang', 'Sora', 'Mako', 'Venn', 'Rika', 'Nexo', 'Zari', 'Kiro', 'Tavi',
@@ -25,6 +26,13 @@ function robotAvatar(seed: string): string {
 
 function isPlayerExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
+}
+
+export function managedSurvivalEvent(id: string, templateId: string, variables: string[], timestamp: number, phase: GameState['phase'], week = 1): TvEvent {
+  const template = getBroadcastTemplate(templateId);
+  if (!template) throw new Error(`Missing Broadcast Manager template: ${templateId}`);
+  const text = renderBroadcastTemplate(template.text, variables);
+  return { id, text, type: template.type, timestamp, ...(template.major ? { major: template.major } : {}), meta: { phase, week, mode: 'survival', broadcastCampaign: 'survival', broadcastTemplateId: templateId, broadcastVariables: variables, broadcastOrder: getDefaultBroadcastOrder(template), broadcastLevel: template.level, broadcastManaged: true, ...(template.forceOnTv ? { forceOnTv: true } : {}), ...(template.major ? { major: template.major } : {}), ...(template.level === 'critical' ? { broadcastPriority: 'critical' } : {}), ...(template.level !== 'minor' ? { announcementSubtitle: text } : {}) } };
 }
 
 function getSurvivorModeState(state: GameState): SurvivorModeState {
@@ -56,13 +64,8 @@ export function terminalizeSurvivorRun(state: GameState): GameState {
   const currentDay = getSurvivorCurrentDay(state);
   const eventId = `survivor-failed-${state.runId ?? state.gameId}-${currentDay}`;
   const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId);
-  const gameOverEvent: TvEvent = {
-    id: eventId,
-    text: `Surveyeval run ended. You were eliminated on Day ${currentDay}.`,
-    type: 'game',
-    timestamp: Date.now(),
-    meta: { phase: state.phase, week: state.week, mode: 'survival' },
-  };
+  const gameOverEvent = managedSurvivalEvent(eventId, 'survival.run-ended', [String(currentDay)], Date.now(), state.phase);
+  gameOverEvent.meta = { ...gameOverEvent.meta, week: state.week };
 
   return {
     ...state,
@@ -156,6 +159,8 @@ export function createSurvivorRun(): GameState {
     saveVersion: SAVE_VERSION,
     season: 1,
     week: 1,
+    // Surveyeval has its own opening feed and begins directly on Day 1.
+    phase: 'week_start',
     publicModeEnabled: false,
     cupidArrow: {
       scheduledSeason: null,
@@ -177,20 +182,8 @@ export function createSurvivorRun(): GameState {
     competitionSeasonStateByPlayerId: buildCompetitionState(players),
     modeSpecific,
     tvFeed: [
-      {
-        id: 'survivor-e0',
-        text: 'Surveyeval Mode online. Eight contestants enter; synthetic replacements keep the board full after every robo eviction.',
-        type: 'game',
-        timestamp: now,
-        meta: { phase: 'week_start', week: 1, mode: 'survival' },
-      },
-      {
-        id: 'survivor-e1',
-        text: '[Rules] Public mode: OFF | Social mode: OFF | Endless days: ON | Double Elimination: possible',
-        type: 'game',
-        timestamp: now,
-        meta: { phase: 'week_start', week: 1, mode: 'survival' },
-      },
+      managedSurvivalEvent('survivor-e0', 'survival.opening', [], now, 'week_start'),
+      managedSurvivalEvent('survivor-e1', 'survival.rules', [], now + 1, 'week_start'),
     ],
   };
 }

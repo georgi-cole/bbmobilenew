@@ -55,9 +55,9 @@
  * │    ├─ glass_bridge_brutal / crystal_path_shattered  Glass Bridge         │
  * │    ├─ quickTap / laneRacers / memoryMatch           Quick Tap family     │
  * │    └─ wildcardWestern                               Wildcard Western     │
- * │  live_vote           Live eviction vote              (stinger only)      │
- * │  eviction_results    Eviction cinematic              (stinger only)      │
- * │  week_end            Week wrap-up — no music                             │
+ * │  live_vote           Live eviction vote       (Safety music ducked)      │
+ * │  eviction_results    Eviction cinematic       (Safety music ducked)      │
+ * │  week_end            Week wrap-up              (Safety music resumes)     │
  * │  final4_eviction     Final 4 POS holder sole vote                        │
  * │  final3_comp*        Final 3 competition minigames (week_end after)      │
  * └───────────────────────────────────────────────────────────────────────────┘
@@ -102,9 +102,9 @@
  *     'playing' the resolver returns the minigame-specific track regardless of
  *     the game phase.  When the minigame ends the resolver falls through to the
  *     parent phase track.
- *  G. SOCIAL AUDIO OVERRIDES PHASE MUSIC — while social.panelOpen or
- *     social.incomingInboxOpen the social track plays, then the phase track
- *     resumes when the panel closes.
+ *  G. SOCIAL AUDIO IS A SILENCE FALLBACK — opening social.panelOpen or
+ *     social.incomingInboxOpen preserves an active phase track. The social
+ *     theme starts only when the underlying phase has no music.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * SFX (ONE-SHOT SOUNDS) — handled by soundMiddleware.ts, NOT this module
@@ -125,7 +125,7 @@
  *    loh_comp / pos_comp (start)   → minigame:start
  */
 
-import type { MusicTrack } from './musicTracks';
+import type { MusicTrack } from './musicTracks'
 
 // ─── Phase type ───────────────────────────────────────────────────────────────
 
@@ -219,7 +219,7 @@ export type AppAudioPhase =
    */
   | 'public_voting'
   /** Season fully complete; game-over screen uses the final modal cue. */
-  | 'season_complete';
+  | 'season_complete'
 
 // ─── Phase → MusicTrack map ───────────────────────────────────────────────────
 
@@ -235,41 +235,41 @@ export type AppAudioPhase =
  */
 export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> = {
   // Intro flow
-  splash:                  'none',
-  intro_hub:               'none',
-  intro_hub_rules:         'none',
-  intro_hub_profile:       'none',
-  intro_hub_houseguests:   'none',
+  splash: 'none',
+  intro_hub: 'none',
+  intro_hub_rules: 'none',
+  intro_hub_profile: 'none',
+  intro_hub_houseguests: 'none',
 
   // Gameplay flow — competition
-  week_start:              'none',
-  loh_comp:                'competition',
-  loh_results:             'competition',
-  nominations:             'nominations',
-  nomination_results:      'nominations',
-  pre_veto_public_save:    'nominations',
-  pos_comp:                'competition',
-  pos_results:             'competition',
-  pos_ceremony:            'veto',
-  pos_ceremony_results:    'veto',
+  week_start: 'none',
+  loh_comp: 'competition',
+  loh_results: 'competition',
+  nominations: 'nominations',
+  nomination_results: 'nominations',
+  pre_veto_public_save: 'nominations',
+  pos_comp: 'competition',
+  pos_results: 'competition',
+  pos_ceremony: 'veto',
+  pos_ceremony_results: 'veto',
 
   // Gameplay flow — special
-  social:                  'social',
-  minigame:                'none', // sub-tracks handled by resolveDesiredMusic per challenge key
-  live_vote:               'none', // stinger only (tv:voting_eviction), no BGM
-  eviction_results:        'none', // stinger only (player:evicted), no BGM
-  week_end:                'none',
-  final4_eviction:         'none',
-  spectator:               'spectator',
+  social: 'social',
+  minigame: 'none', // sub-tracks handled by resolveDesiredMusic per challenge key
+  live_vote: 'veto', // continues Safety Ceremony music, ducked under voting
+  eviction_results: 'veto', // continues ducked under the elimination reveal
+  week_end: 'veto', // resumes for the day-end message, then fades at day start
+  final4_eviction: 'none',
+  spectator: 'spectator',
 
   // Finale flow
-  finale_pre_voting:       'jury_voting',
-  tribunal_part1:          'jury_voting',
-  finale_recap:            'season_recap',
-  tribunal_part2:          'jury_voting',
-  public_voting:           'public_voting',
-  season_complete:         'final_modal',
-};
+  finale_pre_voting: 'jury_voting',
+  tribunal_part1: 'jury_voting',
+  finale_recap: 'season_recap',
+  tribunal_part2: 'jury_voting',
+  public_voting: 'public_voting',
+  season_complete: 'final_modal',
+}
 
 // ─── Minigame sub-phase → audio track ─────────────────────────────────────────
 
@@ -281,14 +281,14 @@ export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> 
  * resolveDesiredMusic.ts / trackForMinigame().
  */
 export const MINIGAME_KEY_TO_AUDIO_PHASE: Readonly<Record<string, AppAudioPhase>> = {
-  riskWheel:              'minigame', // track: risk_wheel
-  glass_bridge_brutal:    'minigame', // track: glass_bridge
+  riskWheel: 'minigame', // track: risk_wheel
+  glass_bridge_brutal: 'minigame', // track: glass_bridge
   crystal_path_shattered: 'minigame', // track: glass_bridge (shared asset)
-  quickTap:               'minigame', // track: quick_tap
-  laneRacers:             'minigame', // track: quick_tap (shared asset)
-  memoryMatch:            'minigame', // track: quick_tap (shared asset)
-  wildcardWestern:        'minigame', // track: wildcard_western
-};
+  quickTap: 'minigame', // track: quick_tap
+  laneRacers: 'minigame', // track: quick_tap (shared asset)
+  memoryMatch: 'minigame', // track: quick_tap (shared asset)
+  wildcardWestern: 'minigame', // track: wildcard_western
+}
 
 // ─── Hooks and components that call into the audio manager ────────────────────
 
@@ -305,4 +305,4 @@ export const MINIGAME_KEY_TO_AUDIO_PHASE: Readonly<Record<string, AppAudioPhase>
  * | HomeHub / handlePlay (React)   | Calls SoundManager.unlockFromGesture before gameplay  |
  * | cinematicAudio (module)        | Manages SeasonRecapCinematic audio outside SoundManager|
  */
-export const _AUDIO_ENTRY_POINTS = undefined; // documentation-only export
+export const _AUDIO_ENTRY_POINTS = undefined // documentation-only export

@@ -15,6 +15,51 @@ body:has(.game-screen-shell) .app-shell {
   background: var(--color-bg);
 }
 
+/* The player UI intentionally uses a phone-width shell, but Broadcast Manager
+   is a desktop QA authoring surface with a two-column phase/message layout.
+   Give it the available desktop canvas instead of squeezing it into 480px. */
+@media (min-width: 900px) {
+  body:has(.broadcast-manager) .app-shell {
+    width: min(1180px, calc(100vw - 2rem));
+    max-width: none;
+  }
+
+  /* When the QA drawer is open, reserve its 28rem width instead of letting it
+     cover the authoring surface. */
+  body:has(.broadcast-manager):has(.dbg-panel) .app-shell {
+    width: calc(100vw - 28rem);
+    max-width: none;
+    margin-left: 0;
+    margin-right: 28rem;
+  }
+
+  body:has(.broadcast-manager) .broadcast-manager__messages,
+  body:has(.broadcast-manager) .broadcast-manager__layout > * {
+    min-width: 0;
+  }
+}
+
+/* On medium desktop widths the open QA drawer leaves less room for two useful
+   columns, so switch the manager to the same horizontal phase-strip pattern
+   used by its mobile layout. */
+@media (min-width: 900px) and (max-width: 1200px) {
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__layout {
+    grid-template-columns: 1fr;
+  }
+
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__phases {
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+    padding: 0.45rem;
+  }
+
+  body:has(.broadcast-manager):has(.dbg-panel) .broadcast-manager__phases button {
+    min-width: max-content;
+    width: auto;
+  }
+}
+
 .app-shell__main {
   position: relative;
   flex: 1 1 0;
@@ -28,4 +73,28 @@ body:has(.game-screen-shell) .app-shell {
   padding-right: var(--safe-right);
   padding-bottom: 0;
   padding-left: var(--safe-left);
+}
+
+.app-shell__broadcast {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  background: var(--color-accent, #7c3aed);
+  border-bottom: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  z-index: 20;
+}
+
+.app-shell__broadcast strong {
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.app-shell__broadcast--critical {
+  background: #b91c1c;
 }

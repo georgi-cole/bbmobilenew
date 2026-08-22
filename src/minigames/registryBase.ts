@@ -65,6 +65,10 @@ export interface GameRegistryEntry {
   maxPlayers?: number
   /** Key of the game that supersedes this one (for retired games). */
   replacedBy?: string
+  /** VIP/Premium Challenges version launched in place of this canonical game. */
+  premiumReplacementKey?: string
+  /** Direct-access registry entry reserved for VIP/Premium Challenges owners. */
+  vipOnly?: boolean
 }
 
 export function supportsPlayerCount(game: GameRegistryEntry, playerCount: number): boolean {
@@ -382,9 +386,9 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'Earlier correct guesses earn the stronger result.',
       'Build the best total across the match to win.',
     ],
-    metricKind: 'points',
-    metricLabel: 'Score',
-    timeLimitMs: 0,
+    metricKind: 'endurance',
+    metricLabel: 'Time (s)',
+    timeLimitMs: 120_000,
     authoritative: true,
     scoringAdapter: 'authoritative',
     implementation: 'react',
@@ -1115,6 +1119,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 1,
     category: 'logic',
     retired: false,
+    premiumReplacementKey: 'castleRescueRemastered',
+  },
+
+  castleRescueRemastered: {
+    key: 'castleRescueRemastered',
+    title: 'Find Your Twin — Remastered',
+    description: 'The premium, richly animated edition of Benny’s South Park rescue.',
+    instructions: [
+      'Explore the remastered South Park route and find all three hidden pipes in order.',
+      'Defeat shadow wardens, enter the secret rooms, and physically reunite with Lenny.',
+      'This VIP edition preserves the original scoring and route progression.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescueRemastered',
+    legacy: false,
+    weight: 0,
+    category: 'logic',
+    retired: true,
+    vipOnly: true,
   },
 
   castleRescue2: {
@@ -1145,6 +1174,31 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 1,
     category: 'logic',
     retired: false,
+    premiumReplacementKey: 'castleRescue2Remastered',
+  },
+
+  castleRescue2Remastered: {
+    key: 'castleRescue2Remastered',
+    title: 'Find Your Twin 2: Lost Again — Remastered',
+    description: 'The premium castle edition with enriched chambers and the Twin Sanctum finale.',
+    instructions: [
+      'Find the three hidden castle doors before the final locked door can open.',
+      'Defeat the fire and ice wardens inside the final chamber, then touch Lenny.',
+      'This VIP edition preserves the sequel’s scoring and progression.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue2Remastered',
+    legacy: false,
+    weight: 0,
+    category: 'logic',
+    retired: true,
+    vipOnly: true,
   },
 
   glass_bridge_brutal: {

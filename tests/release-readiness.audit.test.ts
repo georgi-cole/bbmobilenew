@@ -469,6 +469,7 @@ describe('release readiness metadata', () => {
 
   it('does not offer unfinished or unavailable products in release 1.0', () => {
     expect(STANDALONE_PRODUCT_KEYS).toEqual([
+      'premiumChallenges',
       'survivalMode',
       'publicMode',
       'dramaMode',

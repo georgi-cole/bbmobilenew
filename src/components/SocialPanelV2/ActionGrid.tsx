@@ -1,6 +1,10 @@
-﻿import { useRef } from 'react'
+﻿import { useMemo, useRef } from 'react'
 import { useI18n } from '../../i18n'
-import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../social/socialActions'
+import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
+import {
+  buildEffectiveSocialActions,
+  isActionAllowedForRealityPreset,
+} from '../../social/socialActionManager'
 import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
 import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility'
@@ -9,13 +13,6 @@ import type { Player, PlayerStatus } from '../../types'
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
 import { useAppSelector } from '../../store/hooks'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
-
-const ADULT_REALITY_ACTION_IDS = new Set([
-  'kiss_under_covers',
-  'pool_makeout',
-  'spend_night',
-  'skinny_dip',
-])
 
 export interface ActionGridProps {
   onActionClick?: (actionId: string) => void
@@ -67,6 +64,8 @@ export default function ActionGrid({
   const containerRef = useRef<HTMLDivElement>(null)
   const game = useAppSelector((state) => state.game)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
+  const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
+  const actions = useMemo(() => buildEffectiveSocialActions(actionOverrides), [actionOverrides])
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -104,19 +103,16 @@ export default function ActionGrid({
     )
   }
 
-  function getActionCosts(action: (typeof SOCIAL_ACTIONS)[number]) {
+  function getActionCosts(action: SocialActionDefinition) {
     const costs = normalizeActionCosts(action, selectedTargetIds?.size, dramaMode)
     const energyOverride = energyCostOverrides?.[action.id]
     return energyOverride === undefined ? costs : { ...costs, energy: energyOverride }
   }
 
-  function isAdultActionAllowed(actionId: string): boolean {
-    return !ADULT_REALITY_ACTION_IDS.has(actionId) || realityModePreset === 'adult'
-  }
-
-  function isContextEligible(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+  function isContextEligible(action: SocialActionDefinition): boolean {
     return (
-      isAdultActionAllowed(action.id) &&
+      action.enabled !== false &&
+      isActionAllowedForRealityPreset(action, realityModePreset) &&
       isHumanSocialActionVisible(action, dramaMode ? 'drama' : 'normal') &&
       !hiddenActionIds.has(action.id) &&
       evaluateSocialActionEligibility({
@@ -133,10 +129,11 @@ export default function ActionGrid({
     )
   }
 
-  function isRelevantRealityPreview(action: (typeof SOCIAL_ACTIONS)[number]): boolean {
+  function isRelevantRealityPreview(action: SocialActionDefinition): boolean {
     return (
+      action.enabled !== false &&
       !dramaMode &&
-      !ADULT_REALITY_ACTION_IDS.has(action.id) &&
+      isActionAllowedForRealityPreset(action, realityModePreset) &&
       isRealityExclusiveAction(action) &&
       !action.aiOnly &&
       !hiddenActionIds.has(action.id) &&
@@ -165,7 +162,7 @@ export default function ActionGrid({
   const safetyConsultationOpen =
     actorHasSafety && (currentPhase === 'pos_results' || currentPhase === 'pos_ceremony')
 
-  function contextualizeAction(action: (typeof SOCIAL_ACTIONS)[number]) {
+  function contextualizeAction(action: SocialActionDefinition) {
     if (action.id !== 'ask_loh_target') return action
     if (safetyConsultationOpen) {
       return {
@@ -199,20 +196,19 @@ export default function ActionGrid({
     }
   }
 
-  const isRealityPreview = (action: (typeof SOCIAL_ACTIONS)[number]) =>
-    isRelevantRealityPreview(action)
+  const isRealityPreview = (action: SocialActionDefinition) => isRelevantRealityPreview(action)
 
-  const visibleActions = SOCIAL_ACTIONS.filter(
-    (action) => isRealityPreview(action) || isContextEligible(action)
-  ).sort((left, right) => {
-    const leftPreview = isRealityPreview(left)
-    const rightPreview = isRealityPreview(right)
-    if (leftPreview !== rightPreview) return leftPreview ? 1 : -1
-    if (!safetyConsultationOpen) return 0
-    if (left.id === 'ask_loh_target') return -1
-    if (right.id === 'ask_loh_target') return 1
-    return 0
-  })
+  const visibleActions = actions
+    .filter((action) => isRealityPreview(action) || isContextEligible(action))
+    .sort((left, right) => {
+      const leftPreview = isRealityPreview(left)
+      const rightPreview = isRealityPreview(right)
+      if (leftPreview !== rightPreview) return leftPreview ? 1 : -1
+      if (!safetyConsultationOpen) return 0
+      if (left.id === 'ask_loh_target') return -1
+      if (right.id === 'ask_loh_target') return 1
+      return 0
+    })
 
   function getAvailabilityReason(costs: {
     energy: number

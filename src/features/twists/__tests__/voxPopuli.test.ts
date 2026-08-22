@@ -336,6 +336,10 @@ describe('Vox Populi rules', () => {
     state = gameReducer(state, advance())
     expect(state.phase).toBe('nomination_results')
     expect(state.awaitingNominations).toBe(true)
+    const ballotPrompt = state.tvFeed.find(
+      (event) => event.meta?.broadcastTemplateId === 'nominations.vox-ballot'
+    )
+    expect(ballotPrompt).toBeDefined()
 
     const choices = state.players
       .filter(
@@ -354,11 +358,19 @@ describe('Vox Populi rules', () => {
     expect(state.nomineeIds.length).toBeGreaterThanOrEqual(3)
     expect(state.currentWeekNominationRecord).toBeNull()
     const resultBroadcast = state.tvFeed.find(
-      (event) => event.meta?.major === 'vox_populi_nomination_result'
+      (event) => event.meta?.broadcastTemplateId === 'nominations.vox-result-with-auto'
     )
     expect(resultBroadcast?.text).not.toContain('automatically nominated')
     expect(resultBroadcast?.text).toContain(`join ${automaticNominee.name} on the block`)
-    expect(resultBroadcast?.meta?.broadcastPriority).toBe('critical')
+    expect(resultBroadcast?.major).toBeUndefined()
+    expect(resultBroadcast?.meta?.broadcastLevel).toBe('minor')
+    expect(resultBroadcast?.meta?.broadcastPriority).toBeUndefined()
+    expect(resultBroadcast?.meta?.broadcastCampaign).toBe('vox_populi')
+    expect(state.tvFeed.find((event) => event.id === ballotPrompt?.id)?.meta?.broadcastConsumed).toBe(
+      true
+    )
+    expect(state.broadcastQueue).not.toContain(ballotPrompt?.id)
+    expect(state.broadcastQueue).toContain(resultBroadcast?.id)
   })
 
   it('protects the Safety stand-pat decision from later social messages', () => {
@@ -377,10 +389,12 @@ describe('Vox Populi rules', () => {
     state = gameReducer(state, submitPovDecision(false))
 
     const safetyBroadcast = state.tvFeed.find(
-      (event) => event.meta?.major === 'vox_populi_safety_outcome'
+      (event) => event.meta?.broadcastTemplateId === 'safety.vox-hold'
     )
     expect(safetyBroadcast?.text).toContain('chosen not to use the Power of Safety')
-    expect(safetyBroadcast?.meta?.broadcastPriority).toBe('critical')
+    expect(safetyBroadcast?.major).toBeUndefined()
+    expect(safetyBroadcast?.meta?.broadcastLevel).toBe('minor')
+    expect(safetyBroadcast?.meta?.broadcastPriority).toBeUndefined()
   })
 
   it('opens an audience vote with no house ballot and queues the highest share to leave', () => {

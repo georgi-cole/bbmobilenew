@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit'
 
 /**
  * MusicScene — identifies the music scene currently active.
@@ -27,67 +27,84 @@ export type MusicScene =
   | 'season_recap'
   | 'tribunal_part1'
   | 'jury_voting'
-  | 'public_voting';
+  | 'public_voting'
+
+export type MusicMix = 'normal' | 'ducked'
+export type ConfessionalMusicMode = 'normal' | 'vote-committed'
 
 interface UIState {
-  socialSummaryOpen: boolean;
-  musicScene: MusicScene;
+  socialSummaryOpen: boolean
+  musicScene: MusicScene
+  musicMix: MusicMix
+  confessionalMusicMode: ConfessionalMusicMode
   debugExpansionUnlocks: {
-    cupidArrow: boolean;
-    voxPopuli: boolean;
-  };
+    cupidArrow: boolean
+    voxPopuli: boolean
+  }
 }
 
 const initialState: UIState = {
   socialSummaryOpen: false,
   musicScene: 'none',
+  musicMix: 'normal',
+  confessionalMusicMode: 'normal',
   // Intentionally Redux-only: debug access disappears with the app session and
   // is never written into the permanent VIP entitlement cache.
   debugExpansionUnlocks: {
     cupidArrow: false,
     voxPopuli: false,
   },
-};
+}
 
 const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
     openSocialSummary(state) {
-      state.socialSummaryOpen = true;
+      state.socialSummaryOpen = true
     },
     closeSocialSummary(state) {
-      state.socialSummaryOpen = false;
+      state.socialSummaryOpen = false
     },
     setMusicScene(state, action: { payload: MusicScene }) {
-      state.musicScene = action.payload;
+      state.musicScene = action.payload
+    },
+    setMusicMix(state, action: { payload: MusicMix }) {
+      state.musicMix = action.payload
+    },
+    setConfessionalMusicMode(state, action: { payload: ConfessionalMusicMode }) {
+      state.confessionalMusicMode = action.payload
     },
     setDebugExpansionUnlock(
       state,
-      action: { payload: { expansion: 'cupidArrow' | 'voxPopuli'; unlocked: boolean } },
+      action: { payload: { expansion: 'cupidArrow' | 'voxPopuli'; unlocked: boolean } }
     ) {
-      state.debugExpansionUnlocks[action.payload.expansion] = action.payload.unlocked;
+      state.debugExpansionUnlocks[action.payload.expansion] = action.payload.unlocked
     },
     clearDebugExpansionUnlocks(state) {
-      state.debugExpansionUnlocks.cupidArrow = false;
-      state.debugExpansionUnlocks.voxPopuli = false;
+      state.debugExpansionUnlocks.cupidArrow = false
+      state.debugExpansionUnlocks.voxPopuli = false
     },
   },
-});
+})
 
 export const {
   openSocialSummary,
   closeSocialSummary,
   setMusicScene,
+  setMusicMix,
+  setConfessionalMusicMode,
   setDebugExpansionUnlock,
   clearDebugExpansionUnlocks,
-} = uiSlice.actions;
-export default uiSlice.reducer;
+} = uiSlice.actions
+export default uiSlice.reducer
 
 export const selectSocialSummaryOpen = (state: { ui: UIState }) =>
-  state.ui?.socialSummaryOpen ?? false;
-export const selectMusicScene = (state: { ui: UIState }) =>
-  state.ui?.musicScene ?? 'none';
-const EMPTY_DEBUG_EXPANSION_UNLOCKS = { cupidArrow: false, voxPopuli: false } as const;
+  state.ui?.socialSummaryOpen ?? false
+export const selectMusicScene = (state: { ui: UIState }) => state.ui?.musicScene ?? 'none'
+export const selectMusicMix = (state: { ui: UIState }) => state.ui?.musicMix ?? 'normal'
+export const selectConfessionalMusicMode = (state: { ui: UIState }) =>
+  state.ui?.confessionalMusicMode ?? 'normal'
+const EMPTY_DEBUG_EXPANSION_UNLOCKS = { cupidArrow: false, voxPopuli: false } as const
 export const selectDebugExpansionUnlocks = (state: { ui: UIState }) =>
-  state.ui?.debugExpansionUnlocks ?? EMPTY_DEBUG_EXPANSION_UNLOCKS;
+  state.ui?.debugExpansionUnlocks ?? EMPTY_DEBUG_EXPANSION_UNLOCKS

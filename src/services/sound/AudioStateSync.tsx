@@ -17,6 +17,10 @@ import {
 import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
 
 const VOLUME_RAMP_STEP_MS = 50
+const SAFETY_SEQUENCE_DUCK_LEVEL = 0.12
+const SAFETY_SEQUENCE_DUCK_MS = 1200
+const SAFETY_SEQUENCE_RESUME_MS = 900
+const SAFETY_SEQUENCE_DAY_END_FADE_MS = 1500
 
 function createSilentCue(assignmentId: string): ResolvedMusicCue {
   return {
@@ -54,6 +58,20 @@ function enrichMinigameTransition(
 }
 
 export default function AudioStateSync() {
+  const musicMix = useSelector((root: RootState) => {
+    const evictionOverlayPlayerId = root.game.evictionOverlayPlayerId ?? null
+    const battleBackReturnActive =
+      evictionOverlayPlayerId != null &&
+      root.game.battleBack?.used === true &&
+      root.game.battleBack?.winnerId === evictionOverlayPlayerId
+    const voteResultsRevealActive = root.game.voteResults != null
+    const evictionCinematicActive = evictionOverlayPlayerId != null && !battleBackReturnActive
+
+    // Music only makes room for the two SFX-heavy reveal sequences themselves.
+    // Live-vote title cards, Confessional prompts and other surrounding screens
+    // stay at full strength even though they share the same game phases.
+    return voteResultsRevealActive || evictionCinematicActive ? 'ducked' : 'normal'
+  })
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
@@ -68,6 +86,7 @@ export default function AudioStateSync() {
       socialPanelOpen: root.social.panelOpen,
       incomingInboxOpen: root.social.incomingInboxOpen,
       musicScene: root.ui.musicScene,
+      confessionalMusicMode: root.ui.confessionalMusicMode ?? 'normal',
       musicOn: root.settings.audio.musicOn,
       musicVolume: root.settings.audio.musicVolume,
       localMusicOverrides: root.settings.audio.musicConfigOverrides,
@@ -82,7 +101,15 @@ export default function AudioStateSync() {
   const heldConfiguredCueRef = useRef<ResolvedMusicCue | null>(null)
   const fadeInTimerRef = useRef<number | null>(null)
   const postGameTimerRef = useRef<number | null>(null)
+  const mixRampTimerRef = useRef<number | null>(null)
   const transitionTokenRef = useRef(0)
+  const previousGamePhaseRef = useRef(musicState.gamePhase)
+  const musicMixRef = useRef(musicMix)
+  const previousMusicMixRef = useRef(musicMix)
+
+  useEffect(() => {
+    musicMixRef.current = musicMix
+  }, [musicMix])
 
   const effectiveConfig = useMemo(
     () =>
@@ -148,6 +175,7 @@ export default function AudioStateSync() {
       },
       ui: {
         musicScene: musicState.musicScene,
+        confessionalMusicMode: musicState.confessionalMusicMode,
       },
     }),
     [musicState]
@@ -181,6 +209,8 @@ export default function AudioStateSync() {
 
     const previousCue = previousDesiredRef.current
     previousDesiredRef.current = desiredCue
+    const previousGamePhase = previousGamePhaseRef.current
+    previousGamePhaseRef.current = musicState.gamePhase
     const leavingManagedCue = isManagedMinigameCue(previousCue)
     const transitionToken = ++transitionTokenRef.current
 
@@ -199,10 +229,13 @@ export default function AudioStateSync() {
 
     clearFadeIn()
 
+    const mixedMusicVolume =
+      musicState.musicVolume * (musicMixRef.current === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
+
     if (!musicState.musicOn) {
       clearPostGameTimer()
       heldConfiguredCueRef.current = null
-      SoundManager.setMusicVolume(musicState.musicVolume)
+      SoundManager.setMusicVolume(mixedMusicVolume)
       void SoundManager.setDesiredMusic('none', cueReason(desiredCue))
       return
     }
@@ -212,7 +245,7 @@ export default function AudioStateSync() {
       heldConfiguredCueRef.current = null
 
       if (hasSameResolvedPlayback(previousCue, desiredCue)) {
-        SoundManager.setMusicVolume(musicState.musicVolume)
+        SoundManager.setMusicVolume(mixedMusicVolume)
         return
       }
 
@@ -220,7 +253,7 @@ export default function AudioStateSync() {
         shouldCrossfadeManagedMinigameCue(previousCue, desiredCue) ||
         (desiredCue.playbackCue?.fadeInMs ?? 0) > 0
       ) {
-        SoundManager.setMusicVolume(musicState.musicVolume)
+        SoundManager.setMusicVolume(mixedMusicVolume)
         void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue))
         return
       }
@@ -229,7 +262,7 @@ export default function AudioStateSync() {
       void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue)).then(() => {
         if (transitionTokenRef.current !== transitionToken) return
         if (desiredCue.transition!.fadeInMs <= 0) {
-          SoundManager.setMusicVolume(musicState.musicVolume)
+          SoundManager.setMusicVolume(mixedMusicVolume)
           return
         }
 
@@ -237,7 +270,7 @@ export default function AudioStateSync() {
         let step = 0
         fadeInTimerRef.current = window.setInterval(() => {
           step += 1
-          SoundManager.setMusicVolume(musicState.musicVolume * Math.min(1, step / steps))
+          SoundManager.setMusicVolume(mixedMusicVolume * Math.min(1, step / steps))
           if (step >= steps) clearFadeIn()
         }, VOLUME_RAMP_STEP_MS)
       })
@@ -255,7 +288,7 @@ export default function AudioStateSync() {
         void SoundManager.fadeOutMusic(fadeOutMs).then(() => {
           if (transitionTokenRef.current !== transitionToken) return
           heldConfiguredCueRef.current = null
-          SoundManager.setMusicVolume(musicState.musicVolume)
+          SoundManager.setMusicVolume(mixedMusicVolume)
           const nextCue = latestDesiredRef.current
           if (isManagedMinigameCue(nextCue)) return
           previousDesiredRef.current = nextCue
@@ -266,9 +299,51 @@ export default function AudioStateSync() {
     }
 
     clearPostGameTimer()
-    SoundManager.setMusicVolume(musicState.musicVolume)
+    if (
+      previousGamePhase === 'week_end' &&
+      musicState.gamePhase === 'week_start' &&
+      previousCue.track === 'veto' &&
+      desiredCue.track === 'none'
+    ) {
+      void SoundManager.fadeOutMusic(SAFETY_SEQUENCE_DAY_END_FADE_MS)
+      return
+    }
+    SoundManager.setMusicVolume(mixedMusicVolume)
     void SoundManager.setDesiredMusicCue(desiredCue, cueReason(desiredCue))
-  }, [desiredCue, musicState.musicOn, musicState.musicVolume])
+  }, [desiredCue, musicState.gamePhase, musicState.musicOn, musicState.musicVolume])
+
+  useEffect(() => {
+    if (mixRampTimerRef.current != null) window.clearInterval(mixRampTimerRef.current)
+    mixRampTimerRef.current = null
+    if (!musicState.musicOn) return
+
+    const previousMix = previousMusicMixRef.current
+    previousMusicMixRef.current = musicMix
+    if (previousMix === musicMix) return
+
+    const startVolume =
+      musicState.musicVolume * (previousMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
+    const targetVolume =
+      musicState.musicVolume * (musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
+    const durationMs = musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_MS : SAFETY_SEQUENCE_RESUME_MS
+    const steps = Math.max(1, Math.ceil(durationMs / VOLUME_RAMP_STEP_MS))
+    let step = 0
+
+    mixRampTimerRef.current = window.setInterval(() => {
+      step += 1
+      const progress = Math.min(1, step / steps)
+      SoundManager.setMusicVolume(startVolume + (targetVolume - startVolume) * progress)
+      if (step >= steps && mixRampTimerRef.current != null) {
+        window.clearInterval(mixRampTimerRef.current)
+        mixRampTimerRef.current = null
+      }
+    }, VOLUME_RAMP_STEP_MS)
+
+    return () => {
+      if (mixRampTimerRef.current != null) window.clearInterval(mixRampTimerRef.current)
+      mixRampTimerRef.current = null
+    }
+  }, [musicMix, musicState.musicOn, musicState.musicVolume])
 
   useEffect(
     () => () => {
@@ -276,6 +351,7 @@ export default function AudioStateSync() {
       heldConfiguredCueRef.current = null
       if (fadeInTimerRef.current != null) window.clearInterval(fadeInTimerRef.current)
       if (postGameTimerRef.current != null) window.clearTimeout(postGameTimerRef.current)
+      if (mixRampTimerRef.current != null) window.clearInterval(mixRampTimerRef.current)
     },
     []
   )

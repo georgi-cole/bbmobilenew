@@ -58,6 +58,18 @@ function buildAveragePlacementByPlayerId(
   const placements = new Map<string, { total: number; count: number }>();
 
   history.forEach((run) => {
+    if (run.ranking && run.ranking.length > 0) {
+      run.ranking
+        .filter((playerId) => playerIds.has(playerId) && run.participants.includes(playerId))
+        .forEach((playerId, index) => {
+          const current = placements.get(playerId) ?? { total: 0, count: 0 };
+          placements.set(playerId, {
+            total: current.total + index + 1,
+            count: current.count + 1,
+          });
+        });
+      return;
+    }
     const scoreEntries = Object.entries(run.canonicalScores ?? {})
       .filter(([playerId]) => playerIds.has(playerId) && run.participants.includes(playerId))
       .sort((a, b) => b[1] - a[1]);

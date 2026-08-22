@@ -13,7 +13,7 @@ import {
 } from '../../store/settingsSlice'
 import CompSelection from '../../components/CompSelection'
 import MusicManagerPanel from './MusicManagerPanel'
-import RulesManagerPanel from './RulesManagerPanel'
+import SocialManagerPanel from './SocialManagerPanel'
 import type { CompGame, CompSelectionPayload } from '../../components/compSelectionUtils'
 import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { restartApp } from '../../utils/restartApp'
@@ -25,7 +25,6 @@ import {
   type RealityModePreset,
 } from '../../modes/realityMode'
 import './SettingsAdmin.css'
-import './RulesManagerPanel.css'
 
 /** Maps the minigame registry GameCategory to the CompGame category vocabulary. */
 function registryCategoryToCompCategory(category: GameCategory): CompGame['category'] {
@@ -61,12 +60,12 @@ function buildCompGamesFromRegistry(): CompGame[] {
     }))
 }
 
-type Tab = 'audio' | 'music' | 'rules' | 'display' | 'gameux' | 'about'
+type Tab = 'audio' | 'music' | 'social' | 'display' | 'gameux' | 'about'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'audio', label: '🔊 Audio' },
   { id: 'music', label: '🎵 Music Manager' },
-  { id: 'rules', label: '📖 Rules Manager' },
+  { id: 'social', label: '🤝 Social Manager' },
   { id: 'display', label: '🎨 Display' },
   { id: 'gameux', label: '🎮 Game UX' },
   { id: 'about', label: 'ℹ️ About' },
@@ -253,7 +252,9 @@ export default function SettingsAdmin() {
 
         {/* ── Music Manager ──────────────────────────────────────────────── */}
         {activeTab === 'music' && <MusicManagerPanel />}
-        {activeTab === 'rules' && <RulesManagerPanel />}
+
+        {/* ── Social Manager ─────────────────────────────────────────────── */}
+        {activeTab === 'social' && <SocialManagerPanel />}
 
         {/* ── Display ───────────────────────────────────────────────────── */}
         {activeTab === 'display' && (

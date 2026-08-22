@@ -126,6 +126,16 @@ export const selectRemoteConfigStatus = (s: RootState) => s.remoteConfig?.status
 export const selectRemoteMainTvHeadline = (s: RootState) =>
   s.remoteConfig?.config?.season?.mainTv?.headline ?? null
 
+/** Returns the currently active scheduled global broadcast, if any. */
+export const selectRemoteBroadcast = (s: RootState) => {
+  const broadcast = s.remoteConfig?.config?.broadcast
+  if (!broadcast || broadcast.enabled === false || !broadcast.message) return null
+  const now = Date.now()
+  if (broadcast.startsAt && Date.parse(broadcast.startsAt) > now) return null
+  if (broadcast.endsAt && Date.parse(broadcast.endsAt) <= now) return null
+  return broadcast
+}
+
 /** Returns the remote intro-hub background image URL, or null. */
 export const selectRemoteIntroHubBg = (s: RootState) =>
   s.remoteConfig?.config?.season?.introHub?.backgroundImageUrl ?? null

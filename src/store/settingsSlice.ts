@@ -13,6 +13,15 @@ import {
   type RealityModePreset,
 } from '../modes/realityMode'
 import { normalizeLanguagePreference, type LanguagePreference } from '../i18n/languages'
+import {
+  sanitiseSocialActionOverrides,
+  type SocialActionOverrides,
+} from '../social/socialActionManager'
+import {
+  DEFAULT_GAME_MANAGER_CONFIG,
+  normalizeGameManagerConfig,
+  type GameManagerConfig,
+} from '../gameManager/gameManager'
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
@@ -32,6 +41,10 @@ export interface SettingsState {
   localization: {
     /** Device-following or explicit UI language preference. */
     language: LanguagePreference
+  }
+  social: {
+    /** Persistent local Social Manager layer applied over bundled action definitions. */
+    actionOverrides: SocialActionOverrides
   }
   display: {
     themePreset: ThemePreset
@@ -57,6 +70,8 @@ export interface SettingsState {
     castSize: number
     /** Comp Selection configuration: which games are eligible, optional weekly draw limit, and category filter. */
     compSelection: CompSelectionPayload
+    /** Producer controls for scheduling individual LOH and POS competitions. */
+    gameManager: GameManagerConfig
   }
   sim: {
     /** Enables the public-influence ruleset (3rd nominee + pre-veto public save). */
@@ -152,12 +167,19 @@ function normalizeLocalization(
   }
 }
 
+function normalizeSocial(social?: Partial<SettingsState['social']>): SettingsState['social'] {
+  return {
+    actionOverrides: sanitiseSocialActionOverrides(social?.actionOverrides),
+  }
+}
+
 function normalizeGameUX(gameUX?: Partial<SettingsState['gameUX']>): SettingsState['gameUX'] {
   const legacyCompactRosterLayout = (gameUX as { compactRosterLayout?: unknown } | undefined)
     ?.compactRosterLayout
   const merged = { ...DEFAULT_SETTINGS.gameUX, ...(gameUX ?? {}) }
   merged.realityModePreset = normalizeRealityModePreset(gameUX?.realityModePreset)
   merged.compSelection = normalizeCompSelection(gameUX?.compSelection)
+  merged.gameManager = normalizeGameManagerConfig(gameUX?.gameManager)
   if (legacyCompactRosterLayout === 'small') {
     merged.compactRoster = true
   }
@@ -175,6 +197,9 @@ export const DEFAULT_SETTINGS: SettingsState = {
   },
   localization: {
     language: 'system',
+  },
+  social: {
+    actionOverrides: {},
   },
   display: {
     themePreset: 'midnight',
@@ -200,6 +225,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
       weeklyLimit: null,
       filterCategory: null,
     },
+    gameManager: DEFAULT_GAME_MANAGER_CONFIG,
   },
   sim: {
     publicMode: false,
@@ -252,6 +278,7 @@ export function loadSettings(): SettingsState {
     return {
       audio: normalizeAudio(parsed.audio),
       localization: normalizeLocalization(parsed.localization),
+      social: normalizeSocial(parsed.social),
       display: { ...DEFAULT_SETTINGS.display, ...parsed.display },
       gameUX: mergedGameUX,
       sim: mergedSim,
@@ -264,7 +291,11 @@ export function loadSettings(): SettingsState {
 
 export function saveSettings(state: SettingsState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    const serialized = JSON.stringify(state)
+    // Avoid storage-event ping-pong when Advanced Settings is open beside the game.
+    if (localStorage.getItem(STORAGE_KEY) !== serialized) {
+      localStorage.setItem(STORAGE_KEY, serialized)
+    }
   } catch {
     // ignore write errors (e.g. private browsing quota)
   }
@@ -311,6 +342,12 @@ const settingsSlice = createSlice({
         state.localization.language = normalizeLanguagePreference(action.payload.language)
       }
     },
+    setSocialActionOverrides(state, action: PayloadAction<SocialActionOverrides>) {
+      state.social.actionOverrides = sanitiseSocialActionOverrides(action.payload)
+    },
+    resetSocialActionOverrides(state) {
+      state.social.actionOverrides = {}
+    },
     setDisplay(state, action: PayloadAction<Partial<SettingsState['display']>>) {
       Object.assign(state.display, action.payload)
     },
@@ -318,6 +355,9 @@ const settingsSlice = createSlice({
       Object.assign(state.gameUX, action.payload)
       if (action.payload.compSelection !== undefined) {
         state.gameUX.compSelection = normalizeCompSelection(action.payload.compSelection)
+      }
+      if (action.payload.gameManager !== undefined) {
+        state.gameUX.gameManager = normalizeGameManagerConfig(action.payload.gameManager)
       }
     },
     setSim(state, action: PayloadAction<Partial<SettingsState['sim']>>) {
@@ -333,6 +373,7 @@ const settingsSlice = createSlice({
       return {
         audio: normalizeAudio(action.payload.audio),
         localization: normalizeLocalization(action.payload.localization),
+        social: normalizeSocial(action.payload.social),
         display: { ...DEFAULT_SETTINGS.display, ...action.payload.display },
         gameUX: normalizeGameUX(action.payload.gameUX),
         sim: { ...DEFAULT_SETTINGS.sim, ...action.payload.sim },
@@ -349,6 +390,8 @@ export const {
   setMusicTrackAssets,
   resetMusicTrackAssets,
   setLocalization,
+  setSocialActionOverrides,
+  resetSocialActionOverrides,
   setDisplay,
   setGameUX,
   setSim,

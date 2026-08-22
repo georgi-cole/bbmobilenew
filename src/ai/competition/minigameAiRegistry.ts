@@ -252,10 +252,18 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_ENDURANCE_BALANCE,
     weights: WEIGHTS_ENDURANCE_BALANCE,
     minScore: 12,
-    maxScore: 92,
+    maxScore: 120,
+    scoreBuckets: [
+      { minScore: 12, maxScore: 29, weight: 0.14 },
+      { minScore: 30, maxScore: 54, weight: 0.26 },
+      { minScore: 55, maxScore: 79, weight: 0.32 },
+      { minScore: 80, maxScore: 103, weight: 0.22 },
+      { minScore: 104, maxScore: 116, weight: 0.05 },
+      { minScore: 120, maxScore: 120, weight: 0.01 },
+    ],
     notes:
-      'Pressure Plank uses a dedicated survival band after the stability redesign; ' +
-      'scores map to roughly 14-110 seconds and idle play is no longer viable.',
+      'Pressure Plank scores are native survival seconds. Skill-weighted bands follow the ' +
+      'escalating surge schedule, with varied early falls and rare 120-second completions.',
   },
   rainBarrelBalance: {
     key: 'rainBarrelBalance',
@@ -481,6 +489,26 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
       { minScore: 1501, maxScore: 2000, weight: 5 / 150 },
     ],
     notes: 'Find Your Twin 2 uses the calibrated Find Your Twin score distribution.',
+  },
+  castleRescueRemastered: {
+    key: 'castleRescueRemastered',
+    category: 'hybrid',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: WEIGHTS_HYBRID,
+    minScore: 0,
+    maxScore: 2000,
+    notes: 'VIP remaster preserves the original Find Your Twin scoring model.',
+  },
+  castleRescue2Remastered: {
+    key: 'castleRescue2Remastered',
+    category: 'hybrid',
+    scoreDirection: 'higher-is-better',
+    volatility: VOLATILITY_HYBRID,
+    weights: WEIGHTS_HYBRID,
+    minScore: 0,
+    maxScore: 2000,
+    notes: 'VIP remaster preserves the Find Your Twin 2 scoring model.',
   },
   glass_bridge_brutal: {
     key: 'glass_bridge_brutal',

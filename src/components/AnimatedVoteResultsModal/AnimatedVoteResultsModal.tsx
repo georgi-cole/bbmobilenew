@@ -31,6 +31,7 @@
 import { Fragment, useState, useEffect, useRef, useMemo, type CSSProperties } from 'react';
 import type { Player } from '../../types';
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
+import { EVICTION_PUBLIC_ESTIMATE_STEPS } from '../../services/sound/publicVotingAudioTiming';
 import './AnimatedVoteResultsModal.css';
 
 export interface VoteTally {
@@ -135,6 +136,33 @@ function buildVoteSequence(tallies: VoteTally[]): string[] {
   return seq;
 }
 
+/**
+ * Produce a deterministic live poll estimate near the official percentages.
+ * The drift narrows on every update and the final frame is exact.
+ */
+function buildPublicEstimate(
+  tallies: VoteTally[],
+  step: number,
+  totalSteps: number
+): Record<string, number> {
+  const total = tallies.reduce((sum, tally) => sum + Math.max(0, tally.voteCount), 0);
+  const progress = Math.min(1, Math.max(0, step / totalSteps));
+  const amplitude = (1 - progress) * 5;
+  const raw = tallies.map((tally, index) => {
+    const phase = (index + 1) * 1.73;
+    const drift = Math.sin(step * 1.41 + phase) * amplitude;
+    return Math.max(0.1, tally.voteCount + drift);
+  });
+  const rawTotal = raw.reduce((sum, value) => sum + value, 0);
+  const counts: Record<string, number> = {};
+  tallies.forEach((tally, index) => {
+    counts[tally.nominee.id] = progress >= 1
+      ? tally.voteCount
+      : Math.round((raw[index] / rawTotal) * total * 10) / 10;
+  });
+  return counts;
+}
+
 export default function AnimatedVoteResultsModal({
   nominees,
   evictee: evicteeProp = null,
@@ -160,10 +188,21 @@ export default function AnimatedVoteResultsModal({
 
   const totalVotes = useMemo(() => nominees.reduce((s, t) => s + t.voteCount, 0), [nominees]);
   // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
-  const voteSequence = useMemo(() => buildVoteSequence(nominees), [nominees]);
+  const voteSequence = useMemo(
+    () => resultMode === 'public'
+      ? Array.from(
+          { length: EVICTION_PUBLIC_ESTIMATE_STEPS },
+          (_, index) => nominees[index % Math.max(1, nominees.length)]?.nominee.id ?? ''
+        )
+      : buildVoteSequence(nominees),
+    [nominees, resultMode]
+  );
 
   // Displayed vote counts at the current reveal step.
   const displayedCounts = useMemo<Record<string, number>>(() => {
+    if (resultMode === 'public') {
+      return buildPublicEstimate(nominees, revealStep, EVICTION_PUBLIC_ESTIMATE_STEPS);
+    }
     const counts: Record<string, number> = {};
     for (const t of nominees) counts[t.nominee.id] = 0;
     for (let i = 0; i < revealStep; i++) {
@@ -171,7 +210,7 @@ export default function AnimatedVoteResultsModal({
       if (id !== undefined) counts[id] = (counts[id] ?? 0) + 1;
     }
     return counts;
-  }, [nominees, voteSequence, revealStep]);
+  }, [nominees, resultMode, voteSequence, revealStep]);
 
   // The nominee that just received the most-recently revealed vote (for pulse).
   const lastRevealedId = revealStep > 0 ? voteSequence[revealStep - 1] : null;
@@ -189,7 +228,7 @@ export default function AnimatedVoteResultsModal({
     return { resolvedEvictee: topNominees[0].nominee, tiedIds: [] as string[] };
   }, [nominees, evicteeProp]);
 
-  const allRevealed = totalVotes === 0 || revealStep >= voteSequence.length;
+  const allRevealed = voteSequence.length === 0 || revealStep >= voteSequence.length;
   const isTied = tiedIds.length > 1;
   const resolvedEvicteeIds = useMemo(() => {
     if (evicteeIds && evicteeIds.length > 0) return new Set(evicteeIds);
@@ -292,13 +331,19 @@ export default function AnimatedVoteResultsModal({
             >
               {nominees.map((t, index) => {
                 const shown = displayedCounts[t.nominee.id] ?? 0;
-                const shownLabel =
-                  resultMode === 'public' && allRevealed ? t.voteCount.toFixed(1) : String(shown);
+                const shownLabel = resultMode === 'public' ? shown.toFixed(1) : String(shown);
                 const isEvictee =
                   resolvedEvicteeIds.has(t.nominee.id) ||
                   (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
                 const isPulsing = lastRevealedId === t.nominee.id;
-                const isLeading = outcomeVisible ? isEvictee : leadingShownIds.has(t.nominee.id);
+                // Live audience estimates must not visually disclose the eventual
+                // evictee. Public rings stay neutral until the official outcome;
+                // house-vote reveals can still highlight the current tally leader.
+                const isLeading = outcomeVisible
+                  ? isEvictee
+                  : resultMode === 'public'
+                    ? false
+                    : leadingShownIds.has(t.nominee.id);
                 return (
                   <Fragment key={t.nominee.id}>
                     {nominees.length === 2 && index === 1 && (
@@ -350,8 +395,7 @@ export default function AnimatedVoteResultsModal({
           <div className="avrm__tallies">
             {nominees.map((t) => {
               const shown = displayedCounts[t.nominee.id] ?? 0;
-              const shownLabel =
-                resultMode === 'public' && allRevealed ? t.voteCount.toFixed(1) : String(shown);
+              const shownLabel = resultMode === 'public' ? shown.toFixed(1) : String(shown);
               const isEvictee =
                 resolvedEvicteeIds.has(t.nominee.id) ||
                 (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);

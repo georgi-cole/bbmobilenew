@@ -373,7 +373,7 @@ export default function GameDebug() {
                   setRunStatus('Ready');
                 }}
               >
-                <div className="gd-game-item__title">{game.title}</div>
+                <div className="gd-game-item__title">{game.title}{game.vipOnly ? ' · VIP' : ''}</div>
                 <div className="gd-game-item__key">{game.key}</div>
                 <div className="gd-game-item__badges">
                   <span className="gd-badge gd-badge--category">{game.category}</span>

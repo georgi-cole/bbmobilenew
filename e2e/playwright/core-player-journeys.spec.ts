@@ -59,7 +59,7 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
 async function assertCampaignReady(page: Page, playerName: string): Promise<void> {
   const actionZone = page.getByRole('region', { name: 'Game action zone' })
   await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
-  await expect(actionZone.getByLabel('Day start', { exact: true })).toBeVisible()
+  await expect(actionZone.getByLabel('Season start', { exact: true })).toBeVisible()
   await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
@@ -75,7 +75,7 @@ async function startCampaignFromHome(page: Page, playerName: string): Promise<vo
 
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
-  await playMenu.getByRole('button', { name: 'Campaign', exact: true }).click()
+  await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
   await assertCampaignReady(page, playerName)
 }
 
@@ -199,6 +199,12 @@ async function completeActiveConfessionalDecision(page: Page): Promise<void> {
     throw new Error(`Unsupported Confessional decision in ${before.game.phase}.`)
   }
 
+  const returnToHouse = session.getByRole('button', { name: 'Return to the House' })
+  await expect(returnToHouse).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await expect(session).toBeVisible()
+  await returnToHouse.click()
+  await expect(session).toBeHidden({ timeout: SCREEN_TIMEOUT_MS })
+
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
   })
@@ -280,6 +286,26 @@ async function advanceToFirstSocialPhase(page: Page): Promise<void> {
   }
 
   throw new Error('The first social phase was not reachable through player controls.')
+}
+
+async function advanceToLohAnnouncement(page: Page): Promise<void> {
+  for (let step = 0; step < 12; step += 1) {
+    await closePhaseInformationIfPresent(page)
+    if ((await readAppState(page)).game.phase === 'loh_comp_announcement') return
+
+    const optionalContinue = page.getByRole('button', { name: 'Continue', exact: true })
+    if (await optionalContinue.isVisible()) {
+      await optionalContinue.click()
+      continue
+    }
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await expect(advance).toBeEnabled()
+    await advance.click()
+  }
+
+  throw new Error('The LOH competition announcement was not reachable through player controls.')
 }
 
 async function playOneCompleteWeek(page: Page): Promise<{
@@ -546,7 +572,7 @@ test.describe('Real player core journeys', () => {
     const initialState = await readAppState(page)
     expect(initialState.game.seed).toBe(E2E_NEW_SEASON_FIXTURE.seasonSeed)
     expect(initialState.game.week).toBe(1)
-    expect(initialState.game.phase).toBe('week_start')
+    expect(initialState.game.phase).toBe('season_start')
     const initialActiveIds = initialState.game.players
       .filter((player) => player.status === 'active')
       .map((player) => player.id)
@@ -635,7 +661,7 @@ test.describe('Real player core journeys', () => {
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })
-    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    await advanceToLohAnnouncement(page)
     await expect(actionZone.getByLabel('LOH competition', { exact: true })).toBeVisible()
     await closePhaseInformationIfPresent(page)
 
@@ -651,6 +677,33 @@ test.describe('Real player core journeys', () => {
 
     await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
     await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
+  })
+
+  test('a completed LOH competition can be saved and resumed @persistence @release', async ({
+    page,
+  }) => {
+    const playerName = 'LOH Resume Player'
+    await startFreshCampaign(page, playerName)
+
+    await advanceToLohAnnouncement(page)
+    await closePhaseInformationIfPresent(page)
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await advance.click()
+    await resolveCompetitionThroughPlayerControls(page, 'loh_comp')
+    await expect
+      .poll(() => readAppState(page).then((state) => state.game.phase), {
+        timeout: SCREEN_TIMEOUT_MS,
+      })
+      .toBe('loh_results')
+
+    await saveAndReturnHome(page)
+    await page.reload()
+    await waitForHome(page)
+    await resumeLastRun(page, 'LOH results')
+
+    await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
   })
 
   test('production navigation returns to the active game and an unknown deep link recovers home @smoke @core-journey @mobile @release', async ({
@@ -721,7 +774,7 @@ test.describe('Real player core journeys', () => {
     await startFreshCampaign(page, playerName)
 
     const actionZone = page.getByRole('region', { name: 'Game action zone' })
-    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+    await advanceToLohAnnouncement(page)
     await expect(actionZone.getByLabel('LOH competition', { exact: true })).toBeVisible()
     await closePhaseInformationIfPresent(page)
 

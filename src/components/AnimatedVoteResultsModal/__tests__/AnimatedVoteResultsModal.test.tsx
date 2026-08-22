@@ -292,4 +292,40 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
 
     expect(container.querySelectorAll('.avrm__tally--evictee')).toHaveLength(2);
   });
+
+  it('starts public percentages near their result and fluctuates instead of counting from zero', async () => {
+    const { container } = render(
+      <AnimatedVoteResultsModal
+        nominees={[
+          { nominee: makePlayer('p1', 'Nominee 1'), voteCount: 61.4 },
+          { nominee: makePlayer('p2', 'Nominee 2'), voteCount: 38.6 },
+        ]}
+        evictee={makePlayer('p1', 'Nominee 1')}
+        onDone={vi.fn()}
+        revealIntervalMs={10}
+        postRevealDelayMs={1}
+        variant="tv"
+        resultMode="public"
+      />
+    );
+
+    const openingValues = Array.from(container.querySelectorAll('.avrm__tally-count')).map(
+      (node) => Number(node.textContent?.replace('%', ''))
+    );
+    expect(openingValues[0]).toBeGreaterThan(50);
+    expect(openingValues[1]).toBeGreaterThan(30);
+    expect(container.querySelector('.avrm__tally--leading')).toBeNull();
+    expect(container.querySelector('.avrm__tv-vote-ring-fill--leading')).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    const updatedValues = Array.from(container.querySelectorAll('.avrm__tally-count')).map(
+      (node) => Number(node.textContent?.replace('%', ''))
+    );
+    expect(updatedValues).not.toEqual(openingValues);
+    expect(updatedValues[0]).toBeGreaterThan(50);
+    expect(updatedValues[1]).toBeGreaterThan(30);
+    expect(container.querySelector('.avrm__tally--leading')).toBeNull();
+  });
 });

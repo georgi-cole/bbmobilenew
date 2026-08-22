@@ -328,7 +328,7 @@ export function useTwistFlow({
 
   const handlePublicSaveResultDismiss = useCallback(() => {
     if (!pendingPublicSaveResult) return
-    dispatch(commitPublicSave(pendingPublicSaveResult))
+    dispatch(commitPublicSave({ savedId: pendingPublicSaveResult.savedId }))
     setPendingPublicSaveResult(null)
   }, [dispatch, pendingPublicSaveResult])
 

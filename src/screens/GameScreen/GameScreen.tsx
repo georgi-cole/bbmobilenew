@@ -47,6 +47,7 @@ import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBina
 import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
 import LaneRacersCanvasGame from '../../minigames/laneRacers/LaneRacersCanvasGame'
 import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import { rankPressurePlankResults } from '../../components/PressurePlank/pressurePlankLogic'
 import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
 import TravelingDots from '../../components/TravelingDots/TravelingDots'
 import MinigameHost from '../../components/MinigameHost/MinigameHost'
@@ -82,7 +83,6 @@ import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
-import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
@@ -228,7 +228,6 @@ export default function GameScreen() {
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
-  const remoteMainTvHeadline = useAppSelector(selectRemoteMainTvHeadline)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
@@ -333,9 +332,7 @@ export default function GameScreen() {
   const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false)
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const preJuryGameOver =
-    game.mode !== 'survival' &&
-    humanPlayer?.status === 'evicted' &&
-    !spectatingAfterElimination
+    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination
   const isVoxPopuli = game.voxPopuli?.status === 'active'
   const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
   const voxAudiencePreviewWindow =
@@ -536,11 +533,7 @@ export default function GameScreen() {
       ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
       status: 'ready',
     })
-  }, [
-    game.voxPopuli?.nominationBallots,
-    game.week,
-    voxNominationRevealReady,
-  ])
+  }, [game.voxPopuli?.nominationBallots, game.week, voxNominationRevealReady])
 
   useEffect(() => {
     if (!voxNominationRevealReady || hasSeenVoxNominationRevealIntro()) return
@@ -885,13 +878,23 @@ export default function GameScreen() {
 
     aiOnlyChallengeResolvedRef.current = pendingChallenge.id
     const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
-    const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null
-    const finalWinnerId = scoreWinnerId ?? pendingChallenge.participants[0]
-    const ranked = computeScores(
-      pendingChallenge.game.scoringAdapter,
-      rawResults,
-      pendingChallenge.game.scoringParams ?? {}
-    )
+    const scoreWinnerId = dispatch(
+      completeChallenge(rawResults, { authoritativeWinnerId: pendingChallenge.forcedWinnerId })
+    ) as string | null
+    const finalWinnerId =
+      pendingChallenge.forcedWinnerId ?? scoreWinnerId ?? pendingChallenge.participants[0]
+    const ranked =
+      pendingChallenge.game.key === 'pressurePlank'
+        ? rankPressurePlankResults(
+            pendingChallenge.participants,
+            pendingChallenge.aiScores,
+            pendingChallenge.seed
+          )
+        : computeScores(
+            pendingChallenge.game.scoringAdapter,
+            rawResults,
+            pendingChallenge.game.scoringParams ?? {}
+          )
     const lastNonWinner = [...ranked].reverse().find((result) => result.playerId !== finalWinnerId)
 
     dispatch(
@@ -1138,7 +1141,8 @@ export default function GameScreen() {
   // Final Three is a closed ceremony. Do not surface fresh social actions or
   // inbox requests once only three housemates remain.
   const isSocialPhase =
-    (isVoxPopuli && alivePlayers.length > 3) || (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
+    (isVoxPopuli && alivePlayers.length > 3) ||
+    (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
   const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
   // The individual controllers publish presentation signals; this coordinator
@@ -1147,7 +1151,10 @@ export default function GameScreen() {
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
   const showFinal3Ceremony =
-    !isVoxPopuli && game.awaitingFinal3Plea === true && game.phase === 'final3_decision' && !!game.lohId
+    !isVoxPopuli &&
+    game.awaitingFinal3Plea === true &&
+    game.phase === 'final3_decision' &&
+    !!game.lohId
   const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const favoriteAnnouncementPending =
     game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
@@ -1239,28 +1246,6 @@ export default function GameScreen() {
   })
   const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
-  // ── Viewport fallback message for blank-TV states ────────────────────────
-  // Provides a meaningful holding message while the live vote is waiting for
-  // the human decision or for the remaining house votes to finish.
-  const tvViewportFallbackMessage = useMemo(() => {
-    if (game.phase === 'live_vote') {
-      if (isVoxPopuli) return 'The audience vote is being counted.'
-      if (game.awaitingHumanVote) {
-        return activeConfessionalDecision
-          ? 'The Big Eye requires your vote in the Confessional.'
-          : 'Waiting for your vote.'
-      }
-      return 'Players are casting their votes.'
-    }
-    // Fall back to the remote-config headline when no phase-specific message applies.
-    return remoteMainTvHeadline ?? undefined
-  }, [
-    game.phase,
-    game.awaitingHumanVote,
-    isVoxPopuli,
-    activeConfessionalDecision,
-    remoteMainTvHeadline,
-  ])
   function handlePublicMeterBlocked() {
     setPublicMeterUnavailableAnnouncement({
       key: 'public_meter_unavailable',
@@ -1339,7 +1324,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1372,7 +1356,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1408,7 +1391,6 @@ export default function GameScreen() {
                   : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1443,7 +1425,6 @@ export default function GameScreen() {
                         : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1560,8 +1541,8 @@ export default function GameScreen() {
                 ? '🗳️ The secret nominations have been counted'
                 : nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] ===
                     'Last in LOH Comp'
-                ? '🎯 Nominations are set — including the LOH comp last-place finisher'
-                : '🎯 Nominations are set'
+                  ? '🎯 Nominations are set — including the LOH comp last-place finisher'
+                  : '🎯 Nominations are set'
             }
             onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
             ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
@@ -1871,9 +1852,7 @@ export default function GameScreen() {
                   badge: isVoxFinalFour ? '🏆' : isVoxPopuli ? '🛡️' : '👑',
                   badgeImageSrc: isVoxPopuli ? undefined : LOH_BADGE_SRC,
                   badgeVariant:
-                    !isVoxPopuli && isCupidArrowActive(game)
-                      ? ('cupid-kiss' as const)
-                      : undefined,
+                    !isVoxPopuli && isCupidArrowActive(game) ? ('cupid-kiss' as const) : undefined,
                   badgeStart: 'center' as const,
                   badgeLabel: `${winnerPlayer?.name ?? roleWinnerId} wins ${
                     isVoxFinalFour
@@ -1888,9 +1867,7 @@ export default function GameScreen() {
             caption={`${expandCupidIds(game, [game.lohId])
               .map((id) => game.players.find((player) => player.id === id)?.name)
               .filter(Boolean)
-              .join(' & ')} ${
-              !isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'
-            } ${
+              .join(' & ')} ${!isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'} ${
               isVoxFinalFour
                 ? 'the Final 4 competition!'
                 : isVoxPopuli
@@ -1969,8 +1946,7 @@ export default function GameScreen() {
               isVoxPopuli
                 ? `${activeReplacementAnimationTargetIds
                     .map((id) => {
-                      const name =
-                        game.players.find((player) => player.id === id)?.name ?? id
+                      const name = game.players.find((player) => player.id === id)?.name ?? id
                       const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0
                       return `${name} (${votes} vote${votes === 1 ? '' : 's'})`
                     })
@@ -1983,8 +1959,8 @@ export default function GameScreen() {
               isVoxPopuli
                 ? 'Next-highest secret-ballot rank'
                 : game.specialVeto?.activeType === 'diamond'
-                ? '😇 Halo Exchange names the backup nominee'
-                : '🎯 Nominations are set'
+                  ? '😇 Halo Exchange names the backup nominee'
+                  : '🎯 Nominations are set'
             }
             onDone={handleAiReplacementDone}
             ariaLabel="Backup nominee ceremony"
@@ -2152,9 +2128,7 @@ export default function GameScreen() {
           secondaryLabel={isVoxPopuli ? 'Return Home' : undefined}
           onConfirm={handleStartNewSeason}
           onCancel={
-            isVoxPopuli
-              ? () => setSpectatingAfterElimination(true)
-              : handlePreJuryReturnHome
+            isVoxPopuli ? () => setSpectatingAfterElimination(true) : handlePreJuryReturnHome
           }
           onSecondary={isVoxPopuli ? handlePreJuryReturnHome : undefined}
         />
