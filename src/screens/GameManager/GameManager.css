@@ -26,11 +26,38 @@
   margin-top: 0;
 }
 
-.game-manager__rules-editor { max-width:76rem; margin:1.5rem auto; padding:1rem; border:1px solid #39527c; border-radius:12px; background:rgba(8,18,35,.72); }
-.game-manager__rules-editor label { display:flex; flex-direction:column; gap:.35rem; margin-top:1rem; font-weight:700; }
-.game-manager__rules-editor select, .game-manager__rules-editor textarea { color:inherit; background:#101f38; border:1px solid #49658f; border-radius:6px; padding:.6rem; font:inherit; }
-.game-manager__rules-editor textarea { resize:vertical; line-height:1.45; }
-.game-manager__rules-editor small { font-weight:400; opacity:.75; }
+.game-manager__rules-editor {
+  max-width: 76rem;
+  margin: 1.5rem auto;
+  padding: 1rem;
+  border: 1px solid #39527c;
+  border-radius: 12px;
+  background: rgba(8, 18, 35, 0.72);
+}
+.game-manager__rules-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  font-weight: 700;
+}
+.game-manager__rules-editor select,
+.game-manager__rules-editor textarea {
+  color: inherit;
+  background: #101f38;
+  border: 1px solid #49658f;
+  border-radius: 6px;
+  padding: 0.6rem;
+  font: inherit;
+}
+.game-manager__rules-editor textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+.game-manager__rules-editor small {
+  font-weight: 400;
+  opacity: 0.75;
+}
 
 .game-manager__header p {
   max-width: 48rem;

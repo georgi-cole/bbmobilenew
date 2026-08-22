@@ -209,12 +209,16 @@ function sanitiseRulesManager(raw: unknown): RemoteConfig['rulesManager'] | unde
       const source = entry as Record<string, unknown>
       const description = safeStr(source.description)
       const instructions = Array.isArray(source.instructions)
-        ? source.instructions.filter((item): item is string => typeof item === 'string').slice(0, 30).map((item) => item.slice(0, 500))
+        ? source.instructions
+            .filter((item): item is string => typeof item === 'string')
+            .slice(0, 30)
+            .map((item) => item.slice(0, 500))
         : undefined
-      if (description || instructions?.length) games[key.slice(0, 100)] = {
-        ...(description ? { description: description.slice(0, 1000) } : {}),
-        ...(instructions ? { instructions } : {}),
-      }
+      if (description || instructions?.length)
+        games[key.slice(0, 100)] = {
+          ...(description ? { description: description.slice(0, 1000) } : {}),
+          ...(instructions ? { instructions } : {}),
+        }
     }
   }
   return Object.keys(games).length ? { enabled: value.enabled !== false, games } : undefined

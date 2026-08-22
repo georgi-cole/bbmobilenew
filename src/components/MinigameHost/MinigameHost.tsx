@@ -175,7 +175,8 @@ export default function MinigameHost({
   const rulesGame = useMemo(
     () =>
       (() => {
-        const override = store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
+        const override =
+          store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
         const resolved = override ? { ...launchedGame, ...override } : launchedGame
         return resolved.key === 'glass_bridge_brutal'
           ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
