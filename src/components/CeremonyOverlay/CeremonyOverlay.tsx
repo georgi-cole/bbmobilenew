@@ -20,15 +20,7 @@
  *   />
  */
 
-import {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useCallback,
-  useMemo,
-  useRef,
-  useId,
-} from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
 import {
   normalizeRectToCeremonySurface,
@@ -587,12 +579,7 @@ export default function CeremonyOverlay({
                   ))}
                 </mask>
               </defs>
-              <rect
-                width="100%"
-                height="100%"
-                fill="rgba(0,0,0,0.78)"
-                mask={`url(#${maskId})`}
-              />
+              <rect width="100%" height="100%" fill="rgba(0,0,0,0.78)" mask={`url(#${maskId})`} />
             </svg>
           </div>
         )}
