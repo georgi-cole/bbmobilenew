@@ -15,6 +15,7 @@ import { store } from './store/store'
 import { router } from './routes'
 import { SoundManager } from './services/sound/SoundManager'
 import AudioStateSync from './services/sound/AudioStateSync'
+import RouteLoopAudioSync from './services/sound/RouteLoopAudioSync'
 import AudioGate from './components/AudioGate/AudioGate'
 import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice'
 import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics'
@@ -68,6 +69,7 @@ export default function App() {
       <I18nProvider>
         <LiveOpsController />
         <AudioStateSync />
+        <RouteLoopAudioSync hash={hash} />
         <VipEntitlementSync />
         {/* AudioGate is suppressed on the Intro/Home route because HomeHub
             unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
