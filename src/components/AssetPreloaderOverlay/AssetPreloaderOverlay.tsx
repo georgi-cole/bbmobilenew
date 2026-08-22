@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { getAll } from '../../data/houseguests';
 import { resolveAvatar } from '../../utils/avatar';
 import { preloadImage, preloadImages } from '../../utils/preload';
+import { stopIntroHubAudioForGameplayExit } from '../../services/sound/RouteLoopAudioSync';
 import KolequantSplash from '../KolequantSplash/KolequantSplash';
 import GAMEPLAY_BG from '../../assets/bb-gameplay-bg.svg';
 
@@ -34,6 +35,10 @@ export default function AssetPreloaderOverlay({
 
   useEffect(() => {
     let cancelled = false;
+
+    // Gameplay owns audio from the moment its preloader opens, even though the
+    // URL is still the Intro Hub until preloading completes.
+    stopIntroHubAudioForGameplayExit();
 
     async function run() {
       setStatus('Loading the competition background.');
