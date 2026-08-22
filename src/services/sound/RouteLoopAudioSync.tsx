@@ -13,7 +13,7 @@ const INTRO_HUB_FADE_MS = 260
 
 let introHubAudio: HTMLAudioElement | null = null
 let introHubFadeGeneration = 0
-let introHubReturnPrimed = false
+let introHubGameplayExitPending = false
 
 function isIntroHubHash(hash: string): boolean {
   return hash === '' || hash === '#' || hash === '#/'
@@ -49,67 +49,14 @@ function ensureIntroHubAudio(musicVolume: number): HTMLAudioElement {
 
 function pauseIntroHubLoop(): void {
   cancelIntroHubFade()
-  introHubReturnPrimed = false
   introHubAudio?.pause()
   // #1375/#1376 used SoundManager.play(), which put this loop in the SFX pool.
   // Stop any legacy pooled copy so a stale duplicate can never survive mute.
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 }
 
-function primeIntroHubReturnFromGesture(musicVolume: number): void {
-  cancelIntroHubFade()
-  SoundManager.stop(INTRO_HUB_LOOP_KEY)
-
-  const el = ensureIntroHubAudio(musicVolume)
-  try {
-    el.currentTime = 0
-  } catch {
-    // Some WebViews reject currentTime while media state is settling.
-  }
-
-  // Credits navigates home only after its exit fade, which is too late for
-  // Safari/iOS's transient user-activation window. Start the singleton hub
-  // element muted during the actual Skip/Escape gesture, then unmute/reset it
-  // when the Intro Hub route becomes active again.
-  el.muted = true
-  introHubReturnPrimed = true
-  void el.play().catch(() => {
-    introHubReturnPrimed = false
-  })
-}
-
-function startIntroHubLoop(musicVolume: number): void {
-  cancelIntroHubFade()
-
-  // The hub is outside gameplay. Clear central gameplay BGM and any legacy
-  // pooled Intro Hub copy before touching the one dedicated hub element.
-  SoundManager.stopAllMusic()
-  SoundManager.stop(INTRO_HUB_LOOP_KEY)
-
-  const el = ensureIntroHubAudio(musicVolume)
-  if (introHubReturnPrimed) {
-    introHubReturnPrimed = false
-    try {
-      el.currentTime = 0
-    } catch {
-      // Some WebViews reject currentTime while media state is settling.
-    }
-    el.muted = false
-    if (!el.paused) return
-  } else {
-    el.muted = false
-  }
-
-  if (!el.paused) return
-
-  // Keep play() in the user-activation call stack when this runs from the
-  // pointer/key retry below. Safari/iOS can reject delayed media playback.
-  void el.play().catch(() => undefined)
-}
-
 function resetIntroHubLoop(): void {
   cancelIntroHubFade()
-  introHubReturnPrimed = false
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 
   const el = introHubAudio
@@ -123,8 +70,75 @@ function resetIntroHubLoop(): void {
   }
 }
 
+/**
+ * Called by HomeHub when gameplay is actually being entered or resumed.
+ * New-game preloading still uses the Intro Hub URL for a short time, so route
+ * checks alone cannot distinguish that transition from an active Home Hub.
+ */
+export function stopIntroHubAudioForGameplayExit(): void {
+  introHubGameplayExitPending = true
+  resetIntroHubLoop()
+}
+
+function primeIntroHubPermissionFromCreditsGesture(musicVolume: number): void {
+  const el = ensureIntroHubAudio(musicVolume)
+  try {
+    el.currentTime = 0
+  } catch {
+    // Some WebViews reject currentTime while media state is settling.
+  }
+
+  // Credits exits only after its fade. Touch the already-singleton media
+  // element during the actual Skip/Escape gesture, but keep it muted and pause
+  // it again immediately. This preserves the browser media permission without
+  // allowing Intro Hub audio to remain playing underneath Credits.
+  el.muted = true
+  void el
+    .play()
+    .then(() => {
+      if (!isIntroHubHash(window.location.hash)) {
+        el.pause()
+        try {
+          el.currentTime = 0
+        } catch {
+          // Some WebViews reject currentTime while media state is settling.
+        }
+      }
+      el.muted = false
+    })
+    .catch(() => {
+      el.muted = false
+    })
+}
+
+function startIntroHubLoop(musicVolume: number): void {
+  // Hard ownership invariant: this soundtrack can only start while the live
+  // browser route is the Intro Hub, never from stale React state or a late
+  // gesture callback. Gameplay preloading is also explicitly excluded.
+  if (
+    introHubGameplayExitPending ||
+    !isIntroHubHash(window.location.hash) ||
+    document.querySelector('.hbc') != null
+  ) {
+    resetIntroHubLoop()
+    return
+  }
+
+  cancelIntroHubFade()
+
+  // The hub is outside gameplay. Clear central gameplay BGM and any legacy
+  // pooled Intro Hub copy before touching the one dedicated hub element.
+  SoundManager.stopAllMusic()
+  SoundManager.stop(INTRO_HUB_LOOP_KEY)
+
+  const el = ensureIntroHubAudio(musicVolume)
+  el.muted = false
+  if (!el.paused) return
+
+  void el.play().catch(() => undefined)
+}
+
 function fadeOutAndResetIntroHubLoop(durationMs = INTRO_HUB_FADE_MS): void {
-  // Always clean up the old pooled path as well as the dedicated element.
   SoundManager.stop(INTRO_HUB_LOOP_KEY)
 
   const el = introHubAudio
@@ -176,9 +190,10 @@ function isCreditsExitControl(target: EventTarget | null): boolean {
  * than a normal gameplay phase.
  *
  * Intro Hub deliberately uses one dedicated HTMLAudioElement instead of the
- * generic SoundManager.play() pool. A looping background bed must be singleton:
- * mute/unmute pauses/resumes that exact element, while route/cinematic takeover
- * fades and resets it before the next owner starts.
+ * generic SoundManager.play() pool. The invariant is strict: that element may
+ * play only while the live route is the Intro Hub and Hubmates is not covering
+ * it. Every other route/flow hard-stops and resets it. Returning home starts the
+ * same singleton fresh; the music toggle pauses/resumes it in-place.
  */
 export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   const musicOn = useSelector((state: RootState) => state.settings.audio.musicOn)
@@ -197,7 +212,6 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     isSelfEvictedHash(hash) || isHumanEviction(humanPlayerId, evictionOverlayPlayerId)
 
   useEffect(() => {
-    // Clean up any pooled Intro Hub instance left by the pre-hotfix implementation.
     SoundManager.stop(INTRO_HUB_LOOP_KEY)
     SoundManager.registerDynamic({
       key: PLAYER_EVICTION_LOOP_KEY,
@@ -208,8 +222,22 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       loop: true,
     })
 
-    return () => {
+    const enforceLiveRouteOwnership = () => {
+      if (isIntroHubHash(window.location.hash)) {
+        // A real navigation back to Home ends any gameplay-exit suppression.
+        introHubGameplayExitPending = false
+        return
+      }
       resetIntroHubLoop()
+    }
+
+    window.addEventListener('hashchange', enforceLiveRouteOwnership)
+    enforceLiveRouteOwnership()
+
+    return () => {
+      window.removeEventListener('hashchange', enforceLiveRouteOwnership)
+      resetIntroHubLoop()
+      introHubGameplayExitPending = false
       introHubAudio = null
       SoundManager.stop(PLAYER_EVICTION_LOOP_KEY)
     }
@@ -220,16 +248,13 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
 
     const handleCreditsReturnClick = (event: Event) => {
       if (!isCreditsExitControl(event.target)) return
-      primeIntroHubReturnFromGesture(musicVolume)
+      primeIntroHubPermissionFromCreditsGesture(musicVolume)
     }
     const handleCreditsReturnKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      primeIntroHubReturnFromGesture(musicVolume)
+      primeIntroHubPermissionFromCreditsGesture(musicVolume)
     }
 
-    // Credits waits for its 420ms exit fade before navigating home. Prime the
-    // dedicated hub element during the actual exit gesture so returning home
-    // does not depend on a fresh tap to satisfy mobile autoplay policy.
     document.addEventListener('click', handleCreditsReturnClick, true)
     document.addEventListener('keydown', handleCreditsReturnKey, true)
     return () => {
@@ -246,8 +271,6 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       fadeOutAndResetIntroHubLoop()
     }
 
-    // Capture phase runs before the destination's React click handler, so the
-    // hub bed starts fading before Credits/Hubmates starts its own soundtrack.
     document.addEventListener('click', handleTakeoverClick, true)
     return () => document.removeEventListener('click', handleTakeoverClick, true)
   }, [introHubActive])
@@ -256,7 +279,9 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     if (!introHubActive) return undefined
 
     const syncHubmatesSuppression = () => {
-      setIntroHubSuppressed(document.querySelector('.hbc') != null)
+      const suppressed = document.querySelector('.hbc') != null
+      if (suppressed) resetIntroHubLoop()
+      setIntroHubSuppressed(suppressed)
     }
 
     syncHubmatesSuppression()
@@ -267,7 +292,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
 
   useEffect(() => {
     if (!introHubActive || playerEvictionActive || introHubSuppressed) {
-      fadeOutAndResetIntroHubLoop()
+      resetIntroHubLoop()
       return
     }
 
@@ -281,14 +306,12 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
 
     const startAfterGesture = () => {
       startIntroHubLoop(musicVolume)
-      document.removeEventListener('pointerdown', startAfterGesture)
-      document.removeEventListener('keydown', startAfterGesture)
     }
-    document.addEventListener('pointerdown', startAfterGesture, { once: true })
+    document.addEventListener('click', startAfterGesture, { once: true })
     document.addEventListener('keydown', startAfterGesture, { once: true })
 
     return () => {
-      document.removeEventListener('pointerdown', startAfterGesture)
+      document.removeEventListener('click', startAfterGesture)
       document.removeEventListener('keydown', startAfterGesture)
     }
   }, [introHubActive, introHubSuppressed, musicOn, musicVolume, playerEvictionActive])
