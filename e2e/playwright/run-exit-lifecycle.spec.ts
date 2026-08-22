@@ -54,8 +54,11 @@ test.describe('Run exit lifecycle', () => {
     await createProfileFromHome(page, 'Abandon Regression Player')
     await startClassicSeason(page)
 
-    // Reproduce the real bug precondition: the player never pressed Save, but
-    // background autosave has already created a durable run.
+    // Season start intentionally has nothing meaningful to save. Advance once so
+    // the test reproduces the real bug: gameplay progress exists and autosave has
+    // persisted it even though the player never pressed Save manually.
+    await page.getByRole('button', { name: 'Advance to next phase' }).click()
+
     await expect
       .poll(
         () =>
