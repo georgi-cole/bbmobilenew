@@ -68,8 +68,8 @@ export function useCompetitionFlow({
     caption: string
     subtitle?: string
     ariaLabel: string
-    /** Optional live-measure callback for viewport-tracking during zoom/scroll. */
-    measureA?: () => DOMRect | null
+    /** Rebuilds every cutout from the live post-minigame roster layout. */
+    measureTiles: () => CeremonyTile[]
   } | null>(null)
   const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
 
@@ -432,10 +432,8 @@ export function useCompetitionFlow({
       const winnerPlayers = winnerIds
         .map((id) => game.players.find((player) => player.id === id))
         .filter((player): player is Player => Boolean(player))
-      const sourceDomRect = getTileRect(finalWinnerId)
-
-      if (winnerPlayers.length === 0 || !sourceDomRect) {
-        // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+      if (winnerPlayers.length === 0) {
+        // Defensive fallback: an invalid winner cannot produce a ceremony.
         dispatch(
           applyMinigameWinner({
             winnerId: finalWinnerId,
@@ -462,8 +460,8 @@ export function useCompetitionFlow({
           screen: 'GameScreen',
         })
       }
-      const tiles: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
-        rect: getTileRect(winnerPlayer.id),
+      const winnerTileMetadata: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
+        rect: null,
         badge: winSymbol,
         badgeImageSrc: isHohComp && !isVoxComp ? LOH_BADGE_SRC : undefined,
         badgeVariant:
@@ -475,6 +473,11 @@ export function useCompetitionFlow({
         badgeStart: 'center',
         badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
       }))
+      const measureWinnerTiles = (): CeremonyTile[] =>
+        winnerTileMetadata.map((tile, index) => ({
+          ...tile,
+          rect: getTileRect(winnerPlayers[index].id),
+        }))
       const winnerNames = winnerPlayers.map((player) => player.name).join(' & ')
       pendingWinnerDispatchRef.current = () =>
         dispatch(
@@ -486,11 +489,13 @@ export function useCompetitionFlow({
         )
       setPendingWinnerCeremony({
         winnerId: finalWinnerId,
-        tiles,
+        // Metadata is available immediately, but geometry is deliberately null
+        // until SpotlightAnimation measures after MinigameHost has unmounted.
+        tiles: winnerTileMetadata,
         caption: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}!`,
         subtitle: winSymbol,
         ariaLabel: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}`,
-        measureA: () => getTileRect(finalWinnerId),
+        measureTiles: measureWinnerTiles,
       })
     },
     [

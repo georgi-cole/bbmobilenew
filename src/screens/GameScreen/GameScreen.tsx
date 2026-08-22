@@ -1832,7 +1832,8 @@ export default function GameScreen() {
             subtitle={pendingWinnerCeremony.subtitle}
             onDone={handleWinnerCeremonyDone}
             ariaLabel={pendingWinnerCeremony.ariaLabel}
-            measureA={pendingWinnerCeremony.measureA}
+            layoutSignal={responsiveGameLayout.revision}
+            measureTiles={pendingWinnerCeremony.measureTiles}
           />
         )}
 
