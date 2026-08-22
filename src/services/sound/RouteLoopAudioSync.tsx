@@ -65,21 +65,38 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   }, [])
 
   useEffect(() => {
-    if (introHubActive && musicOn && !playerEvictionActive) {
-      // The hub is outside gameplay. Clear any stale gameplay BGM before
-      // starting its dedicated loop so returning home never layers two beds.
-      SoundManager.stopAllMusic()
-      void SoundManager.play(INTRO_HUB_LOOP_KEY, { allowDuplicate: true })
-    } else {
+    if (!introHubActive || !musicOn || playerEvictionActive) {
       SoundManager.stop(INTRO_HUB_LOOP_KEY)
+      return
     }
 
-    return () => SoundManager.stop(INTRO_HUB_LOOP_KEY)
+    // The hub is outside gameplay. Clear any stale gameplay BGM before
+    // starting its dedicated loop so returning home never layers two beds.
+    SoundManager.stopAllMusic()
+
+    // Browser/WebView autoplay rules may reject audio until the first user
+    // gesture. Arm the manager's normal unlock listeners and also retry this
+    // route-owned loop from that same gesture after the manager has unlocked.
+    SoundManager.unlockOnUserGesture()
+    void SoundManager.play(INTRO_HUB_LOOP_KEY)
+
+    const startAfterGesture = () => {
+      SoundManager.stop(INTRO_HUB_LOOP_KEY)
+      void SoundManager.play(INTRO_HUB_LOOP_KEY)
+    }
+    document.addEventListener('pointerdown', startAfterGesture, { once: true })
+    document.addEventListener('keydown', startAfterGesture, { once: true })
+
+    return () => {
+      document.removeEventListener('pointerdown', startAfterGesture)
+      document.removeEventListener('keydown', startAfterGesture)
+      SoundManager.stop(INTRO_HUB_LOOP_KEY)
+    }
   }, [introHubActive, musicOn, playerEvictionActive])
 
   useEffect(() => {
     if (playerEvictionActive && sfxOn) {
-      void SoundManager.play(PLAYER_EVICTION_LOOP_KEY, { allowDuplicate: true })
+      void SoundManager.play(PLAYER_EVICTION_LOOP_KEY)
     } else {
       SoundManager.stop(PLAYER_EVICTION_LOOP_KEY)
     }
