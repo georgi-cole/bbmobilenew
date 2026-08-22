@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import type { RootState } from '../../store/store'
-import {
-  INTRO_HUB_AUDIO_SUPPRESSION_EVENT,
-  type IntroHubAudioSuppressionDetail,
-} from './introHubAudioBridge'
 import { SoundManager } from './SoundManager'
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -51,12 +47,14 @@ function pauseIntroHubLoop(): void {
   for (const el of getIntroHubAudioElements()) el.pause()
 }
 
-async function resumeIntroHubLoop(): Promise<boolean> {
+async function reuseIntroHubLoop(musicVolume: number): Promise<boolean> {
   cancelIntroHubFade()
-  const el = getIntroHubAudioElements().find((candidate) => candidate.paused && candidate.currentTime > 0)
+  const el = getIntroHubAudioElements().find((candidate) => candidate.currentTime > 0)
   if (!el) return false
 
-  el.volume = INTRO_HUB_VOLUME
+  el.volume = Math.max(0, Math.min(1, INTRO_HUB_VOLUME * musicVolume))
+  if (!el.paused) return true
+
   try {
     await el.play()
     return true
@@ -114,6 +112,7 @@ function isHubAudioTakeoverControl(target: EventTarget | null): boolean {
  */
 export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   const musicOn = useSelector((state: RootState) => state.settings.audio.musicOn)
+  const musicVolume = useSelector((state: RootState) => state.settings.audio.musicVolume)
   const sfxOn = useSelector((state: RootState) => state.settings.audio.sfxOn)
   const evictionOverlayPlayerId = useSelector(
     (state: RootState) => state.game.evictionOverlayPlayerId ?? null
@@ -150,16 +149,6 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       SoundManager.stop(INTRO_HUB_LOOP_KEY)
       SoundManager.stop(PLAYER_EVICTION_LOOP_KEY)
     }
-  }, [])
-
-  useEffect(() => {
-    const handleSuppression = (event: Event) => {
-      const detail = (event as CustomEvent<IntroHubAudioSuppressionDetail>).detail
-      setIntroHubSuppressed(detail?.suppressed === true)
-    }
-
-    window.addEventListener(INTRO_HUB_AUDIO_SUPPRESSION_EVENT, handleSuppression)
-    return () => window.removeEventListener(INTRO_HUB_AUDIO_SUPPRESSION_EVENT, handleSuppression)
   }, [])
 
   useEffect(() => {
@@ -203,13 +192,15 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
     let cancelled = false
 
     const startIntroHubLoop = async () => {
-      if (await resumeIntroHubLoop()) return
+      if (await reuseIntroHubLoop(musicVolume)) return
       if (cancelled) return
 
       // The hub is outside gameplay. Clear stale gameplay BGM before starting
       // its dedicated loop so returning home never layers two beds.
       SoundManager.stopAllMusic()
-      void SoundManager.play(INTRO_HUB_LOOP_KEY)
+      void SoundManager.play(INTRO_HUB_LOOP_KEY, {
+        volume: INTRO_HUB_VOLUME * musicVolume,
+      })
     }
 
     SoundManager.unlockOnUserGesture()
@@ -228,7 +219,7 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
       document.removeEventListener('pointerdown', startAfterGesture)
       document.removeEventListener('keydown', startAfterGesture)
     }
-  }, [introHubActive, introHubSuppressed, musicOn, playerEvictionActive])
+  }, [introHubActive, introHubSuppressed, musicOn, musicVolume, playerEvictionActive])
 
   useEffect(() => {
     if (playerEvictionActive && sfxOn) {
