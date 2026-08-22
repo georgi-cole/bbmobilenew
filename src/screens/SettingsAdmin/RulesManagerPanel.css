@@ -1,0 +1,9 @@
+.rules-manager__heading { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.rules-manager__hint, .rules-manager__notice { color:var(--color-text-muted); font-size:.8rem; line-height:1.45; margin:.35rem 0 1rem; }
+.rules-manager__count { color:var(--color-accent); font-size:.8rem; white-space:nowrap; }
+.rules-manager__label { display:flex; flex-direction:column; gap:.35rem; margin:0 0 1rem; font-weight:700; font-size:.85rem; }
+.rules-manager__label select, .rules-manager__label textarea { font:inherit; color:var(--color-text); background:rgba(255 255 255 / .06); border:1px solid var(--color-line); border-radius:8px; padding:.65rem; }
+.rules-manager__label textarea { resize:vertical; line-height:1.5; }
+.rules-manager__actions { display:flex; flex-wrap:wrap; gap:.5rem; }
+.rules-manager__actions button { border:1px solid var(--color-line); border-radius:7px; padding:.6rem .8rem; background:rgba(255 255 255 / .08); color:var(--color-text); cursor:pointer; }
+.rules-manager__actions button:disabled { opacity:.45; cursor:not-allowed; }

@@ -15,6 +15,24 @@ interface LocalizedRegistryMetadata {
   instructionKeys?: TranslationKey[]
 }
 
+const RULES_DRAFTS_STORAGE_KEY = 'bbmobile.rules-manager.drafts.v1'
+
+function applyRuntimeRules(game: GameRegistryEntry): GameRegistryEntry {
+  if (typeof window === 'undefined') return game
+  try {
+    const drafts = JSON.parse(window.localStorage.getItem(RULES_DRAFTS_STORAGE_KEY) ?? '{}') as Record<string, { description?: string; instructions?: string[] }>
+    const draft = drafts[game.key]
+    if (!draft) return game
+    return {
+      ...game,
+      ...(typeof draft.description === 'string' ? { description: draft.description } : {}),
+      ...(Array.isArray(draft.instructions) ? { instructions: draft.instructions } : {}),
+    }
+  } catch {
+    return game
+  }
+}
+
 const FIT_ME_IN_INSTRUCTION_KEYS: TranslationKey[] = [
   'fitMeIn.rules.freshBoard',
   'fitMeIn.rules.fivePlus',
@@ -56,11 +74,12 @@ function applyRegistryOverrides(
 }
 
 export function getAllGames(): GameRegistryEntry[] {
-  return getAllBaseGames().map((game) => applyRegistryOverrides(game)!)
+  return getAllBaseGames().map((game) => applyRuntimeRules(applyRegistryOverrides(game)!))
 }
 
 export function getGame(key: string): GameRegistryEntry | undefined {
-  return applyRegistryOverrides(getBaseGame(key))
+  const game = applyRegistryOverrides(getBaseGame(key))
+  return game ? applyRuntimeRules(game) : undefined
 }
 
 export function getPoolByFilter(filter: {
