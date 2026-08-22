@@ -35,6 +35,10 @@ export default function AssetPreloaderOverlay({
   useEffect(() => {
     let cancelled = false;
 
+    // Gameplay owns audio from the moment its preloader opens, even though the
+    // URL is still the Intro Hub until preloading completes.
+    window.dispatchEvent(new Event('introhub:gameplay-exit'));
+
     async function run() {
       setStatus('Loading the competition background.');
       await preloadImage(GAMEPLAY_BG);
