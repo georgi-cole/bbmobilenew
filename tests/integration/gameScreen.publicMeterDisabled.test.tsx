@@ -2,7 +2,7 @@ import * as React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import adsReducer from '../../src/store/adsSlice'
 import challengeReducer from '../../src/store/challengeSlice'
@@ -82,10 +82,16 @@ function makeStore(gameOverrides: Partial<ReturnType<typeof gameReducer>> = {}) 
 }
 
 function renderGameScreen(store: ReturnType<typeof makeStore>) {
+  function LocationProbe() {
+    const location = useLocation()
+    return <output data-testid="location-probe">{location.pathname}</output>
+  }
+
   return render(
     <Provider store={store}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/game']}>
         <GameScreen />
+        <LocationProbe />
       </MemoryRouter>
     </Provider>
   )
@@ -102,7 +108,7 @@ describe('GameScreen public meter gating', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows a current-season explanation without resurrecting the legacy store prompt', async () => {
+  it('opens the Store without putting a disabled-mode message on the faux TV', async () => {
     const store = makeStore()
     const initialFeed = store.getState().game.tvFeed
     renderGameScreen(store)
@@ -116,10 +122,8 @@ describe('GameScreen public meter gating', () => {
       publicMeterButton.click()
     })
 
-    expect(screen.getByTestId('tv-zone-announcement')).toHaveTextContent(
-      'Public Mode is not active for this season. Enable it in Settings before starting a new season.'
-    )
-    expect(screen.queryByText(/go to the store in the home hub/i)).toBeNull()
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/store')
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
     expect(store.getState().game.tvFeed).toEqual(initialFeed)
   })
 

@@ -512,7 +512,7 @@ export default function HomeHub() {
     if (!lastSnapshot || activeRunId !== lastRunId) {
       playSelectionButtons.push({
         key: 'active-season',
-        label: `Continue ${rulesetLabel(activeSeason.ruleset)} Season`,
+        label: rulesetLabel(activeSeason.ruleset),
         icon: <HomeHubButtonIcon name="campaign" />,
         variant: 'secondary_wide',
         onClick: resumeActiveSeason,

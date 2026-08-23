@@ -241,8 +241,6 @@ export default function GameScreen() {
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
-  const [publicMeterUnavailableAnnouncement, setPublicMeterUnavailableAnnouncement] =
-    useState<Announcement | null>(null)
   const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] =
     useState<Announcement | null>(null)
   useEffect(() => {
@@ -1237,7 +1235,6 @@ export default function GameScreen() {
           showDislikedBoostPrompt,
           preAdAnnouncement !== null,
           socialModuleUnavailableAnnouncement !== null,
-          publicMeterUnavailableAnnouncement !== null,
           socialSummaryOpen,
         ],
       },
@@ -1246,16 +1243,7 @@ export default function GameScreen() {
   const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
   function handlePublicMeterBlocked() {
-    setPublicMeterUnavailableAnnouncement({
-      key: 'public_meter_unavailable',
-      title:
-        settings.sim.publicMode === true
-          ? 'Public Mode is enabled in Settings. Start a new season to apply it.'
-          : 'Public Mode is not active for this season. Enable it in Settings before starting a new season.',
-      subtitle: '',
-      isLive: false,
-      autoDismissMs: 3500,
-    })
+    navigate('/store', { state: { returnTo: '/game' } })
   }
 
   function handleSocialModuleBlocked(availability: SocialModuleAvailability) {
@@ -1312,16 +1300,12 @@ export default function GameScreen() {
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
+              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
             }
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             occupancyChip={rosterOccupancyChip}
@@ -1344,16 +1328,12 @@ export default function GameScreen() {
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
+              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
             }
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             occupancyChip={rosterOccupancyChip}
@@ -1379,16 +1359,12 @@ export default function GameScreen() {
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
+              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
             }
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             occupancyChip={rosterOccupancyChip}
@@ -1404,9 +1380,7 @@ export default function GameScreen() {
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              aiTiebreakAnnouncement ??
+              socialModuleUnavailableAnnouncement ?? aiTiebreakAnnouncement ??
               postVoteAnnouncement ??
               publicSaveResultAnnouncement ??
               preAdAnnouncement
@@ -1414,15 +1388,13 @@ export default function GameScreen() {
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : aiTiebreakAnnouncement
-                    ? handleAiTiebreakAnnouncementDismiss
-                    : postVoteAnnouncement
-                      ? handlePostVoteAnnouncementDismiss
-                      : publicSaveResultAnnouncement
-                        ? handlePublicSaveResultDismiss
-                        : handlePreAdAnnouncementDismiss
+                : aiTiebreakAnnouncement
+                  ? handleAiTiebreakAnnouncementDismiss
+                  : postVoteAnnouncement
+                    ? handlePostVoteAnnouncementDismiss
+                    : publicSaveResultAnnouncement
+                      ? handlePublicSaveResultDismiss
+                      : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             occupancyChip={rosterOccupancyChip}
