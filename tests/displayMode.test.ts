@@ -113,11 +113,26 @@ describe('applyDisplayModeClasses', () => {
     );
   });
 
-  it('selects status-row fallbacks from native platform and iPhone shape', () => {
+  it('selects cold-start status-row fallbacks only for native iOS shapes', () => {
     expect(getNativeTopInsetFallbackPx('ios', 393, 852)).toBe(59);
     expect(getNativeTopInsetFallbackPx('ios', 375, 812)).toBe(44);
     expect(getNativeTopInsetFallbackPx('ios', 375, 667)).toBe(20);
-    expect(getNativeTopInsetFallbackPx('android', 412, 915)).toBe(24);
+    expect(getNativeTopInsetFallbackPx('ios', 820, 1180)).toBe(24);
+    expect(getNativeTopInsetFallbackPx('android', 412, 915)).toBe(0);
+  });
+
+  it('does not double-inset Android when Capacitor owns the native window inset', () => {
+    (window as Window & { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'android',
+    };
+
+    applyDisplayModeClasses();
+
+    expect(document.documentElement.classList.contains('is-capacitor-android')).toBe(true);
+    expect(document.documentElement.style.getPropertyValue('--app-safe-area-top-fallback')).toBe(
+      '',
+    );
   });
 
   // ── is-webkit ────────────────────────────────────────────────────────────

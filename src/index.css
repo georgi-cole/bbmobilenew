@@ -46,8 +46,15 @@
   --safe-bottom: var(--safe-area-inset-bottom);
   --safe-left: var(--safe-area-inset-left);
   --safe-right: var(--safe-area-inset-right);
+  /* One top-edge contract for every screen. Capacitor's measured inset wins
+     during normal operation; the fallback only covers WKWebView's zero-inset
+     startup frame on native iOS. */
   --app-safe-area-top-fallback: 0px;
-  --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-top));
+  --app-safe-area-top: max(
+    var(--app-safe-area-top-fallback),
+    var(--safe-top),
+    env(safe-area-inset-top, 0px)
+  );
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
   --floating-corner-top-base: 12px;
   --floating-corner-top-safe-padding: 8px;

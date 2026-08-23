@@ -32,10 +32,15 @@ describe('safe-area layout styles', () => {
     expect(appShellCss).toContain('height: 100dvh;')
     expect(appShellCss).toContain('max-width: var(--app-shell-max-width, 480px);')
     expect(appShellCss).toContain('margin: 0 auto;')
+    expect(appShellCss).toContain('min-height: 0;')
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);')
     expect(appShellCss).toContain('padding-right: var(--safe-right);')
     expect(appShellCss).toContain('padding-bottom: 0;')
     expect(appShellCss).toContain('padding-left: var(--safe-left);')
+    expect(globalCss).toContain('env(safe-area-inset-top, 0px)')
+    expect(globalCss).toContain(
+      '--app-safe-area-top: max( var(--app-safe-area-top-fallback), var(--safe-top), env(safe-area-inset-top, 0px) );'
+    )
   })
 
   it('lets bottom nav and dock stay parent-relative without raw child env() padding', () => {
