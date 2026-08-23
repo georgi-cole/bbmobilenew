@@ -1307,6 +1307,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1333,6 +1334,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1362,6 +1364,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1393,6 +1396,7 @@ export default function GameScreen() {
                       : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -2448,6 +2452,7 @@ export default function GameScreen() {
           occupancyLabel={housemateOccupancyLabel}
           returningPlayerId={battleBackReturnId}
           onReturnAnimationDone={handleBattleBackReturnDone}
+          showRosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
         />
         {previewPlayer && (
           <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />

@@ -104,9 +104,8 @@ export default function RecentActivity({
 
   return (
     <div className="ra-container" aria-label="Recent Activity">
-      <div className="ra-header">
-        <span className="ra-title">Recent Activity</span>
-        {visibleLogs.length > 0 && (
+      {visibleLogs.length > 0 && (
+        <div className="ra-header">
           <button
             className="ra-clear-btn"
             type="button"
@@ -115,8 +114,8 @@ export default function RecentActivity({
           >
             Clear
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {visibleLogs.length === 0 ? (
         <span className="ra-empty">No recent actions.</span>

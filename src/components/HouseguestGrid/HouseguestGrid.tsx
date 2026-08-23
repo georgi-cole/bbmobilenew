@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
@@ -9,8 +9,21 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
 import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
 import { getCupidPair, isCupidArrowActive } from '../../features/twists/cupidArrow'
+import { getDailyAtmosphere, type DailyAtmosphere } from '../../broadcasting/dailyMoodSystem'
+import useSound from '../../hooks/useSound'
 
-const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
+const HOUSEMATES_SECTION_TITLE = 'HUBMATES'
+
+const WEATHER_REVEAL_SOUNDS: Record<DailyAtmosphere, { key: string; volume: number; delayMs: number }> = {
+  sunny: { key: 'ui:confirm', volume: 0.2, delayMs: 0 },
+  cloudy: { key: 'ui:navigate', volume: 0.16, delayMs: 0 },
+  rainy: { key: 'ui:navigate', volume: 0.14, delayMs: 0 },
+  misty: { key: 'ui:navigate', volume: 0.12, delayMs: 80 },
+  snowy: { key: 'ui:confirm', volume: 0.14, delayMs: 80 },
+  sunset: { key: 'ui:confirm', volume: 0.16, delayMs: 0 },
+  starry: { key: 'ui:navigate', volume: 0.13, delayMs: 100 },
+  stormy: { key: 'minigame:cinematic_thunder', volume: 0.28, delayMs: 840 },
+}
 
 type RoboStatsSummary = {
   daysInGame?: number | null
@@ -91,6 +104,8 @@ type Props = {
   returningPlayerId?: string | null
   /** Called after the reverse-eviction cinematic settles into the roster tile. */
   onReturnAnimationDone?: () => void
+  /** Shows the game-log launcher at the right edge of a persistent roster header. */
+  showRosterLogLauncher?: boolean
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -133,10 +148,14 @@ export default function HouseguestGrid({
   occupancyLabel,
   returningPlayerId = null,
   onReturnAnimationDone,
+  showRosterLogLauncher = false,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
+  const weatherRevealKeyRef = useRef<string | null>(null)
   const dispatch = useAppDispatch()
+  const { play } = useSound()
   const game = useAppSelector((s) => s.game)
+  const [weatherReveal, setWeatherReveal] = useState<DailyAtmosphere | null>(null)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
   const returningPlayer = useMemo(
     () =>
@@ -220,6 +239,28 @@ export default function HouseguestGrid({
     viewportWidth,
     viewportHeight,
   })
+
+  useEffect(() => {
+    if (game.phase !== 'week_start' && game.phase !== 'week_end') {
+      setWeatherReveal(null)
+      return undefined
+    }
+
+    const atmosphere = getDailyAtmosphere(game.gameId, game.week, game.phase)
+    if (!atmosphere) return undefined
+
+    const revealKey = `${game.week}-${game.phase}-${atmosphere}`
+    if (weatherRevealKeyRef.current === revealKey) return undefined
+    weatherRevealKeyRef.current = revealKey
+    setWeatherReveal(atmosphere)
+    const sound = WEATHER_REVEAL_SOUNDS[atmosphere]
+    const soundTimer = window.setTimeout(() => play(sound.key, { volume: sound.volume }), sound.delayMs)
+    const timer = window.setTimeout(() => setWeatherReveal(null), 3000)
+    return () => {
+      window.clearTimeout(soundTimer)
+      window.clearTimeout(timer)
+    }
+  }, [game.gameId, game.phase, game.week, play])
 
   useEffect(() => {
     if (survivorReplacementTransition === null) return undefined
@@ -328,11 +369,30 @@ export default function HouseguestGrid({
               ariaLabel={`${occupancyLabel} housemates`}
             />
           )}
+          {showRosterLogLauncher && (
+            <button
+              type="button"
+              className={styles.rosterLogLauncher}
+              aria-label="Open game log"
+              onClick={() => window.dispatchEvent(new CustomEvent('tv:open-game-log'))}
+            >
+              <span aria-hidden="true">☷</span>
+              <span>Log</span>
+            </button>
+          )}
         </div>
 
         <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
           Tap a housemate to interact. Press and hold to preview their profile.
         </p>
+
+        {weatherReveal && (
+          <div
+            className={styles.weatherReveal}
+            data-weather={weatherReveal}
+            aria-hidden="true"
+          />
+        )}
 
         <ul
           className={listClassName}

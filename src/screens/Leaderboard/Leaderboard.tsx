@@ -71,17 +71,17 @@ export default function Leaderboard() {
 
   return (
     <div className="placeholder-screen leaderboard-screen">
-      <button
-        className="leaderboard-screen__back game-button game-button--ghost game-button--back"
-        type="button"
-        aria-label="Go back"
-        onClick={() => navigate(-1)}
-      >
-        <span aria-hidden="true">←</span>
-        <span>Back</span>
-      </button>
-
-      <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
+      <div className="leaderboard-screen__title-row">
+        <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
+        <button
+          className="leaderboard-screen__back"
+          type="button"
+          aria-label="Go back"
+          onClick={() => navigate(-1)}
+        >
+          <span aria-hidden="true">↩</span>
+        </button>
+      </div>
 
       <div className="leaderboard-screen__tabs">
         <button

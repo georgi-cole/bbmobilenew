@@ -17,6 +17,11 @@
 }
 
 .public-meter__title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.public-meter__title-wrap {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -64,12 +69,16 @@
 }
 
 .public-meter__back-btn {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 400;
   cursor: pointer;
-  font-size: 0.9rem;
   color: inherit;
   box-shadow: 0 10px 20px rgba(6, 10, 30, 0.18);
   transition:

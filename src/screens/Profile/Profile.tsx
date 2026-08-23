@@ -669,14 +669,12 @@ export default function Profile() {
 
   return (
     <div className="placeholder-screen profile-screen">
-      <button
-        type="button"
-        className="profile-screen__back-btn"
-        onClick={goBack}
-        aria-label="Go back"
-      >
-        {'<- Back'}
-      </button>
+      <div className="profile-screen__title-row">
+        <h1 className="profile-screen__page-title">Profile</h1>
+        <button type="button" className="profile-screen__back-btn" onClick={goBack} aria-label="Go back">
+          ↩
+        </button>
+      </div>
       <div className="profile-screen__header">
         {photoUrl ? (
           <img className="profile-screen__avatar-img" src={photoUrl} alt={profile.name} />

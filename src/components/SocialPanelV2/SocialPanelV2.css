@@ -70,8 +70,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
-  padding: 0.55rem 0.7rem;
-  padding-top: max(0.55rem, env(safe-area-inset-top));
+  padding: 0.38rem 0.7rem;
+  padding-top: max(0.2rem, env(safe-area-inset-top));
   background: linear-gradient(135deg, #0f1225 0%, #131a2e 100%);
   border-bottom: 1px solid rgba(99, 102, 241, 0.16);
 }
@@ -85,6 +85,7 @@
 
 .sp2-header__title {
   flex: 0 0 auto;
+  transform: translateY(0.1rem);
   color: var(--color-accent, #817cff);
   font-size: 0.8rem;
   font-weight: 800;
@@ -99,6 +100,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateY(0.1rem);
   gap: 0.24rem;
   overflow: hidden;
 }
@@ -135,17 +137,21 @@
 }
 
 .sp2-header__close {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.76);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -153,7 +159,7 @@
 
 .sp2-header__close:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .sp2-header__close:focus-visible,
@@ -224,13 +230,24 @@
 }
 
 .sp2-relationship-legend {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   gap: 0.45rem;
   color: rgba(255, 255, 255, 0.48);
   font-size: 0.56rem;
   font-weight: 700;
 }
 
+.sp2-relationship-legend::-webkit-scrollbar {
+  display: none;
+}
+
 .sp2-relationship-legend > span {
+  flex: 0 0 auto;
   gap: 0.2rem;
 }
 
@@ -335,7 +352,7 @@
 }
 
 .sp2-recent {
-  height: 5.5rem;
+  height: 4.6rem;
   flex: 0 0 auto;
   overflow: hidden;
   padding: 0.4rem 0.72rem 0.5rem;
@@ -380,16 +397,16 @@
 
 .sp2-footer__execute {
   flex: 0 1 auto;
-  min-width: 112px;
-  min-height: 46px;
+  min-width: 76px;
+  min-height: 32px;
   max-width: 52%;
-  padding: 0.58rem 0.9rem;
+  padding: 0.34rem 0.62rem;
   overflow: hidden;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #fff;
   background: linear-gradient(135deg, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.16;
   text-overflow: ellipsis;
@@ -546,15 +563,16 @@
   }
 
   .sp2-header {
-    padding: max(0.5rem, env(safe-area-inset-top)) max(0.58rem, env(safe-area-inset-right)) 0.5rem
+    padding: max(0.2rem, env(safe-area-inset-top)) max(0.58rem, env(safe-area-inset-right)) 0.38rem
       max(0.58rem, env(safe-area-inset-left));
   }
 
   .sp2-header__close {
-    flex-basis: 44px;
-    width: 44px;
-    height: 44px;
-    border-radius: 11px;
+    flex-basis: 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    transform: translateY(0.16rem);
   }
 
   .sp2-body {
@@ -582,7 +600,7 @@
   }
 
   .sp2-recent {
-    height: clamp(3.9rem, 10dvh, 5.25rem);
+    height: clamp(3.2rem, 8dvh, 4.4rem);
     padding-inline: max(0.6rem, env(safe-area-inset-left)) max(0.6rem, env(safe-area-inset-right));
   }
 
@@ -592,10 +610,10 @@
   }
 
   .sp2-footer__execute {
-    min-width: 96px;
-    min-height: 44px;
-    max-width: 42%;
-    padding: 0.48rem 0.78rem;
+    min-width: 76px;
+    min-height: 32px;
+    max-width: 36%;
+    padding: 0.34rem 0.6rem;
   }
 }
 
@@ -630,9 +648,9 @@
   }
 
   .sp2-header__close {
-    flex-basis: 42px;
-    width: 42px;
-    height: 42px;
+    flex-basis: 28px;
+    width: 28px;
+    height: 28px;
   }
 
   .sp2-body {
@@ -657,7 +675,7 @@
   }
 
   .sp2-recent {
-    height: 3.8rem;
+    height: 3.2rem;
   }
 }
 

@@ -252,7 +252,12 @@ export default function Rules() {
     <div className="placeholder-screen rules-screen">
       <header className="rules-screen__hero">
         <div className="rules-screen__logo">BE</div>
-        <h1 className="rules-screen__title">How to Play</h1>
+        <div className="rules-screen__title-row">
+          <h1 className="rules-screen__title">How to Play</h1>
+          <button className="rules-screen__back" type="button" aria-label="Go back" onClick={() => navigate(-1)}>
+            ↩
+          </button>
+        </div>
         <p className="rules-screen__subtitle">The Big Eye - Player Guide</p>
         <p className="rules-screen__lede">
           Learn the loop, read the meters, and know what each screen is asking before the season
@@ -450,13 +455,6 @@ export default function Rules() {
         </section>
       </main>
 
-      <button
-        className="rules-screen__back"
-        type="button"
-        onClick={() => navigate(-1)}
-      >
-        Back
-      </button>
     </div>
   );
 }
