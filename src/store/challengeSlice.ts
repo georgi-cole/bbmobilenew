@@ -167,6 +167,16 @@ const challengeSlice = createSlice({
       }
     },
   },
+  extraReducers: (builder) => {
+    // A game reset always starts a distinct campaign. Keeping a pending
+    // challenge is unsafe because player IDs are reused by the fresh roster,
+    // allowing GameScreen to mount and resolve the previous campaign's
+    // competition before the new campaign reaches a competition phase.
+    builder.addMatcher(
+      (action) => action.type === 'game/resetGame',
+      () => ({ ...initialState, history: [], debug: {} })
+    )
+  },
 })
 
 export const {
