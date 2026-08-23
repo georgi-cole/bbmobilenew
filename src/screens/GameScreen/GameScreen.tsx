@@ -1299,9 +1299,7 @@ export default function GameScreen() {
             onPublicSaveDone={handlePublicSaveDone}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
@@ -1327,9 +1325,7 @@ export default function GameScreen() {
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
@@ -1358,9 +1354,7 @@ export default function GameScreen() {
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ?? preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
@@ -1380,7 +1374,8 @@ export default function GameScreen() {
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
-              socialModuleUnavailableAnnouncement ?? aiTiebreakAnnouncement ??
+              socialModuleUnavailableAnnouncement ??
+              aiTiebreakAnnouncement ??
               postVoteAnnouncement ??
               publicSaveResultAnnouncement ??
               preAdAnnouncement
