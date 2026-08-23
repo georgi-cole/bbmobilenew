@@ -825,6 +825,9 @@ export default function TvZone(props: TvZoneProps) {
   const dailyAtmosphere = dailyTransitionPhase
     ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase)
     : null
+  const dailyMoonPhase = (['crescent', 'half', 'gibbous', 'full'] as const)[
+    Math.max(0, gameState.week - 1) % 4
+  ]
   const dailyTransitionTitle = getDailyTransitionTitle({
     atmosphere: dailyAtmosphere,
     phase: dailyTransitionPhase ?? gameState.phase,
@@ -1637,12 +1640,14 @@ export default function TvZone(props: TvZoneProps) {
             {dailyTransitionPhase && dailyAtmosphere && (
               <div
                 className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${dailyAtmosphere}`}
+                data-moon-phase={dailyAtmosphere === 'starry' ? dailyMoonPhase : undefined}
                 aria-hidden="true"
               >
                 <span className="tv-zone__daily-fog" />
                 <span className="tv-zone__daily-orb" />
                 <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
                 <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--three" />
                 <span className="tv-zone__daily-rain" />
               </div>
             )}
