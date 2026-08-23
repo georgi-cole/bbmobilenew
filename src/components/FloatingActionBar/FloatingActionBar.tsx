@@ -356,6 +356,13 @@ export default function FloatingActionBar({
   }, [activeProfileId, dispatch, isGuest, navigate])
 
   const handleReturnHome = useCallback(() => {
+    const legacyHomeButton = document.querySelector<HTMLButtonElement>(
+      '.nav-bar button[aria-label="Home"]'
+    )
+    if (legacyHomeButton) {
+      legacyHomeButton.click()
+      return
+    }
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
     navigate('/')
   }, [dispatch, navigate])
