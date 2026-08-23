@@ -23,17 +23,25 @@ interface CapacitorRuntimeLike {
   getPlatform?: () => string;
 }
 
-/** Used only when a native WebView reports zero for env(safe-area-inset-top). */
+/**
+ * iOS can briefly report a zero CSS safe area while WKWebView is starting.
+ * Keep a conservative phone-shaped floor until env(safe-area-inset-top) is
+ * available. Android is intentionally excluded: Capacitor either injects the
+ * measured CSS variable or insets the WebView itself on older WebView builds.
+ */
 export function getNativeTopInsetFallbackPx(
   platform: string,
   screenWidth: number,
   screenHeight: number,
 ): number {
-  if (platform === 'android') return 24;
   if (platform !== 'ios') return 0;
 
   const shortSide = Math.min(screenWidth, screenHeight);
   const longSide = Math.max(screenWidth, screenHeight);
+  const aspectRatio = shortSide > 0 ? longSide / shortSide : 0;
+
+  // iPad status bars are much shallower than modern iPhone sensor housings.
+  if (aspectRatio > 0 && aspectRatio < 1.6) return 24;
   if (shortSide >= 390 && longSide >= 844) return 59;
   if (longSide >= 812) return 44;
   return 20;
