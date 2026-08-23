@@ -48,7 +48,7 @@ import {
   isCurrentPhaseBroadcastEvent,
 } from './tvZoneBroadcastGuards'
 import { getPhaseCardTemplate } from '../../broadcasting/broadcastTemplateCatalog'
-import { getDailyAtmosphere, getDailyMoodCopy } from '../../broadcasting/dailyMoodSystem'
+import { getDailyAtmosphere, getDailyTransitionTitle } from '../../broadcasting/dailyMoodSystem'
 import {
   formatCycleAriaLabel,
   formatCycleLabel,
@@ -825,13 +825,10 @@ export default function TvZone(props: TvZoneProps) {
   const dailyAtmosphere = dailyTransitionPhase
     ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase)
     : null
-  const dailyMoodCopy = getDailyMoodCopy({
+  const dailyTransitionTitle = getDailyTransitionTitle({
     atmosphere: dailyAtmosphere,
     phase: dailyTransitionPhase ?? gameState.phase,
     week: gameState.week,
-    players: gameState.players,
-    relationships: gameState.strategicRelationships,
-    overrides: gameState.broadcastOverrides,
   })
   const voteResultsTotal =
     props.voteResultsReveal?.nominees.reduce(
@@ -1046,7 +1043,7 @@ export default function TvZone(props: TvZoneProps) {
     voteResultsRevealActive ||
     democraciaResultsRevealActive ||
     audiencePreviewRevealActive
-  const viewportDisplayText = displayedEvent?.text
+  const viewportDisplayText = dailyTransitionTitle ?? displayedEvent?.text
   const baseViewportMessageKey = getViewportMessageKey(displayedEvent)
   const viewportMessageKey = detoxMessageActive
     ? `${baseViewportMessageKey}-${detoxMessageIndex}`
@@ -1673,9 +1670,6 @@ export default function TvZone(props: TvZoneProps) {
               >
                 {viewportDisplayText}
               </p>
-              {dailyMoodCopy && !hideViewportMessage && (
-                <p className="tv-zone__daily-mood">{dailyMoodCopy}</p>
-              )}
             </div>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}

@@ -6,6 +6,19 @@ export type DayStartAtmosphere = 'sunny' | 'cloudy' | 'rainy'
 export type DayEndAtmosphere = 'sunset' | 'starry' | 'rainy'
 export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
 
+const DAILY_TRANSITION_TITLES = {
+  week_start: {
+    sunny: 'Day {day} begins bright. ☀️',
+    cloudy: 'Day {day} starts slowly. ☁️',
+    rainy: 'Day {day} wakes to rain. 🌧️',
+  },
+  week_end: {
+    sunset: 'Day {day} wraps at sunset. 🌇',
+    starry: 'Day {day} ends under the stars. ✨',
+    rainy: 'Day {day} closes with rain. 🌧️',
+  },
+} as const
+
 function hashText(value: string): number {
   let hash = 2166136261
   for (let index = 0; index < value.length; index += 1) {
@@ -26,6 +39,25 @@ export function getDailyAtmosphere(
   if (phase === 'week_start') return (['sunny', 'cloudy', 'rainy'] as const)[index]
   if (phase === 'week_end') return (['sunset', 'starry', 'rainy'] as const)[index]
   return null
+}
+
+/**
+ * Keep daily transition cards to one compact, themed title. The atmosphere
+ * already supplies the visual variety, so a supporting paragraph would only
+ * consume roster space on short screens.
+ */
+export function getDailyTransitionTitle(input: {
+  atmosphere: DailyAtmosphere | null
+  phase: Phase
+  week: number
+}): string | null {
+  if (!input.atmosphere || (input.phase !== 'week_start' && input.phase !== 'week_end')) {
+    return null
+  }
+
+  const titles = DAILY_TRANSITION_TITLES[input.phase]
+  const title = titles[input.atmosphere as keyof typeof titles]
+  return title?.replace('{day}', String(input.week)) ?? null
 }
 
 function closestLivingHousemate(

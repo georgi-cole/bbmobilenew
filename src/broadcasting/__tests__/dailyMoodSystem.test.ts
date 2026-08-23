@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Player } from '../../types'
-import { getDailyAtmosphere, getDailyMoodCopy } from '../dailyMoodSystem'
+import { getDailyAtmosphere, getDailyMoodCopy, getDailyTransitionTitle } from '../dailyMoodSystem'
 
 const players: Player[] = [
   { id: 'user', name: 'You', avatar: '', status: 'active', isUser: true },
@@ -14,6 +14,20 @@ describe('daily mood system', () => {
     const ends = [1, 2, 3].map((week) => getDailyAtmosphere('game-a', week, 'week_end'))
     expect(new Set(starts).size).toBe(3)
     expect(new Set(ends).size).toBe(3)
+  })
+
+  it('uses a compact, varied title for each day-transition atmosphere', () => {
+    const startTitles = (['sunny', 'cloudy', 'rainy'] as const).map((atmosphere) =>
+      getDailyTransitionTitle({ atmosphere, phase: 'week_start', week: 2 })
+    )
+    const endTitles = (['sunset', 'starry', 'rainy'] as const).map((atmosphere) =>
+      getDailyTransitionTitle({ atmosphere, phase: 'week_end', week: 2 })
+    )
+
+    expect(new Set(startTitles).size).toBe(3)
+    expect(new Set(endTitles).size).toBe(3)
+    expect(startTitles.every((title) => title?.includes('Day 2'))).toBe(true)
+    expect(endTitles.every((title) => title?.includes('Day 2'))).toBe(true)
   })
 
   it('uses manager copy and resolves the closest living housemate', () => {
