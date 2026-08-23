@@ -245,7 +245,6 @@ export default function HouseguestGrid({
 
   useEffect(() => {
     if (game.phase !== 'week_start' && game.phase !== 'week_end') {
-      setWeatherReveal(null)
       return undefined
     }
 
@@ -255,7 +254,7 @@ export default function HouseguestGrid({
     const revealKey = `${game.week}-${game.phase}-${atmosphere}`
     if (weatherRevealKeyRef.current === revealKey) return undefined
     weatherRevealKeyRef.current = revealKey
-    setWeatherReveal(atmosphere)
+    const revealTimer = window.setTimeout(() => setWeatherReveal(atmosphere), 0)
     const sound = WEATHER_REVEAL_SOUNDS[atmosphere]
     const soundTimer = window.setTimeout(
       () => play(sound.key, { volume: sound.volume }),
@@ -263,6 +262,7 @@ export default function HouseguestGrid({
     )
     const timer = window.setTimeout(() => setWeatherReveal(null), 3000)
     return () => {
+      window.clearTimeout(revealTimer)
       window.clearTimeout(soundTimer)
       window.clearTimeout(timer)
     }
@@ -392,7 +392,7 @@ export default function HouseguestGrid({
           Tap a housemate to interact. Press and hold to preview their profile.
         </p>
 
-        {weatherReveal && (
+        {weatherReveal && (game.phase === 'week_start' || game.phase === 'week_end') && (
           <div className={styles.weatherReveal} data-weather={weatherReveal} aria-hidden="true" />
         )}
 
