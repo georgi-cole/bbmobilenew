@@ -77,7 +77,9 @@ export default function TVLog({
   }, [logOpen]);
 
   useEffect(() => {
-    if (suppressLauncher || launcherSuppressed) setLogOpen(false);
+    if (!suppressLauncher && !launcherSuppressed) return undefined;
+    const closeTimer = window.setTimeout(() => setLogOpen(false), 0);
+    return () => window.clearTimeout(closeTimer);
   }, [launcherSuppressed, suppressLauncher]);
 
   useEffect(() => {
