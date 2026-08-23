@@ -29,6 +29,9 @@ export interface TVLogProps {
   maxVisible?: number;
   mobileTwoLineMode?: boolean;
   inlineVisible?: boolean;
+  launcherHidden?: boolean;
+  launcherSuppressed?: boolean;
+  suppressLauncher?: boolean;
 }
 
 function formatEventAge(timestamp: number): string {
@@ -45,6 +48,9 @@ export default function TVLog({
   maxVisible = MAX_ADAPTIVE_VISIBLE_ROWS,
   mobileTwoLineMode = false,
   inlineVisible = false,
+  launcherHidden = false,
+  launcherSuppressed = false,
+  suppressLauncher = false,
 }: TVLogProps) {
   const refined = useRefinedGameChrome();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -69,6 +75,18 @@ export default function TVLog({
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [logOpen]);
+
+  useEffect(() => {
+    if (!suppressLauncher && !launcherSuppressed) return undefined;
+    const closeTimer = window.setTimeout(() => setLogOpen(false), 0);
+    return () => window.clearTimeout(closeTimer);
+  }, [launcherSuppressed, suppressLauncher]);
+
+  useEffect(() => {
+    const openFromRoster = () => setLogOpen(true);
+    window.addEventListener('tv:open-game-log', openFromRoster);
+    return () => window.removeEventListener('tv:open-game-log', openFromRoster);
+  }, []);
 
   function toggleExpand(id: string) {
     setExpandedIds((previous) => {
@@ -148,7 +166,7 @@ export default function TVLog({
       <section className="tv-log-modal" role="dialog" aria-modal="true" aria-labelledby="tv-log-modal-title" onClick={(event) => event.stopPropagation()}>
         <header className="tv-log-modal__header">
           <div><span className="tv-log-modal__eyebrow">House history</span><h2 id="tv-log-modal-title">Game log</h2></div>
-          <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>×</button>
+          <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>↩</button>
         </header>
         {activityContent()}
       </section>
@@ -156,21 +174,25 @@ export default function TVLog({
     document.body,
   );
 
+  if (suppressLauncher) return null;
+
   if (!refined || inlineVisible) {
     return <><section className={`tv-log-shell${refined ? ' tv-log-shell--inline' : ''}`} aria-labelledby="tv-log-heading">{activityContent(openFullLogFromInlineFeed)}</section>{logModal}</>;
   }
 
   return (
     <>
-      <button
-        type="button"
-        className="tv-log__launcher"
-        aria-label={`Open game log, ${entries.length} events`}
-        onClick={() => setLogOpen(true)}
-      >
-        <span aria-hidden="true">☷</span>
-        <span>Log</span>
-      </button>
+      {!suppressLauncher && !launcherSuppressed && (
+        <button
+          type="button"
+          className={`tv-log__launcher${launcherHidden ? ' tv-log__launcher--hidden' : ''}`}
+          aria-label={`Open game log, ${entries.length} events`}
+          onClick={() => setLogOpen(true)}
+        >
+          <span aria-hidden="true">☷</span>
+          <span>Log</span>
+        </button>
+      )}
       {logModal}
     </>
   );

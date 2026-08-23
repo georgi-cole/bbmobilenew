@@ -2,8 +2,8 @@ import type { BroadcastOverride, Phase, Player } from '../types'
 import type { RelationshipsMap } from '../social/types'
 import { getBroadcastTemplate } from './broadcastTemplateCatalog'
 
-export type DayStartAtmosphere = 'sunny' | 'cloudy' | 'rainy'
-export type DayEndAtmosphere = 'sunset' | 'starry' | 'rainy'
+export type DayStartAtmosphere = 'sunny' | 'cloudy' | 'rainy' | 'misty' | 'snowy' | 'stormy'
+export type DayEndAtmosphere = 'sunset' | 'starry' | 'rainy' | 'misty' | 'snowy' | 'stormy'
 export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
 
 const DAILY_TRANSITION_TITLES = {
@@ -12,12 +12,18 @@ const DAILY_TRANSITION_TITLES = {
     cloudy:
       'Day {day} eases in beneath soft clouds. The house is taking its sweet time waking up. ☁️',
     rainy: 'Day {day} wakes to rain at the windows, with hot cocoa waiting in the kitchen. ☕',
+    misty: 'Day {day} opens under a soft veil of mist. The house feels hushed and close. 🌫️',
+    snowy: 'Day {day} arrives with quiet snow drifting past the windows. ❄️',
+    stormy: 'Day {day} begins beneath a distant rumble. The house feels electric. ⚡',
   },
   week_end: {
     sunset: 'Day {day} settles into golden hour. Everything else can wait until morning. 🌇',
     starry:
       'Day {day} winds down beneath a clear, quiet sky. Even the game feels far away for a moment. ✨',
     rainy: 'Day {day} ends with rain on the glass and a warm kettle humming somewhere inside. ☕',
+    misty: 'Day {day} fades into a silver mist. The house exhales and quiets down. 🌫️',
+    snowy: 'Day {day} closes with snow settling softly outside the house. ❄️',
+    stormy: 'Day {day} ends with thunder rolling somewhere beyond the walls. ⚡',
   },
 } as const
 
@@ -36,10 +42,14 @@ export function getDailyAtmosphere(
   week: number,
   phase: Phase
 ): DailyAtmosphere | null {
-  const offset = hashText(gameId) % 3
-  const index = (offset + Math.max(0, week - 1)) % 3
-  if (phase === 'week_start') return (['sunny', 'cloudy', 'rainy'] as const)[index]
-  if (phase === 'week_end') return (['sunset', 'starry', 'rainy'] as const)[index]
+  const offset = hashText(gameId) % 6
+  const index = (offset + Math.max(0, week - 1)) % 6
+  if (phase === 'week_start') {
+    return (['sunny', 'cloudy', 'rainy', 'misty', 'snowy', 'stormy'] as const)[index]
+  }
+  if (phase === 'week_end') {
+    return (['sunset', 'starry', 'rainy', 'misty', 'snowy', 'stormy'] as const)[index]
+  }
   return null
 }
 

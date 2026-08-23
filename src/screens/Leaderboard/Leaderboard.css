@@ -1,7 +1,42 @@
 /* Leaderboard */
-.leaderboard-screen__back {
-  align-self: flex-start;
+.leaderboard-screen__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
   margin-bottom: 12px;
+}
+
+.leaderboard-screen__title-row .placeholder-screen__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.leaderboard-screen__back {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05);
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.leaderboard-screen__back:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .leaderboard-screen__tabs {

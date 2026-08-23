@@ -564,6 +564,7 @@ type TvZoneProps = {
   voteResultsReveal?: TvZoneVoteResultsReveal | null
   democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null
   mainLogMaxVisible?: number
+  rosterLogLauncher?: boolean
   priorityAnnouncement?: Announcement | null
   onPriorityAnnouncementDismiss?: () => void
   externalAnnouncement?: Announcement | null
@@ -1774,6 +1775,11 @@ export default function TvZone(props: TvZoneProps) {
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
+        launcherSuppressed={
+          Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
+        }
+        launcherHidden={gameState.phase === 'week_start' || gameState.phase === 'week_end'}
+        suppressLauncher={Boolean(props.voteResultsReveal)}
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}

@@ -368,14 +368,14 @@ export default function Settings() {
   return (
     <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
+        <h1 className="settings-screen__title">⚙️ {t('settings.title')}</h1>
         <button
           className="settings-screen__back"
           onClick={() => navigate(-1)}
           aria-label={t('common.goBack')}
         >
-          ←
+          ↩
         </button>
-        <h1 className="settings-screen__title">⚙️ {t('settings.title')}</h1>
       </header>
 
       <div className="settings-content settings-content--flat">

@@ -40,15 +40,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 30px;
+  height: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
     rgba(20, 27, 38, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--color-accent);
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 400;
   cursor: pointer;
   padding: 0;
   border-radius: 12px;
@@ -82,6 +82,8 @@
 }
 
 .settings-screen__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 1.34rem;
   font-weight: 900;

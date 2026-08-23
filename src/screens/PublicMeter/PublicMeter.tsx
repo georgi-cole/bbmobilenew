@@ -292,15 +292,15 @@ export default function PublicMeter() {
     return (
       <div className="public-meter">
         <div className="public-meter__header">
+          <h1 className="public-meter__title">📊 Public Meter</h1>
           <button
             className="public-meter__back-btn"
             type="button"
             onClick={() => navigate(-1)}
             aria-label="Go back"
           >
-            ← Back
+            ↩
           </button>
-          <h1 className="public-meter__title">📊 Public Meter</h1>
         </div>
         <div className="public-meter__empty">
           <p>
@@ -315,18 +315,18 @@ export default function PublicMeter() {
   return (
     <div className="public-meter">
       <div className="public-meter__header">
+        <div className="public-meter__title-wrap">
+          <h1 className="public-meter__title">📊 Public Meter</h1>
+          <span className="public-meter__subtitle">The audience is always watching.</span>
+        </div>
         <button
           className="public-meter__back-btn"
           type="button"
           onClick={() => navigate(-1)}
           aria-label="Go back"
         >
-          ← Back
+          ↩
         </button>
-        <div className="public-meter__title-wrap">
-          <h1 className="public-meter__title">📊 Public Meter</h1>
-          <span className="public-meter__subtitle">The audience is always watching.</span>
-        </div>
       </div>
 
       {isVoxPopuli && (
