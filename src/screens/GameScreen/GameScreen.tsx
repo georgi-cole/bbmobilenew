@@ -1261,6 +1261,7 @@ export default function GameScreen() {
 
   const responsiveGameLayout = useResponsiveGameLayout(gameScreenRef, {
     hasDock: showGameControlDock,
+    unifiedActionRail: true,
     playerCount: game.players.length,
     userCompactRoster: settings.gameUX.compactRoster,
     inlineLogVisible: !refinedGameChrome || game.mode === 'survival' || settings.gameUX.houseFeed,

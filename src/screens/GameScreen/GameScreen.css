@@ -21,6 +21,31 @@
   padding-bottom: var(--game-screen-floating-dock-clearance);
 }
 
+/* The roster owns the full space between the Faux TV and the action rail.
+   Centering its content splits any spare height equally above and below it,
+   so the TV/feed-to-roster gap mirrors the roster-to-navtrail gap at every
+   viewport size. */
+.game-screen:has(.game-control-dock) > [data-houseguest-roster='true'] {
+  flex: 1 1 auto;
+  justify-content: center;
+  padding-inline: 0;
+}
+
+/* Mobile scrollbars overlay the roster instead of reserving a centered gutter.
+   This lets the four-column tile grid share the Faux TV's exact edge lines. */
+.game-screen:has(.game-control-dock) [data-houseguest-roster='true'] [data-roster-scroll='true'] {
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+}
+
+.game-screen:has(.game-control-dock)
+  [data-houseguest-roster='true']
+  [data-roster-scroll='true']::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .game-screen--compact-roster-balance {
   box-sizing: border-box;
 }
@@ -46,6 +71,12 @@ body:has(.game-screen-shell) {
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
+}
+
+/* The game screen now owns a single unified action rail. The app-level nav
+   remains available on every other route. */
+body:has(.game-screen) .game-bottom-nav.nav-bar {
+  display: none;
 }
 
 /* Gameplay background shell */

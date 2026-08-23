@@ -20,11 +20,13 @@ describe('GameControlDock', () => {
     ).map((glyph) => glyph.getAttribute('src'));
 
     expect(glyphs).toEqual([
+      expect.stringContaining('/assets/updated_nav_fab_bar/home_approved_final.svg'),
       expect.stringContaining('/assets/clean_glassy_dock/fab_icon_social_clean.svg'),
-      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_requests_clean.svg'),
+      expect.stringContaining('/assets/clean_glassy_dock/fab_icon_inbox_clean.svg'),
       expect.stringContaining('/assets/clean_glassy_dock/fab_icon_stats_clean.svg'),
       expect.stringContaining('/assets/clean_glassy_dock/fab_icon_confessional_clean.svg'),
     ]);
+    expect(container.querySelector('.fab-more-glyph')).not.toBeNull();
   });
 
   it('preserves dock hit areas, badges, and disabled behavior', () => {
@@ -76,5 +78,16 @@ describe('GameControlDock', () => {
     expect(confessionalIconRef.current).toBe(
       container.querySelector<HTMLImageElement>('.fab-icon.confessional'),
     );
+  });
+
+  it('opens a dock-attached one-column More menu and closes it on an outside pointer', () => {
+    render(<GameControlDock />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More' }));
+    expect(screen.getByRole('menu', { name: 'More destinations' })).toBeDefined();
+    expect(screen.getAllByRole('menuitem')).toHaveLength(5);
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('menu', { name: 'More destinations' })).toBeNull();
   });
 });

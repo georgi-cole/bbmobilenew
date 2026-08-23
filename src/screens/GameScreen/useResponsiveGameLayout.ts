@@ -38,6 +38,8 @@ export interface ResponsiveGameLayoutInput {
   navHeight: number
   dockHeight: number
   hasDock: boolean
+  /** The game screen replaces the app navbar with its integrated action rail. */
+  unifiedActionRail?: boolean
   playerCount: number
   userCompactRoster: boolean
   inlineLogVisible: boolean
@@ -51,13 +53,15 @@ const COMPACT_NAV_HEIGHT = 46
 const DEFAULT_PHONE_WIDTH = 390
 const DEFAULT_PHONE_HEIGHT = 780
 const DEFAULT_DOCK_RATIO = 220 / 980
+const ACTION_RAIL_SHELL_WIDTH_RATIO = 924 / 980
+const ACTION_RAIL_SHELL_TOP_INSET_RATIO = 50 / 220
 const COMPACT_DOCK_SCALE = 0.9
 const NORMAL_DOCK_GAP = 8
 const COMPACT_DOCK_GAP = 8
 const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
 const GAME_INLINE_PADDING = 24
-const ROSTER_INLINE_PADDING = 16
+const ROSTER_INLINE_PADDING = 0
 const ROSTER_HEADER_HEIGHT = 30
 const GAME_VERTICAL_PADDING = 8
 const GAME_SECTION_GAPS = 8
@@ -92,7 +96,8 @@ function readPx(value: string | null | undefined) {
 }
 
 function estimateDockHeight(stageWidth: number) {
-  const dockWidth = Math.min(stageWidth * 0.8, 340)
+  const visibleRailWidth = Math.max(0, Math.min(stageWidth, 480) - GAME_INLINE_PADDING)
+  const dockWidth = visibleRailWidth / ACTION_RAIL_SHELL_WIDTH_RATIO
   return dockWidth * DEFAULT_DOCK_RATIO
 }
 
@@ -194,8 +199,12 @@ export function computeResponsiveGameLayout(
   // Do not infer a cutout from the Android user agent: that added a 44px dead
   // band above the game on ordinary devices such as Pixel XL.
   const effectiveSafeTop = input.safeTop
-  const measuredNavHeight = input.navHeight || DEFAULT_NAV_HEIGHT + input.safeBottom
-  const normalNavContentHeight = Math.max(DEFAULT_NAV_HEIGHT, measuredNavHeight - input.safeBottom)
+  const measuredNavHeight = input.unifiedActionRail
+    ? input.safeBottom
+    : input.navHeight || DEFAULT_NAV_HEIGHT + input.safeBottom
+  const normalNavContentHeight = input.unifiedActionRail
+    ? 0
+    : Math.max(DEFAULT_NAV_HEIGHT, measuredNavHeight - input.safeBottom)
   const compactNavContentHeight = Math.min(normalNavContentHeight, COMPACT_NAV_HEIGHT)
   const normalNavHeight = normalNavContentHeight + input.safeBottom
   const compactNavHeight = compactNavContentHeight + input.safeBottom
@@ -204,13 +213,20 @@ export function computeResponsiveGameLayout(
   const baselineDockHeight = Math.max(measuredDockHeight, estimatedDockHeight)
   const normalDockHeight = input.hasDock ? baselineDockHeight : 0
   const compactDockHeight = input.hasDock
-    ? Math.max(56, baselineDockHeight * COMPACT_DOCK_SCALE)
+    ? input.unifiedActionRail
+      ? baselineDockHeight
+      : Math.max(56, baselineDockHeight * COMPACT_DOCK_SCALE)
     : 0
-  // Reserve the same whitespace above and below the floating dock. The CSS
-  // positions the dock by actionDockGap from the nav edge; the second gap here
-  // keeps the fourth roster row equally far from the dock's upper edge.
-  const normalDockClearance = input.hasDock ? normalDockHeight + NORMAL_DOCK_GAP * 2 : 0
-  const compactDockClearance = input.hasDock ? compactDockHeight + COMPACT_DOCK_GAP * 2 : 0
+  // The SVG viewBox includes transparent space above its visible capsule for
+  // the raised Play button. Reserve only up to the capsule's real top edge;
+  // otherwise that transparent inset is incorrectly added to the gap below
+  // the roster. The two explicit gaps then mirror the TV-to-roster rhythm.
+  const normalDockClearance = input.hasDock
+    ? normalDockHeight * (1 - ACTION_RAIL_SHELL_TOP_INSET_RATIO) + NORMAL_DOCK_GAP * 2
+    : 0
+  const compactDockClearance = input.hasDock
+    ? compactDockHeight * (1 - ACTION_RAIL_SHELL_TOP_INSET_RATIO) + COMPACT_DOCK_GAP * 2
+    : 0
   const measuredStageAndNavHeight = stageHeight + measuredNavHeight
   const normalStageHeight = Math.max(0, measuredStageAndNavHeight - normalNavHeight)
   const compactStageHeight = Math.max(0, measuredStageAndNavHeight - compactNavHeight)
@@ -222,14 +238,20 @@ export function computeResponsiveGameLayout(
     Math.min(stageWidth, shellMaxWidth) - GAME_INLINE_PADDING - ROSTER_INLINE_PADDING
   )
   const tileWidth = (rosterContentWidth - ROSTER_GAP * (ROSTER_COLUMNS - 1)) / ROSTER_COLUMNS
-  const normalTileMax =
-    layoutSize === 'phone-large' && (viewportHeight >= 900 || stageWidth >= 420)
-      ? 104
+  const normalTileMax = input.unifiedActionRail
+    ? tileWidth
+    : layoutSize === 'phone-large' && (viewportHeight >= 900 || stageWidth >= 420)
+      ? 112
       : layoutSize === 'phone-large'
-        ? 80
-        : 78
+        ? 104
+        : 96
   const normalTileSize = Math.floor(clamp(tileWidth, 76, normalTileMax))
-  const compactTileSize = Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
+  // With the unified action rail the old bottom navbar no longer competes for
+  // horizontal space. Keep compact-mode tiles at the full calculated width so
+  // the four-column roster shares the Faux TV's left and right edges.
+  const compactTileSize = input.unifiedActionRail
+    ? normalTileSize
+    : Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
   const rosterRows = Math.max(1, Math.ceil(Math.max(input.playerCount, 1) / ROSTER_COLUMNS))
   const shouldUseCompactBase =
     input.playerCount >= 16 && (layoutSize === 'phone-small' || rosterContentWidth < 320)
@@ -305,7 +327,13 @@ export function computeResponsiveGameLayout(
   const baseLogRows = input.inlineLogVisible ? 1 : 0
   const logRowsFromExtra = Math.max(0, tvLogRows - baseLogRows)
   const remainingAfterLogRows = Math.max(0, extraAfterFeature - logRowsFromExtra * tvLogRowHeight)
-  const breathingRoom = clamp(remainingAfterLogRows, 0, resolveTvViewportExpansionLimit(layoutSize))
+  // Removing the bottom navigation must not make the Faux TV taller. That
+  // reclaimed space belongs to the lower rail and roster, not the broadcast.
+  const breathingRoom = clamp(
+    remainingAfterLogRows - (input.unifiedActionRail ? DEFAULT_NAV_HEIGHT : 0),
+    0,
+    resolveTvViewportExpansionLimit(layoutSize)
+  )
   const tvHeight = minTvHeight + logRowsFromExtra * tvLogRowHeight + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
@@ -315,7 +343,8 @@ export function computeResponsiveGameLayout(
       : baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
-  const actionDockScale = bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
+  const actionDockScale =
+    input.unifiedActionRail || bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
   const actionDockGap = bottomControlsMode === 'normal' ? NORMAL_DOCK_GAP : COMPACT_DOCK_GAP
   const navItemLabelDisplay = bottomControlsMode === 'normal' ? 'block' : 'none'
 
@@ -409,6 +438,7 @@ function readViewportInput<TStage extends HTMLElement>(
   stageRef: RefObject<TStage | null>,
   options: {
     hasDock: boolean
+    unifiedActionRail?: boolean
     playerCount: number
     userCompactRoster: boolean
     inlineLogVisible: boolean
@@ -438,11 +468,12 @@ function readViewportInput<TStage extends HTMLElement>(
     stageHeight: stageRect?.height ?? viewportHeight,
     safeTop,
     safeBottom,
-    navHeight: navRect?.height ?? DEFAULT_NAV_HEIGHT + safeBottom,
+    navHeight: options.unifiedActionRail ? 0 : (navRect?.height ?? DEFAULT_NAV_HEIGHT + safeBottom),
     dockHeight: options.hasDock
       ? estimateDockHeight(stageRect?.width ?? Math.min(viewportWidth, DEFAULT_PHONE_WIDTH))
       : 0,
     hasDock: options.hasDock,
+    unifiedActionRail: options.unifiedActionRail,
     playerCount: options.playerCount,
     userCompactRoster: options.userCompactRoster,
     inlineLogVisible: options.inlineLogVisible,
@@ -456,6 +487,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
   stageRef: RefObject<TStage | null>,
   options: {
     hasDock: boolean
+    unifiedActionRail?: boolean
     playerCount: number
     userCompactRoster: boolean
     inlineLogVisible: boolean
@@ -466,6 +498,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
   const hasMeasuredRef = useRef(false)
   const {
     hasDock,
+    unifiedActionRail = false,
     playerCount,
     userCompactRoster,
     inlineLogVisible,
@@ -479,9 +512,10 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
       stageHeight: DEFAULT_PHONE_HEIGHT,
       safeTop: 0,
       safeBottom: 0,
-      navHeight: DEFAULT_NAV_HEIGHT,
+      navHeight: unifiedActionRail ? 0 : DEFAULT_NAV_HEIGHT,
       dockHeight: 0,
       hasDock,
+      unifiedActionRail,
       playerCount,
       userCompactRoster,
       revision: 0,
@@ -499,6 +533,7 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
         stageRef,
         {
           hasDock,
+          unifiedActionRail,
           playerCount,
           userCompactRoster,
           inlineLogVisible,
@@ -510,7 +545,15 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
       prev.signature === next.signature && prev.debugLabel === next.debugLabel ? prev : next
     )
     hasMeasuredRef.current = true
-  }, [freezeLayout, hasDock, inlineLogVisible, playerCount, stageRef, userCompactRoster])
+  }, [
+    freezeLayout,
+    hasDock,
+    inlineLogVisible,
+    playerCount,
+    stageRef,
+    unifiedActionRail,
+    userCompactRoster,
+  ])
 
   useEffect(() => {
     measure()

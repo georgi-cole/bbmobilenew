@@ -356,9 +356,30 @@ export default function FloatingActionBar({
   }, [activeProfileId, dispatch, isGuest, navigate])
 
   const handleReturnHome = useCallback(() => {
+    const legacyHomeButton = document.querySelector<HTMLButtonElement>(
+      '.nav-bar button[aria-label="Home"]'
+    )
+    if (legacyHomeButton) {
+      legacyHomeButton.click()
+      return
+    }
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
     navigate('/')
   }, [dispatch, navigate])
+
+  const handleMoreClick = useCallback(
+    (destination: 'settings' | 'profile' | 'rules' | 'leaderboard' | 'store') => {
+      const routes = {
+        settings: '/settings',
+        profile: '/profile',
+        rules: '/rules',
+        leaderboard: '/leaderboard',
+        store: '/store',
+      } as const
+      navigate(routes[destination])
+    },
+    [navigate]
+  )
 
   // Center the dock in the real rendered space between the content immediately
   // above it and the navbar. The whole houseguest section is the upper boundary
@@ -387,6 +408,12 @@ export default function FloatingActionBar({
         getComputedStyle(gameScreen).getPropertyValue('--game-action-dock-gap')
       )
       const minimumGap = Number.isFinite(configuredGap) ? configuredGap : 8
+      // On the game screen the nav is deliberately folded into the dock. Its
+      // hidden rectangle must not become the dock's lower boundary.
+      if (navRect.height <= 0) {
+        dock.style.bottom = `${Math.round(minimumGap)}px`
+        return
+      }
       const bottomOffset = resolveBalancedDockBottom({
         gameBottom: gameRect.bottom,
         lowerBoundary,
@@ -446,6 +473,8 @@ export default function FloatingActionBar({
         onPrimaryActionClick={handlePrimaryActionClick}
         onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
+        onHomeClick={handleReturnHome}
+        onMoreClick={handleMoreClick}
         disabled={survivorTerminalActive}
         primaryDisabled={primaryDisabled}
         socialDisabled={socialModulesUnavailable}

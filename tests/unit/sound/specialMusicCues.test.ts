@@ -23,6 +23,9 @@ function silentPhaseCue(assignmentId = 'phase:social_1'): ResolvedMusicCue {
 }
 
 describe('specialMusicCues', () => {
+  // A ceremony owns its music through brief utility-route detours. The Store
+  // must never replace that bed, so this suite keeps the phase-level cue as
+  // the source of truth outside the actual Confessional route.
   it('loops the confessional bed from 2:48 to 3:35', () => {
     const cue = resolveSpecialMusicCue({
       baseCue: phaseCue('competition'),
