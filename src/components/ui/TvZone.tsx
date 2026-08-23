@@ -1618,6 +1618,7 @@ export default function TvZone(props: TvZoneProps) {
           <div
             className={[
               'tv-zone__viewport',
+              dailyTransitionPhase ? 'tv-zone__viewport--daily-transition' : '',
               dailyTransitionPhase && dailyAtmosphere
                 ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${dailyAtmosphere}`
                 : '',

@@ -8,14 +8,14 @@ export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
 
 const DAILY_TRANSITION_TITLES = {
   week_start: {
-    sunny: 'Day {day} begins bright. ☀️',
-    cloudy: 'Day {day} starts slowly. ☁️',
-    rainy: 'Day {day} wakes to rain. 🌧️',
+    sunny: 'Day {day} starts bright — every window catches the sun. ☀️',
+    cloudy: 'Day {day} starts slow beneath soft clouds. ☁️',
+    rainy: 'Day {day} wakes to rain and hot cocoa in the kitchen. ☕',
   },
   week_end: {
-    sunset: 'Day {day} wraps at sunset. 🌇',
-    starry: 'Day {day} ends under the stars. ✨',
-    rainy: 'Day {day} closes with rain. 🌧️',
+    sunset: 'Day {day} ends in golden hour. Everything can wait until morning. 🌇',
+    starry: 'Day {day} settles beneath a clear, quiet sky. ✨',
+    rainy: 'Day {day} ends with rain on the glass and a warm kettle inside. ☕',
   },
 } as const
 
@@ -42,9 +42,9 @@ export function getDailyAtmosphere(
 }
 
 /**
- * Keep daily transition cards to one compact, themed title. The atmosphere
- * already supplies the visual variety, so a supporting paragraph would only
- * consume roster space on short screens.
+ * Daily cards keep their warm, varied copy in a single title treatment. The
+ * title may wrap within the fixed faux-TV viewport, but never adds a separate
+ * paragraph that can shift the roster on short screens.
  */
 export function getDailyTransitionTitle(input: {
   atmosphere: DailyAtmosphere | null

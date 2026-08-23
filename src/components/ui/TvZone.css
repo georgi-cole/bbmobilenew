@@ -340,6 +340,13 @@
   display: contents;
 }
 
+.tv-zone__viewport--daily-transition {
+  flex: 0 0 var(--tv-zone-viewport-min-height, 192px);
+  min-height: 0;
+  height: var(--tv-zone-viewport-min-height, 192px);
+  box-sizing: border-box;
+}
+
 .tv-zone__daily-card {
   position: relative;
   z-index: 3;
@@ -348,9 +355,11 @@
   align-items: center;
   justify-content: center;
   width: min(100%, 620px);
-  min-height: clamp(128px, 44cqw, 176px);
-  padding: 1.4rem 2rem;
-  overflow: visible;
+  height: 100%;
+  min-height: 0;
+  padding: clamp(.7rem, 4cqw, 1.25rem) clamp(.9rem, 7cqw, 2rem);
+  box-sizing: border-box;
+  overflow: hidden;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -497,6 +506,18 @@
 }
 
 .tv-zone__daily-card .tv-zone__now {
+  position: relative;
+  z-index: 3;
+  max-width: 34rem;
+  max-height: calc(1.36em * 4);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  font-size: clamp(.78rem, 3.4cqw, 1.04rem);
+  line-height: 1.36;
+  text-align: center;
+  text-wrap: balance;
   background: transparent;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
 }
