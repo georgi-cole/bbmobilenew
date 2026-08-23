@@ -5,6 +5,8 @@ import {
 } from '../../../src/services/sound/musicCueTransitions'
 import { musicTrack, type ResolvedMusicCue } from '../../../src/services/sound/musicConfig'
 import { createDefaultMusicCue } from '../../../src/services/sound/musicCue'
+import { resolveRuntimeMusicMix } from '../../../src/services/sound/musicMix'
+import type { RootState } from '../../../src/store/store'
 
 function managedCue(id: string, startAtSec: number): ResolvedMusicCue {
   return {
@@ -32,5 +34,16 @@ describe('managed minigame cue transitions', () => {
     expect(hasSameResolvedPlayback(normal, normal)).toBe(true)
     expect(shouldCrossfadeManagedMinigameCue(normal, finalRound)).toBe(true)
     expect(shouldCrossfadeManagedMinigameCue(normal, normal)).toBe(false)
+  })
+
+  it('mutes the gameplay bed while the Twin Shock cinematic owns audio', () => {
+    const game = {
+      evictionOverlayPlayerId: null,
+      battleBack: null,
+      voteResults: null,
+      twinShock: { pendingRevealAnimation: { type: 'combined' } },
+    } as unknown as RootState['game']
+
+    expect(resolveRuntimeMusicMix(game)).toBe('muted')
   })
 })

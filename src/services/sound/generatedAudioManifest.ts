@@ -50,6 +50,14 @@ export const GENERATED_AUDIO_ASSETS = [
     "loop": false
   },
   {
+    "key": "minigame:intro_hub_loop",
+    "category": "minigame",
+    "relativePath": "sounds/cinematic/Intro_hub_loop.mp3",
+    "preload": false,
+    "volume": 1,
+    "loop": false
+  },
+  {
     "key": "minigame:move_into_me_alternative",
     "category": "minigame",
     "relativePath": "sounds/minigames/move_into_me_alternative.mp3",
@@ -431,6 +439,14 @@ export const GENERATED_AUDIO_ASSETS = [
     "loop": false
   },
   {
+    "key": "player:self_evict",
+    "category": "player",
+    "relativePath": "sounds/events/player_self_evict.mp3",
+    "preload": false,
+    "volume": 1,
+    "loop": false
+  },
+  {
     "key": "player:wildcard_eliminated",
     "category": "player",
     "relativePath": "sounds/events/player_wildcard_eliminated.mp3",
@@ -786,4 +802,6 @@ export const GENERATED_FILENAME_ALIASES = {
   "Jury_each_vote_reveal_sound": "ui:tribunal_vote_reveal"
 } as const
 
-export const GENERATED_AUDIO_WARNINGS = [] as const
+export const GENERATED_AUDIO_WARNINGS = [
+  "Inferred minigame:intro_hub_loop for unprefixed sounds/cinematic/Intro_hub_loop.mp3; use ui_, tv_, player_, or minigame_ to make intent explicit."
+] as const

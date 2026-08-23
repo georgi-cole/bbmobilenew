@@ -41,6 +41,10 @@ function isIntroHubAudioHash(hash: string): boolean {
   return INTRO_HUB_AUDIO_PATHS.has(normalizedHashPath(hash))
 }
 
+function isGameplayStoreHash(hash: string): boolean {
+  return normalizedHashPath(hash) === '/store'
+}
+
 function isCreditsHash(hash: string): boolean {
   return /^#\/credits(?:[/?#]|$)/.test(hash)
 }
@@ -205,7 +209,9 @@ function isCreditsExitControl(target: EventTarget | null): boolean {
  * generic SoundManager.play() pool. That singleton belongs to the whole Intro
  * Hub utility family (Home, Rules, Profile, Leaderboard, Settings, Store, etc.)
  * and keeps playing continuously while navigating among those screens. Credits,
- * Hubmates and gameplay take audio ownership, so they stop/reset it. Returning
+ * Hubmates and gameplay take audio ownership, so they stop/reset it. The Store
+ * is the exception when it is opened from a live game: it is a brief purchase
+ * detour and deliberately leaves the current gameplay bed running. Returning
  * from one of those owners starts the singleton fresh once. The music toggle
  * pauses/resumes the same instance in place.
  */
@@ -219,9 +225,11 @@ export default function RouteLoopAudioSync({ hash }: { hash: string }) {
   const humanPlayerId = useSelector(
     (state: RootState) => state.game.players.find((player) => player.isUser)?.id ?? null
   )
+  const gameActive = useSelector((state: RootState) => state.game.status === 'active')
   const [introHubSuppressed, setIntroHubSuppressed] = useState(false)
 
-  const introHubAudioEligible = isIntroHubAudioHash(hash)
+  const introHubAudioEligible =
+    isIntroHubAudioHash(hash) && !(gameActive && isGameplayStoreHash(hash))
   const playerEvictionActive =
     isSelfEvictedHash(hash) || isHumanEviction(humanPlayerId, evictionOverlayPlayerId)
 

@@ -1159,6 +1159,9 @@ describe('TvZone day-transition broadcasts', () => {
 
     expect(document.querySelector('.tv-zone__now')).toHaveTextContent(/Day \d/);
     expect(document.querySelector('.tv-zone__daily-mood')).toBeNull();
+    expect(document.querySelector('.tv-zone__viewport')).toHaveClass(
+      'tv-zone__viewport--daily-transition',
+    );
 
     act(() => {
       store.dispatch(setPhase('loh_comp'));

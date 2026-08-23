@@ -1,10 +1,15 @@
 import type { Ref } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './GameControlDock.css';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function assetUrl(file: string): string {
   return `${BASE}/assets/clean_glassy_dock/${file}`;
+}
+
+function navAssetUrl(file: string): string {
+  return `${BASE}/assets/updated_nav_fab_bar/${file}`;
 }
 
 export interface GameControlDockProps {
@@ -15,6 +20,8 @@ export interface GameControlDockProps {
   onPrimaryActionClick?: () => void;
   onPublicMeterClick?: () => void;
   onToolClick?: () => void;
+  onHomeClick?: () => void;
+  onMoreClick?: (destination: 'settings' | 'profile' | 'rules' | 'leaderboard' | 'store') => void;
   disabled?: boolean;
   primaryDisabled?: boolean;
   socialDisabled?: boolean;
@@ -48,6 +55,8 @@ export default function GameControlDock({
   onPrimaryActionClick,
   onPublicMeterClick,
   onToolClick,
+  onHomeClick,
+  onMoreClick,
   disabled = false,
   primaryDisabled = false,
   socialDisabled = false,
@@ -64,11 +73,35 @@ export default function GameControlDock({
   confessionalPersistentFlash = false,
   confessionalIconRef,
 }: GameControlDockProps) {
-  const shellSrc = assetUrl('fab_shell_clean.svg');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  // Query version keeps the refreshed public SVG from being served out of a
+  // browser cache while retaining one shared source asset in production.
+  const shellSrc = `${assetUrl('fab_shell_clean.svg')}?v=water-glass-7`;
   const playSrc = assetUrl('fab_center_play_clean.svg');
   const socialUnavailableClass = socialDisabled ? ' dock-hit-area--unavailable' : '';
   const requestsUnavailableClass = incomingRequestsDisabled ? ' dock-hit-area--unavailable' : '';
   const publicUnavailableClass = publicMeterDisabled ? ' dock-hit-area--unavailable' : '';
+
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false);
+    };
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (moreButtonRef.current?.contains(target) || moreMenuRef.current?.contains(target)) return;
+      setMoreOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+    };
+  }, [moreOpen]);
 
   return (
     <div
@@ -80,6 +113,13 @@ export default function GameControlDock({
       <img
         className="game-control-dock__shell fab-shell"
         src={shellSrc}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+      />
+      <img
+        className="game-control-dock__icon fab-icon home"
+        src={navAssetUrl('home_approved_final.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
@@ -100,7 +140,7 @@ export default function GameControlDock({
       />
       <img
         className={`game-control-dock__icon fab-icon requests${incomingRequestsDisabled ? ' game-control-dock__icon--unavailable' : ''}`}
-        src={assetUrl('fab_icon_requests_clean.svg')}
+        src={assetUrl('fab_icon_inbox_clean.svg')}
         alt=""
         aria-hidden="true"
         draggable={false}
@@ -120,7 +160,15 @@ export default function GameControlDock({
         draggable={false}
         ref={confessionalIconRef}
       />
+      <span className="fab-more-glyph" aria-hidden="true"><i /><i /><i /></span>
 
+      <button
+        className="dock-hit-area hit-home dock-hit-area--home"
+        type="button"
+        aria-label="Home"
+        disabled={disabled}
+        onClick={disabled ? undefined : onHomeClick}
+      />
       <button
         className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}${socialUnavailableClass}`}
         type="button"
@@ -183,6 +231,30 @@ export default function GameControlDock({
           </span>
         )}
       </button>
+      <button
+        ref={moreButtonRef}
+        className={`dock-hit-area hit-more dock-hit-area--more${moreOpen ? ' dock-hit-area--active' : ''}`}
+        type="button"
+        aria-label="More"
+        aria-expanded={moreOpen}
+        disabled={disabled}
+        onClick={() => setMoreOpen((open) => !open)}
+      />
+      {moreOpen && (
+          <div ref={moreMenuRef} className="game-control-dock__more-menu" role="menu" aria-label="More destinations">
+            {([
+              ['settings', '⚙', 'Settings'],
+              ['profile', '♙', 'Profile'],
+              ['rules', '▤', 'Rules'],
+              ['leaderboard', '▥', 'Board'],
+              ['store', '▣', 'Store'],
+            ] as const).map(([destination, glyph, label]) => (
+              <button key={destination} type="button" role="menuitem" onClick={() => { setMoreOpen(false); onMoreClick?.(destination); }}>
+                <span aria-hidden="true">{glyph}</span>{label}
+              </button>
+            ))}
+          </div>
+      )}
     </div>
   );
 }
