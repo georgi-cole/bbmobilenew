@@ -37,6 +37,7 @@ describe('WinnerTileLiftAnimation', () => {
     const source = document.createElement('div')
     source.dataset.ceremonyTile = 'true'
     source.style.background = 'rgb(10, 20, 30)'
+    source.style.opacity = '0.72'
     source.innerHTML = '<span>Alice</span>'
     document.body.append(source)
 
@@ -57,6 +58,12 @@ describe('WinnerTileLiftAnimation', () => {
     flushAnimationFrame()
 
     expect(source.style.visibility).toBe('hidden')
+    expect(source.style.getPropertyPriority('visibility')).toBe('important')
+    expect(source.style.opacity).toBe('0')
+    expect(source.style.getPropertyPriority('opacity')).toBe('important')
+    expect(source.style.getPropertyValue('content-visibility')).toBe('hidden')
+    expect(source.style.getPropertyValue('clip-path')).toBe('inset(50%)')
+    expect(window.getComputedStyle(source.querySelector('span')!).visibility).toBe('hidden')
     expect(source.dataset.ceremonyTileLifted).toBe('true')
     expect(document.querySelector('.winner-tile-lift__snapshot')?.textContent).toContain('Alice')
     expect(document.querySelector('.ceremony-overlay__dim')).toBeNull()
@@ -80,6 +87,10 @@ describe('WinnerTileLiftAnimation', () => {
     act(() => vi.advanceTimersByTime(560))
     expect(onDone).toHaveBeenCalledTimes(1)
     expect(source.style.visibility).toBe('')
+    expect(source.style.opacity).toBe('0.72')
+    expect(source.style.getPropertyPriority('opacity')).toBe('')
+    expect(source.style.getPropertyValue('content-visibility')).toBe('')
+    expect(source.style.getPropertyValue('clip-path')).toBe('')
     expect(source.dataset.ceremonyTileLifted).toBeUndefined()
   })
 
