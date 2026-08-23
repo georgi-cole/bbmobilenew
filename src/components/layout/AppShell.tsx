@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
+import { SystemBars, SystemBarType } from '@capacitor/core'
 import { Outlet } from 'react-router'
 import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
@@ -36,6 +37,7 @@ const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFi
  */
 export default function AppShell() {
   const phase = useAppSelector((s) => s.game.phase)
+  const gameStatus = useAppSelector((s) => s.game.status)
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale)
   const voxPopuliActive = useAppSelector((s) => s.game.voxPopuli?.status === 'active')
   const finale = useAppSelector(selectFinale)
@@ -45,6 +47,17 @@ export default function AppShell() {
   const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
 
   useGameMode()
+
+  // The phone's operator/signal/battery row belongs to the native system
+  // chrome. Hide only that top row for the whole active game; the bottom
+  // navigation/gesture bar remains available.
+  useEffect(() => {
+    const options = { bar: SystemBarType.StatusBar }
+    void (gameStatus === 'active' ? SystemBars.hide(options) : SystemBars.show(options))
+    return () => {
+      void SystemBars.show(options)
+    }
+  }, [gameStatus])
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
@@ -103,7 +116,7 @@ export default function AppShell() {
   }, [settings.gameUX.animations])
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${gameStatus === 'active' ? ' app-shell--active-game' : ''}`}>
       {remoteBroadcast && (
         <aside
           className={`app-shell__broadcast app-shell__broadcast--${remoteBroadcast.priority ?? 'normal'}`}
