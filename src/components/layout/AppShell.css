@@ -98,3 +98,9 @@ body:has(.game-screen-shell) .app-shell {
 .app-shell__broadcast--critical {
   background: #b91c1c;
 }
+
+/* The active Big Eye game is immersive: the native status row is hidden and
+   the game owns the released top strip instead of retaining an empty gap. */
+.app-shell--active-game .app-shell__main {
+  padding-top: 0;
+}
