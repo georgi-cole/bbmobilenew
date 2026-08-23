@@ -14,13 +14,14 @@ import { render, screen, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router';
 import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { setPhase } from '../../src/store/gameSlice';
+import gameReducer, { resetGame, setPhase } from '../../src/store/gameSlice';
 import challengeReducer, { startChallenge, recordRun, setPendingChallenge } from '../../src/store/challengeSlice';
 import profilesReducer, { type ProfilesState } from '../../src/store/profilesSlice';
 import socialReducer from '../../src/social/socialSlice';
 import settingsReducer, { DEFAULT_SETTINGS } from '../../src/store/settingsSlice';
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
 import GameScreen from '../../src/screens/GameScreen/GameScreen';
+import { I18nProvider } from '../../src/i18n';
 import {
   getApprovedCompetitionGameKeys,
   getBracketPoolForContext,
@@ -114,9 +115,11 @@ const dispatchThunk = (store: TestStore, thunk: Parameters<TestStore['dispatch']
 function renderWithStore(store: ReturnType<typeof makeStore>) {
   return render(
     <Provider store={store}>
-      <MemoryRouter>
-        <GameScreen />
-      </MemoryRouter>
+      <I18nProvider>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </I18nProvider>
     </Provider>,
   );
 }
@@ -175,6 +178,35 @@ describe('challenge flow – phase transition dispatch', () => {
     });
 
     expect(store.getState().challenge.pending?.id).toBe(firstId);
+  });
+
+  it('clears an in-progress challenge when a new campaign resets the game', () => {
+    const store = makeStore();
+    const participants = store.getState().game.players.map((player) => player.id);
+
+    dispatchThunk(store, startChallenge(42, participants, { prizeType: 'LOH' }));
+    store.dispatch(
+      recordRun({
+        id: 'previous-campaign-challenge',
+        gameKey: 'quickTap',
+        seed: 42,
+        participants,
+        rawScores: {},
+        canonicalScores: {},
+        winnerId: participants[0],
+        timestamp: Date.now(),
+        authoritative: false,
+      }),
+    );
+
+    expect(store.getState().challenge.pending).not.toBeNull();
+    expect(store.getState().challenge.history).toHaveLength(1);
+
+    store.dispatch(resetGame());
+
+    expect(store.getState().game.phase).toBe('week_start');
+    expect(store.getState().challenge.pending).toBeNull();
+    expect(store.getState().challenge.history).toEqual([]);
   });
 
   it('renders MinigameHost (role=dialog) when challenge.pending is set', async () => {
