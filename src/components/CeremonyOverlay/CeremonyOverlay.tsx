@@ -36,6 +36,8 @@ export interface CeremonyTile {
   badge?: string
   /** Optional badge image source rendered instead of badge text. */
   badgeImageSrc?: string
+  /** Status code used to mirror the permanent roster badge presentation. */
+  badgeCode?: string
   /** A temporary, Cupid-only illustration used while a role badge is flying. */
   badgeVariant?: 'cupid-kiss' | 'cupid-hug'
   /** Optional role/context label shown as a pill above the spotlighted tile. */
