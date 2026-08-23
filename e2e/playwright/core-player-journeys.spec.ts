@@ -713,7 +713,7 @@ test.describe('Real player core journeys', () => {
 
     await openRulesFromGame(page)
     await expect(page.getByRole('heading', { name: 'How to Play' })).toBeVisible()
-    await page.getByRole('button', { name: 'Back', exact: true }).click()
+    await page.getByRole('button', { name: 'Go back', exact: true }).click()
     await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
 
     await page.goto('./#/route-that-does-not-exist')
