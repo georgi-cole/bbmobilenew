@@ -1,33 +1,19 @@
-import { useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { useEffect } from 'react'
 
 interface WakeLockSentinelLike {
-  released?: boolean;
-  release?: () => Promise<void>;
-  addEventListener?: (type: 'release', listener: () => void) => void;
-  removeEventListener?: (type: 'release', listener: () => void) => void;
+  released?: boolean
+  release?: () => Promise<void>
+  addEventListener?: (type: 'release', listener: () => void) => void
+  removeEventListener?: (type: 'release', listener: () => void) => void
 }
 
 interface WakeLockControllerLike {
-  request: (type: 'screen') => Promise<WakeLockSentinelLike>;
+  request: (type: 'screen') => Promise<WakeLockSentinelLike>
 }
 
 interface LockableOrientationLike {
-  lock?: (orientation: 'portrait') => Promise<void>;
-  unlock?: () => void;
-}
-
-interface NativeStatusBarLike {
-  hide?: () => Promise<void>;
-  show?: () => Promise<void>;
-  setOverlaysWebView?: (options: { overlay: boolean }) => Promise<void>;
-}
-
-function getNativeStatusBar(): NativeStatusBarLike | null {
-  if (!Capacitor.isNativePlatform()) return null;
-
-  const plugins = (Capacitor as unknown as { Plugins?: Record<string, unknown> }).Plugins;
-  return (plugins?.StatusBar as NativeStatusBarLike | undefined) ?? null;
+  lock?: (orientation: 'portrait') => Promise<void>
+  unlock?: () => void
 }
 
 /**
@@ -37,39 +23,36 @@ function getNativeStatusBar(): NativeStatusBarLike | null {
  * - requests a screen wake lock so the display stays awake during play
  * - re-requests the wake lock when the tab becomes visible again
  * - attempts to keep the experience portrait-locked when the platform allows it
- * - lets the native status bar overlay the WebView before hiding it so
- *   CSS remains the only safe-area layout owner
+ * - leaves system bars visible; Capacitor SystemBars supplies their measured
+ *   insets to CSS so every screen has one safe-area owner
  */
 export default function useGameMode(): void {
   useEffect(() => {
-    let isMounted = true;
-    let wakeLockSentinel: WakeLockSentinelLike | null = null;
-    let wakeLockRequestInFlight: Promise<void> | null = null;
-    let statusBarHidden = false;
-
-    const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockControllerLike }).wakeLock;
-    const orientation = screen.orientation as LockableOrientationLike | undefined;
-    const statusBar = getNativeStatusBar();
+    let isMounted = true
+    let wakeLockSentinel: WakeLockSentinelLike | null = null
+    let wakeLockRequestInFlight: Promise<void> | null = null
+    const wakeLock = (navigator as Navigator & { wakeLock?: WakeLockControllerLike }).wakeLock
+    const orientation = screen.orientation as LockableOrientationLike | undefined
 
     function isWakeLockRequestAllowedByVisibility() {
-      return document.visibilityState === 'visible';
+      return document.visibilityState === 'visible'
     }
 
     const handleWakeLockRelease = () => {
-      wakeLockSentinel = null;
+      wakeLockSentinel = null
       if (isMounted && isWakeLockRequestAllowedByVisibility()) {
-        void requestWakeLock();
+        void requestWakeLock()
       }
-    };
+    }
 
     async function releaseWakeLock() {
-      const activeSentinel = wakeLockSentinel;
-      wakeLockSentinel = null;
+      const activeSentinel = wakeLockSentinel
+      wakeLockSentinel = null
 
-      activeSentinel?.removeEventListener?.('release', handleWakeLockRelease);
+      activeSentinel?.removeEventListener?.('release', handleWakeLockRelease)
 
       try {
-        await activeSentinel?.release?.();
+        await activeSentinel?.release?.()
       } catch {
         // Unsupported/rejected wake-lock releases are safe to ignore.
       }
@@ -77,40 +60,40 @@ export default function useGameMode(): void {
 
     async function requestWakeLock() {
       if (
-        !isMounted
-        || !isWakeLockRequestAllowedByVisibility()
-        || wakeLockSentinel != null
-        || wakeLockRequestInFlight != null
+        !isMounted ||
+        !isWakeLockRequestAllowedByVisibility() ||
+        wakeLockSentinel != null ||
+        wakeLockRequestInFlight != null
       ) {
-        return;
+        return
       }
 
       const pendingRequest = (async () => {
         try {
-          const sentinel = await wakeLock?.request('screen');
-          if (!sentinel) return;
+          const sentinel = await wakeLock?.request('screen')
+          if (!sentinel) return
 
           if (!isMounted || !isWakeLockRequestAllowedByVisibility()) {
-            await sentinel.release?.();
-            return;
+            await sentinel.release?.()
+            return
           }
 
-          wakeLockSentinel = sentinel;
-          sentinel.addEventListener?.('release', handleWakeLockRelease);
+          wakeLockSentinel = sentinel
+          sentinel.addEventListener?.('release', handleWakeLockRelease)
         } catch {
           // Browsers may reject wake lock requests unless the page is active.
         } finally {
-          wakeLockRequestInFlight = null;
+          wakeLockRequestInFlight = null
         }
-      })();
+      })()
 
-      wakeLockRequestInFlight = pendingRequest;
-      await pendingRequest;
+      wakeLockRequestInFlight = pendingRequest
+      await pendingRequest
     }
 
     async function lockOrientation() {
       try {
-        await orientation?.lock?.('portrait');
+        await orientation?.lock?.('portrait')
       } catch {
         // Orientation lock is best-effort and unsupported on many browsers.
       }
@@ -118,59 +101,30 @@ export default function useGameMode(): void {
 
     function unlockOrientation() {
       try {
-        orientation?.unlock?.();
+        orientation?.unlock?.()
       } catch {
         // Some browsers expose lock but not unlock; ignore cleanup failures.
       }
     }
 
-    async function hideStatusBar() {
-      if (!statusBar || statusBarHidden) return;
-
-      try {
-        // CSS owns safe-area layout; native APIs must not resize the WebView.
-        await statusBar.setOverlaysWebView?.({ overlay: true });
-        await statusBar.hide?.();
-        statusBarHidden = true;
-      } catch {
-        // CSS owns layout correctness even when native APIs fail.
-      }
-    }
-
-    async function showStatusBar() {
-      if (!statusBar || !statusBarHidden) return;
-
-      try {
-        await statusBar.show?.();
-      } catch {
-        // Native status bar restoration is best-effort during teardown.
-      } finally {
-        statusBarHidden = false;
-      }
-    }
-
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        void requestWakeLock();
-        void lockOrientation();
-        void hideStatusBar();
+        void requestWakeLock()
+        void lockOrientation()
       } else {
-        void releaseWakeLock();
-        void showStatusBar();
+        void releaseWakeLock()
       }
     }
 
-    void requestWakeLock();
-    void lockOrientation();
-    void hideStatusBar();
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    void requestWakeLock()
+    void lockOrientation()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      isMounted = false;
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      unlockOrientation();
-      void showStatusBar();
-      void releaseWakeLock();
-    };
-  }, []);
+      isMounted = false
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      unlockOrientation()
+      void releaseWakeLock()
+    }
+  }, [])
 }

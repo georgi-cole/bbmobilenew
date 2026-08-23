@@ -46,7 +46,6 @@ export interface ResponsiveGameLayoutInput {
   revision?: number
 }
 
-const ANDROID_TOP_SAFE_FALLBACK = 44
 const DEFAULT_NAV_HEIGHT = 60
 const COMPACT_NAV_HEIGHT = 46
 const DEFAULT_PHONE_WIDTH = 390
@@ -191,9 +190,10 @@ export function computeResponsiveGameLayout(
   const stageWidth = input.stageWidth || Math.min(viewportWidth, DEFAULT_PHONE_WIDTH)
   const stageHeight = input.stageHeight || viewportHeight
   const layoutSize = resolveLayoutSize(viewportWidth, viewportHeight)
-  const effectiveSafeTop = input.isAndroidLike
-    ? Math.max(input.safeTop, ANDROID_TOP_SAFE_FALLBACK)
-    : input.safeTop
+  // Safe insets are measured by the platform (or CSS env() in a browser).
+  // Do not infer a cutout from the Android user agent: that added a 44px dead
+  // band above the game on ordinary devices such as Pixel XL.
+  const effectiveSafeTop = input.safeTop
   const measuredNavHeight = input.navHeight || DEFAULT_NAV_HEIGHT + input.safeBottom
   const normalNavContentHeight = Math.max(DEFAULT_NAV_HEIGHT, measuredNavHeight - input.safeBottom)
   const compactNavContentHeight = Math.min(normalNavContentHeight, COMPACT_NAV_HEIGHT)
@@ -252,13 +252,17 @@ export function computeResponsiveGameLayout(
   // layout engine starts from the Log-only minimum and adds 0–3 rows only when
   // the measured surplus can contain them without crowding the roster.
   const tvLogRowHeight = viewportWidth <= 480 ? MOBILE_TV_LOG_ROW_HEIGHT : WIDE_TV_LOG_ROW_HEIGHT
-  const minTvHeight = minTvViewportHeight + TV_CHROME_HEIGHT + (input.inlineLogVisible ? tvLogRowHeight : 0)
+  const minTvHeight =
+    minTvViewportHeight + TV_CHROME_HEIGHT + (input.inlineLogVisible ? tvLogRowHeight : 0)
   const normalWithoutHeader = normalRosterHeight - ROSTER_HEADER_HEIGHT
   const compactWithoutHeader = compactRosterHeight - ROSTER_HEADER_HEIGHT
-  // Compact presentation is an explicit accessibility/display preference. A
-  // cramped viewport may scroll the roster, but must not silently opt the user
-  // into smaller tiles or controls.
-  const bottomControlsMode: BottomControlsMode = input.userCompactRoster ? 'compact' : 'normal'
+  // Degrade in deliberate stages. User compact mode remains a force-on
+  // preference, but a constrained viewport first compacts the chrome (labels
+  // disappear and the dock scales) before we make the roster scroll.
+  const normalStaticFits =
+    !shouldUseCompactBase && normalWithoutHeader + minTvHeight <= normalAvailableAfterTv
+  const bottomControlsMode: BottomControlsMode =
+    input.userCompactRoster || !normalStaticFits ? 'compact' : 'normal'
   const availableAfterTv =
     bottomControlsMode === 'normal' ? normalAvailableAfterTv : compactAvailableAfterTv
   const selectedNavHeight = bottomControlsMode === 'normal' ? normalNavHeight : compactNavHeight
@@ -266,12 +270,14 @@ export function computeResponsiveGameLayout(
     bottomControlsMode === 'normal' ? normalNavContentHeight : compactNavContentHeight
   const selectedDockHeight = bottomControlsMode === 'normal' ? normalDockHeight : compactDockHeight
   const dockClearance = bottomControlsMode === 'normal' ? normalDockClearance : compactDockClearance
+  const normalRosterFitsWithCompactChrome =
+    !shouldUseCompactBase && normalWithoutHeader + minTvHeight <= compactAvailableAfterTv
   const baseRosterMode: Exclude<ResponsiveRosterMode, 'scroll'> =
-    input.userCompactRoster ? 'compact-small' : 'normal'
-  const normalStaticFits =
-    !shouldUseCompactBase && normalWithoutHeader + minTvHeight <= normalAvailableAfterTv
-  const rosterMode: ResponsiveRosterMode =
-    !input.userCompactRoster && !normalStaticFits ? 'scroll' : baseRosterMode
+    input.userCompactRoster || !normalRosterFitsWithCompactChrome ? 'compact-small' : 'normal'
+  const selectedRosterWithoutHeader =
+    baseRosterMode === 'compact-small' ? compactWithoutHeader : normalWithoutHeader
+  const selectedRosterFits = selectedRosterWithoutHeader + minTvHeight <= availableAfterTv
+  const rosterMode: ResponsiveRosterMode = selectedRosterFits ? baseRosterMode : 'scroll'
   const baseAvatarTileSize = baseRosterMode === 'compact-small' ? compactTileSize : normalTileSize
   const baseRosterHeight =
     baseRosterMode === 'compact-small' ? compactRosterHeight : normalRosterHeight
@@ -298,21 +304,15 @@ export function computeResponsiveGameLayout(
     : resolveAutomaticTvLogRows(extraAfterFeature, tvLogRowHeight)
   const baseLogRows = input.inlineLogVisible ? 1 : 0
   const logRowsFromExtra = Math.max(0, tvLogRows - baseLogRows)
-  const remainingAfterLogRows = Math.max(
-    0,
-    extraAfterFeature - logRowsFromExtra * tvLogRowHeight
-  )
-  const breathingRoom = clamp(
-    remainingAfterLogRows,
-    0,
-    resolveTvViewportExpansionLimit(layoutSize)
-  )
+  const remainingAfterLogRows = Math.max(0, extraAfterFeature - logRowsFromExtra * tvLogRowHeight)
+  const breathingRoom = clamp(remainingAfterLogRows, 0, resolveTvViewportExpansionLimit(layoutSize))
   const tvHeight = minTvHeight + logRowsFromExtra * tvLogRowHeight + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
   const compactRoster = baseRosterMode === 'compact-small'
-  const rosterMaxHeight = rosterMode === 'scroll'
-    ? Math.max(normalTileSize, availableAfterTv - minTvHeight)
-    : baseRosterHeightWithoutHeader
+  const rosterMaxHeight =
+    rosterMode === 'scroll'
+      ? Math.max(normalTileSize, availableAfterTv - minTvHeight)
+      : baseRosterHeightWithoutHeader
   const avatarTileSize = baseAvatarTileSize
   const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
   const actionDockScale = bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
@@ -459,10 +459,18 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     playerCount: number
     userCompactRoster: boolean
     inlineLogVisible: boolean
+    freezeLayout?: boolean
   }
 ) {
   const revisionRef = useRef(0)
-  const { hasDock, playerCount, userCompactRoster, inlineLogVisible } = options
+  const hasMeasuredRef = useRef(false)
+  const {
+    hasDock,
+    playerCount,
+    userCompactRoster,
+    inlineLogVisible,
+    freezeLayout = false,
+  } = options
   const [budget, setBudget] = useState<ResponsiveGameLayoutBudget>(() =>
     computeResponsiveGameLayout({
       viewportWidth: DEFAULT_PHONE_WIDTH,
@@ -482,6 +490,9 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
   )
 
   const measure = useCallback(() => {
+    // Tile-targeted ceremony and presentation animations use the current DOM
+    // geometry. Keep their density tier fixed until the flow releases it.
+    if (freezeLayout && hasMeasuredRef.current) return
     revisionRef.current += 1
     const next = computeResponsiveGameLayout(
       readViewportInput(
@@ -498,7 +509,8 @@ export function useResponsiveGameLayout<TStage extends HTMLElement>(
     setBudget((prev) =>
       prev.signature === next.signature && prev.debugLabel === next.debugLabel ? prev : next
     )
-  }, [hasDock, inlineLogVisible, playerCount, stageRef, userCompactRoster])
+    hasMeasuredRef.current = true
+  }, [freezeLayout, hasDock, inlineLogVisible, playerCount, stageRef, userCompactRoster])
 
   useEffect(() => {
     measure()
