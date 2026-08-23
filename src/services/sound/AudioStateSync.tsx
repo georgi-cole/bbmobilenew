@@ -15,12 +15,18 @@ import {
   type MusicTrackAssetOverride,
 } from './musicCatalog'
 import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
+import { resolveRuntimeMusicMix, type RuntimeMusicMix } from './musicMix'
 
 const VOLUME_RAMP_STEP_MS = 50
 const SAFETY_SEQUENCE_DUCK_LEVEL = 0.12
 const SAFETY_SEQUENCE_DUCK_MS = 1200
 const SAFETY_SEQUENCE_RESUME_MS = 900
 const SAFETY_SEQUENCE_DAY_END_FADE_MS = 1500
+
+function mixVolumeFactor(mix: RuntimeMusicMix): number {
+  if (mix === 'muted') return 0
+  return mix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1
+}
 
 function createSilentCue(assignmentId: string): ResolvedMusicCue {
   return {
@@ -58,20 +64,7 @@ function enrichMinigameTransition(
 }
 
 export default function AudioStateSync() {
-  const musicMix = useSelector((root: RootState) => {
-    const evictionOverlayPlayerId = root.game.evictionOverlayPlayerId ?? null
-    const battleBackReturnActive =
-      evictionOverlayPlayerId != null &&
-      root.game.battleBack?.used === true &&
-      root.game.battleBack?.winnerId === evictionOverlayPlayerId
-    const voteResultsRevealActive = root.game.voteResults != null
-    const evictionCinematicActive = evictionOverlayPlayerId != null && !battleBackReturnActive
-
-    // Music only makes room for the two SFX-heavy reveal sequences themselves.
-    // Live-vote title cards, Confessional prompts and other surrounding screens
-    // stay at full strength even though they share the same game phases.
-    return voteResultsRevealActive || evictionCinematicActive ? 'ducked' : 'normal'
-  })
+  const musicMix = useSelector((root: RootState) => resolveRuntimeMusicMix(root.game))
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
@@ -229,8 +222,7 @@ export default function AudioStateSync() {
 
     clearFadeIn()
 
-    const mixedMusicVolume =
-      musicState.musicVolume * (musicMixRef.current === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
+    const mixedMusicVolume = musicState.musicVolume * mixVolumeFactor(musicMixRef.current)
 
     if (!musicState.musicOn) {
       clearPostGameTimer()
@@ -321,11 +313,19 @@ export default function AudioStateSync() {
     previousMusicMixRef.current = musicMix
     if (previousMix === musicMix) return
 
-    const startVolume =
-      musicState.musicVolume * (previousMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
-    const targetVolume =
-      musicState.musicVolume * (musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
-    const durationMs = musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_MS : SAFETY_SEQUENCE_RESUME_MS
+    if (musicMix === 'muted') {
+      SoundManager.setMusicVolume(0)
+      return
+    }
+
+    const startVolume = musicState.musicVolume * mixVolumeFactor(previousMix)
+    const targetVolume = musicState.musicVolume * mixVolumeFactor(musicMix)
+    const durationMs =
+      previousMix === 'muted'
+        ? SAFETY_SEQUENCE_RESUME_MS
+        : musicMix === 'ducked'
+          ? SAFETY_SEQUENCE_DUCK_MS
+          : SAFETY_SEQUENCE_RESUME_MS
     const steps = Math.max(1, Math.ceil(durationMs / VOLUME_RAMP_STEP_MS))
     let step = 0
 
