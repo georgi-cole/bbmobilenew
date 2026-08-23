@@ -365,7 +365,7 @@
   gap: 8px;
   max-width: 100%;
   width: 100%;
-  margin: 0 0 5px;
+  margin: 0 0 var(--game-layout-rhythm, 8px);
   padding-inline: 6px;
   box-sizing: border-box;
   border: 0;
@@ -388,38 +388,50 @@
   height: 25px;
   margin-left: auto;
   padding: 0 7px;
-  border: 1px solid rgba(186, 198, 255, 0.03);
-  border-top-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(190, 174, 220, 0.09);
+  border-top-color: rgba(228, 216, 255, 0.28);
+  border-bottom-color: rgba(120, 100, 165, 0.045);
   border-radius: 7px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 36%),
-    linear-gradient(180deg, #121a28, #080d16);
-  color: rgba(226, 232, 255, 0.76);
+    radial-gradient(ellipse at 34% 0%, rgba(224, 207, 246, 0.09), transparent 54%),
+    linear-gradient(180deg, rgba(50, 27, 61, 0.72), rgba(27, 14, 37, 0.8) 46%, rgba(9, 7, 17, 0.9));
+  color: rgba(225, 216, 236, 0.82);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.7),
-    0 1px 0 rgba(255, 255, 255, 0.035);
+    inset 0 1px 0 rgba(239, 229, 255, 0.095),
+    inset 0 -2px 4px rgba(3, 2, 8, 0.54),
+    0 2px 6px rgba(3, 2, 9, 0.32),
+    0 0 8px rgba(105, 82, 190, 0.055);
   font: inherit;
   font-size: 0.5rem;
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
   cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
 }
 
 .rosterLogLauncher span:first-child {
-  color: rgba(157, 170, 255, 0.72);
+  color: rgba(201, 187, 224, 0.8);
   font-size: 0.72rem;
   line-height: 1;
 }
 
 .rosterLogLauncher:hover,
 .rosterLogLauncher:focus-visible {
-  border-color: rgba(151, 139, 255, 0.46);
+  border-color: rgba(207, 191, 238, 0.24);
+  border-top-color: rgba(238, 227, 255, 0.42);
   background:
-    linear-gradient(180deg, rgba(151, 139, 255, 0.14), rgba(151, 139, 255, 0) 46%),
-    linear-gradient(180deg, #172137, #0a101b);
-  color: rgba(246, 247, 255, 0.94);
+    radial-gradient(ellipse at 34% 0%, rgba(234, 218, 255, 0.13), transparent 56%),
+    linear-gradient(180deg, rgba(62, 35, 75, 0.78), rgba(28, 15, 39, 0.9));
+  color: rgba(244, 237, 250, 0.94);
+}
+
+.rosterLogLauncher:active {
+  transform: scale(0.97);
 }
 
 .rosterLogLauncher:focus-visible {
@@ -456,7 +468,7 @@
 .avatarWrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: var(--game-avatar-tile-height, var(--game-avatar-tile-size, auto));
   border-radius: 10px;
   overflow: hidden;
   display: flex;

@@ -12,6 +12,30 @@ function navAssetUrl(file: string): string {
   return `${BASE}/assets/updated_nav_fab_bar/${file}`
 }
 
+function useNotificationLed(
+  value: number | undefined,
+  options: { showInitially?: boolean; notifyOnAnyChange?: boolean } = {}
+) {
+  const currentValue = value ?? 0
+  const { showInitially = false, notifyOnAnyChange = false } = options
+  const [active, setActive] = useState(showInitially && currentValue > 0)
+  const previousValueRef = useRef(currentValue)
+
+  useEffect(() => {
+    const previousValue = previousValueRef.current
+    previousValueRef.current = currentValue
+    const hasNewNotification = notifyOnAnyChange
+      ? currentValue !== previousValue
+      : currentValue > previousValue
+    if (!hasNewNotification) return undefined
+
+    const reveal = window.setTimeout(() => setActive(true), 0)
+    return () => window.clearTimeout(reveal)
+  }, [currentValue, notifyOnAnyChange])
+
+  return [active, () => setActive(false)] as const
+}
+
 export interface GameControlDockProps {
   /** Ref to the dock shell for responsive placement within the game screen. */
   dockRef?: Ref<HTMLDivElement>
@@ -74,12 +98,26 @@ export default function GameControlDock({
   confessionalIconRef,
 }: GameControlDockProps) {
   const [moreOpen, setMoreOpen] = useState(false)
+  const [socialLedActive, acknowledgeSocialLed] = useNotificationLed(chatBadgeCount, {
+    notifyOnAnyChange: true,
+  })
+  const [requestsLedActive, acknowledgeRequestsLed] = useNotificationLed(
+    incomingRequestsBadgeCount,
+    { showInitially: true }
+  )
+  const [publicLedActive, acknowledgePublicLed] = useNotificationLed(publicMeterBadgeCount, {
+    showInitially: true,
+  })
+  const [confessionalLedActive, acknowledgeConfessionalLed] = useNotificationLed(
+    confessionalBadgeCount,
+    { showInitially: true }
+  )
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   // Query version keeps the refreshed public SVG from being served out of a
   // browser cache while retaining one shared source asset in production.
-  const shellSrc = `${assetUrl('fab_shell_clean.svg')}?v=water-glass-7`
-  const playSrc = assetUrl('fab_center_play_clean.svg')
+  const shellSrc = `${assetUrl('fab_shell_clean.svg')}?v=precision-glass-8`
+  const playSrc = `${assetUrl('fab_center_play_clean.svg')}?v=precision-glass-7`
   const socialUnavailableClass = socialDisabled ? ' dock-hit-area--unavailable' : ''
   const requestsUnavailableClass = incomingRequestsDisabled ? ' dock-hit-area--unavailable' : ''
   const publicUnavailableClass = publicMeterDisabled ? ' dock-hit-area--unavailable' : ''
@@ -180,8 +218,18 @@ export default function GameControlDock({
           aria-label={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
           aria-disabled={socialDisabled || disabled}
           disabled={disabled}
-          onClick={disabled ? undefined : onChatClick}
+          onClick={
+            disabled
+              ? undefined
+              : () => {
+                  if (!socialDisabled) acknowledgeSocialLed()
+                  onChatClick?.()
+                }
+          }
         >
+          {socialLedActive && !socialDisabled && (
+            <span className="dock-hit-area__notification-led" aria-hidden="true" />
+          )}
           {chatBadgeCount != null && chatBadgeCount > 0 && !socialDisabled && (
             <span className="dock-hit-area__badge" aria-hidden="true">
               {chatBadgeCount > 99 ? '99+' : chatBadgeCount}
@@ -194,8 +242,18 @@ export default function GameControlDock({
           aria-label={`Incoming requests${incomingRequestsBadgeCount ? ` (${incomingRequestsBadgeCount})` : ''}`}
           aria-disabled={incomingRequestsDisabled || disabled}
           disabled={disabled}
-          onClick={disabled ? undefined : onIncomingRequestsClick}
+          onClick={
+            disabled
+              ? undefined
+              : () => {
+                  if (!incomingRequestsDisabled) acknowledgeRequestsLed()
+                  onIncomingRequestsClick?.()
+                }
+          }
         >
+          {requestsLedActive && !incomingRequestsDisabled && (
+            <span className="dock-hit-area__notification-led" aria-hidden="true" />
+          )}
           {incomingRequestsBadgeCount != null &&
             incomingRequestsBadgeCount > 0 &&
             !incomingRequestsDisabled && (
@@ -217,8 +275,18 @@ export default function GameControlDock({
           aria-label={`Public meter${publicMeterBadgeCount ? ` (${publicMeterBadgeCount})` : ''}`}
           aria-disabled={publicMeterDisabled || disabled}
           disabled={disabled}
-          onClick={disabled ? undefined : onPublicMeterClick}
+          onClick={
+            disabled
+              ? undefined
+              : () => {
+                  if (!publicMeterDisabled) acknowledgePublicLed()
+                  onPublicMeterClick?.()
+                }
+          }
         >
+          {publicLedActive && !publicMeterDisabled && (
+            <span className="dock-hit-area__notification-led" aria-hidden="true" />
+          )}
           {publicMeterBadgeCount != null && publicMeterBadgeCount > 0 && !publicMeterDisabled && (
             <span className="dock-hit-area__badge" aria-hidden="true">
               {publicMeterBadgeCount > 99 ? '99+' : publicMeterBadgeCount}
@@ -230,8 +298,18 @@ export default function GameControlDock({
           type="button"
           aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
           disabled={disabled}
-          onClick={disabled ? undefined : onToolClick}
+          onClick={
+            disabled
+              ? undefined
+              : () => {
+                  acknowledgeConfessionalLed()
+                  onToolClick?.()
+                }
+          }
         >
+          {confessionalLedActive && (
+            <span className="dock-hit-area__notification-led" aria-hidden="true" />
+          )}
           {confessionalBadgeCount != null && confessionalBadgeCount > 0 && (
             <span className="dock-hit-area__badge dock-hit-area__badge--mission" aria-hidden="true">
               {confessionalBadgeCount > 99 ? '99+' : confessionalBadgeCount}

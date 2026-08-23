@@ -1,17 +1,24 @@
 /* Profile */
 .profile-screen {
+  --profile-plum-panel: linear-gradient(180deg, rgba(27, 23, 33, 0.97), rgba(13, 11, 18, 0.98));
   padding: 16px;
   max-width: 480px;
   margin: 0 auto;
   padding-bottom: 40px;
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 6%, rgba(112, 72, 156, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(19, 9, 32, 0.42), rgba(9, 6, 17, 0.18));
 }
 
 .profile-screen__header {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: linear-gradient(180deg, #0d1728, #091220);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(129, 83, 174, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(31, 22, 39, 0.97), rgba(14, 11, 19, 0.98));
+  border: 1px solid rgba(205, 190, 236, 0.1);
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 14px;
@@ -107,7 +114,7 @@
 
 .profile-screen__guest-banner a,
 .profile-screen__guest-link {
-  color: rgba(107, 183, 255, 0.9);
+  color: rgba(196, 181, 253, 0.92);
   font-weight: 700;
   background: none;
   border: none;
@@ -122,11 +129,31 @@
 .profile-screen__stats-card,
 .profile-screen__titles-card,
 .profile-screen__survivor-card {
-  background: linear-gradient(180deg, #0d1728, #091220);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--profile-plum-panel);
+  border: 1px solid rgba(205, 190, 236, 0.1);
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 14px;
+}
+
+.profile-screen__status-card,
+.profile-screen__stats-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(77, 88, 126, 0.11), transparent 40%),
+    linear-gradient(180deg, rgba(24, 24, 31, 0.97), rgba(12, 12, 17, 0.98));
+}
+
+.profile-screen__bio-card,
+.profile-screen__titles-card {
+  background:
+    radial-gradient(circle at 0 0, rgba(126, 88, 79, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(29, 24, 30, 0.97), rgba(14, 11, 17, 0.98));
+}
+
+.profile-screen__survivor-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(72, 103, 105, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(23, 25, 30, 0.97), rgba(11, 12, 17, 0.98));
 }
 
 .profile-screen__section-title {
@@ -234,7 +261,7 @@
 .profile-screen__stat-val {
   font-size: 1.5rem;
   font-weight: 800;
-  color: rgba(107, 183, 255, 0.9);
+  color: rgba(196, 181, 253, 0.92);
   display: block;
 }
 
@@ -257,15 +284,15 @@
   gap: 8px;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(107, 183, 255, 0.12);
-  border: 1px solid rgba(107, 183, 255, 0.22);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(196, 181, 253, 0.2);
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.74rem;
   font-weight: 700;
 }
 
 .profile-screen__title-count {
-  color: rgba(107, 183, 255, 0.92);
+  color: rgba(196, 181, 253, 0.92);
 }
 
 .profile-screen__survivor-header {
@@ -288,8 +315,8 @@
   min-width: 54px;
   padding: 8px 10px;
   border-radius: 999px;
-  background: rgba(107, 183, 255, 0.14);
-  border: 1px solid rgba(107, 183, 255, 0.22);
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(196, 181, 253, 0.2);
   color: rgba(235, 244, 255, 0.95);
   font-size: 0.8rem;
   font-weight: 800;
@@ -356,9 +383,9 @@
 
 .profile-screen__survivor-achievement--unlocked {
   background:
-    radial-gradient(circle at top right, rgba(107, 183, 255, 0.12), transparent 38%),
+    radial-gradient(circle at top right, rgba(139, 92, 246, 0.13), transparent 38%),
     rgba(255, 255, 255, 0.045);
-  border-color: rgba(107, 183, 255, 0.18);
+  border-color: rgba(196, 181, 253, 0.18);
 }
 
 .profile-screen__survivor-achievement--secret:not(.profile-screen__survivor-achievement--unlocked) {
@@ -388,8 +415,8 @@
 }
 
 .profile-screen__survivor-tier {
-  background: rgba(107, 183, 255, 0.14);
-  color: rgba(212, 231, 255, 0.94);
+  background: rgba(139, 92, 246, 0.14);
+  color: rgba(232, 224, 255, 0.94);
 }
 
 .profile-screen__survivor-category {

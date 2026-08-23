@@ -31,7 +31,7 @@
     { id: 'music', label: 'Music', icon: 'music', position: 'top-left' },
     { id: 'sounds', label: 'Sounds', icon: 'sound', position: 'top-left-2' },
     // Bottom-left corner (stacked bottom → top)
-    { id: 'houseguests', label: 'Housemates', icon: 'housemates', position: 'bottom-left' },
+    { id: 'houseguests', label: 'Players', icon: 'housemates', position: 'bottom-left' },
     { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
     { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' },
     // Bottom-right corner (stacked bottom → top: store, settings, share)
@@ -89,8 +89,8 @@
       overflowY: 'auto',
       padding: '24px',
       borderRadius: '24px',
-      border: '1px solid rgba(176, 198, 255, 0.18)',
-      background: 'linear-gradient(180deg, rgba(27, 35, 54, 0.98) 0%, rgba(11, 16, 29, 0.98) 100%)',
+      border: '1px solid rgba(205, 190, 236, 0.14)',
+      background: 'radial-gradient(ellipse at 45% 0%, rgba(112,72,156,0.12), transparent 42%), linear-gradient(180deg, rgba(28,26,33,0.985) 0%, rgba(12,11,16,0.99) 100%)',
       boxShadow: '0 18px 48px rgba(0, 0, 0, 0.48)',
       color: '#f7f8ff',
       zIndex: '10200',
@@ -116,8 +116,8 @@
       width: '48px',
       height: '48px',
       borderRadius: '16px',
-      background: 'linear-gradient(180deg, rgba(110, 141, 255, 0.28) 0%, rgba(70, 100, 214, 0.12) 100%)',
-      boxShadow: 'inset 0 0 0 1px rgba(176, 198, 255, 0.15)',
+      background: 'linear-gradient(180deg, rgba(139,92,246,0.22) 0%, rgba(74,55,104,0.12) 100%)',
+      boxShadow: 'inset 0 0 0 1px rgba(205,190,236,0.15)',
       fontSize: '24px',
       flexShrink: '0',
     });
@@ -147,7 +147,7 @@
       );
     }
 
-    const closeButton = createTextNode('button', '✕', {
+    const closeButton = createTextNode('button', options.useBackButton ? '↩' : '✕', {
       width: '34px',
       height: '34px',
       borderRadius: '999px',
@@ -160,7 +160,7 @@
       flexShrink: '0',
     });
     closeButton.type = 'button';
-    closeButton.setAttribute('aria-label', 'Close dialog');
+    closeButton.setAttribute('aria-label', options.useBackButton ? 'Back to Intro Hub' : 'Close dialog');
     closeButton.addEventListener('click', closeHubDialog);
 
     header.appendChild(icon);
@@ -703,7 +703,7 @@
       padding: isFeatured ? '18px' : '14px',
       borderRadius: isFeatured ? '22px' : '18px',
       minHeight: isFeatured ? '118px' : '92px',
-      background: `linear-gradient(160deg, ${tone.accentSoft} 0%, rgba(255,255,255,0.05) 45%, rgba(9,13,24,0.9) 100%)`,
+      background: `linear-gradient(160deg, ${tone.accentSoft} 0%, rgba(255,255,255,0.045) 42%, rgba(14,12,18,0.94) 100%)`,
       border: `1px solid ${tone.border}`,
       boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 28px ${tone.glow}`,
       display: 'grid',
@@ -781,8 +781,8 @@
       gap: '12px',
       padding: '16px',
       borderRadius: '22px',
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.08)',
+      background: 'linear-gradient(180deg, rgba(31,28,36,0.82), rgba(15,13,19,0.92))',
+      border: '1px solid rgba(205,190,236,0.09)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
     });
 
@@ -843,6 +843,7 @@
       title: 'Achievements',
       icon: '🏆',
       description: `${summary.playerName}'s trophy case.`,
+      useBackButton: true,
       renderBody: function (body) {
         const hero = applyStyles(document.createElement('section'), {
           position: 'relative',
@@ -851,8 +852,8 @@
           gap: '16px',
           padding: '20px',
           borderRadius: '24px',
-          background: 'linear-gradient(160deg, rgba(251,191,36,0.18) 0%, rgba(124,146,255,0.16) 42%, rgba(8,12,22,0.96) 100%)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'radial-gradient(circle at 8% 0%, rgba(251,191,36,0.17), transparent 36%), radial-gradient(circle at 100% 0%, rgba(139,92,246,0.11), transparent 38%), linear-gradient(160deg, rgba(35,29,35,0.97), rgba(13,11,17,0.98))',
+          border: '1px solid rgba(226,205,157,0.15)',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 18px 40px rgba(0,0,0,0.28)',
         });
 
@@ -1089,7 +1090,7 @@
     } else if (global.HouseguestsModal && typeof global.HouseguestsModal.open === 'function') {
       global.HouseguestsModal.open('list');
     } else {
-      openPlaceholder('Housemates', '👥', 'Housemate details will appear here.');
+      openPlaceholder('Players', '👥', 'Player details will appear here.');
     }
   }
 

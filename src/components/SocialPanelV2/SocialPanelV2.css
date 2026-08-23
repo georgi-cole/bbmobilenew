@@ -34,6 +34,9 @@
 }
 
 .sp2-backdrop {
+  --color-card: #111016;
+  --color-card-2: #17141d;
+  --color-card-hover: #211c29;
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -51,8 +54,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--color-card, #141b26);
-  border: 1px solid rgba(129, 140, 248, 0.14);
+  background:
+    radial-gradient(ellipse at 48% 12%, rgba(112, 72, 156, 0.12), transparent 46%),
+    linear-gradient(180deg, rgba(19, 9, 32, 0.98), rgba(9, 6, 17, 0.99));
+  border: 1px solid rgba(205, 190, 236, 0.14);
   border-bottom: 0;
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.44);
@@ -72,15 +77,17 @@
   gap: 0.45rem;
   padding: 0.38rem 0.7rem;
   padding-top: max(0.2rem, env(safe-area-inset-top));
-  background: linear-gradient(135deg, #0f1225 0%, #131a2e 100%);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.16);
+  background:
+    radial-gradient(ellipse at 42% -70%, rgba(137, 94, 186, 0.15), transparent 62%),
+    linear-gradient(135deg, rgba(18, 9, 30, 0.88), rgba(10, 7, 18, 0.94));
+  border-bottom: 1px solid rgba(185, 157, 221, 0.13);
 }
 
 .sp2-modal--drama .sp2-header {
   background:
     radial-gradient(circle at 0 0, rgba(124, 58, 237, 0.22), transparent 42%),
     radial-gradient(circle at 100% 0, rgba(245, 158, 11, 0.1), transparent 36%),
-    linear-gradient(135deg, #0f1225 0%, #17142d 100%);
+    linear-gradient(135deg, #0d0718 0%, #180c29 100%);
 }
 
 .sp2-header__title {
@@ -194,9 +201,10 @@
   flex-direction: column;
   gap: 0.45rem;
   padding: 0.58rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(205, 190, 236, 0.09);
   border-radius: 12px;
-  background: var(--color-card-2, #1a2336);
+  background:
+    linear-gradient(180deg, rgba(31, 28, 37, 0.72), rgba(16, 14, 20, 0.86));
 }
 
 .sp2-column--players {
@@ -367,8 +375,8 @@
   justify-content: space-between;
   gap: 0.55rem;
   padding: 0.62rem 0.72rem calc(0.62rem + env(safe-area-inset-bottom));
-  background: var(--color-card, #141b26);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(25, 21, 31, 0.94), rgba(11, 9, 15, 0.98));
+  border-top: 1px solid rgba(205, 190, 236, 0.1);
 }
 
 .sp2-footer__cost,

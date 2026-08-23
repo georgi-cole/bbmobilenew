@@ -1,10 +1,16 @@
 /* DiaryRoom */
 .diary-room {
+  --color-bg: #090611;
+  --color-card: #17141d;
+  --color-card-2: #1d1823;
   display: flex;
   flex-direction: column;
   min-height: 100%;
   height: 100%;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 24%, rgba(112, 72, 156, 0.1), transparent 52%),
+    linear-gradient(180deg, #0d0718, #090611 68%);
 }
 
 .diary-room__shell {
@@ -27,7 +33,7 @@
   gap: 12px;
   padding: 16px 16px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: var(--color-bg);
+  background: linear-gradient(180deg, rgba(29, 23, 36, 0.92), rgba(11, 9, 15, 0.96));
   flex-shrink: 0;
 }
 
@@ -450,7 +456,7 @@
   padding: 24px 16px;
   text-align: center;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(19, 23, 38, 0.96) 0%, rgba(11, 14, 25, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(28, 15, 44, 0.96) 0%, rgba(11, 7, 20, 0.97) 100%);
   border: 1px solid rgba(139, 92, 246, 0.18);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
 }
@@ -461,7 +467,7 @@
   aspect-ratio: 2 / 3;
   overflow: hidden;
   border-radius: 22px;
-  background: rgba(9, 11, 23, 0.98);
+  background: rgba(11, 7, 20, 0.98);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.34),
     0 0 0 1px rgba(216, 180, 254, 0.12);
@@ -631,7 +637,7 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(17, 24, 39, 0.92);
+  background: rgba(25, 23, 30, 0.94);
   border: 1px solid rgba(139, 92, 246, 0.35);
   color: var(--color-text);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);

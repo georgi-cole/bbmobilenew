@@ -44,6 +44,10 @@
   object-fit: contain;
   pointer-events: none;
   user-select: none;
+  filter: drop-shadow(0 2px 5px rgba(2, 3, 10, 0.36));
+  transition:
+    filter 150ms ease,
+    opacity 150ms ease;
 }
 
 /* Glyph overlaid, centred */
@@ -55,18 +59,28 @@
   object-fit: contain;
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  opacity: 0.86;
+  filter: drop-shadow(0 1px 2px rgba(7, 6, 18, 0.48));
   transition: opacity 150ms ease;
 }
 
 /* Active/pressed state: slightly brighter glyph */
 .top-utility-btn--active .top-utility-btn__glyph {
-  filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.7)) brightness(1.2);
+  opacity: 0.94;
+  filter: drop-shadow(0 0 3px rgba(139, 119, 214, 0.34)) brightness(1.08);
+}
+
+.top-utility-btn:hover:not(:disabled) .top-utility-btn__shell {
+  filter: brightness(1.08) drop-shadow(0 2px 6px rgba(95, 76, 157, 0.22));
+}
+
+.top-utility-btn:active:not(:disabled) .top-utility-btn__shell {
+  filter: brightness(1.12) drop-shadow(0 1px 4px rgba(95, 76, 157, 0.18));
 }
 
 .top-utility-btn--inactive .top-utility-btn__shell {
-  opacity: 0.72;
-  filter: grayscale(0.3) brightness(0.88);
+  opacity: 0.68;
+  filter: grayscale(0.2) brightness(0.84);
 }
 
 .top-utility-btn--inactive .top-utility-btn__glyph {

@@ -3,7 +3,11 @@
 .rules-screen {
   max-width: 760px;
   margin: 0 auto;
+  min-height: 100%;
   padding-bottom: 40px;
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(112, 72, 156, 0.11), transparent 42%),
+    linear-gradient(180deg, rgba(19, 9, 32, 0.42), rgba(9, 6, 17, 0.18));
 }
 
 /* Hero */
@@ -22,14 +26,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #111827 0%, #172554 100%);
-  border: 1px solid rgba(100, 180, 255, 0.45);
+  background: linear-gradient(135deg, #170b27 0%, #24113b 100%);
+  border: 1px solid rgba(196, 181, 253, 0.38);
   border-radius: 16px;
   font-size: 1.35rem;
   font-weight: 900;
   letter-spacing: 0.04em;
-  color: #78bfff;
-  box-shadow: 0 0 18px rgba(100, 180, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #c4b5fd;
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .rules-screen__title {
@@ -87,17 +91,17 @@
   min-height: 108px;
   padding: 12px 13px 13px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(205, 190, 236, 0.1);
+  background: linear-gradient(180deg, rgba(29, 27, 34, 0.88), rgba(15, 13, 19, 0.94));
 }
 
 .rules-tile__kicker {
   align-self: flex-start;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(100, 180, 255, 0.14);
-  border: 1px solid rgba(100, 180, 255, 0.26);
-  color: #8ac6ff;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(196, 181, 253, 0.24);
+  color: #c4b5fd;
   font-size: 0.67rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -128,8 +132,8 @@
 .rules-confessional-grid .rules-tile:nth-child(5n + 1),
 .rules-special-grid .rules-tile:nth-child(3n + 1),
 .rules-finale-grid .rules-tile:nth-child(4n + 1) {
-  border-color: rgba(100, 180, 255, 0.18);
-  background: rgba(100, 180, 255, 0.06);
+  border-color: rgba(196, 181, 253, 0.18);
+  background: rgba(139, 92, 246, 0.07);
 }
 
 .rules-screen__summary-grid .rules-tile:nth-child(4n + 2),
@@ -167,8 +171,10 @@
 
 /* Sections */
 .rules-section {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(112, 72, 156, 0.055), transparent 48%),
+    linear-gradient(180deg, rgba(28, 26, 33, 0.88), rgba(13, 12, 17, 0.94));
+  border: 1px solid rgba(205, 190, 236, 0.1);
   border-radius: 8px;
   padding: 16px 16px 14px;
   display: flex;
@@ -177,8 +183,8 @@
 }
 
 .rules-section--highlight {
-  background: linear-gradient(135deg, rgba(100, 180, 255, 0.06) 0%, rgba(84, 197, 190, 0.07) 100%);
-  border-color: rgba(100, 180, 255, 0.2);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(84, 197, 190, 0.045));
+  border-color: rgba(196, 181, 253, 0.2);
 }
 
 .rules-section__header {
@@ -199,9 +205,9 @@
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #8ac6ff;
-  background: rgba(100, 180, 255, 0.12);
-  border: 1px solid rgba(100, 180, 255, 0.25);
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(196, 181, 253, 0.22);
   font-variant-numeric: tabular-nums;
 }
 

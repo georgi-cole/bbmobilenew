@@ -32,7 +32,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(24, 30, 45, 0.6);
+  background: rgba(5, 4, 12, 0.68);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
@@ -47,7 +47,10 @@
   bottom: 0;
   height: 100vh;
   height: 100dvh;
-  background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(112, 72, 156, 0.12), transparent 38%),
+    linear-gradient(180deg, #1b1921 0%, #0d0c11 100%);
+  border: 1px solid rgba(205, 190, 236, 0.12);
   border-radius: 24px;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
   display: flex;
@@ -69,6 +72,7 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(34, 28, 40, 0.82), rgba(18, 16, 22, 0.74));
 }
 
 .houseguests-modal__title {
@@ -80,15 +84,17 @@
 }
 
 .houseguests-modal__close-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  font-size: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    rgba(34, 28, 40, 0.9);
+  border: 1px solid rgba(205, 190, 236, 0.14);
+  color: rgba(232, 224, 255, 0.9);
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -97,7 +103,7 @@
 }
 
 .houseguests-modal__close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(139, 92, 246, 0.16);
   transform: scale(1.05);
 }
 
@@ -106,7 +112,7 @@
 }
 
 .houseguests-modal__close-btn:focus-visible {
-  outline: 2px solid #00d4ff;
+  outline: 2px solid rgba(196, 181, 253, 0.9);
   outline-offset: 2px;
 }
 
@@ -158,8 +164,8 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(40, 38, 46, 0.9), rgba(27, 26, 32, 0.94));
+  border: 1px solid rgba(205, 190, 236, 0.1);
   border-radius: 12px;
   cursor: pointer;
   transition: all 200ms ease;
@@ -168,8 +174,8 @@
 }
 
 .houseguests-list__item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(48, 42, 55, 0.94), rgba(31, 28, 37, 0.96));
+  border-color: rgba(196, 181, 253, 0.2);
   transform: translateX(4px);
 }
 
@@ -178,7 +184,7 @@
 }
 
 .houseguests-list__item:focus-visible {
-  outline: 2px solid #00d4ff;
+  outline: 2px solid rgba(196, 181, 253, 0.9);
   outline-offset: 2px;
 }
 
@@ -188,8 +194,9 @@
   min-width: 56px;
   min-height: 56px;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
+  background-size: 114% auto;
+  background-position: center 43%;
+  background-repeat: no-repeat;
   background-color: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -199,6 +206,7 @@
   color: #ffffff;
   border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
 }
 
 .houseguests-list__info {
@@ -319,8 +327,9 @@
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
+  background-size: 110% auto;
+  background-position: center 43%;
+  background-repeat: no-repeat;
   background-color: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -330,6 +339,7 @@
   color: #ffffff;
   border: 3px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
 .houseguests-detail__name {
