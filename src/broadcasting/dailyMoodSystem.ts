@@ -8,14 +8,16 @@ export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
 
 const DAILY_TRANSITION_TITLES = {
   week_start: {
-    sunny: 'Day {day} starts bright — every window catches the sun. ☀️',
-    cloudy: 'Day {day} starts slow beneath soft clouds. ☁️',
-    rainy: 'Day {day} wakes to rain and hot cocoa in the kitchen. ☕',
+    sunny: 'Day {day} opens bright and gentle, with morning sun in every window. ☀️',
+    cloudy:
+      'Day {day} eases in beneath soft clouds. The house is taking its sweet time waking up. ☁️',
+    rainy: 'Day {day} wakes to rain at the windows, with hot cocoa waiting in the kitchen. ☕',
   },
   week_end: {
-    sunset: 'Day {day} ends in golden hour. Everything can wait until morning. 🌇',
-    starry: 'Day {day} settles beneath a clear, quiet sky. ✨',
-    rainy: 'Day {day} ends with rain on the glass and a warm kettle inside. ☕',
+    sunset: 'Day {day} settles into golden hour. Everything else can wait until morning. 🌇',
+    starry:
+      'Day {day} winds down beneath a clear, quiet sky. Even the game feels far away for a moment. ✨',
+    rainy: 'Day {day} ends with rain on the glass and a warm kettle humming somewhere inside. ☕',
   },
 } as const
 
@@ -42,9 +44,9 @@ export function getDailyAtmosphere(
 }
 
 /**
- * Daily cards keep their warm, varied copy in a single title treatment. The
- * title may wrap within the fixed faux-TV viewport, but never adds a separate
- * paragraph that can shift the roster on short screens.
+ * Daily cards keep their warm, varied copy in a single wrap-safe treatment.
+ * The message may use several lines inside the fixed faux-TV viewport, but it
+ * never adds a separate paragraph that can shift the roster on short screens.
  */
 export function getDailyTransitionTitle(input: {
   atmosphere: DailyAtmosphere | null

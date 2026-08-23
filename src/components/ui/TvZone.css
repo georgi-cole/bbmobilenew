@@ -412,17 +412,6 @@
   filter: blur(0.3px);
 }
 
-.tv-zone__daily-horizon {
-  position: absolute;
-  inset: auto -5% 0;
-  height: 30%;
-  z-index: 2;
-  border-radius: 62% 38% 0 0 / 24% 16% 0 0;
-  background:
-    linear-gradient(176deg, transparent 0 24%, rgba(50, 75, 78, .16) 25% 28%, transparent 29%),
-    linear-gradient(180deg, rgba(16, 35, 42, 0.1), rgba(3, 9, 14, 0.62));
-}
-
 .tv-zone__daily-cloud {
   position: absolute;
   width: clamp(78px, 24cqw, 160px);

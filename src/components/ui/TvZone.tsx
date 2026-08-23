@@ -1653,7 +1653,6 @@ export default function TvZone(props: TvZoneProps) {
                   <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
                   <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
                   <span className="tv-zone__daily-rain" />
-                  <span className="tv-zone__daily-horizon" />
                 </div>
               )}
               <p
