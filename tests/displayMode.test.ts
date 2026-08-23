@@ -6,7 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { applyDisplayModeClasses } from '../src/utils/displayMode';
+import {
+  applyDisplayModeClasses,
+  getNativeTopInsetFallbackPx,
+} from '../src/utils/displayMode';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,14 +58,18 @@ function restoreUserAgent() {
 
 describe('applyDisplayModeClasses', () => {
   beforeEach(() => {
-    document.documentElement.classList.remove('is-standalone', 'is-webkit', 'is-chrome-android');
+    document.documentElement.className = '';
+    document.documentElement.style.removeProperty('--app-safe-area-top-fallback');
+    delete (window as Window & { Capacitor?: unknown }).Capacitor;
     restoreUserAgent();
     mockMatchMedia(false); // default: not standalone
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    document.documentElement.classList.remove('is-standalone', 'is-webkit', 'is-chrome-android');
+    document.documentElement.className = '';
+    document.documentElement.style.removeProperty('--app-safe-area-top-fallback');
+    delete (window as Window & { Capacitor?: unknown }).Capacitor;
     restoreUserAgent();
   });
 
@@ -90,6 +97,27 @@ describe('applyDisplayModeClasses', () => {
     applyDisplayModeClasses();
 
     expect(document.documentElement.classList.contains('is-standalone')).toBe(false);
+  });
+
+  it('adds a top inset fallback when native iOS reports a zero CSS safe area', () => {
+    (window as Window & { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'ios',
+    };
+
+    applyDisplayModeClasses();
+
+    expect(document.documentElement.classList.contains('is-capacitor-ios')).toBe(true);
+    expect(document.documentElement.style.getPropertyValue('--app-safe-area-top-fallback')).toMatch(
+      /^(20|44|59)px$/,
+    );
+  });
+
+  it('selects status-row fallbacks from native platform and iPhone shape', () => {
+    expect(getNativeTopInsetFallbackPx('ios', 393, 852)).toBe(59);
+    expect(getNativeTopInsetFallbackPx('ios', 375, 812)).toBe(44);
+    expect(getNativeTopInsetFallbackPx('ios', 375, 667)).toBe(20);
+    expect(getNativeTopInsetFallbackPx('android', 412, 915)).toBe(24);
   });
 
   // ── is-webkit ────────────────────────────────────────────────────────────
