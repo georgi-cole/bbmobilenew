@@ -346,6 +346,7 @@ export function computeResponsiveGameLayout(
   const actionDockScale =
     input.unifiedActionRail || bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
   const actionDockGap = bottomControlsMode === 'normal' ? NORMAL_DOCK_GAP : COMPACT_DOCK_GAP
+  const avatarTileHeightPx = Math.max(0, avatarTileSizePx - Math.ceil(actionDockGap / rosterRows))
   const navItemLabelDisplay = bottomControlsMode === 'normal' ? 'block' : 'none'
 
   const cssVars = {
@@ -365,6 +366,7 @@ export function computeResponsiveGameLayout(
     '--game-roster-max-height': `${roundPx(rosterMaxHeight)}px`,
     '--game-roster-board-height': `${roundPx(baseRosterHeightWithoutHeader)}px`,
     '--game-avatar-tile-size': `${avatarTileSizePx}px`,
+    '--game-avatar-tile-height': `${avatarTileHeightPx}px`,
     '--game-roster-gap': `${ROSTER_GAP}px`,
     '--game-survivor-standout-min-height': `${survivorStandoutHeight}px`,
     '--game-shell-max-width': `${shellMaxWidth}px`,

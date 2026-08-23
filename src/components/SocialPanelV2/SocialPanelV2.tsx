@@ -745,7 +745,7 @@ export default function SocialPanelV2() {
             type="button"
             aria-label="Close social panel"
           >
-            ✕
+            ↩
           </button>
         </header>
 
@@ -765,7 +765,6 @@ export default function SocialPanelV2() {
         <div id="sp2-body" className="sp2-body">
           <div className="sp2-column sp2-column--players" aria-label="Player roster">
             <div className="sp2-column__heading">
-              <span className="sp2-column__label">Players</span>
               {!usesMultipleTargets && (
                 <span
                   className="sp2-relationship-legend"

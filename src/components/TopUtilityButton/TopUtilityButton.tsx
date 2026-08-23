@@ -34,13 +34,9 @@ export default function TopUtilityButton({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const isInactive = pressed === false;
-  const hasInactiveStateAsset = isInactive && (icon === 'music' || icon === 'sound');
-
-  const shellSrc = hasInactiveStateAsset
-    ? `${BASE}/assets/icons/${icon}_disabled.svg`
-    : `${BASE}/assets/control_dock/top_utility_shell.svg`;
-  const glyphSrc = hasInactiveStateAsset ? null : `${BASE}/assets/control_dock/${icon}.svg`;
-  const audioInactiveScratchSrc = hasInactiveStateAsset
+  const shellSrc = `${BASE}/assets/control_dock/top_utility_shell.svg?v=precision-glass-3`;
+  const glyphSrc = `${BASE}/assets/control_dock/${icon}.svg`;
+  const audioInactiveScratchSrc = isInactive && (icon === 'music' || icon === 'sound')
     ? `${BASE}/assets/icons/audio_deactivated_scratch.svg`
     : null;
 

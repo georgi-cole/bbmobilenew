@@ -508,10 +508,29 @@ function compactPhaseLabel(phase: Phase): string {
   return labels[phase] ?? formatPhaseLabel(phase)
 }
 
-// Major events now stay entirely inside the faux-TV presentation. Keeping this
-// set empty disables the former full-screen shock stinger without changing the
-// announcement queue or the in-TV treatment.
-const SHOCK_ANNOUNCEMENT_KEYS = new Set<string>()
+/**
+ * Announcement keys that receive the cinematic fullscreen shock sequence:
+ *   1. Fullscreen stinger (ShockIntroOverlay)
+ *   2. Faux-TV announcement card
+ *   3. Info-button spotlight
+ */
+const SHOCK_ANNOUNCEMENT_KEYS = new Set([
+  'double_eviction',
+  'vox_double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
+  'battle_back',
+  'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
+  'democracia',
+  'cupid_arrow',
+  'cupid_arrow_broken',
+  'vox_populi',
+  'tribunal_phase',
+])
 
 type QueuedShockAnnouncement = {
   announcement: Announcement
@@ -564,6 +583,7 @@ type TvZoneProps = {
   voteResultsReveal?: TvZoneVoteResultsReveal | null
   democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null
   mainLogMaxVisible?: number
+  rosterLogLauncher?: boolean
   priorityAnnouncement?: Announcement | null
   onPriorityAnnouncementDismiss?: () => void
   externalAnnouncement?: Announcement | null
@@ -1774,6 +1794,11 @@ export default function TvZone(props: TvZoneProps) {
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
+        launcherSuppressed={
+          Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
+        }
+        launcherHidden={gameState.phase === 'week_start' || gameState.phase === 'week_end'}
+        suppressLauncher={Boolean(props.voteResultsReveal)}
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}

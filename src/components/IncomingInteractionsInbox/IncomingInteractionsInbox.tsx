@@ -486,7 +486,7 @@ export default function IncomingInteractionsInbox() {
                 dispatch(closeIncomingInbox())
               }}
             >
-              <IncomingInteractionIcon name="close" />
+              <span aria-hidden="true">↩</span>
             </button>
           </div>
 

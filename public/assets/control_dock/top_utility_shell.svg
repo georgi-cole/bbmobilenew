@@ -1,11 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="104" height="84" viewBox="0 0 104 84" fill="none">
-<defs>
-  <linearGradient id="g" x1="0" y1="0" x2="104" y2="84">
-    <stop offset="0%" stop-color="rgba(24,31,58,0.98)"/>
-    <stop offset="100%" stop-color="rgba(40,54,92,0.94)"/>
-  </linearGradient>
-  <filter id="glow" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
-</defs>
-<path d="M 24 10 Q 32 8 42 8 L 68 8 Q 82 8 90 16 Q 96 22 96 42 Q 96 62 90 68 Q 82 76 68 76 L 42 76 Q 32 76 24 74 Q 8 68 8 42 Q 8 16 24 10 Z" fill="rgba(124,148,255,0.18)" filter="url(#glow)"/>
-<path d="M 24 10 Q 32 8 42 8 L 68 8 Q 82 8 90 16 Q 96 22 96 42 Q 96 62 90 68 Q 82 76 68 76 L 42 76 Q 32 76 24 74 Q 8 68 8 42 Q 8 16 24 10 Z" fill="url(#g)" stroke="rgba(225,236,255,0.18)" stroke-width="1.6"/>
+  <defs>
+    <linearGradient id="utility-glass" x1="52" y1="8" x2="52" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#321B3D" stop-opacity=".68"/>
+      <stop offset=".42" stop-color="#1B0E25" stop-opacity=".76"/>
+      <stop offset="1" stop-color="#090711" stop-opacity=".9"/>
+    </linearGradient>
+    <linearGradient id="utility-rim" x1="52" y1="8" x2="52" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E4D8FF" stop-opacity=".46"/>
+      <stop offset=".48" stop-color="#BDAED8" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#806D91" stop-opacity=".045"/>
+    </linearGradient>
+    <radialGradient id="utility-reflection" cx="0" cy="0" r="1" gradientTransform="translate(38 21) rotate(38) scale(46 34)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5E9FF" stop-opacity=".09"/>
+      <stop offset=".62" stop-color="#CDAFE3" stop-opacity=".018"/>
+      <stop offset="1" stop-color="#9665B1" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="utility-bloom" x="-30%" y="-50%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <path id="utility-shape" d="M24 10Q32 8 42 8H68Q82 8 90 16Q96 22 96 42Q96 62 90 68Q82 76 68 76H42Q32 76 24 74Q8 68 8 42Q8 16 24 10Z"/>
+    <clipPath id="utility-clip"><use href="#utility-shape"/></clipPath>
+  </defs>
+
+  <use href="#utility-shape" fill="#6B45A0" fill-opacity=".09" filter="url(#utility-bloom)"/>
+  <use href="#utility-shape" fill="url(#utility-glass)" stroke="url(#utility-rim)" stroke-width="1.2"/>
+  <g clip-path="url(#utility-clip)">
+    <ellipse cx="42" cy="24" rx="48" ry="30" fill="url(#utility-reflection)"/>
+  </g>
 </svg>

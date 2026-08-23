@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router';
-import './Rules.css';
+import { useNavigate } from 'react-router'
+import './Rules.css'
 
 type Tile = {
-  kicker: string;
-  title: string;
-  copy: string;
-};
+  kicker: string
+  title: string
+  copy: string
+}
 
 const HERO_TILES: Tile[] = [
   {
@@ -28,7 +28,7 @@ const HERO_TILES: Tile[] = [
     title: 'Finish the season',
     copy: 'Make it to the endgame, then earn enough Tribunal votes to win.',
   },
-];
+]
 
 const DAY_STEPS: Tile[] = [
   {
@@ -51,7 +51,7 @@ const DAY_STEPS: Tile[] = [
     title: 'Live vote',
     copy: 'The remaining players vote to remove someone from the game. Some special days replace this with a different eviction step, and the broadcast says when that happens.',
   },
-];
+]
 
 const RESULT_MODES: Tile[] = [
   {
@@ -74,7 +74,7 @@ const RESULT_MODES: Tile[] = [
     title: 'Direct result',
     copy: 'Some games decide the winner directly and show that outcome on the results screen.',
   },
-];
+]
 
 const SOCIAL_RESOURCES: Tile[] = [
   {
@@ -97,7 +97,7 @@ const SOCIAL_RESOURCES: Tile[] = [
     title: 'Approval',
     copy: 'The public approval meter that matters when public mode is active and can decide who gets saved.',
   },
-];
+]
 
 const APPROVAL_BANDS: Tile[] = [
   {
@@ -120,7 +120,7 @@ const APPROVAL_BANDS: Tile[] = [
     title: 'Beloved',
     copy: 'You are in a strong public position.',
   },
-];
+]
 
 const CONFESSIONAL_DECISIONS: Tile[] = [
   {
@@ -148,7 +148,7 @@ const CONFESSIONAL_DECISIONS: Tile[] = [
     title: 'Secrets and missions',
     copy: 'Secret opportunities and mission offers can be hidden here, so read every prompt carefully.',
   },
-];
+]
 
 const SPECIAL_DAY_NOTES: Tile[] = [
   {
@@ -171,7 +171,7 @@ const SPECIAL_DAY_NOTES: Tile[] = [
     title: 'Special eviction',
     copy: 'Some days skip the usual vote and end with a one-off eviction decision instead.',
   },
-];
+]
 
 const TRIBUNAL_NOTES: Tile[] = [
   {
@@ -194,7 +194,7 @@ const TRIBUNAL_NOTES: Tile[] = [
     title: 'Your voice remains',
     copy: 'If you become a Tribunal member, your game is over but your final vote can still decide the champion.',
   },
-];
+]
 
 const FINALE_STEPS: Tile[] = [
   {
@@ -227,7 +227,7 @@ const FINALE_STEPS: Tile[] = [
     title: 'Public favorite',
     copy: 'If enabled, the season can end with one more public result after the winner is revealed.',
   },
-];
+]
 
 function renderTile(tile: Tile, className = '') {
   return (
@@ -239,20 +239,30 @@ function renderTile(tile: Tile, className = '') {
       <h3 className="rules-tile__title">{tile.title}</h3>
       <p className="rules-tile__copy">{tile.copy}</p>
     </article>
-  );
+  )
 }
 
 /**
  * Rules - player guide screen.
  */
 export default function Rules() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <div className="placeholder-screen rules-screen">
       <header className="rules-screen__hero">
         <div className="rules-screen__logo">BE</div>
-        <h1 className="rules-screen__title">How to Play</h1>
+        <div className="rules-screen__title-row">
+          <h1 className="rules-screen__title">How to Play</h1>
+          <button
+            className="rules-screen__back"
+            type="button"
+            aria-label="Go back"
+            onClick={() => navigate(-1)}
+          >
+            ↩
+          </button>
+        </div>
         <p className="rules-screen__subtitle">The Big Eye - Player Guide</p>
         <p className="rules-screen__lede">
           Learn the loop, read the meters, and know what each screen is asking before the season
@@ -266,7 +276,9 @@ export default function Rules() {
       <main className="rules-screen__body">
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">01</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              01
+            </span>
             <h2 className="rules-section__title">The Daily Loop</h2>
           </div>
           <p className="rules-section__intro">
@@ -284,15 +296,17 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">02</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              02
+            </span>
             <h2 className="rules-section__title">Challenges and Ranking</h2>
           </div>
           <div className="rules-split">
             <div className="rules-split__main">
               <p className="rules-section__intro">
                 Every minigame opens with its own rules card before the countdown starts. That card
-                tells you exactly what matters, whether the round is about score, speed,
-                placement, or a direct result.
+                tells you exactly what matters, whether the round is about score, speed, placement,
+                or a direct result.
               </p>
               <p className="rules-section__intro">
                 If a game shows a leaderboard, the order on that board matters. If it says
@@ -310,7 +324,9 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">03</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              03
+            </span>
             <h2 className="rules-section__title">Control and Safety</h2>
           </div>
           <p className="rules-section__intro">
@@ -346,7 +362,9 @@ export default function Rules() {
 
         <section className="rules-section rules-section--highlight">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">04</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              04
+            </span>
             <h2 className="rules-section__title">Social Game and Public Mode</h2>
           </div>
           <p className="rules-section__intro">
@@ -368,7 +386,9 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">05</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              05
+            </span>
             <h2 className="rules-section__title">Confessional</h2>
           </div>
           <p className="rules-section__intro">
@@ -390,7 +410,9 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">06</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              06
+            </span>
             <h2 className="rules-section__title">Special Days</h2>
           </div>
           <p className="rules-section__intro">
@@ -414,7 +436,9 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">07</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              07
+            </span>
             <h2 className="rules-section__title">The Tribunal</h2>
           </div>
           <p className="rules-section__intro">
@@ -433,7 +457,9 @@ export default function Rules() {
 
         <section className="rules-section">
           <div className="rules-section__header">
-            <span className="rules-section__icon" aria-hidden="true">08</span>
+            <span className="rules-section__icon" aria-hidden="true">
+              08
+            </span>
             <h2 className="rules-section__title">Finale</h2>
           </div>
           <p className="rules-section__intro">
@@ -449,14 +475,6 @@ export default function Rules() {
           </div>
         </section>
       </main>
-
-      <button
-        className="rules-screen__back"
-        type="button"
-        onClick={() => navigate(-1)}
-      >
-        Back
-      </button>
     </div>
-  );
+  )
 }

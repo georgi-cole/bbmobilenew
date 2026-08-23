@@ -21,13 +21,13 @@
   padding-bottom: var(--game-screen-floating-dock-clearance);
 }
 
-/* The roster owns the full space between the Faux TV and the action rail.
-   Centering its content splits any spare height equally above and below it,
-   so the TV/feed-to-roster gap mirrors the roster-to-navtrail gap at every
-   viewport size. */
+/* The roster owns the full space between the Faux TV and the action rail, but
+   its visible content follows the same top rhythm on every viewport. Keeping
+   it start-aligned prevents spare height from inserting a device-dependent
+   gap above HUBMATES (or above the grid when the header moves into the TV). */
 .game-screen:has(.game-control-dock) > [data-houseguest-roster='true'] {
   flex: 1 1 auto;
-  justify-content: center;
+  justify-content: flex-start;
   padding-inline: 0;
 }
 

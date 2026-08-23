@@ -135,8 +135,14 @@ export default function HousePulse({
             <h2>My Pulse</h2>
             <p>Your reads, promises and risks, with the live house picture beside them.</p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close My Pulse">
-            &times;
+          <button
+            className="house-pulse__back"
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Back to Social"
+            title="Back to Social"
+          >
+            ↩
           </button>
         </header>
 

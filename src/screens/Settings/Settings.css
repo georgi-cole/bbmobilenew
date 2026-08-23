@@ -8,8 +8,8 @@
   isolation: isolate;
   overflow: hidden;
   background:
-    radial-gradient(circle at top center, rgba(99, 102, 241, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%), var(--color-bg);
+    radial-gradient(circle at top center, rgba(124, 78, 170, 0.13), transparent 44%),
+    linear-gradient(180deg, rgba(31, 16, 49, 0.34), transparent 34%), #090611;
   color: var(--color-text);
 }
 
@@ -20,7 +20,7 @@
   pointer-events: none;
   background:
     radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.05), transparent 38%),
-    radial-gradient(circle at 50% 100%, rgba(99, 102, 241, 0.04), transparent 28%);
+    radial-gradient(circle at 50% 100%, rgba(112, 72, 156, 0.07), transparent 30%);
   opacity: 0.9;
   z-index: -1;
 }
@@ -40,15 +40,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 30px;
+  height: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
-    rgba(20, 27, 38, 0.92);
+    rgba(24, 21, 29, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--color-accent);
-  font-size: 1.15rem;
-  font-weight: 800;
+  font-size: 1.2rem;
+  font-weight: 400;
   cursor: pointer;
   padding: 0;
   border-radius: 12px;
@@ -66,8 +66,8 @@
 .settings-screen__back:focus-visible {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
-    rgba(26, 35, 54, 0.95);
-  border-color: rgba(99, 102, 241, 0.24);
+    rgba(32, 27, 39, 0.95);
+  border-color: rgba(196, 181, 253, 0.24);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 10px 24px rgba(0, 0, 0, 0.26);
@@ -82,6 +82,8 @@
 }
 
 .settings-screen__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 1.34rem;
   font-weight: 900;
@@ -109,7 +111,7 @@
   flex-shrink: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-    rgba(20, 27, 38, 0.9);
+    rgba(24, 21, 29, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.07);
   color: var(--color-text-muted);
   font-size: 0.78rem;
@@ -129,20 +131,20 @@
 }
 .settings-tab--active {
   color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(99, 102, 241, 0.24);
+  border-color: rgba(196, 181, 253, 0.24);
   background:
-    linear-gradient(180deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.11)),
-    rgba(20, 27, 38, 0.96);
+    linear-gradient(180deg, rgba(124, 78, 170, 0.24), rgba(93, 54, 134, 0.13)),
+    rgba(25, 20, 31, 0.96);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 0 1px rgba(99, 102, 241, 0.08),
+    0 0 0 1px rgba(196, 181, 253, 0.08),
     0 10px 20px rgba(0, 0, 0, 0.22);
 }
 .settings-tab:hover:not(.settings-tab--active) {
   color: var(--color-text);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-    rgba(26, 35, 54, 0.95);
+    rgba(33, 28, 40, 0.95);
   transform: translateY(-1px);
 }
 
@@ -196,8 +198,8 @@
       rgba(255, 255, 255, 0.015) 22%,
       rgba(255, 255, 255, 0.01) 100%
     ),
-    linear-gradient(180deg, rgba(26, 35, 54, 0.96), rgba(20, 27, 38, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.075);
+    linear-gradient(180deg, rgba(30, 27, 35, 0.97), rgba(15, 13, 19, 0.98));
+  border: 1px solid rgba(205, 190, 236, 0.09);
   border-radius: 16px;
   padding: 0.82rem 1rem;
   box-shadow:
@@ -234,7 +236,7 @@
       rgba(255, 255, 255, 0.018) 24%,
       rgba(255, 255, 255, 0.01) 100%
     ),
-    linear-gradient(180deg, rgba(30, 40, 60, 0.98), rgba(20, 27, 38, 0.98));
+    linear-gradient(180deg, rgba(36, 32, 42, 0.98), rgba(17, 14, 21, 0.98));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 -1px 0 rgba(0, 0, 0, 0.2),
@@ -426,7 +428,7 @@
   max-width: 11.5rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-    rgba(26, 35, 54, 0.92);
+    rgba(28, 29, 38, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.94);
@@ -450,7 +452,7 @@
 .settings-select:hover {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
-    rgba(31, 41, 61, 0.96);
+    rgba(35, 35, 46, 0.96);
   transform: translateY(-1px);
 }
 .settings-select:focus {
@@ -471,7 +473,7 @@
   min-height: 2.7rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
-    rgba(17, 24, 39, 0.9);
+    rgba(25, 25, 33, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 0.6rem 0.82rem;
@@ -935,7 +937,7 @@ body.high-contrast {
   border-color: rgba(245, 158, 11, 0.26);
   background:
     linear-gradient(135deg, rgba(245, 158, 11, 0.13), rgba(124, 58, 237, 0.08)),
-    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+    linear-gradient(180deg, rgba(37, 30, 43, 0.98), rgba(17, 14, 21, 0.98));
 }
 
 .settings-row--vip > span:first-child {
