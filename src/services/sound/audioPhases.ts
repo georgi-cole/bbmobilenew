@@ -9,10 +9,10 @@
  *
  * Architecture summary
  * ────────────────────
- * Music is gated by the **current audio phase**, never by screen presence
- * alone.  The resolution pipeline is:
+ * Music is resolved from the **current audio phase and route**. The resolution
+ * pipeline is:
  *
- *   Redux state (game.phase, challenge.pending, social, ui.musicScene)
+ *   Redux state (game.phase, challenge.pending, social, ui.musicScene) + route
  *       │
  *       ▼
  *   resolveDesiredMusic()          ← pure function, no side effects
@@ -77,9 +77,9 @@
  *  1. The `splash` phase corresponds to the KolequantSplash animation shown
  *     on true app-open (or on first HomeHub mount when the splash has not yet
  *     been dismissed for the current gameId).
- *  2. Splash and intro-hub phases are intentionally silent.
- *  3. Intro-hub sub-modules (/rules, /profile, /houseguests) also stay silent
- *     until gameplay reaches a phase with dedicated audio.
+ *  2. Splash is silent; normal Intro Hub routes use the centrally managed
+ *     `introhub` track.
+ *  3. Cinematic overlays such as Hubmates take their own audio ownership.
  *  4. If the user returns via the home button during gameplay, they arrive at
  *     `intro_hub` not `splash` — the splash gate is only crossed once per
  *     session.
@@ -236,9 +236,9 @@ export type AppAudioPhase =
 export const AUDIO_PHASE_MUSIC_MAP: Readonly<Record<AppAudioPhase, MusicTrack>> = {
   // Intro flow
   splash: 'none',
-  intro_hub: 'none',
-  intro_hub_rules: 'none',
-  intro_hub_profile: 'none',
+  intro_hub: 'introhub',
+  intro_hub_rules: 'introhub',
+  intro_hub_profile: 'introhub',
   intro_hub_houseguests: 'none',
 
   // Gameplay flow — competition

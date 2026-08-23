@@ -238,6 +238,20 @@ export const GENERATED_AUDIO_ASSETS = [
     ]
   },
   {
+    "key": "music:introhub",
+    "category": "music",
+    "relativePath": "sounds/cinematic/Intro_hub_loop.mp3",
+    "preload": false,
+    "volume": 0.55,
+    "loop": true,
+    "trackId": "introhub",
+    "displayName": "Intro Hub",
+    "fallbackTrack": "none",
+    "tags": [
+      "ambient"
+    ]
+  },
+  {
     "key": "music:jury_voting_bg",
     "category": "music",
     "relativePath": "music/jury_voting.mp3",
@@ -613,6 +627,7 @@ export const GENERATED_MUSIC_TRACK_IDS = [
   "final_modal",
   "glass_bridge",
   "competition",
+  "introhub",
   "jury_voting",
   "move_into_me_confessional",
   "move_into_me_instrumental_general",
@@ -663,6 +678,14 @@ export const GENERATED_MUSIC_TRACKS = {
     "tags": [
       "ambient",
       "competition"
+    ]
+  },
+  "introhub": {
+    "displayName": "Intro Hub",
+    "soundKey": "music:introhub",
+    "fallbackTrack": "none",
+    "tags": [
+      "ambient"
     ]
   },
   "jury_voting": {

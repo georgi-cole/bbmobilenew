@@ -95,15 +95,22 @@ describe('resolveDesiredMusic', () => {
   })
 
   it.each(['social_2', 'live_vote', 'eviction_results', 'week_end'] as const)(
-    'continues the Safety Ceremony track through %s',
+    'uses the replacement ceremony track through %s',
     (phase) => {
-      expect(resolveDesiredMusic(makeState({ game: { phase } }), '#/game')).toBe('veto')
+      expect(resolveDesiredMusic(makeState({ game: { phase } }), '#/game')).toBe(
+        'move_into_me_instrumental_general'
+      )
     }
   )
 
-  it('stays silent on the home route when nothing else is active', () => {
-    expect(resolveDesiredMusic(makeState(), '#/')).toBe('none')
-    expect(resolveDesiredMusic(makeState(), '#/leaderboard')).toBe('none')
+  it('routes Intro Hub screens through the central music manager', () => {
+    expect(resolveDesiredMusic(makeState(), '#/')).toBe('introhub')
+    expect(resolveDesiredMusic(makeState(), '#/leaderboard')).toBe('introhub')
+  })
+
+  it('keeps gameplay music during a Store detour from an active game', () => {
+    const state = makeState({ game: { status: 'active', phase: 'nominations' } })
+    expect(resolveDesiredMusic(state, '#/store')).toBe('nominations')
   })
 
   // ── Finale phase scenes ──────────────────────────────────────────────────────

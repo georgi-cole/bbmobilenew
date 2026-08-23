@@ -31,6 +31,18 @@
       "loop": false
     },
     {
+      "path": "sounds/cinematic/Intro_hub_loop.mp3",
+      "key": "music:introhub",
+      "category": "music",
+      "trackId": "introhub",
+      "displayName": "Intro Hub",
+      "fallbackTrack": "none",
+      "tags": ["ambient"],
+      "preload": false,
+      "volume": 0.55,
+      "loop": true
+    },
+    {
       "path": "sounds/minigames/minigame_gb_death.mp3",
       "key": "minigame:gb_death",
       "category": "minigame",
