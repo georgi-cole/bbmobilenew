@@ -70,6 +70,7 @@ export default function AudioStateSync() {
       gamePhase: root.game.phase,
       gameId: root.game.gameId,
       gameMode: root.game.mode ?? 'classic',
+      gameStatus: root.game.status,
       spectatorActive: root.game.spectatorActive,
       seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
@@ -145,6 +146,7 @@ export default function AudioStateSync() {
         phase: musicState.gamePhase,
         gameId: musicState.gameId,
         mode: musicState.gameMode,
+        status: musicState.gameStatus,
         spectatorActive: musicState.spectatorActive,
         seasonFinale:
           musicState.seasonFinalePhase != null ? { phase: musicState.seasonFinalePhase } : null,

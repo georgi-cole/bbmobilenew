@@ -9,10 +9,16 @@ import { MUSIC_CATALOG, MUSIC_TRACK_IDS } from '../../../src/services/sound/musi
 import { SOUND_REGISTRY, resolveKey } from '../../../src/services/sound/sounds'
 
 describe('generated audio asset index', () => {
-  it('keeps background music and short sounds in separate asset roots', () => {
+  it('keeps background music and short sounds in valid asset roots', () => {
     for (const asset of GENERATED_AUDIO_ASSETS) {
       if (asset.category === 'music') {
-        expect(asset.relativePath.startsWith('music/')).toBe(true)
+        // The Intro Hub loop is a legacy cinematic asset, but is now a normal
+        // centrally managed music track. Keep that source location valid
+        // without treating it as a short sound effect.
+        expect(
+          asset.relativePath.startsWith('music/') ||
+            asset.relativePath.startsWith('sounds/cinematic/')
+        ).toBe(true)
       } else {
         expect(asset.relativePath.startsWith('sounds/')).toBe(true)
       }

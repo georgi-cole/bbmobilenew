@@ -19,6 +19,7 @@ import { resolveSpecialMusicCue } from './specialMusicCues'
 export interface MusicResolverState {
   game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
     mode?: GameMode
+    status?: RootState['game']['status']
     seasonFinale?: Pick<NonNullable<RootState['game']['seasonFinale']>, 'phase'> | null
   }
   challenge: {
@@ -49,6 +50,7 @@ export function resolveDesiredMusicCue(
       mode: state.game.mode ?? 'classic',
       gamePhase: state.game.phase,
       routeHash: hash,
+      gameActive: state.game.status === 'active',
       musicScene: state.ui.musicScene,
       finalePhase: state.game.seasonFinale?.phase ?? null,
       spectatorActive: Boolean(state.game.spectatorActive),
