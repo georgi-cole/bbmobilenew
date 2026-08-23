@@ -17,11 +17,11 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/components/layout/AppShell.css'), 'utf8')
     )
 
-    expect(globalCss).toContain('--safe-top: env(safe-area-inset-top, 0px);')
-    expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);')
-    expect(globalCss).toContain(
-      'html.is-chrome-android { /* Clear centered punch-hole cameras before drawing the TV header edge. */ --app-safe-area-top-fallback: 44px; }'
-    )
+    expect(globalCss).toContain('--safe-area-inset-top: env(safe-area-inset-top, 0px);')
+    expect(globalCss).toContain('--safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);')
+    expect(globalCss).toContain('--safe-top: var(--safe-area-inset-top);')
+    expect(globalCss).toContain('--safe-bottom: var(--safe-area-inset-bottom);')
+    expect(globalCss).not.toContain('html.is-chrome-android {')
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.tsx'))).toBe(
       false
     )
@@ -108,6 +108,7 @@ describe('safe-area layout styles', () => {
     expect(gameScreenTsx).toContain('occupancyChip={rosterOccupancyChip}')
     expect(houseguestGridCss).not.toContain('survivorTileSettle')
     expect(gameScreenTsx).toContain('useResponsiveGameLayout')
+    expect(gameScreenTsx).toContain('freezeLayout: flowCoordination.activeFlow !== null')
     expect(gameScreenTsx).toContain('layoutSignal={responsiveGameLayout.revision}')
     expect(ceremonyOverlayTsx).toContain('layoutSignal?: string | number')
     expect(tvLogCss).toContain('overflow-y: auto;')
@@ -160,11 +161,12 @@ describe('safe-area layout styles', () => {
       'utf8'
     )
 
-    expect(useGameModeTs).toContain('CSS remains the only safe-area layout owner')
-    expect(useGameModeTs).toContain('setOverlaysWebView?.({ overlay: true })')
-    expect(useGameModeTs).not.toContain('setOverlaysWebView?.({ overlay: false })')
+    expect(useGameModeTs).toContain('one safe-area owner')
+    expect(useGameModeTs).not.toContain('setOverlaysWebView')
     expect(capacitorConfigTs).toContain("contentInset: 'never'")
-    expect(capacitorConfigTs).toContain('overlaysWebView: true')
+    expect(capacitorConfigTs).toContain('SystemBars:')
+    expect(capacitorConfigTs).toContain("insetsHandling: 'css'")
+    expect(capacitorConfigTs).toContain('hidden: false')
     expect(viewportMetaTs).toContain('viewport-fit=cover')
   })
 

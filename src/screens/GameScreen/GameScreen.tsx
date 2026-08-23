@@ -1276,6 +1276,7 @@ export default function GameScreen() {
     playerCount: game.players.length,
     userCompactRoster: settings.gameUX.compactRoster,
     inlineLogVisible: !refinedGameChrome || game.mode === 'survival' || settings.gameUX.houseFeed,
+    freezeLayout: flowCoordination.activeFlow !== null,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
   const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`

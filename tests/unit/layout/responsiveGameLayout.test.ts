@@ -28,23 +28,23 @@ function readCssPx(budget: ReturnType<typeof computeResponsiveGameLayout>, name:
 }
 
 describe('responsive game layout budget', () => {
-  it('uses a measured Android top-safe fallback when env safe-area is zero', () => {
+  it('uses the measured Android top inset without a device-wide fallback', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         viewportHeight: 800,
         stageHeight: 700,
-        safeTop: 0,
+        safeTop: 24,
         safeBottom: 0,
         isAndroidLike: true,
       })
     )
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '44px',
+      '--game-safe-top': '24px',
     })
   })
 
-  it('does not enable compact mode without user consent on an iPhone Pro-like screen', () => {
+  it('compacts chrome before scrolling a constrained full roster', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         viewportHeight: 852,
@@ -54,16 +54,16 @@ describe('responsive game layout budget', () => {
     )
 
     expect(budget.layoutSize).toBe('phone-large')
-    expect(budget.bottomControlsMode).toBe('normal')
+    expect(budget.bottomControlsMode).toBe('compact')
     expect(budget.baseRosterMode).toBe('normal')
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.rosterMode).toBe('normal')
     expect(budget.rosterHeaderMode).toBe('tv-chip')
     expect(budget.compactRoster).toBe(false)
     expect(budget.cssVars).toMatchObject({
-      '--game-bottom-controls-mode': 'normal',
-      '--game-action-dock-scale': '1',
-      '--game-nav-height': '60px',
-      '--game-nav-item-label-display': 'block',
+      '--game-bottom-controls-mode': 'compact',
+      '--game-action-dock-scale': '0.9',
+      '--game-nav-height': '46px',
+      '--game-nav-item-label-display': 'none',
       '--game-roster-board-height': '335px',
     })
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
@@ -85,7 +85,7 @@ describe('responsive game layout budget', () => {
     expect(budget.rosterMode).toBe('normal')
   })
 
-  it('keeps user-selected normal controls stable across viewport measurements', () => {
+  it('keeps the selected automatic density tier stable across viewport measurements', () => {
     const normalMeasuredBudget = computeResponsiveGameLayout(
       makeInput({
         viewportHeight: 852,
@@ -105,8 +105,8 @@ describe('responsive game layout budget', () => {
       })
     )
 
-    expect(normalMeasuredBudget.bottomControlsMode).toBe('normal')
-    expect(compactMeasuredBudget.bottomControlsMode).toBe('normal')
+    expect(normalMeasuredBudget.bottomControlsMode).toBe('compact')
+    expect(compactMeasuredBudget.bottomControlsMode).toBe('compact')
     expect(compactMeasuredBudget.signature).toBe(normalMeasuredBudget.signature)
   })
 
@@ -140,7 +140,8 @@ describe('responsive game layout budget', () => {
       '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
     })
     expect(dayEndBudget.rosterMode).toBe('normal')
-    expect(liveVoteBudget.rosterMode).toBe('scroll')
+    expect(liveVoteBudget.rosterMode).toBe('normal')
+    expect(liveVoteBudget.bottomControlsMode).toBe('compact')
   })
 
   it('keeps normal premium controls on iPhone Pro Max-like screens when full roster fits', () => {
@@ -164,14 +165,14 @@ describe('responsive game layout budget', () => {
     })
   })
 
-  it('keeps Pixel 6 Android-style screens on a static full roster with protected service row', () => {
+  it('uses the measured Android service row and compact chrome for a static full roster', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         viewportWidth: 393,
         viewportHeight: 851,
         stageWidth: 393,
         stageHeight: 700,
-        safeTop: 0,
+        safeTop: 24,
         safeBottom: 0,
         dockHeight: 70,
         isAndroidLike: true,
@@ -179,10 +180,10 @@ describe('responsive game layout budget', () => {
     )
 
     expect(budget.cssVars).toMatchObject({
-      '--game-safe-top': '44px',
+      '--game-safe-top': '24px',
     })
-    expect(budget.bottomControlsMode).toBe('normal')
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.bottomControlsMode).toBe('compact')
+    expect(budget.rosterMode).toBe('normal')
     expect(budget.compactRoster).toBe(false)
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
     const dockGap = readCssPx(budget, '--game-action-dock-gap')
@@ -191,7 +192,7 @@ describe('responsive game layout budget', () => {
     expect(dockClearance).toBe(dockHeight + dockGap * 2)
   })
 
-  it('uses scrolling rather than silently enabling compact mode on small old phones', () => {
+  it('uses scrolling only after compact chrome and roster density are exhausted', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         viewportWidth: 320,
@@ -203,9 +204,9 @@ describe('responsive game layout budget', () => {
     )
 
     expect(budget.layoutSize).toBe('phone-small')
-    expect(budget.bottomControlsMode).toBe('normal')
+    expect(budget.bottomControlsMode).toBe('compact')
     expect(budget.rosterMode).toBe('scroll')
-    expect(budget.compactRoster).toBe(false)
+    expect(budget.compactRoster).toBe(true)
     expect(budget.rosterHeaderMode).toBe('tv-chip')
   })
 
@@ -223,7 +224,7 @@ describe('responsive game layout budget', () => {
 
     expect(budget.layoutSize).toBe('phone-medium')
     expect(budget.shellMaxWidth).toBe(480)
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.rosterMode).toBe('compact-small')
     expect(budget.cssVars).toMatchObject({
       '--game-cabinet-max-width': '480px',
       '--game-shell-max-width': '480px',
