@@ -14,7 +14,10 @@ import useSound from '../../hooks/useSound'
 
 const HOUSEMATES_SECTION_TITLE = 'HUBMATES'
 
-const WEATHER_REVEAL_SOUNDS: Record<DailyAtmosphere, { key: string; volume: number; delayMs: number }> = {
+const WEATHER_REVEAL_SOUNDS: Record<
+  DailyAtmosphere,
+  { key: string; volume: number; delayMs: number }
+> = {
   sunny: { key: 'ui:confirm', volume: 0.2, delayMs: 0 },
   cloudy: { key: 'ui:navigate', volume: 0.16, delayMs: 0 },
   rainy: { key: 'ui:navigate', volume: 0.14, delayMs: 0 },
@@ -254,7 +257,10 @@ export default function HouseguestGrid({
     weatherRevealKeyRef.current = revealKey
     setWeatherReveal(atmosphere)
     const sound = WEATHER_REVEAL_SOUNDS[atmosphere]
-    const soundTimer = window.setTimeout(() => play(sound.key, { volume: sound.volume }), sound.delayMs)
+    const soundTimer = window.setTimeout(
+      () => play(sound.key, { volume: sound.volume }),
+      sound.delayMs
+    )
     const timer = window.setTimeout(() => setWeatherReveal(null), 3000)
     return () => {
       window.clearTimeout(soundTimer)
@@ -387,11 +393,7 @@ export default function HouseguestGrid({
         </p>
 
         {weatherReveal && (
-          <div
-            className={styles.weatherReveal}
-            data-weather={weatherReveal}
-            aria-hidden="true"
-          />
+          <div className={styles.weatherReveal} data-weather={weatherReveal} aria-hidden="true" />
         )}
 
         <ul

@@ -96,86 +96,148 @@
 }
 
 .weatherReveal[data-weather='sunny'] {
-  background: radial-gradient(circle at 78% 16%, rgba(255, 222, 130, .76), transparent 25%);
+  background: radial-gradient(circle at 78% 16%, rgba(255, 222, 130, 0.76), transparent 25%);
 }
 
 .weatherReveal[data-weather='sunny']::before {
-  background: conic-gradient(from 8deg at 78% 16%, transparent 0 8deg, rgba(255, 232, 160, .18) 9deg 14deg, transparent 15deg 34deg);
+  background: conic-gradient(
+    from 8deg at 78% 16%,
+    transparent 0 8deg,
+    rgba(255, 232, 160, 0.18) 9deg 14deg,
+    transparent 15deg 34deg
+  );
   animation: rosterWeatherSpin 3s linear both;
 }
 
 .weatherReveal[data-weather='cloudy'] {
-  background: linear-gradient(180deg, rgba(192, 211, 220, .38), rgba(98, 133, 150, .18) 58%, transparent);
+  background: linear-gradient(
+    180deg,
+    rgba(192, 211, 220, 0.38),
+    rgba(98, 133, 150, 0.18) 58%,
+    transparent
+  );
 }
 
 .weatherReveal[data-weather='cloudy']::before {
-  background: radial-gradient(ellipse at 18% 30%, rgba(229, 239, 241, .34), transparent 23%), radial-gradient(ellipse at 69% 18%, rgba(204, 222, 227, .28), transparent 28%), radial-gradient(ellipse at 88% 56%, rgba(163, 191, 202, .2), transparent 24%);
+  background:
+    radial-gradient(ellipse at 18% 30%, rgba(229, 239, 241, 0.34), transparent 23%),
+    radial-gradient(ellipse at 69% 18%, rgba(204, 222, 227, 0.28), transparent 28%),
+    radial-gradient(ellipse at 88% 56%, rgba(163, 191, 202, 0.2), transparent 24%);
   animation: rosterWeatherDrift 3s ease-out both;
 }
 
 .weatherReveal[data-weather='rainy'],
 .weatherReveal[data-weather='stormy'] {
-  background: linear-gradient(180deg, rgba(100, 157, 188, .32), rgba(23, 57, 79, .16) 64%, transparent);
+  background: linear-gradient(
+    180deg,
+    rgba(100, 157, 188, 0.32),
+    rgba(23, 57, 79, 0.16) 64%,
+    transparent
+  );
 }
 
 .weatherReveal[data-weather='rainy']::before,
 .weatherReveal[data-weather='stormy']::before {
   inset: -24% -8%;
   background:
-    radial-gradient(ellipse 1px 8px at 6% 12%, rgba(220, 243, 255, .82) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1.2px 11px at 15% 48%, rgba(190, 225, 242, .72) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1px 8px at 26% 26%, rgba(230, 247, 255, .76) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1.3px 12px at 36% 70%, rgba(194, 226, 243, .7) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1px 9px at 47% 38%, rgba(228, 246, 255, .78) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1.2px 11px at 58% 18%, rgba(191, 223, 241, .72) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1px 8px at 68% 58%, rgba(228, 246, 255, .76) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1.3px 12px at 79% 32%, rgba(189, 223, 241, .72) 0 38%, transparent 45%),
-    radial-gradient(ellipse 1px 9px at 91% 76%, rgba(227, 246, 255, .78) 0 38%, transparent 45%);
-  filter: drop-shadow(0 0 2px rgba(192, 228, 246, .3));
+    radial-gradient(ellipse 1px 8px at 6% 12%, rgba(220, 243, 255, 0.82) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.2px 11px at 15% 48%,
+      rgba(190, 225, 242, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 8px at 26% 26%, rgba(230, 247, 255, 0.76) 0 38%, transparent 45%),
+    radial-gradient(ellipse 1.3px 12px at 36% 70%, rgba(194, 226, 243, 0.7) 0 38%, transparent 45%),
+    radial-gradient(ellipse 1px 9px at 47% 38%, rgba(228, 246, 255, 0.78) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.2px 11px at 58% 18%,
+      rgba(191, 223, 241, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 8px at 68% 58%, rgba(228, 246, 255, 0.76) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.3px 12px at 79% 32%,
+      rgba(189, 223, 241, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 9px at 91% 76%, rgba(227, 246, 255, 0.78) 0 38%, transparent 45%);
+  filter: drop-shadow(0 0 2px rgba(192, 228, 246, 0.3));
   animation: rosterWeatherRain 780ms linear 4 both;
 }
 
 .weatherReveal[data-weather='rainy']::after {
-  background: radial-gradient(ellipse at 28% 16%, rgba(207, 226, 231, .32), transparent 28%), radial-gradient(ellipse at 76% 34%, rgba(144, 180, 198, .25), transparent 31%);
+  background:
+    radial-gradient(ellipse at 28% 16%, rgba(207, 226, 231, 0.32), transparent 28%),
+    radial-gradient(ellipse at 76% 34%, rgba(144, 180, 198, 0.25), transparent 31%);
 }
 
 .weatherReveal[data-weather='sunset'] {
-  background: radial-gradient(circle at 78% 82%, rgba(255, 172, 99, .68), transparent 30%), linear-gradient(180deg, rgba(159, 100, 153, .24), transparent 60%);
+  background:
+    radial-gradient(circle at 78% 82%, rgba(255, 172, 99, 0.68), transparent 30%),
+    linear-gradient(180deg, rgba(159, 100, 153, 0.24), transparent 60%);
 }
 
 .weatherReveal[data-weather='starry'] {
-  background-image: radial-gradient(circle at 18% 22%, rgba(255,255,255,.8) 0 1px, transparent 2px), radial-gradient(circle at 64% 18%, rgba(214,226,255,.74) 0 1px, transparent 2px), radial-gradient(circle at 84% 62%, rgba(255,255,255,.7) 0 1px, transparent 2px), radial-gradient(circle at 36% 74%, rgba(207,221,255,.64) 0 1px, transparent 2px);
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 64% 18%, rgba(214, 226, 255, 0.74) 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 62%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 74%, rgba(207, 221, 255, 0.64) 0 1px, transparent 2px);
   background-size: 100% 100%;
 }
 
 .weatherReveal[data-weather='starry']::before {
-  background: radial-gradient(ellipse at 50% 0%, rgba(85, 112, 211, .34), transparent 55%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(85, 112, 211, 0.34), transparent 55%);
 }
 
 .weatherReveal[data-weather='misty'] {
-  background: linear-gradient(180deg, rgba(193, 218, 226, .28), rgba(117, 151, 164, .2) 52%, transparent);
+  background: linear-gradient(
+    180deg,
+    rgba(193, 218, 226, 0.28),
+    rgba(117, 151, 164, 0.2) 52%,
+    transparent
+  );
 }
 
 .weatherReveal[data-weather='misty']::before {
-  background: radial-gradient(ellipse at 18% 64%, rgba(228, 240, 241, .5), transparent 32%), radial-gradient(ellipse at 55% 38%, rgba(187, 213, 220, .42), transparent 35%), radial-gradient(ellipse at 90% 68%, rgba(213, 231, 235, .38), transparent 34%);
+  background:
+    radial-gradient(ellipse at 18% 64%, rgba(228, 240, 241, 0.5), transparent 32%),
+    radial-gradient(ellipse at 55% 38%, rgba(187, 213, 220, 0.42), transparent 35%),
+    radial-gradient(ellipse at 90% 68%, rgba(213, 231, 235, 0.38), transparent 34%);
   filter: blur(8px);
   animation: rosterWeatherDrift 3s ease-out both;
 }
 
 .weatherReveal[data-weather='snowy'] {
-  background: linear-gradient(180deg, rgba(202, 225, 246, .34), rgba(111, 147, 185, .16) 65%, transparent);
+  background: linear-gradient(
+    180deg,
+    rgba(202, 225, 246, 0.34),
+    rgba(111, 147, 185, 0.16) 65%,
+    transparent
+  );
 }
 
 .weatherReveal[data-weather='snowy']::before {
   inset: -20% -8%;
-  background-image: radial-gradient(circle, rgba(255,255,255,.9) 0 1.5px, transparent 1.8px), radial-gradient(circle, rgba(220,239,255,.78) 0 1px, transparent 1.4px), radial-gradient(circle, rgba(255,255,255,.7) 0 1.2px, transparent 1.6px);
-  background-position: 0 0, 13px 21px, 27px 7px;
-  background-size: 42px 52px, 52px 64px, 61px 71px;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 1.8px),
+    radial-gradient(circle, rgba(220, 239, 255, 0.78) 0 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 1.2px, transparent 1.6px);
+  background-position:
+    0 0,
+    13px 21px,
+    27px 7px;
+  background-size:
+    42px 52px,
+    52px 64px,
+    61px 71px;
   animation: rosterWeatherSnow 2.1s linear both;
 }
 
 .weatherReveal[data-weather='stormy'] {
-  background: radial-gradient(ellipse at 46% 2%, rgba(159, 181, 255, .34), transparent 32%), linear-gradient(180deg, rgba(45, 64, 98, .54), rgba(11, 24, 44, .26) 62%, transparent);
+  background:
+    radial-gradient(ellipse at 46% 2%, rgba(159, 181, 255, 0.34), transparent 32%),
+    linear-gradient(180deg, rgba(45, 64, 98, 0.54), rgba(11, 24, 44, 0.26) 62%, transparent);
 }
 
 .weatherReveal[data-weather='stormy']::after {
@@ -185,47 +247,99 @@
   left: 51%;
   width: 54px;
   height: 128%;
-  background: linear-gradient(90deg, rgba(191, 215, 255, .42), rgba(246, 250, 255, .98) 46%, rgba(176, 205, 255, .46));
-  clip-path: polygon(48% 0, 62% 0, 50% 25%, 72% 25%, 39% 58%, 56% 58%, 24% 100%, 39% 65%, 20% 65%, 48% 35%, 34% 35%);
-  filter: drop-shadow(0 0 5px rgba(183, 211, 255, .95)) drop-shadow(0 0 18px rgba(133, 165, 255, .7));
+  background: linear-gradient(
+    90deg,
+    rgba(191, 215, 255, 0.42),
+    rgba(246, 250, 255, 0.98) 46%,
+    rgba(176, 205, 255, 0.46)
+  );
+  clip-path: polygon(
+    48% 0,
+    62% 0,
+    50% 25%,
+    72% 25%,
+    39% 58%,
+    56% 58%,
+    24% 100%,
+    39% 65%,
+    20% 65%,
+    48% 35%,
+    34% 35%
+  );
+  filter: drop-shadow(0 0 5px rgba(183, 211, 255, 0.95))
+    drop-shadow(0 0 18px rgba(133, 165, 255, 0.7));
   animation: rosterWeatherLightning 2.5s steps(1, end) both;
 }
 
 @keyframes rosterWeatherReveal {
-  0% { opacity: 0; }
-  12% { opacity: .96; }
-  64% { opacity: .64; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.96;
+  }
+  64% {
+    opacity: 0.64;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes rosterWeatherDrift {
-  from { transform: translate3d(-8%, -2%, 0); }
-  to { transform: translate3d(8%, 4%, 0); }
+  from {
+    transform: translate3d(-8%, -2%, 0);
+  }
+  to {
+    transform: translate3d(8%, 4%, 0);
+  }
 }
 
 @keyframes rosterWeatherRain {
-  from { transform: translate3d(-3%, -14%, 0); }
-  to { transform: translate3d(5%, 18%, 0); }
+  from {
+    transform: translate3d(-3%, -14%, 0);
+  }
+  to {
+    transform: translate3d(5%, 18%, 0);
+  }
 }
 
 @keyframes rosterWeatherSnow {
-  from { transform: translate3d(-2%, -14%, 0); }
-  to { transform: translate3d(4%, 18%, 0); }
+  from {
+    transform: translate3d(-2%, -14%, 0);
+  }
+  to {
+    transform: translate3d(4%, 18%, 0);
+  }
 }
 
 @keyframes rosterWeatherLightning {
-  0%, 34%, 38%, 100% { opacity: 0; }
-  35%, 37% { opacity: .8; }
+  0%,
+  34%,
+  38%,
+  100% {
+    opacity: 0;
+  }
+  35%,
+  37% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes rosterWeatherSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(36deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(36deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .weatherReveal,
-  .weatherReveal::before { animation-duration: 1.4s; }
+  .weatherReveal::before {
+    animation-duration: 1.4s;
+  }
 }
 
 .gridItem {
@@ -277,9 +391,14 @@
   border: 1px solid rgba(186, 198, 255, 0.03);
   border-top-color: rgba(255, 255, 255, 0.05);
   border-radius: 7px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 36%), linear-gradient(180deg, #121a28, #080d16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 36%),
+    linear-gradient(180deg, #121a28, #080d16);
   color: rgba(226, 232, 255, 0.76);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), inset 0 -2px 4px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.035);
   font: inherit;
   font-size: 0.5rem;
   font-weight: 800;
@@ -297,7 +416,9 @@
 .rosterLogLauncher:hover,
 .rosterLogLauncher:focus-visible {
   border-color: rgba(151, 139, 255, 0.46);
-  background: linear-gradient(180deg, rgba(151, 139, 255, 0.14), rgba(151, 139, 255, 0) 46%), linear-gradient(180deg, #172137, #0a101b);
+  background:
+    linear-gradient(180deg, rgba(151, 139, 255, 0.14), rgba(151, 139, 255, 0) 46%),
+    linear-gradient(180deg, #172137, #0a101b);
   color: rgba(246, 247, 255, 0.94);
 }
 

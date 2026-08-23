@@ -1775,7 +1775,9 @@ export default function TvZone(props: TvZoneProps) {
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
-        launcherSuppressed={Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null}
+        launcherSuppressed={
+          Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
+        }
         launcherHidden={gameState.phase === 'week_start' || gameState.phase === 'week_end'}
         suppressLauncher={Boolean(props.voteResultsReveal)}
       />

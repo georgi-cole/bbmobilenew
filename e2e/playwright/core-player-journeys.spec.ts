@@ -63,7 +63,7 @@ async function assertCampaignReady(page: Page, playerName: string): Promise<void
   await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: /HOUSEMATES/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /HUBMATES/ })).toBeVisible()
   await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
 }
 
