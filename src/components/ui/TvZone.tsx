@@ -1634,6 +1634,18 @@ export default function TvZone(props: TvZoneProps) {
             aria-live="polite"
             aria-atomic="true"
           >
+            {dailyTransitionPhase && dailyAtmosphere && (
+              <div
+                className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${dailyAtmosphere}`}
+                aria-hidden="true"
+              >
+                <span className="tv-zone__daily-fog" />
+                <span className="tv-zone__daily-orb" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
+                <span className="tv-zone__daily-rain" />
+              </div>
+            )}
             <div
               className={[
                 'tv-zone__message-stage',
@@ -1644,17 +1656,6 @@ export default function TvZone(props: TvZoneProps) {
                 .filter(Boolean)
                 .join(' ')}
             >
-              {dailyTransitionPhase && dailyAtmosphere && (
-                <div
-                  className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${dailyAtmosphere}`}
-                  aria-hidden="true"
-                >
-                  <span className="tv-zone__daily-orb" />
-                  <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
-                  <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
-                  <span className="tv-zone__daily-rain" />
-                </div>
-              )}
               <p
                 key={viewportMessageKey}
                 aria-hidden={hideViewportMessage}
