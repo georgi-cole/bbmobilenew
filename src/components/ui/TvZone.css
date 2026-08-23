@@ -336,6 +336,15 @@
     linear-gradient(180deg, #292f43 0%, #171c2a 50%, #080b12 100%);
 }
 
+.tv-zone__viewport--day-start-sunny,
+.tv-zone__viewport--day-start-cloudy,
+.tv-zone__viewport--day-start-rainy,
+.tv-zone__viewport--day-end-sunset,
+.tv-zone__viewport--day-end-starry,
+.tv-zone__viewport--day-end-rainy {
+  background: var(--daily-tv-background);
+}
+
 .tv-zone__message-stage {
   display: contents;
 }
@@ -354,7 +363,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: min(100%, 620px);
+  width: 100%;
   height: 100%;
   min-height: 0;
   padding: clamp(.7rem, 4cqw, 1.25rem) clamp(.9rem, 7cqw, 2rem);
@@ -369,32 +378,14 @@
 
 .tv-zone__daily-atmosphere {
   position: absolute;
-  inset: -32% -15% -38% -19%;
+  inset: 0;
   z-index: 0;
-  overflow: visible;
+  overflow: hidden;
   pointer-events: none;
 }
 
 .tv-zone__daily-atmosphere::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--daily-tv-background);
-  filter: blur(22px);
-  opacity: .92;
-  transform: rotate(-1.7deg) scale(1.04);
-  -webkit-mask-image: radial-gradient(
-    ellipse 72% 62% at 47% 46%,
-    #000 0 38%,
-    rgba(0, 0, 0, .76) 58%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 72% 62% at 47% 46%,
-    #000 0 38%,
-    rgba(0, 0, 0, .76) 58%,
-    transparent 100%
-  );
+  display: none;
 }
 
 .tv-zone__daily-atmosphere::before {
