@@ -366,9 +366,10 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
 }
 
 .tv-zone__viewport--daily-transition {
-  flex: 0 0 var(--tv-zone-viewport-min-height, 192px);
+  flex: 1 1 auto;
+  width: 100%;
   min-height: 0;
-  height: var(--tv-zone-viewport-min-height, 192px);
+  height: 100%;
   box-sizing: border-box;
   background-origin: border-box;
   background-clip: border-box;
