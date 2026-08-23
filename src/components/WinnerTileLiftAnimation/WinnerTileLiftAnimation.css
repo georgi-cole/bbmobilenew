@@ -7,6 +7,21 @@
   isolation: isolate;
 }
 
+/* Keep the real roster box measurable while guaranteeing that neither WebKit
+   nor Android's compositor can retain a separately promoted avatar layer. */
+[data-ceremony-tile-lifted='true'],
+[data-ceremony-tile-lifted='true'] * {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+[data-ceremony-tile-lifted='true'] {
+  content-visibility: hidden !important;
+  clip-path: inset(50%) !important;
+  -webkit-clip-path: inset(50%) !important;
+  pointer-events: none !important;
+}
+
 .winner-tile-lift__backdrop {
   position: absolute;
   inset: 0;
@@ -60,14 +75,14 @@
 
 .winner-tile-lift__glow {
   position: absolute;
-  inset: -3px;
+  inset: 0;
   z-index: -1;
-  border-radius: 13px;
+  border-radius: 10px;
   opacity: 0;
   box-shadow:
-    0 0 0 2px rgba(255, 229, 133, 0.82),
-    0 0 30px 10px rgba(255, 203, 58, 0.48);
-  transition: opacity 240ms ease;
+    0 0 18px 4px rgba(255, 215, 0, 0.45),
+    inset 0 0 8px rgba(255, 215, 0, 0.2);
+  transition: opacity 350ms ease;
 }
 
 .winner-tile-lift--lifted .winner-tile-lift__glow,

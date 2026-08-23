@@ -29,6 +29,24 @@ interface LiftTarget {
   tile: CeremonyTile
 }
 
+const SOURCE_HIDE_PROPERTIES = [
+  'visibility',
+  'opacity',
+  'content-visibility',
+  'clip-path',
+  '-webkit-clip-path',
+  'pointer-events',
+] as const
+
+type SourceHideProperty = (typeof SOURCE_HIDE_PROPERTIES)[number]
+
+interface InlineStyleValue {
+  value: string
+  priority: string
+}
+
+type LiftedSourceStyles = Record<SourceHideProperty, InlineStyleValue>
+
 export interface WinnerTileLiftAnimationProps {
   targetIds: string[]
   tiles: CeremonyTile[]
@@ -49,6 +67,47 @@ function isMeasurable(element: HTMLElement | null): element is HTMLElement {
 function stripDuplicateIds(root: HTMLElement) {
   root.removeAttribute('id')
   root.querySelectorAll<HTMLElement>('[id]').forEach((element) => element.removeAttribute('id'))
+}
+
+function captureLiftedSourceStyles(element: HTMLElement): LiftedSourceStyles {
+  return Object.fromEntries(
+    SOURCE_HIDE_PROPERTIES.map((property) => [
+      property,
+      {
+        value: element.style.getPropertyValue(property),
+        priority: element.style.getPropertyPriority(property),
+      },
+    ])
+  ) as LiftedSourceStyles
+}
+
+function hideLiftedSource(element: HTMLElement) {
+  // Mobile WebKit/Chromium can retain an independently composited avatar image
+  // after a parent-only visibility change. Combine layout-preserving paint
+  // suppression mechanisms and use !important so Framer Motion cannot replace
+  // the hidden state while the source remains the live layout anchor.
+  element.setAttribute('data-ceremony-tile-lifted', 'true')
+  element.style.setProperty('visibility', 'hidden', 'important')
+  element.style.setProperty('opacity', '0', 'important')
+  element.style.setProperty('content-visibility', 'hidden', 'important')
+  element.style.setProperty('clip-path', 'inset(50%)', 'important')
+  element.style.setProperty('-webkit-clip-path', 'inset(50%)', 'important')
+  element.style.setProperty('pointer-events', 'none', 'important')
+  // Force the native compositor to observe the paint suppression before the
+  // fixed snapshot starts its first frame.
+  element.getBoundingClientRect()
+}
+
+function restoreLiftedSourceStyles(element: HTMLElement, styles: LiftedSourceStyles) {
+  SOURCE_HIDE_PROPERTIES.forEach((property) => {
+    const { value, priority } = styles[property]
+    if (value) {
+      element.style.setProperty(property, value, priority)
+    } else {
+      element.style.removeProperty(property)
+    }
+  })
+  element.removeAttribute('data-ceremony-tile-lifted')
 }
 
 function freezeVisualStyles(source: HTMLElement, clone: HTMLElement) {
@@ -134,15 +193,14 @@ export default function WinnerTileLiftAnimation({
   const [targets, setTargets] = useState<LiftTarget[]>([])
   const [phase, setPhase] = useState<LiftPhase>('captured')
   const targetsRef = useRef<LiftTarget[]>([])
-  const originalVisibilityRef = useRef(new Map<HTMLElement, string>())
+  const originalStylesRef = useRef(new Map<HTMLElement, LiftedSourceStyles>())
   const finishedRef = useRef(false)
 
   const restoreOriginals = useCallback(() => {
-    originalVisibilityRef.current.forEach((visibility, element) => {
-      element.style.visibility = visibility
-      element.removeAttribute('data-ceremony-tile-lifted')
+    originalStylesRef.current.forEach((styles, element) => {
+      restoreLiftedSourceStyles(element, styles)
     })
-    originalVisibilityRef.current.clear()
+    originalStylesRef.current.clear()
   }, [])
 
   const finish = useCallback(() => {
@@ -166,9 +224,8 @@ export default function WinnerTileLiftAnimation({
           const sourceRect = currentRects[index]
           const snapshot = source.cloneNode(true) as HTMLElement
           freezeVisualStyles(source, snapshot)
-          originalVisibilityRef.current.set(source, source.style.visibility)
-          source.style.visibility = 'hidden'
-          source.setAttribute('data-ceremony-tile-lifted', 'true')
+          originalStylesRef.current.set(source, captureLiftedSourceStyles(source))
+          hideLiftedSource(source)
           return {
             id: targetIds[index],
             source,
