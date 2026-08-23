@@ -346,10 +346,7 @@ export function computeResponsiveGameLayout(
   const actionDockScale =
     input.unifiedActionRail || bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
   const actionDockGap = bottomControlsMode === 'normal' ? NORMAL_DOCK_GAP : COMPACT_DOCK_GAP
-  const avatarTileHeightPx = Math.max(
-    0,
-    avatarTileSizePx - Math.ceil(actionDockGap / rosterRows)
-  )
+  const avatarTileHeightPx = Math.max(0, avatarTileSizePx - Math.ceil(actionDockGap / rosterRows))
   const navItemLabelDisplay = bottomControlsMode === 'normal' ? 'block' : 'none'
 
   const cssVars = {

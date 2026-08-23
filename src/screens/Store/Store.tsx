@@ -119,12 +119,7 @@ export default function Store() {
       <header className="vip-store__header">
         <h1>BIGEYE MARKETFACE</h1>
         {storeState.isActive && <span className="vip-store__active-badge">VIP Owned</span>}
-        <button
-          type="button"
-          className="vip-store__back"
-          onClick={goBack}
-          aria-label="Go back"
-        >
+        <button type="button" className="vip-store__back" onClick={goBack} aria-label="Go back">
           ↩
         </button>
       </header>

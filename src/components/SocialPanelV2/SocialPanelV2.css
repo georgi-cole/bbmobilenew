@@ -203,8 +203,7 @@
   padding: 0.58rem;
   border: 1px solid rgba(205, 190, 236, 0.09);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(31, 28, 37, 0.72), rgba(16, 14, 20, 0.86));
+  background: linear-gradient(180deg, rgba(31, 28, 37, 0.72), rgba(16, 14, 20, 0.86));
 }
 
 .sp2-column--players {
