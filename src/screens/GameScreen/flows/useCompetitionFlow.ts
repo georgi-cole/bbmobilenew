@@ -19,6 +19,7 @@ import { expandCupidIds, isCupidArrowActive } from '../../../features/twists/cup
 import { rankPressurePlankResults } from '../../../components/PressurePlank/pressurePlankLogic'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
+const POS_BADGE_SRC = statusBadgeImageSrc('pos')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
 
 interface UseCompetitionFlowOptions {
@@ -348,6 +349,13 @@ export function useCompetitionFlow({
           : isHohComp
             ? 'Leader of the House'
             : 'Power of Safety'
+      const winBadgeCode = isVoxFinalFourComp
+        ? undefined
+        : isVoxImmunityComp
+          ? 'immune'
+          : isHohComp
+            ? 'loh'
+            : 'pos'
 
       // Prefer the canonical winner already committed to the store by the
       // game's feature thunk.  storeRef gives the live Redux state — not
@@ -456,7 +464,8 @@ export function useCompetitionFlow({
       const winnerTileMetadata: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
         rect: null,
         badge: winSymbol,
-        badgeImageSrc: isHohComp && !isVoxComp ? LOH_BADGE_SRC : undefined,
+        badgeImageSrc: !isVoxComp ? (isHohComp ? LOH_BADGE_SRC : POS_BADGE_SRC) : undefined,
+        badgeCode: winBadgeCode,
         badgeVariant:
           !isVoxComp && isCupidArrowActive(game)
             ? isHohComp

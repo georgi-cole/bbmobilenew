@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import type { CeremonyTile } from '../CeremonyOverlay/CeremonyOverlay'
+import rosterStyles from '../HouseguestGrid/HouseguestGrid.module.css'
 import './WinnerTileLiftAnimation.css'
 
 const MAX_CAPTURE_FRAMES = 24
@@ -27,6 +28,7 @@ interface LiftTarget {
   sourceRect: DOMRect
   returnRect: DOMRect
   tile: CeremonyTile
+  compact: boolean
 }
 
 const SOURCE_HIDE_PROPERTIES = [
@@ -233,6 +235,7 @@ export default function WinnerTileLiftAnimation({
             sourceRect,
             returnRect: sourceRect,
             tile: tiles[index] ?? tiles[0] ?? { rect: sourceRect },
+            compact: Boolean(source.closest(`.${rosterStyles.compact}`)),
           }
         })
         targetsRef.current = captured
@@ -322,21 +325,38 @@ export default function WinnerTileLiftAnimation({
             <div className="winner-tile-lift__glow" aria-hidden="true" />
             {(target.tile.badgeImageSrc || target.tile.badge) && (
               <div
-                className={`winner-tile-lift__badge ${
-                  badgeActive ? 'winner-tile-lift__badge--active' : ''
+                className={`${rosterStyles.badgeStack} winner-tile-lift__badge-stack ${
+                  target.compact ? rosterStyles.compact : ''
                 }`}
-                aria-label={target.tile.badgeLabel ?? `${target.tile.badge ?? 'Role'} badge`}
+                role="list"
               >
-                {target.tile.badgeImageSrc ? (
-                  <img
-                    className="ceremony-overlay__badge-image"
-                    src={target.tile.badgeImageSrc}
-                    alt=""
-                    aria-hidden="true"
-                  />
-                ) : (
-                  target.tile.badge
-                )}
+                <span
+                  className={[
+                    rosterStyles.statusBadge,
+                    target.tile.badgeCode
+                      ? (rosterStyles[`badge_${target.tile.badgeCode}`] ?? '')
+                      : '',
+                    target.tile.badgeVariant === 'cupid-kiss' ? rosterStyles.cupidPermanentLoh : '',
+                    target.tile.badgeVariant === 'cupid-hug' ? rosterStyles.cupidPermanentPos : '',
+                    'winner-tile-lift__badge',
+                    badgeActive ? 'winner-tile-lift__badge--active' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  role="listitem"
+                  aria-label={target.tile.badgeLabel ?? `${target.tile.badge ?? 'Role'} badge`}
+                >
+                  {target.tile.badgeImageSrc ? (
+                    <img
+                      className={`${rosterStyles.statusBadgeImage} ceremony-overlay__badge-image`}
+                      src={target.tile.badgeImageSrc}
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    target.tile.badge
+                  )}
+                </span>
               </div>
             )}
           </div>

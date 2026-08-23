@@ -1,6 +1,7 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import WinnerTileLiftAnimation from '../src/components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
+import rosterStyles from '../src/components/HouseguestGrid/HouseguestGrid.module.css'
 
 describe('WinnerTileLiftAnimation', () => {
   let animationFrames: FrameRequestCallback[]
@@ -74,7 +75,11 @@ describe('WinnerTileLiftAnimation', () => {
 
     act(() => vi.advanceTimersByTime(520))
     expect(document.querySelector('[data-winner-tile-lift-phase="awarded"]')).not.toBeNull()
-    expect(document.querySelector('.winner-tile-lift__badge')?.textContent).toBe('👑')
+    const animatedBadge = document.querySelector<HTMLElement>('.winner-tile-lift__badge')
+    const animatedBadgeStack = document.querySelector<HTMLElement>('.winner-tile-lift__badge-stack')
+    expect(animatedBadge?.textContent).toBe('👑')
+    expect(animatedBadgeStack?.classList.contains(rosterStyles.badgeStack)).toBe(true)
+    expect(animatedBadge?.classList.contains(rosterStyles.statusBadge)).toBe(true)
 
     rect = new DOMRect(108, 226, 64, 64)
     act(() => vi.advanceTimersByTime(1720))
@@ -92,6 +97,41 @@ describe('WinnerTileLiftAnimation', () => {
     expect(source.style.getPropertyValue('content-visibility')).toBe('')
     expect(source.style.getPropertyValue('clip-path')).toBe('')
     expect(source.dataset.ceremonyTileLifted).toBeUndefined()
+  })
+
+  it('renders the same compact safety badge asset used by the permanent roster tile', () => {
+    const sourceContainer = document.createElement('div')
+    sourceContainer.className = rosterStyles.compact
+    const source = document.createElement('div')
+    source.textContent = 'Alice'
+    source.getBoundingClientRect = vi.fn(() => new DOMRect(22, 48, 72, 72))
+    sourceContainer.append(source)
+    document.body.append(sourceContainer)
+
+    render(
+      <WinnerTileLiftAnimation
+        targetIds={['alice']}
+        tiles={[
+          {
+            rect: null,
+            badge: '🛡️',
+            badgeCode: 'pos',
+            badgeImageSrc: '/assets/avatar_badges/safety_badge.svg',
+          },
+        ]}
+        caption="Alice wins Power of Safety!"
+        resolveTarget={() => source}
+        onDone={vi.fn()}
+      />
+    )
+
+    flushAnimationFrame()
+
+    const badgeImage = document.querySelector<HTMLImageElement>('.winner-tile-lift__badge img')
+    const badgeStack = document.querySelector<HTMLElement>('.winner-tile-lift__badge-stack')
+    expect(badgeImage?.src).toContain('/assets/avatar_badges/safety_badge.svg')
+    expect(badgeImage?.classList.contains(rosterStyles.statusBadgeImage)).toBe(true)
+    expect(badgeStack?.classList.contains(rosterStyles.compact)).toBe(true)
   })
 
   it('finishes safely when the roster tile never becomes measurable', () => {
