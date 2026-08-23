@@ -1439,7 +1439,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(activateDemocracia()); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
-    expect(screen.getByTestId('tv-shock-prelude')).toHaveTextContent('DEMOCRACIA');
+    expect(screen.getByTestId('shock-intro-overlay')).toBeDefined();
 
     act(() => {
       vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50);
@@ -1451,7 +1451,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     vi.useRealTimers();
   });
 
-  it('keeps a major Double Elimination announcement inside the faux TV', () => {
+  it('plays the fullscreen shock sequence for Double Elimination', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
@@ -1459,13 +1459,18 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
 
-    expect(screen.queryByTestId('shock-intro-overlay')).toBeNull();
-    expect(screen.queryByTestId('tv-shock-prelude')).toBeNull();
+    expect(screen.getByTestId('shock-intro-overlay')).toBeDefined();
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50);
+    });
+
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
     vi.useRealTimers();
   });
 
-  it('plays the Double Elimination TV spotlight without requiring a fullscreen shock intro', () => {
+  it('plays the Double Elimination TV spotlight after the fullscreen shock intro', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
