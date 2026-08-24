@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router'
 import './PhonePreviewPage.css'
 
@@ -51,7 +51,7 @@ function isPreviewTarget(value: string | null): value is PreviewTarget {
   return TARGETS.some((target) => target.value === value)
 }
 
-export function buildPhonePreviewUrl(target: PreviewTarget, device: PreviewDevice) {
+function buildPhonePreviewUrl(target: PreviewTarget, device: PreviewDevice) {
   const platformParams = `phonePreview=true&phonePlatform=${device.id}`
   switch (target) {
     case 'battleBack':
@@ -73,13 +73,7 @@ export function buildPhonePreviewUrl(target: PreviewTarget, device: PreviewDevic
 export default function PhonePreviewPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTarget = searchParams.get('target')
-  const [target, setTarget] = useState<PreviewTarget>(() =>
-    isPreviewTarget(requestedTarget) ? requestedTarget : 'fullApp'
-  )
-
-  useEffect(() => {
-    if (isPreviewTarget(requestedTarget)) setTarget(requestedTarget)
-  }, [requestedTarget])
+  const target = isPreviewTarget(requestedTarget) ? requestedTarget : 'fullApp'
 
   const targetLabel =
     TARGETS.find((entry) => entry.value === target)?.label ?? 'Full game · start or continue'
@@ -89,7 +83,6 @@ export default function PhonePreviewPage() {
   )
 
   const selectTarget = (nextTarget: PreviewTarget) => {
-    setTarget(nextTarget)
     setSearchParams({ target: nextTarget }, { replace: true })
   }
 

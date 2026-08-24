@@ -10,7 +10,7 @@
  *  - Adjust seed for different deterministic competition outcomes.
  *  - View overlay results inline.
  */
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import SpectatorView from '../../components/ui/SpectatorView';
 import type { SpectatorVariant } from '../../components/ui/SpectatorView';
@@ -73,6 +73,23 @@ export default function TwistsTestPage() {
   const [previewParams] = useSearchParams();
   const phonePreview = previewParams.get('phonePreview') === 'true';
   const requestedPreview = previewParams.get('preview');
+
+  return (
+    <TwistsTestContent
+      key={requestedPreview ?? 'manual'}
+      phonePreview={phonePreview}
+      requestedPreview={requestedPreview}
+    />
+  );
+}
+
+function TwistsTestContent({
+  phonePreview,
+  requestedPreview,
+}: {
+  phonePreview: boolean;
+  requestedPreview: string | null;
+}) {
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(() => getRequestedOverlay(requestedPreview));
@@ -84,14 +101,6 @@ export default function TwistsTestPage() {
   // seed input while SpectatorView is mounted cannot desync the displayed
   // winner from what useSpectatorSimulation captured on mount.
   const [openSeed, setOpenSeed] = useState(42);
-
-  useEffect(() => {
-    const nextOverlay = getRequestedOverlay(requestedPreview);
-    if (nextOverlay === 'none') return;
-    setTwinScenario(requestedPreview === 'twin-shock-secret' ? 'secretKept' : 'exposed');
-    setLastResult(null);
-    setActiveOverlay(nextOverlay);
-  }, [requestedPreview]);
 
   const bbWinnerId = useMemo(
     () => simulateBattleBackCompetition(MOCK_JURORS.map((p) => p.id), openSeed).winnerId,
