@@ -67,6 +67,7 @@ describe('safe-area layout styles', () => {
     expect(dockCss).not.toContain('position: fixed;')
     expect(dockCss).not.toContain('env(safe-area-inset-bottom')
     expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)')
+    expect(gameScreenCss).toContain('html.is-capacitor-ios .game-screen { padding-top: 0; }')
     expect(gameScreenCss).toContain(
       '--game-screen-floating-dock-clearance: clamp(56px, 16vw, 76px);'
     )
@@ -158,7 +159,7 @@ describe('safe-area layout styles', () => {
     expect(homeHubCss).not.toMatch(/\.homehub-(?:shell|frame)\s*\{[^}]*overflow-y:\s*auto/)
   })
 
-  it('keeps native status bar policy aligned with CSS-owned safe areas', () => {
+  it('uses immersive gameplay status chrome with CSS-owned safe-area fallback', () => {
     const capacitorConfigTs = readFileSync(resolve(process.cwd(), 'capacitor.config.ts'), 'utf8')
     const useGameModeTs = readFileSync(resolve(process.cwd(), 'src/hooks/useGameMode.ts'), 'utf8')
     const viewportMetaTs = readFileSync(
@@ -166,7 +167,9 @@ describe('safe-area layout styles', () => {
       'utf8'
     )
 
-    expect(useGameModeTs).toContain('one safe-area owner')
+    expect(useGameModeTs).toContain('SystemBars.hide({ bar: SystemBarType.StatusBar })')
+    expect(useGameModeTs).toContain("Capacitor.getPlatform() === 'android'")
+    expect(useGameModeTs).toContain('measured CSS safe area remains the fallback')
     expect(useGameModeTs).not.toContain('setOverlaysWebView')
     expect(capacitorConfigTs).toContain("contentInset: 'never'")
     expect(capacitorConfigTs).toContain('SystemBars:')

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Capacitor, SystemBars, SystemBarType } from '@capacitor/core'
 
 interface WakeLockSentinelLike {
   released?: boolean
@@ -23,10 +24,43 @@ interface LockableOrientationLike {
  * - requests a screen wake lock so the display stays awake during play
  * - re-requests the wake lock when the tab becomes visible again
  * - attempts to keep the experience portrait-locked when the platform allows it
- * - leaves system bars visible; Capacitor SystemBars supplies their measured
- *   insets to CSS so every screen has one safe-area owner
+ * - optionally hides only the native status bar during gameplay, while the
+ *   measured CSS safe area remains the fallback if a platform keeps it visible
  */
-export default function useGameMode(): void {
+export default function useGameMode(hideNativeStatusBar = false): void {
+  useEffect(() => {
+    const isNativeAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
+    if (!isNativeAndroid) return undefined
+
+    async function syncStatusBar() {
+      try {
+        if (hideNativeStatusBar) {
+          await SystemBars.hide({ bar: SystemBarType.StatusBar })
+        } else {
+          await SystemBars.show({ bar: SystemBarType.StatusBar })
+        }
+      } catch {
+        // Web builds and unsupported native shells keep using measured CSS insets.
+      }
+    }
+
+    function handleStatusBarVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void syncStatusBar()
+      }
+    }
+
+    void syncStatusBar()
+    document.addEventListener('visibilitychange', handleStatusBarVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleStatusBarVisibilityChange)
+      if (hideNativeStatusBar) {
+        void SystemBars.show({ bar: SystemBarType.StatusBar }).catch(() => undefined)
+      }
+    }
+  }, [hideNativeStatusBar])
+
   useEffect(() => {
     let isMounted = true
     let wakeLockSentinel: WakeLockSentinelLike | null = null

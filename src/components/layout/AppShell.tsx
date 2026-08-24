@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useLocation } from 'react-router'
 import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
 import { selectFinale } from '../../store/finaleSlice'
@@ -35,6 +35,7 @@ const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFi
  * The nav bar automatically picks it up from its own LINKS array.
  */
 export default function AppShell() {
+  const location = useLocation()
   const phase = useAppSelector((s) => s.game.phase)
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale)
   const voxPopuliActive = useAppSelector((s) => s.game.voxPopuli?.status === 'active')
@@ -44,7 +45,7 @@ export default function AppShell() {
   const remoteConfig = useAppSelector(selectRemoteConfig)
   const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
 
-  useGameMode()
+  useGameMode(location.pathname === '/game')
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
