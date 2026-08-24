@@ -17,6 +17,13 @@
   box-sizing: border-box;
 }
 
+/* WKWebView already places gameplay exactly below the Dynamic Island/status
+   safe area. Remove only the generic screen breathing room on native iOS so
+   the Faux TV meets that safe boundary without entering the unsafe region. */
+html.is-capacitor-ios .game-screen {
+  padding-top: 0;
+}
+
 .game-screen:has(.game-control-dock) {
   padding-bottom: var(--game-screen-floating-dock-clearance);
 }
