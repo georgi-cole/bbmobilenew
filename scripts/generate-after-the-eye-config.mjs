@@ -34,33 +34,33 @@ const toneLabels = {
 }
 
 const categories = {
-  sudden_fame: "Sudden Fame",
-  career_triumph: "Career Triumph",
-  career_disaster: "Career Disaster",
-  romance: "Romance",
-  pregnancy_parenthood: "Pregnancy & Parenthood",
-  marriage_breakup: "Love, Marriage & Breakups",
-  cheating_scandal: "Cheating Scandal",
-  family_secret: "Family Secret",
-  public_feud: "Public Feud",
-  betrayal: "Betrayal",
-  financial_success: "Financial Success",
-  financial_ruin: "Financial Ruin",
-  legal_trouble: "Legal Trouble",
-  crime_scandal: "Crime & Scandal",
-  accident_crisis: "Accident & Crisis",
-  addiction_recovery: "Addiction & Recovery",
-  secret_life: "Secret Life",
-  destructive_excess: "Fame & Excess",
-  recovery_redemption: "Recovery & Redemption",
-  strange_business: "Strange Business",
-  social_media: "Social Media",
-  reality_tv_obsession: "Reality-TV Obsession",
-  conspiracy: "Conspiracy",
-  disappearance: "Disappearance",
-  ordinary_life: "Unexpectedly Ordinary",
-  bizarre_misunderstanding: "Bizarre Misunderstanding",
-  absurd_success: "Absurd Success",
+  sudden_fame: 'Sudden Fame',
+  career_triumph: 'Career Triumph',
+  career_disaster: 'Career Disaster',
+  romance: 'Romance',
+  pregnancy_parenthood: 'Pregnancy & Parenthood',
+  marriage_breakup: 'Love, Marriage & Breakups',
+  cheating_scandal: 'Cheating Scandal',
+  family_secret: 'Family Secret',
+  public_feud: 'Public Feud',
+  betrayal: 'Betrayal',
+  financial_success: 'Financial Success',
+  financial_ruin: 'Financial Ruin',
+  legal_trouble: 'Legal Trouble',
+  crime_scandal: 'Crime & Scandal',
+  accident_crisis: 'Accident & Crisis',
+  addiction_recovery: 'Addiction & Recovery',
+  secret_life: 'Secret Life',
+  destructive_excess: 'Fame & Excess',
+  recovery_redemption: 'Recovery & Redemption',
+  strange_business: 'Strange Business',
+  social_media: 'Social Media',
+  reality_tv_obsession: 'Reality-TV Obsession',
+  conspiracy: 'Conspiracy',
+  disappearance: 'Disappearance',
+  ordinary_life: 'Unexpectedly Ordinary',
+  bizarre_misunderstanding: 'Bizarre Misunderstanding',
+  absurd_success: 'Absurd Success',
 }
 
 const supportedPlaceholders = new Set([
@@ -172,8 +172,10 @@ function validate(config) {
   const ids = new Set()
 
   if (config.version !== 1) errors.push('version must be 1.')
-  if (config.scenarios.length < 100) errors.push('at least 100 compiled individual scenarios are required.')
-  if (config.linkedScenarios.length < 12) errors.push('at least twelve linked scenarios are required.')
+  if (config.scenarios.length < 100)
+    errors.push('at least 100 compiled individual scenarios are required.')
+  if (config.linkedScenarios.length < 12)
+    errors.push('at least twelve linked scenarios are required.')
 
   for (const [collectionName, linked] of [
     ['scenarios', false],
