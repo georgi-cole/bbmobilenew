@@ -216,7 +216,13 @@ const DRAMA_TEMPLATES: DramaTemplate[] = [
 ]
 
 function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
-  const index = (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + salt) % values.length
+  const cycle = Math.floor(variantIndex / values.length)
+  const index =
+    (templateIndex * (salt + 3) +
+      variantIndex * (salt * 2 + 1) +
+      cycle * (salt + 1) +
+      salt) %
+    values.length
   return values[index]
 }
 
