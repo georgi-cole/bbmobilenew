@@ -46,6 +46,12 @@ if (!import.meta.env.DEV) {
 // _introhub-buttons.css are active before the first paint.
 applyDisplayModeClasses()
 
+// The premium gameplay chrome is the shipped default. Apply its class before
+// React mounts so a lazy route can never paint the legacy five-label action
+// bar for one frame while LiveOpsController is still mounting. LiveOps keeps
+// ownership afterwards and may deliberately remove it for a control override.
+document.body.classList.add('experiment-game-chrome-refined')
+
 // Visual QA freeze mode is route-driven and lets Playwright load a stable
 // screenshot-friendly version of the app without waiting on animations.
 applyVisualFreezeState()

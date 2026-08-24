@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice';
 import { useAppSelector } from '../../store/hooks';
 import { configureProductTelemetry, trackProductEvent } from '../../services/liveOps/productTelemetry';
@@ -16,7 +16,7 @@ export default function LiveOpsController() {
     return resolveRefinedGameChrome(config, window.location.search);
   }, [config]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     configureProductTelemetry(config?.operations?.telemetry);
     document.body.classList.toggle('experiment-game-chrome-refined', refinedChrome);
     document.body.dataset.gameChromeVariant = refinedChrome ? 'refined' : 'control';
