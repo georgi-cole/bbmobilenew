@@ -1,414 +1,252 @@
 import type { ScenarioSpec } from './afterTheEyeOutcomeTypes'
 
-export const AFTER_EYE_SCENARIOS_3: ScenarioSpec[] = [
+interface DramaTemplate {
+  id: string
+  category: string
+  tone: ScenarioSpec['tone']
+  weight: number
+  cooldownGroup: string
+  badge: string
+  eligibility: ScenarioSpec['eligibility']
+  headlines: string[]
+  setups: string[]
+  escalations: string[]
+  outcomes: string[]
+  twists: string[]
+}
+
+const VARIANTS_PER_TEMPLATE = 5
+
+const DRAMA_TEMPLATES: DramaTemplate[] = [
   {
-    id: 'financial_ruin_gold_bathtub',
-    category: 'financial_ruin',
-    tone: 'tragic',
+    id: "fraud_investigation",
+    category: "legal_trouble",
+    tone: "tragic",
     weight: 1.0,
-    cooldownGroup: 'financial_ruin',
-    badge: 'FORTUNE DOWN THE DRAIN',
-    eligibility: { tagsAny: ['winner'] },
+    cooldownGroup: "fraud",
+    badge: "FINANCIAL SCANDAL",
+    eligibility: { tagsAny: ['winner', 'fan_favorite', 'controversial'] },
     headlines: [
-      '{name} Buys a Gold Bathtub and Loses Everything',
-      'The Prize Money Never Reached Month Six',
+      "{name}'s Business Empire Faces a Fraud Probe",
+      "From Fame to Financial Investigation",
+      "Investors Turn on {name}",
+      "The Contract Scandal That Could Cost Everything",
     ],
-    beats: [
-      '{name} spends the winnings on a gold-plated bathroom, a rented tiger statue, and an apartment with no furniture.',
-      'Maintenance bills arrive before the first sponsored house tour is uploaded.',
-      '{name} sells the bathtub at a loss and moves in with a cousin.',
+    setups: [
+      "{name} becomes the public face of a fast-growing investment venture shortly after the season.",
+      "A business launched around {name}'s fame raises money quickly and promises returns that sound almost impossible.",
+      "{name} signs onto a company run by aggressive managers who use the housemate's image to attract investors.",
+      "A lucrative post-show deal puts {name} on billboards before anyone explains where the money is coming from.",
+    ],
+    escalations: [
+      "Regulators begin asking questions, former employees leak documents, and investors demand to know what {name} actually knew.",
+      "Payments stop, executives disappear from interviews, and {name}'s name remains on every advertisement.",
+      "An internal email suggests warnings were ignored while the company continued using {name} to reassure customers.",
+      "Lawyers separate {name} from the founders publicly, but the distinction comes too late to stop the scandal.",
+    ],
+    outcomes: [
+      "{name} faces a long legal fight to prove they were a spokesperson rather than an architect of the scheme.",
+      "The company collapses, leaving {name} financially damaged and forced to rebuild credibility from zero.",
+      "{name} cooperates with investigators and avoids the worst legal outcome, but the career built after the show is gone.",
+      "The investigation continues for months and turns {name}'s success story into a cautionary headline.",
     ],
     twists: [
-      'The bathtub is only brass.',
-      'The cousin becomes a successful home-renovation influencer.',
+      "The contract gave {name} almost no control over the company despite using their face everywhere.",
+      "A former assistant had saved the emails that become central to the case.",
+      "The founder had approached three other housemates first.",
+      "One of the loudest accusers had invested after being privately warned not to.",
     ],
   },
   {
-    id: 'financial_ruin_fake_crypto',
-    category: 'financial_ruin',
-    tone: 'tragic',
+    id: "wrongly_accused",
+    category: "legal_trouble",
+    tone: "good",
     weight: 1.0,
-    cooldownGroup: 'financial_ruin',
-    badge: 'INVESTMENT HORROR',
-    eligibility: {},
-    headlines: [
-      '{name} Backs a Coin Named After a Catchphrase',
-      'The Token Vanishes Before Breakfast',
-    ],
-    beats: [
-      '{name} invests heavily in a cryptocurrency promoted by a stranger wearing a branded cape.',
-      'The project website disappears the morning after a launch party.',
-      "{name} spends months insisting the collapse is a 'temporary narrative problem'.",
-    ],
-    twists: [
-      'The cape is found for sale online.',
-      'A forgotten small investment elsewhere covers the loss.',
-    ],
-  },
-  {
-    id: 'financial_ruin_empty_brand',
-    category: 'financial_ruin',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'financial_ruin',
-    badge: 'INVISIBLE INVENTORY',
-    eligibility: {},
-    headlines: [
-      "{name}'s Luxury Brand Sells Products That Do Not Exist",
-      'Beautiful Website, Completely Empty Warehouse',
-    ],
-    beats: [
-      '{name} launches a premium lifestyle company with cinematic advertisements and no confirmed manufacturer.',
-      'Customers receive tracking numbers that lead to a stock photo of a delivery van.',
-      'Investigators discover the warehouse is a rented meeting room.',
-    ],
-    twists: [
-      'The empty boxes become collector items.',
-      "{name} later sells a course about 'asset-light retail'.",
-    ],
-  },
-  {
-    id: 'financial_ruin_mansion_party',
-    category: 'financial_ruin',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'financial_ruin',
-    badge: 'MANSION MELTDOWN',
+    cooldownGroup: "legal_clearance",
+    badge: "CLEARED",
     eligibility: {},
     headlines: [
-      '{name} Rents a Mansion for One Night and Pays for a Year',
-      'The Party Clause Nobody Read',
+      "{name} Cleared After Months Under Suspicion",
+      "The Case Against {name} Falls Apart",
+      "Evidence Reverses the Scandal",
+      "{name}'s Name Finally Cleared",
     ],
-    beats: [
-      '{name} stages a comeback party in an enormous villa.',
-      'A contract error, damaged fountain, and imported ice sculpture create a bill larger than the entire event budget.',
-      'The footage looks luxurious until the invoices leak.',
+    setups: [
+      "{name} is publicly linked to a criminal investigation through a leaked document that lacks crucial context.",
+      "A former business associate accuses {name} of taking part in conduct that quickly becomes headline news.",
+      "An anonymous complaint places {name} under scrutiny and triggers a wave of cancelled appearances.",
+      "A legal dispute is reported as a criminal scandal before investigators have even interviewed {name}.",
+    ],
+    escalations: [
+      "New records contradict the accusation, but corrections receive far less attention than the original story.",
+      "A witness admits making assumptions, while digital records show {name} was elsewhere during a key event.",
+      "The source of the allegation is challenged in court and several supposed facts collapse at once.",
+      "Investigators obtain messages that support the account {name} gave from the beginning.",
+    ],
+    outcomes: [
+      "{name} is formally cleared and begins rebuilding a career damaged by months of suspicion.",
+      "The case closes without action against {name}, followed by a successful legal complaint over false reporting.",
+      "Sponsors slowly return after an official statement confirms {name} was not involved.",
+      "{name} uses the experience to step away from celebrity management and regain control of public life.",
     ],
     twists: [
-      'The ice sculpture survives longer than the comeback.',
-      'The villa owner hires {name} to advertise the property.',
+      "The document that started the scandal had been cropped before publication.",
+      "A rival outlet had the exculpatory evidence for weeks.",
+      "The key witness apologizes privately before doing so publicly.",
+      "The final correction becomes the most-read article on the same site that broke the accusation.",
     ],
   },
   {
-    id: 'financial_ruin_manager_cousin',
-    category: 'financial_ruin',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'financial_ruin',
-    badge: 'FAMILY BUSINESS FAIL',
+    id: "car_crash",
+    category: "accident_crisis",
+    tone: "good",
+    weight: 1.1,
+    cooldownGroup: "accident",
+    badge: "MIRACLE ESCAPE",
     eligibility: {},
     headlines: [
-      '{name} Hires an Unqualified Cousin as Manager',
-      'Love Is Free. Management Was Not.',
+      "{name} Survives Terrifying Road Accident",
+      "A Midnight Crash Changes Everything",
+      "{name}'s Close Call Shocks the Cast",
+      "The Accident That Ended the Party Circuit",
     ],
-    beats: [
-      "{name} places every booking, password, and payment account under a cousin's control.",
-      'Three appearances are scheduled in different cities at the same hour.',
-      'The family dispute unfolds through voice notes sent to journalists.',
+    setups: [
+      "{name} is involved in a serious road accident while traveling home from a public appearance.",
+      "A late-night trip ends with {name}'s vehicle badly damaged and emergency services called to the scene.",
+      "News breaks before dawn that {name} has been taken to hospital after a traffic accident.",
+      "A routine journey between appearances turns into the most frightening night of {name}'s post-show life.",
     ],
-    twists: [
-      'The cousin signs a separate reality deal.',
-      'They reconcile after hiring an actual accountant.',
+    escalations: [
+      "Conflicting reports spread online while family members ask fans to stop calling the hospital.",
+      "Former housemates arrive quietly as tabloids speculate far beyond the limited facts released.",
+      "A photograph of the damaged vehicle circulates before doctors have finished evaluating {name}.",
+      "The public story becomes chaotic when an anonymous witness gives an exaggerated account to television.",
     ],
-  },
-  {
-    id: 'legal_trouble_stolen_peacock',
-    category: 'legal_trouble',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'legal_trouble',
-    badge: 'ARRESTED WITH A PEACOCK',
-    eligibility: {},
-    headlines: [
-      '{name} Is Questioned Over a Missing Hotel Peacock',
-      'The Bird Was in the Back Seat',
-    ],
-    beats: [
-      '{name} leaves a promotional event with a decorative peacock that turns out to be real and privately owned.',
-      'Traffic officers discover the bird calmly standing beside a gift bag.',
-      '{name} claims it followed voluntarily and faces a very strange court hearing.',
+    outcomes: [
+      "{name} recovers and cancels months of appearances, saying the accident permanently changed their priorities.",
+      "After a difficult recovery, {name} returns with a far quieter lifestyle and no interest in the old party circuit.",
+      "{name} leaves hospital and later credits the accident with forcing a complete reset of life after fame.",
+      "The recovery is slower than expected, but {name} eventually returns to public life on very different terms.",
     ],
     twists: [
-      'The owner drops the complaint after receiving season tickets.',
-      'The peacock becomes an animal charity mascot.',
+      "The first person at the scene was a fan who recognized {name}.",
+      "A widely repeated claim about the cause of the crash is later disproved.",
+      "One former rival visits the hospital without telling the press.",
+      "The damaged vehicle was not being driven by {name}.",
     ],
   },
   {
-    id: 'legal_trouble_fake_charity',
-    category: 'legal_trouble',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'legal_trouble',
-    badge: 'CHARITY CHAOS',
-    eligibility: {},
-    headlines: ["{name}'s Gala Has No Registered Charity", 'The Cheques Had Nowhere to Go'],
-    beats: [
-      '{name} announces a glamorous fundraiser before completing any legal paperwork.',
-      'Donors discover the named organisation does not exist while the auction is still underway.',
-      "Funds are frozen and {name} gives interviews from outside an accountant's office.",
-    ],
-    twists: [
-      'A legitimate charity eventually receives everything.',
-      'The accountant becomes the public hero.',
-    ],
-  },
-  {
-    id: 'legal_trouble_paparazzi_chase',
-    category: 'legal_trouble',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'legal_trouble',
-    badge: 'CAMERA WAR',
-    eligibility: {},
-    headlines: [
-      '{name} Chases a Photographer Into a Fountain',
-      'The Picture Was Blurry. The Lawsuit Was Not.',
-    ],
-    beats: [
-      '{name} confronts a photographer after an unflattering street photo.',
-      'The pursuit crosses a hotel lobby and ends with both parties standing in a decorative fountain.',
-      'Security footage turns the dispute into international comedy.',
-    ],
-    twists: [
-      "The photographer's camera was not recording.",
-      'The fountain image wins photo of the year.',
-    ],
-  },
-  {
-    id: 'legal_trouble_forged_invite',
-    category: 'legal_trouble',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'legal_trouble',
-    badge: 'VIP FRAUD?',
-    eligibility: {},
-    headlines: ['{name} Uses a Homemade VIP Pass', 'The Laminator That Reached Court'],
-    beats: [
-      '{name} creates a convincing event credential after being left off a guest list.',
-      'The pass works until {name} is asked why the sponsor logo is upside down.',
-      'A minor legal dispute follows and the homemade badge becomes evidence.',
-    ],
-    twists: [
-      'The event later hires {name} for publicity.',
-      'The badge designer receives freelance offers.',
-    ],
-  },
-  {
-    id: 'legal_trouble_noise_case',
-    category: 'legal_trouble',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'legal_trouble',
-    badge: 'NEIGHBOURS REVOLT',
-    eligibility: {},
-    headlines: [
-      '{name} Faces Court Over a Twelve-Hour Reunion Party',
-      'The Playlist Became Evidence',
-    ],
-    beats: [
-      '{name} hosts a cast reunion in a residential building.',
-      'Neighbours document every song, argument, and balcony speech in precise chronological order.',
-      'The case ends with a fine and a legally binding quiet-hours agreement.',
-    ],
-    twists: [
-      "The neighbour's timeline becomes a bestselling booklet.",
-      'The building votes to ban ring lights.',
-    ],
-  },
-  {
-    id: 'destructive_excess_champagne_month',
-    category: 'destructive_excess',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'destructive_excess',
-    badge: 'FAME COLLAPSE',
-    eligibility: {},
-    headlines: ["{name}'s Champagne Month Ends in Rehab", 'The Party Never Stopped — Until It Did'],
-    beats: [
-      '{name} tries to attend every launch, afterparty, and sponsored weekend offered after the finale.',
-      'Friends become alarmed as drinking replaces sleep and public appearances grow increasingly chaotic.',
-      '{name} steps away for treatment and later returns with a sober, tightly controlled interview.',
-    ],
-    twists: [
-      'The comeback special is filmed without {possessive} permission by an overexcited cousin.',
-      "The first sober project becomes {name}'s biggest success.",
-    ],
-  },
-  {
-    id: 'destructive_excess_casino_week',
-    category: 'destructive_excess',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'destructive_excess',
-    badge: 'SEVEN-DAY SPIRAL',
-    eligibility: {},
-    headlines: [
-      '{name} Disappears Into a Casino for a Week',
-      'The Complimentary Suite Cost Everything',
-    ],
-    beats: [
-      '{name} accepts a casino appearance and remains at the resort long after the contract ends.',
-      'A trail of room-service bills, borrowed sunglasses, and increasingly desperate roulette predictions follows.',
-      '{name} leaves owing less money than rumoured but far more dignity.',
-    ],
-    twists: [
-      'The winning chip was in a forgotten coat pocket.',
-      'The casino bans the catchphrase, not {name}.',
-    ],
-  },
-  {
-    id: 'destructive_excess_nightclub_residency',
-    category: 'destructive_excess',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'destructive_excess',
-    badge: 'PERMANENT GUEST',
-    eligibility: {},
-    headlines: ['{name} Mistakes a Nightclub Booth for a Career', 'Thirty Nights, One Jacket'],
-    beats: [
-      '{name} becomes a nightly fixture at the same club after one heavily photographed appearance.',
-      'Staff begin storing {possessive} preferred jacket and emergency interview lighting behind the bar.',
-      'The bookings stop, but {name} continues arriving as if under contract.',
-    ],
-    twists: [
-      'The club eventually hires {name} as a host.',
-      'The jacket receives its own social-media account.',
-    ],
-  },
-  {
-    id: 'destructive_excess_wellness_cult',
-    category: 'destructive_excess',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'destructive_excess',
-    badge: 'WELLNESS BREAKDOWN',
-    eligibility: {},
-    headlines: [
-      '{name} Joins a Retreat That Forbids Phones and Questions',
-      'The Detox Lasted Until the Police Arrived',
-    ],
-    beats: [
-      "{name} retreats from fame at an exclusive wellness compound led by a man called 'Doctor Moon'.",
-      'Participants surrender devices, bank cards, and the right to choose breakfast.',
-      'Families intervene after {name} appears in a promotional video speaking entirely in slogans.',
-    ],
-    twists: [
-      'Doctor Moon is a former cruise magician.',
-      '{name} later turns the experience into a sharp comedy special.',
-    ],
-  },
-  {
-    id: 'destructive_excess_shopping_spree',
-    category: 'destructive_excess',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'destructive_excess',
-    badge: 'DELIVERY MOUNTAIN',
-    eligibility: {},
-    headlines: ['{name} Orders 214 Packages in One Weekend', 'The Lobby Could No Longer Open'],
-    beats: [
-      '{name} attempts a complete luxury reinvention through late-night online shopping.',
-      'Boxes block the apartment entrance and reveal duplicates of the same sunglasses in nine colours.',
-      'The building manager stages an intervention beside the parcel lockers.',
-    ],
-    twists: [
-      'Return shipping costs more than the products.',
-      'A resale livestream unexpectedly becomes profitable.',
-    ],
-  },
-  {
-    id: 'recovery_redemption_sober_return',
-    category: 'recovery_redemption',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'recovery_redemption',
-    badge: 'HONEST COMEBACK',
-    eligibility: { tagsAny: ['controversial', 'rivalry'], requiresRelation: 'rival' },
-    headlines: ['{name} Returns Without the Spin', 'No Filters, No Excuses, No Sponsored Apology'],
-    beats: [
-      '{name} disappears after a chaotic post-show period and later speaks openly about getting help.',
-      'The interview avoids dramatic music and contains the first direct apology of the entire cast.',
-      'Viewers respond warmly and old rivals quietly send support.',
-    ],
-    twists: [
-      '{rivalName} is the first person waiting backstage.',
-      'The interview is nominated for an award.',
-    ],
-  },
-  {
-    id: 'recovery_redemption_debt_rebuild',
-    category: 'recovery_redemption',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'recovery_redemption',
-    badge: 'ZERO TO SOLVENT',
-    eligibility: {},
-    headlines: ['{name} Pays Back Every Cent', 'The Comeback Spreadsheet Nobody Expected'],
-    beats: [
-      '{name} loses most of the post-show money through bad deals.',
-      'Instead of launching another brand, {name} takes ordinary work and publishes monthly repayment updates.',
-      'The final debt payment becomes more popular than the original victory.',
-    ],
-    twists: ['An accounting firm offers {name} a campaign.', 'The spreadsheet is framed at home.'],
-  },
-  {
-    id: 'recovery_redemption_enemy_apology',
-    category: 'recovery_redemption',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'recovery_redemption',
-    badge: 'FEUD ENDS',
+    id: "accident_driver_secret",
+    category: "accident_crisis",
+    tone: "bad",
+    weight: 0.95,
+    cooldownGroup: "accident_coverup",
+    badge: "CRASH COVER-UP?",
     eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
     headlines: [
-      '{name} Apologises to {rivalName} Without a Camera Crew',
-      'The Conversation Fans Never Saw',
+      "Who Was Driving? {name}'s Crash Story Unravels",
+      "{name} and {rivalName} Give Different Accounts of One Accident",
+      "A Collision, Two Stories, No Easy Answer",
+      "The Night {name}'s Timeline Fell Apart",
     ],
-    beats: [
-      '{name} contacts {rivalName} privately after years of public fighting.',
-      'The pair meets in a quiet café and leaves without posting a single photograph.',
-      'Months later both confirm the feud is over in matching one-sentence statements.',
+    setups: [
+      "{name} is present at a minor but high-profile collision after a party also attended by {rivalName}.",
+      "A vehicle connected to {name} is found damaged hours after {name} and {rivalName} leave the same event.",
+      "An accident involving people from the season becomes controversial when nobody agrees who was behind the wheel.",
+      "{name} gives a simple account of a late-night collision until another witness mentions {rivalName}.",
     ],
-    twists: ['The café owner kept the receipt.', 'Their fans continue fighting anyway.'],
-  },
-  {
-    id: 'recovery_redemption_charity_real',
-    category: 'recovery_redemption',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'recovery_redemption',
-    badge: 'REPUTATION RESCUE',
-    eligibility: {},
-    headlines: ['{name} Builds the Charity Properly This Time', 'The Second Gala Has Receipts'],
-    beats: [
-      '{name} responds to an earlier fundraising scandal by hiring independent oversight.',
-      'Every donation, invoice, and flower arrangement is published online.',
-      'The event raises real money and denies tabloids the disaster they expected.',
+    escalations: [
+      "{rivalName} publicly contradicts one detail, and investigators begin reconstructing the timeline.",
+      "Deleted posts, ride receipts, and security footage become part of an increasingly public dispute.",
+      "A witness says the group switched seats before police arrived, a claim everyone involved denies.",
+      "The story becomes less about the collision and more about whether somebody tried to protect somebody else.",
+    ],
+    outcomes: [
+      "{name} avoids serious charges but loses public trust after changing parts of the story.",
+      "The investigation ends with penalties for a lesser offense and a permanent rupture between {name} and {rivalName}.",
+      "No dramatic cover-up is proven, but the contradictory accounts leave both reputations damaged.",
+      "{name} admits withholding part of the truth to protect another person and accepts the fallout.",
     ],
     twists: [
-      'The accountant receives the loudest applause.',
-      '{name} refuses all photographs at the cheque presentation.',
+      "The decisive footage comes from a shop camera nobody noticed.",
+      "{rivalName}'s first statement was technically true but deliberately incomplete.",
+      "The person most blamed online was not inside the vehicle at all.",
+      "A private apology happens long before the public dispute ends.",
     ],
   },
   {
-    id: 'recovery_redemption_ordinary_reset',
-    category: 'recovery_redemption',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'recovery_redemption',
-    badge: 'QUIET RESET',
+    id: "rehab_recovery",
+    category: "addiction_recovery",
+    tone: "good",
+    weight: 1.05,
+    cooldownGroup: "recovery",
+    badge: "FIGHTING BACK",
     eligibility: {},
     headlines: [
-      '{name} Leaves Fame and Comes Back Better',
-      'The Comeback Begins at a Local Bus Stop',
+      "{name} Steps Away From Fame and Enters Treatment",
+      "A Private Struggle Becomes {name}'s Public Turning Point",
+      "{name} Chooses Recovery Over the Spotlight",
+      "The Comeback Nobody Expected",
     ],
-    beats: [
-      '{name} returns to ordinary routines after months of relentless publicity.',
-      'Fans occasionally spot {object} commuting, shopping, and refusing to skip queues.',
-      'The absence of spectacle slowly repairs {possessive} reputation.',
+    setups: [
+      "Months of relentless appearances and nightlife end when {name} abruptly cancels every public commitment.",
+      "{name} disappears from social media after friends privately express concern about increasingly destructive behavior.",
+      "A representative confirms that {name} has entered treatment for an addiction problem and will step away from work.",
+      "After a chaotic period following the show, {name} acknowledges needing professional help and leaves the public circuit.",
+    ],
+    escalations: [
+      "Tabloids chase details while former housemates ask the public to stop turning treatment into entertainment.",
+      "A leaked photograph triggers a wave of speculation that forces {name}'s family to issue a boundary-setting statement.",
+      "Several sponsors leave, but close friends continue visiting and refuse to discuss the situation publicly.",
+      "An early rumor of a quick return is denied as {name} commits to a longer recovery plan.",
+    ],
+    outcomes: [
+      "{name} returns months later, speaks carefully about recovery, and builds a much smaller but more stable life.",
+      "The comeback is gradual, with {name} choosing limited work and openly prioritizing long-term recovery.",
+      "{name} turns down a sensational interview and instead supports treatment organizations without making the story a brand.",
+      "Recovery becomes the first post-show chapter in which {name} seems less interested in being watched.",
     ],
     twists: [
-      "A bus driver becomes {name}'s most trusted adviser.",
-      'The eventual return is a small theatre show.',
+      "A former rival quietly pays for part of the treatment program.",
+      "The most supportive person from the cast is someone {name} barely spoke to in the house.",
+      "A tabloid offering the largest fee for an interview is refused first.",
+      "The public response is far more compassionate than {name}'s management expected.",
     ],
   },
 ]
+
+function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
+  const index = (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + salt) % values.length
+  return values[index]
+}
+
+function compileTemplate(template: DramaTemplate, templateIndex: number): ScenarioSpec[] {
+  return Array.from({ length: VARIANTS_PER_TEMPLATE }, (_, variantIndex) => {
+    const setup = pick(template.setups, templateIndex, variantIndex, 1)
+    const escalation = pick(template.escalations, templateIndex, variantIndex, 2)
+    const outcome = pick(template.outcomes, templateIndex, variantIndex, 3)
+
+    return {
+      id: `${template.id}_v${variantIndex + 1}`,
+      category: template.category,
+      tone: template.tone,
+      weight: template.weight * (1 - variantIndex * 0.025),
+      cooldownGroup: template.cooldownGroup,
+      badge: template.badge,
+      eligibility: { ...template.eligibility },
+      headlines: [
+        pick(template.headlines, templateIndex, variantIndex, 4),
+        pick(template.headlines, templateIndex, variantIndex + 1, 5),
+        pick(template.headlines, templateIndex, variantIndex + 2, 6),
+      ],
+      beats: [setup, escalation, outcome],
+      twists: [
+        pick(template.twists, templateIndex, variantIndex, 7),
+        pick(template.twists, templateIndex, variantIndex + 1, 8),
+        pick(template.twists, templateIndex, variantIndex + 2, 9),
+      ],
+    }
+  })
+}
+
+export const AFTER_EYE_SCENARIOS_3: ScenarioSpec[] = DRAMA_TEMPLATES.flatMap(compileTemplate)
