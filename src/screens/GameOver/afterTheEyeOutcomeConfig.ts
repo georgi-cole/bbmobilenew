@@ -20,6 +20,8 @@ const EDITORIAL = {
   loadingLabel: 'Printing the late edition…',
 }
 
+// Internal balancing metadata. These values remain in the config for compatibility,
+// but the outcome tier is deliberately not rendered in the player-facing tabloid.
 const TONE_LABELS: Record<BundledAftermathTone, string> = {
   excellent: 'Spectacular',
   good: 'Promising',
@@ -33,12 +35,19 @@ const CATEGORIES: Record<string, string> = {
   career_triumph: 'Career Triumph',
   career_disaster: 'Career Disaster',
   romance: 'Romance',
+  pregnancy_parenthood: 'Pregnancy & Parenthood',
+  marriage_breakup: 'Love, Marriage & Breakups',
   cheating_scandal: 'Cheating Scandal',
+  family_secret: 'Family Secret',
   public_feud: 'Public Feud',
   betrayal: 'Betrayal',
   financial_success: 'Financial Success',
   financial_ruin: 'Financial Ruin',
   legal_trouble: 'Legal Trouble',
+  crime_scandal: 'Crime & Scandal',
+  accident_crisis: 'Accident & Crisis',
+  addiction_recovery: 'Addiction & Recovery',
+  secret_life: 'Secret Life',
   destructive_excess: 'Fame & Excess',
   recovery_redemption: 'Recovery & Redemption',
   strange_business: 'Strange Business',
@@ -68,15 +77,21 @@ function expandBeats(beats: [string, string, string], index: number) {
   const [setup, escalation, outcome] = beats
   const bodyVariants = [
     `${setup} ${escalation} ${outcome}`,
-    `It begins when ${lowerFirst(setup)} Soon, ${lowerFirst(escalation)} In the end, ${lowerFirst(outcome)}`,
-    `At first, ${lowerFirst(setup)} The situation escalates when ${lowerFirst(escalation)} By the final update, ${lowerFirst(outcome)}`,
-    `Nobody expects the story to go this far. ${setup} Then ${lowerFirst(escalation)} Finally, ${lowerFirst(outcome)}`,
+    `${setup} Within days, ${lowerFirst(escalation)} What follows is harder to contain: ${lowerFirst(outcome)}`,
+    `The story begins quietly. ${setup} Then ${lowerFirst(escalation)} By the time the cameras return, ${lowerFirst(outcome)}`,
+    `At first, the facts look simple: ${lowerFirst(setup)} That changes when ${lowerFirst(escalation)} The final turn comes when ${lowerFirst(outcome)}`,
   ]
+
   return {
-    subheadlines: [`${setup} ${outcome}`, `${escalation} The ending becomes impossible to ignore.`],
+    subheadlines: [
+      `${setup} ${outcome}`,
+      `${escalation} ${outcome}`,
+      `What begins in private becomes impossible to contain. ${outcome}`,
+    ],
     bodies: [
       bodyVariants[index % bodyVariants.length],
       bodyVariants[(index + 1) % bodyVariants.length],
+      bodyVariants[(index + 2) % bodyVariants.length],
     ],
     bulletPoints: [setup, escalation, outcome],
   }
