@@ -152,6 +152,25 @@ describe('useGameMode', () => {
     });
   });
 
+  it('re-hides the native status bar when the Android activity regains focus', async () => {
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: {},
+    });
+
+    render(<GameModeHarness hideNativeStatusBar />);
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(1);
+    });
+
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('keeps the measured iOS safe-area behavior unchanged', async () => {
     getPlatform.mockReturnValueOnce('ios');
     Object.defineProperty(screen, 'orientation', {

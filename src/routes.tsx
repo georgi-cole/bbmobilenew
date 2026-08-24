@@ -133,6 +133,15 @@ export const router = createHashRouter([
     ),
     errorElement: <RouteErrorBoundary />,
   },
+  {
+    path: '/phone-preview',
+    element: (
+      <Suspense fallback={null}>
+        <PhonePreviewPage />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorBoundary />,
+  },
   ...(SeasonRecapPreview != null
     ? [
         {
@@ -183,14 +192,6 @@ export const router = createHashRouter([
             },
           ]
         : []),
-      {
-        path: 'phone-preview',
-        element: (
-          <Suspense fallback={null}>
-            <PhonePreviewPage />
-          </Suspense>
-        ),
-      },
       ...(import.meta.env.DEV && CwgoTestPage != null
         ? [
             {

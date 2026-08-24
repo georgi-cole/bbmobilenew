@@ -334,24 +334,24 @@ export default function GameControlDock({
           >
             {(
               [
-                ['settings', '⚙', 'Settings'],
-                ['profile', '♙', 'Profile'],
-                ['rules', '▤', 'Rules'],
-                ['leaderboard', '▥', 'Board'],
-                ['store', '▣', 'Store'],
+                ['settings', navAssetUrl('settings_approved_final.svg'), 'Settings'],
+                ['profile', navAssetUrl('profile_approved_final.svg'), 'Profile'],
+                ['rules', navAssetUrl('rules_approved_final.svg'), 'Rules'],
+                ['leaderboard', navAssetUrl('leaderboard_approved_final.svg'), 'Board'],
+                ['store', `${BASE}/assets/icons/shop.svg`, 'Store'],
               ] as const
-            ).map(([destination, glyph, label]) => (
+            ).map(([destination, icon, label]) => (
               <button
                 key={destination}
                 type="button"
                 role="menuitem"
+                aria-label={label}
                 onClick={() => {
                   setMoreOpen(false)
                   onMoreClick?.(destination)
                 }}
               >
-                <span aria-hidden="true">{glyph}</span>
-                {label}
+                <img src={icon} alt="" aria-hidden="true" draggable={false} />
               </button>
             ))}
           </div>

@@ -1,98 +1,164 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router'
 import './PhonePreviewPage.css'
 
-type DeviceId = 'iphone15' | 'iphone15max' | 'pixel8' | 'galaxyS23'
-type PreviewTarget = 'game' | 'publicFavorite'
+type PreviewTarget =
+  | 'fullApp'
+  | 'game'
+  | 'battleBack'
+  | 'publicFavorite'
+  | 'twinShockExposed'
+  | 'twinShockSecret'
 
-const DEVICES: Record<
-  DeviceId,
+interface PreviewDevice {
+  id: 'iphone' | 'android'
+  label: string
+  family: string
+  width: number
+  height: number
+  frame: 'dynamic-island' | 'punch-hole'
+}
+
+const DEVICES: PreviewDevice[] = [
   {
-    label: string
-    width: number
-    height: number
-    frame: 'dynamic-island' | 'punch-hole' | 'teardrop'
+    id: 'iphone',
+    label: 'iPhone 15 / 16 Pro',
+    family: 'Representative modern iPhone',
+    width: 393,
+    height: 852,
+    frame: 'dynamic-island',
+  },
+  {
+    id: 'android',
+    label: 'Google Pixel 8 / 9',
+    family: 'Representative modern Android',
+    width: 412,
+    height: 915,
+    frame: 'punch-hole',
+  },
+]
+
+const TARGETS: Array<{ value: PreviewTarget; label: string }> = [
+  { value: 'fullApp', label: 'Full game · start or continue' },
+  { value: 'game', label: 'Current gameplay screen' },
+  { value: 'battleBack', label: 'Back 2 the Game' },
+  { value: 'publicFavorite', label: "Public's Favorite" },
+  { value: 'twinShockExposed', label: 'Twin Shock · exposed' },
+  { value: 'twinShockSecret', label: 'Twin Shock · secret kept' },
+]
+
+function isPreviewTarget(value: string | null): value is PreviewTarget {
+  return TARGETS.some((target) => target.value === value)
+}
+
+function buildPhonePreviewUrl(target: PreviewTarget, device: PreviewDevice) {
+  const platformParams = `phonePreview=true&phonePlatform=${device.id}`
+  switch (target) {
+    case 'battleBack':
+      return `${import.meta.env.BASE_URL}#/twists-test?preview=battle-back&${platformParams}`
+    case 'publicFavorite':
+      return `${import.meta.env.BASE_URL}#/twists-test?preview=public-favorite&${platformParams}`
+    case 'twinShockExposed':
+      return `${import.meta.env.BASE_URL}#/twists-test?preview=twin-shock-exposed&${platformParams}`
+    case 'twinShockSecret':
+      return `${import.meta.env.BASE_URL}#/twists-test?preview=twin-shock-secret&${platformParams}`
+    case 'fullApp':
+      return `${import.meta.env.BASE_URL}#/?${platformParams}`
+    case 'game':
+    default:
+      return `${import.meta.env.BASE_URL}#/game?${platformParams}`
   }
-> = {
-  iphone15: { label: 'iPhone 15 / 15 Pro', width: 393, height: 852, frame: 'dynamic-island' },
-  iphone15max: { label: 'iPhone 15 Pro Max', width: 430, height: 932, frame: 'dynamic-island' },
-  pixel8: { label: 'Google Pixel 8', width: 412, height: 915, frame: 'punch-hole' },
-  galaxyS23: { label: 'Galaxy S23', width: 360, height: 800, frame: 'teardrop' },
 }
 
 export default function PhonePreviewPage() {
-  const [deviceId, setDeviceId] = useState<DeviceId>('iphone15')
-  const [target, setTarget] = useState<PreviewTarget>('game')
-  const device = DEVICES[deviceId]
-  const previewUrl = useMemo(
-    () =>
-      target === 'game'
-        ? `${import.meta.env.BASE_URL}#/game?phonePreview=true`
-        : `${import.meta.env.BASE_URL}#/twists-test?preview=public-favorite&phonePreview=true`,
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTarget = searchParams.get('target')
+  const target = isPreviewTarget(requestedTarget) ? requestedTarget : 'fullApp'
+
+  const targetLabel =
+    TARGETS.find((entry) => entry.value === target)?.label ?? 'Full game · start or continue'
+  const previews = useMemo(
+    () => DEVICES.map((device) => ({ device, url: buildPhonePreviewUrl(target, device) })),
     [target]
   )
 
+  const selectTarget = (nextTarget: PreviewTarget) => {
+    setSearchParams({ target: nextTarget }, { replace: true })
+  }
+
   return (
     <main className="phone-preview-page">
-      <div className="phone-preview-page__intro">
-        <p className="phone-preview-page__eyebrow">Local device preview</p>
-        <h1>Real-phone preview</h1>
-        <p>Test the live game at the same viewport size and handset shape players will use.</p>
+      <header className="phone-preview-page__intro">
+        <div>
+          <p className="phone-preview-page__eyebrow">Dual-device QA lab</p>
+          <h1>iPhone + Android preview</h1>
+          <p>Play the complete app or compare a QA scenario at two modern phone sizes.</p>
+        </div>
         <div className="phone-preview-page__controls">
-          <label>
-            Device
-            <select
-              value={deviceId}
-              onChange={(event) => setDeviceId(event.target.value as DeviceId)}
-            >
-              {Object.entries(DEVICES).map(([id, entry]) => (
-                <option key={id} value={id}>
-                  {entry.label} · {entry.width} × {entry.height}
-                </option>
-              ))}
-            </select>
-          </label>
           <label>
             Screen
             <select
               value={target}
-              onChange={(event) => setTarget(event.target.value as PreviewTarget)}
+              onChange={(event) => selectTarget(event.target.value as PreviewTarget)}
             >
-              <option value="game">Live game</option>
-              <option value="publicFavorite">Public Favorite QA</option>
+              {TARGETS.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
             </select>
           </label>
+          <a className="phone-preview-page__back" href="#/twists-test">
+            Back to twist tests
+          </a>
         </div>
-        <a className="phone-preview-page__back" href="#/twists-test">
-          Back to the test page
-        </a>
-      </div>
+      </header>
 
-      <div
-        className={`phone-preview-page__phone phone-preview-page__phone--${device.frame}`}
-        aria-label={`${device.label}, ${device.width} by ${device.height} phone simulator`}
-        style={
-          {
-            '--phone-width': `${device.width}px`,
-            '--phone-height': `${device.height}px`,
-            '--phone-aspect': `${device.width} / ${device.height}`,
-          } as CSSProperties
-        }
+      <section
+        className="phone-preview-page__devices"
+        aria-label={`${targetLabel} device previews`}
       >
-        <div className="phone-preview-page__camera" aria-hidden="true" />
-        <div
-          className="phone-preview-page__side-button phone-preview-page__side-button--volume"
-          aria-hidden="true"
-        />
-        <div
-          className="phone-preview-page__side-button phone-preview-page__side-button--power"
-          aria-hidden="true"
-        />
-        <iframe
-          className="phone-preview-page__screen"
-          title={`${device.label} ${target === 'game' ? 'game' : 'Public Favorite'} preview`}
-          src={previewUrl}
-        />
-      </div>
+        {previews.map(({ device, url }) => (
+          <article className="phone-preview-page__device" key={device.id}>
+            <div className="phone-preview-page__device-heading">
+              <div>
+                <strong>{device.label}</strong>
+                <span>{device.family}</span>
+              </div>
+              <code>
+                {device.width} × {device.height}
+              </code>
+            </div>
+            <div
+              className={`phone-preview-page__phone phone-preview-page__phone--${device.frame}`}
+              aria-label={`${device.label}, ${device.width} by ${device.height} phone simulator`}
+              style={
+                {
+                  '--phone-width': `${device.width}px`,
+                  '--phone-height': `${device.height}px`,
+                  '--phone-aspect': `${device.width} / ${device.height}`,
+                } as CSSProperties
+              }
+            >
+              <div className="phone-preview-page__camera" aria-hidden="true" />
+              <div
+                className="phone-preview-page__side-button phone-preview-page__side-button--volume"
+                aria-hidden="true"
+              />
+              <div
+                className="phone-preview-page__side-button phone-preview-page__side-button--power"
+                aria-hidden="true"
+              />
+              <iframe
+                className="phone-preview-page__screen"
+                name={`phone-preview:${device.id}`}
+                title={`${device.label} ${targetLabel} preview`}
+                src={url}
+              />
+            </div>
+          </article>
+        ))}
+      </section>
     </main>
   )
 }

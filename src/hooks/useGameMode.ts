@@ -50,11 +50,19 @@ export default function useGameMode(hideNativeStatusBar = false): void {
       }
     }
 
+    function handleNativeResume() {
+      void syncStatusBar()
+    }
+
     void syncStatusBar()
     document.addEventListener('visibilitychange', handleStatusBarVisibilityChange)
+    window.addEventListener('focus', handleNativeResume)
+    window.addEventListener('pageshow', handleNativeResume)
 
     return () => {
       document.removeEventListener('visibilitychange', handleStatusBarVisibilityChange)
+      window.removeEventListener('focus', handleNativeResume)
+      window.removeEventListener('pageshow', handleNativeResume)
       if (hideNativeStatusBar) {
         void SystemBars.show({ bar: SystemBarType.StatusBar }).catch(() => undefined)
       }

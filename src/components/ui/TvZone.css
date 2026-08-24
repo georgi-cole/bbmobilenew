@@ -174,18 +174,19 @@
   justify-content: center;
   padding: 20px 18px;
   background:
-    radial-gradient(circle at 16% 14%, rgba(104, 129, 255, 0.18), rgba(104, 129, 255, 0) 28%),
+    radial-gradient(circle at 16% 14%, rgba(121, 113, 210, 0.16), rgba(121, 113, 210, 0) 28%),
+    radial-gradient(ellipse at 24% 20%, rgba(142, 92, 177, 0.07), rgba(142, 92, 177, 0) 42%),
     linear-gradient(
       180deg,
-      rgba(21, 29, 42, 0.78) 0%,
-      rgba(9, 14, 22, 0.9) 36%,
-      rgba(4, 8, 14, 0.98) 100%
+      rgba(14, 19, 29, 0.84) 0%,
+      rgba(6, 10, 17, 0.94) 36%,
+      rgba(2, 5, 10, 0.99) 100%
     );
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 -30px 40px rgba(0, 0, 0, 0.45),
-    0 0 20px rgba(80, 120, 255, 0.08);
+    0 0 20px rgba(112, 84, 183, 0.07);
   overflow: hidden;
   isolation: isolate;
 }
@@ -208,7 +209,10 @@
   text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
 }
 
 .tv-zone__audience-preview-chip:hover:not(:disabled) {
@@ -229,7 +233,8 @@
 }
 
 @keyframes tv-audience-chip-spotlight {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 rgba(96, 165, 250, 0);
     transform: scale(1);
   }
@@ -248,13 +253,13 @@
     linear-gradient(
       134deg,
       rgba(255, 255, 255, 0.1) 0%,
-      rgba(122, 162, 255, 0.08) 16%,
+      rgba(145, 128, 218, 0.075) 16%,
       rgba(255, 255, 255, 0) 42%
     ),
     radial-gradient(
       ellipse at 18% 10%,
       rgba(255, 255, 255, 0.08) 0%,
-      rgba(122, 162, 255, 0.05) 28%,
+      rgba(151, 130, 213, 0.05) 28%,
       rgba(255, 255, 255, 0) 65%
     );
   clip-path: ellipse(
@@ -287,9 +292,15 @@
   z-index: 1;
 }
 
-.tv-zone__head--compact-phase .tv-zone__phase-chip .game-top-chip__label--full { display: none; }
-.tv-zone__head--compact-phase .tv-zone__phase-chip .game-top-chip__label--compact { display: inline; }
-.tv-zone__head--compact-phase .tv-zone__phase-chip { padding-inline: 6px; }
+.tv-zone__head--compact-phase .tv-zone__phase-chip .game-top-chip__label--full {
+  display: none;
+}
+.tv-zone__head--compact-phase .tv-zone__phase-chip .game-top-chip__label--compact {
+  display: inline;
+}
+.tv-zone__head--compact-phase .tv-zone__phase-chip {
+  padding-inline: 6px;
+}
 
 .tv-zone__phase-measure {
   position: absolute;
@@ -306,25 +317,25 @@
    is deterministic per game day, so rerenders never change the atmosphere. */
 .tv-zone__viewport--day-start-sunny {
   --daily-tv-background:
-    radial-gradient(ellipse at 76% 18%, rgba(255, 224, 162, .3), transparent 35%),
-    radial-gradient(ellipse at 25% 20%, rgba(143, 190, 222, .2), transparent 48%),
-    radial-gradient(ellipse at 15% 100%, rgba(71, 43, 91, .2), transparent 48%),
+    radial-gradient(ellipse at 76% 18%, rgba(255, 224, 162, 0.3), transparent 35%),
+    radial-gradient(ellipse at 25% 20%, rgba(143, 190, 222, 0.2), transparent 48%),
+    radial-gradient(ellipse at 15% 100%, rgba(71, 43, 91, 0.2), transparent 48%),
     linear-gradient(180deg, #3a5d73 0%, #284659 51%, #172d44 100%);
 }
 
 .tv-zone__viewport--day-start-cloudy {
   --daily-tv-background:
-    radial-gradient(ellipse at 22% 18%, rgba(225, 232, 235, .24), transparent 44%),
-    radial-gradient(ellipse at 76% 34%, rgba(137, 165, 182, .18), transparent 48%),
-    radial-gradient(ellipse at 52% 100%, rgba(67, 38, 83, .16), transparent 52%),
+    radial-gradient(ellipse at 22% 18%, rgba(225, 232, 235, 0.24), transparent 44%),
+    radial-gradient(ellipse at 76% 34%, rgba(137, 165, 182, 0.18), transparent 48%),
+    radial-gradient(ellipse at 52% 100%, rgba(67, 38, 83, 0.16), transparent 52%),
     linear-gradient(180deg, #465d6c 0%, #2f4654 52%, #1a3040 100%);
 }
 
 .tv-zone__viewport--day-start-rainy {
   --daily-tv-background:
-    radial-gradient(ellipse at 20% 13%, rgba(124, 164, 187, .22), transparent 42%),
-    radial-gradient(ellipse at 86% 38%, rgba(65, 103, 132, .18), transparent 48%),
-    radial-gradient(ellipse at 48% 98%, rgba(64, 36, 86, .2), transparent 54%),
+    radial-gradient(ellipse at 20% 13%, rgba(124, 164, 187, 0.22), transparent 42%),
+    radial-gradient(ellipse at 86% 38%, rgba(65, 103, 132, 0.18), transparent 48%),
+    radial-gradient(ellipse at 48% 98%, rgba(64, 36, 86, 0.2), transparent 54%),
     linear-gradient(180deg, #2f4a5d 0%, #203847 53%, #112735 100%);
 }
 
@@ -348,8 +359,7 @@
 
 .tv-zone__head-pills .game-top-chip--neutral {
   border-color: rgba(205, 195, 226, 0.14);
-  background:
-    linear-gradient(180deg, rgba(45, 31, 66, 0.48), rgba(13, 9, 22, 0.72));
+  background: linear-gradient(180deg, rgba(45, 31, 66, 0.48), rgba(13, 9, 22, 0.72));
   color: rgba(231, 225, 240, 0.88);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.075),
@@ -364,54 +374,54 @@
 .tv-zone__viewport--day-start-misty,
 .tv-zone__viewport--day-end-misty {
   --daily-tv-background:
-    radial-gradient(ellipse at 20% 69%, rgba(217, 231, 231, .22), transparent 43%),
-    radial-gradient(ellipse at 78% 31%, rgba(151, 181, 190, .16), transparent 46%),
-    radial-gradient(ellipse at 48% 100%, rgba(69, 42, 87, .18), transparent 55%),
+    radial-gradient(ellipse at 20% 69%, rgba(217, 231, 231, 0.22), transparent 43%),
+    radial-gradient(ellipse at 78% 31%, rgba(151, 181, 190, 0.16), transparent 46%),
+    radial-gradient(ellipse at 48% 100%, rgba(69, 42, 87, 0.18), transparent 55%),
     linear-gradient(180deg, #4e686f 0%, #38535d 52%, #1e3646 100%);
 }
 
 .tv-zone__viewport--day-start-snowy,
 .tv-zone__viewport--day-end-snowy {
   --daily-tv-background:
-    radial-gradient(ellipse at 24% 19%, rgba(235, 246, 255, .26), transparent 45%),
-    radial-gradient(ellipse at 80% 42%, rgba(164, 198, 224, .16), transparent 45%),
-    radial-gradient(ellipse at 48% 100%, rgba(65, 43, 91, .16), transparent 54%),
+    radial-gradient(ellipse at 24% 19%, rgba(235, 246, 255, 0.26), transparent 45%),
+    radial-gradient(ellipse at 80% 42%, rgba(164, 198, 224, 0.16), transparent 45%),
+    radial-gradient(ellipse at 48% 100%, rgba(65, 43, 91, 0.16), transparent 54%),
     linear-gradient(180deg, #506b82 0%, #36536b 53%, #1c344d 100%);
 }
 
 .tv-zone__viewport--day-start-stormy,
 .tv-zone__viewport--day-end-stormy {
   --daily-tv-background:
-    radial-gradient(ellipse at 44% 9%, rgba(141, 160, 218, .16), transparent 38%),
-    radial-gradient(ellipse at 84% 62%, rgba(68, 94, 137, .14), transparent 46%),
-    radial-gradient(ellipse at 45% 100%, rgba(62, 36, 93, .18), transparent 52%),
+    radial-gradient(ellipse at 44% 9%, rgba(141, 160, 218, 0.16), transparent 38%),
+    radial-gradient(ellipse at 84% 62%, rgba(68, 94, 137, 0.14), transparent 46%),
+    radial-gradient(ellipse at 45% 100%, rgba(62, 36, 93, 0.18), transparent 52%),
     linear-gradient(180deg, #263651 0%, #192941 52%, #0d192e 100%);
 }
 
 .tv-zone__viewport--day-end-sunset {
   --daily-tv-background:
-    radial-gradient(ellipse at 77% 69%, rgba(255, 172, 111, .34), transparent 35%),
-    radial-gradient(ellipse at 18% 14%, rgba(133, 105, 167, .24), transparent 43%),
-    radial-gradient(ellipse at 49% 100%, rgba(59, 31, 74, .18), transparent 54%),
+    radial-gradient(ellipse at 77% 69%, rgba(255, 172, 111, 0.34), transparent 35%),
+    radial-gradient(ellipse at 18% 14%, rgba(133, 105, 167, 0.24), transparent 43%),
+    radial-gradient(ellipse at 49% 100%, rgba(59, 31, 74, 0.18), transparent 54%),
     linear-gradient(180deg, #503d5b 0%, #402d43 51%, #2a2035 100%);
 }
 
 .tv-zone__viewport--day-end-starry {
   --daily-tv-background:
-    radial-gradient(circle at 18% 24%, rgba(255,255,255,.34) 0 1px, transparent 2px),
-    radial-gradient(circle at 67% 18%, rgba(210,225,255,.28) 0 1px, transparent 2px),
-    radial-gradient(circle at 82% 56%, rgba(255,255,255,.24) 0 1px, transparent 2px),
-    radial-gradient(circle at 42% 68%, rgba(210,225,255,.2) 0 1px, transparent 2px),
-    radial-gradient(circle at 16% 12%, rgba(87, 99, 159, .16), transparent 41%),
-    radial-gradient(ellipse at 50% 100%, rgba(54, 28, 72, .18), transparent 55%),
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.34) 0 1px, transparent 2px),
+    radial-gradient(circle at 67% 18%, rgba(210, 225, 255, 0.28) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 56%, rgba(255, 255, 255, 0.24) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 68%, rgba(210, 225, 255, 0.2) 0 1px, transparent 2px),
+    radial-gradient(circle at 16% 12%, rgba(87, 99, 159, 0.16), transparent 41%),
+    radial-gradient(ellipse at 50% 100%, rgba(54, 28, 72, 0.18), transparent 55%),
     linear-gradient(180deg, #202e50 0%, #15223e 52%, #0c1730 100%);
 }
 
 .tv-zone__viewport--day-end-rainy {
   --daily-tv-background:
-    radial-gradient(ellipse at 74% 70%, rgba(196, 126, 105, .16), transparent 40%),
-    radial-gradient(ellipse at 18% 12%, rgba(103, 128, 166, .2), transparent 46%),
-    radial-gradient(ellipse at 50% 100%, rgba(63, 34, 81, .2), transparent 54%),
+    radial-gradient(ellipse at 74% 70%, rgba(196, 126, 105, 0.16), transparent 40%),
+    radial-gradient(ellipse at 18% 12%, rgba(103, 128, 166, 0.2), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(63, 34, 81, 0.2), transparent 54%),
     linear-gradient(180deg, #333a54 0%, #263047 51%, #182137 100%);
 }
 
@@ -446,7 +456,12 @@
 .tv-zone__viewport--day-end-stormy {
   --daily-tv-surface:
     radial-gradient(116% 104% at 50% 46%, transparent 51%, rgba(7, 4, 19, 0.16) 100%),
-    linear-gradient(180deg, rgba(25, 13, 42, 0.055) 0%, rgba(7, 8, 18, 0.015) 36%, rgba(1, 5, 12, 0.22) 100%),
+    linear-gradient(
+      180deg,
+      rgba(25, 13, 42, 0.055) 0%,
+      rgba(7, 8, 18, 0.015) 36%,
+      rgba(1, 5, 12, 0.22) 100%
+    ),
     var(--daily-tv-background);
   background: var(--daily-tv-surface);
   box-shadow:
@@ -491,9 +506,9 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   background-repeat: no-repeat;
   background-size: 100% 100%;
   box-shadow:
-    inset 0 0 30px rgba(3, 8, 16, .32),
-    inset 0 1px 0 rgba(255, 255, 255, .08),
-    0 0 24px rgba(80, 120, 255, .09);
+    inset 0 0 30px rgba(3, 8, 16, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(80, 120, 255, 0.09);
 }
 
 .tv-zone__daily-card {
@@ -506,7 +521,7 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(.7rem, 4cqw, 1.25rem) clamp(.9rem, 7cqw, 2rem);
+  padding: clamp(0.7rem, 4cqw, 1.25rem) clamp(0.9rem, 7cqw, 2rem);
   box-sizing: border-box;
   overflow: hidden;
   border: 0;
@@ -526,7 +541,12 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   height: 68%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(3, 7, 15, 0.18) 0%, rgba(3, 7, 15, 0.07) 42%, transparent 74%);
+  background: radial-gradient(
+    ellipse,
+    rgba(3, 7, 15, 0.18) 0%,
+    rgba(3, 7, 15, 0.07) 42%,
+    transparent 74%
+  );
   filter: blur(12px);
   pointer-events: none;
 }
@@ -546,7 +566,12 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   z-index: 4;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 48%, rgba(2, 5, 12, 0) 25%, rgba(2, 5, 12, 0.045) 58%, rgba(17, 7, 28, 0.18) 100%),
+    radial-gradient(
+      ellipse at 50% 48%,
+      rgba(2, 5, 12, 0) 25%,
+      rgba(2, 5, 12, 0.045) 58%,
+      rgba(17, 7, 28, 0.18) 100%
+    ),
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 19%, rgba(3, 4, 12, 0.16) 100%);
 }
 
@@ -559,7 +584,7 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   border-radius: 50%;
   z-index: 3;
   opacity: 0;
-  filter: blur(.15px);
+  filter: blur(0.15px);
 }
 
 .tv-zone__daily-orb::before {
@@ -568,7 +593,7 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   inset: -95%;
   border-radius: 50%;
   background: radial-gradient(circle, currentColor 0, rgba(255, 255, 255, 0) 68%);
-  opacity: .22;
+  opacity: 0.22;
   filter: blur(9px);
 }
 
@@ -578,9 +603,9 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   z-index: 1;
   opacity: 0;
   background:
-    radial-gradient(ellipse at 15% 72%, rgba(215, 230, 235, .2), transparent 38%),
-    radial-gradient(ellipse at 54% 58%, rgba(170, 199, 213, .14), transparent 38%),
-    radial-gradient(ellipse at 88% 68%, rgba(153, 185, 202, .16), transparent 42%);
+    radial-gradient(ellipse at 15% 72%, rgba(215, 230, 235, 0.2), transparent 38%),
+    radial-gradient(ellipse at 54% 58%, rgba(170, 199, 213, 0.14), transparent 38%),
+    radial-gradient(ellipse at 88% 68%, rgba(153, 185, 202, 0.16), transparent 42%);
   filter: blur(16px);
 }
 
@@ -590,18 +615,29 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   height: 38%;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse at 18% 62%, rgba(226, 236, 240, .38) 0 17%, transparent 48%),
-    radial-gradient(ellipse at 43% 44%, rgba(211, 225, 232, .34) 0 22%, transparent 53%),
-    radial-gradient(ellipse at 72% 60%, rgba(188, 207, 218, .26) 0 20%, transparent 52%);
+    radial-gradient(ellipse at 18% 62%, rgba(226, 236, 240, 0.38) 0 17%, transparent 48%),
+    radial-gradient(ellipse at 43% 44%, rgba(211, 225, 232, 0.34) 0 22%, transparent 53%),
+    radial-gradient(ellipse at 72% 60%, rgba(188, 207, 218, 0.26) 0 20%, transparent 52%);
   filter: blur(8px);
   z-index: 2;
   opacity: 0;
   will-change: translate;
 }
 
-.tv-zone__daily-cloud--one { left: -9%; top: 8%; }
-.tv-zone__daily-cloud--two { right: -13%; top: 31%; transform: scale(.88, .72); }
-.tv-zone__daily-cloud--three { left: 22%; top: 53%; transform: scale(.72, .54); }
+.tv-zone__daily-cloud--one {
+  left: -9%;
+  top: 8%;
+}
+.tv-zone__daily-cloud--two {
+  right: -13%;
+  top: 31%;
+  transform: scale(0.88, 0.72);
+}
+.tv-zone__daily-cloud--three {
+  left: 22%;
+  top: 53%;
+  transform: scale(0.72, 0.54);
+}
 
 .tv-zone__daily-rain {
   position: absolute;
@@ -609,16 +645,28 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   z-index: 2;
   opacity: 0;
   background:
-    radial-gradient(ellipse 1px 6px at 8% 18%, rgba(216, 235, 245, .52) 0 36%, transparent 48%),
-    radial-gradient(ellipse 1.2px 10px at 17% 62%, rgba(194, 218, 232, .4) 0 35%, transparent 47%),
-    radial-gradient(ellipse 1px 7px at 26% 31%, rgba(232, 244, 249, .46) 0 36%, transparent 48%),
-    radial-gradient(ellipse 1.3px 12px at 38% 76%, rgba(181, 211, 229, .42) 0 36%, transparent 48%),
-    radial-gradient(ellipse 1px 8px at 49% 45%, rgba(225, 240, 248, .46) 0 35%, transparent 47%),
-    radial-gradient(ellipse 1.2px 11px at 61% 20%, rgba(192, 218, 233, .44) 0 36%, transparent 48%),
-    radial-gradient(ellipse 1px 7px at 73% 58%, rgba(232, 244, 249, .4) 0 35%, transparent 47%),
-    radial-gradient(ellipse 1.3px 12px at 84% 35%, rgba(183, 211, 229, .46) 0 36%, transparent 48%),
-    radial-gradient(ellipse 1px 8px at 93% 80%, rgba(220, 238, 248, .42) 0 35%, transparent 47%);
-  filter: blur(.15px) drop-shadow(0 0 2px rgba(181, 211, 231, .18));
+    radial-gradient(ellipse 1px 6px at 8% 18%, rgba(216, 235, 245, 0.52) 0 36%, transparent 48%),
+    radial-gradient(ellipse 1.2px 10px at 17% 62%, rgba(194, 218, 232, 0.4) 0 35%, transparent 47%),
+    radial-gradient(ellipse 1px 7px at 26% 31%, rgba(232, 244, 249, 0.46) 0 36%, transparent 48%),
+    radial-gradient(
+      ellipse 1.3px 12px at 38% 76%,
+      rgba(181, 211, 229, 0.42) 0 36%,
+      transparent 48%
+    ),
+    radial-gradient(ellipse 1px 8px at 49% 45%, rgba(225, 240, 248, 0.46) 0 35%, transparent 47%),
+    radial-gradient(
+      ellipse 1.2px 11px at 61% 20%,
+      rgba(192, 218, 233, 0.44) 0 36%,
+      transparent 48%
+    ),
+    radial-gradient(ellipse 1px 7px at 73% 58%, rgba(232, 244, 249, 0.4) 0 35%, transparent 47%),
+    radial-gradient(
+      ellipse 1.3px 12px at 84% 35%,
+      rgba(183, 211, 229, 0.46) 0 36%,
+      transparent 48%
+    ),
+    radial-gradient(ellipse 1px 8px at 93% 80%, rgba(220, 238, 248, 0.42) 0 35%, transparent 47%);
+  filter: blur(0.15px) drop-shadow(0 0 2px rgba(181, 211, 231, 0.18));
   will-change: transform;
 }
 
@@ -627,23 +675,43 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   position: absolute;
   inset: -4%;
   background:
-    radial-gradient(ellipse 1.7px 15px at 5% 44%, rgba(191, 219, 235, .36) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.4px 12px at 13% 83%, rgba(222, 240, 248, .3) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.8px 16px at 22% 12%, rgba(179, 212, 230, .34) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.4px 11px at 34% 51%, rgba(226, 241, 249, .32) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.7px 15px at 46% 25%, rgba(183, 215, 232, .34) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.3px 10px at 56% 72%, rgba(224, 240, 248, .3) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.8px 16px at 67% 41%, rgba(180, 213, 231, .34) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.4px 12px at 79% 16%, rgba(226, 241, 249, .32) 0 32%, transparent 43%),
-    radial-gradient(ellipse 1.7px 15px at 88% 65%, rgba(181, 214, 232, .34) 0 32%, transparent 43%);
-  opacity: .7;
+    radial-gradient(ellipse 1.7px 15px at 5% 44%, rgba(191, 219, 235, 0.36) 0 32%, transparent 43%),
+    radial-gradient(ellipse 1.4px 12px at 13% 83%, rgba(222, 240, 248, 0.3) 0 32%, transparent 43%),
+    radial-gradient(
+      ellipse 1.8px 16px at 22% 12%,
+      rgba(179, 212, 230, 0.34) 0 32%,
+      transparent 43%
+    ),
+    radial-gradient(
+      ellipse 1.4px 11px at 34% 51%,
+      rgba(226, 241, 249, 0.32) 0 32%,
+      transparent 43%
+    ),
+    radial-gradient(
+      ellipse 1.7px 15px at 46% 25%,
+      rgba(183, 215, 232, 0.34) 0 32%,
+      transparent 43%
+    ),
+    radial-gradient(ellipse 1.3px 10px at 56% 72%, rgba(224, 240, 248, 0.3) 0 32%, transparent 43%),
+    radial-gradient(
+      ellipse 1.8px 16px at 67% 41%,
+      rgba(180, 213, 231, 0.34) 0 32%,
+      transparent 43%
+    ),
+    radial-gradient(
+      ellipse 1.4px 12px at 79% 16%,
+      rgba(226, 241, 249, 0.32) 0 32%,
+      transparent 43%
+    ),
+    radial-gradient(ellipse 1.7px 15px at 88% 65%, rgba(181, 214, 232, 0.34) 0 32%, transparent 43%);
+  opacity: 0.7;
 }
 
 .tv-zone__daily-rain::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 72% 18%, rgba(221, 237, 255, .42), transparent 44%);
+  background: radial-gradient(circle at 72% 18%, rgba(221, 237, 255, 0.42), transparent 44%);
   opacity: 0;
   mix-blend-mode: screen;
 }
@@ -653,104 +721,115 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   position: absolute;
   inset: -30% -18%;
   z-index: 1;
-  opacity: .32;
+  opacity: 0.32;
   background: conic-gradient(
     from 205deg at 78% 20%,
     transparent 0 9deg,
-    rgba(255, 232, 171, .18) 10deg 17deg,
+    rgba(255, 232, 171, 0.18) 10deg 17deg,
     transparent 18deg 34deg,
-    rgba(255, 237, 187, .12) 35deg 42deg,
+    rgba(255, 237, 187, 0.12) 35deg 42deg,
     transparent 43deg 360deg
   );
   filter: blur(8px);
 }
 
 .tv-zone__daily-atmosphere--sunny .tv-zone__daily-orb {
-  color: rgba(255, 222, 132, .72);
-  opacity: .68;
-  background: radial-gradient(circle at 38% 34%, rgba(255, 245, 207, .92), rgba(235, 196, 117, .68) 60%, rgba(201, 138, 68, 0) 100%);
-  box-shadow: 0 0 24px rgba(247, 202, 107, .24), 0 0 70px rgba(247, 202, 107, .12);
-  filter: blur(.8px);
+  color: rgba(255, 222, 132, 0.72);
+  opacity: 0.68;
+  background: radial-gradient(
+    circle at 38% 34%,
+    rgba(255, 245, 207, 0.92),
+    rgba(235, 196, 117, 0.68) 60%,
+    rgba(201, 138, 68, 0) 100%
+  );
+  box-shadow:
+    0 0 24px rgba(247, 202, 107, 0.24),
+    0 0 70px rgba(247, 202, 107, 0.12);
+  filter: blur(0.8px);
 }
 
 .tv-zone__daily-atmosphere--cloudy .tv-zone__daily-cloud,
-.tv-zone__daily-atmosphere--rainy .tv-zone__daily-cloud { opacity: 1; }
-.tv-zone__daily-atmosphere--rainy .tv-zone__daily-rain { opacity: .58; }
+.tv-zone__daily-atmosphere--rainy .tv-zone__daily-cloud {
+  opacity: 1;
+}
+.tv-zone__daily-atmosphere--rainy .tv-zone__daily-rain {
+  opacity: 0.58;
+}
 
 .tv-zone__daily-atmosphere--cloudy .tv-zone__daily-cloud--one {
-  opacity: .88;
+  opacity: 0.88;
 }
 
 .tv-zone__daily-atmosphere--cloudy .tv-zone__daily-cloud--two {
-  opacity: .72;
+  opacity: 0.72;
 }
 
 .tv-zone__daily-atmosphere--cloudy .tv-zone__daily-cloud--three {
-  opacity: .5;
+  opacity: 0.5;
 }
 
 .tv-zone__daily-atmosphere--rainy .tv-zone__daily-cloud--one {
-  opacity: .68;
-  filter: blur(10px) brightness(.72) saturate(.72);
+  opacity: 0.68;
+  filter: blur(10px) brightness(0.72) saturate(0.72);
 }
 
 .tv-zone__daily-atmosphere--rainy .tv-zone__daily-cloud--two {
-  opacity: .52;
-  filter: blur(11px) brightness(.68) saturate(.68);
+  opacity: 0.52;
+  filter: blur(11px) brightness(0.68) saturate(0.68);
 }
 
 .tv-zone__daily-atmosphere--rainy .tv-zone__daily-cloud--three {
-  opacity: .42;
-  filter: blur(12px) brightness(.64) saturate(.66);
+  opacity: 0.42;
+  filter: blur(12px) brightness(0.64) saturate(0.66);
 }
 
 .tv-zone__daily-atmosphere--rainy {
-  filter: saturate(.72) brightness(.82);
+  filter: saturate(0.72) brightness(0.82);
 }
 
 .tv-zone__daily-atmosphere--rainy .tv-zone__daily-fog {
-  opacity: .78;
+  opacity: 0.78;
 }
 
 .tv-zone__daily-atmosphere--rainy .tv-zone__daily-rain {
-  opacity: .9;
+  opacity: 0.9;
 }
 
 .tv-zone__daily-atmosphere--misty .tv-zone__daily-fog {
   inset: -22% -18%;
-  opacity: .98;
+  opacity: 0.98;
   background:
-    radial-gradient(ellipse at 8% 70%, rgba(219, 233, 232, .26), transparent 31%),
-    radial-gradient(ellipse at 42% 57%, rgba(192, 213, 216, .22), transparent 35%),
-    radial-gradient(ellipse at 83% 68%, rgba(167, 194, 204, .24), transparent 34%),
-    radial-gradient(ellipse at 60% 30%, rgba(139, 167, 180, .12), transparent 38%),
-    linear-gradient(180deg, transparent 34%, rgba(213, 227, 227, .12) 54%, transparent 74%);
+    radial-gradient(ellipse at 8% 70%, rgba(219, 233, 232, 0.26), transparent 31%),
+    radial-gradient(ellipse at 42% 57%, rgba(192, 213, 216, 0.22), transparent 35%),
+    radial-gradient(ellipse at 83% 68%, rgba(167, 194, 204, 0.24), transparent 34%),
+    radial-gradient(ellipse at 60% 30%, rgba(139, 167, 180, 0.12), transparent 38%),
+    linear-gradient(180deg, transparent 34%, rgba(213, 227, 227, 0.12) 54%, transparent 74%);
   filter: blur(15px);
 }
 
 .tv-zone__daily-atmosphere--misty .tv-zone__daily-cloud--one {
-  opacity: .34;
+  opacity: 0.34;
   filter: blur(13px) brightness(1.1);
 }
 
 .tv-zone__daily-atmosphere--snowy .tv-zone__daily-fog {
-  opacity: .46;
+  opacity: 0.46;
 }
 
 .tv-zone__daily-atmosphere--snowy .tv-zone__daily-rain {
-  opacity: .9;
+  opacity: 0.9;
   background:
-    radial-gradient(circle at 8% 18%, rgba(255,255,255,.9) 0 1.5px, transparent 1.8px),
-    radial-gradient(circle at 23% 52%, rgba(219,240,255,.82) 0 1.2px, transparent 1.6px),
-    radial-gradient(circle at 41% 28%, rgba(255,255,255,.86) 0 1.4px, transparent 1.8px),
-    radial-gradient(circle at 58% 74%, rgba(219,240,255,.78) 0 1px, transparent 1.4px),
-    radial-gradient(circle at 76% 38%, rgba(255,255,255,.88) 0 1.5px, transparent 1.8px),
-    radial-gradient(circle at 92% 66%, rgba(219,240,255,.8) 0 1.1px, transparent 1.5px),
-    radial-gradient(circle at 13% 82%, rgba(255,255,255,.54) 0 .8px, transparent 1.2px),
-    radial-gradient(circle at 33% 11%, rgba(220,240,255,.56) 0 .8px, transparent 1.2px),
-    radial-gradient(circle at 65% 19%, rgba(255,255,255,.5) 0 .7px, transparent 1.1px),
-    radial-gradient(circle at 87% 84%, rgba(220,240,255,.58) 0 .9px, transparent 1.3px);
-  filter: drop-shadow(0 0 3px rgba(226, 244, 255, .34));
+    radial-gradient(circle at 8% 18%, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 1.8px),
+    radial-gradient(circle at 23% 52%, rgba(219, 240, 255, 0.82) 0 1.2px, transparent 1.6px),
+    radial-gradient(circle at 41% 28%, rgba(255, 255, 255, 0.86) 0 1.4px, transparent 1.8px),
+    radial-gradient(circle at 58% 74%, rgba(219, 240, 255, 0.78) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 76% 38%, rgba(255, 255, 255, 0.88) 0 1.5px, transparent 1.8px),
+    radial-gradient(circle at 92% 66%, rgba(219, 240, 255, 0.8) 0 1.1px, transparent 1.5px),
+    radial-gradient(circle at 13% 82%, rgba(255, 255, 255, 0.54) 0 0.8px, transparent 1.2px),
+    radial-gradient(circle at 33% 11%, rgba(220, 240, 255, 0.56) 0 0.8px, transparent 1.2px),
+    radial-gradient(circle at 65% 19%, rgba(255, 255, 255, 0.5) 0 0.7px, transparent 1.1px),
+    radial-gradient(circle at 87% 84%, rgba(220, 240, 255, 0.58) 0 0.9px, transparent 1.3px);
+  filter: drop-shadow(0 0 3px rgba(226, 244, 255, 0.34));
 }
 
 .tv-zone__daily-atmosphere--snowy .tv-zone__daily-rain::before,
@@ -759,48 +838,52 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
 }
 
 .tv-zone__daily-atmosphere--stormy {
-  filter: saturate(.66) brightness(.72);
+  filter: saturate(0.66) brightness(0.72);
 }
 
 .tv-zone__daily-atmosphere--stormy .tv-zone__daily-cloud {
   opacity: 1;
-  filter: blur(11px) brightness(.48) saturate(.72);
+  filter: blur(11px) brightness(0.48) saturate(0.72);
 }
 
 .tv-zone__daily-atmosphere--stormy .tv-zone__daily-fog,
 .tv-zone__daily-atmosphere--stormy .tv-zone__daily-rain {
-  opacity: .92;
+  opacity: 0.92;
 }
 
 .tv-zone__daily-atmosphere--stormy .tv-zone__daily-rain::after {
-  opacity: .26;
+  opacity: 0.26;
 }
 
 .tv-zone__daily-atmosphere--sunset .tv-zone__daily-orb {
   top: auto;
   right: 15%;
   bottom: 19%;
-  color: rgba(255, 162, 105, .8);
-  opacity: .92;
+  color: rgba(255, 162, 105, 0.8);
+  opacity: 0.92;
   background: radial-gradient(circle at 38% 34%, #ffd0a0, #dc744f 70%, #9f3e45);
-  box-shadow: 0 0 22px rgba(239, 132, 83, .4), 0 0 64px rgba(196, 79, 77, .2);
+  box-shadow:
+    0 0 22px rgba(239, 132, 83, 0.4),
+    0 0 64px rgba(196, 79, 77, 0.2);
 }
 
 .tv-zone__daily-atmosphere--sunset .tv-zone__daily-fog {
-  opacity: .55;
+  opacity: 0.55;
   background:
-    radial-gradient(ellipse at 68% 76%, rgba(255, 184, 125, .18), transparent 38%),
-    radial-gradient(ellipse at 22% 66%, rgba(179, 126, 184, .12), transparent 42%);
+    radial-gradient(ellipse at 68% 76%, rgba(255, 184, 125, 0.18), transparent 38%),
+    radial-gradient(ellipse at 22% 66%, rgba(179, 126, 184, 0.12), transparent 42%);
 }
 
 .tv-zone__daily-atmosphere--starry .tv-zone__daily-orb {
   top: 16%;
   right: 15%;
   width: clamp(23px, 6%, 36px);
-  color: rgba(220, 233, 255, .65);
-  opacity: .82;
+  color: rgba(220, 233, 255, 0.65);
+  opacity: 0.82;
   background: radial-gradient(circle at 32% 30%, #fff9dc 0 42%, #d8e5f0 68%, #a9b6cf 100%);
-  box-shadow: 0 0 19px rgba(220, 233, 255, .28), 0 0 56px rgba(134, 163, 222, .16);
+  box-shadow:
+    0 0 19px rgba(220, 233, 255, 0.28),
+    0 0 56px rgba(134, 163, 222, 0.16);
 }
 
 .tv-zone__daily-atmosphere--starry .tv-zone__daily-orb::after {
@@ -832,14 +915,14 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   position: absolute;
   inset: 0;
   z-index: 1;
-  opacity: .65;
+  opacity: 0.65;
   background:
-    radial-gradient(circle at 9% 24%, rgba(236,242,255,.7) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 27% 62%, rgba(214,225,255,.54) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 44% 16%, rgba(255,255,255,.68) 0 1px, transparent 1.7px),
-    radial-gradient(circle at 63% 48%, rgba(218,229,255,.52) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 78% 12%, rgba(255,255,255,.72) 0 1px, transparent 1.7px),
-    radial-gradient(circle at 91% 67%, rgba(218,229,255,.5) 0 1px, transparent 1.5px);
+    radial-gradient(circle at 9% 24%, rgba(236, 242, 255, 0.7) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 27% 62%, rgba(214, 225, 255, 0.54) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 44% 16%, rgba(255, 255, 255, 0.68) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 63% 48%, rgba(218, 229, 255, 0.52) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.72) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 91% 67%, rgba(218, 229, 255, 0.5) 0 1px, transparent 1.5px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -889,45 +972,88 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
 }
 
 @keyframes daily-cloud-drift-one {
-  from { translate: -3% 0; }
-  to { translate: 8% 2%; }
+  from {
+    translate: -3% 0;
+  }
+  to {
+    translate: 8% 2%;
+  }
 }
 
 @keyframes daily-cloud-drift-two {
-  from { translate: 3% 0; }
-  to { translate: -6% 2%; }
+  from {
+    translate: 3% 0;
+  }
+  to {
+    translate: -6% 2%;
+  }
 }
 
 @keyframes daily-cloud-drift-three {
-  from { translate: -2% 1%; }
-  to { translate: 5% -1%; }
+  from {
+    translate: -2% 1%;
+  }
+  to {
+    translate: 5% -1%;
+  }
 }
 
 @keyframes daily-rain-fall {
-  from { transform: translate3d(0, -9%, 0); }
-  to { transform: translate3d(0, 13%, 0); }
+  from {
+    transform: translate3d(0, -9%, 0);
+  }
+  to {
+    transform: translate3d(0, 13%, 0);
+  }
 }
 
 @keyframes daily-snow-fall {
-  from { transform: translate3d(-2%, -9%, 0); }
-  to { transform: translate3d(4%, 13%, 0); }
+  from {
+    transform: translate3d(-2%, -9%, 0);
+  }
+  to {
+    transform: translate3d(4%, 13%, 0);
+  }
 }
 
 @keyframes daily-fog-breathe {
-  from { opacity: .45; translate: -2% 0; }
-  to { opacity: .78; translate: 2% 1%; }
+  from {
+    opacity: 0.45;
+    translate: -2% 0;
+  }
+  to {
+    opacity: 0.78;
+    translate: 2% 1%;
+  }
 }
 
 @keyframes daily-mist-drift {
-  from { opacity: .84; translate: -2.5% 0; }
-  to { opacity: .98; translate: 2.5% 1%; }
+  from {
+    opacity: 0.84;
+    translate: -2.5% 0;
+  }
+  to {
+    opacity: 0.98;
+    translate: 2.5% 1%;
+  }
 }
 
 @keyframes daily-lightning-glow {
-  0%, 78%, 81%, 100% { opacity: 0; }
-  79% { opacity: .12; }
-  79.6% { opacity: .03; }
-  80.2% { opacity: .08; }
+  0%,
+  78%,
+  81%,
+  100% {
+    opacity: 0;
+  }
+  79% {
+    opacity: 0.12;
+  }
+  79.6% {
+    opacity: 0.03;
+  }
+  80.2% {
+    opacity: 0.08;
+  }
 }
 
 .tv-zone__daily-card .tv-zone__now {
@@ -939,27 +1065,27 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
-  font-size: clamp(.78rem, 3.4cqw, 1.04rem);
+  font-size: clamp(0.78rem, 3.4cqw, 1.04rem);
   line-height: 1.36;
   text-align: center;
   text-wrap: balance;
   background: transparent;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .tv-zone__daily-mood {
   position: relative;
   z-index: 3;
   max-width: 33rem;
-  margin: -.1rem auto 0;
-  padding: 0 .9rem;
-  color: rgba(232, 239, 248, .76);
-  font-size: clamp(.67rem, 2.2cqw, .79rem);
+  margin: -0.1rem auto 0;
+  padding: 0 0.9rem;
+  color: rgba(232, 239, 248, 0.76);
+  font-size: clamp(0.67rem, 2.2cqw, 0.79rem);
   font-weight: 500;
   line-height: 1.45;
   text-align: center;
   text-wrap: balance;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   animation: signalLockReveal 480ms 80ms both ease-out;
 }
 

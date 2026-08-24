@@ -23,44 +23,61 @@
 }
 
 .game-control-dock__more-menu {
+  --more-menu-button-size: 44px;
   position: absolute;
-  right: 3.5%;
+  right: max(8px, calc(11% - 27px));
   bottom: 61%;
   z-index: 8;
   display: grid;
-  grid-template-columns: 132px;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgba(203, 213, 255, 0.34);
-  border-radius: 14px 14px 10px 14px;
-  background: linear-gradient(155deg, rgba(27, 38, 72, 0.78), rgba(11, 18, 40, 0.68));
+  grid-template-columns: var(--more-menu-button-size);
+  gap: 6px;
+  width: calc(var(--more-menu-button-size) + 10px);
+  box-sizing: border-box;
+  padding: 5px;
+  border: 1px solid rgba(189, 171, 239, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(37, 26, 60, 0.98), rgba(12, 10, 25, 0.98));
   box-shadow:
-    0 14px 32px rgba(0, 0, 0, 0.28),
-    inset 0 1px rgba(255, 255, 255, 0.17);
-  backdrop-filter: blur(24px) saturate(1.28);
-  -webkit-backdrop-filter: blur(24px) saturate(1.28);
+    0 14px 28px rgba(0, 0, 0, 0.42),
+    0 0 18px rgba(111, 82, 181, 0.12),
+    inset 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
 }
 .game-control-dock__more-menu button {
   position: relative;
   display: flex;
+  width: var(--more-menu-button-size);
+  height: var(--more-menu-button-size);
+  min-width: var(--more-menu-button-size);
+  min-height: var(--more-menu-button-size);
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 9px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #f3f4ff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-align: center;
+  border-radius: 10px;
+  padding: 0;
+  background: rgba(121, 99, 177, 0.18);
+  color: rgba(244, 240, 255, 0.94);
   cursor: pointer;
 }
 .game-control-dock__more-menu button span {
-  position: absolute;
-  left: 10px;
+  display: none;
 }
 .game-control-dock__more-menu button:hover {
-  background: rgba(113, 126, 255, 0.28);
+  background: rgba(145, 122, 205, 0.3);
+}
+.game-control-dock__more-menu button:focus-visible {
+  outline: 2px solid rgba(192, 177, 255, 0.9);
+  outline-offset: 1px;
+}
+.game-control-dock__more-menu button img {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+  opacity: 0.96;
+  filter: saturate(0.78) brightness(1.12) drop-shadow(0 1px 3px rgba(126, 99, 199, 0.28));
+  pointer-events: none;
 }
 
 .floating-action-bar__blocked-message {

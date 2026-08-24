@@ -9,6 +9,7 @@ import useGameMode from '../../hooks/useGameMode'
 import { buildViewportMetaContent } from './viewportMeta'
 import PortraitOrientationGuard from './PortraitOrientationGuard'
 import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice'
+import PhonePreviewSystemChrome from './PhonePreviewSystemChrome'
 import './AppShell.css'
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean']
@@ -45,6 +46,8 @@ export default function AppShell() {
   const remoteConfig = useAppSelector(selectRemoteConfig)
   const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
 
+  // Gameplay owns the full Android display. Other screens restore the native
+  // status bar and continue to use the measured safe-area inset.
   useGameMode(location.pathname === '/game')
 
   // Apply theme preset and accessibility classes to document.body
@@ -145,6 +148,7 @@ export default function AppShell() {
       )}
       <PortraitOrientationGuard />
       <SaveRecoveryNotice />
+      <PhonePreviewSystemChrome />
     </div>
   )
 }

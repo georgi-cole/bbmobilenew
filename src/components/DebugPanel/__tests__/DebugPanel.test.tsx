@@ -36,6 +36,20 @@ function makeStore() {
 }
 
 describe('DebugPanel forced shock controls', () => {
+  it('stays hidden inside phone comparison frames', () => {
+    const store = makeStore();
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/twists-test?debug=1&qa=1&phonePreview=true']}>
+          <DebugPanel />
+        </MemoryRouter>
+      </Provider>
+    );
+
+    expect(screen.queryByRole('complementary', { name: 'Debug Panel' })).toBeNull();
+  });
+
   it('opens when the mounted app navigates into debug mode', async () => {
     const user = userEvent.setup();
     const store = makeStore();
