@@ -62,7 +62,10 @@ const ROSTER_COLUMNS = 4
 const ROSTER_GAP = 5
 const GAME_INLINE_PADDING = 24
 const ROSTER_INLINE_PADDING = 0
-const ROSTER_HEADER_HEIGHT = 30
+// The persistent label row measures 33px and owns an 8px bottom rhythm before
+// the first avatar row. Budget both pieces so residual-fill math cannot push
+// the final row underneath the visible dock shell.
+const ROSTER_HEADER_HEIGHT = 41
 const GAME_VERTICAL_PADDING = 8
 const GAME_SECTION_GAPS = 8
 const MOBILE_TV_LOG_ROW_HEIGHT = 32
@@ -70,6 +73,7 @@ const WIDE_TV_LOG_ROW_HEIGHT = 36
 const TV_CHROME_HEIGHT = 88
 const MAX_INLINE_TV_LOG_ROWS = 3
 const AUTO_TV_LOG_RESERVE = 12
+const MAX_AVATAR_TILE_HEIGHT_RATIO = 1.28
 const PHONE_SMALL_MAX_TV_VIEWPORT_EXPANSION = 32
 const PHONE_MEDIUM_MAX_TV_VIEWPORT_EXPANSION = 48
 const PHONE_LARGE_MAX_TV_VIEWPORT_EXPANSION = 64
@@ -329,24 +333,48 @@ export function computeResponsiveGameLayout(
   const remainingAfterLogRows = Math.max(0, extraAfterFeature - logRowsFromExtra * tvLogRowHeight)
   // Removing the bottom navigation must not make the Faux TV taller. That
   // reclaimed space belongs to the lower rail and roster, not the broadcast.
-  const breathingRoom = clamp(
+  const baseBreathingRoom = clamp(
     remainingAfterLogRows - (input.unifiedActionRail ? DEFAULT_NAV_HEIGHT : 0),
     0,
     resolveTvViewportExpansionLimit(layoutSize)
   )
+  const compactRoster = baseRosterMode === 'compact-small'
+  const avatarTileSize = baseAvatarTileSize
+  const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
+  // The unified rail replaces the old bottom navbar, which returns a sizeable
+  // vertical band to the game screen. After the optional House Feed rows and
+  // bounded TV expansion have taken what they can use, distribute every whole
+  // remaining row-pixel across the roster. Without this final allocation the
+  // flex container grows but its fixed-height grid remains pinned to the top,
+  // producing a device-dependent empty row above the dock.
+  const residualRosterSpace =
+    rosterMode === 'scroll' ? 0 : Math.max(0, remainingAfterLogRows - baseBreathingRoom)
+  const maxAvatarTileHeightExpansion = Math.max(
+    0,
+    Math.floor(avatarTileSizePx * (MAX_AVATAR_TILE_HEIGHT_RATIO - 1))
+  )
+  const avatarTileHeightExpansion = Math.min(
+    maxAvatarTileHeightExpansion,
+    Math.floor(residualRosterSpace / rosterRows)
+  )
+  const rosterFillConsumed = avatarTileHeightExpansion * rosterRows
+  // Very tall screens should not distort portraits beyond the restrained
+  // portrait ratio. Any residual after that cap returns to the TV viewport,
+  // preserving a full composition without a blank spacer row.
+  const overflowTvExpansion = Math.max(0, residualRosterSpace - rosterFillConsumed)
+  const breathingRoom = baseBreathingRoom + overflowTvExpansion
   const tvHeight = minTvHeight + logRowsFromExtra * tvLogRowHeight + breathingRoom
   const tvViewportHeight = minTvViewportHeight + breathingRoom
-  const compactRoster = baseRosterMode === 'compact-small'
   const rosterMaxHeight =
     rosterMode === 'scroll'
       ? Math.max(normalTileSize, availableAfterTv - minTvHeight)
-      : baseRosterHeightWithoutHeader
-  const avatarTileSize = baseAvatarTileSize
-  const avatarTileSizePx = Math.max(0, Math.floor(avatarTileSize))
+      : baseRosterHeightWithoutHeader + avatarTileHeightExpansion * rosterRows
   const actionDockScale =
     input.unifiedActionRail || bottomControlsMode === 'normal' ? 1 : COMPACT_DOCK_SCALE
   const actionDockGap = bottomControlsMode === 'normal' ? NORMAL_DOCK_GAP : COMPACT_DOCK_GAP
-  const avatarTileHeightPx = Math.max(0, avatarTileSizePx - Math.ceil(actionDockGap / rosterRows))
+  const avatarTileHeightPx = Math.max(0, avatarTileSizePx + avatarTileHeightExpansion)
+  const rosterBoardHeightPx =
+    rosterRows * avatarTileHeightPx + Math.max(0, rosterRows - 1) * ROSTER_GAP
   const navItemLabelDisplay = bottomControlsMode === 'normal' ? 'block' : 'none'
 
   const cssVars = {
@@ -364,7 +392,7 @@ export function computeResponsiveGameLayout(
     '--game-screen-tv-viewport-min-height': `${roundPx(tvViewportHeight)}px`,
     '--game-tv-log-rows': String(tvLogRows),
     '--game-roster-max-height': `${roundPx(rosterMaxHeight)}px`,
-    '--game-roster-board-height': `${roundPx(baseRosterHeightWithoutHeader)}px`,
+    '--game-roster-board-height': `${roundPx(rosterBoardHeightPx)}px`,
     '--game-avatar-tile-size': `${avatarTileSizePx}px`,
     '--game-avatar-tile-height': `${avatarTileHeightPx}px`,
     '--game-roster-gap': `${ROSTER_GAP}px`,
@@ -398,6 +426,7 @@ export function computeResponsiveGameLayout(
     roundPx(tvHeight),
     roundPx(rosterMaxHeight),
     avatarTileSizePx,
+    avatarTileHeightPx,
     roundPx(dockClearance),
     roundPx(selectedNavHeight),
     roundPx(effectiveSafeTop),
