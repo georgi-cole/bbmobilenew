@@ -26,11 +26,11 @@ const editorial = {
 }
 
 const toneLabels = {
-  excellent: 'Spectacular',
-  good: 'Promising',
-  neutral: 'Strange',
-  bad: 'Messy',
-  tragic: 'Catastrophic',
+  excellent: 'AFTERMATH',
+  good: 'AFTERMATH',
+  neutral: 'AFTERMATH',
+  bad: 'AFTERMATH',
+  tragic: 'AFTERMATH',
 }
 
 const categories = {
