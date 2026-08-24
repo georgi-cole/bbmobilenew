@@ -20,14 +20,14 @@ const EDITORIAL = {
   loadingLabel: 'Printing the late edition…',
 }
 
-// Internal balancing metadata. These values remain in the config for compatibility,
-// but the outcome tier is deliberately not rendered in the player-facing tabloid.
+// Internal tone drives weighting and visual treatment. The player-facing label is intentionally
+// identical for every tier so excellent/good/neutral/bad/tragic are never exposed as verdicts.
 const TONE_LABELS: Record<BundledAftermathTone, string> = {
-  excellent: 'Spectacular',
-  good: 'Promising',
-  neutral: 'Strange',
-  bad: 'Messy',
-  tragic: 'Catastrophic',
+  excellent: 'AFTERMATH',
+  good: 'AFTERMATH',
+  neutral: 'AFTERMATH',
+  bad: 'AFTERMATH',
+  tragic: 'AFTERMATH',
 }
 
 const CATEGORIES: Record<string, string> = {
