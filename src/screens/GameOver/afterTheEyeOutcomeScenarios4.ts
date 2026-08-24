@@ -1,405 +1,252 @@
 import type { ScenarioSpec } from './afterTheEyeOutcomeTypes'
 
-export const AFTER_EYE_SCENARIOS_4: ScenarioSpec[] = [
+interface DramaTemplate {
+  id: string
+  category: string
+  tone: ScenarioSpec['tone']
+  weight: number
+  cooldownGroup: string
+  badge: string
+  eligibility: ScenarioSpec['eligibility']
+  headlines: string[]
+  setups: string[]
+  escalations: string[]
+  outcomes: string[]
+  twists: string[]
+}
+
+const VARIANTS_PER_TEMPLATE = 5
+
+const DRAMA_TEMPLATES: DramaTemplate[] = [
   {
-    id: 'strange_business_breakup_planner',
-    category: 'strange_business',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'strange_business',
-    badge: 'BIZARRE BUSINESS',
-    eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
-    headlines: ['{name} Launches a Breakup Planning Agency', 'Flowers In, Shared Passwords Out'],
-    beats: [
-      '{name} starts a service that organises dignified separations.',
-      'Clients receive scripts, key-return envelopes, and optional witnesses trained not to take sides.',
-      "The company becomes disturbingly popular before Valentine's Day.",
-    ],
-    twists: [
-      '{romanticName} designs the premium package.',
-      'One couple accidentally reconciles during the service.',
-    ],
-  },
-  {
-    id: 'strange_business_apology_writer',
-    category: 'strange_business',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'strange_business',
-    badge: 'SORRY SELLS',
+    id: "relapse_scandal",
+    category: "addiction_recovery",
+    tone: "bad",
+    weight: 0.9,
+    cooldownGroup: "relapse",
+    badge: "RELAPSE FEARS",
     eligibility: {},
     headlines: [
-      '{name} Makes a Fortune Writing Celebrity Apologies',
-      'The Notes Sound Human for Once',
+      "Friends Fear {name} Is Spiraling Again",
+      "A Chaotic Night Raises New Concerns for {name}",
+      "{name}'s Recovery Faces a Public Setback",
+      "The Comeback That Stopped Overnight",
     ],
-    beats: [
-      '{name} quietly writes apology statements for scandal-prone public figures.',
-      "Clients praise the service for eliminating phrases such as 'if anyone was offended'.",
-      'The business is exposed when three celebrities use the same typo.',
+    setups: [
+      "{name} returns to public life after a period of recovery and initially appears stable.",
+      "After months away from nightlife, {name} begins attending increasingly intense public events again.",
+      "A successful comeback tour places {name} under the same pressures that preceded an earlier treatment break.",
+      "Friends become concerned when {name} misses work and stops responding after several high-profile nights out.",
+    ],
+    escalations: [
+      "A confusing public appearance fuels relapse rumors, though people close to {name} warn against diagnosing from clips.",
+      "Management cancels several events without explanation while friends travel to stay with {name}.",
+      "An argument outside a venue is filmed and replayed widely, worsening a situation that had been private.",
+      "The pressure peaks when an unreliable tabloid publishes medical claims that the family immediately rejects.",
+    ],
+    outcomes: [
+      "{name} steps back into treatment and asks the public to treat the setback as a health matter, not a scandal.",
+      "The tour is cancelled, and {name} returns to recovery with a stronger boundary between treatment and publicity.",
+      "{name} acknowledges a setback without giving details and disappears from the public eye again.",
+      "The episode damages several contracts but ultimately pushes {name} back toward structured support.",
     ],
     twists: [
-      'The typo becomes a trademark.',
-      '{name} refuses to apologise for the apology business.',
+      "The most viral clip was filmed hours before the incident people thought it showed.",
+      "A former castmate publicly apologizes for making the situation worse.",
+      "Management had wanted {name} to continue working despite warnings from friends.",
+      "The cancelled tour later resumes only after a long break.",
     ],
   },
   {
-    id: 'strange_business_rent_a_rival',
-    category: 'strange_business',
-    tone: 'neutral',
+    id: "disappearance_return",
+    category: "disappearance",
+    tone: "neutral",
     weight: 1.0,
-    cooldownGroup: 'strange_business',
-    badge: 'ENEMY FOR HIRE',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: [
-      '{name} Rents Professional Rivals to Boring Influencers',
-      'Every Career Needs a Villain',
-    ],
-    beats: [
-      '{name} builds an agency supplying harmless public feuds to people with no interesting scandals.',
-      'Packages include subtweets, award-show side-eye, and one carefully timed unfollow.',
-      'The service works until two hired rivals genuinely dislike each other.',
-    ],
-    twists: ['{rivalName} joins as creative director.', 'The premium feud wins a marketing award.'],
-  },
-  {
-    id: 'strange_business_haunted_airbnb',
-    category: 'strange_business',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'strange_business',
-    badge: 'GHOST LISTING',
+    cooldownGroup: "disappearance",
+    badge: "MISSING, THEN FOUND",
     eligibility: {},
     headlines: [
-      '{name} Opens a Haunted Rental With No Ghost',
-      'Guests Demand More Paranormal Activity',
+      "{name} Vanishes for Eleven Days",
+      "Where Did {name} Go?",
+      "A Missing Phone, Cancelled Flights, and No Explanation",
+      "{name} Returns After a Bizarre Disappearance",
     ],
-    beats: [
-      '{name} markets an old house as a luxury haunted retreat.',
-      'Visitors complain that the only frightening feature is the plumbing.',
-      'Staff begin manufacturing noises and accidentally convince themselves the place is cursed.',
+    setups: [
+      "{name} misses two booked appearances, stops answering messages, and appears to leave home without a phone.",
+      "Friends report losing contact with {name} after a sudden decision to cancel every public commitment.",
+      "A missed flight and an abandoned social account trigger concern when nobody close to {name} can explain the silence.",
+      "{name} disappears from the celebrity circuit so completely that management files a missing-person report.",
+    ],
+    escalations: [
+      "False sightings spread across several cities while family members ask amateur investigators to stop interfering.",
+      "A parked car is found in another region, creating a wave of theories that grow more dramatic by the hour.",
+      "Former housemates coordinate privately while tabloids publish increasingly implausible explanations.",
+      "The situation becomes national news after a scheduled live interview airs with an empty chair.",
+    ],
+    outcomes: [
+      "{name} returns safely and says the disappearance was a deliberate escape from pressure, not a crime.",
+      "The search ends when {name} contacts family from a remote location and asks for privacy.",
+      "{name} reappears, ends several management contracts, and refuses to explain every missing day.",
+      "The episode closes without a sensational answer, but {name}'s relationship with fame changes permanently.",
     ],
     twists: [
-      'A real historian makes the property successful.',
-      'The fake ghost asks for overtime.',
+      "The person reporting the first 'sighting' later admits guessing.",
+      "{name} had left written instructions that management failed to pass to family.",
+      "A former rival knew {name} was safe but had promised not to say where.",
+      "The empty-chair interview becomes more famous than the explanation.",
     ],
   },
   {
-    id: 'strange_business_queue_sitter',
-    category: 'strange_business',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'strange_business',
-    badge: 'TIME TYCOON',
+    id: "witness_secret",
+    category: "secret_life",
+    tone: "neutral",
+    weight: 0.85,
+    cooldownGroup: "secret_life",
+    badge: "DOUBLE LIFE?",
     eligibility: {},
     headlines: [
-      '{name} Creates a Professional Queueing Company',
-      'Standing Still Becomes Big Business',
+      "{name}'s Hidden Past Surfaces",
+      "The Name {name} Used Before the Show",
+      "A Sealed Court File Triggers Wild Questions",
+      "What Was {name} Keeping Secret?",
     ],
-    beats: [
-      '{name} hires people to wait in lines for product launches and exclusive restaurants.',
-      'Demand explodes when celebrities realise they can arrive precisely when cameras do.',
-      'The company develops uniforms, rankings, and an employee of the month.',
+    setups: [
+      "An old legal record links {name} to a different surname and a period of life never mentioned on the show.",
+      "A local newspaper archive reveals that {name} once gave evidence in a case that received regional attention.",
+      "A former acquaintance claims {name} deliberately hid an important chapter of life before entering the house.",
+      "Documents circulated online show {name} living under a different surname years before becoming a contestant.",
+    ],
+    escalations: [
+      "Speculation jumps immediately to criminal theories, even though the documents do not show {name} accused of any crime.",
+      "{name}'s representatives threaten action against outlets inventing details around a protected legal matter.",
+      "A retired reporter confirms part of the history but refuses to reveal why the name changed.",
+      "People connected to the old case ask the press to stop reopening events that affected several families.",
+    ],
+    outcomes: [
+      "{name} explains only that the old identity was connected to personal safety and leaves the rest private.",
+      "The scandal fades when official records show the most dramatic claims were false.",
+      "{name} confirms the documents are real but refuses to turn a difficult past into entertainment.",
+      "The mystery remains partly unresolved, and public interest eventually shifts elsewhere.",
     ],
     twists: [
-      "The longest queue is for {name}'s own service.",
-      'A rival firm starts cutting in line.',
+      "The old surname had been visible in public records all along.",
+      "The person who revived the story was trying to defend {name}.",
+      "A tabloid quietly removes its most dramatic claim after receiving a legal letter.",
+      "Another housemate admits learning the truth during casting and keeping it private.",
     ],
   },
   {
-    id: 'social_media_notes_app',
-    category: 'social_media',
-    tone: 'bad',
+    id: "career_comeback",
+    category: "career_triumph",
+    tone: "excellent",
     weight: 1.0,
-    cooldownGroup: 'social_media',
-    badge: 'APOLOGY LOOP',
-    eligibility: {},
+    cooldownGroup: "career_comeback",
+    badge: "COMEBACK KING",
+    eligibility: { tagsAny: ['winner', 'runner_up', 'fan_favorite', 'early_exit'] },
     headlines: [
-      '{name} Posts Seven Apologies in One Day',
-      'Each Statement Corrects the Previous Statement',
+      "{name} Pulls Off the Comeback Nobody Predicted",
+      "One Role Changes Everything for {name}",
+      "From Reality TV to Serious Success",
+      "{name} Finally Finds the Right Spotlight",
     ],
-    beats: [
-      '{name} tries to resolve a minor misunderstanding with a carefully designed note.',
-      'Every edit introduces a new contradiction and a different font.',
-      'By evening the original scandal is forgotten and the apology process is the scandal.',
+    setups: [
+      "{name}'s first months after the show are messy and full of failed sponsorships.",
+      "Several reality offers collapse before {name} accepts a much smaller opportunity outside the usual celebrity circuit.",
+      "After being dismissed as a short-lived reality personality, {name} takes an unexpected professional risk.",
+      "{name} disappears from entertainment news and quietly trains for a new career.",
+    ],
+    escalations: [
+      "The new project attracts attention because {name} is far better at it than critics expected.",
+      "A small role becomes a breakout moment and forces former skeptics to reassess the entire post-show trajectory.",
+      "Industry figures begin calling after a performance that was never supposed to receive national attention.",
+      "A single appearance goes viral for skill rather than scandal, changing the tone around {name} almost overnight.",
+    ],
+    outcomes: [
+      "{name} builds a durable career that eventually matters more than the season that created the fame.",
+      "The comeback succeeds because {name} stops chasing celebrity and starts treating the work seriously.",
+      "{name} becomes one of the few housemates whose second act is bigger than the first.",
+      "Years later, the reality-show label is a footnote rather than the headline.",
     ],
     twists: [
-      'The designer publishes a behind-the-scenes documentary.',
-      'The seventh apology is universally praised.',
+      "The opportunity came from someone who originally refused to meet {name}.",
+      "The first contract paid less than a single sponsored post.",
+      "A former rival publicly becomes one of {name}'s biggest supporters.",
+      "The project was almost cancelled before release.",
     ],
   },
   {
-    id: 'social_media_live_filter',
-    category: 'social_media',
-    tone: 'tragic',
+    id: "career_collapse",
+    category: "career_disaster",
+    tone: "bad",
     weight: 1.0,
-    cooldownGroup: 'social_media',
-    badge: 'FILTER FAILURE',
-    eligibility: {},
+    cooldownGroup: "career_collapse",
+    badge: "CAREER FREEFALL",
+    eligibility: { tagsAny: ['winner', 'runner_up', 'fan_favorite', 'controversial'] },
     headlines: [
-      "{name}'s Beauty Filter Switches Off Mid-Denial",
-      'The Face Was Real. The Product Was Not.',
+      "{name}'s Post-Show Empire Collapses in One Week",
+      "Sponsors Abandon {name} After Scandal",
+      "Seven Deals, Seven Cancellations",
+      "The Fame Machine Turns on {name}",
     ],
-    beats: [
-      '{name} livestreams a forceful defence of a cosmetic sponsorship.',
-      'The filter fails while {name} is claiming no digital enhancement is being used.',
-      'The brand deletes the campaign and the clip reaches millions.',
+    setups: [
+      "{name} signs a rapid series of sponsorships and television deals immediately after the finale.",
+      "A management team builds an aggressive celebrity brand around {name} within days of leaving the house.",
+      "For several months, {name} appears to be the season's biggest commercial success.",
+      "A packed schedule leaves {name} moving from one endorsement to another with almost no control over the messaging.",
     ],
-    twists: ['Sales increase anyway.', '{name} later fronts an honesty campaign.'],
-  },
-  {
-    id: 'social_media_private_public',
-    category: 'social_media',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'social_media',
-    badge: 'CLOSE FRIENDS DISASTER',
-    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
-    headlines: ['{name} Posts the Private Rant Publicly', 'The Green Circle Was Not There'],
-    beats: [
-      '{name} records a harsh message intended for a tiny private audience.',
-      'The clip appears publicly and names {allyName}, two producers, and an innocent hairdresser.',
-      'Deletions fail because fans subtitle the rant within minutes.',
+    escalations: [
+      "An old recording resurfaces, context is disputed, and brands begin suspending deals before {name} can respond.",
+      "A disastrous interview creates a second controversy while the first is still unfolding.",
+      "Management issues contradictory apologies that make the situation significantly worse.",
+      "Several companies invoke morality clauses on the same afternoon, creating the appearance of total collapse.",
     ],
-    twists: [
-      'The hairdresser gains thousands of followers.',
-      '{allyName} replies with a single punctuation mark.',
-    ],
-  },
-  {
-    id: 'social_media_account_hacked',
-    category: 'social_media',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'social_media',
-    badge: 'HACKED — MAYBE',
-    eligibility: {},
-    headlines: [
-      '{name} Blames a Hacker Who Has Excellent Grammar',
-      'The Mystery Poster Uses the Same Catchphrase',
-    ],
-    beats: [
-      '{name} claims a controversial series of posts came from an intruder.',
-      'Cybersecurity experts note the supposed hacker uses {possessive} favourite emoji and promotes an upcoming appearance.',
-      'The explanation remains unproven but strangely effective.',
+    outcomes: [
+      "{name} loses most of the commercial empire and spends the next year rebuilding without the original management team.",
+      "The collapse ends the first version of {name}'s celebrity career, though a quieter comeback remains possible.",
+      "{name} survives financially but becomes far less marketable and far more cautious.",
+      "The scandal burns through almost every fast deal signed after the season.",
     ],
     twists: [
-      'The hacker books better interviews than {name}.',
-      'The account later thanks the hacker.',
-    ],
-  },
-  {
-    id: 'social_media_silence_strategy',
-    category: 'social_media',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'social_media',
-    badge: 'SILENCE WINS',
-    eligibility: { tagsAny: ['low_profile', 'early_exit'] },
-    headlines: [
-      '{name} Refuses to Post and Becomes More Famous',
-      'The Blank Feed Everyone Watches',
-    ],
-    beats: [
-      '{name} deletes every social account after the finale.',
-      'Fan pages treat each public sighting like a rare astronomical event.',
-      'The refusal to perform online creates more mystique than constant content.',
-    ],
-    twists: ['The first post is a picture of a chair.', 'The chair receives sponsorship offers.'],
-  },
-  {
-    id: 'reality_tv_obsession_six_shows',
-    category: 'reality_tv_obsession',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'reality_tv_obsession',
-    badge: 'REALITY RELAPSE',
-    eligibility: {},
-    headlines: ['{name} Joins Six Reality Shows in One Year', 'No Format Is Safe'],
-    beats: [
-      '{name} accepts every television offer after the finale.',
-      'Dating, cooking, survival, dance, and renovation programmes all feature the same dramatic entrance.',
-      'Viewers lose track of which show {name} is currently being eliminated from.',
-    ],
-    twists: [
-      'One network accidentally crowns {name} twice.',
-      'The cooking show reveals unexpected talent.',
-    ],
-  },
-  {
-    id: 'reality_tv_obsession_self_produced_house',
-    category: 'reality_tv_obsession',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'reality_tv_obsession',
-    badge: 'THE HOUSE AT HOME',
-    eligibility: {},
-    headlines: ['{name} Installs Cameras in the Apartment', 'Nobody Commissioned Season Two'],
-    beats: [
-      '{name} recreates the show experience at home and streams daily household routines.',
-      'Friends receive microphones at the door and visitors are asked to nominate someone before leaving.',
-      'The audience shrinks to twelve loyal viewers and one concerned landlord.',
-    ],
-    twists: ['The landlord wins the public vote.', 'A small network buys the format as a comedy.'],
-  },
-  {
-    id: 'reality_tv_obsession_reunion_crasher',
-    category: 'reality_tv_obsession',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'reality_tv_obsession',
-    badge: 'UNINVITED RETURN',
-    eligibility: {},
-    headlines: ['{name} Appears at Every Reunion — Even Other Shows', 'Security Knows the Outfit'],
-    beats: [
-      '{name} begins turning up at reunion specials for programmes never joined.',
-      'The same confident wave carries {object} past three red carpets before organisers compare guest lists.',
-      'A network finally offers a role reviewing reunions from outside the venue.',
-    ],
-    twists: ['The reviews become popular.', '{name} is accidentally invited to host one.'],
-  },
-  {
-    id: 'reality_tv_obsession_audition_coach',
-    category: 'reality_tv_obsession',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'reality_tv_obsession',
-    badge: 'CASTING GURU',
-    eligibility: {},
-    headlines: [
-      '{name} Coaches Future Housemates to Cry on Cue',
-      'The Workshop Includes a Fake Eviction',
-    ],
-    beats: [
-      '{name} opens an academy for reality-TV applicants.',
-      'Students practise entrances, strategic silences, and looking shocked at information they already know.',
-      'Casting producers publicly mock the school and privately recruit from it.',
-    ],
-    twists: [
-      'The best student refuses to credit {name}.',
-      'The fake eviction becomes too emotional.',
-    ],
-  },
-  {
-    id: 'reality_tv_obsession_producer_turn',
-    category: 'reality_tv_obsession',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'reality_tv_obsession',
-    badge: 'BEHIND THE CAMERA',
-    eligibility: { tagsAny: ['strategic', 'winner', 'late_game'], requiresRelation: 'rival' },
-    headlines: [
-      '{name} Becomes the Producer Everyone Fears',
-      'The Housemate Learns Where the Buttons Are',
-    ],
-    beats: [
-      '{name} moves behind the scenes and develops a reputation for spotting manufactured drama instantly.',
-      'Contestants complain that every planned trick is anticipated before filming.',
-      'The former housemate creates a hit format with fewer speeches and better snacks.',
-    ],
-    twists: ['The first contestant is {rivalName}.', 'The snack budget wins industry praise.'],
-  },
-  {
-    id: 'conspiracy_red_string_room',
-    category: 'conspiracy',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'conspiracy',
-    badge: 'CONSPIRACY HQ',
-    eligibility: {},
-    headlines: [
-      '{name} Covers an Entire Room in Red String',
-      'Every Eviction Leads to the Same Producer',
-    ],
-    beats: [
-      '{name} dedicates years to proving the season was manipulated.',
-      'Maps connect challenge results, breakfast choices, moon phases, and one suspiciously repeated cushion.',
-      'A livestream tour of the evidence room attracts both fans and fire inspectors.',
-    ],
-    twists: [
-      'One tiny scheduling claim is actually correct.',
-      'The cushion is later sold at auction.',
-    ],
-  },
-  {
-    id: 'conspiracy_missing_day',
-    category: 'conspiracy',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'conspiracy',
-    badge: 'THE LOST DAY',
-    eligibility: { tagsAny: ['alliance_broken', 'low_profile'], requiresRelation: 'ally' },
-    headlines: ['{name} Insists the Season Had a Secret Extra Day', 'Nobody Remembers Tuesday'],
-    beats: [
-      '{name} becomes convinced that one day of filming was erased.',
-      "The theory rests on mismatched outfits, a missing carton of milk, and {allyName}'s vague diary entry.",
-      'Former housemates disagree about the date but admit the milk is difficult to explain.',
-    ],
-    twists: [
-      'The carton appears in unused footage.',
-      '{allyName} reveals the diary entry was about laundry.',
-    ],
-  },
-  {
-    id: 'conspiracy_clone_theory',
-    category: 'conspiracy',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'conspiracy',
-    badge: 'DOUBLE TROUBLE',
-    eligibility: { tagsAny: ['twin_shock'] },
-    headlines: [
-      '{name} Claims a Housemate Was Replaced by a Double',
-      'The Ears Do Not Match, Says {name}',
-    ],
-    beats: [
-      '{name} publishes side-by-side images alleging a contestant was secretly substituted.',
-      'The theory gains traction because the photographs use different lighting and opposite camera angles.',
-      "Experts dismiss it while fans begin measuring everybody's ears.",
-    ],
-    twists: [
-      'Twin Shock makes the theory look less ridiculous.',
-      '{name} accidentally compares two photos of the same day.',
-    ],
-  },
-  {
-    id: 'conspiracy_jury_math',
-    category: 'conspiracy',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'conspiracy',
-    badge: 'VOTE MATHEMATICS',
-    eligibility: {},
-    headlines: ['{name} Recounts the Tribunal Votes Every Night', 'The Numbers Still Add Up'],
-    beats: [
-      '{name} refuses to accept the finale result and develops increasingly elaborate vote models.',
-      'Spreadsheets account for seating order, envelope weight, and how long each juror blinked.',
-      'The calculations prove the official result repeatedly, which only deepens the suspicion.',
-    ],
-    twists: [
-      'A maths channel reviews the model respectfully.',
-      '{name} later sells the spreadsheet as a game.',
-    ],
-  },
-  {
-    id: 'conspiracy_theory_podcast',
-    category: 'conspiracy',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'conspiracy',
-    badge: 'PARANOIA PAYS',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: [
-      "{name}'s Conspiracy Podcast Becomes a Hit",
-      'Wrong About Everything, Excellent Production',
-    ],
-    beats: [
-      '{name} launches a weekly investigation into supposed hidden messages from the season.',
-      'The theories are absurd but the sound design, research notes, and cliffhangers are exceptional.',
-      'Listeners tune in as entertainment and advertisers follow.',
-    ],
-    twists: [
-      'The final episode debunks the entire series.',
-      '{rivalName} becomes a recurring sceptic.',
+      "The manager who wrote the worst apology is fired before sunset.",
+      "One sponsor stays and gains public praise for waiting for more facts.",
+      "The resurfaced recording had already been reviewed during casting.",
+      "The scandal later becomes a case study in crisis-management courses.",
     ],
   },
 ]
+
+function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
+  const index = (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + salt) % values.length
+  return values[index]
+}
+
+function compileTemplate(template: DramaTemplate, templateIndex: number): ScenarioSpec[] {
+  return Array.from({ length: VARIANTS_PER_TEMPLATE }, (_, variantIndex) => {
+    const setup = pick(template.setups, templateIndex, variantIndex, 1)
+    const escalation = pick(template.escalations, templateIndex, variantIndex, 2)
+    const outcome = pick(template.outcomes, templateIndex, variantIndex, 3)
+
+    return {
+      id: `${template.id}_v${variantIndex + 1}`,
+      category: template.category,
+      tone: template.tone,
+      weight: template.weight * (1 - variantIndex * 0.025),
+      cooldownGroup: template.cooldownGroup,
+      badge: template.badge,
+      eligibility: { ...template.eligibility },
+      headlines: [
+        pick(template.headlines, templateIndex, variantIndex, 4),
+        pick(template.headlines, templateIndex, variantIndex + 1, 5),
+        pick(template.headlines, templateIndex, variantIndex + 2, 6),
+      ],
+      beats: [setup, escalation, outcome],
+      twists: [
+        pick(template.twists, templateIndex, variantIndex, 7),
+        pick(template.twists, templateIndex, variantIndex + 1, 8),
+        pick(template.twists, templateIndex, variantIndex + 2, 9),
+      ],
+    }
+  })
+}
+
+export const AFTER_EYE_SCENARIOS_4: ScenarioSpec[] = DRAMA_TEMPLATES.flatMap(compileTemplate)
