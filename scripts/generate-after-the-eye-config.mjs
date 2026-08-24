@@ -26,11 +26,11 @@ const editorial = {
 }
 
 const toneLabels = {
-  excellent: 'Spectacular',
-  good: 'Promising',
-  neutral: 'Strange',
-  bad: 'Messy',
-  tragic: 'Catastrophic',
+  excellent: 'AFTERMATH',
+  good: 'AFTERMATH',
+  neutral: 'AFTERMATH',
+  bad: 'AFTERMATH',
+  tragic: 'AFTERMATH',
 }
 
 const categories = {
@@ -38,12 +38,19 @@ const categories = {
   career_triumph: 'Career Triumph',
   career_disaster: 'Career Disaster',
   romance: 'Romance',
+  pregnancy_parenthood: 'Pregnancy & Parenthood',
+  marriage_breakup: 'Love, Marriage & Breakups',
   cheating_scandal: 'Cheating Scandal',
+  family_secret: 'Family Secret',
   public_feud: 'Public Feud',
   betrayal: 'Betrayal',
   financial_success: 'Financial Success',
   financial_ruin: 'Financial Ruin',
   legal_trouble: 'Legal Trouble',
+  crime_scandal: 'Crime & Scandal',
+  accident_crisis: 'Accident & Crisis',
+  addiction_recovery: 'Addiction & Recovery',
+  secret_life: 'Secret Life',
   destructive_excess: 'Fame & Excess',
   recovery_redemption: 'Recovery & Redemption',
   strange_business: 'Strange Business',
@@ -131,13 +138,21 @@ function expandBeats(beats, index) {
   const [setup, escalation, outcome] = beats
   const bodies = [
     `${setup} ${escalation} ${outcome}`,
-    `It begins when ${lowerFirst(setup)} Soon, ${lowerFirst(escalation)} In the end, ${lowerFirst(outcome)}`,
-    `At first, ${lowerFirst(setup)} The situation escalates when ${lowerFirst(escalation)} By the final update, ${lowerFirst(outcome)}`,
-    `Nobody expects the story to go this far. ${setup} Then ${lowerFirst(escalation)} Finally, ${lowerFirst(outcome)}`,
+    `${setup} Within days, ${lowerFirst(escalation)} What follows is harder to contain: ${lowerFirst(outcome)}`,
+    `The story begins quietly. ${setup} Then ${lowerFirst(escalation)} By the time the cameras return, ${lowerFirst(outcome)}`,
+    `At first, the facts look simple: ${lowerFirst(setup)} That changes when ${lowerFirst(escalation)} The final turn comes when ${lowerFirst(outcome)}`,
   ]
   return {
-    subheadlines: [`${setup} ${outcome}`, `${escalation} The ending becomes impossible to ignore.`],
-    bodies: [bodies[index % bodies.length], bodies[(index + 1) % bodies.length]],
+    subheadlines: [
+      `${setup} ${outcome}`,
+      `${escalation} ${outcome}`,
+      `What begins in private becomes impossible to contain. ${outcome}`,
+    ],
+    bodies: [
+      bodies[index % bodies.length],
+      bodies[(index + 1) % bodies.length],
+      bodies[(index + 2) % bodies.length],
+    ],
     bulletPoints: [setup, escalation, outcome],
   }
 }
@@ -157,8 +172,10 @@ function validate(config) {
   const ids = new Set()
 
   if (config.version !== 1) errors.push('version must be 1.')
-  if (config.scenarios.length < 100) errors.push('at least 100 individual scenarios are required.')
-  if (config.linkedScenarios.length < 4) errors.push('at least four linked scenarios are required.')
+  if (config.scenarios.length < 100)
+    errors.push('at least 100 compiled individual scenarios are required.')
+  if (config.linkedScenarios.length < 12)
+    errors.push('at least twelve linked scenarios are required.')
 
   for (const [collectionName, linked] of [
     ['scenarios', false],
@@ -214,6 +231,24 @@ function validate(config) {
         }
       }
     })
+  }
+
+  const tones = new Set(config.scenarios.map((scenario) => scenario.tone))
+  for (const tone of ['excellent', 'good', 'neutral', 'bad', 'tragic']) {
+    if (!tones.has(tone)) errors.push(`compiled databank is missing tone "${tone}".`)
+  }
+
+  for (const requiredCategory of [
+    'pregnancy_parenthood',
+    'cheating_scandal',
+    'accident_crisis',
+    'addiction_recovery',
+    'crime_scandal',
+    'family_secret',
+  ]) {
+    if (!config.scenarios.some((scenario) => scenario.category === requiredCategory)) {
+      errors.push(`compiled databank is missing required drama category "${requiredCategory}".`)
+    }
   }
 
   return errors
