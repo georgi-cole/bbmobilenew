@@ -10,7 +10,8 @@
  *  - Adjust seed for different deterministic competition outcomes.
  *  - View overlay results inline.
  */
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router';
 import SpectatorView from '../../components/ui/SpectatorView';
 import type { SpectatorVariant } from '../../components/ui/SpectatorView';
 import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay';
@@ -61,21 +62,36 @@ type TwinScenario = 'exposed' | 'secretKept';
 
 type ActiveOverlay = 'none' | 'battleBack' | 'publicFavorite' | 'twinShock' | 'twinShockAvatar';
 
+function getRequestedOverlay(preview: string | null): ActiveOverlay {
+  if (preview === 'battle-back') return 'battleBack';
+  if (preview === 'public-favorite') return 'publicFavorite';
+  if (preview === 'twin-shock-exposed' || preview === 'twin-shock-secret') return 'twinShock';
+  return 'none';
+}
+
 export default function TwistsTestPage() {
-  const phonePreview = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('phonePreview') === 'true';
+  const [previewParams] = useSearchParams();
+  const phonePreview = previewParams.get('phonePreview') === 'true';
+  const requestedPreview = previewParams.get('preview');
   const [seed, setSeed] = useState(42);
   const [awardAmount, setAwardAmount] = useState(25000);
-  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(() => (
-    new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('preview') === 'public-favorite'
-      ? 'publicFavorite'
-      : 'none'
+  const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(() => getRequestedOverlay(requestedPreview));
+  const [twinScenario, setTwinScenario] = useState<TwinScenario>(() => (
+    requestedPreview === 'twin-shock-secret' ? 'secretKept' : 'exposed'
   ));
-  const [twinScenario, setTwinScenario] = useState<TwinScenario>('exposed');
   const [lastResult, setLastResult] = useState<string | null>(null);
   // Seed frozen at the moment the overlay is opened so that changing the
   // seed input while SpectatorView is mounted cannot desync the displayed
   // winner from what useSpectatorSimulation captured on mount.
   const [openSeed, setOpenSeed] = useState(42);
+
+  useEffect(() => {
+    const nextOverlay = getRequestedOverlay(requestedPreview);
+    if (nextOverlay === 'none') return;
+    setTwinScenario(requestedPreview === 'twin-shock-secret' ? 'secretKept' : 'exposed');
+    setLastResult(null);
+    setActiveOverlay(nextOverlay);
+  }, [requestedPreview]);
 
   const bbWinnerId = useMemo(
     () => simulateBattleBackCompetition(MOCK_JURORS.map((p) => p.id), openSeed).winnerId,
@@ -116,12 +132,23 @@ export default function TwistsTestPage() {
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
         Manual QA page for Back 2 the Game, Public's Favorite, and both Twin Shock outcomes.
       </p>
-      <a
-        href="#/phone-preview"
-        style={{ display: 'inline-flex', marginBottom: '1.5rem', color: '#f4cf7f', fontSize: '0.85rem', fontWeight: 800 }}
-      >
-        Open Public Favorite in a phone simulator
-      </a>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', marginBottom: '1.5rem' }}>
+        {[
+          ['fullApp', 'Play full game on both phones'],
+          ['battleBack', 'Compare Back 2 the Game'],
+          ['publicFavorite', "Compare Public's Favorite"],
+          ['twinShockExposed', 'Compare Twin Shock · exposed'],
+          ['twinShockSecret', 'Compare Twin Shock · secret kept'],
+        ].map(([target, label]) => (
+          <a
+            key={target}
+            href={`#/phone-preview?target=${target}`}
+            style={{ display: 'inline-flex', padding: '0.52rem 0.7rem', border: '1px solid rgba(244,207,127,0.26)', borderRadius: '0.65rem', color: '#f4cf7f', background: 'rgba(244,207,127,0.06)', fontSize: '0.75rem', fontWeight: 800, textDecoration: 'none' }}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>

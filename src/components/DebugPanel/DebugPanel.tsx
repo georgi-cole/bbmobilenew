@@ -172,16 +172,18 @@ function buildScheduledInteraction(
 
 export default function DebugPanel() {
   const [searchParams] = useSearchParams()
+  const isPhonePreview =
+    searchParams.get('phonePreview') === 'true' || window.name.startsWith('phone-preview:')
   const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true
   const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname)
 
   useEffect(() => {
-    if (searchParams.get('debug') === '1' && searchParams.get('qa') === '1') {
+    if (!isPhonePreview && searchParams.get('debug') === '1' && searchParams.get('qa') === '1') {
       persistDebugAccess()
     }
-  }, [searchParams])
+  }, [isPhonePreview, searchParams])
 
-  if (!isDebug) return null
+  if (!isDebug || isPhonePreview) return null
 
   return <DebugPanelContent searchParams={searchParams} />
 }
