@@ -474,11 +474,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-card-2) 82%, #0a0e15) 0%,
-    color-mix(in srgb, var(--color-card) 88%, #090d14) 100%
-  );
+  background: #030303;
   border: 1px solid color-mix(in srgb, var(--color-accent) 26%, rgba(255, 255, 255, 0.05));
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.42),
@@ -524,11 +520,21 @@
 }
 
 :global(body.experiment-game-chrome-refined) .avatarWrap {
-  border-color: rgba(255, 255, 255, 0.1);
+  /* Quiet gallery rim: enough separation from the blackberry surface without
+     turning the roster into a grid of hard, detached cards. */
+  border-color: rgba(169, 141, 195, 0.16);
   border-radius: var(--game-radius-2);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 0 0 1px rgba(34, 23, 46, 0.3),
+    inset 0 1px 0 rgba(248, 234, 204, 0.09);
+}
+
+:global(body.experiment-game-chrome-refined) .avatarWrap::before {
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 10, 21, 0.46),
+    inset 0 1px 0 rgba(235, 216, 177, 0.11),
+    inset 0 0 16px 5px rgba(12, 9, 18, 0.56);
 }
 
 .nomination_loh {
@@ -616,9 +622,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(31, 37, 48, 0.92), rgba(16, 20, 28, 0.98));
+  background: transparent;
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -664,19 +668,20 @@
 /* ── Interactive hover / active states ───────────────────────────────────── */
 .tile[role='button']:hover:not(.evicted) .avatarWrap,
 .tile[role='button']:focus-visible:not(.evicted) .avatarWrap {
-  border-color: rgb(from var(--color-accent) r g b / 0.42);
+  border-color: rgba(232, 194, 92, 0.18);
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(6, 10, 17, 0.5),
+    0 8px 18px rgba(0, 0, 0, 0.44),
+    0 0 22px rgba(214, 165, 56, 0.18),
+    0 0 42px rgba(214, 165, 56, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 10px 18px rgba(0, 0, 0, 0.22);
 }
 
 .tile[role='button']:active:not(.evicted) .avatarWrap {
-  border-color: rgb(from var(--color-accent) r g b / 0.32);
+  border-color: rgba(232, 194, 92, 0.16);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(6, 10, 17, 0.42),
+    0 0 18px rgba(214, 165, 56, 0.12),
     inset 0 2px 10px rgba(0, 0, 0, 0.42);
 }
 
@@ -1003,10 +1008,21 @@
   padding: 1px 2px;
 }
 
+/* In compact mode the roster must use the same cabinet width as the Faux TV.
+   The measured tile size still controls the fixed row height, while the
+   column tracks fill the available width instead of leaving a centred inset. */
+.compactSmall .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.compactSmall .gridItem {
+  width: 100%;
+}
+
 .compactSmall .tile,
 .compactSmall .hgTileInactive {
-  width: min(100%, var(--game-avatar-tile-size, var(--compact-small-tile-width, 50%)));
-  margin-inline: auto;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .compactSmall .hgPlaceholderImg {
@@ -1162,15 +1178,16 @@
 :global(body.experiment-game-chrome-refined) .interactive:hover .avatarWrap,
 :global(body.experiment-game-chrome-refined) .interactive:focus-visible .avatarWrap {
   transform: translateY(-2px);
-  border-color: var(--game-focus-color);
+  border-color: rgba(232, 194, 92, 0.18);
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.38),
-    0 0 0 2px rgba(139, 125, 255, 0.16),
+    0 0 24px rgba(214, 165, 56, 0.16),
+    0 0 46px rgba(214, 165, 56, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 :global(body.experiment-game-chrome-refined) .pressing .avatarWrap {
   transform: scale(0.975);
-  border-color: rgba(151, 139, 255, 0.7);
+  border-color: rgba(232, 194, 92, 0.34);
 }
 :global(body.experiment-game-chrome-refined) .holdProgress {
   position: absolute;
@@ -1182,8 +1199,9 @@
   height: 3px;
   transform-origin: left;
   border-radius: 999px;
-  background: linear-gradient(90deg, #786cff, #ad94ff);
-  box-shadow: 0 0 10px rgba(139, 125, 255, 0.72);
+  /* Match the KoleQuant preload rail: cool white into cyan and violet. */
+  background: linear-gradient(90deg, #f5f7ff 0%, #74d8ff 54%, #9a7dff 100%);
+  box-shadow: 0 0 12px rgba(116, 216, 255, 0.48), 0 0 18px rgba(154, 125, 255, 0.36);
   animation: rosterHoldProgress 450ms linear both;
 }
 @keyframes rosterHoldProgress {

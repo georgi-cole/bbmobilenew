@@ -270,7 +270,7 @@ const TWIN_SHOCK_LIA_FLIP_AVATAR = resolveSkinAssetPathWithFallback(
 )
 const TWIN_SHOCK_COMBINED_AVATAR = resolveSkinAssetPathWithFallback(
   'Ali_lia_avatar.webp',
-  'Lia_Ali_avatar.webp'
+  'Ali_avatar.webp'
 )
 const TWIN_SHOCK_LIA_POOL_ENTRY = {
   id: TWIN_SHOCK_LIA_ID,

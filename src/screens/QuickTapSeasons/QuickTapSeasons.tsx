@@ -33,7 +33,7 @@ export default function QuickTapSeasons({
   const seasonRef = useRef<TapSeason>('spring')
   const phaseRef = useRef<Phase>('ready')
   const startAt = useRef(0)
-  const raf = useRef(0)
+  const timer = useRef<ReturnType<typeof window.setInterval> | null>(null)
   const seasonIndex = useRef(1)
   const usedBoxes = useRef(new Set<number>())
   const leafId = useRef(0)
@@ -52,7 +52,10 @@ export default function QuickTapSeasons({
     setPhase('results')
     setTimeLeft(0)
     setVisibleBox(null)
-    cancelAnimationFrame(raf.current)
+    if (timer.current !== null) {
+      window.clearInterval(timer.current)
+      timer.current = null
+    }
     onFinish?.(scoreRef.current)
   }, [onFinish])
 
@@ -69,12 +72,20 @@ export default function QuickTapSeasons({
         (at, index) => !usedBoxes.current.has(index) && elapsed >= at && elapsed < at + 4
       )
       setVisibleBox(nextBox < 0 ? null : nextBox)
-      raf.current = requestAnimationFrame(tick)
     },
     [changeSeason, finish, schedule]
   )
 
-  const start = () => {
+  const armTimer = useCallback(() => {
+    if (timer.current !== null) window.clearInterval(timer.current)
+    timer.current = window.setInterval(() => tick(Date.now()), 50)
+  }, [tick])
+
+  const start = useCallback(() => {
+    if (timer.current !== null) {
+      window.clearInterval(timer.current)
+      timer.current = null
+    }
     phaseRef.current = 'playing'
     seasonIndex.current = 1
     usedBoxes.current = new Set()
@@ -86,19 +97,45 @@ export default function QuickTapSeasons({
     setVisibleBox(null)
     setTimeLeft(SEASONS_DURATION)
     setPhase('playing')
-    startAt.current = performance.now()
-    raf.current = requestAnimationFrame(tick)
-  }
+    // Date.now() is the most reliable shared clock across browsers and native
+    // WebViews. Some embedded runtimes pause or freeze performance.now() while
+    // still accepting taps, which previously left this HUD at 40 seconds.
+    startAt.current = Date.now()
+    tick(startAt.current)
+    armTimer()
+  }, [armTimer, changeSeason, schedule, tick])
 
-  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+  useEffect(
+    () => () => {
+      if (timer.current !== null) {
+        window.clearInterval(timer.current)
+        timer.current = null
+      }
+    },
+    []
+  )
 
   useEffect(() => {
-    if (autoStart && phaseRef.current === 'ready') start()
-    // Hosted competition inputs are stable for the lifetime of the game.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart])
+    if (!autoStart) return
+    // Defer auto-start until after Strict Mode's immediate effect replay. Its
+    // first pass is cancelled below, and only the surviving pass starts the
+    // race, so the interval cannot be cleaned up underneath an active game.
+    const autoStartTask = window.setTimeout(() => {
+      if (phaseRef.current === 'ready') {
+        start()
+      } else if (phaseRef.current === 'playing' && timer.current === null) {
+        armTimer()
+      }
+    }, 0)
+    return () => window.clearTimeout(autoStartTask)
+  }, [armTimer, autoStart, start])
 
   const tap = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (phaseRef.current !== 'playing') return
+    // Some mobile WebViews can defer interval callbacks while dispatching a
+    // rapid stream of pointer events. Advance from the same wall clock on
+    // every tap as a backstop, so active play can never pin the HUD at 40s.
+    tick(Date.now())
     if (phaseRef.current !== 'playing') return
     setRawTaps((value) => value + 1)
     const nextScore = scoreRef.current + SEASONS[seasonRef.current].multiplier

@@ -34,9 +34,14 @@
   height: 100%;
   padding: 0.85rem 1rem 0.95rem;
   background:
-    radial-gradient(circle at 50% 18%, rgba(91, 163, 255, 0.18), transparent 42%),
-    linear-gradient(180deg, rgba(9, 14, 28, 0.96) 0%, rgba(11, 18, 36, 0.92) 100%);
-  backdrop-filter: blur(10px);
+    radial-gradient(ellipse at 50% 4%, rgba(163, 128, 226, 0.18), transparent 46%),
+    radial-gradient(circle at 82% 82%, rgba(207, 164, 80, 0.075), transparent 34%),
+    linear-gradient(180deg, rgba(29, 19, 46, 0.985) 0%, rgba(10, 7, 19, 0.985) 100%);
+  border: 1px solid rgba(191, 170, 239, 0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(248, 240, 255, 0.12),
+    inset 0 -22px 34px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px) saturate(1.05);
   transform: scale(0.96);
   transition:
     transform 0.45s ease,
@@ -64,13 +69,14 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #83bfff;
+  color: #bba6ff;
+  text-shadow: 0 0 14px rgba(166, 129, 255, 0.25);
 }
 
 .psr__heading-sub {
   max-width: 28rem;
   font-size: 0.69rem;
-  color: rgba(255, 255, 255, 0.74);
+  color: rgba(234, 229, 245, 0.76);
   margin: 0;
   line-height: 1.35;
 }
@@ -109,7 +115,7 @@
 /* Saved state: scale forward + soft glow */
 .psr__nominee--saved {
   transform: scale(1.05) translateY(-2px) !important;
-  filter: drop-shadow(0 0 18px rgba(74, 222, 128, 0.35));
+  filter: drop-shadow(0 0 18px rgba(230, 190, 100, 0.32));
 }
 
 .psr--saved .psr__nominee--saved {
@@ -137,7 +143,7 @@
 .psr__avatar-member {
   position: relative;
   z-index: 1;
-  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.46));
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.52));
 }
 
 .psr__avatar-wrap--pair .psr__avatar-member + .psr__avatar-member {
@@ -147,10 +153,10 @@
 }
 
 .psr__avatar-wrap--pair .pa {
-  border-color: var(--pair-color, rgba(131, 191, 255, 0.88));
+  border-color: var(--pair-color, rgba(187, 166, 255, 0.78));
   box-shadow:
-    0 0 0 2px rgba(7, 13, 27, 0.9),
-    0 0 11px color-mix(in srgb, var(--pair-color, #83bfff) 38%, transparent);
+    0 0 0 2px rgba(12, 8, 22, 0.92),
+    0 0 11px color-mix(in srgb, var(--pair-color, #bba6ff) 28%, transparent);
 }
 
 /* ── Name ── */
@@ -166,64 +172,35 @@
   max-width: 100%;
 }
 
-/* ── Approval bar ── */
-.psr__bar-track {
-  width: 100%;
-  height: 0.28rem;
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.psr__bar-motion {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.psr__bar-motion--pending {
-  width: calc(100% - var(--pending-width));
-  animation: psrPendingBar 1.05s ease-in-out infinite alternate;
-  animation-delay: var(--pending-delay, 0ms);
-  will-change: transform;
-}
-
-.psr__bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4fa3ff 0%, #83bfff 100%);
-  border-radius: 999px;
-  transition: width 0.9s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-@keyframes psrPendingBar {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-.psr__bar-motion--pending .psr__bar-fill {
-  box-shadow: 0 0 10px rgba(131, 191, 255, 0.28);
-}
-
-.psr__nominee--saved .psr__bar-fill {
-  background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.55);
-}
-
-/* ── Approval value ── */
+/* ── Synchronized live vote count ── */
 .psr__approval-value {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.82);
-  letter-spacing: 0.04em;
-  transition: color 0.35s ease;
+  min-width: 4.1rem;
+  padding: 0.22rem 0.3rem;
+  border-top: 1px solid rgba(217, 203, 255, 0.12);
+  color: rgba(245, 241, 255, 0.94);
+  font-size: 1rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  transition: color 0.35s ease, border-color 0.35s ease, text-shadow 0.35s ease;
 }
 
 .psr__nominee--saved .psr__approval-value {
-  color: #4ade80;
+  border-top-color: rgba(238, 205, 128, 0.42);
+  color: #f6d37f;
+  text-shadow: 0 0 16px rgba(238, 193, 86, 0.38);
+}
+
+.psr__approval-value--counting {
+  animation: psr-value-pulse 880ms ease-in-out infinite alternate;
+}
+
+@keyframes psr-value-pulse {
+  from { transform: translateY(0); opacity: 0.84; }
+  to { transform: translateY(-1px); opacity: 1; }
 }
 
 /* ── Result banner ── */
@@ -251,9 +228,6 @@
     transform: scale(0.9);
   }
 
-  .psr__bar-track {
-    height: 0.24rem;
-  }
 }
 
 /* On very narrow phones, keep all three pair totals for the reveal, then devote
@@ -277,7 +251,7 @@
 @media (prefers-reduced-motion: reduce) {
   .psr__panel,
   .psr__nominee,
-  .psr__bar-fill {
+  .psr__approval-value {
     animation: none !important;
     transition: none !important;
   }

@@ -31,11 +31,13 @@
   gap: 3px;
   padding: 3px 7px;
   background:
-    radial-gradient(ellipse at 50% -70%, rgba(126, 83, 164, 0.08), transparent 60%),
-    linear-gradient(180deg, rgba(28, 18, 42, 0.14), rgba(9, 7, 17, 0.08));
-  border-bottom: 1px solid rgba(137, 106, 160, 0.07);
+    radial-gradient(ellipse at 92% 50%, rgba(202, 157, 67, 0.1), transparent 26%),
+    linear-gradient(105deg, #050509 0%, #08070d 64%, #17120e 88%, #332514 100%);
+  background-color: #050509;
+  border-bottom: 1px solid rgba(177, 139, 72, 0.12);
   box-shadow:
-    inset 0 1px 0 rgba(218, 199, 238, 0.16),
+    inset 0 1px 0 rgba(235, 225, 255, 0.14),
+    inset -24px 0 28px rgba(184, 139, 54, 0.035),
     0 5px 14px rgba(2, 3, 9, 0.08);
   backdrop-filter: blur(18px) saturate(1.04);
   -webkit-backdrop-filter: blur(18px) saturate(1.04);
@@ -1089,21 +1091,23 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
   animation: signalLockReveal 480ms 80ms both ease-out;
 }
 
-/* Public-result styling stays spacious while adding a focused broadcast glow. */
+/* Vote results use the same blackberry broadcast surface as the gameplay shell. */
 .tv-zone__viewport--vote-results {
   background:
-    radial-gradient(ellipse at 50% 46%, rgba(72, 111, 201, 0.2), transparent 48%),
-    linear-gradient(180deg, rgba(14, 22, 42, 0.98), rgba(3, 7, 15, 1));
+    radial-gradient(ellipse at 50% 42%, rgba(83, 51, 111, 0.24), transparent 50%),
+    radial-gradient(ellipse at 84% 84%, rgba(149, 100, 38, 0.07), transparent 36%),
+    linear-gradient(180deg, rgba(18, 11, 27, 0.98), rgba(5, 4, 9, 1));
   box-shadow:
     inset 0 0 42px rgba(0, 0, 0, 0.72),
-    inset 0 0 0 1px rgba(127, 164, 255, 0.16),
-    0 0 24px rgba(74, 111, 213, 0.12);
+    inset 0 0 0 1px rgba(225, 184, 101, 0.13),
+    0 0 24px rgba(104, 61, 128, 0.12);
 }
 
 body.experiment-game-chrome-refined .tv-zone__viewport--vote-results {
   background:
-    radial-gradient(ellipse at 50% 46%, rgba(72, 111, 201, 0.2), transparent 48%),
-    linear-gradient(180deg, rgba(14, 22, 42, 0.98), rgba(3, 7, 15, 1));
+    radial-gradient(ellipse at 50% 42%, rgba(83, 51, 111, 0.24), transparent 50%),
+    radial-gradient(ellipse at 84% 84%, rgba(149, 100, 38, 0.07), transparent 36%),
+    linear-gradient(180deg, rgba(18, 11, 27, 0.98), rgba(5, 4, 9, 1));
 }
 
 .tv-zone__viewport--public-results {

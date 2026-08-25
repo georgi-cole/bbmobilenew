@@ -22,8 +22,12 @@
 }
 
 @keyframes tvbmFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .tv-binary-modal__card {
@@ -43,8 +47,14 @@
 }
 
 @keyframes tvbmSlideIn {
-  from { opacity: 0; transform: translateY(28px) scale(0.94); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .tv-binary-modal__header {
@@ -59,7 +69,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -96,7 +106,11 @@
   font-size: 0.92rem;
   font-weight: 700;
   border: 1px solid transparent;
-  transition: background 0.18s, border-color 0.18s, transform 0.14s, box-shadow 0.18s;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.14s,
+    box-shadow 0.18s;
   letter-spacing: 0.02em;
 }
 
@@ -120,7 +134,9 @@
 .tv-binary-modal__option--yes.tv-binary-modal__option--selected {
   background: rgba(30, 150, 70, 0.42);
   border-color: rgba(50, 210, 100, 0.75);
-  box-shadow: 0 0 0 2px rgba(50, 200, 100, 0.22), 0 4px 16px rgba(30, 150, 70, 0.3);
+  box-shadow:
+    0 0 0 2px rgba(50, 200, 100, 0.22),
+    0 4px 16px rgba(30, 150, 70, 0.3);
   animation: tvbmOptionSelect 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -139,13 +155,21 @@
 .tv-binary-modal__option--no.tv-binary-modal__option--selected {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.38);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.3);
   animation: tvbmOptionSelect 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes tvbmOptionSelect {
-  from { transform: scale(0.96); opacity: 0.6; }
-  to   { transform: scale(1);    opacity: 1;   }
+  from {
+    transform: scale(0.96);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Focus styles for keyboard navigation */
@@ -184,7 +208,9 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .tv-binary-modal__btn-change:hover {
@@ -202,7 +228,9 @@
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s, box-shadow 0.15s;
+  transition:
+    opacity 0.15s,
+    box-shadow 0.15s;
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
 }
 
@@ -211,3 +239,38 @@
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
 }
 
+/* Shared gameplay modal palette: smoked blackberry glass with restrained gold. */
+.tv-binary-modal__card {
+  background: linear-gradient(160deg, #17101b 0%, #0d0810 58%, #050406 100%);
+  border-color: rgba(224, 185, 108, 0.36);
+  box-shadow:
+    0 0 0 1px rgba(255, 239, 198, 0.06),
+    0 8px 60px rgba(0, 0, 0, 0.82),
+    0 0 40px rgba(135, 84, 27, 0.13);
+}
+
+.tv-binary-modal__header {
+  background: linear-gradient(135deg, #211323 0%, #130b14 56%, #19100c 100%);
+  border-bottom-color: rgba(225, 184, 101, 0.2);
+}
+
+.tv-binary-modal__header::after {
+  background: linear-gradient(180deg, rgba(231, 191, 112, 0.08) 0%, transparent 100%);
+}
+
+.tv-binary-modal__title {
+  color: #fff1d4;
+}
+.tv-binary-modal__subtitle {
+  color: rgba(234, 219, 188, 0.72);
+}
+.tv-binary-modal__footer {
+  border-top-color: rgba(225, 184, 101, 0.15);
+}
+
+.tv-binary-modal__btn-confirm {
+  background: linear-gradient(135deg, #c6963b 0%, #7a4916 100%);
+  border-color: rgba(255, 220, 139, 0.48);
+  box-shadow: 0 2px 12px rgba(142, 88, 20, 0.3);
+  color: #190f05;
+}

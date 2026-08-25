@@ -334,7 +334,11 @@ export default function TvAnnouncementOverlay({
             aria-label={`More info about ${title}`}
             ref={infoButtonRef}
           >
-            ℹ️
+            <svg className="tv-announcement__info-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.75 12s3.2-5.35 9.25-5.35S21.25 12 21.25 12 18.05 17.35 12 17.35 2.75 12 2.75 12Z" />
+              <circle cx="12" cy="12" r="2.25" />
+              <path d="M12 3.3v1.15M12 19.55v1.15" />
+            </svg>
           </button>
         )}
       </div>

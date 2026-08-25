@@ -313,18 +313,18 @@
   pointer-events: none;
 }
 
-/* Turkish blue variant — secret mission badge on the Confessional FAB button */
+/* Warm gold mission badge on the Confessional FAB button. */
 .dock-hit-area__badge--mission {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #62bfd0 0%, #2f7e91 100%);
-  color: #f8fdff;
+  background: linear-gradient(135deg, #f2d68b 0%, #c69239 52%, #8b5a1f 100%);
+  color: #211306;
   line-height: 18px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 8px 18px rgba(23, 65, 74, 0.34);
+    0 0 0 1px rgba(255, 240, 197, 0.3),
+    0 8px 18px rgba(141, 91, 25, 0.38);
 }
 
 .dock-hit-area:focus-visible {
@@ -426,14 +426,14 @@
   100% {
     transform: translate(-50%, -50%) scale(1);
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.18),
-      0 8px 18px rgba(23, 65, 74, 0.34);
+      0 0 0 1px rgba(255, 240, 197, 0.3),
+      0 8px 18px rgba(141, 91, 25, 0.38);
   }
   28% {
     transform: translate(-50%, -50%) translateY(-1px) scale(1.16);
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.22),
-      0 10px 20px rgba(47, 126, 145, 0.42);
+      0 0 0 1px rgba(255, 244, 209, 0.42),
+      0 10px 20px rgba(204, 146, 47, 0.48);
   }
   52% {
     transform: translate(-50%, -50%) scale(0.96);

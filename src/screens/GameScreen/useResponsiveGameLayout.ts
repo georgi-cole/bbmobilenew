@@ -250,12 +250,10 @@ export function computeResponsiveGameLayout(
         ? 104
         : 96
   const normalTileSize = Math.floor(clamp(tileWidth, 76, normalTileMax))
-  // With the unified action rail the old bottom navbar no longer competes for
-  // horizontal space. Keep compact-mode tiles at the full calculated width so
-  // the four-column roster shares the Faux TV's left and right edges.
-  const compactTileSize = input.unifiedActionRail
-    ? normalTileSize
-    : Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
+  // Keep compact rosters short enough to show all four rows above the rail.
+  // The grid distributes these columns across the full Faux TV/nav width, so
+  // this does not create the old inset while avoiding a vertical scrollbar.
+  const compactTileSize = Math.floor(clamp(normalTileSize * 0.86, 64, normalTileSize))
   const rosterRows = Math.max(1, Math.ceil(Math.max(input.playerCount, 1) / ROSTER_COLUMNS))
   const shouldUseCompactBase =
     input.playerCount >= 16 && (layoutSize === 'phone-small' || rosterContentWidth < 320)

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
 import type { AppDispatch, RootState } from '../../store/store';
 import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import {
@@ -317,7 +318,7 @@ export default function WildcardWesternComp({
   const getParticipantAvatar = useCallback((id: string): string => {
     const p = participantMap.current.get(id);
     if (!p) return getDicebear(id);
-    return resolveAvatar({ id: p.id, name: p.name, avatar: '' });
+    return resolvePresentationAvatar(resolveAvatar({ id: p.id, name: p.name, avatar: '' }));
   }, []);
 
   const isHuman = useCallback((id: string) => {

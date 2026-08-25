@@ -186,6 +186,8 @@ export class QuickTapRaceCanvasEngine {
 
   private lastLowLatencyUiUpdateMs = 0;
 
+  private lastTimerUiUpdateMs = 0;
+
   private readonly acceptedTapTimesMs: number[] = [];
 
   private readonly uniquePointerIds = new Set<number>();
@@ -510,9 +512,9 @@ export class QuickTapRaceCanvasEngine {
     if (this.lastTimestamp === 0) this.lastTimestamp = timestamp;
     const rawDt = Math.max(0, timestamp - this.lastTimestamp || 16.67);
     this.longestFrameMs = Math.max(this.longestFrameMs, rawDt);
-    const dt = this.options.strictWallClock ? rawDt : Math.min(48, rawDt);
+    const dt = Math.min(48, rawDt);
     this.lastTimestamp = timestamp;
-    this.update(dt);
+    this.update(dt, rawDt);
     this.render();
     if (this.isDestroyed || !this.isRunning) {
       this.rafId = 0;
@@ -521,7 +523,7 @@ export class QuickTapRaceCanvasEngine {
     this.rafId = window.requestAnimationFrame(this.tick);
   };
 
-  private update(dt: number): void {
+  private update(dt: number, wallDt: number): void {
     if (this.phase === 'countdown') {
       if (this.options.autoStart) {
         this.startPlaying();
@@ -532,7 +534,7 @@ export class QuickTapRaceCanvasEngine {
         this.startPlaying();
         return;
       }
-      this.countdownElapsedMs += dt;
+      this.countdownElapsedMs += wallDt;
       if (this.countdownElapsedMs >= 1000) {
         this.countdownElapsedMs -= 1000;
         this.countdown = Math.max(0, this.countdown - 1);
@@ -542,13 +544,21 @@ export class QuickTapRaceCanvasEngine {
         }
       }
     } else if (this.phase === 'playing') {
-      this.gameElapsedMs += dt;
+      this.gameElapsedMs += wallDt;
 
-      // Countdown remaining time.
-      this.timeLeftMs = Math.max(0, this.timeLeftMs - dt);
+      // Gameplay follows elapsed wall time even when rendering or rapid input
+      // delays a frame. The capped `dt` remains animation-only below.
+      this.timeLeftMs = Math.max(0, this.timeLeftMs - wallDt);
       if (this.timeLeftMs <= 0) {
         this.finishGame();
         return;
+      }
+
+      // The React HUD lives outside the canvas. Keep its tenths-of-a-second
+      // timer moving even when there are no taps or booster state changes.
+      if (this.gameElapsedMs - this.lastTimerUiUpdateMs >= 100) {
+        this.lastTimerUiUpdateMs = this.gameElapsedMs;
+        this.emitTick();
       }
 
       // Check multiplier expiry.
