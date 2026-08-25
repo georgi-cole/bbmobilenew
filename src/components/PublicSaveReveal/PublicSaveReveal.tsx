@@ -209,7 +209,9 @@ function NormalPublicSaveReveal({
                   className={`psr__approval-value${phase === 'revealing' ? ' psr__approval-value--counting' : ''}`}
                   aria-label={`${unit.label} save vote: ${valuesRevealed ? formattedShare : 'counting'}`}
                 >
-                  {phase === 'entering' ? '—' : formatShare(valuesRevealed ? voteShare : displayedShare)}
+                  {phase === 'entering'
+                    ? '—'
+                    : formatShare(valuesRevealed ? voteShare : displayedShare)}
                 </span>
               </div>
             )

@@ -99,7 +99,9 @@ export default function SpotlightEvictionOverlay({
   variant = 'eviction',
 }: Props) {
   const dispatch = useAppDispatch()
-  const [candidates] = useState(() => resolveAvatarCandidates(evictee).map(resolvePresentationAvatar))
+  const [candidates] = useState(() =>
+    resolveAvatarCandidates(evictee).map(resolvePresentationAvatar)
+  )
   const [candidateIdx, setCandidateIdx] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
 

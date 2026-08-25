@@ -185,7 +185,10 @@
   line-height: 1;
   text-align: center;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
-  transition: color 0.35s ease, border-color 0.35s ease, text-shadow 0.35s ease;
+  transition:
+    color 0.35s ease,
+    border-color 0.35s ease,
+    text-shadow 0.35s ease;
 }
 
 .psr__nominee--saved .psr__approval-value {
@@ -199,8 +202,14 @@
 }
 
 @keyframes psr-value-pulse {
-  from { transform: translateY(0); opacity: 0.84; }
-  to { transform: translateY(-1px); opacity: 1; }
+  from {
+    transform: translateY(0);
+    opacity: 0.84;
+  }
+  to {
+    transform: translateY(-1px);
+    opacity: 1;
+  }
 }
 
 /* ── Result banner ── */
@@ -227,7 +236,6 @@
     min-width: 3.9rem;
     transform: scale(0.9);
   }
-
 }
 
 /* On very narrow phones, keep all three pair totals for the reveal, then devote

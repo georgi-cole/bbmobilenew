@@ -1201,7 +1201,9 @@
   border-radius: 999px;
   /* Match the KoleQuant preload rail: cool white into cyan and violet. */
   background: linear-gradient(90deg, #f5f7ff 0%, #74d8ff 54%, #9a7dff 100%);
-  box-shadow: 0 0 12px rgba(116, 216, 255, 0.48), 0 0 18px rgba(154, 125, 255, 0.36);
+  box-shadow:
+    0 0 12px rgba(116, 216, 255, 0.48),
+    0 0 18px rgba(154, 125, 255, 0.36);
   animation: rosterHoldProgress 450ms linear both;
 }
 @keyframes rosterHoldProgress {

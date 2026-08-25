@@ -1462,7 +1462,10 @@ function describeActorBoxChoice(player: GridPlayer, boxId: number): string {
 
 function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
   const candidates = useMemo(
-    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).map(resolvePresentationAvatar),
+    () =>
+      resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).map(
+        resolvePresentationAvatar
+      ),
     [player.avatar, player.id, player.name]
   )
   const [candidateIdx, setCandidateIdx] = useState(0)

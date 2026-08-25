@@ -13,7 +13,10 @@ export function resolvePresentationAvatar(source: string | null | undefined): st
   if (markerIndex < 0) return source
 
   const assetName = source.slice(markerIndex + marker.length)
-  if (assetName.startsWith('backup-grey-lux/') || !/^[^/?]+_avatar\.webp(?=[?#]|$)/i.test(assetName)) {
+  if (
+    assetName.startsWith('backup-grey-lux/') ||
+    !/^[^/?]+_avatar\.webp(?=[?#]|$)/i.test(assetName)
+  ) {
     return source
   }
 
