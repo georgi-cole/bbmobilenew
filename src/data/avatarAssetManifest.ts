@@ -24,7 +24,7 @@ export const AVATAR_ASSET_FILES = [
   'Nico_avatar.webp',
   'Noa_avatar.webp',
   'Nova_avatar.webp',
-  'Pax_avatar.svg',
+  'Pax_avatar.webp',
   'Quinn_avatar.webp',
   'Rae_avatar.webp',
   'Remy_avatar.webp',
