@@ -77,8 +77,11 @@ type Props = {
   /** Shared instructions announced when this tile is interactive. */
   descriptionId?: string
   pairColor?: string
+  pairIndex?: number
   pairLabel?: string
   partnerName?: string
+  cupidLoveRevealed?: boolean
+  cupidLoveReturning?: boolean
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -161,8 +164,11 @@ export default function AvatarTile({
   nominationCeremonyState,
   descriptionId,
   pairColor,
+  pairIndex,
   pairLabel,
   partnerName,
+  cupidLoveRevealed = false,
+  cupidLoveReturning = false,
 }: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
@@ -406,11 +412,20 @@ export default function AvatarTile({
             : undefined
         }
         data-cupid-pair={pairLabel}
-        style={pairColor ? ({ '--cupid-pair-color': pairColor } as React.CSSProperties) : undefined}
+        style={
+          pairColor
+            ? ({
+                '--cupid-pair-color': pairColor,
+                '--cupid-pair-index': pairIndex ?? 0,
+              } as React.CSSProperties)
+            : undefined
+        }
       >
         <motion.div
           className={[
             styles.avatarWrap,
+            cupidLoveRevealed ? styles.cupidLoveRevealed : '',
+            cupidLoveReturning ? styles.cupidLoveReturning : '',
             nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
           ]
             .filter(Boolean)
@@ -443,9 +458,15 @@ export default function AvatarTile({
             </span>
           )}
 
+          {cupidLoveRevealed && (
+            <span className={styles.cupidLoveStorm} aria-hidden="true">
+              <i>♥</i><i>♥</i><i>♥</i><i>♥</i>
+            </span>
+          )}
+
           {pairLabel && (
             <span
-              className={styles.cupidPairMarker}
+              className={`${styles.cupidPairMarker}${cupidLoveRevealed ? ` ${styles.cupidPairMarkerReveal}` : ''}`}
               title={partnerName ? `${pairLabel}: partnered with ${partnerName}` : pairLabel}
               aria-label={pairLabel}
             >
@@ -455,9 +476,10 @@ export default function AvatarTile({
 
           {resolvedAvatarUrl ? (
             <img
+              key={resolvedAvatarUrl}
               src={resolvedAvatarUrl}
               alt={name}
-              className={styles.avatar}
+              className={`${styles.avatar}${cupidLoveRevealed ? ` ${styles.cupidLoveAvatar}` : ''}${cupidLoveReturning ? ` ${styles.cupidLoveReturnAvatar}` : ''}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"

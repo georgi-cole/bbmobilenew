@@ -418,6 +418,8 @@ export interface CupidArrowState {
   eliminatedPairCount: number
   /** Second half of a pair waiting for the shared elimination cinematic. */
   pendingPartnerEvictionId: string | null
+  /** Set only after the player presses Play through Cupid's potion reveal. */
+  visualsRevealed: boolean
 }
 
 export interface VoxPopuliState {

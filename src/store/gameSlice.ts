@@ -115,6 +115,7 @@ import {
 import {
   getDefaultBroadcastOrder,
   getBroadcastTemplate,
+  getBroadcastTemplateForMajor,
   getPhaseCardTemplate,
   matchBroadcastTemplate,
   renderBroadcastTemplate,
@@ -459,7 +460,11 @@ export function createInitialGameState(options?: {
   // every later phase. This makes edits, disabling, and mixed built-in/custom
   // ordering effective before the first Play press as well.
   const seasonStartBuiltIns = [
-    { id: 'season.welcome', variables: [String(season)], include: true },
+    {
+      id: cupidArrowIsScheduled ? 'season.welcome-cupid' : 'season.welcome',
+      variables: [String(season)],
+      include: true,
+    },
     { id: 'season.public-mode-rule', variables: [publicModeEnabled ? 'ON' : 'OFF'], include: true },
     { id: 'season.vox-populi-intro', variables: [], include: voxPopuliIsScheduled },
   ].flatMap(({ id, variables, include }) => {
@@ -651,6 +656,7 @@ export function createInitialGameState(options?: {
       pairs: [],
       eliminatedPairCount: 0,
       pendingPartnerEvictionId: null,
+      visualsRevealed: false,
     },
     voxPopuli: initialVoxPopuli,
     coLohIds: null,
@@ -669,6 +675,10 @@ let _activeBroadcastPhase: Phase | null = null
 let _pendingPhaseCustoms: CustomBroadcastMessage[] | null = null
 let _flushingPhaseCustom = false
 const MAX_GAME_HISTORY_EVENTS = 1000
+
+if (initialState.cupidArrow?.status === 'scheduled') {
+  activateCupidArrowForSeason(initialState)
+}
 
 function inferObservedBroadcastSource(state: GameState, phase: Phase, text: string) {
   const playerNames = [...new Set(state.players.map((player) => player.name).filter(Boolean))]
@@ -754,7 +764,11 @@ function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
     const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
-  queue.sort((left, right) => orderFor(left) - orderFor(right))
+  const priorityFor = (id: string) =>
+    activeEventsById.get(id)?.meta?.broadcastPriority === 'critical' ? 0 : 1
+  queue.sort(
+    (left, right) => priorityFor(left) - priorityFor(right) || orderFor(left) - orderFor(right)
+  )
   state.broadcastQueue = queue
 }
 
@@ -786,6 +800,8 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
   })
   eligible.sort(
     (left, right) =>
+      (left.meta?.broadcastPriority === 'critical' ? 0 : 1) -
+        (right.meta?.broadcastPriority === 'critical' ? 0 : 1) ||
       managedBroadcastOrder(state, left) - managedBroadcastOrder(state, right) ||
       left.timestamp - right.timestamp ||
       left.id.localeCompare(right.id)
@@ -879,7 +895,11 @@ function pushEvent(
   const explicitTemplateId =
     meta?.broadcastTemplateId ??
     meta?.templateId ??
-    (legacyVoxIntro ? 'season.vox-populi-intro' : undefined)
+    (legacyVoxIntro
+      ? 'season.vox-populi-intro'
+      : typeof meta?.major === 'string'
+        ? getBroadcastTemplateForMajor(meta.major, (meta?.phase as Phase | undefined))?.id
+        : undefined)
   const hintedPhase =
     typeof meta?.phase === 'string' ? (meta.phase as Phase) : (_activeBroadcastPhase ?? state.phase)
   const matched = matchBroadcastTemplate(text, hintedPhase, explicitTemplateId)
@@ -918,7 +938,11 @@ function pushEvent(
       : finalLevel === 'major'
         ? (selectedMajor ?? 'custom_major')
         : undefined
-  const intendedPhase = template?.phase ?? hintedPhase
+  // Cupid activation/dissociation can be triggered outside their catalogued
+  // phase (including QA). Keep the live phase or the TV queue filters them out.
+  const preserveCupidPhase =
+    meta?.major === 'cupid_arrow' || meta?.major === 'cupid_arrow_broken'
+  const intendedPhase = preserveCupidPhase ? hintedPhase : (template?.phase ?? hintedPhase)
   const broadcastOrder =
     override?.order ??
     (template
@@ -1103,6 +1127,25 @@ function activateCupidArrowForSeason(state: GameState) {
   state.cupidArrow.pairs = pairs
   state.cupidArrow.eliminatedPairCount = 0
   state.cupidArrow.pendingPartnerEvictionId = null
+  state.cupidArrow.visualsRevealed = false
+  const cupidWelcome = getBroadcastTemplate('season.welcome-cupid')
+  if (cupidWelcome) {
+    state.tvFeed.forEach((event) => {
+      if (
+        event.meta?.broadcastTemplateId !== 'season.welcome' &&
+        event.meta?.broadcastTemplateId !== 'season.welcome-cupid'
+      )
+        return
+      const override = state.broadcastOverrides?.[cupidWelcome.id]
+      event.text = renderBroadcastTemplate(override?.text ?? cupidWelcome.text, [String(state.season)])
+      event.meta = {
+        ...event.meta,
+        broadcastTemplateId: cupidWelcome.id,
+        broadcastCampaign: 'cupid',
+        broadcastVariables: [String(state.season)],
+      }
+    })
+  }
   // Cupid's Arrow is a full-season expansion format, not a temporary shock.
   state.twistActive = false
   state.twistActivatedThisWeek = false
@@ -1129,7 +1172,7 @@ function activateCupidArrowForSeason(state: GameState) {
     {
       major: 'cupid_arrow',
       broadcastTemplateId: 'cupid.activation',
-      phase: 'loh_comp_announcement',
+      phase: state.phase,
     }
   )
 }
@@ -1175,14 +1218,21 @@ function breakCupidArrowSpell(state: GameState) {
   state.cupidArrow.status = 'broken'
   state.cupidArrow.pendingPartnerEvictionId = null
   state.twistActive = false
+  // QA can unlock and replay Cupid in the same day. Remove the prior consumed
+  // break event so duplicate suppression cannot swallow the new cinematic.
+  state.tvFeed = state.tvFeed.filter(
+    (event) => event.meta?.major !== 'cupid_arrow_broken' && event.major !== 'cupid_arrow_broken'
+  )
   pushEvent(
     state,
-    `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
+    `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye hub. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
     'twist',
     {
       major: 'cupid_arrow_broken',
       broadcastTemplateId: 'cupid.spell-broken',
-      phase: 'eviction_results',
+      phase: state.phase,
+      broadcastPriority: 'critical',
+      forceOnTv: true,
     }
   )
 }
@@ -3090,6 +3140,37 @@ const gameSlice = createSlice({
         ? getPhaseCardTemplate(action.payload.phase, cardMajor)
         : undefined
 
+      // A shock activation can emit its legacy event in the same turn that a
+      // phase is upgraded to a manager-controlled branch card (Democracia,
+      // Double Elimination, and similar). They describe the same beat. Keep
+      // one canonical card and consume every sibling before the TV can queue
+      // separate fullscreen announcements for each of them.
+      if (cardMajor && activeCardTemplate) {
+        const canonicalCardText = renderBroadcastTemplate(
+          state.broadcastOverrides?.[activeCardTemplate.id]?.text ?? activeCardTemplate.text,
+          []
+        )
+          .replace(/\s+/g, ' ')
+          .trim()
+        const sameMajorEvents = state.tvFeed.filter(
+          (event) =>
+            event.meta?.phase === action.payload.phase &&
+            event.meta?.week === state.week &&
+            event.meta?.broadcastConsumed !== true &&
+            (event.meta?.major ?? event.major) === cardMajor
+        )
+        const canonicalEvent = sameMajorEvents.find(
+          (event) =>
+            event.meta?.broadcastTemplateId === activeCardTemplate.id &&
+            event.text.replace(/\s+/g, ' ').trim() === canonicalCardText
+        )
+        for (const event of sameMajorEvents) {
+          if (event !== canonicalEvent) {
+            event.meta = { ...(event.meta ?? {}), broadcastConsumed: true }
+          }
+        }
+      }
+
       // A phase can change its branch without changing the phase name (for
       // example, the ordinary LOH card becoming Democracia). Keep the old
       // card in history, but never leave it eligible in the live queue beside
@@ -4267,7 +4348,7 @@ const gameSlice = createSlice({
 
     /**
      * Activate the Democracia twist for the current day.
-     * Sets the Democracia state to active and pushes the TV announcement.
+     * Its manager-controlled LOH branch card is the single announcement source.
      * Called by tryActivateDemocracia / tryActivatePendingForcedDemocracia thunks.
      */
     activateDemocracia(state) {
@@ -4298,12 +4379,6 @@ const gameSlice = createSlice({
       state.democracia.resultDisplay = null
       state.twistActive = true
       state.twistActivatedThisWeek = true
-      pushEvent(
-        state,
-        `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
-        'twist',
-        { major: 'democracia' }
-      )
     },
 
     /**
@@ -4915,8 +4990,8 @@ const gameSlice = createSlice({
     /**
      * Activate the Double Eviction twist for the current week.
      * Sets `doubleEviction.weekActive = true`, increments `usedCount`, sets
-     * `twistActive`, and pushes a TV event with `major: 'double_eviction'` so
-     * TvZone shows the announcement overlay.
+     * `twistActive`. The manager-controlled nominations card is the single
+     * announcement source for this branch.
      * Called by the `tryActivateDoubleEviction` thunk when the probability roll passes.
      */
     activateDoubleEviction(state) {
@@ -4928,18 +5003,6 @@ const gameSlice = createSlice({
       state.doubleEviction.pendingSecondEviction = null
       state.twistActive = true
       state.twistActivatedThisWeek = true
-      // Push event WITH major: 'double_eviction' so TvZone shows the overlay.
-      const voxDoubleEvictionText = isVoxPopuliActive(state)
-        ? `DOUBLE ELIMINATION! The last-place nominee joins the secret ballot's top two and any cutoff ties. At least three nominees must remain after Safety before the audience can eliminate the two highest public vote-getters.`
-        : null
-      const announcementKey = voxDoubleEvictionText ? 'vox_double_eviction' : 'double_eviction'
-      pushEvent(
-        state,
-        voxDoubleEvictionText ??
-          `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE players. TWO will be eliminated live! ⚡`,
-        'twist',
-        { major: announcementKey }
-      )
     },
 
     /**
@@ -4999,6 +5062,7 @@ const gameSlice = createSlice({
         pairs: [],
         eliminatedPairCount: 0,
         pendingPartnerEvictionId: null,
+        visualsRevealed: false,
       }
       state.cupidArrow.scheduledSeason = scheduledSeason
       if (state.cupidArrow.status === 'active' || state.cupidArrow.status === 'broken') return
@@ -5018,6 +5082,7 @@ const gameSlice = createSlice({
         pairs: [],
         eliminatedPairCount: 0,
         pendingPartnerEvictionId: null,
+        visualsRevealed: false,
       }
       state.cupidArrow.scheduledSeason = state.season
       state.cupidArrow.status = 'scheduled'
@@ -5026,6 +5091,14 @@ const gameSlice = createSlice({
 
     breakCupidArrowNow(state) {
       breakCupidArrowSpell(state)
+    },
+
+    revealCupidArrowVisuals(state) {
+      if (state.cupidArrow?.status === 'active') state.cupidArrow.visualsRevealed = true
+    },
+
+    finishCupidArrowVisualReturn(state) {
+      if (state.cupidArrow?.status === 'broken') state.cupidArrow.visualsRevealed = false
     },
 
     setVoxPopuliSchedule(state, action: PayloadAction<number | null>) {
@@ -5899,15 +5972,19 @@ const gameSlice = createSlice({
         fresh.voxPopuli.status =
           fresh.voxPopuli.scheduledSeason === season ? 'scheduled' : 'inactive'
       }
+      if (fresh.cupidArrow?.status === 'scheduled') {
+        activateCupidArrowForSeason(fresh)
+      }
       // Preserve the manager-built Season Start sequence. Only refresh the
       // dynamic season placeholder after the archive-derived season is known.
       fresh.tvFeed = fresh.tvFeed.map((event) =>
-        event.meta?.broadcastTemplateId === 'season.welcome'
+        event.meta?.broadcastTemplateId === 'season.welcome' ||
+        event.meta?.broadcastTemplateId === 'season.welcome-cupid'
           ? {
               ...event,
               text: renderBroadcastTemplate(
-                fresh.broadcastOverrides?.['season.welcome']?.text ??
-                  getBroadcastTemplate('season.welcome')?.text ??
+                fresh.broadcastOverrides?.[event.meta.broadcastTemplateId]?.text ??
+                  getBroadcastTemplate(event.meta.broadcastTemplateId)?.text ??
                   event.text,
                 [String(season)]
               ),
@@ -5954,6 +6031,17 @@ const gameSlice = createSlice({
         twinShockResolution: action.payload.twinShockResolution ?? null,
         twinShockResolvedDay: action.payload.twinShockResolvedDay ?? null,
         twinShockDiscoveredByUser: action.payload.twinShockDiscoveredByUser ?? false,
+        // Saved Cupid seasons from before the visual-reveal handoff already
+        // completed their announcement. Preserve their established look; only
+        // a newly activated Cupid season explicitly starts at `false`.
+        cupidArrow: action.payload.cupidArrow
+          ? {
+              ...action.payload.cupidArrow,
+              visualsRevealed:
+                action.payload.cupidArrow.visualsRevealed ??
+                action.payload.cupidArrow.status === 'active',
+            }
+          : undefined,
         voxPopuli: action.payload.voxPopuli
           ? {
               ...createInitialVoxPopuliState(action.payload.voxPopuli.scheduledSeason),
@@ -5979,6 +6067,7 @@ const gameSlice = createSlice({
             pairs: [],
             eliminatedPairCount: 0,
             pendingPartnerEvictionId: null,
+            visualsRevealed: false,
           }
         }
         if (hydrated.voxPopuli) {
@@ -6843,6 +6932,12 @@ const gameSlice = createSlice({
 
       beginPhaseBroadcastSequence(state, nextPhase)
       switch (nextPhase) {
+        case 'season_start': {
+          // Cupid is a season-opening shock: reveal the bonds as soon as the
+          // season begins, before the first week-start card is shown.
+          activateCupidArrowForSeason(state)
+          break
+        }
         case 'week_start': {
           const enteringDayOne = state.phase === 'season_start'
           activateVoxPopuliForSeason(state)
@@ -8561,6 +8656,8 @@ export const {
   setCupidArrowSchedule,
   activateCupidArrowNow,
   breakCupidArrowNow,
+  revealCupidArrowVisuals,
+  finishCupidArrowVisualReturn,
   setVoxPopuliSchedule,
   activateVoxPopuliNow,
   setSeasonExpansion,

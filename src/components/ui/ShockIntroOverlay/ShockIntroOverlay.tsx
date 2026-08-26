@@ -228,12 +228,6 @@ export default function ShockIntroOverlay({
 
   useEffect(() => {
     if (!active) return
-    const timer = window.setTimeout(onComplete, duration)
-    return () => window.clearTimeout(timer)
-  }, [active, duration, shockKey, onComplete])
-
-  useEffect(() => {
-    if (!active) return
 
     const cueTimers: number[] = []
     if (isCupidIntro) {
@@ -255,6 +249,15 @@ export default function ShockIntroOverlay({
     return () => cueTimers.forEach((timerId) => window.clearTimeout(timerId))
   }, [active, isCupidBreak, isCupidIntro])
 
+  useEffect(() => {
+    if (!active || !isCupidBreak) return
+    // The dissociation is a self-contained departure cinematic. Its copy
+    // intentionally fades before the heart breaks, so never leave the player
+    // behind a full-screen layer with no visible acknowledgement control.
+    const timer = window.setTimeout(onComplete, prefersReducedMotion ? 450 : CUPID_BREAK_DURATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [active, isCupidBreak, onComplete, prefersReducedMotion])
+
   if (!active || typeof document === 'undefined') return null
 
   const displayAnnouncement = announcement ??
@@ -269,12 +272,11 @@ export default function ShockIntroOverlay({
     : 'conic-gradient(from 210deg, #ff98ba, #e3b5ef, #8bb9eb, #ffd28a, #ff98ba)'
 
   return createPortal(
-    <div
-      className={['shock-intro', prefersReducedMotion ? 'shock-intro--reduced' : '']
+      <div
+        className={['shock-intro', prefersReducedMotion ? 'shock-intro--reduced' : '']
         .filter(Boolean)
         .join(' ')}
       data-cupid-mode={isCupidBreak ? 'breaking' : isCupidIntro ? 'arriving' : undefined}
-      aria-hidden="true"
       data-testid="shock-intro-overlay"
       style={{ '--shock-intro-duration-ms': `${duration}ms` } as CSSProperties}
     >
@@ -361,6 +363,16 @@ export default function ShockIntroOverlay({
           <p className="shock-intro__cupid-handoff">
             {isCupidBreak ? 'The individual game returns' : 'The Big Eye will reveal the rules'}
           </p>
+          {!isCupidBreak && (
+            <button
+              className="shock-intro__ack"
+              type="button"
+              onClick={onComplete}
+              aria-label="OK"
+            >
+              OK
+            </button>
+          )}
         </div>
       ) : (
         <div className="shock-intro__vision-stage">
@@ -370,6 +382,9 @@ export default function ShockIntroOverlay({
             showInfoButton={false}
             playShockPrelude={false}
           />
+          <button className="shock-intro__ack" type="button" onClick={onComplete}>
+            OK
+          </button>
         </div>
       )}
     </div>,

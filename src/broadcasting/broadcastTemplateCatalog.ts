@@ -127,12 +127,23 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'season.welcome',
     'season_start',
-    'Welcome to The Big Eye house! 🏠 Season {season} is about to begin.',
+    'Welcome to The Big Eye hub! 🏠 Season {season} is about to begin.',
     'game',
     'minor',
     undefined,
     undefined,
     true
+  ),
+  feed(
+    'season.welcome-cupid',
+    'season_start',
+    'The Big Eye hub is now filled with love! 🏠 Season {season} is about to begin. Get some chocolate and press play.',
+    'game',
+    'minor',
+    undefined,
+    "Cupid's Arrow seasons only",
+    true,
+    'cupid'
   ),
   feed('season.public-mode-rule', 'season_start', '[Rules] Public mode: {status}'),
   feed(
@@ -191,7 +202,7 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'card.loh',
     'loh_comp_announcement',
     'LOH Competition',
-    'Power is up for grabs — who will become Leader of the House?',
+    'Control is up for winning — who will become Leader of the Hub?',
     'loh_comp_announcement'
   ),
   card(
@@ -248,7 +259,7 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   ),
   feed(
     'cupid.activation',
-    'loh_comp_announcement',
+    'season_start',
     '🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: {pairs}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘',
     'twist',
     'critical',
@@ -256,6 +267,98 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     "Cupid's Arrow opening",
     true,
     'cupid'
+  ),
+  feed(
+    'shock.vox-double-eviction',
+    'nominations',
+    'DOUBLE ELIMINATION! The public vote will eliminate two housemates tonight.',
+    'twist',
+    'critical',
+    'vox_double_eviction',
+    'Vox Populi double-elimination shock',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'shock.vip-veto',
+    'pos_ceremony',
+    'DOUBLE TROUBLE! The Safety power may be used twice this ceremony. 👑',
+    'twist',
+    'critical',
+    'vip_veto',
+    'Special Safety shock'
+  ),
+  feed(
+    'shock.diamond-pov',
+    'pos_ceremony',
+    'HALO EXCHANGE! The Safety holder may name the backup nominee. 😇',
+    'twist',
+    'critical',
+    'diamond_pov',
+    'Special Safety shock'
+  ),
+  feed(
+    'shock.coup-detat',
+    'pos_ceremony',
+    'DETOX! Both nominees are cleared and two replacements must be named. ⚡',
+    'twist',
+    'critical',
+    'coup_detat',
+    'Special Safety shock'
+  ),
+  feed(
+    'shock.spotlight-veto',
+    'pos_ceremony',
+    'FORCE MAJEURE! The Safety holder is forced to use the power. ✨',
+    'twist',
+    'critical',
+    'spotlight_veto',
+    'Special Safety shock'
+  ),
+  feed(
+    'shock.battle-back',
+    'eviction_results',
+    'BACK 2 THE GAME! Eliminated housemates will compete for a return.',
+    'twist',
+    'critical',
+    'battle_back',
+    'Battle Back shock'
+  ),
+  feed(
+    'shock.battle-back-shock',
+    'eviction_results',
+    'SHOCK TWIST! Back 2 the Game has been activated.',
+    'twist',
+    'critical',
+    'battle_back_shock',
+    'Battle Back shock'
+  ),
+  feed(
+    'shock.battle-back-rules',
+    'eviction_results',
+    'BACK 2 THE GAME RULES! Tribunal members face off; only one can return.',
+    'twist',
+    'critical',
+    'battle_back_rules',
+    'Battle Back shock'
+  ),
+  feed(
+    'shock.battle-back-challenge',
+    'eviction_results',
+    'BACK 2 THE GAME CHALLENGE! Press play to begin the showdown.',
+    'twist',
+    'critical',
+    'battle_back_challenge',
+    'Battle Back shock'
+  ),
+  feed(
+    'shock.democracia',
+    'loh_comp',
+    'DEMOCRACIA! The house will elect its Leader by popular vote.',
+    'twist',
+    'critical',
+    'democracia',
+    'Democracia shock'
   ),
   feed(
     'loh.vox-last-place',
@@ -941,6 +1044,18 @@ export function getBroadcastTemplate(id: string): BroadcastTemplate | undefined 
 
 export function getBroadcastTemplatesForPhase(phase: Phase): readonly BroadcastTemplate[] {
   return BROADCAST_TEMPLATE_CATALOG.filter((template) => template.phase === phase)
+}
+
+/** Find the authored source for a major announcement in the active phase. */
+export function getBroadcastTemplateForMajor(
+  major: string,
+  phase?: Phase
+): BroadcastTemplate | undefined {
+  const matches = BROADCAST_TEMPLATE_CATALOG.filter((template) => template.major === major)
+  return (
+    (phase == null ? undefined : matches.find((template) => template.phase === phase)) ??
+    matches[0]
+  )
 }
 
 export function matchesBroadcastCampaign(

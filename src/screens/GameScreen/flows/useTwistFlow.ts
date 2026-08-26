@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from 'react-redux'
 import {
-  addTvEvent,
   advance,
   awardFavoritePrize,
   commitPublicSave,
@@ -46,13 +45,7 @@ import {
   getCupidPartnerId,
   isCupidArrowActive,
 } from '../../../features/twists/cupidArrow'
-import {
-  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
-  advanceBattleBackAnnouncementStep,
-  buildBattleBackFeedMessage,
-  isBattleBackReplayEligible,
-  shouldUseBattleBackMinigame,
-} from '../battleBackFlow'
+import { isBattleBackReplayEligible, shouldUseBattleBackMinigame } from '../battleBackFlow'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
 
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
@@ -444,27 +437,6 @@ export function useTwistFlow({
   const battleBackRetryCount = battleBackUi.retryCount
   const battleBackRetryOfferWinnerId = battleBackUi.retryOfferWinnerId
 
-  const battleBackAnnouncementStateKey = `${battleBackSessionKey}:${battleBackCompetitionActive}`
-  const defaultBattleBackAnnouncementStep =
-    battleBackActive && !battleBackCompetitionActive ? 0 : null
-  const [storedBattleBackAnnouncement, setStoredBattleBackAnnouncement] = useState<{
-    key: string
-    step: number | null
-  }>(() => ({
-    key: battleBackAnnouncementStateKey,
-    step: defaultBattleBackAnnouncementStep,
-  }))
-  const battleBackAnnouncementStep =
-    storedBattleBackAnnouncement.key === battleBackAnnouncementStateKey
-      ? storedBattleBackAnnouncement.step
-      : defaultBattleBackAnnouncementStep
-  const setBattleBackAnnouncementStep = useCallback(
-    (step: number | null) => {
-      setStoredBattleBackAnnouncement({ key: battleBackAnnouncementStateKey, step })
-    },
-    [battleBackAnnouncementStateKey]
-  )
-  const battleBackAnnouncementStepRef = useRef<number | null>(null)
   const showBattleBack = battleBackActive && battleBackCompetitionActive
   const battleBackAttemptSeed = useMemo(
     () => (game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0,
@@ -554,22 +526,12 @@ export function useTwistFlow({
     return variants[Math.floor(rng() * variants.length)]
   }, [battleBackAttemptSeed])
 
-  useEffect(() => {
-    battleBackAnnouncementStepRef.current = battleBackAnnouncementStep
-  }, [battleBackAnnouncementStep])
-
   const handleBattleBackAnnouncementPlay = useCallback(() => {
     if (!battleBackActive || battleBackCompetitionActive) return
-    const currentStep = battleBackAnnouncementStepRef.current
-    if (currentStep == null) return
-    const announcement = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[currentStep]
-    const { nextStep, shouldOpenCompetition } = advanceBattleBackAnnouncementStep(currentStep)
-    if (announcement) {
-      dispatch(addTvEvent({ text: buildBattleBackFeedMessage(announcement), type: 'game' }))
-    }
-    setBattleBackAnnouncementStep(nextStep)
-    if (shouldOpenCompetition) dispatch(openBattleBackCompetition())
-  }, [battleBackActive, battleBackCompetitionActive, dispatch, setBattleBackAnnouncementStep])
+    // The fullscreen shock already explains the return and its rules. Do not
+    // stack a second, third, and fourth announcement before the showdown.
+    dispatch(openBattleBackCompetition())
+  }, [battleBackActive, battleBackCompetitionActive, dispatch])
 
   useEffect(() => {
     if (!battleBackActive || battleBackCompetitionActive) return
