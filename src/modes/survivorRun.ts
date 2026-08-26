@@ -170,6 +170,7 @@ export function createSurvivorRun(): GameState {
       pairs: [],
       eliminatedPairCount: 0,
       pendingPartnerEvictionId: null,
+      visualsRevealed: false,
     },
     voxPopuli: createInitialVoxPopuliState(null),
     cfg: {

@@ -121,6 +121,13 @@ export function isCupidArrowActive(game: CupidGame): boolean {
   return game.cupidArrow?.status === 'active'
 }
 
+/** The pair rules are active immediately; this waits for the player to see the reveal. */
+export function isCupidArrowVisualsRevealed(game: CupidGame): boolean {
+  // Keep the rose-gold portraits through Cupid's departure cinematic. The
+  // return reducer clears this flag only after the break sequence finishes.
+  return game.cupidArrow?.visualsRevealed === true
+}
+
 /** Prevent other shocks during Cupid's reveal window and active pair game. */
 export function isCupidArrowTwistLocked(game: CupidGame): boolean {
   return game.cupidArrow?.status === 'scheduled' || game.cupidArrow?.status === 'active'

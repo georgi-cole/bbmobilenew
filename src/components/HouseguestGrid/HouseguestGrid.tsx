@@ -5,10 +5,13 @@ import StatusPill from '../ui/StatusPill'
 import SurvivorStandoutCard from '../SurvivorStandout/SurvivorStandoutCard'
 import SpotlightEvictionOverlay from '../Eviction/SpotlightEvictionOverlay'
 import styles from './HouseguestGrid.module.css'
+import './cupidRoseGold/CupidRoseGold.css'
+
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
 import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
-import { getCupidPair, isCupidArrowActive } from '../../features/twists/cupidArrow'
+import { getCupidPair, isCupidArrowVisualsRevealed } from '../../features/twists/cupidArrow'
+import { resolveCupidLoveAvatar } from '../../utils/cupidLoveAvatar'
 import { getDailyAtmosphere, type DailyAtmosphere } from '../../broadcasting/dailyMoodSystem'
 import useSound from '../../hooks/useSound'
 
@@ -159,7 +162,49 @@ export default function HouseguestGrid({
   const { play } = useSound()
   const game = useAppSelector((s) => s.game)
   const [weatherReveal, setWeatherReveal] = useState<DailyAtmosphere | null>(null)
+  const cupidVisualsRevealed = isCupidArrowVisualsRevealed(game)
+  const previousCupidVisualsRevealedRef = useRef(cupidVisualsRevealed)
+  const cupidPairFocusTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const [cupidRevealAnimating, setCupidRevealAnimating] = useState(false)
+  const [cupidReturnAnimating, setCupidReturnAnimating] = useState(false)
+  const [focusedCupidPairId, setFocusedCupidPairId] = useState<string | null>(null)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
+
+  useEffect(() => {
+    const wasRevealed = previousCupidVisualsRevealedRef.current
+    previousCupidVisualsRevealedRef.current = cupidVisualsRevealed
+    if (!wasRevealed && cupidVisualsRevealed) {
+      setCupidRevealAnimating(true)
+      const timer = window.setTimeout(() => setCupidRevealAnimating(false), 2200)
+      return () => window.clearTimeout(timer)
+    }
+    if (wasRevealed && !cupidVisualsRevealed && game.cupidArrow?.status === 'broken') {
+      setCupidRevealAnimating(false)
+      setCupidReturnAnimating(true)
+      const timer = window.setTimeout(() => setCupidReturnAnimating(false), 1350)
+      return () => window.clearTimeout(timer)
+    }
+    if (!cupidVisualsRevealed) setCupidRevealAnimating(false)
+  }, [cupidVisualsRevealed, game.cupidArrow?.status])
+
+  useEffect(
+    () => () => {
+      if (cupidPairFocusTimerRef.current) window.clearTimeout(cupidPairFocusTimerRef.current)
+    },
+    []
+  )
+
+  const focusCupidPair = (pairId: string | null, hold = false) => {
+    if (!cupidVisualsRevealed || !pairId) return
+    if (cupidPairFocusTimerRef.current) window.clearTimeout(cupidPairFocusTimerRef.current)
+    setFocusedCupidPairId(pairId)
+    if (hold) {
+      cupidPairFocusTimerRef.current = window.setTimeout(() => {
+        setFocusedCupidPairId(null)
+        cupidPairFocusTimerRef.current = null
+      }, 1200)
+    }
+  }
   const returningPlayer = useMemo(
     () =>
       returningPlayerId
@@ -403,16 +448,27 @@ export default function HouseguestGrid({
         >
           {renderedHouseguests.map((hg) => {
             const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
-            const cupidPair = isCupidArrowActive(game) ? getCupidPair(game, String(hg.id)) : null
+            const cupidPair = cupidVisualsRevealed ? getCupidPair(game, String(hg.id)) : null
             const cupidPartnerId = cupidPair?.memberIds.find((id) => id !== String(hg.id))
             const cupidPartnerName = cupidPartnerId
               ? game.players.find((player) => player.id === cupidPartnerId)?.name
               : undefined
             return (
-              <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
+              <li
+                key={hg.id}
+                className={`${itemClassName}${focusedCupidPairId === cupidPair?.id ? ` ${styles.cupidPairFocused}` : ''}`}
+                data-player-id={String(hg.id)}
+                onPointerEnter={() => focusCupidPair(cupidPair?.id ?? null)}
+                onPointerLeave={() => setFocusedCupidPairId(null)}
+                onFocusCapture={() => focusCupidPair(cupidPair?.id ?? null)}
+                onBlurCapture={() => setFocusedCupidPairId(null)}
+                onPointerDown={() => focusCupidPair(cupidPair?.id ?? null, true)}
+              >
                 <AvatarTile
                   name={hg.name}
-                  avatarUrl={hg.avatarUrl}
+                  avatarUrl={
+                    cupidVisualsRevealed ? resolveCupidLoveAvatar(hg.avatarUrl) : hg.avatarUrl
+                  }
                   isEvicted={hg.isEvicted}
                   isYou={hg.isYou}
                   onClick={hg.onClick}
@@ -427,10 +483,13 @@ export default function HouseguestGrid({
                   nominationCeremonyState={hg.nominationCeremonyState}
                   descriptionId="houseguests-interaction-instructions"
                   pairColor={cupidPair?.color}
+                  pairIndex={cupidPair ? Number(cupidPair.id.replace(/\D+/g, '')) - 1 : undefined}
                   pairLabel={
                     cupidPair ? `Pair ${cupidPair.id.replace('cupid-pair-', '')}` : undefined
                   }
                   partnerName={cupidPartnerName}
+                  cupidLoveRevealed={cupidRevealAnimating}
+                  cupidLoveReturning={cupidReturnAnimating}
                 />
               </li>
             )

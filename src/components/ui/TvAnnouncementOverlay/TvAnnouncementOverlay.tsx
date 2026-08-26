@@ -5,9 +5,11 @@ import {
   useState,
   type FocusEvent,
   type RefObject,
+  type CSSProperties,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../../i18n';
+import type { CupidArrowPair, Player } from '../../../types';
 import './TvAnnouncementOverlay.css';
 import './TvAnnouncementShockPrelude.css';
 
@@ -32,6 +34,11 @@ export interface TvAnnouncementOverlayProps {
   showInfoButton?: boolean;
   /** Override legacy key-based shock detection when the runtime owns priority. */
   playShockPrelude?: boolean;
+  /** Render the body copy without the large broadcast title. */
+  hideTitle?: boolean;
+  /** Optional Cupid matching reveal shown inside the faux TV. */
+  cupidPairs?: CupidArrowPair[];
+  cupidPlayers?: Player[];
 }
 
 const SHOCK_PRELUDE_DURATION_MS = 2320;
@@ -131,6 +138,9 @@ export default function TvAnnouncementOverlay({
   infoButtonRef,
   showInfoButton = true,
   playShockPrelude,
+  hideTitle = false,
+  cupidPairs = [],
+  cupidPlayers = [],
 }: TvAnnouncementOverlayProps) {
   const { t } = useI18n();
   const { title, subtitle, isLive, autoDismissMs } = announcement;
@@ -156,6 +166,7 @@ export default function TvAnnouncementOverlay({
     announcement.key.startsWith('loh_tiebreak_');
   const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
   const themeClass = getAnnouncementThemeClass(announcement.key);
+  const cupidPlayerById = new Map(cupidPlayers.map((player) => [player.id, player.name]));
 
   const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
 
@@ -288,6 +299,12 @@ export default function TvAnnouncementOverlay({
       <div
         className={[
           'tv-announcement',
+          announcement.key === 'cupid_arrow' && !hideTitle
+            ? 'tv-announcement--cupid-activation'
+            : '',
+          announcement.key === 'cupid_arrow' && hideTitle
+            ? 'tv-announcement--cupid-follow-up'
+            : '',
           themeClass,
           isBattleBack ? 'tv-announcement--battle-back' : '',
           isDoubleEviction ? 'tv-announcement--double-eviction' : '',
@@ -318,13 +335,28 @@ export default function TvAnnouncementOverlay({
         )}
 
         <div className="tv-announcement__body">
-          <p className="tv-announcement__title">{title}</p>
+          {!hideTitle && <p className="tv-announcement__title">{title}</p>}
           {showDecisionHourglass && (
             <div className="tv-announcement__status-icon" aria-hidden="true">
               <span className="tv-announcement__status-icon-spin">⏳</span>
             </div>
           )}
           {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
+          {announcement.key === 'cupid_arrow' && cupidPairs.length > 0 && (
+            <div className="tv-announcement__cupid-pairs" aria-label="Cupid matches">
+              {cupidPairs.map((pair, index) => (
+                <div
+                  className="tv-announcement__cupid-pair"
+                  key={pair.id}
+                  style={{ '--cupid-pair-delay': `${index * 360}ms` } as CSSProperties}
+                >
+                  <span>{cupidPlayerById.get(pair.memberIds[0]) ?? pair.memberIds[0]}</span>
+                  <b aria-hidden="true">♥</b>
+                  <span>{cupidPlayerById.get(pair.memberIds[1]) ?? pair.memberIds[1]}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {showInfoButton && (

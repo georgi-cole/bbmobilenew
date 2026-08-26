@@ -502,13 +502,20 @@ export default function BroadcastManager() {
           onChange={(event) => {
             const campaign = event.target.value as BroadcastCampaign | 'all'
             setSelectedCampaign(campaign)
-            const nextPhase = ALL_BROADCAST_PHASES.find(
-              (phase) =>
-                campaign === 'all' ||
-                getBroadcastTemplatesForPhase(phase).some((template) =>
-                  matchesBroadcastCampaign(template, campaign)
-                )
+            const campaignPhases = ALL_BROADCAST_PHASES.filter((phase) =>
+              getBroadcastTemplatesForPhase(phase).some(
+                (template) => template.campaign === campaign
+              )
             )
+            const nextPhase =
+              campaign === 'all'
+                ? ALL_BROADCAST_PHASES[0]
+                : (campaignPhases[0] ??
+                  ALL_BROADCAST_PHASES.find((phase) =>
+                    getBroadcastTemplatesForPhase(phase).some((template) =>
+                      matchesBroadcastCampaign(template, campaign)
+                    )
+                  ))
             if (nextPhase) setSelectedPhase(nextPhase)
           }}
         >

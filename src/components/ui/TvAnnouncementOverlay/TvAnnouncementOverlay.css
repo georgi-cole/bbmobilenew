@@ -435,6 +435,62 @@
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.tv-announcement--cupid-activation {
+  --announcement-base-top: rgba(104, 48, 67, 0.98);
+  --announcement-base-mid: rgba(65, 31, 48, 0.96);
+  --announcement-base-bottom: rgba(33, 17, 28, 0.99);
+  --announcement-main-glow: rgba(255, 181, 190, 0.28);
+  --announcement-secondary-glow: rgba(225, 157, 117, 0.2);
+  --announcement-edge-left: rgba(255, 197, 173, 0.12);
+  --announcement-edge-right: rgba(255, 142, 180, 0.16);
+  --announcement-horizontal-band: rgba(255, 217, 185, 0.15);
+  --announcement-title-color: #fff2e6;
+  --announcement-subtitle-color: rgba(255, 239, 225, 0.92);
+  --announcement-accent-layer:
+    radial-gradient(circle at 50% 15%, rgba(255, 216, 178, 0.18), transparent 35%),
+    linear-gradient(135deg, rgba(255, 196, 171, 0.08), transparent 52%);
+  --announcement-overlay-layer:
+    linear-gradient(180deg, rgba(255, 229, 207, 0.08), transparent 30%);
+}
+
+.tv-announcement--cupid-follow-up .tv-announcement__subtitle {
+  white-space: pre-line;
+}
+
+.tv-announcement__cupid-pairs {
+  display: grid;
+  width: min(94%, 430px);
+  max-height: 52%;
+  margin-top: 12px;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.tv-announcement__cupid-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  color: #fff4ed;
+  font-size: clamp(0.68rem, 2.3vw, 0.84rem);
+  font-weight: 780;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: cupidPairOnTv 420ms ease-out var(--cupid-pair-delay) forwards;
+}
+
+.tv-announcement__cupid-pair span:first-child { text-align: right; }
+.tv-announcement__cupid-pair span:last-child { text-align: left; }
+.tv-announcement__cupid-pair b {
+  color: #ffd29f;
+  font-size: 0.8em;
+  text-shadow: 0 0 10px rgba(255, 174, 144, 0.75);
+}
+
+@keyframes cupidPairOnTv {
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .tv-announcement__info-icon {
   width: 14px;
   height: 14px;

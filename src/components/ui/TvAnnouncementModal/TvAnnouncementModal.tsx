@@ -272,7 +272,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏆',
     label: 'LOH COMPETITION',
     category: 'Competition',
-    body: 'The Leader of the House competition is about to begin. Every eligible player is fighting for the most powerful position in the game. The winner becomes the new Leader of the House and gains the authority to nominate two of their fellow players for elimination. Power is up for grabs — who will reign supreme today?',
+    body: 'The Leader of the House competition is about to begin. Every eligible player is fighting for the most powerful position in the game. The winner becomes the new Leader of the House and gains the authority to nominate two of their fellow players for elimination. Control is up for winning — who will reign supreme today?',
   },
   pos_comp_announcement: {
     icon: '🎭',
@@ -285,7 +285,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
 PHASE_COPY.cupid_arrow.shockDetail =
   'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Once four pairs have left the house, Cupid’s spell breaks and everyone returns to an individual game.'
 PHASE_COPY.cupid_arrow.shockDetail =
-  'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Protect your partner: their fate is tied to yours.'
+  'Partners deliberate together and cast one joint ballot worth two votes. Power won by one partner is shared by both, and the partner of the Power of Safety winner is protected from replacement nomination. If danger reaches one partner, both are exposed; pair eliminations resolve together. Protect your bond: the Big Eye is watching.'
 PHASE_COPY.cupid_arrow_broken.body =
   'Four pairs have fallen. Cupid’s spell has ended, the bonds are gone, and the house is no longer divided into pairs.'
 PHASE_COPY.cupid_arrow_broken.shockDetail =
@@ -351,7 +351,15 @@ export default function TvAnnouncementModal({
 
   if (!open) return null
 
-  const copy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
+  const sourceCopy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
+  const normalizeHubCopy = (value: string) => value.replace(/\bhouse\b/gi, 'hub')
+  const copy = {
+    ...sourceCopy,
+    body: normalizeHubCopy(sourceCopy.body),
+    shockDetail: sourceCopy.shockDetail
+      ? normalizeHubCopy(sourceCopy.shockDetail)
+      : undefined,
+  }
 
   return createPortal(
     <div

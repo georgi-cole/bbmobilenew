@@ -1250,6 +1250,51 @@ body.experiment-game-chrome-refined .tv-zone__viewport--public-results {
   transform: none;
 }
 
+.tv-zone__now--cupid-follow-up {
+  white-space: pre-line;
+}
+
+.tv-zone__cupid-info-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #c7d2fe;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tv-zone__cupid-info-btn:hover,
+.tv-zone__cupid-info-btn:focus-visible {
+  border-color: rgba(165, 180, 252, 0.82);
+  background: rgba(99, 102, 241, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 12px rgba(99, 102, 241, 0.24);
+}
+
+.tv-zone__cupid-info-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
 /* ── Event feed ────────────────────────────────────────────────────────────── */
 /* Finale winner bulletin: celebratory, but restrained enough to stay within
    the main faux-TV's broadcast language. */
@@ -1762,11 +1807,45 @@ body.experiment-game-chrome-refined .tv-zone__viewport--public-results {
   }
 }
 
+/* Cupid's post-OK handoff keeps the ordinary faux-TV surface, with the same
+   short shell pulse as Double Elimination recolored in a delicate rose-pink. */
+.tv-zone--cupid-outline-pulse {
+  position: relative;
+  z-index: 9999;
+  animation: cupidOutlinePulse var(--cupid-outline-pulse-ms, 1700ms) ease-out forwards;
+}
+
+@keyframes cupidOutlinePulse {
+  0% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: scale(1);
+  }
+  22% {
+    box-shadow:
+      0 0 0 3px rgba(245, 158, 184, 0.86),
+      0 0 44px rgba(225, 112, 153, 0.46),
+      0 0 96px rgba(139, 54, 91, 0.34),
+      0 12px 44px rgba(0, 0, 0, 0.72);
+    transform: scale(1.018);
+  }
+  100% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tv-zone-de-backdrop {
     animation: none;
   }
   .tv-zone--de-spotlight {
+    animation: none;
+  }
+  .tv-zone--cupid-outline-pulse {
     animation: none;
   }
 }

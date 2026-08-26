@@ -38,11 +38,13 @@ function hashText(value: string): number {
 
 /** Consecutive days rotate, while each game starts at a different point. */
 export function getDailyAtmosphere(
-  gameId: string,
+  gameId: string | undefined,
   week: number,
   phase: Phase
 ): DailyAtmosphere | null {
-  const offset = hashText(gameId) % 6
+  // Preview and test games can be constructed before a durable id is assigned.
+  // Keep their atmosphere deterministic instead of throwing during the day card.
+  const offset = hashText(gameId ?? 'preview-game') % 6
   const index = (offset + Math.max(0, week - 1)) % 6
   if (phase === 'week_start') {
     return (['sunny', 'cloudy', 'rainy', 'misty', 'snowy', 'stormy'] as const)[index]

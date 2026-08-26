@@ -101,6 +101,9 @@ body:has(.game-screen) .game-bottom-nav.nav-bar {
   --color-accent: #c66e91;
   --color-accent-2: #9274bd;
   isolation: isolate;
+  /* The TV/roster rhythm has a deliberate 8px gutter. Give the parent the
+     same midnight surface so Cupid's app-shell wash cannot shine through it. */
+  background: linear-gradient(180deg, #120f1c 0%, #0c0b15 100%);
 }
 
 .game-screen--cupid-active::before,
@@ -179,6 +182,83 @@ body:has(.game-screen--cupid-active) .game-bottom-nav.nav-bar::before {
 body:has(.game-screen--cupid-active) [class*='HouseguestGrid_headerRow'] {
   border-color: rgba(222, 156, 184, 0.16);
   background: rgba(24, 17, 31, 0.8);
+}
+
+/* Cupid uses the preserved alpha cutouts over a shared rose-gold texture.
+   The ordinary WebP portraits remain unchanged outside the active pair mode. */
+body:has(.game-screen--cupid-revealed) [class*='HouseguestGrid_avatarWrap'] {
+  background-color: #b87c7d;
+  background-image:
+    linear-gradient(rgba(79, 42, 54, 0.14), rgba(79, 42, 54, 0.14)),
+    url('/bbmobilenew/assets/skins/cupid-love/rose-gold-unified.png');
+  background-position: center;
+  background-size: cover;
+  border-color: rgba(239, 174, 181, 0.32);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(234, 155, 174, 0.16),
+    0 0 14px rgba(213, 108, 137, 0.12),
+    inset 0 1px 0 rgba(255, 238, 240, 0.1);
+}
+
+
+/* The broken state is mounted for the shock's return beat, so this animation
+   flashes the tile treatment back to the normal black-gold portraits once. */
+body.body--cupid-returning .game-screen--cupid-broken [class*='HouseguestGrid_avatarWrap'] {
+  animation: cupidBlackGoldReturn 1350ms cubic-bezier(0.16, 0.82, 0.24, 1) both;
+}
+
+body.body--cupid-returning .game-screen--cupid-broken img[class*='HouseguestGrid_avatar'] {
+  animation: cupidPortraitReturn 1350ms cubic-bezier(0.16, 0.82, 0.24, 1) both;
+}
+
+@keyframes cupidBlackGoldReturn {
+  0% {
+    filter: brightness(1.35) saturate(1.2);
+    box-shadow:
+      0 0 0 1px rgba(255, 185, 196, 0.7),
+      0 0 24px rgba(225, 119, 148, 0.56),
+      inset 0 0 20px rgba(255, 188, 202, 0.2);
+  }
+  32% {
+    filter: brightness(1.55) saturate(0.35) blur(1px);
+    transform: scale(1.045);
+  }
+  58% {
+    filter: brightness(1.12) saturate(0.72);
+    transform: scale(0.985);
+  }
+  100% {
+    filter: none;
+    transform: scale(1);
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(6, 10, 17, 0.46),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 10px 18px rgba(0, 0, 0, 0.26);
+  }
+}
+
+@keyframes cupidPortraitReturn {
+  0% {
+    opacity: 0.08;
+    filter: brightness(2.2) saturate(2.1) hue-rotate(320deg) blur(2px);
+    transform: scale(1.09);
+  }
+  28% {
+    opacity: 1;
+    filter: brightness(1.45) saturate(1.5) hue-rotate(335deg);
+    transform: scale(1.04);
+  }
+  62% {
+    filter: brightness(0.9) saturate(0.42);
+    transform: scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
 }
 
 @keyframes cupidAmbientDrift {

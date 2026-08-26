@@ -78,42 +78,6 @@ body.body--shock-active {
   --color-line: rgba(245, 158, 11, 0.14);
 }
 
-body.body--cupid-shock {
-  --color-accent: #df729d;
-  --color-accent-2: #9d73c9;
-  --color-card: #21111e;
-  --color-card-2: #2a1525;
-  --color-line: rgba(255, 159, 197, 0.16);
-}
-
-body.body--cupid-shock .tv-zone {
-  border-color: rgba(255, 173, 205, 0.28);
-  background: linear-gradient(180deg, rgba(47, 18, 40, 0.97), rgba(17, 9, 23, 0.99));
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.54),
-    0 0 0 1px rgba(255, 226, 238, 0.05),
-    0 0 28px rgba(220, 100, 151, 0.16);
-}
-
-body.body--cupid-shock .tv-announcement {
-  --announcement-main-glow: rgba(246, 119, 168, 0.26);
-  --announcement-secondary-glow: rgba(185, 128, 220, 0.16);
-  --announcement-edge-left: rgba(255, 148, 190, 0.08);
-  --announcement-edge-right: rgba(188, 139, 224, 0.08);
-  --announcement-title-glow: rgba(255, 137, 182, 0.58);
-  --announcement-title-ambient: rgba(216, 112, 158, 0.22);
-  --announcement-info-border: rgba(255, 184, 211, 0.52);
-  --announcement-info-bg: rgba(197, 82, 134, 0.18);
-  --announcement-info-bg-hover: rgba(197, 82, 134, 0.3);
-  --announcement-info-color: #ffc0d7;
-}
-
-body.body--cupid-shock .tv-zone__twist-badge {
-  background: linear-gradient(135deg, rgba(169, 68, 116, 0.95), rgba(132, 88, 180, 0.95));
-  border-color: rgba(255, 220, 234, 0.3);
-  color: #fff5f9;
-}
-
 /*
  * Persistent Cupid palette. Unlike body--cupid-shock (the short announcement
  * pipeline), this scope remains for the whole paired portion of the season.
@@ -224,11 +188,11 @@ body.body--cupid-shock .tv-zone__twist-badge {
 }
 
 body.body--cupid-shock {
-  --color-accent: #df729d;
-  --color-accent-2: #9d73c9;
-  --color-card: #21111e;
-  --color-card-2: #2a1525;
-  --color-line: rgba(255, 159, 197, 0.16);
+  --color-accent: #c77b96;
+  --color-accent-2: #927b9f;
+  --color-card: #211a20;
+  --color-card-2: #2a2027;
+  --color-line: rgba(180, 117, 142, 0.14);
 }
 
 body.body--cupid-shock .tv-zone {

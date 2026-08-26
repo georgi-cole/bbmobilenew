@@ -1315,7 +1315,7 @@ export default function GameScreen() {
     <LayoutGroup id="game-layout">
       <div
         ref={gameScreenRef}
-        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}`}
+        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}`}
         style={responsiveGameLayout.cssVars}
         data-layout-size={responsiveGameLayout.layoutSize}
         data-roster-mode={responsiveGameLayout.rosterMode}
@@ -1409,6 +1409,11 @@ export default function GameScreen() {
           />
         ) : (
           <TvZone
+            viewportMessageOverride={
+              showBattleBackOverlay
+                ? 'Back 2 the Game is in progress. The return showdown is underway.'
+                : null
+            }
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
