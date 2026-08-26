@@ -1306,7 +1306,7 @@ export default function TvZone(props: TvZoneProps) {
   // same brief outline pulse as Double Elimination, but in Cupid rose-pink.
   useEffect(() => {
     if (!cupidFollowUpVisible) {
-      setCupidOutlinePulseActive(false)
+      startTransition(() => setCupidOutlinePulseActive(false))
       if (cupidOutlinePulseTimerRef.current !== null) {
         clearTimeout(cupidOutlinePulseTimerRef.current)
         cupidOutlinePulseTimerRef.current = null
@@ -1314,7 +1314,7 @@ export default function TvZone(props: TvZoneProps) {
       return
     }
 
-    setCupidOutlinePulseActive(true)
+    startTransition(() => setCupidOutlinePulseActive(true))
     if (cupidOutlinePulseTimerRef.current !== null) clearTimeout(cupidOutlinePulseTimerRef.current)
     cupidOutlinePulseTimerRef.current = setTimeout(() => {
       setCupidOutlinePulseActive(false)
@@ -1348,7 +1348,9 @@ export default function TvZone(props: TvZoneProps) {
   }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
 
   useEffect(() => {
-    if (activeAnnouncement?.key !== 'cupid_arrow') setCupidIntroAcknowledged(false)
+    if (activeAnnouncement?.key !== 'cupid_arrow') {
+      startTransition(() => setCupidIntroAcknowledged(false))
+    }
   }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
 
   // Recovery for saves made while the older Cupid flow could consume the
