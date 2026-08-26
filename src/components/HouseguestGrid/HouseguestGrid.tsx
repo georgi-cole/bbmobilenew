@@ -174,17 +174,28 @@ export default function HouseguestGrid({
     const wasRevealed = previousCupidVisualsRevealedRef.current
     previousCupidVisualsRevealedRef.current = cupidVisualsRevealed
     if (!wasRevealed && cupidVisualsRevealed) {
-      setCupidRevealAnimating(true)
-      const timer = window.setTimeout(() => setCupidRevealAnimating(false), 2200)
-      return () => window.clearTimeout(timer)
+      const revealTimer = window.setTimeout(() => setCupidRevealAnimating(true), 0)
+      const resetTimer = window.setTimeout(() => setCupidRevealAnimating(false), 2200)
+      return () => {
+        window.clearTimeout(revealTimer)
+        window.clearTimeout(resetTimer)
+      }
     }
     if (wasRevealed && !cupidVisualsRevealed && game.cupidArrow?.status === 'broken') {
-      setCupidRevealAnimating(false)
-      setCupidReturnAnimating(true)
-      const timer = window.setTimeout(() => setCupidReturnAnimating(false), 1350)
-      return () => window.clearTimeout(timer)
+      const returnTimer = window.setTimeout(() => {
+        setCupidRevealAnimating(false)
+        setCupidReturnAnimating(true)
+      }, 0)
+      const resetTimer = window.setTimeout(() => setCupidReturnAnimating(false), 1350)
+      return () => {
+        window.clearTimeout(returnTimer)
+        window.clearTimeout(resetTimer)
+      }
     }
-    if (!cupidVisualsRevealed) setCupidRevealAnimating(false)
+    if (!cupidVisualsRevealed) {
+      const resetTimer = window.setTimeout(() => setCupidRevealAnimating(false), 0)
+      return () => window.clearTimeout(resetTimer)
+    }
   }, [cupidVisualsRevealed, game.cupidArrow?.status])
 
   useEffect(
