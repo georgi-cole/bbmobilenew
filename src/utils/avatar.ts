@@ -181,15 +181,14 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
     candidates.push(remoteAvatarUrl);
   }
 
-  const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
-  if (explicitAvatarPath) {
-    candidates.push(explicitAvatarPath);
-  }
-
   // A custom player has no canonical houseguest artwork. Avoid speculative
   // name/id requests that produce a broken image before the bundled player
   // fallback is shown. An explicit custom avatar still remains first.
   if (isUserPlayer) {
+    const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
+    if (explicitAvatarPath) {
+      candidates.push(explicitAvatarPath);
+    }
     candidates.push(getLocalAvatarFallback(player.name, true));
     return candidates;
   }
@@ -227,6 +226,15 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
       joinAvatarPath(`${lower}_avatar.webp`),
       joinAvatarPath(`${id}_avatar.webp`),
     );
+  }
+
+  // Canonical houseguest identity wins over a stale serialized avatar path.
+  // Older saved games can retain a previous player's filename here; resolving
+  // by the stable id/name first prevents labels such as Kai/Ivy or Zed/Vee
+  // from ever being paired with the wrong portrait.
+  const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
+  if (explicitAvatarPath) {
+    candidates.push(explicitAvatarPath);
   }
 
   candidates.push(getDicebear(player.name), getLocalAvatarFallback(player.name, isUserPlayer));

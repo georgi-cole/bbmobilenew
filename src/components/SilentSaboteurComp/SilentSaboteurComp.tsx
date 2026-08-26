@@ -38,6 +38,7 @@ import type {
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
 import './SilentSaboteurComp.css';
 
 // ─── Centralized timing constants ─────────────────────────────────────────────
@@ -308,7 +309,7 @@ function HouseguestPortrait({
   sizeClass?: string;
 }) {
   const candidates = useMemo(
-    () => resolveAvatarCandidates({ id, name, avatar }).filter(isNonDicebearAvatar),
+    () => resolveAvatarCandidates({ id, name, avatar }).map(resolvePresentationAvatar).filter(isNonDicebearAvatar),
     [id, name, avatar],
   );
 

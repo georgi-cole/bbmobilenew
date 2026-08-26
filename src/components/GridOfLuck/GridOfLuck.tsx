@@ -13,6 +13,7 @@ import type { GenericMinigameProps } from '../../minigames/reactComponents'
 import { getNextEligiblePlayer } from './gridOfLuckLogic'
 import { mulberry32 } from '../../store/rng'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import './GridOfLuck.css'
 
 type BoxCategory = 'positive' | 'negative' | 'aggressive' | 'strategic' | 'chaos'
@@ -1461,7 +1462,10 @@ function describeActorBoxChoice(player: GridPlayer, boxId: number): string {
 
 function GridOfLuckAvatar({ player }: { player: GridPlayer }) {
   const candidates = useMemo(
-    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }),
+    () =>
+      resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).map(
+        resolvePresentationAvatar
+      ),
     [player.avatar, player.id, player.name]
   )
   const [candidateIdx, setCandidateIdx] = useState(0)

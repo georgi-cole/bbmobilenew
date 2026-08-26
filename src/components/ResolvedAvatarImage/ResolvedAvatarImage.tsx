@@ -5,6 +5,7 @@ import {
   resolveAvatarCandidates,
 } from '../../utils/avatar'
 import { imageIdToDataUrl } from '../../utils/imageDb'
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 
 type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   id: string
@@ -47,7 +48,7 @@ export default function ResolvedAvatarImage({
                 name,
                 avatar: avatar ?? '',
                 isUser,
-              })
+              }).map(resolvePresentationAvatar)
             ),
           ],
     [avatar, id, isUser, name, profilePhotoId]

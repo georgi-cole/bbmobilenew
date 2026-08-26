@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties } from 'react'
 import type { CupidArrowPair, Player } from '../../types'
 import { store } from '../../store/store'
 import { normalisePublicSaveVoteShares } from '../../publicOpinion/PublicSaveService'
@@ -64,7 +64,7 @@ function buildPublicSaveDisplayUnits(
 type AnimPhase = 'entering' | 'revealing' | 'saved' | 'exiting'
 
 const ENTER_TO_REVEAL_MS = 900
-const REVEAL_VALUES_MS = 5000
+const COUNT_VALUES_MS = 3600
 const SHOW_SAVED_MS = 7600
 const EXIT_MS = 9300
 const DONE_MS = 10000
@@ -88,9 +88,13 @@ function NormalPublicSaveReveal({
 }) {
   const [phase, setPhase] = useState<AnimPhase>('entering')
   const [valuesRevealed, setValuesRevealed] = useState(false)
+  const [displayedShares, setDisplayedShares] = useState<Record<string, number>>({})
   const timersRef = useRef<number[]>([])
   const doneRef = useRef(false)
-  const displayUnits = buildPublicSaveDisplayUnits(nominees, voteShares, pairs)
+  const displayUnits = useMemo(
+    () => buildPublicSaveDisplayUnits(nominees, voteShares, pairs),
+    [nominees, pairs, voteShares]
+  )
   const savedUnit = displayUnits.find((unit) =>
     unit.members.some((member) => member.id === savedId)
   )
@@ -118,7 +122,6 @@ function NormalPublicSaveReveal({
 
     timersRef.current = [
       window.setTimeout(() => setPhase('revealing'), ENTER_TO_REVEAL_MS),
-      window.setTimeout(() => setValuesRevealed(true), REVEAL_VALUES_MS),
       window.setTimeout(() => setPhase('saved'), SHOW_SAVED_MS),
       window.setTimeout(() => setPhase('exiting'), EXIT_MS),
       window.setTimeout(() => fireDone(), DONE_MS),
@@ -126,6 +129,28 @@ function NormalPublicSaveReveal({
 
     return clearTimers
   }, [clearTimers, fireDone])
+
+  useEffect(() => {
+    if (phase !== 'revealing') return undefined
+
+    let animationFrame = 0
+    const startedAt = performance.now()
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / COUNT_VALUES_MS)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplayedShares(
+        Object.fromEntries(displayUnits.map((unit) => [unit.id, unit.voteShare * eased]))
+      )
+      if (progress < 1) {
+        animationFrame = window.requestAnimationFrame(tick)
+      } else {
+        setValuesRevealed(true)
+      }
+    }
+
+    animationFrame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [displayUnits, phase])
 
   return (
     <div
@@ -148,6 +173,7 @@ function NormalPublicSaveReveal({
             const isSaved = unit.members.some((member) => member.id === savedId)
             const voteShare = unit.voteShare
             const formattedShare = formatShare(voteShare)
+            const displayedShare = displayedShares[unit.id] ?? 0
             return (
               <div
                 key={unit.id}
@@ -165,8 +191,6 @@ function NormalPublicSaveReveal({
                 style={
                   {
                     '--stagger': index,
-                    '--pending-width': `${32 + index * 6}%`,
-                    '--pending-delay': `${index * 140}ms`,
                     '--pair-color': unit.color,
                   } as CSSProperties
                 }
@@ -181,26 +205,13 @@ function NormalPublicSaveReveal({
                   ))}
                 </div>
                 <span className="psr__name">{unit.label}</span>
-                <div className="psr__bar-track">
-                  <div
-                    className={`psr__bar-motion${!valuesRevealed ? ' psr__bar-motion--pending' : ''}`}
-                  >
-                    <div
-                      className="psr__bar-fill"
-                      style={{
-                        width:
-                          phase === 'entering'
-                            ? '0%'
-                            : valuesRevealed
-                              ? `${voteShare}%`
-                              : 'var(--pending-width)',
-                      }}
-                      aria-label={`${unit.label} save vote: ${valuesRevealed ? formattedShare : 'pending reveal'}`}
-                    />
-                  </div>
-                </div>
-                <span className="psr__approval-value">
-                  {valuesRevealed ? formattedShare : '?? %'}
+                <span
+                  className={`psr__approval-value${phase === 'revealing' ? ' psr__approval-value--counting' : ''}`}
+                  aria-label={`${unit.label} save vote: ${valuesRevealed ? formattedShare : 'counting'}`}
+                >
+                  {phase === 'entering'
+                    ? '—'
+                    : formatShare(valuesRevealed ? voteShare : displayedShare)}
                 </span>
               </div>
             )

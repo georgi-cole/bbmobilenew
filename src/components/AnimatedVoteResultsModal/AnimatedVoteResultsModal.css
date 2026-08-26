@@ -20,11 +20,10 @@
   inset: 0;
   z-index: 1;
   padding: 0.5rem;
-  /* Cooler highlights help the TV variant read like an in-house broadcast feed
-     instead of reusing the warmer modal palette from the overlay version. */
   background:
-    radial-gradient(circle at 50% 20%, rgba(120, 168, 255, 0.14), transparent 36%),
-    linear-gradient(180deg, rgba(7, 12, 22, 0.18) 0%, rgba(3, 7, 14, 0.34) 100%);
+    radial-gradient(circle at 50% 18%, rgba(102, 62, 135, 0.16), transparent 38%),
+    radial-gradient(circle at 86% 84%, rgba(175, 124, 43, 0.05), transparent 30%),
+    linear-gradient(180deg, rgba(16, 9, 23, 0.24) 0%, rgba(4, 3, 8, 0.42) 100%);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   container-type: size;
@@ -114,7 +113,7 @@
 .avrm--tv .avrm__title {
   font-size: clamp(0.54rem, 1.5vw, 0.72rem);
   letter-spacing: 0.18em;
-  color: #f7d9d9;
+  color: #f3dfbb;
 }
 
 .avrm__live-badge {

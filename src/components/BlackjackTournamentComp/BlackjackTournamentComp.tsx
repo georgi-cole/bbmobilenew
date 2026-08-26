@@ -44,6 +44,7 @@ import {
 import type { BlackjackTournamentCompetitionType } from '../../features/blackjackTournament/blackjackTournamentSlice';
 import { resolveBlackjackTournamentOutcome } from '../../features/blackjackTournament/thunks';
 import { resolveAvatar, getDicebear } from '../../utils/avatar';
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
 import HOUSEGUESTS from '../../data/houseguests';
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper';
 import './BlackjackTournamentComp.css';
@@ -70,10 +71,10 @@ const SPECTATOR_ADVANCE_MS = 600;
 function resolveTournamentAvatar(id: string, participants?: ParticipantProp[]): string {
   const participant = participants?.find((entry) => entry.id === id);
   if (participant?.avatar) {
-    return resolveAvatar({ id, name: participant.name, avatar: participant.avatar });
+    return resolvePresentationAvatar(resolveAvatar({ id, name: participant.name, avatar: participant.avatar }));
   }
   const hg = HOUSEGUESTS.find((h) => h.id === id);
-  if (hg) return resolveAvatar({ id: hg.id, name: hg.name, avatar: '' });
+  if (hg) return resolvePresentationAvatar(resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }));
   return getDicebear(id);
 }
 

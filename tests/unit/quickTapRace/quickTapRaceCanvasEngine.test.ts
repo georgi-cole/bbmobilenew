@@ -206,6 +206,42 @@ describe('QuickTapRaceCanvasEngine', () => {
     expect(Array.isArray(modifiers)).toBe(true);
   });
 
+  it('emits timer updates while playing without requiring taps', async () => {
+    const onTick = vi.fn();
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      onTick,
+      onFinish: vi.fn(),
+    });
+
+    engine.start();
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(onTick).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: 'playing', timeLeft: expect.any(Number) }),
+    );
+    expect(engine.getSnapshot().timeLeft).toBeLessThan(30);
+  });
+
+  it('uses the full wall-clock gap for gameplay while capping animation work', () => {
+    const canvas = makeCanvas();
+    const engine = new QuickTapRaceCanvasEngine(canvas, {
+      seed: 42,
+      autoStart: true,
+      onTick: vi.fn(),
+      onFinish: vi.fn(),
+    });
+    const runFrame = (engine as unknown as { tick: (timestamp: number) => void }).tick;
+
+    engine.start();
+    runFrame(100);
+    runFrame(1_100);
+
+    expect(engine.getSnapshot().timeLeft).toBeCloseTo(29, 1);
+  });
+
   it('does not fire onFinish twice even if destroy is called after game ends', async () => {
     const onFinish = vi.fn();
     const canvas = makeCanvas();

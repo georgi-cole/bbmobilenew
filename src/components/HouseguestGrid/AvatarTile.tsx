@@ -458,6 +458,9 @@ export default function AvatarTile({
               src={resolvedAvatarUrl}
               alt={name}
               className={styles.avatar}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
               onError={handleImgError}
               draggable={false}
               onDragStart={(e) => e.preventDefault()}

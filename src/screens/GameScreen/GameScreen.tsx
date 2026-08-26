@@ -1156,6 +1156,40 @@ export default function GameScreen() {
   const favoriteAnnouncementPending =
     game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
 
+  // Condition-driven prompts (approval, energy, unlocked reveals, etc.) must
+  // never cover a ceremony or cinematic that is already active or queued by
+  // the game state. Keeping their state pending lets them appear immediately
+  // after that presentation completes, rather than losing the prompt.
+  const deferConditionPromptsForPresentation =
+    shouldShowNominationCeremony ||
+    showWinnerCeremony ||
+    showAdvanceHohCeremony ||
+    pendingReplacementCeremony !== null ||
+    showAiReplacementAnim ||
+    showPublicSaveCeremony ||
+    showSaveCeremony ||
+    showEvictionSplash ||
+    dayStartShock !== null ||
+    twinShockReveal !== null ||
+    showPublicSaveReveal ||
+    showDemocraciaResults ||
+    showVoteResults ||
+    showAiSecondTieBreakOverlay ||
+    showFinal4Chat ||
+    showFinal4AnnounceChat ||
+    showFinal3Ceremony ||
+    game.phase === 'jury_announcement' ||
+    game.phase === 'jury_cinematic' ||
+    showBattleBackOverlay ||
+    showBattleBackReturn ||
+    showFavoriteVoting ||
+    showMinigameHost ||
+    showQuickTapRace ||
+    showLaneRacers ||
+    showPressurePlank ||
+    showBullseyeBlitz ||
+    showTravelingDots
+
   const flowCoordination = coordinateGameFlows({
     hasStartedGame: game.status === 'active',
     allowControlsWhenInactive: survivorTerminalActive,
@@ -2134,7 +2168,7 @@ export default function GameScreen() {
         {isSocialModeEnabled(game.mode) && socialSummaryOpen && <SocialSummaryPopup />}
 
         {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
-        {showVoteBreakdownPrompt && (
+        {!deferConditionPromptsForPresentation && showVoteBreakdownPrompt && (
           <AdPrompt
             icon="🗳️"
             title="Peek Behind the Curtain?"
@@ -2166,7 +2200,7 @@ export default function GameScreen() {
           />
         )}
 
-        {showVoxNominationRevealPrompt && (
+        {!deferConditionPromptsForPresentation && showVoxNominationRevealPrompt && (
           <AdPrompt
             icon="🗳️"
             title="Reveal the Secret Ballots?"
@@ -2195,39 +2229,41 @@ export default function GameScreen() {
           />
         )}
 
-        {showVoxAudiencePreviewPrompt && voxAudiencePreviewWindow && (
-          <AdPrompt
-            icon="📡"
-            title="See How the Vote Is Going?"
-            description="Watch a short ad to see how the audience has voted so far. If the numbers look dangerous, there is still time to change the story before the vote closes."
-            watchLabel="Show Me the Vote"
-            skipLabel="Not Yet"
-            onWatch={() => {
-              if (adPending) return
-              setAdPending(true)
-              const state = storeRef.current.getState()
-              if (!window.GameAds?.showRewarded) {
-                dispatch(recordAdShown('vox_audience_preview'))
-                unlockVoxAudiencePreview()
-                return
-              }
-              const requested = showRewarded(
-                'vox_audience_preview',
-                state,
-                dispatch,
-                unlockVoxAudiencePreview
-              )
-              if (!requested) unlockVoxAudiencePreview()
-            }}
-            onSkip={() => {
-              setShowVoxAudiencePreviewPrompt(false)
-              setAdPending(false)
-            }}
-            pending={adPending}
-          />
-        )}
+        {!deferConditionPromptsForPresentation &&
+          showVoxAudiencePreviewPrompt &&
+          voxAudiencePreviewWindow && (
+            <AdPrompt
+              icon="📡"
+              title="See How the Vote Is Going?"
+              description="Watch a short ad to see how the audience has voted so far. If the numbers look dangerous, there is still time to change the story before the vote closes."
+              watchLabel="Show Me the Vote"
+              skipLabel="Not Yet"
+              onWatch={() => {
+                if (adPending) return
+                setAdPending(true)
+                const state = storeRef.current.getState()
+                if (!window.GameAds?.showRewarded) {
+                  dispatch(recordAdShown('vox_audience_preview'))
+                  unlockVoxAudiencePreview()
+                  return
+                }
+                const requested = showRewarded(
+                  'vox_audience_preview',
+                  state,
+                  dispatch,
+                  unlockVoxAudiencePreview
+                )
+                if (!requested) unlockVoxAudiencePreview()
+              }}
+              onSkip={() => {
+                setShowVoxAudiencePreviewPrompt(false)
+                setAdPending(false)
+              }}
+              pending={adPending}
+            />
+          )}
 
-        {postEvictionVoteBreakdown && (
+        {!deferConditionPromptsForPresentation && postEvictionVoteBreakdown && (
           <div
             className="ad-prompt__backdrop"
             role="dialog"
@@ -2275,7 +2311,7 @@ export default function GameScreen() {
         )}
 
         {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
-        {showEnergyRechargePrompt && humanPlayer && (
+        {!deferConditionPromptsForPresentation && showEnergyRechargePrompt && humanPlayer && (
           <AdPrompt
             icon="⚡"
             title="Out of Energy!"
@@ -2301,7 +2337,7 @@ export default function GameScreen() {
         )}
 
         {/* public_meter_disliked_boost: rewarded prompt when approval drops to Disliked */}
-        {showDislikedBoostPrompt && humanPlayer && (
+        {!deferConditionPromptsForPresentation && showDislikedBoostPrompt && humanPlayer && (
           <AdPrompt
             icon="📊"
             title="Your Approval Is Slipping"
@@ -2343,7 +2379,7 @@ export default function GameScreen() {
           />
         )}
 
-        {battleBackRetryOfferWinnerId && (
+        {!deferConditionPromptsForPresentation && battleBackRetryOfferWinnerId && (
           <AdPrompt
             icon="⚡"
             title="Second Chance?"

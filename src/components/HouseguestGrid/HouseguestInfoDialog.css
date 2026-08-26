@@ -12,8 +12,12 @@
 }
 
 @keyframes hgInfoOverlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .hg-info-dialog {
@@ -34,8 +38,14 @@
 }
 
 @keyframes hgInfoDialogIn {
-  from { transform: scale(0.92) translateY(8px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+  from {
+    transform: scale(0.92) translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 .hg-info-dialog__close {
@@ -55,7 +65,10 @@
   line-height: 1;
   padding: 0;
   border-radius: 9px;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .hg-info-dialog__close:hover,
@@ -136,6 +149,52 @@
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.2;
+}
+
+/* Profile preview uses the same quiet blackberry-and-gold material as gameplay dialogs. */
+.hg-info-dialog {
+  background:
+    radial-gradient(circle at top left, rgba(224, 185, 108, 0.12), transparent 34%),
+    linear-gradient(160deg, rgba(29, 17, 31, 0.94) 0%, rgba(13, 8, 16, 0.93) 100%);
+  border: 1px solid rgba(224, 185, 108, 0.3);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.68),
+    inset 0 0 24px rgba(193, 142, 55, 0.07);
+}
+
+.hg-info-dialog__close {
+  background: rgba(65, 41, 27, 0.54);
+  border-color: rgba(226, 189, 112, 0.18);
+  color: rgba(255, 237, 200, 0.62);
+}
+
+.hg-info-dialog__close:hover,
+.hg-info-dialog__close:focus-visible {
+  background: rgba(95, 62, 31, 0.76);
+  border-color: rgba(241, 203, 124, 0.42);
+  outline-color: rgba(228, 185, 91, 0.46);
+}
+
+.hg-info-dialog__header {
+  border-bottom-color: rgba(225, 184, 101, 0.16);
+}
+.hg-info-dialog__avatar {
+  border-color: rgba(226, 186, 102, 0.82);
+  box-shadow:
+    0 0 0 1px rgba(255, 228, 159, 0.26),
+    0 0 16px rgba(179, 124, 38, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.hg-info-dialog__name {
+  color: #fff1d5;
+  text-shadow: 0 0 12px rgba(188, 132, 42, 0.26);
+}
+.hg-info-dialog__field {
+  background: rgba(56, 35, 42, 0.44);
+  border-color: rgba(225, 184, 101, 0.1);
+}
+.hg-info-dialog__field-label {
+  color: rgba(232, 193, 109, 0.84);
 }
 
 @media (max-width: 420px) {

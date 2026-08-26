@@ -60,6 +60,8 @@ html.is-capacitor-ios .game-screen {
 .game-screen > .tv-zone,
 .game-screen--compact-roster-balance > .tv-zone {
   flex: 0 0 auto;
+  width: min(100%, var(--game-cabinet-max-width, 480px));
+  margin-inline: auto;
   min-height: var(--game-screen-tv-min-height);
   --tv-zone-viewport-min-height: var(--game-screen-tv-viewport-min-height);
 }

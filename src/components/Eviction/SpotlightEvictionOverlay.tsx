@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Player } from '../../types'
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import { useAppDispatch } from '../../store/hooks'
 import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice'
 import './SpotlightEvictionOverlay.css'
@@ -98,7 +99,9 @@ export default function SpotlightEvictionOverlay({
   variant = 'eviction',
 }: Props) {
   const dispatch = useAppDispatch()
-  const [candidates] = useState(() => resolveAvatarCandidates(evictee))
+  const [candidates] = useState(() =>
+    resolveAvatarCandidates(evictee).map(resolvePresentationAvatar)
+  )
   const [candidateIdx, setCandidateIdx] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
 

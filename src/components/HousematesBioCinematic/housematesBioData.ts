@@ -261,7 +261,7 @@ export const MYSTERY_WILDCARD_BIOS: MysteryWildcardBio[] = [
     accent: '#ffd17d',
     backdrop: 'design-studio',
     portraitPath: '/assets/Informal_attires/Pax_informal.png',
-    avatarPath: '/assets/skins/Pax_avatar.svg',
+    avatarPath: '/assets/skins/Pax_avatar.webp',
     unlock: { kind: 'unavailable', label: 'Unknown' },
   },
   {

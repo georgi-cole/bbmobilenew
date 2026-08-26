@@ -40,6 +40,7 @@ import {
 import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
 import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import { resolveAvatarCandidates } from '../../utils/avatar';
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
 import './TrapAuction.css';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ export interface TrapAuctionProps {
 // ─── Avatar helper ────────────────────────────────────────────────────────────
 
 function resolvePlayerAvatarSrc(player: TrapAuctionPlayer): string {
-  const candidates = resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar });
+  const candidates = resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).map(resolvePresentationAvatar);
   return candidates[0] ?? '';
 }
 
