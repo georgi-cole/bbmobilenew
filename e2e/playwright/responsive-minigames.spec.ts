@@ -11,6 +11,12 @@ import {
 const ACTIVE_GAMES = getPoolByFilter({ retired: false })
   .slice()
   .sort((left, right) => left.title.localeCompare(right.title) || left.key.localeCompare(right.key))
+const runResponsiveMinigameSweep = process.env.RESPONSIVE_MINIGAME_SWEEP === '1'
+
+test.skip(
+  !runResponsiveMinigameSweep,
+  'the exhaustive responsive minigame sweep runs only in its dedicated command/job'
+)
 
 async function openLab(page: Page, game: GameRegistryEntry): Promise<void> {
   await page.goto(
