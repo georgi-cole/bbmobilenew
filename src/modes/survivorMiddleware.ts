@@ -204,6 +204,21 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
     game.phase,
     game.week,
   );
+  const obsoleteEvictionIds = new Set(
+    game.tvFeed
+      .filter((event) =>
+        event.meta?.phase === game.phase &&
+        event.meta?.week === game.week &&
+        event.text.includes(evictee.name) &&
+        event.text.includes('eliminated from The Big Eye')
+      )
+      .map((event) => event.id),
+  );
+  const tvFeed = game.tvFeed.map((event) =>
+    obsoleteEvictionIds.has(event.id)
+      ? { ...event, meta: { ...(event.meta ?? {}), broadcastConsumed: true } }
+      : event,
+  );
 
   return {
     ...game,
@@ -226,7 +241,15 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
       },
     },
     lastPlayedAt: startedAt,
-    tvFeed: [replacementEvent, ...game.tvFeed].slice(0, 50),
+    tvFeed: [replacementEvent, ...tvFeed].slice(0, 50),
+    broadcastQueue: [
+      replacementEvent.id,
+      ...(game.broadcastQueue ?? []).filter((id) => !obsoleteEvictionIds.has(id)),
+    ],
+    lastPlainBroadcastEventId:
+      game.lastPlainBroadcastEventId && obsoleteEvictionIds.has(game.lastPlainBroadcastEventId)
+        ? null
+        : game.lastPlainBroadcastEventId,
   };
 }
 

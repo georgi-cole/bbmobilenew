@@ -495,7 +495,7 @@
     justify-content: stretch;
   }
 
-  .tetris-layout {
+  .tetris-root .tetris-layout {
     display: contents;
   }
 
@@ -508,21 +508,25 @@
     --cell: min(8.25vw, calc((100dvh - 250px) / 20), 28px) !important;
   }
 
-  .tetris-panel--left {
+  .tetris-root .tetris-panel--left {
     order: 2;
-    width: min(100%, 360px);
+    width: min(82.5vw, 280px);
     min-height: 42px;
     margin: 4px auto 0;
   }
   .tetris-panel--right { display: none; }
 
-  .tetris-panel {
+  .tetris-root .tetris-panel {
     min-width: 0;
     width: 100%;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
     gap: 0.35rem 0.65rem;
+  }
+
+  .tetris-root .tetris-panel--left {
+    width: min(82.5vw, 280px);
   }
 
   .tetris-hold { flex: 0 0 auto; }
@@ -543,10 +547,10 @@
     margin-right: -10px;
   }
 
-  .tetris-touch-controls {
+  .tetris-root .tetris-touch-controls {
     order: 3;
     flex: 0 0 auto;
-    width: min(100%, 360px);
+    width: min(82.5vw, 280px);
     margin-top: auto;
     padding-top: 5px;
   }

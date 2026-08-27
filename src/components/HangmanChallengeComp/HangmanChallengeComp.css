@@ -469,6 +469,27 @@
   text-transform: uppercase;
 }
 
+.hangman-challenge__effect-result {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(99, 210, 255, 0.3);
+  border-radius: 12px;
+  background: rgba(31, 105, 142, 0.16);
+  color: rgba(245, 249, 255, 0.9);
+  font-size: 0.78rem;
+}
+
+.hangman-challenge__effect-result strong {
+  flex: 0 0 auto;
+  color: #8bdcff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
 .hangman-challenge__alphabet {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -818,20 +839,41 @@
 
 @media (max-width: 640px) {
   .hangman-challenge__playfield {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .hangman-challenge__board {
     grid-column: 1 / -1;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 14px 10px;
   }
+
+  .hangman-challenge__keyboard-panel { grid-row: 2; }
+  .hangman-challenge__box-panel { grid-row: 3; }
+  .hangman-challenge__effect-result { grid-row: 4; }
+
+  .hangman-challenge__box {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .hangman-challenge__box p,
+  .hangman-challenge__box small { margin: 0; }
+
+  .hangman-challenge__cta--box { min-width: 8.5rem; }
 
   .hangman-challenge__letter-form {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .hangman-challenge__tile {
-    width: 38px;
-    height: 50px;
+    width: clamp(30px, 9vw, 38px);
+    height: clamp(40px, 12vw, 50px);
   }
 
   .hangman-challenge__overlay-card--scoreboard {

@@ -24,14 +24,14 @@
 .survivor-rules-modal__card {
   position: relative;
   width: min(42rem, 100%);
-  height: min(
+  max-height: min(
     calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px),
     44rem
   );
-  max-height: 100%;
+  height: auto;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
@@ -159,7 +159,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 0.65rem;
   min-height: 0;
@@ -171,10 +171,10 @@
 }
 
 .survivor-rules-modal__rule {
-  display: flex;
-  flex-direction: column;
-  gap: 0.36rem;
-  min-height: 7rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.7rem;
+  min-height: 0;
   padding: 0.78rem 0.82rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
@@ -204,6 +204,7 @@
 }
 
 .survivor-rules-modal__rule-desc {
+  grid-column: 2;
   margin: 0.28rem 0 0;
   color: rgba(229, 234, 255, 0.76);
   font-size: 0.88rem;
@@ -289,10 +290,11 @@
   }
 
   .survivor-rules-modal__card {
-    height: min(
+    max-height: min(
       calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px),
       42rem
     );
+    height: auto;
     border-radius: 18px;
   }
 
@@ -332,7 +334,7 @@
   }
 
   .survivor-rules-modal__rules {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.48rem;
     padding: 0 0.85rem 0.65rem;
     scrollbar-gutter: auto;

@@ -15,9 +15,9 @@ const RULES = [
     description: 'There is no finale. Keep advancing through days until you are eliminated.',
   },
   {
-    kicker: 'HOUSE',
-    title: 'The house stays full',
-    description: 'Every evicted AI is replaced, so each new day restores the pressure.',
+    kicker: 'HUB',
+    title: 'The hub stays full',
+    description: 'Every eliminated AI is replaced, so each new day restores the pressure.',
   },
   {
     kicker: 'RULES',
@@ -85,8 +85,8 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel, variant
             How Surveyeval Works
           </h2>
           <p id={descId} className="survivor-rules-modal__desc">
-            The classical weekly structure becomes an endless elimination run. Win challenges,
-            survive each vote, and push your record as far as you can.
+            An endless elimination run: win challenges, survive the vote, and keep your place in
+            a hub that never gets smaller.
           </p>
         </header>
 

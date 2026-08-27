@@ -164,18 +164,25 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Tribunal Phase',
     body: 'The Tribunal — made up of the last eliminated players — casts their votes to award the grand prize. Each judge votes for the finalist they believe most deserves to win based on game play, social game, and competition performance. The finalist with the most Tribunal votes is crowned the winner of The Big Eye.',
   },
+  tribunal_phase: {
+    icon: '⚖️',
+    label: 'THE TRIBUNAL',
+    category: 'Final Decision',
+    body: 'The final eliminated players now become the Tribunal. They will compare the finalists’ strategy, social play, and competition record before casting the votes that decide the champion.',
+    shockDetail: 'Listen carefully: every testimony reveals what each Tribunal member valued — and which finalist earned their respect.',
+  },
   battle_back: {
     icon: '🔥',
     label: 'BACK 2 THE GAME',
-    category: 'Twist',
+    category: 'Shock',
     body: 'A Back 2 the Game shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
     shockDetail:
       'Eliminated players compete head-to-head in a specially designed challenge. Only one winner earns the right to return. Upon re-entry, the returning player is immediately eligible for all competitions, nominations, and votes — existing alliances must adapt at once.',
   },
   battle_back_shock: {
     icon: '🔥',
-    label: 'SHOCK TWIST',
-    category: 'Twist',
+    label: 'BACK 2 THE GAME',
+    category: 'Shock',
     body: 'Back 2 the Game has been activated. One of the recently eliminated players now has a chance to fight their way back into the house.',
     shockDetail:
       'This is not a standard elimination week. The Back 2 the Game shock changes the trajectory of the game by giving a previously eliminated player a route back in. All current alliance plans, targets, and strategies must account for a possible new returnee.',
@@ -183,7 +190,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   battle_back_rules: {
     icon: '📜',
     label: 'BACK 2 THE GAME RULES',
-    category: 'Twist',
+    category: 'Shock',
     body: 'The Back 2 the Game field is set. Recently eliminated players will compete head-to-head, and only one winner can earn their return to the game.',
     shockDetail:
       'Only Tribunal members who have been eliminated are eligible to compete. Each player faces off in a single-elimination bracket or direct challenge format chosen by Big Eye. The winner earns immediate, full re-entry: eligible for all competitions, nominations, and votes from the next phase onward.',
@@ -199,7 +206,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   double_eviction: {
     icon: '⚡',
     label: 'DOUBLE ELIMINATION',
-    category: 'Twist',
+    category: 'Shock',
     body: "A Double Elimination has been triggered! Tonight's Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.",
     shockDetail:
       'The Double Elimination runs as a compressed, fast-paced week: three nominees are put up, a Safety competition determines who can be saved, and after the Safety Ceremony the house votes out two players in one sitting. Strategic timelines are cut short — every conversation and every alliance decision must happen immediately.',

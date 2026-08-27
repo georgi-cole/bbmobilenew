@@ -265,7 +265,7 @@ function buildNominationChip(nomineeIds: string[], userPlayer: Player | null): S
       icon: '⚖️',
       variant: 'info',
       shortValue: 'Tribunal',
-      detailLabel: 'House status',
+      detailLabel: 'Hub status',
       detailValue: 'Tribunal member',
     }
   }
@@ -275,7 +275,7 @@ function buildNominationChip(nomineeIds: string[], userPlayer: Player | null): S
       icon: '🚪',
       variant: 'neutral',
       shortValue: 'Out',
-      detailLabel: 'House status',
+      detailLabel: 'Hub status',
       detailValue: 'Eliminated',
     }
   }
@@ -560,7 +560,7 @@ export default function Profile() {
         icon: '🏠',
         variant: 'neutral',
         shortValue: formatPercent(houseRating, 0),
-        detailLabel: 'House rating',
+        detailLabel: 'Hub rating',
         detailValue: formatPercent(houseRating, 1),
         detailHint: describeHouseRating(houseRating),
       })
@@ -572,7 +572,7 @@ export default function Profile() {
         icon: '👑',
         variant: 'success',
         shortValue: 'LOH',
-        detailLabel: 'House power',
+        detailLabel: 'Hub power',
         detailValue: 'Leader of the House',
       })
     }
