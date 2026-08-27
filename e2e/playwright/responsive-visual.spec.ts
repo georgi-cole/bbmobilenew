@@ -74,18 +74,17 @@ test.describe('Responsive visual regression @responsive-visual', () => {
         await expect(page).toHaveScreenshot(`homehub-${chromeMode}.png`, SCREENSHOT_OPTIONS)
       })
 
-      test(
-        `Classic game start matches the base branch in ${chromeMode}`,
-        async ({ page }, testInfo) => {
-          const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
-          await installSafeAreaProfile(page, insets)
-          await page.goto('./')
-          await waitForHome(page)
-          await openClassicGame(page)
+      test(`Classic game start matches the base branch in ${chromeMode}`, async ({
+        page,
+      }, testInfo) => {
+        const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
+        await installSafeAreaProfile(page, insets)
+        await page.goto('./')
+        await waitForHome(page)
+        await openClassicGame(page)
 
-          await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, SCREENSHOT_OPTIONS)
-        }
-      )
+        await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, SCREENSHOT_OPTIONS)
+      })
     })
   }
 })
