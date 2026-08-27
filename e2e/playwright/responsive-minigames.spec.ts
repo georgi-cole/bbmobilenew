@@ -43,7 +43,9 @@ if (runResponsiveMinigameSweep) {
         test.describe.configure({ mode: 'parallel', timeout: 60_000 })
 
         for (const game of ACTIVE_GAMES) {
-          test(`${game.key} stays bounded in start and result states`, async ({ page }, testInfo) => {
+          test(`${game.key} stays bounded in start and result states`, async ({
+            page,
+          }, testInfo) => {
             const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
             await installSafeAreaProfile(page, insets)
             await openLab(page, game)
