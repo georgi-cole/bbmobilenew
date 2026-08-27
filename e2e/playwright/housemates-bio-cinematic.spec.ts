@@ -31,7 +31,7 @@ test.describe('Housemate biographies @core-journey', () => {
 
     const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates' })
     await expect(cinematic).toBeVisible()
-    await cinematic.getByRole('button', { name: 'Enter the house' }).click()
+    await cinematic.getByRole('button', { name: 'Enter the hub' }).click()
     await cinematic.getByRole('button', { name: "Open Aria's full story" }).click()
     await expect(cinematic.getByRole('heading', { name: 'Aria' })).toBeVisible({
       timeout: 10_000,
