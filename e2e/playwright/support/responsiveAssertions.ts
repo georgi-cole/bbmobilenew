@@ -1,6 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-import { assertElementWithinViewport, assertNoHorizontalDocumentOverflow } from './layoutAssertions'
+import {
+  assertElementWithinViewport,
+  assertNoHorizontalDocumentOverflow,
+} from './layoutAssertions'
 
 export interface SafeAreaInsets {
   top: number
@@ -9,15 +12,18 @@ export interface SafeAreaInsets {
   left: number
 }
 
-export const NO_SAFE_AREA: SafeAreaInsets = Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 })
+export const NO_SAFE_AREA: SafeAreaInsets = Object.freeze({
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+})
 
 export function safeAreaForProject(projectName: string, systemBarsVisible: boolean): SafeAreaInsets {
   const name = projectName.toLowerCase()
 
   if (name.includes('ios-small')) {
-    return systemBarsVisible
-      ? { top: 20, right: 0, bottom: 0, left: 0 }
-      : NO_SAFE_AREA
+    return systemBarsVisible ? { top: 20, right: 0, bottom: 0, left: 0 } : NO_SAFE_AREA
   }
 
   if (name.includes('webkit') || name.includes('ios-')) {
@@ -141,8 +147,10 @@ export async function assertVisibleInteractiveElementsUsable(
       let ancestor = element.parentElement
       while (ancestor && ancestor !== document.body) {
         const style = getComputedStyle(ancestor)
-        const scrollsY = /(auto|scroll)/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1
-        const scrollsX = /(auto|scroll)/.test(style.overflowX) && ancestor.scrollWidth > ancestor.clientWidth + 1
+        const scrollsY =
+          /(auto|scroll)/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1
+        const scrollsX =
+          /(auto|scroll)/.test(style.overflowX) && ancestor.scrollWidth > ancestor.clientWidth + 1
         if (scrollsY || scrollsX) return true
         ancestor = ancestor.parentElement
       }
@@ -196,7 +204,10 @@ export async function assertVisibleInteractiveElementsUsable(
     return issues
   }, insets)
 
-  expect(violations, `interactive viewport violations:\n${JSON.stringify(violations, null, 2)}`).toEqual([])
+  expect(
+    violations,
+    `interactive viewport violations:\n${JSON.stringify(violations, null, 2)}`
+  ).toEqual([])
 }
 
 export async function assertNoCriticalOverlap(upper: Locator, lower: Locator): Promise<void> {
