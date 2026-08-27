@@ -16,7 +16,7 @@ describe('TribunalMemberStage speech bubble', () => {
     vi.useRealTimers();
   });
 
-  it('renders the revealed phrase in a comic speech bubble attached to the cutout', async () => {
+  it('renders the revealed phrase in a separate comic speech bubble beside the cutout', async () => {
     const phrase = 'I have seen enough to make my choice.';
     const { container } = render(
       <TribunalMemberStage
@@ -38,7 +38,8 @@ describe('TribunalMemberStage speech bubble', () => {
     const cutoutWrap = container.querySelector('.tms-cutout-wrap');
 
     expect(speechBubble).toBeTruthy();
-    expect(cutoutWrap?.contains(speechBubble ?? null)).toBe(true);
+    expect(cutoutWrap?.contains(speechBubble ?? null)).toBe(false);
+    expect(cutoutWrap?.parentElement).toBe(speechBubble?.parentElement);
 
     await act(async () => {
       vi.advanceTimersByTime(

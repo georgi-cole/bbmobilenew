@@ -81,6 +81,7 @@ import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/Tw
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
+import { selectHasPublicModeAccess } from '../../store/vipSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
@@ -214,6 +215,7 @@ export default function GameScreen() {
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
   const settings = useAppSelector(selectSettings)
+  const hasPublicModeAccess = useAppSelector(selectHasPublicModeAccess)
   // ── Confessional ceremony decision routing ─────────────────────────────────
   // When non-null, a required player ceremony decision is pending that must be
   // resolved inside the Confessional.  The in-game decision modals are hidden
@@ -1279,6 +1281,16 @@ export default function GameScreen() {
   const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
   function handlePublicMeterBlocked() {
+    if (hasPublicModeAccess || settings.sim.publicModeAdminOverride) {
+      setSocialModuleUnavailableAnnouncement({
+        key: 'public_mode_settings',
+        title: 'Public Mode is switched off',
+        subtitle: 'To activate Public Mode, open Settings and switch it on.',
+        isLive: false,
+        autoDismissMs: SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS,
+      })
+      return
+    }
     navigate('/store', { state: { returnTo: '/game' } })
   }
 

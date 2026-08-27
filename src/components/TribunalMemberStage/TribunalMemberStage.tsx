@@ -172,11 +172,6 @@ export default function TribunalMemberStage({
       {/* ── Full-body cutout ─────────────────────────────────────────── */}
       {current && (
         <div className="tms-cutout-wrap" key={`cutout-${currentAnimationKey}`}>
-          {trimmedCurrentPhrase && (
-            <div className="tms-speech-bubble" key={`phrase-${phraseAnimationKey}`}>
-              <PhraseTyper phrase={currentPhrase} />
-            </div>
-          )}
           {isPublic ? (
             <PublicCutoutPlaceholder />
           ) : cutoutSrc ? (
@@ -195,6 +190,12 @@ export default function TribunalMemberStage({
             null
           )}
           <div className="tms-cutout-glow" aria-hidden="true" />
+        </div>
+      )}
+
+      {current && trimmedCurrentPhrase && (
+        <div className="tms-speech-bubble" key={`phrase-${phraseAnimationKey}`}>
+          <PhraseTyper phrase={currentPhrase} />
         </div>
       )}
 

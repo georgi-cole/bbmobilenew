@@ -32,6 +32,7 @@ import {
   standCurrentPlayer,
   resolveDuel,
   advanceFromDuelResult,
+  skipBlackjackTournamentToEnd,
   resetBlackjackTournament,
   computeTotal,
   computeSpinnerWinnerIndex,
@@ -509,6 +510,15 @@ export default function BlackjackTournamentComp({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   const { phase } = bt;
+  const skipToEndButton = bt.isSpectating && phase !== 'complete' ? (
+    <button
+      type="button"
+      className="bjt-btn bjt-btn--skip-end"
+      onClick={() => dispatch(skipBlackjackTournamentToEnd())}
+    >
+      Skip to final result
+    </button>
+  ) : null;
 
   if (phase === 'league_results') {
     const finalistIds = bt.finalistIds ?? [];
@@ -648,6 +658,7 @@ export default function BlackjackTournamentComp({
 
     return (
       <div className="bjt-container bjt-pick" role="region" aria-label="Fighter selection">
+        {skipToEndButton}
         <div className="bjt-players-remaining" role="status" aria-live="polite">
           <span className="bjt-badge">
             {isFinalDuelActive
@@ -789,6 +800,7 @@ export default function BlackjackTournamentComp({
 
     return (
       <div className="bjt-container bjt-duel" role="region" aria-label="Blackjack duel">
+        {skipToEndButton}
         <h2 className="bjt-title">
           ⚔️ {isFinalDuelActive
             ? 'Finals Duel'
@@ -967,6 +979,7 @@ export default function BlackjackTournamentComp({
 
     return (
       <div className="bjt-container bjt-result" role="status" aria-live="assertive">
+        {skipToEndButton}
         <div className="bjt-result-confetti" aria-hidden="true" />
         <h2 className="bjt-title">🏆 {winnerName} wins the duel!</h2>
         <div className="bjt-duel-arena">

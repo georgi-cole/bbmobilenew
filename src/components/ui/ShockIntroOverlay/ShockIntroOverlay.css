@@ -24,7 +24,42 @@
   /* The shock is dismissed by OK; its readable content must not fade away
      while the player is deciding when to acknowledge it. */
   transform-origin: center;
-  animation: shockIntroWholeScreenQuake 680ms cubic-bezier(.36,.07,.19,.97) both;
+  animation: shockIntroWholeScreenQuake 720ms cubic-bezier(.36,.07,.19,.97) 360ms both;
+}
+
+.shock-intro:not([data-cupid-mode])::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: #000;
+  animation: shockIntroBlackout 980ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.shock-intro:not([data-cupid-mode])::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: 39;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(255,241,197,.92), rgba(225,154,44,.28) 18%, transparent 46%);
+  mix-blend-mode: screen;
+  animation: shockIntroImpact 520ms ease-out 920ms both;
+}
+
+@keyframes shockIntroBlackout {
+  0% { opacity: 0; }
+  24%, 66% { opacity: .96; }
+  82% { opacity: .42; }
+  100% { opacity: 0; }
+}
+
+@keyframes shockIntroImpact {
+  0% { opacity: 0; transform: scale(.45); }
+  24% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.35); }
 }
 
 @keyframes shockIntroWholeScreenQuake {
@@ -266,7 +301,7 @@
 .shock-intro__vision-stage {
   position: absolute;
   inset: 0;
-  animation: shockVisionArrive 760ms cubic-bezier(.2,.8,.2,1) both;
+  animation: shockVisionArrive 1180ms cubic-bezier(.2,.8,.2,1) both;
 }
 
 .shock-intro__vision-stage::before {
@@ -280,10 +315,10 @@
 }
 
 @keyframes shockVisionArrive {
-  0%, 18% { opacity: 0; transform: scale(1.12) translate3d(-2.6%, 0, 0); filter: brightness(2.1) contrast(1.2); }
-  30% { opacity: 1; transform: scale(1.04) translate3d(2.1%, 0, 0); }
-  42% { transform: scale(1.02) translate3d(-1.5%, 0, 0); }
-  56% { transform: scale(1.01) translate3d(1%, 0, 0); }
+  0%, 58% { opacity: 0; transform: scale(1.12) translate3d(-2.6%, 0, 0); filter: brightness(2.1) contrast(1.2); }
+  68% { opacity: 1; transform: scale(1.04) translate3d(2.1%, 0, 0); }
+  78% { transform: scale(1.02) translate3d(-1.5%, 0, 0); }
+  88% { transform: scale(1.01) translate3d(1%, 0, 0); }
   100% { opacity: 1; transform: scale(1); filter: none; }
 }
 
@@ -827,9 +862,23 @@
   /* Bias the rollback target slightly upward so the fullscreen vision collapses toward the TV viewport area, not exact screen centre. */
   transform-origin: 50% 31%;
   will-change: transform, opacity, border-radius;
-  animation: none;
-  opacity: 1;
-  transform: none;
+  animation: shockIntroVisionReveal 1.3s cubic-bezier(.2,.8,.2,1) both;
+  opacity: 0;
+}
+
+@keyframes shockIntroVisionReveal {
+  0%, 68% { opacity: 0; transform: scale(1.09); filter: brightness(1.8) contrast(1.15); }
+  78% { opacity: 1; transform: scale(1.025); filter: brightness(1.2) contrast(1.08); }
+  100% { opacity: 1; transform: scale(1); filter: none; }
+}
+
+.shock-intro:not([data-cupid-mode]) .shock-intro__ack {
+  animation: shockIntroAckReveal 240ms ease 1.25s both;
+}
+
+@keyframes shockIntroAckReveal {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .shock-intro__vision-stage .tv-announcement-wrap {

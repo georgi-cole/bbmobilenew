@@ -212,7 +212,7 @@ export function buildAchievementSummary(input: {
         stats: [
           { label: 'LOH wins', value: String(lohWins), icon: '👑', tone: 'violet' },
           { label: 'POS wins', value: String(posWins), icon: '🔑', tone: 'violet' },
-          { label: 'Battle backs', value: String(battleBackWins), icon: '🔄', tone: 'violet' },
+          { label: 'Returns won', value: String(battleBackWins), icon: '🔄', tone: 'violet' },
           { label: 'Final LOHs', value: String(finalHohWins), icon: '🎯', tone: 'violet' },
         ],
       },
@@ -222,7 +222,7 @@ export function buildAchievementSummary(input: {
         tone: 'rose',
         stats: [
           { label: 'Fan favorite', value: String(publicFavoriteWins), icon: '🌟', tone: 'rose' },
-          { label: 'Jury runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
+          { label: 'Tribunal runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
           { label: 'Rewards found', value: String(rewardsFound), icon: '🥚', tone: 'rose' },
         ],
       },

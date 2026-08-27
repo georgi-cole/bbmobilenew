@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ShockIntroOverlay from '../ShockIntroOverlay';
 
@@ -13,7 +13,7 @@ describe('ShockIntroOverlay', () => {
     vi.restoreAllMocks();
   });
 
-  it('restarts the completion timer when the shock key changes mid-stinger', () => {
+  it('keeps the changed shock on screen until the player acknowledges it', () => {
     const onComplete = vi.fn();
     const { rerender } = render(
       <ShockIntroOverlay active shockKey="twist" onComplete={onComplete} />,
@@ -25,10 +25,10 @@ describe('ShockIntroOverlay', () => {
       <ShockIntroOverlay active shockKey="double_eviction" onComplete={onComplete} />,
     );
 
-    vi.advanceTimersByTime(2319);
+    vi.advanceTimersByTime(6000);
     expect(onComplete).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1);
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -37,8 +37,8 @@ describe('ShockIntroOverlay', () => {
       <ShockIntroOverlay active shockKey="battle_back_shock" onComplete={vi.fn()} />,
     );
 
-    expect(screen.getByText('Shock Twist')).toBeTruthy();
-    expect(screen.getByText(/Back 2 the Game has been activated/i)).toBeTruthy();
+    expect(screen.getByText('Back 2 the Game')).toBeTruthy();
+    expect(screen.getByText(/one last route back/i)).toBeTruthy();
   });
 
   it('renders the provided TV announcement copy and hides the info button', () => {
