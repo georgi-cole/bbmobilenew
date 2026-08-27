@@ -488,41 +488,48 @@
    queue below it. This prevents the desktop side rails from clipping. */
 @media (max-width: 640px) {
   .tetris-root {
-    padding: 0.5rem 0.35rem 0.25rem;
-    overflow: auto;
+    height: 100%;
+    min-height: 0;
+    padding: 0.25rem 0.35rem max(0.3rem, env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    justify-content: stretch;
   }
 
   .tetris-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      'board board'
-      'left right';
-    gap: 0.5rem;
-    max-width: 390px;
-    align-items: start;
+    display: contents;
   }
 
   .tetris-board-wrap {
-    grid-area: board;
-    justify-self: center;
+    order: 1;
+    align-self: center;
   }
 
   .tetris-board {
-    --cell: min(7.8vw, 28px) !important;
+    --cell: min(8.25vw, calc((100dvh - 250px) / 20), 28px) !important;
   }
 
-  .tetris-panel--left { grid-area: left; }
-  .tetris-panel--right { grid-area: right; }
+  .tetris-panel--left {
+    order: 2;
+    width: min(100%, 360px);
+    min-height: 42px;
+    margin: 4px auto 0;
+  }
+  .tetris-panel--right { display: none; }
 
   .tetris-panel {
     min-width: 0;
     width: 100%;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: space-between;
     gap: 0.35rem 0.65rem;
   }
+
+  .tetris-hold { flex: 0 0 auto; }
+  .tetris-stats { flex: 1; flex-direction: row; justify-content: flex-end; gap: 12px; }
+  .tetris-stat:nth-child(2),
+  .tetris-stat:nth-child(3) { display: none; }
+  .tetris-stat { align-items: center; }
 
   .tetris-next {
     flex-direction: row;
@@ -536,5 +543,22 @@
     margin-right: -10px;
   }
 
-  .tetris-touch-controls { margin-top: 0.55rem; }
+  .tetris-touch-controls {
+    order: 3;
+    flex: 0 0 auto;
+    width: min(100%, 360px);
+    margin-top: auto;
+    padding-top: 5px;
+  }
+  .tetris-btn { min-height: 46px; }
+}
+
+@media (max-width: 640px) and (max-height: 700px) {
+  .tetris-round-bar small,
+  .tetris-round-field { display: none; }
+  .tetris-board { --cell: min(7.8vw, calc((100dvh - 205px) / 20), 26px) !important; }
+  .tetris-panel--left { display: none; }
+  .tetris-touch-controls { gap: 4px; padding-top: 3px; }
+  .tetris-touch-row { gap: 4px; }
+  .tetris-btn { min-height: 42px; }
 }

@@ -97,16 +97,16 @@ function generateRuntimeSeed(
   return (baseSeed ^ Date.now() ^ perfNow) >>> 0;
 }
 // Personality is the anchor so AI behavior stays distinct per player.
-const AI_BASE_RISK_WEIGHT = 0.35;
+const AI_BASE_RISK_WEIGHT = 0.30;
 // Current round score strongly affects appetite for another spin.
-const AI_SCORE_FACTOR_WEIGHT = 0.25;
+const AI_SCORE_FACTOR_WEIGHT = 0.32;
 // Relative leaderboard position adds desperation when falling behind.
-const AI_POSITION_FACTOR_WEIGHT = 0.20;
+const AI_POSITION_FACTOR_WEIGHT = 0.18;
 // Extra spins remaining make continued risk-taking slightly easier to justify.
-const AI_SPIN_FACTOR_WEIGHT = 0.10;
+const AI_SPIN_FACTOR_WEIGHT = 0.08;
 // Late-game/survival pressure nudges trailing AIs toward bolder decisions.
-const AI_PRESSURE_FACTOR_WEIGHT = 0.10;
-const AI_LAST_SPIN_BANK_BIAS_WEIGHT = 0.25;
+const AI_PRESSURE_FACTOR_WEIGHT = 0.07;
+const AI_LAST_SPIN_BANK_BIAS_WEIGHT = 0.35;
 
 export type RiskWheelCompetitionType = 'LOH' | 'POS';
 export type RiskWheelAiPersonality = 'cautious' | 'balanced' | 'risky';

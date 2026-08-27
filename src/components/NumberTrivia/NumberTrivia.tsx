@@ -6,7 +6,6 @@ import {
   compareTriviaStandings,
   computeNumberTriviaRoundScore,
   createNumberTriviaAiRng,
-  formatTriviaTimeMs,
   getNumberTriviaDuelLoserId,
   getNumberTriviaEliminationCount,
   getNumberTriviaFinalistIds,
@@ -694,7 +693,7 @@ export default function NumberTrivia({
                     ? `Final duel ${scoreboard.duelNumber} complete`
                     : `Round ${scoreboard.roundNumber} complete`}
               </p>
-              <h2 className="number-trivia__title">Number Trivia Scoreboard</h2>
+              <h2 className="number-trivia__title">Standings</h2>
               <p className="number-trivia__subtitle">
                 {scoreboard.final
                   ? 'The tournament is over.'
@@ -743,13 +742,8 @@ export default function NumberTrivia({
               <table className="number-trivia__table">
                 <thead>
                   <tr>
-                    <th scope="col">Rank</th>
                     <th scope="col">Player</th>
-                    <th scope="col">Round</th>
                     <th scope="col">Total</th>
-                    <th scope="col">Time</th>
-                    {scoreboard.phase === 'duel' && <th scope="col">Lives</th>}
-                    <th scope="col">Attempts</th>
                     <th scope="col">Status</th>
                   </tr>
                 </thead>
@@ -765,27 +759,19 @@ export default function NumberTrivia({
                           index === 0 ? 'number-trivia__row--leader' : '',
                         ].filter(Boolean).join(' ')}
                       >
-                        <td>{index + 1}</td>
-                        <td>
+                        <td className="number-trivia__player-cell">
+                          <span className="number-trivia__rank">#{index + 1}</span>
                           {entry.participantName}
                           {entry.isHuman ? ' (You)' : ''}
                         </td>
-                        <td>{entry.lastRoundScore}</td>
                         <td>{entry.cumulativeScore}</td>
-                        <td>{formatTriviaTimeMs(entry.lastRoundTimeMs)}</td>
-                        {scoreboard.phase === 'duel' && (
-                          <td className="number-trivia__lives-cell" aria-label={`${scoreboard.lives[entry.participantId] ?? 0} lives`}>
-                            {'♥'.repeat(scoreboard.lives[entry.participantId] ?? 0) || '—'}
-                          </td>
-                        )}
-                        <td>{entry.lastRoundAttempts || '—'}</td>
                         <td>
                           {scoreboard.phase === 'duel'
                             ? scoreboard.final && index === 0
                               ? 'Winner'
                               : (scoreboard.lives[entry.participantId] ?? 0) <= 0
                                 ? 'Out of lives'
-                                : 'Still dueling'
+                                : `${'♥'.repeat(scoreboard.lives[entry.participantId] ?? 0)} ${scoreboard.lives[entry.participantId] ?? 0} left`
                             : isEliminated
                               ? `Eliminated R${entry.eliminatedRound}`
                               : scoreboard.roundNumber === NUMBER_TRIVIA_TOTAL_ROUNDS
@@ -800,14 +786,14 @@ export default function NumberTrivia({
             </div>
 
             <div className="number-trivia__footer">
-              <p className="number-trivia__footer-text">
+              <p className="number-trivia__footer-text number-trivia__footer-text--optional">
                 {scoreboard.final
                   ? `🏆 ${winner?.participantName ?? 'Winner'} takes Number Trivia.`
                   : scoreboard.phase === 'duel'
                     ? 'Accuracy decides first; response time only breaks otherwise equal answers.'
                     : scoreboard.roundNumber === NUMBER_TRIVIA_TOTAL_ROUNDS
                       ? `The finalists begin with ${NUMBER_TRIVIA_DUEL_STARTING_LIVES} lives each.`
-                      : 'Review the standings, then continue to the next round.'}
+                    : ''}
               </p>
               {!scoreboard.final && humanStanding?.eliminatedRound !== null ? (
                 <div className="number-trivia__spectator-actions" role="group" aria-label="Eliminated player options">

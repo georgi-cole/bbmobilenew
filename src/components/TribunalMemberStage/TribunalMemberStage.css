@@ -238,7 +238,8 @@
   top: clamp(0.35rem, 2dvh, 0.9rem);
   left: 50%;
   z-index: 3;
-  width: min(250px, calc(100vw - 2rem));
+  width: min(250px, calc(100% - 1rem));
+  box-sizing: border-box;
   padding: 0.75rem 0.95rem;
   border: 2px solid rgba(129, 140, 248, 0.38);
   border-radius: 1.25rem 1.25rem 1.25rem 0.4rem;
@@ -278,9 +279,9 @@
 
 @media (max-width: 560px) {
   .tms-speech-bubble {
-    --tms-bubble-shift-x: 4%;
-    left: 50%;
-    width: min(220px, calc(100vw - 1.5rem));
+    --tms-bubble-shift-x: 0;
+    left: 48%;
+    width: min(220px, calc(100% - .75rem));
   }
 }
 
@@ -291,7 +292,8 @@
   color: #1f2937;
   line-height: 1.45;
   letter-spacing: 0.015em;
-  min-height: 2.35em;
+  min-height: 3.8em;
+  overflow-wrap: anywhere;
 }
 
 /* ── Human vote prompt ───────────────────────────────────────────────────── */
@@ -492,9 +494,9 @@
 .tms-cutout-wrap {
   position: absolute;
   bottom: -3%;
-  left: -6%;
+  left: -13%;
   z-index: 3;
-  width: 68%;
+  width: 62%;
   height: 79%;
   max-height: none;
   animation-name: tms-cutout-enter-v2;
@@ -525,11 +527,12 @@
 
 .tms-speech-bubble {
   --tms-bubble-shift-x: 0;
-  top: 31%;
-  left: 76%;
+  top: 43%;
+  left: 58%;
+  right: 12px;
   z-index: 9;
-  width: min(56vw, 310px);
-  padding: 15px 16px 16px;
+  width: auto;
+  padding: 13px 14px 14px;
   border: 1px solid rgba(232, 191, 118, 0.38);
   border-radius: 18px 18px 18px 4px;
   color: #f7f2e8;
@@ -564,7 +567,7 @@
   min-height: 3.8em;
   color: rgba(255, 255, 255, 0.92);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(0.8rem, 3.3vw, 1.05rem);
+  font-size: clamp(0.76rem, 3vw, 0.98rem);
   font-weight: 500;
   line-height: 1.38;
 }
@@ -644,7 +647,7 @@
 @media (max-height: 700px) {
   .tms-nameplate { top: 4%; }
   .tms-cutout-wrap { height: 74%; }
-  .tms-speech-bubble { top: 27%; }
+  .tms-speech-bubble { top: 39%; }
 }
 
 @media (min-width: 700px) {
@@ -655,15 +658,16 @@
 
   .tms-cutout-wrap {
     bottom: -5%;
-    left: 6%;
-    width: 48%;
+    left: -1%;
+    width: 43%;
     height: 88%;
   }
 
   .tms-speech-bubble {
-    top: 30%;
-    left: 78%;
-    width: min(34vw, 390px);
+    top: 40%;
+    left: 58%;
+    right: 5%;
+    width: auto;
   }
 
   .tms-previous {

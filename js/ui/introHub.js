@@ -643,7 +643,7 @@
           tone: 'rose',
           stats: [
             { label: 'Fan favorite', value: String(publicFavoriteWins), icon: '🌟', tone: 'rose' },
-            { label: 'Jury runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
+            { label: 'Tribunal runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
             { label: 'Rewards found', value: String(rewardsFound), icon: '🥚', tone: 'rose' },
           ],
         },
@@ -724,11 +724,13 @@
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: '10px',
+      minWidth: '0',
     });
 
     const labelWrap = applyStyles(document.createElement('div'), {
       display: 'grid',
       gap: '6px',
+      minWidth: '0',
     });
     labelWrap.appendChild(
       createTextNode('div', stat.label, {
@@ -759,6 +761,7 @@
       boxShadow: `0 10px 24px ${tone.glow}`,
       fontSize: isFeatured ? '22px' : '18px',
       flexShrink: '0',
+      marginRight: '2px',
     });
 
     topRow.appendChild(labelWrap);

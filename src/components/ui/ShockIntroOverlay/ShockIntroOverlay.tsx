@@ -277,6 +277,7 @@ export default function ShockIntroOverlay({
         .filter(Boolean)
         .join(' ')}
       data-cupid-mode={isCupidBreak ? 'breaking' : isCupidIntro ? 'arriving' : undefined}
+      data-shock-theme={isCupid ? 'cupid' : 'main'}
       data-testid="shock-intro-overlay"
       style={{ '--shock-intro-duration-ms': `${duration}ms` } as CSSProperties}
     >

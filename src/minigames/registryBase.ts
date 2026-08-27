@@ -1124,12 +1124,14 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   castleRescueRemastered: {
     key: 'castleRescueRemastered',
-    title: 'Find Your Twin — Remastered',
-    description: 'The premium, richly animated edition of Benny’s South Park rescue.',
+    title: 'Find Your Twin',
+    description:
+      'Twin brothers Benny and Lenny went for a night walk through South Park, but somewhere along the way Lenny disappeared. Benny refuses to leave without him and must find his brother before time runs out.',
     instructions: [
-      'Explore the remastered South Park route and find all three hidden pipes in order.',
-      'Defeat shadow wardens, enter the secret rooms, and physically reunite with Lenny.',
-      'This VIP edition preserves the original scoring and route progression.',
+      'Benny and Lenny are twin brothers who set out together for a quiet night walk.',
+      'Lenny is now lost somewhere in South Park, with the night growing late.',
+      'Help Benny reunite with Lenny before their time runs out.',
+      'VIP access adds premium graphics and richer visual effects while preserving the original game.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',
@@ -1179,12 +1181,14 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
 
   castleRescue2Remastered: {
     key: 'castleRescue2Remastered',
-    title: 'Find Your Twin 2: Lost Again — Remastered',
-    description: 'The premium castle edition with enriched chambers and the Twin Sanctum finale.',
+    title: 'Find Your Twin 2: Lost Again',
+    description:
+      'Benny and Lenny travelled to Romania to visit an old castle, but before closing time Lenny vanished somewhere inside its halls. Benny must find his brother before the castle closes for the night.',
     instructions: [
-      'Find the three hidden castle doors before the final locked door can open.',
-      'Defeat the fire and ice wardens inside the final chamber, then touch Lenny.',
-      'This VIP edition preserves the sequel’s scoring and progression.',
+      'The twins came to Romania for a castle visit they would never forget.',
+      'Lenny is lost inside, and closing time is getting dangerously close.',
+      'Help Benny find Lenny before the castle doors close for the night.',
+      'VIP access adds premium graphics and richer visual effects while preserving the original game.',
     ],
     metricKind: 'points',
     metricLabel: 'Score',

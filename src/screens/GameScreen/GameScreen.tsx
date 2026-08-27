@@ -766,6 +766,7 @@ export default function GameScreen() {
     dayStartShockPlayer,
     handleDayStartShockConfirm,
     battleBackReturnId,
+    battleBackReturnAnnouncement,
     battleBackAttemptIndex,
     battleBackAttemptSeed,
     battleBackCandidateIds,
@@ -783,6 +784,7 @@ export default function GameScreen() {
     handleBattleBackRetryGranted,
     handleBattleBackRetryDeclined,
     handleBattleBackReturnDone,
+    handleBattleBackReturnAnnouncementDismiss,
     favoritePlayer,
     showFavoriteVoting,
     handleFavoriteComplete,
@@ -1418,6 +1420,7 @@ export default function GameScreen() {
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
+              battleBackReturnAnnouncement ??
               aiTiebreakAnnouncement ??
               postVoteAnnouncement ??
               publicSaveResultAnnouncement ??
@@ -1426,13 +1429,15 @@ export default function GameScreen() {
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : aiTiebreakAnnouncement
-                  ? handleAiTiebreakAnnouncementDismiss
-                  : postVoteAnnouncement
-                    ? handlePostVoteAnnouncementDismiss
-                    : publicSaveResultAnnouncement
-                      ? handlePublicSaveResultDismiss
-                      : handlePreAdAnnouncementDismiss
+                : battleBackReturnAnnouncement
+                  ? handleBattleBackReturnAnnouncementDismiss
+                  : aiTiebreakAnnouncement
+                    ? handleAiTiebreakAnnouncementDismiss
+                    : postVoteAnnouncement
+                      ? handlePostVoteAnnouncementDismiss
+                      : publicSaveResultAnnouncement
+                        ? handlePublicSaveResultDismiss
+                        : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}

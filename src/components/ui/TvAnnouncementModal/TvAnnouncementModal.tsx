@@ -352,7 +352,13 @@ export default function TvAnnouncementModal({
   if (!open) return null
 
   const sourceCopy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
-  const normalizeHubCopy = (value: string) => value.replace(/\bhouse\b/gi, 'hub')
+  const normalizeHubCopy = (value: string) => value
+    .replace(/\bhousemates\b/gi, 'players')
+    .replace(/\bhouseguest(s)?\b/gi, (_match, plural: string | undefined) => plural ? 'players' : 'player')
+    .replace(/\bhouse\b/gi, 'hub')
+    .replace(/\bjury\b/gi, 'Tribunal')
+    .replace(/\btwist\b/gi, 'shock')
+    .replace(/\bveto\b/gi, 'Safety')
   const copy = {
     ...sourceCopy,
     body: normalizeHubCopy(sourceCopy.body),

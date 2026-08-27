@@ -42,6 +42,8 @@ function RecapImageInstance({
   return (
     <img
       {...imgProps}
+      draggable={imgProps.draggable ?? false}
+      onContextMenu={imgProps.onContextMenu ?? ((event) => event.preventDefault())}
       src={src}
       onLoad={handleLoad}
       onError={handleError}

@@ -187,6 +187,17 @@ export function createNewspaperFrontPage(
   const decorativeTeaserLabels = options.decorativeTeaserLabels ?? [draft.stamp, 'Late Edition'];
   const price = options.price ?? pickFromList(DEFAULT_PRICES, seed);
 
+  const rawSnippets = options.articleSnippets ?? [
+    { label: 'Front Row', text: event.detail },
+    { label: 'Buzz Meter', text: `${fallbackName(event.subjectName, 'The hub')} owned the conversation.` },
+    { label: 'Night Shift', text: 'The cameras caught every whisper and every wobble.' },
+  ];
+  const normalizedHeadline = draft.headline.trim().toLocaleLowerCase();
+  const articleSnippets = rawSnippets.filter((snippet, index, snippets) => {
+    const normalized = snippet.text.trim().toLocaleLowerCase();
+    return normalized !== normalizedHeadline && snippets.findIndex((item) => item.text.trim().toLocaleLowerCase() === normalized) === index;
+  });
+
   return {
     id: options.issueNumber ? `${event.id}-${options.issueNumber}` : `${event.id}-${index}`,
     newspaperName,
@@ -201,11 +212,7 @@ export function createNewspaperFrontPage(
     featuredImageAlt: options.featuredImageAlt ?? fallbackName(event.subjectName, 'Featured houseguest'),
     secondaryImage: options.secondaryImage,
     secondaryImageAlt: options.secondaryImageAlt ?? event.secondaryName,
-    articleSnippets: options.articleSnippets ?? [
-      { label: 'Front Row', text: event.detail },
-      { label: 'Buzz Meter', text: `${fallbackName(event.subjectName, 'The house')} owned the conversation.` },
-      { label: 'Night Shift', text: 'The cameras caught every whisper and every wobble.' },
-    ],
+    articleSnippets,
     decorativeTeaserLabels,
     pageTeasers,
     layoutVariant,

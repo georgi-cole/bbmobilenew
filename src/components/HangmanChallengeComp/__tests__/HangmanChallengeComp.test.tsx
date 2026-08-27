@@ -52,7 +52,8 @@ describe('HangmanChallengeComp', () => {
     expect(playfield?.children[1]).toContainElement(screen.getByText('Mystery box'));
     expect(playfield?.children[2]).toBe(letterBoard);
     expect(screen.getByText('Timer').closest('.hangman-challenge__header')).toBeTruthy();
-    expect(screen.queryByLabelText(/letter keyboard/i)).toBeNull();
+    const mobileKeyboard = screen.getByLabelText(/letter keyboard/i);
+    expect(within(mobileKeyboard).getAllByRole('button')).toHaveLength(26);
   });
 
   it('uses native text entry and records attempted letters', () => {

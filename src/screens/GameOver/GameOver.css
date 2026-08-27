@@ -1296,13 +1296,25 @@
 }
 
 .gameover-prompt {
-  border-color: rgba(129, 140, 248, 0.34);
+  border-color: rgba(232, 191, 118, 0.48);
   background:
-    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 34%),
-    rgba(13, 17, 26, 0.94);
+    radial-gradient(circle at 18% 10%, rgba(232, 191, 118, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 88%, rgba(113, 25, 72, 0.34), transparent 42%),
+    linear-gradient(145deg, rgba(29, 8, 23, 0.97), rgba(10, 7, 14, 0.98));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.64), inset 0 1px rgba(255, 246, 219, 0.08);
 }
 
-.gameover-prompt__eyebrow { color: #a5b4fc; }
+.gameover-prompt__eyebrow { color: #e8bf76; }
+
+.gameover-prompt__title { color: #fff8e8; }
+
+.gameover-prompt__body { color: rgba(255, 244, 225, 0.78); }
+
+.gameover-prompt .gameover-btn--primary {
+  color: #211208;
+  background: linear-gradient(180deg, #f4d891, #b8842d);
+  box-shadow: 0 12px 30px rgba(184, 132, 45, 0.28);
+}
 
 .gameover-aftermath,
 .gameover-aftermath--good,
@@ -1379,6 +1391,10 @@
 .gameover-aftermath__bullets li {
   border-color: rgba(129, 140, 248, 0.2);
   background: rgba(99, 102, 241, 0.08);
+}
+
+.gameover-aftermath__bullets li:only-child {
+  grid-column: 1 / -1;
 }
 
 .gameover-aftermath__contact-sheet span.is-active {
@@ -1626,4 +1642,83 @@
 
 @media (prefers-reduced-motion: reduce) {
   .gameover-champion-record__trophy { animation: none; }
+}
+
+.gameover-aftermath__photo--silhouette {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(232, 191, 118, 0.18), transparent 32%),
+    linear-gradient(145deg, #25101f, #09080d 72%);
+}
+
+.gameover-aftermath__photo--silhouette span {
+  position: absolute;
+  left: 50%;
+  bottom: -9%;
+  width: min(62%, 260px);
+  aspect-ratio: 0.62;
+  transform: translateX(-50%);
+  border-radius: 48% 48% 22% 22% / 27% 27% 12% 12%;
+  background:
+    radial-gradient(circle at 50% 18%, #17141a 0 16%, transparent 16.5%),
+    radial-gradient(ellipse at 50% 67%, #17141a 0 45%, transparent 45.5%);
+  filter: drop-shadow(0 0 26px rgba(232, 191, 118, 0.13));
+}
+
+/* Final override for the independent season-complete view. */
+.gameover-shell {
+  --gameover-bottom-clearance: 12px;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 18%, color-mix(in srgb, var(--color-gold-primary) 18%, transparent), transparent 42%),
+    radial-gradient(ellipse at 88% 78%, color-mix(in srgb, var(--color-purple, #7c5cff) 14%, transparent), transparent 44%),
+    linear-gradient(160deg, #130c18 0%, #080a12 62%, #05060b 100%);
+}
+.gameover-card {
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 20px);
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--color-gold-primary) 44%, transparent);
+  border-radius: 20px;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, .66), 0 0 38px color-mix(in srgb, var(--color-gold-primary) 14%, transparent);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(128, 51, 104, .22), transparent 34%),
+    radial-gradient(circle at 12% 78%, rgba(73, 36, 78, .2), transparent 40%),
+    linear-gradient(155deg, rgba(32, 16, 33, .98), rgba(12, 9, 18, .99) 62%, rgba(7, 7, 12, .99));
+}
+.gameover-scoreboard__row,
+.gameover-champion-record,
+.gameover-honor-card {
+  border-color: rgba(205, 146, 89, .2);
+  background: linear-gradient(135deg, rgba(77, 34, 63, .28), rgba(20, 14, 25, .82));
+}
+.gameover-carousel__heading,
+.gameover-eyebrow { color: #dfb97a; }
+.gameover-carousel,
+.gameover-carousel__slide--active { min-height: 0; }
+.gameover-champion-record { overflow: visible; }
+.gameover-champion-record__showpiece {
+  width: clamp(9.5rem, 39vw, 13rem);
+  overflow: visible;
+  transform: translateY(-5px);
+}
+.gameover-champion-record__portrait {
+  transform: none;
+  box-shadow: 0 0 0 5px rgba(232, 191, 118, .15), 0 16px 34px rgba(0, 0, 0, .45);
+}
+@media (max-height: 720px) {
+  .gameover-shell { justify-content: flex-start; padding-top: calc(10px + var(--safe-top)); }
+  .gameover-card { width: min(100%, 480px); padding: 14px 12px 12px; }
+  .gameover-eyebrow { margin-bottom: 4px; }
+  .gameover-title { font-size: clamp(1.65rem, 8vw, 2.6rem); }
+  .gameover-sub { margin-bottom: 9px; }
+  .gameover-champion-record__showpiece { width: clamp(8.25rem, 34vw, 10.5rem); transform: translateY(-8px); }
+  .gameover-actions { margin-top: 8px; }
+}
+@media (max-height: 620px) {
+  .gameover-sub { display: none; }
+  .gameover-carousel { min-height: 0; }
+  .gameover-honors-row { margin-top: -8px; }
+  .gameover-carousel__dots { margin-block: 6px; }
+  .gameover-btn { min-height: 46px; padding-block: 8px; }
 }
