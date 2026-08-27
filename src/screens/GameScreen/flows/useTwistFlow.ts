@@ -390,7 +390,8 @@ export function useTwistFlow({
     ? `${game.gameId}:${battleBack?.weekDecided ?? game.week}:${battleBackConfiguredCandidateIds.join(',')}`
     : 'inactive'
   const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
-  const [battleBackReturnAnnouncement, setBattleBackReturnAnnouncement] = useState<Announcement | null>(null)
+  const [battleBackReturnAnnouncement, setBattleBackReturnAnnouncement] =
+    useState<Announcement | null>(null)
   const [storedBattleBackUi, setStoredBattleBackUi] = useState<{
     sessionKey: string
     attemptIndex: number
@@ -622,7 +623,9 @@ export function useTwistFlow({
       `${returningPlayer.name} fought back from elimination and reclaimed a place in the game. Old scores are waiting.`,
       `${returningPlayer.name} is back. A second chance has entered the hub, carrying unfinished business.`,
     ]
-    const variantIndex = Array.from(returningPlayer.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) % variants.length
+    const variantIndex =
+      Array.from(returningPlayer.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) %
+      variants.length
     setBattleBackReturnAnnouncement({
       key: `battle_back_return_${returningPlayer.id}`,
       title: `${returningPlayer.name} Returns`,

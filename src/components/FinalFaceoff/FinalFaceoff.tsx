@@ -302,7 +302,8 @@ export default function FinalFaceoff() {
     if (finale.awaitingHumanJurorId) return
 
     const latestPhrase = revealed[revealed.length - 1]?.phrase ?? ''
-    const holdMs = finale.revealedCount === 0 ? FIRST_CLUE_DELAY_MS : clueReadingHoldMs(latestPhrase)
+    const holdMs =
+      finale.revealedCount === 0 ? FIRST_CLUE_DELAY_MS : clueReadingHoldMs(latestPhrase)
     const t = setTimeout(() => {
       dispatch(revealNextJuror({ humanPlayerIds: humanIds }))
     }, holdMs)

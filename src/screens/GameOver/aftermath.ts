@@ -941,11 +941,14 @@ function pickDistinctRendered(
     renderTemplate(template, context, season, winnerName, partner)
   )
   const ordered = rendered.map((_, offset) => rendered[(start + offset) % rendered.length])
-  return ordered.find((candidate) => usedCopy.every((used) => copyOverlap(candidate, used) < 0.58))
-    ?? ordered.sort((left, right) =>
-      Math.max(...usedCopy.map((used) => copyOverlap(left, used)), 0) -
-      Math.max(...usedCopy.map((used) => copyOverlap(right, used)), 0)
+  return (
+    ordered.find((candidate) => usedCopy.every((used) => copyOverlap(candidate, used) < 0.58)) ??
+    ordered.sort(
+      (left, right) =>
+        Math.max(...usedCopy.map((used) => copyOverlap(left, used)), 0) -
+        Math.max(...usedCopy.map((used) => copyOverlap(right, used)), 0)
     )[0]
+  )
 }
 
 function storyFromScenario(
@@ -963,11 +966,42 @@ function storyFromScenario(
     season,
     winnerName
   )
-  const subheadline = pickDistinctRendered(scenario.subheadlines, `${seed}:subheadline`, context, season, winnerName, [headline])
-  const body = pickDistinctRendered(scenario.bodies, `${seed}:body`, context, season, winnerName, [headline, subheadline])
-  const firstBullet = pickDistinctRendered(scenario.bulletPoints, `${seed}:bullet-1`, context, season, winnerName, [headline, subheadline, body])
-  const secondBullet = pickDistinctRendered(scenario.bulletPoints, `${seed}:bullet-2`, context, season, winnerName, [headline, subheadline, body, firstBullet])
-  const twist = pickDistinctRendered(scenario.twists, `${seed}:twist`, context, season, winnerName, [headline, subheadline, body, firstBullet, secondBullet])
+  const subheadline = pickDistinctRendered(
+    scenario.subheadlines,
+    `${seed}:subheadline`,
+    context,
+    season,
+    winnerName,
+    [headline]
+  )
+  const body = pickDistinctRendered(scenario.bodies, `${seed}:body`, context, season, winnerName, [
+    headline,
+    subheadline,
+  ])
+  const firstBullet = pickDistinctRendered(
+    scenario.bulletPoints,
+    `${seed}:bullet-1`,
+    context,
+    season,
+    winnerName,
+    [headline, subheadline, body]
+  )
+  const secondBullet = pickDistinctRendered(
+    scenario.bulletPoints,
+    `${seed}:bullet-2`,
+    context,
+    season,
+    winnerName,
+    [headline, subheadline, body, firstBullet]
+  )
+  const twist = pickDistinctRendered(
+    scenario.twists,
+    `${seed}:twist`,
+    context,
+    season,
+    winnerName,
+    [headline, subheadline, body, firstBullet, secondBullet]
+  )
   return {
     playerId: context.player.id,
     playerName: context.player.name,

@@ -1431,13 +1431,13 @@ export default function GameScreen() {
                 ? () => setSocialModuleUnavailableAnnouncement(null)
                 : battleBackReturnAnnouncement
                   ? handleBattleBackReturnAnnouncementDismiss
-                : aiTiebreakAnnouncement
-                  ? handleAiTiebreakAnnouncementDismiss
-                  : postVoteAnnouncement
-                    ? handlePostVoteAnnouncementDismiss
-                    : publicSaveResultAnnouncement
-                      ? handlePublicSaveResultDismiss
-                      : handlePreAdAnnouncementDismiss
+                  : aiTiebreakAnnouncement
+                    ? handleAiTiebreakAnnouncementDismiss
+                    : postVoteAnnouncement
+                      ? handlePostVoteAnnouncementDismiss
+                      : publicSaveResultAnnouncement
+                        ? handlePublicSaveResultDismiss
+                        : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}

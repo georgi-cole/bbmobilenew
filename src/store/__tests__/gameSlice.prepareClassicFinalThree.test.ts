@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import gameReducer, {
-  createInitialGameState,
-  prepareClassicFinalThreeTest,
-} from '../gameSlice'
+import gameReducer, { createInitialGameState, prepareClassicFinalThreeTest } from '../gameSlice'
 
 describe('prepareClassicFinalThreeTest', () => {
   it('keeps the human and exactly two AI finalists in a clean Classic Final Three', () => {
