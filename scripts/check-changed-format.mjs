@@ -82,6 +82,11 @@ for (const file of files) {
   if (baseSource == null) {
     checked.push(file)
     if (!currentClean) violations.push(file)
+    if (!currentClean && file.includes('responsive')) {
+      console.log(`PRETTIER_OUTPUT_START:${file}`)
+      console.log(await prettier.format(currentSource, options))
+      console.log(`PRETTIER_OUTPUT_END:${file}`)
+    }
     continue
   }
 
