@@ -14,6 +14,10 @@ const SCREENSHOT_OPTIONS = {
   maxDiffPixelRatio: 0.01,
 }
 
+const runResponsiveVisual = process.env.RESPONSIVE_VISUAL === '1'
+
+test.skip(!runResponsiveVisual, 'responsive visual regression runs only in its dedicated command/job')
+
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS * 2 })
