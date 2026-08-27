@@ -107,12 +107,13 @@ jobs:
       - run: npm ci
       - name: Install Chromium and WebKit
         run: npx playwright install --with-deps chromium webkit
-      - name: Prepare the pull request base branch
+      - name: Prepare the current pull request base branch
         run: |
-          git worktree add --detach ../bb-base "${{ github.event.pull_request.base.sha }}"
+          git fetch origin "${{ github.base_ref }}"
+          git worktree add --detach ../bb-base "origin/${{ github.base_ref }}"
           cd ../bb-base
           npm ci
-      - name: Generate reference screenshots from the base branch
+      - name: Generate reference screenshots from the current base branch
         env:
           PLAYWRIGHT_WEB_SERVER_COMMAND: cd ../bb-base && npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
         run: >-
