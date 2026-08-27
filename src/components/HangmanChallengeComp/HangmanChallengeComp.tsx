@@ -910,6 +910,12 @@ export default function HangmanChallengeComp({
                 </div>
               )}
             </div>
+            {roundState.boxLog.length > 0 && (
+              <div className="hangman-challenge__effect-result" role="status" aria-live="polite">
+                <strong>Case effect applied</strong>
+                <span>{roundState.boxLog.at(-1)}</span>
+              </div>
+            )}
             <section className={`hangman-challenge__keyboard-panel${keyboardDistorted ? ' is-distorted' : ''}`} aria-label="Letter entry">
               <div className="hangman-challenge__used-head">
                 <span>Letter entry</span>

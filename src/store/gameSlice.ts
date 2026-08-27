@@ -3997,6 +3997,20 @@ const gameSlice = createSlice({
       const eventText = autoNomineeClause
         ? `${nameList} have been nominated for elimination. ${autoNomineeClause}. 🎯`
         : `${nameList} have been nominated for elimination by ${hohName}. 🎯`
+      const obsoletePrompt = state.tvFeed.find(
+        (event) =>
+          event.meta?.phase === state.phase &&
+          event.meta?.week === state.week &&
+          event.meta?.broadcastConsumed !== true &&
+          event.text.includes("it's time to make your nominations")
+      )
+      if (obsoletePrompt) {
+        obsoletePrompt.meta = { ...(obsoletePrompt.meta ?? {}), broadcastConsumed: true }
+        state.broadcastQueue = (state.broadcastQueue ?? []).filter((id) => id !== obsoletePrompt.id)
+        if (state.lastPlainBroadcastEventId === obsoletePrompt.id) {
+          state.lastPlainBroadcastEventId = null
+        }
+      }
       pushEvent(state, eventText, 'game')
     },
 

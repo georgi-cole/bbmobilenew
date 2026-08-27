@@ -628,7 +628,7 @@
           stats: [
             { label: 'LOH wins', value: String(lohWins), icon: '👑', tone: 'violet' },
             { label: 'POS wins', value: String(posWins), icon: '🔑', tone: 'violet' },
-            { label: 'Battle backs', value: String(battleBackWins), icon: '🔄', tone: 'violet' },
+            { label: 'Returns won', value: String(battleBackWins), icon: '🔄', tone: 'violet' },
             { label: 'Final LOHs', value: String(finalHohWins), icon: '🎯', tone: 'violet' },
           ],
         },
@@ -638,7 +638,7 @@
           tone: 'rose',
           stats: [
             { label: 'Fan favorite', value: String(publicFavoriteWins), icon: '🌟', tone: 'rose' },
-            { label: 'Jury runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
+            { label: 'Tribunal runs', value: String(juryAppearances), icon: '⚖️', tone: 'rose' },
             { label: 'Rewards found', value: String(rewardsFound), icon: '🥚', tone: 'rose' },
           ],
         },
@@ -702,7 +702,7 @@
       overflow: 'hidden',
       padding: isFeatured ? '18px' : '14px',
       borderRadius: isFeatured ? '22px' : '18px',
-      minHeight: isFeatured ? '118px' : '92px',
+      minHeight: isFeatured ? '118px' : '108px',
       background: `linear-gradient(160deg, ${tone.accentSoft} 0%, rgba(255,255,255,0.045) 42%, rgba(14,12,18,0.94) 100%)`,
       border: `1px solid ${tone.border}`,
       boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 28px ${tone.glow}`,
@@ -716,7 +716,7 @@
 
     const topRow = applyStyles(document.createElement('div'), {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: '10px',
     });
@@ -728,7 +728,7 @@
     labelWrap.appendChild(
       createTextNode('div', stat.label, {
         color: 'rgba(245, 247, 255, 0.7)',
-        fontSize: isFeatured ? '12px' : '11px',
+        fontSize: isFeatured ? '12px' : '10px',
         fontWeight: '700',
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
@@ -746,8 +746,8 @@
     const iconBadge = createTextNode('div', stat.icon, {
       display: 'grid',
       placeItems: 'center',
-      width: isFeatured ? '44px' : '36px',
-      height: isFeatured ? '44px' : '36px',
+      width: isFeatured ? '44px' : '34px',
+      height: isFeatured ? '44px' : '34px',
       borderRadius: isFeatured ? '14px' : '12px',
       background: tone.accentSoft,
       border: `1px solid ${tone.border}`,
@@ -825,7 +825,7 @@
 
     const grid = applyStyles(document.createElement('div'), {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(145px, 100%), 1fr))',
       gap: '10px',
     });
     section.stats.forEach(function (stat) {

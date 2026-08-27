@@ -380,9 +380,8 @@
 }
 
 .rcd-confirm {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -391,8 +390,8 @@
   border: 1px solid rgba(241, 165, 204, 0.26);
   border-radius: 14px;
   background: color-mix(in srgb, var(--rcd-plum) 96%, transparent);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
 }
 
 .rcd-confirm--danger {

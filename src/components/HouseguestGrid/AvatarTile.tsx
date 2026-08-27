@@ -251,6 +251,10 @@ export default function AvatarTile({
   }
 
   function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    // Surveyeval robo tiles open their complete stats sheet on a normal tap.
+    // Starting the generic long-press preview as well caused two dialogs to
+    // appear in sequence on touch devices.
+    if (isSurvivorRoboTile) return
     if (!onHoldPreviewStart) return
     setIsPressing(true)
     clearLongPressTimeout()

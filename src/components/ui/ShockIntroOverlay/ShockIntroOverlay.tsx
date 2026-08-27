@@ -8,7 +8,7 @@ import type { CupidArrowPair } from '../../../types'
 import { SoundManager } from '../../../services/sound/SoundManager'
 import './ShockIntroOverlay.css'
 
-const SHOCK_INTRO_FULLSCREEN_HOLD_MS = 2000
+const SHOCK_INTRO_FULLSCREEN_HOLD_MS = 3000
 const SHOCK_INTRO_HANDOFF_DURATION_MS = 320
 const SHOCK_INTRO_DURATION_MS =
   SHOCK_INTRO_FULLSCREEN_HOLD_MS + SHOCK_INTRO_HANDOFF_DURATION_MS
@@ -68,15 +68,15 @@ const SHOCK_ANNOUNCEMENTS: Record<string, Announcement> = {
   },
   battle_back_shock: {
     key: 'battle_back_shock',
-    title: 'Shock Twist',
-    subtitle: 'Back 2 the Game has been activated. A return is now on the table.',
+    title: 'Back 2 the Game',
+    subtitle: 'The eliminated field has one last route back. Only a single player will earn it.',
     isLive: true,
     autoDismissMs: null,
   },
   battle_back_rules: {
     key: 'battle_back_rules',
     title: 'Back 2 the Game Rules',
-    subtitle: 'Tribunal members face off. Only one can return.',
+    subtitle: 'Every contender starts equal; only the challenge winner returns to the hub.',
     isLive: true,
     autoDismissMs: null,
   },

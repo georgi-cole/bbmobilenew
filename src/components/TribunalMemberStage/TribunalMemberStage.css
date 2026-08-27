@@ -493,11 +493,11 @@
 
 .tms-cutout-wrap {
   position: absolute;
-  bottom: -3%;
-  left: -13%;
+  bottom: -2%;
+  left: -3%;
   z-index: 3;
-  width: 62%;
-  height: 79%;
+  width: 52%;
+  height: 94%;
   max-height: none;
   animation-name: tms-cutout-enter-v2;
 }
@@ -527,12 +527,12 @@
 
 .tms-speech-bubble {
   --tms-bubble-shift-x: 0;
-  top: 43%;
-  left: 58%;
-  right: 12px;
+  top: 49%;
+  left: 54%;
+  right: 4%;
   z-index: 9;
   width: auto;
-  padding: 13px 14px 14px;
+  padding: 12px 13px 13px;
   border: 1px solid rgba(232, 191, 118, 0.38);
   border-radius: 18px 18px 18px 4px;
   color: #f7f2e8;
@@ -567,7 +567,7 @@
   min-height: 3.8em;
   color: rgba(255, 255, 255, 0.92);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(0.76rem, 3vw, 0.98rem);
+  font-size: clamp(0.72rem, 2.8vw, 0.94rem);
   font-weight: 500;
   line-height: 1.38;
 }
@@ -646,8 +646,8 @@
 
 @media (max-height: 700px) {
   .tms-nameplate { top: 4%; }
-  .tms-cutout-wrap { height: 74%; }
-  .tms-speech-bubble { top: 39%; }
+  .tms-cutout-wrap { height: 84%; }
+  .tms-speech-bubble { top: 47%; }
 }
 
 @media (min-width: 700px) {
@@ -657,16 +657,16 @@
   }
 
   .tms-cutout-wrap {
-    bottom: -5%;
-    left: -1%;
-    width: 43%;
-    height: 88%;
+    bottom: -4%;
+    left: 1%;
+    width: 44%;
+    height: 96%;
   }
 
   .tms-speech-bubble {
-    top: 40%;
-    left: 58%;
-    right: 5%;
+    top: 49%;
+    left: 50%;
+    right: 6%;
     width: auto;
   }
 

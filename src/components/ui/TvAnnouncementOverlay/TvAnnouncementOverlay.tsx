@@ -8,7 +8,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { useI18n } from '../../../i18n';
+import { useTranslate } from '../../../i18n';
 import type { CupidArrowPair, Player } from '../../../types';
 import './TvAnnouncementOverlay.css';
 import './TvAnnouncementShockPrelude.css';
@@ -142,7 +142,7 @@ export default function TvAnnouncementOverlay({
   cupidPairs = [],
   cupidPlayers = [],
 }: TvAnnouncementOverlayProps) {
-  const { t } = useI18n();
+  const t = useTranslate();
   const { title, subtitle, isLive, autoDismissMs } = announcement;
   const shouldPlayShockPrelude =
     playShockPrelude ?? FULLSCREEN_SHOCK_KEYS.has(announcement.key);

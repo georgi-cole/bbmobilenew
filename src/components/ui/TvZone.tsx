@@ -179,7 +179,7 @@ const ANNOUNCEMENT_META: Record<
   },
   live_eviction: {
     title: 'Live Elimination',
-    subtitle: 'The house votes to eliminate.',
+    subtitle: 'The hub has spoken. One player’s journey ends tonight.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -223,27 +223,27 @@ const ANNOUNCEMENT_META: Record<
   vox_double_eviction: {
     title: 'Double Elimination!',
     subtitle:
-      'At least three nominees face the public. The audience will eliminate two housemates.',
+      'At least three nominees face the public. The audience will eliminate two players.',
     isLive: true,
     autoDismissMs: null,
   },
   cupid_arrow: {
     title: "Cupid's Arrow",
     subtitle:
-      'The house is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
+      'The hub is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
     isLive: true,
     autoDismissMs: null,
   },
   cupid_arrow_broken: {
     title: "Cupid's Spell Is Broken",
-    subtitle: 'Four pairs have fallen. Cupid leaves the house, and every survivor now plays alone.',
+    subtitle: 'Four pairs have fallen. Cupid leaves the hub, and every survivor now plays alone.',
     isLive: true,
     autoDismissMs: null,
   },
   vox_populi: {
     title: 'VOX POPULI',
     subtitle:
-      'Housemates nominate in secret. The audience decides who leaves; Public Mode reveals the pulse.',
+      'Players nominate in secret. The audience decides who leaves; Public Mode reveals the pulse.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -262,7 +262,7 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_nominations: {
     title: 'Secret Nominations',
-    subtitle: 'Every housemate privately names two people. Cutoff ties expand the block.',
+    subtitle: 'Every player privately names two people. Cutoff ties expand the block.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -275,13 +275,13 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_public_vote: {
     title: 'The Public Decides',
-    subtitle: 'The audience is voting to eliminate. Housemates do not vote.',
+    subtitle: 'The audience is voting to eliminate. The players do not vote.',
     isLive: true,
     autoDismissMs: null,
   },
   vox_final3: {
     title: 'Final 3',
-    subtitle: 'One housemate will win immunity. The audience will decide third place.',
+    subtitle: 'One player will win immunity. The audience will decide third place.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -306,7 +306,7 @@ const ANNOUNCEMENT_META: Record<
   vox_final3_interlude: {
     title: 'The Final Three',
     subtitle:
-      'The house falls quiet. Every bond, promise, and rivalry now carries final-night weight.',
+      'The hub falls quiet. Every bond, promise, and rivalry now carries final-night weight.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -348,13 +348,13 @@ const ANNOUNCEMENT_META: Record<
   },
   democracia: {
     title: 'DEMOCRACIA!',
-    subtitle: 'The house will elect the new Leader of the House by secret vote.',
+    subtitle: 'The hub will elect its new leader by secret vote.',
     isLive: true,
     autoDismissMs: null,
   },
   tribunal_phase: {
-    title: `Congrats all, you've just made it to tribunal.`,
-    subtitle: 'Your voices will crown the winner.',
+    title: 'Welcome to the Tribunal',
+    subtitle: 'The game is over for you, but your final vote will decide who deserves the crown.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -372,7 +372,7 @@ const ANNOUNCEMENT_META: Record<
   },
   pos_comp_announcement: {
     title: 'Power of Safety',
-    subtitle: "It's time for the Power of Safety competition!",
+    subtitle: 'The winner can protect a nominee and force the block to change.',
     isLive: true,
     autoDismissMs: null,
   },

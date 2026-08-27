@@ -174,8 +174,19 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
   const isUserPlayer = player.isUser === true || player.id === 'user';
   const lookupTokens = collectAssetLookupTokens(player);
 
+  // Synthetic/season-generated contestants intentionally carry a complete
+  // remote or bundled portrait URL. They have no canonical cast identity, so
+  // honour that portrait before speculative name-based files (which otherwise
+  // fail through to initials on mobile).
+  const canonicalPlayer = isUserPlayer ? undefined : (getById(player.id) ?? findByName(player.name));
+  const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
+  const isCombinedTwinPortrait = /Ali_lia_avatar\.(?:webp|svg)(?:$|[?#])/i.test(explicitAvatarPath ?? '');
+  if ((!canonicalPlayer || isCombinedTwinPortrait) && explicitAvatarPath) {
+    candidates.push(explicitAvatarPath);
+  }
+
   // Remote config override takes highest priority (if provided for this player id).
-  const hgForRemote = isUserPlayer ? undefined : (getById(player.id) ?? findByName(player.name));
+  const hgForRemote = canonicalPlayer;
   const remoteAvatarUrl = hgForRemote ? _remoteAvatarMap.get(hgForRemote.id) : undefined;
   if (remoteAvatarUrl) {
     candidates.push(remoteAvatarUrl);
@@ -206,7 +217,7 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
 
   // Try to resolve a stable houseguest id from the canonical dataset.
   // Match by player.id first (in case it is already a slug), then by player.name.
-  const hg = isUserPlayer ? undefined : (getById(id) ?? findByName(player.name));
+  const hg = canonicalPlayer;
   if (hg) {
     const hgId = hg.id; // lowercase stable slug, e.g. 'finn'
     const hgIdCap = capitalize(hgId); // e.g. 'Finn'
@@ -232,8 +243,7 @@ export function resolveAvatarCandidates(player: Pick<Player, 'id' | 'name' | 'av
   // Older saved games can retain a previous player's filename here; resolving
   // by the stable id/name first prevents labels such as Kai/Ivy or Zed/Vee
   // from ever being paired with the wrong portrait.
-  const explicitAvatarPath = normalizeExplicitAvatarPath(player.avatar);
-  if (explicitAvatarPath) {
+  if (explicitAvatarPath && !candidates.includes(explicitAvatarPath)) {
     candidates.push(explicitAvatarPath);
   }
 

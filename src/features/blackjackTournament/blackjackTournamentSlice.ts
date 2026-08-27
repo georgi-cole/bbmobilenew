@@ -834,6 +834,27 @@ const blackjackTournamentSlice = createSlice({
       }
     },
 
+    skipBlackjackTournamentToEnd(state) {
+      if (!state.isSpectating || state.remainingPlayerIds.length === 0) return;
+      const ranked = [...state.remainingPlayerIds].sort((a, b) => {
+        const scoreDiff = (state.playerScores[b] ?? 0) - (state.playerScores[a] ?? 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        return a.localeCompare(b);
+      });
+      const winner = ranked[0];
+      ranked.slice(1).forEach((id) => {
+        if (!state.eliminatedPlayerIds.includes(id)) state.eliminatedPlayerIds.push(id);
+        state.playerScores[id] = 0;
+      });
+      state.remainingPlayerIds = [winner];
+      state.winnerId = winner;
+      state.controllingPlayerId = winner;
+      state.currentDuel = null;
+      state.fighterAId = null;
+      state.fighterBId = null;
+      state.phase = 'complete';
+    },
+
     markBlackjackTournamentOutcomeResolved(state) {
       state.outcomeResolved = true;
     },
@@ -853,6 +874,7 @@ export const {
   standCurrentPlayer,
   resolveDuel,
   advanceFromDuelResult,
+  skipBlackjackTournamentToEnd,
   markBlackjackTournamentOutcomeResolved,
   resetBlackjackTournament,
 } = blackjackTournamentSlice.actions;
