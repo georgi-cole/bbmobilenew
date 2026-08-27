@@ -62,9 +62,15 @@ jobs:
             browser: chromium
           - project: mobile-webkit
             browser: webkit
+          - project: ios-modern-webkit
+            browser: webkit
+          - project: ios-large-webkit
+            browser: webkit
           - project: narrow-chromium
             browser: chromium
           - project: compact-mobile-chromium
+            browser: chromium
+          - project: android-large-chromium
             browser: chromium
           - project: wide-desktop-chromium
             browser: chromium
@@ -90,10 +96,54 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  responsive-minigame-quality:
+    name: Release responsive minigames (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: narrow-chromium
+            browser: chromium
+          - project: mobile-chromium
+            browser: chromium
+          - project: android-large-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
+          - project: ios-large-webkit
+            browser: webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Sweep every active minigame in both system-bar modes
+        run: >-
+          node scripts/run-responsive-playwright.mjs minigames
+          --project=${{ matrix.project }} --workers=2
+      - name: Upload responsive minigame evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-responsive-minigames-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 30
+
   release-ready:
     name: Release quality aggregate
     runs-on: ubuntu-latest
-    needs: [product-quality, browser-quality]
+    needs: [product-quality, browser-quality, responsive-minigame-quality]
     permissions:
       contents: read
     steps:
