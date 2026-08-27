@@ -16,8 +16,6 @@ const SCREENSHOT_OPTIONS = {
 
 const runResponsiveVisual = process.env.RESPONSIVE_VISUAL === '1'
 
-test.skip(!runResponsiveVisual, 'responsive visual regression runs only in its dedicated command/job')
-
 async function waitForHome(page: Page): Promise<void> {
   const mainMenu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(mainMenu).toBeVisible({ timeout: SCREEN_TIMEOUT_MS * 2 })
@@ -55,29 +53,33 @@ async function openClassicGame(page: Page): Promise<void> {
   })
 }
 
-for (const systemBarsVisible of [true, false]) {
-  const chromeMode = systemBarsVisible ? 'system-bars' : 'immersive'
+test.describe('Responsive visual regression @responsive-visual', () => {
+  test.skip(!runResponsiveVisual, 'responsive visual regression runs only in its dedicated command/job')
 
-  test.describe(`Responsive visual regression - ${chromeMode} @responsive-visual`, () => {
-    test.describe.configure({ timeout: 120_000 })
+  for (const systemBarsVisible of [true, false]) {
+    const chromeMode = systemBarsVisible ? 'system-bars' : 'immersive'
 
-    test(`Home Hub matches the base branch in ${chromeMode}`, async ({ page }, testInfo) => {
-      const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
-      await installSafeAreaProfile(page, insets)
-      await page.goto('./')
-      await waitForHome(page)
+    test.describe(chromeMode, () => {
+      test.describe.configure({ timeout: 120_000 })
 
-      await expect(page).toHaveScreenshot(`homehub-${chromeMode}.png`, SCREENSHOT_OPTIONS)
+      test(`Home Hub matches the base branch in ${chromeMode}`, async ({ page }, testInfo) => {
+        const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
+        await installSafeAreaProfile(page, insets)
+        await page.goto('./')
+        await waitForHome(page)
+
+        await expect(page).toHaveScreenshot(`homehub-${chromeMode}.png`, SCREENSHOT_OPTIONS)
+      })
+
+      test(`Classic game start matches the base branch in ${chromeMode}`, async ({ page }, testInfo) => {
+        const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
+        await installSafeAreaProfile(page, insets)
+        await page.goto('./')
+        await waitForHome(page)
+        await openClassicGame(page)
+
+        await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, SCREENSHOT_OPTIONS)
+      })
     })
-
-    test(`Classic game start matches the base branch in ${chromeMode}`, async ({ page }, testInfo) => {
-      const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
-      await installSafeAreaProfile(page, insets)
-      await page.goto('./')
-      await waitForHome(page)
-      await openClassicGame(page)
-
-      await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, SCREENSHOT_OPTIONS)
-    })
-  })
-}
+  }
+})
