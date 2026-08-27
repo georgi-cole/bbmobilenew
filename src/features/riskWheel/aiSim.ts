@@ -9,11 +9,11 @@
  * each AI player spins up to MAX_SPINS_PER_TURN times, applies sector effects,
  * and stops when they decide to bank or when their spins are exhausted.
  */
-import { mulberry32 } from '../../store/rng';
 import { cryptoSeed } from './cryptoSpin';
 import {
   WHEEL_SECTORS,
   MAX_SPINS_PER_TURN,
+  aiShouldStop,
   pickSectorIndex,
   resolve666Effect,
   type RiskWheelAiPersonality,
@@ -49,15 +49,14 @@ export function simulateAiTurns(
   // large positive values after >>>0) is used as a deterministic seed.
   const effectiveSeed = seed !== undefined && seed !== 0 ? seed >>> 0 : cryptoSeed();
   // Use a separate RNG stream from the spin RNG to avoid entanglement.
-  const decisionRng = mulberry32((effectiveSeed ^ 0xdeadbeef) >>> 0);
-
   const results: AiSimResult[] = [];
   let rngCallCount = 0;
+  const activePlayerIds = players.map((player) => player.id);
+  const roundScores: Record<string, number> = Object.fromEntries(activePlayerIds.map((id) => [id, 0]));
 
   for (const player of players) {
     let score = 0;
     const personality = player.personality ?? 'balanced';
-    const stopThreshold = personality === 'cautious' ? 0.45 : personality === 'risky' ? 0.65 : 0.55;
 
     for (let spin = 0; spin < MAX_SPINS_PER_TURN; spin++) {
       const sectorIdx = pickSectorIndex(effectiveSeed, rngCallCount);
@@ -84,12 +83,23 @@ export function simulateAiTurns(
       // Decision: spin again?
       const isLastSpin = spin >= MAX_SPINS_PER_TURN - 1;
       if (isLastSpin) break;
-
-      const roll = decisionRng();
-      const shouldStop = score > 0 && roll > stopThreshold;
+      roundScores[player.id] = score;
+      const shouldStop = aiShouldStop({
+        seed: effectiveSeed,
+        round: 1,
+        playerId: player.id,
+        personality,
+        currentScore: score,
+        activePlayerIds,
+        roundScores,
+        spinsRemaining: MAX_SPINS_PER_TURN - spin - 1,
+        initialPlayerCount: players.length,
+        decisionIndex: spin,
+      });
       if (shouldStop) break;
     }
 
+    roundScores[player.id] = score;
     results.push({ id: player.id, score });
   }
 

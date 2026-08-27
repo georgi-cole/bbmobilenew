@@ -9,6 +9,7 @@ import {
   forcePovWinner,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
+  prepareClassicFinalThreeTest,
   forcePhase,
   finalizeFinal4Eviction,
   clearBlockingFlags,
@@ -812,6 +813,14 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
               </div>
 
               <div className="dbg-row">
+                {game.voxPopuli?.status !== 'active' && (
+                  <button
+                    className="dbg-btn dbg-btn--wide"
+                    onClick={() => dispatch(prepareClassicFinalThreeTest())}
+                  >
+                    Prepare Classic Final 3 Test
+                  </button>
+                )}
                 <button
                   className="dbg-btn dbg-btn--wide"
                   onClick={() => dispatch(prepareVoxFinalThreeTest())}

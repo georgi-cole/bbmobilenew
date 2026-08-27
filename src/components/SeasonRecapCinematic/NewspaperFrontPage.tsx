@@ -1,4 +1,5 @@
 import type { NewspaperFrontPageData } from './newspaperFrontPages';
+import type { MouseEvent } from 'react';
 
 interface NewspaperFrontPageProps {
   page: NewspaperFrontPageData;
@@ -6,6 +7,7 @@ interface NewspaperFrontPageProps {
 }
 
 export default function NewspaperFrontPage({ page, className }: NewspaperFrontPageProps) {
+  const preventImageMenu = (event: MouseEvent<HTMLImageElement>) => event.preventDefault();
   return (
     <article
       className={[
@@ -61,7 +63,7 @@ export default function NewspaperFrontPage({ page, className }: NewspaperFrontPa
 
         <div className="src-news-page__photo-layout">
           <figure className="src-news-page__photo-frame">
-            <img src={page.featuredImage} alt={page.featuredImageAlt} className="src-news-page__photo" />
+            <img src={page.featuredImage} alt={page.featuredImageAlt} className="src-news-page__photo" draggable={false} onContextMenu={preventImageMenu} />
           </figure>
           {page.secondaryImage && (
             <figure className="src-news-page__photo-frame src-news-page__photo-frame--secondary">
@@ -69,6 +71,8 @@ export default function NewspaperFrontPage({ page, className }: NewspaperFrontPa
                 src={page.secondaryImage}
                 alt={page.secondaryImageAlt ?? page.featuredImageAlt}
                 className="src-news-page__photo"
+                draggable={false}
+                onContextMenu={preventImageMenu}
               />
             </figure>
           )}

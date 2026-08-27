@@ -49,9 +49,9 @@ import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic'
 import TribunalMemberStage from '../TribunalMemberStage/TribunalMemberStage'
 import { splitFinalePlayers } from './finaleEligibility'
 import {
-  CLUE_AUTO_INTERVAL_MS,
+  FIRST_CLUE_DELAY_MS,
+  clueReadingHoldMs,
   PUBLIC_VOTE_RECAP_HOLD_MS,
-  RECAP_TRANSITION_DELAY_MS,
   VOTE_REVEAL_INITIAL_DELAY_MS,
   VOTE_REVEAL_STAGGER_MS,
   WINNER_CINEMATIC_DELAY_MS,
@@ -289,10 +289,11 @@ export default function FinalFaceoff() {
     // All clues revealed → move to recap cinematic
     if (finale.revealOrder.length > 0 && finale.revealedCount >= finale.revealOrder.length) {
       const lastRevealedJurorId = finale.revealOrder[finale.revealedCount - 1]
+      const finalPhrase = revealed[revealed.length - 1]?.phrase ?? ''
       const recapDelayMs =
         lastRevealedJurorId === PUBLIC_JUROR_ID
           ? PUBLIC_VOTE_RECAP_HOLD_MS
-          : RECAP_TRANSITION_DELAY_MS
+          : clueReadingHoldMs(finalPhrase)
       const t = setTimeout(() => setPhase('recap'), recapDelayMs)
       return () => clearTimeout(t)
     }
@@ -300,9 +301,11 @@ export default function FinalFaceoff() {
     // Pause auto-advance while human juror needs to vote
     if (finale.awaitingHumanJurorId) return
 
+    const latestPhrase = revealed[revealed.length - 1]?.phrase ?? ''
+    const holdMs = finale.revealedCount === 0 ? FIRST_CLUE_DELAY_MS : clueReadingHoldMs(latestPhrase)
     const t = setTimeout(() => {
       dispatch(revealNextJuror({ humanPlayerIds: humanIds }))
-    }, CLUE_AUTO_INTERVAL_MS)
+    }, holdMs)
     return () => clearTimeout(t)
   }, [
     phase,
@@ -311,6 +314,7 @@ export default function FinalFaceoff() {
     finale.revealOrder,
     finale.revealOrder.length,
     finale.awaitingHumanJurorId,
+    revealed,
     dispatch,
     humanIds,
   ])

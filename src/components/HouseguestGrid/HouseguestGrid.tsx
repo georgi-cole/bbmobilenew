@@ -428,7 +428,7 @@ export default function HouseguestGrid({
             <StatusPill
               variant="ghost"
               label={occupancyLabel}
-              ariaLabel={`${occupancyLabel} housemates`}
+              ariaLabel={`${occupancyLabel} players`}
             />
           )}
           {showRosterLogLauncher && (
@@ -445,7 +445,7 @@ export default function HouseguestGrid({
         </div>
 
         <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
-          Tap a housemate to interact. Press and hold to preview their profile.
+          Tap a player to interact. Press and hold to preview their profile.
         </p>
 
         {weatherReveal && (game.phase === 'week_start' || game.phase === 'week_end') && (

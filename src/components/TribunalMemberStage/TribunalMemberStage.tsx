@@ -119,7 +119,7 @@ export default function TribunalMemberStage({
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID;
   const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null;
   const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null;
-  const cutoutSrc = current && !isPublic && fallbackSrc
+  const cutoutSrc = current && !isPublic
     ? failedCutoutId === current.juror.id || !formalSrc
       ? fallbackSrc
       : formalSrc

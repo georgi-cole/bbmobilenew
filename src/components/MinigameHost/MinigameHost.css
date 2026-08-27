@@ -26,6 +26,8 @@
   z-index: 9500;
   color: #eee;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .minigame-host-ready {
@@ -110,6 +112,15 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.minigame-host-playing input,
+.minigame-host-playing textarea,
+.minigame-host-playing select,
+.minigame-host-playing button {
+  touch-action: manipulation;
 }
 
 .minigame-host-playing > .pp,

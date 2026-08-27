@@ -73,9 +73,10 @@ export default function NavBar() {
     Boolean(battleBack?.competitionActive) ||
     Boolean(favoritePlayer?.votingStarted);
 
-  if (!isMainGameRoute && !isGameOverRoute) return null;
+  if (isGameOverRoute) return null;
+  if (!isMainGameRoute) return null;
   if (!isGameActive && !isGameOverRoute) return null;
-  if (!isGameOverRoute && isFullScreenFlowActive) return null;
+  if (isFullScreenFlowActive) return null;
 
   function handleHomeClick() {
     if (!isGameActive) {
@@ -154,7 +155,6 @@ export default function NavBar() {
   return (
     <GameBottomNav
       activeTab={getActiveTab()}
-      disabled={isGameOverRoute}
       onHomeClick={handleHomeClick}
       onRulesClick={handleRulesClick}
       onSettingsClick={() => navigate('/settings')}

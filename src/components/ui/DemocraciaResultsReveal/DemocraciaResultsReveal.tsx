@@ -21,7 +21,6 @@ const DEFAULT_COUNTDOWN_MS = 2600;
 
 export default function DemocraciaResultsReveal({
   mode,
-  title,
   subtitle,
   participants,
   onDone,
@@ -94,7 +93,7 @@ export default function DemocraciaResultsReveal({
       resizeObserver?.disconnect();
       window.removeEventListener('resize', scheduleRecalculation);
     };
-  }, [mode, participants, subtitle, title]);
+  }, [mode, participants, subtitle]);
 
   const badgeLabel =
     mode === 'winner'
@@ -113,7 +112,6 @@ export default function DemocraciaResultsReveal({
         <div className="democracia-results__content" ref={contentRef} style={contentStyle}>
           <div className="democracia-results__badge">{badgeLabel}</div>
           <div className="democracia-results__body">
-            <h2 className="visually-hidden">{title}</h2>
             <p className="democracia-results__subtitle">{subtitle}</p>
             {participants.length > 0 && (
               <div

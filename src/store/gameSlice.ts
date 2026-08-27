@@ -5671,6 +5671,50 @@ const gameSlice = createSlice({
         { major: 'vox_final3', broadcastPriority: 'critical' }
       )
     },
+    /**
+     * Debug-only Classic Final Three entry point. Keeps the human plus two
+     * active AI players, moves everybody else to the Tribunal, and clears all
+     * ceremony/minigame state so the normal three-part Classic finale can run.
+     */
+    prepareClassicFinalThreeTest(state) {
+      if (isVoxPopuliActive(state)) return
+      const human = state.players.find((player) => player.isUser)
+      if (!human) return
+      const activeAi = state.players.filter(
+        (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+      )
+      const fallbackAi = state.players.filter(
+        (player) => !player.isUser && !activeAi.some((candidate) => candidate.id === player.id)
+      )
+      const finalists = [human, ...activeAi, ...fallbackAi].slice(0, 3)
+      if (finalists.length !== 3) return
+
+      resetVoxFinalThreeRound(state)
+      const finalistIds = new Set(finalists.map((player) => player.id))
+      state.players.forEach((player) => {
+        player.isWinner = false
+        player.finalRank = undefined
+        player.seasonPlacement = undefined
+        if (finalistIds.has(player.id)) {
+          player.status = 'active'
+          player.evictedAtWeek = undefined
+        } else {
+          player.status = 'jury'
+          player.evictedAtWeek ??= state.week
+        }
+      })
+      state.tvFeed = []
+      state.broadcastQueue = []
+      state.evictionSplashId = null
+      state.evictionOverlayPlayerId = null
+      state.phase = 'final3'
+      pushEvent(
+        state,
+        `Final 3! ${formatNameList(finalists.map((player) => player.name))} remain. The three-part finale begins now.`,
+        'game',
+        { major: 'final3_announcement', broadcastPriority: 'critical' }
+      )
+    },
     /** Force entry into Final 4 eviction phase (debug only). */
     forcePhase(state, action: PayloadAction<Phase>) {
       state.phase = action.payload
@@ -8684,6 +8728,7 @@ export const {
   forcePovWinner,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
+  prepareClassicFinalThreeTest,
   forcePhase,
   clearBlockingFlags,
   archiveSeason,

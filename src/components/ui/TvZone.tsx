@@ -68,7 +68,19 @@ import './TvZoneEnhancements.css'
 import './ShockDangerMode.css'
 
 const NOOP = () => {}
-const normalizeHubCopy = (value: string) => value.replace(/\bhouse\b/gi, 'hub')
+const normalizeHubCopy = (value: string) => value
+  .replace(/\bhousemates\b/gi, 'players')
+  .replace(/\bhouseguests\b/gi, 'players')
+  .replace(/\bhousemate\b/gi, 'player')
+  .replace(/\bhouseguest\b/gi, 'player')
+  .replace(/\bBig Brother\b/gi, 'The Big Eye')
+  .replace(/\bPower of Veto\b/gi, 'Power of Safety')
+  .replace(/\bveto\b/gi, 'Safety')
+  .replace(/\bjury\b/gi, 'Tribunal')
+  .replace(/\bjurors\b/gi, 'Tribunal members')
+  .replace(/\bjuror\b/gi, 'Tribunal member')
+  .replace(/\btwist\b/gi, 'shock')
+  .replace(/\bhouse\b/gi, 'hub')
 const normalizeAnnouncementCopy = (announcement: Announcement | null): Announcement | null =>
   announcement
     ? {
@@ -1028,10 +1040,18 @@ export default function TvZone(props: TvZoneProps) {
   // main screen, through the interview and Public Favorite handoff.
   const winnerBroadcast = useMemo(() => {
     const finale = gameState.seasonFinale
-    if (!finale || !['winnerInterview', 'publicFavoriteSetup'].includes(finale.phase)) return null
-
-    return gameState.players.find((player) => player.id === finale.winnerId) ?? null
-  }, [gameState.players, gameState.seasonFinale])
+    if (finale && ['winnerInterview', 'publicFavoriteSetup'].includes(finale.phase)) {
+      return gameState.players.find((player) => player.id === finale.winnerId) ?? null
+    }
+    // finalizeGame marks the winner before the post-finale overlay is created.
+    // During that handoff the game route is briefly visible and still reports
+    // the Tribunal phase, so use the resolved player record instead of falling
+    // back to the stale Tribunal Votes card.
+    if (gameState.phase === 'jury') {
+      return gameState.players.find((player) => player.isWinner || player.finalRank === 1) ?? null
+    }
+    return null
+  }, [gameState.phase, gameState.players, gameState.seasonFinale])
 
   const queuedShockAnnouncement = shockAnnouncementQueue[0] ?? null
   const managedEventAnnouncement =
@@ -1118,7 +1138,7 @@ export default function TvZone(props: TvZoneProps) {
       audiencePreviewRevealActive)
   // Existing saved seasons can still hold the former default welcome copy.
   // Normalize that exact legacy phrase until those broadcasts are regenerated.
-  const displayedEventText = displayedEvent?.text?.replace(/house/gi, 'hub')
+  const displayedEventText = displayedEvent?.text ? normalizeHubCopy(displayedEvent.text) : undefined
   const viewportDisplayText =
     viewportMessageOverride ??
     (cupidFollowUpVisible ? cupidFollowUpAnnouncement.subtitle : dailyTransitionTitle ?? displayedEventText)
@@ -1132,7 +1152,7 @@ export default function TvZone(props: TvZoneProps) {
   if (viewportMessageOverride) {
     mainTvMessage = viewportMessageOverride
   } else if (winnerBroadcast) {
-    mainTvMessage = winnerBroadcast.name + ' wins The Big Eye'
+    mainTvMessage = `${winnerBroadcast.name} won Season ${gameState.season} of The Big Eye`
   } else if (activeAnnouncement) {
     mainTvMessage =
       cupidFauxTvAnnouncement && cupidIntroAcknowledged
@@ -1880,7 +1900,7 @@ export default function TvZone(props: TvZoneProps) {
                 announcement={{
                   key: 'season_winner',
                   // i18n-ignore: Canonical in-world winner announcement title
-                  title: `${winnerBroadcast.name} Wins The Big Eye`,
+                  title: `${winnerBroadcast.name} Won Season ${gameState.season} of The Big Eye`,
                   subtitle:
                     gameState.voxPopuli?.winnerId === winnerBroadcast.id
                       ? AUDIENCE_WINNER_SUBTITLE

@@ -57,7 +57,7 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.32, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          Meet the<br />Housemates
+          Meet the<br />Players
         </motion.h1>
         <motion.p
           className="hbc-intro__sub"
@@ -65,7 +65,7 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          22 lives. One house. Follow the stories you want to know.
+          22 lives. One hub. Follow the stories you want to know.
         </motion.p>
         <motion.button
           className="hbc-primary-action"
@@ -75,7 +75,7 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.02 }}
         >
-          Enter the house <span aria-hidden="true">→</span>
+          Enter the hub <span aria-hidden="true">→</span>
         </motion.button>
       </div>
     </motion.section>
@@ -106,12 +106,12 @@ function HousemateCarousel({
     >
       <div className="hbc-carousel__aurora" aria-hidden="true" />
       <header className="hbc-carousel__heading">
-        <p className="hbc-kicker">Meet the housemates</p>
+        <p className="hbc-kicker">Meet the players</p>
         <h1>One story at a time.</h1>
         <p>Browse the cast, then tap a card to open their full story.</p>
       </header>
 
-      <div className="hbc-carousel__viewport" aria-label="Housemate carousel">
+      <div className="hbc-carousel__viewport" aria-label="Player carousel">
         <motion.div
           className="hbc-carousel__track"
           animate={{ x: `-${activeIndex * 80}vw` }}
@@ -157,14 +157,14 @@ function HousemateCarousel({
       </div>
 
       <div className="hbc-carousel__controls">
-        <button type="button" onClick={() => move(-1)} aria-label="Previous housemate">
+        <button type="button" onClick={() => move(-1)} aria-label="Previous player">
           <span aria-hidden="true">←</span>
         </button>
         <div className="hbc-carousel__current" aria-live="polite">
           <strong>{activeCard.name}</strong>
           <span>{String(activeIndex + 1).padStart(2, '0')} / {String(HOUSEMATES_BIO_CARDS.length).padStart(2, '0')}</span>
         </div>
-        <button type="button" onClick={() => move(1)} aria-label="Next housemate">
+        <button type="button" onClick={() => move(1)} aria-label="Next player">
           <span aria-hidden="true">→</span>
         </button>
       </div>
@@ -202,7 +202,7 @@ function HousemateProfile({
       <div className="hbc-profile__backdrop" aria-hidden="true" />
       <div className="hbc-profile__grade" aria-hidden="true" />
       <button className="hbc-back-button" type="button" onClick={onBack}>
-        <span aria-hidden="true">←</span> All housemates
+        <span aria-hidden="true">←</span> All players
       </button>
 
       <div className="hbc-profile__layout">

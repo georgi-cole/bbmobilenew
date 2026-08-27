@@ -613,12 +613,10 @@ function pickTabloidPhoto(
     usedPhotoIds.add(matched.id)
     return matched.source
   }
-  const unusedFallback = photos.find((photo) => !usedPhotoIds.has(photo.id))
-  if (unusedFallback) {
-    usedPhotoIds.add(unusedFallback.id)
-    return unusedFallback.source
-  }
-  return photos[0]?.source ?? null
+  // A tabloid photo belongs only to the cast member named by its filename.
+  // Borrowing the next unused photo made custom/user players appear as Aria (or
+  // another unrelated hubmate). Callers can render the intentional silhouette.
+  return null
 }
 
 function hashString(value: string): number {
@@ -908,6 +906,48 @@ function chooseTwo(values: string[], seed: string): [string, string] {
   return [values[firstIndex], values[secondIndex] ?? values[firstIndex]]
 }
 
+function contentWords(value: string): Set<string> {
+  return new Set(
+    value
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((word) => word.length > 3)
+  )
+}
+
+function copyOverlap(left: string, right: string): number {
+  const leftWords = contentWords(left)
+  const rightWords = contentWords(right)
+  if (leftWords.size === 0 || rightWords.size === 0) return 0
+  let shared = 0
+  leftWords.forEach((word) => {
+    if (rightWords.has(word)) shared += 1
+  })
+  return shared / Math.min(leftWords.size, rightWords.size)
+}
+
+function pickDistinctRendered(
+  templates: string[],
+  seed: string,
+  context: AftermathPlayerContext,
+  season: number,
+  winnerName: string,
+  usedCopy: string[],
+  partner?: Player
+): string {
+  const start = selectIndex(seed, templates.length)
+  const rendered = templates.map((template) =>
+    renderTemplate(template, context, season, winnerName, partner)
+  )
+  const ordered = rendered.map((_, offset) => rendered[(start + offset) % rendered.length])
+  return ordered.find((candidate) => usedCopy.every((used) => copyOverlap(candidate, used) < 0.58))
+    ?? ordered.sort((left, right) =>
+      Math.max(...usedCopy.map((used) => copyOverlap(left, used)), 0) -
+      Math.max(...usedCopy.map((used) => copyOverlap(right, used)), 0)
+    )[0]
+}
+
 function storyFromScenario(
   scenario: AftermathScenario,
   context: AftermathPlayerContext,
@@ -917,7 +957,17 @@ function storyFromScenario(
   seed: string,
   matchedPhoto: string | null
 ): AftermathStory {
-  const [firstBullet, secondBullet] = chooseTwo(scenario.bulletPoints, `${seed}:bullets`)
+  const headline = renderTemplate(
+    scenario.headlines[selectIndex(`${seed}:headline`, scenario.headlines.length)],
+    context,
+    season,
+    winnerName
+  )
+  const subheadline = pickDistinctRendered(scenario.subheadlines, `${seed}:subheadline`, context, season, winnerName, [headline])
+  const body = pickDistinctRendered(scenario.bodies, `${seed}:body`, context, season, winnerName, [headline, subheadline])
+  const firstBullet = pickDistinctRendered(scenario.bulletPoints, `${seed}:bullet-1`, context, season, winnerName, [headline, subheadline, body])
+  const secondBullet = pickDistinctRendered(scenario.bulletPoints, `${seed}:bullet-2`, context, season, winnerName, [headline, subheadline, body, firstBullet])
+  const twist = pickDistinctRendered(scenario.twists, `${seed}:twist`, context, season, winnerName, [headline, subheadline, body, firstBullet, secondBullet])
   return {
     playerId: context.player.id,
     playerName: context.player.name,
@@ -926,34 +976,11 @@ function storyFromScenario(
     toneLabel: config.toneLabels[scenario.tone],
     categoryLabel: config.categories[scenario.category] ?? scenario.category,
     badge: scenario.badge,
-    headline: renderTemplate(
-      scenario.headlines[selectIndex(`${seed}:headline`, scenario.headlines.length)],
-      context,
-      season,
-      winnerName
-    ),
-    subheadline: renderTemplate(
-      scenario.subheadlines[selectIndex(`${seed}:subheadline`, scenario.subheadlines.length)],
-      context,
-      season,
-      winnerName
-    ),
-    body: renderTemplate(
-      scenario.bodies[selectIndex(`${seed}:body`, scenario.bodies.length)],
-      context,
-      season,
-      winnerName
-    ),
-    bulletPoints: [
-      renderTemplate(firstBullet, context, season, winnerName),
-      renderTemplate(secondBullet, context, season, winnerName),
-    ],
-    twist: renderTemplate(
-      scenario.twists[selectIndex(`${seed}:twist`, scenario.twists.length)],
-      context,
-      season,
-      winnerName
-    ),
+    headline,
+    subheadline,
+    body,
+    bulletPoints: [firstBullet, secondBullet],
+    twist,
     caption: scenario.caption ?? config.editorial.photoCaption,
     imageSources: resolveRecapTabloidSources(context.player, matchedPhoto),
     scenarioId: scenario.id,

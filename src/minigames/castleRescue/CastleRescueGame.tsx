@@ -951,6 +951,43 @@ function drawSequelCastleBackdrop(ctx: CanvasRenderingContext2D, camera: number)
   }
 }
 
+function drawPremiumBackdrop(
+  ctx: CanvasRenderingContext2D,
+  camera: number,
+  isSequel: boolean,
+  now: number,
+): void {
+  const glow = ctx.createRadialGradient(CW * 0.52, HUD_H + 150, 12, CW * 0.52, HUD_H + 150, 430);
+  glow.addColorStop(0, isSequel ? 'rgba(221, 178, 255, 0.26)' : 'rgba(255, 206, 116, 0.24)');
+  glow.addColorStop(0.56, 'rgba(79, 42, 118, 0.09)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, HUD_H, CW, PLAY_H);
+
+  // Architectural arches, glowing windows and moving dust make the premium
+  // edition a distinct rendered scene rather than a filter over the base game.
+  for (let index = 0; index < 5; index++) {
+    const x = ((index * 230 - camera * 0.16) % (CW + 230) + CW + 230) % (CW + 230) - 100;
+    ctx.strokeStyle = isSequel ? 'rgba(232, 191, 118, 0.36)' : 'rgba(238, 199, 125, 0.3)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x, HUD_H + 270);
+    ctx.lineTo(x, HUD_H + 108);
+    ctx.arc(x + 48, HUD_H + 108, 48, Math.PI, 0);
+    ctx.lineTo(x + 96, HUD_H + 270);
+    ctx.stroke();
+    ctx.fillStyle = index % 2 === 0 ? 'rgba(119, 70, 158, 0.18)' : 'rgba(181, 103, 73, 0.13)';
+    ctx.fillRect(x + 8, HUD_H + 112, 80, 154);
+  }
+
+  for (let index = 0; index < 28; index++) {
+    const x = (index * 97 + now * (0.008 + (index % 3) * 0.003)) % CW;
+    const y = HUD_H + 24 + ((index * 61) % Math.max(1, PLAY_H - 60));
+    ctx.fillStyle = index % 3 === 0 ? 'rgba(255, 222, 151, 0.42)' : 'rgba(212, 173, 255, 0.24)';
+    ctx.fillRect(x, y, index % 4 === 0 ? 2 : 1, index % 4 === 0 ? 2 : 1);
+  }
+}
+
 const galleryImageCache = new Map<string, HTMLImageElement>();
 const galleryPixelCache = new Map<string, HTMLCanvasElement>();
 let kolequantLogoImage: HTMLImageElement | null = null;
@@ -1161,10 +1198,11 @@ function renderGame(
   gs: GameState,
   now: number,
   timeLimitMs: number,
+  premium = false,
 ): void {
   // Delegate to the room renderer while the player is inside a side-room.
   if (gs.room !== null) {
-    renderRoom(ctx, gs, now, timeLimitMs);
+    renderRoom(ctx, gs, now, timeLimitMs, premium);
     return;
   }
 
@@ -1174,8 +1212,8 @@ function renderGame(
 
   // Background
   const bg = ctx.createLinearGradient(0, HUD_H, 0, CH);
-  bg.addColorStop(0, isSequel ? '#312643' : '#1a1a2e');
-  bg.addColorStop(1, isSequel ? '#151325' : '#0f1320');
+  bg.addColorStop(0, premium ? (isSequel ? '#3b1747' : '#30203d') : (isSequel ? '#312643' : '#1a1a2e'));
+  bg.addColorStop(1, premium ? '#090711' : (isSequel ? '#151325' : '#0f1320'));
   ctx.fillStyle = bg;
   ctx.fillRect(0, HUD_H, CW, PLAY_H);
 
@@ -1192,6 +1230,7 @@ function renderGame(
       ctx.fillRect(bx + 65, HUD_H + 135, 10, 235);
     }
   }
+  if (premium) drawPremiumBackdrop(ctx, gs.camera, isSequel, now);
 
   // World transform (camera)
   ctx.save();
@@ -1199,18 +1238,18 @@ function renderGame(
 
   // Ground
   const [gnd] = gs.geom.platforms;
-  ctx.fillStyle = isSequel ? '#3f3a4d' : '#5c3d20';
+  ctx.fillStyle = premium ? '#382b3e' : (isSequel ? '#3f3a4d' : '#5c3d20');
   ctx.fillRect(gnd.x, gnd.y, gnd.w, gnd.h);
-  ctx.fillStyle = isSequel ? '#625b70' : '#6e4c2a';
+  ctx.fillStyle = premium ? '#ad8251' : (isSequel ? '#625b70' : '#6e4c2a');
   for (let tx = 0; tx < gnd.w; tx += 32)
     ctx.fillRect(tx, gnd.y, 30, 5);
 
   // Elevated platforms
   for (let i = 1; i < gs.geom.platforms.length; i++) {
     const p = gs.geom.platforms[i];
-    ctx.fillStyle = isSequel ? '#5b5369' : '#7a6045'; ctx.fillRect(p.x, p.y, p.w, p.h);
-    ctx.fillStyle = isSequel ? '#8b819b' : '#9a7855'; ctx.fillRect(p.x, p.y, p.w, 4);
-    ctx.strokeStyle = isSequel ? '#393344' : '#5a4033'; ctx.lineWidth = 1;
+    ctx.fillStyle = premium ? '#5f4d68' : (isSequel ? '#5b5369' : '#7a6045'); ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.fillStyle = premium ? '#d7b778' : (isSequel ? '#8b819b' : '#9a7855'); ctx.fillRect(p.x, p.y, p.w, 4);
+    ctx.strokeStyle = premium ? '#302338' : (isSequel ? '#393344' : '#5a4033'); ctx.lineWidth = 1;
     for (let sx = p.x; sx < p.x + p.w; sx += 32)
       ctx.strokeRect(sx, p.y, Math.min(32, p.x + p.w - sx), p.h);
   }
@@ -1435,7 +1474,7 @@ function renderGame(
   ctx.restore();
 
   // HUD
-  drawHUD(ctx, gs, now, timeLimitMs);
+  drawHUD(ctx, gs, now, timeLimitMs, premium);
 }
 
 function drawHUD(
@@ -1443,9 +1482,14 @@ function drawHUD(
   gs: GameState,
   now: number,
   timeLimitMs: number,
+  premium = false,
 ): void {
-  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, CW, HUD_H);
-  ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 2;
+  const hudGradient = ctx.createLinearGradient(0, 0, CW, 0);
+  hudGradient.addColorStop(0, premium ? '#251029' : '#0f172a');
+  hudGradient.addColorStop(0.5, premium ? '#110b20' : '#0f172a');
+  hudGradient.addColorStop(1, premium ? '#321522' : '#0f172a');
+  ctx.fillStyle = hudGradient; ctx.fillRect(0, 0, CW, HUD_H);
+  ctx.strokeStyle = premium ? '#d6ad62' : '#1e3a8a'; ctx.lineWidth = 2;
   ctx.strokeRect(0, 0, CW, HUD_H);
 
   const midY = HUD_H / 2;
@@ -1483,6 +1527,7 @@ function renderRoom(
   gs: GameState,
   now: number,
   timeLimitMs: number,
+  premium = false,
 ): void {
   const room = gs.room;
   if (!room) return;
@@ -1630,7 +1675,7 @@ function renderRoom(
   ctx.restore();
 
   // Normal HUD (timer keeps ticking while in room)
-  drawHUD(ctx, gs, now, timeLimitMs);
+  drawHUD(ctx, gs, now, timeLimitMs, premium);
 }
 
 // ═══ Responsive-layout helpers ════════════════════════════════════════════════
@@ -1873,19 +1918,19 @@ export default function CastleRescueGame({
           }
           onFinishRef.current?.(gs.finalScore);
         }
-        renderGame(ctx, gs, now, timeLimitMs);
+        renderGame(ctx, gs, now, timeLimitMs, remastered);
         rafRef.current = requestAnimationFrame(loop); return;
       }
 
       gs.telemetry.longestFrameMs = Math.max(gs.telemetry.longestFrameMs, rawDt);
       updateGame(gs, keysRef.current, dt, now, timeLimitMs);
-      renderGame(ctx, gs, now, timeLimitMs);
+      renderGame(ctx, gs, now, timeLimitMs, remastered);
       rafRef.current = requestAnimationFrame(loop);
     }
 
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [timeLimitMs, variant]);
+  }, [remastered, timeLimitMs, variant]);
 
   // Auto-start
   useEffect(() => {
@@ -2010,14 +2055,14 @@ export default function CastleRescueGame({
               display: 'block',
               width: canvasCssW,
               height: canvasCssH,
-              border: `2px solid ${variant === 'benny-lenny' ? '#a78bfa' : '#1e3a8a'}`,
+              border: `2px solid ${remastered ? '#dfb97a' : variant === 'benny-lenny' ? '#a78bfa' : '#1e3a8a'}`,
               borderRadius: 8,
               // Prevent default touch scroll/zoom gestures on the game canvas.
               touchAction: 'none',
               // When the end overlay is visible, ensure the canvas doesn't swallow taps.
               pointerEvents: phase === 'complete' ? 'none' : 'auto',
-              filter: remastered ? 'saturate(1.12) contrast(1.04)' : undefined,
-              boxShadow: remastered ? '0 18px 48px rgba(8, 15, 35, .55), inset 0 0 40px rgba(148, 163, 255, .08)' : undefined,
+              filter: remastered ? 'saturate(1.28) contrast(1.09) brightness(1.05)' : undefined,
+              boxShadow: remastered ? '0 0 0 3px rgba(105,55,140,.34), 0 0 34px rgba(216,164,255,.4), 0 18px 48px rgba(8,15,35,.62)' : undefined,
             }}
             tabIndex={0}
             aria-label={
