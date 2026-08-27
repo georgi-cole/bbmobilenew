@@ -13,11 +13,6 @@ const ACTIVE_GAMES = getPoolByFilter({ retired: false })
   .sort((left, right) => left.title.localeCompare(right.title) || left.key.localeCompare(right.key))
 const runResponsiveMinigameSweep = process.env.RESPONSIVE_MINIGAME_SWEEP === '1'
 
-test.skip(
-  !runResponsiveMinigameSweep,
-  'the exhaustive responsive minigame sweep runs only in its dedicated command/job'
-)
-
 async function openLab(page: Page, game: GameRegistryEntry): Promise<void> {
   await page.goto(
     `./#/minigame-lab?game=${encodeURIComponent(game.key)}&seed=424242&players=4&skipRules=1&skipCountdown=1&freeze=1`
@@ -39,39 +34,46 @@ async function openLab(page: Page, game: GameRegistryEntry): Promise<void> {
   )
 }
 
-for (const systemBarsVisible of [true, false]) {
-  const chromeMode = systemBarsVisible ? 'system-bars' : 'immersive'
+test.describe('Responsive minigame sweep @responsive-minigame', () => {
+  test.skip(
+    !runResponsiveMinigameSweep,
+    'the exhaustive responsive minigame sweep runs only in its dedicated command/job'
+  )
 
-  test.describe(`Responsive minigame sweep - ${chromeMode} @responsive-minigame`, () => {
-    test.describe.configure({ mode: 'parallel', timeout: 60_000 })
+  for (const systemBarsVisible of [true, false]) {
+    const chromeMode = systemBarsVisible ? 'system-bars' : 'immersive'
 
-    for (const game of ACTIVE_GAMES) {
-      test(`${game.key} stays bounded in start and result states`, async ({ page }, testInfo) => {
-        const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
-        await installSafeAreaProfile(page, insets)
-        await openLab(page, game)
+    test.describe(chromeMode, () => {
+      test.describe.configure({ mode: 'parallel', timeout: 60_000 })
 
-        const hostDialog = page.getByRole('dialog', {
-          name: new RegExp(`${game.title} minigame`, 'i'),
+      for (const game of ACTIVE_GAMES) {
+        test(`${game.key} stays bounded in start and result states`, async ({ page }, testInfo) => {
+          const insets = safeAreaForProject(testInfo.project.name, systemBarsVisible)
+          await installSafeAreaProfile(page, insets)
+          await openLab(page, game)
+
+          const hostDialog = page.getByRole('dialog', {
+            name: new RegExp(`${game.title} minigame`, 'i'),
+          })
+          await expect(hostDialog).toBeVisible()
+          await expect(page.getByTestId('minigame-lab-selected-title')).toHaveText(game.title)
+          await assertElementWithinViewport(hostDialog)
+          await assertResponsiveDocumentContract(page, insets)
+
+          const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
+          await menuButton.evaluate((button) => (button as HTMLButtonElement).click())
+          await hostDialog
+            .getByRole('menuitem', { name: /Leave competition/i })
+            .evaluate((button) => (button as HTMLButtonElement).click())
+          await hostDialog
+            .getByRole('button', { name: 'Exit with 0' })
+            .evaluate((button) => (button as HTMLButtonElement).click())
+
+          await expect(hostDialog.getByRole('heading', { name: 'Exited early' })).toBeVisible()
+          await assertElementWithinViewport(hostDialog)
+          await assertResponsiveDocumentContract(page, insets)
         })
-        await expect(hostDialog).toBeVisible()
-        await expect(page.getByTestId('minigame-lab-selected-title')).toHaveText(game.title)
-        await assertElementWithinViewport(hostDialog)
-        await assertResponsiveDocumentContract(page, insets)
-
-        const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
-        await menuButton.evaluate((button) => (button as HTMLButtonElement).click())
-        await hostDialog
-          .getByRole('menuitem', { name: /Leave competition/i })
-          .evaluate((button) => (button as HTMLButtonElement).click())
-        await hostDialog
-          .getByRole('button', { name: 'Exit with 0' })
-          .evaluate((button) => (button as HTMLButtonElement).click())
-
-        await expect(hostDialog.getByRole('heading', { name: 'Exited early' })).toBeVisible()
-        await assertElementWithinViewport(hostDialog)
-        await assertResponsiveDocumentContract(page, insets)
-      })
-    }
-  })
-}
+      }
+    })
+  }
+})
