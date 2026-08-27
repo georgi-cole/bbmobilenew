@@ -1,9 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-import {
-  assertElementWithinViewport,
-  assertNoHorizontalDocumentOverflow,
-} from './layoutAssertions'
+import { assertElementWithinViewport, assertNoHorizontalDocumentOverflow } from './layoutAssertions'
 
 export interface SafeAreaInsets {
   top: number
@@ -19,7 +16,10 @@ export const NO_SAFE_AREA: SafeAreaInsets = Object.freeze({
   left: 0,
 })
 
-export function safeAreaForProject(projectName: string, systemBarsVisible: boolean): SafeAreaInsets {
+export function safeAreaForProject(
+  projectName: string,
+  systemBarsVisible: boolean
+): SafeAreaInsets {
   const name = projectName.toLowerCase()
 
   if (name.includes('ios-small')) {
