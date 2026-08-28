@@ -1714,7 +1714,7 @@ function computeLayout(vw: number, vh: number): LayoutState {
 
 // ═══ Component ════════════════════════════════════════════════════════════════
 
-interface CastleRescueGameProps {
+export interface CastleRescueGameProps {
   seed?: number;
   timeLimitMs?: number;
   onFinish?: (score: number) => void;
@@ -2065,6 +2065,7 @@ export default function CastleRescueGame({
               boxShadow: remastered ? '0 0 0 3px rgba(105,55,140,.34), 0 0 34px rgba(216,164,255,.4), 0 18px 48px rgba(8,15,35,.62)' : undefined,
             }}
             tabIndex={0}
+            data-game-edition={remastered ? 'remastered' : 'original'}
             aria-label={
               // i18n-ignore: Official titles identify this English-only canvas minigame to assistive technology.
               variant === 'benny-lenny' ? 'Find Your Twin 2 Lost Again Benny and Lenny castle game' : 'Find Your Twin platformer game'
@@ -2121,19 +2122,6 @@ export function BennyLennyCastleRescueGame(
   props: Omit<CastleRescueGameProps, 'variant'>,
 ) {
   return <CastleRescueGame {...props} variant="benny-lenny" />;
-}
-
-/** Premium adapters keep the shared physics/scoring and select the remastered art treatment. */
-export function RemasteredCastleRescueGame(
-  props: Omit<CastleRescueGameProps, 'variant' | 'remastered'>,
-) {
-  return <CastleRescueGame {...props} variant="classic" remastered />;
-}
-
-export function RemasteredBennyLennyCastleRescueGame(
-  props: Omit<CastleRescueGameProps, 'variant' | 'remastered'>,
-) {
-  return <CastleRescueGame {...props} variant="benny-lenny" remastered />;
 }
 
 // ── Sub-components & styles ────────────────────────────────────────────────────

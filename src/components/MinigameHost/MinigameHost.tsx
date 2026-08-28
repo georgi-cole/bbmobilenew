@@ -10,7 +10,7 @@
 // The host also owns one seamless edge utility dock for revisiting rules and
 // leaving a competition. Individual minigames must not render their own exit UI.
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry'
 import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
 import { store } from '../../store/store'
@@ -140,7 +140,11 @@ export default function MinigameHost({
   participants,
   competitionRetry,
 }: Props) {
-  const hasPremiumChallengesAccess = selectHasPremiumChallengesAccess(store.getState())
+  const hasPremiumChallengesAccess = useSyncExternalStore(
+    store.subscribe,
+    () => selectHasPremiumChallengesAccess(store.getState()),
+    () => selectHasPremiumChallengesAccess(store.getState())
+  )
   const launchedGame = useMemo(() => {
     return resolvePremiumGameForAccess(game, hasPremiumChallengesAccess)
   }, [game, hasPremiumChallengesAccess])

@@ -33,9 +33,11 @@ import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverCo
 import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
 import CastleRescueGame, {
   BennyLennyCastleRescueGame,
+} from './castleRescue/CastleRescueGame';
+import {
   RemasteredBennyLennyCastleRescueGame,
   RemasteredCastleRescueGame,
-} from './castleRescue/CastleRescueGame';
+} from './castleRescue/RemasteredCastleRescueGames';
 import QuickTapRace from './quickTapRace/QuickTapRaceCanvasGame';
 import QuickTapSeasons from '../screens/QuickTapSeasons/QuickTapSeasons';
 import LaneRacers from './laneRacers/LaneRacersCanvasGame';
