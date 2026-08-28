@@ -298,6 +298,9 @@ function buildSecretMissionTasksForTemplate(
     templateId: template.id,
     tasks: buildMissionTasks(template, triggeredDay, {
       targetCandidateIds: buildSecretMissionTargetCandidates(state),
+      capabilities: {
+        publicModeEnabled: state.publicModeEnabled === true,
+      },
       missionNumber: state.secretMission?.missionNumber,
       excludedTaskSetSignatures: state.secretMissionTaskSetHistory ?? [],
     }),
