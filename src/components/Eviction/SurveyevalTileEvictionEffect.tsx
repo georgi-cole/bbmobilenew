@@ -13,7 +13,10 @@ type Props = {
  */
 export default function SurveyevalTileEvictionEffect({ evicteeId, onDone }: Props) {
   const onDoneRef = useRef(onDone)
-  onDoneRef.current = onDone
+
+  useEffect(() => {
+    onDoneRef.current = onDone
+  }, [onDone])
 
   useEffect(() => {
     const timer = window.setTimeout(() => onDoneRef.current(), SURVEYEVAL_TILE_EVICTION_MS)
