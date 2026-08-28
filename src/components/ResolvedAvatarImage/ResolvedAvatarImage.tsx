@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type ImgHTMLAttributes, type SyntheticEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ImgHTMLAttributes,
+  type SyntheticEvent,
+} from 'react'
 import {
   getLocalAvatarFallback,
   getProfilePhotoAvatarId,
@@ -6,6 +13,11 @@ import {
 } from '../../utils/avatar'
 import { imageIdToDataUrl } from '../../utils/imageDb'
 import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
+import {
+  buildDepressionShockAvatarCandidates,
+  getDepressionShockVisualSnapshot,
+  subscribeDepressionShockVisualPhase,
+} from '../../features/twists/depressionShock'
 
 type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   id: string
@@ -34,24 +46,34 @@ export default function ResolvedAvatarImage({
   onError,
   ...imageProps
 }: Props) {
+  const shockVisualPhase = useSyncExternalStore(
+    subscribeDepressionShockVisualPhase,
+    getDepressionShockVisualSnapshot,
+    () => 'inactive'
+  )
   const profilePhotoId = getProfilePhotoAvatarId(avatar)
-  const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}`
+  const useSadPortrait =
+    !isUser &&
+    !profilePhotoId &&
+    (shockVisualPhase === 'day1' || shockVisualPhase === 'day2')
+  const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}\u0000${shockVisualPhase}`
   const fallback = useMemo(() => getLocalAvatarFallback(name, isUser), [isUser, name])
   const candidates = useMemo(
     () =>
       profilePhotoId
         ? []
         : [
-            ...new Set(
-              resolveAvatarCandidates({
+            ...new Set([
+              ...(useSadPortrait ? buildDepressionShockAvatarCandidates(id) : []),
+              ...resolveAvatarCandidates({
                 id,
                 name,
                 avatar: avatar ?? '',
                 isUser,
-              }).map(resolvePresentationAvatar)
-            ),
+              }).map(resolvePresentationAvatar),
+            ]),
           ],
-    [avatar, id, isUser, name, profilePhotoId]
+    [avatar, id, isUser, name, profilePhotoId, useSadPortrait]
   )
   const [failedSourceState, setFailedSourceState] = useState<FailedSourceState>(() => ({
     resolutionKey,
