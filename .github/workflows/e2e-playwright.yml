@@ -1,4 +1,4 @@
-name: Pull Request Mobile Browser Quality
+name: Pull Request Critical Browser Quality
 
 on:
   pull_request:
@@ -8,16 +8,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  core-journeys:
-    name: Core journeys (${{ matrix.project }})
+  critical-journeys:
+    name: Critical journeys (${{ matrix.project }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        project: [mobile-chromium]
+        project: [desktop-chromium, mobile-chromium, mobile-webkit]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,17 +25,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Run real player core journeys without retries
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run release-critical browser journeys without retries
         run: >-
-          npx playwright test --grep @core-journey
+          npx playwright test
+          e2e/playwright/core-player-journeys.spec.ts
+          e2e/playwright/reward-idempotency.spec.ts
+          e2e/playwright/final4-pov.spec.ts
+          e2e/playwright/finale.spec.ts
+          e2e/playwright/run-exit-lifecycle.spec.ts
           --project=${{ matrix.project }} --workers=1
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-${{ matrix.project }}
+          name: critical-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
