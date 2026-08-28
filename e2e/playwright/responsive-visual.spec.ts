@@ -84,7 +84,8 @@ if (runResponsiveVisual) {
             ...SCREENSHOT_OPTIONS,
             mask: [
               page.locator('.game-control-dock'),
-              page.locator('[data-houseguest-roster="true"]'),`n              page.locator('.tv-zone'),
+              page.locator('[data-houseguest-roster="true"]'),
+              page.locator('.tv-zone'),
             ],
           })
         })
