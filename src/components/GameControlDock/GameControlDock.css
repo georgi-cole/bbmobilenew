@@ -10,7 +10,7 @@
      the CSS safe-area variable covers ordinary browser/WebView startup. */
   bottom: calc(
     var(--game-safe-bottom, var(--safe-bottom, env(safe-area-inset-bottom, 0px))) +
-      var(--game-action-dock-gap, 8px)
+      var(--game-action-dock-gap, 8px) + 4px
   );
   left: 50%;
   z-index: 100;
