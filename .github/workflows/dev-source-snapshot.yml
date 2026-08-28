@@ -1,0 +1,26 @@
+name: Dev Source Snapshot
+
+on:
+  push:
+    branches: [codex/full-pr-quality-gates]
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pack checkout with installed dependencies
+        run: tar --exclude=.git -czf "$RUNNER_TEMP/bbmobilenew-dev.tgz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bbmobilenew-dev-source
+          path: ${{ runner.temp }}/bbmobilenew-dev.tgz
+          compression-level: 0
+          retention-days: 1
