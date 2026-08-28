@@ -52,7 +52,6 @@ import type { IncomingInteraction, IncomingInteractionType } from '../../social/
 import { selectDebugExpansionUnlocks, setDebugExpansionUnlock } from '../../store/uiSlice'
 import {
   activateDepressionShockForDebug,
-  isDepressionShockEligibleMode,
   setDepressionShockStageForDebug,
 } from '../../features/twists/depressionShock'
 import './DebugPanel.css'
@@ -673,19 +672,13 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 >
                   Clear
                 </button>
-                <button
-                  className="dbg-btn"
-                  type="button"
-                  onClick={handleActivateDepressionShock}
-                  disabled={!isDepressionShockEligibleMode(game)}
-                >
+                <button className="dbg-btn" type="button" onClick={handleActivateDepressionShock}>
                   Activate Depression Shock
                 </button>
                 <button
                   className="dbg-btn"
                   type="button"
                   onClick={() => handleDepressionShockStage('day2')}
-                  disabled={!isDepressionShockEligibleMode(game)}
                 >
                   Depression Day 2
                 </button>
@@ -693,7 +686,6 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   className="dbg-btn"
                   type="button"
                   onClick={() => handleDepressionShockStage('recovery')}
-                  disabled={!isDepressionShockEligibleMode(game)}
                 >
                   Depression Sunrise
                 </button>
