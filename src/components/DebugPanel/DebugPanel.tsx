@@ -672,11 +672,7 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                 >
                   Clear
                 </button>
-                <button
-                  className="dbg-btn"
-                  type="button"
-                  onClick={handleActivateDepressionShock}
-                >
+                <button className="dbg-btn" type="button" onClick={handleActivateDepressionShock}>
                   Activate Depression Shock
                 </button>
                 <button
