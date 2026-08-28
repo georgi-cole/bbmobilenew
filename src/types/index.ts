@@ -497,6 +497,7 @@ export type ForcedShockType =
   | 'democracia'
   | 'dayStartShock'
   | 'twinShock'
+  | 'depressionShock'
 
 export interface ForcedShockState {
   /** Shock that should be triggered from the debug menu at the next safe chance. */
@@ -523,6 +524,26 @@ export interface DayStartShockState {
   triggeredWeek: number
   /** Whether the shock was triggered by the random roll or the debug queue. */
   source: 'random' | 'debug'
+}
+
+/**
+ * One seasonal, weather-driven social shock. It is rolled once from the
+ * season seed, starts on the next clear day from Day 5 onward, and persists
+ * for two full game days.
+ */
+export interface DepressionShockState {
+  /** A season has either passed or failed its single 25% activation roll. */
+  rollResolved: boolean
+  /** A successful roll is waiting for a day with no other shock. */
+  pendingActivation: boolean
+  /** Day the first storm day began, or null before activation. */
+  activatedWeek: number | null
+  /** 1 or 2 while the house is depressed; 0 when inactive. */
+  activeDay: 0 | 1 | 2
+  /** Day the sunshine-and-rainbow recovery card should appear. */
+  recoveryWeek: number | null
+  /** Prevents any later activation during this season. */
+  completed: boolean
 }
 
 export type TwinShockStatus =
@@ -899,6 +920,8 @@ export interface GameState {
   specialVeto?: SpecialVetoState
   /** Debug-only queued shock that should fire at the next safe activation window. */
   pendingForcedShock?: ForcedShockState | null
+  /** Two-day rainstorm social shock, available to Classic and Vox Populi seasons. */
+  depressionShock?: DepressionShockState
   /**
    * Democracia twist state.
    * Undefined on legacy saved games created before this feature was added.

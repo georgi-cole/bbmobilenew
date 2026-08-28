@@ -71,6 +71,7 @@ type Props = {
    * The tile fades back in after a short delay matching the reverse animation.
    */
   isEvicting?: boolean
+  isSurveyevalEvicting?: boolean
   /** Runs the reverse-eviction treatment directly on this roster tile. */
   isReturning?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
@@ -82,6 +83,10 @@ type Props = {
   partnerName?: string
   cupidLoveRevealed?: boolean
   cupidLoveReturning?: boolean
+  /** Temporary visual treatment used during the Depression Shock. */
+  depressionActive?: boolean
+  /** One-morning recovery animation after the storm breaks. */
+  depressionRecovery?: boolean
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -160,6 +165,7 @@ export default function AvatarTile({
   showPermanentBadge = true,
   layoutId,
   isEvicting,
+  isSurveyevalEvicting = false,
   isReturning = false,
   nominationCeremonyState,
   descriptionId,
@@ -169,6 +175,8 @@ export default function AvatarTile({
   partnerName,
   cupidLoveRevealed = false,
   cupidLoveReturning = false,
+  depressionActive = false,
+  depressionRecovery = false,
 }: Props) {
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
@@ -430,6 +438,8 @@ export default function AvatarTile({
             styles.avatarWrap,
             cupidLoveRevealed ? styles.cupidLoveRevealed : '',
             cupidLoveReturning ? styles.cupidLoveReturning : '',
+            depressionActive ? styles.depressionAvatarWrap : '',
+            depressionRecovery ? styles.depressionRecoveryWrap : '',
             nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
           ]
             .filter(Boolean)
@@ -456,6 +466,12 @@ export default function AvatarTile({
           </div>
           {isPressing && <span className={styles.holdProgress} aria-hidden="true" />}
 
+          {isSurveyevalEvicting && (
+            <span className={styles.surveyevalShock} aria-hidden="true">
+              <i>⚡</i><i>⚡</i><i>⚡</i><b /><b /><b />
+            </span>
+          )}
+
           {isYou && (
             <span className={styles.youBadge} aria-hidden="true">
               YOU
@@ -467,6 +483,9 @@ export default function AvatarTile({
               <i>♥</i><i>♥</i><i>♥</i><i>♥</i>
             </span>
           )}
+
+          {depressionActive && <span className={styles.depressionExpression} aria-hidden="true" />}
+          {depressionRecovery && <span className={styles.depressionBurst} aria-hidden="true" />}
 
           {pairLabel && (
             <span
@@ -483,7 +502,7 @@ export default function AvatarTile({
               key={resolvedAvatarUrl}
               src={resolvedAvatarUrl}
               alt={name}
-              className={`${styles.avatar}${cupidLoveRevealed ? ` ${styles.cupidLoveAvatar}` : ''}${cupidLoveReturning ? ` ${styles.cupidLoveReturnAvatar}` : ''}`}
+              className={`${styles.avatar}${cupidLoveRevealed ? ` ${styles.cupidLoveAvatar}` : ''}${cupidLoveReturning ? ` ${styles.cupidLoveReturnAvatar}` : ''}${depressionActive ? ` ${styles.depressionAvatar}` : ''}${depressionRecovery ? ` ${styles.depressionRecoveryAvatar}` : ''}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"

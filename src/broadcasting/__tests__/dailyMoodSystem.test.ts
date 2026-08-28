@@ -30,6 +30,15 @@ describe('daily mood system', () => {
     expect(endTitles.every((title) => title?.includes('Day 2'))).toBe(true)
   })
 
+  it('overrides ordinary weather with the Depression Shock storm and recovery rainbow', () => {
+    expect(
+      getDailyAtmosphere('game-a', 5, 'week_start', { activeDay: 1, recoveryWeek: null })
+    ).toBe('stormy')
+    expect(getDailyAtmosphere('game-a', 6, 'week_start', { activeDay: 0, recoveryWeek: 6 })).toBe(
+      'rainbow'
+    )
+  })
+
   it('uses manager copy and resolves the closest living housemate', () => {
     const copy = getDailyMoodCopy({
       atmosphere: 'rainy',

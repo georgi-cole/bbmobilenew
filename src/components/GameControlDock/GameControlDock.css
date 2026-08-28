@@ -5,7 +5,13 @@
 
 .game-control-dock {
   position: absolute;
-  bottom: var(--game-action-dock-gap, 8px);
+  /* Keep every dock hit target above the native home-indicator inset. The
+     responsive layout writes the measured value for native/preview frames;
+     the CSS safe-area variable covers ordinary browser/WebView startup. */
+  bottom: calc(
+    var(--game-safe-bottom, var(--safe-bottom, env(safe-area-inset-bottom, 0px))) +
+      var(--game-action-dock-gap, 8px)
+  );
   left: 50%;
   z-index: 100;
   /* The visible SVG capsule spans x=28..952 of a 980-wide canvas. Compensate
@@ -123,6 +129,13 @@
   z-index: 1;
 }
 
+body.mode-surveyeval .fab-shell {
+  filter: hue-rotate(48deg) saturate(0.58) brightness(0.72);
+}
+body.mode-surveyeval .fab-play {
+  filter: hue-rotate(42deg) saturate(0.7) brightness(0.9);
+}
+
 .fab-play {
   width: 22%;
   left: 39%;
@@ -186,6 +199,10 @@
 .fab-icon.confessional {
   left: 76%;
   top: 50.5%;
+}
+body.mode-surveyeval .fab-icon.confessional {
+  opacity: 0.28;
+  filter: grayscale(1);
 }
 
 .dock-hit-area {

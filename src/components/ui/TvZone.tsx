@@ -55,6 +55,7 @@ import { getDailyAtmosphere, getDailyTransitionTitle } from '../../broadcasting/
 import {
   formatCycleAriaLabel,
   formatCycleLabel,
+  formatSurveyevalCycleLabel,
   formatPhaseLabel,
 } from '../../utils/gameStatusLanguage'
 import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay'
@@ -885,7 +886,7 @@ export default function TvZone(props: TvZoneProps) {
     latestEvent
   const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
   const dailyAtmosphere = dailyTransitionPhase
-    ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase)
+    ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase, gameState.depressionShock)
     : null
   const dailyMoonPhase = (['crescent', 'half', 'gibbous', 'full'] as const)[
     Math.max(0, gameState.week - 1) % 4
@@ -1750,8 +1751,8 @@ export default function TvZone(props: TvZoneProps) {
         <ul ref={headerPillsRef} className="tv-zone__head-pills" aria-label="Game status chips">
           <li>
             <GameTopChip
-              label={formatCycleLabel(gameState.season, gameState.week)}
-              ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)}
+              label={gameState.mode === 'survival' ? formatSurveyevalCycleLabel(gameState.week) : formatCycleLabel(gameState.season, gameState.week)}
+              ariaLabel={gameState.mode === 'survival' ? `Day ${gameState.week}` : formatCycleAriaLabel(gameState.season, gameState.week)}
               tone="neutral"
               className="tv-zone__head-chip"
             />

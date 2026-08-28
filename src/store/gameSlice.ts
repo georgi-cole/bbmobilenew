@@ -3,6 +3,7 @@ import type { RootState, AppDispatch } from './store'
 import type {
   DemocraciaResultDisplay,
   DayStartShockState,
+  DepressionShockState,
   GameState,
   Player,
   Phase,
@@ -146,6 +147,8 @@ const PHASE_ORDER: Phase[] = [
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3
 const DAY_START_SHOCK_MIN_WEEK = 3
 const DAY_START_SHOCK_RNG_SALT = 0x7c2f5d19
+const DEPRESSION_SHOCK_MIN_WEEK = 5
+const DEPRESSION_SHOCK_RNG_SALT = 0x0de9a551 // distinguished from every other seasonal roll
 const AI_LOH_REVENGE_THREAT_WEIGHT = 6
 const AI_LOH_BASE_THREAT_WEIGHT = 2
 const AI_LOH_WIN_THREAT_WEIGHT = 4
@@ -199,6 +202,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Morning Shock'
     case 'twinShock':
       return 'Twin Shock'
+    case 'depressionShock':
+      return 'Depression Shock'
     default:
       return type
   }
@@ -241,10 +246,38 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
     case 'democracia':
       return 'loh_comp_announcement'
     case 'dayStartShock':
+    case 'depressionShock':
       return 'week_start'
     default:
       return 'pos_results'
   }
+}
+
+function createInitialDepressionShockState(): DepressionShockState {
+  return {
+    rollResolved: false,
+    pendingActivation: false,
+    activatedWeek: null,
+    activeDay: 0,
+    recoveryWeek: null,
+    completed: false,
+  }
+}
+
+function isDepressionShockEligibleMode(state: GameState): boolean {
+  // Vox Populi deliberately runs on the Classic game engine. Cupid and
+  // Survival have their own season-defining visual language, so neither is
+  // eligible for this compact weather shock.
+  return (
+    state.mode !== 'survival' &&
+    state.cupidArrow?.status !== 'scheduled' &&
+    !isCupidArrowActive(state)
+  )
+}
+
+function activeHousemateCount(state: GameState): number {
+  return state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    .length
 }
 
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
@@ -626,6 +659,7 @@ export function createInitialGameState(options?: {
       awaitingVipSecondSaveTarget: false,
     },
     pendingForcedShock: null,
+    depressionShock: createInitialDepressionShockState(),
     dayStartShock: null,
     dayStartShockUsedThisSeason: false,
     tribunalPhaseAnnounced: false,
@@ -4611,6 +4645,25 @@ const gameSlice = createSlice({
       state.evictionSplashId = null
     },
 
+    continueSurvivorAfterAd(state) {
+      if (state.mode !== 'survival' || state.status !== 'failed') return
+      const modeSpecific = state.modeSpecific?.kind === 'survival' ? state.modeSpecific : null
+      if (!modeSpecific || (modeSpecific.adContinueCount ?? 0) >= 3) return
+      const human = state.players.find((player) => player.isUser)
+      if (!human) return
+      human.status = 'active'
+      state.status = 'active'
+      state.phase = 'week_start'
+      state.pendingEviction = null
+      state.voteResults = null
+      state.nomineeIds = []
+      state.awaitingHumanVote = false
+      state.modeSpecific = {
+        ...modeSpecific,
+        adContinueCount: (modeSpecific.adContinueCount ?? 0) + 1,
+      }
+    },
+
     /**
      * Set or clear the player currently shown in a fullscreen eviction overlay.
      * Pass the player's id to mark overlay active; pass null to clear.
@@ -5157,7 +5210,10 @@ const gameSlice = createSlice({
         )
         return
       }
-      const earliestWeek = getForcedShockActivationWeek(state, getForcedShockSafePhase(type))
+      const earliestWeek = Math.max(
+        type === 'depressionShock' ? DEPRESSION_SHOCK_MIN_WEEK : 0,
+        getForcedShockActivationWeek(state, getForcedShockSafePhase(type))
+      )
       state.pendingForcedShock = {
         type,
         requestedWeek: state.week,
@@ -5193,6 +5249,81 @@ const gameSlice = createSlice({
       state.dayStartShock = action.payload
       state.dayStartShockUsedThisSeason = true
       state.twistActivatedThisWeek = true
+    },
+
+    /** Start (or advance) the two-day Depression Shock at a clear day boundary. */
+    activateDepressionShock(state, action: PayloadAction<{ source: 'random' | 'debug' }>) {
+      if (!isDepressionShockEligibleMode(state)) return
+      const shock = state.depressionShock ?? createInitialDepressionShockState()
+      const isSecondDay = shock.activatedWeek !== null && state.week > shock.activatedWeek
+
+      shock.rollResolved = true
+      shock.pendingActivation = false
+      shock.activatedWeek ??= state.week
+      shock.activeDay = isSecondDay ? 2 : 1
+      shock.recoveryWeek = isSecondDay ? state.week + 1 : null
+      state.depressionShock = shock
+      state.twistActivatedThisWeek = true
+      state.twistActive = true
+
+      if (shock.activeDay === 1) {
+        pushEvent(
+          state,
+          'The weather has been bad for so long that the housemates have slipped into depression. Watch out — they may not act like themselves. 🌧️',
+          'twist',
+          { major: 'depression_shock_start', source: action.payload.source }
+        )
+        pushEvent(
+          state,
+          'A sudden argument breaks out over nothing at all. The storm has everyone on edge. ⚡',
+          'social',
+          { major: 'depression_shock_fight' }
+        )
+      } else {
+        pushEvent(
+          state,
+          'The house is still very depressed. Colour drains from the rooms as the storm refuses to lift. 🌫️',
+          'twist',
+          { major: 'depression_shock_day_two' }
+        )
+        pushEvent(
+          state,
+          'The Big Eye sends chocolates to the house in a small attempt to lift the mood. 🍫',
+          'game',
+          { major: 'depression_shock_chocolates' }
+        )
+        pushEvent(
+          state,
+          'A harmless kitchen comment turns into another unexpected fight. Nobody seems to know why. ⚡',
+          'social',
+          { major: 'depression_shock_fight' }
+        )
+      }
+    },
+
+    /** Restore the house on the morning after the second storm day. */
+    endDepressionShock(state) {
+      const shock = state.depressionShock
+      if (!shock || shock.activeDay !== 2) return
+      shock.activeDay = 0
+      shock.completed = true
+      shock.recoveryWeek = state.week
+      state.twistActive = false
+      pushEvent(
+        state,
+        'A sunny break tears through the clouds. Light floods the house, a rainbow arcs overhead, and the housemates finally return to themselves. 🌈',
+        'twist',
+        { major: 'depression_shock_recovery' }
+      )
+    },
+
+    /** Persist the one seasonal roll without consuming a blocked day. */
+    setDepressionShockRoll(state, action: PayloadAction<{ passed: boolean }>) {
+      const shock = state.depressionShock ?? createInitialDepressionShockState()
+      shock.rollResolved = true
+      shock.pendingActivation = action.payload.passed
+      shock.completed = !action.payload.passed
+      state.depressionShock = shock
     },
 
     /**
@@ -6149,6 +6280,33 @@ const gameSlice = createSlice({
     clearSurvivorReplacementTransition(state) {
       if (state.modeSpecific?.kind !== 'survival') return
       state.modeSpecific.replacementTransition = null
+    },
+
+    revealSurvivorReplacement(state) {
+      if (state.modeSpecific?.kind !== 'survival') return
+      const pending = state.modeSpecific.replacementPending
+      if (!pending) return
+      const playerIndex = state.players.findIndex(
+        (player) => player.survivorSlot === pending.slot || player.id === pending.outgoingPlayerSnapshot.id,
+      )
+      if (playerIndex < 0) return
+      state.players[playerIndex] = pending.incomingPlayer
+      state.modeSpecific.totalRoboContestantsEvicted += 1
+      state.modeSpecific.replacementPending = null
+      state.modeSpecific.replacementTransition = {
+        mode: 'survival',
+        outgoingPlayerSnapshot: pending.outgoingPlayerSnapshot,
+        incomingPlayerId: pending.incomingPlayer.id,
+        slot: pending.slot,
+        startedAt: Date.now(),
+        durationMs: 2000,
+      }
+      pushEvent(
+        state,
+        `${pending.incomingPlayer.name} enters as a replacement synthetic contestant.`,
+        'game',
+        { broadcastTemplateId: 'survival.replacement-enters', phase: state.phase, week: state.week },
+      )
     },
 
     setHasSeenConfessionalSpotlight(state, action: PayloadAction<boolean>) {
@@ -7343,13 +7501,28 @@ const gameSlice = createSlice({
           const aiPool = autoNomineeUnitIds
             ? pool.filter((p) => !autoNomineeUnitIds.has(p.id))
             : pool
-          const nominees = pickStrategicNominationTargets(
+          let nominees = pickStrategicNominationTargets(
             state,
             state.lohId!,
             aiPool,
             nomineeCount,
             rng
           )
+          if ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35) {
+            const alternatives = aiPool.filter(
+              (candidate) => !nominees.some((nominee) => nominee.id === candidate.id)
+            )
+            const unexpected = alternatives.length > 0 ? seededPick(rng, alternatives) : null
+            if (unexpected) {
+              nominees = [unexpected, ...nominees.slice(1)]
+              pushEvent(
+                state,
+                `${lohPlayer?.name ?? 'The LOH'} makes an unexpectedly emotional nomination as the storm hangs over the house. 🌧️`,
+                'social',
+                { major: 'depression_shock_surprise_nomination' }
+              )
+            }
+          }
           state.nomineeIds = nominees.map((n) => n.id)
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id)
@@ -7857,7 +8030,8 @@ const gameSlice = createSlice({
             const eligible = getReplacementEligiblePlayers(state, alive)
             const useIt =
               shouldUseSafetyForTwin(state, posWinner?.id, nominees) ||
-              shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible)
+              shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible) ||
+              ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35)
             const saveTarget = useIt
               ? pickSafetySaveTarget(state, posWinner?.id, nominees, rng)
               : null
@@ -8684,6 +8858,8 @@ export const {
   commitVoxAudiencePreview,
   dismissVoteResults,
   dismissEvictionSplash,
+  continueSurvivorAfterAd,
+  revealSurvivorReplacement,
   setEvictionOverlay,
   clearEvictionOverlay,
   finalizePendingEviction,
@@ -8724,6 +8900,9 @@ export const {
   consumeForcedShock,
   activateDayStartShock,
   confirmDayStartShock,
+  activateDepressionShock,
+  endDepressionShock,
+  setDepressionShockRoll,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -9655,6 +9834,66 @@ export const tryActivateSecretMission =
     dispatch(
       triggerSecretMission(isSecondMissionAttempt ? { day: game.week, maxDaySpan } : game.week)
     )
+    return true
+  }
+
+/**
+ * Resolve the seasonal Depression Shock at a day boundary. It receives one
+ * 25% roll per eligible season; a successful roll waits for a shock-free day.
+ */
+export const tryActivateDepressionShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState()
+    const current = game.depressionShock ?? createInitialDepressionShockState()
+
+    if (game.phase !== 'week_start' || game.week < DEPRESSION_SHOCK_MIN_WEEK) return false
+    if (current.completed) return false
+
+    // The second storm day and recovery are both state-driven, never rerolled.
+    if (current.activeDay === 2 && current.recoveryWeek === game.week) {
+      dispatch(endDepressionShock())
+      return false
+    }
+    if (current.activeDay === 1 && current.activatedWeek !== null && game.week > current.activatedWeek) {
+      if (game.twistActivatedThisWeek || game.dayStartShock) return false
+      dispatch(activateDepressionShock({ source: 'random' }))
+      return true
+    }
+
+    if (!settings.sim.enableTwists || !isDepressionShockEligibleMode(game)) return false
+    if (activeHousemateCount(game) < 6) return false
+    if (!current.rollResolved) {
+      const rng = mulberry32((game.seed ^ DEPRESSION_SHOCK_RNG_SALT) >>> 0)
+      const passed = rng() < 0.25
+      // Store the one-time roll before checking the day availability so a
+      // successful season can defer behind Twin Shock or another live shock.
+      dispatch(
+        setDepressionShockRoll({
+          passed,
+        })
+      )
+      if (!passed) return false
+    }
+
+    const resolved = getState().game.depressionShock
+    if (!resolved?.pendingActivation || game.twistActivatedThisWeek || game.dayStartShock) return false
+    dispatch(activateDepressionShock({ source: 'random' }))
+    return true
+  }
+
+/** Activate a debug-queued Depression Shock at the next valid morning. */
+export const tryActivatePendingForcedDepressionShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState()
+    const pending = game.pendingForcedShock
+    if (!pending || pending.type !== 'depressionShock') return false
+    if (!isDepressionShockEligibleMode(game) || game.phase !== 'week_start') return false
+    if (game.week < Math.max(DEPRESSION_SHOCK_MIN_WEEK, pending.earliestWeek)) return false
+    if (game.twistActivatedThisWeek || game.dayStartShock || activeHousemateCount(game) < 6) return false
+    dispatch(activateDepressionShock({ source: 'debug' }))
+    dispatch(consumeForcedShock())
     return true
   }
 

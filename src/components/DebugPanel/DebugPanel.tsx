@@ -21,6 +21,7 @@ import {
   startMinigame,
   queueForcedShock,
   clearForcedShock,
+  activateDepressionShock,
   completeMission,
   activateCupidArrowNow,
   setCupidArrowSchedule,
@@ -118,6 +119,7 @@ const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'spotlight', label: 'Force Majeure Safety' },
   { value: 'democracia', label: 'Democracia' },
   { value: 'twinShock', label: 'Twin Shock' },
+  { value: 'depressionShock', label: 'Depression Shock' },
 ]
 
 let incomingSeedCounter = 0
@@ -641,6 +643,20 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   disabled={!game.pendingForcedShock}
                 >
                   Clear
+                </button>
+                <button
+                  className="dbg-btn"
+                  type="button"
+                  onClick={() => dispatch(activateDepressionShock({ source: 'debug' }))}
+                  disabled={
+                    game.mode === 'survival' ||
+                    game.cupidArrow?.status === 'scheduled' ||
+                    game.cupidArrow?.status === 'active' ||
+                    (game.depressionShock?.activeDay ?? 0) > 0 ||
+                    game.depressionShock?.completed
+                  }
+                >
+                  Activate Depression
                 </button>
                 <button
                   className="dbg-btn"

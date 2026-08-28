@@ -15,6 +15,8 @@ export interface SurvivorModeState {
   bestDayReached: number;
   startingCastSize: number;
   nextRoboIndex: number;
+  adContinueCount?: number;
+  replacementPending?: SurvivorReplacementPending | null;
   replacementTransition?: SurvivorReplacementTransition | null;
   competitionRotation: {
     usedKeys: string[];
@@ -29,6 +31,14 @@ export interface SurvivorReplacementTransition {
   slot: number;
   startedAt: number;
   durationMs: number;
+}
+
+export interface SurvivorReplacementPending {
+  mode: 'survival';
+  outgoingPlayerSnapshot: BasePlayer;
+  incomingPlayer: BasePlayer;
+  slot: number;
+  queuedAt: number;
 }
 
 export type ModeSpecificState = ClassicModeState | SurvivorModeState;

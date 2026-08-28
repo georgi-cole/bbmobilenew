@@ -833,7 +833,7 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   ),
   feed(
     'survival.replacement-enters',
-    'week_start',
+    'eviction_results',
     '{player} enters as a replacement synthetic contestant.',
     'game',
     'minor',
