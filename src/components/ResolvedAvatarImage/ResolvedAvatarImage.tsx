@@ -53,8 +53,7 @@ export default function ResolvedAvatarImage({
     () => 'normal'
   )
   const profilePhotoId = getProfilePhotoAvatarId(avatar)
-  const useSadPortrait =
-    !isUser && !profilePhotoId && shockPortraitMode === 'sad'
+  const useSadPortrait = !isUser && !profilePhotoId && shockPortraitMode === 'sad'
   const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}\u0000${shockPortraitMode}\u0000${DEPRESSION_SAD_ASSET_VERSION}`
   const fallback = useMemo(() => getLocalAvatarFallback(name, isUser), [isUser, name])
   const normalCandidates = useMemo(

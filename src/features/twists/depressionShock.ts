@@ -150,7 +150,10 @@ export function saveDepressionShockState(state: DepressionShockState): Depressio
 }
 
 /** Force the two-day sequence from the current day for explicit debug testing. */
-export function activateDepressionShockForDebug(gameId: string, week: number): DepressionShockState {
+export function activateDepressionShockForDebug(
+  gameId: string,
+  week: number
+): DepressionShockState {
   return setDepressionShockStageForDebug(gameId, week, 'day1')
 }
 
@@ -191,7 +194,9 @@ export function clearDepressionShockRuntimeForTests(gameId?: string): void {
 export function isDepressionShockEligibleMode(
   game: Pick<GameState, 'mode' | 'expansionMode'>
 ): boolean {
-  return game.mode === 'classic' && (game.expansionMode == null || game.expansionMode === 'voxPopuli')
+  return (
+    game.mode === 'classic' && (game.expansionMode == null || game.expansionMode === 'voxPopuli')
+  )
 }
 
 export function getActiveDepressionShockPlayers(players: readonly Player[]): Player[] {
@@ -310,9 +315,10 @@ export function evaluateDepressionShockAtDayStart(
           status: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY ? 'failed' : current.status,
           rollPassed: false,
           lastRollDay: context.week,
-          failureReason: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY
-            ? 'final_roll_failed'
-            : 'daily_roll_failed',
+          failureReason:
+            context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY
+              ? 'final_roll_failed'
+              : 'daily_roll_failed',
         },
         event: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY ? 'cancelled' : 'rolled_failed',
       }
@@ -389,7 +395,8 @@ export function getDepressionShockPresentation(
   phase: string
 ): DepressionShockPresentation {
   if (state.status !== 'active' || state.activatedDay == null) return null
-  if (week === state.activatedDay + 2 && phase === 'week_start' && !state.endingSeen) return 'ending'
+  if (week === state.activatedDay + 2 && phase === 'week_start' && !state.endingSeen)
+    return 'ending'
   if (!isDepressionShockActiveOnDay(state, week)) return null
   if (week === state.activatedDay && !state.introSeen) return 'intro'
   if (week === state.activatedDay + 1 && !state.day2Seen) return 'day2'
@@ -615,7 +622,9 @@ export function buildDepressionShockAvatarCandidates(
   const prefix = base.endsWith('/') ? base : `${base}/`
   const sourceStems = resolvedAvatarCandidates.flatMap((candidate) => {
     const normalized = candidate.replace(/\\/g, '/')
-    const match = normalized.match(/\/assets\/skins\/([^/?#]+)_avatar\.(?:png|webp|jpe?g|svg)(?:[?#].*)?$/i)
+    const match = normalized.match(
+      /\/assets\/skins\/([^/?#]+)_avatar\.(?:png|webp|jpe?g|svg)(?:[?#].*)?$/i
+    )
     return match?.[1] ? [decodeURIComponent(match[1])] : []
   })
   const nameStem = playerName.trim().replace(/\s+/g, '_')

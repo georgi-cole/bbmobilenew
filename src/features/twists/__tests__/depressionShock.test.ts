@@ -34,8 +34,12 @@ function context(
 describe('Depression Shock scheduling', () => {
   it('is eligible only for Classic and Vox Populi seasons', () => {
     expect(isDepressionShockEligibleMode({ mode: 'classic', expansionMode: null })).toBe(true)
-    expect(isDepressionShockEligibleMode({ mode: 'classic', expansionMode: 'voxPopuli' })).toBe(true)
-    expect(isDepressionShockEligibleMode({ mode: 'classic', expansionMode: 'cupidArrow' })).toBe(false)
+    expect(isDepressionShockEligibleMode({ mode: 'classic', expansionMode: 'voxPopuli' })).toBe(
+      true
+    )
+    expect(isDepressionShockEligibleMode({ mode: 'classic', expansionMode: 'cupidArrow' })).toBe(
+      false
+    )
     expect(isDepressionShockEligibleMode({ mode: 'survival', expansionMode: null })).toBe(false)
   })
 
@@ -80,7 +84,11 @@ describe('Depression Shock scheduling', () => {
 
   it('queues a passed daily roll behind another shock and activates on the next free day without rerolling', () => {
     const initial = createInitialDepressionShockState('game-depression-test')
-    const queued = evaluateDepressionShockAtDayStart(initial, context({ week: 7, conflict: true }), 0.1)
+    const queued = evaluateDepressionShockAtDayStart(
+      initial,
+      context({ week: 7, conflict: true }),
+      0.1
+    )
 
     expect(queued.event).toBe('queued')
     expect(queued.state.status).toBe('queued')
@@ -106,7 +114,11 @@ describe('Depression Shock scheduling', () => {
 
   it('does not activate if fewer than six players are active on a roll day', () => {
     const initial = createInitialDepressionShockState('game-depression-test')
-    const result = evaluateDepressionShockAtDayStart(initial, context({ week: 7, activePlayerCount: 5 }), 0)
+    const result = evaluateDepressionShockAtDayStart(
+      initial,
+      context({ week: 7, activePlayerCount: 5 }),
+      0
+    )
 
     expect(result.event).toBe('cancelled')
     expect(result.state.status).toBe('failed')

@@ -29,7 +29,11 @@ let pendingSurprise: { gameId: string; week: number; kind: 'nomination' | 'safet
 
 const DEPRESSION_SHOCK_MOMENT_LIMIT = 3
 
-function buildDepressionShockMoment(entry: SocialActionLogEntry, actorName: string, targetName: string): string {
+function buildDepressionShockMoment(
+  entry: SocialActionLogEntry,
+  actorName: string,
+  targetName: string
+): string {
   switch (entry.actionId) {
     case 'joke':
     case 'banter':
@@ -60,8 +64,9 @@ function shouldEmitDepressionShockMoment(game: GameState, entry: SocialActionLog
   const shockMoments = game.tvFeed.filter(
     (event) => event.meta?.depressionShockMoment === true && event.meta?.week === game.week
   )
-  return shockMoments.length < DEPRESSION_SHOCK_MOMENT_LIMIT && !game.tvFeed.some(
-    (event) => event.meta?.depressionShockMomentKey === momentKey
+  return (
+    shockMoments.length < DEPRESSION_SHOCK_MOMENT_LIMIT &&
+    !game.tvFeed.some((event) => event.meta?.depressionShockMomentKey === momentKey)
   )
 }
 
