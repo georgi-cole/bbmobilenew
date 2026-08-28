@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test/i18nRender.tsx', './src/test/setup.ts'],
+    setupFiles: ['./src/test/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     testTimeout: 15000,
     // Bound concurrency so dynamic minigame imports remain reliable in the full suite.
