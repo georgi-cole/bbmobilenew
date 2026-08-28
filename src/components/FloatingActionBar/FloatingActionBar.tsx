@@ -408,10 +408,15 @@ export default function FloatingActionBar({
         getComputedStyle(gameScreen).getPropertyValue('--game-action-dock-gap')
       )
       const minimumGap = Number.isFinite(configuredGap) ? configuredGap : 8
+      const safeBottom = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom')
+      )
+      const safeDockBottom = (Number.isFinite(safeBottom) ? safeBottom : 0) + minimumGap + 4
       // On the game screen the nav is deliberately folded into the dock. Its
-      // hidden rectangle must not become the dock's lower boundary.
+      // hidden rectangle must not become the dock's lower boundary, and the
+      // dock must remain above the native home-indicator safe area.
       if (navRect.height <= 0) {
-        dock.style.bottom = `${Math.round(minimumGap)}px`
+        dock.style.bottom = `${Math.round(safeDockBottom)}px`
         return
       }
       const bottomOffset = resolveBalancedDockBottom({
