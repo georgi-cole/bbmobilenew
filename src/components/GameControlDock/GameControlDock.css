@@ -129,6 +129,13 @@
   z-index: 1;
 }
 
+body.mode-surveyeval .fab-shell {
+  filter: hue-rotate(48deg) saturate(0.58) brightness(0.72);
+}
+body.mode-surveyeval .fab-play {
+  filter: hue-rotate(42deg) saturate(0.7) brightness(0.9);
+}
+
 .fab-play {
   width: 22%;
   left: 39%;
@@ -192,6 +199,10 @@
 .fab-icon.confessional {
   left: 76%;
   top: 50.5%;
+}
+body.mode-surveyeval .fab-icon.confessional {
+  opacity: 0.28;
+  filter: grayscale(1);
 }
 
 .dock-hit-area {
