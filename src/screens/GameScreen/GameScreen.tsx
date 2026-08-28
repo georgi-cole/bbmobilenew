@@ -16,7 +16,6 @@ import {
   submitVipSecondUseDecision,
   submitDemocraciaVote,
   submitCoLohNomination,
-  submitHumanVote,
   resolvePendingVoxAudienceVote,
   revealVoxTemporaryAudienceVote,
   startVoxFinalVote,
@@ -57,7 +56,6 @@ import type { MusicMinigameVariant } from '../../services/sound/musicConfig'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
-import SurveyevalTileEvictionEffect from '../../components/Eviction/SurveyevalTileEvictionEffect'
 import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
@@ -222,8 +220,7 @@ export default function GameScreen() {
   // When non-null, a required player ceremony decision is pending that must be
   // resolved inside the Confessional.  The in-game decision modals are hidden
   // and a main-TV guidance banner is shown instead.
-  const selectedConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
-  const activeConfessionalDecision = game.mode === 'survival' ? null : selectedConfessionalDecision
+  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
   const publicOpinionProfiles = useAppSelector(
     (s: RootState): Record<string, PlayerPublicProfile> =>
       s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES
@@ -670,15 +667,9 @@ export default function GameScreen() {
       nominationCeremonyState,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting:
-        (game.mode !== 'survival' &&
-          ((showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
-            game.evictionOverlayPlayerId === p.id)) ||
+        (showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
+        game.evictionOverlayPlayerId === p.id ||
         isReturning,
-      isSurveyevalEvicting:
-        game.mode === 'survival' &&
-        !isReturning &&
-        ((showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
-          game.evictionOverlayPlayerId === p.id),
       onClick: () => handleAvatarSelect(p),
       onHoldPreviewStart: () => setPreviewPlayer(p),
       onHoldPreviewEnd: () =>
@@ -1253,7 +1244,6 @@ export default function GameScreen() {
       eviction: {
         awaitingDecision: [
           showVoteResults,
-          game.mode === 'survival' && game.phase === 'live_vote' && Boolean(game.awaitingHumanVote),
           showVoteDeductionOffer,
           showEvictionSplash,
           aiTiebreakStage !== null,
@@ -1326,12 +1316,7 @@ export default function GameScreen() {
     freezeLayout: flowCoordination.activeFlow !== null,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
-  const housemateOccupancyLabel = `${alivePlayers.length}/${game.mode === 'survival' ? 8 + (game.modeSpecific?.kind === 'survival' ? (game.modeSpecific.totalRoboContestantsEvicted ?? 0) : 0) : game.players.length}`
-  const showSurveyevalVoteModal =
-    game.mode === 'survival' && game.phase === 'live_vote' && game.awaitingHumanVote
-  const surveyevalVoteOptions = game.nomineeIds
-    .map((id) => game.players.find((player) => player.id === id))
-    .filter((player): player is Player => Boolean(player))
+  const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`
   const rosterOccupancyChip =
     responsiveGameLayout.rosterHeaderMode === 'tv-chip'
       ? {
@@ -1344,14 +1329,13 @@ export default function GameScreen() {
     <LayoutGroup id="game-layout">
       <div
         ref={gameScreenRef}
-        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}${game.depressionShock?.activeDay === 2 ? ' game-screen--depression-day-two' : ''}`}
+        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}`}
         style={responsiveGameLayout.cssVars}
         data-layout-size={responsiveGameLayout.layoutSize}
         data-roster-mode={responsiveGameLayout.rosterMode}
         data-roster-header={responsiveGameLayout.rosterHeaderMode}
         data-layout-revision={responsiveGameLayout.revision}
         data-active-flow={flowCoordination.activeFlow ?? undefined}
-        data-game-mode={game.mode}
       >
         {showPublicSaveReveal && publicSaveWinnerId ? (
           <TvZone
@@ -1533,18 +1517,6 @@ export default function GameScreen() {
             onConfirm={handleCommitNominees}
             autoNomineeId={canUsePublicNomineeRule ? autoNomineeOptionId : undefined}
             autoNomineeLabel={autoNomineeLabel}
-          />
-        )}
-
-        {showSurveyevalVoteModal && (
-          <TvDecisionModal
-            title="Live Elimination Vote"
-            subtitle={`${humanPlayer?.name}, select the synthetic player you want removed from the board.`}
-            options={surveyevalVoteOptions}
-            onSelect={(playerId) => dispatch(submitHumanVote(playerId))}
-            danger
-            confirmLabel="Lock vote"
-            stingerMessage="VOTE RECORDED"
           />
         )}
 
@@ -2103,24 +2075,16 @@ export default function GameScreen() {
 
         {/* ── Eviction cinematic (pendingEviction-driven, shared layout match-cut) ── */}
         <AnimatePresence>
-          {showEvictionSplash &&
-            pendingEvictionPlayer &&
-            (game.mode === 'survival' ? (
-              <SurveyevalTileEvictionEffect
-                key={pendingEvictionPlayer.id}
-                evicteeId={pendingEvictionPlayer.id}
-                onDone={handleEvictionSplashDone}
-              />
-            ) : (
-              <SpotlightEvictionOverlay
-                key={pendingEvictionPlayer.id}
-                evictee={pendingEvictionPlayer}
-                contextLabel={`Season ${game.season} · Day ${game.week}`}
-                onDone={handleEvictionSplashDone}
-                layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
-                devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
-              />
-            ))}
+          {showEvictionSplash && pendingEvictionPlayer && (
+            <SpotlightEvictionOverlay
+              key={pendingEvictionPlayer.id}
+              evictee={pendingEvictionPlayer}
+              contextLabel={`Season ${game.season} · Day ${game.week}`}
+              onDone={handleEvictionSplashDone}
+              layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
+              devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+            />
+          )}
         </AnimatePresence>
         <AnimatePresence>
           {dayStartShock && dayStartShockPlayer && (

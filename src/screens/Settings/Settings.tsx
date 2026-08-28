@@ -95,7 +95,6 @@ export default function Settings() {
     { value: 'neon', vipOnly: true, label: t('settings.theme.neon') },
     { value: 'sunset', vipOnly: true, label: t('settings.theme.sunset') },
     { value: 'ocean', vipOnly: true, label: t('settings.theme.ocean') },
-    { value: 'surveyeval', vipOnly: true, label: 'Surveyeval theme' },
   ]
   const languageOptions: DropdownItem['options'] = LANGUAGE_OPTIONS.map((option) => ({
     value: option.value,

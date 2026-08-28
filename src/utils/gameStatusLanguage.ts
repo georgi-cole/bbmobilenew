@@ -42,10 +42,6 @@ export function formatCycleLabel(season: number, week: number): string {
   return `S${String(season).padStart(2, '0')}D${week}`;
 }
 
-export function formatSurveyevalCycleLabel(week: number): string {
-  return `DAY${week}`;
-}
-
 export function formatCycleAriaLabel(season: number, week: number): string {
   return `Season ${season}, day ${week}`;
 }

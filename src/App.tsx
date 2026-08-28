@@ -21,7 +21,6 @@ import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice'
 import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics'
 import LiveOpsController from './components/LiveOpsController/LiveOpsController'
 import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSync'
-import DepressionShockController from './components/DepressionShockController/DepressionShockController'
 import { I18nProvider } from './i18n'
 
 if (import.meta.env.DEV) {
@@ -69,7 +68,6 @@ export default function App() {
     <Provider store={store}>
       <I18nProvider>
         <LiveOpsController />
-        <DepressionShockController />
         <AudioStateSync />
         <RouteLoopAudioSync hash={hash} />
         <VipEntitlementSync />

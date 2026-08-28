@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4173/bbmobilenew/'
+const webServerCommand =
+  process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ??
+  'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort'
 const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
 const chromiumLaunchOptions = chromiumExecutablePath
   ? { launchOptions: { executablePath: chromiumExecutablePath } }
@@ -18,13 +21,11 @@ export default defineConfig({
     video: process.env.VISUAL_AUDIT_WRITE === '1' ? 'off' : 'retain-on-failure',
   },
   webServer: {
-    // Start through the repository's normal dev lifecycle instead of invoking
-    // Vite directly. `npm run dev` executes `predev`, which regenerates the
-    // audio catalog (and other generated runtime config) before the browser
-    // ever imports it.
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+    // PLAYWRIGHT_WEB_SERVER_COMMAND lets CI execute the same head-branch visual
+    // tests against the base-branch app when generating comparison baselines.
+    command: webServerCommand,
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_WEB_SERVER_COMMAND == null,
     timeout: 120000,
   },
   projects: [
@@ -46,6 +47,30 @@ export default defineConfig({
       use: { browserName: 'webkit', ...devices['iPhone 13'] },
     },
     {
+      name: 'ios-small-webkit',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+        viewport: { width: 375, height: 667 },
+      },
+    },
+    {
+      name: 'ios-modern-webkit',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+        viewport: { width: 393, height: 852 },
+      },
+    },
+    {
+      name: 'ios-large-webkit',
+      use: {
+        ...devices['iPhone 13'],
+        browserName: 'webkit',
+        viewport: { width: 430, height: 932 },
+      },
+    },
+    {
       name: 'narrow-chromium',
       use: {
         browserName: 'chromium',
@@ -65,6 +90,15 @@ export default defineConfig({
         deviceScaleFactor: 1,
         isMobile: true,
         hasTouch: true,
+      },
+    },
+    {
+      name: 'android-large-chromium',
+      use: {
+        ...devices['Pixel 7'],
+        browserName: 'chromium',
+        ...chromiumLaunchOptions,
+        viewport: { width: 432, height: 960 },
       },
     },
     {

@@ -70,7 +70,6 @@ export interface GameControlDockProps {
   confessionalPersistentFlash?: boolean
   /** Ref to the visible Confessional icon for guided overlays/tutorials */
   confessionalIconRef?: Ref<HTMLImageElement>
-  confessionalDisabled?: boolean
 }
 
 export default function GameControlDock({
@@ -97,7 +96,6 @@ export default function GameControlDock({
   confessionalFlashTick = 0,
   confessionalPersistentFlash = false,
   confessionalIconRef,
-  confessionalDisabled = false,
 }: GameControlDockProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [socialLedActive, acknowledgeSocialLed] = useNotificationLed(chatBadgeCount, {
@@ -194,7 +192,7 @@ export default function GameControlDock({
           draggable={false}
         />
         <img
-          className={`game-control-dock__icon fab-icon confessional${confessionalDisabled ? ' game-control-dock__icon--disabled' : ''}${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' game-control-dock__icon--confessional-persistent' : ''}`}
+          className={`game-control-dock__icon fab-icon confessional${confessionalFlash ? ` game-control-dock__icon--confessional-flash game-control-dock__icon--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' game-control-dock__icon--confessional-persistent' : ''}`}
           src={assetUrl('fab_icon_confessional_clean.svg')}
           alt=""
           aria-hidden="true"
@@ -300,17 +298,16 @@ export default function GameControlDock({
           type="button"
           aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
           disabled={disabled}
-          aria-disabled={confessionalDisabled || disabled}
           onClick={
             disabled
               ? undefined
               : () => {
-                  if (!confessionalDisabled) acknowledgeConfessionalLed()
+                  acknowledgeConfessionalLed()
                   onToolClick?.()
                 }
           }
         >
-          {confessionalLedActive && !confessionalDisabled && (
+          {confessionalLedActive && (
             <span className="dock-hit-area__notification-led" aria-hidden="true" />
           )}
           {confessionalBadgeCount != null && confessionalBadgeCount > 0 && (

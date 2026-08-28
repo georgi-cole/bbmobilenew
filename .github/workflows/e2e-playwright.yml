@@ -41,3 +41,104 @@ jobs:
             test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  responsive-contract:
+    name: Responsive contract (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: narrow-chromium
+            browser: chromium
+          - project: compact-mobile-chromium
+            browser: chromium
+          - project: mobile-chromium
+            browser: chromium
+          - project: android-large-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
+          - project: ios-modern-webkit
+            browser: webkit
+          - project: ios-large-webkit
+            browser: webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Validate safe areas, clipping, overflow, and control placement
+        run: >-
+          npx playwright test e2e/playwright/responsive-contract.spec.ts
+          --project=${{ matrix.project }} --workers=1
+      - name: Upload responsive evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  responsive-visual-diff:
+    name: Visual diff against base branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Prepare the current pull request base branch
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          git worktree add --detach ../bb-base "origin/${{ github.base_ref }}"
+          cd ../bb-base
+          npm ci
+      - name: Generate reference screenshots from the current base branch
+        env:
+          PLAYWRIGHT_WEB_SERVER_COMMAND: cd ../bb-base && npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
+        run: >-
+          node scripts/run-responsive-playwright.mjs visual:update
+          --project=narrow-chromium
+          --project=mobile-chromium
+          --project=mobile-webkit
+          --project=ios-large-webkit
+          --workers=1
+      - name: Compare the pull request against the base branch screenshots
+        run: >-
+          node scripts/run-responsive-playwright.mjs visual
+          --project=narrow-chromium
+          --project=mobile-chromium
+          --project=mobile-webkit
+          --project=ios-large-webkit
+          --workers=1
+      - name: Upload visual diff evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: responsive-visual-diff
+          path: |
+            playwright-report/
+            test-results/
+            e2e/playwright/responsive-visual.spec.ts-snapshots/
+          if-no-files-found: warn
+          retention-days: 14

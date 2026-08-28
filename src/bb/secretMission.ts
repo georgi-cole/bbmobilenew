@@ -183,11 +183,6 @@ type WeightedRequirementType = Exclude<
   'survive_days'
 >;
 
-export interface MissionCapabilities {
-  /** Public Meter objectives require Public Mode to be active for this season. */
-  publicModeEnabled: boolean;
-}
-
 export interface MissionBuildContext {
   triggeredDay: number;
   templateId: string;
@@ -214,17 +209,6 @@ const EXTRA_REQUIREMENT_TYPES: WeightedRequirementType[] = [
   'target_nominated',
 ];
 
-function getEligibleRequirementTypes(
-  capabilities?: MissionCapabilities,
-): WeightedRequirementType[] {
-  return EXTRA_REQUIREMENT_TYPES.filter((type) => {
-    if (type === 'public_approval_gain') {
-      return capabilities?.publicModeEnabled !== false;
-    }
-    return true;
-  });
-}
-
 function hashString(value: string): number {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
@@ -246,10 +230,9 @@ function weightedPickDistinct(
   weights: Record<WeightedRequirementType, number>,
   count: number,
   rng: () => number,
-  eligibleTypes: readonly WeightedRequirementType[] = EXTRA_REQUIREMENT_TYPES,
 ): WeightedRequirementType[] {
   const selected: WeightedRequirementType[] = [];
-  const remaining = [...eligibleTypes];
+  const remaining = [...EXTRA_REQUIREMENT_TYPES];
 
   while (selected.length < count && remaining.length > 0) {
     const total = remaining.reduce((sum, key) => sum + Math.max(0, weights[key] ?? 0), 0);
@@ -469,19 +452,12 @@ function buildWeightedTaskStack(
   context: MissionBuildContext,
   daySpan: number,
   weights: Record<WeightedRequirementType, number>,
-  capabilities?: MissionCapabilities,
 ): Omit<MissionTask, 'completed' | 'current'>[] {
   const endDay = context.triggeredDay + daySpan;
   const rng = createSeededRng(
     hashString(`${context.templateId}:${context.triggeredDay}:${endDay}:${context.variant ?? 0}`),
   );
-  const eligibleTypes = getEligibleRequirementTypes(capabilities);
-  if (eligibleTypes.length < 4) {
-    throw new Error(
-      `Secret mission requires 4 eligible objectives, but only ${eligibleTypes.length} are available`,
-    );
-  }
-  const chosenTypes = weightedPickDistinct(weights, 4, rng, eligibleTypes);
+  const chosenTypes = weightedPickDistinct(weights, 4, rng);
   return [
     buildRequirementTask('survive_days', context, endDay, rng),
     ...chosenTypes.map((type) => buildRequirementTask(type, context, endDay, rng)),
@@ -578,7 +554,6 @@ export function buildMissionTasks(
     targetCandidateIds?: string[];
     missionNumber?: number;
     excludedTaskSetSignatures?: string[];
-    capabilities?: MissionCapabilities;
   },
 ): MissionTask[] {
   const excluded = new Set(options?.excludedTaskSetSignatures ?? []);
@@ -591,12 +566,8 @@ export function buildMissionTasks(
       targetCandidateIds: options?.targetCandidateIds,
       variant: (options?.missionNumber ?? 1) * 101 + attempt,
     };
-    candidate = buildWeightedTaskStack(
-      context,
-      template.daySpan,
-      template.requirementWeights,
-      options?.capabilities,
-    ).map((task) => ({ ...task, current: 0, completed: false }));
+    candidate = buildWeightedTaskStack(context, template.daySpan, template.requirementWeights)
+      .map((task) => ({ ...task, current: 0, completed: false }));
     if (!excluded.has(getMissionTaskSetSignature(candidate))) return candidate;
   }
 

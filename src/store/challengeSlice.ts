@@ -290,13 +290,10 @@ export const startChallenge =
       const availablePool = getPoolByFilter({ retired: false, excludeKeys }).filter(
         eligibleForRoster
       )
-      // Rescue the King is retired from the Surveyeval competition rotation
-      // only. It remains available to every other mode and to direct tests.
-      const surveyevalPool = availablePool.filter((game) => game.key !== 'rescueTheKing')
       const pool = category
-        ? surveyevalPool.filter((game) => game.category === category)
-        : surveyevalPool
-      const selectionPool = pool.length > 0 ? pool : surveyevalPool
+        ? availablePool.filter((game) => game.category === category)
+        : availablePool
+      const selectionPool = pool.length > 0 ? pool : availablePool
       if (selectionPool.length === 0) {
         throw new Error('[challengeSlice] No non-retired Survival games are available')
       }
@@ -373,19 +370,11 @@ export const startChallenge =
     } else if (managerRule?.selection === 'game') {
       const configured = managerRule.gameKey ? getGame(managerRule.gameKey) : undefined
       gameEntry =
-        configured &&
-        !configured.retired &&
-        eligibleForRoster(configured) &&
-        !(state.game.mode === 'survival' && configured.key === 'rescueTheKing')
+        configured && !configured.retired && eligibleForRoster(configured)
           ? configured
-          : state.game.mode === 'survival'
-            ? pickSurvivorGame()
-            : pickFromRegistry()
+          : pickFromRegistry()
     } else if (managerRule?.selection === 'category' && managerRule.category) {
-      gameEntry =
-        state.game.mode === 'survival'
-          ? pickSurvivorGame(managerRule.category, opts.excludeKeys)
-          : pickFromRegistry(managerRule.category)
+      gameEntry = pickFromRegistry(managerRule.category)
     } else if (state.game.mode === 'survival') {
       gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys)
     } else {
@@ -515,11 +504,6 @@ export const startChallenge =
     if (shouldForceTwinShockHintGame(state, opts.prizeType)) {
       const twinHintGame = getGame('castleRescue')
       if (twinHintGame) gameEntry = twinHintGame
-    }
-    // Final Surveyeval eligibility guard. This also covers forced/debug keys
-    // and any future scheduler branch added above.
-    if (state.game.mode === 'survival' && gameEntry.key === 'rescueTheKing') {
-      gameEntry = pickSurvivorGame(opts.category, [...(opts.excludeKeys ?? []), 'rescueTheKing'])
     }
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, gameEntry.key)

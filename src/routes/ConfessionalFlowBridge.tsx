@@ -11,14 +11,12 @@ export default function ConfessionalFlowBridge({ children }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const activeDecision = useAppSelector(selectActiveConfessionalDecision)
-  const gameMode = useAppSelector((state) => state.game.mode)
   const activeDecisionKey = activeDecision
     ? `${activeDecision.type}:${activeDecision.week}:${activeDecision.phase}`
     : null
 
   useEffect(() => {
-    if (gameMode === 'survival' || !activeDecisionKey || location.pathname === '/diary-room')
-      return undefined
+    if (!activeDecisionKey || location.pathname === '/diary-room') return undefined
 
     const openRequiredConfessional = (event: Event) => {
       // This capture listener owns Play while a required decision is pending.
@@ -38,7 +36,7 @@ export default function ConfessionalFlowBridge({ children }: Props) {
     window.addEventListener('ui:playPressed', openRequiredConfessional, { capture: true })
     return () =>
       window.removeEventListener('ui:playPressed', openRequiredConfessional, { capture: true })
-  }, [activeDecisionKey, gameMode, location.pathname, navigate])
+  }, [activeDecisionKey, location.pathname, navigate])
 
   return children
 }

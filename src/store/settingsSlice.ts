@@ -25,7 +25,7 @@ import {
 
 export const STORAGE_KEY = 'bbmobilenew_settings_v1'
 
-export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean' | 'surveyeval'
+export type ThemePreset = 'midnight' | 'neon' | 'sunset' | 'ocean'
 
 export interface SettingsState {
   audio: {

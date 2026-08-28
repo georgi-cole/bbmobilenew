@@ -79,7 +79,6 @@ interface ManeuverGameState {
   lohId?: string | null
   nomineeIds?: string[]
   dramaSocialMode?: boolean
-  depressionShock?: { activeDay?: number }
   lohSocialPlan?: {
     week: number
     lohId: string
@@ -720,21 +719,6 @@ export function executeAction(
     }
   }
 
-  const random = options?.random ?? Math.random
-  const depressionActive = (state.game?.depressionShock?.activeDay ?? 0) > 0
-  // A depressed housemate sometimes simply cannot engage. This costs nothing
-  // and is intentionally evaluated only after ordinary eligibility checks.
-  if (depressionActive && random() < 0.18) {
-    return {
-      success: false,
-      delta: 0,
-      newEnergy: currentEnergy,
-      summary: 'They are too withdrawn to talk right now.',
-      score: 0,
-      label: 'Unmoved',
-    }
-  }
-
   if (!canAfford(actorId, costs)) {
     return {
       success: false,
@@ -749,6 +733,7 @@ export function executeAction(
   const scaledYields = options?.waiveCosts
     ? { influence: 0, info: 0 }
     : normalizeActionYields(action)
+  const random = options?.random ?? Math.random
   const priorRepeats = countPriorRepeatedActions(
     getPersistentSocialHistory(state.social as SocialStateWithHistory),
     actorId,
@@ -907,15 +892,12 @@ export function executeAction(
         : baseDelta > 0
           ? repetitionResolution.delta
           : baseDelta
-  const formedAllianceBeforeDepression =
+  const formingAlliance =
     actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred
-  const baseRelationshipDelta = formedAllianceBeforeDepression
+  const relationshipDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - existingAffinity)
     : delta
-  // The storm flips the emotional reading of half of meaningful interactions.
-  const depressionReversed = depressionActive && baseRelationshipDelta !== 0 && random() < 0.5
-  const relationshipDelta = depressionReversed ? -baseRelationshipDelta : baseRelationshipDelta
-  const reciprocalAllianceDelta = formedAllianceBeforeDepression
+  const reciprocalAllianceDelta = formingAlliance
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - recipientTrust)
     : delta
 
@@ -930,10 +912,8 @@ export function executeAction(
     relationships: state.social.relationships,
     random,
   })
-  const finalScore =
-    didBackfire || depressionReversed ? -Math.abs(outcomeResult.score) : outcomeResult.score
-  const finalLabel =
-    didBackfire || depressionReversed ? scoreToLabel(finalScore) : outcomeResult.label
+  const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score
+  const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label
 
   // previewOnly: return outcome without mutating state.
   if (options?.previewOnly) {
@@ -1092,7 +1072,6 @@ export function executeAction(
   const relationshipTags =
     outcome === 'success' &&
     action.outcomeTag &&
-    !depressionReversed &&
     !(actionId === 'proposeAlliance' && betrayalOccurred)
       ? [action.outcomeTag]
       : undefined
@@ -1193,12 +1172,7 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }))
 
-  const verb = getOutcomeVerb({
-    betrayalOccurred,
-    gaslightOccurred,
-    didBackfire: didBackfire || depressionReversed,
-    outcome,
-  })
+  const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome })
   const sign = relationshipDelta > 0 ? '+' : ''
   const lohName =
     rootState.game?.players?.find((player) => player.id === targetId)?.name ?? 'The LOH'
@@ -1238,7 +1212,7 @@ export function executeAction(
                   ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
                   : `${lohTargetPlan.targetName} is the LOH's current target.`
             : relationshipDelta !== 0
-              ? `${action.title} ${verb}${depressionReversed ? ' — the storm turned it inside out' : ''} (${sign}${relationshipDelta} relationship)`
+              ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
               : `${action.title} ${verb}`)
 
   if (dramaMode) {

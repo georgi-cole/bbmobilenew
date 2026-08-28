@@ -76,7 +76,6 @@ const THEME_PRESETS: { id: ThemePreset; label: string; swatch: string }[] = [
   { id: 'neon', label: 'Neon', swatch: '#22d3ee' },
   { id: 'sunset', label: 'Sunset', swatch: '#f97316' },
   { id: 'ocean', label: 'Ocean', swatch: '#0ea5e9' },
-  { id: 'surveyeval', label: 'Surveyeval', swatch: '#8b9a72' },
 ]
 
 export default function SettingsAdmin() {

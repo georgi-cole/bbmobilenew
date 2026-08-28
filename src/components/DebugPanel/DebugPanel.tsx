@@ -27,7 +27,6 @@ import {
   breakCupidArrowNow,
   activateVoxPopuliNow,
   setVoxPopuliSchedule,
-  addTvEvent,
 } from '../../store/gameSlice'
 import { DEFAULT_SETTINGS, setSim } from '../../store/settingsSlice'
 import {
@@ -50,10 +49,6 @@ import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode'
 import type { ForcedShockType, Phase } from '../../types'
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types'
 import { selectDebugExpansionUnlocks, setDebugExpansionUnlock } from '../../store/uiSlice'
-import {
-  activateDepressionShockForDebug,
-  setDepressionShockStageForDebug,
-} from '../../features/twists/depressionShock'
 import './DebugPanel.css'
 
 const PHASES: Phase[] = [
@@ -123,7 +118,6 @@ const FORCED_SHOCK_OPTIONS: Array<{ value: ForcedShockType; label: string }> = [
   { value: 'spotlight', label: 'Force Majeure Safety' },
   { value: 'democracia', label: 'Democracia' },
   { value: 'twinShock', label: 'Twin Shock' },
-  { value: 'depressionShock', label: 'Depression Shock' },
 ]
 
 let incomingSeedCounter = 0
@@ -325,30 +319,6 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
 
   function handleQueueForcedShock() {
     dispatch(queueForcedShock(selectedForcedShock))
-  }
-
-  function handleActivateDepressionShock() {
-    activateDepressionShockForDebug(game.gameId, game.week)
-    dispatch(
-      addTvEvent({
-        type: 'twist',
-        text: 'Depression Shock activated for debug testing.',
-        channels: ['mainLog'],
-        meta: { debug: true, suppressTv: true },
-      })
-    )
-  }
-
-  function handleDepressionShockStage(stage: 'day2' | 'recovery') {
-    setDepressionShockStageForDebug(game.gameId, game.week, stage)
-    dispatch(
-      addTvEvent({
-        type: 'twist',
-        text: `Depression Shock ${stage === 'day2' ? 'Day 2' : 'recovery'} activated for debug testing.`,
-        channels: ['mainLog'],
-        meta: { debug: true, suppressTv: true },
-      })
-    )
   }
 
   function handleCupidSeasonSchedule() {
@@ -671,23 +641,6 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   disabled={!game.pendingForcedShock}
                 >
                   Clear
-                </button>
-                <button className="dbg-btn" type="button" onClick={handleActivateDepressionShock}>
-                  Activate Depression Shock
-                </button>
-                <button
-                  className="dbg-btn"
-                  type="button"
-                  onClick={() => handleDepressionShockStage('day2')}
-                >
-                  Depression Day 2
-                </button>
-                <button
-                  className="dbg-btn"
-                  type="button"
-                  onClick={() => handleDepressionShockStage('recovery')}
-                >
-                  Depression Sunrise
                 </button>
                 <button
                   className="dbg-btn"

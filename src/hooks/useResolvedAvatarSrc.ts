@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import type { Player } from '../types';
 import {
   getProfilePhotoAvatarId,
@@ -6,11 +6,6 @@ import {
   resolveAvatarCandidates,
 } from '../utils/avatar';
 import { imageIdToDataUrl } from '../utils/imageDb';
-import {
-  buildDepressionShockAvatarCandidates,
-  getDepressionShockPortraitSnapshot,
-  subscribeDepressionShockPortraitMode,
-} from '../features/twists/depressionShock';
 
 type PhotoState = {
   id: string;
@@ -18,26 +13,8 @@ type PhotoState = {
 };
 
 export function useResolvedAvatarSrc(player: Pick<Player, 'id' | 'name' | 'avatar'> & Partial<Pick<Player, 'isUser'>>) {
-  const depressionShockPortraitMode = useSyncExternalStore(
-    subscribeDepressionShockPortraitMode,
-    getDepressionShockPortraitSnapshot,
-    () => 'normal',
-  );
   const profilePhotoId = getProfilePhotoAvatarId(player.avatar);
   const fallbackCandidates = resolveAvatarCandidates(player);
-  const useSadPortrait =
-    player.isUser !== true && player.id !== 'user' && !profilePhotoId &&
-    depressionShockPortraitMode === 'sad';
-  const candidates = useSadPortrait
-    ? [
-        ...buildDepressionShockAvatarCandidates(
-          player.id,
-          fallbackCandidates,
-          player.name,
-        ),
-        ...fallbackCandidates,
-      ]
-    : fallbackCandidates;
   const [photoState, setPhotoState] = useState<PhotoState | null>(null);
 
   useEffect(() => {
@@ -59,8 +36,8 @@ export function useResolvedAvatarSrc(player: Pick<Player, 'id' | 'name' | 'avata
   const loadingPhoto = Boolean(profilePhotoId && photoState?.id !== profilePhotoId);
 
   return {
-    src: photoSrc ?? candidates[0] ?? resolveAvatar(player),
-    candidates: photoSrc ? [photoSrc] : candidates,
+    src: photoSrc ?? resolveAvatar(player),
+    candidates: photoSrc ? [photoSrc] : fallbackCandidates,
     isLoadingProfilePhoto: loadingPhoto,
   };
 }

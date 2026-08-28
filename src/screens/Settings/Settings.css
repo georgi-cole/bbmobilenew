@@ -610,12 +610,6 @@ body.theme-ocean {
   --color-accent-2: #06b6d4;
 }
 
-body.theme-surveyeval {
-  --color-accent: #b6c86a;
-  --color-accent-2: #27d7df;
-  --color-bg: #111713;
-}
-
 /* ── Accessibility ──────────────────────────────────────────────────────── */
 
 body.reduce-motion *,

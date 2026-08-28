@@ -1,7 +1,7 @@
 import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit';
 import type { GameState, Player } from '../types';
 import type { SurvivorModeState } from './modeTypes';
-import { advance, consumeForcedShock, hydrateGame } from '../store/gameSlice';
+import { advance, consumeForcedShock, finalizePendingEviction, hydrateGame } from '../store/gameSlice';
 import { getDefaultCompetitionSeasonState } from '../ai/competition';
 import { drainEvictedPlayerSocial } from '../social/socialSlice';
 import {
@@ -9,6 +9,7 @@ import {
   createSurvivorModeState,
   isSurvivorHumanEliminated,
   isSurvivorRunTerminal,
+  managedSurvivalEvent,
   SURVIVOR_STARTING_CAST_SIZE,
   terminalizeSurvivorRun,
 } from './survivorRun';
@@ -18,7 +19,6 @@ const SURVIVOR_BLOCKED_SHOCK_ACTIONS = new Set([
   'game/activateBattleBack',
   'game/activateSpecialVeto',
   'game/activateDayStartShock',
-  'game/activateDepressionShock',
   'game/activateDemocracia',
   'game/triggerSecretMission',
 ]);
@@ -29,6 +29,8 @@ const SURVIVOR_BLOCKED_TERMINAL_ACTIONS = new Set([
   'game/applyMinigameWinner',
   'game/applyF3MinigameWinner',
 ]);
+
+const SURVIVOR_REPLACEMENT_TRANSITION_MS = 2000;
 
 function isExited(player: Player | undefined): boolean {
   return player?.status === 'evicted' || player?.status === 'jury';
@@ -112,9 +114,6 @@ function withNormalizedSurvivorCast(game: GameState): GameState | null {
   if (game.mode !== 'survival' || isSurvivorRunTerminal(game)) return null;
 
   const modeSpecific = getSurvivorState(game);
-  // During the deliberate eviction pause, preserve the evicted robo in its
-  // original roster slot. Play commits the queued synthetic replacement.
-  if (modeSpecific.replacementPending) return null;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const human = game.players.find((player) => player.isUser);
   if (!human) return terminalizeSurvivorRun(game);
@@ -193,8 +192,18 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
     ...(game.competitionSeasonStateByPlayerId ?? {}),
     [replacement.id]: getDefaultCompetitionSeasonState(),
   };
+  const totalRoboContestantsEvicted = modeSpecific.totalRoboContestantsEvicted + 1;
   const currentDay = Math.max(modeSpecific.currentDay, game.week);
   const startedAt = Date.now();
+  const players = game.players.map((player, index) => (index === evicteeIndex ? replacement : player));
+  const replacementEvent = managedSurvivalEvent(
+    `survivor-replacement-${replacement.id}`,
+    'survival.replacement-enters',
+    [replacement.name],
+    startedAt,
+    game.phase,
+    game.week,
+  );
   const obsoleteEvictionIds = new Set(
     game.tvFeed
       .filter((event) =>
@@ -213,25 +222,30 @@ function withReplacementIfNeeded(game: GameState, evicteeId: string): GameState 
 
   return {
     ...game,
+    players,
     competitionSeasonStateByPlayerId: nextCompetitionState,
     modeSpecific: {
       ...modeSpecific,
       currentDay,
       bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
       startingCastSize: SURVIVOR_STARTING_CAST_SIZE,
+      totalRoboContestantsEvicted,
       nextRoboIndex: modeSpecific.nextRoboIndex + 1,
-      replacementPending: {
+      replacementTransition: {
         mode: 'survival',
         outgoingPlayerSnapshot: { ...evictee, status: 'evicted' },
-        incomingPlayer: replacement,
+        incomingPlayerId: replacement.id,
         slot: replacementSlot,
-        queuedAt: startedAt,
+        startedAt,
+        durationMs: SURVIVOR_REPLACEMENT_TRANSITION_MS,
       },
-      replacementTransition: null,
     },
     lastPlayedAt: startedAt,
-    tvFeed,
-    broadcastQueue: (game.broadcastQueue ?? []).filter((id) => !obsoleteEvictionIds.has(id)),
+    tvFeed: [replacementEvent, ...tvFeed].slice(0, 50),
+    broadcastQueue: [
+      replacementEvent.id,
+      ...(game.broadcastQueue ?? []).filter((id) => !obsoleteEvictionIds.has(id)),
+    ],
     lastPlainBroadcastEventId:
       game.lastPlainBroadcastEventId && obsoleteEvictionIds.has(game.lastPlainBroadcastEventId)
         ? null
@@ -331,6 +345,16 @@ export const survivorMiddleware: Middleware = (storeApi) => (next) => (action) =
   const normalized = withNormalizedSurvivorCast((storeApi.getState() as { game: GameState }).game);
   if (normalized) {
     storeApi.dispatch(hydrateGame(normalized));
+    return result;
+  }
+
+  const latest = (storeApi.getState() as { game: GameState }).game;
+  if (
+    typedAction.type !== 'game/finalizePendingEviction' &&
+    latest.pendingEviction &&
+    !latest.voteResults
+  ) {
+    storeApi.dispatch(finalizePendingEviction(latest.pendingEviction.evicteeId));
     return result;
   }
 

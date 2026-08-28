@@ -6,11 +6,6 @@ import { getLocalAvatarFallback, getProfilePhotoAvatarId } from '../../utils/ava
 import { imageIdToDataUrl } from '../../utils/imageDb'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
-import {
-  buildDepressionShockAvatarCandidates,
-  getDepressionShockPortraitSnapshot,
-  subscribeDepressionShockPortraitMode,
-} from '../../features/twists/depressionShock'
 
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
@@ -76,7 +71,6 @@ type Props = {
    * The tile fades back in after a short delay matching the reverse animation.
    */
   isEvicting?: boolean
-  isSurveyevalEvicting?: boolean
   /** Runs the reverse-eviction treatment directly on this roster tile. */
   isReturning?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
@@ -88,10 +82,6 @@ type Props = {
   partnerName?: string
   cupidLoveRevealed?: boolean
   cupidLoveReturning?: boolean
-  /** Temporary visual treatment used during the Depression Shock. */
-  depressionActive?: boolean
-  /** One-morning recovery animation after the storm breaks. */
-  depressionRecovery?: boolean
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -170,7 +160,6 @@ export default function AvatarTile({
   showPermanentBadge = true,
   layoutId,
   isEvicting,
-  isSurveyevalEvicting = false,
   isReturning = false,
   nominationCeremonyState,
   descriptionId,
@@ -180,14 +169,7 @@ export default function AvatarTile({
   partnerName,
   cupidLoveRevealed = false,
   cupidLoveReturning = false,
-  depressionActive = false,
-  depressionRecovery = false,
 }: Props) {
-  const depressionShockPortraitMode = React.useSyncExternalStore(
-    subscribeDepressionShockPortraitMode,
-    getDepressionShockPortraitSnapshot,
-    () => 'normal'
-  )
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
@@ -199,21 +181,14 @@ export default function AvatarTile({
   const [statsOpen, setStatsOpen] = React.useState(false)
   const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
-  const normalAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
-  const useSadPortrait =
-    !isYou && !profilePhotoId &&
-    depressionShockPortraitMode === 'sad'
-  const sadAvatarUrl = useSadPortrait
-    ? buildDepressionShockAvatarCandidates(name.toLowerCase(), avatarUrl ? [avatarUrl] : [], name)[0]
-    : undefined
-  const resolvedAvatarUrl = sadAvatarUrl ?? normalAvatarUrl
+  const resolvedAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
   const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
 
   React.useEffect(() => {
     attemptRef.current = 0
     variantsRef.current = null
     exhaustedRef.current = false
-  }, [avatarUrl, depressionShockPortraitMode, name])
+  }, [avatarUrl])
 
   React.useEffect(() => {
     let cancelled = false
@@ -241,10 +216,6 @@ export default function AvatarTile({
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
     if (exhaustedRef.current) return
     const img = e.currentTarget
-    if (sadAvatarUrl && img.src.includes('_sad_avatar.') && normalAvatarUrl) {
-      img.src = normalAvatarUrl
-      return
-    }
     if (!variantsRef.current) {
       variantsRef.current = avatarVariants(img.src)
       attemptRef.current = 0
@@ -459,8 +430,6 @@ export default function AvatarTile({
             styles.avatarWrap,
             cupidLoveRevealed ? styles.cupidLoveRevealed : '',
             cupidLoveReturning ? styles.cupidLoveReturning : '',
-            depressionActive ? styles.depressionAvatarWrap : '',
-            depressionRecovery ? styles.depressionRecoveryWrap : '',
             nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
           ]
             .filter(Boolean)
@@ -487,12 +456,6 @@ export default function AvatarTile({
           </div>
           {isPressing && <span className={styles.holdProgress} aria-hidden="true" />}
 
-          {isSurveyevalEvicting && (
-            <span className={styles.surveyevalShock} aria-hidden="true">
-              <i>⚡</i><i>⚡</i><i>⚡</i><b /><b /><b />
-            </span>
-          )}
-
           {isYou && (
             <span className={styles.youBadge} aria-hidden="true">
               YOU
@@ -504,9 +467,6 @@ export default function AvatarTile({
               <i>♥</i><i>♥</i><i>♥</i><i>♥</i>
             </span>
           )}
-
-          {depressionActive && <span className={styles.depressionExpression} aria-hidden="true" />}
-          {depressionRecovery && <span className={styles.depressionBurst} aria-hidden="true" />}
 
           {pairLabel && (
             <span
@@ -523,7 +483,7 @@ export default function AvatarTile({
               key={resolvedAvatarUrl}
               src={resolvedAvatarUrl}
               alt={name}
-              className={`${styles.avatar}${cupidLoveRevealed ? ` ${styles.cupidLoveAvatar}` : ''}${cupidLoveReturning ? ` ${styles.cupidLoveReturnAvatar}` : ''}${depressionActive ? ` ${styles.depressionAvatar}` : ''}${depressionRecovery ? ` ${styles.depressionRecoveryAvatar}` : ''}`}
+              className={`${styles.avatar}${cupidLoveRevealed ? ` ${styles.cupidLoveAvatar}` : ''}${cupidLoveReturning ? ` ${styles.cupidLoveReturnAvatar}` : ''}`}
               loading="eager"
               decoding="async"
               fetchPriority="high"

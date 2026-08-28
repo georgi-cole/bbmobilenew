@@ -1,9 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import AvatarTile from '../AvatarTile'
-import { setDepressionShockVisualPhase } from '../../../features/twists/depressionShock'
-
-afterEach(() => setDepressionShockVisualPhase('inactive'))
 
 describe('AvatarTile', () => {
   it('exposes interaction guidance without an unrelated visual indicator', () => {
@@ -30,15 +27,5 @@ describe('AvatarTile', () => {
     expect(badge).not.toHaveTextContent('❓')
     expect(badgeImage).not.toBeNull()
     expect(badgeImage?.getAttribute('src')).toContain('/assets/avatar_badges/nomination_badge.png')
-  })
-
-  it('uses the generated sad portrait while Depression Shock is active', () => {
-    setDepressionShockVisualPhase('day1')
-    render(<AvatarTile name="Lia" avatarUrl="/bbmobilenew/assets/skins/Lia_avatar.webp" />)
-
-    expect(screen.getByRole('img', { name: 'Lia' })).toHaveAttribute(
-      'src',
-      '/assets/skins/Lia_sad_avatar.png'
-    )
   })
 })
