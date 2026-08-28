@@ -80,7 +80,10 @@ if (runResponsiveVisual) {
           await waitForHome(page)
           await openClassicGame(page)
 
-          await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, SCREENSHOT_OPTIONS)
+          await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, {
+            ...SCREENSHOT_OPTIONS,
+            mask: [page.locator('.game-control-dock')],
+          })
         })
       })
     }
