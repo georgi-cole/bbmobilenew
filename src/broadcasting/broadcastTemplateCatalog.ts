@@ -23,6 +23,7 @@ export const BROADCAST_CAMPAIGNS: readonly BroadcastCampaign[] = [
   'survival',
   'cupid',
   'vox_populi',
+  'depression_shock',
 ]
 
 export const BROADCAST_CAMPAIGN_LABELS: Record<BroadcastCampaign, string> = {
@@ -30,6 +31,7 @@ export const BROADCAST_CAMPAIGN_LABELS: Record<BroadcastCampaign, string> = {
   survival: 'Surveyeval',
   cupid: "Cupid's Arrow",
   vox_populi: 'Vox Populi',
+  depression_shock: 'Depression Shock',
 }
 
 export interface BroadcastTemplateMatch {
@@ -852,6 +854,80 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'Day-start mood copy · sunny variant',
     false
   ),
+  card(
+    'depression-shock.opening',
+    'week_start',
+    'Depression Shock',
+    'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
+    'depression_shock_start',
+    'Opening cinematic and faux-TV handoff for Depression Shock.',
+    'critical',
+    'depression_shock'
+  ),
+  feed(
+    'depression-shock.day1-silence',
+    'social_1',
+    'The rain has swallowed the usual noise. Conversations start softly and end before anyone says what they mean.',
+    'social',
+    'minor',
+    undefined,
+    'Editable Day 1 melancholic faux-TV message.',
+    true,
+    'depression_shock'
+  ),
+  feed(
+    'depression-shock.day1-night',
+    'week_end',
+    'Night gathers behind rain-streaked windows. Nobody is quite ready to admit how heavy the hub feels.',
+    'social',
+    'minor',
+    undefined,
+    'Editable end-of-Day-1 message.',
+    true,
+    'depression_shock'
+  ),
+  card(
+    'depression-shock.day2-colour-drains',
+    'week_start',
+    'The colour drains away',
+    'The storm has deepened. Today the hub loses most of its colour, and every familiar room feels colder.',
+    'depression_shock_day_2',
+    'Day 2 saturation explanation on the faux TV.',
+    'critical',
+    'depression_shock'
+  ),
+  feed(
+    'depression-shock.chocolates',
+    'social_1',
+    'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
+    'social',
+    'major',
+    'depression_shock_chocolates',
+    'Editable Day 2 chocolate delivery.',
+    true,
+    'depression_shock'
+  ),
+  feed(
+    'depression-shock.day2-melancholy',
+    'social_2',
+    'A few pieces of chocolate are gone. The grey light remains, and even laughter sounds borrowed today.',
+    'social',
+    'minor',
+    undefined,
+    'Editable Day 2 melancholic faux-TV message.',
+    true,
+    'depression_shock'
+  ),
+  card(
+    'depression-shock.recovery',
+    'week_start',
+    'The sun returns',
+    'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
+    'depression_shock_end',
+    'Day 3 recovery broadcast after the sunrise cinematic.',
+    'critical',
+    'depression_shock'
+  ),
   feed(
     'week.day-start-mood.cloudy',
     'week_start',
@@ -1062,6 +1138,7 @@ export function matchesBroadcastCampaign(
   template: Pick<BroadcastTemplate, 'campaign'>,
   campaign: BroadcastCampaign | 'all'
 ): boolean {
+  if (campaign === 'depression_shock') return template.campaign === 'depression_shock'
   return campaign === 'all' || !template.campaign || template.campaign === campaign
 }
 

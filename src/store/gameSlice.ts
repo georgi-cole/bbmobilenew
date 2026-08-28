@@ -122,6 +122,7 @@ import {
   renderBroadcastTemplate,
 } from '../broadcasting/broadcastTemplateCatalog'
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
+import { loadDepressionShockState } from '../features/twists/depressionShock'
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -331,6 +332,9 @@ function buildSecretMissionTasksForTemplate(
     templateId: template.id,
     tasks: buildMissionTasks(template, triggeredDay, {
       targetCandidateIds: buildSecretMissionTargetCandidates(state),
+      capabilities: {
+        publicModeEnabled: state.publicModeEnabled === true,
+      },
       missionNumber: state.secretMission?.missionNumber,
       excludedTaskSetSignatures: state.secretMissionTaskSetHistory ?? [],
     }),
@@ -730,6 +734,15 @@ function inferObservedBroadcastSource(state: GameState, phase: Phase, text: stri
 }
 
 function currentBroadcastCampaign(state: GameState): BroadcastCampaign {
+  const depressionShock = loadDepressionShockState(state.gameId)
+  if (
+    depressionShock.status === 'active' &&
+    depressionShock.activatedDay != null &&
+    state.week >= depressionShock.activatedDay &&
+    state.week <= depressionShock.activatedDay + 2
+  ) {
+    return 'depression_shock'
+  }
   if (state.mode === 'survival') return 'survival'
   if (
     state.cupidArrow?.status === 'scheduled' ||
@@ -974,9 +987,13 @@ function pushEvent(
         : undefined
   // Cupid activation/dissociation can be triggered outside their catalogued
   // phase (including QA). Keep the live phase or the TV queue filters them out.
-  const preserveCupidPhase =
-    meta?.major === 'cupid_arrow' || meta?.major === 'cupid_arrow_broken'
-  const intendedPhase = preserveCupidPhase ? hintedPhase : (template?.phase ?? hintedPhase)
+  const preserveActivationPhase =
+    meta?.major === 'cupid_arrow' ||
+    meta?.major === 'cupid_arrow_broken' ||
+    meta?.major === 'depression_shock_start' ||
+    meta?.major === 'depression_shock_day_2' ||
+    meta?.major === 'depression_shock_end'
+  const intendedPhase = preserveActivationPhase ? hintedPhase : (template?.phase ?? hintedPhase)
   const broadcastOrder =
     override?.order ??
     (template
@@ -1013,7 +1030,20 @@ function pushEvent(
   else if (override?.level) delete finalMeta.broadcastPriority
 
   const duplicate = findDuplicateDayBroadcast(state, finalText)
-  if (duplicate) return duplicate
+  if (duplicate) {
+    if (meta?.requeueDuplicateBroadcast === true) {
+      duplicate.text = finalText
+      duplicate.type = finalType
+      duplicate.major = finalMajor
+      duplicate.meta = {
+        ...(duplicate.meta ?? {}),
+        ...finalMeta,
+        broadcastConsumed: false,
+      }
+      enqueueManagedBroadcast(state, duplicate)
+    }
+    return duplicate
+  }
 
   const ts = Date.now()
   const event: TvEvent = {
@@ -2063,6 +2093,7 @@ function emitCustomBroadcast(state: GameState, custom: CustomBroadcastMessage, p
     broadcastOrder: custom.order ?? 10000,
     broadcastLevel: custom.level,
     forceOnTv: custom.forceOnTv !== false,
+    broadcastCampaign: custom.campaign ?? currentBroadcastCampaign(state),
     ...(custom.level !== 'minor' && custom.major ? { major: custom.major } : {}),
     ...(custom.level === 'critical' ? { broadcastPriority: 'critical' } : {}),
     ...(custom.title ? { announcementTitle: custom.title } : {}),

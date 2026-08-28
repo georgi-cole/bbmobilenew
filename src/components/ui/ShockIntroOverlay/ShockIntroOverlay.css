@@ -49,6 +49,25 @@
   animation: shockIntroImpact 520ms ease-out 920ms both;
 }
 
+.shock-intro[data-shock-theme='depression-drain'] {
+  background:
+    radial-gradient(ellipse at 18% 28%, rgba(108, 122, 151, 0.2) 0%, transparent 34%),
+    radial-gradient(ellipse at 78% 20%, rgba(75, 89, 119, 0.22) 0%, transparent 38%),
+    linear-gradient(180deg, rgba(7, 14, 28, 0.98) 0%, rgba(2, 6, 15, 1) 100%);
+}
+
+.shock-intro[data-shock-theme='depression-drain']::after {
+  inset: -16%;
+  background:
+    radial-gradient(ellipse at 22% 42%, rgba(174, 189, 207, 0.22) 0 8%, transparent 34%),
+    radial-gradient(ellipse at 52% 34%, rgba(117, 136, 160, 0.2) 0 10%, transparent 38%),
+    radial-gradient(ellipse at 82% 49%, rgba(151, 168, 187, 0.16) 0 8%, transparent 34%),
+    linear-gradient(180deg, rgba(13, 22, 39, 0.12), rgba(1, 5, 13, 0.62));
+  mix-blend-mode: normal;
+  filter: blur(18px);
+  animation: shockIntroCloudCover 1250ms ease-out 620ms both;
+}
+
 @keyframes shockIntroBlackout {
   0% { opacity: 0; }
   24%, 66% { opacity: .96; }
@@ -60,6 +79,12 @@
   0% { opacity: 0; transform: scale(.45); }
   24% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes shockIntroCloudCover {
+  0% { opacity: 0; transform: translate3d(8%, -2%, 0) scale(1.08); }
+  38% { opacity: .9; }
+  100% { opacity: .58; transform: translate3d(-4%, 2%, 0) scale(1.02); }
 }
 
 @keyframes shockIntroWholeScreenQuake {

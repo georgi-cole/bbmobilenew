@@ -396,6 +396,7 @@ export default function HouseguestGrid({
                     ? 'true'
                     : undefined
                 }
+                data-depression-target={!hg.isYou && !hg.isEvicted ? 'true' : undefined}
                 onPointerEnter={() => focusCupidPair(cupidPair?.id ?? null)}
                 onPointerLeave={() => setFocusedCupidPairId(null)}
                 onFocusCapture={() => focusCupidPair(cupidPair?.id ?? null)}
