@@ -9,7 +9,7 @@
      responsive layout writes the measured value for native/preview frames;
      the CSS safe-area variable covers ordinary browser/WebView startup. */
   bottom: calc(
-    var(--game-safe-bottom, var(--safe-bottom, env(safe-area-inset-bottom, 0px))) +
+    var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) +
       var(--game-action-dock-gap, 8px) + 4px
   );
   left: 50%;
