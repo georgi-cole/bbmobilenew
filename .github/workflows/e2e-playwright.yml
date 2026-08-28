@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   core-journeys:
-    name: Core journeys (${{ matrix.project }})
+    name: Release-critical journeys (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -17,7 +17,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [mobile-chromium]
+        include:
+          - project: desktop-chromium
+            browser: chromium
+          - project: mobile-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,17 +31,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Run real player core journeys without retries
+      - name: Install ${{ matrix.browser }}
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run persistence, economy, finale, and core player journeys without retries
         run: >-
-          npx playwright test --grep @core-journey
+          npx playwright test --grep '@(core-journey|persistence|economy|release)'
           --project=${{ matrix.project }} --workers=1
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-${{ matrix.project }}
+          name: release-critical-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
