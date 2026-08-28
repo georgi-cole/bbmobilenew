@@ -63,7 +63,9 @@ export default function ActionGrid({
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const game = useAppSelector((state) => state.game)
-  const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
+  const realityModePreset = useAppSelector(
+    (state) => state.settings?.gameUX?.realityModePreset
+  )
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
   const actions = useMemo(() => buildEffectiveSocialActions(actionOverrides), [actionOverrides])
 
