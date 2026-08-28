@@ -82,7 +82,10 @@ if (runResponsiveVisual) {
 
           await expect(page).toHaveScreenshot(`game-start-${chromeMode}.png`, {
             ...SCREENSHOT_OPTIONS,
-            mask: [page.locator('.game-control-dock'), page.locator('[data-houseguest-roster="true"]')],
+            mask: [
+              page.locator('.game-control-dock'),
+              page.locator('[data-houseguest-roster="true"]'),
+            ],
           })
         })
       })
