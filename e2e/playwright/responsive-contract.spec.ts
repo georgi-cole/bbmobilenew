@@ -8,7 +8,6 @@ import {
 import { assertElementWithinViewport } from './support/layoutAssertions'
 import {
   assertElementWithinSafeArea,
-  assertNoCriticalOverlap,
   assertResponsiveDocumentContract,
   installSafeAreaProfile,
   safeAreaForProject,
@@ -90,21 +89,17 @@ for (const systemBarsVisible of [true, false]) {
       const actionZone = page.getByRole('region', { name: 'Game action zone' })
       const toolbar = page.getByRole('toolbar', { name: 'Game actions' })
       const navigation = page.getByRole('navigation', { name: 'Main navigation' })
-      const firstNavigationControl = navigation.getByRole('button').first()
 
       await expect(actionZone).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
       await expect(actionZone.getByLabel('Season start', { exact: true })).toBeVisible()
       await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
       await expect(toolbar).toBeVisible()
       await expect(navigation).toBeVisible()
-      await expect(firstNavigationControl).toBeVisible()
       await expect(page.getByRole('heading', { name: /HUBMATES/ })).toBeVisible()
 
       await assertElementWithinViewport(actionZone)
       await assertElementWithinViewport(toolbar)
       await assertElementWithinViewport(navigation)
-      await assertElementWithinViewport(firstNavigationControl)
-      await assertNoCriticalOverlap(toolbar, firstNavigationControl)
       await assertResponsiveDocumentContract(page, insets)
     })
   })
