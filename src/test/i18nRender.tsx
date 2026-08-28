@@ -8,7 +8,8 @@ const TEST_I18N: I18nContextValue = {
   language: 'en-US',
   systemLanguage: 'en-US',
   t: (key, params) => translate('en-US', key, params),
-  formatNumber: (value, options) => new Intl.NumberFormat('en-US', options).format(value),
+  formatNumber: (value, options) =>
+    new Intl.NumberFormat('en-US', options).format(value),
   formatDate: (value, options) => new Intl.DateTimeFormat('en-US', options).format(value),
 }
 
