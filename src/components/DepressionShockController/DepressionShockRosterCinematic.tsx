@@ -37,9 +37,9 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
   useLayoutEffect(() => {
     const sourceElement = document.querySelector<HTMLElement>('.tv-zone__viewport')
     const sourceRect = sourceElement?.getBoundingClientRect()
-    if (sourceRect && sourceRect.width > 0) {
-      setSource({ x: sourceRect.left + sourceRect.width / 2, y: sourceRect.top + sourceRect.height / 2 })
-    }
+    const measuredSource = sourceRect && sourceRect.width > 0
+      ? { x: sourceRect.left + sourceRect.width / 2, y: sourceRect.top + sourceRect.height / 2 }
+      : null
 
     const elements = [...document.querySelectorAll<HTMLElement>('[data-houseguest-roster="true"] [data-depression-target="true"]')]
     const measured = elements
@@ -50,15 +50,18 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
     measured.forEach(({ element }, index) => {
       element.style.setProperty('--depression-target-index', String(index))
     })
-    setTargets(
-      measured.map(({ rect }, index) => ({
+    const measuredTargets = measured.map(({ rect }, index) => ({
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
         width: rect.width,
         height: rect.height,
         index,
       }))
-    )
+
+    const measurementFrame = window.requestAnimationFrame(() => {
+      if (measuredSource) setSource(measuredSource)
+      setTargets(measuredTargets)
+    })
 
     document.body.dataset.depressionCinematic = kind
     const impactTimer = window.setTimeout(() => onImpact?.(), timing.impact)
@@ -66,6 +69,7 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
     return () => {
       window.clearTimeout(impactTimer)
       window.clearTimeout(completeTimer)
+      window.cancelAnimationFrame(measurementFrame)
       delete document.body.dataset.depressionCinematic
       measured.forEach(({ element }) => element.style.removeProperty('--depression-target-index'))
     }

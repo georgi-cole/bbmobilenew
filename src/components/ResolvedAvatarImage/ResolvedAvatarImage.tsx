@@ -78,7 +78,7 @@ export default function ResolvedAvatarImage({
               ...normalCandidates,
             ]),
           ],
-    [id, name, normalCandidates, profilePhotoId, useSadPortrait, DEPRESSION_SAD_ASSET_VERSION]
+    [id, name, normalCandidates, profilePhotoId, useSadPortrait]
   )
   const [failedSourceState, setFailedSourceState] = useState<FailedSourceState>(() => ({
     resolutionKey,
