@@ -10,7 +10,8 @@ const TEST_I18N: I18nContextValue = {
   t: (key, params) => translate('en-US', key, params),
   formatNumber: (value, options) =>
     new Intl.NumberFormat('en-US', options).format(value),
-  formatDate: (value, options) => new Intl.DateTimeFormat('en-US', options).format(value),
+  formatDate: (value, options) =>
+    new Intl.DateTimeFormat('en-US', options).format(value),
 }
 
 function EnglishI18nBoundary({ children }: { children: ReactNode }) {
@@ -41,10 +42,18 @@ vi.mock('@testing-library/react', async () => {
     render: (
       ui: Parameters<typeof actual.render>[0],
       options: Parameters<typeof actual.render>[1] = {}
-    ) => actual.render(ui, { ...options, wrapper: withI18nWrapper(options.wrapper) }),
+    ) =>
+      actual.render(ui, {
+        ...options,
+        wrapper: withI18nWrapper(options.wrapper),
+      }),
     renderHook: (
       callback: Parameters<typeof actual.renderHook>[0],
       options: Parameters<typeof actual.renderHook>[1] = {}
-    ) => actual.renderHook(callback, { ...options, wrapper: withI18nWrapper(options.wrapper) }),
+    ) =>
+      actual.renderHook(callback, {
+        ...options,
+        wrapper: withI18nWrapper(options.wrapper),
+      }),
   }
 })
