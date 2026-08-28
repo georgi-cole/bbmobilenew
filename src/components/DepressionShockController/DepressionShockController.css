@@ -15,7 +15,9 @@
   background-position: center;
   mix-blend-mode: multiply;
   opacity: 0.48;
-  transition: opacity 700ms ease, filter 700ms ease;
+  transition:
+    opacity 700ms ease,
+    filter 700ms ease;
 }
 
 .depression-shock-weather::before,
@@ -28,13 +30,12 @@
 
 .depression-shock-weather--day1::before,
 .depression-shock-weather--day2::before {
-  background-image:
-    repeating-linear-gradient(
-      105deg,
-      transparent 0 17px,
-      rgba(215, 228, 244, 0.2) 18px 19px,
-      transparent 20px 38px
-    );
+  background-image: repeating-linear-gradient(
+    105deg,
+    transparent 0 17px,
+    rgba(215, 228, 244, 0.2) 18px 19px,
+    transparent 20px 38px
+  );
   transform: translate3d(0, -12%, 0);
   animation: depression-shock-rain 780ms linear infinite;
 }
@@ -80,11 +81,36 @@
   height: 30%;
   border-radius: 50% 50% 0 0;
   background:
-    radial-gradient(ellipse at 50% 100%, transparent 47%, rgba(242, 77, 93, 0.6) 48% 50%, transparent 51%),
-    radial-gradient(ellipse at 50% 100%, transparent 54%, rgba(246, 169, 63, 0.54) 55% 57%, transparent 58%),
-    radial-gradient(ellipse at 50% 100%, transparent 61%, rgba(241, 220, 86, 0.52) 62% 64%, transparent 65%),
-    radial-gradient(ellipse at 50% 100%, transparent 68%, rgba(103, 206, 130, 0.45) 69% 71%, transparent 72%),
-    radial-gradient(ellipse at 50% 100%, transparent 75%, rgba(94, 158, 232, 0.42) 76% 78%, transparent 79%);
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 47%,
+      rgba(242, 77, 93, 0.6) 48% 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 54%,
+      rgba(246, 169, 63, 0.54) 55% 57%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 61%,
+      rgba(241, 220, 86, 0.52) 62% 64%,
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 68%,
+      rgba(103, 206, 130, 0.45) 69% 71%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 75%,
+      rgba(94, 158, 232, 0.42) 76% 78%,
+      transparent 79%
+    );
   filter: blur(0.3px);
   opacity: 0;
   animation: depression-shock-rainbow 1300ms 420ms ease-out forwards;
@@ -106,8 +132,12 @@ html[data-depression-shock='sunbreak'] .game-screen-shell {
   transition: filter 900ms ease;
 }
 
-html[data-depression-shock='day1'] .game-screen-shell :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li),
-html[data-depression-shock='day2'] .game-screen-shell :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li) {
+html[data-depression-shock='day1']
+  .game-screen-shell
+  :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li),
+html[data-depression-shock='day2']
+  .game-screen-shell
+  :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li) {
   box-shadow:
     inset 0 0 38px rgba(8, 13, 27, 0.18),
     0 10px 30px rgba(2, 5, 13, 0.16);
@@ -116,7 +146,9 @@ html[data-depression-shock='day2'] .game-screen-shell :is(.tv-zone, [class*='car
 html[data-depression-shock='day1'] [data-houseguest-roster] img,
 html[data-depression-shock='day2'] [data-houseguest-roster] img {
   filter: saturate(0.6) brightness(0.78) contrast(1.05);
-  transition: filter 650ms ease, transform 650ms ease;
+  transition:
+    filter 650ms ease,
+    transform 650ms ease;
 }
 
 html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
@@ -146,8 +178,7 @@ html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
   padding: 28px 24px 23px;
   border: 1px solid rgba(220, 231, 245, 0.16);
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(29, 38, 54, 0.96), rgba(8, 13, 25, 0.98));
+  background: linear-gradient(145deg, rgba(29, 38, 54, 0.96), rgba(8, 13, 25, 0.98));
   color: #f6f8fc;
   text-align: center;
   box-shadow:
@@ -158,8 +189,7 @@ html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
 
 .depression-shock-modal--ending .depression-shock-card {
   border-color: rgba(255, 246, 190, 0.42);
-  background:
-    linear-gradient(145deg, rgba(50, 62, 76, 0.96), rgba(19, 29, 40, 0.97));
+  background: linear-gradient(145deg, rgba(50, 62, 76, 0.96), rgba(19, 29, 40, 0.97));
   box-shadow:
     0 28px 85px rgba(0, 0, 0, 0.42),
     0 0 54px rgba(255, 236, 157, 0.14),
@@ -227,7 +257,9 @@ html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
   font: inherit;
   font-weight: 750;
   cursor: pointer;
-  transition: transform 150ms ease, background 150ms ease;
+  transition:
+    transform 150ms ease,
+    background 150ms ease;
 }
 
 .depression-shock-card__button:hover {
@@ -244,39 +276,79 @@ html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
 }
 
 @keyframes depression-shock-rain {
-  to { transform: translate3d(-4%, 20%, 0); }
+  to {
+    transform: translate3d(-4%, 20%, 0);
+  }
 }
 
 @keyframes depression-shock-clouds {
-  from { transform: translate3d(-3%, 0, 0) scale(1.04); }
-  to { transform: translate3d(5%, 4%, 0) scale(1.1); }
+  from {
+    transform: translate3d(-3%, 0, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(5%, 4%, 0) scale(1.1);
+  }
 }
 
 @keyframes depression-shock-card-in {
-  from { opacity: 0; transform: translateY(22px) scale(0.965); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes depression-shock-chocolate {
-  from { transform: translateY(2px) rotate(-3deg); }
-  to { transform: translateY(-4px) rotate(3deg); }
+  from {
+    transform: translateY(2px) rotate(-3deg);
+  }
+  to {
+    transform: translateY(-4px) rotate(3deg);
+  }
 }
 
 @keyframes depression-shock-sunbreak {
-  0% { opacity: 0; filter: brightness(0.8); }
-  45% { opacity: 0.78; filter: brightness(1.2); }
-  100% { opacity: 0.58; filter: brightness(1.05); }
+  0% {
+    opacity: 0;
+    filter: brightness(0.8);
+  }
+  45% {
+    opacity: 0.78;
+    filter: brightness(1.2);
+  }
+  100% {
+    opacity: 0.58;
+    filter: brightness(1.05);
+  }
 }
 
 @keyframes depression-shock-rainbow {
-  from { opacity: 0; transform: translateY(15px) scale(0.94); }
-  to { opacity: 0.72; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(0.94);
+  }
+  to {
+    opacity: 0.72;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes depression-shock-avatar-return {
-  0% { filter: saturate(0.2) brightness(0.72); transform: scale(0.985); }
-  46% { filter: saturate(0.45) brightness(1.7); transform: scale(1.055); }
-  100% { filter: saturate(1) brightness(1); transform: scale(1); }
+  0% {
+    filter: saturate(0.2) brightness(0.72);
+    transform: scale(0.985);
+  }
+  46% {
+    filter: saturate(0.45) brightness(1.7);
+    transform: scale(1.055);
+  }
+  100% {
+    filter: saturate(1) brightness(1);
+    transform: scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

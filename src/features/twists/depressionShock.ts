@@ -186,7 +186,10 @@ export function hasDepressionShockConflict(
   if (game.democracia?.active === true) return true
   if (game.twinShock?.promptStage) return true
   if (game.twinShock?.pendingRevealAnimation) return true
-  return game.twinShock?.status === 'day4_pending' || game.twinShock?.status === 'day4_asked_no_correct_guess'
+  return (
+    game.twinShock?.status === 'day4_pending' ||
+    game.twinShock?.status === 'day4_asked_no_correct_guess'
+  )
 }
 
 export function buildDepressionShockDayContext(game: GameState): DepressionShockDayContext {
@@ -211,7 +214,11 @@ export function evaluateDepressionShockAtDayStart(
     `${context.gameId}|${context.seed}|depression-shock|day-${DEPRESSION_SHOCK_ROLL_DAY}`
   )
 ): DepressionShockEvaluation {
-  if (current.status === 'completed' || current.status === 'failed' || current.status === 'active') {
+  if (
+    current.status === 'completed' ||
+    current.status === 'failed' ||
+    current.status === 'active'
+  ) {
     return { state: current, event: 'none' }
   }
 
@@ -304,7 +311,11 @@ export function evaluateDepressionShockAtDayStart(
     }
     if (context.activePlayerCount < DEPRESSION_SHOCK_MIN_ACTIVE_PLAYERS) {
       return {
-        state: { ...current, status: 'failed', failureReason: 'not_enough_players_before_activation' },
+        state: {
+          ...current,
+          status: 'failed',
+          failureReason: 'not_enough_players_before_activation',
+        },
         event: 'cancelled',
       }
     }
@@ -324,10 +335,7 @@ export function evaluateDepressionShockAtDayStart(
   return { state: current, event: 'none' }
 }
 
-export function isDepressionShockActiveOnDay(
-  state: DepressionShockState,
-  week: number
-): boolean {
+export function isDepressionShockActiveOnDay(state: DepressionShockState, week: number): boolean {
   if (state.status !== 'active' || state.activatedDay == null) return false
   return week === state.activatedDay || week === state.activatedDay + 1
 }
@@ -350,7 +358,12 @@ export function getDepressionShockVisualPhase(
   phase: string
 ): DepressionShockVisualPhase {
   if (!isDepressionShockActiveOnDay(state, week) || state.activatedDay == null) return 'inactive'
-  if (week === state.activatedDay + 1 && phase === 'week_end' && state.day2Seen && !state.endingSeen) {
+  if (
+    week === state.activatedDay + 1 &&
+    phase === 'week_end' &&
+    state.day2Seen &&
+    !state.endingSeen
+  ) {
     return 'sunbreak'
   }
   return week === state.activatedDay ? 'day1' : 'day2'
@@ -389,7 +402,9 @@ export function consumeDepressionShockBehaviorChance(input: {
   const state = loadDepressionShockState(input.gameId)
   if (!isDepressionShockActiveOnDay(state, input.week)) return false
   const cursor = state.behaviorCounters[input.namespace] ?? 0
-  const roll = depressionShockUnitRoll(`${behaviorRollKey(state, input.week, input.namespace)}|${cursor}`)
+  const roll = depressionShockUnitRoll(
+    `${behaviorRollKey(state, input.week, input.namespace)}|${cursor}`
+  )
   saveDepressionShockState({
     ...state,
     behaviorCounters: {
@@ -429,7 +444,8 @@ export function shouldDepressionShockRefuseConversation(input: {
   targetIds: readonly string[]
   actionId: string
 }): boolean {
-  if (input.targetIds.length === 0 || input.targetIds.every((id) => id === input.actorId)) return false
+  if (input.targetIds.length === 0 || input.targetIds.every((id) => id === input.actorId))
+    return false
   return consumeDepressionShockBehaviorChance({
     gameId: input.gameId,
     week: input.week,
@@ -485,7 +501,9 @@ export function pickDepressionShockFightPair(
   const firstIndex = Math.floor(depressionShockUnitRoll(`${gameId}|${week}|fight-a`) * ids.length)
   const first = ids[firstIndex]
   const remaining = ids.filter((id) => id !== first)
-  const secondIndex = Math.floor(depressionShockUnitRoll(`${gameId}|${week}|fight-b`) * remaining.length)
+  const secondIndex = Math.floor(
+    depressionShockUnitRoll(`${gameId}|${week}|fight-b`) * remaining.length
+  )
   return [first, remaining[secondIndex]]
 }
 
@@ -507,7 +525,16 @@ export function invertStrategicRelationshipRow<T extends { affinity: number; tag
         ...entry,
         affinity: -entry.affinity,
         tags: (entry.tags ?? []).filter(
-          (tag) => !['alliance', 'protection', 'shield', 'romance', 'bromance', 'target', 'betrayal'].includes(tag)
+          (tag) =>
+            ![
+              'alliance',
+              'protection',
+              'shield',
+              'romance',
+              'bromance',
+              'target',
+              'betrayal',
+            ].includes(tag)
         ),
       },
     ])

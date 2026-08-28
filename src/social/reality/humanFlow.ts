@@ -227,7 +227,10 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     ) {
       const targetNames = targetIds
         .filter((targetId) => targetId !== input.actorId)
-        .map((targetId) => state.game.players.find((player) => player.id === targetId)?.name ?? targetId)
+        .map(
+          (targetId) =>
+            state.game.players.find((player) => player.id === targetId)?.name ?? targetId
+        )
       const subject = targetNames.length === 1 ? targetNames[0] : 'The housemates'
       return result(
         false,

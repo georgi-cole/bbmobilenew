@@ -204,7 +204,9 @@ export default function DepressionShockController() {
             </p>
             {presentation === 'day2' && (
               <div className="depression-shock-chocolates" aria-hidden="true">
-                <span>🍫</span><span>🍫</span><span>🍫</span>
+                <span>🍫</span>
+                <span>🍫</span>
+                <span>🍫</span>
               </div>
             )}
             <button

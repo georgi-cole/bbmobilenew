@@ -7,14 +7,16 @@ import {
   isDepressionShockActiveOnDay,
 } from '../depressionShock'
 
-function context(overrides: Partial<{
-  gameId: string
-  seed: number
-  week: number
-  eligibleMode: boolean
-  activePlayerCount: number
-  conflict: boolean
-}> = {}) {
+function context(
+  overrides: Partial<{
+    gameId: string
+    seed: number
+    week: number
+    eligibleMode: boolean
+    activePlayerCount: number
+    conflict: boolean
+  }> = {}
+) {
   return {
     gameId: 'game-depression-test',
     seed: 12345,
@@ -44,11 +46,7 @@ describe('Depression Shock scheduling', () => {
     expect(failed.state.status).toBe('failed')
     expect(failed.state.rollPassed).toBe(false)
 
-    const daySix = evaluateDepressionShockAtDayStart(
-      failed.state,
-      context({ week: 6 }),
-      0
-    )
+    const daySix = evaluateDepressionShockAtDayStart(failed.state, context({ week: 6 }), 0)
     expect(daySix.event).toBe('none')
     expect(daySix.state.status).toBe('failed')
   })
@@ -93,11 +91,7 @@ describe('Depression Shock scheduling', () => {
 
   it('does not activate if fewer than six players are active on Day 5', () => {
     const initial = createInitialDepressionShockState('game-depression-test')
-    const result = evaluateDepressionShockAtDayStart(
-      initial,
-      context({ activePlayerCount: 5 }),
-      0
-    )
+    const result = evaluateDepressionShockAtDayStart(initial, context({ activePlayerCount: 5 }), 0)
 
     expect(result.event).toBe('cancelled')
     expect(result.state.status).toBe('failed')

@@ -25,9 +25,7 @@ type RelationshipCorrection = {
 
 type DispatchApi = Pick<MiddlewareAPI, 'dispatch'>
 
-let pendingSurprise:
-  | { gameId: string; week: number; kind: 'nomination' | 'safety' }
-  | null = null
+let pendingSurprise: { gameId: string; week: number; kind: 'nomination' | 'safety' } | null = null
 
 function labelForDelta(delta: number): string {
   if (delta <= -5) return 'Bad'
@@ -59,9 +57,10 @@ function dispatchRelationshipCorrections(
   })
 }
 
-function buildOppositeInteraction(
+function buildOppositeInteraction(entry: SocialActionLogEntry): {
   entry: SocialActionLogEntry
-): { entry: SocialActionLogEntry; corrections: RelationshipCorrection[] } {
+  corrections: RelationshipCorrection[]
+} {
   const targetDeltas = entry.targetDeltas
   if (targetDeltas && Object.keys(targetDeltas).length > 0) {
     const oppositeTargetDeltas = Object.fromEntries(
@@ -222,11 +221,7 @@ function maybeTriggerRandomFight(
   previousPhase: string | undefined
 ) {
   const game = state.game
-  if (
-    !isDepressionShockActive(game) ||
-    previousPhase === game.phase ||
-    game.phase !== 'social_1'
-  ) {
+  if (!isDepressionShockActive(game) || previousPhase === game.phase || game.phase !== 'social_1') {
     return
   }
   if (!consumeDepressionShockFightRoll(game.gameId, game.week)) return
@@ -293,9 +288,8 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
   }
 
   if (type === 'social/recordSocialAction' && isDepressionShockActive(stateBefore.game)) {
-    const originalEntry = (
-      action as unknown as { payload: { entry: SocialActionLogEntry } }
-    ).payload.entry
+    const originalEntry = (action as unknown as { payload: { entry: SocialActionLogEntry } })
+      .payload.entry
     if (
       originalEntry.delta !== 0 &&
       shouldDepressionShockFlipInteraction(stateBefore.game.gameId, stateBefore.game.week)
