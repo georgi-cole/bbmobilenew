@@ -1,362 +1,41 @@
-:root {
-  --depression-shock-weather-image: none;
-}
-
-.depression-shock-weather {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  pointer-events: none;
-  overflow: hidden;
-  background-image:
-    linear-gradient(180deg, rgba(5, 9, 18, 0.42), rgba(10, 12, 24, 0.18) 48%, rgba(3, 6, 15, 0.42)),
-    var(--depression-shock-weather-image);
-  background-size: cover;
-  background-position: center;
-  mix-blend-mode: multiply;
-  opacity: 0.48;
-  transition:
-    opacity 700ms ease,
-    filter 700ms ease;
-}
-
-.depression-shock-weather::before,
-.depression-shock-weather::after {
-  content: '';
-  position: absolute;
-  inset: -15%;
-  pointer-events: none;
-}
-
-.depression-shock-weather--day1::before,
-.depression-shock-weather--day2::before {
-  background-image: repeating-linear-gradient(
-    105deg,
-    transparent 0 17px,
-    rgba(215, 228, 244, 0.2) 18px 19px,
-    transparent 20px 38px
-  );
-  transform: translate3d(0, -12%, 0);
-  animation: depression-shock-rain 780ms linear infinite;
-}
-
-.depression-shock-weather--day1::after,
-.depression-shock-weather--day2::after {
-  inset: -25% -12% auto;
-  height: 66%;
-  background:
-    radial-gradient(ellipse at 20% 48%, rgba(15, 20, 34, 0.9) 0 24%, transparent 55%),
-    radial-gradient(ellipse at 55% 30%, rgba(20, 24, 38, 0.86) 0 28%, transparent 58%),
-    radial-gradient(ellipse at 84% 58%, rgba(8, 13, 27, 0.88) 0 26%, transparent 56%);
-  filter: blur(14px);
-  animation: depression-shock-clouds 16s ease-in-out infinite alternate;
-}
-
-.depression-shock-weather--day2 {
-  opacity: 0.58;
-  filter: contrast(1.08) brightness(0.78);
-}
-
-.depression-shock-weather--sunbreak {
-  z-index: 75;
-  opacity: 0.68;
-  mix-blend-mode: screen;
-  background-image:
-    conic-gradient(
-      from 205deg at 50% -18%,
-      transparent 0deg,
-      rgba(255, 251, 215, 0.58) 12deg,
-      transparent 26deg,
-      rgba(255, 249, 205, 0.46) 40deg,
-      transparent 58deg,
-      rgba(255, 252, 226, 0.55) 74deg,
-      transparent 98deg
-    ),
-    linear-gradient(180deg, rgba(255, 247, 205, 0.52), rgba(255, 255, 255, 0.06) 58%);
-  animation: depression-shock-sunbreak 1800ms ease-out both;
-}
-
-.depression-shock-weather--sunbreak::after {
-  inset: auto 8% 6%;
-  height: 30%;
-  border-radius: 50% 50% 0 0;
-  background:
-    radial-gradient(
-      ellipse at 50% 100%,
-      transparent 47%,
-      rgba(242, 77, 93, 0.6) 48% 50%,
-      transparent 51%
-    ),
-    radial-gradient(
-      ellipse at 50% 100%,
-      transparent 54%,
-      rgba(246, 169, 63, 0.54) 55% 57%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse at 50% 100%,
-      transparent 61%,
-      rgba(241, 220, 86, 0.52) 62% 64%,
-      transparent 65%
-    ),
-    radial-gradient(
-      ellipse at 50% 100%,
-      transparent 68%,
-      rgba(103, 206, 130, 0.45) 69% 71%,
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse at 50% 100%,
-      transparent 75%,
-      rgba(94, 158, 232, 0.42) 76% 78%,
-      transparent 79%
-    );
-  filter: blur(0.3px);
-  opacity: 0;
-  animation: depression-shock-rainbow 1300ms 420ms ease-out forwards;
-}
-
-html[data-depression-shock='day1'] .game-screen-shell {
-  filter: saturate(0.72) brightness(0.9) contrast(1.04);
-  transition: filter 650ms ease;
-}
-
+/* Day two alone loses most of its colour. */
 html[data-depression-shock='day2'] .game-screen-shell {
-  /* Day 2 retains only 25% of the normal colour saturation. */
-  filter: saturate(0.25) brightness(0.82) contrast(1.07);
-  transition: filter 900ms ease;
+  filter: saturate(.4) brightness(.88) contrast(1.04);
+  transition: filter 1000ms ease;
 }
 
-html[data-depression-shock='sunbreak'] .game-screen-shell {
-  filter: saturate(1.16) brightness(1.08);
-  transition: filter 900ms ease;
-}
-
-html[data-depression-shock='day1']
-  .game-screen-shell
-  :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li),
-html[data-depression-shock='day2']
-  .game-screen-shell
-  :is(.tv-zone, [class*='card' i], [data-houseguest-roster] li) {
-  box-shadow:
-    inset 0 0 38px rgba(8, 13, 27, 0.18),
-    0 10px 30px rgba(2, 5, 13, 0.16);
-}
-
-html[data-depression-shock='day1'] [data-houseguest-roster] img,
 html[data-depression-shock='day2'] [data-houseguest-roster] img {
-  filter: saturate(0.6) brightness(0.78) contrast(1.05);
-  transition:
-    filter 650ms ease,
-    transform 650ms ease;
+  filter: saturate(.48) brightness(.84) contrast(1.04);
 }
 
-html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
-  animation: depression-shock-avatar-return 1150ms cubic-bezier(0.2, 0.82, 0.25, 1) both;
-}
-
-.depression-shock-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 260;
-  display: grid;
-  place-items: center;
-  padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
-  background: rgba(3, 6, 14, 0.72);
-  backdrop-filter: blur(11px);
-  -webkit-backdrop-filter: blur(11px);
-}
-
-.depression-shock-modal--ending {
-  background: linear-gradient(180deg, rgba(27, 39, 58, 0.45), rgba(15, 21, 31, 0.3));
-  backdrop-filter: blur(7px) saturate(1.22);
-  -webkit-backdrop-filter: blur(7px) saturate(1.22);
-}
-
-.depression-shock-card {
-  width: min(92vw, 430px);
-  padding: 28px 24px 23px;
-  border: 1px solid rgba(220, 231, 245, 0.16);
-  border-radius: 24px;
-  background: linear-gradient(145deg, rgba(29, 38, 54, 0.96), rgba(8, 13, 25, 0.98));
-  color: #f6f8fc;
-  text-align: center;
-  box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.56),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  animation: depression-shock-card-in 520ms cubic-bezier(0.2, 0.82, 0.25, 1) both;
-}
-
-.depression-shock-modal--ending .depression-shock-card {
-  border-color: rgba(255, 246, 190, 0.42);
-  background: linear-gradient(145deg, rgba(50, 62, 76, 0.96), rgba(19, 29, 40, 0.97));
-  box-shadow:
-    0 28px 85px rgba(0, 0, 0, 0.42),
-    0 0 54px rgba(255, 236, 157, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.depression-shock-card__symbol {
-  margin-bottom: 10px;
-  font-size: clamp(42px, 12vw, 58px);
-  line-height: 1;
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
-}
-
-.depression-shock-card__eyebrow {
-  margin: 0 0 7px;
-  font-size: 0.71rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  color: rgba(215, 226, 240, 0.7);
-}
-
-.depression-shock-card__title {
-  margin: 0;
-  font-size: clamp(1.55rem, 6vw, 2.08rem);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-}
-
-.depression-shock-card__body {
-  margin: 15px auto 0;
-  max-width: 36ch;
-  color: rgba(237, 242, 249, 0.8);
-  font-size: 0.96rem;
-  line-height: 1.55;
-}
-
-.depression-shock-chocolates {
-  display: flex;
-  justify-content: center;
-  gap: 9px;
-  margin-top: 16px;
-  font-size: 1.45rem;
-}
-
-.depression-shock-chocolates span {
-  animation: depression-shock-chocolate 1200ms ease-in-out infinite alternate;
-}
-
-.depression-shock-chocolates span:nth-child(2) {
-  animation-delay: 120ms;
-}
-
-.depression-shock-chocolates span:nth-child(3) {
-  animation-delay: 240ms;
-}
-
-.depression-shock-card__button {
-  width: 100%;
-  min-height: 48px;
-  margin-top: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 15px;
-  background: rgba(241, 245, 250, 0.1);
-  color: #fff;
-  font: inherit;
-  font-weight: 750;
-  cursor: pointer;
-  transition:
-    transform 150ms ease,
-    background 150ms ease;
-}
-
-.depression-shock-card__button:hover {
-  background: rgba(241, 245, 250, 0.17);
-}
-
-.depression-shock-card__button:active {
-  transform: scale(0.985);
-}
-
-.depression-shock-modal--ending .depression-shock-card__button {
-  background: rgba(255, 242, 177, 0.16);
-  border-color: rgba(255, 244, 190, 0.28);
-}
-
-@keyframes depression-shock-rain {
-  to {
-    transform: translate3d(-4%, 20%, 0);
-  }
-}
-
-@keyframes depression-shock-clouds {
-  from {
-    transform: translate3d(-3%, 0, 0) scale(1.04);
-  }
-  to {
-    transform: translate3d(5%, 4%, 0) scale(1.1);
-  }
-}
-
-@keyframes depression-shock-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(22px) scale(0.965);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes depression-shock-chocolate {
-  from {
-    transform: translateY(2px) rotate(-3deg);
-  }
-  to {
-    transform: translateY(-4px) rotate(3deg);
-  }
-}
-
-@keyframes depression-shock-sunbreak {
-  0% {
-    opacity: 0;
-    filter: brightness(0.8);
-  }
-  45% {
-    opacity: 0.78;
-    filter: brightness(1.2);
-  }
-  100% {
-    opacity: 0.58;
-    filter: brightness(1.05);
-  }
-}
-
-@keyframes depression-shock-rainbow {
-  from {
-    opacity: 0;
-    transform: translateY(15px) scale(0.94);
-  }
-  to {
-    opacity: 0.72;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes depression-shock-avatar-return {
-  0% {
-    filter: saturate(0.2) brightness(0.72);
-    transform: scale(0.985);
-  }
-  46% {
-    filter: saturate(0.45) brightness(1.7);
-    transform: scale(1.055);
-  }
-  100% {
-    filter: saturate(1) brightness(1);
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .depression-shock-weather::before,
-  .depression-shock-weather::after,
-  .depression-shock-card,
-  .depression-shock-chocolates span,
-  html[data-depression-shock='sunbreak'] [data-houseguest-roster] img {
-    animation: none !important;
-  }
-}
+.depression-cinematic { position: fixed; inset: 0; z-index: 10020; overflow: hidden; pointer-events: none; isolation: isolate; }
+.depression-cinematic__origin, .depression-cinematic__sun-wave { position: absolute; display: block; transform: translate(-50%, -50%); border-radius: 50%; }
+.depression-cinematic__origin { width: 24px; height: 24px; }
+.depression-cinematic--thunder .depression-cinematic__origin { background: #f4f0ff; box-shadow: 0 0 14px #fff, 0 0 36px #8f73ff, 0 0 80px #5d43ff; animation: depression-origin-thunder 1.35s ease-out both; }
+.depression-cinematic__thunderbolt { position: absolute; z-index: 2; width: min(88vw, 720px); height: min(88vw, 720px); object-fit: contain; transform: translate(-50%, -50%) scale(.08); opacity: 0; mix-blend-mode: screen; filter: drop-shadow(0 0 5px rgba(111, 194, 255, .95)) drop-shadow(0 0 24px rgba(65, 108, 255, .72)); animation: depression-thunderbolt-arrival 920ms cubic-bezier(.2,.78,.18,1) both; }
+.depression-cinematic__flight { position: absolute; left: var(--start-x); top: var(--start-y); width: 1px; height: 1px; transform: translate(-50%, -50%); }
+.depression-cinematic__chocolate { position: absolute; left: 0; top: 0; display: grid; place-items: center; transform: translate(-50%, -50%); will-change: transform, opacity, filter; }
+.depression-cinematic__chocolate { width: 38px; height: 38px; border-radius: 12px; font-size: 27px; background: radial-gradient(circle at 35% 28%,rgba(255,238,195,.55),rgba(91,42,18,.2) 60%,transparent 70%); filter: drop-shadow(0 4px 5px rgba(0,0,0,.55)); animation: depression-chocolate-flight 860ms var(--target-delay) cubic-bezier(.18,.72,.18,1) both; }
+.depression-cinematic__impact { position: absolute; left: var(--travel-x); top: var(--travel-y); width: min(var(--target-width),var(--target-height)); aspect-ratio: 1; border-radius: 50%; opacity: 0; transform: translate(-50%,-50%) scale(.2); }
+.depression-cinematic--thunder .depression-cinematic__impact { border: 2px solid rgba(215,204,255,.8); background: radial-gradient(circle,rgba(255,255,255,.8),rgba(119,87,255,.26) 38%,transparent 70%); box-shadow: 0 0 24px #8e72ff; animation: depression-thunder-impact 700ms calc(620ms + var(--target-delay)) ease-out both; }
+.depression-cinematic--chocolate .depression-cinematic__origin { width: 38px; height: 18px; background: radial-gradient(ellipse,#fff5cf,#d9ab66 28%,rgba(81,42,19,.15) 67%,transparent 72%); box-shadow: 0 0 24px rgba(255,216,135,.86),0 0 60px rgba(139,77,31,.55); animation: depression-chocolate-origin 1.3s ease-out both; }
+body[data-depression-cinematic='thunder'] [data-houseguest-roster='true'] [data-depression-target='true'] img { animation: depression-avatar-thunder 920ms 560ms ease-out both; }
+html[data-depression-shock='day2'] body[data-depression-cinematic='chocolate'] [data-houseguest-roster='true'] [data-depression-target='true'] img { animation: depression-avatar-chocolate-relief 3050ms calc(680ms + var(--depression-target-index) * 62ms) cubic-bezier(.2,.72,.22,1) both; }
+.depression-cinematic__sun-wave { width: 44px; height: 44px; background: radial-gradient(circle,#fffef2 0 12%,#fff4a5 24%,rgba(255,203,92,.42) 48%,transparent 72%); box-shadow: 0 0 32px #fff9c8,0 0 90px 25px rgba(255,199,91,.58); animation: depression-sun-wave 2.45s cubic-bezier(.14,.72,.2,1) both; }
+.depression-cinematic--sunlight::before { content: ''; position: absolute; left: 50%; top: 0; width: 130vw; height: 130vh; opacity: 0; transform-origin: 50% 0; background: conic-gradient(from 220deg,transparent 0 8%,rgba(255,242,176,.2) 12%,transparent 19% 29%,rgba(255,230,137,.16) 34%,transparent 43% 100%); filter: blur(10px); animation: depression-sun-rays 2.7s .45s ease-out both; }
+body[data-depression-cinematic='sunlight'] [data-houseguest-roster='true'] [data-depression-target='true'] img { animation: depression-avatar-sun-return 1550ms 1250ms cubic-bezier(.16,.84,.24,1) both; }
+.depression-sunrise-copy { position: fixed; left: 50%; top: 50%; z-index: 10021; width: min(84vw,620px); padding: 22px 24px; border: 1px solid rgba(255,244,190,.62); border-radius: 24px; color: #fffdf1; text-align: center; text-shadow: 0 2px 14px rgba(38,27,5,.6); background: rgba(58,43,16,.48); box-shadow: 0 0 50px rgba(255,210,102,.35),inset 0 1px 0 rgba(255,255,255,.3); backdrop-filter: blur(12px); transform: translate(-50%,-50%); animation: depression-sun-copy 900ms 2.35s ease-out both; pointer-events: none; }
+.depression-sunrise-copy p { margin: 0 0 8px; font-size: .72rem; font-weight: 900; letter-spacing: .34em; }
+.depression-sunrise-copy h1 { margin: 0; font-size: clamp(2rem,7vw,4.4rem); line-height: .95; text-transform: uppercase; }
+.depression-sunrise-copy span { display: block; margin-top: 14px; font-size: clamp(.9rem,2.5vw,1.1rem); line-height: 1.5; }
+@keyframes depression-origin-thunder { 0%,100% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 18%,48% { opacity: 1; transform: translate(-50%,-50%) scale(1.7); } 28% { transform: translate(-50%,-50%) scale(.45); } }
+@keyframes depression-thunderbolt-arrival { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.08); } 18% { opacity: .98; } 62% { opacity: .98; transform: translate(-50%, -50%) translate(var(--thunder-travel-x), var(--thunder-travel-y)) scale(.98); } 100% { opacity: .08; transform: translate(-50%, -50%) translate(var(--thunder-travel-x), var(--thunder-travel-y)) scale(1.04); } }
+@keyframes depression-avatar-thunder { 0%,100% { transform: scale(1); } 44% { filter: brightness(2.4) saturate(.1); transform: scale(1.045); } 56% { filter: brightness(.28) saturate(.1); transform: scale(.975); } }
+@keyframes depression-chocolate-origin { 0%,100% { opacity: 0; transform: translate(-50%,-50%) scale(.4); } 20%,70% { opacity: 1; transform: translate(-50%,-50%) scale(1.4); } }
+@keyframes depression-chocolate-flight { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.25) rotate(-30deg); } 12%,78% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(var(--travel-x) - 50%),calc(var(--travel-y) - 50%)) scale(.9) rotate(390deg); } }
+@keyframes depression-avatar-chocolate-relief { 0%,100% { filter: saturate(.4) brightness(.84) contrast(1.04); transform: scale(1); } 20% { filter: saturate(1.12) brightness(1.16) contrast(1.01); transform: scale(1.025); } 62%,82% { filter: saturate(1.02) brightness(1.08) contrast(1.02); transform: scale(1.012); } }
+@keyframes depression-sun-wave { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 15% { opacity: 1; } 72% { opacity: .72; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(58); } }
+@keyframes depression-sun-rays { 0% { opacity: 0; transform: scale(.4) rotate(-8deg); } 45% { opacity: .9; } 100% { opacity: 0; transform: scale(1.25) rotate(4deg); } }
+@keyframes depression-avatar-sun-return { 0% { filter: saturate(.2) brightness(.7); transform: scale(.97); } 52% { filter: saturate(1.35) brightness(1.48); transform: scale(1.045); } 100% { filter: none; transform: scale(1); } }
+@keyframes depression-sun-copy { from { opacity: 0; transform: translate(-50%,calc(-50% + 16px)); } to { opacity: 1; transform: translate(-50%,-50%); } }
+@media (prefers-reduced-motion: reduce) { .depression-cinematic *, body[data-depression-cinematic] [data-houseguest-roster='true'] [data-depression-target='true'] img, .depression-sunrise-copy { animation-duration: .01ms !important; animation-delay: 0ms !important; } }

@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { resolveSkinAsset } from '../../utils/skinAssets'
 import {
   buildDepressionShockDayContext,
   evaluateDepressionShockAtDayStart,
@@ -10,53 +9,52 @@ import {
   loadDepressionShockState,
   markDepressionShockPresentationSeen,
   saveDepressionShockState,
+  setDepressionShockPortraitMode,
   setDepressionShockVisualPhase,
-  type DepressionShockPresentation,
   type DepressionShockState,
 } from '../../features/twists/depressionShock'
+import DepressionShockRosterCinematic, {
+  type DepressionShockCinematicKind,
+} from './DepressionShockRosterCinematic'
 import './DepressionShockController.css'
 
 const INTRO_COPY =
-  'The weather has been bad for so long that the players have slipped into depression. For the next two days, watch out — they may not act like themselves.'
+  'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.'
 const DAY_TWO_COPY =
-  'The house is still very depressed. Even the colours have drained away. The Big Eye has sent chocolates to try to lift the mood.'
+  'The rain continues. Today even the colour is draining from the hub. Every familiar room feels colder, flatter, and farther away.'
 const END_COPY =
-  'The sun finally breaks through the clouds. Light floods the house, a rainbow appears, and the housemates begin to feel like themselves again.'
+  'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales. Depression Shock is over.'
 
-function presentationCopy(presentation: Exclude<DepressionShockPresentation, null>): {
-  eyebrow: string
-  title: string
-  body: string
-  button: string
-  symbol: string
-} {
-  switch (presentation) {
-    case 'intro':
-      return {
-        eyebrow: 'HOUSE SHOCK',
-        title: 'Depression Shock',
-        body: INTRO_COPY,
-        button: 'Enter the storm',
-        symbol: '🌧️',
-      }
-    case 'day2':
-      return {
-        eyebrow: 'DAY TWO',
-        title: 'The mood has not lifted',
-        body: DAY_TWO_COPY,
-        button: 'Continue',
-        symbol: '🍫',
-      }
-    case 'ending':
-      return {
-        eyebrow: 'THE WEATHER BREAKS',
-        title: 'Sunshine at last',
-        body: END_COPY,
-        button: 'Back to the game',
-        symbol: '🌈',
-      }
-  }
-}
+const PHASE_BROADCASTS = [
+  {
+    visualPhase: 'day1',
+    phase: 'social_1',
+    templateId: 'depression-shock.day1-silence',
+    text: 'The rain has swallowed the usual noise. Conversations start softly and end before anyone says what they mean.',
+    major: 'depression_shock_melancholy',
+  },
+  {
+    visualPhase: 'day1',
+    phase: 'week_end',
+    templateId: 'depression-shock.day1-night',
+    text: 'Night gathers behind rain-streaked windows. Nobody is quite ready to admit how heavy the hub feels.',
+    major: undefined,
+  },
+  {
+    visualPhase: 'day2',
+    phase: 'social_1',
+    templateId: 'depression-shock.chocolates',
+    text: 'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
+    major: 'depression_shock_chocolates',
+  },
+  {
+    visualPhase: 'day2',
+    phase: 'social_2',
+    templateId: 'depression-shock.day2-melancholy',
+    text: 'A few pieces of chocolate are gone. The grey light remains, and even laughter sounds borrowed today.',
+    major: undefined,
+  },
+] as const
 
 export default function DepressionShockController() {
   const dispatch = useAppDispatch()
@@ -65,17 +63,14 @@ export default function DepressionShockController() {
   const [runtime, setRuntime] = useState<DepressionShockState>(() =>
     loadDepressionShockState(game.gameId)
   )
+  const [cinematic, setCinematic] = useState<DepressionShockCinematicKind | null>(null)
 
   useEffect(() => {
     setRuntime(loadDepressionShockState(game.gameId))
-  }, [game.gameId])
+  }, [game])
 
-  // Resolve the Day-5 roll before GameScreen's passive twist effects run. This
-  // lets Depression Shock claim a free week_start window without racing the
-  // existing day-start shock/secret-mission activators.
   useLayoutEffect(() => {
     if (game.phase !== 'week_start') return
-
     const current = loadDepressionShockState(game.gameId)
     const baseContext = buildDepressionShockDayContext(game)
     const evaluation = evaluateDepressionShockAtDayStart(current, {
@@ -85,27 +80,8 @@ export default function DepressionShockController() {
     const next = saveDepressionShockState(evaluation.state)
     setRuntime(next)
 
-    const activeToday = isDepressionShockActiveOnDay(next, game.week)
-    if (activeToday && game.twistActivatedThisWeek !== true) {
-      // There is intentionally no second twist state machine in gameSlice. The
-      // generic per-day guard remains authoritative for preventing overlap.
-      dispatch({
-        type: 'game/hydrateGame',
-        payload: { ...game, twistActivatedThisWeek: true },
-      })
-    }
-
-    if (evaluation.event === 'activated') {
-      dispatch({
-        type: 'game/addTvEvent',
-        payload: {
-          text: INTRO_COPY,
-          type: 'twist',
-          source: 'system',
-          channels: ['tv', 'mainLog'],
-          meta: { major: 'depression_shock_start', week: game.week },
-        },
-      })
+    if (isDepressionShockActiveOnDay(next, game.week) && game.twistActivatedThisWeek !== true) {
+      dispatch({ type: 'game/hydrateGame', payload: { ...game, twistActivatedThisWeek: true } })
     }
   }, [dispatch, enableTwists, game])
 
@@ -120,105 +96,152 @@ export default function DepressionShockController() {
 
   useEffect(() => {
     setDepressionShockVisualPhase(visualPhase)
+    if (visualPhase === 'sunbreak') {
+      setDepressionShockPortraitMode(presentation === 'ending' ? 'sad' : 'normal')
+    }
     const root = document.documentElement
     if (visualPhase === 'inactive') {
       delete root.dataset.depressionShock
-      root.style.removeProperty('--depression-shock-weather-image')
       return
     }
-
     root.dataset.depressionShock = visualPhase
-    const weatherKey = visualPhase === 'day2' ? 'rain' : 'thunderstorm'
-    const weather = resolveSkinAsset(weatherKey, 'night')
-    root.style.setProperty('--depression-shock-weather-image', `url("${weather.url}")`)
-  }, [visualPhase])
+  }, [presentation, visualPhase])
 
   useEffect(
     () => () => {
       setDepressionShockVisualPhase('inactive')
+      setDepressionShockPortraitMode('normal')
       delete document.documentElement.dataset.depressionShock
-      document.documentElement.style.removeProperty('--depression-shock-weather-image')
     },
     []
   )
 
-  const dismissPresentation = () => {
-    if (!presentation) return
+  useEffect(() => {
+    if (presentation !== 'intro' && presentation !== 'day2') return
     const current = loadDepressionShockState(game.gameId)
-    const next = markDepressionShockPresentationSeen(current, presentation, game.week)
-    setRuntime(next)
-
-    if (presentation === 'day2') {
-      dispatch({
-        type: 'game/addTvEvent',
-        payload: {
-          text: 'The house is still deeply down. The Big Eye has sent chocolates for everyone in an attempt to lift the mood. 🍫',
-          type: 'twist',
-          source: 'system',
-          channels: ['tv', 'mainLog'],
-          meta: { major: 'depression_shock_day_2', week: game.week },
-        },
-      })
-    } else if (presentation === 'ending') {
-      dispatch({
-        type: 'game/addTvEvent',
-        payload: {
-          text: 'The clouds break apart, sunlight floods the House and a rainbow appears. Depression Shock is over. 🌈',
-          type: 'twist',
-          source: 'system',
-          channels: ['tv', 'mainLog'],
-          meta: { major: 'depression_shock_end', week: game.week },
-        },
-      })
+    if (presentation === 'intro') {
+      setDepressionShockPortraitMode('normal')
+    } else {
+      setDepressionShockPortraitMode('sad')
     }
-  }
+    setRuntime(markDepressionShockPresentationSeen(current, presentation, game.week))
+    dispatch({
+      type: 'game/addTvEvent',
+      payload: {
+        text: presentation === 'intro' ? INTRO_COPY : DAY_TWO_COPY,
+        type: 'twist',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+        meta: {
+          major: presentation === 'intro' ? 'depression_shock_start' : 'depression_shock_day_2',
+          broadcastPriority: 'critical',
+          broadcastCampaign: 'depression_shock',
+          week: game.week,
+        },
+      },
+    })
+  }, [dispatch, game.gameId, game.week, presentation])
 
-  if (visualPhase === 'inactive' && !presentation) return null
+  useEffect(() => {
+    const broadcast = PHASE_BROADCASTS.find(
+      (candidate) => candidate.visualPhase === visualPhase && candidate.phase === game.phase
+    )
+    if (!broadcast) return
+    const alreadyQueuedForShock = game.tvFeed.some(
+      (event) =>
+        event.meta?.week === game.week &&
+        event.meta?.broadcastTemplateId === broadcast.templateId &&
+        event.meta?.depressionShockQueued === true
+    )
+    if (alreadyQueuedForShock) return
+    dispatch({
+      type: 'game/addTvEvent',
+      payload: {
+        text: broadcast.text,
+        type: 'social',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+        meta: {
+          broadcastTemplateId: broadcast.templateId,
+          broadcastCampaign: 'depression_shock',
+          broadcastLevel: broadcast.major ? 'major' : 'minor',
+          forceOnTv: true,
+          requeueDuplicateBroadcast: true,
+          depressionShockQueued: true,
+          ...(broadcast.major ? { major: broadcast.major } : {}),
+          week: game.week,
+        },
+      },
+    })
+  }, [dispatch, game.phase, game.tvFeed, game.week, visualPhase])
+
+  const finishSunrise = useCallback(() => {
+    const current = loadDepressionShockState(game.gameId)
+    setRuntime(markDepressionShockPresentationSeen(current, 'ending', game.week))
+    dispatch({
+      type: 'game/addTvEvent',
+      payload: {
+        text: END_COPY,
+        type: 'twist',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+        meta: {
+          major: 'depression_shock_end',
+          broadcastPriority: 'critical',
+          broadcastCampaign: 'depression_shock',
+          week: game.week,
+        },
+      },
+    })
+    setCinematic(null)
+  }, [dispatch, game.gameId, game.week])
+
+  useEffect(() => {
+    const handleThunder = () => setCinematic('thunder')
+    const handleChocolate = () => setCinematic('chocolate')
+    window.addEventListener('depression-shock:thunder-presented', handleThunder)
+    window.addEventListener('depression-shock:chocolate-presented', handleChocolate)
+    return () => {
+      window.removeEventListener('depression-shock:thunder-presented', handleThunder)
+      window.removeEventListener('depression-shock:chocolate-presented', handleChocolate)
+    }
+  }, [])
+
+  const handleCinematicImpact = useCallback(() => {
+    if (cinematic === 'thunder') setDepressionShockPortraitMode('sad')
+    if (cinematic === 'sunlight') setDepressionShockPortraitMode('normal')
+  }, [cinematic])
+
+  const handleSunlightImpact = useCallback(() => {
+    setDepressionShockPortraitMode('normal')
+  }, [])
+
+  const handleCinematicComplete = useCallback(() => {
+    if (cinematic === 'sunlight') {
+      finishSunrise()
+      return
+    }
+    setCinematic(null)
+  }, [cinematic, finishSunrise])
+
+  if (visualPhase === 'inactive' && presentation !== 'ending') return null
 
   return (
     <>
-      <div
-        className={`depression-shock-weather depression-shock-weather--${visualPhase}`}
-        aria-hidden="true"
-      />
-      {presentation && (
-        <div
-          className={`depression-shock-modal depression-shock-modal--${presentation}`}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="depression-shock-title"
-          aria-describedby="depression-shock-description"
-        >
-          <section className="depression-shock-card">
-            <div className="depression-shock-card__symbol" aria-hidden="true">
-              {presentationCopy(presentation).symbol}
-            </div>
-            <p className="depression-shock-card__eyebrow">
-              {presentationCopy(presentation).eyebrow}
-            </p>
-            <h2 id="depression-shock-title" className="depression-shock-card__title">
-              {presentationCopy(presentation).title}
-            </h2>
-            <p id="depression-shock-description" className="depression-shock-card__body">
-              {presentationCopy(presentation).body}
-            </p>
-            {presentation === 'day2' && (
-              <div className="depression-shock-chocolates" aria-hidden="true">
-                <span>🍫</span>
-                <span>🍫</span>
-                <span>🍫</span>
-              </div>
-            )}
-            <button
-              type="button"
-              className="depression-shock-card__button"
-              onClick={dismissPresentation}
-            >
-              {presentationCopy(presentation).button}
-            </button>
-          </section>
-        </div>
-      )}
+      {presentation === 'ending' && cinematic !== 'sunlight' ? (
+        <DepressionShockRosterCinematic
+          kind="sunlight"
+          onImpact={handleSunlightImpact}
+          onComplete={finishSunrise}
+        />
+      ) : null}
+      {cinematic ? (
+        <DepressionShockRosterCinematic
+          kind={cinematic}
+          onImpact={handleCinematicImpact}
+          onComplete={handleCinematicComplete}
+        />
+      ) : null}
     </>
   )
 }

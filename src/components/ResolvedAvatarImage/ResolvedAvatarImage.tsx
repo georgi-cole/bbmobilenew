@@ -15,8 +15,8 @@ import { imageIdToDataUrl } from '../../utils/imageDb'
 import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import {
   buildDepressionShockAvatarCandidates,
-  getDepressionShockVisualSnapshot,
-  subscribeDepressionShockVisualPhase,
+  getDepressionShockPortraitSnapshot,
+  subscribeDepressionShockPortraitMode,
 } from '../../features/twists/depressionShock'
 
 type Props = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
@@ -37,6 +37,7 @@ type ProfilePhotoState = {
 }
 
 const EMPTY_SOURCES: ReadonlySet<string> = new Set()
+const DEPRESSION_SAD_ASSET_VERSION = 'sad-name-v1'
 
 export default function ResolvedAvatarImage({
   id,
@@ -46,32 +47,39 @@ export default function ResolvedAvatarImage({
   onError,
   ...imageProps
 }: Props) {
-  const shockVisualPhase = useSyncExternalStore(
-    subscribeDepressionShockVisualPhase,
-    getDepressionShockVisualSnapshot,
-    () => 'inactive'
+  const shockPortraitMode = useSyncExternalStore(
+    subscribeDepressionShockPortraitMode,
+    getDepressionShockPortraitSnapshot,
+    () => 'normal'
   )
   const profilePhotoId = getProfilePhotoAvatarId(avatar)
   const useSadPortrait =
-    !isUser && !profilePhotoId && (shockVisualPhase === 'day1' || shockVisualPhase === 'day2')
-  const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}\u0000${shockVisualPhase}`
+    !isUser && !profilePhotoId && shockPortraitMode === 'sad'
+  const resolutionKey = `${id}\u0000${name}\u0000${avatar ?? ''}\u0000${isUser ? '1' : '0'}\u0000${shockPortraitMode}\u0000${DEPRESSION_SAD_ASSET_VERSION}`
   const fallback = useMemo(() => getLocalAvatarFallback(name, isUser), [isUser, name])
+  const normalCandidates = useMemo(
+    () =>
+      resolveAvatarCandidates({
+        id,
+        name,
+        avatar: avatar ?? '',
+        isUser,
+      }).map(resolvePresentationAvatar),
+    [avatar, id, isUser, name]
+  )
   const candidates = useMemo(
     () =>
       profilePhotoId
         ? []
         : [
             ...new Set([
-              ...(useSadPortrait ? buildDepressionShockAvatarCandidates(id) : []),
-              ...resolveAvatarCandidates({
-                id,
-                name,
-                avatar: avatar ?? '',
-                isUser,
-              }).map(resolvePresentationAvatar),
+              ...(useSadPortrait
+                ? buildDepressionShockAvatarCandidates(id, normalCandidates, name)
+                : []),
+              ...normalCandidates,
             ]),
           ],
-    [avatar, id, isUser, name, profilePhotoId, useSadPortrait]
+    [id, name, normalCandidates, profilePhotoId, useSadPortrait, DEPRESSION_SAD_ASSET_VERSION]
   )
   const [failedSourceState, setFailedSourceState] = useState<FailedSourceState>(() => ({
     resolutionKey,

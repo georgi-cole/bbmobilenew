@@ -1,6 +1,7 @@
 import type { GameState, Player } from '../../types'
 
-export const DEPRESSION_SHOCK_ROLL_DAY = 5
+export const DEPRESSION_SHOCK_ROLL_DAY = 7
+export const DEPRESSION_SHOCK_LAST_ROLL_DAY = 10
 export const DEPRESSION_SHOCK_CHANCE = 0.25
 export const DEPRESSION_SHOCK_DURATION_DAYS = 2
 export const DEPRESSION_SHOCK_MIN_ACTIVE_PLAYERS = 6
@@ -13,6 +14,7 @@ const STORAGE_PREFIX = 'bbmobilenew:depressionShock:'
 
 export type DepressionShockStatus = 'unrolled' | 'failed' | 'queued' | 'active' | 'completed'
 export type DepressionShockVisualPhase = 'inactive' | 'day1' | 'day2' | 'sunbreak'
+export type DepressionShockPortraitMode = 'normal' | 'sad'
 export type DepressionShockPresentation = 'intro' | 'day2' | 'ending' | null
 
 export interface DepressionShockState {
@@ -20,6 +22,7 @@ export interface DepressionShockState {
   gameId: string
   status: DepressionShockStatus
   rollDay: number
+  lastRollDay: number | null
   rollPassed: boolean | null
   queuedDay: number | null
   activatedDay: number | null
@@ -51,6 +54,8 @@ type Subscriber = () => void
 
 let visualPhase: DepressionShockVisualPhase = 'inactive'
 const visualSubscribers = new Set<Subscriber>()
+let portraitMode: DepressionShockPortraitMode = 'normal'
+const portraitSubscribers = new Set<Subscriber>()
 const memoryState = new Map<string, DepressionShockState>()
 
 function storageKey(gameId: string): string {
@@ -76,6 +81,7 @@ export function createInitialDepressionShockState(gameId: string): DepressionSho
     gameId,
     status: 'unrolled',
     rollDay: DEPRESSION_SHOCK_ROLL_DAY,
+    lastRollDay: null,
     rollPassed: null,
     queuedDay: null,
     activatedDay: null,
@@ -97,6 +103,7 @@ function normalizeState(raw: Partial<DepressionShockState>, gameId: string): Dep
     ...raw,
     version: 1,
     gameId,
+    rollDay: DEPRESSION_SHOCK_ROLL_DAY,
     behaviorCounters:
       raw.behaviorCounters && typeof raw.behaviorCounters === 'object' ? raw.behaviorCounters : {},
     stableRolls: raw.stableRolls && typeof raw.stableRolls === 'object' ? raw.stableRolls : {},
@@ -142,20 +149,49 @@ export function saveDepressionShockState(state: DepressionShockState): Depressio
   return normalized
 }
 
+/** Force the two-day sequence from the current day for explicit debug testing. */
+export function activateDepressionShockForDebug(gameId: string, week: number): DepressionShockState {
+  return setDepressionShockStageForDebug(gameId, week, 'day1')
+}
+
+export function setDepressionShockStageForDebug(
+  gameId: string,
+  week: number,
+  stage: 'day1' | 'day2' | 'recovery'
+): DepressionShockState {
+  const current = loadDepressionShockState(gameId)
+  const activatedDay = stage === 'day1' ? week : stage === 'day2' ? week - 1 : week - 2
+  return saveDepressionShockState({
+    ...current,
+    status: 'active',
+    rollPassed: true,
+    queuedDay: null,
+    activatedDay,
+    completedDay: null,
+    failureReason: null,
+    introSeen: stage !== 'day1',
+    day2Seen: stage === 'recovery',
+    endingSeen: false,
+    behaviorCounters: {},
+    stableRolls: {},
+    fightDays: [],
+  })
+}
+
 export function clearDepressionShockRuntimeForTests(gameId?: string): void {
   if (gameId) {
     memoryState.delete(gameId)
     if (typeof window !== 'undefined') window.localStorage.removeItem(storageKey(gameId))
     return
   }
+
   memoryState.clear()
 }
 
 export function isDepressionShockEligibleMode(
   game: Pick<GameState, 'mode' | 'expansionMode'>
 ): boolean {
-  if (game.mode === 'survival') return false
-  return game.expansionMode !== 'cupidArrow'
+  return game.mode === 'classic' && (game.expansionMode == null || game.expansionMode === 'voxPopuli')
 }
 
 export function getActiveDepressionShockPlayers(players: readonly Player[]): Player[] {
@@ -163,8 +199,9 @@ export function getActiveDepressionShockPlayers(players: readonly Player[]): Pla
 }
 
 /**
- * A Depression Shock occupies an entire day-start twist window. A successful
- * Day-5 roll waits rather than competing with an already scheduled/active shock.
+ * A Depression Shock occupies an entire day-start twist window. It gets one
+ * independent 25% roll per day from Day 7 through Day 10, and a successful
+ * roll waits rather than competing with an already scheduled/active shock.
  */
 export function hasDepressionShockConflict(
   game: Pick<
@@ -204,14 +241,15 @@ export function buildDepressionShockDayContext(game: GameState): DepressionShock
 }
 
 /**
- * Pure scheduling rule. The probability is evaluated exactly once, on Day 5.
- * A passed roll can queue behind another shock; a failed roll never retries.
+ * Pure scheduling rule. The probability is evaluated once per eligible day,
+ * from Day 7 through Day 10. A passed roll can queue behind another shock;
+ * a failed roll leaves the remaining daily window available.
  */
 export function evaluateDepressionShockAtDayStart(
   current: DepressionShockState,
   context: DepressionShockDayContext,
   activationRoll = depressionShockUnitRoll(
-    `${context.gameId}|${context.seed}|depression-shock|day-${DEPRESSION_SHOCK_ROLL_DAY}`
+    `${context.gameId}|${context.seed}|depression-shock|day-${context.week}`
   )
 ): DepressionShockEvaluation {
   if (
@@ -225,18 +263,20 @@ export function evaluateDepressionShockAtDayStart(
   if (current.status === 'unrolled') {
     if (context.week < DEPRESSION_SHOCK_ROLL_DAY) return { state: current, event: 'none' }
 
-    // Installing/resuming the feature after Day 5 must not create a late extra roll.
-    if (context.week > DEPRESSION_SHOCK_ROLL_DAY) {
+    if (context.week > DEPRESSION_SHOCK_LAST_ROLL_DAY) {
       return {
         state: {
           ...current,
           status: 'failed',
           rollPassed: false,
-          failureReason: 'day_5_window_missed',
+          failureReason: 'roll_window_missed',
         },
         event: 'cancelled',
       }
     }
+
+    // A day-start evaluation can be replayed by hydration or navigation.
+    if (current.lastRollDay === context.week) return { state: current, event: 'none' }
 
     if (!context.eligibleMode) {
       return {
@@ -256,7 +296,7 @@ export function evaluateDepressionShockAtDayStart(
           ...current,
           status: 'failed',
           rollPassed: false,
-          failureReason: 'not_enough_active_players_on_day_5',
+          failureReason: 'not_enough_active_players_on_roll_day',
         },
         event: 'cancelled',
       }
@@ -267,11 +307,14 @@ export function evaluateDepressionShockAtDayStart(
       return {
         state: {
           ...current,
-          status: 'failed',
+          status: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY ? 'failed' : current.status,
           rollPassed: false,
-          failureReason: 'day_5_roll_failed',
+          lastRollDay: context.week,
+          failureReason: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY
+            ? 'final_roll_failed'
+            : 'daily_roll_failed',
         },
-        event: 'rolled_failed',
+        event: context.week === DEPRESSION_SHOCK_LAST_ROLL_DAY ? 'cancelled' : 'rolled_failed',
       }
     }
 
@@ -345,28 +388,49 @@ export function getDepressionShockPresentation(
   week: number,
   phase: string
 ): DepressionShockPresentation {
-  if (!isDepressionShockActiveOnDay(state, week) || state.activatedDay == null) return null
+  if (state.status !== 'active' || state.activatedDay == null) return null
+  if (week === state.activatedDay + 2 && phase === 'week_start' && !state.endingSeen) return 'ending'
+  if (!isDepressionShockActiveOnDay(state, week)) return null
   if (week === state.activatedDay && !state.introSeen) return 'intro'
   if (week === state.activatedDay + 1 && !state.day2Seen) return 'day2'
-  if (week === state.activatedDay + 1 && phase === 'week_end' && !state.endingSeen) return 'ending'
   return null
 }
 
 export function getDepressionShockVisualPhase(
   state: DepressionShockState,
   week: number,
-  phase: string
+  _phase: string
 ): DepressionShockVisualPhase {
-  if (!isDepressionShockActiveOnDay(state, week) || state.activatedDay == null) return 'inactive'
-  if (
-    week === state.activatedDay + 1 &&
-    phase === 'week_end' &&
-    state.day2Seen &&
-    !state.endingSeen
-  ) {
-    return 'sunbreak'
-  }
+  if (state.status === 'completed' && state.completedDay === week) return 'sunbreak'
+  if (state.status !== 'active' || state.activatedDay == null) return 'inactive'
+  if (week === state.activatedDay + 2 && !state.endingSeen) return 'sunbreak'
+  if (!isDepressionShockActiveOnDay(state, week)) return 'inactive'
   return week === state.activatedDay ? 'day1' : 'day2'
+}
+
+const DAY_ONE_MELANCHOLY = [
+  'Rain keeps time against the glass, and nobody quite meets anyone’s eyes.',
+  'The hub feels unusually quiet; even ordinary conversations trail into silence.',
+  'Outside, the clouds hang low. Inside, every decision feels a little heavier.',
+  'The storm lingers over the hub, softening voices and sharpening doubts.',
+]
+
+const DAY_TWO_MELANCHOLY = [
+  'The colours are fading, and the long rain has made the hub feel smaller.',
+  'Another grey hour passes; even small victories feel distant today.',
+  'The windows are streaked with rain, and the players carry the same muted weight.',
+  'Nothing feels quite bright enough today—not the lights, not the laughter, not the game.',
+]
+
+export function decorateDepressionShockFauxTvText(
+  text: string,
+  phase: DepressionShockVisualPhase,
+  messageKey: string
+): string {
+  if (phase !== 'day1' && phase !== 'day2') return text
+  const lines = phase === 'day1' ? DAY_ONE_MELANCHOLY : DAY_TWO_MELANCHOLY
+  const suffix = lines[Math.floor(depressionShockUnitRoll(messageKey) * lines.length)]
+  return `${text}\n\n${suffix}`
 }
 
 export function markDepressionShockPresentationSeen(
@@ -542,13 +606,26 @@ export function invertStrategicRelationshipRow<T extends { affinity: number; tag
   return { ...relationships, [actorId]: invertedRow }
 }
 
-export function buildDepressionShockAvatarCandidates(playerId: string): string[] {
+export function buildDepressionShockAvatarCandidates(
+  playerId: string,
+  resolvedAvatarCandidates: readonly string[] = [],
+  playerName = ''
+): string[] {
   const base = import.meta.env.BASE_URL ?? '/'
   const prefix = base.endsWith('/') ? base : `${base}/`
-  return [
-    `${prefix}assets/skins/${playerId}_sad_avatar.webp`,
-    `${prefix}assets/skins/${playerId}_depressed_avatar.webp`,
-  ]
+  const sourceStems = resolvedAvatarCandidates.flatMap((candidate) => {
+    const normalized = candidate.replace(/\\/g, '/')
+    const match = normalized.match(/\/assets\/skins\/([^/?#]+)_avatar\.(?:png|webp|jpe?g|svg)(?:[?#].*)?$/i)
+    return match?.[1] ? [decodeURIComponent(match[1])] : []
+  })
+  const nameStem = playerName.trim().replace(/\s+/g, '_')
+  const stems = [...new Set([...sourceStems, nameStem, playerId].filter(Boolean))]
+
+  return stems.flatMap((stem) => [
+    `${prefix}assets/skins/${stem}_sad_avatar.png`,
+    `${prefix}assets/skins/${stem}_sad_avatar.webp`,
+    `${prefix}assets/skins/${stem}_depressed_avatar.webp`,
+  ])
 }
 
 export function subscribeDepressionShockVisualPhase(listener: Subscriber): () => void {
@@ -561,7 +638,24 @@ export function getDepressionShockVisualSnapshot(): DepressionShockVisualPhase {
 }
 
 export function setDepressionShockVisualPhase(next: DepressionShockVisualPhase): void {
-  if (visualPhase === next) return
-  visualPhase = next
-  visualSubscribers.forEach((listener) => listener())
+  if (visualPhase !== next) {
+    visualPhase = next
+    visualSubscribers.forEach((listener) => listener())
+  }
+  setDepressionShockPortraitMode(next === 'day1' || next === 'day2' ? 'sad' : 'normal')
+}
+
+export function subscribeDepressionShockPortraitMode(listener: Subscriber): () => void {
+  portraitSubscribers.add(listener)
+  return () => portraitSubscribers.delete(listener)
+}
+
+export function getDepressionShockPortraitSnapshot(): DepressionShockPortraitMode {
+  return portraitMode
+}
+
+export function setDepressionShockPortraitMode(next: DepressionShockPortraitMode): void {
+  if (portraitMode === next) return
+  portraitMode = next
+  portraitSubscribers.forEach((listener) => listener())
 }

@@ -27,6 +27,44 @@ type DispatchApi = Pick<MiddlewareAPI, 'dispatch'>
 
 let pendingSurprise: { gameId: string; week: number; kind: 'nomination' | 'safety' } | null = null
 
+const DEPRESSION_SHOCK_MOMENT_LIMIT = 3
+
+function buildDepressionShockMoment(entry: SocialActionLogEntry, actorName: string, targetName: string): string {
+  switch (entry.actionId) {
+    case 'joke':
+    case 'banter':
+    case 'playful_tease':
+    case 'tease':
+      return `${actorName} tried to make ${targetName} laugh, but the joke landed hard. ${targetName} burst into tears, and the room went quiet.`
+    case 'flirt':
+    case 'romance':
+    case 'spend_night':
+    case 'go_public':
+      return `${actorName} tried to flirt with ${targetName}, but the mood snapped. They ended up shouting across the room instead.`
+    case 'confront':
+    case 'public_callout':
+    case 'betray':
+    case 'plant_lie':
+    case 'rumor':
+      return `${actorName} tried to press ${targetName} for answers, but the conversation turned into a raw argument before either could back down.`
+    case 'reassure':
+    case 'repair_bond':
+      return `${actorName} tried to comfort ${targetName}, but every word sounded wrong. ${targetName} walked away in tears.`
+    default:
+      return `${actorName} reached out to ${targetName}, but the moment curdled into an awkward silence neither of them could escape.`
+  }
+}
+
+function shouldEmitDepressionShockMoment(game: GameState, entry: SocialActionLogEntry): boolean {
+  const momentKey = `${game.week}:${entry.actorId}:${entry.targetId}:${entry.actionId}`
+  const shockMoments = game.tvFeed.filter(
+    (event) => event.meta?.depressionShockMoment === true && event.meta?.week === game.week
+  )
+  return shockMoments.length < DEPRESSION_SHOCK_MOMENT_LIMIT && !game.tvFeed.some(
+    (event) => event.meta?.depressionShockMomentKey === momentKey
+  )
+}
+
 function labelForDelta(delta: number): string {
   if (delta <= -5) return 'Bad'
   if (delta < 1) return 'Unmoved'
@@ -36,6 +74,10 @@ function labelForDelta(delta: number): string {
 
 function activePlayers(game: GameState) {
   return game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+}
+
+function isDepressionShockSocialPhase(game: Pick<GameState, 'phase'>): boolean {
+  return game.phase === 'social_1' || game.phase === 'social_2'
 }
 
 function dispatchRelationshipCorrections(
@@ -287,7 +329,11 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
     })
   }
 
-  if (type === 'social/recordSocialAction' && isDepressionShockActive(stateBefore.game)) {
+  if (
+    type === 'social/recordSocialAction' &&
+    isDepressionShockActive(stateBefore.game) &&
+    isDepressionShockSocialPhase(stateBefore.game)
+  ) {
     const originalEntry = (action as unknown as { payload: { entry: SocialActionLogEntry } })
       .payload.entry
     if (
@@ -301,19 +347,32 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
       })
       dispatchRelationshipCorrections(api, opposite.corrections)
 
+      const actorName =
+        stateBefore.game.players.find((player) => player.id === originalEntry.actorId)?.name ??
+        originalEntry.actorId
       const targetName =
         stateBefore.game.players.find((player) => player.id === originalEntry.targetId)?.name ??
         originalEntry.targetId
-      api.dispatch({
-        type: 'game/addTvEvent',
-        payload: {
-          text: `Depression Shock: ${targetName}'s reaction landed in exactly the opposite way from what was expected.`,
-          type: 'social',
-          source: 'system',
-          channels: ['mainLog'],
-          meta: { suppressTv: true, depressionShock: true, interactionFlipped: true },
-        },
-      })
+      if (shouldEmitDepressionShockMoment(stateBefore.game, originalEntry)) {
+        const momentKey = `${stateBefore.game.week}:${originalEntry.actorId}:${originalEntry.targetId}:${originalEntry.actionId}`
+        api.dispatch({
+          type: 'game/addTvEvent',
+          payload: {
+            text: buildDepressionShockMoment(originalEntry, actorName, targetName),
+            type: 'social',
+            source: 'system',
+            channels: ['tv', 'mainLog'],
+            meta: {
+              depressionShock: true,
+              depressionShockMoment: true,
+              depressionShockMomentKey: momentKey,
+              interactionFlipped: true,
+              forceOnTv: true,
+              week: stateBefore.game.week,
+            },
+          },
+        })
+      }
       return result
     }
   }

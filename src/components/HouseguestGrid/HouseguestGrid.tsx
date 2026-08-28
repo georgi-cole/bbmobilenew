@@ -469,6 +469,7 @@ export default function HouseguestGrid({
                 key={hg.id}
                 className={`${itemClassName}${focusedCupidPairId === cupidPair?.id ? ` ${styles.cupidPairFocused}` : ''}`}
                 data-player-id={String(hg.id)}
+                data-depression-target={!hg.isYou && !hg.isEvicted ? 'true' : undefined}
                 onPointerEnter={() => focusCupidPair(cupidPair?.id ?? null)}
                 onPointerLeave={() => setFocusedCupidPairId(null)}
                 onFocusCapture={() => focusCupidPair(cupidPair?.id ?? null)}

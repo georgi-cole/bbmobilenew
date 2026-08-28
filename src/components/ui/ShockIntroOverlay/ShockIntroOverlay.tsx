@@ -218,6 +218,7 @@ export default function ShockIntroOverlay({
   const isCupidIntro = shockKey === 'cupid_arrow'
   const isCupidBreak = shockKey === 'cupid_arrow_broken'
   const isCupid = isCupidIntro || isCupidBreak
+  const isDepressionDrain = shockKey === 'depression_shock_day_2'
   const duration = prefersReducedMotion
     ? SHOCK_INTRO_REDUCED_DURATION_MS
     : isCupidBreak
@@ -277,7 +278,7 @@ export default function ShockIntroOverlay({
         .filter(Boolean)
         .join(' ')}
       data-cupid-mode={isCupidBreak ? 'breaking' : isCupidIntro ? 'arriving' : undefined}
-      data-shock-theme={isCupid ? 'cupid' : 'main'}
+      data-shock-theme={isCupid ? 'cupid' : isDepressionDrain ? 'depression-drain' : 'main'}
       data-testid="shock-intro-overlay"
       style={{ '--shock-intro-duration-ms': `${duration}ms` } as CSSProperties}
     >

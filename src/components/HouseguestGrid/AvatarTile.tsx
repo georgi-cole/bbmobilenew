@@ -6,6 +6,11 @@ import { getLocalAvatarFallback, getProfilePhotoAvatarId } from '../../utils/ava
 import { imageIdToDataUrl } from '../../utils/imageDb'
 import { getBadgesForPlayer } from '../../utils/statusBadges'
 import styles from './HouseguestGrid.module.css'
+import {
+  buildDepressionShockAvatarCandidates,
+  getDepressionShockPortraitSnapshot,
+  subscribeDepressionShockPortraitMode,
+} from '../../features/twists/depressionShock'
 
 /** How long (ms) a finger must be held before it is treated as a long-press. */
 export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
@@ -170,6 +175,11 @@ export default function AvatarTile({
   cupidLoveRevealed = false,
   cupidLoveReturning = false,
 }: Props) {
+  const depressionShockPortraitMode = React.useSyncExternalStore(
+    subscribeDepressionShockPortraitMode,
+    getDepressionShockPortraitSnapshot,
+    () => 'normal'
+  )
   const profilePhotoId = getProfilePhotoAvatarId(avatarUrl)
   const attemptRef = React.useRef(0)
   const variantsRef = React.useRef<string[] | null>(null)
@@ -181,14 +191,21 @@ export default function AvatarTile({
   const [statsOpen, setStatsOpen] = React.useState(false)
   const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
-  const resolvedAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
+  const normalAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
+  const useSadPortrait =
+    !isYou && !profilePhotoId &&
+    depressionShockPortraitMode === 'sad'
+  const sadAvatarUrl = useSadPortrait
+    ? buildDepressionShockAvatarCandidates(name.toLowerCase(), avatarUrl ? [avatarUrl] : [], name)[0]
+    : undefined
+  const resolvedAvatarUrl = sadAvatarUrl ?? normalAvatarUrl
   const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
 
   React.useEffect(() => {
     attemptRef.current = 0
     variantsRef.current = null
     exhaustedRef.current = false
-  }, [avatarUrl])
+  }, [avatarUrl, depressionShockPortraitMode, name])
 
   React.useEffect(() => {
     let cancelled = false
@@ -216,6 +233,10 @@ export default function AvatarTile({
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
     if (exhaustedRef.current) return
     const img = e.currentTarget
+    if (sadAvatarUrl && img.src.includes('_sad_avatar.') && normalAvatarUrl) {
+      img.src = normalAvatarUrl
+      return
+    }
     if (!variantsRef.current) {
       variantsRef.current = avatarVariants(img.src)
       attemptRef.current = 0
