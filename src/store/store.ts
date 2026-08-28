@@ -18,6 +18,7 @@ import socialReducer from '../social/socialSlice'
 import { socialMiddleware } from '../social/socialMiddleware'
 import { realityIntegrityMiddleware } from '../social/realityIntegrityMiddleware'
 import { survivorMiddleware } from '../modes/survivorMiddleware'
+import { depressionShockMiddleware } from '../features/twists/depressionShockMiddleware'
 import { tribunalEligibilityMiddleware } from './tribunalEligibilityMiddleware'
 import { soundMiddleware } from './soundMiddleware'
 import uiReducer from './uiSlice'
@@ -105,6 +106,7 @@ export const store = configureStore({
       survivorMiddleware,
       tribunalEligibilityMiddleware,
       realityIntegrityMiddleware,
+      depressionShockMiddleware,
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,

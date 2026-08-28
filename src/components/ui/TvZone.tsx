@@ -7,6 +7,7 @@ import {
   useRef,
   useId,
   startTransition,
+  useSyncExternalStore,
   type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -66,6 +67,12 @@ import VoxAudiencePulseReveal, {
 import './TvZone.css'
 import './TvZoneEnhancements.css'
 import './ShockDangerMode.css'
+import {
+  decorateDepressionShockFauxTvText,
+  getDepressionShockVisualSnapshot,
+  subscribeDepressionShockVisualPhase,
+  type DepressionShockVisualPhase,
+} from '../../features/twists/depressionShock'
 
 const NOOP = () => {}
 const normalizeHubCopy = (value: string) => value
@@ -137,6 +144,11 @@ const MAJOR_KEYS = new Set([
   'custom_broadcast',
   'custom_major',
   'custom_critical',
+  'depression_shock_start',
+  'depression_shock_day_2',
+  'depression_shock_chocolates',
+  'depression_shock_melancholy',
+  'depression_shock_end',
 ])
 
 /** Maps a major key to its announcement title and subtitle. */
@@ -162,6 +174,36 @@ const ANNOUNCEMENT_META: Record<
     // i18n-ignore: Canonical in-world broadcast branding
     title: 'SHOCK ANNOUNCEMENT',
     subtitle: '',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_start: {
+    title: 'Depression Shock',
+    subtitle: 'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_day_2: {
+    title: 'The colour drains away',
+    subtitle: 'The storm has deepened. Today the hub loses most of its colour. Every familiar room feels colder, flatter, and farther away.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_chocolates: {
+    title: 'A small comfort',
+    subtitle: 'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_melancholy: {
+    title: 'Under the weather',
+    subtitle: 'The storm continues to press against every room and every conversation.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_end: {
+    title: 'The sun returns',
+    subtitle: 'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -559,6 +601,7 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'cupid_arrow_broken',
   'vox_populi',
   'tribunal_phase',
+  'depression_shock_start',
 ])
 
 type QueuedShockAnnouncement = {
@@ -664,6 +707,14 @@ export default function TvZone(props: TvZoneProps) {
   const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null)
   const reduxStore = useStore<RootState>()
   const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio)
+  const depressionShockPhase: DepressionShockVisualPhase = useSyncExternalStore(
+    subscribeDepressionShockVisualPhase,
+    getDepressionShockVisualSnapshot,
+    (): DepressionShockVisualPhase => 'inactive'
+  )
+  const depressionShockRainyTv =
+    depressionShockPhase === 'day1' || depressionShockPhase === 'day2'
+  const depressionShockSunnyTv = depressionShockPhase === 'sunbreak'
 
   // Filter entries for the TV viewport (excludes DR-only events).
   const tvVisibleFeed = useMemo(() => gameState.tvFeed.filter(isVisibleOnTv), [gameState.tvFeed])
@@ -887,11 +938,15 @@ export default function TvZone(props: TvZoneProps) {
   const dailyAtmosphere = dailyTransitionPhase
     ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase)
     : null
+  const presentedDailyAtmosphere =
+    depressionShockSunnyTv && (!dailyTransitionPhase || dailyTransitionPhase === 'week_start')
+      ? 'sunny'
+      : dailyAtmosphere
   const dailyMoonPhase = (['crescent', 'half', 'gibbous', 'full'] as const)[
     Math.max(0, gameState.week - 1) % 4
   ]
   const dailyTransitionTitle = getDailyTransitionTitle({
-    atmosphere: dailyAtmosphere,
+    atmosphere: presentedDailyAtmosphere,
     phase: dailyTransitionPhase ?? gameState.phase,
     week: gameState.week,
   })
@@ -1138,7 +1193,13 @@ export default function TvZone(props: TvZoneProps) {
       audiencePreviewRevealActive)
   // Existing saved seasons can still hold the former default welcome copy.
   // Normalize that exact legacy phrase until those broadcasts are regenerated.
-  const displayedEventText = displayedEvent?.text ? normalizeHubCopy(displayedEvent.text) : undefined
+  const displayedEventText = displayedEvent?.text
+    ? decorateDepressionShockFauxTvText(
+        normalizeHubCopy(displayedEvent.text),
+        depressionShockPhase,
+        `${gameState.gameId}|${gameState.week}|${displayedEvent.id}`
+      )
+    : undefined
   const viewportDisplayText =
     viewportMessageOverride ??
     (cupidFollowUpVisible ? cupidFollowUpAnnouncement.subtitle : dailyTransitionTitle ?? displayedEventText)
@@ -1411,6 +1472,14 @@ export default function TvZone(props: TvZoneProps) {
           dispatch(finishCupidArrowVisualReturn())
         }, 240)
         window.setTimeout(() => document.body.classList.remove('body--cupid-returning'), 1780)
+      } else if (activeAnnouncement?.key === 'depression_shock_start') {
+        // The roster transformation belongs to the Faux-TV handoff. Trigger it
+        // only after the standard shock stinger has cleared, so it cannot play
+        // unseen beneath the fullscreen introduction.
+        setShockInfoSpotlightActive(false)
+        window.requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('depression-shock:thunder-presented'))
+        })
       } else {
         setShockInfoSpotlightActive(true)
       }
@@ -1447,6 +1516,9 @@ export default function TvZone(props: TvZoneProps) {
       if (queuedBroadcastEvent && (!activeAnnouncement || managedEventAnnouncement)) {
         if (managedEventAnnouncement) {
           if ((gameState.broadcastQueue?.length ?? 0) > 1) event.preventDefault()
+          if (activeAnnouncement?.key === 'depression_shock_chocolates') {
+            window.dispatchEvent(new Event('depression-shock:chocolate-presented'))
+          }
           handleDismiss()
         } else {
           // A plain message needs to block Play only when another eligible TV
@@ -1475,6 +1547,9 @@ export default function TvZone(props: TvZoneProps) {
         }
         if (!PLAY_THROUGH_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key)) {
           event.preventDefault()
+        }
+        if (activeAnnouncement.key === 'depression_shock_chocolates') {
+          window.dispatchEvent(new Event('depression-shock:chocolate-presented'))
         }
         handleDismiss()
         return
@@ -1821,9 +1896,17 @@ export default function TvZone(props: TvZoneProps) {
           <div
             className={[
               'tv-zone__viewport',
-              dailyTransitionPhase ? 'tv-zone__viewport--daily-transition' : '',
-              dailyTransitionPhase && dailyAtmosphere
-                ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${dailyAtmosphere}`
+              dailyTransitionPhase || depressionShockRainyTv || depressionShockSunnyTv
+                ? 'tv-zone__viewport--daily-transition'
+                : '',
+              dailyTransitionPhase && presentedDailyAtmosphere
+                ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${presentedDailyAtmosphere}`
+                : '',
+              depressionShockRainyTv
+                ? 'tv-zone__viewport--day-start-rainy'
+                : '',
+              depressionShockSunnyTv
+                ? 'tv-zone__viewport--day-start-sunny'
                 : '',
               voteResultsRevealActive ? 'tv-zone__viewport--vote-results' : '',
               props.voteResultsReveal?.resultMode === 'public'
@@ -1837,10 +1920,10 @@ export default function TvZone(props: TvZoneProps) {
             aria-live="polite"
             aria-atomic="true"
           >
-            {dailyTransitionPhase && dailyAtmosphere && (
+            {((dailyTransitionPhase && presentedDailyAtmosphere) || depressionShockRainyTv || depressionShockSunnyTv) && (
               <div
-                className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${dailyAtmosphere}`}
-                data-moon-phase={dailyAtmosphere === 'starry' ? dailyMoonPhase : undefined}
+                className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${depressionShockRainyTv ? 'rainy' : depressionShockSunnyTv ? 'sunny' : presentedDailyAtmosphere}`}
+                data-moon-phase={!depressionShockRainyTv && !depressionShockSunnyTv && presentedDailyAtmosphere === 'starry' ? dailyMoonPhase : undefined}
                 aria-hidden="true"
               >
                 <span className="tv-zone__daily-fog" />
@@ -1854,8 +1937,12 @@ export default function TvZone(props: TvZoneProps) {
             <div
               className={[
                 'tv-zone__message-stage',
-                dailyTransitionPhase && dailyAtmosphere
-                  ? `tv-zone__daily-card tv-zone__daily-card--${dailyAtmosphere}`
+                depressionShockRainyTv
+                  ? 'tv-zone__daily-card tv-zone__daily-card--rainy'
+                  : depressionShockSunnyTv
+                    ? 'tv-zone__daily-card tv-zone__daily-card--sunny'
+                  : dailyTransitionPhase && presentedDailyAtmosphere
+                    ? `tv-zone__daily-card tv-zone__daily-card--${presentedDailyAtmosphere}`
                   : '',
               ]
                 .filter(Boolean)

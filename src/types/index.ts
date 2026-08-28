@@ -238,7 +238,7 @@ export interface TvEvent {
 export type BroadcastLevel = 'minor' | 'major' | 'critical'
 
 /** Campaign filter used by the Broadcast Manager. Undefined means shared by every campaign. */
-export type BroadcastCampaign = 'classic' | 'survival' | 'cupid' | 'vox_populi'
+export type BroadcastCampaign = 'classic' | 'survival' | 'cupid' | 'vox_populi' | 'depression_shock'
 
 /** Per-save changes to a built-in broadcast definition. */
 export interface BroadcastOverride {
