@@ -35,12 +35,16 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-  full-test-suite:
-    name: Complete Vitest unit and integration suite
+  vitest-shards:
+    name: Vitest shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,26 +52,39 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Run complete Vitest suite
+      - name: Run Vitest shard
         id: vitest
         shell: bash
         run: |
           set +e
-          npm test -- --reporter=json --outputFile=vitest-results.json
+          npm test -- --shard=${{ matrix.shard }}/4 --reporter=json --outputFile=vitest-results-${{ matrix.shard }}.json
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
-      - name: Upload complete Vitest results
+      - name: Upload Vitest shard results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vitest-full-suite-results
-          path: vitest-results.json
+          name: vitest-results-shard-${{ matrix.shard }}
+          path: vitest-results-${{ matrix.shard }}.json
           if-no-files-found: warn
           retention-days: 14
-      - name: Fail when the full suite is not green
+      - name: Fail when this shard is not green
         if: steps.vitest.outputs.status != '0'
         run: exit 1
+
+  full-test-suite:
+    name: Complete Vitest unit and integration suite
+    needs: vitest-shards
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every Vitest shard to pass
+        env:
+          SHARD_RESULT: ${{ needs.vitest-shards.result }}
+        run: test "$SHARD_RESULT" = "success"
 
   production-builds:
     name: ${{ matrix.label }}
