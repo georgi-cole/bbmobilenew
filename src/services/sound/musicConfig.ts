@@ -244,7 +244,7 @@ export const DEFAULT_MINIGAME_MUSIC_PROFILES: readonly MinigameMusicProfile[] = 
     stages: {
       rules: SILENT_MUSIC,
       countdown: SILENT_MUSIC,
-      playing: musicTrack('challenge_group_1'),
+      playing: musicTrack('introhub'),
       results: SILENT_MUSIC,
       done: SILENT_MUSIC,
     },

@@ -44,6 +44,7 @@ import PermissionPrompts from '../../components/PermissionPrompts/PermissionProm
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal'
 import { SoundManager } from '../../services/sound/SoundManager'
+import { beginGameplayAudioExit } from '../../services/sound/audioRouteOwnership'
 import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack'
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton'
 import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic'
@@ -177,17 +178,19 @@ function HomeHubAssetLayer({
             aria-label={playSelectionOpen ? 'Play menu' : 'Main menu'}
           >
             {playSelectionOpen
-              ? playSelectionButtons.map(({ key, label, icon, badge, className, variant, onClick }) => (
-                  <GameButton
-                    key={key}
-                    label={label}
-                    icon={icon}
-                    badge={badge}
-                    className={className}
-                    variant={variant}
-                    onClick={onClick}
-                  />
-                ))
+              ? playSelectionButtons.map(
+                  ({ key, label, icon, badge, className, variant, onClick }) => (
+                    <GameButton
+                      key={key}
+                      label={label}
+                      icon={icon}
+                      badge={badge}
+                      className={className}
+                      variant={variant}
+                      onClick={onClick}
+                    />
+                  )
+                )
               : HUB_BUTTONS.map(({ to, label, icon, variant }) => (
                   <GameButton
                     key={to}
@@ -199,19 +202,19 @@ function HomeHubAssetLayer({
                         ? onPlay
                         : to === '/housemates'
                           ? onOpenHousemates
-                        : to === '/credits'
-                          ? () => {
-                              void startCreditsSoundtrackFromGesture().catch(() => {
-                                // The muted video still starts immediately if a browser rejects
-                                // soundtrack playback during route navigation.
-                              })
-                              onNavigate(to)
-                            }
-                          : () =>
-                              onNavigate(
-                                to,
-                                to === '/profile' ? { state: { from: '/' } } : undefined
-                              )
+                          : to === '/credits'
+                            ? () => {
+                                void startCreditsSoundtrackFromGesture().catch(() => {
+                                  // The muted video still starts immediately if a browser rejects
+                                  // soundtrack playback during route navigation.
+                                })
+                                onNavigate(to)
+                              }
+                            : () =>
+                                onNavigate(
+                                  to,
+                                  to === '/profile' ? { state: { from: '/' } } : undefined
+                                )
                     }
                   />
                 ))}
@@ -358,6 +361,7 @@ export default function HomeHub() {
       return
     }
 
+    beginGameplayAudioExit()
     withRunAutosaveSuspended(() => {
       dispatch(hydrateGame(snapshot.game))
       dispatch(hydrateFinale(snapshot.finale))
@@ -384,6 +388,7 @@ export default function HomeHub() {
       return
     }
 
+    beginGameplayAudioExit()
     // resetGame creates the new run ID. Keep reset + ruleset selection inside a
     // single autosave-suspended operation so an expansion never briefly saves a
     // second Classic slot before expansionMode is applied.
@@ -436,6 +441,7 @@ export default function HomeHub() {
   }
 
   function startSurvivorRun() {
+    beginGameplayAudioExit()
     if (!isGuest && activeProfileId) {
       clearSavedRun(activeProfileId, 'survival')
     }
@@ -606,6 +612,14 @@ export default function HomeHub() {
   const handleSplashFinish = useCallback(() => {
     setSplashExitRequested(true)
   }, [])
+
+  useEffect(() => {
+    if (!hubAssetState.ready) return
+    // Make a best-effort start as soon as Intro Hub loading reaches 100%.
+    // Native builds and permissive browser sessions start immediately; if a
+    // browser rejects autoplay, SoundManager retains its first-gesture retry.
+    SoundManager.unlockOnUserGesture()
+  }, [hubAssetState.ready])
 
   useEffect(() => {
     if (!splashDone) return

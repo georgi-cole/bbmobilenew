@@ -8,7 +8,7 @@ import {
   type MusicResolverState,
 } from '../../../src/services/sound/resolveDesiredMusic'
 
-const GROUP_GAME_KEYS = ['bigSpender', 'snake', 'castleRescue', 'batteryLow'] as const
+const GROUP_GAME_KEYS = ['bigSpender', 'snake', 'castleRescue', 'batteryLow', 'holdWall'] as const
 
 function makeState(gameKey: string, phase = 'playing'): MusicResolverState {
   return {
@@ -34,9 +34,9 @@ function makeState(gameKey: string, phase = 'playing'): MusicResolverState {
 
 describe('centralized minigame music configuration', () => {
   it.each(GROUP_GAME_KEYS)(
-    'routes %s exclusively to challenge group 1 while playing',
+    'routes %s to the Intro Hub music while playing in challenge group 1',
     (gameKey) => {
-      expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('challenge_group_1')
+      expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('introhub')
     }
   )
 
@@ -47,14 +47,15 @@ describe('centralized minigame music configuration', () => {
     }
   )
 
-  it('stores the requested asset and lifecycle timings in one config', () => {
+  it('reuses the Intro Hub asset with the challenge-group lifecycle timings', () => {
     const config = getMinigameMusicConfig('bigSpender')
-    expect(config?.sound.src).toContain('assets/music/challenge_group_1.mp3')
+    expect(config?.track).toBe('introhub')
+    expect(config?.sound.src).toContain('assets/sounds/cinematic/Intro_hub_loop.mp3')
     expect(config?.sound.loop).toBe(true)
     expect(config?.fadeInMs).toBe(500)
     expect(config?.postGameHoldMs).toBe(2800)
     expect(config?.fadeOutMs).toBe(2000)
-    expect(getMinigameMusicConfigByTrack('challenge_group_1')).toBe(config)
+    expect(getMinigameMusicConfigByTrack('introhub')).toBe(config)
   })
 
   it('leaves unrelated minigames on their existing audio routes', () => {

@@ -16,6 +16,7 @@ import {
 } from './musicCatalog'
 import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
 import { resolveRuntimeMusicMix, type RuntimeMusicMix } from './musicMix'
+import { GAMEPLAY_AUDIO_EXIT_EVENT } from './audioRouteOwnership'
 
 const VOLUME_RAMP_STEP_MS = 50
 const SAFETY_SEQUENCE_DUCK_LEVEL = 0.12
@@ -90,6 +91,7 @@ export default function AudioStateSync() {
     shallowEqual
   )
   const [hash, setHash] = useState(() => window.location.hash)
+  const [gameplayExitPending, setGameplayExitPending] = useState(false)
   const previousDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const latestDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const heldConfiguredCueRef = useRef<ResolvedMusicCue | null>(null)
@@ -135,9 +137,19 @@ export default function AudioStateSync() {
   }, [effectiveTrackAssets])
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash)
+    const onGameplayExit = () => setGameplayExitPending(true)
+    const onHashChange = () => {
+      setHash(window.location.hash)
+      // Once navigation reaches the gameplay route, Redux/route resolution is
+      // authoritative again. A later navigation home starts Intro Hub once.
+      setGameplayExitPending(false)
+    }
+    window.addEventListener(GAMEPLAY_AUDIO_EXIT_EVENT, onGameplayExit)
     window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
+    return () => {
+      window.removeEventListener(GAMEPLAY_AUDIO_EXIT_EVENT, onGameplayExit)
+      window.removeEventListener('hashchange', onHashChange)
+    }
   }, [])
 
   const resolverState = useMemo<MusicResolverState>(
@@ -189,8 +201,9 @@ export default function AudioStateSync() {
 
   const desiredCue = useMemo<ResolvedMusicCue>(() => {
     if (!musicState.musicOn) return createSilentCue('settings.music-off')
+    if (gameplayExitPending) return createSilentCue('route.gameplay-exit')
     return resolveCue(resolverState)
-  }, [musicState.musicOn, resolveCue, resolverState])
+  }, [gameplayExitPending, musicState.musicOn, resolveCue, resolverState])
 
   useEffect(() => {
     latestDesiredRef.current = desiredCue
