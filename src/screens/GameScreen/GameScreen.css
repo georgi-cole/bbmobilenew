@@ -57,6 +57,12 @@ html.is-capacitor-ios .game-screen {
   box-sizing: border-box;
 }
 
+/* The second day of the Depression Shock deliberately drains the set down to
+   one quarter saturation without dimming it into an inaccessible blackout. */
+.game-screen--depression-day-two {
+  filter: saturate(0.25);
+}
+
 .game-screen > .tv-zone,
 .game-screen--compact-roster-balance > .tv-zone {
   flex: 0 0 auto;
@@ -87,6 +93,22 @@ body:has(.game-screen-shell) {
 body:has(.game-screen) .game-bottom-nav.nav-bar {
   display: none;
 }
+
+body.mode-surveyeval:has(.game-screen-shell),
+body.mode-surveyeval:has(.game-screen-shell) .app-shell,
+body.mode-surveyeval .game-screen-shell {
+  background-color: #111713;
+  background-image: linear-gradient(rgba(17, 23, 19, 0.72), rgba(17, 23, 19, 0.72)), url('/assets/surveyeval-camo-bg.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+body.mode-surveyeval .game-control-dock,
+body.mode-surveyeval .game-control-dock__more-menu,
+body.mode-surveyeval .status-pill,
+body.mode-surveyeval .tv-zone__head-chip { border-color: rgba(182, 200, 106, 0.38); }
+body.mode-surveyeval .game-control-dock .fab-icon.confessional { opacity: .28; filter: grayscale(1); }
 
 /* Gameplay background shell */
 .game-screen-shell {

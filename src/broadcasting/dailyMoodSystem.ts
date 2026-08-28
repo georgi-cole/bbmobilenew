@@ -2,8 +2,22 @@ import type { BroadcastOverride, Phase, Player } from '../types'
 import type { RelationshipsMap } from '../social/types'
 import { getBroadcastTemplate } from './broadcastTemplateCatalog'
 
-export type DayStartAtmosphere = 'sunny' | 'cloudy' | 'rainy' | 'misty' | 'snowy' | 'stormy'
-export type DayEndAtmosphere = 'sunset' | 'starry' | 'rainy' | 'misty' | 'snowy' | 'stormy'
+export type DayStartAtmosphere =
+  | 'sunny'
+  | 'cloudy'
+  | 'rainy'
+  | 'misty'
+  | 'snowy'
+  | 'stormy'
+  | 'rainbow'
+export type DayEndAtmosphere =
+  | 'sunset'
+  | 'starry'
+  | 'rainy'
+  | 'misty'
+  | 'snowy'
+  | 'stormy'
+  | 'rainbow'
 export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
 
 const DAILY_TRANSITION_TITLES = {
@@ -15,6 +29,8 @@ const DAILY_TRANSITION_TITLES = {
     misty: 'Day {day} opens under a soft veil of mist. The house feels hushed and close. 🌫️',
     snowy: 'Day {day} arrives with quiet snow drifting past the windows. ❄️',
     stormy: 'Day {day} begins beneath a distant rumble. The house feels electric. ⚡',
+    rainbow:
+      'The sun breaks through the clouds. A rainbow fills the sky and the house can finally breathe again. 🌈',
   },
   week_end: {
     sunset: 'Day {day} settles into golden hour. Everything else can wait until morning. 🌇',
@@ -24,6 +40,7 @@ const DAILY_TRANSITION_TITLES = {
     misty: 'Day {day} fades into a silver mist. The house exhales and quiets down. 🌫️',
     snowy: 'Day {day} closes with snow settling softly outside the house. ❄️',
     stormy: 'Day {day} ends with thunder rolling somewhere beyond the walls. ⚡',
+    rainbow: 'The storm has passed. A last rainbow glows over the quiet house. 🌈',
   },
 } as const
 
@@ -40,8 +57,11 @@ function hashText(value: string): number {
 export function getDailyAtmosphere(
   gameId: string | undefined,
   week: number,
-  phase: Phase
+  phase: Phase,
+  depression?: { activeDay?: number; recoveryWeek?: number | null }
 ): DailyAtmosphere | null {
+  if (depression?.activeDay && depression.activeDay > 0) return 'stormy'
+  if (depression?.recoveryWeek === week) return 'rainbow'
   // Preview and test games can be constructed before a durable id is assigned.
   // Keep their atmosphere deterministic instead of throwing during the day card.
   const offset = hashText(gameId ?? 'preview-game') % 6

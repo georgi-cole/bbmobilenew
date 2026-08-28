@@ -50,7 +50,7 @@ export default function SurvivorStandoutCard({ standout, mode, onPlayerClick }: 
           <img className="survivor-standout__avatar" src={resolveAvatar(primary.player)} alt="" />
         </span>
         <span className="survivor-standout__copy">
-          <span className="survivor-standout__eyebrow">Surveyeval Standout</span>
+        <span className="survivor-standout__eyebrow">Current lead</span>
           <strong className="survivor-standout__title">{title}</strong>
           <span className="survivor-standout__subtitle">{subtitle}</span>
         </span>

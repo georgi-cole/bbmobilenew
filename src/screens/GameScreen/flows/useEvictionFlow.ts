@@ -806,6 +806,9 @@ export function useEvictionFlow({
     // Capture the phase before dispatch since finalizePendingEviction may change it.
     const isFinal4 = game.phase === 'final4_eviction'
     dispatch(finalizePendingEviction(evicteeId))
+    // Surveyeval deliberately pauses here. The evicted tile remains in its
+    // red-stripe state until the player presses Play to reveal the substitute.
+    if (game.mode === 'survival') return
     if (isFinal4) {
       // Final-4: advance the local stage machine; no battle back check needed.
       setFinal4Stage('done')

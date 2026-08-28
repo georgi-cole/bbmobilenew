@@ -12,7 +12,7 @@ import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice'
 import PhonePreviewSystemChrome from './PhonePreviewSystemChrome'
 import './AppShell.css'
 
-const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean']
+const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean', 'surveyeval']
 const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'))
 const QaManagerShortcuts = lazy(() => import('../DebugPanel/QaManagerShortcuts'))
 const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'))
@@ -38,6 +38,7 @@ const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFi
 export default function AppShell() {
   const location = useLocation()
   const phase = useAppSelector((s) => s.game.phase)
+  const gameMode = useAppSelector((s) => s.game.mode)
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale)
   const voxPopuliActive = useAppSelector((s) => s.game.voxPopuli?.status === 'active')
   const finale = useAppSelector(selectFinale)
@@ -55,6 +56,11 @@ export default function AppShell() {
     THEME_PRESETS.forEach((t) => document.body.classList.remove(`theme-${t}`))
     document.body.classList.add(`theme-${display.themePreset}`)
   }, [display.themePreset])
+
+  useEffect(() => {
+    document.body.classList.toggle('mode-surveyeval', gameMode === 'survival')
+    return () => document.body.classList.remove('mode-surveyeval')
+  }, [gameMode])
 
   // Keep viewport-fit=cover attached to every runtime viewport meta rewrite.
   useEffect(() => {

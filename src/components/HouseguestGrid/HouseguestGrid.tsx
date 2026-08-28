@@ -8,28 +8,12 @@ import styles from './HouseguestGrid.module.css'
 import './cupidRoseGold/CupidRoseGold.css'
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
+import { advance, clearSurvivorReplacementTransition } from '../../store/gameSlice'
 import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
 import { getCupidPair, isCupidArrowVisualsRevealed } from '../../features/twists/cupidArrow'
 import { resolveCupidLoveAvatar } from '../../utils/cupidLoveAvatar'
-import { getDailyAtmosphere, type DailyAtmosphere } from '../../broadcasting/dailyMoodSystem'
-import useSound from '../../hooks/useSound'
 
 const HOUSEMATES_SECTION_TITLE = 'HUBMATES'
-
-const WEATHER_REVEAL_SOUNDS: Record<
-  DailyAtmosphere,
-  { key: string; volume: number; delayMs: number }
-> = {
-  sunny: { key: 'ui:confirm', volume: 0.2, delayMs: 0 },
-  cloudy: { key: 'ui:navigate', volume: 0.16, delayMs: 0 },
-  rainy: { key: 'ui:navigate', volume: 0.14, delayMs: 0 },
-  misty: { key: 'ui:navigate', volume: 0.12, delayMs: 80 },
-  snowy: { key: 'ui:confirm', volume: 0.14, delayMs: 80 },
-  sunset: { key: 'ui:confirm', volume: 0.16, delayMs: 0 },
-  starry: { key: 'ui:navigate', volume: 0.13, delayMs: 100 },
-  stormy: { key: 'minigame:cinematic_thunder', volume: 0.28, delayMs: 840 },
-}
 
 type RoboStatsSummary = {
   daysInGame?: number | null
@@ -83,6 +67,7 @@ export type Houseguest = {
    * active, so the shared-layout portrait is the only visible instance.
    */
   isEvicting?: boolean
+  isSurveyevalEvicting?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
 }
 
@@ -157,11 +142,8 @@ export default function HouseguestGrid({
   showRosterLogLauncher = false,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
-  const weatherRevealKeyRef = useRef<string | null>(null)
   const dispatch = useAppDispatch()
-  const { play } = useSound()
   const game = useAppSelector((s) => s.game)
-  const [weatherReveal, setWeatherReveal] = useState<DailyAtmosphere | null>(null)
   const cupidVisualsRevealed = isCupidArrowVisualsRevealed(game)
   const previousCupidVisualsRevealedRef = useRef(cupidVisualsRevealed)
   const cupidPairFocusTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
@@ -246,41 +228,8 @@ export default function HouseguestGrid({
     return statsById
   }, [game.mode, game.modeSpecific, game.players, game.week])
   const renderedHouseguests = useMemo(() => {
-    if (game.mode !== 'survival' || survivorReplacementTransition === null) return houseguests
-
-    const outgoing = survivorReplacementTransition.outgoingPlayerSnapshot
-    const incomingId = survivorReplacementTransition.incomingPlayerId
-    const slot = survivorReplacementTransition.slot
-    const incomingIndex = houseguests.findIndex(
-      (houseguest) => String(houseguest.id) === incomingId
-    )
-    const slotIndex = game.players.findIndex((player) => player.survivorSlot === slot)
-    const targetIndex = incomingIndex >= 0 ? incomingIndex : slotIndex
-    if (targetIndex < 0 || targetIndex >= houseguests.length) return houseguests
-
-    return houseguests.map((houseguest, index) =>
-      index === targetIndex
-        ? {
-            id: outgoing.id,
-            name: outgoing.name,
-            avatarUrl: outgoing.avatar,
-            isEvicted: true,
-            isYou: outgoing.isUser,
-            roboStats: outgoing.isRobo
-              ? {
-                  daysInGame: Math.max(1, game.week - (outgoing.survivorEntryDay ?? 1) + 1),
-                  lohWins: outgoing.stats?.lohWins ?? 0,
-                  posWins: outgoing.stats?.posWins ?? 0,
-                  averageLohRank: null,
-                  averagePosRank: null,
-                }
-              : undefined,
-            statuses: [],
-            showPermanentBadge: false,
-          }
-        : houseguest
-    )
-  }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
+    return houseguests
+  }, [houseguests])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
   const showSurvivorStandout = game.mode === 'survival' && overlaySelector === '.game-control-dock'
   const survivorStandout = useMemo(
@@ -300,31 +249,6 @@ export default function HouseguestGrid({
   })
 
   useEffect(() => {
-    if (game.phase !== 'week_start' && game.phase !== 'week_end') {
-      return undefined
-    }
-
-    const atmosphere = getDailyAtmosphere(game.gameId, game.week, game.phase)
-    if (!atmosphere) return undefined
-
-    const revealKey = `${game.week}-${game.phase}-${atmosphere}`
-    if (weatherRevealKeyRef.current === revealKey) return undefined
-    weatherRevealKeyRef.current = revealKey
-    const revealTimer = window.setTimeout(() => setWeatherReveal(atmosphere), 0)
-    const sound = WEATHER_REVEAL_SOUNDS[atmosphere]
-    const soundTimer = window.setTimeout(
-      () => play(sound.key, { volume: sound.volume }),
-      sound.delayMs
-    )
-    const timer = window.setTimeout(() => setWeatherReveal(null), 3000)
-    return () => {
-      window.clearTimeout(revealTimer)
-      window.clearTimeout(soundTimer)
-      window.clearTimeout(timer)
-    }
-  }, [game.gameId, game.phase, game.week, play])
-
-  useEffect(() => {
     if (survivorReplacementTransition === null) return undefined
     const remainingMs = Math.max(
       0,
@@ -334,6 +258,7 @@ export default function HouseguestGrid({
     )
     const timer = window.setTimeout(() => {
       dispatch(clearSurvivorReplacementTransition())
+      dispatch(advance())
     }, remainingMs)
     return () => window.clearTimeout(timer)
   }, [dispatch, survivorReplacementTransition])
@@ -412,6 +337,7 @@ export default function HouseguestGrid({
         data-compact-layout={effectiveCompactLayout}
         data-roster-mode={rosterMode}
         data-header-mode={headerMode}
+        data-surveyeval-replacement={survivorReplacementTransition ? 'active' : undefined}
         data-houseguest-roster="true"
       >
         <div key={headerSignal} className={styles.headerRow} aria-live="polite">
@@ -448,10 +374,6 @@ export default function HouseguestGrid({
           Tap a player to interact. Press and hold to preview their profile.
         </p>
 
-        {weatherReveal && (game.phase === 'week_start' || game.phase === 'week_end') && (
-          <div className={styles.weatherReveal} data-weather={weatherReveal} aria-hidden="true" />
-        )}
-
         <ul
           className={listClassName}
           role="list"
@@ -469,6 +391,11 @@ export default function HouseguestGrid({
                 key={hg.id}
                 className={`${itemClassName}${focusedCupidPairId === cupidPair?.id ? ` ${styles.cupidPairFocused}` : ''}`}
                 data-player-id={String(hg.id)}
+                data-replacement-target={
+                  survivorReplacementTransition?.incomingPlayerId === String(hg.id)
+                    ? 'true'
+                    : undefined
+                }
                 data-depression-target={!hg.isYou && !hg.isEvicted ? 'true' : undefined}
                 onPointerEnter={() => focusCupidPair(cupidPair?.id ?? null)}
                 onPointerLeave={() => setFocusedCupidPairId(null)}
@@ -492,6 +419,7 @@ export default function HouseguestGrid({
                   showPermanentBadge={hg.showPermanentBadge}
                   layoutId={hg.layoutId}
                   isEvicting={hg.isEvicting}
+                  isSurveyevalEvicting={hg.isSurveyevalEvicting}
                   nominationCeremonyState={hg.nominationCeremonyState}
                   descriptionId="houseguests-interaction-instructions"
                   pairColor={cupidPair?.color}
@@ -502,6 +430,10 @@ export default function HouseguestGrid({
                   partnerName={cupidPartnerName}
                   cupidLoveRevealed={cupidRevealAnimating}
                   cupidLoveReturning={cupidReturnAnimating}
+                  depressionActive={(game.depressionShock?.activeDay ?? 0) > 0 && !hg.isEvicted}
+                  depressionRecovery={
+                    game.depressionShock?.recoveryWeek === game.week && !hg.isEvicted
+                  }
                 />
               </li>
             )

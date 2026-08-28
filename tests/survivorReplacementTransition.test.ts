@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import gameReducer, {
   finalizePendingEviction,
   hydrateGame,
+  revealSurvivorReplacement,
 } from '../src/store/gameSlice';
 import { survivorMiddleware } from '../src/modes/survivorMiddleware';
 import { createSurvivorRun, SURVIVOR_STARTING_CAST_SIZE } from '../src/modes/survivorRun';
@@ -15,7 +16,7 @@ function makeStore() {
 }
 
 describe('Survivor replacement transition', () => {
-  it('stores outgoing and incoming metadata when a robo eviction is replaced', () => {
+  it('holds the evicted tile until Play reveals the replacement', () => {
     const store = makeStore();
     const survivorRun = createSurvivorRun();
     const outgoing = survivorRun.players.find((player) => player.isRobo);
@@ -30,6 +31,16 @@ describe('Survivor replacement transition', () => {
     }));
 
     store.dispatch(finalizePendingEviction(outgoing!.id));
+
+    const pausedGame = store.getState().game;
+    const pending = pausedGame.modeSpecific?.kind === 'survival'
+      ? pausedGame.modeSpecific.replacementPending
+      : null;
+    expect(pending?.outgoingPlayerSnapshot.id).toBe(outgoing!.id);
+    expect(pausedGame.players.some((player) => player.id === outgoing!.id)).toBe(true);
+    expect(pausedGame.players.find((player) => player.id === outgoing!.id)?.status).toBe('evicted');
+
+    store.dispatch(revealSurvivorReplacement());
 
     const game = store.getState().game;
     const transition = game.modeSpecific?.kind === 'survival'
@@ -48,5 +59,8 @@ describe('Survivor replacement transition', () => {
     expect(transition?.durationMs).toBe(2000);
     expect(replacement?.isRobo).toBe(true);
     expect(replacement?.survivorSlot).toBe(outgoing!.survivorSlot);
+    expect(game.tvFeed[0]?.text).toContain('replacement synthetic contestant');
+    expect(game.tvFeed[0]?.meta?.phase).toBe('eviction_results');
+    expect(game.tvFeed[0]?.meta?.forceOnTv).toBe(true);
   });
 });

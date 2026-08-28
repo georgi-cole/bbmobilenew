@@ -16,9 +16,11 @@ import {
   resolveFavoritePlayerWinner,
   resumeAfterPublicFavorite,
   tryActivateDayStartShock,
+  tryActivateDepressionShock,
   tryActivateDemocracia,
   tryActivateDoubleEviction,
   tryActivatePendingForcedDayStartShock,
+  tryActivatePendingForcedDepressionShock,
   tryActivatePendingForcedDemocracia,
   tryActivatePendingForcedDoubleEviction,
   tryActivatePendingForcedSpecialVeto,
@@ -142,6 +144,14 @@ export function useTwistFlow({
     }
     if (weekStartActivationResolvedRef.current) return
 
+    if (dispatch(tryActivatePendingForcedDepressionShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateDepressionShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
     if (dispatch(tryActivatePendingForcedDayStartShock())) {
       weekStartActivationResolvedRef.current = true
       return
