@@ -1,4 +1,4 @@
-import type { Middleware } from '@reduxjs/toolkit'
+import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit'
 import type { GameState } from '../../types'
 import type { RelationshipsMap, SocialActionLogEntry } from '../../social/types'
 import {
@@ -23,6 +23,8 @@ type RelationshipCorrection = {
   correction: number
 }
 
+type DispatchApi = Pick<MiddlewareAPI, 'dispatch'>
+
 let pendingSurprise:
   | { gameId: string; week: number; kind: 'nomination' | 'safety' }
   | null = null
@@ -39,7 +41,7 @@ function activePlayers(game: GameState) {
 }
 
 function dispatchRelationshipCorrections(
-  api: { dispatch: (action: unknown) => unknown },
+  api: DispatchApi,
   corrections: readonly RelationshipCorrection[]
 ) {
   corrections.forEach(({ source, target, correction }) => {
@@ -166,7 +168,7 @@ function maybeDistortStrategicRelationships(
 }
 
 function announceSurpriseDecision(
-  api: { dispatch: (action: unknown) => unknown },
+  api: DispatchApi,
   before: GameState,
   after: GameState,
   kind: 'nomination' | 'safety'
@@ -194,7 +196,8 @@ function announceSurpriseDecision(
     return
   }
 
-  const holderName = after.players.find((player) => player.id === after.posWinnerId)?.name ?? 'The Safety holder'
+  const holderName =
+    after.players.find((player) => player.id === after.posWinnerId)?.name ?? 'The Safety holder'
   const savedIds = before.nomineeIds.filter((id) => !after.nomineeIds.includes(id))
   const savedNames = savedIds
     .map((id) => after.players.find((player) => player.id === id)?.name)
@@ -214,12 +217,18 @@ function announceSurpriseDecision(
 }
 
 function maybeTriggerRandomFight(
-  api: { dispatch: (action: unknown) => unknown },
+  api: DispatchApi,
   state: DepressionShockRootState,
   previousPhase: string | undefined
 ) {
   const game = state.game
-  if (!isDepressionShockActive(game) || previousPhase === game.phase || game.phase !== 'social_1') return
+  if (
+    !isDepressionShockActive(game) ||
+    previousPhase === game.phase ||
+    game.phase !== 'social_1'
+  ) {
+    return
+  }
   if (!consumeDepressionShockFightRoll(game.gameId, game.week)) return
 
   const eligibleIds = activePlayers(game)
@@ -276,7 +285,7 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
   const stateBefore = api.getState() as DepressionShockRootState
 
   if (type === 'game/syncStrategicRelationships' && isDepressionShockActive(stateBefore.game)) {
-    const payload = (action as { type: string; payload: RelationshipsMap }).payload
+    const payload = (action as unknown as { type: string; payload: RelationshipsMap }).payload
     return next({
       ...(action as object),
       payload: maybeDistortStrategicRelationships(stateBefore, payload),
@@ -284,7 +293,9 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
   }
 
   if (type === 'social/recordSocialAction' && isDepressionShockActive(stateBefore.game)) {
-    const originalEntry = (action as { payload: { entry: SocialActionLogEntry } }).payload.entry
+    const originalEntry = (
+      action as unknown as { payload: { entry: SocialActionLogEntry } }
+    ).payload.entry
     if (
       originalEntry.delta !== 0 &&
       shouldDepressionShockFlipInteraction(stateBefore.game.gameId, stateBefore.game.week)
