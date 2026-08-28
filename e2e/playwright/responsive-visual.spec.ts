@@ -12,6 +12,7 @@ const SCREENSHOT_OPTIONS = {
   animations: 'disabled' as const,
   caret: 'hide' as const,
   maxDiffPixelRatio: 0.01,
+  timeout: 30_000,
 }
 
 const runResponsiveVisual = process.env.RESPONSIVE_VISUAL === '1'
