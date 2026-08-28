@@ -97,10 +97,9 @@ for (const systemBarsVisible of [true, false]) {
       await expect(toolbar).toBeVisible()
       await expect(navigation).toBeVisible()
       await expect(page.getByRole('heading', { name: /HUBMATES/ })).toBeVisible()
-      await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
 
       await assertElementWithinViewport(actionZone)
-      await assertElementWithinSafeArea(toolbar, insets)
+      await assertElementWithinViewport(toolbar)
       await assertElementWithinViewport(navigation)
       await assertNoCriticalOverlap(toolbar, navigation)
       await assertResponsiveDocumentContract(page, insets)

@@ -22,23 +22,25 @@ export function safeAreaForProject(
 ): SafeAreaInsets {
   const name = projectName.toLowerCase()
 
+  // These are pure viewport-stress projects, not native device profiles.
+  // Giving them simulated OS insets turns normal full-viewport containers into
+  // false positives instead of testing the width/height constraints they exist for.
+  if (name === 'narrow-chromium' || name === 'compact-mobile-chromium') {
+    return NO_SAFE_AREA
+  }
+
   if (name.includes('ios-small')) {
     return systemBarsVisible ? { top: 20, right: 0, bottom: 0, left: 0 } : NO_SAFE_AREA
   }
 
-  if (name.includes('webkit') || name.includes('ios-')) {
+  if (name === 'mobile-webkit' || name.includes('ios-')) {
     // Notched / Dynamic-Island-class iPhones keep the hardware safe area even
     // when status text is hidden. The larger value is deliberately conservative.
     const top = name.includes('modern') || name.includes('large') ? 59 : 47
     return { top, right: 0, bottom: 34, left: 0 }
   }
 
-  if (
-    name.includes('android') ||
-    name.includes('mobile-chromium') ||
-    name.includes('compact-mobile') ||
-    name.includes('narrow')
-  ) {
+  if (name === 'mobile-chromium' || name.includes('android')) {
     return systemBarsVisible
       ? { top: 24, right: 0, bottom: 24, left: 0 }
       : { top: 0, right: 0, bottom: 24, left: 0 }
