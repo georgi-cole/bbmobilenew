@@ -12,8 +12,8 @@
  *
  * Backward-compatibility rule: TvEvent entries that carry NO channels field
  * are treated as legacy events and remain visible everywhere (mainLog + tv),
- * except for explicitly classified result-only or service/configuration events
- * that belong in the log rather than the faux TV.
+ * except for the one explicit Public Mode status message that belongs only in
+ * the log.
  */
 
 /** Destination channels an activity event can be routed to. */
@@ -31,23 +31,16 @@ type ActivityVisibilityEvent = {
   meta?: { suppressTv?: boolean; [key: string]: unknown }
 }
 
-const LOG_ONLY_BROADCAST_TEMPLATE_IDS = new Set([
-  'season.public-mode-rule',
-  'survival.rules',
-])
+const PUBLIC_MODE_STATUS_TEMPLATE_ID = 'season.public-mode-rule'
 
 /**
- * Service/configuration copy is useful history, but it is not an in-world TV
- * event. Keep current and legacy [Rules]/[System]/[Config] messages in the log
- * only. The explicit template IDs cover the known production rules messages;
- * the prefix fallback prevents a future service line from accidentally taking
- * over the faux TV merely because it omitted routing metadata.
+ * The season-start Public Mode ON/OFF status is configuration information,
+ * not an in-world TV beat. Keep this one known template in the log. Do not
+ * infer other service/system/social messages from their wording: every other
+ * event keeps its normal authored routing.
  */
 export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolean {
-  const templateId =
-    typeof ev.meta?.broadcastTemplateId === 'string' ? ev.meta.broadcastTemplateId : null
-  if (templateId && LOG_ONLY_BROADCAST_TEMPLATE_IDS.has(templateId)) return true
-  return typeof ev.text === 'string' && /^\s*\[(?:Rules|System|Config)\]\s*/i.test(ev.text)
+  return ev.meta?.broadcastTemplateId === PUBLIC_MODE_STATUS_TEMPLATE_ID
 }
 
 /**
@@ -95,12 +88,9 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
 /**
  * Returns true when the event should appear in the TV-zone viewport.
  *
- * Rules:
- *  - Service/configuration messages: false; they remain available to mainLog.
- *  - Replaced legacy welcome defaults: false; the staged welcome supersedes them.
- *  - Back 2 the Game winner/result event: false; it remains available to mainLog.
- *  - No channels (legacy event): visible everywhere → true.
- *  - Has channels: visible only if 'tv' or 'mainLog' is included.
+ * Only the explicit Public Mode status is made log-only here. All normal game
+ * and social events keep their authored routing; this function deliberately
+ * does not classify messages by prefixes or wording.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   if (isServiceConfigurationEvent(ev)) return false
