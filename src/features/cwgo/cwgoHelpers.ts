@@ -250,26 +250,31 @@ export function generateAIResponseTimeMs(
     ? 1_600 + hesitationRng() * Math.max(1_500, 2_600 - round * 300)
     : 0
   const slowThinkerChance = Math.max(0.2, 0.45 - round * 0.1)
-  const slowThinkerDelayMs = isOpeningRound && hesitationRng() < slowThinkerChance
-    ? 2_500 + hesitationRng() * 3_000
-    : 0
+  const slowThinkerDelayMs =
+    isOpeningRound && hesitationRng() < slowThinkerChance ? 2_500 + hesitationRng() * 3_000 : 0
   const openingDelayMs = openingBaseDelayMs + slowThinkerDelayMs
 
   if (context.answerMode === 'common_knowledge' && context.knewAnswer) {
     const readingAndRecallMs = 900 + d * 180 + roundRng() * (1_250 + d * 170)
     const totalMs = readingAndRecallMs * speedTrait * skillSpeedModifier + openingDelayMs
-    return Math.round(clamp(totalMs, isOpeningRound ? 3_200 : 1_200, isOpeningRound ? 13_500 : 6_500))
+    return Math.round(
+      clamp(totalMs, isOpeningRound ? 3_200 : 1_200, isOpeningRound ? 13_500 : 6_500)
+    )
   }
 
   if (context.answerMode === 'exact_fact' && context.knewAnswer) {
     const recallMs = 1_250 + d * 430 + roundRng() * (1_500 + d * 300)
     const totalMs = recallMs * speedTrait * skillSpeedModifier + openingDelayMs
-    return Math.round(clamp(totalMs, isOpeningRound ? 3_600 : 1_500, isOpeningRound ? 14_500 : 8_500))
+    return Math.round(
+      clamp(totalMs, isOpeningRound ? 3_600 : 1_500, isOpeningRound ? 14_500 : 8_500)
+    )
   }
 
   const thinkingMs = (1_700 + d * 720 + roundRng() * (1_900 + d * 520)) * speedTrait
   const totalMs = thinkingMs * skillSpeedModifier + openingDelayMs
-  return Math.round(clamp(totalMs, isOpeningRound ? 4_200 : 1_800, isOpeningRound ? 16_000 : 13_500))
+  return Math.round(
+    clamp(totalMs, isOpeningRound ? 4_200 : 1_800, isOpeningRound ? 16_000 : 13_500)
+  )
 }
 
 /**
@@ -375,11 +380,10 @@ export function computeMassElimination(
     // Keep at least two contestants whenever this is still a qualifier. This
     // prevents a 3-player round with two over-guesses from accidentally ending
     // the whole competition instead of producing the intended final duel.
-    const eliminationCount = aliveIds.length > 2
-      ? Math.min(overEntries.length, aliveIds.length - 2)
-      : overEntries.length
+    const eliminationCount =
+      aliveIds.length > 2 ? Math.min(overEntries.length, aliveIds.length - 2) : overEntries.length
     const worstOverGuesses = [...overEntries].sort((a, b) => {
-      const overshootDiff = (b.guess - answer) - (a.guess - answer)
+      const overshootDiff = b.guess - answer - (a.guess - answer)
       if (overshootDiff !== 0) return overshootDiff
       const timeDiff =
         (responseTimesMs[b.playerId] ?? Number.MAX_SAFE_INTEGER) -

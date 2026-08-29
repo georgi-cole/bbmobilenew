@@ -6,15 +6,8 @@ import reducer, {
   setResponseTimes,
   startCwgoCompetition,
 } from '../src/features/cwgo/cwgoCompetitionSlice'
-import {
-  computeMassElimination,
-  generateAIResponseTimeMs,
-} from '../src/features/cwgo/cwgoHelpers'
-import {
-  cwgoInputUnit,
-  formatCwgoValue,
-  parseCwgoGuess,
-} from '../src/features/cwgo/cwgoDisplay'
+import { computeMassElimination, generateAIResponseTimeMs } from '../src/features/cwgo/cwgoHelpers'
+import { cwgoInputUnit, formatCwgoValue, parseCwgoGuess } from '../src/features/cwgo/cwgoDisplay'
 import { CWGO_QUESTIONS } from '../src/features/cwgo/cwgoQuestions'
 
 describe("Don't Go Over improvements", () => {
