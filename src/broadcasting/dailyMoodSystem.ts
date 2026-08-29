@@ -39,6 +39,11 @@ export function getDailyAtmosphere(
     : getDayEndAtmosphere(gameId, weatherDay)
 }
 
+function ensureDayStartLabel(text: string, day: number): string {
+  const trimmed = text.trim()
+  return /\bday\s+\d+\b/i.test(trimmed) ? trimmed : `Day ${day} · ${trimmed}`
+}
+
 /**
  * Daily cards remain deliberately compact. Temperature and the more playful
  * contextual observation are reserved for the one mid/late-day weather bulletin.
@@ -51,12 +56,13 @@ export function getDailyTransitionTitle(input: {
   if (!input.atmosphere || (input.phase !== 'week_start' && input.phase !== 'week_end')) {
     return null
   }
-  return getWeatherTransitionTitle({
+  const title = getWeatherTransitionTitle({
     atmosphere: input.atmosphere,
     phase: input.phase,
     day: input.week,
     seedKey: `${latestTitleSeed}:${input.atmosphere}`,
   })
+  return input.phase === 'week_start' ? ensureDayStartLabel(title, input.week) : title
 }
 
 function closestLivingHousemate(
@@ -137,6 +143,6 @@ export function getDailyMoodCopy(input: {
   const friend = closestLivingHousemate(input.players, input.relationships, input.week)
   return (override?.text ?? template.text).replaceAll(
     '{friend}',
-    friend?.name ?? 'a thoughtful housemate'
+    friend?.name ?? 'a thoughtful player'
   )
 }
