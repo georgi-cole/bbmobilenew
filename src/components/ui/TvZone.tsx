@@ -731,9 +731,17 @@ export default function TvZone(props: TvZoneProps) {
     if (
       extractMajorKey(event) === 'vox_populi_final_three_vote' &&
       (alivePlayers.length !== 3 || gameState.voxPopuli?.publicVoteContext !== 'final3')
-    ) return null
+    )
+      return null
     return event
-  }, [alivePlayers.length, gameState.broadcastQueue, gameState.phase, gameState.tvFeed, gameState.voxPopuli?.publicVoteContext, gameState.week])
+  }, [
+    alivePlayers.length,
+    gameState.broadcastQueue,
+    gameState.phase,
+    gameState.tvFeed,
+    gameState.voxPopuli?.publicVoteContext,
+    gameState.week,
+  ])
   const queuedBroadcastLevel = getTvPresentationBroadcastLevel(queuedBroadcastEvent)
   const queuedBroadcastIsCard =
     queuedBroadcastLevel === 'major' || queuedBroadcastLevel === 'critical'
@@ -913,16 +921,24 @@ export default function TvZone(props: TvZoneProps) {
         (event) =>
           event.meta?.phase === gameState.phase &&
           event.meta?.week === gameState.week &&
-          !(event.meta?.broadcastPriority === 'critical' && event.meta?.broadcastConsumed === true) &&
+          !(
+            event.meta?.broadcastPriority === 'critical' && event.meta?.broadcastConsumed === true
+          ) &&
           isBroadcastRelevant(event)
       ) ?? null,
     [gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
   )
   const latestFallbackEvent =
-    latestEvent?.meta?.broadcastManaged === true &&
-    (latestEvent.meta.phase !== gameState.phase || latestEvent.meta.week !== gameState.week)
+    latestEvent?.meta?.broadcastPriority === 'critical' &&
+    (latestEvent.meta.broadcastConsumed === true ||
+      dismissedPriorityEventIds.has(latestEvent.id) ||
+      (extractMajorKey(latestEvent) === 'vox_populi_final_three_vote' &&
+        (alivePlayers.length !== 3 || gameState.voxPopuli?.publicVoteContext !== 'final3')))
       ? null
-      : latestEvent
+      : latestEvent?.meta?.broadcastManaged === true &&
+          (latestEvent.meta.phase !== gameState.phase || latestEvent.meta.week !== gameState.week)
+        ? null
+        : latestEvent
   const priorityBroadcastEvent = useMemo(
     () =>
       [...tvVisibleFeed]
@@ -1249,10 +1265,11 @@ export default function TvZone(props: TvZoneProps) {
     const previousLatestId = detoxSequenceLatestIdRef.current
     detoxSequenceLatestIdRef.current = latestVisibleId
 
-    if (previousLatestId === null || latestVisibleId === previousLatestId) return
+    if (latestVisibleId === previousLatestId) return
 
     const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId)
-    const newEventCount = previousIndex === -1 ? 1 : previousIndex
+    const newEventCount =
+      previousLatestId === null || previousIndex === -1 ? tvVisibleFeed.length : previousIndex
     const newEvents = tvVisibleFeed.slice(0, newEventCount)
     const detoxEvents = newEvents.filter(isDetoxSequenceEvent)
     if (detoxEvents.length === 0) return

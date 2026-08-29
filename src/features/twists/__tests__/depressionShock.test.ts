@@ -141,8 +141,8 @@ describe('Depression Shock presentation and strategic distortion', () => {
       '/bbmobilenew/assets/skins/Lia_flip_avatar.webp',
     ])
 
-    expect(candidates[0]).toBe('/assets/skins/Lia_flip_sad_avatar.png')
-    expect(candidates).toContain('/assets/skins/lia_sad_avatar.png')
+    expect(candidates[0]).toBe('/assets/skins/Lia_flip_sad_avatar.webp')
+    expect(candidates).toContain('/assets/skins/lia_sad_avatar.webp')
   })
 
   it('uses day-one and day-two visuals only for the two active days', () => {

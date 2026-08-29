@@ -960,10 +960,7 @@ function pushEvent(
       : inferObservedBroadcastSource(state, hintedPhase, text)
   const templateId = template?.id ?? authoredTemplateId ?? observed?.id
   const isDeclaredSource = Boolean(
-    template ||
-    authoredTemplateId ||
-    meta?.customBroadcastId ||
-    hasExplicitPresentation
+    template || authoredTemplateId || meta?.customBroadcastId || hasExplicitPresentation
   )
   const variables = matched?.variables ?? observed?.variables ?? []
   const override = templateId ? state.broadcastOverrides?.[templateId] : undefined

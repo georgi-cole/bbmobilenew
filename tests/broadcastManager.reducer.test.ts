@@ -475,7 +475,7 @@ describe('broadcast manager reducers', () => {
     expect(state.broadcastQueue).toContain(card?.id)
   })
 
-  it('preserves a manager-authored Season Start item before the welcome after reset', () => {
+  it('preserves a manager-authored Season Start item when onboarding replaces the legacy welcome', () => {
     let state = gameReducer(undefined, { type: 'init' })
     state = gameReducer(
       state,
@@ -497,7 +497,7 @@ describe('broadcast manager reducers', () => {
     const queueCopy = state.broadcastQueue ?? []
     const queuedTexts = queueCopy.map((id) => state.tvFeed.find((event) => event.id === id)?.text)
     expect(queuedTexts[0]).toBe('Opening first.')
-    expect(queuedTexts.some((text) => text?.startsWith('Welcome to The Big Eye hub!'))).toBe(true)
+    expect(queuedTexts.some((text) => text?.startsWith('Welcome to The Big Eye'))).toBe(false)
 
     const firstId = queueCopy[0]
     state = gameReducer(state, consumeBroadcastEvent(firstId))

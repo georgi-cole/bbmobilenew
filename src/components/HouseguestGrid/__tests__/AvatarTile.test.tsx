@@ -32,7 +32,7 @@ describe('AvatarTile', () => {
 
     expect(screen.getByRole('img', { name: 'Lia' })).toHaveAttribute(
       'src',
-      '/assets/skins/Lia_sad_avatar.png'
+      '/assets/skins/Lia_sad_avatar.webp'
     )
   })
 })
