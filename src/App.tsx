@@ -23,6 +23,8 @@ import LiveOpsController from './components/LiveOpsController/LiveOpsController'
 import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSync'
 import DepressionShockController from './components/DepressionShockController/DepressionShockController'
 import WeatherController from './weather/WeatherController'
+import WeatherBulletinOverlay from './weather/WeatherBulletinOverlay'
+import SeasonStartOnboardingController from './onboarding/SeasonStartOnboardingController'
 import { I18nProvider } from './i18n'
 
 if (import.meta.env.DEV) {
@@ -71,6 +73,8 @@ export default function App() {
       <I18nProvider>
         <LiveOpsController />
         <WeatherController />
+        <WeatherBulletinOverlay />
+        <SeasonStartOnboardingController />
         <DepressionShockController />
         <AudioStateSync />
         <RouteLoopAudioSync hash={hash} />
