@@ -22,6 +22,17 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    // Older Cordova dependencies can still request the legacy Kotlin JDK
+    // artifacts. Resolve every Android configuration to one modern stdlib
+    // version so Android instrumentation packaging cannot contain duplicates.
+    configurations.configureEach {
+        resolutionStrategy.force(
+            'org.jetbrains.kotlin:kotlin-stdlib:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+        )
+    }
 }
 
 task clean(type: Delete) {

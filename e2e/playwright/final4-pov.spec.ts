@@ -14,11 +14,12 @@ async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
 
 /** Navigate to the game screen with the debug panel enabled. */
 async function gotoDebug(page: Page) {
-  // A fresh run intentionally redirects direct game deep links to Home. Open
-  // the QA panel there and use its supported route control to mount GameScreen.
-  await page.goto('./#/game?debug=1')
-  await openDebugPanel(page)
-  await page.getByRole('button', { name: 'game', exact: true }).click()
+  // A fresh run intentionally redirects direct game deep links to Home. Start
+  // a deterministic season through the supported Home flow before exercising
+  // the debug-only finale setup.
+  await page.goto('./#/?debug=1')
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.getByRole('button', { name: 'Classic', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: 15000,
   })
