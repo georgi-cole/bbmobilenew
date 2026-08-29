@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core'
+
 export type WeatherConditionId =
   | 'sunny'
   | 'mostly_sunny'
@@ -95,13 +97,51 @@ const CONDITION_IDS: readonly WeatherConditionId[] = [
 const CONDITION_SET = new Set<WeatherConditionId>(CONDITION_IDS)
 const WEATHER_CACHE_KEY = 'bbmobilenew_weather_runtime_v2'
 const CACHE_TTL_MS = 60 * 60 * 1000
-const PROD_BASE = 'https://georgi-cole.github.io/bbmobilenew/config'
-const WEATHER_CONFIG_URL = import.meta.env.DEV
-  ? '/config/weather-config.json'
-  : `${PROD_BASE}/weather-config.json`
-const DEFAULT_BANK_URL = import.meta.env.DEV
-  ? '/config/weather-bank.json'
-  : `${PROD_BASE}/weather-bank.json`
+const REMOTE_WEATHER_BASE = 'https://georgi-cole.github.io/bbmobilenew/config'
+
+export interface WeatherRuntimeUrls {
+  configUrl: string
+  defaultBankUrl: string
+}
+
+/**
+ * Web builds read the weather documents shipped with that exact build. This is
+ * important for PR previews: new config files exist in the preview before they
+ * can exist on the main GitHub Pages deployment. Native Capacitor builds keep
+ * using the GitHub Pages endpoint so weather content remains remotely editable.
+ */
+export function resolveWeatherRuntimeUrls({
+  isDev = import.meta.env.DEV,
+  isNative = Capacitor.isNativePlatform(),
+  baseUrl = import.meta.env.BASE_URL,
+}: {
+  isDev?: boolean
+  isNative?: boolean
+  baseUrl?: string
+} = {}): WeatherRuntimeUrls {
+  if (isDev) {
+    return {
+      configUrl: '/config/weather-config.json',
+      defaultBankUrl: '/config/weather-bank.json',
+    }
+  }
+
+  if (isNative) {
+    return {
+      configUrl: `${REMOTE_WEATHER_BASE}/weather-config.json`,
+      defaultBankUrl: `${REMOTE_WEATHER_BASE}/weather-bank.json`,
+    }
+  }
+
+  const appBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  return {
+    configUrl: `${appBase}config/weather-config.json`,
+    defaultBankUrl: `${appBase}config/weather-bank.json`,
+  }
+}
+
+const { configUrl: WEATHER_CONFIG_URL, defaultBankUrl: DEFAULT_BANK_URL } =
+  resolveWeatherRuntimeUrls()
 
 let runtimeData: WeatherRuntimeData | null = loadCachedRuntime()
 let inFlight: Promise<WeatherRuntimeData | null> | null = null
