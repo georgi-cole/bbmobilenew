@@ -118,7 +118,7 @@ export default function WeatherBulletinOverlay() {
     }
 
     const resolveTarget = () => {
-      setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__message-stage'))
+      setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__viewport'))
     }
     resolveTarget()
     const observer = new MutationObserver(resolveTarget)
@@ -127,12 +127,9 @@ export default function WeatherBulletinOverlay() {
   }, [weatherEvent?.id])
 
   useEffect(() => {
-    if (!weatherEvent || !portalTarget) {
-      document.body.classList.remove('body--weather-tv-card')
-      return undefined
-    }
-    document.body.classList.add('body--weather-tv-card')
-    return () => document.body.classList.remove('body--weather-tv-card')
+    if (!weatherEvent || !portalTarget) return undefined
+    portalTarget.classList.add('tv-zone__viewport--weather')
+    return () => portalTarget.classList.remove('tv-zone__viewport--weather')
   }, [portalTarget, weatherEvent])
 
   const presentation = useMemo(() => {
