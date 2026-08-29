@@ -9,6 +9,13 @@ const players: Player[] = [
   { id: 'kai', name: 'Kai', avatar: '', status: 'active' },
 ]
 
+const relationships = {
+  user: {
+    lia: { affinity: 70, tags: [] },
+    kai: { affinity: 10, tags: [] },
+  },
+}
+
 describe('daily mood system', () => {
   it('is deterministic but allows the same weather on consecutive days', () => {
     const sequences = Array.from({ length: 120 }, (_, index) => {
@@ -72,12 +79,7 @@ describe('daily mood system', () => {
       phase: 'week_start',
       week: 2,
       players,
-      relationships: {
-        user: {
-          lia: { affinity: 70, tags: [] },
-          kai: { affinity: 10, tags: [] },
-        },
-      },
+      relationships,
       overrides: {
         'week.day-start-mood.rainy': { text: 'A warm drink from {friend} is waiting.' },
       },
@@ -91,6 +93,7 @@ describe('daily mood system', () => {
       phase: 'week_start',
       week: 3,
       players,
+      relationships,
       overrides: {
         'week.day-start-mood.rainy': { text: 'A shower sent {friend} back inside.' },
       },
