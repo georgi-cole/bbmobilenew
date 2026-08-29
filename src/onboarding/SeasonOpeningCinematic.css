@@ -1,0 +1,189 @@
+/* Season-opening faux-TV cinematic. Kept local to the onboarding controller so
+   ordinary TV messages and later phase cards retain their established look. */
+
+body.body--season-tv-wake .tv-zone__viewport {
+  transform-origin: 50% 50%;
+  animation: season-opening-tv-power-on 900ms cubic-bezier(0.18, 0.82, 0.24, 1) both;
+}
+
+/* Nothing authored should appear until the set has visibly powered on. */
+body.body--season-tv-wake .tv-zone__viewport > * {
+  opacity: 0 !important;
+}
+
+/* A restrained CRT/projector ignition line gives the screen a real 'switch on'
+   beat without turning the whole interface into a retro gimmick. */
+body.body--season-tv-wake .tv-zone__viewport::before {
+  inset: 0;
+  clip-path: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(239, 231, 255, 0.24), transparent 23%),
+    linear-gradient(
+      180deg,
+      transparent 48.7%,
+      rgba(229, 220, 255, 0.08) 49.1%,
+      rgba(250, 247, 255, 0.92) 49.7%,
+      rgba(215, 198, 255, 0.26) 50.4%,
+      transparent 51.2%
+    );
+  filter: blur(0.45px) drop-shadow(0 0 8px rgba(182, 158, 255, 0.35));
+  mix-blend-mode: screen;
+  opacity: 0;
+  z-index: 4;
+  transform: translate3d(0, 0, 0);
+  animation: season-opening-power-line 900ms cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+/* Once the actual welcome is queued, replace the ordinary glass reflection with
+   two soft, slow projector beams. They stay behind the text and vanish as soon
+   as the user advances to the warm hub line. */
+body.body--season-opening-welcome .tv-zone__viewport::before {
+  inset: -48% -34%;
+  clip-path: none;
+  background:
+    linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(247, 235, 214, 0.025) 40%,
+      rgba(255, 232, 188, 0.18) 46%,
+      rgba(255, 247, 226, 0.07) 51%,
+      transparent 58%
+    ),
+    linear-gradient(
+      74deg,
+      transparent 39%,
+      rgba(223, 211, 255, 0.02) 44%,
+      rgba(214, 193, 255, 0.14) 49%,
+      rgba(244, 236, 255, 0.055) 54%,
+      transparent 60%
+    );
+  filter: blur(12px);
+  mix-blend-mode: screen;
+  opacity: 0.46;
+  z-index: 2;
+  transform: translate3d(-8%, -1%, 0) rotate(-1.5deg) scale(1.04);
+  animation: season-opening-projector-sweep 5.2s ease-in-out infinite alternate;
+}
+
+body.body--season-opening-welcome .tv-zone__viewport::after {
+  opacity: 0.075;
+  animation: season-opening-screen-breathe 3.8s ease-in-out infinite;
+}
+
+body.body--season-opening-welcome .tv-zone__now {
+  position: relative;
+  z-index: 3;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.02),
+    0 0 18px rgba(205, 186, 255, 0.08);
+  animation: season-opening-welcome-reveal 520ms cubic-bezier(0.2, 0.82, 0.22, 1) both;
+}
+
+@keyframes season-opening-tv-power-on {
+  0% {
+    opacity: 0.06;
+    transform: scaleY(0.012) scaleX(0.82);
+    filter: brightness(2.2) saturate(0.3);
+    box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.98);
+  }
+  18% {
+    opacity: 0.88;
+    transform: scaleY(0.018) scaleX(1);
+    filter: brightness(2.5) saturate(0.45);
+  }
+  42% {
+    opacity: 0.92;
+    transform: scaleY(0.62) scaleX(1);
+    filter: brightness(0.72) saturate(0.68);
+    box-shadow: inset 0 0 64px rgba(0, 0, 0, 0.72);
+  }
+  72% {
+    opacity: 1;
+    transform: scaleY(1.012) scaleX(1);
+    filter: brightness(1.08) saturate(0.92);
+    box-shadow:
+      inset 0 0 24px rgba(29, 19, 55, 0.28),
+      0 0 18px rgba(133, 104, 199, 0.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes season-opening-power-line {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scaleX(0.12);
+  }
+  18% {
+    opacity: 0.95;
+    transform: scaleX(0.72);
+  }
+  34% {
+    opacity: 0.78;
+    transform: scaleX(1);
+  }
+  58% {
+    opacity: 0.22;
+    transform: scaleX(1.05) scaleY(7);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1.08) scaleY(18);
+  }
+}
+
+@keyframes season-opening-projector-sweep {
+  0% {
+    opacity: 0.25;
+    transform: translate3d(-10%, 1%, 0) rotate(-3deg) scale(1.02);
+  }
+  48% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0.34;
+    transform: translate3d(10%, -2%, 0) rotate(2.5deg) scale(1.07);
+  }
+}
+
+@keyframes season-opening-screen-breathe {
+  0%,
+  100% {
+    opacity: 0.055;
+  }
+  50% {
+    opacity: 0.09;
+  }
+}
+
+@keyframes season-opening-welcome-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.992);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.body--season-tv-wake .tv-zone__viewport,
+  body.body--season-tv-wake .tv-zone__viewport::before,
+  body.body--season-opening-welcome .tv-zone__viewport::before,
+  body.body--season-opening-welcome .tv-zone__viewport::after,
+  body.body--season-opening-welcome .tv-zone__now {
+    animation: none !important;
+  }
+
+  body.body--season-tv-wake .tv-zone__viewport > * {
+    opacity: 1 !important;
+  }
+}
