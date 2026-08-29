@@ -84,7 +84,7 @@ describe('CWGO human-like AI answer model', () => {
     expect(aiSkillForPlayer('nova')).toBeLessThanOrEqual(0.95)
   })
 
-  it('makes a known common fact fast and deterministic', () => {
+  it('makes a known common fact deterministic but human-paced in the opening rounds', () => {
     const first = generateAIResponseTimeMs(1, 42, 'nova', 0, {
       answerMode: 'common_knowledge',
       knewAnswer: true,
@@ -98,7 +98,7 @@ describe('CWGO human-like AI answer model', () => {
         aiSkill: 0.7,
       })
     )
-    expect(first).toBeGreaterThanOrEqual(1_200)
-    expect(first).toBeLessThanOrEqual(6_500)
+    expect(first).toBeGreaterThanOrEqual(3_200)
+    expect(first).toBeLessThanOrEqual(13_500)
   })
 })
