@@ -119,10 +119,12 @@ export function resolveWeatherRuntimeUrls({
   isNative?: boolean
   baseUrl?: string
 } = {}): WeatherRuntimeUrls {
+  const appBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+
   if (isDev) {
     return {
-      configUrl: '/config/weather-config.json',
-      defaultBankUrl: '/config/weather-bank.json',
+      configUrl: `${appBase}config/weather-config.json`,
+      defaultBankUrl: `${appBase}config/weather-bank.json`,
     }
   }
 
@@ -133,7 +135,6 @@ export function resolveWeatherRuntimeUrls({
     }
   }
 
-  const appBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
   return {
     configUrl: `${appBase}config/weather-config.json`,
     defaultBankUrl: `${appBase}config/weather-bank.json`,
