@@ -1,12 +1,12 @@
-body.body--weather-tv-card .tv-zone__message-stage > .tv-zone__now {
+.tv-zone__viewport--weather .tv-zone__now {
   opacity: 0 !important;
   pointer-events: none;
 }
 
 /*
  * Weather is a TV presentation, not a card pasted onto the TV. The overlay
- * fills the existing message stage edge-to-edge and borrows the viewport's
- * own framing, scanlines and vignette.
+ * fills the existing viewport edge-to-edge and inherits its bezel, scanlines
+ * and vignette instead of drawing another rectangle inside it.
  */
 .weather-tv-card {
   position: absolute;
@@ -19,7 +19,7 @@ body.body--weather-tv-card .tv-zone__message-stage > .tv-zone__now {
   grid-template-rows: auto 1fr auto;
   padding: clamp(16px, 4vw, 24px) clamp(18px, 5vw, 30px) clamp(18px, 4vw, 24px);
   border: 0;
-  border-radius: 0;
+  border-radius: inherit;
   color: rgba(249, 248, 255, 0.98);
   background:
     radial-gradient(circle at 82% 18%, rgba(153, 130, 255, 0.09), transparent 38%),
