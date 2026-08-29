@@ -1,7 +1,8 @@
-import { useLayoutEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { isLegacySeasonWelcomeEvent, isServiceConfigurationEvent } from '../services/activityService'
 import { advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { hasHandledSeasonTutorial } from './seasonTutorialPreference'
 
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
@@ -11,9 +12,9 @@ const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
  * Older/default season-start broadcasts are still constructed by the managed
  * broadcast system before the onboarding controller mounts. They must be
  * acknowledged before paint so they cannot win the faux-TV queue over the new
- * Beat 1 / Beat 3 opening. The same guard removes the redundant Day 1 stop
- * during the one-time opening handoff while preserving any real critical or
- * custom week-start broadcast.
+ * Beat 1 / Beat 3 opening. The same guard makes the two new plain TV cards true
+ * blocking onboarding beats and removes the redundant Day 1 stop during the
+ * one-time handoff to the first competition.
  */
 export default function SeasonOpeningFlowGuard() {
   const dispatch = useAppDispatch()
@@ -22,6 +23,8 @@ export default function SeasonOpeningFlowGuard() {
   const mode = useAppSelector((state) => state.game.mode)
   const tvFeed = useAppSelector((state) => state.game.tvFeed)
   const broadcastQueue = useAppSelector((state) => state.game.broadcastQueue ?? [])
+  const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
+  const isGuest = useAppSelector((state) => state.profiles.isGuest)
 
   const queuedId = broadcastQueue[0] ?? null
   const queuedEvent = queuedId
@@ -39,6 +42,37 @@ export default function SeasonOpeningFlowGuard() {
     }
     dispatch(consumeBroadcastEvent(queuedEvent.id))
   }, [dispatch, phase, queuedEvent, week])
+
+  useEffect(() => {
+    if (phase !== 'season_start' || week !== 1) return undefined
+
+    const handlePlay = (event: Event) => {
+      if (!queuedEvent) return
+
+      if (queuedEvent.meta?.seasonOnboardingWelcome === true) {
+        // Beat 1 should reveal Beat 3, not accidentally advance the reducer to
+        // Day 1 merely because it is the last plain broadcast in the queue.
+        event.preventDefault()
+        dispatch(consumeBroadcastEvent(queuedEvent.id))
+        return
+      }
+
+      if (queuedEvent.meta?.seasonOnboardingFlavor === true) {
+        event.preventDefault()
+        dispatch(consumeBroadcastEvent(queuedEvent.id))
+
+        // Returning named profiles should go directly from Beat 3 to LOH.
+        // Guest and profiles with tutorial replay enabled remain on
+        // season_start long enough for the tutorial prompt to open.
+        if (hasHandledSeasonTutorial(activeProfileId, isGuest)) {
+          dispatch(advance())
+        }
+      }
+    }
+
+    window.addEventListener('ui:playPressed', handlePlay, { capture: true })
+    return () => window.removeEventListener('ui:playPressed', handlePlay, { capture: true })
+  }, [activeProfileId, dispatch, isGuest, phase, queuedEvent, week])
 
   useLayoutEffect(() => {
     if (
