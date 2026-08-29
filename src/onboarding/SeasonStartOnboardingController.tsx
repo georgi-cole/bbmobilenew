@@ -321,13 +321,6 @@ export default function SeasonStartOnboardingController() {
                 >
                   Quick tour
                 </button>
-                <button
-                  type="button"
-                  className="season-tutorial__secondary"
-                  onClick={finishOnboarding}
-                >
-                  Skip
-                </button>
               </div>
             </section>
           </div>,
