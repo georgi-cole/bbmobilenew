@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react'
-import { isLegacySeasonWelcomeEvent, isServiceConfigurationEvent } from '../services/activityService'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { hasHandledSeasonTutorial } from './seasonTutorialPreference'
@@ -7,10 +6,10 @@ import { hasHandledSeasonTutorial } from './seasonTutorialPreference'
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 /**
- * Keeps the polished opening authoritative over the older managed queue.
- * Superseded defaults are acknowledged before paint, Beat 1 / Beat 3 cannot
- * accidentally advance the reducer, and the redundant first Day 1 stop is
- * skipped without suppressing genuine custom or critical broadcasts.
+ * Narrow queue bridge for the two cards authored by SeasonStartOnboardingController.
+ * It never suppresses or rewrites ordinary managed broadcasts. Its only job is
+ * to stop the generic Play handler from advancing on the same press that closes
+ * an onboarding card, then remove the redundant Day 1 stop during the handoff.
  */
 export default function SeasonOpeningFlowGuard() {
   const dispatch = useAppDispatch()
@@ -21,6 +20,7 @@ export default function SeasonOpeningFlowGuard() {
   const broadcastQueue = useAppSelector((state) => state.game.broadcastQueue ?? [])
   const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
   const isGuest = useAppSelector((state) => state.profiles.isGuest)
+  const directHandoffRef = useRef(false)
 
   const queuedId = broadcastQueue[0] ?? null
   const queuedEvent = queuedId
@@ -31,14 +31,6 @@ export default function SeasonOpeningFlowGuard() {
       event.meta?.seasonOnboardingWelcome === true || event.meta?.seasonOnboardingFlavor === true
   )
 
-  useLayoutEffect(() => {
-    if (phase !== 'season_start' || week !== 1 || !queuedEvent) return
-    if (!isLegacySeasonWelcomeEvent(queuedEvent) && !isServiceConfigurationEvent(queuedEvent)) {
-      return
-    }
-    dispatch(consumeBroadcastEvent(queuedEvent.id))
-  }, [dispatch, phase, queuedEvent, week])
-
   useEffect(() => {
     if (phase !== 'season_start' || week !== 1) return undefined
 
@@ -47,14 +39,13 @@ export default function SeasonOpeningFlowGuard() {
 
       if (queuedEvent.meta?.seasonOnboardingWelcome === true) {
         event.preventDefault()
-        dispatch(consumeBroadcastEvent(queuedEvent.id))
         return
       }
 
       if (queuedEvent.meta?.seasonOnboardingFlavor === true) {
         event.preventDefault()
-        dispatch(consumeBroadcastEvent(queuedEvent.id))
         if (hasHandledSeasonTutorial(activeProfileId, isGuest)) {
+          directHandoffRef.current = true
           dispatch(advance())
         }
       }
@@ -79,7 +70,8 @@ export default function SeasonOpeningFlowGuard() {
       return
     }
 
-    if (broadcastQueue.length > 0) return
+    if (broadcastQueue.length > 0 || !directHandoffRef.current) return
+    directHandoffRef.current = false
     dispatch(advance())
   }, [
     broadcastQueue.length,
