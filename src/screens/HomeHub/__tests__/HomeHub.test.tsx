@@ -161,7 +161,7 @@ describe('HomeHub', () => {
     mockDispatch.mockReset();
     mockNavigate.mockReset();
     preloadImageMock.mockReset();
-    preloadImageMock.mockResolvedValue(undefined);
+    preloadImageMock.mockImplementation(async (url: string) => ({ url, status: 'loaded' as const }));
   });
 
   afterEach(() => {
@@ -247,16 +247,16 @@ describe('HomeHub', () => {
 
     let resolveInitialBg = () => {};
     let resolveRemoteBg = () => {};
-    preloadImageMock.mockImplementation((url: string) => new Promise<void>((resolve) => {
+    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
       if (url === '/assets/background.jpg') {
-        resolveInitialBg = resolve;
+        resolveInitialBg = () => resolve({ url, status: 'loaded' });
         return;
       }
       if (url === 'https://example.com/remote-bg.jpg') {
-        resolveRemoteBg = resolve;
+        resolveRemoteBg = () => resolve({ url, status: 'loaded' });
         return;
       }
-      resolve();
+      resolve({ url, status: 'loaded' });
     }));
 
     try {
@@ -343,8 +343,8 @@ describe('HomeHub', () => {
 
   it('keeps the Kolequant splash up until the full hub bundle is ready', async () => {
     const pendingResolvers: Array<() => void> = [];
-    preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
-      pendingResolvers.push(resolve);
+    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
+      pendingResolvers.push(() => resolve({ url, status: 'loaded' }));
     }));
 
     const view = renderHomeHub();
