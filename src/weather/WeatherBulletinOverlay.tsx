@@ -51,7 +51,6 @@ function WeatherGlyph({ condition }: { condition: WeatherConditionId }) {
           d="M18 43h28.5c6 0 10.5-4.1 10.5-9.4 0-5.1-4.1-9-9.5-9.4C45.4 17.8 39.7 14 33 14c-8 0-14.5 5.7-15.5 13.1C11.5 27.8 7 31.8 7 36.9 7 40.4 11.5 43 18 43Z"
         />
       )}
-      {sunny && !partlySunny && <circle className="weather-tv-card__clear-core" cx="32" cy="32" r="12" />}
       {fog && (
         <g className="weather-tv-card__fog">
           <path d="M10 25h39M16 34h38M8 43h42" />
@@ -91,13 +90,10 @@ export default function WeatherBulletinOverlay() {
 
   const weatherEvent =
     latestVisibleEvent?.meta?.weatherBulletin === true ? latestVisibleEvent : null
-  const condition = isWeatherCondition(weatherEvent?.meta?.weatherCondition)
-    ? weatherEvent.meta.weatherCondition
-    : null
-  const temperatureC =
-    typeof weatherEvent?.meta?.weatherTemperatureC === 'number'
-      ? weatherEvent.meta.weatherTemperatureC
-      : null
+  const rawCondition = weatherEvent?.meta?.weatherCondition
+  const condition = isWeatherCondition(rawCondition) ? rawCondition : null
+  const rawTemperature = weatherEvent?.meta?.weatherTemperatureC
+  const temperatureC = typeof rawTemperature === 'number' ? rawTemperature : null
 
   useLayoutEffect(() => {
     if (!weatherEvent) {
