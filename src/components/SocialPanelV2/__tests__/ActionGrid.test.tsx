@@ -1,5 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { configureStore } from '@reduxjs/toolkit'
+import { Provider } from 'react-redux'
+import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import gameReducer from '../../../store/gameSlice'
+import settingsReducer from '../../../store/settingsSlice'
 import { isHumanSocialActionVisible } from '../../../social/socialActionCatalog'
 import { evaluateSocialActionEligibility } from '../../../social/socialActionEligibility'
 import { isRealityExclusiveAction, SOCIAL_ACTIONS } from '../../../social/socialActions'
@@ -24,6 +29,18 @@ const LOCKED_REALITY_ACTIONS = SOCIAL_ACTIONS.filter(
     }).eligible
 )
 
+function renderGrid(ui: ReactElement) {
+  const store = configureStore({
+    reducer: { game: gameReducer, settings: settingsReducer },
+  })
+
+  return render(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>{children}</Provider>
+    ),
+  })
+}
+
 function renderedActionIds(): string[] {
   return screen
     .getAllByRole('button', { name: /./i })
@@ -40,7 +57,7 @@ function actionCard(title: string): HTMLElement {
 
 describe('ActionGrid catalogue rendering', () => {
   it('keeps the Classic catalogue playable while appending locked Reality previews', () => {
-    render(<ActionGrid />)
+    renderGrid(<ActionGrid />)
 
     expect(renderedActionIds()).toEqual([
       ...DEFAULT_NORMAL_ACTIONS.map((action) => action.id),
@@ -52,7 +69,7 @@ describe('ActionGrid catalogue rendering', () => {
   })
 
   it('shows only contextually relevant Reality previews in Classic', () => {
-    render(<ActionGrid selectedTargetIds={new Set(['lia'])} actorId="human" />)
+    renderGrid(<ActionGrid selectedTargetIds={new Set(['lia'])} actorId="human" />)
 
     expect(screen.getByText('Spread Rumor')).toBeInTheDocument()
     expect(screen.getByText('Start Fight')).toBeInTheDocument()
@@ -64,7 +81,7 @@ describe('ActionGrid catalogue rendering', () => {
   })
 
   it('reveals the complete contextual catalogue in Drama Mode', () => {
-    render(
+    renderGrid(
       <ActionGrid
         dramaMode
         currentPhase="social_2"
@@ -86,7 +103,7 @@ describe('ActionGrid catalogue rendering', () => {
   })
 
   it('shows role-gated Reality previews only with a compatible target', () => {
-    const { rerender } = render(<ActionGrid />)
+    const { rerender } = renderGrid(<ActionGrid />)
     expect(screen.queryByText('Ask LOH Plan')).not.toBeInTheDocument()
     expect(screen.queryByText('Ask to Use Safety')).not.toBeInTheDocument()
 
@@ -112,7 +129,7 @@ describe('ActionGrid catalogue rendering', () => {
   })
 
   it('never renders AI-only actions for the human player', () => {
-    render(<ActionGrid dramaMode currentPhase="social_2" />)
+    renderGrid(<ActionGrid dramaMode currentPhase="social_2" />)
 
     for (const action of SOCIAL_ACTIONS.filter((candidate) => candidate.aiOnly)) {
       expect(screen.queryByText(action.title)).not.toBeInTheDocument()
@@ -125,7 +142,7 @@ describe('ActionGrid catalogue rendering', () => {
       actorId: 'human',
       selectedTargetIds: new Set(['lia']),
     }
-    const { rerender } = render(
+    const { rerender } = renderGrid(
       <ActionGrid {...props} relationships={{ human: { lia: { affinity: 40, tags: [] } } }} />
     )
     expect(screen.queryByText('Betray Ally')).not.toBeInTheDocument()
@@ -146,7 +163,7 @@ describe('ActionGrid catalogue rendering', () => {
 describe('ActionGrid interaction and accessibility', () => {
   it('calls onActionClick with the selected action id', () => {
     const onActionClick = vi.fn()
-    render(<ActionGrid onActionClick={onActionClick} />)
+    renderGrid(<ActionGrid onActionClick={onActionClick} />)
 
     const first = DEFAULT_NORMAL_ACTIONS[0]
     fireEvent.click(actionCard(first.title))
@@ -156,7 +173,9 @@ describe('ActionGrid interaction and accessibility', () => {
   it('opens the upgrade path instead of selecting a locked Reality action', () => {
     const onActionClick = vi.fn()
     const onPremiumLockedClick = vi.fn()
-    render(<ActionGrid onActionClick={onActionClick} onPremiumLockedClick={onPremiumLockedClick} />)
+    renderGrid(
+      <ActionGrid onActionClick={onActionClick} onPremiumLockedClick={onPremiumLockedClick} />
+    )
 
     fireEvent.click(actionCard('Spread Rumor'))
 
@@ -167,7 +186,7 @@ describe('ActionGrid interaction and accessibility', () => {
   it('calls onPreview without also selecting the action', () => {
     const onActionClick = vi.fn()
     const onPreview = vi.fn()
-    render(<ActionGrid onActionClick={onActionClick} onPreview={onPreview} />)
+    renderGrid(<ActionGrid onActionClick={onActionClick} onPreview={onPreview} />)
 
     const first = DEFAULT_NORMAL_ACTIONS[0]
     fireEvent.click(screen.getByRole('button', { name: `Preview ${first.title}` }))
@@ -178,14 +197,14 @@ describe('ActionGrid interaction and accessibility', () => {
   it('applies disabled and selected semantics', () => {
     const first = DEFAULT_NORMAL_ACTIONS[0]
     const second = DEFAULT_NORMAL_ACTIONS[1]
-    render(<ActionGrid disabledIds={new Set([first.id])} selectedId={second.id} />)
+    renderGrid(<ActionGrid disabledIds={new Set([first.id])} selectedId={second.id} />)
 
     expect(actionCard(first.title)).toHaveAttribute('aria-disabled', 'true')
     expect(actionCard(second.title)).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('moves keyboard focus between canonical neighbours', () => {
-    render(<ActionGrid />)
+    renderGrid(<ActionGrid />)
     const first = actionCard(DEFAULT_NORMAL_ACTIONS[0].title)
     const second = actionCard(DEFAULT_NORMAL_ACTIONS[1].title)
     const group = first.closest('[role="group"]')!
@@ -199,7 +218,7 @@ describe('ActionGrid interaction and accessibility', () => {
   })
 
   it('does not restore the removed floating preview UI', () => {
-    render(
+    renderGrid(
       <ActionGrid
         selectedTargetIds={new Set(['p1'])}
         players={[{ id: 'p1', name: 'Alice', avatar: '😀', status: 'active' }]}
@@ -216,7 +235,7 @@ describe('ActionGrid interaction and accessibility', () => {
 
 describe('ActionGrid stable placement and affordability', () => {
   it('preserves canonical placement when resources change', () => {
-    const { rerender } = render(<ActionGrid />)
+    const { rerender } = renderGrid(<ActionGrid />)
     const canonical = renderedActionIds()
 
     rerender(<ActionGrid actorEnergy={1} actorInfluence={0} actorInfo={0} />)
@@ -227,7 +246,7 @@ describe('ActionGrid stable placement and affordability', () => {
   })
 
   it('shows precise reasons on unaffordable cards without disabling selection', () => {
-    render(<ActionGrid actorEnergy={0} />)
+    renderGrid(<ActionGrid actorEnergy={0} />)
 
     expect(screen.getAllByText(/Need ⚡\d/).length).toBeGreaterThan(0)
     const first = actionCard(DEFAULT_NORMAL_ACTIONS[0].title)
@@ -236,7 +255,7 @@ describe('ActionGrid stable placement and affordability', () => {
   })
 
   it('shows no affordability warning when resources are sufficient', () => {
-    render(<ActionGrid actorEnergy={100} actorInfluence={1000} actorInfo={1000} />)
+    renderGrid(<ActionGrid actorEnergy={100} actorInfluence={1000} actorInfo={1000} />)
 
     expect(screen.queryByText(/Need ⚡/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Need 🤝/)).not.toBeInTheDocument()
@@ -244,7 +263,7 @@ describe('ActionGrid stable placement and affordability', () => {
   })
 
   it('hides Propose Alliance once that Classic relationship is already allied', () => {
-    render(
+    renderGrid(
       <ActionGrid
         actorId="user"
         selectedTargetIds={new Set(['p2'])}

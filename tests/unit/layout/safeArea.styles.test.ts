@@ -63,9 +63,12 @@ describe('safe-area layout styles', () => {
     expect(bottomNavCss).toContain('padding-bottom: var(--safe-bottom);')
     expect(bottomNavCss).not.toContain('env(safe-area-inset-bottom')
     expect(dockCss).toContain('.game-control-dock { position: absolute;')
-    expect(dockCss).toContain('bottom: var(--game-action-dock-gap, 8px);')
+    expect(dockCss).toContain(
+      'var(--game-safe-bottom, var(--safe-bottom, env(safe-area-inset-bottom, 0px)))'
+    )
+    expect(dockCss).toContain('var(--game-action-dock-gap, 8px)')
     expect(dockCss).not.toContain('position: fixed;')
-    expect(dockCss).not.toContain('env(safe-area-inset-bottom')
+    expect(dockCss).toContain('env(safe-area-inset-bottom')
     expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)')
     expect(gameScreenCss).toContain('html.is-capacitor-ios .game-screen { padding-top: 0; }')
     expect(gameScreenCss).toContain(

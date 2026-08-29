@@ -32,14 +32,59 @@ jobs:
         run: npm run lint:ci
       - name: Type check
         run: npm run typecheck
-      - name: Run season/profile lifecycle regressions
-        run: >-
-          npx vitest run
-          src/modes/seasonRulesets.test.ts
-          src/screens/ProfilePicker/ProfilePicker.test.tsx
-          src/screens/HomeHub/__tests__/HomeHub.test.tsx
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  vitest-shards:
+    name: Vitest shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run Vitest shard
+        id: vitest
+        shell: bash
+        run: |
+          set +e
+          npm test -- --shard=${{ matrix.shard }}/4 --reporter=json --outputFile=vitest-results-${{ matrix.shard }}.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Vitest shard results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-results-shard-${{ matrix.shard }}
+          path: vitest-results-${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Fail when this shard is not green
+        if: steps.vitest.outputs.status != '0'
+        run: exit 1
+
+  full-test-suite:
+    name: Complete Vitest unit and integration suite
+    needs: vitest-shards
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every Vitest shard to pass
+        env:
+          SHARD_RESULT: ${{ needs.vitest-shards.result }}
+        run: test "$SHARD_RESULT" = "success"
 
   production-builds:
     name: ${{ matrix.label }}
@@ -64,8 +109,9 @@ jobs:
       - run: npm run ${{ matrix.script }}
 
   android-native:
-    name: Android native lint and debug build
+    name: Android compile and launch smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -84,10 +130,24 @@ jobs:
       - name: Lint and compile the Android app
         working-directory: android
         run: ./gradlew lintDebug assembleDebug
+      - name: Run Android instrumentation and launch smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop com.georgicole.thebigeye
+            adb shell monkey -p com.georgicole.thebigeye -c android.intent.category.LAUNCHER 1
+            sleep 5
+            adb shell pidof com.georgicole.thebigeye
 
   ios-native:
-    name: iOS simulator build
+    name: iOS simulator compile and launch smoke
     runs-on: macos-latest
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -98,12 +158,30 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run sync:ios
+      - name: Select and boot an iPhone simulator
+        id: simulator
+        shell: bash
+        run: |
+          device_id=$(xcrun simctl list devices available -j | python3 -c "import json,sys; data=json.load(sys.stdin); print(next(d['udid'] for runtime in data['devices'].values() for d in runtime if d['name'].startswith('iPhone') and d.get('isAvailable', True)))")
+          echo "id=$device_id" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$device_id" || true
+          xcrun simctl bootstatus "$device_id" -b
       - name: Compile the iOS app without signing
         run: >-
           xcodebuild build
           -project ios/App/App.xcodeproj
-          -target App
+          -scheme App
           -configuration Debug
           -sdk iphonesimulator
+          -destination id=${{ steps.simulator.outputs.id }}
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
+      - name: Install and launch the iOS app
+        shell: bash
+        run: |
+          app_path="$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/App.app"
+          xcrun simctl install "${{ steps.simulator.outputs.id }}" "$app_path"
+          xcrun simctl launch "${{ steps.simulator.outputs.id }}" com.georgicole.thebigeye
+          sleep 5
+          xcrun simctl terminate "${{ steps.simulator.outputs.id }}" com.georgicole.thebigeye

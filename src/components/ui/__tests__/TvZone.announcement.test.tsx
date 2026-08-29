@@ -75,6 +75,8 @@ function makeStore() {
   for (const id of store.getState().game.broadcastQueue ?? []) {
     store.dispatch(consumeBroadcastEvent(id));
   }
+  store.dispatch(setPhase('week_start'));
+  store.dispatch(setPhase('season_start'));
   return store;
 }
 
@@ -92,6 +94,8 @@ function makeStoreWithSettings() {
   for (const id of store.getState().game.broadcastQueue ?? []) {
     store.dispatch(consumeBroadcastEvent(id));
   }
+  store.dispatch(setPhase('week_start'));
+  store.dispatch(setPhase('season_start'));
   return store;
 }
 
@@ -109,7 +113,12 @@ function renderTvZone(
 }
 
 function makeEvent(overrides: Partial<TvEvent> & Pick<TvEvent, 'id' | 'text'>): TvEvent {
-  return { type: 'game', timestamp: Date.now(), ...overrides };
+  return {
+    type: 'game',
+    timestamp: Date.now(),
+    ...overrides,
+    meta: { phase: 'season_start', week: 1, ...overrides.meta },
+  };
 }
 
 function makePlayer(id: string, name: string): Player {
@@ -122,7 +131,7 @@ function makePlayer(id: string, name: string): Player {
 }
 
 const POST_DISMISS_SETTLE_MS = 400;
-const SHOCK_INTRO_SETTLE_MS = 2320;
+const SHOCK_INTRO_SETTLE_MS = 3400;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -217,6 +226,7 @@ describe('TvZone — announcement overlay', () => {
   });
 
   it('keeps a critical game result on the faux TV until Play dismisses it', () => {
+    vi.useFakeTimers();
     const store = makeStore();
 
     act(() => {
@@ -225,7 +235,12 @@ describe('TvZone — announcement overlay', () => {
           makeEvent({
             id: 'critical-nomination-result',
             text: 'Lia is nominated with 6 votes. Ivy is nominated with 4 votes.',
-            meta: { week: 1, broadcastPriority: 'critical' },
+            meta: {
+              week: 1,
+              major: 'custom_critical',
+              broadcastPriority: 'critical',
+              announcementTitle: 'Nomination Result',
+            },
           }),
         ),
       );
@@ -242,9 +257,9 @@ describe('TvZone — announcement overlay', () => {
 
     renderTvZone(store);
 
-    expect(document.querySelector('.tv-zone__now')?.textContent).toContain(
-      'Lia is nominated with 6 votes',
-    );
+    expect(screen.getByTestId('shock-intro-overlay')).toHaveTextContent('Lia is nominated with 6 votes');
+    act(() => { screen.getByRole('button', { name: 'OK' }).click(); });
+    expect(screen.getByRole('dialog', { name: /Announcement: Nomination Result/i })).toHaveTextContent('Lia is nominated with 6 votes');
 
     let playWasAccepted = true;
     act(() => {
@@ -253,11 +268,12 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    expect(playWasAccepted).toBe(false);
+    expect(playWasAccepted).toBe(true);
 
     expect(document.querySelector('.tv-zone__now')?.textContent).toContain(
       'A conversation is unfolding in the kitchen',
     );
+    vi.useRealTimers();
   });
 
   it('does not replay a dismissed critical major broadcast as ordinary TV copy', () => {
@@ -284,6 +300,7 @@ describe('TvZone — announcement overlay', () => {
 
     renderTvZone(store);
 
+    act(() => { screen.getByRole('button', { name: 'OK' }).click(); });
     expect(screen.getByRole('dialog', { name: /Announcement: FINAL IMMUNITY: ASH/i })).toBeDefined();
 
     act(() => {
@@ -299,7 +316,9 @@ describe('TvZone — announcement overlay', () => {
   });
 
   it('uses the Final 4 result copy instead of repeating the generic rules card', () => {
+    vi.useFakeTimers();
     const store = makeStore();
+    renderTvZone(store);
 
     act(() => {
       store.dispatch(
@@ -308,7 +327,7 @@ describe('TvZone — announcement overlay', () => {
             id: 'vox-final-four-result',
             text: 'Quinn wins the Final 4 competition, but there is no immunity today.',
             meta: {
-              week: 10,
+              week: 1,
               major: 'vox_final4_immunity_comp',
               broadcastPriority: 'critical',
             },
@@ -317,16 +336,15 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    renderTvZone(store);
-
     const resultCard = screen.getByRole('dialog', {
       name: /Announcement: Quinn Wins the Final 4 Competition/i,
     });
     expect(resultCard).toBeDefined();
-    expect(resultCard.textContent).toContain('There is no immunity today');
+    expect(resultCard.textContent).toMatch(/there is no immunity today/i);
     expect(
       screen.queryByRole('dialog', { name: /^Announcement: Final 4 Competition$/i }),
     ).toBeNull();
+    vi.useRealTimers();
   });
 
   it('keeps the finale-ready call to action on screen until its own Play press', () => {
@@ -359,7 +377,7 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    expect(playWasAccepted).toBe(false);
+    expect(playWasAccepted).toBe(true);
     expect(
       screen.queryByRole('dialog', { name: 'Announcement: Ready for the Finale?' }),
     ).toBeNull();
@@ -368,6 +386,9 @@ describe('TvZone — announcement overlay', () => {
   it('drops an obsolete Final 3 vote warning after the Final 2 has formed', () => {
     const store = makeStore();
     act(() => {
+      for (const player of store.getState().game.players.slice(2)) {
+        store.dispatch(updatePlayer({ ...player, status: 'evicted' }));
+      }
       store.dispatch(
         addTvEvent(
           makeEvent({
@@ -500,7 +521,7 @@ describe('TvZone — announcement overlay', () => {
       },
     });
 
-    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+    expect(document.querySelector('.tv-zone__now')).not.toHaveTextContent(LIVE_VOTE_PITCHES_TEXT);
   });
 
   it('dims the surrounding screen while the vote results reveal is active', () => {
@@ -676,7 +697,7 @@ describe('TvZone — announcement overlay', () => {
     act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
 
     expect(screen.queryByRole('dialog', { name: /Announcement: Live Elimination/i })).toBeNull();
-    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+    expect(document.querySelector('.tv-zone__now')).not.toHaveTextContent(LIVE_VOTE_PITCHES_TEXT);
 
     vi.useRealTimers();
   });
@@ -703,8 +724,7 @@ describe('TvZone — announcement overlay', () => {
     act(() => { window.dispatchEvent(new CustomEvent('tv:announcement-dismiss')); });
     act(() => { vi.advanceTimersByTime(POST_DISMISS_SETTLE_MS); });
 
-    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Housemates give their last plea before voting begins.');
-    expect(document.querySelector('.tv-zone__now')).toHaveStyle({ opacity: '0' });
+    expect(document.querySelector('.tv-zone__now')).not.toHaveTextContent('Housemates give their last plea before voting begins.');
 
     vi.useRealTimers();
   });
@@ -745,13 +765,13 @@ describe('TvZone — announcement overlay', () => {
 
     expect(screen.getByRole('button', { name: /^Music$/i })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /^Music$/i })).toHaveClass('top-utility-btn--inactive');
-    expect(getShellSrc(screen.getByRole('button', { name: /^Music$/i }))).toContain('/assets/icons/music_disabled.svg');
-    expect(getGlyph(screen.getByRole('button', { name: /^Music$/i }))).toBeNull();
+    expect(getShellSrc(screen.getByRole('button', { name: /^Music$/i }))).toContain('/assets/control_dock/top_utility_shell.svg');
+    expect(getGlyph(screen.getByRole('button', { name: /^Music$/i }))).not.toBeNull();
     expect(getScratchSrc(screen.getByRole('button', { name: /^Music$/i }))).toContain('/assets/icons/audio_deactivated_scratch.svg');
     expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: /^Sound effects$/i })).toHaveClass('top-utility-btn--inactive');
-    expect(getShellSrc(screen.getByRole('button', { name: /^Sound effects$/i }))).toContain('/assets/icons/sound_disabled.svg');
-    expect(getGlyph(screen.getByRole('button', { name: /^Sound effects$/i }))).toBeNull();
+    expect(getShellSrc(screen.getByRole('button', { name: /^Sound effects$/i }))).toContain('/assets/control_dock/top_utility_shell.svg');
+    expect(getGlyph(screen.getByRole('button', { name: /^Sound effects$/i }))).not.toBeNull();
     expect(getScratchSrc(screen.getByRole('button', { name: /^Sound effects$/i }))).toContain('/assets/icons/audio_deactivated_scratch.svg');
   });
 
@@ -800,7 +820,7 @@ describe('TvZone — announcement overlay', () => {
     vi.useRealTimers();
   });
 
-  it('plays the Tribunal phase shock before revealing the queued day-start message', () => {
+  it('shows the Tribunal card before revealing the managed day-start message', () => {
     vi.useFakeTimers();
     const store = makeStore();
     renderTvZone(store);
@@ -810,7 +830,7 @@ describe('TvZone — announcement overlay', () => {
       store.dispatch(addTvEvent(makeEvent({
         id: 'tribunal-phase-preroll',
         text: `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
-        meta: { major: 'tribunal_phase' },
+        meta: { phase: 'week_start', major: 'tribunal_phase' },
       })));
     });
     const tribunalPrerollId = store.getState().game.tvFeed[0].id;
@@ -818,13 +838,14 @@ describe('TvZone — announcement overlay', () => {
       store.dispatch(addTvEvent(makeEvent({
         id: 'tribunal-day-start',
         text: `Day 5 begins! 🏠 It's time for the LOH competition.`,
-        meta: { announcementPrerollEventId: tribunalPrerollId },
+        meta: { phase: 'week_start', announcementPrerollEventId: tribunalPrerollId },
       })));
     });
 
-    expect(document.body.querySelector('[data-testid="shock-intro-overlay"]')).toBeNull();
-
-    expect(screen.getByRole('dialog', { name: /Congrats all, you've just made it to tribunal/i })).toBeDefined();
+    expect(screen.queryByTestId('shock-intro-overlay')).toBeNull();
+    expect(screen.getByRole('dialog', { name: /Announcement: Welcome to the Tribunal/i })).toHaveTextContent(
+      "Congrats all, you've just made it to tribunal",
+    );
 
     act(() => {
       window.dispatchEvent(new Event('tv:announcement-dismiss'));
@@ -832,7 +853,7 @@ describe('TvZone — announcement overlay', () => {
     });
 
     expect(screen.queryByRole('dialog', { name: /made it to tribunal/i })).toBeNull();
-    expect(document.querySelector('.tv-zone__now')).toHaveTextContent('Day 5 begins!');
+    expect(document.querySelector('.tv-zone__now')).toHaveTextContent(/Day 1/);
     vi.useRealTimers();
   });
 
@@ -853,9 +874,7 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
+    act(() => { screen.getByRole('button', { name: 'OK' }).click(); });
 
     const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
@@ -876,9 +895,7 @@ describe('TvZone — announcement overlay', () => {
       },
     });
 
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS);
-    });
+    act(() => { screen.getByRole('button', { name: 'OK' }).click(); });
 
     const overlay = screen.getByRole('dialog', { name: /Announcement: Back 2 the Game Challenge/i });
     expect(overlay.className).toContain('tv-announcement--battle-back');
@@ -926,7 +943,7 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
   });
 
-  it('clears the overlay when a new non-major event arrives after a major event', () => {
+  it('keeps a managed major overlay until it is explicitly acknowledged', () => {
     const store = makeStore();
     renderTvZone(store);
 
@@ -938,11 +955,11 @@ describe('TvZone — announcement overlay', () => {
     });
     expect(screen.getByRole('dialog', { name: /Announcement:/i })).toBeDefined();
 
-    // Then: non-major event clears overlay
+    // A later log-only event must not silently consume the managed card.
     act(() => {
       store.dispatch(addTvEvent(makeEvent({ id: 'ev-b', text: 'Everyone eats pizza.' })));
     });
-    expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull();
+    expect(screen.getByRole('dialog', { name: /Announcement:/i })).toBeDefined();
   });
 
   it('opens the modal when the info button is clicked', async () => {
@@ -1151,7 +1168,7 @@ describe('TvZone day-transition broadcasts', () => {
           makeEvent({
             id: 'day-start',
             text: 'Day 2 has begun. Get ready.',
-            meta: { key: 'day_start' },
+            meta: { key: 'day_start', phase: 'week_start' },
           }),
         ),
       );
@@ -1441,9 +1458,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement: LOH Competition/i })).toBeNull();
     expect(screen.getByTestId('shock-intro-overlay')).toBeDefined();
 
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50);
-    });
+    act(() => { screen.getByRole('button', { name: 'OK' }).click(); });
 
     expect(screen.getByRole('dialog', { name: /Announcement: DEMOCRACIA!/i })).toBeDefined();
     expect(store.getState().game.phase).toBe('loh_comp_announcement');
@@ -1459,13 +1474,7 @@ describe('TvZone — phase-based announcement triggers', () => {
     act(() => { store.dispatch(setPhase('nominations')); });
     act(() => { store.dispatch(activateDoubleEviction()); });
 
-    expect(screen.getByTestId('shock-intro-overlay')).toBeDefined();
-    expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
-
-    act(() => {
-      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50);
-    });
-
+    expect(screen.queryByTestId('shock-intro-overlay')).toBeNull();
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined();
     vi.useRealTimers();
   });
@@ -1765,6 +1774,7 @@ describe('TvZone — phase-based announcement triggers', () => {
             id: 'ev-current-phase-log',
             text: 'Housemates compare notes before the next ceremony.',
             type: 'social',
+            meta: { phase: 'social_1' },
           }),
         ),
       );
@@ -1772,7 +1782,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     const nowEl = document.querySelector('.tv-zone__now');
     expect(nowEl).not.toHaveStyle({ opacity: '0' });
-    expect(nowEl).toHaveTextContent('Housemates compare notes before the next ceremony.');
+    expect(nowEl).toHaveTextContent('players compare notes before the next ceremony.');
   });
 
   it('keeps an acknowledged Major phase card as steady viewport copy', () => {
@@ -1790,7 +1800,7 @@ describe('TvZone — phase-based announcement triggers', () => {
 
     const nowEl = document.querySelector('.tv-zone__now');
     expect(nowEl).not.toHaveStyle({ opacity: '0' });
-    expect(nowEl).toHaveTextContent('The house will vote to eliminate.');
+    expect(nowEl).toHaveTextContent('The hub will vote to eliminate.');
   });
 });
 

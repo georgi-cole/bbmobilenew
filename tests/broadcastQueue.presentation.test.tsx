@@ -433,7 +433,7 @@ describe('manager-driven faux-TV queue', () => {
     })
     expect(accepted).toBe(false)
     await waitFor(() => {
-      expect(screen.getByTestId('tv-shock-prelude')).toHaveTextContent('Critical title')
+      expect(screen.getByTestId('shock-intro-overlay')).toHaveTextContent('Critical title')
     })
   })
 })

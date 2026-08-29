@@ -394,7 +394,7 @@ describe('HomeHub', () => {
     expect(screen.queryByRole('button', { name: 'Debug Menu: Off' })).toBeNull();
   });
 
-  it('opens Surveyeval directly while temporary store unlocks are enabled', async () => {
+  it('routes Surveyeval to the store when the temporary release bypass is disabled', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -406,8 +406,8 @@ describe('HomeHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     fireEvent.click(screen.getByRole('button', { name: 'Surveyeval' }));
 
-    expect(mockNavigate).not.toHaveBeenCalledWith('/store', { state: { returnTo: '/?menu=play' } });
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/store', { state: { returnTo: '/?menu=play' } });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     view.unmount();
   });

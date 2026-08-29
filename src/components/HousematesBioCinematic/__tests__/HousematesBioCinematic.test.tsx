@@ -38,7 +38,7 @@ describe('Housemates archive', () => {
   it('changes from an intro segment into a browseable map and side-by-side profile', () => {
     render(<HousematesBioCinematic onComplete={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /enter the house/i }));
+    fireEvent.click(screen.getByRole('button', { name: /enter the hub/i }));
     const ariaNode = screen.getByRole('button', { name: /aria/i });
     fireEvent.click(ariaNode);
 

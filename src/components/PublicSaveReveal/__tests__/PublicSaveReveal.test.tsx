@@ -27,6 +27,15 @@ function formatShare(value: number): string {
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`
 }
 
+function revealVoteShares() {
+  act(() => {
+    vi.advanceTimersByTime(900)
+  })
+  act(() => {
+    vi.advanceTimersByTime(3616)
+  })
+}
+
 describe('PublicSaveReveal', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -55,13 +64,11 @@ describe('PublicSaveReveal', () => {
       />
     )
 
-    expect(screen.getAllByText('?? %')).toHaveLength(3)
+    expect(screen.getAllByText('—')).toHaveLength(3)
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    revealVoteShares()
 
-    expect(screen.queryByText('?? %')).toBeNull()
+    expect(screen.queryByText('—')).toBeNull()
     nominees.forEach((nominee) => {
       expect(screen.getByText(formatShare(expectedShares[nominee.id]))).toBeTruthy()
     })
@@ -77,9 +84,7 @@ describe('PublicSaveReveal', () => {
       />
     )
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    revealVoteShares()
 
     expect(screen.getAllByText('40%')).toHaveLength(2)
     expect(screen.queryByText('40.1%')).toBeNull()
@@ -158,13 +163,11 @@ describe('PublicSaveReveal', () => {
 
     expect(document.querySelector('.psr')).toBeTruthy()
     expect(document.querySelector('.avr')).toBeNull()
-    expect(screen.getAllByText('?? %')).toHaveLength(3)
+    expect(screen.getAllByText('—')).toHaveLength(3)
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    revealVoteShares()
 
-    expect(screen.queryByText('?? %')).toBeNull()
+    expect(screen.queryByText('—')).toBeNull()
     expect(
       screen
         .getAllByText(/%$/)
@@ -196,13 +199,11 @@ describe('PublicSaveReveal', () => {
     expect(document.querySelectorAll('.psr__nominee')).toHaveLength(3)
     expect(document.querySelectorAll('.psr__avatar-member')).toHaveLength(6)
     expect(screen.getByText('Cupid 1 & Cupid 2')).toBeTruthy()
-    expect(screen.getAllByText('?? %')).toHaveLength(3)
+    expect(screen.getAllByText('—')).toHaveLength(3)
 
-    act(() => {
-      vi.advanceTimersByTime(5000)
-    })
+    revealVoteShares()
 
-    expect(screen.queryByText('?? %')).toBeNull()
+    expect(screen.queryByText('—')).toBeNull()
     expect(screen.getByText('46.6%')).toBeTruthy()
   })
 })

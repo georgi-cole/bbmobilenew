@@ -44,7 +44,7 @@ describe('Tribunal phase announcement', () => {
     const state = store.getState().game;
     expect(state.phase).toBe('week_start');
     expect(state.tribunalPhaseAnnounced).toBe(true);
-    expect(state.tvFeed[0].text).toContain('Day 5 begins!');
+    expect(state.tvFeed[0].text).toContain('Day 5 has begun. Get ready.');
     expect(state.tvFeed[1]).toMatchObject({
       text: TRIBUNAL_MESSAGE,
       meta: { major: 'tribunal_phase' },

@@ -14,7 +14,9 @@ describe('Back 2 the Game return-flow regressions', () => {
     expect(floatingActionBar).toContain(
       'game.battleBack?.active === true && game.battleBack.competitionActive !== true'
     )
-    expect(floatingActionBar).toContain('if (battleBackAnnouncementActive)')
+    expect(floatingActionBar).toContain(
+      'if (battleBackAnnouncementActive || voxTransitionOwnsPlay)'
+    )
     expect(floatingActionBar).not.toContain(
       'if (advancedProgressRef.current === advanceProgressKey) {\n      dispatchPlayPressedEvent()\n      return'
     )
@@ -35,8 +37,10 @@ describe('Back 2 the Game return-flow regressions', () => {
 
     expect(overlay).toContain('const [showReturnStrike, setShowReturnStrike] = useState(isReturn)')
     expect(overlay).toContain('setShowReturnStrike(false)')
-    expect(overlay).toContain('scaleX: 1.12')
-    expect(overlay).toContain('scaleY: 0.88')
+    expect(overlay).toContain('isReturn && desaturated')
+    expect(overlay).toContain("filter: 'none'")
+    expect(overlay).toContain('scaleX: 1')
+    expect(overlay).toContain('scaleY: 1')
     expect(overlay).toContain('!isReturn && showLiveBug')
     expect(overlay).toContain('!isReturn && showLowerThird')
     expect(overlay).not.toContain("const labelText = isReturn ? 'RETURNED'")

@@ -4,6 +4,8 @@
 
 This matrix covers every non-retired registry entry. Its executable source is `tests/helpers/minigameQualityMatrix.ts`. The completeness test compares its keys with `getPoolByFilter({ retired: false })`, verifies cited files exist, and checks that every active key appears in this document.
 
+Recently activated variants are tracked explicitly: `quickTapSeasons` shares the rapid-tap scoring contract with its season-stage experiment coverage, while `castleRescue2` shares the rescue scoring contract and records dedicated sequel component coverage as an open risk.
+
 Evidence codes: **L** logic/rules, **C** real component, **H** host/integration, **B** registry-driven Playwright. ?B configured? means a browser path exists; only `docs/quality-phase-2-report.md` may claim it passed after execution.
 
 ## Contracts common to every row

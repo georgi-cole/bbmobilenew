@@ -84,7 +84,7 @@ describe('season numbering', () => {
     const store = makeStore();
     store.dispatch(resetGame([buildArchive(1)]));
     const feed = store.getState().game.tvFeed;
-    const welcome = feed.find((e) => e.id === 'e0');
+    const welcome = feed.find((event) => event.meta?.broadcastTemplateId === 'season.welcome');
     expect(welcome?.text).toContain('Season 2');
   });
 

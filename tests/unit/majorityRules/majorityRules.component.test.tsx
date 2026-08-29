@@ -73,7 +73,7 @@ describe('MajorityRulesComp', () => {
     expect(screen.getByText('Rae')).toBeInTheDocument();
 
     const finnPortrait = screen.getAllByTestId('mr-portrait-finn')[0];
-    expect(finnPortrait.getAttribute('src')).toContain('assets/skins/Finn_avatar.webp');
+    expect(finnPortrait.getAttribute('src')).toContain('assets/skins/backup-grey-lux/Finn_avatar.webp');
   });
 
   it('switches to a compact avatar rail when the roster is large', async () => {

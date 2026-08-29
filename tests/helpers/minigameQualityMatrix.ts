@@ -61,6 +61,13 @@ export const ACTIVE_MINIGAME_QUALITY_DETAILS: Record<string, QualityDetail> = {
     component: 'tests/quickTapRace.component.test.tsx',
     risk: 'No dedicated real-host Vitest path.',
   },
+  quickTapSeasons: {
+    input: 'rapid pointer/touch tapping across a staged season timeline',
+    scoring: 'higher',
+    tie: 'Higher cumulative season score; then the seeded competition tiebreak policy.',
+    logic: 'tests/unit/competition-ai/quickTapSeasonsExperiment.test.ts',
+    risk: 'The full staged interaction still relies on the browser minigame smoke path.',
+  },
   memoryMatch: {
     input: 'ordered pointer/touch color selection',
     scoring: 'placement',
@@ -237,6 +244,13 @@ export const ACTIVE_MINIGAME_QUALITY_DETAILS: Record<string, QualityDetail> = {
     tie: 'Higher rescue score; then lower supplied tiebreaker.',
     logic: 'tests/unit/castle-rescue/ranking.test.ts',
     component: 'tests/unit/castle-rescue/continue-button.test.tsx',
+  },
+  castleRescue2: {
+    input: 'keyboard or on-screen castle exploration controls',
+    scoring: 'higher',
+    tie: 'Higher rescue score; then lower supplied tiebreaker.',
+    logic: 'tests/minigames.castleRescue.rules.test.ts',
+    risk: 'The sequel reuses the rescue contract but still needs dedicated component coverage.',
   },
   glass_bridge_brutal: {
     input: 'pointer/touch path choice',

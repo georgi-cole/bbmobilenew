@@ -86,10 +86,12 @@ export default function Settings() {
   const isVipActive = useAppSelector(selectIsVipActive)
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
-  const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
-  const isGuest = useAppSelector((state) => state.profiles.isGuest)
+  // Some lightweight Settings test stores predate profiles. Treat their state
+  // as a guest session so the screen remains usable during the migration.
+  const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? true)
   const realityAgeEligibility = useAppSelector((state) =>
-    getProfileRealityAgeEligibility(state.profiles)
+    state.profiles ? getProfileRealityAgeEligibility(state.profiles) : false
   )
   const { systemLanguage, t } = useI18n()
   const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride

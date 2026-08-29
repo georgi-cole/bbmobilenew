@@ -50,7 +50,7 @@ describe('Houseguests screen', () => {
     );
 
     expect(screen.getByRole('heading', { level: 1, name: /Housemates/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(`${playerCount}/${playerCount} housemates`)).toBeInTheDocument();
+    expect(screen.getByLabelText(`${playerCount}/${playerCount} players`)).toBeInTheDocument();
   });
 
   it('shows the veto-safe badge label for players protected for the rest of the cycle', () => {

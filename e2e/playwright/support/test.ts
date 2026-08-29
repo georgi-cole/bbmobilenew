@@ -23,6 +23,11 @@ function consoleError(message: ConsoleMessage): BrowserError | null {
 
 async function installUnhandledRejectionReporter(page: Page): Promise<void> {
   await page.addInitScript((newSeasonFixture) => {
+    // Browser journeys exercise game behavior, not the optional location-consent
+    // UI. Resolve it before application code initializes so a delayed prompt
+    // cannot intercept an unrelated test interaction.
+    localStorage.setItem('bb:allowLocation', 'denied')
+
     Object.defineProperty(window, '__E2E__', {
       configurable: false,
       enumerable: false,

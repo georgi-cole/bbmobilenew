@@ -123,7 +123,7 @@ function makeStore(
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('activateDoubleEviction', () => {
-  it('sets weekActive=true, increments usedCount, twistActivatedThisWeek=true, and pushes a TV event', () => {
+  it('sets weekActive=true and leaves announcement ownership to the nominations card', () => {
     const store = makeStore();
     store.dispatch(activateDoubleEviction());
     const { doubleEviction, tvFeed, twistActive, twistActivatedThisWeek } = store.getState().game;
@@ -134,10 +134,7 @@ describe('activateDoubleEviction', () => {
     expect(twistActive).toBe(true);
     expect(twistActivatedThisWeek).toBe(true);
 
-    const event = tvFeed.find((e) => e.major === 'double_eviction');
-    expect(event).toBeDefined();
-    expect(event!.type).toBe('twist');
-    expect(event!.text).toMatch(/DOUBLE ELIMINATION/i);
+    expect(tvFeed.find((event) => event.major === 'double_eviction')).toBeUndefined();
   });
 
   it('initialises doubleEviction when the field is absent (legacy state)', () => {

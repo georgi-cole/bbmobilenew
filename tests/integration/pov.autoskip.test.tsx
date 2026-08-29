@@ -43,6 +43,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 // ── Module-level captured callback (required: vi.mock is hoisted) ──────────
 
 let capturedOnDone: ((rawValue: number, partial?: boolean) => void) | null = null;
+let capturedWinnerCeremonyDone: (() => void) | null = null;
 
 vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
   default: ({ onDone }: { onDone: (rawValue: number, partial?: boolean) => void }) => {
@@ -57,6 +58,13 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: () => <div data-testid="tv-zone" />,
+}));
+
+vi.mock('../../src/components/WinnerTileLiftAnimation/WinnerTileLiftAnimation', () => ({
+  default: ({ onDone }: { onDone: () => void }) => {
+    capturedWinnerCeremonyDone = onDone;
+    return <div data-testid="winner-ceremony" />;
+  },
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -153,6 +161,7 @@ describe('GameScreen.onDone — partial=true still advances the game (no stuck s
   beforeEach(() => {
     vi.useFakeTimers();
     capturedOnDone = null;
+    capturedWinnerCeremonyDone = null;
   });
 
   afterEach(() => {
@@ -270,6 +279,8 @@ describe('GameScreen.onDone — partial=false (normal completion) — no regress
 
     // Normal valid game completion
     await act(async () => { capturedOnDone!(750, false); });
+    expect(capturedWinnerCeremonyDone).not.toBeNull();
+    await act(async () => { capturedWinnerCeremonyDone!(); });
 
     expect(store.getState().game.posWinnerId).not.toBeNull();
     expect(store.getState().game.phase).toBe('pos_results');
@@ -284,6 +295,8 @@ describe('GameScreen.onDone — partial=false (normal completion) — no regress
     expect(capturedOnDone).not.toBeNull();
 
     await act(async () => { capturedOnDone!(500, false); });
+    expect(capturedWinnerCeremonyDone).not.toBeNull();
+    await act(async () => { capturedWinnerCeremonyDone!(); });
 
     expect(store.getState().game.lohId).not.toBeNull();
     expect(store.getState().game.phase).toBe('loh_results');
@@ -297,6 +310,8 @@ describe('GameScreen.onDone — partial=false (normal completion) — no regress
 
     // Calling onDone with only one argument (partial omitted / undefined)
     await act(async () => { capturedOnDone!(300); });
+    expect(capturedWinnerCeremonyDone).not.toBeNull();
+    await act(async () => { capturedWinnerCeremonyDone!(); });
 
     expect(store.getState().game.posWinnerId).not.toBeNull();
     expect(store.getState().game.phase).toBe('pos_results');

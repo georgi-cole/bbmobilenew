@@ -2437,7 +2437,7 @@ export default function GameScreen() {
           />
         )}
 
-        {!deferConditionPromptsForPresentation && battleBackRetryOfferWinnerId && (
+        {battleBackRetryOfferWinnerId && (
           <AdPrompt
             icon="⚡"
             title="Second Chance?"

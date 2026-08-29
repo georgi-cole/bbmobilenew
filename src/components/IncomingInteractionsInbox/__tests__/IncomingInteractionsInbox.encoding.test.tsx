@@ -75,7 +75,7 @@ describe('IncomingInteractionsInbox encoding and icons', () => {
     expect(screen.getByText('Resolved · Accepted')).toBeInTheDocument()
 
     const closeButton = screen.getByRole('button', { name: 'Close inbox' })
-    expect(within(closeButton).getByTestId('incoming-icon-close')).toBeInTheDocument()
+    expect(within(closeButton).getByText('↩')).toBeInTheDocument()
 
     expect(container.textContent).not.toMatch(/ðŸ|âœ|âš|ï¸|�/u)
   })

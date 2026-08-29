@@ -8,7 +8,7 @@ const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
  * connects store purchases or rewarded ads. It affects store entitlements only,
  * never ordinary gameplay-state locks.
  */
-export const TEMPORARY_STORE_UNLOCKS_ENABLED = true
+export const TEMPORARY_STORE_UNLOCKS_ENABLED = false
 
 export interface StoreEntitlements {
   survivalMode: boolean

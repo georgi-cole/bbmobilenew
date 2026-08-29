@@ -91,7 +91,7 @@ describe('Credits', () => {
     renderCredits()
 
     await waitFor(() => expect(contentMock.load).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(screen.getByText('Runtime Producer')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Runtime Producer').length).toBeGreaterThan(0))
     expect(screen.getByTestId('credits-background-video').parentElement).toHaveAttribute(
       'data-content-source',
       'runtime'

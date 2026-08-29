@@ -811,11 +811,7 @@ function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
     const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
-  const priorityFor = (id: string) =>
-    activeEventsById.get(id)?.meta?.broadcastPriority === 'critical' ? 0 : 1
-  queue.sort(
-    (left, right) => priorityFor(left) - priorityFor(right) || orderFor(left) - orderFor(right)
-  )
+  queue.sort((left, right) => orderFor(left) - orderFor(right))
   state.broadcastQueue = queue
 }
 
@@ -847,8 +843,6 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
   })
   eligible.sort(
     (left, right) =>
-      (left.meta?.broadcastPriority === 'critical' ? 0 : 1) -
-        (right.meta?.broadcastPriority === 'critical' ? 0 : 1) ||
       managedBroadcastOrder(state, left) - managedBroadcastOrder(state, right) ||
       left.timestamp - right.timestamp ||
       left.id.localeCompare(right.id)
@@ -894,7 +888,10 @@ function refreshManagedBroadcastDefinition(state: GameState, event: TvEvent) {
     ? custom.forceOnTv !== false
     : (override?.forceOnTv ?? template?.forceOnTv ?? event.meta?.forceOnTv === true)
   const configuredMajor =
-    custom?.major ?? (override?.major === null ? undefined : (override?.major ?? template?.major))
+    custom?.major ??
+    (override?.major === null
+      ? undefined
+      : (override?.major ?? template?.major ?? event.meta?.major ?? event.major))
   const major =
     level === 'critical'
       ? (configuredMajor ?? 'custom_critical')
@@ -921,7 +918,8 @@ function refreshManagedBroadcastDefinition(state: GameState, event: TvEvent) {
   if (level === 'critical') meta.broadcastPriority = 'critical'
   else delete meta.broadcastPriority
   if (level !== 'minor') {
-    meta.announcementTitle = custom?.title ?? override?.title ?? template?.title
+    meta.announcementTitle =
+      custom?.title ?? override?.title ?? template?.title ?? event.meta?.announcementTitle
     meta.announcementSubtitle = event.text
   } else {
     delete meta.announcementTitle
@@ -952,10 +950,18 @@ function pushEvent(
   const matched = matchBroadcastTemplate(text, hintedPhase, explicitTemplateId)
   const template = matched?.template
   const authoredTemplateId = typeof explicitTemplateId === 'string' ? explicitTemplateId : null
+  const hasExplicitPresentation =
+    typeof meta?.major === 'string' ||
+    typeof meta?.broadcastLevel === 'string' ||
+    meta?.broadcastPriority === 'critical'
   const observed =
-    template || authoredTemplateId ? null : inferObservedBroadcastSource(state, hintedPhase, text)
+    template || authoredTemplateId || hasExplicitPresentation
+      ? null
+      : inferObservedBroadcastSource(state, hintedPhase, text)
   const templateId = template?.id ?? authoredTemplateId ?? observed?.id
-  const isDeclaredSource = Boolean(template || authoredTemplateId || meta?.customBroadcastId)
+  const isDeclaredSource = Boolean(
+    template || authoredTemplateId || meta?.customBroadcastId || hasExplicitPresentation
+  )
   const variables = matched?.variables ?? observed?.variables ?? []
   const override = templateId ? state.broadcastOverrides?.[templateId] : undefined
   if (override?.disabled) return undefined
@@ -993,7 +999,14 @@ function pushEvent(
     meta?.major === 'depression_shock_start' ||
     meta?.major === 'depression_shock_day_2' ||
     meta?.major === 'depression_shock_end'
-  const intendedPhase = preserveActivationPhase ? hintedPhase : (template?.phase ?? hintedPhase)
+  // An explicit phase belongs to the emitting call site and is authoritative.
+  // Catalog phases are a fallback for legacy callers that only provide a major
+  // key; overriding an explicit phase can silently strand a valid broadcast
+  // outside the active queue.
+  const intendedPhase =
+    preserveActivationPhase || typeof meta?.phase === 'string'
+      ? hintedPhase
+      : (template?.phase ?? hintedPhase)
   const broadcastOrder =
     override?.order ??
     (template
@@ -3042,6 +3055,7 @@ const gameSlice = createSlice({
   reducers: {
     setPhase(state, action: PayloadAction<Phase>) {
       state.phase = action.payload
+      rebuildManagedBroadcastQueue(state, action.payload)
     },
     advanceWeek(state) {
       state.week += 1
@@ -6210,6 +6224,10 @@ const gameSlice = createSlice({
                   event.text,
                 [String(season)]
               ),
+              meta: {
+                ...event.meta,
+                broadcastVariables: [String(season)],
+              },
             }
           : event
       )

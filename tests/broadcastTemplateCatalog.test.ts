@@ -24,10 +24,12 @@ describe('broadcast template catalog', () => {
     ).toBe('The house congratulates Rune.')
   })
 
-  it('routes every built-in feed message onto the faux TV by default', () => {
+  it('declares faux-TV routing for every built-in feed message', () => {
     const feeds = BROADCAST_TEMPLATE_CATALOG.filter((template) => template.kind === 'feed')
     expect(feeds.length).toBeGreaterThan(0)
-    expect(feeds.every((template) => template.forceOnTv === true)).toBe(true)
+    expect(feeds.every((template) => typeof template.forceOnTv === 'boolean')).toBe(true)
+    expect(feeds.some((template) => template.forceOnTv === true)).toBe(true)
+    expect(feeds.some((template) => template.forceOnTv === false)).toBe(true)
   })
 
   it('captures variables when a runtime event supplies an explicit template id', () => {

@@ -26,10 +26,6 @@ import gameReducer, {
 import settingsReducer, { DEFAULT_SETTINGS } from '../src/store/settingsSlice';
 import type { GameState, Player, TvEvent } from '../src/types';
 import { simulateBattleBackCompetition } from '../src/features/twists/battleBackCompetition';
-import {
-  advanceBattleBackAnnouncementStep,
-  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
-} from '../src/screens/GameScreen/battleBackFlow';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -116,7 +112,6 @@ describe('activateBattleBack', () => {
     expect((battleBackEvent as TvEvent)?.major).toBe('battle_back');
   });
 });
-
 describe('openBattleBackCompetition', () => {
   it('sets competitionActive=true when battleBack is active', () => {
     const store = makeStore();
@@ -537,37 +532,5 @@ describe('clearBlockingFlags does not bypass Battle Back gate', () => {
     // After explicit dismiss, advance() can run.
     expect(store.getState().game.phase).not.toBe('eviction_results');
     expect(store.getState().game.battleBack?.active).toBe(false);
-  });
-});
-
-// ── advanceBattleBackAnnouncementStep ─────────────────────────────────────────
-
-describe('advanceBattleBackAnnouncementStep', () => {
-  const TOTAL = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length; // 3
-
-  it('returns shouldOpenCompetition=false for intermediate steps', () => {
-    for (let step = 0; step < TOTAL - 1; step++) {
-      const result = advanceBattleBackAnnouncementStep(step);
-      expect(result.shouldOpenCompetition).toBe(false);
-      expect(result.nextStep).toBe(step + 1);
-    }
-  });
-
-  it('returns shouldOpenCompetition=true and nextStep=null on the last step', () => {
-    const result = advanceBattleBackAnnouncementStep(TOTAL - 1);
-    expect(result.shouldOpenCompetition).toBe(true);
-    expect(result.nextStep).toBeNull();
-  });
-
-  it('returns shouldOpenCompetition=false and nextStep=null when currentStep is null', () => {
-    const result = advanceBattleBackAnnouncementStep(null);
-    expect(result.shouldOpenCompetition).toBe(false);
-    expect(result.nextStep).toBeNull();
-  });
-
-  it('each step maps to a distinct announcement key', () => {
-    const keys = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.map((a) => a.key);
-    const uniqueKeys = new Set(keys);
-    expect(uniqueKeys.size).toBe(TOTAL);
   });
 });

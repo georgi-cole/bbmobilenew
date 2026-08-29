@@ -727,8 +727,21 @@ export default function TvZone(props: TvZoneProps) {
     const queuedId = gameState.broadcastQueue?.[0]
     if (!queuedId) return null
     const event = gameState.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
-    return isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week) ? event : null
-  }, [gameState.broadcastQueue, gameState.phase, gameState.tvFeed, gameState.week])
+    if (!isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week)) return null
+    if (
+      extractMajorKey(event) === 'vox_populi_final_three_vote' &&
+      (alivePlayers.length !== 3 || gameState.voxPopuli?.publicVoteContext !== 'final3')
+    )
+      return null
+    return event
+  }, [
+    alivePlayers.length,
+    gameState.broadcastQueue,
+    gameState.phase,
+    gameState.tvFeed,
+    gameState.voxPopuli?.publicVoteContext,
+    gameState.week,
+  ])
   const queuedBroadcastLevel = getTvPresentationBroadcastLevel(queuedBroadcastEvent)
   const queuedBroadcastIsCard =
     queuedBroadcastLevel === 'major' || queuedBroadcastLevel === 'critical'
@@ -893,7 +906,7 @@ export default function TvZone(props: TvZoneProps) {
           isBroadcastRelevant(event) &&
           event.meta?.phase === gameState.phase &&
           event.meta?.week === gameState.week &&
-          event.meta?.broadcastManaged !== true &&
+          (event.meta?.broadcastManaged !== true || extractMajorKey(event) === 'battle_back') &&
           !(event.meta?.broadcastPriority === 'critical' && dismissedPriorityEventIds.has(event.id))
       ) ?? null,
     [dismissedPriorityEventIds, gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
@@ -908,10 +921,24 @@ export default function TvZone(props: TvZoneProps) {
         (event) =>
           event.meta?.phase === gameState.phase &&
           event.meta?.week === gameState.week &&
+          !(
+            event.meta?.broadcastPriority === 'critical' && event.meta?.broadcastConsumed === true
+          ) &&
           isBroadcastRelevant(event)
       ) ?? null,
     [gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
   )
+  const latestFallbackEvent =
+    latestEvent?.meta?.broadcastPriority === 'critical' &&
+    (latestEvent.meta.broadcastConsumed === true ||
+      dismissedPriorityEventIds.has(latestEvent.id) ||
+      (extractMajorKey(latestEvent) === 'vox_populi_final_three_vote' &&
+        (alivePlayers.length !== 3 || gameState.voxPopuli?.publicVoteContext !== 'final3')))
+      ? null
+      : latestEvent?.meta?.broadcastManaged === true &&
+          (latestEvent.meta.phase !== gameState.phase || latestEvent.meta.week !== gameState.week)
+        ? null
+        : latestEvent
   const priorityBroadcastEvent = useMemo(
     () =>
       [...tvVisibleFeed]
@@ -936,7 +963,7 @@ export default function TvZone(props: TvZoneProps) {
     // Results can advance their phase before their final feed item is tagged
     // with that new phase. Preserve that latest visible result in the faux TV
     // instead of presenting an empty viewport during the handoff.
-    latestEvent
+    latestFallbackEvent
   const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
   const dailyAtmosphere = dailyTransitionPhase
     ? getDailyAtmosphere(
@@ -1238,10 +1265,11 @@ export default function TvZone(props: TvZoneProps) {
     const previousLatestId = detoxSequenceLatestIdRef.current
     detoxSequenceLatestIdRef.current = latestVisibleId
 
-    if (previousLatestId === null || latestVisibleId === previousLatestId) return
+    if (latestVisibleId === previousLatestId) return
 
     const previousIndex = tvVisibleFeed.findIndex((event) => event.id === previousLatestId)
-    const newEventCount = previousIndex === -1 ? 1 : previousIndex
+    const newEventCount =
+      previousLatestId === null || previousIndex === -1 ? tvVisibleFeed.length : previousIndex
     const newEvents = tvVisibleFeed.slice(0, newEventCount)
     const detoxEvents = newEvents.filter(isDetoxSequenceEvent)
     if (detoxEvents.length === 0) return
@@ -1421,14 +1449,12 @@ export default function TvZone(props: TvZoneProps) {
   }, [cupidFollowUpVisible])
 
   // ── Shock intro sequence ──────────────────────────────────────────────────────
-  // Fires whenever the active announcement key changes.
+  // Fires whenever the active announcement changes.
   // - Shock key  → start the stinger (phase A); spotlight cleared.
   // - Non-shock  → clear both phases (handles dismissal mid-sequence).
   useEffect(() => {
-    const key = activeAnnouncement?.key ?? null
-    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key)
     startTransition(() => {
-      if (isShock) {
+      if (isShockAnnouncement) {
         setShockIntroActive(true)
         setShockInfoSpotlightActive(false)
       } else {
@@ -1436,7 +1462,7 @@ export default function TvZone(props: TvZoneProps) {
         setShockInfoSpotlightActive(false)
       }
     })
-  }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
+  }, [activeAnnouncementSequenceId, isShockAnnouncement])
 
   useEffect(() => {
     if (activeAnnouncement?.key !== 'cupid_arrow') {

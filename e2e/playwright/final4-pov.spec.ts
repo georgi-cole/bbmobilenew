@@ -1,4 +1,4 @@
-import { test, expect, readAppState, type Page } from './support/test'
+import { closeDebugPanelIfOpen, expect, readAppState, test, type Page } from './support/test'
 
 async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
   await expect
@@ -14,9 +14,16 @@ async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
 
 /** Navigate to the game screen with the debug panel enabled. */
 async function gotoDebug(page: Page) {
-  // Hash router: query params are part of the hash — navigate to /#/game?debug=1
-  // so we land directly on the game screen and the DebugPanel renders.
-  await page.goto('./#/game?debug=1')
+  // A fresh run intentionally redirects direct game deep links to Home. Start
+  // a deterministic season through the supported Home flow before exercising
+  // the debug-only finale setup.
+  await page.goto('./#/?debug=1')
+  await closeDebugPanelIfOpen(page)
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await page.getByRole('button', { name: 'Classic', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
+    timeout: 15000,
+  })
 }
 
 /** Open the debug panel by clicking the FAB toggle (if not already open). */
@@ -92,12 +99,10 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await advancePhase.click()
     await expectTvFeedText(page, /asks nominees for their pleas/i)
 
-    // Final 4 is intentionally staged so a single physical Play/advance cannot
-    // both present the pleas and commit the authoritative eviction. In debug
-    // mode there is no plea cinematic callback, so explicitly advance the
-    // decision beat after the pleas have been observed.
+    // AI POS has no player-facing plea cinematic. The next debug advance runs
+    // the authoritative sole-vote decision and advances to Final 3.
     await advancePhase.click()
-    await expectTvFeedText(page, /has chosen to evict/i)
+    await expectTvFeedText(page, /has chosen to eliminate/i)
 
     // Game must have advanced to The Finale — check the phase pill which reliably
     // shows "THE FINALE" without the TVLog duplicate-suppression that hides the
@@ -160,8 +165,8 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await expect(confirmBtn).toBeVisible({ timeout: 3000 })
     await confirmBtn.click()
 
-    // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
-    await expectTvFeedText(page, /has chosen to evict/i)
+    // TV feed must contain the final decision message and the Final 3 announcement.
+    await expectTvFeedText(page, /has chosen to eliminate/i)
     // Game must have advanced to The Finale — check the phase pill (reliable; not subject to TVLog suppression)
     await expect(page.locator('.status-pill--phase')).toContainText(/the finale/i, {
       timeout: 10000,
