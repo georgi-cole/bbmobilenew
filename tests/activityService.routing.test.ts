@@ -29,14 +29,24 @@ describe('service broadcast routing', () => {
     expect(isVisibleOnTv({ text: '[Rules] A different authored rule', type: 'game' })).toBe(true)
   })
 
-  it('never suppresses ordinary social messages such as final pitches', () => {
+  it('never suppresses the final-pitches social message from the faux TV', () => {
     const event = {
-      text: 'The nominees make their final pitches before the vote.',
+      text: 'Housemates make their final pitches before the live vote. 🤝',
       type: 'social',
       meta: { broadcastTemplateId: 'social.final-pitches' },
     }
 
     expect(isServiceConfigurationEvent(event)).toBe(false)
+    expect(isVisibleOnTv(event)).toBe(true)
+    expect(isVisibleInMainLog(event)).toBe(true)
+  })
+
+  it('leaves ordinary social events untouched even without explicit channels', () => {
+    const event = {
+      text: 'A quiet conversation starts by the kitchen.',
+      type: 'social',
+    }
+
     expect(isVisibleOnTv(event)).toBe(true)
     expect(isVisibleInMainLog(event)).toBe(true)
   })
