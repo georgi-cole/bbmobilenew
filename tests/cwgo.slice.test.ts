@@ -2,7 +2,6 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import cwgoReducer, {
-  chooseDuelPair,
   confirmDuelElimination,
   confirmMassElimination,
   revealDuelResults,
@@ -22,19 +21,41 @@ function start(store: ReturnType<typeof makeStore>, ids: string[]) {
   return CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
 }
 
-function reachThreePlayerFinal(store: ReturnType<typeof makeStore>) {
-  const answer = start(store, ['a', 'b', 'c', 'd']);
-  store.dispatch(setGuesses({ a: answer - 10, b: answer - 5, c: answer - 3, d: answer - 1 }));
+function submitAllZeroRound(
+  store: ReturnType<typeof makeStore>,
+  responseTimes: Record<string, number>,
+) {
+  const ids = store.getState().cwgo.aliveIds;
+  store.dispatch(setGuesses(Object.fromEntries(ids.map((id) => [id, 0]))));
+  store.dispatch(setResponseTimes(responseTimes));
   store.dispatch(revealMassResults());
   store.dispatch(confirmMassElimination());
 }
 
+function reachTwoPlayerFinal(store: ReturnType<typeof makeStore>) {
+  start(store, ['a', 'b', 'c', 'd']);
+  submitAllZeroRound(store, { a: 9_000, b: 1_000, c: 2_000, d: 3_000 });
+  expect(store.getState().cwgo.aliveIds).toEqual(['b', 'c', 'd']);
+  expect(store.getState().cwgo.status).toBe('mass_input');
+
+  submitAllZeroRound(store, { b: 9_000, c: 1_000, d: 2_000 });
+  expect(store.getState().cwgo.aliveIds).toEqual(['c', 'd']);
+  expect(store.getState().cwgo.status).toBe('duel_input');
+}
+
 describe('cwgoCompetitionSlice — strict qualifier', () => {
-  it('eliminates every player who goes over and continues above three survivors', () => {
+  it('eliminates every player who goes over when at least two survivors remain', () => {
     const store = makeStore();
     const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
     const answer = start(store, ids);
-    store.dispatch(setGuesses({ a: answer - 1, b: answer - 2, c: answer - 3, d: answer - 4, e: answer + 1, f: answer + 2 }));
+    store.dispatch(setGuesses({
+      a: Math.max(0, answer - 1),
+      b: Math.max(0, answer - 2),
+      c: Math.max(0, answer - 3),
+      d: Math.max(0, answer - 4),
+      e: answer + 1,
+      f: answer + 2,
+    }));
     store.dispatch(revealMassResults());
     expect(store.getState().cwgo.lastEliminated).toEqual(['e', 'f']);
     store.dispatch(confirmMassElimination());
@@ -54,23 +75,29 @@ describe('cwgoCompetitionSlice — strict qualifier', () => {
     expect(store.getState().cwgo.status).toBe('mass_input');
   });
 
-  it('eliminates only the slower tied furthest valid guess and starts a three-player final', () => {
+  it('eliminates only the slower tied furthest valid guess and keeps three players qualifying', () => {
     const store = makeStore();
-    const answer = start(store, ['a', 'b', 'c', 'd']);
-    store.dispatch(setGuesses({ a: answer - 10, b: answer - 10, c: answer - 2, d: answer - 1 }));
+    start(store, ['a', 'b', 'c', 'd']);
+    store.dispatch(setGuesses({ a: 0, b: 0, c: 0, d: 0 }));
     store.dispatch(setResponseTimes({ a: 2_000, b: 7_000, c: 5_000, d: 4_000 }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
     expect(store.getState().cwgo.aliveIds).toEqual(['a', 'c', 'd']);
-    expect(store.getState().cwgo.stage).toBe('final');
-    expect(store.getState().cwgo.playerScores).toMatchObject({ a: 3, c: 3, d: 3 });
-    expect(store.getState().cwgo.status).toBe('choose_duel');
+    expect(store.getState().cwgo.stage).toBe('qualifier');
+    expect(store.getState().cwgo.playerScores).toEqual({});
+    expect(store.getState().cwgo.status).toBe('mass_input');
   });
 
   it('starts a two-player final when strict elimination leaves two survivors', () => {
     const store = makeStore();
     const answer = start(store, ['a', 'b', 'c', 'd', 'e']);
-    store.dispatch(setGuesses({ a: answer - 1, b: answer - 2, c: answer + 1, d: answer + 2, e: answer + 3 }));
+    store.dispatch(setGuesses({
+      a: Math.max(0, answer - 1),
+      b: Math.max(0, answer - 2),
+      c: answer + 1,
+      d: answer + 2,
+      e: answer + 3,
+    }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
     expect(store.getState().cwgo.aliveIds).toEqual(['a', 'b']);
@@ -78,62 +105,65 @@ describe('cwgoCompetitionSlice — strict qualifier', () => {
     expect(store.getState().cwgo.playerScores).toMatchObject({ a: 3, b: 3 });
   });
 
-  it('declares an immediate winner when strict elimination leaves one survivor', () => {
+  it('preserves a two-player final instead of collapsing directly to one survivor', () => {
     const store = makeStore();
     const answer = start(store, ['a', 'b', 'c', 'd']);
-    store.dispatch(setGuesses({ a: answer - 1, b: answer + 1, c: answer + 2, d: answer + 3 }));
+    store.dispatch(setGuesses({
+      a: Math.max(0, answer - 1),
+      b: answer + 1,
+      c: answer + 2,
+      d: answer + 3,
+    }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
-    expect(store.getState().cwgo.status).toBe('complete');
-    expect(store.getState().cwgo.aliveIds).toEqual(['a']);
+    expect(store.getState().cwgo.status).toBe('duel_input');
+    expect(store.getState().cwgo.aliveIds).toEqual(['a', 'b']);
+    expect(store.getState().cwgo.playerScores).toMatchObject({ a: 3, b: 3 });
   });
 });
 
-describe('cwgoCompetitionSlice — three-life final', () => {
+describe('cwgoCompetitionSlice — two-player three-life final', () => {
   it('uses response time to break an equal duel guess', () => {
     const store = makeStore();
-    reachThreePlayerFinal(store);
-    store.dispatch(chooseDuelPair(['b', 'c']));
+    reachTwoPlayerFinal(store);
     const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
-    store.dispatch(setGuesses({ b: answer, c: answer }));
-    store.dispatch(setResponseTimes({ b: 6_000, c: 3_000 }));
+    store.dispatch(setGuesses({ c: answer, d: answer }));
+    store.dispatch(setResponseTimes({ c: 6_000, d: 3_000 }));
     store.dispatch(revealDuelResults());
-    expect(store.getState().cwgo.duelWinnerId).toBe('c');
+    expect(store.getState().cwgo.duelWinnerId).toBe('d');
   });
 
   it('redraws an all-over duel without taking a life', () => {
     const store = makeStore();
-    reachThreePlayerFinal(store);
-    const pair: [string, string] = ['b', 'c'];
-    store.dispatch(chooseDuelPair(pair));
+    reachTwoPlayerFinal(store);
+    const pair: [string, string] = ['c', 'd'];
     const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
-    store.dispatch(setGuesses({ b: answer + 1, c: answer + 2 }));
+    store.dispatch(setGuesses({ c: answer + 1, d: answer + 2 }));
     store.dispatch(revealDuelResults());
     store.dispatch(confirmDuelElimination());
-    expect(store.getState().cwgo.playerScores).toMatchObject({ b: 3, c: 3 });
+    expect(store.getState().cwgo.playerScores).toMatchObject({ c: 3, d: 3 });
     expect(store.getState().cwgo.duelPair).toEqual(pair);
     expect(store.getState().cwgo.status).toBe('duel_input');
   });
 
-  it('removes one life per duel and eliminates at zero', () => {
+  it('removes one life per duel and immediately rematches the same two finalists', () => {
     const store = makeStore();
-    reachThreePlayerFinal(store);
-    const rounds: Array<{ pair: [string, string]; winner: string }> = [
-      { pair: ['b', 'c'], winner: 'b' },
-      { pair: ['c', 'd'], winner: 'd' },
-      { pair: ['b', 'c'], winner: 'b' },
-    ];
+    reachTwoPlayerFinal(store);
+
     for (let duel = 0; duel < 3; duel += 1) {
-      const { pair, winner } = rounds[duel];
-      if (store.getState().cwgo.status === 'choose_duel') store.dispatch(chooseDuelPair(pair));
       const answer = CWGO_QUESTIONS[store.getState().cwgo.questionIdx].answer;
-      const loser = pair.find((id) => id !== winner)!;
-      store.dispatch(setGuesses({ [winner]: answer, [loser]: answer + 1 }));
+      store.dispatch(setGuesses({ c: answer, d: answer + 1 }));
       store.dispatch(revealDuelResults());
       store.dispatch(confirmDuelElimination());
-      expect(store.getState().cwgo.playerScores.c).toBe(2 - duel);
+      expect(store.getState().cwgo.playerScores.d).toBe(2 - duel);
+      if (duel < 2) {
+        expect(store.getState().cwgo.status).toBe('duel_input');
+        expect(store.getState().cwgo.duelPair).toEqual(['c', 'd']);
+      }
     }
-    expect(store.getState().cwgo.aliveIds).not.toContain('c');
+
+    expect(store.getState().cwgo.status).toBe('complete');
+    expect(store.getState().cwgo.aliveIds).toEqual(['c']);
   });
 });
 
