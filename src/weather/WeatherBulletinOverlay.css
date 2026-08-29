@@ -1,7 +1,7 @@
 /*
  * Weather is the faux-TV viewport itself for this beat, not a card inside it.
- * It fills the existing screen edge-to-edge and relies on the TV bezel,
- * scanlines and vignette already owned by TvZone.
+ * It fills the existing screen edge-to-edge and visually inherits the TV
+ * material rather than drawing another bordered rectangle.
  */
 .weather-tv-card {
   position: absolute;
@@ -29,15 +29,33 @@
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.018), transparent 30% 72%, rgba(126, 101, 255, 0.02)),
-    radial-gradient(circle at 50% 118%, rgba(0, 0, 0, 0.24), transparent 50%);
+    linear-gradient(134deg, rgba(255, 255, 255, 0.055) 0%, rgba(145, 128, 218, 0.035) 16%, transparent 42%),
+    radial-gradient(ellipse at 18% 10%, rgba(255, 255, 255, 0.045) 0%, rgba(151, 130, 213, 0.028) 28%, transparent 65%);
+  clip-path: ellipse(43% 30% at 18% 12%);
+  filter: blur(2px);
+}
+
+/* Same faint scanline/vignette language as the faux TV so the weather beat
+   reads as a screen state, not an HTML panel sitting on top of the screen. */
+.weather-tv-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.045;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 1px, rgba(0, 0, 0, 0.2) 1px 2px),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, transparent 34%, rgba(0, 0, 0, 0.26) 100%),
+    radial-gradient(110% 90% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.16) 100%);
 }
 
 .weather-tv-card__topline {
   position: relative;
-  z-index: 1;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,7 +70,7 @@
 
 .weather-tv-card__main {
   position: relative;
-  z-index: 1;
+  z-index: 4;
   align-self: center;
   display: flex;
   align-items: center;
@@ -146,7 +164,7 @@
 
 .weather-tv-card__narrative {
   position: relative;
-  z-index: 1;
+  z-index: 4;
   width: min(100%, 430px);
   justify-self: center;
   margin: 0;
