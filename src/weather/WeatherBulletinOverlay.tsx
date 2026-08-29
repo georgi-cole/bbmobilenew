@@ -1,7 +1,6 @@
 import { useId, useLayoutEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAppSelector } from '../store/hooks'
-import { deriveWeatherBulletinMetrics } from './weatherBulletinMetrics'
 import { getWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherBulletinOverlay.css'
@@ -23,6 +22,25 @@ const CONDITION_LABELS: Record<WeatherConditionId, string> = {
   snow_showers: 'Snow showers',
   snowy: 'Snow',
   clearing: 'Clearing',
+}
+
+const FEELS_LIKE_ADJUSTMENT_C: Record<WeatherConditionId, number> = {
+  sunny: 1,
+  mostly_sunny: 1,
+  partly_cloudy: 0,
+  cloudy: -1,
+  overcast: -1,
+  misty: -1,
+  foggy: -2,
+  drizzle: -1,
+  light_showers: -1,
+  sun_showers: 0,
+  rainy: -2,
+  heavy_rain: -2,
+  stormy: -3,
+  snow_showers: -2,
+  snowy: -3,
+  clearing: 0,
 }
 
 function isWeatherCondition(value: unknown): value is WeatherConditionId {
@@ -141,22 +159,6 @@ function WeatherGlyph({
   )
 }
 
-function MetricIcon({ kind }: { kind: 'sunrise' | 'sunset' | 'humidity' | 'wind' }) {
-  if (kind === 'humidity') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s5 6.1 5 10a5 5 0 1 1-10 0c0-3.9 5-10 5-10Z" /></svg>
-  }
-  if (kind === 'wind') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h10c2.7 0 2.7-4 0-4-1.1 0-1.9.5-2.3 1.2M3 12h15c3.2 0 3.2-4.8 0-4.8M3 16h9c2.7 0 2.7 4 0 4-1.1 0-1.9-.5-2.3-1.2" /></svg>
-  }
-  const isSunset = kind === 'sunset'
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 17h16M7 14a5 5 0 0 1 10 0M12 3v4M5.8 7.1l2.1 2.1M18.2 7.1l-2.1 2.1" />
-      <path d={isSunset ? 'M12 22v-4m0 4-2-2m2 2 2-2' : 'M12 18v4m0-4-2 2m2-2 2 2'} />
-    </svg>
-  )
-}
-
 function splitTemperature(value: string): { number: string; unit: string } {
   const match = value.match(/^(-?\d+)°([CF])$/)
   return match ? { number: match[1], unit: `°${match[2]}` } : { number: value, unit: '' }
@@ -167,7 +169,6 @@ function stripInjectedPrefix(text: string): string {
 }
 
 export default function WeatherBulletinOverlay() {
-  const gameId = useAppSelector((state) => state.game.gameId)
   const weatherEvent = useAppSelector((state) => {
     const queuedId = state.game.broadcastQueue?.[0]
     if (!queuedId) return null
@@ -180,10 +181,6 @@ export default function WeatherBulletinOverlay() {
   const condition = isWeatherCondition(rawCondition) ? rawCondition : null
   const rawTemperature = weatherEvent?.meta?.weatherTemperatureC
   const temperatureC = typeof rawTemperature === 'number' ? rawTemperature : null
-  const weatherDay =
-    typeof weatherEvent?.meta?.weatherBulletinDay === 'number'
-      ? weatherEvent.meta.weatherBulletinDay
-      : 1
   const rainbow = weatherEvent?.meta?.weatherPhenomenon === 'rainbow'
 
   useLayoutEffect(() => {
@@ -201,20 +198,18 @@ export default function WeatherBulletinOverlay() {
   const presentation = useMemo(() => {
     if (!weatherEvent || !condition || temperatureC == null) return null
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
-    const metrics = deriveWeatherBulletinMetrics({
-      gameId,
-      day: weatherDay,
-      condition,
-      temperatureC,
-    })
+    const feelsLikeC = Math.round(temperatureC + FEELS_LIKE_ADJUSTMENT_C[condition])
+    const showFeelsLike = Math.abs(feelsLikeC - temperatureC) >= 2
+
     return {
       temperature: splitTemperature(formatSystemWeatherTemperature(temperatureC, configuredUnit)),
-      feelsLike: formatSystemWeatherTemperature(metrics.feelsLikeC, configuredUnit),
+      feelsLike: showFeelsLike
+        ? formatSystemWeatherTemperature(feelsLikeC, configuredUnit)
+        : null,
       conditionLabel: CONDITION_LABELS[condition],
       narrative: stripInjectedPrefix(weatherEvent.text),
-      metrics,
     }
-  }, [condition, gameId, temperatureC, weatherDay, weatherEvent])
+  }, [condition, temperatureC, weatherEvent])
 
   if (!weatherEvent || !condition || !presentation || !portalTarget) return null
 
@@ -226,35 +221,14 @@ export default function WeatherBulletinOverlay() {
             <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
             <span className="weather-tv-card__temperature-unit">{presentation.temperature.unit}</span>
           </div>
-          <span className="weather-tv-card__feels-like">Feels like {presentation.feelsLike}</span>
+          {presentation.feelsLike && (
+            <span className="weather-tv-card__feels-like">Feels like {presentation.feelsLike}</span>
+          )}
         </div>
 
         <div className="weather-tv-card__hero">
           <WeatherGlyph condition={condition} rainbow={rainbow} />
           <span className="weather-tv-card__condition-label">{presentation.conditionLabel}</span>
-        </div>
-
-        <div className="weather-tv-card__metrics">
-          <div className="weather-tv-card__metric">
-            <MetricIcon kind="sunrise" />
-            <span className="weather-tv-card__metric-label">Sunrise</span>
-            <strong>{presentation.metrics.sunrise}</strong>
-          </div>
-          <div className="weather-tv-card__metric">
-            <MetricIcon kind="sunset" />
-            <span className="weather-tv-card__metric-label">Sunset</span>
-            <strong>{presentation.metrics.sunset}</strong>
-          </div>
-          <div className="weather-tv-card__metric">
-            <MetricIcon kind="humidity" />
-            <span className="weather-tv-card__metric-label">Humidity</span>
-            <strong>{presentation.metrics.humidityPct}%</strong>
-          </div>
-          <div className="weather-tv-card__metric">
-            <MetricIcon kind="wind" />
-            <span className="weather-tv-card__metric-label">Wind</span>
-            <strong>{presentation.metrics.windKmh} km/h</strong>
-          </div>
         </div>
       </div>
 
