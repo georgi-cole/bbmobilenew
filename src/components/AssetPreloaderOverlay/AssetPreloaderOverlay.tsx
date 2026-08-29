@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { getAll } from '../../data/houseguests'
 import { resolveAvatar } from '../../utils/avatar'
 import { preloadImage, preloadImages } from '../../utils/preload'
+import { buildDepressionShockAvatarCandidates } from '../../features/twists/depressionShock'
 import KolequantSplash from '../KolequantSplash/KolequantSplash'
 import GAMEPLAY_BG from '../../assets/bb-gameplay-bg.svg'
 import { beginGameplayAudioExit } from '../../services/sound/audioRouteOwnership'
@@ -17,6 +18,16 @@ const GAMEPLAY_MESSAGES = [
 
 function getAvatarUrls(): string[] {
   return getAll().map((hg) => resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }))
+}
+
+function getThemedAvatarUrls(): string[] {
+  return getAll().flatMap((hg) => {
+    const normalAvatar = resolveAvatar({ id: hg.id, name: hg.name, avatar: '' })
+    // The Depression Shock grey/sad portraits are separate, much heavier assets.
+    // Warm the canonical portrait before gameplay so the later theme switch does
+    // not perform a cold fetch while the roster is already visible.
+    return buildDepressionShockAvatarCandidates(hg.id, [normalAvatar], hg.name).slice(0, 1)
+  })
 }
 
 interface AssetPreloaderOverlayProps {
@@ -44,7 +55,7 @@ export default function AssetPreloaderOverlay({
       await preloadImage(GAMEPLAY_BG)
       if (cancelled) return
 
-      const avatarUrls = getAvatarUrls()
+      const avatarUrls = [...new Set([...getAvatarUrls(), ...getThemedAvatarUrls()])]
       const total = 1 + avatarUrls.length
       let loaded = 1
       setProgress(total > 0 ? Math.round((loaded / total) * 95) : 95)
