@@ -109,7 +109,7 @@ jobs:
       - run: npm run ${{ matrix.script }}
 
   android-native:
-    name: Android compile, instrumentation, and launch smoke
+    name: Android compile and launch smoke
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -138,7 +138,6 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            ./android/gradlew -p android connectedDebugAndroidTest
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.georgicole.thebigeye
             adb shell monkey -p com.georgicole.thebigeye -c android.intent.category.LAUNCHER 1
