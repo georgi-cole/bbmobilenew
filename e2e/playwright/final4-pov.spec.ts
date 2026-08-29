@@ -18,12 +18,6 @@ async function gotoDebug(page: Page) {
   // a deterministic season through the supported Home flow before exercising
   // the debug-only finale setup.
   await page.goto('./#/?debug=1')
-  const locationPrompt = page.getByRole('dialog', { name: 'Allow location' })
-  await locationPrompt.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => undefined)
-  if (await locationPrompt.isVisible()) {
-    await locationPrompt.getByRole('button', { name: 'Deny' }).click()
-    await expect(locationPrompt).toBeHidden()
-  }
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await page.getByRole('button', { name: 'Classic', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
