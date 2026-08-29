@@ -850,7 +850,11 @@ test.describe('Real player core journeys', () => {
           }
         }, fixture)
       )
-      .toEqual({ phase: 'loh_comp', runIdentity: fixture.runIdentity, version: 2 })
+      .toEqual({
+        phase: 'loh_comp_announcement',
+        runIdentity: fixture.runIdentity,
+        version: 2,
+      })
 
     await saveAndReturnHome(page)
 
