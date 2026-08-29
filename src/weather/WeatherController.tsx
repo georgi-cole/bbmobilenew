@@ -13,22 +13,22 @@ import './WeatherEnhancements.css'
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
 
 const PRE_ELIMINATION_WEATHER_COPY: Record<WeatherConditionId, string> = {
-  sunny: 'Clear skies hold outside, but inside the hub the calm feels deceptive as the live elimination draws closer.',
+  sunny: 'Clear skies outside. Inside, players keep their cards close as the live elimination draws nearer.',
   mostly_sunny: 'Bright spells linger outside. Inside, players keep their cards close as the live elimination draws nearer.',
-  partly_cloudy: 'Sun and cloud trade places outside while quiet conversations sharpen ahead of the live elimination.',
-  cloudy: 'Cloud hangs low over the hub. Inside, the mood turns watchful as the live elimination approaches.',
-  overcast: 'A flat grey sky settles over the hub while the room grows quieter ahead of the live elimination.',
-  misty: 'Mist gathers outside, softening the view while strategy inside sharpens before the live elimination.',
-  foggy: 'Fog presses against the windows. Inside, uncertainty is just as thick as the live elimination approaches.',
-  drizzle: 'A fine drizzle taps at the windows while players weigh their last moves before the live elimination.',
-  light_showers: 'Showers pass over the hub as conversations tighten and attention turns to the live elimination.',
-  sun_showers: 'Sun breaks through passing rain, but inside the hub the pressure keeps building toward the live elimination.',
-  rainy: 'Rain keeps falling outside while inside the hub every conversation feels more important before the live elimination.',
+  partly_cloudy: 'Sun and cloud trade places outside while tension quietly builds ahead of the live elimination.',
+  cloudy: 'Cloud hangs over the hub as conversations grow more careful ahead of the live elimination.',
+  overcast: 'A grey sky settles in, and the mood inside feels just as heavy ahead of the live elimination.',
+  misty: 'Mist gathers outside while uncertainty builds inside ahead of the live elimination.',
+  foggy: 'Fog presses against the windows as the hub grows quieter ahead of the live elimination.',
+  drizzle: 'A fine drizzle taps the windows while nerves begin to rise ahead of the live elimination.',
+  light_showers: 'Showers pass over the hub as attention turns toward the live elimination.',
+  sun_showers: 'Sun breaks through passing rain while the hub waits for the live elimination.',
+  rainy: 'Rain keeps falling outside while nerves rise inside ahead of the live elimination.',
   heavy_rain: "It's pouring outside, and the mood inside is no lighter as the live elimination closes in.",
-  stormy: 'Thunder rolls outside while tension gathers inside the hub ahead of the live elimination.',
-  snow_showers: 'Snow showers drift past the windows while players keep a careful eye on one another before the live elimination.',
-  snowy: 'Snow settles quietly outside, contrasting with the tension building inside before the live elimination.',
-  clearing: 'The clouds begin to break outside, but inside the hub the pressure is still rising toward the live elimination.',
+  stormy: 'Thunder rolls outside while tension builds inside ahead of the live elimination.',
+  snow_showers: 'Snow showers drift past the windows as the hub settles into an uneasy calm before the live elimination.',
+  snowy: 'Snow settles quietly outside while tension builds inside ahead of the live elimination.',
+  clearing: 'The clouds begin to break outside, but inside the game remains unsettled ahead of the live elimination.',
 }
 
 /**
@@ -91,7 +91,7 @@ export default function WeatherController() {
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
     const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
     const narrative = recoveryRainbow
-      ? 'A rainbow breaks through outside. Inside the hub, the brief lift in mood cannot quite hide the pressure of the live elimination.'
+      ? 'A rainbow breaks through outside while the hub turns its attention toward the live elimination.'
       : PRE_ELIMINATION_WEATHER_COPY[weatherDay.condition]
     const text = `${temperature} · ${narrative}`
 
