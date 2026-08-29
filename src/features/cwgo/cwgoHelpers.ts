@@ -217,7 +217,9 @@ export function aiSkillRangeForDifficulty(difficulty: number): { min: number; ma
 /**
  * Produce a deterministic but human-like AI response time. Each player has a
  * stable speed tendency, while question difficulty and round-level jitter keep
- * their timing from looking robotic.
+ * their timing from looking robotic. The opening three rounds deliberately add
+ * reading/typing hesitation, with some contestants becoming slower thinkers, so
+ * exact-answer ties do not systematically punish the human for needing to type.
  */
 export function generateAIResponseTimeMs(
   difficulty: number,
@@ -240,19 +242,34 @@ export function generateAIResponseTimeMs(
 
   const skill = clamp(context.aiSkill ?? 0.5, 0, 1)
   const skillSpeedModifier = 1.08 - skill * 0.2
+  const isOpeningRound = round < 3
+  const hesitationRng = mulberry32(
+    (seed ^ idHash ^ Math.imul(round + 1, 0x85ebca6b) ^ 0xc2b2ae35) >>> 0
+  )
+  const openingBaseDelayMs = isOpeningRound
+    ? 1_600 + hesitationRng() * Math.max(1_500, 2_600 - round * 300)
+    : 0
+  const slowThinkerChance = Math.max(0.2, 0.45 - round * 0.1)
+  const slowThinkerDelayMs = isOpeningRound && hesitationRng() < slowThinkerChance
+    ? 2_500 + hesitationRng() * 3_000
+    : 0
+  const openingDelayMs = openingBaseDelayMs + slowThinkerDelayMs
 
   if (context.answerMode === 'common_knowledge' && context.knewAnswer) {
     const readingAndRecallMs = 900 + d * 180 + roundRng() * (1_250 + d * 170)
-    return Math.round(clamp(readingAndRecallMs * speedTrait * skillSpeedModifier, 1_200, 6_500))
+    const totalMs = readingAndRecallMs * speedTrait * skillSpeedModifier + openingDelayMs
+    return Math.round(clamp(totalMs, isOpeningRound ? 3_200 : 1_200, isOpeningRound ? 13_500 : 6_500))
   }
 
   if (context.answerMode === 'exact_fact' && context.knewAnswer) {
     const recallMs = 1_250 + d * 430 + roundRng() * (1_500 + d * 300)
-    return Math.round(clamp(recallMs * speedTrait * skillSpeedModifier, 1_500, 8_500))
+    const totalMs = recallMs * speedTrait * skillSpeedModifier + openingDelayMs
+    return Math.round(clamp(totalMs, isOpeningRound ? 3_600 : 1_500, isOpeningRound ? 14_500 : 8_500))
   }
 
   const thinkingMs = (1_700 + d * 720 + roundRng() * (1_900 + d * 520)) * speedTrait
-  return Math.round(clamp(thinkingMs * skillSpeedModifier, 1_800, 13_500))
+  const totalMs = thinkingMs * skillSpeedModifier + openingDelayMs
+  return Math.round(clamp(totalMs, isOpeningRound ? 4_200 : 1_800, isOpeningRound ? 16_000 : 13_500))
 }
 
 /**
@@ -322,7 +339,9 @@ export function computeWinnerClosestWithoutGoingOver(
  * For a mass-input round, compute which players are eliminated.
  *
  * Elimination rule:
- *  - Players whose guess goes over are eliminated.
+ *  - Players whose guess goes over are eliminated, but a qualifier can never
+ *    collapse from 3+ contestants straight to a single survivor. If necessary,
+ *    only the worst over-guesses leave so the final always begins with two.
  *  - If no one goes over, the furthest valid guess is eliminated. An exact tie
  *    eliminates only the slower player.
  *  - If all go over, nobody is eliminated and the question is redrawn.
@@ -336,24 +355,13 @@ export function computeMassElimination(
 ): { eliminated: string[]; surviving: string[]; redraw: boolean } {
   if (guesses.length === 0) return { eliminated: [], surviving: [], redraw: false }
 
-  const overIds = guesses.filter((g) => g.guess > answer).map((g) => g.playerId)
+  const overEntries = guesses.filter((g) => g.guess > answer)
 
-  if (overIds.length > 0 && overIds.length < guesses.length) {
-    // Some went over → eliminate those who went over
-    const surviving = aliveIds.filter((id) => !overIds.includes(id))
-    const eliminated = aliveIds.filter((id) => overIds.includes(id))
-    return { eliminated, surviving, redraw: false }
-  }
-
-  if (overIds.length === guesses.length) {
+  if (overEntries.length === guesses.length) {
     // Everyone missed the core rule, so discard the question without elimination.
     return { eliminated: [], surviving: [...aliveIds], redraw: true }
   }
 
-  // Nobody went over: the furthest valid guess is vulnerable. If several
-  // players made that exact guess, only the slowest submission is eliminated.
-  const lowestGuess = Math.min(...guesses.map((entry) => entry.guess))
-  const tiedFurthest = guesses.filter((entry) => entry.guess === lowestGuess)
   const seededRank = (id: string) => {
     let hash = tieSeed >>> 0
     for (let index = 0; index < id.length; index += 1) {
@@ -362,6 +370,35 @@ export function computeMassElimination(
     }
     return hash >>> 0
   }
+
+  if (overEntries.length > 0) {
+    // Keep at least two contestants whenever this is still a qualifier. This
+    // prevents a 3-player round with two over-guesses from accidentally ending
+    // the whole competition instead of producing the intended final duel.
+    const eliminationCount = aliveIds.length > 2
+      ? Math.min(overEntries.length, aliveIds.length - 2)
+      : overEntries.length
+    const worstOverGuesses = [...overEntries].sort((a, b) => {
+      const overshootDiff = (b.guess - answer) - (a.guess - answer)
+      if (overshootDiff !== 0) return overshootDiff
+      const timeDiff =
+        (responseTimesMs[b.playerId] ?? Number.MAX_SAFE_INTEGER) -
+        (responseTimesMs[a.playerId] ?? Number.MAX_SAFE_INTEGER)
+      if (timeDiff !== 0) return timeDiff
+      return seededRank(a.playerId) - seededRank(b.playerId)
+    })
+    const eliminatedSet = new Set(
+      worstOverGuesses.slice(0, eliminationCount).map((entry) => entry.playerId)
+    )
+    const eliminated = aliveIds.filter((id) => eliminatedSet.has(id))
+    const surviving = aliveIds.filter((id) => !eliminatedSet.has(id))
+    return { eliminated, surviving, redraw: false }
+  }
+
+  // Nobody went over: the furthest valid guess is vulnerable. If several
+  // players made that exact guess, only the slowest submission is eliminated.
+  const lowestGuess = Math.min(...guesses.map((entry) => entry.guess))
+  const tiedFurthest = guesses.filter((entry) => entry.guess === lowestGuess)
   const eliminatedId = [...tiedFurthest].sort((a, b) => {
     const timeDiff =
       (responseTimesMs[b.playerId] ?? Number.MAX_SAFE_INTEGER) -
