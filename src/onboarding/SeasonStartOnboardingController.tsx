@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { addTvEvent, advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { isServiceConfigurationEvent } from '../services/activityService'
+import {
+  isLegacySeasonWelcomeEvent,
+  isServiceConfigurationEvent,
+} from '../services/activityService'
 import SeasonTutorialTour from './SeasonTutorialTour'
 import { hasHandledSeasonTutorial, markSeasonTutorialHandled } from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
@@ -115,7 +118,15 @@ export default function SeasonStartOnboardingController() {
   }, [activeProfileId, gameId, isGuest])
 
   useEffect(() => {
-    if (!queuedEvent || !isServiceConfigurationEvent(queuedEvent)) return
+    if (!queuedEvent) return
+    // Older Broadcast Manager state may still force the replaced "Season X is
+    // about to begin" source onto TV. Retire that exact legacy default (plus
+    // the service-only Public Mode row) before GameScreen mounts so neither can
+    // occupy the queue and block the new welcome -> flavor -> tutorial flow.
+    // Authored/custom welcome copy remains untouched by isLegacySeasonWelcomeEvent.
+    if (!isServiceConfigurationEvent(queuedEvent) && !isLegacySeasonWelcomeEvent(queuedEvent)) {
+      return
+    }
     dispatch(consumeBroadcastEvent(queuedEvent.id))
   }, [dispatch, queuedEvent])
 
