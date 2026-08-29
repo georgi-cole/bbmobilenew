@@ -9,12 +9,14 @@ const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 /**
  * Compatibility guard for the polished season opening.
  *
- * Older/default season-start broadcasts are still constructed by the managed
- * broadcast system before the onboarding controller mounts. They must be
- * acknowledged before paint so they cannot win the faux-TV queue over the new
- * Beat 1 / Beat 3 opening. The same guard makes the two new plain TV cards true
- * blocking onboarding beats and removes the redundant Day 1 stop during the
- * one-time handoff to the first competition.
+ * The broadcast manager constructs its Season Start queue before the onboarding
+ * controller mounts. Older/default welcome and rules events can therefore
+ * remain queued even when the normal TV feed correctly filters them out. This
+ * guard acknowledges those superseded queue entries before paint, then makes
+ * the two authored onboarding cards true blocking beats so Play cannot skip
+ * Beat 3 or the tutorial. It also removes only the redundant first Day 1 stop
+ * during the polished opening handoff; genuine custom/critical week-start
+ * broadcasts still retain priority.
  */
 export default function SeasonOpeningFlowGuard() {
   const dispatch = useAppDispatch()
