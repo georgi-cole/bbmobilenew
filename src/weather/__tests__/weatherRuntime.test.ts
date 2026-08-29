@@ -19,9 +19,11 @@ describe('weather remote data validation', () => {
       defaultBankUrl: 'https://georgi-cole.github.io/bbmobilenew/config/weather-bank.json',
     })
 
-    expect(resolveWeatherRuntimeUrls({ isDev: true, isNative: false })).toEqual({
-      configUrl: '/config/weather-config.json',
-      defaultBankUrl: '/config/weather-bank.json',
+    expect(
+      resolveWeatherRuntimeUrls({ isDev: true, isNative: false, baseUrl: '/bbmobilenew/' })
+    ).toEqual({
+      configUrl: '/bbmobilenew/config/weather-config.json',
+      defaultBankUrl: '/bbmobilenew/config/weather-bank.json',
     })
   })
 
