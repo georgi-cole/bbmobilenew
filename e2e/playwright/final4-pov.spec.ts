@@ -1,4 +1,4 @@
-import { expect, readAppState, test, type Page } from './support/test'
+import { closeDebugPanelIfOpen, expect, readAppState, test, type Page } from './support/test'
 
 async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
   await expect
@@ -18,6 +18,7 @@ async function gotoDebug(page: Page) {
   // a deterministic season through the supported Home flow before exercising
   // the debug-only finale setup.
   await page.goto('./#/?debug=1')
+  await closeDebugPanelIfOpen(page)
   await page.getByRole('button', { name: 'Play', exact: true }).click()
   await page.getByRole('button', { name: 'Classic', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
