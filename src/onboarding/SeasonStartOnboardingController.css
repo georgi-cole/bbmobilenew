@@ -105,27 +105,71 @@ body.body--season-tv-wake .tv-zone__viewport {
   touch-action: none;
 }
 
-.season-tutorial__spotlight {
+.season-tutorial__spotlight,
+.season-tutorial__focus-pulse,
+.season-tutorial__completion-flare {
   position: fixed;
-  z-index: 1;
   box-sizing: border-box;
   pointer-events: none;
-  border: 1px solid rgba(213, 189, 255, 0.82);
-  border-radius: 14px;
+  transform-origin: 50% 50%;
+}
+
+.season-tutorial__spotlight {
+  z-index: 1;
+  border: 1px solid rgba(213, 189, 255, 0.86);
   box-shadow:
     0 0 0 9999px rgba(2, 2, 8, 0.72),
     0 0 0 3px rgba(150, 104, 242, 0.14),
-    0 0 28px rgba(143, 96, 240, 0.26);
+    0 0 30px rgba(143, 96, 240, 0.3);
   transition:
-    left 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    top 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    left 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    top 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    width 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    height 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
+    border-radius 220ms ease-out;
+}
+
+.season-tutorial__spotlight[data-shape='circle'],
+.season-tutorial__focus-pulse[data-shape='circle'],
+.season-tutorial__completion-flare[data-shape='circle'] {
+  border-radius: 999px;
+}
+
+.season-tutorial__spotlight[data-shape='rounded'],
+.season-tutorial__focus-pulse[data-shape='rounded'],
+.season-tutorial__completion-flare[data-shape='rounded'] {
+  border-radius: 12px;
+}
+
+.season-tutorial__spotlight[data-shape='panel'],
+.season-tutorial__focus-pulse[data-shape='panel'],
+.season-tutorial__completion-flare[data-shape='panel'] {
+  border-radius: 17px;
+}
+
+.season-tutorial__focus-pulse {
+  z-index: 2;
+  border: 1px solid rgba(232, 216, 255, 0.96);
+  box-shadow:
+    0 0 0 2px rgba(171, 128, 255, 0.2),
+    0 0 24px rgba(166, 116, 255, 0.5),
+    inset 0 0 18px rgba(196, 165, 255, 0.08);
+  animation: season-tutorial-focus-pulse 620ms cubic-bezier(0.18, 0.84, 0.24, 1) both;
+}
+
+.season-tutorial__completion-flare {
+  z-index: 2;
+  border: 2px solid rgba(235, 222, 255, 0.96);
+  box-shadow:
+    0 0 18px rgba(205, 178, 255, 0.76),
+    0 0 42px rgba(144, 91, 246, 0.5),
+    inset 0 0 18px rgba(213, 191, 255, 0.12);
+  animation: season-tutorial-completion-flare 520ms cubic-bezier(0.16, 0.84, 0.22, 1) both;
 }
 
 .season-tutorial__tooltip {
   position: fixed;
-  z-index: 2;
+  z-index: 3;
   box-sizing: border-box;
   padding: 14px 15px 13px;
   outline: none;
@@ -138,7 +182,16 @@ body.body--season-tv-wake .tv-zone__viewport {
   box-shadow:
     0 19px 48px rgba(0, 0, 0, 0.46),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  animation: season-tutorial-tooltip-in 180ms ease-out both;
+  animation: season-tutorial-tooltip-in 200ms cubic-bezier(0.2, 0.82, 0.24, 1) both;
+}
+
+.season-tutorial--finishing .season-tutorial__spotlight {
+  animation: season-tutorial-spotlight-release 520ms ease-out both;
+}
+
+.season-tutorial--finishing .season-tutorial__tooltip {
+  pointer-events: none;
+  animation: season-tutorial-tooltip-out 420ms cubic-bezier(0.4, 0, 0.7, 0.2) both;
 }
 
 .season-tutorial__progress {
@@ -221,6 +274,12 @@ body.body--season-tv-wake .tv-zone__viewport {
   background: transparent;
 }
 
+.season-tutorial__primary:disabled,
+.season-tutorial__secondary:disabled,
+.season-tutorial__skip:disabled {
+  cursor: default;
+}
+
 .season-tutorial__primary:focus-visible,
 .season-tutorial__secondary:focus-visible,
 .season-tutorial__skip:focus-visible {
@@ -228,14 +287,18 @@ body.body--season-tv-wake .tv-zone__viewport {
   outline-offset: 2px;
 }
 
-.season-tutorial__primary:active,
-.season-tutorial__secondary:active {
+.season-tutorial__primary:active:not(:disabled),
+.season-tutorial__secondary:active:not(:disabled) {
   transform: translateY(1px);
 }
 
 @keyframes season-tutorial-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes season-tutorial-card-in {
@@ -252,11 +315,80 @@ body.body--season-tv-wake .tv-zone__viewport {
 @keyframes season-tutorial-tooltip-in {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(6px) scale(0.988);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes season-tutorial-focus-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  34% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  72% {
+    opacity: 0.68;
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes season-tutorial-completion-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  24% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes season-tutorial-spotlight-release {
+  0% {
+    border-color: rgba(213, 189, 255, 0.86);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0.72),
+      0 0 0 3px rgba(150, 104, 242, 0.14),
+      0 0 30px rgba(143, 96, 240, 0.3);
+  }
+  56% {
+    border-color: rgba(227, 210, 255, 0.78);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0.45),
+      0 0 0 4px rgba(174, 132, 255, 0.16),
+      0 0 36px rgba(162, 110, 255, 0.32);
+  }
+  100% {
+    border-color: rgba(227, 210, 255, 0);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0),
+      0 0 0 7px rgba(174, 132, 255, 0),
+      0 0 44px rgba(162, 110, 255, 0);
+  }
+}
+
+@keyframes season-tutorial-tooltip-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.985);
   }
 }
 
@@ -292,7 +424,10 @@ body.body--season-tv-wake .tv-zone__viewport {
   body.body--season-tv-wake .tv-zone__viewport,
   .season-tutorial-prompt__backdrop,
   .season-tutorial-prompt__card,
-  .season-tutorial__tooltip {
+  .season-tutorial__tooltip,
+  .season-tutorial__focus-pulse,
+  .season-tutorial__completion-flare,
+  .season-tutorial--finishing .season-tutorial__spotlight {
     animation: none;
   }
 
