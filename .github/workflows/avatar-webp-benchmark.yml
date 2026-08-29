@@ -1,4 +1,4 @@
-name: Avatar WebP Benchmark
+name: Apply Avatar WebP Optimization
 
 on:
   push:
@@ -8,24 +8,23 @@ on:
       - .github/workflows/avatar-webp-benchmark.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  benchmark:
+  optimize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/avatar-preload-stability
 
       - name: Install WebP tools
         run: sudo apt-get update && sudo apt-get install -y webp
 
-      - name: Encode sad portraits
+      - name: Encode verified q95 portraits
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p avatar-benchmark/original avatar-benchmark/q92 avatar-benchmark/lossless
-          printf 'file\toriginal_bytes\tq92_bytes\tlossless_bytes\n' > avatar-benchmark/sizes.tsv
-
           shopt -s nullglob
           files=(public/assets/skins/*_sad_avatar.png)
           if [ ${#files[@]} -eq 0 ]; then
@@ -33,29 +32,44 @@ jobs:
             exit 1
           fi
 
+          before=0
+          after=0
           for source in "${files[@]}"; do
-            base="$(basename "$source" .png)"
-            cp "$source" "avatar-benchmark/original/${base}.png"
-
-            cwebp -quiet -q 92 -m 6 -alpha_q 100 -metadata icc "$source" \
-              -o "avatar-benchmark/q92/${base}.webp"
-            cwebp -quiet -lossless -z 6 -metadata icc "$source" \
-              -o "avatar-benchmark/lossless/${base}.webp"
-
-            printf '%s\t%s\t%s\t%s\n' \
-              "$base" \
-              "$(stat -c%s "$source")" \
-              "$(stat -c%s "avatar-benchmark/q92/${base}.webp")" \
-              "$(stat -c%s "avatar-benchmark/lossless/${base}.webp")" \
-              >> avatar-benchmark/sizes.tsv
+            target="${source%.png}.webp"
+            cwebp -quiet -q 95 -m 6 -alpha_q 100 -metadata all "$source" -o "$target"
+            before=$((before + $(stat -c%s "$source")))
+            after=$((after + $(stat -c%s "$target")))
           done
 
-          cat avatar-benchmark/sizes.tsv
+          echo "Portraits: ${#files[@]}"
+          echo "PNG bytes: $before"
+          echo "WebP bytes: $after"
+          test "$after" -lt "$before"
 
-      - name: Upload comparison set
-        uses: actions/upload-artifact@v4
-        with:
-          name: avatar-webp-benchmark
-          path: avatar-benchmark
-          if-no-files-found: error
-          retention-days: 3
+      - name: Prefer WebP while retaining PNG fallback
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/features/twists/depressionShock.ts')
+          text = path.read_text()
+          old = """    `${prefix}assets/skins/${stem}_sad_avatar.png`,
+              `${prefix}assets/skins/${stem}_sad_avatar.webp`,
+          """
+          new = """    `${prefix}assets/skins/${stem}_sad_avatar.webp`,
+              `${prefix}assets/skins/${stem}_sad_avatar.png`,
+          """
+          if text.count(old) != 1:
+              raise SystemExit('Expected Depression Shock candidate block exactly once')
+          path.write_text(text.replace(old, new))
+
+      - name: Commit optimized assets and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/avatar-webp-benchmark.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'perf: optimize Depression Shock portraits'
+          git push origin HEAD:fix/avatar-preload-stability
