@@ -38,7 +38,7 @@ describe('image preloader', () => {
     })
 
     let settled = false
-    const resultPromise = preloadImage('/assets/skins/Lia_sad_avatar.png').then((result) => {
+    const resultPromise = preloadImage('/assets/skins/Lia_sad_avatar.webp').then((result) => {
       settled = true
       return result
     })
@@ -49,7 +49,7 @@ describe('image preloader', () => {
 
     finishDecode()
     await expect(resultPromise).resolves.toEqual({
-      url: '/assets/skins/Lia_sad_avatar.png',
+      url: '/assets/skins/Lia_sad_avatar.webp',
       status: 'loaded',
     })
   })
@@ -75,11 +75,11 @@ describe('image preloader', () => {
       value: NeverLoadsImage,
     })
 
-    const resultPromise = preloadImage('/assets/skins/Nova_sad_avatar.png', 50)
+    const resultPromise = preloadImage('/assets/skins/Nova_sad_avatar.webp', 50)
     await vi.advanceTimersByTimeAsync(51)
 
     await expect(resultPromise).resolves.toEqual({
-      url: '/assets/skins/Nova_sad_avatar.png',
+      url: '/assets/skins/Nova_sad_avatar.webp',
       status: 'timeout',
     })
   })
