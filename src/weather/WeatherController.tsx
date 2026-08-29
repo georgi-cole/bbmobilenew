@@ -13,22 +13,22 @@ import './WeatherEnhancements.css'
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
 
 const PRE_ELIMINATION_WEATHER_COPY: Record<WeatherConditionId, string> = {
-  sunny: 'Clear skies hold outside as the hub heads toward the live elimination.',
-  mostly_sunny: 'Bright spells linger outside as the live elimination draws closer.',
-  partly_cloudy: 'Sun and cloud trade places outside while the hub waits for the live elimination.',
-  cloudy: 'Cloud hangs over the hub as the live elimination approaches.',
-  overcast: 'A flat grey sky settles in as the hub braces for the live elimination.',
-  misty: 'Mist gathers outside while the hub waits for the live elimination.',
-  foggy: 'Fog presses against the windows as the live elimination approaches.',
-  drizzle: 'A fine drizzle taps at the windows as the live elimination draws closer.',
-  light_showers: 'Showers pass over the hub as attention turns to the live elimination.',
-  sun_showers: 'Sun breaks through passing rain as the live elimination approaches.',
-  rainy: 'Rain keeps falling outside as the hub braces for the live elimination.',
-  heavy_rain: "It's pouring outside as the live elimination closes in.",
-  stormy: 'Thunder rolls outside as the hub heads toward the live elimination.',
-  snow_showers: 'Snow showers drift past the windows as the live elimination approaches.',
-  snowy: 'Snow settles outside while tension builds toward the live elimination.',
-  clearing: 'The clouds begin to break, but inside the hub the live elimination is getting closer.',
+  sunny: 'Clear skies hold outside, but inside the hub the calm feels deceptive as the live elimination draws closer.',
+  mostly_sunny: 'Bright spells linger outside. Inside, players keep their cards close as the live elimination draws nearer.',
+  partly_cloudy: 'Sun and cloud trade places outside while quiet conversations sharpen ahead of the live elimination.',
+  cloudy: 'Cloud hangs low over the hub. Inside, the mood turns watchful as the live elimination approaches.',
+  overcast: 'A flat grey sky settles over the hub while the room grows quieter ahead of the live elimination.',
+  misty: 'Mist gathers outside, softening the view while strategy inside sharpens before the live elimination.',
+  foggy: 'Fog presses against the windows. Inside, uncertainty is just as thick as the live elimination approaches.',
+  drizzle: 'A fine drizzle taps at the windows while players weigh their last moves before the live elimination.',
+  light_showers: 'Showers pass over the hub as conversations tighten and attention turns to the live elimination.',
+  sun_showers: 'Sun breaks through passing rain, but inside the hub the pressure keeps building toward the live elimination.',
+  rainy: 'Rain keeps falling outside while inside the hub every conversation feels more important before the live elimination.',
+  heavy_rain: "It's pouring outside, and the mood inside is no lighter as the live elimination closes in.",
+  stormy: 'Thunder rolls outside while tension gathers inside the hub ahead of the live elimination.',
+  snow_showers: 'Snow showers drift past the windows while players keep a careful eye on one another before the live elimination.',
+  snowy: 'Snow settles quietly outside, contrasting with the tension building inside before the live elimination.',
+  clearing: 'The clouds begin to break outside, but inside the hub the pressure is still rising toward the live elimination.',
 }
 
 /**
@@ -91,7 +91,7 @@ export default function WeatherController() {
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
     const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
     const narrative = recoveryRainbow
-      ? 'A rainbow breaks through outside, while inside the hub the live elimination is drawing closer.'
+      ? 'A rainbow breaks through outside. Inside the hub, the brief lift in mood cannot quite hide the pressure of the live elimination.'
       : PRE_ELIMINATION_WEATHER_COPY[weatherDay.condition]
     const text = `${temperature} · ${narrative}`
 
