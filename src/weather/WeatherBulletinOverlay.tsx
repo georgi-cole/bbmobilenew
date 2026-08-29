@@ -24,25 +24,6 @@ const CONDITION_LABELS: Record<WeatherConditionId, string> = {
   clearing: 'Clearing',
 }
 
-const FEELS_LIKE_ADJUSTMENT_C: Record<WeatherConditionId, number> = {
-  sunny: 1,
-  mostly_sunny: 1,
-  partly_cloudy: 0,
-  cloudy: -1,
-  overcast: -1,
-  misty: -1,
-  foggy: -2,
-  drizzle: -1,
-  light_showers: -1,
-  sun_showers: 0,
-  rainy: -2,
-  heavy_rain: -2,
-  stormy: -3,
-  snow_showers: -2,
-  snowy: -3,
-  clearing: 0,
-}
-
 function isWeatherCondition(value: unknown): value is WeatherConditionId {
   return typeof value === 'string' && value in CONDITION_LABELS
 }
@@ -56,6 +37,11 @@ function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: nu
   )
 }
 
+/**
+ * Lightweight inline SVG translation of the generated premium weather assets.
+ * It keeps the glossy transparent visual language without shipping large
+ * raster files and remains sharp on every device density.
+ */
 function WeatherGlyph({
   condition,
   rainbow,
@@ -223,14 +209,8 @@ export default function WeatherBulletinOverlay() {
   const presentation = useMemo(() => {
     if (!weatherEvent || !condition || temperatureC == null) return null
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
-    const feelsLikeC = Math.round(temperatureC + FEELS_LIKE_ADJUSTMENT_C[condition])
-    const showFeelsLike = Math.abs(feelsLikeC - temperatureC) >= 2
-
     return {
       temperature: splitTemperature(formatSystemWeatherTemperature(temperatureC, configuredUnit)),
-      feelsLike: showFeelsLike
-        ? formatSystemWeatherTemperature(feelsLikeC, configuredUnit)
-        : null,
       conditionLabel: CONDITION_LABELS[condition],
       narrative: stripInjectedPrefix(weatherEvent.text),
     }
@@ -240,23 +220,16 @@ export default function WeatherBulletinOverlay() {
 
   return createPortal(
     <section className={`weather-tv-card weather-tv-card--${condition}`} aria-hidden="true">
-      <div className="weather-tv-card__top">
-        <div className="weather-tv-card__temperature-block">
-          <div className="weather-tv-card__temperature">
-            <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
-            <span className="weather-tv-card__temperature-unit">{presentation.temperature.unit}</span>
-          </div>
-          {presentation.feelsLike && (
-            <span className="weather-tv-card__feels-like">Feels like {presentation.feelsLike}</span>
-          )}
+      <div className="weather-tv-card__main">
+        <div className="weather-tv-card__temperature">
+          <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
+          <span className="weather-tv-card__temperature-unit">{presentation.temperature.unit}</span>
         </div>
-
-        <div className="weather-tv-card__hero">
+        <div className="weather-tv-card__condition">
           <WeatherGlyph condition={condition} rainbow={rainbow} />
+          <span>{presentation.conditionLabel}</span>
         </div>
       </div>
-
-      <div className="weather-tv-card__condition-label">{presentation.conditionLabel}</div>
       <p className="weather-tv-card__narrative">{presentation.narrative}</p>
     </section>,
     portalTarget
