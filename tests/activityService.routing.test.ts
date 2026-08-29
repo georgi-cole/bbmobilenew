@@ -8,14 +8,13 @@ import {
 } from '../src/services/activityService'
 
 describe('service broadcast routing', () => {
-  it('marks Public Mode rules log-only at the broadcast source', () => {
+  it('marks only the Public Mode status log-only at the broadcast source', () => {
     expect(getBroadcastTemplate('season.public-mode-rule')?.forceOnTv).toBe(false)
-    expect(getBroadcastTemplate('survival.rules')?.forceOnTv).toBe(false)
   })
 
   it('keeps the Public Mode rules status in the log but off the faux TV', () => {
     const event = {
-      text: '[Rules] Public mode: ON',
+      text: '[Rules] Public mode: OFF',
       type: 'game',
       meta: { broadcastTemplateId: 'season.public-mode-rule' },
     }
@@ -25,20 +24,21 @@ describe('service broadcast routing', () => {
     expect(isVisibleInMainLog(event)).toBe(true)
   })
 
-  it('treats the Surveyeval rules line as log-only even if its copy changes', () => {
-    const event = {
-      text: 'Runtime rules configured.',
-      type: 'game',
-      meta: { broadcastTemplateId: 'survival.rules' },
-    }
-
-    expect(isVisibleOnTv(event)).toBe(false)
-    expect(isVisibleInMainLog(event)).toBe(true)
+  it('does not classify other bracketed or system-looking messages out of the TV', () => {
+    expect(isVisibleOnTv({ text: '[System] Autosave ready', type: 'game' })).toBe(true)
+    expect(isVisibleOnTv({ text: '[Rules] A different authored rule', type: 'game' })).toBe(true)
   })
 
-  it('catches future bracketed service configuration lines without hiding normal game events', () => {
-    expect(isVisibleOnTv({ text: '[System] Autosave ready', type: 'game' })).toBe(false)
-    expect(isVisibleOnTv({ text: 'The first LOH competition is ready.', type: 'game' })).toBe(true)
+  it('never suppresses ordinary social messages such as final pitches', () => {
+    const event = {
+      text: 'The nominees make their final pitches before the vote.',
+      type: 'social',
+      meta: { broadcastTemplateId: 'social.final-pitches' },
+    }
+
+    expect(isServiceConfigurationEvent(event)).toBe(false)
+    expect(isVisibleOnTv(event)).toBe(true)
+    expect(isVisibleInMainLog(event)).toBe(true)
   })
 })
 
