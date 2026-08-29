@@ -8,13 +8,13 @@
   box-sizing: border-box;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  padding: clamp(16px, 3.8vw, 24px) clamp(18px, 4.8vw, 30px) clamp(16px, 3.8vw, 23px);
+  padding: clamp(18px, 4vw, 28px) clamp(20px, 5vw, 34px) clamp(18px, 4vw, 26px);
   border: 0;
   border-radius: 0;
   color: rgba(250, 249, 255, 0.98);
   background:
-    radial-gradient(circle at 50% 28%, rgba(121, 105, 226, 0.15), transparent 33%),
-    radial-gradient(circle at 84% 12%, rgba(87, 167, 220, 0.1), transparent 36%),
+    radial-gradient(circle at 58% 26%, rgba(121, 105, 226, 0.15), transparent 34%),
+    radial-gradient(circle at 84% 12%, rgba(87, 167, 220, 0.1), transparent 38%),
     linear-gradient(150deg, #101627 0%, #090d19 50%, #060912 100%);
   box-shadow: none;
   overflow: hidden;
@@ -52,15 +52,17 @@
   position: relative;
   z-index: 2;
   min-height: 0;
+  width: min(100%, 510px);
+  justify-self: center;
   display: grid;
-  grid-template-columns: minmax(82px, 0.82fr) minmax(112px, 1.18fr) minmax(126px, 0.95fr);
+  grid-template-columns: minmax(100px, 0.85fr) minmax(150px, 1.2fr);
   align-items: center;
-  gap: clamp(10px, 3vw, 24px);
+  justify-content: center;
+  gap: clamp(20px, 7vw, 52px);
 }
 
 .weather-tv-card__temperature-block {
   min-width: 0;
-  align-self: center;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -76,22 +78,22 @@
 }
 
 .weather-tv-card__temperature-number {
-  font-size: clamp(42px, 9vw, 58px);
+  font-size: clamp(48px, 11vw, 68px);
   line-height: 0.9;
   font-weight: 700;
   letter-spacing: -0.055em;
 }
 
 .weather-tv-card__temperature-unit {
-  margin: 3px 0 0 5px;
-  font-size: clamp(13px, 2.8vw, 16px);
+  margin: 4px 0 0 5px;
+  font-size: clamp(14px, 3vw, 18px);
   line-height: 1;
   font-weight: 760;
   color: rgba(233, 231, 245, 0.78);
 }
 
 .weather-tv-card__feels-like {
-  font-size: clamp(9px, 2.2vw, 11px);
+  font-size: clamp(10px, 2.5vw, 13px);
   line-height: 1.2;
   font-weight: 620;
   color: rgba(215, 215, 231, 0.76);
@@ -100,20 +102,19 @@
 
 .weather-tv-card__hero {
   min-width: 0;
-  align-self: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 6px;
   text-align: center;
 }
 
 .weather-tv-card__glyph {
-  width: clamp(94px, 22vw, 128px);
-  height: clamp(78px, 18vw, 104px);
+  width: clamp(126px, 29vw, 174px);
+  height: clamp(102px, 23vw, 140px);
   overflow: visible;
-  filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.26));
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.3));
 }
 
 .weather-tv-card__sun-rays {
@@ -175,71 +176,32 @@
 .weather-tv-card__rainbow path:nth-child(3) { stroke: rgba(105, 194, 219, 0.82); }
 
 .weather-tv-card__condition-label {
-  max-width: 150px;
-  font-size: clamp(10px, 2.5vw, 12px);
-  line-height: 1.15;
+  max-width: 180px;
+  font-size: clamp(15px, 3.4vw, 20px);
+  line-height: 1.1;
   font-weight: 760;
   letter-spacing: 0.01em;
-  color: rgba(244, 243, 251, 0.94);
-}
-
-.weather-tv-card__metrics {
-  min-width: 0;
-  display: grid;
-  gap: clamp(6px, 1.5vw, 9px);
-  align-content: center;
-}
-
-.weather-tv-card__metric {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 17px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-.weather-tv-card__metric svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: rgba(197, 211, 245, 0.82);
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.weather-tv-card__metric-label {
-  overflow: hidden;
-  font-size: clamp(8px, 2vw, 10px);
-  line-height: 1.1;
-  font-weight: 590;
-  color: rgba(194, 195, 216, 0.72);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.weather-tv-card__metric strong {
-  font-size: clamp(8.5px, 2vw, 10.5px);
-  line-height: 1;
-  font-weight: 740;
-  color: rgba(243, 242, 251, 0.93);
-  white-space: nowrap;
+  color: rgba(244, 243, 251, 0.95);
 }
 
 .weather-tv-card__narrative {
   position: relative;
   z-index: 2;
-  width: min(100%, 560px);
+  width: min(100%, 570px);
   justify-self: center;
-  margin: 2px 0 0;
-  padding: clamp(8px, 2vw, 11px) clamp(4px, 1vw, 8px) 0;
+  margin: 3px 0 0;
+  padding: clamp(10px, 2.3vw, 13px) clamp(4px, 1vw, 8px) 0;
   border-top: 1px solid rgba(233, 230, 255, 0.1);
   text-align: center;
-  font-size: clamp(9.5px, 2.3vw, 11.5px);
+  font-size: clamp(11px, 2.65vw, 14px);
   line-height: 1.34;
-  font-weight: 560;
-  color: rgba(224, 222, 235, 0.85);
+  font-weight: 570;
+  color: rgba(226, 224, 237, 0.9);
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 /* Condition tinting keeps one premium visual family while making each state distinct. */
@@ -247,8 +209,8 @@
 .weather-tv-card--mostly_sunny,
 .weather-tv-card--clearing {
   background:
-    radial-gradient(circle at 50% 22%, rgba(255, 198, 76, 0.17), transparent 31%),
-    radial-gradient(circle at 82% 16%, rgba(128, 177, 235, 0.11), transparent 38%),
+    radial-gradient(circle at 58% 22%, rgba(255, 198, 76, 0.18), transparent 32%),
+    radial-gradient(circle at 84% 16%, rgba(128, 177, 235, 0.11), transparent 38%),
     linear-gradient(150deg, #172134 0%, #0b101c 52%, #070a12 100%);
 }
 
@@ -256,14 +218,14 @@
 .weather-tv-card--cloudy,
 .weather-tv-card--overcast {
   background:
-    radial-gradient(circle at 52% 25%, rgba(181, 202, 225, 0.13), transparent 34%),
+    radial-gradient(circle at 58% 25%, rgba(181, 202, 225, 0.14), transparent 35%),
     linear-gradient(150deg, #182231 0%, #0c131d 52%, #080b12 100%);
 }
 
 .weather-tv-card--misty,
 .weather-tv-card--foggy {
   background:
-    radial-gradient(ellipse at 52% 30%, rgba(211, 230, 237, 0.16), transparent 42%),
+    radial-gradient(ellipse at 58% 30%, rgba(211, 230, 237, 0.17), transparent 43%),
     linear-gradient(150deg, #1d2932 0%, #111820 56%, #090d13 100%);
 }
 
@@ -273,20 +235,20 @@
 .weather-tv-card--rainy,
 .weather-tv-card--heavy_rain {
   background:
-    radial-gradient(circle at 50% 26%, rgba(84, 154, 214, 0.16), transparent 34%),
+    radial-gradient(circle at 58% 26%, rgba(84, 154, 214, 0.17), transparent 35%),
     linear-gradient(150deg, #122236 0%, #09131f 54%, #050a12 100%);
 }
 
 .weather-tv-card--stormy {
   background:
-    radial-gradient(circle at 51% 24%, rgba(117, 111, 224, 0.17), transparent 33%),
+    radial-gradient(circle at 58% 24%, rgba(117, 111, 224, 0.18), transparent 34%),
     linear-gradient(150deg, #151b32 0%, #090d1b 55%, #04060d 100%);
 }
 
 .weather-tv-card--snow_showers,
 .weather-tv-card--snowy {
   background:
-    radial-gradient(circle at 50% 24%, rgba(198, 229, 250, 0.17), transparent 34%),
+    radial-gradient(circle at 58% 24%, rgba(198, 229, 250, 0.18), transparent 35%),
     linear-gradient(150deg, #1b2939 0%, #101722 53%, #080c13 100%);
 }
 
@@ -297,31 +259,35 @@
 
 @media (max-width: 430px), (max-height: 700px) {
   .weather-tv-card {
-    padding: 13px 15px 14px;
+    padding: 14px 16px 15px;
   }
 
   .weather-tv-card__content {
-    grid-template-columns: minmax(70px, 0.78fr) minmax(92px, 1.05fr) minmax(106px, 0.92fr);
-    gap: 8px;
+    width: min(100%, 390px);
+    grid-template-columns: minmax(82px, 0.8fr) minmax(126px, 1.15fr);
+    gap: 16px;
   }
 
-  .weather-tv-card__temperature-number { font-size: 39px; }
-  .weather-tv-card__temperature-unit { margin-left: 3px; font-size: 12px; }
-  .weather-tv-card__feels-like { font-size: 8.5px; }
-  .weather-tv-card__glyph { width: 88px; height: 72px; }
-  .weather-tv-card__condition-label { font-size: 9.5px; }
-  .weather-tv-card__metrics { gap: 5px; }
-  .weather-tv-card__metric { grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px; }
-  .weather-tv-card__metric svg { width: 13px; height: 13px; }
-  .weather-tv-card__metric-label { font-size: 7.5px; }
-  .weather-tv-card__metric strong { font-size: 8px; }
-  .weather-tv-card__narrative { padding-top: 7px; font-size: 8.8px; line-height: 1.28; }
+  .weather-tv-card__temperature-number { font-size: 44px; }
+  .weather-tv-card__temperature-unit { margin-left: 3px; font-size: 13px; }
+  .weather-tv-card__feels-like { font-size: 9px; }
+  .weather-tv-card__glyph { width: 116px; height: 94px; }
+  .weather-tv-card__condition-label { font-size: 14px; }
+  .weather-tv-card__narrative {
+    padding-top: 8px;
+    font-size: 10px;
+    line-height: 1.3;
+    -webkit-line-clamp: 3;
+  }
 }
 
 @media (max-width: 340px) {
-  .weather-tv-card__metric-label { display: none; }
-  .weather-tv-card__metric { grid-template-columns: 14px auto; justify-content: end; }
-  .weather-tv-card__content { grid-template-columns: 0.74fr 1fr 0.7fr; }
+  .weather-tv-card__content {
+    grid-template-columns: minmax(70px, 0.75fr) minmax(108px, 1fr);
+    gap: 10px;
+  }
+  .weather-tv-card__temperature-number { font-size: 40px; }
+  .weather-tv-card__glyph { width: 104px; height: 84px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
