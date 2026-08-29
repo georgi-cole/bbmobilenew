@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { isServiceConfigurationEvent } from '../services/activityService'
 import { advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { hasHandledSeasonTutorial } from './seasonTutorialPreference'
@@ -7,9 +8,10 @@ const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 /**
  * Narrow queue bridge for the two cards authored by SeasonStartOnboardingController.
- * It never suppresses or rewrites ordinary managed broadcasts. Its only job is
- * to stop the generic Play handler from advancing on the same press that closes
- * an onboarding card, then remove the redundant Day 1 stop during the handoff.
+ * It never suppresses ordinary game broadcasts. Its only jobs are to keep any
+ * stale/overridden service config off-TV, stop generic Play from advancing on
+ * the same press that closes an onboarding card, and remove the redundant
+ * Day 1 stop during the opening handoff.
  */
 export default function SeasonOpeningFlowGuard() {
   const dispatch = useAppDispatch()
@@ -30,6 +32,13 @@ export default function SeasonOpeningFlowGuard() {
     (event) =>
       event.meta?.seasonOnboardingWelcome === true || event.meta?.seasonOnboardingFlavor === true
   )
+
+  // Source templates are log-only now. This is only a compatibility fallback
+  // for a stale save or Broadcast Manager override that still forces one on TV.
+  useLayoutEffect(() => {
+    if (!queuedEvent || !isServiceConfigurationEvent(queuedEvent)) return
+    dispatch(consumeBroadcastEvent(queuedEvent.id))
+  }, [dispatch, queuedEvent])
 
   useEffect(() => {
     if (phase !== 'season_start' || week !== 1) return undefined
