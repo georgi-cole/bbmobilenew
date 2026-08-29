@@ -83,13 +83,29 @@ function stripInjectedPrefix(text: string): string {
 }
 
 export default function WeatherBulletinOverlay() {
-  const latestVisibleEvent = useAppSelector(
-    (state) => state.game.tvFeed.find((event) => isVisibleOnTv(event)) ?? null
-  )
+  const weatherEvent = useAppSelector((state) => {
+    const queue = state.game.broadcastQueue ?? []
+    const queuedId = queue[0] ?? null
+    if (queuedId) {
+      const queuedEvent = state.game.tvFeed.find((event) => event.id === queuedId) ?? null
+      return queuedEvent?.meta?.weatherBulletin === true && isVisibleOnTv(queuedEvent)
+        ? queuedEvent
+        : null
+    }
+
+    // Defensive fallback for an interrupted legacy run where the bulletin was
+    // authored for TV but never made it into the managed queue.
+    return (
+      state.game.tvFeed.find(
+        (event) =>
+          event.meta?.weatherBulletin === true &&
+          event.meta?.broadcastConsumed !== true &&
+          isVisibleOnTv(event)
+      ) ?? null
+    )
+  })
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
 
-  const weatherEvent =
-    latestVisibleEvent?.meta?.weatherBulletin === true ? latestVisibleEvent : null
   const rawCondition = weatherEvent?.meta?.weatherCondition
   const condition = isWeatherCondition(rawCondition) ? rawCondition : null
   const rawTemperature = weatherEvent?.meta?.weatherTemperatureC
