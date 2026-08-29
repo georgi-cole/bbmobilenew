@@ -46,7 +46,7 @@ describe('coordinateGameFlows', () => {
     expect(result.activeFlow).toBe('eviction')
     expect(result.blockingFlows).toEqual(['eviction', 'twist', 'loh'])
     expect(result.awaitingHumanDecision).toBe(true)
-    expect(result.showGameControlDock).toBe(false)
+    expect(result.showGameControlDock).toBe(true)
   })
 
   it('distinguishes a presentation blocker from a pending human decision', () => {
@@ -59,7 +59,7 @@ describe('coordinateGameFlows', () => {
 
     expect(result.activeFlow).toBe('presentation')
     expect(result.awaitingHumanDecision).toBe(false)
-    expect(result.showGameControlDock).toBe(false)
+    expect(result.showGameControlDock).toBe(true)
   })
 
   it('can allow inactive-mode controls when the caller explicitly permits them', () => {

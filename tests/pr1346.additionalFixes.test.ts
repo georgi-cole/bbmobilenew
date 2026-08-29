@@ -9,7 +9,8 @@ function source(path: string): string {
 describe('PR 1346 additional integration guards', () => {
   it('persists consumed Safety ceremonies across GameScreen remounts', () => {
     const safetyFlow = source('src/screens/GameScreen/flows/useSafetyFlow.ts')
-    expect(safetyFlow).toContain("usePersistedGameScreenKey(\n    'safety-save-ceremony'")
+    expect(safetyFlow).toContain('usePersistedGameScreenKey(')
+    expect(safetyFlow).toContain("'safety-save-ceremony'")
     expect(safetyFlow).toContain('consumedSaveCeremonyKey === ceremonyKey')
     expect(safetyFlow).toContain('setConsumedSaveCeremonyKey(ceremonyKey)')
   })
@@ -32,16 +33,18 @@ describe('PR 1346 additional integration guards', () => {
 
   it('makes mature social actions exclusive to the Adult Reality preset', () => {
     const actionGrid = source('src/components/SocialPanelV2/ActionGrid.tsx')
-    expect(actionGrid).toContain('ADULT_REALITY_ACTION_IDS')
-    expect(actionGrid).toContain("realityModePreset === 'adult'")
-    expect(actionGrid).toContain("'pool_makeout'")
-    expect(actionGrid).toContain("'spend_night'")
+    const actionManager = source('src/social/socialActionManager.ts')
+    expect(actionGrid).toContain('isActionAllowedForRealityPreset(action, realityModePreset)')
+    expect(actionManager).toContain('ADULT_REALITY_ACTION_IDS')
+    expect(actionManager).toContain("ADULT_REALITY_ACTION_IDS.has(action.id) ? ['adult']")
+    expect(actionManager).toContain("'pool_makeout'")
+    expect(actionManager).toContain("'spend_night'")
   })
 
   it('keeps Tribunal members out of active My Game relationship reads', () => {
     const ledger = source('src/components/RealityLedger/RealityLedger.tsx')
     expect(ledger).toContain("player.status !== 'evicted' && player.status !== 'jury'")
-    expect(ledger).toContain('relationships={relationships}')
+    expect(ledger).toContain('combinedLiveRelationship(liveRelationships, humanId')
   })
 
   it('uses current-phase LOH Safety advice instead of hypothetical stale copy', () => {

@@ -5,7 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FinalFaceoff from '../src/components/FinalFaceoff/FinalFaceoff';
 import {
-  CLUE_AUTO_INTERVAL_MS,
+  FIRST_CLUE_DELAY_MS,
   PUBLIC_VOTE_RECAP_HOLD_MS,
   VOTE_REVEAL_INITIAL_DELAY_MS,
   VOTE_REVEAL_STAGGER_MS,
@@ -23,6 +23,7 @@ import { SoundManager } from '../src/services/sound/SoundManager';
 import type { PlayerPublicProfile } from '../src/publicOpinion/types';
 
 const MIN_TYPED_CHARS_VISIBLE = 1;
+const MAX_CLUE_READING_HOLD_MS = 9000;
 
 const mockPlay = vi.fn();
 const mockRequestBgm = vi.fn();
@@ -106,12 +107,12 @@ function makeStore() {
 
 async function advanceToRecapBoundary() {
   // The finale flow crosses two exact timeout boundaries:
-  // 1) CLUE_AUTO_INTERVAL_MS for each juror clue reveal
+  // 1) the establishing delay, then the bounded reading hold for the juror clue
   // 2) PUBLIC_VOTE_RECAP_HOLD_MS of extra hold time after the public vote appears
   // Splitting each phase into (n - 1) ms + 1 ms keeps the assertions pinned to the edge so we can
   // prove the recap does not render early.
   await act(async () => {
-    vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS - 1);
+    vi.advanceTimersByTime(FIRST_CLUE_DELAY_MS - 1);
   });
 
   await act(async () => {
@@ -119,7 +120,7 @@ async function advanceToRecapBoundary() {
   });
 
   await act(async () => {
-    vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
+    vi.advanceTimersByTime(MAX_CLUE_READING_HOLD_MS);
   });
 
   await act(async () => {
@@ -160,7 +161,7 @@ describe('FinalFaceoff public vote pacing', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
+      vi.advanceTimersByTime(FIRST_CLUE_DELAY_MS);
     });
 
     expect(screen.getByText('Casey')).toBeTruthy();
@@ -183,7 +184,7 @@ describe('FinalFaceoff public vote pacing', () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS - 1);
+      vi.advanceTimersByTime(FIRST_CLUE_DELAY_MS - 1);
     });
 
     await act(async () => {
@@ -191,7 +192,7 @@ describe('FinalFaceoff public vote pacing', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(CLUE_AUTO_INTERVAL_MS);
+      vi.advanceTimersByTime(MAX_CLUE_READING_HOLD_MS);
     });
 
     await act(async () => {

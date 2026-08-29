@@ -15,6 +15,7 @@ const COMPLETE_WEEK_TIMEOUT_MS = 240_000
 // External persistence contracts. Keep these literal in Playwright so discovery
 // does not import the browser-only Redux/game module graph into Node.
 const SAVED_RUNS_KEY_PREFIX = 'bbmobilenew:savedRuns:'
+const SAVED_RUN_SLOT_KEY_PREFIX = 'bbmobilenew:savedRunSlot:'
 const SAVED_STATE_KEY_PREFIX = 'bbmobilenew:savedSeason:'
 const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave'
 
@@ -785,7 +786,7 @@ test.describe('Real player core journeys', () => {
     await saveAndReturnHome(page)
 
     const fixture = await page.evaluate(
-      ({ runsPrefix, statePrefix }) => {
+      ({ runsPrefix, slotPrefix, statePrefix }) => {
         const profilesRaw = localStorage.getItem('bbmobilenew:profiles:v1')
         if (!profilesRaw) throw new Error('active profiles record is missing')
         const profiles = JSON.parse(profilesRaw) as { activeProfileId?: string | null }
@@ -794,13 +795,15 @@ test.describe('Real player core journeys', () => {
 
         const encodedProfileId = encodeURIComponent(profileId)
         const runsKey = `${runsPrefix}${encodedProfileId}`
+        const slotKey = `${slotPrefix}${encodedProfileId}:classic`
         const legacyKey = `${statePrefix}${encodedProfileId}`
         const savedRunsRaw = localStorage.getItem(runsKey)
         if (!savedRunsRaw) throw new Error('current saved-run profile is missing')
+        const slotRaw = localStorage.getItem(slotKey)
         const savedRuns = JSON.parse(savedRunsRaw) as {
           runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
         }
-        const classic = savedRuns.runs?.classic
+        const classic = slotRaw ? JSON.parse(slotRaw) : savedRuns.runs?.classic
         if (!classic) throw new Error('current Classic snapshot is missing')
 
         localStorage.setItem(legacyKey, JSON.stringify(classic))
@@ -811,9 +814,14 @@ test.describe('Real player core journeys', () => {
           phase: classic.game?.phase ?? null,
           runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
           runsKey,
+          slotKey,
         }
       },
-      { runsPrefix: SAVED_RUNS_KEY_PREFIX, statePrefix: SAVED_STATE_KEY_PREFIX }
+      {
+        runsPrefix: SAVED_RUNS_KEY_PREFIX,
+        slotPrefix: SAVED_RUN_SLOT_KEY_PREFIX,
+        statePrefix: SAVED_STATE_KEY_PREFIX,
+      }
     )
 
     expect(fixture.phase).toBe('loh_comp_announcement')
@@ -826,20 +834,21 @@ test.describe('Real player core journeys', () => {
 
     await expect
       .poll(() =>
-        page.evaluate((runsKey) => {
+        page.evaluate(({ runsKey, slotKey }) => {
           const raw = localStorage.getItem(runsKey)
-          if (!raw) return null
-          const parsed = JSON.parse(raw) as {
+          const slotRaw = localStorage.getItem(slotKey)
+          if (!raw || !slotRaw) return null
+          const metadata = JSON.parse(raw) as { version?: number }
+          const parsed = JSON.parse(slotRaw) as {
             version?: number
-            runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
+            game?: { phase?: string; runId?: string; gameId?: string }
           }
           return {
-            phase: parsed.runs?.classic?.game?.phase ?? null,
-            runIdentity:
-              parsed.runs?.classic?.game?.runId ?? parsed.runs?.classic?.game?.gameId ?? null,
-            version: parsed.version ?? null,
+            phase: parsed.game?.phase ?? null,
+            runIdentity: parsed.game?.runId ?? parsed.game?.gameId ?? null,
+            version: metadata.version ?? null,
           }
-        }, fixture.runsKey)
+        }, fixture)
       )
       .toEqual({ phase: 'loh_comp', runIdentity: fixture.runIdentity, version: 2 })
 

@@ -6230,6 +6230,10 @@ const gameSlice = createSlice({
                   event.text,
                 [String(season)]
               ),
+              meta: {
+                ...event.meta,
+                broadcastVariables: [String(season)],
+              },
             }
           : event
       )
