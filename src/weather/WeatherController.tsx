@@ -44,54 +44,48 @@ export default function WeatherController() {
     if (alreadyExists || pendingKeyRef.current === key) return
     pendingKeyRef.current = key
 
-    let cancelled = false
-    void (async () => {
-      await loadWeatherRuntime()
-      if (cancelled) return
+    // Refresh externally managed data opportunistically, but never make the
+    // gameplay beat wait on the network. The current validated cache (or safe
+    // bundled fallback) can always resolve the bulletin synchronously.
+    void loadWeatherRuntime()
 
-      const weatherDay = resolveWeatherDay(gameId, week)
-      const recoveryRainbow = depressionShock?.recoveryWeek === week
-      const comment = buildWeatherBulletin({
-        gameId,
-        day: weatherDay,
-        players,
-        ...(recoveryRainbow ? { forcePhenomenon: 'rainbow' as const } : {}),
+    const weatherDay = resolveWeatherDay(gameId, week)
+    const recoveryRainbow = depressionShock?.recoveryWeek === week
+    const comment = buildWeatherBulletin({
+      gameId,
+      day: weatherDay,
+      players,
+      ...(recoveryRainbow ? { forcePhenomenon: 'rainbow' as const } : {}),
+    })
+    const temperature = formatWeatherTemperature(weatherDay.temperatureC)
+    // Some externally authored variants naturally include {temp}; otherwise
+    // prepend the reading so every once-daily bulletin fulfils the same promise.
+    const text =
+      comment.includes('°C') || comment.includes('°F') ? comment : `${temperature} · ${comment}`
+
+    dispatch(
+      addTvEvent({
+        text,
+        type: 'social',
+        source: 'system',
+        meta: {
+          phase: 'social_2',
+          week,
+          broadcastTemplateId: 'weather.daily-bulletin',
+          broadcastOrder: 9500,
+          broadcastLevel: 'minor',
+          forceOnTv: true,
+          weatherBulletin: true,
+          weatherBulletinDay: week,
+          weatherCondition: weatherDay.condition,
+          weatherTemperatureC: weatherDay.temperatureC,
+          ...(recoveryRainbow || weatherDay.phenomenon === 'rainbow'
+            ? { weatherPhenomenon: 'rainbow' }
+            : {}),
+        },
       })
-      const temperature = formatWeatherTemperature(weatherDay.temperatureC)
-      // Some externally authored variants naturally include {temp}; otherwise
-      // prepend the reading so every once-daily bulletin fulfils the same promise.
-      const text =
-        comment.includes('°C') || comment.includes('°F') ? comment : `${temperature} · ${comment}`
-
-      dispatch(
-        addTvEvent({
-          text,
-          type: 'social',
-          source: 'system',
-          meta: {
-            phase: 'social_2',
-            week,
-            broadcastTemplateId: 'weather.daily-bulletin',
-            broadcastOrder: 9500,
-            broadcastLevel: 'minor',
-            forceOnTv: true,
-            weatherBulletin: true,
-            weatherBulletinDay: week,
-            weatherCondition: weatherDay.condition,
-            weatherTemperatureC: weatherDay.temperatureC,
-            ...(recoveryRainbow || weatherDay.phenomenon === 'rainbow'
-              ? { weatherPhenomenon: 'rainbow' }
-              : {}),
-          },
-        })
-      )
-      pendingKeyRef.current = null
-    })()
-
-    return () => {
-      cancelled = true
-      if (pendingKeyRef.current === key) pendingKeyRef.current = null
-    }
+    )
+    pendingKeyRef.current = null
   }, [dispatch, gameId, week, phase, players, tvFeed, depressionShock])
 
   return null
