@@ -39,7 +39,7 @@ jobs:
 
             cwebp -quiet -q 92 -m 6 -alpha_q 100 -metadata icc "$source" \
               -o "avatar-benchmark/q92/${base}.webp"
-            cwebp -quiet -lossless -z 9 -metadata icc "$source" \
+            cwebp -quiet -lossless -z 6 -metadata icc "$source" \
               -o "avatar-benchmark/lossless/${base}.webp"
 
             printf '%s\t%s\t%s\t%s\n' \
