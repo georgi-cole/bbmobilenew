@@ -1,42 +1,70 @@
 // src/utils/preload.ts
-// Lightweight image preloader with timeout and progress callback.
+// Lightweight image preloader with timeout, decode readiness and progress reporting.
 
 /** Default per-image timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 8_000;
 
+export type ImagePreloadStatus = 'loaded' | 'error' | 'timeout';
+
+export type ImagePreloadResult = {
+  url: string;
+  status: ImagePreloadStatus;
+};
+
 /**
- * Preloads a single image URL.
- * Resolves when the image loads or the timeout elapses (treats timeout as done
- * so UX never stalls indefinitely).
+ * Preloads and decodes a single image URL.
+ *
+ * The promise is always fail-open: callers are never trapped by a bad asset.
+ * Unlike the previous implementation, timeout/error are reported explicitly
+ * instead of being indistinguishable from a genuinely render-ready image.
  */
-function preloadOne(url: string, timeoutMs: number): Promise<void> {
-  return new Promise<void>((resolve) => {
+function preloadOne(url: string, timeoutMs: number): Promise<ImagePreloadResult> {
+  return new Promise<ImagePreloadResult>((resolve) => {
     const img = new Image();
     let done = false;
 
-    const finish = () => {
+    const finish = (status: ImagePreloadStatus) => {
       if (done) return;
       done = true;
-      clearTimeout(timer);
-      resolve();
+      window.clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      resolve({ url, status });
     };
 
-    const timer = window.setTimeout(finish, timeoutMs);
-    img.onload = finish;
-    img.onerror = finish; // treat errors as done — non-blocking
+    const markLoadedAfterDecode = async () => {
+      // onload means the bytes arrived, but decode() is the point at which the
+      // browser/WebView has pixels ready to paint. Waiting here prevents a
+      // later visible avatar from stalling while it is decoded on-screen.
+      if (typeof img.decode === 'function') {
+        try {
+          await img.decode();
+        } catch {
+          // Some WebViews can reject decode() for an otherwise valid image.
+          // If onload completed and dimensions exist, the image is still safe.
+          if (!img.complete || img.naturalWidth === 0) {
+            finish('error');
+            return;
+          }
+        }
+      }
+      finish('loaded');
+    };
+
+    const timer = window.setTimeout(() => finish('timeout'), timeoutMs);
+    img.onload = () => {
+      void markLoadedAfterDecode();
+    };
+    img.onerror = () => finish('error');
     img.src = url;
   });
 }
 
-/**
- * Preloads a single image URL (public alias for preloadOne).
- * Useful for background-first ordering: await preloadImage(bgUrl) before
- * calling preloadImages/preloadAll for the remaining assets.
- */
+/** Preload one image and report whether it actually became render-ready. */
 export function preloadImage(
   url: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<void> {
+): Promise<ImagePreloadResult> {
   return preloadOne(url, timeoutMs);
 }
 
@@ -44,29 +72,29 @@ export function preloadImage(
  * Preloads an array of image URLs concurrently.
  *
  * @param urls        - List of image URLs to preload.
- * @param onProgress  - Optional callback called after each image completes.
- *                      Receives `(loaded: number, total: number)`.
- * @param timeoutMs   - Per-image timeout in ms (default 8 000). Timed-out
- *                      images are treated as loaded so progress never stalls.
+ * @param onProgress  - Optional callback called after each image settles.
+ *                      Receives `(completed, total, result)`.
+ * @param timeoutMs   - Per-image timeout in ms (default 8 000).
  */
 export async function preloadImages(
   urls: string[],
-  onProgress?: (loaded: number, total: number) => void,
+  onProgress?: (completed: number, total: number, result: ImagePreloadResult) => void,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<void> {
-  if (urls.length === 0) {
-    onProgress?.(0, 0);
-    return;
+): Promise<ImagePreloadResult[]> {
+  const uniqueUrls = [...new Set(urls.filter(Boolean))];
+  if (uniqueUrls.length === 0) {
+    return [];
   }
 
-  let loaded = 0;
-  const total = urls.length;
+  let completed = 0;
+  const total = uniqueUrls.length;
 
-  await Promise.all(
-    urls.map((url) =>
-      preloadOne(url, timeoutMs).then(() => {
-        loaded += 1;
-        onProgress?.(loaded, total);
+  return Promise.all(
+    uniqueUrls.map((url) =>
+      preloadOne(url, timeoutMs).then((result) => {
+        completed += 1;
+        onProgress?.(completed, total, result);
+        return result;
       }),
     ),
   );
