@@ -51,8 +51,11 @@ describe('event delta – LOH win (+5 energy)', () => {
     players.forEach((p: { id: string }) => { budgets[p.id] = 3; });
     store.dispatch(engineReady({ budgets }));
 
-    // Game starts at week_start.
-    // First advance: week_start → loh_comp_announcement (no LOH set yet)
+    // Game starts at season_start. Enter Day 1, then begin the LOH flow.
+    store.dispatch({ type: 'game/advance' });
+    expect(store.getState().game.phase).toBe('week_start');
+
+    // week_start → loh_comp_announcement (no LOH set yet)
     store.dispatch({ type: 'game/advance' });
     expect(store.getState().game.phase).toBe('loh_comp_announcement');
 

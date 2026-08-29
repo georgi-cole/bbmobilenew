@@ -45,7 +45,7 @@ describe('responsive game layout budget', () => {
     })
   })
 
-  it('scrolls a constrained full roster instead of forcing its last row under the dock', () => {
+  it('compacts a constrained full roster so its last row remains above the dock', () => {
     const budget = computeResponsiveGameLayout(
       makeInput({
         viewportHeight: 852,
@@ -57,7 +57,7 @@ describe('responsive game layout budget', () => {
     expect(budget.layoutSize).toBe('phone-large')
     expect(budget.bottomControlsMode).toBe('compact')
     expect(budget.baseRosterMode).toBe('compact-small')
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.rosterMode).toBe('compact-small')
     expect(budget.rosterHeaderMode).toBe('tv-chip')
     expect(budget.compactRoster).toBe(true)
     expect(budget.cssVars).toMatchObject({
@@ -65,7 +65,7 @@ describe('responsive game layout budget', () => {
       '--game-action-dock-scale': '1',
       '--game-nav-height': '0px',
       '--game-nav-item-label-display': 'none',
-      '--game-roster-board-height': '367px',
+      '--game-roster-board-height': `${readCssPx(budget, '--game-avatar-tile-height') * 4 + budget.rosterGap * 3}px`,
     })
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
     expect(budget.tvLogRows).toBeGreaterThanOrEqual(1)
@@ -113,7 +113,7 @@ describe('responsive game layout budget', () => {
     expect(compactMeasuredBudget.avatarTileSize).toBe(normalMeasuredBudget.avatarTileSize)
   })
 
-  it('does not change avatar tile size when transient vertical budget changes', () => {
+  it('uses the roomier density tier when the measured vertical budget can sustain it', () => {
     const dayEndBudget = computeResponsiveGameLayout(
       makeInput({
         viewportWidth: 393,
@@ -134,15 +134,15 @@ describe('responsive game layout budget', () => {
     )
 
     expect(dayEndBudget.layoutSize).toBe(liveVoteBudget.layoutSize)
-    expect(dayEndBudget.avatarTileSize).toBe(liveVoteBudget.avatarTileSize)
+    expect(dayEndBudget.avatarTileSize).toBeGreaterThan(liveVoteBudget.avatarTileSize)
     expect(dayEndBudget.cssVars).toMatchObject({
       '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
     })
     expect(liveVoteBudget.cssVars).toMatchObject({
-      '--game-avatar-tile-size': `${dayEndBudget.avatarTileSize}px`,
+      '--game-avatar-tile-size': `${liveVoteBudget.avatarTileSize}px`,
     })
     expect(dayEndBudget.rosterMode).toBe('normal')
-    expect(liveVoteBudget.rosterMode).toBe('scroll')
+    expect(liveVoteBudget.rosterMode).toBe('compact-small')
     expect(liveVoteBudget.bottomControlsMode).toBe('compact')
   })
 
@@ -185,7 +185,7 @@ describe('responsive game layout budget', () => {
       '--game-safe-top': '24px',
     })
     expect(budget.bottomControlsMode).toBe('compact')
-    expect(budget.rosterMode).toBe('scroll')
+    expect(budget.rosterMode).toBe('compact-small')
     expect(budget.compactRoster).toBe(true)
     expect(readCssPx(budget, '--game-screen-tv-viewport-min-height')).toBeGreaterThanOrEqual(144)
     const dockGap = readCssPx(budget, '--game-action-dock-gap')

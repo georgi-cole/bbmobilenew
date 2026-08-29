@@ -55,6 +55,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 let capturedOnDone:
   ((rawValue: number, partial?: boolean, completion?: { authoritativeWinnerId?: string | null }) => void)
   | null = null;
+let capturedWinnerCeremonyDone: (() => void) | null = null;
 
 vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
   default: ({
@@ -77,6 +78,13 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: () => <div data-testid="tv-zone" />,
+}));
+
+vi.mock('../../src/components/WinnerTileLiftAnimation/WinnerTileLiftAnimation', () => ({
+  default: ({ onDone }: { onDone: () => void }) => {
+    capturedWinnerCeremonyDone = onDone;
+    return <div data-testid="winner-ceremony" />;
+  },
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -184,6 +192,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
   beforeEach(() => {
     vi.useFakeTimers();
     capturedOnDone = null;
+    capturedWinnerCeremonyDone = null;
   });
 
   afterEach(() => {
@@ -316,6 +325,10 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     await act(async () => {
       capturedOnDone!(1000);
     });
+    expect(capturedWinnerCeremonyDone).not.toBeNull();
+    await act(async () => {
+      capturedWinnerCeremonyDone!();
+    });
 
     // Some winner must be applied (the score-based path picks p0 or highest scorer).
     expect(store.getState().game.lohId).not.toBeNull();
@@ -334,6 +347,10 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
 
     await act(async () => {
       capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' });
+    });
+    expect(capturedWinnerCeremonyDone).not.toBeNull();
+    await act(async () => {
+      capturedWinnerCeremonyDone!();
     });
 
     expect(store.getState().game.lohId).toBe('p2');

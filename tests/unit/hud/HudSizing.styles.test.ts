@@ -33,8 +33,8 @@ describe('HUD sizing styles', () => {
     const tvHeadRule = /\.tv-zone__head\s*\{[\s\S]*?gap:\s*3px;[\s\S]*?padding:\s*3px 7px;[\s\S]*?\}/;
     const tvHeadChipRule = /\.tv-zone__head-chip\s*\{[\s\S]*?min-width:\s*auto;[\s\S]*?height:\s*21px;[\s\S]*?padding:\s*0 7px;[\s\S]*?\}/;
 
-    expect(dockCss).toContain('width: min(calc(80% * var(--game-action-dock-scale, 1)), calc(340px * var(--game-action-dock-scale, 1)));');
-    expect(dockCss).toContain('bottom: var(--game-action-dock-gap, 8px);');
+    expect(dockCss).toContain('width: min(calc(106.0606% - 25.455px), 483.636px);');
+    expect(dockCss).toContain('var(--game-action-dock-gap, 8px)');
     expect(navCss).toContain('height: calc(var(--game-bottom-nav-content-height) + var(--safe-bottom));');
     expect(navCss).toContain('overflow: visible;');
     expect(navCss).toContain('.game-bottom-nav.nav-bar::before {');
@@ -97,7 +97,7 @@ describe('HUD sizing styles', () => {
     expect(tvZoneCss).toContain('height: 21px;');
     expect(tvZoneCss).toContain('padding: 0 7px;');
     expect(tvZoneCss).toContain('font-size: 0.56rem;');
-    expect(houseguestGridCss).toContain('padding: 0 8px;');
-    expect(houseguestGridCss).toContain('margin: 0 0 5px;');
+    expect(houseguestGridCss).toContain('padding: 0;');
+    expect(houseguestGridCss).toContain('margin: 0 0 var(--game-layout-rhythm, 8px);');
   });
 });

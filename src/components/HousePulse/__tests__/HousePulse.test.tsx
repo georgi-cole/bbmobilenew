@@ -101,7 +101,7 @@ describe('HousePulse', () => {
       screen.getByText('Lia heard Kai testing your name as a backup plan.')
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close My Pulse' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Social' }))
     expect(screen.queryByRole('dialog', { name: 'My Pulse' })).toBeNull()
   })
 })

@@ -16,7 +16,7 @@ import gameReducer, {
 } from '../src/store/gameSlice'
 
 describe('broadcast manager reducers', () => {
-  it('never lets an undeclared source force itself onto faux TV or become a shock', () => {
+  it('honors an explicitly authored presentation contract on an externally added event', () => {
     let state = gameReducer(undefined, { type: 'init' })
     state = { ...state, tvFeed: [], broadcastQueue: [] }
 
@@ -31,12 +31,15 @@ describe('broadcast manager reducers', () => {
     )
 
     expect(state.tvFeed[0]).toMatchObject({
-      major: undefined,
-      meta: { broadcastLevel: 'minor', broadcastManaged: true },
+      major: 'legacy_shock',
+      meta: {
+        broadcastLevel: 'critical',
+        broadcastManaged: true,
+        forceOnTv: true,
+      },
     })
-    expect(state.tvFeed[0].meta?.broadcastTemplateId).toMatch(/^observed\./)
-    expect(state.tvFeed[0].meta?.forceOnTv).toBeUndefined()
-    expect(state.broadcastQueue).toEqual([])
+    expect(state.tvFeed[0].meta?.broadcastTemplateId).toBeUndefined()
+    expect(state.broadcastQueue).toEqual([state.tvFeed[0].id])
   })
 
   it('adopts the legacy Vox intro so manager copy edits update resumed campaigns', () => {
@@ -494,7 +497,7 @@ describe('broadcast manager reducers', () => {
     const queueCopy = state.broadcastQueue ?? []
     const queuedTexts = queueCopy.map((id) => state.tvFeed.find((event) => event.id === id)?.text)
     expect(queuedTexts[0]).toBe('Opening first.')
-    expect(queuedTexts.some((text) => text?.startsWith('Welcome to The Big Eye house!'))).toBe(true)
+    expect(queuedTexts.some((text) => text?.startsWith('Welcome to The Big Eye hub!'))).toBe(true)
 
     const firstId = queueCopy[0]
     state = gameReducer(state, consumeBroadcastEvent(firstId))

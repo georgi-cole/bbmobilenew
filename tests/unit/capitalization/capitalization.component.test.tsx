@@ -107,6 +107,8 @@ describe('Capitalization component', () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start Back 2 the Game' }));
+
     for (let question = 1; question <= 9; question += 1) {
       act(() => {
         vi.advanceTimersByTime(2700);

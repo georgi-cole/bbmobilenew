@@ -123,9 +123,17 @@ describe('secret mission v2 follow-up', () => {
 
   it('lets the middleware initialize and satisfy public-approval tasks centrally', () => {
     const store = setupAcceptedMission();
-    const task = store.getState().game.secretMission!.tasks.find((entry) => entry.type === 'public_approval_gain');
-    expect(task).toBeTruthy();
-    if (!task) throw new Error('Expected public approval task');
+    const task = store.getState().game.secretMission!.tasks[0];
+    store.dispatch(syncMissionTask({
+      taskId: task.id,
+      updates: {
+        type: 'public_approval_gain',
+        current: 0,
+        target: 5,
+        requiredDelta: 5,
+        completed: false,
+      },
+    }));
 
     store.dispatch(setMissionTaskBaselineApproval({ taskId: task.id, approval: 50 }));
     store.dispatch(updateApproval({

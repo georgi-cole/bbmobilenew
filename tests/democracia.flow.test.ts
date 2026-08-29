@@ -268,13 +268,11 @@ describe('Democracia twist', () => {
       expect(store.getState().game.twistActivatedThisWeek).toBe(true)
     })
 
-    it('pushes a TV event with major=democracia', () => {
+    it('defers its announcement to the manager-controlled LOH branch card', () => {
       const store = makeStore({ week: 5 })
       store.dispatch(activateDemocracia())
       const feed = store.getState().game.tvFeed
-      const democraciaEvent = feed.find((e) => e.major === 'democracia')
-      expect(democraciaEvent).toBeDefined()
-      expect(democraciaEvent?.type).toBe('twist')
+      expect(feed.find((event) => event.major === 'democracia')).toBeUndefined()
     })
   })
 

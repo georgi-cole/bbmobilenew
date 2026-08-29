@@ -239,13 +239,12 @@ export default function GameOver() {
         persistAftermathIssue(issueStorageKey, issue)
       }
 
-      const firstStory = issue.stories[0]
-      if (firstStory) await preloadRecapImageSources(firstStory.imageSources)
-
       setAftermathIssue(issue)
       setStoryIndex(0)
       setPanel('aftermath')
 
+      const firstStory = issue.stories[0]
+      if (firstStory) void preloadRecapImageSources(firstStory.imageSources)
       const nextStory = issue.stories[1]
       if (nextStory) void preloadRecapImageSources(nextStory.imageSources)
     } finally {
@@ -253,23 +252,16 @@ export default function GameOver() {
     }
   }
 
-  async function selectAftermathStory(index: number) {
+  function selectAftermathStory(index: number) {
     const targetStory = aftermathStories[index]
     if (!targetStory || index === storyIndex || isAftermathStoryLoading) return
 
-    const requestId = aftermathStoryRequestRef.current + 1
-    aftermathStoryRequestRef.current = requestId
-    setIsAftermathStoryLoading(true)
-    try {
-      await preloadRecapImageSources(targetStory.imageSources)
-      if (aftermathStoryRequestRef.current === requestId) setStoryIndex(index)
-    } finally {
-      if (aftermathStoryRequestRef.current === requestId) setIsAftermathStoryLoading(false)
-    }
+    setStoryIndex(index)
+    void preloadRecapImageSources(targetStory.imageSources)
   }
 
   function showPreviousStory() {
-    void selectAftermathStory(Math.max(storyIndex - 1, 0))
+    selectAftermathStory(Math.max(storyIndex - 1, 0))
   }
 
   function showNextStory() {
@@ -277,7 +269,7 @@ export default function GameOver() {
       closeOverlay()
       return
     }
-    void selectAftermathStory(Math.min(storyIndex + 1, aftermathStories.length - 1))
+    selectAftermathStory(Math.min(storyIndex + 1, aftermathStories.length - 1))
   }
 
   return (

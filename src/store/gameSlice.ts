@@ -811,11 +811,7 @@ function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
     const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
-  const priorityFor = (id: string) =>
-    activeEventsById.get(id)?.meta?.broadcastPriority === 'critical' ? 0 : 1
-  queue.sort(
-    (left, right) => priorityFor(left) - priorityFor(right) || orderFor(left) - orderFor(right)
-  )
+  queue.sort((left, right) => orderFor(left) - orderFor(right))
   state.broadcastQueue = queue
 }
 
@@ -847,8 +843,6 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
   })
   eligible.sort(
     (left, right) =>
-      (left.meta?.broadcastPriority === 'critical' ? 0 : 1) -
-        (right.meta?.broadcastPriority === 'critical' ? 0 : 1) ||
       managedBroadcastOrder(state, left) - managedBroadcastOrder(state, right) ||
       left.timestamp - right.timestamp ||
       left.id.localeCompare(right.id)
@@ -3062,6 +3056,7 @@ const gameSlice = createSlice({
   reducers: {
     setPhase(state, action: PayloadAction<Phase>) {
       state.phase = action.payload
+      rebuildManagedBroadcastQueue(state, action.payload)
     },
     advanceWeek(state) {
       state.week += 1

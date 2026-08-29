@@ -24,6 +24,7 @@ describe('Survivor replacement transition', () => {
 
     store.dispatch(hydrateGame({
       ...survivorRun,
+      phase: 'eviction_results',
       pendingEviction: {
         evicteeId: outgoing!.id,
         evictionMessage: `${outgoing!.name} has been evicted.`,
@@ -59,8 +60,10 @@ describe('Survivor replacement transition', () => {
     expect(transition?.durationMs).toBe(2000);
     expect(replacement?.isRobo).toBe(true);
     expect(replacement?.survivorSlot).toBe(outgoing!.survivorSlot);
-    expect(game.tvFeed[0]?.text).toContain('replacement synthetic contestant');
-    expect(game.tvFeed[0]?.meta?.phase).toBe('eviction_results');
-    expect(game.tvFeed[0]?.meta?.forceOnTv).toBe(true);
+    const replacementEvent = game.tvFeed.find((event) =>
+      event.text.includes('replacement synthetic contestant')
+    );
+    expect(replacementEvent?.meta?.phase).toBe('eviction_results');
+    expect(replacementEvent?.meta?.forceOnTv).toBe(true);
   });
 });
