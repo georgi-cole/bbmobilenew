@@ -41,9 +41,17 @@ async function startClassicSeason(page: Page): Promise<void> {
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
   await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
+  await dismissSeasonTutorialIfPresent(page)
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
   })
+}
+
+async function dismissSeasonTutorialIfPresent(page: Page): Promise<void> {
+  await page
+    .getByRole('button', { name: 'Skip', exact: true })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined)
 }
 
 async function advanceToAutosavableProgress(page: Page): Promise<void> {

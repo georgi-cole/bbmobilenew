@@ -76,7 +76,15 @@ async function startCampaignFromHome(page: Page, playerName: string): Promise<vo
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
   await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
+  await dismissSeasonTutorialIfPresent(page)
   await assertCampaignReady(page, playerName)
+}
+
+async function dismissSeasonTutorialIfPresent(page: Page): Promise<void> {
+  await page
+    .getByRole('button', { name: 'Skip', exact: true })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined)
 }
 
 async function startFreshCampaign(page: Page, playerName: string): Promise<void> {
