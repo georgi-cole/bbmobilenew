@@ -138,9 +138,8 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            cd android
-            ./gradlew connectedDebugAndroidTest
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            ./android/gradlew -p android connectedDebugAndroidTest
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am force-stop com.georgicole.thebigeye
             adb shell monkey -p com.georgicole.thebigeye -c android.intent.category.LAUNCHER 1
             sleep 5
@@ -172,7 +171,7 @@ jobs:
         run: >-
           xcodebuild build
           -project ios/App/App.xcodeproj
-          -target App
+          -scheme App
           -configuration Debug
           -sdk iphonesimulator
           -destination id=${{ steps.simulator.outputs.id }}

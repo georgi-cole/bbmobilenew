@@ -109,7 +109,12 @@ function renderTvZone(
 }
 
 function makeEvent(overrides: Partial<TvEvent> & Pick<TvEvent, 'id' | 'text'>): TvEvent {
-  return { type: 'game', timestamp: Date.now(), ...overrides };
+  return {
+    type: 'game',
+    timestamp: Date.now(),
+    ...overrides,
+    meta: { phase: 'season_start', week: 1, ...overrides.meta },
+  };
 }
 
 function makePlayer(id: string, name: string): Player {
