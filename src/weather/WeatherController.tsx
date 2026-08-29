@@ -1,7 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addTvEvent } from '../store/gameSlice'
-import { buildWeatherBulletin, resolveWeatherDay } from './weatherEngine'
+import {
+  buildWeatherBulletin,
+  formatWeatherTemperature,
+  resolveWeatherDay,
+} from './weatherEngine'
 import { loadWeatherRuntime } from './weatherRuntime'
 import './WeatherEnhancements.css'
 
@@ -51,12 +55,18 @@ export default function WeatherController() {
 
       const weatherDay = resolveWeatherDay(gameId, week)
       const recoveryRainbow = depressionShock?.recoveryWeek === week
-      const text = buildWeatherBulletin({
+      const comment = buildWeatherBulletin({
         gameId,
         day: weatherDay,
         players,
         ...(recoveryRainbow ? { forcePhenomenon: 'rainbow' as const } : {}),
       })
+      const temperature = formatWeatherTemperature(weatherDay.temperatureC)
+      // Some externally authored variants naturally include {temp}; otherwise
+      // prepend the reading so every once-daily bulletin fulfils the same promise.
+      const text = comment.includes('°C') || comment.includes('°F')
+        ? comment
+        : `${temperature} · ${comment}`
 
       dispatch(
         addTvEvent({
