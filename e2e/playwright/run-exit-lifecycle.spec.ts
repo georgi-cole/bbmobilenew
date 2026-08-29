@@ -48,9 +48,10 @@ async function startClassicSeason(page: Page): Promise<void> {
 }
 
 async function dismissSeasonTutorialIfPresent(page: Page): Promise<void> {
-  const skip = page.getByRole('button', { name: 'Skip', exact: true })
-  await skip.waitFor({ state: 'visible', timeoutMs: 15_000 }).catch(() => undefined)
-  if (await skip.isVisible()) await skip.click()
+  await page
+    .getByRole('button', { name: 'Skip', exact: true })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined)
 }
 
 async function advanceToAutosavableProgress(page: Page): Promise<void> {
