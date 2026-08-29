@@ -37,6 +37,9 @@ export default function GameButton({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
+  // Temporarily keep Surprise Me out of the UI without changing season-selection logic.
+  if (label === 'Surprise Me') return null;
+
   const state: GameButtonState = disabled
     ? 'disabled'
     : isPressed
