@@ -7,16 +7,10 @@ import { hasHandledSeasonTutorial } from './seasonTutorialPreference'
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 /**
- * Compatibility guard for the polished season opening.
- *
- * The broadcast manager constructs its Season Start queue before the onboarding
- * controller mounts. Older/default welcome and rules events can therefore
- * remain queued even when the normal TV feed correctly filters them out. This
- * guard acknowledges those superseded queue entries before paint, then makes
- * the two authored onboarding cards true blocking beats so Play cannot skip
- * Beat 3 or the tutorial. It also removes only the redundant first Day 1 stop
- * during the polished opening handoff; genuine custom/critical week-start
- * broadcasts still retain priority.
+ * Keeps the polished opening authoritative over the older managed queue.
+ * Superseded defaults are acknowledged before paint, Beat 1 / Beat 3 cannot
+ * accidentally advance the reducer, and the redundant first Day 1 stop is
+ * skipped without suppressing genuine custom or critical broadcasts.
  */
 export default function SeasonOpeningFlowGuard() {
   const dispatch = useAppDispatch()
@@ -52,8 +46,6 @@ export default function SeasonOpeningFlowGuard() {
       if (!queuedEvent) return
 
       if (queuedEvent.meta?.seasonOnboardingWelcome === true) {
-        // Beat 1 should reveal Beat 3, not accidentally advance the reducer to
-        // Day 1 merely because it is the last plain broadcast in the queue.
         event.preventDefault()
         dispatch(consumeBroadcastEvent(queuedEvent.id))
         return
@@ -62,10 +54,6 @@ export default function SeasonOpeningFlowGuard() {
       if (queuedEvent.meta?.seasonOnboardingFlavor === true) {
         event.preventDefault()
         dispatch(consumeBroadcastEvent(queuedEvent.id))
-
-        // Returning named profiles should go directly from Beat 3 to LOH.
-        // Guest and profiles with tutorial replay enabled remain on
-        // season_start long enough for the tutorial prompt to open.
         if (hasHandledSeasonTutorial(activeProfileId, isGuest)) {
           dispatch(advance())
         }
@@ -91,8 +79,6 @@ export default function SeasonOpeningFlowGuard() {
       return
     }
 
-    // Preserve any genuine week-start announcement. Once it has been handled,
-    // continue directly to the first competition as specified by onboarding.
     if (broadcastQueue.length > 0) return
     dispatch(advance())
   }, [
