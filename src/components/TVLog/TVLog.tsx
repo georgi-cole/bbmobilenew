@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { TvEvent } from '../../types';
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome';
-import { tease } from '../../utils/tvLogTemplates';
+import { normalizeGameCopy, tease } from '../../utils/tvLogTemplates';
 import './TVLog.css';
 
 const MAX_ADAPTIVE_VISIBLE_ROWS = 3;
@@ -59,9 +59,10 @@ export default function TVLog({
   const effectiveMaxVisible = Math.max(1, maxVisible);
 
   const visible = useMemo(() => {
-    const deduplicated = !mainTVMessage || entries.length <= 1
+    const normalizedMainTvMessage = mainTVMessage ? normalizeGameCopy(mainTVMessage) : undefined;
+    const deduplicated = !normalizedMainTvMessage || entries.length <= 1
       ? entries
-      : entries[0].text === mainTVMessage ? entries.slice(1) : entries;
+      : normalizeGameCopy(entries[0].text) === normalizedMainTvMessage ? entries.slice(1) : entries;
     return activityFilter === 'all'
       ? deduplicated
       : deduplicated.filter((entry) => entry.type === activityFilter);
@@ -135,7 +136,8 @@ export default function TVLog({
         )}
         {visible.map((event) => {
           const isExpanded = expandedIds.has(event.id);
-          const displayText = isExpanded ? event.text : tease(event.text);
+          const normalizedText = normalizeGameCopy(event.text);
+          const displayText = isExpanded ? normalizedText : tease(event.text);
           return (
             <li key={event.id} className={`tv-log__item tv-log__item--${event.type}${isExpanded ? ' tv-log__item--expanded' : ''}`}>
               <button
@@ -144,8 +146,8 @@ export default function TVLog({
                 onClick={() => isInlineFeed ? setLogOpen(true) : toggleExpand(event.id)}
                 aria-expanded={isInlineFeed ? undefined : isExpanded}
                 aria-label={isInlineFeed
-                  ? `Open game log from ${TYPE_LABELS[event.type]} event: ${event.text}`
-                  : `${TYPE_LABELS[event.type]} event: ${event.text}`}
+                  ? `Open game log from ${TYPE_LABELS[event.type]} event: ${normalizedText}`
+                  : `${TYPE_LABELS[event.type]} event: ${normalizedText}`}
               >
                 <span className="tv-log__icon" aria-hidden="true">{TYPE_ICONS[event.type]}</span>
                 <span className="tv-log__copy">
@@ -165,7 +167,7 @@ export default function TVLog({
     <div className="tv-log-modal__backdrop" role="presentation" onClick={() => setLogOpen(false)}>
       <section className="tv-log-modal" role="dialog" aria-modal="true" aria-labelledby="tv-log-modal-title" onClick={(event) => event.stopPropagation()}>
         <header className="tv-log-modal__header">
-          <div><span className="tv-log-modal__eyebrow">House history</span><h2 id="tv-log-modal-title">Game log</h2></div>
+          <div><span className="tv-log-modal__eyebrow">Hub history</span><h2 id="tv-log-modal-title">Game log</h2></div>
           <button type="button" className="tv-log-modal__close" aria-label="Close game log" onClick={() => setLogOpen(false)}>↩</button>
         </header>
         {activityContent()}
