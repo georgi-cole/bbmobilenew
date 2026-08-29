@@ -1,0 +1,8 @@
+/*
+ * Legacy event copy is normalized at presentation time. Preserve normal
+ * sentence casing when an older sentence begins with Housemates/Houseguests
+ * and is therefore converted to players/player by the faux-TV normalizer.
+ */
+.tv-zone__now::first-letter {
+  text-transform: uppercase;
+}

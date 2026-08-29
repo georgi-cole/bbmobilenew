@@ -22,7 +22,12 @@ import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics'
 import LiveOpsController from './components/LiveOpsController/LiveOpsController'
 import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSync'
 import DepressionShockController from './components/DepressionShockController/DepressionShockController'
+import WeatherController from './weather/WeatherController'
+import WeatherBulletinOverlay from './weather/WeatherBulletinOverlay'
+import WeatherRosterReveal from './weather/WeatherRosterReveal'
+import SeasonStartOnboardingController from './onboarding/SeasonStartOnboardingController'
 import { I18nProvider } from './i18n'
+import './styles/gameCopyPolish.css'
 
 if (import.meta.env.DEV) {
   console.log(
@@ -54,7 +59,6 @@ export default function App() {
   useEffect(() => {
     installGameDiagnostics()
     void SoundManager.init()
-    // Fetch the remote live-config on startup; falls back to cache or defaults.
     void store.dispatch(loadRemoteConfig())
     const refreshId = window.setInterval(
       () => {
@@ -69,12 +73,14 @@ export default function App() {
     <Provider store={store}>
       <I18nProvider>
         <LiveOpsController />
+        <WeatherController />
+        <WeatherBulletinOverlay />
+        <WeatherRosterReveal />
+        <SeasonStartOnboardingController />
         <DepressionShockController />
         <AudioStateSync />
         <RouteLoopAudioSync hash={hash} />
         <VipEntitlementSync />
-        {/* AudioGate is suppressed on the Intro/Home route because HomeHub
-            unlocks audio via the Play gesture (see HomeHub.handlePlay). */}
         {!suppressesAudioGate(hash) && <AudioGate />}
         <RouterProvider router={router} />
       </I18nProvider>

@@ -1,71 +1,129 @@
-import type { GameState, Player, TvEvent } from '../types';
-import type { SurvivorModeState } from './modeTypes';
-import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition';
-import { createInitialGameState } from '../store/gameSlice';
-import { createInitialVoxPopuliState } from '../features/twists/voxPopuli';
-import { getBroadcastTemplate, getDefaultBroadcastOrder, renderBroadcastTemplate } from '../broadcasting/broadcastTemplateCatalog';
+import type { GameState, Player, TvEvent } from '../types'
+import type { SurvivorModeState } from './modeTypes'
+import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition'
+import { createInitialGameState } from '../store/gameSlice'
+import { createInitialVoxPopuliState } from '../features/twists/voxPopuli'
+import {
+  getBroadcastTemplate,
+  getDefaultBroadcastOrder,
+  renderBroadcastTemplate,
+} from '../broadcasting/broadcastTemplateCatalog'
 
 const ROBO_NAMES = [
-  'Lira', 'Kang', 'Sora', 'Mako', 'Venn', 'Rika', 'Nexo', 'Zari', 'Kiro', 'Tavi',
-  'Oren', 'Miri', 'Juno', 'Rexo', 'Fenn', 'Kova', 'Lumi', 'Silo', 'Arin', 'Varo',
-];
+  'Lira',
+  'Kang',
+  'Sora',
+  'Mako',
+  'Venn',
+  'Rika',
+  'Nexo',
+  'Zari',
+  'Kiro',
+  'Tavi',
+  'Oren',
+  'Miri',
+  'Juno',
+  'Rexo',
+  'Fenn',
+  'Kova',
+  'Lumi',
+  'Silo',
+  'Arin',
+  'Varo',
+]
 
-const SAVE_VERSION = 2;
-export const SURVIVOR_STARTING_CAST_SIZE = 8;
+const SAVE_VERSION = 2
+export const SURVIVOR_STARTING_CAST_SIZE = 8
 
 function makeRunId(mode: 'classic' | 'survival'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${mode}-${crypto.randomUUID()}`;
+    return `${mode}-${crypto.randomUUID()}`
   }
-  return `${mode}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  return `${mode}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 function robotAvatar(seed: string): string {
-  return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`;
+  return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`
 }
 
 function isPlayerExited(player: Player | undefined): boolean {
-  return player?.status === 'evicted' || player?.status === 'jury';
+  return player?.status === 'evicted' || player?.status === 'jury'
 }
 
-export function managedSurvivalEvent(id: string, templateId: string, variables: string[], timestamp: number, phase: GameState['phase'], week = 1): TvEvent {
-  const template = getBroadcastTemplate(templateId);
-  if (!template) throw new Error(`Missing Broadcast Manager template: ${templateId}`);
-  const text = renderBroadcastTemplate(template.text, variables);
-  return { id, text, type: template.type, timestamp, ...(template.major ? { major: template.major } : {}), meta: { phase, week, mode: 'survival', broadcastCampaign: 'survival', broadcastTemplateId: templateId, broadcastVariables: variables, broadcastOrder: getDefaultBroadcastOrder(template), broadcastLevel: template.level, broadcastManaged: true, ...(template.forceOnTv ? { forceOnTv: true } : {}), ...(template.major ? { major: template.major } : {}), ...(template.level === 'critical' ? { broadcastPriority: 'critical' } : {}), ...(template.level !== 'minor' ? { announcementSubtitle: text } : {}) } };
+export function managedSurvivalEvent(
+  id: string,
+  templateId: string,
+  variables: string[],
+  timestamp: number,
+  phase: GameState['phase'],
+  week = 1
+): TvEvent {
+  const template = getBroadcastTemplate(templateId)
+  if (!template) throw new Error(`Missing Broadcast Manager template: ${templateId}`)
+  const text = renderBroadcastTemplate(template.text, variables)
+  return {
+    id,
+    text,
+    type: template.type,
+    timestamp,
+    ...(template.major ? { major: template.major } : {}),
+    meta: {
+      phase,
+      week,
+      mode: 'survival',
+      broadcastCampaign: 'survival',
+      broadcastTemplateId: templateId,
+      broadcastVariables: variables,
+      broadcastOrder: getDefaultBroadcastOrder(template),
+      broadcastLevel: template.level,
+      broadcastManaged: true,
+      ...(template.forceOnTv ? { forceOnTv: true } : {}),
+      ...(template.major ? { major: template.major } : {}),
+      ...(template.level === 'critical' ? { broadcastPriority: 'critical' } : {}),
+      ...(template.level !== 'minor' ? { announcementSubtitle: text } : {}),
+    },
+  }
 }
 
 function getSurvivorModeState(state: GameState): SurvivorModeState {
   return state.modeSpecific?.kind === 'survival'
     ? state.modeSpecific
-    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE);
+    : createSurvivorModeState(SURVIVOR_STARTING_CAST_SIZE)
 }
 
 export function getSurvivorCurrentDay(state: GameState): number {
-  const survivorState = getSurvivorModeState(state);
-  return Math.max(survivorState.currentDay, state.week ?? 1);
+  const survivorState = getSurvivorModeState(state)
+  return Math.max(survivorState.currentDay, state.week ?? 1)
 }
 
 export function isSurvivorHumanEliminated(state: GameState): boolean {
-  if (state.mode !== 'survival') return false;
-  const human = state.players.find((player) => player.isUser);
-  return !human || isPlayerExited(human);
+  if (state.mode !== 'survival') return false
+  const human = state.players.find((player) => player.isUser)
+  return !human || isPlayerExited(human)
 }
 
 export function isSurvivorRunTerminal(state: GameState): boolean {
-  if (state.mode !== 'survival') return false;
-  return state.status === 'failed' || state.status === 'completed' || isSurvivorHumanEliminated(state);
+  if (state.mode !== 'survival') return false
+  return (
+    state.status === 'failed' || state.status === 'completed' || isSurvivorHumanEliminated(state)
+  )
 }
 
 export function terminalizeSurvivorRun(state: GameState): GameState {
-  if (state.mode !== 'survival') return state;
+  if (state.mode !== 'survival') return state
 
-  const modeSpecific = getSurvivorModeState(state);
-  const currentDay = getSurvivorCurrentDay(state);
-  const eventId = `survivor-failed-${state.runId ?? state.gameId}-${currentDay}`;
-  const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId);
-  const gameOverEvent = managedSurvivalEvent(eventId, 'survival.run-ended', [String(currentDay)], Date.now(), state.phase);
-  gameOverEvent.meta = { ...gameOverEvent.meta, week: state.week };
+  const modeSpecific = getSurvivorModeState(state)
+  const currentDay = getSurvivorCurrentDay(state)
+  const eventId = `survivor-failed-${state.runId ?? state.gameId}-${currentDay}`
+  const hasTerminalEvent = state.tvFeed.some((event) => event.id === eventId)
+  const gameOverEvent = managedSurvivalEvent(
+    eventId,
+    'survival.run-ended',
+    [String(currentDay)],
+    Date.now(),
+    state.phase
+  )
+  gameOverEvent.meta = { ...gameOverEvent.meta, week: state.week }
 
   return {
     ...state,
@@ -95,14 +153,14 @@ export function terminalizeSurvivorRun(state: GameState): GameState {
     },
     lastPlayedAt: Date.now(),
     tvFeed: hasTerminalEvent ? state.tvFeed : [gameOverEvent, ...state.tvFeed].slice(0, 50),
-  };
+  }
 }
 
 function buildRoboPlayer(index: number, runId: string, entryDay = 1, slot = index + 1): Player {
-  const name = ROBO_NAMES[index % ROBO_NAMES.length];
-  const suffix = Math.floor(index / ROBO_NAMES.length);
-  const displayName = suffix > 0 ? `${name}-${suffix + 1}` : name;
-  const id = `robo-${runId}-${index}`;
+  const name = ROBO_NAMES[index % ROBO_NAMES.length]
+  const suffix = Math.floor(index / ROBO_NAMES.length)
+  const displayName = suffix > 0 ? `${name}-${suffix + 1}` : name
+  const id = `robo-${runId}-${index}`
   return {
     id,
     name: displayName,
@@ -113,11 +171,13 @@ function buildRoboPlayer(index: number, runId: string, entryDay = 1, slot = inde
     survivorSlot: slot,
     stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
     competitionProfile: getDefaultCompetitionProfile(),
-  };
+  }
 }
 
 function buildCompetitionState(players: Player[]): GameState['competitionSeasonStateByPlayerId'] {
-  return Object.fromEntries(players.map((player) => [player.id, getDefaultCompetitionSeasonState()]));
+  return Object.fromEntries(
+    players.map((player) => [player.id, getDefaultCompetitionSeasonState()])
+  )
 }
 
 export function createSurvivorModeState(startingCastSize: number): SurvivorModeState {
@@ -133,20 +193,30 @@ export function createSurvivorModeState(startingCastSize: number): SurvivorModeS
       usedKeys: [],
       round: 1,
     },
-  };
+  }
 }
 
 export function createSurvivorRun(): GameState {
-  const base = createInitialGameState();
-  const runId = makeRunId('survival');
-  const human = base.players.find((player) => player.isUser) ?? base.players[0];
-  const startingCastSize = SURVIVOR_STARTING_CAST_SIZE;
+  const base = createInitialGameState()
+  const runId = makeRunId('survival')
+  const human = base.players.find((player) => player.isUser) ?? base.players[0]
+  const startingCastSize = SURVIVOR_STARTING_CAST_SIZE
   const players = [
-    { ...human, id: 'user', status: 'active' as const, isUser: true, isRobo: false, survivorEntryDay: 1, survivorSlot: 0 },
-    ...Array.from({ length: startingCastSize - 1 }, (_, index) => buildRoboPlayer(index, runId, 1, index + 1)),
-  ];
-  const now = Date.now();
-  const modeSpecific = createSurvivorModeState(startingCastSize);
+    {
+      ...human,
+      id: 'user',
+      status: 'active' as const,
+      isUser: true,
+      isRobo: false,
+      survivorEntryDay: 1,
+      survivorSlot: 0,
+    },
+    ...Array.from({ length: startingCastSize - 1 }, (_, index) =>
+      buildRoboPlayer(index, runId, 1, index + 1)
+    ),
+  ]
+  const now = Date.now()
+  const modeSpecific = createSurvivorModeState(startingCastSize)
 
   return {
     ...base,
@@ -187,24 +257,24 @@ export function createSurvivorRun(): GameState {
       managedSurvivalEvent('survivor-e0', 'survival.opening', [], now, 'week_start'),
       managedSurvivalEvent('survivor-e1', 'survival.rules', [], now + 1, 'week_start'),
     ],
-  };
+  }
 }
 
 export function buildReplacementRobo(state: GameState, slot?: number): Player {
-  const survivorState = getSurvivorModeState(state);
-  const currentDay = Math.max(survivorState.currentDay, state.week);
+  const survivorState = getSurvivorModeState(state)
+  const currentDay = Math.max(survivorState.currentDay, state.week)
   return buildRoboPlayer(
     survivorState.nextRoboIndex,
     state.runId ?? state.gameId,
     currentDay,
-    slot ?? survivorState.nextRoboIndex + 1,
-  );
+    slot ?? survivorState.nextRoboIndex + 1
+  )
 }
 
 export function markSurvivorDay(state: GameState): GameState {
-  if (state.mode !== 'survival') return state;
-  const modeSpecific = getSurvivorModeState(state);
-  const currentDay = Math.max(modeSpecific.currentDay, state.week);
+  if (state.mode !== 'survival') return state
+  const modeSpecific = getSurvivorModeState(state)
+  const currentDay = Math.max(modeSpecific.currentDay, state.week)
   return {
     ...state,
     modeSpecific: {
@@ -213,5 +283,5 @@ export function markSurvivorDay(state: GameState): GameState {
       currentDay,
       bestDayReached: Math.max(modeSpecific.bestDayReached, currentDay),
     },
-  };
+  }
 }

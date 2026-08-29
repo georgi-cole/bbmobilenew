@@ -943,7 +943,7 @@ function pushEvent(
     (legacyVoxIntro
       ? 'season.vox-populi-intro'
       : typeof meta?.major === 'string'
-        ? getBroadcastTemplateForMajor(meta.major, (meta?.phase as Phase | undefined))?.id
+        ? getBroadcastTemplateForMajor(meta.major, meta?.phase as Phase | undefined)?.id
         : undefined)
   const hintedPhase =
     typeof meta?.phase === 'string' ? (meta.phase as Phase) : (_activeBroadcastPhase ?? state.phase)
@@ -1217,7 +1217,9 @@ function activateCupidArrowForSeason(state: GameState) {
       )
         return
       const override = state.broadcastOverrides?.[cupidWelcome.id]
-      event.text = renderBroadcastTemplate(override?.text ?? cupidWelcome.text, [String(state.season)])
+      event.text = renderBroadcastTemplate(override?.text ?? cupidWelcome.text, [
+        String(state.season),
+      ])
       event.meta = {
         ...event.meta,
         broadcastTemplateId: cupidWelcome.id,
@@ -6339,7 +6341,8 @@ const gameSlice = createSlice({
       const pending = state.modeSpecific.replacementPending
       if (!pending) return
       const playerIndex = state.players.findIndex(
-        (player) => player.survivorSlot === pending.slot || player.id === pending.outgoingPlayerSnapshot.id,
+        (player) =>
+          player.survivorSlot === pending.slot || player.id === pending.outgoingPlayerSnapshot.id
       )
       if (playerIndex < 0) return
       state.players[playerIndex] = pending.incomingPlayer
@@ -6357,7 +6360,7 @@ const gameSlice = createSlice({
         state,
         `${pending.incomingPlayer.name} enters as a replacement synthetic contestant.`,
         'game',
-        { broadcastTemplateId: 'survival.replacement-enters', phase: state.phase, week: state.week },
+        { broadcastTemplateId: 'survival.replacement-enters', phase: state.phase, week: state.week }
       )
     },
 
@@ -9907,7 +9910,11 @@ export const tryActivateDepressionShock =
       dispatch(endDepressionShock())
       return false
     }
-    if (current.activeDay === 1 && current.activatedWeek !== null && game.week > current.activatedWeek) {
+    if (
+      current.activeDay === 1 &&
+      current.activatedWeek !== null &&
+      game.week > current.activatedWeek
+    ) {
       if (game.twistActivatedThisWeek || game.dayStartShock) return false
       dispatch(activateDepressionShock({ source: 'random' }))
       return true
@@ -9929,7 +9936,8 @@ export const tryActivateDepressionShock =
     }
 
     const resolved = getState().game.depressionShock
-    if (!resolved?.pendingActivation || game.twistActivatedThisWeek || game.dayStartShock) return false
+    if (!resolved?.pendingActivation || game.twistActivatedThisWeek || game.dayStartShock)
+      return false
     dispatch(activateDepressionShock({ source: 'random' }))
     return true
   }
@@ -9943,7 +9951,8 @@ export const tryActivatePendingForcedDepressionShock =
     if (!pending || pending.type !== 'depressionShock') return false
     if (!isDepressionShockEligibleMode(game) || game.phase !== 'week_start') return false
     if (game.week < Math.max(DEPRESSION_SHOCK_MIN_WEEK, pending.earliestWeek)) return false
-    if (game.twistActivatedThisWeek || game.dayStartShock || activeHousemateCount(game) < 6) return false
+    if (game.twistActivatedThisWeek || game.dayStartShock || activeHousemateCount(game) < 6)
+      return false
     dispatch(activateDepressionShock({ source: 'debug' }))
     dispatch(consumeForcedShock())
     return true

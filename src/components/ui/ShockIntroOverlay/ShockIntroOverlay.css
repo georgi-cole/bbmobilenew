@@ -24,7 +24,7 @@
   /* The shock is dismissed by OK; its readable content must not fade away
      while the player is deciding when to acknowledge it. */
   transform-origin: center;
-  animation: shockIntroWholeScreenQuake 720ms cubic-bezier(.36,.07,.19,.97) 360ms both;
+  animation: shockIntroWholeScreenQuake 720ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 360ms both;
 }
 
 .shock-intro:not([data-cupid-mode])::before {
@@ -34,7 +34,7 @@
   z-index: 40;
   pointer-events: none;
   background: #000;
-  animation: shockIntroBlackout 980ms cubic-bezier(.2,.8,.2,1) both;
+  animation: shockIntroBlackout 980ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .shock-intro:not([data-cupid-mode])::after {
@@ -44,7 +44,12 @@
   z-index: 39;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(circle, rgba(255,241,197,.92), rgba(225,154,44,.28) 18%, transparent 46%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 241, 197, 0.92),
+    rgba(225, 154, 44, 0.28) 18%,
+    transparent 46%
+  );
   mix-blend-mode: screen;
   animation: shockIntroImpact 520ms ease-out 920ms both;
 }
@@ -69,33 +74,76 @@
 }
 
 @keyframes shockIntroBlackout {
-  0% { opacity: 0; }
-  24%, 66% { opacity: .96; }
-  82% { opacity: .42; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  24%,
+  66% {
+    opacity: 0.96;
+  }
+  82% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes shockIntroImpact {
-  0% { opacity: 0; transform: scale(.45); }
-  24% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.35); }
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  24% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 @keyframes shockIntroCloudCover {
-  0% { opacity: 0; transform: translate3d(8%, -2%, 0) scale(1.08); }
-  38% { opacity: .9; }
-  100% { opacity: .58; transform: translate3d(-4%, 2%, 0) scale(1.02); }
+  0% {
+    opacity: 0;
+    transform: translate3d(8%, -2%, 0) scale(1.08);
+  }
+  38% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.58;
+    transform: translate3d(-4%, 2%, 0) scale(1.02);
+  }
 }
 
 @keyframes shockIntroWholeScreenQuake {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.015) rotate(0); }
-  8% { transform: translate3d(-11px, 3px, 0) scale(1.025) rotate(-.55deg); }
-  17% { transform: translate3d(10px, -3px, 0) scale(1.025) rotate(.5deg); }
-  27% { transform: translate3d(-8px, -2px, 0) scale(1.022) rotate(-.38deg); }
-  38% { transform: translate3d(7px, 2px, 0) scale(1.021) rotate(.32deg); }
-  50% { transform: translate3d(-5px, 1px, 0) scale(1.019) rotate(-.2deg); }
-  63% { transform: translate3d(4px, -1px, 0) scale(1.018) rotate(.15deg); }
-  78% { transform: translate3d(-2px, 0, 0) scale(1.016); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.015) rotate(0);
+  }
+  8% {
+    transform: translate3d(-11px, 3px, 0) scale(1.025) rotate(-0.55deg);
+  }
+  17% {
+    transform: translate3d(10px, -3px, 0) scale(1.025) rotate(0.5deg);
+  }
+  27% {
+    transform: translate3d(-8px, -2px, 0) scale(1.022) rotate(-0.38deg);
+  }
+  38% {
+    transform: translate3d(7px, 2px, 0) scale(1.021) rotate(0.32deg);
+  }
+  50% {
+    transform: translate3d(-5px, 1px, 0) scale(1.019) rotate(-0.2deg);
+  }
+  63% {
+    transform: translate3d(4px, -1px, 0) scale(1.018) rotate(0.15deg);
+  }
+  78% {
+    transform: translate3d(-2px, 0, 0) scale(1.016);
+  }
 }
 
 .shock-intro[data-cupid-mode] {
@@ -107,7 +155,7 @@
 }
 
 .shock-intro[data-cupid-mode='breaking'] {
-  animation: shockIntroWholeScreenQuake 680ms cubic-bezier(.36,.07,.19,.97) both;
+  animation: shockIntroWholeScreenQuake 680ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 .shock-intro[data-cupid-mode='arriving'] .shock-intro__cupid-proclamation {
@@ -138,9 +186,7 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding:
-    max(32px, calc(env(safe-area-inset-top, 0px) + 24px))
-    18px
+  padding: max(32px, calc(env(safe-area-inset-top, 0px) + 24px)) 18px
     max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px));
   color: #fff5f8;
   text-align: center;
@@ -164,8 +210,12 @@
   place-items: center;
   border: 1px solid rgba(255, 222, 233, 0.28);
   border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(210, 99, 145, 0.22), rgba(79, 32, 69, 0.08) 66%, transparent 68%);
+  background: radial-gradient(
+    circle,
+    rgba(210, 99, 145, 0.22),
+    rgba(79, 32, 69, 0.08) 66%,
+    transparent 68%
+  );
   box-shadow:
     0 0 0 8px rgba(255, 255, 255, 0.018),
     0 0 42px rgba(226, 100, 151, 0.2);
@@ -326,7 +376,7 @@
 .shock-intro__vision-stage {
   position: absolute;
   inset: 0;
-  animation: shockVisionArrive 1180ms cubic-bezier(.2,.8,.2,1) both;
+  animation: shockVisionArrive 1180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .shock-intro__vision-stage::before {
@@ -335,29 +385,64 @@
   inset: -3%;
   z-index: 25;
   pointer-events: none;
-  background: radial-gradient(circle at center, transparent 34%, rgba(255,255,255,.13) 35%, transparent 52%);
+  background: radial-gradient(
+    circle at center,
+    transparent 34%,
+    rgba(255, 255, 255, 0.13) 35%,
+    transparent 52%
+  );
   animation: shockFlash 760ms ease-out both;
 }
 
 @keyframes shockVisionArrive {
-  0%, 58% { opacity: 0; transform: scale(1.12) translate3d(-2.6%, 0, 0); filter: brightness(2.1) contrast(1.2); }
-  68% { opacity: 1; transform: scale(1.04) translate3d(2.1%, 0, 0); }
-  78% { transform: scale(1.02) translate3d(-1.5%, 0, 0); }
-  88% { transform: scale(1.01) translate3d(1%, 0, 0); }
-  100% { opacity: 1; transform: scale(1); filter: none; }
+  0%,
+  58% {
+    opacity: 0;
+    transform: scale(1.12) translate3d(-2.6%, 0, 0);
+    filter: brightness(2.1) contrast(1.2);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(1.04) translate3d(2.1%, 0, 0);
+  }
+  78% {
+    transform: scale(1.02) translate3d(-1.5%, 0, 0);
+  }
+  88% {
+    transform: scale(1.01) translate3d(1%, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
 }
 
-@keyframes shockFlash { 0%, 22% { opacity: .9; } 58%, 100% { opacity: 0; } }
+@keyframes shockFlash {
+  0%,
+  22% {
+    opacity: 0.9;
+  }
+  58%,
+  100% {
+    opacity: 0;
+  }
+}
 
 .shock-intro[data-shock-theme='main'] .shock-intro__ack {
-  border-color: rgba(246, 213, 143, .7);
+  border-color: rgba(246, 213, 143, 0.7);
   background: linear-gradient(135deg, #f6d58f, #a86e2b);
   color: #26180b;
-  box-shadow: 0 8px 22px rgba(0,0,0,.35), 0 0 22px rgba(235,181,78,.3), inset 0 1px 0 rgba(255,255,255,.62);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.35),
+    0 0 22px rgba(235, 181, 78, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
 .shock-intro--reduced .shock-intro__vision-stage,
-.shock-intro--reduced .shock-intro__vision-stage::before { animation: none; }
+.shock-intro--reduced .shock-intro__vision-stage::before {
+  animation: none;
+}
 
 .shock-intro__cupid-heart,
 .shock-intro__cupid-arrow,
@@ -738,11 +823,13 @@
   }
   48% {
     opacity: 1;
-    transform: translate(var(--cupid-pair-mix-x), var(--cupid-pair-mix-y)) scale(1.08) rotate(110deg);
+    transform: translate(var(--cupid-pair-mix-x), var(--cupid-pair-mix-y)) scale(1.08)
+      rotate(110deg);
   }
   67% {
     opacity: 0.88;
-    transform: translate(calc(var(--cupid-pair-mix-x) * 0.22), calc(var(--cupid-pair-mix-y) * 0.22)) rotate(260deg) scale(0.5);
+    transform: translate(calc(var(--cupid-pair-mix-x) * 0.22), calc(var(--cupid-pair-mix-y) * 0.22))
+      rotate(260deg) scale(0.5);
   }
   100% {
     opacity: 0;
@@ -769,16 +856,32 @@
   68% {
     opacity: 0.92;
     clip-path: polygon(
-      50% 94%, 10% 58%, 2% 32%, 12% 11%, 31% 6%, 50% 21%,
-      69% 6%, 88% 11%, 98% 32%, 90% 58%
+      50% 94%,
+      10% 58%,
+      2% 32%,
+      12% 11%,
+      31% 6%,
+      50% 21%,
+      69% 6%,
+      88% 11%,
+      98% 32%,
+      90% 58%
     );
     transform: translate(-50%, -50%) scale(0.96) rotate(0deg);
   }
   100% {
     opacity: 0.14;
     clip-path: polygon(
-      50% 94%, 10% 58%, 2% 32%, 12% 11%, 31% 6%, 50% 21%,
-      69% 6%, 88% 11%, 98% 32%, 90% 58%
+      50% 94%,
+      10% 58%,
+      2% 32%,
+      12% 11%,
+      31% 6%,
+      50% 21%,
+      69% 6%,
+      88% 11%,
+      98% 32%,
+      90% 58%
     );
     transform: translate(-50%, -50%) scale(0.72) rotate(0deg);
   }
@@ -887,14 +990,27 @@
   /* Bias the rollback target slightly upward so the fullscreen vision collapses toward the TV viewport area, not exact screen centre. */
   transform-origin: 50% 31%;
   will-change: transform, opacity, border-radius;
-  animation: shockIntroVisionReveal 1.3s cubic-bezier(.2,.8,.2,1) both;
+  animation: shockIntroVisionReveal 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   opacity: 0;
 }
 
 @keyframes shockIntroVisionReveal {
-  0%, 68% { opacity: 0; transform: scale(1.09); filter: brightness(1.8) contrast(1.15); }
-  78% { opacity: 1; transform: scale(1.025); filter: brightness(1.2) contrast(1.08); }
-  100% { opacity: 1; transform: scale(1); filter: none; }
+  0%,
+  68% {
+    opacity: 0;
+    transform: scale(1.09);
+    filter: brightness(1.8) contrast(1.15);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1.025);
+    filter: brightness(1.2) contrast(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
 }
 
 .shock-intro:not([data-cupid-mode]) .shock-intro__ack {
@@ -902,8 +1018,14 @@
 }
 
 @keyframes shockIntroAckReveal {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .shock-intro__vision-stage .tv-announcement-wrap {
@@ -917,9 +1039,7 @@
   width: 100dvw;
   min-height: 100dvh;
   animation: none;
-  padding:
-    max(30px, calc(env(safe-area-inset-top, 0px) + 28px))
-    clamp(18px, 5vw, 34px)
+  padding: max(30px, calc(env(safe-area-inset-top, 0px) + 28px)) clamp(18px, 5vw, 34px)
     max(28px, calc(env(safe-area-inset-bottom, 0px) + 24px));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -960,10 +1080,18 @@
 }
 
 @keyframes shockIntroBackdropFade {
-  0%   { opacity: 0; }
-  6%   { opacity: 1; }
-  86%  { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes shockIntroVisionHandoff {
@@ -1010,10 +1138,18 @@
 }
 
 @keyframes shockIntroFadeSimple {
-  0%   { opacity: 0; }
-  15%  { opacity: 1; }
-  75%  { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

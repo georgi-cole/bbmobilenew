@@ -29,6 +29,10 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
   await page.getByRole('button', { name: /Create New Profile/ }).click()
   await page.getByPlaceholder('Enter display name').fill(playerName)
   await page.getByRole('button', { name: 'Create Profile', exact: true }).click()
+  const activeProfileId = (await readAppState(page)).profiles.activeProfileId
+  await page.evaluate((profileId) => {
+    localStorage.setItem(`bbmobilenew_season_tutorial_v1:${profileId}`, 'done')
+  }, activeProfileId)
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }

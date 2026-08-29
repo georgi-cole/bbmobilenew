@@ -1,11 +1,12 @@
 import type { CupidArrowPair, GameState, Player } from '../../types'
 import { mulberry32 } from '../../store/rng'
 import type { SeasonArchive } from '../../store/seasonArchive'
+import { getSeasonLaunchIntent } from '../../modes/seasonLaunchIntent'
 
 export const CUPID_ARROW_BREAK_AFTER_PAIRS = 4
-export const CUPID_ARROW_DEFAULT_SEASON = 3
-export const CUPID_ARROW_RETRY_CHANCE = 0.1
-const CUPID_ARROW_SCHEDULE_SALT = 0x2d1402c9
+export const CUPID_ARROW_DEFAULT_SEASON = 14
+/** Kept for backwards-compatible imports. Random production scheduling is disabled. */
+export const CUPID_ARROW_RETRY_CHANCE = 0
 
 export const CUPID_PAIR_COLORS = [
   '#ff5d8f',
@@ -29,37 +30,34 @@ export interface CupidArrowScheduleOptions {
   now?: Date
 }
 
-/** Cupid's Arrow takes over every season that begins on Valentine's Day. */
+/** Cupid's Arrow takes over Classic seasons that begin on Valentine's Day. */
 export function isCupidArrowValentinesDay(now: Date = new Date()): boolean {
   return now.getMonth() === 1 && now.getDate() === 14
 }
 
 /**
- * Production scheduling for the season-format shock. Season 3 is its debut;
- * after an active season, the following season is always clear. From Season 5
- * onward, eligible seasons get a stable 10% seeded draw. The seed is freshly
- * generated at season reset, so the draw is random once and cannot change
- * when a saved season is re-opened.
+ * Production scheduling is intentionally narrow:
+ * - an explicit Cupid's Arrow launch always gets Cupid;
+ * - Vox Populi never gets Cupid;
+ * - Classic gets Cupid all day on February 14 and throughout Season 14;
+ * - every other Classic season remains Classic.
+ *
+ * The debug override remains available for isolated testing, but there is no
+ * random retry, Season 3 debut, or archive-driven production scheduling.
  */
 export function shouldScheduleCupidArrowSeason({
   season,
-  seasonArchives,
-  seed,
   seasonOverride = null,
   now = new Date(),
 }: CupidArrowScheduleOptions): boolean {
+  const launchIntent = getSeasonLaunchIntent()
+
+  if (launchIntent === 'voxPopuli') return false
+  if (launchIntent === 'cupidArrow') return true
   if (isCupidArrowValentinesDay(now)) return true
-  if (seasonOverride != null) return seasonOverride === season
   if (season === CUPID_ARROW_DEFAULT_SEASON) return true
-  if (season < CUPID_ARROW_DEFAULT_SEASON + 2) return false
-
-  const previousSeason = seasonArchives.find((archive) => archive.seasonIndex === season - 1)
-  if (previousSeason?.cupidArrowActivated === true) return false
-
-  const scheduleRng = mulberry32(
-    (seed ^ Math.imul(season, 0x9e3779b1) ^ CUPID_ARROW_SCHEDULE_SALT) >>> 0
-  )
-  return scheduleRng() < CUPID_ARROW_RETRY_CHANCE
+  if (seasonOverride != null) return seasonOverride === season
+  return false
 }
 
 function shuffle<T>(items: readonly T[], rng: () => number): T[] {

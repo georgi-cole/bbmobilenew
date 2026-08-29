@@ -1,84 +1,52 @@
 import type { BroadcastOverride, Phase, Player } from '../types'
 import type { RelationshipsMap } from '../social/types'
 import { getBroadcastTemplate } from './broadcastTemplateCatalog'
+import {
+  getDayEndAtmosphere,
+  getDayStartAtmosphere,
+  getWeatherTransitionTitle,
+  resolveWeatherDay,
+  type WeatherPresentationAtmosphere,
+} from '../weather/weatherEngine'
 
-export type DayStartAtmosphere =
-  | 'sunny'
-  | 'cloudy'
-  | 'rainy'
-  | 'misty'
-  | 'snowy'
-  | 'stormy'
-  | 'rainbow'
-export type DayEndAtmosphere =
-  | 'sunset'
-  | 'starry'
-  | 'rainy'
-  | 'misty'
-  | 'snowy'
-  | 'stormy'
-  | 'rainbow'
-export type DailyAtmosphere = DayStartAtmosphere | DayEndAtmosphere
+export type DayStartAtmosphere = WeatherPresentationAtmosphere
+export type DayEndAtmosphere = WeatherPresentationAtmosphere
+export type DailyAtmosphere = WeatherPresentationAtmosphere
 
-const DAILY_TRANSITION_TITLES = {
-  week_start: {
-    sunny: 'Day {day} opens bright and gentle, with morning sun in every window. ☀️',
-    cloudy:
-      'Day {day} eases in beneath soft clouds. The house is taking its sweet time waking up. ☁️',
-    rainy: 'Day {day} wakes to rain at the windows, with hot cocoa waiting in the kitchen. ☕',
-    misty: 'Day {day} opens under a soft veil of mist. The house feels hushed and close. 🌫️',
-    snowy: 'Day {day} arrives with quiet snow drifting past the windows. ❄️',
-    stormy: 'Day {day} begins beneath a distant rumble. The house feels electric. ⚡',
-    rainbow:
-      'The sun breaks through the clouds. A rainbow fills the sky and the house can finally breathe again. 🌈',
-  },
-  week_end: {
-    sunset: 'Day {day} settles into golden hour. Everything else can wait until morning. 🌇',
-    starry:
-      'Day {day} winds down beneath a clear, quiet sky. Even the game feels far away for a moment. ✨',
-    rainy: 'Day {day} ends with rain on the glass and a warm kettle humming somewhere inside. ☕',
-    misty: 'Day {day} fades into a silver mist. The house exhales and quiets down. 🌫️',
-    snowy: 'Day {day} closes with snow settling softly outside the house. ❄️',
-    stormy: 'Day {day} ends with thunder rolling somewhere beyond the walls. ⚡',
-    rainbow: 'The storm has passed. A last rainbow glows over the quiet house. 🌈',
-  },
-} as const
+let latestTitleSeed = 'weather'
 
-function hashText(value: string): number {
-  let hash = 2166136261
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
-  }
-  return hash >>> 0
-}
-
-/** Consecutive days rotate, while each game starts at a different point. */
+/**
+ * Resolve one stable weather state for the game day. Consecutive days may keep
+ * exactly the same condition; the transition matrix deliberately favours
+ * persistence and nearby weather families rather than forced rotation.
+ */
 export function getDailyAtmosphere(
   gameId: string | undefined,
   week: number,
   phase: Phase,
   depression?: { activeDay?: number; recoveryWeek?: number | null }
 ): DailyAtmosphere | null {
+  if (phase !== 'week_start' && phase !== 'week_end') return null
+  latestTitleSeed = `${gameId ?? 'preview-game'}:${week}:${phase}`
+
+  // Depression Shock remains an authored narrative override above ordinary weather.
   if (depression?.activeDay && depression.activeDay > 0) return 'stormy'
   if (depression?.recoveryWeek === week) return 'rainbow'
-  // Preview and test games can be constructed before a durable id is assigned.
-  // Keep their atmosphere deterministic instead of throwing during the day card.
-  const offset = hashText(gameId ?? 'preview-game') % 6
-  const index = (offset + Math.max(0, week - 1)) % 6
-  if (phase === 'week_start') {
-    return (['sunny', 'cloudy', 'rainy', 'misty', 'snowy', 'stormy'] as const)[index]
-  }
-  if (phase === 'week_end') {
-    return (['sunset', 'starry', 'rainy', 'misty', 'snowy', 'stormy'] as const)[index]
-  }
-  return null
+
+  const weatherDay = resolveWeatherDay(gameId, week)
+  return phase === 'week_start'
+    ? getDayStartAtmosphere(weatherDay)
+    : getDayEndAtmosphere(gameId, weatherDay)
+}
+
+function ensureDayStartLabel(text: string, day: number): string {
+  const trimmed = text.trim()
+  return /\bday\s+\d+\b/i.test(trimmed) ? trimmed : `Day ${day} · ${trimmed}`
 }
 
 /**
- * Daily cards keep their warm, varied copy in a single wrap-safe treatment.
- * The message may use several lines inside the fixed faux-TV viewport, but it
- * never adds a separate paragraph that can shift the roster on short screens.
+ * Daily cards remain deliberately compact. Temperature and the more playful
+ * contextual observation are reserved for the one mid/late-day weather bulletin.
  */
 export function getDailyTransitionTitle(input: {
   atmosphere: DailyAtmosphere | null
@@ -88,10 +56,13 @@ export function getDailyTransitionTitle(input: {
   if (!input.atmosphere || (input.phase !== 'week_start' && input.phase !== 'week_end')) {
     return null
   }
-
-  const titles = DAILY_TRANSITION_TITLES[input.phase]
-  const title = titles[input.atmosphere as keyof typeof titles]
-  return title?.replace('{day}', String(input.week)) ?? null
+  const title = getWeatherTransitionTitle({
+    atmosphere: input.atmosphere,
+    phase: input.phase,
+    day: input.week,
+    seedKey: `${latestTitleSeed}:${input.atmosphere}`,
+  })
+  return input.phase === 'week_start' ? ensureDayStartLabel(title, input.week) : title
 }
 
 function closestLivingHousemate(
@@ -114,6 +85,46 @@ function closestLivingHousemate(
   })[0]
 }
 
+/**
+ * The legacy mood-copy hook is kept for Broadcast Manager compatibility. New
+ * compound weather presentations map to the closest existing mood source.
+ */
+function moodTemplateAtmosphere(
+  atmosphere: DailyAtmosphere,
+  phase: 'week_start' | 'week_end'
+): string {
+  if (atmosphere === 'rainbow') return 'rainbow'
+  if (phase === 'week_end') {
+    if (atmosphere === 'starry' || atmosphere === 'sunset') return atmosphere
+    if (atmosphere === 'stormy') return 'stormy'
+    if (atmosphere === 'snowy' || atmosphere === 'snow_showers') return 'snowy'
+    if (atmosphere === 'misty' || atmosphere === 'foggy') return 'misty'
+    if (
+      atmosphere === 'rainy' ||
+      atmosphere === 'heavy_rain' ||
+      atmosphere === 'drizzle' ||
+      atmosphere === 'light_showers' ||
+      atmosphere === 'sun_showers'
+    )
+      return 'rainy'
+    return 'sunset'
+  }
+
+  if (atmosphere === 'sunny' || atmosphere === 'mostly_sunny') return 'sunny'
+  if (
+    atmosphere === 'rainy' ||
+    atmosphere === 'heavy_rain' ||
+    atmosphere === 'drizzle' ||
+    atmosphere === 'light_showers' ||
+    atmosphere === 'sun_showers'
+  )
+    return 'rainy'
+  if (atmosphere === 'misty' || atmosphere === 'foggy') return 'misty'
+  if (atmosphere === 'snowy' || atmosphere === 'snow_showers') return 'snowy'
+  if (atmosphere === 'stormy') return 'stormy'
+  return 'cloudy'
+}
+
 export function getDailyMoodCopy(input: {
   atmosphere: DailyAtmosphere | null
   phase: Phase
@@ -124,13 +135,14 @@ export function getDailyMoodCopy(input: {
 }): string | null {
   if (!input.atmosphere || (input.phase !== 'week_start' && input.phase !== 'week_end')) return null
   const moment = input.phase === 'week_start' ? 'day-start' : 'day-end'
-  const templateId = `week.${moment}-mood.${input.atmosphere}`
+  const sourceAtmosphere = moodTemplateAtmosphere(input.atmosphere, input.phase)
+  const templateId = `week.${moment}-mood.${sourceAtmosphere}`
   const template = getBroadcastTemplate(templateId)
   const override = input.overrides?.[templateId]
   if (!template || override?.disabled) return null
   const friend = closestLivingHousemate(input.players, input.relationships, input.week)
   return (override?.text ?? template.text).replaceAll(
     '{friend}',
-    friend?.name ?? 'a thoughtful housemate'
+    friend?.name ?? 'a thoughtful player'
   )
 }

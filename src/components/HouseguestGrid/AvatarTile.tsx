@@ -200,11 +200,13 @@ export default function AvatarTile({
   const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
   const normalAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
-  const useSadPortrait =
-    !isYou && !profilePhotoId &&
-    depressionShockPortraitMode === 'sad'
+  const useSadPortrait = !isYou && !profilePhotoId && depressionShockPortraitMode === 'sad'
   const sadAvatarUrl = useSadPortrait
-    ? buildDepressionShockAvatarCandidates(name.toLowerCase(), avatarUrl ? [avatarUrl] : [], name)[0]
+    ? buildDepressionShockAvatarCandidates(
+        name.toLowerCase(),
+        avatarUrl ? [avatarUrl] : [],
+        name
+      )[0]
     : undefined
   const resolvedAvatarUrl = sadAvatarUrl ?? normalAvatarUrl
   const isSurvivorRoboTile = Boolean(roboStats) || Boolean(avatarUrl?.includes('bottts'))
@@ -489,7 +491,12 @@ export default function AvatarTile({
 
           {isSurveyevalEvicting && (
             <span className={styles.surveyevalShock} aria-hidden="true">
-              <i>⚡</i><i>⚡</i><i>⚡</i><b /><b /><b />
+              <i>⚡</i>
+              <i>⚡</i>
+              <i>⚡</i>
+              <b />
+              <b />
+              <b />
             </span>
           )}
 
@@ -501,7 +508,10 @@ export default function AvatarTile({
 
           {cupidLoveRevealed && (
             <span className={styles.cupidLoveStorm} aria-hidden="true">
-              <i>♥</i><i>♥</i><i>♥</i><i>♥</i>
+              <i>♥</i>
+              <i>♥</i>
+              <i>♥</i>
+              <i>♥</i>
             </span>
           )}
 

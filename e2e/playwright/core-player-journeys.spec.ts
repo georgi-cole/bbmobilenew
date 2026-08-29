@@ -53,6 +53,10 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
       return { activeName: activeProfile?.name ?? null, isGuest: profiles.isGuest }
     })
     .toEqual({ activeName: playerName, isGuest: false })
+  const activeProfileId = (await readAppState(page)).profiles.activeProfileId
+  await page.evaluate((profileId) => {
+    localStorage.setItem(`bbmobilenew_season_tutorial_v1:${profileId}`, 'done')
+  }, activeProfileId)
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }
