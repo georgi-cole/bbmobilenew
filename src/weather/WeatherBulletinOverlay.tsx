@@ -47,6 +47,15 @@ function isWeatherCondition(value: unknown): value is WeatherConditionId {
   return typeof value === 'string' && value in CONDITION_LABELS
 }
 
+function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${scale})`} className="weather-tv-card__snowflake">
+      <path d="M0-9V9M-7.8-4.5 7.8 4.5M7.8-4.5-7.8 4.5" />
+      <path d="M0-9l-2.7 3M0-9l2.7 3M0 9l-2.7-3M0 9l2.7-3M-7.8-4.5l4 .3M-7.8-4.5l1.7 3.6M7.8 4.5l-4-.3M7.8 4.5l-1.7-3.6M7.8-4.5l-4 .3M7.8-4.5l-1.7 3.6M-7.8 4.5l4-.3M-7.8 4.5l1.7-3.6" />
+    </g>
+  )
+}
+
 function WeatherGlyph({
   condition,
   rainbow,
@@ -62,52 +71,67 @@ function WeatherGlyph({
   const sunVisible = ['sunny', 'mostly_sunny', 'partly_cloudy', 'sun_showers', 'clearing'].includes(condition)
   const cloudVisible = condition !== 'sunny'
   const darkCloud = condition === 'overcast' || condition === 'heavy_rain' || condition === 'stormy'
+  const denseCloud = condition === 'cloudy' || condition === 'overcast' || fog || wet || storm || snow
 
   return (
-    <svg className="weather-tv-card__glyph" viewBox="0 0 128 104" aria-hidden="true">
+    <svg className="weather-tv-card__glyph" viewBox="0 0 160 120" aria-hidden="true">
       <defs>
-        <radialGradient id={`${id}-sun`} cx="35%" cy="28%" r="70%">
-          <stop offset="0" stopColor="#fff4ba" />
-          <stop offset="0.45" stopColor="#ffd35d" />
-          <stop offset="1" stopColor="#f49a27" />
+        <radialGradient id={`${id}-sun`} cx="34%" cy="28%" r="72%">
+          <stop offset="0" stopColor="#fff9cf" />
+          <stop offset="0.32" stopColor="#ffe76c" />
+          <stop offset="0.68" stopColor="#ffc238" />
+          <stop offset="1" stopColor="#ef8b1f" />
         </radialGradient>
-        <linearGradient id={`${id}-cloud`} x1="0" y1="0" x2="0.78" y2="1">
+        <linearGradient id={`${id}-cloud`} x1="0.16" y1="0.08" x2="0.78" y2="1">
           <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.58" stopColor="#dfe9f3" />
-          <stop offset="1" stopColor="#aab9ca" />
+          <stop offset="0.38" stopColor="#eef5ff" />
+          <stop offset="0.72" stopColor="#bed4ee" />
+          <stop offset="1" stopColor="#7fa5d5" />
         </linearGradient>
-        <linearGradient id={`${id}-cloud-dark`} x1="0" y1="0" x2="0.8" y2="1">
-          <stop offset="0" stopColor="#c3cfdb" />
-          <stop offset="0.56" stopColor="#78899e" />
-          <stop offset="1" stopColor="#47576d" />
+        <linearGradient id={`${id}-cloud-dark`} x1="0.18" y1="0.06" x2="0.78" y2="1">
+          <stop offset="0" stopColor="#d9e5f5" />
+          <stop offset="0.4" stopColor="#9eb5d4" />
+          <stop offset="0.72" stopColor="#637b9e" />
+          <stop offset="1" stopColor="#33465f" />
         </linearGradient>
         <linearGradient id={`${id}-rain`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#84d7ff" />
-          <stop offset="1" stopColor="#3d79e8" />
+          <stop offset="0" stopColor="#b9ecff" />
+          <stop offset="0.46" stopColor="#58c4ff" />
+          <stop offset="1" stopColor="#296ee7" />
         </linearGradient>
-        <filter id={`${id}-shadow`} x="-40%" y="-40%" width="180%" height="200%">
-          <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#020817" floodOpacity="0.42" />
+        <linearGradient id={`${id}-ice`} x1="0.1" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.35" stopColor="#bdeeff" />
+          <stop offset="0.72" stopColor="#64c9ff" />
+          <stop offset="1" stopColor="#2c83df" />
+        </linearGradient>
+        <filter id={`${id}-shadow`} x="-45%" y="-45%" width="190%" height="210%">
+          <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#020817" floodOpacity="0.44" />
         </filter>
-        <filter id={`${id}-sun-glow`} x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="5" result="blur" />
+        <filter id={`${id}-sun-glow`} x="-90%" y="-90%" width="280%" height="280%">
+          <feGaussianBlur stdDeviation="4.5" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id={`${id}-ice-glow`} x="-80%" y="-80%" width="260%" height="260%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.2" floodColor="#7bd7ff" floodOpacity="0.45" />
         </filter>
       </defs>
 
       {rainbow && (
-        <g className="weather-tv-card__rainbow" opacity="0.78">
-          <path d="M20 69C27 33 91 22 111 63" />
-          <path d="M26 70C32 42 86 31 104 65" />
-          <path d="M32 71C38 50 81 40 97 67" />
+        <g className="weather-tv-card__rainbow" opacity="0.72">
+          <path d="M26 78C34 34 117 23 140 72" />
+          <path d="M34 79C42 44 111 33 131 74" />
+          <path d="M42 80C49 53 105 43 122 76" />
         </g>
       )}
 
       {sunVisible && (
         <g className="weather-tv-card__sun" filter={`url(#${id}-sun-glow)`}>
           <g className="weather-tv-card__sun-rays">
-            <path d="M45 4v10M45 51v10M15 33H5M85 33H75M24 12l7 8M66 46l7 8M24 54l7-8M66 20l7-8" />
+            <path d="M55 5v12M55 55v12M18 35H6M104 35H92M28 9l8 9M82 52l8 9M27 62l9-9M82 18l8-9" />
           </g>
-          <circle cx="45" cy="33" r="18" fill={`url(#${id}-sun)`} />
+          <circle cx="55" cy="35" r="22" fill={`url(#${id}-sun)`} />
+          <ellipse className="weather-tv-card__sun-highlight" cx="48" cy="27" rx="9" ry="5" />
         </g>
       )}
 
@@ -116,43 +140,44 @@ function WeatherGlyph({
           className={`weather-tv-card__cloud-shape${darkCloud ? ' weather-tv-card__cloud-shape--dark' : ''}`}
           filter={`url(#${id}-shadow)`}
         >
-          <ellipse cx="66" cy="64" rx="35" ry="18" fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="48" cy="57" r="17" fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="68" cy="49" r="22" fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="88" cy="57" r="16" fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <ellipse className="weather-tv-card__cloud-highlight" cx="58" cy="52" rx="16" ry="7" />
+          <ellipse cx="87" cy="71" rx={denseCloud ? 43 : 38} ry={denseCloud ? 22 : 19} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
+          <circle cx="60" cy="64" r={denseCloud ? 21 : 18} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
+          <circle cx="86" cy="54" r={denseCloud ? 28 : 24} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
+          <circle cx="112" cy="64" r={denseCloud ? 20 : 17} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
+          <ellipse className="weather-tv-card__cloud-highlight" cx="75" cy="49" rx="17" ry="7" />
+          <ellipse className="weather-tv-card__cloud-highlight weather-tv-card__cloud-highlight--small" cx="105" cy="58" rx="8" ry="4" />
         </g>
       )}
 
       {fog && (
         <g className="weather-tv-card__fog">
-          <path d="M27 77h70" />
-          <path d="M20 86h60" />
-          <path d="M48 95h58" />
+          <path d="M42 86h79" />
+          <path d="M28 96h70" />
+          <path d="M60 106h65" />
         </g>
       )}
 
       {wet && (
-        <g className="weather-tv-card__drops" stroke={`url(#${id}-rain)`}>
-          <path d="M46 80l-5 12" />
-          <path d="M65 78l-5 14" />
-          <path d="M84 80l-5 12" />
-          {condition === 'heavy_rain' && <path d="M101 77l-6 15M30 78l-5 12" />}
+        <g className="weather-tv-card__drops" fill={`url(#${id}-rain)`}>
+          <path d="M54 86c0 0-6 8-6 12a6 6 0 0 0 12 0c0-4-6-12-6-12Z" />
+          <path d="M82 84c0 0-7 10-7 14a7 7 0 0 0 14 0c0-4-7-14-7-14Z" />
+          <path d="M111 87c0 0-5.5 8-5.5 11.5a5.5 5.5 0 0 0 11 0C116.5 95 111 87 111 87Z" />
+          {condition === 'heavy_rain' && <path d="M132 85c0 0-5 7-5 10a5 5 0 0 0 10 0c0-3-5-10-5-10ZM34 87c0 0-4.5 6.5-4.5 9.3a4.5 4.5 0 0 0 9 0C38.5 93.5 34 87 34 87Z" />}
         </g>
       )}
 
       {storm && (
         <g className="weather-tv-card__storm">
-          <path className="weather-tv-card__bolt" d="M72 72H58l-7 18h12l-3 14 22-25H69l3-7Z" />
-          <path className="weather-tv-card__storm-rain" d="M37 79l-5 12M93 78l-5 13" />
+          <path className="weather-tv-card__bolt" d="M88 75H71L61 96h14l-4 20 28-31H83l5-10Z" />
+          <path className="weather-tv-card__storm-rain" d="M45 88l-5 13M122 87l-5 14" />
         </g>
       )}
 
       {snow && (
-        <g className="weather-tv-card__snow">
-          <g transform="translate(46 84)"><path d="M0-7V7M-6-3.5 6 3.5M6-3.5-6 3.5" /></g>
-          <g transform="translate(76 88)"><path d="M0-7V7M-6-3.5 6 3.5M6-3.5-6 3.5" /></g>
-          {condition === 'snowy' && <g transform="translate(99 81)"><path d="M0-6V6M-5-3 5 3M5-3-5 3" /></g>}
+        <g fill="none" stroke={`url(#${id}-ice)`} filter={`url(#${id}-ice-glow)`}>
+          <GlossySnowflake x={61} y={96} scale={0.9} />
+          <GlossySnowflake x={95} y={101} scale={1.05} />
+          {condition === 'snowy' && <GlossySnowflake x={126} y={92} scale={0.74} />}
         </g>
       )}
     </svg>
@@ -215,7 +240,7 @@ export default function WeatherBulletinOverlay() {
 
   return createPortal(
     <section className={`weather-tv-card weather-tv-card--${condition}`} aria-hidden="true">
-      <div className="weather-tv-card__content">
+      <div className="weather-tv-card__top">
         <div className="weather-tv-card__temperature-block">
           <div className="weather-tv-card__temperature">
             <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
@@ -228,10 +253,10 @@ export default function WeatherBulletinOverlay() {
 
         <div className="weather-tv-card__hero">
           <WeatherGlyph condition={condition} rainbow={rainbow} />
-          <span className="weather-tv-card__condition-label">{presentation.conditionLabel}</span>
         </div>
       </div>
 
+      <div className="weather-tv-card__condition-label">{presentation.conditionLabel}</div>
       <p className="weather-tv-card__narrative">{presentation.narrative}</p>
     </section>,
     portalTarget
