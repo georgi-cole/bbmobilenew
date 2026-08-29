@@ -14,12 +14,11 @@ async function expectTvFeedText(page: Page, pattern: RegExp): Promise<void> {
 
 /** Navigate to the game screen with the debug panel enabled. */
 async function gotoDebug(page: Page) {
-  // Hash router: query params are part of the hash — navigate to /#/game?debug=1
-  // so we land directly on the game screen and the DebugPanel renders.
+  // A fresh run intentionally redirects direct game deep links to Home. Open
+  // the QA panel there and use its supported route control to mount GameScreen.
   await page.goto('./#/game?debug=1')
-  // Do not drive debug state while the startup cinematic is still covering the
-  // route. The finale overlays are owned by GameScreen and only mount once the
-  // playable action zone is ready.
+  await openDebugPanel(page)
+  await page.getByRole('button', { name: 'game', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: 15000,
   })
