@@ -1,0 +1,61 @@
+name: Avatar WebP Benchmark
+
+on:
+  push:
+    branches:
+      - fix/avatar-preload-stability
+    paths:
+      - .github/workflows/avatar-webp-benchmark.yml
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install WebP tools
+        run: sudo apt-get update && sudo apt-get install -y webp
+
+      - name: Encode sad portraits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p avatar-benchmark/original avatar-benchmark/q92 avatar-benchmark/lossless
+          printf 'file\toriginal_bytes\tq92_bytes\tlossless_bytes\n' > avatar-benchmark/sizes.tsv
+
+          shopt -s nullglob
+          files=(public/assets/skins/*_sad_avatar.png)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo 'No sad avatar PNGs found' >&2
+            exit 1
+          fi
+
+          for source in "${files[@]}"; do
+            base="$(basename "$source" .png)"
+            cp "$source" "avatar-benchmark/original/${base}.png"
+
+            cwebp -quiet -q 92 -m 6 -alpha_q 100 -metadata icc "$source" \
+              -o "avatar-benchmark/q92/${base}.webp"
+            cwebp -quiet -lossless -z 9 -metadata icc "$source" \
+              -o "avatar-benchmark/lossless/${base}.webp"
+
+            printf '%s\t%s\t%s\t%s\n' \
+              "$base" \
+              "$(stat -c%s "$source")" \
+              "$(stat -c%s "avatar-benchmark/q92/${base}.webp")" \
+              "$(stat -c%s "avatar-benchmark/lossless/${base}.webp")" \
+              >> avatar-benchmark/sizes.tsv
+          done
+
+          cat avatar-benchmark/sizes.tsv
+
+      - name: Upload comparison set
+        uses: actions/upload-artifact@v4
+        with:
+          name: avatar-webp-benchmark
+          path: avatar-benchmark
+          if-no-files-found: error
+          retention-days: 3
