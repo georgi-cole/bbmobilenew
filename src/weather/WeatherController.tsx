@@ -79,6 +79,7 @@ export default function WeatherController() {
         text,
         type: 'social',
         source: 'system',
+        channels: ['tv', 'mainLog'],
         meta: {
           phase: 'social_2',
           week,
