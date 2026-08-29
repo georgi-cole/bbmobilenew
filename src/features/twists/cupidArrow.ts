@@ -1,4 +1,5 @@
 import type { CupidArrowPair, GameState, Player } from '../../types'
+import { mulberry32 } from '../../store/rng'
 import type { SeasonArchive } from '../../store/seasonArchive'
 import { getSeasonLaunchIntent } from '../../modes/seasonLaunchIntent'
 
