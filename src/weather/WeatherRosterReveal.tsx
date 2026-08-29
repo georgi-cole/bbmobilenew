@@ -78,8 +78,8 @@ function visualFamily(atmosphere: DailyAtmosphere): LegacyWeatherVisual {
 
 /**
  * Restores the roster-wide cinematic weather sweep and sound cue that existed
- * before the Weather v2 presentation work. It portals into the live roster so
- * the effect uses the same positioning/clip area as the original implementation.
+ * before the Weather v2 presentation work. Both day-start and day-end
+ * transitions use the same roster layer as the original implementation.
  */
 export default function WeatherRosterReveal() {
   const gameId = useAppSelector((state) => state.game.gameId)
@@ -90,13 +90,14 @@ export default function WeatherRosterReveal() {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [reveal, setReveal] = useState<{ key: string; atmosphere: DailyAtmosphere } | null>(null)
   const lastRevealKeyRef = useRef<string | null>(null)
+  const dailyPhase = phase === 'week_start' || phase === 'week_end' ? phase : null
 
   const atmosphere = useMemo(
     () =>
-      phase === 'week_start'
-        ? getDailyAtmosphere(gameId, week, 'week_start', depressionShock)
+      dailyPhase
+        ? getDailyAtmosphere(gameId, week, dailyPhase, depressionShock)
         : null,
-    [depressionShock, gameId, phase, week]
+    [dailyPhase, depressionShock, gameId, week]
   )
 
   useLayoutEffect(() => {
@@ -110,8 +111,8 @@ export default function WeatherRosterReveal() {
   }, [])
 
   useEffect(() => {
-    if (phase !== 'week_start' || !atmosphere || !gameId) return undefined
-    const key = `${gameId}:${week}:day-start:${atmosphere}`
+    if (!dailyPhase || !atmosphere || !gameId) return undefined
+    const key = `${gameId}:${week}:${dailyPhase}:${atmosphere}`
     if (lastRevealKeyRef.current === key) return undefined
     lastRevealKeyRef.current = key
     setReveal({ key, atmosphere })
@@ -126,7 +127,7 @@ export default function WeatherRosterReveal() {
       window.clearTimeout(soundTimer)
       window.clearTimeout(revealTimer)
     }
-  }, [atmosphere, gameId, phase, play, week])
+  }, [atmosphere, dailyPhase, gameId, play, week])
 
   if (!portalTarget || !reveal) return null
 
