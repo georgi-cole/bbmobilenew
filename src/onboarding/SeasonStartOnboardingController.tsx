@@ -12,7 +12,6 @@ import './SeasonStartOnboardingController.css'
 
 const TV_WAKE_MS = 900
 const WELCOME_DELAY_MS = 620
-const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
   'The hubmates have settled in. Everyone seems eager to play.',
@@ -106,8 +105,6 @@ export default function SeasonStartOnboardingController() {
     setHandoffToFirstCompetition(false)
   }, [activeProfileId, gameId, isGuest])
 
-  // Rules/system configuration belongs in the log only. The source templates
-  // are already forceOnTv:false; this only clears stale saves/old overrides.
   useEffect(() => {
     if (!queuedEvent || !isServiceConfigurationEvent(queuedEvent)) return
     dispatch(consumeBroadcastEvent(queuedEvent.id))
@@ -166,8 +163,6 @@ export default function SeasonStartOnboardingController() {
     )
   }, [dispatch, flavorExists, gameId, mode, phase, week])
 
-  // Only the TV wake and first welcome are automatic. Every beat after the
-  // welcome is advanced by an explicit Play press.
   useEffect(() => {
     if (!eligibleSeasonStart || broadcastQueue.length > 0 || welcomeExists) return undefined
     welcomeTimerRef.current = window.setTimeout(addOpeningWelcome, WELCOME_DELAY_MS)
@@ -190,27 +185,15 @@ export default function SeasonStartOnboardingController() {
     dispatch(advance())
   }, [dispatch])
 
-  // After the player's final opening action, skip only the redundant Day 1
-  // start line. Real/custom/critical week-start broadcasts still get their turn.
+  // Day 1 now follows the same visible day-start sequence as every later day.
+  // The onboarding handoff waits for all week-start broadcasts - including the
+  // weather/day card - to be acknowledged before entering the first competition.
   useEffect(() => {
     if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
-
-    if (queuedEvent?.meta?.broadcastTemplateId === DAY_ONE_START_TEMPLATE_ID) {
-      dispatch(consumeBroadcastEvent(queuedEvent.id))
-      return
-    }
-
     if (broadcastQueue.length > 0) return
     setHandoffToFirstCompetition(false)
     dispatch(advance())
-  }, [
-    broadcastQueue.length,
-    dispatch,
-    handoffToFirstCompetition,
-    phase,
-    queuedEvent,
-    week,
-  ])
+  }, [broadcastQueue.length, dispatch, handoffToFirstCompetition, phase, week])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
@@ -234,10 +217,8 @@ export default function SeasonStartOnboardingController() {
         return
       }
 
-      // Any real queued game broadcast keeps normal faux-TV ownership.
       if (broadcastQueue.length > 0) return
 
-      // Recovery paths for an interrupted/stale opening still obey Play.
       if (!welcomeExists) {
         event.preventDefault()
         addOpeningWelcome()
