@@ -12,6 +12,7 @@ import './SeasonStartOnboardingController.css'
 
 const TV_WAKE_MS = 900
 const WELCOME_DELAY_MS = 620
+const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
   'The hubmates have settled in. Everyone seems eager to play.',
@@ -86,6 +87,17 @@ export default function SeasonStartOnboardingController() {
           event.meta?.seasonOnboardingFlavor === true &&
           event.meta?.week === 1 &&
           event.meta?.phase === 'season_start'
+      ),
+    [tvFeed]
+  )
+
+  const dayOneStartBroadcastSeen = useMemo(
+    () =>
+      tvFeed.some(
+        (event) =>
+          event.meta?.broadcastTemplateId === DAY_ONE_START_TEMPLATE_ID &&
+          event.meta?.week === 1 &&
+          event.meta?.phase === 'week_start'
       ),
     [tvFeed]
   )
@@ -185,15 +197,24 @@ export default function SeasonStartOnboardingController() {
     dispatch(advance())
   }, [dispatch])
 
-  // Day 1 now follows the same visible day-start sequence as every later day.
-  // The onboarding handoff waits for all week-start broadcasts - including the
-  // weather/day card - to be acknowledged before entering the first competition.
+  // Day 1 follows the same visible day-start sequence as every later day.
+  // Wait until the actual day-start source has been materialized at least once
+  // before treating an empty queue as acknowledgement. Without this guard the
+  // onboarding effect can beat TvZone's phase-sync dispatch by one render and
+  // advance straight to LOH, making the Day 1 weather card appear suppressed.
   useEffect(() => {
     if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
-    if (broadcastQueue.length > 0) return
+    if (!dayOneStartBroadcastSeen || broadcastQueue.length > 0) return
     setHandoffToFirstCompetition(false)
     dispatch(advance())
-  }, [broadcastQueue.length, dispatch, handoffToFirstCompetition, phase, week])
+  }, [
+    broadcastQueue.length,
+    dayOneStartBroadcastSeen,
+    dispatch,
+    handoffToFirstCompetition,
+    phase,
+    week,
+  ])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
@@ -299,6 +320,13 @@ export default function SeasonStartOnboardingController() {
                   autoFocus
                 >
                   Quick tour
+                </button>
+                <button
+                  type="button"
+                  className="season-tutorial__secondary"
+                  onClick={finishOnboarding}
+                >
+                  Skip
                 </button>
               </div>
             </section>
