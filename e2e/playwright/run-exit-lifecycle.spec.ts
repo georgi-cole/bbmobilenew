@@ -29,6 +29,10 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
   await page.getByRole('button', { name: /Create New Profile/ }).click()
   await page.getByPlaceholder('Enter display name').fill(playerName)
   await page.getByRole('button', { name: 'Create Profile', exact: true }).click()
+  const activeProfileId = (await readAppState(page)).profiles.activeProfileId
+  await page.evaluate((profileId) => {
+    localStorage.setItem(`bbmobilenew_season_tutorial_v1:${profileId}`, 'done')
+  }, activeProfileId)
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }
@@ -41,17 +45,9 @@ async function startClassicSeason(page: Page): Promise<void> {
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
   await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
-  await dismissSeasonTutorialIfPresent(page)
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
   })
-}
-
-async function dismissSeasonTutorialIfPresent(page: Page): Promise<void> {
-  await page
-    .getByRole('button', { name: 'Skip', exact: true })
-    .click({ timeout: 15_000 })
-    .catch(() => undefined)
 }
 
 async function advanceToAutosavableProgress(page: Page): Promise<void> {

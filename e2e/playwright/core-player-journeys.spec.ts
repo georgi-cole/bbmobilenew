@@ -52,6 +52,10 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
       return { activeName: activeProfile?.name ?? null, isGuest: profiles.isGuest }
     })
     .toEqual({ activeName: playerName, isGuest: false })
+  const activeProfileId = (await readAppState(page)).profiles.activeProfileId
+  await page.evaluate((profileId) => {
+    localStorage.setItem(`bbmobilenew_season_tutorial_v1:${profileId}`, 'done')
+  }, activeProfileId)
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }
@@ -76,15 +80,7 @@ async function startCampaignFromHome(page: Page, playerName: string): Promise<vo
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
   await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
-  await dismissSeasonTutorialIfPresent(page)
   await assertCampaignReady(page, playerName)
-}
-
-async function dismissSeasonTutorialIfPresent(page: Page): Promise<void> {
-  await page
-    .getByRole('button', { name: 'Skip', exact: true })
-    .click({ timeout: 15_000 })
-    .catch(() => undefined)
 }
 
 async function startFreshCampaign(page: Page, playerName: string): Promise<void> {
