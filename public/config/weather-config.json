@@ -1,8 +1,7 @@
 {
   "schemaVersion": 2,
-  "revision": "weather-2026-08-29-a",
+  "revision": "weather-2026-08-29-b",
   "enabled": true,
-  "bankUrl": "https://georgi-cole.github.io/bbmobilenew/config/weather-bank.json",
   "temperature": {
     "unit": "auto",
     "baseC": 18,
