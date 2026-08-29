@@ -45,8 +45,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # Broader real-player journeys still run on every PR, but they are advisory
-  # until their first-run reliability is high enough to earn blocking status.
+  # Every other core journey still runs on every PR, but it is advisory until
+  # its first-run reliability is high enough to earn blocking status.
   extended-core-journeys:
     name: Extended core journeys (mobile-chromium, advisory)
     runs-on: ubuntu-latest
@@ -65,8 +65,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run non-blocking extended core journeys
         run: >-
-          npx playwright test e2e/playwright/core-player-journeys.spec.ts
-          --grep @core-journey
+          npx playwright test --grep @core-journey
           --grep-invert "fresh player creates a profile and launches a usable campaign|saved progress survives a browser reload and resumes at the exact phase"
           --project=mobile-chromium --workers=1 --retries=0
       - name: Upload advisory browser evidence
