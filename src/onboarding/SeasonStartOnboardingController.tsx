@@ -148,6 +148,17 @@ function measureTarget(element: HTMLElement): TargetRect {
   }
 }
 
+function targetRectsEqual(left: TargetRect | null, right: TargetRect): boolean {
+  return (
+    left?.left === right.left &&
+    left?.top === right.top &&
+    left?.width === right.width &&
+    left?.height === right.height &&
+    left?.right === right.right &&
+    left?.bottom === right.bottom
+  )
+}
+
 function TutorialTour({
   onComplete,
   onSkip,
@@ -171,7 +182,7 @@ function TutorialTour({
     const findAndMeasure = () => {
       const element = document.querySelector<HTMLElement>(currentStep.selector)
       if (!element) {
-        setTargetRect(null)
+        setTargetRect((current) => (current === null ? current : null))
         return false
       }
       const rect = element.getBoundingClientRect()
@@ -179,7 +190,8 @@ function TutorialTour({
       if (rect.bottom < 10 || rect.top > viewportHeight - 10) {
         element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' })
       }
-      setTargetRect(measureTarget(element))
+      const nextRect = measureTarget(element)
+      setTargetRect((current) => (targetRectsEqual(current, nextRect) ? current : nextRect))
       return true
     }
 
@@ -198,6 +210,7 @@ function TutorialTour({
     }
 
     const update = () => {
+      window.cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
         findAndMeasure()
       })
@@ -208,7 +221,7 @@ function TutorialTour({
     window.visualViewport?.addEventListener('resize', update)
     window.visualViewport?.addEventListener('scroll', update)
     const observer = new MutationObserver(update)
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true })
+    observer.observe(document.body, { childList: true, subtree: true })
 
     return () => {
       if (missingTargetTimer != null) window.clearTimeout(missingTargetTimer)
@@ -315,7 +328,6 @@ function TutorialTour({
               type="button"
               className="season-tutorial__primary"
               onClick={() => (isLastStep ? onComplete() : moveToStep(stepIndex + 1))}
-              autoFocus
             >
               {isLastStep ? 'Start playing' : 'Next'}
             </button>
