@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Player } from '../../types'
 import { getDailyAtmosphere, getDailyMoodCopy, getDailyTransitionTitle } from '../dailyMoodSystem'
+import { clearWeatherHistoryForGame } from '../../weather/weatherEngine'
 
 const players: Player[] = [
   { id: 'user', name: 'You', avatar: '', status: 'active', isUser: true },
@@ -9,18 +10,44 @@ const players: Player[] = [
 ]
 
 describe('daily mood system', () => {
-  it('rotates through distinct day-start and day-end weather on consecutive days', () => {
-    const starts = [1, 2, 3].map((week) => getDailyAtmosphere('game-a', week, 'week_start'))
-    const ends = [1, 2, 3].map((week) => getDailyAtmosphere('game-a', week, 'week_end'))
-    expect(new Set(starts).size).toBe(3)
-    expect(new Set(ends).size).toBe(3)
+  it('is deterministic but allows the same weather on consecutive days', () => {
+    const sequences = Array.from({ length: 120 }, (_, index) => {
+      const gameId = `weather-persistence-${index}`
+      clearWeatherHistoryForGame(gameId)
+      return [1, 2, 3, 4, 5, 6].map((week) => getDailyAtmosphere(gameId, week, 'week_start'))
+    })
+
+    const repeated = sequences.some((sequence) =>
+      sequence.some((atmosphere, index) => index > 0 && atmosphere === sequence[index - 1])
+    )
+    expect(repeated).toBe(true)
+
+    const gameId = 'weather-deterministic'
+    clearWeatherHistoryForGame(gameId)
+    const first = [1, 2, 3, 4].map((week) => getDailyAtmosphere(gameId, week, 'week_start'))
+    const second = [1, 2, 3, 4].map((week) => getDailyAtmosphere(gameId, week, 'week_start'))
+    expect(second).toEqual(first)
   })
 
-  it('uses a compact, varied title for each day-transition atmosphere', () => {
-    const startTitles = (['sunny', 'cloudy', 'rainy'] as const).map((atmosphere) =>
+  it('supports nuanced weather presentations beyond the original six-state rotation', () => {
+    const seen = new Set<string>()
+    for (let index = 0; index < 180; index += 1) {
+      const gameId = `weather-variety-${index}`
+      clearWeatherHistoryForGame(gameId)
+      seen.add(getDailyAtmosphere(gameId, 1, 'week_start') ?? '')
+    }
+    expect(
+      ['mostly_sunny', 'partly_cloudy', 'overcast', 'drizzle', 'light_showers', 'sun_showers', 'clearing'].some(
+        (atmosphere) => seen.has(atmosphere)
+      )
+    ).toBe(true)
+  })
+
+  it('uses compact, varied titles for day-transition atmospheres', () => {
+    const startTitles = (['sunny', 'partly_cloudy', 'rainy'] as const).map((atmosphere) =>
       getDailyTransitionTitle({ atmosphere, phase: 'week_start', week: 2 })
     )
-    const endTitles = (['sunset', 'starry', 'rainy'] as const).map((atmosphere) =>
+    const endTitles = (['sunset', 'cloudy', 'rainy'] as const).map((atmosphere) =>
       getDailyTransitionTitle({ atmosphere, phase: 'week_end', week: 2 })
     )
 
@@ -30,7 +57,7 @@ describe('daily mood system', () => {
     expect(endTitles.every((title) => title?.includes('Day 2'))).toBe(true)
   })
 
-  it('overrides ordinary weather with the Depression Shock storm and recovery rainbow', () => {
+  it('keeps Depression Shock authoritative over ordinary weather', () => {
     expect(
       getDailyAtmosphere('game-a', 5, 'week_start', { activeDay: 1, recoveryWeek: null })
     ).toBe('stormy')
@@ -56,6 +83,19 @@ describe('daily mood system', () => {
       },
     })
     expect(copy).toBe('A warm drink from Lia is waiting.')
+  })
+
+  it('maps compound weather back to compatible legacy mood sources', () => {
+    const copy = getDailyMoodCopy({
+      atmosphere: 'sun_showers',
+      phase: 'week_start',
+      week: 3,
+      players,
+      overrides: {
+        'week.day-start-mood.rainy': { text: 'A shower sent {friend} back inside.' },
+      },
+    })
+    expect(copy).toBe('A shower sent Lia back inside.')
   })
 
   it('honours a disabled mood source in the Broadcast Manager', () => {
