@@ -51,6 +51,21 @@ export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolea
 }
 
 /**
+ * The original season-start copy is replaced by the staged onboarding welcome.
+ * Hide only the exact legacy defaults so Broadcast Manager customisations are
+ * not swallowed by this compatibility bridge.
+ */
+export function isLegacySeasonWelcomeEvent(ev: ActivityVisibilityEvent): boolean {
+  if (typeof ev.text !== 'string') return false
+  return (
+    /^Welcome to The Big Eye hub! 🏠 Season \d+ is about to begin\.$/.test(ev.text) ||
+    /^The Big Eye hub is now filled with love! 🏠 Season \d+ is about to begin\. Get some chocolate and press play\.$/.test(
+      ev.text
+    )
+  )
+}
+
+/**
  * Back 2 the Game completion is a result/log message, not a new shock trigger.
  * Keeping it out of the TV viewport prevents TvZone's legacy Battle Back text
  * fallback from interpreting the winner event as a second fullscreen announcement.
@@ -67,10 +82,12 @@ export function isBattleBackReturnResultEvent(ev: ActivityVisibilityEvent): bool
  * Returns true when the event should appear in the main-screen TVLog strip.
  *
  * Rules:
+ *  - Replaced legacy welcome defaults: false; the staged welcome supersedes them.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'mainLog' or 'tv' is included.
  */
 export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
+  if (isLegacySeasonWelcomeEvent(ev)) return false
   if (!ev.channels) return true
   return ev.channels.includes('mainLog') || ev.channels.includes('tv')
 }
@@ -80,12 +97,14 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
  *
  * Rules:
  *  - Service/configuration messages: false; they remain available to mainLog.
+ *  - Replaced legacy welcome defaults: false; the staged welcome supersedes them.
  *  - Back 2 the Game winner/result event: false; it remains available to mainLog.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'tv' or 'mainLog' is included.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   if (isServiceConfigurationEvent(ev)) return false
+  if (isLegacySeasonWelcomeEvent(ev)) return false
   if (isBattleBackReturnResultEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true
