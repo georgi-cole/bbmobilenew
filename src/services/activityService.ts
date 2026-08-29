@@ -32,15 +32,16 @@ type ActivityVisibilityEvent = {
 }
 
 const PUBLIC_MODE_STATUS_TEMPLATE_ID = 'season.public-mode-rule'
+const PUBLIC_MODE_STATUS_TEXT = /^\s*\[Rules\]\s*Public mode:\s*(?:ON|OFF)\s*$/i
 
 /**
  * The season-start Public Mode ON/OFF status is configuration information,
- * not an in-world TV beat. Keep this one known template in the log. Do not
- * infer other service/system/social messages from their wording: every other
- * event keeps its normal authored routing.
+ * not an in-world TV beat. This is intentionally the only new service-message
+ * exclusion: do not infer or suppress any other rule/system/social copy.
  */
 export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolean {
-  return ev.meta?.broadcastTemplateId === PUBLIC_MODE_STATUS_TEMPLATE_ID
+  if (ev.meta?.broadcastTemplateId === PUBLIC_MODE_STATUS_TEMPLATE_ID) return true
+  return typeof ev.text === 'string' && PUBLIC_MODE_STATUS_TEXT.test(ev.text)
 }
 
 /**
@@ -88,9 +89,9 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
 /**
  * Returns true when the event should appear in the TV-zone viewport.
  *
- * Only the explicit Public Mode status is made log-only here. All normal game
- * and social events keep their authored routing; this function deliberately
- * does not classify messages by prefixes or wording.
+ * The only new log-only exception is the exact Public Mode status. Normal game
+ * and social events retain their authored routing; no prefix/wording classifier
+ * is allowed to hide them.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   if (isServiceConfigurationEvent(ev)) return false
