@@ -1,0 +1,84 @@
+name: Repair Avatar Preload Test Mocks
+
+on:
+  push:
+    branches:
+      - fix/avatar-preload-stability
+    paths:
+      - .github/workflows/fix-avatar-preload-test-mocks.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/avatar-preload-stability
+
+      - name: Update HomeHub preload mocks
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/screens/HomeHub/__tests__/HomeHub.test.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "    preloadImageMock.mockResolvedValue(undefined);",
+                  "    preloadImageMock.mockImplementation(async (url: string) => ({ url, status: 'loaded' as const }));",
+              ),
+              (
+                  """    preloadImageMock.mockImplementation((url: string) => new Promise<void>((resolve) => {
+                if (url === '/assets/background.jpg') {
+                  resolveInitialBg = resolve;
+                  return;
+                }
+                if (url === 'https://example.com/remote-bg.jpg') {
+                  resolveRemoteBg = resolve;
+                  return;
+                }
+                resolve();
+              }));""",
+                  """    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
+                if (url === '/assets/background.jpg') {
+                  resolveInitialBg = () => resolve({ url, status: 'loaded' });
+                  return;
+                }
+                if (url === 'https://example.com/remote-bg.jpg') {
+                  resolveRemoteBg = () => resolve({ url, status: 'loaded' });
+                  return;
+                }
+                resolve({ url, status: 'loaded' });
+              }));""",
+              ),
+              (
+                  """    preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
+                pendingResolvers.push(resolve);
+              }));""",
+                  """    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
+                pendingResolvers.push(() => resolve({ url, status: 'loaded' }));
+              }));""",
+              ),
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected replacement target exactly once: {old[:80]!r}')
+              text = text.replace(old, new)
+
+          path.write_text(text)
+
+      - name: Commit repair and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-avatar-preload-test-mocks.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'test: update HomeHub preload mocks'
+          git push origin HEAD:fix/avatar-preload-stability
