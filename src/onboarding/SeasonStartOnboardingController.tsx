@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { addTvEvent, advance, consumeBroadcastEvent } from '../store/gameSlice'
+import { addTvEvent, advance, consumeBroadcastEvent, removeTvEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import {
   isLegacySeasonWelcomeEvent,
@@ -15,12 +15,12 @@ const WELCOME_DELAY_MS = 620
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
-  'The hubmates have settled in. Everyone seems eager to play.',
-  'The hub is full. First impressions are already taking shape.',
-  'Everyone has settled in. For now, spirits are high.',
-  'The introductions are over. The social game is already beginning.',
-  'The hubmates are settling in. New friendships are already forming.',
-  'Everyone has found their place in the hub. The mood is upbeat — for now.',
+  'The hubmates have settled in. Everyone seems eager to play. 🎮',
+  'The hub is full. First impressions are already taking shape. 👀',
+  'Everyone has settled in. For now, spirits are high. ✨',
+  'The introductions are over. The social game is already beginning. 🤝',
+  'The hubmates are settling in. New friendships are already forming. 💬',
+  'Everyone has found their place in the hub. The mood is upbeat — for now. 😏',
 ] as const
 
 function hashText(value: string): number {
@@ -65,6 +65,11 @@ export default function SeasonStartOnboardingController() {
     () =>
       queuedBroadcastId ? (tvFeed.find((event) => event.id === queuedBroadcastId) ?? null) : null,
     [queuedBroadcastId, tvFeed]
+  )
+
+  const legacyWelcomeEvent = useMemo(
+    () => tvFeed.find((event) => isLegacySeasonWelcomeEvent(event)) ?? null,
+    [tvFeed]
   )
 
   const welcomeExists = useMemo(
@@ -117,18 +122,22 @@ export default function SeasonStartOnboardingController() {
     setHandoffToFirstCompetition(false)
   }, [activeProfileId, gameId, isGuest])
 
-  useEffect(() => {
-    if (!queuedEvent) return
-    // Older Broadcast Manager state may still force the replaced "Season X is
-    // about to begin" source onto TV. Retire that exact legacy default (plus
-    // the service-only Public Mode row) before GameScreen mounts so neither can
-    // occupy the queue and block the new welcome -> flavor -> tutorial flow.
-    // Authored/custom welcome copy remains untouched by isLegacySeasonWelcomeEvent.
-    if (!isServiceConfigurationEvent(queuedEvent) && !isLegacySeasonWelcomeEvent(queuedEvent)) {
+  useLayoutEffect(() => {
+    // The staged onboarding welcome fully replaces the old "about to begin"
+    // broadcast. Delete that legacy event during the layout phase so it cannot
+    // paint even for one frame. This also makes any persisted old override inert
+    // for the actual season opening rather than briefly showing two welcomes.
+    if (legacyWelcomeEvent) {
+      dispatch(removeTvEvent(legacyWelcomeEvent.id))
       return
     }
-    dispatch(consumeBroadcastEvent(queuedEvent.id))
-  }, [dispatch, queuedEvent])
+
+    // Public Mode status remains a log/service item. If old Broadcast Manager
+    // state forced it into the TV queue, consume only its queued presentation.
+    if (queuedEvent && isServiceConfigurationEvent(queuedEvent)) {
+      dispatch(consumeBroadcastEvent(queuedEvent.id))
+    }
+  }, [dispatch, legacyWelcomeEvent, queuedEvent])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
@@ -147,7 +156,7 @@ export default function SeasonStartOnboardingController() {
     if (welcomeExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
     dispatch(
       addTvEvent({
-        text: `Welcome to The Big Eye. Season ${season} begins now.`,
+        text: `👁️ Welcome to The Big Eye. Season ${season} begins now. 🎬`,
         type: 'game',
         source: 'system',
         channels: ['tv', 'mainLog'],
