@@ -1,15 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addTvEvent } from '../store/gameSlice'
-import { buildWeatherBulletin, resolveWeatherDay } from './weatherEngine'
-import { getWeatherRuntime, loadWeatherRuntime } from './weatherRuntime'
+import { resolveWeatherDay } from './weatherEngine'
 import {
-  formatSystemWeatherTemperature,
-  normaliseWeatherBulletinUnits,
-} from './weatherTemperatureUnit'
+  getWeatherRuntime,
+  loadWeatherRuntime,
+  type WeatherConditionId,
+} from './weatherRuntime'
+import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherEnhancements.css'
 
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
+
+const PRE_ELIMINATION_WEATHER_COPY: Record<WeatherConditionId, string> = {
+  sunny: 'Clear skies hold outside as the hub heads toward the live elimination.',
+  mostly_sunny: 'Bright spells linger outside as the live elimination draws closer.',
+  partly_cloudy: 'Sun and cloud trade places outside while the hub waits for the live elimination.',
+  cloudy: 'Cloud hangs over the hub as the live elimination approaches.',
+  overcast: 'A flat grey sky settles in as the hub braces for the live elimination.',
+  misty: 'Mist gathers outside while the hub waits for the live elimination.',
+  foggy: 'Fog presses against the windows as the live elimination approaches.',
+  drizzle: 'A fine drizzle taps at the windows as the live elimination draws closer.',
+  light_showers: 'Showers pass over the hub as attention turns to the live elimination.',
+  sun_showers: 'Sun breaks through passing rain as the live elimination approaches.',
+  rainy: 'Rain keeps falling outside as the hub braces for the live elimination.',
+  heavy_rain: "It's pouring outside as the live elimination closes in.",
+  stormy: 'Thunder rolls outside as the hub heads toward the live elimination.',
+  snow_showers: 'Snow showers drift past the windows as the live elimination approaches.',
+  snowy: 'Snow settles outside while tension builds toward the live elimination.',
+  clearing: 'The clouds begin to break, but inside the hub the live elimination is getting closer.',
+}
 
 /**
  * Loads remotely managed weather data and adds exactly one compact weather
@@ -22,7 +42,6 @@ export default function WeatherController() {
   const gameId = useAppSelector((state) => state.game.gameId)
   const week = useAppSelector((state) => state.game.week)
   const phase = useAppSelector((state) => state.game.phase)
-  const players = useAppSelector((state) => state.game.players)
   const tvFeed = useAppSelector((state) => state.game.tvFeed)
   const broadcastQueue = useAppSelector((state) => state.game.broadcastQueue ?? [])
   const depressionShock = useAppSelector((state) => state.game.depressionShock)
@@ -44,9 +63,6 @@ export default function WeatherController() {
     [tvFeed, week]
   )
 
-  // A normal social_2 line (for example the finalists' pitches) owns the TV
-  // before weather. Managed events that have already been consumed do not
-  // count; neither does the weather bulletin itself.
   const currentSocialBeatExists = useMemo(
     () =>
       tvFeed.some(
@@ -68,28 +84,16 @@ export default function WeatherController() {
     if (pendingKeyRef.current === key) return
     pendingKeyRef.current = key
 
-    // Refresh externally managed data opportunistically, but never make the
-    // gameplay beat wait on the network. The validated cache (or bundled
-    // fallback) resolves the bulletin synchronously.
     void loadWeatherRuntime()
 
     const weatherDay = resolveWeatherDay(gameId, week)
     const recoveryRainbow = depressionShock?.recoveryWeek === week
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
-    const rawComment = buildWeatherBulletin({
-      gameId,
-      day: weatherDay,
-      players,
-      ...(recoveryRainbow ? { forcePhenomenon: 'rainbow' as const } : {}),
-    })
-    const comment = normaliseWeatherBulletinUnits(rawComment, {
-      temperatureC: weatherDay.temperatureC,
-      deltaC: weatherDay.deltaC,
-      configuredUnit,
-    })
     const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
-    const text =
-      comment.includes('°C') || comment.includes('°F') ? comment : `${temperature} · ${comment}`
+    const narrative = recoveryRainbow
+      ? 'A rainbow breaks through outside, while inside the hub the live elimination is drawing closer.'
+      : PRE_ELIMINATION_WEATHER_COPY[weatherDay.condition]
+    const text = `${temperature} · ${narrative}`
 
     dispatch(
       addTvEvent({
@@ -115,18 +119,8 @@ export default function WeatherController() {
       })
     )
     pendingKeyRef.current = null
-  }, [
-    depressionShock,
-    dispatch,
-    gameId,
-    phase,
-    players,
-    weatherAlreadyExists,
-    week,
-  ])
+  }, [depressionShock, dispatch, gameId, phase, weatherAlreadyExists, week])
 
-  // If social_2 has no authored social beat, retain the old behavior and show
-  // weather immediately. Otherwise the social copy gets the viewport first.
   useEffect(() => {
     if (phase !== 'social_2') return
     if ((depressionShock?.activeDay ?? 0) > 0) return
@@ -144,18 +138,12 @@ export default function WeatherController() {
     week,
   ])
 
-  // When a normal social line is already on screen, its Play press becomes the
-  // explicit handoff to weather. Preventing the generic advance here keeps the
-  // game in social_2 for exactly one more TV beat. The next Play is handled by
-  // TvZone: it consumes the weather queue item and advances normally.
   useEffect(() => {
     if (phase !== 'social_2') return undefined
     if ((depressionShock?.activeDay ?? 0) > 0) return undefined
     if (weatherAlreadyExists || !currentSocialBeatExists) return undefined
 
     const handlePlay = (event: Event) => {
-      // A real managed broadcast has priority over weather and must receive its
-      // own Play press first.
       if (broadcastQueue.length > 0 || event.defaultPrevented) return
       event.preventDefault()
       publishWeatherBulletin()
