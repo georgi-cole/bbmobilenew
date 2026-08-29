@@ -7,20 +7,20 @@
  *   - getTemplate(type)       — returns teaser/full template strings
  */
 
-import type { TvEvent } from '../types';
-import TEMPLATES from '../data/tv-log-templates.json';
+import type { TvEvent } from '../types'
+import TEMPLATES from '../data/tv-log-templates.json'
 
 export interface TvLogTemplate {
-  teaser: string;
-  full: string;
+  teaser: string
+  full: string
 }
 
 function preserveCase(match: string, replacement: string): string {
-  if (match === match.toUpperCase()) return replacement.toUpperCase();
+  if (match === match.toUpperCase()) return replacement.toUpperCase()
   if (match[0] === match[0]?.toUpperCase()) {
-    return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+    return replacement.charAt(0).toUpperCase() + replacement.slice(1)
   }
-  return replacement;
+  return replacement
 }
 
 /**
@@ -40,14 +40,14 @@ export function normalizeGameCopy(text: string): string {
     .replace(/\bjuror\b/gi, (match) => preserveCase(match, 'Tribunal member'))
     .replace(/\bjury\b/gi, (match) => preserveCase(match, 'Tribunal'))
     .replace(/\btwist\b/gi, (match) => preserveCase(match, 'shock'))
-    .replace(/\bhouse\b/gi, (match) => preserveCase(match, 'hub'));
+    .replace(/\bhouse\b/gi, (match) => preserveCase(match, 'hub'))
 }
 
 /** Truncate `text` to at most `maxLen` characters, appending '…' if cut. */
 export function tease(text: string, maxLen = 60): string {
-  const normalized = normalizeGameCopy(text);
-  if (normalized.length <= maxLen) return normalized;
-  return normalized.slice(0, maxLen).trimEnd() + '…';
+  const normalized = normalizeGameCopy(text)
+  if (normalized.length <= maxLen) return normalized
+  return normalized.slice(0, maxLen).trimEnd() + '…'
 }
 
 /**
@@ -55,5 +55,5 @@ export function tease(text: string, maxLen = 60): string {
  * Use these templates when constructing the `text` field of a new TvEvent.
  */
 export function getTemplate(type: TvEvent['type']): TvLogTemplate {
-  return (TEMPLATES as Record<string, TvLogTemplate>)[type] ?? TEMPLATES['game'];
+  return (TEMPLATES as Record<string, TvLogTemplate>)[type] ?? TEMPLATES['game']
 }

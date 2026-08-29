@@ -1,11 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import './SurvivorRulesModal.css';
+import { useEffect, useId, useRef, useState } from 'react'
+import './SurvivorRulesModal.css'
 
 interface Props {
-  open: boolean;
-  onContinue?: (dontShowAgain: boolean) => void;
-  onCancel: () => void;
-  variant?: 'entry' | 'reference';
+  open: boolean
+  onContinue?: (dontShowAgain: boolean) => void
+  onCancel: () => void
+  variant?: 'entry' | 'reference'
 }
 
 const RULES = [
@@ -22,40 +22,46 @@ const RULES = [
   {
     kicker: 'RULES',
     title: 'Competition only',
-    description: 'Social and public modes are off. There are no alliances, audience saves, or approval shields.',
+    description:
+      'Social and public modes are off. There are no alliances, audience saves, or approval shields.',
   },
   {
     kicker: 'RECORD',
     title: 'Every day counts',
     description: 'Your best day and unlocked Surveyeval milestones are saved to your profile.',
   },
-] as const;
+] as const
 
-export default function SurvivorRulesModal({ open, onContinue, onCancel, variant = 'entry' }: Props) {
-  const uid = useId();
-  const titleId = `${uid}-title`;
-  const descId = `${uid}-desc`;
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-  const isReference = variant === 'reference';
+export default function SurvivorRulesModal({
+  open,
+  onContinue,
+  onCancel,
+  variant = 'entry',
+}: Props) {
+  const uid = useId()
+  const titleId = `${uid}-title`
+  const descId = `${uid}-desc`
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
+  const isReference = variant === 'reference'
 
   useEffect(() => {
-    if (!open) return;
-    cardRef.current?.focus();
-  }, [open]);
+    if (!open) return
+    cardRef.current?.focus()
+  }, [open])
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') onCancel()
     }
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onCancel]);
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onCancel])
 
-  if (!open) return null;
+  if (!open) return null
 
   return (
     <div
@@ -70,12 +76,20 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel, variant
         tabIndex={-1}
         ref={cardRef}
       >
-        <div className="survivor-rules-modal__glow survivor-rules-modal__glow--left" aria-hidden="true" />
-        <div className="survivor-rules-modal__glow survivor-rules-modal__glow--right" aria-hidden="true" />
+        <div
+          className="survivor-rules-modal__glow survivor-rules-modal__glow--left"
+          aria-hidden="true"
+        />
+        <div
+          className="survivor-rules-modal__glow survivor-rules-modal__glow--right"
+          aria-hidden="true"
+        />
 
         <header className="survivor-rules-modal__header">
           <div className="survivor-rules-modal__brand">
-            <span className="survivor-rules-modal__logo" aria-hidden="true">∞</span>
+            <span className="survivor-rules-modal__logo" aria-hidden="true">
+              ∞
+            </span>
             <div>
               <p className="survivor-rules-modal__eyebrow">Surveyeval Mode</p>
               <p className="survivor-rules-modal__guide-label">The Big Eye — Surveyeval Guide</p>
@@ -85,8 +99,8 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel, variant
             How Surveyeval Works
           </h2>
           <p id={descId} className="survivor-rules-modal__desc">
-            An endless elimination run: win challenges, survive the vote, and keep your place in
-            a hub that never gets smaller.
+            An endless elimination run: win challenges, survive the vote, and keep your place in a
+            hub that never gets smaller.
           </p>
         </header>
 
@@ -145,5 +159,5 @@ export default function SurvivorRulesModal({ open, onContinue, onCancel, variant
         )}
       </div>
     </div>
-  );
+  )
 }

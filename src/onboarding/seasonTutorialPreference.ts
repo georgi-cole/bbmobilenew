@@ -8,10 +8,7 @@ export function seasonTutorialStorageKey(profileId: string | null): string {
  * Guest runs deliberately never remember the tutorial choice: every fresh
  * guest season should offer the quick tour again.
  */
-export function hasHandledSeasonTutorial(
-  profileId: string | null,
-  isGuest: boolean
-): boolean {
+export function hasHandledSeasonTutorial(profileId: string | null, isGuest: boolean): boolean {
   if (isGuest || typeof window === 'undefined') return false
   try {
     return window.localStorage.getItem(seasonTutorialStorageKey(profileId)) === 'done'

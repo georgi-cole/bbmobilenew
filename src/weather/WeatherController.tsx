@@ -2,33 +2,38 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addTvEvent } from '../store/gameSlice'
 import { resolveWeatherDay } from './weatherEngine'
-import {
-  getWeatherRuntime,
-  loadWeatherRuntime,
-  type WeatherConditionId,
-} from './weatherRuntime'
+import { getWeatherRuntime, loadWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherEnhancements.css'
 
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
 
 const PRE_ELIMINATION_WEATHER_COPY: Record<WeatherConditionId, string> = {
-  sunny: 'Clear skies outside. Inside, players keep their cards close as the live elimination draws nearer.',
-  mostly_sunny: 'Bright spells linger outside. Inside, players keep their cards close as the live elimination draws nearer.',
-  partly_cloudy: 'Sun and cloud trade places outside while tension quietly builds ahead of the live elimination.',
-  cloudy: 'Cloud hangs over the hub as conversations grow more careful ahead of the live elimination.',
-  overcast: 'A grey sky settles in, and the mood inside feels just as heavy ahead of the live elimination.',
+  sunny:
+    'Clear skies outside. Inside, players keep their cards close as the live elimination draws nearer.',
+  mostly_sunny:
+    'Bright spells linger outside. Inside, players keep their cards close as the live elimination draws nearer.',
+  partly_cloudy:
+    'Sun and cloud trade places outside while tension quietly builds ahead of the live elimination.',
+  cloudy:
+    'Cloud hangs over the hub as conversations grow more careful ahead of the live elimination.',
+  overcast:
+    'A grey sky settles in, and the mood inside feels just as heavy ahead of the live elimination.',
   misty: 'Mist gathers outside while uncertainty builds inside ahead of the live elimination.',
   foggy: 'Fog presses against the windows as the hub grows quieter ahead of the live elimination.',
-  drizzle: 'A fine drizzle taps the windows while nerves begin to rise ahead of the live elimination.',
+  drizzle:
+    'A fine drizzle taps the windows while nerves begin to rise ahead of the live elimination.',
   light_showers: 'Showers pass over the hub as attention turns toward the live elimination.',
   sun_showers: 'Sun breaks through passing rain while the hub waits for the live elimination.',
   rainy: 'Rain keeps falling outside while nerves rise inside ahead of the live elimination.',
-  heavy_rain: "It's pouring outside, and the mood inside is no lighter as the live elimination closes in.",
+  heavy_rain:
+    "It's pouring outside, and the mood inside is no lighter as the live elimination closes in.",
   stormy: 'Thunder rolls outside while tension builds inside ahead of the live elimination.',
-  snow_showers: 'Snow showers drift past the windows as the hub settles into an uneasy calm before the live elimination.',
+  snow_showers:
+    'Snow showers drift past the windows as the hub settles into an uneasy calm before the live elimination.',
   snowy: 'Snow settles quietly outside while tension builds inside ahead of the live elimination.',
-  clearing: 'The clouds begin to break outside, but inside the game remains unsettled ahead of the live elimination.',
+  clearing:
+    'The clouds begin to break outside, but inside the game remains unsettled ahead of the live elimination.',
 }
 
 /**

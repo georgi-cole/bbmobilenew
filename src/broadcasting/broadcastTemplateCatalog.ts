@@ -1138,8 +1138,7 @@ export function getBroadcastTemplateForMajor(
 ): BroadcastTemplate | undefined {
   const matches = BROADCAST_TEMPLATE_CATALOG.filter((template) => template.major === major)
   return (
-    (phase == null ? undefined : matches.find((template) => template.phase === phase)) ??
-    matches[0]
+    (phase == null ? undefined : matches.find((template) => template.phase === phase)) ?? matches[0]
   )
 }
 

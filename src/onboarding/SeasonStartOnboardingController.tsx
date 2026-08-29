@@ -4,10 +4,7 @@ import { addTvEvent, advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { isServiceConfigurationEvent } from '../services/activityService'
 import SeasonTutorialTour from './SeasonTutorialTour'
-import {
-  hasHandledSeasonTutorial,
-  markSeasonTutorialHandled,
-} from './seasonTutorialPreference'
+import { hasHandledSeasonTutorial, markSeasonTutorialHandled } from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
 
 const TV_WAKE_MS = 900
@@ -63,9 +60,7 @@ export default function SeasonStartOnboardingController() {
   const queuedBroadcastId = broadcastQueue[0] ?? null
   const queuedEvent = useMemo(
     () =>
-      queuedBroadcastId
-        ? (tvFeed.find((event) => event.id === queuedBroadcastId) ?? null)
-        : null,
+      queuedBroadcastId ? (tvFeed.find((event) => event.id === queuedBroadcastId) ?? null) : null,
     [queuedBroadcastId, tvFeed]
   )
 
@@ -111,6 +106,8 @@ export default function SeasonStartOnboardingController() {
   }, [])
 
   useEffect(() => {
+    // These states reset in response to an external profile/game change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTutorialHandled(hasHandledSeasonTutorial(activeProfileId, isGuest))
     setPromptOpen(false)
     setTourOpen(false)
@@ -186,6 +183,7 @@ export default function SeasonStartOnboardingController() {
 
   useEffect(() => {
     if (eligibleSeasonStart) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPromptOpen(false)
     setTourOpen(false)
   }, [eligibleSeasonStart])
@@ -205,6 +203,7 @@ export default function SeasonStartOnboardingController() {
   useEffect(() => {
     if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
     if (!dayOneStartBroadcastSeen || broadcastQueue.length > 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHandoffToFirstCompetition(false)
     dispatch(advance())
   }, [
@@ -291,7 +290,8 @@ export default function SeasonStartOnboardingController() {
 
   return (
     <>
-      {promptOpen && !tourOpen &&
+      {promptOpen &&
+        !tourOpen &&
         createPortal(
           <div className="season-tutorial-prompt" role="presentation">
             <div className="season-tutorial-prompt__backdrop" aria-hidden="true" />
@@ -326,9 +326,7 @@ export default function SeasonStartOnboardingController() {
           </div>,
           document.body
         )}
-      {tourOpen && (
-        <SeasonTutorialTour onComplete={finishOnboarding} onSkip={finishOnboarding} />
-      )}
+      {tourOpen && <SeasonTutorialTour onComplete={finishOnboarding} onSkip={finishOnboarding} />}
     </>
   )
 }

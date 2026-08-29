@@ -7,15 +7,13 @@ import {
 
 describe('weather temperature unit detection', () => {
   it('uses Fahrenheit only when locale and system timezone consistently point there', () => {
-    expect(
-      inferSystemTemperatureUnit({ languages: ['en-US'], timeZone: 'America/New_York' })
-    ).toBe('f')
+    expect(inferSystemTemperatureUnit({ languages: ['en-US'], timeZone: 'America/New_York' })).toBe(
+      'f'
+    )
   })
 
   it('uses Celsius when an en-US language setting conflicts with a European system timezone', () => {
-    expect(inferSystemTemperatureUnit({ languages: ['en-US'], timeZone: 'Europe/Sofia' })).toBe(
-      'c'
-    )
+    expect(inferSystemTemperatureUnit({ languages: ['en-US'], timeZone: 'Europe/Sofia' })).toBe('c')
   })
 
   it('uses Celsius for an explicit European region and for ambiguous locale data', () => {

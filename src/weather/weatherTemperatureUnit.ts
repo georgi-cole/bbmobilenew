@@ -29,10 +29,12 @@ function regionFromLanguageTag(languageTag: string): string | null {
  * region points to a Fahrenheit-using region and the system timezone does not
  * clearly contradict it. Unknown or ambiguous configurations fall back to °C.
  */
-export function inferSystemTemperatureUnit(options: {
-  languages?: readonly string[]
-  timeZone?: string | null
-} = {}): 'c' | 'f' {
+export function inferSystemTemperatureUnit(
+  options: {
+    languages?: readonly string[]
+    timeZone?: string | null
+  } = {}
+): 'c' | 'f' {
   const languages = options.languages ?? []
   const regions = languages
     .map(regionFromLanguageTag)
@@ -42,10 +44,7 @@ export function inferSystemTemperatureUnit(options: {
   if (regions.some((region) => !FAHRENHEIT_REGIONS.has(region))) return 'c'
 
   const timeZone = options.timeZone?.trim() ?? ''
-  if (
-    timeZone &&
-    CLEARLY_CELSIUS_TIMEZONE_PREFIXES.some((prefix) => timeZone.startsWith(prefix))
-  ) {
+  if (timeZone && CLEARLY_CELSIUS_TIMEZONE_PREFIXES.some((prefix) => timeZone.startsWith(prefix))) {
     return 'c'
   }
 
@@ -71,9 +70,9 @@ export function getSystemTemperatureUnit(): 'c' | 'f' {
   return inferSystemTemperatureUnit({ languages, timeZone })
 }
 
-export function resolveWeatherTemperatureUnit(configuredUnit: WeatherTemperatureUnit = 'auto'):
-  | 'c'
-  | 'f' {
+export function resolveWeatherTemperatureUnit(
+  configuredUnit: WeatherTemperatureUnit = 'auto'
+): 'c' | 'f' {
   return configuredUnit === 'auto' ? getSystemTemperatureUnit() : configuredUnit
 }
 

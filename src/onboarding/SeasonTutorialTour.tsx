@@ -282,9 +282,7 @@ export default function SeasonTutorialTour({
   const targetCenterX = targetRect ? targetRect.left + targetRect.width / 2 : viewportWidth / 2
   const tooltipLeft = clamp(targetCenterX - tooltipWidth / 2, 12, viewportWidth - tooltipWidth - 12)
   const spaceBelow = targetRect ? viewportHeight - targetRect.bottom : 0
-  const placeBelow = targetRect
-    ? spaceBelow >= TOOLTIP_ESTIMATED_HEIGHT_PX + TOOLTIP_GAP_PX
-    : false
+  const placeBelow = targetRect ? spaceBelow >= TOOLTIP_ESTIMATED_HEIGHT_PX + TOOLTIP_GAP_PX : false
 
   const spotlightStyle = targetRect
     ? ({
@@ -392,9 +390,7 @@ export default function SeasonTutorialTour({
             <button
               type="button"
               className="season-tutorial__primary"
-              onClick={() =>
-                isLastStep ? completeWithHandoff() : moveToStep(stepIndex + 1)
-              }
+              onClick={() => (isLastStep ? completeWithHandoff() : moveToStep(stepIndex + 1))}
               disabled={finishing}
             >
               {isLastStep ? 'Start playing' : 'Next'}

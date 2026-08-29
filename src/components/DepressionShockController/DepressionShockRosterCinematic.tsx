@@ -20,7 +20,9 @@ const TIMINGS: Record<DepressionShockCinematicKind, { impact: number; complete: 
 
 function isVisible(element: HTMLElement, rect: DOMRect): boolean {
   const style = window.getComputedStyle(element)
-  return rect.width > 8 && rect.height > 8 && style.visibility !== 'hidden' && style.display !== 'none'
+  return (
+    rect.width > 8 && rect.height > 8 && style.visibility !== 'hidden' && style.display !== 'none'
+  )
 }
 
 export default function DepressionShockRosterCinematic({ kind, onImpact, onComplete }: Props) {
@@ -28,20 +30,29 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
   const [targets, setTargets] = useState<Target[]>([])
   const timing = TIMINGS[kind]
   const thunderTarget = useMemo(() => {
-    if (targets.length === 0) return { x: source.x, y: Math.min(window.innerHeight - 80, source.y + 260) }
+    if (targets.length === 0)
+      return { x: source.x, y: Math.min(window.innerHeight - 80, source.y + 260) }
     return targets.reduce(
-      (center, target) => ({ x: center.x + target.x / targets.length, y: center.y + target.y / targets.length }),
+      (center, target) => ({
+        x: center.x + target.x / targets.length,
+        y: center.y + target.y / targets.length,
+      }),
       { x: 0, y: 0 }
     )
   }, [source.x, source.y, targets])
   useLayoutEffect(() => {
     const sourceElement = document.querySelector<HTMLElement>('.tv-zone__viewport')
     const sourceRect = sourceElement?.getBoundingClientRect()
-    const measuredSource = sourceRect && sourceRect.width > 0
-      ? { x: sourceRect.left + sourceRect.width / 2, y: sourceRect.top + sourceRect.height / 2 }
-      : null
+    const measuredSource =
+      sourceRect && sourceRect.width > 0
+        ? { x: sourceRect.left + sourceRect.width / 2, y: sourceRect.top + sourceRect.height / 2 }
+        : null
 
-    const elements = [...document.querySelectorAll<HTMLElement>('[data-houseguest-roster="true"] [data-depression-target="true"]')]
+    const elements = [
+      ...document.querySelectorAll<HTMLElement>(
+        '[data-houseguest-roster="true"] [data-depression-target="true"]'
+      ),
+    ]
     const measured = elements
       .map((element) => ({ element, rect: element.getBoundingClientRect() }))
       .filter(({ element, rect }) => isVisible(element, rect))
@@ -51,12 +62,12 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
       element.style.setProperty('--depression-target-index', String(index))
     })
     const measuredTargets = measured.map(({ rect }, index) => ({
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-        width: rect.width,
-        height: rect.height,
-        index,
-      }))
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      width: rect.width,
+      height: rect.height,
+      index,
+    }))
 
     const measurementFrame = window.requestAnimationFrame(() => {
       if (measuredSource) setSource(measuredSource)
@@ -92,8 +103,14 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
           '--target-y': `${target.y}px`,
         } as CSSProperties
         return (
-          <span className="depression-cinematic__flight" style={style} key={`${kind}-${target.index}`}>
-            {kind === 'chocolate' ? <span className="depression-cinematic__chocolate">🍫</span> : null}
+          <span
+            className="depression-cinematic__flight"
+            style={style}
+            key={`${kind}-${target.index}`}
+          >
+            {kind === 'chocolate' ? (
+              <span className="depression-cinematic__chocolate">🍫</span>
+            ) : null}
           </span>
         )
       }),
@@ -102,23 +119,27 @@ export default function DepressionShockRosterCinematic({ kind, onImpact, onCompl
 
   return createPortal(
     <div className={`depression-cinematic depression-cinematic--${kind}`} aria-hidden="true">
-      <span
-        className="depression-cinematic__origin"
-        style={{ left: source.x, top: source.y }}
-      />
-      {kind === 'sunlight' ? <span className="depression-cinematic__sun-wave" style={{ left: source.x, top: source.y }} /> : null}
+      <span className="depression-cinematic__origin" style={{ left: source.x, top: source.y }} />
+      {kind === 'sunlight' ? (
+        <span
+          className="depression-cinematic__sun-wave"
+          style={{ left: source.x, top: source.y }}
+        />
+      ) : null}
       {kind === 'thunder' ? (
         <img
           className="depression-cinematic__thunderbolt"
           src="/bbmobilenew/assets/lightning-thunderbolt-light-illustration.png"
           alt=""
           aria-hidden="true"
-          style={{
-            left: source.x,
-            top: source.y,
-            '--thunder-travel-x': `${thunderTarget.x - source.x}px`,
-            '--thunder-travel-y': `${thunderTarget.y - source.y}px`,
-          } as CSSProperties}
+          style={
+            {
+              left: source.x,
+              top: source.y,
+              '--thunder-travel-x': `${thunderTarget.x - source.x}px`,
+              '--thunder-travel-y': `${thunderTarget.y - source.y}px`,
+            } as CSSProperties
+          }
         />
       ) : null}
       {particles}

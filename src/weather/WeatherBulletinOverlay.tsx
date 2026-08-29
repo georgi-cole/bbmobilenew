@@ -42,22 +42,19 @@ function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: nu
  * It keeps the glossy transparent visual language without shipping large
  * raster files and remains sharp on every device density.
  */
-function WeatherGlyph({
-  condition,
-  rainbow,
-}: {
-  condition: WeatherConditionId
-  rainbow: boolean
-}) {
+function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; rainbow: boolean }) {
   const id = useId().replace(/:/g, '')
   const wet = ['drizzle', 'light_showers', 'sun_showers', 'rainy', 'heavy_rain'].includes(condition)
   const snow = condition === 'snow_showers' || condition === 'snowy'
   const storm = condition === 'stormy'
   const fog = condition === 'misty' || condition === 'foggy'
-  const sunVisible = ['sunny', 'mostly_sunny', 'partly_cloudy', 'sun_showers', 'clearing'].includes(condition)
+  const sunVisible = ['sunny', 'mostly_sunny', 'partly_cloudy', 'sun_showers', 'clearing'].includes(
+    condition
+  )
   const cloudVisible = condition !== 'sunny'
   const darkCloud = condition === 'overcast' || condition === 'heavy_rain' || condition === 'stormy'
-  const denseCloud = condition === 'cloudy' || condition === 'overcast' || fog || wet || storm || snow
+  const denseCloud =
+    condition === 'cloudy' || condition === 'overcast' || fog || wet || storm || snow
 
   return (
     <svg className="weather-tv-card__glyph" viewBox="0 0 160 120" aria-hidden="true">
@@ -96,7 +93,10 @@ function WeatherGlyph({
         </filter>
         <filter id={`${id}-sun-glow`} x="-90%" y="-90%" width="280%" height="280%">
           <feGaussianBlur stdDeviation="4.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
         <filter id={`${id}-ice-glow`} x="-80%" y="-80%" width="260%" height="260%">
           <feDropShadow dx="0" dy="2" stdDeviation="2.2" floodColor="#7bd7ff" floodOpacity="0.45" />
@@ -126,12 +126,39 @@ function WeatherGlyph({
           className={`weather-tv-card__cloud-shape${darkCloud ? ' weather-tv-card__cloud-shape--dark' : ''}`}
           filter={`url(#${id}-shadow)`}
         >
-          <ellipse cx="87" cy="71" rx={denseCloud ? 43 : 38} ry={denseCloud ? 22 : 19} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="60" cy="64" r={denseCloud ? 21 : 18} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="86" cy="54" r={denseCloud ? 28 : 24} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
-          <circle cx="112" cy="64" r={denseCloud ? 20 : 17} fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`} />
+          <ellipse
+            cx="87"
+            cy="71"
+            rx={denseCloud ? 43 : 38}
+            ry={denseCloud ? 22 : 19}
+            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+          />
+          <circle
+            cx="60"
+            cy="64"
+            r={denseCloud ? 21 : 18}
+            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+          />
+          <circle
+            cx="86"
+            cy="54"
+            r={denseCloud ? 28 : 24}
+            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+          />
+          <circle
+            cx="112"
+            cy="64"
+            r={denseCloud ? 20 : 17}
+            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+          />
           <ellipse className="weather-tv-card__cloud-highlight" cx="75" cy="49" rx="17" ry="7" />
-          <ellipse className="weather-tv-card__cloud-highlight weather-tv-card__cloud-highlight--small" cx="105" cy="58" rx="8" ry="4" />
+          <ellipse
+            className="weather-tv-card__cloud-highlight weather-tv-card__cloud-highlight--small"
+            cx="105"
+            cy="58"
+            rx="8"
+            ry="4"
+          />
         </g>
       )}
 
@@ -148,7 +175,9 @@ function WeatherGlyph({
           <path d="M54 86c0 0-6 8-6 12a6 6 0 0 0 12 0c0-4-6-12-6-12Z" />
           <path d="M82 84c0 0-7 10-7 14a7 7 0 0 0 14 0c0-4-7-14-7-14Z" />
           <path d="M111 87c0 0-5.5 8-5.5 11.5a5.5 5.5 0 0 0 11 0C116.5 95 111 87 111 87Z" />
-          {condition === 'heavy_rain' && <path d="M132 85c0 0-5 7-5 10a5 5 0 0 0 10 0c0-3-5-10-5-10ZM34 87c0 0-4.5 6.5-4.5 9.3a4.5 4.5 0 0 0 9 0C38.5 93.5 34 87 34 87Z" />}
+          {condition === 'heavy_rain' && (
+            <path d="M132 85c0 0-5 7-5 10a5 5 0 0 0 10 0c0-3-5-10-5-10ZM34 87c0 0-4.5 6.5-4.5 9.3a4.5 4.5 0 0 0 9 0C38.5 93.5 34 87 34 87Z" />
+          )}
         </g>
       )}
 
@@ -196,15 +225,17 @@ export default function WeatherBulletinOverlay() {
 
   useLayoutEffect(() => {
     if (!weatherEvent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPortalTarget(null)
       return undefined
     }
-    const resolveTarget = () => setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__viewport'))
+    const resolveTarget = () =>
+      setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__viewport'))
     resolveTarget()
     const observer = new MutationObserver(resolveTarget)
     observer.observe(document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
-  }, [weatherEvent?.id])
+  }, [weatherEvent])
 
   const presentation = useMemo(() => {
     if (!weatherEvent || !condition || temperatureC == null) return null
@@ -222,7 +253,9 @@ export default function WeatherBulletinOverlay() {
     <section className={`weather-tv-card weather-tv-card--${condition}`} aria-hidden="true">
       <div className="weather-tv-card__main">
         <div className="weather-tv-card__temperature">
-          <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
+          <span className="weather-tv-card__temperature-number">
+            {presentation.temperature.number}
+          </span>
           <span className="weather-tv-card__temperature-unit">{presentation.temperature.unit}</span>
         </div>
         <div className="weather-tv-card__condition">

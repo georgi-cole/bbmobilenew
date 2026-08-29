@@ -112,7 +112,9 @@
 
 .hangman-challenge__timer.is-frozen {
   border-color: rgba(86, 174, 255, 0.48);
-  box-shadow: 0 0 0 1px rgba(86, 174, 255, 0.18), 0 18px 34px rgba(12, 41, 85, 0.32);
+  box-shadow:
+    0 0 0 1px rgba(86, 174, 255, 0.18),
+    0 18px 34px rgba(12, 41, 85, 0.32);
 }
 
 .hangman-challenge__timer.is-urgent {
@@ -188,7 +190,9 @@
   position: absolute;
   inset: auto 0 0;
   min-height: 18%;
-  box-shadow: inset 0 10px 18px rgba(255, 255, 255, 0.08), 0 0 24px rgba(234, 91, 95, 0.3);
+  box-shadow:
+    inset 0 10px 18px rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(234, 91, 95, 0.3);
   transition:
     height 0.28s ease,
     background 0.28s ease,
@@ -226,14 +230,48 @@
   opacity: 1;
 }
 
-.hangman-challenge__pressure-crack--1::before { top: 6px; left: 44px; transform: rotate(-14deg); }
-.hangman-challenge__pressure-crack--1::after { top: 34px; left: 30px; transform: rotate(26deg); }
-.hangman-challenge__pressure-crack--2::before { top: 10px; right: 38px; transform: rotate(18deg); }
-.hangman-challenge__pressure-crack--2::after { top: 46px; right: 24px; transform: rotate(-28deg); }
-.hangman-challenge__pressure-crack--3::before { bottom: 18px; left: 34px; height: 44px; transform: rotate(24deg); }
-.hangman-challenge__pressure-crack--3::after { bottom: 34px; left: 18px; transform: rotate(-22deg); }
-.hangman-challenge__pressure-crack--4::before { bottom: 12px; right: 34px; height: 46px; transform: rotate(-22deg); }
-.hangman-challenge__pressure-crack--4::after { bottom: 40px; right: 16px; transform: rotate(32deg); }
+.hangman-challenge__pressure-crack--1::before {
+  top: 6px;
+  left: 44px;
+  transform: rotate(-14deg);
+}
+.hangman-challenge__pressure-crack--1::after {
+  top: 34px;
+  left: 30px;
+  transform: rotate(26deg);
+}
+.hangman-challenge__pressure-crack--2::before {
+  top: 10px;
+  right: 38px;
+  transform: rotate(18deg);
+}
+.hangman-challenge__pressure-crack--2::after {
+  top: 46px;
+  right: 24px;
+  transform: rotate(-28deg);
+}
+.hangman-challenge__pressure-crack--3::before {
+  bottom: 18px;
+  left: 34px;
+  height: 44px;
+  transform: rotate(24deg);
+}
+.hangman-challenge__pressure-crack--3::after {
+  bottom: 34px;
+  left: 18px;
+  transform: rotate(-22deg);
+}
+.hangman-challenge__pressure-crack--4::before {
+  bottom: 12px;
+  right: 34px;
+  height: 46px;
+  transform: rotate(-22deg);
+}
+.hangman-challenge__pressure-crack--4::after {
+  bottom: 40px;
+  right: 16px;
+  transform: rotate(32deg);
+}
 
 .hangman-challenge__pressure-glass.is-shattered {
   border-color: rgba(255, 145, 145, 0.38);
@@ -283,13 +321,41 @@
   animation: hangmanShatter 0.55s ease-out forwards;
 }
 
-.hangman-challenge__shard--1 { top: 16px; left: 28px; animation-delay: 0s; }
-.hangman-challenge__shard--2 { top: 12px; left: 66px; animation-delay: 0.04s; }
-.hangman-challenge__shard--3 { top: 18px; right: 28px; animation-delay: 0.08s; }
-.hangman-challenge__shard--4 { top: 44px; left: 16px; animation-delay: 0.12s; }
-.hangman-challenge__shard--5 { top: 48px; right: 14px; animation-delay: 0.16s; }
-.hangman-challenge__shard--6 { bottom: 26px; left: 52px; animation-delay: 0.2s; }
-.hangman-challenge__shard--7 { bottom: 18px; right: 40px; animation-delay: 0.24s; }
+.hangman-challenge__shard--1 {
+  top: 16px;
+  left: 28px;
+  animation-delay: 0s;
+}
+.hangman-challenge__shard--2 {
+  top: 12px;
+  left: 66px;
+  animation-delay: 0.04s;
+}
+.hangman-challenge__shard--3 {
+  top: 18px;
+  right: 28px;
+  animation-delay: 0.08s;
+}
+.hangman-challenge__shard--4 {
+  top: 44px;
+  left: 16px;
+  animation-delay: 0.12s;
+}
+.hangman-challenge__shard--5 {
+  top: 48px;
+  right: 14px;
+  animation-delay: 0.16s;
+}
+.hangman-challenge__shard--6 {
+  bottom: 26px;
+  left: 52px;
+  animation-delay: 0.2s;
+}
+.hangman-challenge__shard--7 {
+  bottom: 18px;
+  right: 40px;
+  animation-delay: 0.24s;
+}
 
 .hangman-challenge__playfield {
   grid-template-columns: minmax(0, 5fr) minmax(140px, 3fr) minmax(0, 4fr);
@@ -302,7 +368,9 @@
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   background: linear-gradient(180deg, rgba(18, 22, 32, 0.94), rgba(8, 11, 18, 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.34);
 }
 
 .hangman-challenge__fracture-layer {
@@ -501,34 +569,59 @@
   min-width: 0;
   min-height: 38px;
   padding: 4px 0;
-  border: 1px solid rgba(255, 255, 255, .13);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 10px;
   color: #f5f7fb;
-  background: linear-gradient(180deg, rgba(35, 44, 60, .96), rgba(13, 18, 27, .98));
+  background: linear-gradient(180deg, rgba(35, 44, 60, 0.96), rgba(13, 18, 27, 0.98));
   font: inherit;
   font-weight: 800;
   touch-action: manipulation;
 }
 
 .hangman-challenge__alphabet-key:disabled,
-.hangman-challenge__alphabet-key.is-used { opacity: .28; }
+.hangman-challenge__alphabet-key.is-used {
+  opacity: 0.28;
+}
 
 @media (max-width: 640px) {
-  .hangman-challenge__letter-form { display: none; }
-  .hangman-challenge__alphabet { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .hangman-challenge__letter-form {
+    display: none;
+  }
+  .hangman-challenge__alphabet {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
 }
 
 @media (max-height: 700px) {
-  .hangman-challenge { padding: 10px 10px 14px; }
-  .hangman-challenge__header { margin-bottom: 8px; }
-  .hangman-challenge__pressure-card { display: none; }
-  .hangman-challenge__playfield { gap: 7px; }
+  .hangman-challenge {
+    padding: 10px 10px 14px;
+  }
+  .hangman-challenge__header {
+    margin-bottom: 8px;
+  }
+  .hangman-challenge__pressure-card {
+    display: none;
+  }
+  .hangman-challenge__playfield {
+    gap: 7px;
+  }
   .hangman-challenge__box-panel,
-  .hangman-challenge__keyboard-panel { padding: 10px; }
+  .hangman-challenge__keyboard-panel {
+    padding: 10px;
+  }
   .hangman-challenge__input-hint,
-  .hangman-challenge__attempts { display: none; }
-  .hangman-challenge__alphabet { gap: 4px; margin-top: 7px; }
-  .hangman-challenge__alphabet-key { min-height: 32px; border-radius: 8px; font-size: .78rem; }
+  .hangman-challenge__attempts {
+    display: none;
+  }
+  .hangman-challenge__alphabet {
+    gap: 4px;
+    margin-top: 7px;
+  }
+  .hangman-challenge__alphabet-key {
+    min-height: 32px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+  }
 }
 
 .hangman-challenge__submit {
@@ -614,7 +707,9 @@
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 203, 121, 0.13), transparent 36%),
     rgba(10, 14, 22, 0.94);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 38px rgba(255, 203, 121, 0.08);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.5),
+    0 0 38px rgba(255, 203, 121, 0.08);
 }
 
 .hangman-challenge__final-winner {
@@ -794,7 +889,9 @@
 
 .hangman-challenge--correct .hangman-challenge__board,
 .hangman-challenge--solved .hangman-challenge__board {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 28px rgba(115, 228, 209, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 28px rgba(115, 228, 209, 0.22);
 }
 
 .hangman-challenge--spawn .hangman-challenge__box {
@@ -803,16 +900,28 @@
 
 @keyframes hangmanShake {
   0%,
-  100% { transform: translate3d(0, 0, 0); }
-  25% { transform: translate3d(-4px, 0, 0); }
-  50% { transform: translate3d(4px, 0, 0); }
-  75% { transform: translate3d(-2px, 0, 0); }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  50% {
+    transform: translate3d(4px, 0, 0);
+  }
+  75% {
+    transform: translate3d(-2px, 0, 0);
+  }
 }
 
 @keyframes hangmanPulse {
   0%,
-  100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
 }
 
 @keyframes hangmanShatter {
@@ -825,17 +934,39 @@
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--hangman-shatter-x, 0), var(--hangman-shatter-y, 0), 0) scale(1.15) rotate(28deg);
+    transform: translate3d(var(--hangman-shatter-x, 0), var(--hangman-shatter-y, 0), 0) scale(1.15)
+      rotate(28deg);
   }
 }
 
-.hangman-challenge__shard--1 { --hangman-shatter-x: -28px; --hangman-shatter-y: -18px; }
-.hangman-challenge__shard--2 { --hangman-shatter-x: -8px; --hangman-shatter-y: -28px; }
-.hangman-challenge__shard--3 { --hangman-shatter-x: 26px; --hangman-shatter-y: -16px; }
-.hangman-challenge__shard--4 { --hangman-shatter-x: -34px; --hangman-shatter-y: 4px; }
-.hangman-challenge__shard--5 { --hangman-shatter-x: 32px; --hangman-shatter-y: 8px; }
-.hangman-challenge__shard--6 { --hangman-shatter-x: -14px; --hangman-shatter-y: 22px; }
-.hangman-challenge__shard--7 { --hangman-shatter-x: 20px; --hangman-shatter-y: 24px; }
+.hangman-challenge__shard--1 {
+  --hangman-shatter-x: -28px;
+  --hangman-shatter-y: -18px;
+}
+.hangman-challenge__shard--2 {
+  --hangman-shatter-x: -8px;
+  --hangman-shatter-y: -28px;
+}
+.hangman-challenge__shard--3 {
+  --hangman-shatter-x: 26px;
+  --hangman-shatter-y: -16px;
+}
+.hangman-challenge__shard--4 {
+  --hangman-shatter-x: -34px;
+  --hangman-shatter-y: 4px;
+}
+.hangman-challenge__shard--5 {
+  --hangman-shatter-x: 32px;
+  --hangman-shatter-y: 8px;
+}
+.hangman-challenge__shard--6 {
+  --hangman-shatter-x: -14px;
+  --hangman-shatter-y: 22px;
+}
+.hangman-challenge__shard--7 {
+  --hangman-shatter-x: 20px;
+  --hangman-shatter-y: 24px;
+}
 
 @media (max-width: 640px) {
   .hangman-challenge__playfield {
@@ -850,9 +981,15 @@
     padding: 14px 10px;
   }
 
-  .hangman-challenge__keyboard-panel { grid-row: 2; }
-  .hangman-challenge__box-panel { grid-row: 3; }
-  .hangman-challenge__effect-result { grid-row: 4; }
+  .hangman-challenge__keyboard-panel {
+    grid-row: 2;
+  }
+  .hangman-challenge__box-panel {
+    grid-row: 3;
+  }
+  .hangman-challenge__effect-result {
+    grid-row: 4;
+  }
 
   .hangman-challenge__box {
     min-height: 0;
@@ -863,9 +1000,13 @@
   }
 
   .hangman-challenge__box p,
-  .hangman-challenge__box small { margin: 0; }
+  .hangman-challenge__box small {
+    margin: 0;
+  }
 
-  .hangman-challenge__cta--box { min-width: 8.5rem; }
+  .hangman-challenge__cta--box {
+    min-width: 8.5rem;
+  }
 
   .hangman-challenge__letter-form {
     grid-template-columns: minmax(0, 1fr);

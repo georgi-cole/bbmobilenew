@@ -93,10 +93,7 @@ export default function WeatherRosterReveal() {
   const dailyPhase = phase === 'week_start' || phase === 'week_end' ? phase : null
 
   const atmosphere = useMemo(
-    () =>
-      dailyPhase
-        ? getDailyAtmosphere(gameId, week, dailyPhase, depressionShock)
-        : null,
+    () => (dailyPhase ? getDailyAtmosphere(gameId, week, dailyPhase, depressionShock) : null),
     [dailyPhase, depressionShock, gameId, week]
   )
 
@@ -115,6 +112,7 @@ export default function WeatherRosterReveal() {
     const key = `${gameId}:${week}:${dailyPhase}:${atmosphere}`
     if (lastRevealKeyRef.current === key) return undefined
     lastRevealKeyRef.current = key
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReveal({ key, atmosphere })
 
     const sound = WEATHER_REVEAL_SOUNDS[atmosphere]

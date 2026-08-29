@@ -446,7 +446,10 @@ export default function BroadcastManager() {
     const targetIndex = currentIndex + direction
     if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sequenceItems.length) return
     const reordered = [...sequenceItems]
-    ;[reordered[currentIndex], reordered[targetIndex]] = [reordered[targetIndex], reordered[currentIndex]]
+    ;[reordered[currentIndex], reordered[targetIndex]] = [
+      reordered[targetIndex],
+      reordered[currentIndex],
+    ]
     dispatch(
       reorderPhaseBroadcasts({
         phase: selectedPhase,
@@ -456,7 +459,12 @@ export default function BroadcastManager() {
   }
 
   function deleteSource(id: string) {
-    if (!window.confirm('Delete this broadcast source? It will stop appearing in the game and can be restored from Deleted sources.')) return
+    if (
+      !window.confirm(
+        'Delete this broadcast source? It will stop appearing in the game and can be restored from Deleted sources.'
+      )
+    )
+      return
     dispatch(
       setBroadcastOverride({
         id,
@@ -550,9 +558,16 @@ export default function BroadcastManager() {
         <div>
           <p className="broadcast-manager__eyebrow">QA tools · Day {game.week}</p>
           <h1>Broadcast Manager</h1>
-          <p>Current source registry and runtime-discovered broadcasts. Repeated emitted rows are collapsed automatically.</p>
+          <p>
+            Current source registry and runtime-discovered broadcasts. Repeated emitted rows are
+            collapsed automatically.
+          </p>
         </div>
-        <button type="button" className="broadcast-manager__back" onClick={() => navigate('/game?debug=1')}>
+        <button
+          type="button"
+          className="broadcast-manager__back"
+          onClick={() => navigate('/game?debug=1')}
+        >
           Back to game
         </button>
       </header>
@@ -570,7 +585,8 @@ export default function BroadcastManager() {
       />
 
       <p className="broadcast-manager__count-help">
-        Latest terminology is normalized here, superseded season-welcome sources are hidden, and Delete permanently suppresses a source until you restore it.
+        Latest terminology is normalized here, superseded season-welcome sources are hidden, and
+        Delete permanently suppresses a source until you restore it.
       </p>
 
       <label className="broadcast-manager__campaign-filter">
@@ -590,7 +606,9 @@ export default function BroadcastManager() {
         >
           <option value="all">All campaigns</option>
           {BROADCAST_CAMPAIGNS.map((campaign) => (
-            <option key={campaign} value={campaign}>{BROADCAST_CAMPAIGN_LABELS[campaign]}</option>
+            <option key={campaign} value={campaign}>
+              {BROADCAST_CAMPAIGN_LABELS[campaign]}
+            </option>
           ))}
         </select>
       </label>
@@ -607,7 +625,9 @@ export default function BroadcastManager() {
             const customCount = customMessages.filter(
               (message) =>
                 message.phase === phase &&
-                (selectedCampaign === 'all' || !message.campaign || message.campaign === selectedCampaign)
+                (selectedCampaign === 'all' ||
+                  !message.campaign ||
+                  message.campaign === selectedCampaign)
             ).length
             return (
               <button
@@ -623,23 +643,38 @@ export default function BroadcastManager() {
           })}
         </nav>
 
-        <section className="broadcast-manager__messages" aria-labelledby="broadcast-manager-phase-title">
+        <section
+          className="broadcast-manager__messages"
+          aria-labelledby="broadcast-manager-phase-title"
+        >
           <div className="broadcast-manager__section-heading">
             <div>
-              <p className="broadcast-manager__eyebrow">{selectedPhase === game.phase ? 'Current phase' : 'Phase registry'}</p>
+              <p className="broadcast-manager__eyebrow">
+                {selectedPhase === game.phase ? 'Current phase' : 'Phase registry'}
+              </p>
               <h2 id="broadcast-manager-phase-title">{phaseLabel(selectedPhase)}</h2>
             </div>
-            <button type="button" className="broadcast-manager__primary" onClick={addMessage}>Add phase message</button>
+            <button type="button" className="broadcast-manager__primary" onClick={addMessage}>
+              Add phase message
+            </button>
           </div>
 
-          <section className="broadcast-manager__sequence" aria-label="Active phase broadcast sequence">
+          <section
+            className="broadcast-manager__sequence"
+            aria-label="Active phase broadcast sequence"
+          >
             <div>
               <h3>Active source sequence</h3>
-              <p>One authoritative list - built-in, runtime-discovered and custom messages are no longer repeated in separate source sections.</p>
+              <p>
+                One authoritative list - built-in, runtime-discovered and custom messages are no
+                longer repeated in separate source sections.
+              </p>
             </div>
 
             {sequenceItems.length === 0 ? (
-              <p className="broadcast-manager__empty">No active broadcast sources for this phase.</p>
+              <p className="broadcast-manager__empty">
+                No active broadcast sources for this phase.
+              </p>
             ) : (
               <ol className="broadcast-manager__message-list">
                 {sequenceItems.map((item, index) => (
@@ -649,22 +684,57 @@ export default function BroadcastManager() {
                   >
                     <div className="broadcast-manager__message-meta">
                       <span className="broadcast-manager__sequence-position">{index + 1}</span>
-                      <span className={`broadcast-manager__badge broadcast-manager__badge--${item.level}`}>{item.level}</span>
-                      <span>{item.kind === 'custom' ? 'custom' : item.template?.kind === 'phase_card' ? 'phase card' : item.type}</span>
-                      <code>{item.kind === 'custom' ? item.message.key ?? item.id : item.id}</code>
-                      {item.disabled && <span className="broadcast-manager__disabled">disabled</span>}
+                      <span
+                        className={`broadcast-manager__badge broadcast-manager__badge--${item.level}`}
+                      >
+                        {item.level}
+                      </span>
+                      <span>
+                        {item.kind === 'custom'
+                          ? 'custom'
+                          : item.template?.kind === 'phase_card'
+                            ? 'phase card'
+                            : item.type}
+                      </span>
+                      <code>
+                        {item.kind === 'custom' ? (item.message.key ?? item.id) : item.id}
+                      </code>
+                      {item.disabled && (
+                        <span className="broadcast-manager__disabled">disabled</span>
+                      )}
                     </div>
                     {item.title && <h4>{item.title}</h4>}
                     <p>{item.text}</p>
                     <div className="broadcast-manager__message-actions">
-                      <button type="button" disabled={index === 0} onClick={() => moveSequenceItem(item.id, -1)}>Move up</button>
-                      <button type="button" disabled={index === sequenceItems.length - 1} onClick={() => moveSequenceItem(item.id, 1)}>Move down</button>
-                      <button type="button" onClick={() => editSequenceItem(item)}>Edit</button>
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => moveSequenceItem(item.id, -1)}
+                      >
+                        Move up
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === sequenceItems.length - 1}
+                        onClick={() => moveSequenceItem(item.id, 1)}
+                      >
+                        Move down
+                      </button>
+                      <button type="button" onClick={() => editSequenceItem(item)}>
+                        Edit
+                      </button>
                       {item.kind === 'custom' ? (
                         <>
                           <button
                             type="button"
-                            onClick={() => dispatch(updateCustomBroadcast({ ...item.message, enabled: !item.message.enabled }))}
+                            onClick={() =>
+                              dispatch(
+                                updateCustomBroadcast({
+                                  ...item.message,
+                                  enabled: !item.message.enabled,
+                                })
+                              )
+                            }
                           >
                             {item.message.enabled ? 'Disable' : 'Enable'}
                           </button>
@@ -694,11 +764,20 @@ export default function BroadcastManager() {
                           >
                             {item.disabled ? 'Enable' : 'Disable'}
                           </button>
-                          <button type="button" className="broadcast-manager__danger" onClick={() => deleteSource(item.id)}>
+                          <button
+                            type="button"
+                            className="broadcast-manager__danger"
+                            onClick={() => deleteSource(item.id)}
+                          >
                             Delete
                           </button>
                           {overrides[item.id] && (
-                            <button type="button" onClick={() => dispatch(resetBroadcastOverride(item.id))}>Restore default</button>
+                            <button
+                              type="button"
+                              onClick={() => dispatch(resetBroadcastOverride(item.id))}
+                            >
+                              Restore default
+                            </button>
                           )}
                         </>
                       )}
@@ -712,14 +791,25 @@ export default function BroadcastManager() {
           {deletedSources.length > 0 && (
             <details className="broadcast-manager__history">
               <summary>Deleted sources ({deletedSources.length})</summary>
-              <p>Deleted built-in/runtime sources remain suppressed in exported configuration. Restore only if you want them active again.</p>
+              <p>
+                Deleted built-in/runtime sources remain suppressed in exported configuration.
+                Restore only if you want them active again.
+              </p>
               <ol className="broadcast-manager__message-list">
                 {deletedSources.map((source) => (
                   <li key={source.id} className="broadcast-manager__message-card is-disabled">
-                    <div className="broadcast-manager__message-meta"><code>{source.id}</code><span className="broadcast-manager__disabled">deleted</span></div>
+                    <div className="broadcast-manager__message-meta">
+                      <code>{source.id}</code>
+                      <span className="broadcast-manager__disabled">deleted</span>
+                    </div>
                     <p>{source.text}</p>
                     <div className="broadcast-manager__message-actions">
-                      <button type="button" onClick={() => dispatch(resetBroadcastOverride(source.id))}>Restore source</button>
+                      <button
+                        type="button"
+                        onClick={() => dispatch(resetBroadcastOverride(source.id))}
+                      >
+                        Restore source
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -729,17 +819,24 @@ export default function BroadcastManager() {
 
           <details className="broadcast-manager__history">
             <summary>Unique emitted history ({liveMessages.length})</summary>
-            <p>Repeated emissions of the same source are collapsed here so the manager stays useful as an authoring tool.</p>
+            <p>
+              Repeated emissions of the same source are collapsed here so the manager stays useful
+              as an authoring tool.
+            </p>
             <ol className="broadcast-manager__message-list">
               {liveMessages.map((event) => (
                 <li key={event.id} className="broadcast-manager__message-card">
                   <div className="broadcast-manager__message-meta">
                     <span>{event.type}</span>
-                    {typeof event.meta?.broadcastTemplateId === 'string' && <code>{event.meta.broadcastTemplateId}</code>}
+                    {typeof event.meta?.broadcastTemplateId === 'string' && (
+                      <code>{event.meta.broadcastTemplateId}</code>
+                    )}
                   </div>
                   <p>{normalizeGameCopy(event.text)}</p>
                   <div className="broadcast-manager__message-actions">
-                    <button type="button" onClick={() => editLive(event)}>Edit emitted row</button>
+                    <button type="button" onClick={() => editLive(event)}>
+                      Edit emitted row
+                    </button>
                     <button
                       type="button"
                       className="broadcast-manager__danger"
@@ -758,7 +855,10 @@ export default function BroadcastManager() {
 
           {unassignedMessages.length > 0 && (
             <details className="broadcast-manager__unassigned">
-              <summary>{unassignedMessages.length} unique legacy row{unassignedMessages.length === 1 ? '' : 's'} without a phase</summary>
+              <summary>
+                {unassignedMessages.length} unique legacy row
+                {unassignedMessages.length === 1 ? '' : 's'} without a phase
+              </summary>
               {unassignedMessages.map((event) => (
                 <button key={event.id} type="button" onClick={() => editLive(event)}>
                   {normalizeGameCopy(event.text)}
@@ -771,7 +871,12 @@ export default function BroadcastManager() {
 
       {editor && (
         <div className="broadcast-manager__editor-backdrop" role="presentation">
-          <section className="broadcast-manager__editor" role="dialog" aria-modal="true" aria-label={EDIT_BROADCAST_MESSAGE_LABEL}>
+          <section
+            className="broadcast-manager__editor"
+            role="dialog"
+            aria-modal="true"
+            aria-label={EDIT_BROADCAST_MESSAGE_LABEL}
+          >
             <header>
               <h2>
                 {editor.mode === 'new'
@@ -780,7 +885,9 @@ export default function BroadcastManager() {
                     ? EDIT_BUILT_IN_SOURCE_LABEL
                     : EDIT_MESSAGE_LABEL}
               </h2>
-              <button type="button" aria-label={CLOSE_EDITOR_LABEL} onClick={() => setEditor(null)}>×</button>
+              <button type="button" aria-label={CLOSE_EDITOR_LABEL} onClick={() => setEditor(null)}>
+                ×
+              </button>
             </header>
 
             <label>
@@ -790,7 +897,11 @@ export default function BroadcastManager() {
                 value={editor.phase}
                 onChange={(event) => setEditor({ ...editor, phase: event.target.value as Phase })}
               >
-                {ALL_BROADCAST_PHASES.map((phase) => <option key={phase} value={phase}>{phaseLabel(phase)}</option>)}
+                {ALL_BROADCAST_PHASES.map((phase) => (
+                  <option key={phase} value={phase}>
+                    {phaseLabel(phase)}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -800,11 +911,18 @@ export default function BroadcastManager() {
                   Campaign
                   <select
                     value={editor.campaign}
-                    onChange={(event) => setEditor({ ...editor, campaign: event.target.value as BroadcastCampaign | '' })}
+                    onChange={(event) =>
+                      setEditor({
+                        ...editor,
+                        campaign: event.target.value as BroadcastCampaign | '',
+                      })
+                    }
                   >
                     <option value="">All campaigns</option>
                     {BROADCAST_CAMPAIGNS.map((campaign) => (
-                      <option key={campaign} value={campaign}>{BROADCAST_CAMPAIGN_LABELS[campaign]}</option>
+                      <option key={campaign} value={campaign}>
+                        {BROADCAST_CAMPAIGN_LABELS[campaign]}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -815,17 +933,29 @@ export default function BroadcastManager() {
                     placeholder={MESSAGE_KEY_PLACEHOLDER}
                     onChange={(event) => setEditor({ ...editor, key: event.target.value })}
                   />
-                  {!normalizeMessageKey(editor.key) && <small className="broadcast-manager__field-error">A message key is required.</small>}
+                  {!normalizeMessageKey(editor.key) && (
+                    <small className="broadcast-manager__field-error">
+                      A message key is required.
+                    </small>
+                  )}
                   {customMessages.some(
-                    (message) => message.id !== editor.id && (message.key ?? '') === normalizeMessageKey(editor.key)
-                  ) && <small className="broadcast-manager__field-error">That key is already in use.</small>}
+                    (message) =>
+                      message.id !== editor.id &&
+                      (message.key ?? '') === normalizeMessageKey(editor.key)
+                  ) && (
+                    <small className="broadcast-manager__field-error">
+                      That key is already in use.
+                    </small>
+                  )}
                 </label>
               </>
             )}
 
             {(editor.isCard || editor.forceOnTv || editor.level !== 'minor') && (
               <label>
-                {editor.isCard || editor.level !== 'minor' ? CARD_TITLE_LABEL : OPTIONAL_FAUX_TV_TITLE_LABEL}
+                {editor.isCard || editor.level !== 'minor'
+                  ? CARD_TITLE_LABEL
+                  : OPTIONAL_FAUX_TV_TITLE_LABEL}
                 <input
                   value={editor.title}
                   placeholder={DEFAULT_CARD_TITLE_PLACEHOLDER}
@@ -836,15 +966,31 @@ export default function BroadcastManager() {
 
             <label>
               {editor.isCard ? 'Card subtitle' : 'Message'}
-              <textarea value={editor.text} rows={5} onChange={(event) => setEditor({ ...editor, text: event.target.value })} />
-              <small>Keep placeholders such as {'{winner}'} if the live player value should remain dynamic.</small>
+              <textarea
+                value={editor.text}
+                rows={5}
+                onChange={(event) => setEditor({ ...editor, text: event.target.value })}
+              />
+              <small>
+                Keep placeholders such as {'{winner}'} if the live player value should remain
+                dynamic.
+              </small>
             </label>
 
             <div className="broadcast-manager__editor-grid">
               <label>
                 Event type
-                <select value={editor.type} onChange={(event) => setEditor({ ...editor, type: event.target.value as TvEvent['type'] })}>
-                  {EVENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+                <select
+                  value={editor.type}
+                  onChange={(event) =>
+                    setEditor({ ...editor, type: event.target.value as TvEvent['type'] })
+                  }
+                >
+                  {EVENT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -853,7 +999,11 @@ export default function BroadcastManager() {
                   value={editor.level}
                   onChange={(event) => {
                     const level = event.target.value as BroadcastLevel
-                    setEditor({ ...editor, level, forceOnTv: level === 'critical' ? true : editor.forceOnTv })
+                    setEditor({
+                      ...editor,
+                      level,
+                      forceOnTv: level === 'critical' ? true : editor.forceOnTv,
+                    })
                   }}
                 >
                   <option value="minor">Minor · normal log line</option>
@@ -873,7 +1023,9 @@ export default function BroadcastManager() {
             </label>
 
             <footer>
-              <button type="button" onClick={() => setEditor(null)}>Cancel</button>
+              <button type="button" onClick={() => setEditor(null)}>
+                Cancel
+              </button>
               <button
                 type="button"
                 className="broadcast-manager__primary"
