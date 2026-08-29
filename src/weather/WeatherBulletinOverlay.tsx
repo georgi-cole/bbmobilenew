@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAppSelector } from '../store/hooks'
-import { isVisibleOnTv } from '../services/activityService'
 import { getWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherBulletinOverlay.css'
@@ -83,26 +82,15 @@ function stripInjectedPrefix(text: string): string {
 }
 
 export default function WeatherBulletinOverlay() {
+  // Weather presentation is allowed to own the viewport only while the weather
+  // event itself is the authoritative head of the managed TV queue. It must
+  // never cover a later social/game message merely because weather is the
+  // newest item in tvFeed.
   const weatherEvent = useAppSelector((state) => {
-    const queue = state.game.broadcastQueue ?? []
-    const queuedId = queue[0] ?? null
-    if (queuedId) {
-      const queuedEvent = state.game.tvFeed.find((event) => event.id === queuedId) ?? null
-      return queuedEvent?.meta?.weatherBulletin === true && isVisibleOnTv(queuedEvent)
-        ? queuedEvent
-        : null
-    }
-
-    // Defensive fallback for an interrupted legacy run where the bulletin was
-    // authored for TV but never made it into the managed queue.
-    return (
-      state.game.tvFeed.find(
-        (event) =>
-          event.meta?.weatherBulletin === true &&
-          event.meta?.broadcastConsumed !== true &&
-          isVisibleOnTv(event)
-      ) ?? null
-    )
+    const queuedId = state.game.broadcastQueue?.[0]
+    if (!queuedId) return null
+    const event = state.game.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
+    return event?.meta?.weatherBulletin === true ? event : null
   })
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
 
@@ -126,12 +114,6 @@ export default function WeatherBulletinOverlay() {
     return () => observer.disconnect()
   }, [weatherEvent?.id])
 
-  useEffect(() => {
-    if (!weatherEvent || !portalTarget) return undefined
-    portalTarget.classList.add('tv-zone__viewport--weather')
-    return () => portalTarget.classList.remove('tv-zone__viewport--weather')
-  }, [portalTarget, weatherEvent])
-
   const presentation = useMemo(() => {
     if (!weatherEvent || !condition || temperatureC == null) return null
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
@@ -153,14 +135,14 @@ export default function WeatherBulletinOverlay() {
   return createPortal(
     <section
       className={`weather-tv-card weather-tv-card--${condition}`}
-      aria-label={`${presentation.conditionLabel}, ${presentation.temperature.number}${presentation.temperature.unit}`}
+      aria-hidden="true"
     >
       <div className="weather-tv-card__topline">
         <span>THE BIG EYE WEATHER</span>
         {presentation.day != null && <span>DAY {presentation.day}</span>}
       </div>
       <div className="weather-tv-card__main">
-        <div className="weather-tv-card__temperature" aria-hidden="true">
+        <div className="weather-tv-card__temperature">
           <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
           <span className="weather-tv-card__temperature-unit">{presentation.temperature.unit}</span>
         </div>
