@@ -27,6 +27,10 @@ export default function SeasonOpeningFlowGuard() {
   const queuedEvent = queuedId
     ? (tvFeed.find((event) => event.id === queuedId) ?? null)
     : null
+  const polishedOpeningSeen = tvFeed.some(
+    (event) =>
+      event.meta?.seasonOnboardingWelcome === true || event.meta?.seasonOnboardingFlavor === true
+  )
 
   useLayoutEffect(() => {
     if (phase !== 'season_start' || week !== 1 || !queuedEvent) return
@@ -37,7 +41,14 @@ export default function SeasonOpeningFlowGuard() {
   }, [dispatch, phase, queuedEvent, week])
 
   useLayoutEffect(() => {
-    if (phase !== 'week_start' || week !== 1 || mode === 'survival') return
+    if (
+      phase !== 'week_start' ||
+      week !== 1 ||
+      mode === 'survival' ||
+      !polishedOpeningSeen
+    ) {
+      return
+    }
 
     if (queuedEvent?.meta?.broadcastTemplateId === DAY_ONE_START_TEMPLATE_ID) {
       dispatch(consumeBroadcastEvent(queuedEvent.id))
@@ -48,7 +59,15 @@ export default function SeasonOpeningFlowGuard() {
     // continue directly to the first competition as specified by onboarding.
     if (broadcastQueue.length > 0) return
     dispatch(advance())
-  }, [broadcastQueue.length, dispatch, mode, phase, queuedEvent, week])
+  }, [
+    broadcastQueue.length,
+    dispatch,
+    mode,
+    phase,
+    polishedOpeningSeen,
+    queuedEvent,
+    week,
+  ])
 
   return null
 }
