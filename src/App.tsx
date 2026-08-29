@@ -24,6 +24,7 @@ import VipEntitlementSync from './components/VipEntitlementSync/VipEntitlementSy
 import DepressionShockController from './components/DepressionShockController/DepressionShockController'
 import WeatherController from './weather/WeatherController'
 import WeatherBulletinOverlay from './weather/WeatherBulletinOverlay'
+import SeasonOpeningFlowGuard from './onboarding/SeasonOpeningFlowGuard'
 import SeasonStartOnboardingController from './onboarding/SeasonStartOnboardingController'
 import { I18nProvider } from './i18n'
 
@@ -74,6 +75,7 @@ export default function App() {
         <LiveOpsController />
         <WeatherController />
         <WeatherBulletinOverlay />
+        <SeasonOpeningFlowGuard />
         <SeasonStartOnboardingController />
         <DepressionShockController />
         <AudioStateSync />
