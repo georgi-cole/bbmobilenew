@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { sanitiseWeatherBank, sanitiseWeatherConfig } from '../weatherRuntime'
+import {
+  resolveWeatherRuntimeUrls,
+  sanitiseWeatherBank,
+  sanitiseWeatherConfig,
+} from '../weatherRuntime'
 
 describe('weather remote data validation', () => {
+  it('uses build-local weather assets on web and remote assets in native builds', () => {
+    expect(
+      resolveWeatherRuntimeUrls({ isDev: false, isNative: false, baseUrl: '/bbmobilenew/' })
+    ).toEqual({
+      configUrl: '/bbmobilenew/config/weather-config.json',
+      defaultBankUrl: '/bbmobilenew/config/weather-bank.json',
+    })
+
+    expect(resolveWeatherRuntimeUrls({ isDev: false, isNative: true })).toEqual({
+      configUrl: 'https://georgi-cole.github.io/bbmobilenew/config/weather-config.json',
+      defaultBankUrl: 'https://georgi-cole.github.io/bbmobilenew/config/weather-bank.json',
+    })
+
+    expect(resolveWeatherRuntimeUrls({ isDev: true, isNative: false })).toEqual({
+      configUrl: '/config/weather-config.json',
+      defaultBankUrl: '/config/weather-bank.json',
+    })
+  })
+
   it('keeps valid transition rules and clamps unsafe values', () => {
     const config = sanitiseWeatherConfig({
       schemaVersion: 2,
