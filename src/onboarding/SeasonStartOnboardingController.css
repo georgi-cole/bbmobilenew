@@ -1,0 +1,302 @@
+body.body--season-tv-wake .tv-zone__viewport {
+  transform-origin: 50% 50%;
+  animation: season-tv-wake 900ms cubic-bezier(0.18, 0.82, 0.24, 1) both;
+}
+
+@keyframes season-tv-wake {
+  0% {
+    opacity: 0.18;
+    filter: brightness(0.18) saturate(0.65);
+    box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.78);
+  }
+  34% {
+    opacity: 0.78;
+    filter: brightness(0.72) saturate(0.82);
+    box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.48);
+  }
+  70% {
+    opacity: 1;
+    filter: brightness(1.04) saturate(1.02);
+    box-shadow: inset 0 0 18px rgba(125, 90, 210, 0.08);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+.season-tutorial-prompt,
+.season-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  font-family: inherit;
+}
+
+.season-tutorial-prompt__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 3, 10, 0.58);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: season-tutorial-backdrop-in 180ms ease-out both;
+}
+
+.season-tutorial-prompt__card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(326px, calc(100vw - 32px));
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  padding: 19px 19px 17px;
+  border: 1px solid rgba(226, 215, 255, 0.18);
+  border-radius: 19px;
+  color: #f6f3ff;
+  background:
+    radial-gradient(circle at 88% 4%, rgba(139, 92, 246, 0.18), transparent 37%),
+    linear-gradient(150deg, rgba(25, 18, 38, 0.98), rgba(9, 8, 18, 0.985));
+  box-shadow:
+    0 24px 65px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  animation: season-tutorial-card-in 220ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.season-tutorial-prompt__eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  color: rgba(196, 174, 244, 0.72);
+}
+
+.season-tutorial-prompt__card h2,
+.season-tutorial__tooltip h2 {
+  margin: 0;
+  color: #f7f4ff;
+  font-size: 19px;
+  line-height: 1.15;
+  font-weight: 760;
+  letter-spacing: -0.015em;
+}
+
+.season-tutorial-prompt__card p {
+  margin: 8px 0 0;
+  color: rgba(226, 221, 239, 0.78);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.season-tutorial-prompt__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 17px;
+}
+
+.season-tutorial__input-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.season-tutorial__spotlight {
+  position: fixed;
+  z-index: 1;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 1px solid rgba(213, 189, 255, 0.82);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 9999px rgba(2, 2, 8, 0.72),
+    0 0 0 3px rgba(150, 104, 242, 0.14),
+    0 0 28px rgba(143, 96, 240, 0.26);
+  transition:
+    left 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.season-tutorial__tooltip {
+  position: fixed;
+  z-index: 2;
+  box-sizing: border-box;
+  padding: 14px 15px 13px;
+  outline: none;
+  border: 1px solid rgba(225, 215, 250, 0.18);
+  border-radius: 16px;
+  color: #f7f4ff;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(129, 82, 226, 0.16), transparent 38%),
+    rgba(15, 12, 25, 0.975);
+  box-shadow:
+    0 19px 48px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: season-tutorial-tooltip-in 180ms ease-out both;
+}
+
+.season-tutorial__progress {
+  display: flex;
+  align-items: center;
+  width: 58px;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: rgba(203, 191, 226, 0.64);
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+.season-tutorial__progress i {
+  display: block;
+  flex: 1;
+  height: 1px;
+  background: rgba(201, 179, 244, 0.3);
+}
+
+.season-tutorial__tooltip p {
+  margin: 7px 0 0;
+  color: rgba(226, 222, 238, 0.8);
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.season-tutorial__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.season-tutorial__nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.season-tutorial__primary,
+.season-tutorial__secondary,
+.season-tutorial__skip {
+  min-height: 34px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 750;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.season-tutorial__primary {
+  min-width: 72px;
+  padding: 0 13px;
+  border: 1px solid rgba(203, 172, 255, 0.38);
+  color: #fff;
+  background: linear-gradient(180deg, rgba(123, 78, 213, 0.98), rgba(83, 48, 158, 0.98));
+  box-shadow:
+    0 7px 18px rgba(64, 35, 122, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.season-tutorial__secondary {
+  padding: 0 12px;
+  border: 1px solid rgba(219, 210, 238, 0.14);
+  color: rgba(238, 233, 247, 0.86);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.season-tutorial__skip {
+  padding: 0 4px;
+  border: 0;
+  color: rgba(202, 195, 216, 0.64);
+  background: transparent;
+}
+
+.season-tutorial__primary:focus-visible,
+.season-tutorial__secondary:focus-visible,
+.season-tutorial__skip:focus-visible {
+  outline: 2px solid rgba(210, 184, 255, 0.92);
+  outline-offset: 2px;
+}
+
+.season-tutorial__primary:active,
+.season-tutorial__secondary:active {
+  transform: translateY(1px);
+}
+
+@keyframes season-tutorial-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes season-tutorial-card-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 7px)) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes season-tutorial-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 390px), (max-height: 720px) {
+  .season-tutorial-prompt__card {
+    padding: 16px 16px 14px;
+    border-radius: 17px;
+  }
+
+  .season-tutorial__tooltip {
+    padding: 12px 13px 11px;
+    border-radius: 14px;
+  }
+
+  .season-tutorial-prompt__card h2,
+  .season-tutorial__tooltip h2 {
+    font-size: 17px;
+  }
+
+  .season-tutorial__tooltip p {
+    font-size: 11px;
+  }
+
+  .season-tutorial__primary,
+  .season-tutorial__secondary,
+  .season-tutorial__skip {
+    min-height: 32px;
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.body--season-tv-wake .tv-zone__viewport,
+  .season-tutorial-prompt__backdrop,
+  .season-tutorial-prompt__card,
+  .season-tutorial__tooltip {
+    animation: none;
+  }
+
+  .season-tutorial__spotlight {
+    transition: none;
+  }
+}
