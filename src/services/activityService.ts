@@ -12,8 +12,8 @@
  *
  * Backward-compatibility rule: TvEvent entries that carry NO channels field
  * are treated as legacy events and remain visible everywhere (mainLog + tv),
- * except for explicitly classified result-only events that must never reopen
- * a previously consumed fullscreen announcement.
+ * except for explicitly classified result-only or service/configuration events
+ * that belong in the log rather than the faux TV.
  */
 
 /** Destination channels an activity event can be routed to. */
@@ -29,6 +29,25 @@ type ActivityVisibilityEvent = {
   type?: string
   text?: string
   meta?: { suppressTv?: boolean; [key: string]: unknown }
+}
+
+const LOG_ONLY_BROADCAST_TEMPLATE_IDS = new Set([
+  'season.public-mode-rule',
+  'survival.rules',
+])
+
+/**
+ * Service/configuration copy is useful history, but it is not an in-world TV
+ * event. Keep current and legacy [Rules]/[System]/[Config] messages in the log
+ * only. The explicit template IDs cover the known production rules messages;
+ * the prefix fallback prevents a future service line from accidentally taking
+ * over the faux TV merely because it omitted routing metadata.
+ */
+export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolean {
+  const templateId =
+    typeof ev.meta?.broadcastTemplateId === 'string' ? ev.meta.broadcastTemplateId : null
+  if (templateId && LOG_ONLY_BROADCAST_TEMPLATE_IDS.has(templateId)) return true
+  return typeof ev.text === 'string' && /^\s*\[(?:Rules|System|Config)\]\s*/i.test(ev.text)
 }
 
 /**
@@ -60,11 +79,13 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
  * Returns true when the event should appear in the TV-zone viewport.
  *
  * Rules:
+ *  - Service/configuration messages: false; they remain available to mainLog.
  *  - Back 2 the Game winner/result event: false; it remains available to mainLog.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'tv' or 'mainLog' is included.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
+  if (isServiceConfigurationEvent(ev)) return false
   if (isBattleBackReturnResultEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true
