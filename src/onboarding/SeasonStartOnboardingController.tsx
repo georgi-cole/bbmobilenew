@@ -11,16 +11,20 @@ import { createPortal } from 'react-dom'
 import { addTvEvent, advance, consumeBroadcastEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { isServiceConfigurationEvent } from '../services/activityService'
+import {
+  hasHandledSeasonTutorial,
+  markSeasonTutorialHandled,
+} from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
 
 const TV_WAKE_MS = 900
-const FLAVOR_DELAY_MS = 700
-const PROMPT_DELAY_MS = 1250
+const WELCOME_DELAY_MS = 620
+const FLAVOR_DELAY_MS = 1600
+const PROMPT_DELAY_MS = 1800
 const TOOLTIP_GAP_PX = 14
 const TOOLTIP_MAX_WIDTH_PX = 320
 const TOOLTIP_ESTIMATED_HEIGHT_PX = 188
 const TOUR_FINISH_MS = 520
-const TUTORIAL_VERSION = 'v1'
 
 const OPENING_FLAVOR_LINES = [
   'The hubmates have settled in. Everyone seems eager to play.',
@@ -121,31 +125,6 @@ function hashText(value: string): number {
 
 function pickOpeningFlavor(gameId: string): string {
   return OPENING_FLAVOR_LINES[hashText(gameId) % OPENING_FLAVOR_LINES.length]
-}
-
-function storageKey(profileId: string | null): string {
-  return `bbmobilenew_season_tutorial_${TUTORIAL_VERSION}:${profileId ?? 'guest'}`
-}
-
-function readTutorialHandled(profileId: string | null, isGuest: boolean): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const storage = isGuest ? window.sessionStorage : window.localStorage
-    return storage.getItem(storageKey(profileId)) === 'done'
-  } catch {
-    return false
-  }
-}
-
-function writeTutorialHandled(profileId: string | null, isGuest: boolean): void {
-  if (typeof window === 'undefined') return
-  try {
-    const storage = isGuest ? window.sessionStorage : window.localStorage
-    storage.setItem(storageKey(profileId), 'done')
-  } catch {
-    // Onboarding persistence is best-effort. A blocked storage API must never
-    // stop the player from continuing into the game.
-  }
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -271,8 +250,6 @@ function TutorialTour({
     }
 
     if (!findAndMeasure()) {
-      // Layout variants may omit one launcher. Give responsive UI a moment to
-      // settle, then skip only that unavailable target rather than breaking the tour.
       missingTargetTimer = window.setTimeout(() => {
         if (findTourTarget(currentStep)) {
           findAndMeasure()
@@ -286,9 +263,7 @@ function TutorialTour({
 
     const update = () => {
       window.cancelAnimationFrame(frame)
-      frame = window.requestAnimationFrame(() => {
-        findAndMeasure()
-      })
+      frame = window.requestAnimationFrame(findAndMeasure)
     }
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
@@ -342,7 +317,9 @@ function TutorialTour({
   const targetCenterX = targetRect ? targetRect.left + targetRect.width / 2 : viewportWidth / 2
   const tooltipLeft = clamp(targetCenterX - tooltipWidth / 2, 12, viewportWidth - tooltipWidth - 12)
   const spaceBelow = targetRect ? viewportHeight - targetRect.bottom : 0
-  const placeBelow = targetRect ? spaceBelow >= TOOLTIP_ESTIMATED_HEIGHT_PX + TOOLTIP_GAP_PX : false
+  const placeBelow = targetRect
+    ? spaceBelow >= TOOLTIP_ESTIMATED_HEIGHT_PX + TOOLTIP_GAP_PX
+    : false
 
   const spotlightStyle = targetRect
     ? ({
@@ -355,7 +332,11 @@ function TutorialTour({
 
   const tooltipStyle = targetRect
     ? placeBelow
-      ? ({ left: tooltipLeft, top: targetRect.bottom + TOOLTIP_GAP_PX, width: tooltipWidth } as CSSProperties)
+      ? ({
+          left: tooltipLeft,
+          top: targetRect.bottom + TOOLTIP_GAP_PX,
+          width: tooltipWidth,
+        } as CSSProperties)
       : ({
           left: tooltipLeft,
           bottom: viewportHeight - targetRect.top + TOOLTIP_GAP_PX,
@@ -464,6 +445,7 @@ function TutorialTour({
 export default function SeasonStartOnboardingController() {
   const dispatch = useAppDispatch()
   const gameId = useAppSelector((state) => state.game.gameId)
+  const season = useAppSelector((state) => state.game.season)
   const week = useAppSelector((state) => state.game.week)
   const phase = useAppSelector((state) => state.game.phase)
   const mode = useAppSelector((state) => state.game.mode)
@@ -473,24 +455,38 @@ export default function SeasonStartOnboardingController() {
   const isGuest = useAppSelector((state) => state.profiles.isGuest)
   const [gameScreenMounted, setGameScreenMounted] = useState(false)
   const [tutorialHandled, setTutorialHandled] = useState(() =>
-    readTutorialHandled(activeProfileId, isGuest)
+    hasHandledSeasonTutorial(activeProfileId, isGuest)
   )
   const [promptOpen, setPromptOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
+  const [handoffToFirstCompetition, setHandoffToFirstCompetition] = useState(false)
+  const welcomeTimerRef = useRef<number | null>(null)
   const flavorTimerRef = useRef<number | null>(null)
   const promptTimerRef = useRef<number | null>(null)
 
   const eligibleSeasonStart =
     gameScreenMounted && phase === 'season_start' && week === 1 && mode !== 'survival'
+
+  const welcomeExists = useMemo(
+    () =>
+      tvFeed.some(
+        (event) =>
+          event.meta?.seasonOnboardingWelcome === true &&
+          event.meta?.week === 1 &&
+          event.meta?.phase === 'season_start'
+      ),
+    [tvFeed]
+  )
+
   const flavorExists = useMemo(
     () =>
       tvFeed.some(
         (event) =>
           event.meta?.seasonOnboardingFlavor === true &&
-          event.meta?.week === week &&
+          event.meta?.week === 1 &&
           event.meta?.phase === 'season_start'
       ),
-    [tvFeed, week]
+    [tvFeed]
   )
 
   useEffect(() => {
@@ -501,21 +497,22 @@ export default function SeasonStartOnboardingController() {
     return () => observer.disconnect()
   }, [])
 
+  // A guest is intentionally treated as new on every fresh gameId. Named
+  // profiles retain their explicit tutorial choice until Settings resets it.
   useEffect(() => {
-    setTutorialHandled(readTutorialHandled(activeProfileId, isGuest))
+    setTutorialHandled(hasHandledSeasonTutorial(activeProfileId, isGuest))
     setPromptOpen(false)
     setTourOpen(false)
-  }, [activeProfileId, isGuest])
+    setHandoffToFirstCompetition(false)
+  }, [activeProfileId, gameId, isGuest])
 
-  // Defensive companion to the log-only TV routing: a service message that was
-  // authored as a managed broadcast must not require an invisible Play press.
   const queuedBroadcastId = broadcastQueue[0] ?? null
   useEffect(() => {
     if (!queuedBroadcastId) return
     const queuedEvent = tvFeed.find((event) => event.id === queuedBroadcastId)
     if (!queuedEvent || !isServiceConfigurationEvent(queuedEvent)) return
     dispatch(consumeBroadcastEvent(queuedEvent.id))
-  }, [broadcastQueue, dispatch, queuedBroadcastId, tvFeed])
+  }, [dispatch, queuedBroadcastId, tvFeed])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
@@ -530,8 +527,34 @@ export default function SeasonStartOnboardingController() {
     }
   }, [eligibleSeasonStart, gameId])
 
+  const addOpeningWelcome = useCallback(() => {
+    if (welcomeExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
+    dispatch(
+      addTvEvent({
+        text: `Welcome to The Big Eye. Season ${season} begins now.`,
+        type: 'game',
+        source: 'system',
+        meta: {
+          phase: 'season_start',
+          week: 1,
+          broadcastLevel: 'minor',
+          forceOnTv: true,
+          seasonOnboardingWelcome: true,
+        },
+      })
+    )
+  }, [dispatch, mode, phase, season, week, welcomeExists])
+
   const addOpeningFlavor = useCallback(() => {
-    if (flavorExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
+    if (
+      !welcomeExists ||
+      flavorExists ||
+      phase !== 'season_start' ||
+      week !== 1 ||
+      mode === 'survival'
+    ) {
+      return
+    }
     dispatch(
       addTvEvent({
         text: pickOpeningFlavor(gameId),
@@ -539,23 +562,45 @@ export default function SeasonStartOnboardingController() {
         source: 'system',
         meta: {
           phase: 'season_start',
-          week,
+          week: 1,
           broadcastLevel: 'minor',
           forceOnTv: true,
           seasonOnboardingFlavor: true,
         },
       })
     )
-  }, [dispatch, flavorExists, gameId, mode, phase, week])
+  }, [dispatch, flavorExists, gameId, mode, phase, week, welcomeExists])
 
   useEffect(() => {
-    if (!eligibleSeasonStart || broadcastQueue.length > 0 || flavorExists) return undefined
+    if (!eligibleSeasonStart || broadcastQueue.length > 0 || welcomeExists) return undefined
+    welcomeTimerRef.current = window.setTimeout(addOpeningWelcome, WELCOME_DELAY_MS)
+    return () => {
+      if (welcomeTimerRef.current != null) window.clearTimeout(welcomeTimerRef.current)
+      welcomeTimerRef.current = null
+    }
+  }, [addOpeningWelcome, broadcastQueue.length, eligibleSeasonStart, welcomeExists])
+
+  useEffect(() => {
+    if (
+      !eligibleSeasonStart ||
+      broadcastQueue.length > 0 ||
+      !welcomeExists ||
+      flavorExists
+    ) {
+      return undefined
+    }
     flavorTimerRef.current = window.setTimeout(addOpeningFlavor, FLAVOR_DELAY_MS)
     return () => {
       if (flavorTimerRef.current != null) window.clearTimeout(flavorTimerRef.current)
       flavorTimerRef.current = null
     }
-  }, [addOpeningFlavor, broadcastQueue.length, eligibleSeasonStart, flavorExists])
+  }, [
+    addOpeningFlavor,
+    broadcastQueue.length,
+    eligibleSeasonStart,
+    flavorExists,
+    welcomeExists,
+  ])
 
   useEffect(() => {
     if (
@@ -588,34 +633,72 @@ export default function SeasonStartOnboardingController() {
     setTourOpen(false)
   }, [eligibleSeasonStart])
 
-  // First-time users cannot accidentally skip the tutorial choice by pressing
-  // the central Play button while the short opening flavour line is settling.
+  const beginFirstCompetitionHandoff = useCallback(() => {
+    setPromptOpen(false)
+    setTourOpen(false)
+    setHandoffToFirstCompetition(true)
+    dispatch(advance())
+  }, [dispatch])
+
+  // The accepted opening flow goes straight from the warm season prelude into
+  // LOH. Let week_start execute its reducer bookkeeping, but do not stop the
+  // player on a redundant Day 1 card. Any queued critical broadcast still gets
+  // priority and must be acknowledged before the second advance.
   useEffect(() => {
-    if (!eligibleSeasonStart || tutorialHandled) return undefined
+    if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
+    if (broadcastQueue.length > 0) return
+    setHandoffToFirstCompetition(false)
+    dispatch(advance())
+  }, [broadcastQueue.length, dispatch, handoffToFirstCompetition, phase, week])
+
+  useEffect(() => {
+    if (!eligibleSeasonStart) return undefined
     const handlePlay = (event: Event) => {
       if (broadcastQueue.length > 0) return
+
+      if (!welcomeExists) {
+        event.preventDefault()
+        addOpeningWelcome()
+        return
+      }
+      if (!flavorExists) {
+        event.preventDefault()
+        addOpeningFlavor()
+        return
+      }
+
+      if (!tutorialHandled) {
+        event.preventDefault()
+        if (!tourOpen) setPromptOpen(true)
+        return
+      }
+
+      // Returning profiles still use the streamlined opening: one Play from
+      // the warm line goes directly to the first competition announcement.
       event.preventDefault()
-      if (!flavorExists) addOpeningFlavor()
-      if (!tourOpen) setPromptOpen(true)
+      beginFirstCompetitionHandoff()
     }
     window.addEventListener('ui:playPressed', handlePlay, { capture: true })
     return () => window.removeEventListener('ui:playPressed', handlePlay, { capture: true })
   }, [
     addOpeningFlavor,
+    addOpeningWelcome,
+    beginFirstCompetitionHandoff,
     broadcastQueue.length,
     eligibleSeasonStart,
     flavorExists,
     tourOpen,
     tutorialHandled,
+    welcomeExists,
   ])
 
   const finishOnboarding = useCallback(() => {
-    writeTutorialHandled(activeProfileId, isGuest)
+    markSeasonTutorialHandled(activeProfileId, isGuest)
+    // Guests do not persist this flag, but keeping it true for the remainder
+    // of this one run prevents the prompt from immediately reopening.
     setTutorialHandled(true)
-    setPromptOpen(false)
-    setTourOpen(false)
-    dispatch(advance())
-  }, [activeProfileId, dispatch, isGuest])
+    beginFirstCompetitionHandoff()
+  }, [activeProfileId, beginFirstCompetitionHandoff, isGuest])
 
   const startTour = useCallback(() => {
     setPromptOpen(false)
@@ -626,8 +709,7 @@ export default function SeasonStartOnboardingController() {
 
   return (
     <>
-      {promptOpen &&
-        !tourOpen &&
+      {promptOpen && !tourOpen &&
         createPortal(
           <div className="season-tutorial-prompt" role="presentation">
             <div className="season-tutorial-prompt__backdrop" aria-hidden="true" />
