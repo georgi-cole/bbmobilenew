@@ -1,8 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addTvEvent } from '../store/gameSlice'
-import { buildWeatherBulletin, formatWeatherTemperature, resolveWeatherDay } from './weatherEngine'
-import { loadWeatherRuntime } from './weatherRuntime'
+import { buildWeatherBulletin, resolveWeatherDay } from './weatherEngine'
+import { getWeatherRuntime, loadWeatherRuntime } from './weatherRuntime'
+import {
+  formatSystemWeatherTemperature,
+  normaliseWeatherBulletinUnits,
+} from './weatherTemperatureUnit'
 import './WeatherEnhancements.css'
 
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
@@ -51,15 +55,22 @@ export default function WeatherController() {
 
     const weatherDay = resolveWeatherDay(gameId, week)
     const recoveryRainbow = depressionShock?.recoveryWeek === week
-    const comment = buildWeatherBulletin({
+    const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
+    const rawComment = buildWeatherBulletin({
       gameId,
       day: weatherDay,
       players,
       ...(recoveryRainbow ? { forcePhenomenon: 'rainbow' as const } : {}),
     })
-    const temperature = formatWeatherTemperature(weatherDay.temperatureC)
+    const comment = normaliseWeatherBulletinUnits(rawComment, {
+      temperatureC: weatherDay.temperatureC,
+      deltaC: weatherDay.deltaC,
+      configuredUnit,
+    })
+    const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
     // Some externally authored variants naturally include {temp}; otherwise
-    // prepend the reading so every once-daily bulletin fulfils the same promise.
+    // prepend the reading so the log remains useful even though the faux TV
+    // presents the same data as a compact weather card.
     const text =
       comment.includes('°C') || comment.includes('°F') ? comment : `${temperature} · ${comment}`
 
