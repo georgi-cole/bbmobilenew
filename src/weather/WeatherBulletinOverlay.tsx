@@ -50,24 +50,10 @@ function WeatherGlyph({ condition }: { condition: WeatherConditionId }) {
           d="M18 43h28.5c6 0 10.5-4.1 10.5-9.4 0-5.1-4.1-9-9.5-9.4C45.4 17.8 39.7 14 33 14c-8 0-14.5 5.7-15.5 13.1C11.5 27.8 7 31.8 7 36.9 7 40.4 11.5 43 18 43Z"
         />
       )}
-      {fog && (
-        <g className="weather-tv-card__fog">
-          <path d="M10 25h39M16 34h38M8 43h42" />
-        </g>
-      )}
-      {wet && (
-        <g className="weather-tv-card__drops">
-          <path d="M22 47l-3 7M34 47l-3 7M46 47l-3 7" />
-        </g>
-      )}
-      {storm && (
-        <path className="weather-tv-card__bolt" d="M35 41h8l-8 15 2-11h-8l7-13Z" />
-      )}
-      {snow && (
-        <g className="weather-tv-card__snow">
-          <path d="M23 48v9M19 50l8 5M27 50l-8 5M43 48v9M39 50l8 5M47 50l-8 5" />
-        </g>
-      )}
+      {fog && <g className="weather-tv-card__fog"><path d="M10 25h39M16 34h38M8 43h42" /></g>}
+      {wet && <g className="weather-tv-card__drops"><path d="M22 47l-3 7M34 47l-3 7M46 47l-3 7" /></g>}
+      {storm && <path className="weather-tv-card__bolt" d="M35 41h8l-8 15 2-11h-8l7-13Z" />}
+      {snow && <g className="weather-tv-card__snow"><path d="M23 48v9M19 50l8 5M27 50l-8 5M43 48v9M39 50l8 5M47 50l-8 5" /></g>}
     </svg>
   )
 }
@@ -82,10 +68,6 @@ function stripInjectedPrefix(text: string): string {
 }
 
 export default function WeatherBulletinOverlay() {
-  // Weather presentation is allowed to own the viewport only while the weather
-  // event itself is the authoritative head of the managed TV queue. It must
-  // never cover a later social/game message merely because weather is the
-  // newest item in tvFeed.
   const weatherEvent = useAppSelector((state) => {
     const queuedId = state.game.broadcastQueue?.[0]
     if (!queuedId) return null
@@ -104,10 +86,7 @@ export default function WeatherBulletinOverlay() {
       setPortalTarget(null)
       return undefined
     }
-
-    const resolveTarget = () => {
-      setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__viewport'))
-    }
+    const resolveTarget = () => setPortalTarget(document.querySelector<HTMLElement>('.tv-zone__viewport'))
     resolveTarget()
     const observer = new MutationObserver(resolveTarget)
     observer.observe(document.body, { childList: true, subtree: true })
@@ -117,30 +96,17 @@ export default function WeatherBulletinOverlay() {
   const presentation = useMemo(() => {
     if (!weatherEvent || !condition || temperatureC == null) return null
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
-    const formatted = formatSystemWeatherTemperature(temperatureC, configuredUnit)
-    const temperature = splitTemperature(formatted)
     return {
-      temperature,
+      temperature: splitTemperature(formatSystemWeatherTemperature(temperatureC, configuredUnit)),
       conditionLabel: CONDITION_LABELS[condition],
       narrative: stripInjectedPrefix(weatherEvent.text),
-      day:
-        typeof weatherEvent.meta?.weatherBulletinDay === 'number'
-          ? weatherEvent.meta.weatherBulletinDay
-          : null,
     }
   }, [condition, temperatureC, weatherEvent])
 
   if (!weatherEvent || !condition || !presentation || !portalTarget) return null
 
   return createPortal(
-    <section
-      className={`weather-tv-card weather-tv-card--${condition}`}
-      aria-hidden="true"
-    >
-      <div className="weather-tv-card__topline">
-        <span>THE BIG EYE WEATHER</span>
-        {presentation.day != null && <span>DAY {presentation.day}</span>}
-      </div>
+    <section className={`weather-tv-card weather-tv-card--${condition}`} aria-hidden="true">
       <div className="weather-tv-card__main">
         <div className="weather-tv-card__temperature">
           <span className="weather-tv-card__temperature-number">{presentation.temperature.number}</span>
