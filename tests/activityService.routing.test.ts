@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { getBroadcastTemplate } from '../src/broadcasting/broadcastTemplateCatalog'
 import {
   isLegacySeasonWelcomeEvent,
   isServiceConfigurationEvent,
@@ -7,6 +8,11 @@ import {
 } from '../src/services/activityService'
 
 describe('service broadcast routing', () => {
+  it('marks Public Mode rules log-only at the broadcast source', () => {
+    expect(getBroadcastTemplate('season.public-mode-rule')?.forceOnTv).toBe(false)
+    expect(getBroadcastTemplate('survival.rules')?.forceOnTv).toBe(false)
+  })
+
   it('keeps the Public Mode rules status in the log but off the faux TV', () => {
     const event = {
       text: '[Rules] Public mode: ON',
@@ -37,6 +43,11 @@ describe('service broadcast routing', () => {
 })
 
 describe('season opening replacement routing', () => {
+  it('keeps the legacy built-in welcomes off TV so onboarding owns the opening', () => {
+    expect(getBroadcastTemplate('season.welcome')?.forceOnTv).toBe(false)
+    expect(getBroadcastTemplate('season.welcome-cupid')?.forceOnTv).toBe(false)
+  })
+
   it('suppresses the exact legacy Classic welcome so the staged welcome owns the TV', () => {
     const event = {
       text: 'Welcome to The Big Eye hub! 🏠 Season 7 is about to begin.',
