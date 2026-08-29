@@ -42,3 +42,25 @@ export function resetSeasonTutorialPreference(profileId: string | null, isGuest:
     // Best-effort settings action.
   }
 }
+
+/**
+ * Settings-facing state: ON means the quick tour is eligible to appear at the
+ * next season start. Guest is permanently ON by design.
+ */
+export function isSeasonTutorialEnabled(profileId: string | null, isGuest: boolean): boolean {
+  return isGuest || !hasHandledSeasonTutorial(profileId, false)
+}
+
+/**
+ * Toggle the next-season tutorial prompt for a named profile. Guest ignores
+ * writes because its tutorial prompt is intentionally always enabled.
+ */
+export function setSeasonTutorialEnabled(
+  profileId: string | null,
+  isGuest: boolean,
+  enabled: boolean
+): void {
+  if (isGuest) return
+  if (enabled) resetSeasonTutorialPreference(profileId, false)
+  else markSeasonTutorialHandled(profileId, false)
+}
