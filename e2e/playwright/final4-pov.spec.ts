@@ -102,7 +102,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     // AI POS has no player-facing plea cinematic. The next debug advance runs
     // the authoritative sole-vote decision and advances to Final 3.
     await advancePhase.click()
-    await expectTvFeedText(page, /has chosen to evict/i)
+    await expectTvFeedText(page, /has chosen to eliminate/i)
 
     // Game must have advanced to The Finale — check the phase pill which reliably
     // shows "THE FINALE" without the TVLog duplicate-suppression that hides the
@@ -165,8 +165,8 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await expect(confirmBtn).toBeVisible({ timeout: 3000 })
     await confirmBtn.click()
 
-    // TV feed must contain the "has chosen to evict" message and the Final 3 announcement
-    await expectTvFeedText(page, /has chosen to evict/i)
+    // TV feed must contain the final decision message and the Final 3 announcement.
+    await expectTvFeedText(page, /has chosen to eliminate/i)
     // Game must have advanced to The Finale — check the phase pill (reliable; not subject to TVLog suppression)
     await expect(page.locator('.status-pill--phase')).toContainText(/the finale/i, {
       timeout: 10000,
