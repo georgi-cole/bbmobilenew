@@ -45,8 +45,7 @@ describe('weather remote data validation', () => {
     expect(config?.phenomena.rainbowChanceAfterWet).toBe(1)
     expect(config?.conditions.sunny?.transitions.sunny).toBe(30)
     expect(
-      (config?.conditions.sunny?.transitions as Record<string, number | undefined>)
-        .made_up_weather
+      (config?.conditions.sunny?.transitions as Record<string, number | undefined>).made_up_weather
     ).toBeUndefined()
   })
 

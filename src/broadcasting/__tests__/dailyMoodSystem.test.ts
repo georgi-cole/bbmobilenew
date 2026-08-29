@@ -44,9 +44,15 @@ describe('daily mood system', () => {
       seen.add(getDailyAtmosphere(gameId, 1, 'week_start') ?? '')
     }
     expect(
-      ['mostly_sunny', 'partly_cloudy', 'overcast', 'drizzle', 'light_showers', 'sun_showers', 'clearing'].some(
-        (atmosphere) => seen.has(atmosphere)
-      )
+      [
+        'mostly_sunny',
+        'partly_cloudy',
+        'overcast',
+        'drizzle',
+        'light_showers',
+        'sun_showers',
+        'clearing',
+      ].some((atmosphere) => seen.has(atmosphere))
     ).toBe(true)
   })
 

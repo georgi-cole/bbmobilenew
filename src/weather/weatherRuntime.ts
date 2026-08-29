@@ -141,11 +141,16 @@ function sanitiseCondition(raw: unknown): WeatherConditionConfig | null {
     return null
 
   const transitions: Partial<Record<WeatherConditionId, number>> = {}
-  if (source.transitions && typeof source.transitions === 'object' && !Array.isArray(source.transitions)) {
+  if (
+    source.transitions &&
+    typeof source.transitions === 'object' &&
+    !Array.isArray(source.transitions)
+  ) {
     for (const [id, rawWeight] of Object.entries(source.transitions)) {
       if (!CONDITION_SET.has(id as WeatherConditionId)) continue
       const weight = finiteNumber(rawWeight)
-      if (weight != null && weight > 0) transitions[id as WeatherConditionId] = clamp(weight, 0, 1000)
+      if (weight != null && weight > 0)
+        transitions[id as WeatherConditionId] = clamp(weight, 0, 1000)
     }
   }
 
@@ -165,7 +170,13 @@ export function sanitiseWeatherConfig(raw: unknown): WeatherConfigDocument | nul
   const temperature = source.temperature as Record<string, unknown> | undefined
   const phenomena = source.phenomena as Record<string, unknown> | undefined
   const conditionsRaw = source.conditions
-  if (!temperature || !phenomena || !conditionsRaw || typeof conditionsRaw !== 'object' || Array.isArray(conditionsRaw)) {
+  if (
+    !temperature ||
+    !phenomena ||
+    !conditionsRaw ||
+    typeof conditionsRaw !== 'object' ||
+    Array.isArray(conditionsRaw)
+  ) {
     return null
   }
 
@@ -215,7 +226,8 @@ export function sanitiseWeatherBank(raw: unknown): WeatherBankDocument | null {
   const source = raw as Record<string, unknown>
   const startRaw = source.dayStartTitles
   const endRaw = source.dayEndTitles
-  if (!startRaw || typeof startRaw !== 'object' || !endRaw || typeof endRaw !== 'object') return null
+  if (!startRaw || typeof startRaw !== 'object' || !endRaw || typeof endRaw !== 'object')
+    return null
 
   const dayStartTitles: Partial<Record<WeatherConditionId, string[]>> = {}
   for (const id of CONDITION_IDS) {
@@ -236,7 +248,9 @@ export function sanitiseWeatherBank(raw: unknown): WeatherBankDocument | null {
       const entry = rawEntry as Record<string, unknown>
       if (typeof entry.id !== 'string' || typeof entry.text !== 'string') continue
       const conditions = Array.isArray(entry.conditions)
-        ? entry.conditions.filter((id): id is WeatherConditionId => CONDITION_SET.has(id as WeatherConditionId))
+        ? entry.conditions.filter((id): id is WeatherConditionId =>
+            CONDITION_SET.has(id as WeatherConditionId)
+          )
         : undefined
       const phenomenon = entry.phenomenon === 'rainbow' ? 'rainbow' : undefined
       bulletins.push({

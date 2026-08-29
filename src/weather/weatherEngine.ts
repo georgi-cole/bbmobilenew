@@ -20,11 +20,7 @@ export interface WeatherDayState {
   bulletinId?: string
 }
 
-export type WeatherPresentationAtmosphere =
-  | WeatherConditionId
-  | 'sunset'
-  | 'starry'
-  | 'rainbow'
+export type WeatherPresentationAtmosphere = WeatherConditionId | 'sunset' | 'starry' | 'rainbow'
 
 interface WeatherHistoryDocument {
   schemaVersion: 2
@@ -79,17 +75,40 @@ const FALLBACK_CONFIG: WeatherConfigDocument = {
       family: 'clear',
       initialWeight: 15,
       tempBiasC: 1,
-      transitions: { sunny: 20, mostly_sunny: 30, partly_cloudy: 28, cloudy: 10, sun_showers: 6, clearing: 6 },
+      transitions: {
+        sunny: 20,
+        mostly_sunny: 30,
+        partly_cloudy: 28,
+        cloudy: 10,
+        sun_showers: 6,
+        clearing: 6,
+      },
     },
     partly_cloudy: {
       family: 'cloud',
       initialWeight: 18,
-      transitions: { sunny: 10, mostly_sunny: 16, partly_cloudy: 30, cloudy: 22, light_showers: 10, sun_showers: 6, clearing: 6 },
+      transitions: {
+        sunny: 10,
+        mostly_sunny: 16,
+        partly_cloudy: 30,
+        cloudy: 22,
+        light_showers: 10,
+        sun_showers: 6,
+        clearing: 6,
+      },
     },
     cloudy: {
       family: 'cloud',
       initialWeight: 16,
-      transitions: { partly_cloudy: 15, cloudy: 34, overcast: 18, drizzle: 8, light_showers: 10, rainy: 8, clearing: 7 },
+      transitions: {
+        partly_cloudy: 15,
+        cloudy: 34,
+        overcast: 18,
+        drizzle: 8,
+        light_showers: 10,
+        rainy: 8,
+        clearing: 7,
+      },
     },
     overcast: {
       family: 'cloud',
@@ -113,38 +132,81 @@ const FALLBACK_CONFIG: WeatherConfigDocument = {
       family: 'wet',
       initialWeight: 4,
       tempBiasC: -1,
-      transitions: { drizzle: 26, overcast: 20, cloudy: 14, light_showers: 14, rainy: 14, clearing: 12 },
+      transitions: {
+        drizzle: 26,
+        overcast: 20,
+        cloudy: 14,
+        light_showers: 14,
+        rainy: 14,
+        clearing: 12,
+      },
     },
     light_showers: {
       family: 'wet',
       initialWeight: 4,
       tempBiasC: -1,
-      transitions: { light_showers: 24, partly_cloudy: 15, cloudy: 12, sun_showers: 15, rainy: 12, clearing: 22 },
+      transitions: {
+        light_showers: 24,
+        partly_cloudy: 15,
+        cloudy: 12,
+        sun_showers: 15,
+        rainy: 12,
+        clearing: 22,
+      },
     },
     sun_showers: {
       family: 'wet',
       initialWeight: 2,
       tempBiasC: 1,
-      transitions: { sun_showers: 20, partly_cloudy: 22, mostly_sunny: 15, light_showers: 16, clearing: 22, sunny: 5 },
+      transitions: {
+        sun_showers: 20,
+        partly_cloudy: 22,
+        mostly_sunny: 15,
+        light_showers: 16,
+        clearing: 22,
+        sunny: 5,
+      },
     },
     rainy: {
       family: 'wet',
       initialWeight: 6,
       tempBiasC: -2,
-      transitions: { rainy: 32, overcast: 16, drizzle: 10, light_showers: 14, heavy_rain: 8, stormy: 5, clearing: 15 },
+      transitions: {
+        rainy: 32,
+        overcast: 16,
+        drizzle: 10,
+        light_showers: 14,
+        heavy_rain: 8,
+        stormy: 5,
+        clearing: 15,
+      },
     },
     heavy_rain: {
       family: 'wet',
       initialWeight: 2,
       tempBiasC: -3,
-      transitions: { heavy_rain: 24, rainy: 34, stormy: 14, overcast: 10, light_showers: 8, clearing: 10 },
+      transitions: {
+        heavy_rain: 24,
+        rainy: 34,
+        stormy: 14,
+        overcast: 10,
+        light_showers: 8,
+        clearing: 10,
+      },
     },
     stormy: {
       family: 'storm',
       initialWeight: 1,
       tempBiasC: -3,
       minTempC: 7,
-      transitions: { stormy: 18, heavy_rain: 28, rainy: 22, overcast: 10, light_showers: 8, clearing: 14 },
+      transitions: {
+        stormy: 18,
+        heavy_rain: 28,
+        rainy: 22,
+        overcast: 10,
+        light_showers: 8,
+        clearing: 14,
+      },
     },
     snow_showers: {
       family: 'snow',
@@ -164,7 +226,15 @@ const FALLBACK_CONFIG: WeatherConfigDocument = {
       family: 'transition',
       initialWeight: 4,
       tempBiasC: 1,
-      transitions: { clearing: 20, sunny: 20, mostly_sunny: 20, partly_cloudy: 20, cloudy: 8, sun_showers: 7, light_showers: 5 },
+      transitions: {
+        clearing: 20,
+        sunny: 20,
+        mostly_sunny: 20,
+        partly_cloudy: 20,
+        cloudy: 8,
+        sun_showers: 7,
+        light_showers: 5,
+      },
     },
   },
 }
@@ -246,9 +316,9 @@ function clamp(value: number, min: number, max: number): number {
 function readHistory(gameId: string): WeatherHistoryDocument {
   if (typeof window === 'undefined') return { schemaVersion: 2, gameId, days: {} }
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(`${HISTORY_PREFIX}${gameId}`) ?? 'null') as
-      | WeatherHistoryDocument
-      | null
+    const parsed = JSON.parse(
+      window.localStorage.getItem(`${HISTORY_PREFIX}${gameId}`) ?? 'null'
+    ) as WeatherHistoryDocument | null
     if (parsed?.schemaVersion === 2 && parsed.gameId === gameId && parsed.days) return parsed
   } catch {
     // Corrupt or unavailable storage simply regenerates deterministic weather.
@@ -296,7 +366,8 @@ function weightedCondition(
 function initialCondition(config: WeatherConfigDocument, gameId: string): WeatherConditionId {
   const weights: Partial<Record<WeatherConditionId, number>> = {}
   for (const [id, condition] of Object.entries(config.conditions)) {
-    if (condition && condition.initialWeight > 0) weights[id as WeatherConditionId] = condition.initialWeight
+    if (condition && condition.initialWeight > 0)
+      weights[id as WeatherConditionId] = condition.initialWeight
   }
   return weightedCondition(weights, config, `${gameId}:weather:day:1:condition`)
 }
@@ -330,7 +401,8 @@ function generateDay(
 
   let temperatureC: number
   if (!previous) {
-    const jitter = (seededUnit(`${gameId}:weather:day:${day}:temperature`) * 2 - 1) *
+    const jitter =
+      (seededUnit(`${gameId}:weather:day:${day}:temperature`) * 2 - 1) *
       config.temperature.initialJitterC
     temperatureC = config.temperature.baseC + jitter + (conditionConfig?.tempBiasC ?? 0)
   } else {
@@ -349,10 +421,7 @@ function generateDay(
   let phenomenon: WeatherPhenomenon | undefined
   const previousWasWet = previous ? WET_FOR_RAINBOW.has(previous.condition) : false
   const currentHasSunAndMoisture = condition === 'sun_showers'
-  if (
-    (previousWasWet && SUN_CAN_BREAK_THROUGH.has(condition)) ||
-    currentHasSunAndMoisture
-  ) {
+  if ((previousWasWet && SUN_CAN_BREAK_THROUGH.has(condition)) || currentHasSunAndMoisture) {
     const baseChance = config.phenomena.rainbowChanceAfterWet
     const chance = currentHasSunAndMoisture ? Math.min(0.65, baseChance * 1.25) : baseChance
     if (seededUnit(`${gameId}:weather:day:${day}:rainbow`) < chance) phenomenon = 'rainbow'
@@ -381,7 +450,8 @@ export function resolveWeatherDay(gameId: string | undefined, day: number): Weat
   if (existing) return existing
 
   const runtime = getWeatherRuntime()
-  const config = runtime?.config?.enabled === false ? FALLBACK_CONFIG : (runtime?.config ?? FALLBACK_CONFIG)
+  const config =
+    runtime?.config?.enabled === false ? FALLBACK_CONFIG : (runtime?.config ?? FALLBACK_CONFIG)
   let previous: WeatherDayState | null = null
   for (let cursor = 1; cursor <= safeDay; cursor += 1) {
     const key = String(cursor)
@@ -441,11 +511,13 @@ export function getDayEndAtmosphere(
 }
 
 function cleanCardTemplate(template: string, day: number): string {
-  return template
-    .replaceAll('{day}', String(day))
-    // Temperature belongs to the later daily bulletin, not the opening card.
-    .replace(/\s*\n?\s*\{temp\}/g, '')
-    .trim()
+  return (
+    template
+      .replaceAll('{day}', String(day))
+      // Temperature belongs to the later daily bulletin, not the opening card.
+      .replace(/\s*\n?\s*\{temp\}/g, '')
+      .trim()
+  )
 }
 
 export function getWeatherTransitionTitle(input: {
@@ -464,7 +536,9 @@ export function getWeatherTransitionTitle(input: {
       ? bank?.dayStartTitles[input.atmosphere as WeatherConditionId]
       : bank?.dayEndTitles[input.atmosphere]
   if (templates?.length) {
-    const index = Math.floor(seededUnit(`${input.seedKey}:${bank?.revision}:title`) * templates.length)
+    const index = Math.floor(
+      seededUnit(`${input.seedKey}:${bank?.revision}:title`) * templates.length
+    )
     return cleanCardTemplate(templates[index], input.day)
   }
 
@@ -513,7 +587,11 @@ function livingAiPlayers(players: Player[]): Player[] {
   )
 }
 
-function displayNames(players: Player[], gameId: string, day: number): { player: string; players: string } {
+function displayNames(
+  players: Player[],
+  gameId: string,
+  day: number
+): { player: string; players: string } {
   const pool = livingAiPlayers(players)
   if (pool.length === 0) return { player: 'someone', players: 'a couple of players' }
   const firstIndex = Math.floor(seededUnit(`${gameId}:weather:day:${day}:person:1`) * pool.length)
@@ -532,7 +610,9 @@ function eligibleBulletins(bank: WeatherBankDocument, day: WeatherDayState) {
   const phenomenonSpecific = day.phenomenon
     ? bank.bulletins.filter((template) => template.phenomenon === day.phenomenon)
     : []
-  const source = phenomenonSpecific.length ? phenomenonSpecific : bank.bulletins.filter((template) => !template.phenomenon)
+  const source = phenomenonSpecific.length
+    ? phenomenonSpecific
+    : bank.bulletins.filter((template) => !template.phenomenon)
   return source.filter((template) => {
     if (template.conditions?.length && !template.conditions.includes(day.condition)) return false
     if (template.minTempC != null && day.temperatureC < template.minTempC) return false
@@ -579,9 +659,9 @@ export function buildWeatherBulletin(input: {
   const names = displayNames(input.players, gameId, effectiveDay.day)
 
   if (!bank) {
-    return `${formatWeatherTemperature(effectiveDay.temperatureC)} outside. ${CONDITION_LABELS[
-      effectiveDay.condition
-    ]} conditions are holding around the hub.`
+    return `${formatWeatherTemperature(effectiveDay.temperatureC)} outside. ${
+      CONDITION_LABELS[effectiveDay.condition]
+    } conditions are holding around the hub.`
   }
 
   const history = readHistory(gameId)
@@ -594,9 +674,9 @@ export function buildWeatherBulletin(input: {
   const bulletinId = current.bulletinId ?? chooseBulletinId(gameId, effectiveDay, bank, recentIds)
   const template = bank.bulletins.find((entry) => entry.id === bulletinId)
   if (!template) {
-    return `${formatWeatherTemperature(effectiveDay.temperatureC)} outside. ${CONDITION_LABELS[
-      effectiveDay.condition
-    ]} conditions are holding around the hub.`
+    return `${formatWeatherTemperature(effectiveDay.temperatureC)} outside. ${
+      CONDITION_LABELS[effectiveDay.condition]
+    } conditions are holding around the hub.`
   }
 
   if (!current.bulletinId) {
