@@ -1,0 +1,476 @@
+/* Weather v2 extends the existing faux-TV weather primitives rather than
+   introducing a second visual system. Higher specificity intentionally keeps
+   these treatments above the generic refined-game-chrome background. */
+
+body .tv-zone__viewport.tv-zone__viewport--day-start-mostly_sunny,
+body .tv-zone__viewport.tv-zone__viewport--day-start-partly_cloudy,
+body .tv-zone__viewport.tv-zone__viewport--day-start-overcast,
+body .tv-zone__viewport.tv-zone__viewport--day-start-foggy,
+body .tv-zone__viewport.tv-zone__viewport--day-start-drizzle,
+body .tv-zone__viewport.tv-zone__viewport--day-start-light_showers,
+body .tv-zone__viewport.tv-zone__viewport--day-start-sun_showers,
+body .tv-zone__viewport.tv-zone__viewport--day-start-heavy_rain,
+body .tv-zone__viewport.tv-zone__viewport--day-start-snow_showers,
+body .tv-zone__viewport.tv-zone__viewport--day-start-clearing,
+body .tv-zone__viewport.tv-zone__viewport--day-start-rainbow,
+body .tv-zone__viewport.tv-zone__viewport--day-end-partly_cloudy,
+body .tv-zone__viewport.tv-zone__viewport--day-end-cloudy,
+body .tv-zone__viewport.tv-zone__viewport--day-end-overcast,
+body .tv-zone__viewport.tv-zone__viewport--day-end-foggy,
+body .tv-zone__viewport.tv-zone__viewport--day-end-rainbow {
+  --daily-tv-surface:
+    radial-gradient(116% 104% at 50% 46%, transparent 51%, rgba(7, 4, 19, 0.16) 100%),
+    linear-gradient(
+      180deg,
+      rgba(25, 13, 42, 0.045) 0%,
+      rgba(7, 8, 18, 0.012) 36%,
+      rgba(1, 5, 12, 0.22) 100%
+    ),
+    var(--daily-tv-background);
+  background: var(--daily-tv-surface) !important;
+  background-origin: border-box;
+  background-clip: border-box;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+body .tv-zone__viewport--day-start-mostly_sunny {
+  --daily-tv-background:
+    radial-gradient(ellipse at 77% 17%, rgba(255, 225, 164, 0.28), transparent 36%),
+    radial-gradient(ellipse at 22% 24%, rgba(157, 197, 222, 0.18), transparent 46%),
+    radial-gradient(ellipse at 49% 100%, rgba(68, 42, 89, 0.18), transparent 52%),
+    linear-gradient(180deg, #405f73 0%, #2c4a5c 52%, #1a3045 100%);
+}
+
+body .tv-zone__viewport--day-start-partly_cloudy {
+  --daily-tv-background:
+    radial-gradient(ellipse at 73% 18%, rgba(244, 218, 164, 0.2), transparent 37%),
+    radial-gradient(ellipse at 19% 25%, rgba(193, 211, 222, 0.2), transparent 45%),
+    radial-gradient(ellipse at 51% 100%, rgba(67, 40, 85, 0.17), transparent 54%),
+    linear-gradient(180deg, #465f70 0%, #344d5d 52%, #203548 100%);
+}
+
+body .tv-zone__viewport--day-start-overcast {
+  --daily-tv-background:
+    radial-gradient(ellipse at 30% 18%, rgba(214, 221, 226, 0.17), transparent 44%),
+    radial-gradient(ellipse at 78% 40%, rgba(119, 146, 163, 0.13), transparent 47%),
+    radial-gradient(ellipse at 50% 100%, rgba(60, 38, 75, 0.14), transparent 55%),
+    linear-gradient(180deg, #3f505b 0%, #303f49 54%, #1e2f3c 100%);
+}
+
+body .tv-zone__viewport--day-start-foggy {
+  --daily-tv-background:
+    radial-gradient(ellipse at 28% 54%, rgba(226, 236, 235, 0.25), transparent 46%),
+    radial-gradient(ellipse at 78% 38%, rgba(187, 207, 208, 0.2), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(69, 48, 82, 0.13), transparent 55%),
+    linear-gradient(180deg, #617276 0%, #4a6065 53%, #314851 100%);
+}
+
+body .tv-zone__viewport--day-start-drizzle {
+  --daily-tv-background:
+    radial-gradient(ellipse at 22% 16%, rgba(173, 196, 207, 0.2), transparent 43%),
+    radial-gradient(ellipse at 80% 42%, rgba(99, 131, 150, 0.15), transparent 48%),
+    radial-gradient(ellipse at 48% 100%, rgba(61, 38, 80, 0.17), transparent 55%),
+    linear-gradient(180deg, #405563 0%, #304650 54%, #1d3440 100%);
+}
+
+body .tv-zone__viewport--day-start-light_showers {
+  --daily-tv-background:
+    radial-gradient(ellipse at 76% 17%, rgba(225, 211, 166, 0.14), transparent 38%),
+    radial-gradient(ellipse at 19% 23%, rgba(151, 181, 199, 0.18), transparent 45%),
+    radial-gradient(ellipse at 50% 100%, rgba(61, 38, 81, 0.18), transparent 54%),
+    linear-gradient(180deg, #3c5667 0%, #2b4352 52%, #19313f 100%);
+}
+
+body .tv-zone__viewport--day-start-sun_showers {
+  --daily-tv-background:
+    radial-gradient(ellipse at 77% 17%, rgba(255, 224, 155, 0.27), transparent 35%),
+    radial-gradient(ellipse at 20% 27%, rgba(146, 186, 210, 0.2), transparent 47%),
+    radial-gradient(ellipse at 48% 100%, rgba(69, 43, 90, 0.18), transparent 53%),
+    linear-gradient(180deg, #45677a 0%, #315266 51%, #1c374c 100%);
+}
+
+body .tv-zone__viewport--day-start-heavy_rain {
+  --daily-tv-background:
+    radial-gradient(ellipse at 18% 12%, rgba(105, 139, 160, 0.18), transparent 42%),
+    radial-gradient(ellipse at 84% 40%, rgba(54, 83, 106, 0.14), transparent 48%),
+    radial-gradient(ellipse at 48% 100%, rgba(53, 31, 73, 0.2), transparent 54%),
+    linear-gradient(180deg, #263d4d 0%, #1b303e 53%, #0e222e 100%);
+}
+
+body .tv-zone__viewport--day-start-snow_showers {
+  --daily-tv-background:
+    radial-gradient(ellipse at 77% 18%, rgba(220, 236, 248, 0.2), transparent 38%),
+    radial-gradient(ellipse at 20% 25%, rgba(170, 201, 222, 0.18), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(66, 47, 88, 0.15), transparent 53%),
+    linear-gradient(180deg, #526b7d 0%, #3d586b 52%, #294256 100%);
+}
+
+body .tv-zone__viewport--day-start-clearing {
+  --daily-tv-background:
+    radial-gradient(ellipse at 78% 18%, rgba(255, 226, 163, 0.25), transparent 36%),
+    radial-gradient(ellipse at 18% 27%, rgba(143, 181, 203, 0.2), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(65, 41, 86, 0.17), transparent 54%),
+    linear-gradient(180deg, #446275 0%, #304c5e 52%, #1c3448 100%);
+}
+
+body .tv-zone__viewport--day-start-rainbow {
+  --daily-tv-background:
+    radial-gradient(ellipse at 78% 18%, rgba(255, 227, 166, 0.24), transparent 36%),
+    radial-gradient(ellipse at 20% 27%, rgba(151, 192, 216, 0.2), transparent 47%),
+    radial-gradient(ellipse at 50% 100%, rgba(68, 43, 88, 0.16), transparent 54%),
+    linear-gradient(180deg, #486b7e 0%, #345468 52%, #20394e 100%);
+}
+
+body .tv-zone__viewport--day-end-partly_cloudy {
+  --daily-tv-background:
+    radial-gradient(ellipse at 76% 66%, rgba(239, 157, 105, 0.19), transparent 38%),
+    radial-gradient(ellipse at 18% 17%, rgba(119, 111, 157, 0.2), transparent 44%),
+    radial-gradient(ellipse at 50% 100%, rgba(53, 30, 70, 0.18), transparent 55%),
+    linear-gradient(180deg, #414658 0%, #343747 52%, #25283a 100%);
+}
+
+body .tv-zone__viewport--day-end-cloudy {
+  --daily-tv-background:
+    radial-gradient(ellipse at 76% 67%, rgba(190, 132, 105, 0.12), transparent 40%),
+    radial-gradient(ellipse at 19% 16%, rgba(108, 115, 147, 0.2), transparent 45%),
+    radial-gradient(ellipse at 50% 100%, rgba(51, 30, 69, 0.18), transparent 55%),
+    linear-gradient(180deg, #39404e 0%, #2e3442 52%, #222838 100%);
+}
+
+body .tv-zone__viewport--day-end-overcast {
+  --daily-tv-background:
+    radial-gradient(ellipse at 76% 68%, rgba(165, 118, 102, 0.1), transparent 40%),
+    radial-gradient(ellipse at 18% 14%, rgba(92, 105, 132, 0.18), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(48, 29, 65, 0.18), transparent 55%),
+    linear-gradient(180deg, #343a46 0%, #2b303c 53%, #202633 100%);
+}
+
+body .tv-zone__viewport--day-end-foggy {
+  --daily-tv-background:
+    radial-gradient(ellipse at 26% 58%, rgba(191, 203, 204, 0.2), transparent 46%),
+    radial-gradient(ellipse at 75% 38%, rgba(139, 160, 164, 0.16), transparent 46%),
+    radial-gradient(ellipse at 50% 100%, rgba(52, 35, 67, 0.15), transparent 55%),
+    linear-gradient(180deg, #505b60 0%, #414b51 52%, #303943 100%);
+}
+
+body .tv-zone__viewport--day-end-rainbow {
+  --daily-tv-background:
+    radial-gradient(ellipse at 76% 66%, rgba(245, 167, 111, 0.2), transparent 38%),
+    radial-gradient(ellipse at 18% 17%, rgba(115, 117, 164, 0.18), transparent 45%),
+    radial-gradient(ellipse at 50% 100%, rgba(53, 31, 70, 0.16), transparent 55%),
+    linear-gradient(180deg, #42485a 0%, #34394b 52%, #242c3e 100%);
+}
+
+body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-orb,
+body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-orb,
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-orb,
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-orb,
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-orb {
+  color: rgba(255, 222, 132, 0.7);
+  background: radial-gradient(
+    circle at 38% 34%,
+    rgba(255, 246, 211, 0.92),
+    rgba(235, 196, 117, 0.7) 60%,
+    rgba(201, 138, 68, 0) 100%
+  );
+  box-shadow:
+    0 0 24px rgba(247, 202, 107, 0.23),
+    0 0 68px rgba(247, 202, 107, 0.12);
+}
+
+body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-orb {
+  opacity: 0.62;
+}
+body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-orb {
+  opacity: 0.46;
+}
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-orb {
+  opacity: 0.56;
+}
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-orb {
+  opacity: 0.55;
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-orb {
+  opacity: 0.62;
+}
+
+body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-cloud--one {
+  opacity: 0.34;
+}
+body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-cloud--two {
+  opacity: 0.2;
+}
+body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-cloud--three {
+  opacity: 0.12;
+}
+
+body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--one {
+  opacity: 0.66;
+}
+body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--two {
+  opacity: 0.48;
+}
+body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--three {
+  opacity: 0.32;
+}
+
+body .tv-zone__daily-atmosphere--overcast {
+  filter: saturate(0.78) brightness(0.9);
+}
+body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--one {
+  opacity: 0.96;
+}
+body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--two {
+  opacity: 0.86;
+}
+body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--three {
+  opacity: 0.72;
+}
+body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-fog {
+  opacity: 0.24;
+}
+
+body .tv-zone__daily-atmosphere--foggy {
+  filter: saturate(0.72) brightness(0.96);
+}
+body .tv-zone__daily-atmosphere--foggy .tv-zone__daily-fog {
+  inset: -24% -20%;
+  opacity: 1;
+  background:
+    radial-gradient(ellipse at 9% 69%, rgba(229, 237, 235, 0.34), transparent 33%),
+    radial-gradient(ellipse at 43% 57%, rgba(211, 224, 224, 0.3), transparent 38%),
+    radial-gradient(ellipse at 82% 67%, rgba(193, 213, 216, 0.3), transparent 36%),
+    linear-gradient(
+      180deg,
+      rgba(228, 237, 236, 0.08),
+      rgba(209, 223, 224, 0.19) 54%,
+      transparent 79%
+    );
+  filter: blur(17px);
+}
+body .tv-zone__daily-atmosphere--foggy .tv-zone__daily-cloud--one {
+  opacity: 0.16;
+  filter: blur(15px) brightness(1.08);
+}
+
+body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--one {
+  opacity: 0.72;
+}
+body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--two {
+  opacity: 0.55;
+}
+body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--three {
+  opacity: 0.38;
+}
+body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-rain {
+  opacity: 0.38;
+}
+body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-fog {
+  opacity: 0.42;
+}
+body .tv-zone__daily-atmosphere--drizzle {
+  filter: saturate(0.8) brightness(0.91);
+}
+
+body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--one {
+  opacity: 0.72;
+}
+body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--two {
+  opacity: 0.55;
+}
+body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--three {
+  opacity: 0.36;
+}
+body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-rain {
+  opacity: 0.5;
+}
+body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-fog {
+  opacity: 0.34;
+}
+
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--one {
+  opacity: 0.58;
+}
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--two {
+  opacity: 0.42;
+}
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--three {
+  opacity: 0.26;
+}
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-rain {
+  opacity: 0.4;
+}
+body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-fog {
+  opacity: 0.22;
+}
+body .tv-zone__daily-atmosphere--sun_showers {
+  filter: saturate(0.96) brightness(1.02);
+}
+
+body .tv-zone__daily-atmosphere--heavy_rain {
+  filter: saturate(0.64) brightness(0.72);
+}
+body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-cloud {
+  opacity: 1;
+  filter: blur(11px) brightness(0.57) saturate(0.68);
+}
+body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-fog {
+  opacity: 0.86;
+}
+body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-rain {
+  opacity: 1;
+}
+body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-rain::after {
+  opacity: 0.06;
+}
+
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--one {
+  opacity: 0.7;
+}
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--two {
+  opacity: 0.48;
+}
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--three {
+  opacity: 0.3;
+}
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-fog {
+  opacity: 0.32;
+}
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-rain {
+  opacity: 0.62;
+  background:
+    radial-gradient(circle at 8% 18%, rgba(255, 255, 255, 0.86) 0 1.3px, transparent 1.7px),
+    radial-gradient(circle at 23% 52%, rgba(219, 240, 255, 0.75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 41% 28%, rgba(255, 255, 255, 0.82) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle at 58% 74%, rgba(219, 240, 255, 0.7) 0 0.9px, transparent 1.4px),
+    radial-gradient(circle at 76% 38%, rgba(255, 255, 255, 0.82) 0 1.3px, transparent 1.7px),
+    radial-gradient(circle at 92% 66%, rgba(219, 240, 255, 0.72) 0 1px, transparent 1.5px);
+  filter: drop-shadow(0 0 3px rgba(226, 244, 255, 0.28));
+}
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-rain::before,
+body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-rain::after {
+  display: none;
+}
+
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--one {
+  opacity: 0.48;
+}
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--two {
+  opacity: 0.34;
+}
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--three {
+  opacity: 0.2;
+}
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-fog {
+  opacity: 0.18;
+}
+body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-rain {
+  opacity: 0.08;
+}
+
+/* Rainbow is now an optical modifier of wet/clearing weather, not a neon base
+   state. The restrained spectral arc sits behind the copy and residual cloud. */
+body .tv-zone__daily-atmosphere--rainbow {
+  filter: saturate(1.03) brightness(1.04);
+  background: transparent;
+}
+body .tv-zone__daily-atmosphere--rainbow::before {
+  content: '';
+  position: absolute;
+  inset: -2% 5% 5%;
+  z-index: 1;
+  opacity: 0.58;
+  background: radial-gradient(
+    ellipse at 50% 116%,
+    transparent 0 50%,
+    rgba(130, 117, 207, 0.2) 50.8% 51.5%,
+    rgba(93, 159, 219, 0.2) 52% 52.7%,
+    rgba(91, 185, 153, 0.19) 53.2% 53.9%,
+    rgba(226, 201, 96, 0.2) 54.4% 55.1%,
+    rgba(226, 143, 86, 0.2) 55.6% 56.3%,
+    rgba(207, 102, 111, 0.2) 56.8% 57.5%,
+    transparent 58.2%
+  );
+  filter: blur(1.6px);
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--one {
+  opacity: 0.42;
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--two {
+  opacity: 0.28;
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--three {
+  opacity: 0.16;
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-fog {
+  opacity: 0.2;
+}
+body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-rain {
+  opacity: 0.08;
+}
+
+/* Day-end cloud variants use the same cloud primitives but a calmer, duskier
+   treatment. The existing sunset/starry/rain/snow/storm cards remain untouched. */
+body .tv-zone__viewport--day-end-partly_cloudy .tv-zone__daily-orb,
+body .tv-zone__viewport--day-end-cloudy .tv-zone__daily-orb,
+body .tv-zone__viewport--day-end-overcast .tv-zone__daily-orb {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--one,
+  body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--one {
+    animation: daily-cloud-drift-one 15s ease-in-out infinite alternate;
+  }
+
+  body .tv-zone__daily-atmosphere--mostly_sunny .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--two,
+  body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--two {
+    animation: daily-cloud-drift-two 19s ease-in-out infinite alternate;
+  }
+
+  body .tv-zone__daily-atmosphere--partly_cloudy .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--overcast .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-cloud--three,
+  body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-cloud--three {
+    animation: daily-cloud-drift-three 23s ease-in-out infinite alternate;
+  }
+
+  body .tv-zone__daily-atmosphere--drizzle .tv-zone__daily-rain,
+  body .tv-zone__daily-atmosphere--light_showers .tv-zone__daily-rain,
+  body .tv-zone__daily-atmosphere--sun_showers .tv-zone__daily-rain,
+  body .tv-zone__daily-atmosphere--heavy_rain .tv-zone__daily-rain,
+  body .tv-zone__daily-atmosphere--clearing .tv-zone__daily-rain,
+  body .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-rain {
+    animation: daily-rain-fall 1.65s linear infinite;
+  }
+
+  body .tv-zone__daily-atmosphere--snow_showers .tv-zone__daily-rain {
+    animation: daily-snow-fall 4.4s linear infinite;
+  }
+
+  body .tv-zone__daily-atmosphere--foggy .tv-zone__daily-fog {
+    animation: daily-mist-drift 17s ease-in-out infinite alternate;
+  }
+}
