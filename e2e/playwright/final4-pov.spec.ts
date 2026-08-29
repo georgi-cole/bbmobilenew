@@ -98,11 +98,9 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await advancePhase.click()
     await expectTvFeedText(page, /asks nominees for their pleas/i)
 
-    // Complete the same plea cinematic callback used by players. For an AI POS
-    // holder this callback commits the sole vote and advances to Final 3.
-    const skipPleas = page.getByRole('button', { name: 'Skip to end', exact: true })
-    await expect(skipPleas).toBeVisible({ timeout: 3000 })
-    await skipPleas.click()
+    // AI POS has no player-facing plea cinematic. The next debug advance runs
+    // the authoritative sole-vote decision and advances to Final 3.
+    await advancePhase.click()
     await expectTvFeedText(page, /has chosen to evict/i)
 
     // Game must have advanced to The Finale — check the phase pill which reliably
