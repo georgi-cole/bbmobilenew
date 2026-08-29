@@ -1,10 +1,45 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getDailyAtmosphere, type DailyAtmosphere } from '../broadcasting/dailyMoodSystem'
+import useSound from '../hooks/useSound'
 import { useAppSelector } from '../store/hooks'
 import styles from './WeatherRosterReveal.module.css'
 
-type LegacyWeatherVisual = 'sunny' | 'cloudy' | 'misty' | 'rainy' | 'stormy' | 'snowy' | 'rainbow' | 'sunset' | 'starry'
+type LegacyWeatherVisual =
+  | 'sunny'
+  | 'cloudy'
+  | 'misty'
+  | 'rainy'
+  | 'stormy'
+  | 'snowy'
+  | 'rainbow'
+  | 'sunset'
+  | 'starry'
+
+const WEATHER_REVEAL_SOUNDS: Record<
+  DailyAtmosphere,
+  { key: string; volume: number; delayMs: number }
+> = {
+  sunny: { key: 'ui:confirm', volume: 0.2, delayMs: 0 },
+  mostly_sunny: { key: 'ui:confirm', volume: 0.18, delayMs: 0 },
+  partly_cloudy: { key: 'ui:navigate', volume: 0.15, delayMs: 0 },
+  cloudy: { key: 'ui:navigate', volume: 0.16, delayMs: 0 },
+  overcast: { key: 'ui:navigate', volume: 0.13, delayMs: 40 },
+  misty: { key: 'ui:navigate', volume: 0.12, delayMs: 80 },
+  foggy: { key: 'ui:navigate', volume: 0.11, delayMs: 100 },
+  drizzle: { key: 'ui:navigate', volume: 0.12, delayMs: 40 },
+  light_showers: { key: 'ui:navigate', volume: 0.14, delayMs: 0 },
+  sun_showers: { key: 'ui:confirm', volume: 0.15, delayMs: 0 },
+  rainy: { key: 'ui:navigate', volume: 0.14, delayMs: 0 },
+  heavy_rain: { key: 'ui:navigate', volume: 0.18, delayMs: 0 },
+  stormy: { key: 'minigame:cinematic_thunder', volume: 0.28, delayMs: 840 },
+  snow_showers: { key: 'ui:confirm', volume: 0.12, delayMs: 80 },
+  snowy: { key: 'ui:confirm', volume: 0.14, delayMs: 80 },
+  clearing: { key: 'ui:confirm', volume: 0.17, delayMs: 0 },
+  rainbow: { key: 'ui:confirm', volume: 0.18, delayMs: 0 },
+  sunset: { key: 'ui:confirm', volume: 0.16, delayMs: 0 },
+  starry: { key: 'ui:navigate', volume: 0.13, delayMs: 100 },
+}
 
 function visualFamily(atmosphere: DailyAtmosphere): LegacyWeatherVisual {
   switch (atmosphere) {
@@ -42,15 +77,16 @@ function visualFamily(atmosphere: DailyAtmosphere): LegacyWeatherVisual {
 }
 
 /**
- * Restores the roster-wide cinematic weather sweep that existed before the
- * Weather v2 presentation work. It portals into the live roster so the effect
- * uses the same positioning/clip area as the original HouseguestGrid version.
+ * Restores the roster-wide cinematic weather sweep and sound cue that existed
+ * before the Weather v2 presentation work. It portals into the live roster so
+ * the effect uses the same positioning/clip area as the original implementation.
  */
 export default function WeatherRosterReveal() {
   const gameId = useAppSelector((state) => state.game.gameId)
   const week = useAppSelector((state) => state.game.week)
   const phase = useAppSelector((state) => state.game.phase)
   const depressionShock = useAppSelector((state) => state.game.depressionShock)
+  const { play } = useSound()
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [reveal, setReveal] = useState<{ key: string; atmosphere: DailyAtmosphere } | null>(null)
   const lastRevealKeyRef = useRef<string | null>(null)
@@ -79,9 +115,18 @@ export default function WeatherRosterReveal() {
     if (lastRevealKeyRef.current === key) return undefined
     lastRevealKeyRef.current = key
     setReveal({ key, atmosphere })
-    const timer = window.setTimeout(() => setReveal(null), 4300)
-    return () => window.clearTimeout(timer)
-  }, [atmosphere, gameId, phase, week])
+
+    const sound = WEATHER_REVEAL_SOUNDS[atmosphere]
+    const soundTimer = window.setTimeout(
+      () => play(sound.key, { volume: sound.volume }),
+      sound.delayMs
+    )
+    const revealTimer = window.setTimeout(() => setReveal(null), 4300)
+    return () => {
+      window.clearTimeout(soundTimer)
+      window.clearTimeout(revealTimer)
+    }
+  }, [atmosphere, gameId, phase, play, week])
 
   if (!portalTarget || !reveal) return null
 
