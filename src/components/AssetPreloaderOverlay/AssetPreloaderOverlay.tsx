@@ -47,16 +47,34 @@ export default function AssetPreloaderOverlay({
       const avatarUrls = getAvatarUrls()
       const total = 1 + avatarUrls.length
       let loaded = 1
-      setProgress(total > 0 ? Math.round((loaded / total) * 100) : 100)
+      setProgress(total > 0 ? Math.round((loaded / total) * 95) : 95)
       setStatus('Preparing the houseguest portraits.')
 
-      await preloadImages(avatarUrls, (avatarLoaded) => {
+      const results = await preloadImages(avatarUrls, (avatarLoaded) => {
         loaded = 1 + avatarLoaded
-        setProgress(Math.round((loaded / total) * 100))
+        // Keep the final few percent reserved for decode/retry verification so
+        // a timed-out request is never visually presented as fully prepared.
+        setProgress(Math.min(95, Math.round((loaded / total) * 95)))
       })
+
+      if (cancelled) return
+
+      const retryUrls = results
+        .filter((result) => result.status !== 'loaded')
+        .map((result) => result.url)
+
+      if (retryUrls.length > 0) {
+        setStatus('Finishing slower portraits.')
+        const retryResults = await preloadImages(retryUrls, undefined, 12_000)
+        const unresolved = retryResults.filter((result) => result.status !== 'loaded')
+        if (unresolved.length > 0) {
+          console.warn('[asset-preloader] continuing with unresolved portraits', unresolved)
+        }
+      }
 
       if (cancelled || doneFiredRef.current) return
       doneFiredRef.current = true
+      setProgress(100)
       setStatus('Entering the house.')
       navigate(destination)
     }
