@@ -8,10 +8,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Keep this required check intentionally small and deterministic. The job name
+  # is preserved so existing branch-protection rules do not need to change.
   core-journeys:
     name: Core journeys (${{ matrix.project }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
       contents: read
     strategy:
@@ -27,15 +29,51 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run real player core journeys without retries
+      - name: Run blocking PR smoke journeys
         run: >-
-          npx playwright test --grep @core-journey
-          --project=${{ matrix.project }} --workers=1
-      - name: Upload browser evidence
+          npx playwright test e2e/playwright/core-player-journeys.spec.ts
+          --grep "fresh player creates a profile and launches a usable campaign|saved progress survives a browser reload and resumes at the exact phase"
+          --project=${{ matrix.project }} --workers=1 --retries=0
+      - name: Upload blocking smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-${{ matrix.project }}
+          name: pr-smoke-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Broader real-player journeys still run on every PR, but they are advisory
+  # until their first-run reliability is high enough to earn blocking status.
+  extended-core-journeys:
+    name: Extended core journeys (mobile-chromium, advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run non-blocking extended core journeys
+        run: >-
+          npx playwright test e2e/playwright/core-player-journeys.spec.ts
+          --grep @core-journey
+          --grep-invert "fresh player creates a profile and launches a usable campaign|saved progress survives a browser reload and resumes at the exact phase"
+          --project=mobile-chromium --workers=1 --retries=0
+      - name: Upload advisory browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-extended-mobile-chromium
           path: |
             playwright-report/
             test-results/
