@@ -76,19 +76,20 @@ import {
 } from '../../features/twists/depressionShock'
 
 const NOOP = () => {}
-const normalizeHubCopy = (value: string) => value
-  .replace(/\bhousemates\b/gi, 'players')
-  .replace(/\bhouseguests\b/gi, 'players')
-  .replace(/\bhousemate\b/gi, 'player')
-  .replace(/\bhouseguest\b/gi, 'player')
-  .replace(/\bBig Brother\b/gi, 'The Big Eye')
-  .replace(/\bPower of Veto\b/gi, 'Power of Safety')
-  .replace(/\bveto\b/gi, 'Safety')
-  .replace(/\bjury\b/gi, 'Tribunal')
-  .replace(/\bjurors\b/gi, 'Tribunal members')
-  .replace(/\bjuror\b/gi, 'Tribunal member')
-  .replace(/\btwist\b/gi, 'shock')
-  .replace(/\bhouse\b/gi, 'hub')
+const normalizeHubCopy = (value: string) =>
+  value
+    .replace(/\bhousemates\b/gi, 'players')
+    .replace(/\bhouseguests\b/gi, 'players')
+    .replace(/\bhousemate\b/gi, 'player')
+    .replace(/\bhouseguest\b/gi, 'player')
+    .replace(/\bBig Brother\b/gi, 'The Big Eye')
+    .replace(/\bPower of Veto\b/gi, 'Power of Safety')
+    .replace(/\bveto\b/gi, 'Safety')
+    .replace(/\bjury\b/gi, 'Tribunal')
+    .replace(/\bjurors\b/gi, 'Tribunal members')
+    .replace(/\bjuror\b/gi, 'Tribunal member')
+    .replace(/\btwist\b/gi, 'shock')
+    .replace(/\bhouse\b/gi, 'hub')
 const normalizeAnnouncementCopy = (announcement: Announcement | null): Announcement | null =>
   announcement
     ? {
@@ -180,19 +181,22 @@ const ANNOUNCEMENT_META: Record<
   },
   depression_shock_start: {
     title: 'Depression Shock',
-    subtitle: 'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
+    subtitle:
+      'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
     isLive: true,
     autoDismissMs: null,
   },
   depression_shock_day_2: {
     title: 'The colour drains away',
-    subtitle: 'The storm has deepened. Today the hub loses most of its colour. Every familiar room feels colder, flatter, and farther away.',
+    subtitle:
+      'The storm has deepened. Today the hub loses most of its colour. Every familiar room feels colder, flatter, and farther away.',
     isLive: true,
     autoDismissMs: null,
   },
   depression_shock_chocolates: {
     title: 'A small comfort',
-    subtitle: 'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
+    subtitle:
+      'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
     isLive: true,
     autoDismissMs: null,
   },
@@ -204,7 +208,8 @@ const ANNOUNCEMENT_META: Record<
   },
   depression_shock_end: {
     title: 'The sun returns',
-    subtitle: 'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
+    subtitle:
+      'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -265,15 +270,13 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_double_eviction: {
     title: 'Double Elimination!',
-    subtitle:
-      'At least three nominees face the public. The audience will eliminate two players.',
+    subtitle: 'At least three nominees face the public. The audience will eliminate two players.',
     isLive: true,
     autoDismissMs: null,
   },
   cupid_arrow: {
     title: "Cupid's Arrow",
-    subtitle:
-      'The hub is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
+    subtitle: 'The hub is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -713,8 +716,7 @@ export default function TvZone(props: TvZoneProps) {
     getDepressionShockVisualSnapshot,
     (): DepressionShockVisualPhase => 'inactive'
   )
-  const depressionShockRainyTv =
-    depressionShockPhase === 'day1' || depressionShockPhase === 'day2'
+  const depressionShockRainyTv = depressionShockPhase === 'day1' || depressionShockPhase === 'day2'
   const depressionShockSunnyTv = depressionShockPhase === 'sunbreak'
 
   // Filter entries for the TV viewport (excludes DR-only events).
@@ -937,7 +939,12 @@ export default function TvZone(props: TvZoneProps) {
     latestEvent
   const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
   const dailyAtmosphere = dailyTransitionPhase
-    ? getDailyAtmosphere(gameState.gameId, gameState.week, dailyTransitionPhase, gameState.depressionShock)
+    ? getDailyAtmosphere(
+        gameState.gameId,
+        gameState.week,
+        dailyTransitionPhase,
+        gameState.depressionShock
+      )
     : null
   const presentedDailyAtmosphere =
     depressionShockSunnyTv && (!dailyTransitionPhase || dailyTransitionPhase === 'week_start')
@@ -1203,7 +1210,9 @@ export default function TvZone(props: TvZoneProps) {
     : undefined
   const viewportDisplayText =
     viewportMessageOverride ??
-    (cupidFollowUpVisible ? cupidFollowUpAnnouncement.subtitle : dailyTransitionTitle ?? displayedEventText)
+    (cupidFollowUpVisible
+      ? cupidFollowUpAnnouncement.subtitle
+      : (dailyTransitionTitle ?? displayedEventText))
   const baseViewportMessageKey = getViewportMessageKey(displayedEvent)
   const viewportMessageKey = viewportMessageOverride
     ? `override-${viewportMessageOverride}`
@@ -1447,7 +1456,13 @@ export default function TvZone(props: TvZoneProps) {
     ) {
       dispatch(revealCupidArrowVisuals())
     }
-  }, [activeAnnouncement?.key, dispatch, gameState.cupidArrow?.status, gameState.cupidArrow?.visualsRevealed, shockIntroActive])
+  }, [
+    activeAnnouncement?.key,
+    dispatch,
+    gameState.cupidArrow?.status,
+    gameState.cupidArrow?.visualsRevealed,
+    shockIntroActive,
+  ])
 
   const handleShockIntroComplete = useCallback(() => {
     startTransition(() => {
@@ -1606,7 +1621,13 @@ export default function TvZone(props: TvZoneProps) {
       document.body.classList.remove('body--shock-active')
       document.body.classList.remove('body--cupid-shock')
     }
-  }, [cupidFauxTvAnnouncement, cupidShockKey, shockIntroActive, shockInfoSpotlightActive, detoxMessageActive])
+  }, [
+    cupidFauxTvAnnouncement,
+    cupidShockKey,
+    shockIntroActive,
+    shockInfoSpotlightActive,
+    detoxMessageActive,
+  ])
 
   useEffect(() => {
     if (!shockIntroActive) return
@@ -1826,8 +1847,16 @@ export default function TvZone(props: TvZoneProps) {
         <ul ref={headerPillsRef} className="tv-zone__head-pills" aria-label="Game status chips">
           <li>
             <GameTopChip
-              label={gameState.mode === 'survival' ? formatSurveyevalCycleLabel(gameState.week) : formatCycleLabel(gameState.season, gameState.week)}
-              ariaLabel={gameState.mode === 'survival' ? `Day ${gameState.week}` : formatCycleAriaLabel(gameState.season, gameState.week)}
+              label={
+                gameState.mode === 'survival'
+                  ? formatSurveyevalCycleLabel(gameState.week)
+                  : formatCycleLabel(gameState.season, gameState.week)
+              }
+              ariaLabel={
+                gameState.mode === 'survival'
+                  ? `Day ${gameState.week}`
+                  : formatCycleAriaLabel(gameState.season, gameState.week)
+              }
               tone="neutral"
               className="tv-zone__head-chip"
             />
@@ -1903,12 +1932,8 @@ export default function TvZone(props: TvZoneProps) {
               dailyTransitionPhase && presentedDailyAtmosphere
                 ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${presentedDailyAtmosphere}`
                 : '',
-              depressionShockRainyTv
-                ? 'tv-zone__viewport--day-start-rainy'
-                : '',
-              depressionShockSunnyTv
-                ? 'tv-zone__viewport--day-start-sunny'
-                : '',
+              depressionShockRainyTv ? 'tv-zone__viewport--day-start-rainy' : '',
+              depressionShockSunnyTv ? 'tv-zone__viewport--day-start-sunny' : '',
               voteResultsRevealActive ? 'tv-zone__viewport--vote-results' : '',
               props.voteResultsReveal?.resultMode === 'public'
                 ? 'tv-zone__viewport--public-results'
@@ -1921,10 +1946,18 @@ export default function TvZone(props: TvZoneProps) {
             aria-live="polite"
             aria-atomic="true"
           >
-            {((dailyTransitionPhase && presentedDailyAtmosphere) || depressionShockRainyTv || depressionShockSunnyTv) && (
+            {((dailyTransitionPhase && presentedDailyAtmosphere) ||
+              depressionShockRainyTv ||
+              depressionShockSunnyTv) && (
               <div
                 className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${depressionShockRainyTv ? 'rainy' : depressionShockSunnyTv ? 'sunny' : presentedDailyAtmosphere}`}
-                data-moon-phase={!depressionShockRainyTv && !depressionShockSunnyTv && presentedDailyAtmosphere === 'starry' ? dailyMoonPhase : undefined}
+                data-moon-phase={
+                  !depressionShockRainyTv &&
+                  !depressionShockSunnyTv &&
+                  presentedDailyAtmosphere === 'starry'
+                    ? dailyMoonPhase
+                    : undefined
+                }
                 aria-hidden="true"
               >
                 <span className="tv-zone__daily-fog" />
@@ -1942,9 +1975,9 @@ export default function TvZone(props: TvZoneProps) {
                   ? 'tv-zone__daily-card tv-zone__daily-card--rainy'
                   : depressionShockSunnyTv
                     ? 'tv-zone__daily-card tv-zone__daily-card--sunny'
-                  : dailyTransitionPhase && presentedDailyAtmosphere
-                    ? `tv-zone__daily-card tv-zone__daily-card--${presentedDailyAtmosphere}`
-                  : '',
+                    : dailyTransitionPhase && presentedDailyAtmosphere
+                      ? `tv-zone__daily-card tv-zone__daily-card--${presentedDailyAtmosphere}`
+                      : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -2006,9 +2039,7 @@ export default function TvZone(props: TvZoneProps) {
               <TvAnnouncementOverlay
                 key={activeAnnouncement.key}
                 announcement={
-                  cupidFollowUpVisible
-                    ? cupidFollowUpAnnouncement
-                    : displayedAnnouncement!
+                  cupidFollowUpVisible ? cupidFollowUpAnnouncement : displayedAnnouncement!
                 }
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
@@ -2019,7 +2050,7 @@ export default function TvZone(props: TvZoneProps) {
                 // The pair reveal belongs to the avatar storm. Keeping the
                 // follow-up copy short prevents the TV body from colliding
                 // with the roster below it.
-                cupidPairs={cupidFollowUpVisible ? [] : gameState.cupidArrow?.pairs ?? []}
+                cupidPairs={cupidFollowUpVisible ? [] : (gameState.cupidArrow?.pairs ?? [])}
                 cupidPlayers={gameState.players}
                 // ShockIntroOverlay already owns the only full-screen
                 // presentation for this sequence. The inline card is the

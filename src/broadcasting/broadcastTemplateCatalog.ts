@@ -133,8 +133,8 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'game',
     'minor',
     undefined,
-    undefined,
-    true
+    'Legacy log entry; SeasonStartOnboardingController owns the polished faux-TV welcome.',
+    false
   ),
   feed(
     'season.welcome-cupid',
@@ -143,11 +143,20 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'game',
     'minor',
     undefined,
-    "Cupid's Arrow seasons only",
-    true,
+    "Cupid's Arrow legacy log entry; the onboarding controller owns the faux-TV welcome.",
+    false,
     'cupid'
   ),
-  feed('season.public-mode-rule', 'season_start', '[Rules] Public mode: {status}'),
+  feed(
+    'season.public-mode-rule',
+    'season_start',
+    '[Rules] Public mode: {status}',
+    'game',
+    'minor',
+    undefined,
+    'Service configuration · log only',
+    false
+  ),
   feed(
     'season.vox-populi-intro',
     'season_start',
@@ -177,8 +186,8 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'game',
     'minor',
     undefined,
-    'Surveyeval opening',
-    true,
+    'Surveyeval service configuration · log only',
+    false,
     'survival'
   ),
   feed(
@@ -1129,8 +1138,7 @@ export function getBroadcastTemplateForMajor(
 ): BroadcastTemplate | undefined {
   const matches = BROADCAST_TEMPLATE_CATALOG.filter((template) => template.major === major)
   return (
-    (phase == null ? undefined : matches.find((template) => template.phase === phase)) ??
-    matches[0]
+    (phase == null ? undefined : matches.find((template) => template.phase === phase)) ?? matches[0]
   )
 }
 

@@ -352,16 +352,14 @@ export function useEvictionFlow({
           : defaultAnnouncement
       setPostVoteAnnouncement({
         key:
-          game.voteResultsMode === 'public' &&
-          game.voxPopuli?.publicVoteContext === 'final3'
+          game.voteResultsMode === 'public' && game.voxPopuli?.publicVoteContext === 'final3'
             ? 'vox_final_three_verdict'
             : 'eviction_vote_result',
         title: voteAnnouncement.title,
         subtitle: voteAnnouncement.subtitle,
         isLive: true,
         autoDismissMs:
-          game.voteResultsMode === 'public' &&
-          game.voxPopuli?.publicVoteContext === 'final3'
+          game.voteResultsMode === 'public' && game.voxPopuli?.publicVoteContext === 'final3'
             ? null
             : POST_VOTE_ANNOUNCEMENT_MS,
       })

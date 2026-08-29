@@ -2,11 +2,8 @@
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 72px)
-    max(16px, env(safe-area-inset-right, 0px))
-    calc(env(safe-area-inset-bottom, 0px) + 24px)
-    max(16px, env(safe-area-inset-left, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + 72px) max(16px, env(safe-area-inset-right, 0px))
+    calc(env(safe-area-inset-bottom, 0px) + 24px) max(16px, env(safe-area-inset-left, 0px));
   -webkit-overflow-scrolling: touch;
 }
 
@@ -285,14 +282,14 @@
 .number-trivia__player-cell {
   display: flex;
   align-items: center;
-  gap: .42rem;
+  gap: 0.42rem;
   min-width: 0;
 }
 
 .number-trivia__rank {
   flex: 0 0 auto;
-  color: rgba(255,255,255,.48);
-  font-size: .72em;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.72em;
   font-weight: 800;
 }
 
@@ -319,24 +316,44 @@
   box-shadow: none;
 }
 
-.number-trivia--scoreboard .number-trivia__footer-text { display: none; }
+.number-trivia--scoreboard .number-trivia__footer-text {
+  display: none;
+}
 .number-trivia--scoreboard .number-trivia__footer .number-trivia__button {
   width: 100%;
   border-radius: 999px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.42), 0 0 22px rgba(74,222,128,.14);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.42),
+    0 0 22px rgba(74, 222, 128, 0.14);
 }
 
-.number-trivia__footer-text--optional:empty { display: none; }
+.number-trivia__footer-text--optional:empty {
+  display: none;
+}
 
 @media (max-width: 420px) {
   .number-trivia__header--scoreboard .number-trivia__subtitle,
-  .number-trivia__question-card--compact { display: none; }
-  .number-trivia__scoreboard { gap: 10px; }
+  .number-trivia__question-card--compact {
+    display: none;
+  }
+  .number-trivia__scoreboard {
+    gap: 10px;
+  }
   .number-trivia__table th,
-  .number-trivia__table td { padding: 9px 5px; font-size: .76rem; }
-  .number-trivia__table th { font-size: .61rem; }
-  .number-trivia__footer { position: sticky; bottom: 8px; }
-  .number-trivia__footer .number-trivia__button { width: 100%; }
+  .number-trivia__table td {
+    padding: 9px 5px;
+    font-size: 0.76rem;
+  }
+  .number-trivia__table th {
+    font-size: 0.61rem;
+  }
+  .number-trivia__footer {
+    position: sticky;
+    bottom: 8px;
+  }
+  .number-trivia__footer .number-trivia__button {
+    width: 100%;
+  }
 }
 
 .number-trivia__footer-text {
