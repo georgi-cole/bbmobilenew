@@ -1,6 +1,7 @@
 import type { BroadcastOverride, Phase, Player } from '../types'
 import type { RelationshipsMap } from '../social/types'
 import { getBroadcastTemplate } from './broadcastTemplateCatalog'
+import { getDepressionShockLifecycleForGame } from '../features/twists/depressionShockLifecycle'
 import {
   getDayEndAtmosphere,
   getDayStartAtmosphere,
@@ -24,14 +25,19 @@ export function getDailyAtmosphere(
   gameId: string | undefined,
   week: number,
   phase: Phase,
-  depression?: { activeDay?: number; recoveryWeek?: number | null }
+  legacyDepression?: { activeDay?: number; recoveryWeek?: number | null }
 ): DailyAtmosphere | null {
   if (phase !== 'week_start' && phase !== 'week_end') return null
   latestTitleSeed = `${gameId ?? 'preview-game'}:${week}:${phase}`
 
-  // Depression Shock remains an authored narrative override above ordinary weather.
-  if (depression?.activeDay && depression.activeDay > 0) return 'stormy'
-  if (depression?.recoveryWeek === week) return 'rainbow'
+  // The persisted Depression Shock lifecycle is authoritative. The optional
+  // legacy shape remains only as a test/old-save fallback while Redux consumers
+  // are migrated to the canonical state.
+  const lifecycle = gameId ? getDepressionShockLifecycleForGame(gameId, week) : 'inactive'
+  if (lifecycle === 'day1' || lifecycle === 'day2') return 'stormy'
+  if (lifecycle === 'recovery') return 'rainbow'
+  if (legacyDepression?.activeDay && legacyDepression.activeDay > 0) return 'stormy'
+  if (legacyDepression?.recoveryWeek === week) return 'rainbow'
 
   const weatherDay = resolveWeatherDay(gameId, week)
   return phase === 'week_start'

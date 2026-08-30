@@ -13,6 +13,10 @@ import {
   setDepressionShockVisualPhase,
   type DepressionShockState,
 } from '../../features/twists/depressionShock'
+import {
+  buildLegacyDepressionShockMirror,
+  legacyDepressionShockMirrorEquals,
+} from '../../features/twists/depressionShockLifecycle'
 import DepressionShockRosterCinematic, {
   type DepressionShockCinematicKind,
 } from './DepressionShockRosterCinematic'
@@ -84,6 +88,15 @@ export default function DepressionShockController() {
       dispatch({ type: 'game/hydrateGame', payload: { ...game, twistActivatedThisWeek: true } })
     }
   }, [dispatch, enableTwists, game])
+
+  // The persisted controller is the sole lifecycle authority. Keep the former
+  // Redux shape as a one-way compatibility mirror so legacy social actions see
+  // Day 1 and Day 2 identically, including when QA activates either stage.
+  useEffect(() => {
+    const mirror = buildLegacyDepressionShockMirror(runtime, game.week)
+    if (legacyDepressionShockMirrorEquals(game.depressionShock, mirror)) return
+    dispatch({ type: 'game/hydrateGame', payload: { ...game, depressionShock: mirror } })
+  }, [dispatch, game, runtime])
 
   const presentation = useMemo(
     () => getDepressionShockPresentation(runtime, game.week, game.phase),

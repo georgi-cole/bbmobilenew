@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAppSelector } from '../store/hooks'
+import { getDepressionShockWeatherCondition } from './depressionShockWeather'
 import { getWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherBulletinOverlay.css'
@@ -24,6 +25,9 @@ const CONDITION_LABELS: Record<WeatherConditionId, string> = {
   clearing: 'Clearing',
 }
 
+const DEPRESSION_SHOCK_QUEUED_WEATHER_COPY =
+  'Rain keeps pressing against the hub while the mood inside stays heavy ahead of the live elimination.'
+
 function isWeatherCondition(value: unknown): value is WeatherConditionId {
   return typeof value === 'string' && value in CONDITION_LABELS
 }
@@ -32,7 +36,7 @@ function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: nu
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`} className="weather-tv-card__snowflake">
       <path d="M0-9V9M-7.8-4.5 7.8 4.5M7.8-4.5-7.8 4.5" />
-      <path d="M0-9l-2.7 3M0-9l2.7 3M0 9l-2.7-3M0 9l2.7-3M-7.8-4.5l4 .3M-7.8-4.5l1.7 3.6M7.8 4.5l-4-.3M7.8 4.5l-1.7-3.6M7.8-4.5l-4 .3M7.8-4.5l-1.7 3.6M-7.8 4.5l4-.3M-7.8 4.5l1.7-3.6" />
+      <path d="M0-9l-2.7 3M0-9l2.7 3M0 9l-2.7-3M0 9l2.7-3M-7.8-4.5l4 .3M-7.8-4.5l1.7 3.6M7.8 4.5l-4-.3M7.8 4.5l-1.7-3.6M7.8-4.5l-4 .3M7.8-4.5l1.7 3.6M-7.8 4.5l4-.3M-7.8 4.5l1.7-3.6" />
     </g>
   )
 }
@@ -209,6 +213,8 @@ function stripInjectedPrefix(text: string): string {
 }
 
 export default function WeatherBulletinOverlay() {
+  const gameId = useAppSelector((state) => state.game.gameId)
+  const week = useAppSelector((state) => state.game.week)
   const weatherEvent = useAppSelector((state) => {
     const queuedId = state.game.broadcastQueue?.[0]
     if (!queuedId) return null
@@ -217,11 +223,12 @@ export default function WeatherBulletinOverlay() {
   })
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
 
+  const shockCondition = getDepressionShockWeatherCondition(gameId, week)
   const rawCondition = weatherEvent?.meta?.weatherCondition
-  const condition = isWeatherCondition(rawCondition) ? rawCondition : null
+  const condition = shockCondition ?? (isWeatherCondition(rawCondition) ? rawCondition : null)
   const rawTemperature = weatherEvent?.meta?.weatherTemperatureC
   const temperatureC = typeof rawTemperature === 'number' ? rawTemperature : null
-  const rainbow = weatherEvent?.meta?.weatherPhenomenon === 'rainbow'
+  const rainbow = !shockCondition && weatherEvent?.meta?.weatherPhenomenon === 'rainbow'
 
   useLayoutEffect(() => {
     if (!weatherEvent) {
@@ -243,9 +250,11 @@ export default function WeatherBulletinOverlay() {
     return {
       temperature: splitTemperature(formatSystemWeatherTemperature(temperatureC, configuredUnit)),
       conditionLabel: CONDITION_LABELS[condition],
-      narrative: stripInjectedPrefix(weatherEvent.text),
+      narrative: shockCondition
+        ? DEPRESSION_SHOCK_QUEUED_WEATHER_COPY
+        : stripInjectedPrefix(weatherEvent.text),
     }
-  }, [condition, temperatureC, weatherEvent])
+  }, [condition, shockCondition, temperatureC, weatherEvent])
 
   if (!weatherEvent || !condition || !presentation || !portalTarget) return null
 

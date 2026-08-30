@@ -11,6 +11,8 @@ export const DEPRESSION_SHOCK_RANDOM_FIGHT_CHANCE = 0.32
 export const DEPRESSION_SHOCK_SURPRISE_DECISION_CHANCE = 0.35
 
 const STORAGE_PREFIX = 'bbmobilenew:depressionShock:'
+const FAUX_TV_NO_SUFFIX_CHANCE = 0.25
+const FAUX_TV_RECENT_SUFFIX_WINDOW = 3
 
 export type DepressionShockStatus = 'unrolled' | 'failed' | 'queued' | 'active' | 'completed'
 export type DepressionShockVisualPhase = 'inactive' | 'day1' | 'day2' | 'sunbreak'
@@ -57,6 +59,8 @@ const visualSubscribers = new Set<Subscriber>()
 let portraitMode: DepressionShockPortraitMode = 'normal'
 const portraitSubscribers = new Set<Subscriber>()
 const memoryState = new Map<string, DepressionShockState>()
+const fauxTvSuffixByMessageKey = new Map<string, string | null>()
+const fauxTvRecentSuffixes: Record<'day1' | 'day2', string[]> = { day1: [], day2: [] }
 
 function storageKey(gameId: string): string {
   return `${STORAGE_PREFIX}${gameId}`
@@ -181,7 +185,14 @@ export function setDepressionShockStageForDebug(
   })
 }
 
+function clearFauxTvDecorationRuntime(): void {
+  fauxTvSuffixByMessageKey.clear()
+  fauxTvRecentSuffixes.day1 = []
+  fauxTvRecentSuffixes.day2 = []
+}
+
 export function clearDepressionShockRuntimeForTests(gameId?: string): void {
+  clearFauxTvDecorationRuntime()
   if (gameId) {
     memoryState.delete(gameId)
     if (typeof window !== 'undefined') window.localStorage.removeItem(storageKey(gameId))
@@ -350,7 +361,7 @@ export function evaluateDepressionShockAtDayStart(
     }
   }
 
-  // A passed Day-5 roll waits for the first subsequent compatible free day.
+  // A passed roll waits for the first subsequent compatible free day.
   if (current.status === 'queued') {
     if (!context.eligibleMode) {
       return {
@@ -425,6 +436,8 @@ const DAY_ONE_MELANCHOLY = [
   'The hub feels unusually quiet; even ordinary conversations trail into silence.',
   'Outside, the clouds hang low. Inside, every decision feels a little heavier.',
   'The storm lingers over the hub, softening voices and sharpening doubts.',
+  'A low rumble rolls beyond the walls, and the room answers with another long pause.',
+  'Rainwater threads down the windows while the hub seems to shrink into itself.',
 ]
 
 const DAY_TWO_MELANCHOLY = [
@@ -432,6 +445,8 @@ const DAY_TWO_MELANCHOLY = [
   'Another grey hour passes; even small victories feel distant today.',
   'The windows are streaked with rain, and the players carry the same muted weight.',
   'Nothing feels quite bright enough today—not the lights, not the laughter, not the game.',
+  'Even the usual bright corners look washed out beneath the endless storm.',
+  'The rain has become background noise, but the heaviness has not.',
 ]
 
 export function decorateDepressionShockFauxTvText(
@@ -440,8 +455,37 @@ export function decorateDepressionShockFauxTvText(
   messageKey: string
 ): string {
   if (phase !== 'day1' && phase !== 'day2') return text
+
+  const cacheKey = `${phase}:${messageKey}`
+  if (fauxTvSuffixByMessageKey.has(cacheKey)) {
+    const cachedSuffix = fauxTvSuffixByMessageKey.get(cacheKey)
+    return cachedSuffix ? `${text}\n\n${cachedSuffix}` : text
+  }
+
+  // Not every ordinary message needs a melancholic tag. Leaving some untouched
+  // makes the authored shock copy feel intentional instead of mechanically appended.
+  if (depressionShockUnitRoll(`${messageKey}|decorate`) < FAUX_TV_NO_SUFFIX_CHANCE) {
+    fauxTvSuffixByMessageKey.set(cacheKey, null)
+    return text
+  }
+
   const lines = phase === 'day1' ? DAY_ONE_MELANCHOLY : DAY_TWO_MELANCHOLY
-  const suffix = lines[Math.floor(depressionShockUnitRoll(messageKey) * lines.length)]
+  const recent = new Set(fauxTvRecentSuffixes[phase])
+  const startIndex = Math.floor(depressionShockUnitRoll(`${messageKey}|suffix`) * lines.length)
+  let suffix = lines[startIndex]
+  for (let offset = 0; offset < lines.length; offset += 1) {
+    const candidate = lines[(startIndex + offset) % lines.length]
+    if (!recent.has(candidate)) {
+      suffix = candidate
+      break
+    }
+  }
+
+  fauxTvSuffixByMessageKey.set(cacheKey, suffix)
+  fauxTvRecentSuffixes[phase].push(suffix)
+  if (fauxTvRecentSuffixes[phase].length > FAUX_TV_RECENT_SUFFIX_WINDOW) {
+    fauxTvRecentSuffixes[phase].shift()
+  }
   return `${text}\n\n${suffix}`
 }
 
