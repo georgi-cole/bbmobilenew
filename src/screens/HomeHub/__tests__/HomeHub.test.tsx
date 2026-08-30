@@ -19,6 +19,10 @@ const mockState: {
   };
   profiles: { activeProfileId: null; isGuest: boolean; profiles: never[] };
   remoteConfig: { config: RemoteConfig | null };
+  vip: {
+    isActive: boolean;
+    entitlements: { survivalMode: boolean };
+  };
 } = {
   game: {
     gameId: 'game-A',
@@ -32,6 +36,10 @@ const mockState: {
   },
   remoteConfig: {
     config: null,
+  },
+  vip: {
+    isActive: false,
+    entitlements: { survivalMode: false },
   },
 };
 
@@ -158,6 +166,8 @@ describe('HomeHub', () => {
       seasonArchives: [],
     };
     mockState.remoteConfig.config = null;
+    mockState.vip.isActive = false;
+    mockState.vip.entitlements.survivalMode = false;
     mockDispatch.mockReset();
     mockNavigate.mockReset();
     preloadImageMock.mockReset();
@@ -394,7 +404,8 @@ describe('HomeHub', () => {
     expect(screen.queryByRole('button', { name: 'Debug Menu: Off' })).toBeNull();
   });
 
-  it('opens Surveyeval directly while temporary store unlocks are enabled', async () => {
+  it('opens Surveyeval directly for an entitled player', async () => {
+    mockState.vip.entitlements.survivalMode = true;
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
