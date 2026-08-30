@@ -37,6 +37,11 @@ async function installUnhandledRejectionReporter(page: Page): Promise<void> {
       writable: false,
     })
 
+    // Most browser journeys are unrelated to optional geolocation. Persist the
+    // same declined choice a user can make so the global permission modal cannot
+    // obscure controls under test. PermissionPrompts itself is covered separately.
+    localStorage.setItem('bb:allowLocation', 'denied')
+
     // Browser E2E validates UI state, not media decoding. Keeping play() inert
     // prevents codec/autoplay differences from producing false console failures,
     // especially in WebKit, while audio behavior remains covered by unit tests.
