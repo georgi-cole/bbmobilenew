@@ -1009,7 +1009,7 @@ export default function SeasonRecapCinematic({
       transition={{ duration: reducedMotion ? 0 : EXIT_FADE_MS / 1000 }}
     >
       <div className="src-explore__ambient" aria-hidden="true" />
-      <button className="src-explore__exit" type="button" onClick={finish} aria-label="Skip season recap">
+      <button className="src-explore__exit" type="button" onClick={finish} aria-label="Exit season recap">
         Skip <span aria-hidden="true">×</span>
       </button>
       <div className="src-explore__music" aria-label="Season recap music is playing">♫</div>
