@@ -315,6 +315,20 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
 
 // ── JurorAvatar helper ────────────────────────────────────────────────────────
 /**
+ * Returns true only for an actual HTTPS request to DiceBear's API host.
+ * Parsing the URL and comparing the hostname avoids accepting lookalike hosts
+ * such as `api.dicebear.com.attacker.example`.
+ */
+function isDicebearAvatarUrl(candidate: string): boolean {
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'https:' && url.hostname === 'api.dicebear.com'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Renders a juror's circular portrait.
  *
  * Priority:
@@ -331,9 +345,7 @@ function JurorAvatar({ player }: { player: Player }) {
   // Build the candidate list, excluding external Dicebear SVGs so the
   // cinematic never shows pixel-art dice avatars — only genuine photos or
   // clean styled initials/emoji circles.
-  const candidates = resolveAvatarCandidates(player).filter(
-    (c) => !c.startsWith('https://api.dicebear.com')
-  )
+  const candidates = resolveAvatarCandidates(player).filter((candidate) => !isDicebearAvatarUrl(candidate))
 
   const src = candidates[candidateIdx] ?? ''
   const fallback = isEmoji(player.avatar ?? '')
