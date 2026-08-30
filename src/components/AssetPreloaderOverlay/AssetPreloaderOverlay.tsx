@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getAll } from '../../data/houseguests'
 import { resolveAvatar } from '../../utils/avatar'
+import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
 import { preloadImage, preloadImages } from '../../utils/preload'
 import KolequantSplash from '../KolequantSplash/KolequantSplash'
 import GAMEPLAY_BG from '../../assets/bb-gameplay-bg.svg'
@@ -15,8 +16,10 @@ const GAMEPLAY_MESSAGES = [
   'Rolling cameras for the next scene.',
 ] as const
 
-function getAvatarUrls(): string[] {
-  return getAll().map((hg) => resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }))
+export function getAvatarUrls(): string[] {
+  return getAll().flatMap((hg) => resolvePresentationAvatarCandidates(
+    resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }),
+  ))
 }
 
 interface AssetPreloaderOverlayProps {

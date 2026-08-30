@@ -68,6 +68,13 @@ function ChatAvatar({ player }: { player: Player }) {
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [allFailed, setAllFailed] = useState(false);
 
+  // Emoji avatars (including the finale host microphone) are intentional
+  // artwork, not filenames. Render them directly so the resolver cannot try
+  // a speculative `Host_avatar.webp` and show a broken thumbnail first.
+  if (isEmoji(avatar)) {
+    return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
+  }
+
   // Try image candidates first (includes PNG paths and Dicebear fallback).
   // Only fall back to emoji / initial once all candidates are exhausted.
   if (!allFailed) {
@@ -90,9 +97,6 @@ function ChatAvatar({ player }: { player: Player }) {
     }
   }
 
-  if (isEmoji(avatar)) {
-    return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
-  }
   return (
     <span className="chat-overlay__avatar-initial">
       {player.name ? player.name[0].toUpperCase() : '?'}
