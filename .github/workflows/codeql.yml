@@ -68,6 +68,7 @@ jobs:
           -target App
           -configuration Debug
           -sdk iphonesimulator
+          ARCH=arm64
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
 
