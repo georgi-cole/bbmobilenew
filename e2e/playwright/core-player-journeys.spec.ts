@@ -840,20 +840,23 @@ test.describe('Real player core journeys', () => {
 
     await expect
       .poll(() =>
-        page.evaluate(({ runsKey, slotKey }) => {
-          const metadataRaw = localStorage.getItem(runsKey)
-          const slotRaw = localStorage.getItem(slotKey)
-          if (!metadataRaw || !slotRaw) return null
-          const metadata = JSON.parse(metadataRaw) as { version?: number }
-          const classic = JSON.parse(slotRaw) as {
-            game?: { phase?: string; runId?: string; gameId?: string }
-          }
-          return {
-            phase: classic.game?.phase ?? null,
-            runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
-            version: metadata.version ?? null,
-          }
-        }, { runsKey: fixture.runsKey, slotKey: fixture.slotKey })
+        page.evaluate(
+          ({ runsKey, slotKey }) => {
+            const metadataRaw = localStorage.getItem(runsKey)
+            const slotRaw = localStorage.getItem(slotKey)
+            if (!metadataRaw || !slotRaw) return null
+            const metadata = JSON.parse(metadataRaw) as { version?: number }
+            const classic = JSON.parse(slotRaw) as {
+              game?: { phase?: string; runId?: string; gameId?: string }
+            }
+            return {
+              phase: classic.game?.phase ?? null,
+              runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
+              version: metadata.version ?? null,
+            }
+          },
+          { runsKey: fixture.runsKey, slotKey: fixture.slotKey }
+        )
       )
       .toEqual({ phase: 'loh_comp', runIdentity: fixture.runIdentity, version: 2 })
 
