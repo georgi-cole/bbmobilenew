@@ -1,0 +1,74 @@
+name: Minigame Certification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: minigame-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changed:
+    name: Detect minigame changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Check the pull request diff
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          if grep -Eq '^(src/minigames/|tests/.*(minigame|bullseyeBlitz|cardClash|codeBreaker|colorMatch|crystalPath|laneRacers)|e2e/playwright/minigame|scripts/run-visual-audit|playwright.config.ts|package.json|package-lock.json)' <<< "$changed_files"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  audit:
+    name: UI, logic, visual, and AI audit
+    needs: changed
+    if: needs.changed.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run minigame certification
+        env:
+          VISUAL_AUDIT_PROJECTS: desktop-chromium,mobile-chromium,narrow-chromium
+        run: npm run audit:minigames
+      - name: Upload minigame evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minigame-audit-evidence
+          path: |
+            docs/visual-audit/
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14

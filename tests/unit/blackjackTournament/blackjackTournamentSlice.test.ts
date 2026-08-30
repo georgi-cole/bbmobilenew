@@ -22,6 +22,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import reducer, {
   initBlackjackTournament,
   startFinalStage,
+  skipFinalsToResults,
   resolveSpinner,
   selectPair,
   hitCurrentPlayer,
@@ -877,6 +878,38 @@ describe('Full 2-player tournament', () => {
     expect([...s.remainingPlayerIds, ...s.eliminatedPlayerIds].sort()).toEqual(
       s.allPlayerIds.slice().sort(),
     );
+  });
+});
+
+describe('skipFinalsToResults', () => {
+  it('can fast-forward directly from the league standings screen', () => {
+    const store = makeStore();
+    store.dispatch(initBlackjackTournament({
+      participantIds: ['ai-one', 'ai-two', 'ai-three'],
+      competitionType: 'LOH',
+      seed: 4242,
+      humanPlayerId: null,
+    }));
+    expect(getState(store).phase).toBe('league_results');
+
+    store.dispatch(skipFinalsToResults());
+
+    expect(getState(store).phase).toBe('complete');
+    expect(getState(store).winnerId).toBeTruthy();
+  });
+
+  it('plays the remaining AI finals to a complete, valid result', () => {
+    const store = makeStore();
+    initStore(store, ['human', 'ai-one', 'ai-two', 'ai-three'], 4242);
+    const before = getState(store);
+    expect(before.phase).toBe('spin');
+
+    store.dispatch(skipFinalsToResults());
+
+    const after = getState(store);
+    expect(after.phase).toBe('complete');
+    expect(after.remainingPlayerIds).toEqual([after.winnerId]);
+    expect(after.eliminatedPlayerIds).toEqual(expect.arrayContaining(after.finalistIds!.filter((id) => id !== after.winnerId)));
   });
 });
 

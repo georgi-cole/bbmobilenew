@@ -30,6 +30,46 @@
   gap: 8px;
 }
 
+.minigame-lab__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.minigame-lab__window-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.minigame-lab__window-actions button,
+.minigame-lab__restore {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.minigame-lab__window-actions button:hover,
+.minigame-lab__restore:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.minigame-lab--minimized .minigame-lab__restore {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9601;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #6b68ff, #8b5cf6);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
 .minigame-lab__eyebrow {
   margin: 0;
   font-size: 0.72rem;

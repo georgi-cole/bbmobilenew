@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { I18nProvider } from '../../src/i18n';
+import { store } from '../../src/store/store';
 
 vi.mock('../../src/services/sound/SoundManager', () => ({
   SoundManager: { play: vi.fn(), stop: vi.fn() },
@@ -70,6 +74,14 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 
 import MinigameHost from '../../src/components/MinigameHost/MinigameHost';
 
+function renderHost(ui: React.ReactElement) {
+  return render(
+    <Provider store={store}>
+      <I18nProvider>{ui}</I18nProvider>
+    </Provider>,
+  );
+}
+
 const GAME = {
   key: 'quickTap',
   title: 'Quick Tap Race',
@@ -113,7 +125,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
   });
 
   it('uses an explicit start action and removes the destructive X from the rules card', () => {
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
@@ -128,7 +140,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
 
   it('lets the player cancel an exit request without leaving the initial rules', () => {
     const onDone = vi.fn();
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
@@ -148,7 +160,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
 
   it('confirms a score-0 exit through the existing partial-results flow', () => {
     const onDone = vi.fn();
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
@@ -169,7 +181,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
   });
 
   it('reopens rules during the countdown and pauses the host countdown while open', async () => {
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
@@ -199,7 +211,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
 
   it('reopens and closes rules over active gameplay without completing the game', async () => {
     const onDone = vi.fn();
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
@@ -225,7 +237,7 @@ describe('MinigameHost utility dock and early-exit contract', () => {
 
   it('requires confirmation before leaving active gameplay', async () => {
     const onDone = vi.fn();
-    render(
+    renderHost(
       <MinigameHost
         game={GAME}
         participants={PARTICIPANTS}
