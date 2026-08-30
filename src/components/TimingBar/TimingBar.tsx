@@ -788,8 +788,10 @@ export default function TimingBar({
           </p>
         </header>
 
-        {/* Round + timer-decrease notice (shown in intro / playing / locked / results) */}
-        {gamePhase !== 'final_results' && (
+        {/* The intro is self-contained. Showing this banner there repeated the
+            round, player count, duration, and reduced-timer warning before
+            the player could begin. */}
+        {gamePhase !== 'final_results' && gamePhase !== 'intro' && (
           <div className="tbg__round-banner" aria-live="polite">
             <strong>
               Round {roundNumber} • {activeParticipants.length} players •{' '}
@@ -799,12 +801,6 @@ export default function TimingBar({
             </strong>
             <span>{roundDurationSeconds}s per round</span>
           </div>
-        )}
-
-        {timerDecreased && gamePhase === 'intro' && (
-          <p className="tbg__timer-notice" aria-live="assertive">
-            ⚠️ Timer reduced to {roundDurationSeconds}s — lock in before time runs out!
-          </p>
         )}
 
         {isSpectatorMode && gamePhase !== 'final_results' && (
@@ -823,7 +819,7 @@ export default function TimingBar({
 
             {timerDecreased && (
               <div className="tbg__intro-timer-reduced">
-                ⚡ Timer dropped from {prevRoundDurationSeconds}s — move faster!
+                ⚡ {prevRoundDurationSeconds}s → {roundDurationSeconds}s this round
               </div>
             )}
 

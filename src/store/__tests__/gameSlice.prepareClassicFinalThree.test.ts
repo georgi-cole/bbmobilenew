@@ -23,8 +23,9 @@ describe('prepareClassicFinalThreeTest', () => {
     expect(state.nomineeIds).toEqual([])
     expect(state.awaitingHumanVote).toBe(false)
     expect(state.voteResults).toBeNull()
-    expect(state.tvFeed).toHaveLength(1)
-    expect(state.tvFeed[0].meta?.major).toBe('final3_announcement')
+    // The phase card is created once by the broadcast manager. The reducer
+    // itself must not append a second, near-identical Final Three message.
+    expect(state.tvFeed).toHaveLength(0)
   })
 
   it('does nothing while Vox Populi is active', () => {

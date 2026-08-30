@@ -406,11 +406,16 @@ export function getDepressionShockPresentation(
 export function getDepressionShockVisualPhase(
   state: DepressionShockState,
   week: number,
-  _phase: string
+  phase: string
 ): DepressionShockVisualPhase {
-  if (state.status === 'completed' && state.completedDay === week) return 'sunbreak'
+  // The sunbreak belongs to the recovery handoff, not to every subsequent
+  // ceremony that happens to share that game day. Leaving it active made the
+  // normal Power of Safety screen inherit a weather backdrop.
+  if (state.status === 'completed' && state.completedDay === week)
+    return phase === 'week_start' ? 'sunbreak' : 'inactive'
   if (state.status !== 'active' || state.activatedDay == null) return 'inactive'
-  if (week === state.activatedDay + 2 && !state.endingSeen) return 'sunbreak'
+  if (week === state.activatedDay + 2 && !state.endingSeen)
+    return phase === 'week_start' ? 'sunbreak' : 'inactive'
   if (!isDepressionShockActiveOnDay(state, week)) return 'inactive'
   return week === state.activatedDay ? 'day1' : 'day2'
 }

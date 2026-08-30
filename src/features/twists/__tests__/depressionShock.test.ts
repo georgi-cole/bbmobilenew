@@ -167,7 +167,7 @@ describe('Depression Shock presentation and strategic distortion', () => {
       endingSeen: true,
       completedDay: 7,
     }
-    expect(getDepressionShockVisualPhase(recovered, 7, 'loh_comp_announcement')).toBe('sunbreak')
+    expect(getDepressionShockVisualPhase(recovered, 7, 'loh_comp_announcement')).toBe('inactive')
     expect(getDepressionShockVisualPhase(recovered, 8, 'week_start')).toBe('inactive')
   })
 

@@ -49,11 +49,28 @@ describe('HangmanChallengeComp', () => {
 
     expect(playfield).toBeTruthy()
     expect(playfield?.children[0]).toBe(board)
-    expect(playfield?.children[1]).toContainElement(screen.getByText('Mystery box'))
-    expect(playfield?.children[2]).toBe(letterBoard)
+    expect(playfield?.children[1]).toBe(letterBoard)
+    expect(screen.queryByLabelText(/mystery box available/i)).toBeNull()
     expect(screen.getByText('Timer').closest('.hangman-challenge__header')).toBeTruthy()
     const mobileKeyboard = screen.getByLabelText(/letter keyboard/i)
     expect(within(mobileKeyboard).getAllByRole('button')).toHaveLength(26)
+  })
+
+  it('offers a mystery box in a compact dialog and shows its effect in that same dialog', () => {
+    render(<HangmanChallengeComp participants={participants} seed={42} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /enter round/i }))
+    act(() => {
+      vi.advanceTimersByTime(9_000)
+    })
+
+    expect(screen.getByLabelText(/mystery box available/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no mystery box is live right now/i)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /open mystery box/i }))
+
+    expect(screen.getByLabelText(/mystery box effect applied/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'OK' })).toBeInTheDocument()
   })
 
   it('uses native text entry and records attempted letters', () => {

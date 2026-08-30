@@ -606,6 +606,13 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'vox_populi',
   'tribunal_phase',
   'depression_shock_start',
+  'depression_shock_day_2',
+  'depression_shock_end',
+  // These keys can be configured as fullscreen shocks by the broadcast
+  // manager. They must use the same stinger → Faux TV → spotlight sequence
+  // as Double Elimination, rather than falling through to a plain card.
+  'twist',
+  'custom_critical',
 ])
 
 type QueuedShockAnnouncement = {

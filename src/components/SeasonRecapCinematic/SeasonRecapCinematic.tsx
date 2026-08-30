@@ -186,9 +186,6 @@ function AutomaticIntroduction({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <button className="src-auto-intro__skip" type="button" onClick={onComplete}>
-        Skip to the archive
-      </button>
       <div className="src-auto-intro__progress" aria-label={`Opening segment ${slideIndex + 1} of ${AUTOMATIC_INTRO_SLIDES.length}`}>
         {AUTOMATIC_INTRO_SLIDES.map((item, index) => (
           <span key={`${item.chapter}-${item.title}`} data-active={index <= slideIndex ? 'true' : 'false'} />
@@ -1012,8 +1009,8 @@ export default function SeasonRecapCinematic({
       transition={{ duration: reducedMotion ? 0 : EXIT_FADE_MS / 1000 }}
     >
       <div className="src-explore__ambient" aria-hidden="true" />
-      <button className="src-explore__exit" type="button" onClick={finish} aria-label="Exit season recap">
-        Exit <span aria-hidden="true">×</span>
+      <button className="src-explore__exit" type="button" onClick={finish} aria-label="Skip season recap">
+        Skip <span aria-hidden="true">×</span>
       </button>
       <div className="src-explore__music" aria-label="Season recap music is playing">♫</div>
 

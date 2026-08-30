@@ -1,0 +1,153 @@
+.release-fixes-preview {
+  min-height: 100dvh;
+  padding: 32px clamp(18px, 5vw, 72px);
+  color: #f7f4ff;
+  background: radial-gradient(circle at top, #33235d, #090b16 55%);
+  font-family: Inter, system-ui, sans-serif;
+}
+.release-fixes-preview header {
+  max-width: 720px;
+  margin-bottom: 28px;
+}
+.release-fixes-preview header p {
+  margin: 0;
+  color: #e5bf65;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.release-fixes-preview h1 {
+  margin: 6px 0;
+  font-size: clamp(2rem, 6vw, 3.8rem);
+}
+.release-fixes-preview header span {
+  color: #bdb8ce;
+}
+.release-fixes-preview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+.release-fixes-preview__card {
+  min-height: 174px;
+  padding: 18px;
+  border: 1px solid rgba(190, 155, 255, 0.27);
+  border-radius: 18px;
+  background: rgba(18, 17, 39, 0.86);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+.release-fixes-preview__card b {
+  color: #f4c769;
+  letter-spacing: 0.12em;
+}
+.release-fixes-preview__card h2 {
+  margin: 9px 0 6px;
+  font-size: 1.05rem;
+}
+.release-fixes-preview__card p {
+  min-height: 44px;
+  margin: 0 0 14px;
+  color: #c4c0d3;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.release-fixes-preview__card button,
+.release-fixes-preview__full-link {
+  display: inline-block;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.release-fixes-preview__card button:hover,
+.release-fixes-preview__full-link:hover {
+  color: #f4c769;
+}
+.release-fixes-preview__card a {
+  display: block;
+  margin-top: 7px;
+  color: #bdb8ce;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.release-fixes-preview__card a:hover {
+  color: #f4c769;
+}
+.release-fixes-preview__emulators {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(190, 155, 255, 0.25);
+}
+.release-fixes-preview__emulators > h2 {
+  margin: 0 0 18px;
+  font-size: 1.25rem;
+}
+.release-fixes-preview__devices {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+.release-fixes-preview__device {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+}
+.release-fixes-preview__device > strong {
+  font-size: 0.8rem;
+  color: #d9d3e7;
+}
+.release-fixes-preview__phone {
+  position: relative;
+  width: var(--preview-width);
+  height: var(--preview-height);
+  padding: 10px;
+  overflow: hidden;
+  border: 2px solid #58545e;
+  border-radius: 44px;
+  background: #12121a;
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.52);
+}
+.release-fixes-preview__phone iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 34px;
+  background: #080914;
+}
+.release-fixes-preview__camera {
+  position: absolute;
+  z-index: 1;
+  top: 16px;
+  left: 50%;
+  width: 100px;
+  height: 24px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: #050509;
+  pointer-events: none;
+}
+.release-fixes-preview__phone--punch .release-fixes-preview__camera {
+  width: 15px;
+  height: 15px;
+  border: 2px solid #15151c;
+  border-radius: 50%;
+}
+.release-fixes-preview__full-link {
+  margin-top: 20px;
+}
+@media (max-width: 480px) {
+  .release-fixes-preview__phone {
+    width: min(var(--preview-width), calc(100vw - 46px));
+    height: auto;
+    aspect-ratio: var(--preview-width) / var(--preview-height);
+  }
+}

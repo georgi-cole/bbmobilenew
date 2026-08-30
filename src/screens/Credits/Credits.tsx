@@ -34,7 +34,7 @@ type CreditsProps = {
   onComplete?: () => void
 }
 
-export default function Credits({ onComplete }: CreditsProps) {
+export default function Credits({ autoPlay = true, onComplete }: CreditsProps) {
   const navigate = useNavigate()
   const exitTimeoutRef = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -110,8 +110,8 @@ export default function Credits({ onComplete }: CreditsProps) {
   }, [])
 
   useEffect(() => {
-    startVisualPlayback()
-  }, [startVisualPlayback])
+    if (autoPlay) startVisualPlayback()
+  }, [autoPlay, startVisualPlayback])
 
   useEffect(() => {
     if (!isPlaying || renderFailed) return
@@ -125,7 +125,6 @@ export default function Credits({ onComplete }: CreditsProps) {
       setCurrentFrame(
         Math.min(CINEMATIC_CONFIG.durationInFrames - 1, Math.round(elapsed * CINEMATIC_CONFIG.fps))
       )
-      syncCreditsSoundtrackToTime(elapsed, true)
       animationFrame = window.requestAnimationFrame(updateFromVideo)
     }
 
@@ -145,7 +144,6 @@ export default function Credits({ onComplete }: CreditsProps) {
       setCurrentFrame(
         Math.min(CINEMATIC_CONFIG.durationInFrames - 1, Math.round(elapsed * CINEMATIC_CONFIG.fps))
       )
-      syncCreditsSoundtrackToTime(elapsed, true)
       if (elapsed >= DURATION_SECONDS) {
         onExit(true)
         return
@@ -188,6 +186,12 @@ export default function Credits({ onComplete }: CreditsProps) {
     })
   }, [])
 
+  const handleVideoReady = useCallback(() => {
+    // Some embedded mobile browsers expose the first decoded frame before
+    // they emit canplay. Reveal it as soon as loadeddata arrives too.
+    setVideoReady(true)
+  }, [])
+
   const handleRenderFailure = useCallback(() => {
     console.warn('[Credits] Pre-rendered background unavailable. Using city-lights fallback.')
     videoRef.current?.pause()
@@ -214,12 +218,13 @@ export default function Credits({ onComplete }: CreditsProps) {
               data-testid="credits-background-video"
               src={CREDITS_VIDEO_SOURCES[0]}
               poster={CREDITS_POSTER_SOURCES[0]}
-              autoPlay
+              autoPlay={autoPlay}
               muted
               playsInline
               preload="auto"
               disablePictureInPicture
-              onCanPlay={() => setVideoReady(true)}
+              onLoadedData={handleVideoReady}
+              onCanPlay={handleVideoReady}
               onLoadedMetadata={startVisualPlayback}
               onPlay={handlePlay}
               onPlaying={() => setIsPlaying(true)}
@@ -229,6 +234,12 @@ export default function Credits({ onComplete }: CreditsProps) {
               }}
               onWaiting={() =>
                 syncCreditsSoundtrackToTime(videoRef.current?.currentTime ?? 0, false)
+              }
+              onSeeked={() =>
+                syncCreditsSoundtrackToTime(
+                  videoRef.current?.currentTime ?? 0,
+                  isCreditsSoundtrackPlaying()
+                )
               }
               onEnded={() => onExit(true)}
               onError={handleRenderFailure}
