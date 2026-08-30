@@ -35,9 +35,16 @@ npm run bootstrap
 ## Build
 
 ```bash
-npm run build      # output in dist/
+npm run build      # public/release build, output in dist/
 npm run preview    # preview the production build
 ```
+
+### Private test build and public release build
+
+- `npm run dev:admin` or `npm run build:admin`: private test build with debug tools and test store access.
+- `npm run build:release`: public build with debug disabled and paid features locked until purchased.
+
+Do not deploy the admin build to a public URL. The `main` deployment uses `npm run build`, which is the locked release build.
 
 ### Mobile builds
 
