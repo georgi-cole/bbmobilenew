@@ -48,7 +48,7 @@ export type Houseguest = {
    */
   statuses?: string | string[]
   /**
-   * Final placement rank: 1 (winner 🥇), 2 (runner-up 🥈), or 3 (3rd 🥉).
+   * Final placement rank: 1 (winner 🥇, 2 = runner-up 🥈, 3 = 3rd place 🥉).
    */
   finalRank?: 1 | 2 | 3 | null
   /**
@@ -430,7 +430,6 @@ export default function HouseguestGrid({
                   partnerName={cupidPartnerName}
                   cupidLoveRevealed={cupidRevealAnimating}
                   cupidLoveReturning={cupidReturnAnimating}
-                  depressionActive={(game.depressionShock?.activeDay ?? 0) > 0 && !hg.isEvicted}
                   depressionRecovery={
                     game.depressionShock?.recoveryWeek === game.week && !hg.isEvicted
                   }
