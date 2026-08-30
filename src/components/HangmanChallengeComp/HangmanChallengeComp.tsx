@@ -1235,7 +1235,6 @@ export default function HangmanChallengeComp({
               ))}
             </div>
           )}
-
         </>
       )}
 
@@ -1246,7 +1245,9 @@ export default function HangmanChallengeComp({
             role="dialog"
             aria-modal="true"
             aria-label={
-              mysteryBoxDialog.stage === 'offer' ? 'Mystery box available' : 'Mystery box effect applied'
+              mysteryBoxDialog.stage === 'offer'
+                ? 'Mystery box available'
+                : 'Mystery box effect applied'
             }
           >
             {mysteryBoxDialog.stage === 'offer' ? (
@@ -1255,7 +1256,11 @@ export default function HangmanChallengeComp({
                 <h3>A sealed case is available</h3>
                 <p>Open it for an immediate effect, or leave it and continue the round.</p>
                 <div className="hangman-challenge__mystery-actions">
-                  <button type="button" className="hangman-challenge__cta" onClick={rejectMysteryBox}>
+                  <button
+                    type="button"
+                    className="hangman-challenge__cta"
+                    onClick={rejectMysteryBox}
+                  >
                     Continue without it
                   </button>
                   <button

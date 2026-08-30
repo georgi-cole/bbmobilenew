@@ -35,11 +35,12 @@ if (files.length === 0) {
   process.exit(1)
 }
 
-const vitest = process.platform === 'win32' ? 'vitest.cmd' : 'vitest'
-const child = spawn(vitest, ['run', ...files], {
+// Invoke Vitest through Node instead of the Windows .cmd shim.  A large
+// minigame suite exceeds cmd.exe's command-length limit before Vitest starts.
+const vitestEntrypoint = path.join(root, 'node_modules', 'vitest', 'vitest.mjs')
+const child = spawn(process.execPath, [vitestEntrypoint, 'run', ...files], {
   cwd: root,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
 })
 child.on('close', (code) => {
   process.exitCode = code ?? 1

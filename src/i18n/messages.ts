@@ -10,14 +10,14 @@ export const EN_US_MESSAGES = {
   'seasonRecap.finale.detail.two': '{first} and {second} entered the final decision.',
   'seasonRecap.finale.detail.one': 'The season reached its final decision.',
   'fitMeIn.description': 'Clear lines, survive each cut, and win the final head-to-head.',
-  'fitMeIn.rules.freshBoard': 'Each round starts with a fresh board. Clear lines to score before time runs out.',
+  'fitMeIn.rules.freshBoard':
+    'Each round starts with a fresh board. Clear lines to score before time runs out.',
   'fitMeIn.rules.fivePlus':
     '5+ players: last place leaves after Rounds 1 and 2; Round 3 keeps the top 2.',
   'fitMeIn.rules.fourPlayers':
     '4 players: last place leaves after Round 1; Round 2 keeps the top 2.',
   'fitMeIn.rules.threePlayers': '3 players: a 90-second semifinal keeps the top 2.',
-  'fitMeIn.rules.mosaicFinal':
-    'Final: two players get a fresh board. The highest score wins.',
+  'fitMeIn.rules.mosaicFinal': 'Final: two players get a fresh board. The highest score wins.',
   'fitMeIn.rules.scoring':
     'Score comes from line clears and controlled drops. The highest final-round score wins.',
   'fitMeIn.round.semifinal': 'Semifinal',
