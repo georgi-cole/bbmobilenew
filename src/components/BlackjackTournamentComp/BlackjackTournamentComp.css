@@ -1022,6 +1022,19 @@
   transform: scale(0.97);
 }
 
+.bjt-btn--secondary {
+  margin-top: 0.7rem;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.bjt-btn--secondary:hover {
+  background: rgba(255, 215, 0, 0.14);
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.2);
+}
+
 /* ─── Confirm duel button ─────────────────────────────────────────────────── */
 
 .bjt-btn--confirm {

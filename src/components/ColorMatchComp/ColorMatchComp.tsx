@@ -482,6 +482,19 @@ export default function ColorMatchComp({
   });
   const { competitionOver, ctaLabel: feedbackCtaLabel } = feedbackState;
 
+  const skipToResults = useCallback(() => {
+    if (!competitionMode || humanStillActive || competitionOver) return;
+    let standings = competitionStandings;
+    for (let nextRound = roundIndex + 2; nextRound <= MAX_ROUNDS; nextRound += 1) {
+      const scores = Object.fromEntries(standings
+        .filter((standing) => standing.eliminatedRound === null)
+        .map((standing) => [standing.participantId, aiRoundScores[standing.participantId]?.[nextRound - 1] ?? DEFAULT_AI_FALLBACK_SCORE]));
+      standings = resolveColorMatchCompetitionRound(standings, nextRound, scores).standings;
+    }
+    setCompetitionStandings(standings);
+    setPhase('results');
+  }, [aiRoundScores, competitionMode, competitionOver, competitionStandings, humanStillActive, roundIndex]);
+
   const handleNext = useCallback(() => {
     playClick();
     if (competitionOver) {
@@ -822,6 +835,11 @@ export default function ColorMatchComp({
         {phase === 'feedback' && (
             <button className="cm__btn cm__btn--next" onClick={handleNext} type="button" autoFocus>
             {feedbackCtaLabel}
+          </button>
+        )}
+        {competitionMode && phase === 'feedback' && !humanStillActive && !competitionOver && (
+          <button className="cm__btn cm__btn--next cm__btn--secondary" onClick={skipToResults} type="button">
+            Skip to Results
           </button>
         )}
       </div>

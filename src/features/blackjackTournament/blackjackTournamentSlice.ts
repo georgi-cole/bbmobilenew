@@ -531,6 +531,115 @@ function finishLeague(state: BlackjackTournamentState): void {
   state.phase = 'league_results'
 }
 
+function beginFinalStage(state: BlackjackTournamentState): void {
+  state.stage = 'final'
+  state.remainingPlayerIds = [...(state.finalistIds ?? [])]
+  for (const id of state.remainingPlayerIds) state.playerScores[id] = STARTING_PLAYER_SCORE
+  state.isSpectating = Boolean(
+    state.humanPlayerId && !state.remainingPlayerIds.includes(state.humanPlayerId)
+  )
+  state.controllingPlayerId = null
+  state.fighterAId = null
+  state.fighterBId = null
+  state.currentDuel = null
+  state.duelWinnerId = null
+  state.duelLoserId = null
+  state.duelEliminatedId = null
+  state.rematchCount = 0
+  state.duelIndex = 0
+  if (state.remainingPlayerIds.length <= 1) {
+    state.winnerId = state.remainingPlayerIds[0] ?? null
+    state.phase = 'complete'
+  } else {
+    state.phase = 'spin'
+  }
+}
+
+/** Resolve the remaining all-AI finals using the same deals and AI rules as the visible game. */
+function simulateAiFinals(state: BlackjackTournamentState): void {
+  while (state.remainingPlayerIds.length > 1) {
+    const controllerIndex = Math.floor(
+      rngAt((state.seed ^ Math.imul(state.duelIndex + 1, 0x9e3779b9)) >>> 0, 0) *
+        state.remainingPlayerIds.length
+    )
+    const controller = state.remainingPlayerIds[controllerIndex] ?? state.remainingPlayerIds[0]
+    const pair = aiPickFighters(state.seed, state.duelIndex, controller, state.remainingPlayerIds)
+    if (!pair) break
+
+    let rematch = 0
+    let winnerId = pair.fighterAId
+    let loserId = pair.fighterBId
+    while (true) {
+      state.rematchCount = rematch
+      dealDuelCards(state, pair.fighterAId, pair.fighterBId)
+      const duel = state.currentDuel!
+      const decisions: Record<string, number> = { [pair.fighterAId]: 0, [pair.fighterBId]: 0 }
+      while (duel.duelTurn !== 'finished') {
+        const isA = duel.duelTurn === 'fighterA'
+        const playerId = isA ? pair.fighterAId : pair.fighterBId
+        const cards = isA ? duel.fighterACards : duel.fighterBCards
+        const shouldHit = aiShouldHit(
+          computeTotal(cards),
+          aiDecisionRng(state.seed, state.duelIndex, playerId, decisions[playerId]++)
+        )
+        if (shouldHit) {
+          cards.push(dealDuelCard(state.seed, state.duelIndex, duel.rngCallCount++, rematch))
+          if (computeTotal(cards) > 21) {
+            if (isA) duel.fighterABust = true
+            else duel.fighterBBust = true
+          }
+        } else if (isA) {
+          duel.fighterAStood = true
+        } else {
+          duel.fighterBStood = true
+        }
+        const aDone = duel.fighterAStood || duel.fighterABust
+        const bDone = duel.fighterBStood || duel.fighterBBust
+        duel.duelTurn = aDone && bDone ? 'finished' : isA ? 'fighterB' : 'fighterA'
+      }
+      const outcome = resolveDuelOutcome(duel.fighterACards, duel.fighterBCards)
+      if (outcome !== 'tie') {
+        winnerId = outcome === 'fighterA' ? pair.fighterAId : pair.fighterBId
+        loserId = outcome === 'fighterA' ? pair.fighterBId : pair.fighterAId
+        break
+      }
+      if (rematch >= REMATCH_CAP) {
+        const fallback = rematchCapWinner(
+          state.seed,
+          state.duelIndex,
+          pair.fighterAId,
+          pair.fighterBId,
+          rematch
+        )
+        winnerId = fallback === 'fighterA' ? pair.fighterAId : pair.fighterBId
+        loserId = fallback === 'fighterA' ? pair.fighterBId : pair.fighterAId
+        break
+      }
+      rematch += 1
+    }
+
+    state.playerScores[loserId] = Math.max(
+      0,
+      (state.playerScores[loserId] ?? STARTING_PLAYER_SCORE) - 1
+    )
+    if (state.playerScores[loserId] === 0) {
+      state.remainingPlayerIds = state.remainingPlayerIds.filter((id) => id !== loserId)
+      if (!state.eliminatedPlayerIds.includes(loserId)) state.eliminatedPlayerIds.push(loserId)
+    }
+    state.controllingPlayerId = winnerId
+    state.duelIndex += 1
+  }
+  state.winnerId = state.remainingPlayerIds[0] ?? null
+  state.currentDuel = null
+  state.fighterAId = null
+  state.fighterBId = null
+  state.duelWinnerId = null
+  state.duelLoserId = null
+  state.duelEliminatedId = null
+  state.rematchCount = 0
+  state.phase = 'complete'
+}
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const blackjackTournamentSlice = createSlice({
@@ -602,27 +711,14 @@ const blackjackTournamentSlice = createSlice({
 
     startFinalStage(state) {
       if (state.phase !== 'league_results' || !state.finalistIds?.length) return
-      state.stage = 'final'
-      state.remainingPlayerIds = [...state.finalistIds]
-      for (const id of state.finalistIds) state.playerScores[id] = STARTING_PLAYER_SCORE
-      state.isSpectating = Boolean(
-        state.humanPlayerId && !state.remainingPlayerIds.includes(state.humanPlayerId)
-      )
-      state.controllingPlayerId = null
-      state.fighterAId = null
-      state.fighterBId = null
-      state.currentDuel = null
-      state.duelWinnerId = null
-      state.duelLoserId = null
-      state.duelEliminatedId = null
-      state.rematchCount = 0
-      state.duelIndex = 0
-      if (state.remainingPlayerIds.length <= 1) {
-        state.winnerId = state.remainingPlayerIds[0] ?? null
-        state.phase = 'complete'
-      } else {
-        state.phase = 'spin'
-      }
+      beginFinalStage(state)
+    },
+
+    skipFinalsToResults(state) {
+      if (!state.finalistIds?.length || state.phase === 'complete') return
+      if (state.phase === 'league_results') beginFinalStage(state)
+      if (state.stage !== 'final') return
+      simulateAiFinals(state)
     },
 
     /**
@@ -883,6 +979,7 @@ const blackjackTournamentSlice = createSlice({
 export const {
   initBlackjackTournament,
   startFinalStage,
+  skipFinalsToResults,
   resolveSpinner,
   selectPair,
   hitCurrentPlayer,

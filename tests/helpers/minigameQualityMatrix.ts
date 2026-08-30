@@ -61,6 +61,14 @@ export const ACTIVE_MINIGAME_QUALITY_DETAILS: Record<string, QualityDetail> = {
     component: 'tests/quickTapRace.component.test.tsx',
     risk: 'No dedicated real-host Vitest path.',
   },
+  quickTapSeasons: {
+    input: 'rapid pointer/touch tapping with season modifiers',
+    scoring: 'higher',
+    tie: 'Higher season-adjusted points; then deterministic seeded participant order.',
+    logic: 'tests/minigames.aiAudit.batch2.test.ts',
+    component: 'src/screens/QuickTapSeasons/QuickTapSeasons.tsx',
+    risk: 'Season transitions and mystery-box modifiers need dedicated host evidence.',
+  },
   memoryMatch: {
     input: 'ordered pointer/touch color selection',
     scoring: 'placement',
@@ -237,6 +245,14 @@ export const ACTIVE_MINIGAME_QUALITY_DETAILS: Record<string, QualityDetail> = {
     tie: 'Higher rescue score; then lower supplied tiebreaker.',
     logic: 'tests/unit/castle-rescue/ranking.test.ts',
     component: 'tests/unit/castle-rescue/continue-button.test.tsx',
+  },
+  castleRescue2: {
+    input: 'keyboard or on-screen platform controls',
+    scoring: 'higher',
+    tie: 'Higher rescue score; then lower supplied tiebreaker.',
+    logic: 'tests/unit/castle-rescue/ranking.test.ts',
+    component: 'tests/unit/castle-rescue/continue-button.test.tsx',
+    risk: 'Variant shares the rescue engine and needs explicit hosted coverage.',
   },
   glass_bridge_brutal: {
     input: 'pointer/touch path choice',

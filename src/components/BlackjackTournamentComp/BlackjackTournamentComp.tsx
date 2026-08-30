@@ -26,6 +26,7 @@ import type { RootState } from '../../store/store'
 import {
   initBlackjackTournament,
   startFinalStage,
+  skipFinalsToResults,
   resolveSpinner,
   selectPair,
   hitCurrentPlayer,
@@ -592,6 +593,15 @@ export default function BlackjackTournamentComp({
         >
           Start Finals →
         </button>
+        {bt.humanPlayerId && !finalistIds.includes(bt.humanPlayerId) && (
+          <button
+            type="button"
+            className="bjt-btn bjt-btn--continue bjt-btn--secondary"
+            onClick={() => dispatch(skipFinalsToResults())}
+          >
+            Skip to Results
+          </button>
+        )}
       </div>
     )
   }

@@ -101,4 +101,7 @@ Except for `gridOfLuck` (explicitly 2?4), the registry currently omits game-spec
 
 ## Interpretation
 
+`quickTapSeasons` is covered by the same seeded AI-audit contract as the original Quick Tap game, with its season modifiers documented in the registry quality profile.
+`castleRescue2` is the second registry variant of Castle Rescue and shares the documented ranking and continuation contract.
+
 The catalog proves registry completeness and keeps the known evidence/gaps visible. It does not upgrade ?configured? browser checks to executed protection. Phase 2 is complete only after the final report records actual browser projects, viewports, repetitions, artifacts, and any remaining exceptions.

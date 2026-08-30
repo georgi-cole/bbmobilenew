@@ -274,6 +274,66 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
     );
   }, [humanId, resetBoardForRound, roundSummary, simulateRemainingPreliminaryRounds, startFinal]);
 
+  const skipToResults = useCallback(() => {
+    if (!roundSummary) return;
+    let ids = [...roundSummary.nextActiveIds];
+    const scores = { ...roundSummary.cumulativeScores };
+    for (let simulatedRound = roundSummary.round + 1; simulatedRound <= 4; simulatedRound += 1) {
+      const pairCount = HOUSE_OF_CARDS_TILE_COUNTS[simulatedRound - 1] / 2;
+      const performances = Object.fromEntries(ids.map((id) => [id, simulateHouseOfCardsAiRound({
+        playerId: id,
+        round: simulatedRound,
+        pairCount,
+        tournamentSeed: sessionSeed,
+        sessionAbility: aiProfiles[id]?.sessionAbility ?? 55,
+      })]));
+      ids.forEach((id) => { scores[id] = (scores[id] ?? 0) + performances[id].score; });
+      ids.sort((a, b) => scores[b] - scores[a] || performances[b].score - performances[a].score);
+      ids = simulatedRound === 4 ? ids.slice(0, 2) : ids.length > 2 ? ids.slice(0, -1) : ids;
+    }
+    const selected = ids.slice(0, 2);
+    if (selected.length < 2) {
+      const fallback = participantIds
+        .filter((id) => !selected.includes(id))
+        .sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))[0];
+      if (fallback) selected.push(fallback);
+    }
+    if (selected.length < 2) return;
+    const finalPairCount = HOUSE_OF_CARDS_TILE_COUNTS[4] / 2;
+    const firstFinalPoints = Math.max(
+      1,
+      Math.min(finalPairCount - 1, 7 + (((hashId(selected[0]) ^ sessionSeed) >>> 0) % 7)),
+    );
+    const simulatedFinalPoints = {
+      [selected[0]]: firstFinalPoints,
+      [selected[1]]: finalPairCount - firstFinalPoints,
+    };
+    const winnerId = chooseHouseOfCardsFinalWinner(selected as [string, string], simulatedFinalPoints, scores);
+    const loserId = selected.find((id) => id !== winnerId) ?? selected[1];
+    const orderedIds = [winnerId, loserId, ...participantIds
+      .filter((id) => !selected.includes(id))
+      .sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0))];
+    const standings = orderedIds.map((id, index) => ({
+      playerId: id, matchedPairs: simulatedFinalPoints[id] ?? 0, mistakes: 0, turnsTaken: 0, didFinish: true,
+      completionTimeMs: null, streakBest: 0,
+      clashScore: (scores[id] ?? 0) + (simulatedFinalPoints[id] ?? 0) * 10_000,
+      finalRank: index + 1,
+    }));
+    setFinalists(selected);
+    setActiveIds(selected);
+    setCumulativeScores(scores);
+    setFinalPoints(simulatedFinalPoints);
+    setFinalStandings(standings);
+    setRoundSummary(null);
+    setFinalTurnId(null);
+    finalCompletedRef.current = true;
+    roundCompletedRef.current = true;
+    setRound(5);
+    setBoard(buildHouseOfCardsBoard(sessionSeed ^ Math.imul(5, 0x85ebca6b), finalPairCount));
+    dispatch(completeHouseOfCardsTournament({ standings: standings.map(({ finalRank: _rank, ...outcome }) => outcome) }));
+    setPhase('results');
+  }, [aiProfiles, dispatch, participantIds, roundSummary, sessionSeed]);
+
   const resolvePair = useCallback((firstIndex: number, secondIndex: number) => {
     const first = board[firstIndex];
     const second = board[secondIndex];
@@ -415,6 +475,11 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
         onContinue={continueRound}
         continueLabel={humanId && roundSummary.nextActiveIds.includes(humanId) ? 'Next round' : 'Watch the finalists'}
         continueButtonClassName="hoc-complete-continue"
+        footerNode={humanId && !roundSummary.nextActiveIds.includes(humanId) ? (
+            <button type="button" className="hoc-complete-continue hoc-complete-continue--secondary" onClick={skipToResults}>
+            Skip to results
+          </button>
+        ) : undefined}
         placementsNode={
           <ol className="hoc-standings-list" aria-label={`Round ${roundSummary.round} standings`}>
             {roundSummary.rankedIds.map((id, index) => (
