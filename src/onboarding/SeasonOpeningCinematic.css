@@ -38,30 +38,30 @@ body.body--season-tv-wake .tv-zone__viewport::before {
    two soft, slow projector beams. They stay behind the text and vanish as soon
    as the user advances to the warm hub line. */
 body.body--season-opening-welcome .tv-zone__viewport::before {
-  inset: -48% -34%;
+  inset: -22% -16%;
   clip-path: none;
   background:
     linear-gradient(
-      105deg,
-      transparent 35%,
-      rgba(247, 235, 214, 0.025) 40%,
-      rgba(255, 232, 188, 0.18) 46%,
-      rgba(255, 247, 226, 0.07) 51%,
-      transparent 58%
+      112deg,
+      transparent 20%,
+      rgba(255, 241, 215, 0.025) 27%,
+      rgba(255, 229, 181, 0.24) 34%,
+      rgba(255, 246, 224, 0.09) 39%,
+      transparent 47%
     ),
     linear-gradient(
-      74deg,
-      transparent 39%,
-      rgba(223, 211, 255, 0.02) 44%,
-      rgba(214, 193, 255, 0.14) 49%,
-      rgba(244, 236, 255, 0.055) 54%,
-      transparent 60%
+      68deg,
+      transparent 53%,
+      rgba(227, 215, 255, 0.025) 60%,
+      rgba(207, 184, 255, 0.19) 67%,
+      rgba(241, 232, 255, 0.075) 72%,
+      transparent 80%
     );
-  filter: blur(12px);
+  filter: blur(8px);
   mix-blend-mode: screen;
-  opacity: 0.46;
+  opacity: 0.62;
   z-index: 2;
-  transform: translate3d(-8%, -1%, 0) rotate(-1.5deg) scale(1.04);
+  transform: translate3d(-6%, 0, 0) rotate(-1deg) scale(1.03);
   animation: season-opening-projector-sweep 5.2s ease-in-out infinite alternate;
 }
 
@@ -139,15 +139,15 @@ body.body--season-opening-welcome .tv-zone__now {
 
 @keyframes season-opening-projector-sweep {
   0% {
-    opacity: 0.25;
-    transform: translate3d(-10%, 1%, 0) rotate(-3deg) scale(1.02);
+    opacity: 0.36;
+    transform: translate3d(-7%, 1%, 0) rotate(-2.5deg) scale(1.02);
   }
   48% {
-    opacity: 0.5;
+    opacity: 0.65;
   }
   100% {
-    opacity: 0.34;
-    transform: translate3d(10%, -2%, 0) rotate(2.5deg) scale(1.07);
+    opacity: 0.45;
+    transform: translate3d(7%, -2%, 0) rotate(2deg) scale(1.05);
   }
 }
 
