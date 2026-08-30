@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getAll } from '../../data/houseguests'
 import { resolveAvatar } from '../../utils/avatar'
+import { getPresentationAvatarPreloadUrls } from '../../utils/avatarPreloadCandidates'
 import { preloadImage, preloadImages } from '../../utils/preload'
 import { buildDepressionShockAvatarCandidates } from '../../features/twists/depressionShock'
 import KolequantSplash from '../KolequantSplash/KolequantSplash'
@@ -17,7 +18,7 @@ const GAMEPLAY_MESSAGES = [
 ] as const
 
 function getAvatarUrls(): string[] {
-  return getAll().map((hg) => resolveAvatar({ id: hg.id, name: hg.name, avatar: '' }))
+  return getPresentationAvatarPreloadUrls(getAll())
 }
 
 function getThemedAvatarUrls(): string[] {

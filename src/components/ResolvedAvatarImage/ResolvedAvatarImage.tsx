@@ -12,7 +12,7 @@ import {
   resolveAvatarCandidates,
 } from '../../utils/avatar'
 import { imageIdToDataUrl } from '../../utils/imageDb'
-import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
+import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
 import {
   buildDepressionShockAvatarCandidates,
   getDepressionShockPortraitSnapshot,
@@ -63,7 +63,7 @@ export default function ResolvedAvatarImage({
         name,
         avatar: avatar ?? '',
         isUser,
-      }).map(resolvePresentationAvatar),
+      }).flatMap(resolvePresentationAvatarCandidates),
     [avatar, id, isUser, name]
   )
   const candidates = useMemo(

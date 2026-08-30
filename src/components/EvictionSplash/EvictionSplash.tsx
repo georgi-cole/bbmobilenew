@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Player } from '../../types';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
-import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
+import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar';
 import './EvictionSplash.css';
 
 interface Props {
@@ -48,7 +48,7 @@ const PORTRAIT_SPRING = { type: 'spring' as const, stiffness: 220, damping: 28 }
 type Phase = 'expanding' | 'holding' | 'done';
 
 export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
-  const [candidates] = useState(() => resolveAvatarCandidates(evictee).map(resolvePresentationAvatar));
+  const [candidates] = useState(() => resolveAvatarCandidates(evictee).flatMap(resolvePresentationAvatarCandidates));
   const [candidateIdx, setCandidateIdx] = useState(0);
   const [showFallback, setShowFallback] = useState(false);
 
@@ -231,3 +231,4 @@ export default function EvictionSplash({ evictee, onDone, layoutId }: Props) {
  * onDone fires and AnimatePresence exits the component.
  */
 export { EXPAND_MS, HOLD_MS, REVERSE_MS };
+
