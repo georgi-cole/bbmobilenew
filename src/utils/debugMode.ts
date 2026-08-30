@@ -1,3 +1,4 @@
+import { IS_ADMIN_BUILD, IS_RELEASE_BUILD } from '../config/buildTarget';
 const LOCAL_DEBUG_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 export const DEBUG_ACCESS_STORAGE_KEY = 'bbmobilenew:qa-debug-access';
 
@@ -67,6 +68,8 @@ export function isDebugAccessGranted(
   searchParams: URLSearchParams,
   hostname: string,
 ): boolean {
+  if (IS_ADMIN_BUILD) return true;
+  if (IS_RELEASE_BUILD) return false;
   const requested =
     searchParams.get('debug') === '1' &&
     (isLocalDebugHost(hostname) || searchParams.get('qa') === '1');
@@ -75,6 +78,8 @@ export function isDebugAccessGranted(
 
 export function canAccessSpecialSettings(locationLike?: DebugLocationLike): boolean {
   if (typeof window === 'undefined') return false;
+  if (IS_RELEASE_BUILD) return false;
+  if (IS_ADMIN_BUILD) return true;
   if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
 
   const resolvedLocation = locationLike ?? window.location;
@@ -101,6 +106,8 @@ export function detectDebugMode(
   locationLike?: DebugLocationLike,
 ): boolean {
   if (typeof window === 'undefined') return false;
+  if (IS_RELEASE_BUILD) return false;
+  if (IS_ADMIN_BUILD) return true;
   if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
 
   const resolvedLocation = locationLike ?? window.location;
