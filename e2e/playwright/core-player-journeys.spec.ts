@@ -15,6 +15,7 @@ const COMPLETE_WEEK_TIMEOUT_MS = 240_000
 // External persistence contracts. Keep these literal in Playwright so discovery
 // does not import the browser-only Redux/game module graph into Node.
 const SAVED_RUNS_KEY_PREFIX = 'bbmobilenew:savedRuns:'
+const SAVED_RUN_SLOT_KEY_PREFIX = 'bbmobilenew:savedRunSlot:'
 const SAVED_STATE_KEY_PREFIX = 'bbmobilenew:savedSeason:'
 const CORRUPT_SAVE_RECOVERY_KEY = 'bbmobilenew:recovery:lastCorruptSave'
 
@@ -789,7 +790,7 @@ test.describe('Real player core journeys', () => {
     await saveAndReturnHome(page)
 
     const fixture = await page.evaluate(
-      ({ runsPrefix, statePrefix }) => {
+      ({ runsPrefix, slotPrefix, statePrefix }) => {
         const profilesRaw = localStorage.getItem('bbmobilenew:profiles:v1')
         if (!profilesRaw) throw new Error('active profiles record is missing')
         const profiles = JSON.parse(profilesRaw) as { activeProfileId?: string | null }
@@ -798,26 +799,35 @@ test.describe('Real player core journeys', () => {
 
         const encodedProfileId = encodeURIComponent(profileId)
         const runsKey = `${runsPrefix}${encodedProfileId}`
+        const slotKey = `${slotPrefix}${encodedProfileId}:classic`
         const legacyKey = `${statePrefix}${encodedProfileId}`
         const savedRunsRaw = localStorage.getItem(runsKey)
         if (!savedRunsRaw) throw new Error('current saved-run profile is missing')
-        const savedRuns = JSON.parse(savedRunsRaw) as {
-          runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
+        const savedRunSlotRaw = localStorage.getItem(slotKey)
+        if (!savedRunSlotRaw) throw new Error('current Classic snapshot is missing')
+        const classic = JSON.parse(savedRunSlotRaw) as {
+          game?: { phase?: string; runId?: string; gameId?: string }
         }
-        const classic = savedRuns.runs?.classic
-        if (!classic) throw new Error('current Classic snapshot is missing')
 
+        // Recreate the pre-v2 single-slot format so reload must migrate it back
+        // into split metadata + per-mode run-slot storage.
         localStorage.setItem(legacyKey, JSON.stringify(classic))
         localStorage.removeItem(runsKey)
+        localStorage.removeItem(slotKey)
 
         return {
           legacyKey,
           phase: classic.game?.phase ?? null,
           runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
           runsKey,
+          slotKey,
         }
       },
-      { runsPrefix: SAVED_RUNS_KEY_PREFIX, statePrefix: SAVED_STATE_KEY_PREFIX }
+      {
+        runsPrefix: SAVED_RUNS_KEY_PREFIX,
+        slotPrefix: SAVED_RUN_SLOT_KEY_PREFIX,
+        statePrefix: SAVED_STATE_KEY_PREFIX,
+      }
     )
 
     expect(fixture.phase).toBe('loh_comp_announcement')
@@ -830,20 +840,20 @@ test.describe('Real player core journeys', () => {
 
     await expect
       .poll(() =>
-        page.evaluate((runsKey) => {
-          const raw = localStorage.getItem(runsKey)
-          if (!raw) return null
-          const parsed = JSON.parse(raw) as {
-            version?: number
-            runs?: { classic?: { game?: { phase?: string; runId?: string; gameId?: string } } }
+        page.evaluate(({ runsKey, slotKey }) => {
+          const metadataRaw = localStorage.getItem(runsKey)
+          const slotRaw = localStorage.getItem(slotKey)
+          if (!metadataRaw || !slotRaw) return null
+          const metadata = JSON.parse(metadataRaw) as { version?: number }
+          const classic = JSON.parse(slotRaw) as {
+            game?: { phase?: string; runId?: string; gameId?: string }
           }
           return {
-            phase: parsed.runs?.classic?.game?.phase ?? null,
-            runIdentity:
-              parsed.runs?.classic?.game?.runId ?? parsed.runs?.classic?.game?.gameId ?? null,
-            version: parsed.version ?? null,
+            phase: classic.game?.phase ?? null,
+            runIdentity: classic.game?.runId ?? classic.game?.gameId ?? null,
+            version: metadata.version ?? null,
           }
-        }, fixture.runsKey)
+        }, { runsKey: fixture.runsKey, slotKey: fixture.slotKey })
       )
       .toEqual({ phase: 'loh_comp', runIdentity: fixture.runIdentity, version: 2 })
 
