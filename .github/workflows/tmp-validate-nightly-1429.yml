@@ -1,0 +1,42 @@
+name: Temporary Nightly 1429 Validation
+
+on:
+  push:
+    branches:
+      - fix/nightly-split-save-final4
+
+jobs:
+  targeted-nightly-regressions:
+    name: Targeted compact-mobile nightly regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Re-run the two failed nightly scenarios
+        run: >-
+          npx playwright test
+          e2e/playwright/final4-pov.spec.ts
+          e2e/playwright/core-player-journeys.spec.ts
+          --grep "AI POS holder|a legacy save migrates"
+          --project=compact-mobile-chromium
+          --workers=1
+          --retries=0
+      - name: Upload targeted evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: targeted-nightly-1429
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
