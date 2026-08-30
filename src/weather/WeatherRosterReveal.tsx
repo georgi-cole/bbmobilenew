@@ -85,7 +85,6 @@ export default function WeatherRosterReveal() {
   const gameId = useAppSelector((state) => state.game.gameId)
   const week = useAppSelector((state) => state.game.week)
   const phase = useAppSelector((state) => state.game.phase)
-  const depressionShock = useAppSelector((state) => state.game.depressionShock)
   const { play } = useSound()
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [reveal, setReveal] = useState<{ key: string; atmosphere: DailyAtmosphere } | null>(null)
@@ -93,8 +92,8 @@ export default function WeatherRosterReveal() {
   const dailyPhase = phase === 'week_start' || phase === 'week_end' ? phase : null
 
   const atmosphere = useMemo(
-    () => (dailyPhase ? getDailyAtmosphere(gameId, week, dailyPhase, depressionShock) : null),
-    [dailyPhase, depressionShock, gameId, week]
+    () => (dailyPhase ? getDailyAtmosphere(gameId, week, dailyPhase) : null),
+    [dailyPhase, gameId, week]
   )
 
   useLayoutEffect(() => {
