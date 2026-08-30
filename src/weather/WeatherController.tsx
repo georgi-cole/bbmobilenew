@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addTvEvent } from '../store/gameSlice'
+import { getDepressionShockLifecycleForGame } from '../features/twists/depressionShockLifecycle'
 import { resolveWeatherDay } from './weatherEngine'
+import { getDepressionShockWeatherCondition } from './depressionShockWeather'
 import { getWeatherRuntime, loadWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
 import './WeatherEnhancements.css'
@@ -49,7 +51,6 @@ export default function WeatherController() {
   const phase = useAppSelector((state) => state.game.phase)
   const tvFeed = useAppSelector((state) => state.game.tvFeed)
   const broadcastQueue = useAppSelector((state) => state.game.broadcastQueue ?? [])
-  const depressionShock = useAppSelector((state) => state.game.depressionShock)
   const pendingKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -83,7 +84,6 @@ export default function WeatherController() {
 
   const publishWeatherBulletin = useCallback(() => {
     if (phase !== 'social_2' || weatherAlreadyExists) return
-    if ((depressionShock?.activeDay ?? 0) > 0) return
 
     const key = `${gameId}:${week}`
     if (pendingKeyRef.current === key) return
@@ -92,12 +92,15 @@ export default function WeatherController() {
     void loadWeatherRuntime()
 
     const weatherDay = resolveWeatherDay(gameId, week)
-    const recoveryRainbow = depressionShock?.recoveryWeek === week
+    const lifecycle = getDepressionShockLifecycleForGame(gameId, week)
+    const shockCondition = getDepressionShockWeatherCondition(gameId, week)
+    const displayedCondition = shockCondition ?? weatherDay.condition
+    const recoveryRainbow = lifecycle === 'recovery'
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
     const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
     const narrative = recoveryRainbow
       ? 'A rainbow breaks through outside while the hub turns its attention toward the live elimination.'
-      : PRE_ELIMINATION_WEATHER_COPY[weatherDay.condition]
+      : PRE_ELIMINATION_WEATHER_COPY[displayedCondition]
     const text = `${temperature} · ${narrative}`
 
     dispatch(
@@ -115,27 +118,25 @@ export default function WeatherController() {
           forceOnTv: true,
           weatherBulletin: true,
           weatherBulletinDay: week,
-          weatherCondition: weatherDay.condition,
+          weatherCondition: displayedCondition,
           weatherTemperatureC: weatherDay.temperatureC,
-          ...(recoveryRainbow || weatherDay.phenomenon === 'rainbow'
+          ...(recoveryRainbow || (!shockCondition && weatherDay.phenomenon === 'rainbow')
             ? { weatherPhenomenon: 'rainbow' }
             : {}),
         },
       })
     )
     pendingKeyRef.current = null
-  }, [depressionShock, dispatch, gameId, phase, weatherAlreadyExists, week])
+  }, [dispatch, gameId, phase, weatherAlreadyExists, week])
 
   useEffect(() => {
     if (phase !== 'social_2') return
-    if ((depressionShock?.activeDay ?? 0) > 0) return
     if (weatherAlreadyExists || pendingKeyRef.current === `${gameId}:${week}`) return
     if (broadcastQueue.length > 0 || currentSocialBeatExists) return
     publishWeatherBulletin()
   }, [
     broadcastQueue.length,
     currentSocialBeatExists,
-    depressionShock,
     gameId,
     phase,
     publishWeatherBulletin,
@@ -145,7 +146,6 @@ export default function WeatherController() {
 
   useEffect(() => {
     if (phase !== 'social_2') return undefined
-    if ((depressionShock?.activeDay ?? 0) > 0) return undefined
     if (weatherAlreadyExists || !currentSocialBeatExists) return undefined
 
     const handlePlay = (event: Event) => {
@@ -159,7 +159,6 @@ export default function WeatherController() {
   }, [
     broadcastQueue.length,
     currentSocialBeatExists,
-    depressionShock,
     phase,
     publishWeatherBulletin,
     weatherAlreadyExists,
