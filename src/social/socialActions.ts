@@ -67,6 +67,8 @@ export type SubjectPool = 'houseguests' | 'nominees' | 'non_nominees' | 'allies'
 
 export interface SocialActionDefinition {
   id: string
+  /** Manager-controlled master switch. Omitted means enabled. */
+  enabled?: boolean
   title: string
   /**
    * UI metadata category for display and filtering purposes.
@@ -104,6 +106,32 @@ export interface SocialActionDefinition {
   description?: string
   /** Optional weight hint for future AI probability weighting. */
   successWeight?: number
+  /** Optional Normal Mode AI selection weight managed independently from outcome odds. */
+  aiWeight?: number
+  /** Per-action legacy relationship effects. Falls back to the category defaults. */
+  affinityEffects?: { success: number; failure: number }
+  /** Per-action outcome-score effects used for Bad/Good/Great feedback. */
+  scoreEffects?: { success: number; failure: number }
+  /**
+   * Multidimensional Reality relationship effects. Keys are Reality relationship
+   * dimensions such as warmth, trust, attraction, resentment, and suspicion.
+   */
+  realityEffects?: {
+    accepted?: Record<string, number>
+    rejected?: Record<string, number>
+    escalated?: Record<string, number>
+    deEscalated?: Record<string, number>
+  }
+  /** Optional Reality contract connections; omitted values are derived from the action. */
+  realityPurposes?: readonly string[]
+  realityAllowedDirections?: readonly string[]
+  realityAllowedGameModes?: readonly string[]
+  realityVisibility?: string
+  realityCooldownPhases?: number
+  responseSetId?: string
+  outcomeResolverId?: string
+  memoryTemplateId?: string
+  dialogueSetId?: string
   /** Tag applied to relationship entries when this action fires (e.g. 'betrayal'). */
   outcomeTag?: string
   /**
@@ -166,6 +194,8 @@ export interface SocialActionDefinition {
    * a locked preview card rather than making the core catalogue feel smaller.
    */
   realityExclusive?: boolean
+  /** Reality intensity presets where this action may run (casual, tv, adult). */
+  allowedRealityPresets?: readonly string[]
   allowedPhases?: readonly string[]
   requiredRelationshipTags?: readonly string[]
   excludedRelationshipTags?: readonly string[]

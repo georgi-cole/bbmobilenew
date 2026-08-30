@@ -12,8 +12,8 @@
  *
  * Backward-compatibility rule: TvEvent entries that carry NO channels field
  * are treated as legacy events and remain visible everywhere (mainLog + tv),
- * except for explicitly classified result-only events that must never reopen
- * a previously consumed fullscreen announcement.
+ * except for the one explicit Public Mode status message that belongs only in
+ * the log.
  */
 
 /** Destination channels an activity event can be routed to. */
@@ -29,6 +29,34 @@ type ActivityVisibilityEvent = {
   type?: string
   text?: string
   meta?: { suppressTv?: boolean; [key: string]: unknown }
+}
+
+const PUBLIC_MODE_STATUS_TEMPLATE_ID = 'season.public-mode-rule'
+const PUBLIC_MODE_STATUS_TEXT = /^\s*\[Rules\]\s*Public mode:\s*(?:ON|OFF)\s*$/i
+
+/**
+ * The season-start Public Mode ON/OFF status is configuration information,
+ * not an in-world TV beat. This is intentionally the only new service-message
+ * exclusion: do not infer or suppress any other rule/system/social copy.
+ */
+export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolean {
+  if (ev.meta?.broadcastTemplateId === PUBLIC_MODE_STATUS_TEMPLATE_ID) return true
+  return typeof ev.text === 'string' && PUBLIC_MODE_STATUS_TEXT.test(ev.text)
+}
+
+/**
+ * The original season-start copy is replaced by the staged onboarding welcome.
+ * Hide only the exact legacy defaults so Broadcast Manager customisations are
+ * not swallowed by this compatibility bridge.
+ */
+export function isLegacySeasonWelcomeEvent(ev: ActivityVisibilityEvent): boolean {
+  if (typeof ev.text !== 'string') return false
+  return (
+    /^Welcome to The Big Eye hub! 🏠 Season \d+ is about to begin\.$/.test(ev.text) ||
+    /^The Big Eye hub is now filled with love! 🏠 Season \d+ is about to begin\. Get some chocolate and press play\.$/.test(
+      ev.text
+    )
+  )
 }
 
 /**
@@ -48,10 +76,12 @@ export function isBattleBackReturnResultEvent(ev: ActivityVisibilityEvent): bool
  * Returns true when the event should appear in the main-screen TVLog strip.
  *
  * Rules:
+ *  - Replaced legacy welcome defaults: false; the staged welcome supersedes them.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'mainLog' or 'tv' is included.
  */
 export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
+  if (isLegacySeasonWelcomeEvent(ev)) return false
   if (!ev.channels) return true
   return ev.channels.includes('mainLog') || ev.channels.includes('tv')
 }
@@ -59,12 +89,13 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
 /**
  * Returns true when the event should appear in the TV-zone viewport.
  *
- * Rules:
- *  - Back 2 the Game winner/result event: false; it remains available to mainLog.
- *  - No channels (legacy event): visible everywhere → true.
- *  - Has channels: visible only if 'tv' or 'mainLog' is included.
+ * The only new log-only exception is the exact Public Mode status. Normal game
+ * and social events retain their authored routing; no prefix/wording classifier
+ * is allowed to hide them.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
+  if (isServiceConfigurationEvent(ev)) return false
+  if (isLegacySeasonWelcomeEvent(ev)) return false
   if (isBattleBackReturnResultEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true

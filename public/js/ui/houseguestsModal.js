@@ -111,12 +111,12 @@
     const title = document.createElement('h2');
     title.id = 'houseguests-modal-title';
     title.className = 'houseguests-modal__title';
-    title.textContent = 'Housemates';
+    title.textContent = 'Players';
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'houseguests-modal__close-btn';
-    closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.textContent = '✕';
+    closeBtn.setAttribute('aria-label', 'Back to Intro Hub');
+    closeBtn.textContent = '↩';
     closeBtn.addEventListener('click', closeModal);
 
     header.appendChild(title);
@@ -144,7 +144,7 @@
     const body = modalContainer.querySelector('.houseguests-modal__body');
     const title = modalContainer.querySelector('.houseguests-modal__title');
     
-    title.textContent = 'Housemates';
+    title.textContent = 'Players';
     body.innerHTML = '';
     body.className = 'houseguests-modal__body houseguests-modal__body--list';
 
@@ -154,7 +154,7 @@
     if (houseguests.length === 0) {
       const emptyMsg = document.createElement('p');
       emptyMsg.className = 'houseguests-modal__empty';
-      emptyMsg.textContent = 'No houseguests available.';
+      emptyMsg.textContent = 'No players available.';
       body.appendChild(emptyMsg);
       return;
     }
@@ -234,7 +234,7 @@
     // Add back button
     const backBtn = document.createElement('button');
     backBtn.className = 'houseguests-detail__back-btn';
-    backBtn.innerHTML = '‹ Back to List';
+    backBtn.innerHTML = '↩ Back to Players';
     backBtn.addEventListener('click', renderListView);
 
     // Create detail card

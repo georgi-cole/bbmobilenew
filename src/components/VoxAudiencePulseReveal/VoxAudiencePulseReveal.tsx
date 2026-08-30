@@ -59,7 +59,14 @@ export default function VoxAudiencePulseReveal({
   useEffect(() => {
     const interval = window.setInterval(() => setTick((current) => current + 1), 520)
     const timeout = window.setTimeout(() => finish('auto'), durationMs)
-    const handlePlay = () => finish('play')
+    const handlePlay = (event: Event) => {
+      if (finishedRef.current) return
+      // The reveal owns this physical Play press. Without cancellation the FAB
+      // also performs its normal advance(), producing a second transition from
+      // the same click while the reveal is closing.
+      event.preventDefault()
+      finish('play')
+    }
     window.addEventListener('ui:playPressed', handlePlay)
     return () => {
       window.clearInterval(interval)

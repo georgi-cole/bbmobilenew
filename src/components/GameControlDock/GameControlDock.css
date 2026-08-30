@@ -1,20 +1,98 @@
 /* ── GameControlDock ────────────────────────────────────────────────────── */
+.game-control-dock-navigation {
+  display: contents;
+}
+
 .game-control-dock {
   position: absolute;
-  bottom: var(--game-action-dock-gap, 8px);
+  /* Keep every dock hit target above the native home-indicator inset. The
+     responsive layout writes the measured value for native/preview frames;
+     the CSS safe-area variable covers ordinary browser/WebView startup. */
+  bottom: calc(
+    var(--game-safe-bottom, var(--safe-bottom, env(safe-area-inset-bottom, 0px))) +
+      var(--game-action-dock-gap, 8px)
+  );
   left: 50%;
   z-index: 100;
-  width: min(calc(80% * var(--game-action-dock-scale, 1)), calc(340px * var(--game-action-dock-scale, 1)));
+  /* The visible SVG capsule spans x=28..952 of a 980-wide canvas. Compensate
+     for those transparent side insets so its real edges align with the
+     12px-inset Faux TV and avatar grid. */
+  width: min(calc(106.0606% - 25.455px), 483.636px);
   aspect-ratio: 980 / 220;
   transform: translateX(-50%);
   -webkit-user-select: none;
   user-select: none;
 }
 
+.game-control-dock::before {
+  display: none;
+}
+
+.game-control-dock__more-menu {
+  --more-menu-button-size: 44px;
+  position: absolute;
+  right: max(8px, calc(11% - 27px));
+  bottom: 61%;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: var(--more-menu-button-size);
+  gap: 6px;
+  width: calc(var(--more-menu-button-size) + 10px);
+  box-sizing: border-box;
+  padding: 5px;
+  border: 1px solid rgba(189, 171, 239, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(37, 26, 60, 0.98), rgba(12, 10, 25, 0.98));
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.42),
+    0 0 18px rgba(111, 82, 181, 0.12),
+    inset 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+}
+.game-control-dock__more-menu button {
+  position: relative;
+  display: flex;
+  width: var(--more-menu-button-size);
+  height: var(--more-menu-button-size);
+  min-width: var(--more-menu-button-size);
+  min-height: var(--more-menu-button-size);
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  padding: 0;
+  background: rgba(121, 99, 177, 0.18);
+  color: rgba(244, 240, 255, 0.94);
+  cursor: pointer;
+}
+.game-control-dock__more-menu button span {
+  display: none;
+}
+.game-control-dock__more-menu button:hover {
+  background: rgba(145, 122, 205, 0.3);
+}
+.game-control-dock__more-menu button:focus-visible {
+  outline: 2px solid rgba(192, 177, 255, 0.9);
+  outline-offset: 1px;
+}
+.game-control-dock__more-menu button img {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+  opacity: 0.96;
+  filter: saturate(0.78) brightness(1.12) drop-shadow(0 1px 3px rgba(126, 99, 199, 0.28));
+  pointer-events: none;
+}
+
 .floating-action-bar__blocked-message {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--game-action-dock-height, clamp(56px, 16vw, 76px)) + var(--game-action-dock-gap, 6px) + 12px);
+  bottom: calc(
+    var(--game-action-dock-height, clamp(56px, 16vw, 76px)) + var(--game-action-dock-gap, 6px) +
+      12px
+  );
   z-index: 115;
   width: min(88%, 420px);
   transform: translateX(-50%);
@@ -48,38 +126,83 @@
 .fab-shell {
   inset: 0;
   width: 100%;
+  z-index: 1;
+}
+
+body.mode-surveyeval .fab-shell {
+  filter: hue-rotate(48deg) saturate(0.58) brightness(0.72);
+}
+body.mode-surveyeval .fab-play {
+  filter: hue-rotate(42deg) saturate(0.7) brightness(0.9);
 }
 
 .fab-play {
-  width: 19.2%;
-  left: 40.4%;
-  top: 1.5%;
+  width: 22%;
+  left: 39%;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
 }
 
 .fab-icon {
   width: 5.3%;
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 0 6px rgba(116, 132, 255, 0.22));
+  opacity: 0.91;
+  filter: drop-shadow(0 1px 2px rgba(32, 24, 62, 0.42));
+  z-index: 2;
 }
 
 .fab-icon.social {
-  left: 23%;
+  left: 24%;
   top: 50.5%;
 }
 
+.fab-icon.home {
+  left: 11%;
+  top: 50.5%;
+}
+
+.fab-more-glyph {
+  position: absolute;
+  z-index: 2;
+  left: 89%;
+  top: 50.5%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 4.2%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  opacity: 0.89;
+  filter: drop-shadow(0 1px 2px rgba(32, 24, 62, 0.42));
+}
+
+.fab-more-glyph i {
+  width: 14%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: rgba(231, 231, 245, 0.82);
+  box-shadow: none;
+}
+
 .fab-icon.requests {
-  left: 36.5%;
+  left: 37%;
   top: 50.5%;
 }
 
 .fab-icon.stats {
-  left: 63.5%;
+  left: 63%;
   top: 50.5%;
 }
 
 .fab-icon.confessional {
-  left: 77%;
+  left: 76%;
   top: 50.5%;
+}
+body.mode-surveyeval .fab-icon.confessional {
+  opacity: 0.28;
+  filter: grayscale(1);
 }
 
 .dock-hit-area {
@@ -94,50 +217,67 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease;
+  z-index: 3;
 }
 
 .hit-social {
-  left: 17.5%;
+  left: 18.5%;
   top: 31%;
   width: 11%;
   height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+  --dock-badge-x: 72%;
+  --dock-badge-y: 22%;
+}
+
+.hit-home {
+  left: 5.5%;
+  top: 31%;
+  width: 11%;
+  height: 34%;
 }
 
 .hit-requests {
-  left: 31%;
+  left: 31.5%;
   top: 31%;
   width: 11%;
   height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+  --dock-badge-x: 72%;
+  --dock-badge-y: 22%;
 }
 
 .hit-play {
-  left: 40%;
+  left: 39%;
   top: 0;
-  width: 20%;
+  width: 22%;
   height: 66%;
 }
 
 .hit-stats {
-  left: 58%;
+  left: 57.5%;
   top: 31%;
   width: 11%;
   height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+  --dock-badge-x: 72%;
+  --dock-badge-y: 22%;
 }
 
 .hit-confessional {
-  left: 71.5%;
+  left: 70.5%;
   top: 31%;
   width: 11%;
   height: 34%;
-  --dock-badge-x: 64%;
-  --dock-badge-y: 9%;
+  --dock-badge-x: 72%;
+  --dock-badge-y: 22%;
+}
+
+.hit-more {
+  left: 83.5%;
+  top: 31%;
+  width: 11%;
+  height: 34%;
 }
 
 .dock-hit-area:hover {
@@ -158,31 +298,50 @@
   top: var(--dock-badge-y, 9%);
   left: var(--dock-badge-x, 64%);
   transform: translate(-50%, -50%);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 3px;
-  border-radius: 8px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 2px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
   background: #ef4444;
+  box-sizing: border-box;
+  box-shadow: 0 2px 7px rgba(8, 10, 24, 0.42);
   color: #fff;
-  font-size: 0.58rem;
+  font-size: 0.52rem;
   font-weight: 800;
-  line-height: 16px;
+  line-height: 12px;
   text-align: center;
   pointer-events: none;
 }
 
-/* Turkish blue variant — secret mission badge on the Confessional FAB button */
+.dock-hit-area__notification-led {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(238, 233, 255, 0.96);
+  box-shadow:
+    0 0 3px 1px rgba(199, 184, 255, 0.82),
+    0 0 9px 4px rgba(126, 92, 255, 0.48),
+    0 0 18px 8px rgba(101, 72, 228, 0.2);
+  pointer-events: none;
+}
+
+/* Warm gold mission badge on the Confessional FAB button. */
 .dock-hit-area__badge--mission {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #62bfd0 0%, #2f7e91 100%);
-  color: #f8fdff;
+  background: linear-gradient(135deg, #f2d68b 0%, #c69239 52%, #8b5a1f 100%);
+  color: #211306;
   line-height: 18px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 8px 18px rgba(23, 65, 74, 0.34);
+    0 0 0 1px rgba(255, 240, 197, 0.3),
+    0 8px 18px rgba(141, 91, 25, 0.38);
 }
 
 .dock-hit-area:focus-visible {
@@ -201,7 +360,9 @@
 .game-control-dock:has(.dock-hit-area--confessional:active) .fab-icon.confessional,
 .game-control-dock:has(.dock-hit-area--play:hover) .fab-play,
 .game-control-dock:has(.dock-hit-area--play:active) .fab-play {
-  transition: transform 120ms ease, opacity 120ms ease;
+  transition:
+    filter 160ms ease,
+    opacity 160ms ease;
 }
 
 .game-control-dock:has(.dock-hit-area--social:hover) .fab-icon.social,
@@ -219,20 +380,22 @@
 }
 
 .game-control-dock:has(.dock-hit-area--play:hover) .fab-play {
-  transform: scale(1.02);
+  transform: translateY(-50%) scale(1.01);
+  filter: brightness(1.05) drop-shadow(0 0 7px rgba(105, 83, 255, 0.18));
 }
 
 .game-control-dock:has(.dock-hit-area--play:active) .fab-play {
-  transform: scale(0.985);
+  transform: translateY(-50%) scale(0.96);
+  filter: brightness(1.1) drop-shadow(0 0 5px rgba(105, 83, 255, 0.15));
 }
 
 @keyframes dock-play-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 4px rgba(116, 132, 255, 0.18));
+    filter: drop-shadow(0 0 4px rgba(105, 83, 255, 0.08));
   }
   50% {
-    filter: drop-shadow(0 0 12px rgba(116, 132, 255, 0.38));
+    filter: drop-shadow(0 0 7px rgba(105, 83, 255, 0.15));
   }
 }
 
@@ -280,14 +443,14 @@
   100% {
     transform: translate(-50%, -50%) scale(1);
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.18),
-      0 8px 18px rgba(23, 65, 74, 0.34);
+      0 0 0 1px rgba(255, 240, 197, 0.3),
+      0 8px 18px rgba(141, 91, 25, 0.38);
   }
   28% {
     transform: translate(-50%, -50%) translateY(-1px) scale(1.16);
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.22),
-      0 10px 20px rgba(47, 126, 145, 0.42);
+      0 0 0 1px rgba(255, 244, 209, 0.42),
+      0 10px 20px rgba(204, 146, 47, 0.48);
   }
   52% {
     transform: translate(-50%, -50%) scale(0.96);
@@ -357,15 +520,14 @@
 
 .confessional-spotlight__overlay {
   inset: 0;
-  background:
-    radial-gradient(
-      circle at var(--confessional-spotlight-x) var(--confessional-spotlight-y),
-      rgba(13, 11, 28, 0) 0,
-      rgba(13, 11, 28, 0) var(--confessional-spotlight-inner),
-      rgba(18, 20, 42, 0.06) calc(var(--confessional-spotlight-inner) + 6px),
-      rgba(6, 7, 17, 0.7) var(--confessional-spotlight-outer),
-      rgba(6, 7, 17, 0.84) 100%
-    );
+  background: radial-gradient(
+    circle at var(--confessional-spotlight-x) var(--confessional-spotlight-y),
+    rgba(13, 11, 28, 0) 0,
+    rgba(13, 11, 28, 0) var(--confessional-spotlight-inner),
+    rgba(18, 20, 42, 0.06) calc(var(--confessional-spotlight-inner) + 6px),
+    rgba(6, 7, 17, 0.7) var(--confessional-spotlight-outer),
+    rgba(6, 7, 17, 0.84) 100%
+  );
 }
 
 .confessional-spotlight__halo,

@@ -27,33 +27,37 @@
 //   seed?: number        — competition seed forwarded from gameOptions.seed
 //   autoStart?: boolean  — when true the game begins immediately on mount
 
-import type { ComponentType } from 'react';
-import TiltedLedge from '../components/TiltedLedge/TiltedLedge';
-import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverComp';
-import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp';
-import CastleRescueGame, { BennyLennyCastleRescueGame } from './castleRescue/CastleRescueGame';
-import QuickTapRace from './quickTapRace/QuickTapRaceCanvasGame';
-import QuickTapSeasons from '../screens/QuickTapSeasons/QuickTapSeasons';
-import LaneRacers from './laneRacers/LaneRacersCanvasGame';
-import TravelingDots from '../components/TravelingDots/TravelingDots';
-import EstimationGame from '../components/EstimationGame/EstimationGame';
-import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz';
-import PressurePlank from '../components/PressurePlank/PressurePlank';
-import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp';
-import SnakeGame from '../components/SnakeGame/SnakeGame';
-import RescueTheKingGame from './rescueTheKing/RescueTheKingGame';
-import TrapAuction from '../components/TrapAuction/TrapAuction';
-import TimingBar from '../components/TimingBar/TimingBar';
-import Minesweeps from '../components/Minesweeps/Minesweeps';
-import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp';
-import NumberTrivia from '../components/NumberTrivia/NumberTrivia';
-import Capitalization from '../components/Capitalization/Capitalization';
-import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp';
-import GridOfLuck from '../components/GridOfLuck/GridOfLuck';
-import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed';
-import BatteryLow from '../components/VaultVerdict/VaultVerdict';
-import BigSpender from '../components/BigSpender/BigSpender';
-import HouseOfDarknessComp from '../components/HouseOfDarknessComp/HouseOfDarknessComp';
+import type { ComponentType } from 'react'
+import TiltedLedge from '../components/TiltedLedge/TiltedLedge'
+import ClosestWithoutGoingOverComp from '../components/ClosestWithoutGoingOverComp'
+import HoldTheWallComp from '../components/HoldTheWallComp/HoldTheWallComp'
+import CastleRescueGame, { BennyLennyCastleRescueGame } from './castleRescue/CastleRescueGame'
+import {
+  RemasteredBennyLennyCastleRescueGame,
+  RemasteredCastleRescueGame,
+} from './castleRescue/RemasteredCastleRescueGames'
+import QuickTapRace from './quickTapRace/QuickTapRaceCanvasGame'
+import QuickTapSeasons from '../screens/QuickTapSeasons/QuickTapSeasons'
+import LaneRacers from './laneRacers/LaneRacersCanvasGame'
+import TravelingDots from '../components/TravelingDots/TravelingDots'
+import EstimationGame from '../components/EstimationGame/EstimationGame'
+import BullseyeBlitz from '../components/BullseyeBlitz/BullseyeBlitz'
+import PressurePlank from '../components/PressurePlank/PressurePlank'
+import ColorMatchComp from '../components/ColorMatchComp/ColorMatchComp'
+import SnakeGame from '../components/SnakeGame/SnakeGame'
+import RescueTheKingGame from './rescueTheKing/RescueTheKingGame'
+import TrapAuction from '../components/TrapAuction/TrapAuction'
+import TimingBar from '../components/TimingBar/TimingBar'
+import Minesweeps from '../components/Minesweeps/Minesweeps'
+import HangmanChallengeComp from '../components/HangmanChallengeComp/HangmanChallengeComp'
+import NumberTrivia from '../components/NumberTrivia/NumberTrivia'
+import Capitalization from '../components/Capitalization/Capitalization'
+import CodeBreakerComp from '../components/CodeBreakerComp/CodeBreakerComp'
+import GridOfLuck from '../components/GridOfLuck/GridOfLuck'
+import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed'
+import BatteryLow from '../components/VaultVerdict/VaultVerdict'
+import BigSpender from '../components/BigSpender/BigSpender'
+import HouseOfDarknessComp from '../components/HouseOfDarknessComp/HouseOfDarknessComp'
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -67,27 +71,27 @@ export interface GenericMinigameProps {
     value: number,
     tiebreakerMs?: number,
     completion?: {
-      authoritativeWinnerId?: string | null;
-      rawValue?: number;
-      rawResults?: Record<string, number>;
-      tiebreakerMs?: number;
-    },
-  ) => void;
+      authoritativeWinnerId?: string | null
+      rawValue?: number
+      rawResults?: Record<string, number>
+      tiebreakerMs?: number
+    }
+  ) => void
   /** Deterministic competition seed forwarded from gameOptions.seed. */
-  seed?: number;
+  seed?: number
   /** When true the game starts immediately on mount (no Start button needed). */
-  autoStart?: boolean;
+  autoStart?: boolean
   /** Authoritative participant ids forwarded from MinigameHost for hosted competitions. */
-  participantIds?: string[];
+  participantIds?: string[]
   /** Full participant records forwarded when a game needs names/AI scoreboard data. */
   participants?: Array<{
-    id: string;
-    name: string;
-    isHuman: boolean;
-    avatar?: string;
-    precomputedScore: number;
-    previousPR: number | null;
-  }>;
+    id: string
+    name: string
+    isHuman: boolean
+    avatar?: string
+    precomputedScore: number
+    previousPR: number | null
+  }>
 }
 
 const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
@@ -96,6 +100,9 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   HoldTheWall: HoldTheWallComp as ComponentType<GenericMinigameProps>,
   CastleRescue: CastleRescueGame as ComponentType<GenericMinigameProps>,
   CastleRescue2: BennyLennyCastleRescueGame as ComponentType<GenericMinigameProps>,
+  CastleRescueRemastered: RemasteredCastleRescueGame as ComponentType<GenericMinigameProps>,
+  CastleRescue2Remastered:
+    RemasteredBennyLennyCastleRescueGame as ComponentType<GenericMinigameProps>,
   QuickTapRace: QuickTapRace as ComponentType<GenericMinigameProps>,
   QuickTapSeasons: QuickTapSeasons as ComponentType<GenericMinigameProps>,
   LaneRacers: LaneRacers as ComponentType<GenericMinigameProps>,
@@ -118,6 +125,6 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   BatteryLow: BatteryLow as ComponentType<GenericMinigameProps>,
   BigSpender: BigSpender as ComponentType<GenericMinigameProps>,
   HouseOfDarkness: HouseOfDarknessComp as ComponentType<GenericMinigameProps>,
-};
+}
 
-export default reactComponents;
+export default reactComponents

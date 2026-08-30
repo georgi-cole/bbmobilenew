@@ -5,11 +5,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 16px)
-    calc(env(safe-area-inset-right, 0px) + 16px)
-    calc(env(safe-area-inset-bottom, 0px) + 16px)
-    calc(env(safe-area-inset-left, 0px) + 16px);
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-right, 0px) + 16px)
+    calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 16px);
   background:
     radial-gradient(circle at 20% 18%, rgba(98, 109, 255, 0.18), transparent 28%),
     radial-gradient(circle at 80% 12%, rgba(139, 92, 246, 0.16), transparent 24%),
@@ -24,14 +21,14 @@
 .survivor-rules-modal__card {
   position: relative;
   width: min(42rem, 100%);
-  height: min(
+  max-height: min(
     calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px),
     44rem
   );
-  max-height: 100%;
+  height: auto;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
@@ -51,8 +48,12 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.08) 50%, transparent 82%);
+  background: linear-gradient(
+    120deg,
+    transparent 18%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 82%
+  );
   transform: translateX(-120%);
   animation: survivorRulesSweep 5.8s ease-in-out infinite;
   pointer-events: none;
@@ -117,7 +118,9 @@
   color: #78bfff;
   font-size: 1.45rem;
   font-weight: 900;
-  box-shadow: 0 0 18px rgba(100, 180, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 18px rgba(100, 180, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .survivor-rules-modal__eyebrow {
@@ -159,7 +162,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 0.65rem;
   min-height: 0;
@@ -171,10 +174,10 @@
 }
 
 .survivor-rules-modal__rule {
-  display: flex;
-  flex-direction: column;
-  gap: 0.36rem;
-  min-height: 7rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.7rem;
+  min-height: 0;
   padding: 0.78rem 0.82rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
@@ -204,6 +207,7 @@
 }
 
 .survivor-rules-modal__rule-desc {
+  grid-column: 2;
   margin: 0.28rem 0 0;
   color: rgba(229, 234, 255, 0.76);
   font-size: 0.88rem;
@@ -281,18 +285,16 @@
 
 @media (max-width: 640px) {
   .survivor-rules-modal__backdrop {
-    padding:
-      calc(env(safe-area-inset-top, 0px) + 8px)
-      calc(env(safe-area-inset-right, 0px) + 8px)
-      calc(env(safe-area-inset-bottom, 0px) + 8px)
-      calc(env(safe-area-inset-left, 0px) + 8px);
+    padding: calc(env(safe-area-inset-top, 0px) + 8px) calc(env(safe-area-inset-right, 0px) + 8px)
+      calc(env(safe-area-inset-bottom, 0px) + 8px) calc(env(safe-area-inset-left, 0px) + 8px);
   }
 
   .survivor-rules-modal__card {
-    height: min(
+    max-height: min(
       calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px),
       42rem
     );
+    height: auto;
     border-radius: 18px;
   }
 
@@ -332,7 +334,7 @@
   }
 
   .survivor-rules-modal__rules {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.48rem;
     padding: 0 0.85rem 0.65rem;
     scrollbar-gutter: auto;

@@ -7,8 +7,7 @@
  *  2. MinigameHost correctly routes dontGoOver to the React CWGO component
  *     (routing logic is already covered by tests/minigameHost.cwgo.test.tsx;
  *     here we verify the registry entry that drives that routing).
- *  3. The cwgoCompetitionSlice correctly initialises on startCwgoCompetition:
- *     status transitions to 'mass_input', prizeType/seed/aliveIds are set.
+ *  3. The cwgoCompetitionSlice correctly initialises on startCwgoCompetition.
  *  4. Question selection is deterministic — identical seed+round always picks
  *     the same questionIdx.
  *  5. Question selection varies across seeds — different seeds produce
@@ -67,7 +66,7 @@ describe('Registry — dontGoOver entry', () => {
 // ── Slice initialisation ──────────────────────────────────────────────────────
 
 describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
-  it('starts three participants directly in the three-life final', () => {
+  it('keeps three participants in qualifying until only two finalists remain', () => {
     const store = makeStore();
     store.dispatch(
       startCwgoCompetition({
@@ -76,9 +75,9 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
         seed: 42,
       }),
     );
-    expect(store.getState().cwgo.status).toBe('choose_duel');
-    expect(store.getState().cwgo.stage).toBe('final');
-    expect(store.getState().cwgo.playerScores).toEqual({ alice: 3, bob: 3, carol: 3 });
+    expect(store.getState().cwgo.status).toBe('mass_input');
+    expect(store.getState().cwgo.stage).toBe('qualifier');
+    expect(store.getState().cwgo.playerScores).toEqual({});
   });
 
   it('stores prizeType and seed', () => {
@@ -102,13 +101,14 @@ describe('cwgoCompetitionSlice — startCwgoCompetition', () => {
     expect(store.getState().cwgo.aliveIds).toEqual(ids);
   });
 
-  it('resets guesses, revealResults, and duelPair', () => {
+  it('resets guesses, revealResults, and starts a two-player duel when only two enter', () => {
     const store = makeStore();
     store.dispatch(startCwgoCompetition({ participantIds: ['a', 'b'], prizeType: 'LOH', seed: 7 }));
     const { cwgo } = store.getState();
     expect(cwgo.guesses).toEqual({});
     expect(cwgo.revealResults).toHaveLength(0);
     expect(cwgo.duelPair).toEqual(['a', 'b']);
+    expect(cwgo.status).toBe('duel_input');
   });
 
   it('sets a valid questionIdx within CWGO_QUESTIONS bounds', () => {

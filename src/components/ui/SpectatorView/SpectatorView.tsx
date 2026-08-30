@@ -22,6 +22,7 @@ import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { openSpectator, closeSpectator } from '../../../store/gameSlice';
 import { resolveAvatar, getDicebear } from '../../../utils/avatar';
+import { resolvePresentationAvatar } from '../../../utils/presentationAvatar';
 import { useSpectatorSimulation } from './progressEngine';
 import HoldWallVariant from './HoldWallVariant';
 import TriviaVariant from './TriviaVariant';
@@ -333,7 +334,7 @@ export default function SpectatorView({
   const resolveAvatarForId = useCallback(
     (id: string) => {
       const player = players.find((p) => p.id === id);
-      if (player) return resolveAvatar(player);
+      if (player) return resolvePresentationAvatar(resolveAvatar(player));
       return getDicebear(id);
     },
     [players],

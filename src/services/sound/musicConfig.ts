@@ -91,6 +91,7 @@ export interface AudioEventCue {
 }
 
 export interface MusicContextPolicy {
+  introHub: MusicSelection
   spectator: MusicSelection
   social: MusicSelection
   seasonComplete: MusicSelection
@@ -132,6 +133,8 @@ export interface MusicResolverContext {
   mode: GameMode
   gamePhase: string
   routeHash: string
+  /** True when the current route is a short gameplay detour (e.g. Store). */
+  gameActive?: boolean
   musicScene: MusicScene
   finalePhase?: string | null
   spectatorActive: boolean
@@ -241,7 +244,7 @@ export const DEFAULT_MINIGAME_MUSIC_PROFILES: readonly MinigameMusicProfile[] = 
     stages: {
       rules: SILENT_MUSIC,
       countdown: SILENT_MUSIC,
-      playing: musicTrack('challenge_group_1'),
+      playing: musicTrack('introhub'),
       results: SILENT_MUSIC,
       done: SILENT_MUSIC,
     },
@@ -334,6 +337,7 @@ export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   minigameCategoryMusic: DEFAULT_MINIGAME_CATEGORY_MUSIC,
   eventSounds: DEFAULT_EVENT_SOUND_POLICY,
   contextMusic: {
+    introHub: musicTrack('introhub'),
     spectator: musicTrack('spectator'),
     social: musicTrack('social'),
     seasonComplete: musicTrack('final_modal'),
@@ -596,6 +600,30 @@ function isGameOverHash(hash: string): boolean {
   return /^#\/game-?over(?:[/?#]|$)/.test(hash)
 }
 
+const INTRO_HUB_ROUTE_PATHS = new Set([
+  '/',
+  '/rules',
+  '/vox-populi-rules',
+  '/profile',
+  '/profile-edit',
+  '/profile-picker',
+  '/leaderboard',
+  '/settings',
+  '/store',
+  '/legal',
+  '/public-meter',
+])
+
+function routePath(hash: string): string {
+  const path = (hash.startsWith('#') ? hash.slice(1) : hash).split(/[?#]/, 1)[0] || '/'
+  return path === '/' ? '/' : path.replace(/\/+$/, '') || '/'
+}
+
+function isIntroHubRoute(context: MusicResolverContext): boolean {
+  const path = routePath(context.routeHash)
+  return INTRO_HUB_ROUTE_PATHS.has(path) && !(path === '/store' && context.gameActive === true)
+}
+
 function selectionToTrack(selection: MusicSelection): MusicTrack {
   return selection.kind === 'track' ? selection.track : 'none'
 }
@@ -661,6 +689,11 @@ export function resolveMusicCue(
 
   if (isGameOverHash(context.routeHash)) {
     const routeCue = resolveSelection(config.contextMusic.gameOver, 'context.game-over', 'route')
+    if (routeCue) return routeCue
+  }
+
+  if (isIntroHubRoute(context)) {
+    const routeCue = resolveSelection(config.contextMusic.introHub, 'context.intro-hub', 'route')
     if (routeCue) return routeCue
   }
 

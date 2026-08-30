@@ -17,11 +17,11 @@ describe('safe-area layout styles', () => {
       readFileSync(resolve(process.cwd(), 'src/components/layout/AppShell.css'), 'utf8')
     )
 
-    expect(globalCss).toContain('--safe-top: env(safe-area-inset-top, 0px);')
-    expect(globalCss).toContain('--safe-bottom: env(safe-area-inset-bottom, 0px);')
-    expect(globalCss).toContain(
-      'html.is-chrome-android { /* Clear centered punch-hole cameras before drawing the TV header edge. */ --app-safe-area-top-fallback: 44px; }'
-    )
+    expect(globalCss).toContain('--safe-area-inset-top: env(safe-area-inset-top, 0px);')
+    expect(globalCss).toContain('--safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);')
+    expect(globalCss).toContain('--safe-top: var(--safe-area-inset-top);')
+    expect(globalCss).toContain('--safe-bottom: var(--safe-area-inset-bottom);')
+    expect(globalCss).not.toContain('html.is-chrome-android {')
     expect(existsSync(resolve(process.cwd(), 'src/components/layout/SafeGameViewport.tsx'))).toBe(
       false
     )
@@ -32,10 +32,15 @@ describe('safe-area layout styles', () => {
     expect(appShellCss).toContain('height: 100dvh;')
     expect(appShellCss).toContain('max-width: var(--app-shell-max-width, 480px);')
     expect(appShellCss).toContain('margin: 0 auto;')
+    expect(appShellCss).toContain('min-height: 0;')
     expect(appShellCss).toContain('padding-top: var(--app-safe-area-top);')
     expect(appShellCss).toContain('padding-right: var(--safe-right);')
     expect(appShellCss).toContain('padding-bottom: 0;')
     expect(appShellCss).toContain('padding-left: var(--safe-left);')
+    expect(globalCss).toContain('env(safe-area-inset-top, 0px)')
+    expect(globalCss).toContain(
+      '--app-safe-area-top: max( var(--app-safe-area-top-fallback), var(--safe-top), env(safe-area-inset-top, 0px) );'
+    )
   })
 
   it('lets bottom nav and dock stay parent-relative without raw child env() padding', () => {
@@ -62,6 +67,7 @@ describe('safe-area layout styles', () => {
     expect(dockCss).not.toContain('position: fixed;')
     expect(dockCss).not.toContain('env(safe-area-inset-bottom')
     expect(gameScreenCss).toContain('.game-screen:has(.game-control-dock)')
+    expect(gameScreenCss).toContain('html.is-capacitor-ios .game-screen { padding-top: 0; }')
     expect(gameScreenCss).toContain(
       '--game-screen-floating-dock-clearance: clamp(56px, 16vw, 76px);'
     )
@@ -108,6 +114,7 @@ describe('safe-area layout styles', () => {
     expect(gameScreenTsx).toContain('occupancyChip={rosterOccupancyChip}')
     expect(houseguestGridCss).not.toContain('survivorTileSettle')
     expect(gameScreenTsx).toContain('useResponsiveGameLayout')
+    expect(gameScreenTsx).toContain('freezeLayout: flowCoordination.activeFlow !== null')
     expect(gameScreenTsx).toContain('layoutSignal={responsiveGameLayout.revision}')
     expect(ceremonyOverlayTsx).toContain('layoutSignal?: string | number')
     expect(tvLogCss).toContain('overflow-y: auto;')
@@ -152,7 +159,7 @@ describe('safe-area layout styles', () => {
     expect(homeHubCss).not.toMatch(/\.homehub-(?:shell|frame)\s*\{[^}]*overflow-y:\s*auto/)
   })
 
-  it('keeps native status bar policy aligned with CSS-owned safe areas', () => {
+  it('uses immersive gameplay status chrome with CSS-owned safe-area fallback', () => {
     const capacitorConfigTs = readFileSync(resolve(process.cwd(), 'capacitor.config.ts'), 'utf8')
     const useGameModeTs = readFileSync(resolve(process.cwd(), 'src/hooks/useGameMode.ts'), 'utf8')
     const viewportMetaTs = readFileSync(
@@ -160,11 +167,14 @@ describe('safe-area layout styles', () => {
       'utf8'
     )
 
-    expect(useGameModeTs).toContain('CSS remains the only safe-area layout owner')
-    expect(useGameModeTs).toContain('setOverlaysWebView?.({ overlay: true })')
-    expect(useGameModeTs).not.toContain('setOverlaysWebView?.({ overlay: false })')
+    expect(useGameModeTs).toContain('SystemBars.hide({ bar: SystemBarType.StatusBar })')
+    expect(useGameModeTs).toContain("Capacitor.getPlatform() === 'android'")
+    expect(useGameModeTs).toContain('measured CSS safe area remains the fallback')
+    expect(useGameModeTs).not.toContain('setOverlaysWebView')
     expect(capacitorConfigTs).toContain("contentInset: 'never'")
-    expect(capacitorConfigTs).toContain('overlaysWebView: true')
+    expect(capacitorConfigTs).toContain('SystemBars:')
+    expect(capacitorConfigTs).toContain("insetsHandling: 'css'")
+    expect(capacitorConfigTs).toContain('hidden: false')
     expect(viewportMetaTs).toContain('viewport-fit=cover')
   })
 

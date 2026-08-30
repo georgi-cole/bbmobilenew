@@ -16,6 +16,7 @@ import {
   submitVipSecondUseDecision,
   submitDemocraciaVote,
   submitCoLohNomination,
+  submitHumanVote,
   resolvePendingVoxAudienceVote,
   revealVoxTemporaryAudienceVote,
   startVoxFinalVote,
@@ -56,9 +57,10 @@ import type { MusicMinigameVariant } from '../../services/sound/musicConfig'
 import { computeScores } from '../../minigames/scoring'
 import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
 import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
+import SurveyevalTileEvictionEffect from '../../components/Eviction/SurveyevalTileEvictionEffect'
 import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
-import SpotlightAnimation from '../../components/SpotlightAnimation/spotlight-animation'
+import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
@@ -81,9 +83,9 @@ import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/Tw
 import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
 import type { PlayerPublicProfile } from '../../publicOpinion/types'
 import { selectSettings } from '../../store/settingsSlice'
+import { selectHasPublicModeAccess } from '../../store/vipSlice'
 import type { RootState } from '../../store/store'
 import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
-import { selectRemoteMainTvHeadline } from '../../remoteConfig/remoteConfigSlice'
 import AdPrompt from '../../components/AdPrompt/AdPrompt'
 import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
@@ -105,7 +107,7 @@ import {
 import { usePersistedPromptDate } from './gameScreenPersistence'
 import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
 import { useResponsiveGameLayout } from './useResponsiveGameLayout'
-import { getCeremonyTileRect } from './ceremonyTileMeasurement'
+import { getCeremonyTileElement, getCeremonyTileRect } from './ceremonyTileMeasurement'
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
 import {
   hasSeenVoxNominationRevealIntro,
@@ -215,11 +217,13 @@ export default function GameScreen() {
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
   const settings = useAppSelector(selectSettings)
+  const hasPublicModeAccess = useAppSelector(selectHasPublicModeAccess)
   // ── Confessional ceremony decision routing ─────────────────────────────────
   // When non-null, a required player ceremony decision is pending that must be
   // resolved inside the Confessional.  The in-game decision modals are hidden
   // and a main-TV guidance banner is shown instead.
-  const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
+  const selectedConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
+  const activeConfessionalDecision = game.mode === 'survival' ? null : selectedConfessionalDecision
   const publicOpinionProfiles = useAppSelector(
     (s: RootState): Record<string, PlayerPublicProfile> =>
       s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES
@@ -229,7 +233,6 @@ export default function GameScreen() {
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
-  const remoteMainTvHeadline = useAppSelector(selectRemoteMainTvHeadline)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
@@ -243,8 +246,6 @@ export default function GameScreen() {
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
   const [adPending, setAdPending] = useState(false)
   const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
-  const [publicMeterUnavailableAnnouncement, setPublicMeterUnavailableAnnouncement] =
-    useState<Announcement | null>(null)
   const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] =
     useState<Announcement | null>(null)
   useEffect(() => {
@@ -334,9 +335,7 @@ export default function GameScreen() {
   const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false)
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const preJuryGameOver =
-    game.mode !== 'survival' &&
-    humanPlayer?.status === 'evicted' &&
-    !spectatingAfterElimination
+    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination
   const isVoxPopuli = game.voxPopuli?.status === 'active'
   const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
   const voxAudiencePreviewWindow =
@@ -537,11 +536,7 @@ export default function GameScreen() {
       ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
       status: 'ready',
     })
-  }, [
-    game.voxPopuli?.nominationBallots,
-    game.week,
-    voxNominationRevealReady,
-  ])
+  }, [game.voxPopuli?.nominationBallots, game.week, voxNominationRevealReady])
 
   useEffect(() => {
     if (!voxNominationRevealReady || hasSeenVoxNominationRevealIntro()) return
@@ -570,7 +565,6 @@ export default function GameScreen() {
     humanIsOutgoingHoh,
     spectatorReactEnabled,
     spectatorMode: settings.gameUX.spectatorMode,
-    getTileRect,
     dispatch,
   })
   const showAdvanceHohCeremony = advanceHohCeremonyEligible && pendingWinnerCeremony == null
@@ -676,9 +670,15 @@ export default function GameScreen() {
       nominationCeremonyState,
       layoutId: `avatar-tile-${p.id}`,
       isEvicting:
-        (showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
-        game.evictionOverlayPlayerId === p.id ||
+        (game.mode !== 'survival' &&
+          ((showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
+            game.evictionOverlayPlayerId === p.id)) ||
         isReturning,
+      isSurveyevalEvicting:
+        game.mode === 'survival' &&
+        !isReturning &&
+        ((showEvictionSplash && pendingEvictionPlayer?.id === p.id) ||
+          game.evictionOverlayPlayerId === p.id),
       onClick: () => handleAvatarSelect(p),
       onHoldPreviewStart: () => setPreviewPlayer(p),
       onHoldPreviewEnd: () =>
@@ -777,6 +777,7 @@ export default function GameScreen() {
     dayStartShockPlayer,
     handleDayStartShockConfirm,
     battleBackReturnId,
+    battleBackReturnAnnouncement,
     battleBackAttemptIndex,
     battleBackAttemptSeed,
     battleBackCandidateIds,
@@ -794,6 +795,7 @@ export default function GameScreen() {
     handleBattleBackRetryGranted,
     handleBattleBackRetryDeclined,
     handleBattleBackReturnDone,
+    handleBattleBackReturnAnnouncementDismiss,
     favoritePlayer,
     showFavoriteVoting,
     handleFavoriteComplete,
@@ -886,8 +888,11 @@ export default function GameScreen() {
 
     aiOnlyChallengeResolvedRef.current = pendingChallenge.id
     const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
-    const scoreWinnerId = dispatch(completeChallenge(rawResults)) as string | null
-    const finalWinnerId = scoreWinnerId ?? pendingChallenge.participants[0]
+    const scoreWinnerId = dispatch(
+      completeChallenge(rawResults, { authoritativeWinnerId: pendingChallenge.forcedWinnerId })
+    ) as string | null
+    const finalWinnerId =
+      pendingChallenge.forcedWinnerId ?? scoreWinnerId ?? pendingChallenge.participants[0]
     const ranked =
       pendingChallenge.game.key === 'pressurePlank'
         ? rankPressurePlankResults(
@@ -1146,7 +1151,8 @@ export default function GameScreen() {
   // Final Three is a closed ceremony. Do not surface fresh social actions or
   // inbox requests once only three housemates remain.
   const isSocialPhase =
-    (isVoxPopuli && alivePlayers.length > 3) || (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
+    (isVoxPopuli && alivePlayers.length > 3) ||
+    (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
   const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
   // The individual controllers publish presentation signals; this coordinator
@@ -1155,10 +1161,47 @@ export default function GameScreen() {
   const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
   const showSaveCeremony = pendingSaveCeremony !== null
   const showFinal3Ceremony =
-    !isVoxPopuli && game.awaitingFinal3Plea === true && game.phase === 'final3_decision' && !!game.lohId
+    !isVoxPopuli &&
+    game.awaitingFinal3Plea === true &&
+    game.phase === 'final3_decision' &&
+    !!game.lohId
   const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const favoriteAnnouncementPending =
     game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
+
+  // Condition-driven prompts (approval, energy, unlocked reveals, etc.) must
+  // never cover a ceremony or cinematic that is already active or queued by
+  // the game state. Keeping their state pending lets them appear immediately
+  // after that presentation completes, rather than losing the prompt.
+  const deferConditionPromptsForPresentation =
+    shouldShowNominationCeremony ||
+    showWinnerCeremony ||
+    showAdvanceHohCeremony ||
+    pendingReplacementCeremony !== null ||
+    showAiReplacementAnim ||
+    showPublicSaveCeremony ||
+    showSaveCeremony ||
+    showEvictionSplash ||
+    dayStartShock !== null ||
+    twinShockReveal !== null ||
+    showPublicSaveReveal ||
+    showDemocraciaResults ||
+    showVoteResults ||
+    showAiSecondTieBreakOverlay ||
+    showFinal4Chat ||
+    showFinal4AnnounceChat ||
+    showFinal3Ceremony ||
+    game.phase === 'jury_announcement' ||
+    game.phase === 'jury_cinematic' ||
+    showBattleBackOverlay ||
+    showBattleBackReturn ||
+    showFavoriteVoting ||
+    showMinigameHost ||
+    showQuickTapRace ||
+    showLaneRacers ||
+    showPressurePlank ||
+    showBullseyeBlitz ||
+    showTravelingDots
 
   const flowCoordination = coordinateGameFlows({
     hasStartedGame: game.status === 'active',
@@ -1210,6 +1253,7 @@ export default function GameScreen() {
       eviction: {
         awaitingDecision: [
           showVoteResults,
+          game.mode === 'survival' && game.phase === 'live_vote' && Boolean(game.awaitingHumanVote),
           showVoteDeductionOffer,
           showEvictionSplash,
           aiTiebreakStage !== null,
@@ -1239,7 +1283,6 @@ export default function GameScreen() {
           showDislikedBoostPrompt,
           preAdAnnouncement !== null,
           socialModuleUnavailableAnnouncement !== null,
-          publicMeterUnavailableAnnouncement !== null,
           socialSummaryOpen,
         ],
       },
@@ -1247,39 +1290,18 @@ export default function GameScreen() {
   })
   const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
-  // ── Viewport fallback message for blank-TV states ────────────────────────
-  // Provides a meaningful holding message while the live vote is waiting for
-  // the human decision or for the remaining house votes to finish.
-  const tvViewportFallbackMessage = useMemo(() => {
-    if (game.phase === 'live_vote') {
-      if (isVoxPopuli) return 'The audience vote is being counted.'
-      if (game.awaitingHumanVote) {
-        return activeConfessionalDecision
-          ? 'The Big Eye requires your vote in the Confessional.'
-          : 'Waiting for your vote.'
-      }
-      return 'Players are casting their votes.'
-    }
-    // Fall back to the remote-config headline when no phase-specific message applies.
-    return remoteMainTvHeadline ?? undefined
-  }, [
-    game.phase,
-    game.awaitingHumanVote,
-    isVoxPopuli,
-    activeConfessionalDecision,
-    remoteMainTvHeadline,
-  ])
   function handlePublicMeterBlocked() {
-    setPublicMeterUnavailableAnnouncement({
-      key: 'public_meter_unavailable',
-      title:
-        settings.sim.publicMode === true
-          ? 'Public Mode is enabled in Settings. Start a new season to apply it.'
-          : 'Public Mode is not active for this season. Enable it in Settings before starting a new season.',
-      subtitle: '',
-      isLive: false,
-      autoDismissMs: 3500,
-    })
+    if (hasPublicModeAccess || settings.sim.publicModeAdminOverride) {
+      setSocialModuleUnavailableAnnouncement({
+        key: 'public_mode_settings',
+        title: 'Public Mode is switched off',
+        subtitle: 'To activate Public Mode, open Settings and switch it on.',
+        isLive: false,
+        autoDismissMs: SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS,
+      })
+      return
+    }
+    navigate('/store', { state: { returnTo: '/game' } })
   }
 
   function handleSocialModuleBlocked(availability: SocialModuleAvailability) {
@@ -1297,12 +1319,19 @@ export default function GameScreen() {
 
   const responsiveGameLayout = useResponsiveGameLayout(gameScreenRef, {
     hasDock: showGameControlDock,
+    unifiedActionRail: true,
     playerCount: game.players.length,
     userCompactRoster: settings.gameUX.compactRoster,
     inlineLogVisible: !refinedGameChrome || game.mode === 'survival' || settings.gameUX.houseFeed,
+    freezeLayout: flowCoordination.activeFlow !== null,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
-  const housemateOccupancyLabel = `${alivePlayers.length}/${game.players.length}`
+  const housemateOccupancyLabel = `${alivePlayers.length}/${game.mode === 'survival' ? 8 + (game.modeSpecific?.kind === 'survival' ? (game.modeSpecific.totalRoboContestantsEvicted ?? 0) : 0) : game.players.length}`
+  const showSurveyevalVoteModal =
+    game.mode === 'survival' && game.phase === 'live_vote' && game.awaitingHumanVote
+  const surveyevalVoteOptions = game.nomineeIds
+    .map((id) => game.players.find((player) => player.id === id))
+    .filter((player): player is Player => Boolean(player))
   const rosterOccupancyChip =
     responsiveGameLayout.rosterHeaderMode === 'tv-chip'
       ? {
@@ -1315,13 +1344,14 @@ export default function GameScreen() {
     <LayoutGroup id="game-layout">
       <div
         ref={gameScreenRef}
-        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}`}
+        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}${game.depressionShock?.activeDay === 2 ? ' game-screen--depression-day-two' : ''}`}
         style={responsiveGameLayout.cssVars}
         data-layout-size={responsiveGameLayout.layoutSize}
         data-roster-mode={responsiveGameLayout.rosterMode}
         data-roster-header={responsiveGameLayout.rosterHeaderMode}
         data-layout-revision={responsiveGameLayout.revision}
         data-active-flow={flowCoordination.activeFlow ?? undefined}
+        data-game-mode={game.mode}
       >
         {showPublicSaveReveal && publicSaveWinnerId ? (
           <TvZone
@@ -1334,20 +1364,14 @@ export default function GameScreen() {
             onPublicSaveDone={handlePublicSaveDone}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1367,20 +1391,14 @@ export default function GameScreen() {
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1403,20 +1421,14 @@ export default function GameScreen() {
             }}
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
-            externalAnnouncement={
-              socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
-              preAdAnnouncement
-            }
+            externalAnnouncement={socialModuleUnavailableAnnouncement ?? preAdAnnouncement}
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
-                  : handlePreAdAnnouncementDismiss
+                : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1427,11 +1439,16 @@ export default function GameScreen() {
           />
         ) : (
           <TvZone
+            viewportMessageOverride={
+              showBattleBackOverlay
+                ? 'Back 2 the Game is in progress. The return showdown is underway.'
+                : null
+            }
             priorityAnnouncement={confessionalTvAnnouncement}
             onPriorityAnnouncementDismiss={dismissConfessionalTvPrompt}
             externalAnnouncement={
               socialModuleUnavailableAnnouncement ??
-              publicMeterUnavailableAnnouncement ??
+              battleBackReturnAnnouncement ??
               aiTiebreakAnnouncement ??
               postVoteAnnouncement ??
               publicSaveResultAnnouncement ??
@@ -1440,8 +1457,8 @@ export default function GameScreen() {
             onExternalAnnouncementDismiss={
               socialModuleUnavailableAnnouncement
                 ? () => setSocialModuleUnavailableAnnouncement(null)
-                : publicMeterUnavailableAnnouncement
-                  ? () => setPublicMeterUnavailableAnnouncement(null)
+                : battleBackReturnAnnouncement
+                  ? handleBattleBackReturnAnnouncementDismiss
                   : aiTiebreakAnnouncement
                     ? handleAiTiebreakAnnouncementDismiss
                     : postVoteAnnouncement
@@ -1451,7 +1468,7 @@ export default function GameScreen() {
                         : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
-            viewportFallbackMessage={tvViewportFallbackMessage}
+            rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
             audiencePreviewReveal={
@@ -1519,6 +1536,18 @@ export default function GameScreen() {
           />
         )}
 
+        {showSurveyevalVoteModal && (
+          <TvDecisionModal
+            title="Live Elimination Vote"
+            subtitle={`${humanPlayer?.name}, select the synthetic player you want removed from the board.`}
+            options={surveyevalVoteOptions}
+            onSelect={(playerId) => dispatch(submitHumanVote(playerId))}
+            danger
+            confirmLabel="Lock vote"
+            stingerMessage="VOTE RECORDED"
+          />
+        )}
+
         {/* ── Nomination ceremony — spotlight cutout with ❓ badges ─────────── */}
         {/* Shown for BOTH human LOH (deferred commit) and AI LOH (already committed). */}
         {shouldShowNominationCeremony && (
@@ -1568,8 +1597,8 @@ export default function GameScreen() {
                 ? '🗳️ The secret nominations have been counted'
                 : nominationLabels[nomAnimPlayers[nomAnimPlayers.length - 1]?.id ?? ''] ===
                     'Last in LOH Comp'
-                ? '🎯 Nominations are set — including the LOH comp last-place finisher'
-                : '🎯 Nominations are set'
+                  ? '🎯 Nominations are set — including the LOH comp last-place finisher'
+                  : '🎯 Nominations are set'
             }
             onDone={showHumanNomAnim ? handleNomAnimDone : handleAiNomAnimDone}
             ariaLabel={`Nomination ceremony: ${nomAnimPlayers.map((n) => n.name).join(' and ')}`}
@@ -1851,15 +1880,16 @@ export default function GameScreen() {
           <TravelingDots session={pendingMinigame} players={game.players} />
         )}
 
-        {/* ── SpotlightAnimation — LOH / POS winner reveal (viewport-tracking) ── */}
+        {/* ── Winner tile lift — LOH / POS result without coordinate-space cutouts ── */}
         {showWinnerCeremony && pendingWinnerCeremony && (
-          <SpotlightAnimation
+          <WinnerTileLiftAnimation
+            targetIds={pendingWinnerCeremony.targetIds}
             tiles={pendingWinnerCeremony.tiles}
             caption={pendingWinnerCeremony.caption}
             subtitle={pendingWinnerCeremony.subtitle}
             onDone={handleWinnerCeremonyDone}
             ariaLabel={pendingWinnerCeremony.ariaLabel}
-            measureA={pendingWinnerCeremony.measureA}
+            resolveTarget={getCeremonyTileElement}
           />
         )}
 
@@ -1879,9 +1909,7 @@ export default function GameScreen() {
                   badge: isVoxFinalFour ? '🏆' : isVoxPopuli ? '🛡️' : '👑',
                   badgeImageSrc: isVoxPopuli ? undefined : LOH_BADGE_SRC,
                   badgeVariant:
-                    !isVoxPopuli && isCupidArrowActive(game)
-                      ? ('cupid-kiss' as const)
-                      : undefined,
+                    !isVoxPopuli && isCupidArrowActive(game) ? ('cupid-kiss' as const) : undefined,
                   badgeStart: 'center' as const,
                   badgeLabel: `${winnerPlayer?.name ?? roleWinnerId} wins ${
                     isVoxFinalFour
@@ -1896,9 +1924,7 @@ export default function GameScreen() {
             caption={`${expandCupidIds(game, [game.lohId])
               .map((id) => game.players.find((player) => player.id === id)?.name)
               .filter(Boolean)
-              .join(' & ')} ${
-              !isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'
-            } ${
+              .join(' & ')} ${!isVoxPopuli && isCupidArrowActive(game) ? 'win' : 'wins'} ${
               isVoxFinalFour
                 ? 'the Final 4 competition!'
                 : isVoxPopuli
@@ -1977,8 +2003,7 @@ export default function GameScreen() {
               isVoxPopuli
                 ? `${activeReplacementAnimationTargetIds
                     .map((id) => {
-                      const name =
-                        game.players.find((player) => player.id === id)?.name ?? id
+                      const name = game.players.find((player) => player.id === id)?.name ?? id
                       const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0
                       return `${name} (${votes} vote${votes === 1 ? '' : 's'})`
                     })
@@ -1991,8 +2016,8 @@ export default function GameScreen() {
               isVoxPopuli
                 ? 'Next-highest secret-ballot rank'
                 : game.specialVeto?.activeType === 'diamond'
-                ? '😇 Halo Exchange names the backup nominee'
-                : '🎯 Nominations are set'
+                  ? '😇 Halo Exchange names the backup nominee'
+                  : '🎯 Nominations are set'
             }
             onDone={handleAiReplacementDone}
             ariaLabel="Backup nominee ceremony"
@@ -2078,16 +2103,24 @@ export default function GameScreen() {
 
         {/* ── Eviction cinematic (pendingEviction-driven, shared layout match-cut) ── */}
         <AnimatePresence>
-          {showEvictionSplash && pendingEvictionPlayer && (
-            <SpotlightEvictionOverlay
-              key={pendingEvictionPlayer.id}
-              evictee={pendingEvictionPlayer}
-              contextLabel={`Season ${game.season} · Day ${game.week}`}
-              onDone={handleEvictionSplashDone}
-              layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
-              devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
-            />
-          )}
+          {showEvictionSplash &&
+            pendingEvictionPlayer &&
+            (game.mode === 'survival' ? (
+              <SurveyevalTileEvictionEffect
+                key={pendingEvictionPlayer.id}
+                evicteeId={pendingEvictionPlayer.id}
+                onDone={handleEvictionSplashDone}
+              />
+            ) : (
+              <SpotlightEvictionOverlay
+                key={pendingEvictionPlayer.id}
+                evictee={pendingEvictionPlayer}
+                contextLabel={`Season ${game.season} · Day ${game.week}`}
+                onDone={handleEvictionSplashDone}
+                layoutId={`avatar-tile-${pendingEvictionPlayer.id}`}
+                devSkip={import.meta.env.DEV || import.meta.env.CI === 'true'}
+              />
+            ))}
         </AnimatePresence>
         <AnimatePresence>
           {dayStartShock && dayStartShockPlayer && (
@@ -2160,9 +2193,7 @@ export default function GameScreen() {
           secondaryLabel={isVoxPopuli ? 'Return Home' : undefined}
           onConfirm={handleStartNewSeason}
           onCancel={
-            isVoxPopuli
-              ? () => setSpectatingAfterElimination(true)
-              : handlePreJuryReturnHome
+            isVoxPopuli ? () => setSpectatingAfterElimination(true) : handlePreJuryReturnHome
           }
           onSecondary={isVoxPopuli ? handlePreJuryReturnHome : undefined}
         />
@@ -2195,7 +2226,7 @@ export default function GameScreen() {
         {isSocialModeEnabled(game.mode) && socialSummaryOpen && <SocialSummaryPopup />}
 
         {/* ── Ad Prompts ───────────────────────────────────────────────────── */}
-        {showVoteBreakdownPrompt && (
+        {!deferConditionPromptsForPresentation && showVoteBreakdownPrompt && (
           <AdPrompt
             icon="🗳️"
             title="Peek Behind the Curtain?"
@@ -2227,7 +2258,7 @@ export default function GameScreen() {
           />
         )}
 
-        {showVoxNominationRevealPrompt && (
+        {!deferConditionPromptsForPresentation && showVoxNominationRevealPrompt && (
           <AdPrompt
             icon="🗳️"
             title="Reveal the Secret Ballots?"
@@ -2256,39 +2287,41 @@ export default function GameScreen() {
           />
         )}
 
-        {showVoxAudiencePreviewPrompt && voxAudiencePreviewWindow && (
-          <AdPrompt
-            icon="📡"
-            title="See How the Vote Is Going?"
-            description="Watch a short ad to see how the audience has voted so far. If the numbers look dangerous, there is still time to change the story before the vote closes."
-            watchLabel="Show Me the Vote"
-            skipLabel="Not Yet"
-            onWatch={() => {
-              if (adPending) return
-              setAdPending(true)
-              const state = storeRef.current.getState()
-              if (!window.GameAds?.showRewarded) {
-                dispatch(recordAdShown('vox_audience_preview'))
-                unlockVoxAudiencePreview()
-                return
-              }
-              const requested = showRewarded(
-                'vox_audience_preview',
-                state,
-                dispatch,
-                unlockVoxAudiencePreview
-              )
-              if (!requested) unlockVoxAudiencePreview()
-            }}
-            onSkip={() => {
-              setShowVoxAudiencePreviewPrompt(false)
-              setAdPending(false)
-            }}
-            pending={adPending}
-          />
-        )}
+        {!deferConditionPromptsForPresentation &&
+          showVoxAudiencePreviewPrompt &&
+          voxAudiencePreviewWindow && (
+            <AdPrompt
+              icon="📡"
+              title="See How the Vote Is Going?"
+              description="Watch a short ad to see how the audience has voted so far. If the numbers look dangerous, there is still time to change the story before the vote closes."
+              watchLabel="Show Me the Vote"
+              skipLabel="Not Yet"
+              onWatch={() => {
+                if (adPending) return
+                setAdPending(true)
+                const state = storeRef.current.getState()
+                if (!window.GameAds?.showRewarded) {
+                  dispatch(recordAdShown('vox_audience_preview'))
+                  unlockVoxAudiencePreview()
+                  return
+                }
+                const requested = showRewarded(
+                  'vox_audience_preview',
+                  state,
+                  dispatch,
+                  unlockVoxAudiencePreview
+                )
+                if (!requested) unlockVoxAudiencePreview()
+              }}
+              onSkip={() => {
+                setShowVoxAudiencePreviewPrompt(false)
+                setAdPending(false)
+              }}
+              pending={adPending}
+            />
+          )}
 
-        {postEvictionVoteBreakdown && (
+        {!deferConditionPromptsForPresentation && postEvictionVoteBreakdown && (
           <div
             className="ad-prompt__backdrop"
             role="dialog"
@@ -2336,7 +2369,7 @@ export default function GameScreen() {
         )}
 
         {/* social_energy_recharge: rewarded prompt when energy hits 0 */}
-        {showEnergyRechargePrompt && humanPlayer && (
+        {!deferConditionPromptsForPresentation && showEnergyRechargePrompt && humanPlayer && (
           <AdPrompt
             icon="⚡"
             title="Out of Energy!"
@@ -2362,7 +2395,7 @@ export default function GameScreen() {
         )}
 
         {/* public_meter_disliked_boost: rewarded prompt when approval drops to Disliked */}
-        {showDislikedBoostPrompt && humanPlayer && (
+        {!deferConditionPromptsForPresentation && showDislikedBoostPrompt && humanPlayer && (
           <AdPrompt
             icon="📊"
             title="Your Approval Is Slipping"
@@ -2404,7 +2437,7 @@ export default function GameScreen() {
           />
         )}
 
-        {battleBackRetryOfferWinnerId && (
+        {!deferConditionPromptsForPresentation && battleBackRetryOfferWinnerId && (
           <AdPrompt
             icon="⚡"
             title="Second Chance?"
@@ -2513,6 +2546,7 @@ export default function GameScreen() {
           occupancyLabel={housemateOccupancyLabel}
           returningPlayerId={battleBackReturnId}
           onReturnAnimationDone={handleBattleBackReturnDone}
+          showRosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
         />
         {previewPlayer && (
           <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />

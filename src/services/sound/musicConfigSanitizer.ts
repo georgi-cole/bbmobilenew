@@ -45,7 +45,14 @@ const GAME_CATEGORIES = [
   'logic',
   'trivia',
 ] as const satisfies readonly GameCategory[]
-const CONTEXT_KEYS = ['spectator', 'social', 'seasonComplete', 'gameOver', 'fallback'] as const
+const CONTEXT_KEYS = [
+  'introHub',
+  'spectator',
+  'social',
+  'seasonComplete',
+  'gameOver',
+  'fallback',
+] as const
 const PHASES = new Set(Object.keys(DEFAULT_PHASE_MUSIC_POLICY) as Phase[])
 const SCENES = new Set(Object.keys(DEFAULT_SCENE_MUSIC_POLICY) as MusicScene[])
 const EVENT_IDS = new Set<AudioEventId>(AUDIO_EVENT_IDS)

@@ -1,6 +1,8 @@
 /* IncomingInteractionsInbox — mobile-first social decision sheet */
 
 .inbox-backdrop {
+  --color-card: #111016;
+  --color-card-2: #17141d;
   position: fixed;
   inset: 0;
   z-index: 210;
@@ -19,8 +21,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--color-card, #141b26);
-  border: 1px solid rgba(129, 140, 248, 0.14);
+  background:
+    radial-gradient(ellipse at 48% 10%, rgba(112, 72, 156, 0.12), transparent 46%),
+    linear-gradient(180deg, rgba(19, 9, 32, 0.98), rgba(9, 6, 17, 0.99));
+  border: 1px solid rgba(205, 190, 236, 0.14);
   border-bottom: 0;
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.42);
@@ -39,16 +43,16 @@
   padding: 0.68rem 0.78rem 0.72rem;
   padding-top: max(0.68rem, env(safe-area-inset-top));
   background:
-    radial-gradient(circle at 0 0, rgba(99, 102, 241, 0.18), transparent 42%),
-    linear-gradient(135deg, #0f1225 0%, #131a2e 100%);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.18);
+    radial-gradient(circle at 0 0, rgba(124, 78, 170, 0.18), transparent 42%),
+    linear-gradient(135deg, #10081c 0%, #170b27 100%);
+  border-bottom: 1px solid rgba(185, 157, 221, 0.14);
 }
 
 .inbox-panel--drama .inbox-header {
   background:
     radial-gradient(circle at 0 0, rgba(124, 58, 237, 0.24), transparent 45%),
     radial-gradient(circle at 100% 0, rgba(245, 158, 11, 0.12), transparent 38%),
-    linear-gradient(135deg, #0f1225 0%, #17142d 100%);
+    linear-gradient(135deg, #0d0718 0%, #180c29 100%);
 }
 
 .inbox-header__top,
@@ -108,11 +112,17 @@
 }
 
 .inbox-header__close {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -211,7 +221,7 @@
   padding: 0.65rem;
   border: 1px solid rgba(245, 158, 11, 0.28);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(120, 53, 15, 0.18), rgba(15, 23, 42, 0.72));
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.18), rgba(18, 9, 30, 0.76));
 }
 
 .inbox-section--promises summary {
@@ -266,16 +276,16 @@
   flex-direction: column;
   gap: 0.44rem;
   color: #e2e8f0;
-  background: rgba(15, 23, 42, 0.78);
+  background: rgba(25, 23, 30, 0.86);
 }
 
 .inbox-item--policy-required {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.82));
+  background: linear-gradient(135deg, rgba(38, 31, 45, 0.92), rgba(18, 16, 22, 0.9));
 }
 
 .inbox-item--policy-readOnly {
   border-left-color: rgba(148, 163, 184, 0.55);
-  background: rgba(15, 23, 42, 0.58);
+  background: rgba(23, 22, 28, 0.64);
 }
 
 .inbox-item--unread {
@@ -296,7 +306,7 @@
 
 .inbox-item--resolved {
   color: rgba(226, 232, 240, 0.72);
-  background: rgba(15, 23, 42, 0.48);
+  background: rgba(20, 18, 24, 0.56);
   border-color: rgba(148, 163, 184, 0.15);
 }
 
@@ -636,7 +646,7 @@
   display: grid;
   gap: 0.3rem;
   color: rgba(226, 232, 240, 0.78);
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(18, 9, 30, 0.82);
   font-size: 0.68rem;
   line-height: 1.35;
 }

@@ -18,8 +18,10 @@ import gameReducer, {
 import type { GameState, Player } from '../src/types'
 import {
   shouldScheduleCupidArrowSeason,
+  CUPID_ARROW_DEFAULT_SEASON,
   CUPID_ARROW_RETRY_CHANCE,
 } from '../src/features/twists/cupidArrow'
+import { withSeasonLaunchIntent } from '../src/modes/seasonLaunchIntent'
 
 function makePlayers(): Player[] {
   return Array.from({ length: 16 }, (_, index) => ({
@@ -54,45 +56,60 @@ function makeStore() {
 }
 
 describe("Cupid's Arrow season shock", () => {
-  it("debuts in Season 3, observes a one-season cooldown, and honours Valentine's Day", () => {
-    const seasonThree = shouldScheduleCupidArrowSeason({
+  it("automatically schedules only on Valentine's Day or Season 14", () => {
+    const ordinarySeasonThree = shouldScheduleCupidArrowSeason({
       season: 3,
       seasonArchives: [],
       seed: 1,
       now: new Date(2026, 0, 12),
     })
-    const cooldownSeason = shouldScheduleCupidArrowSeason({
-      season: 4,
-      seasonArchives: [
-        { seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true },
-      ],
+    const ordinarySeasonThirteen = shouldScheduleCupidArrowSeason({
+      season: 13,
+      seasonArchives: [],
+      seed: 987654321,
+      now: new Date(2026, 0, 12),
+    })
+    const seasonFourteen = shouldScheduleCupidArrowSeason({
+      season: 14,
+      seasonArchives: [],
       seed: 1,
       now: new Date(2026, 0, 12),
     })
-    const valentinesOverride = shouldScheduleCupidArrowSeason({
+    const valentinesClassic = shouldScheduleCupidArrowSeason({
       season: 4,
-      seasonArchives: [
-        { seasonIndex: 3, seasonId: 'season-3', playerSummaries: [], cupidArrowActivated: true },
-      ],
+      seasonArchives: [],
       seed: 1,
       now: new Date(2026, 1, 14),
     })
 
-    expect(seasonThree).toBe(true)
-    expect(cooldownSeason).toBe(false)
-    expect(valentinesOverride).toBe(true)
-    expect(CUPID_ARROW_RETRY_CHANCE).toBe(0.1)
+    expect(ordinarySeasonThree).toBe(false)
+    expect(ordinarySeasonThirteen).toBe(false)
+    expect(seasonFourteen).toBe(true)
+    expect(valentinesClassic).toBe(true)
+    expect(CUPID_ARROW_DEFAULT_SEASON).toBe(14)
+    expect(CUPID_ARROW_RETRY_CHANCE).toBe(0)
   })
 
-  it('uses a stable 10% draw for eligible later seasons', () => {
-    const options = {
-      season: 5,
-      seasonArchives: [{ seasonIndex: 4, seasonId: 'season-4', playerSummaries: [] }],
-      seed: 987654321,
-      now: new Date(2026, 0, 12),
-    }
+  it('honours explicit Cupid launch and keeps Vox Populi completely Cupid-free', () => {
+    const explicitCupid = withSeasonLaunchIntent('cupidArrow', () =>
+      shouldScheduleCupidArrowSeason({
+        season: 3,
+        seasonArchives: [],
+        seed: 1,
+        now: new Date(2026, 0, 12),
+      })
+    )
+    const voxOnValentinesSeasonFourteen = withSeasonLaunchIntent('voxPopuli', () =>
+      shouldScheduleCupidArrowSeason({
+        season: 14,
+        seasonArchives: [],
+        seed: 1,
+        now: new Date(2026, 1, 14),
+      })
+    )
 
-    expect(shouldScheduleCupidArrowSeason(options)).toBe(shouldScheduleCupidArrowSeason(options))
+    expect(explicitCupid).toBe(true)
+    expect(voxOnValentinesSeasonFourteen).toBe(false)
   })
 
   it('activates at the season-opening LOH announcement before the competition begins', () => {

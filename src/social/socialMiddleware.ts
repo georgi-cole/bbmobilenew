@@ -422,9 +422,9 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
       social_2: [
         `${nominees.join(', ')} are making their cases without naming names. The room is listening for every slip.`,
         `A nominee's tearful apology turned into an argument when someone challenged the timing. ${nominees.join(', ')} now have the whole house watching.`,
+        `${nominees.join(', ')} have made their final appeals. The house can offer support, but only the audience will decide.`,
       ],
       live_vote: [
-        `${nominees.join(', ')} have made their final appeals. The house can offer support, but only the audience will decide.`,
         `As the audience vote opens, ${nominees.join(', ')} sit apart in the lounge. One last accusation has left the room completely silent.`,
         `${nominees.join(', ')} are holding it together for the cameras, but the house has already seen the tears, the threats, and the fractures behind the final appeals.`,
       ],
@@ -435,10 +435,6 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
       : `The block has changed the room around ${nominees.join(', ')}. Conversations are getting quieter, closer, and much more consequential.`
   }
   if (!text) return
-  const isMajorBeat =
-    nominees.length > 0 ||
-    Boolean(strongest?.romantic) ||
-    (strongest?.affinity ?? 0) <= -30
   const normalizedText = text.trim().toLocaleLowerCase()
   if (
     (state.game.tvFeed ?? []).some(
@@ -456,10 +452,16 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
       channels: ['tv', 'mainLog'],
       meta: {
         voxSocialBeat: true,
+        broadcastTemplateId: text.startsWith("A nominee's tearful apology")
+          ? 'vox.social-tearful-apology'
+          : text.includes('have made their final appeals')
+            ? 'vox.social-final-appeals'
+          : undefined,
+        broadcastCampaign: 'vox_populi',
         week: state.game.week,
         phase,
         pairKey: strongest?.pairKey,
-        broadcastPriority: isMajorBeat ? 'critical' : 'standard',
+        broadcastLevel: 'minor',
       },
     },
   })

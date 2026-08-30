@@ -35,18 +35,25 @@
   transform: translateX(-50%);
   width: 220px;
   height: 300px;
-  background: radial-gradient(ellipse 80% 90% at 50% 100%,
-    rgba(180, 170, 255, 0.20) 0%,
+  background: radial-gradient(
+    ellipse 80% 90% at 50% 100%,
+    rgba(180, 170, 255, 0.2) 0%,
     rgba(99, 102, 241, 0.08) 40%,
-    transparent 80%);
+    transparent 80%
+  );
   pointer-events: none;
   z-index: 0;
   animation: tms-spotlight-pulse 3s ease-in-out infinite;
 }
 
 @keyframes tms-spotlight-pulse {
-  0%, 100% { opacity: 0.8; }
-  50%       { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ── Previous jurors strip ───────────────────────────────────────────────── */
@@ -98,8 +105,14 @@
 }
 
 @keyframes tms-nameplate-enter {
-  from { opacity: 0; transform: translateX(-50%) translateY(-18px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .tms-nameplate__eyebrow {
@@ -123,7 +136,9 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
-  text-shadow: 0 2px 24px rgba(99, 102, 241, 0.6), 0 0 4px rgba(0, 0, 0, 0.8);
+  text-shadow:
+    0 2px 24px rgba(99, 102, 241, 0.6),
+    0 0 4px rgba(0, 0, 0, 0.8);
   background: linear-gradient(135deg, #e0e7ff 0%, #c4b5fd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -168,8 +183,7 @@
   max-width: min(240px, 48vw);
   object-fit: contain;
   object-position: bottom;
-  filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.35))
-          drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.35)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -198,17 +212,26 @@
   transform: translateX(-50%);
   width: 160px;
   height: 80px;
-  background: radial-gradient(ellipse 100% 100% at 50% 100%,
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 100%,
     rgba(139, 92, 246, 0.35) 0%,
-    transparent 70%);
+    transparent 70%
+  );
   pointer-events: none;
   z-index: -1;
   animation: tms-glow-pulse 2.5s ease-in-out infinite;
 }
 
 @keyframes tms-glow-pulse {
-  0%, 100% { opacity: 0.7; transform: translateX(-50%) scaleX(1); }
-  50%       { opacity: 1;   transform: translateX(-50%) scaleX(1.15); }
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1.15);
+  }
 }
 
 /* Public vote globe placeholder */
@@ -227,8 +250,12 @@
 }
 
 @keyframes tms-globe-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Speech balloon ──────────────────────────────────────────────────────── */
@@ -238,7 +265,8 @@
   top: clamp(0.35rem, 2dvh, 0.9rem);
   left: 50%;
   z-index: 3;
-  width: min(250px, calc(100vw - 2rem));
+  width: min(250px, calc(100% - 1rem));
+  box-sizing: border-box;
   padding: 0.75rem 0.95rem;
   border: 2px solid rgba(129, 140, 248, 0.38);
   border-radius: 1.25rem 1.25rem 1.25rem 0.4rem;
@@ -278,9 +306,9 @@
 
 @media (max-width: 560px) {
   .tms-speech-bubble {
-    --tms-bubble-shift-x: 4%;
-    left: 50%;
-    width: min(220px, calc(100vw - 1.5rem));
+    --tms-bubble-shift-x: 0;
+    left: 48%;
+    width: min(220px, calc(100% - 0.75rem));
   }
 }
 
@@ -291,7 +319,8 @@
   color: #1f2937;
   line-height: 1.45;
   letter-spacing: 0.015em;
-  min-height: 2.35em;
+  min-height: 3.8em;
+  overflow-wrap: anywhere;
 }
 
 /* ── Human vote prompt ───────────────────────────────────────────────────── */
@@ -311,8 +340,14 @@
 }
 
 @keyframes tms-vote-enter {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tms-vote-prompt__text {
@@ -354,7 +389,11 @@
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   color: var(--color-text);
-  transition: border-color 0.18s, background 0.18s, transform 0.14s, box-shadow 0.18s;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    transform 0.14s,
+    box-shadow 0.18s;
 }
 
 .tms-vote-choice:hover {
@@ -375,8 +414,12 @@
 
 /* ── Shared helpers ──────────────────────────────────────────────────────── */
 @keyframes tms-fadein {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ─── Phone-first deliberation stage ───────────────────────────────────── */
@@ -455,8 +498,14 @@
 }
 
 @keyframes tms-nameplate-enter-v2 {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tms-nameplate__sequence {
@@ -491,18 +540,26 @@
 
 .tms-cutout-wrap {
   position: absolute;
-  bottom: -3%;
-  left: -6%;
+  bottom: -2%;
+  left: -3%;
   z-index: 3;
-  width: 68%;
-  height: 79%;
+  width: 52%;
+  height: 94%;
   max-height: none;
   animation-name: tms-cutout-enter-v2;
 }
 
 @keyframes tms-cutout-enter-v2 {
-  from { opacity: 0; transform: translateX(-28px) translateY(28px) scale(0.94); filter: brightness(0.3); }
-  to { opacity: 1; transform: translateX(0) translateY(0) scale(1); filter: brightness(1); }
+  from {
+    opacity: 0;
+    transform: translateX(-28px) translateY(28px) scale(0.94);
+    filter: brightness(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+    filter: brightness(1);
+  }
 }
 
 .tms-cutout {
@@ -511,8 +568,7 @@
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
-  filter:
-    drop-shadow(0 22px 30px rgba(0, 0, 0, 0.62))
+  filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.62))
     drop-shadow(0 0 18px rgba(232, 191, 118, 0.13));
 }
 
@@ -525,18 +581,20 @@
 
 .tms-speech-bubble {
   --tms-bubble-shift-x: 0;
-  top: 31%;
-  left: 76%;
+  top: 49%;
+  left: 54%;
+  right: 4%;
   z-index: 9;
-  width: min(56vw, 310px);
-  padding: 15px 16px 16px;
+  width: auto;
+  padding: 12px 13px 13px;
   border: 1px solid rgba(232, 191, 118, 0.38);
   border-radius: 18px 18px 18px 4px;
   color: #f7f2e8;
   background:
-    linear-gradient(135deg, rgba(232, 191, 118, 0.11), transparent 44%),
-    rgba(4, 5, 9, 0.8);
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.06);
+    linear-gradient(135deg, rgba(232, 191, 118, 0.11), transparent 44%), rgba(4, 5, 9, 0.8);
+  box-shadow:
+    0 22px 46px rgba(0, 0, 0, 0.42),
+    inset 0 1px rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px) saturate(1.15);
 }
 
@@ -564,7 +622,7 @@
   min-height: 3.8em;
   color: rgba(255, 255, 255, 0.92);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(0.8rem, 3.3vw, 1.05rem);
+  font-size: clamp(0.72rem, 2.8vw, 0.94rem);
   font-weight: 500;
   line-height: 1.38;
 }
@@ -642,9 +700,15 @@
 }
 
 @media (max-height: 700px) {
-  .tms-nameplate { top: 4%; }
-  .tms-cutout-wrap { height: 74%; }
-  .tms-speech-bubble { top: 27%; }
+  .tms-nameplate {
+    top: 4%;
+  }
+  .tms-cutout-wrap {
+    height: 84%;
+  }
+  .tms-speech-bubble {
+    top: 47%;
+  }
 }
 
 @media (min-width: 700px) {
@@ -654,16 +718,17 @@
   }
 
   .tms-cutout-wrap {
-    bottom: -5%;
-    left: 6%;
-    width: 48%;
-    height: 88%;
+    bottom: -4%;
+    left: 1%;
+    width: 44%;
+    height: 96%;
   }
 
   .tms-speech-bubble {
-    top: 30%;
-    left: 78%;
-    width: min(34vw, 390px);
+    top: 49%;
+    left: 50%;
+    right: 6%;
+    width: auto;
   }
 
   .tms-previous {

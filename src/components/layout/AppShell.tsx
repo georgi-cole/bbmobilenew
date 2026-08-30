@@ -1,23 +1,23 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useLocation } from 'react-router'
 import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
 import { selectFinale } from '../../store/finaleSlice'
 import { selectSettings } from '../../store/settingsSlice'
-import { selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice'
+import { selectRemoteBroadcast, selectRemoteConfig } from '../../remoteConfig/remoteConfigSlice'
 import useGameMode from '../../hooks/useGameMode'
 import { buildViewportMetaContent } from './viewportMeta'
 import PortraitOrientationGuard from './PortraitOrientationGuard'
 import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice'
+import PhonePreviewSystemChrome from './PhonePreviewSystemChrome'
 import './AppShell.css'
 
-const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean']
+const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean', 'surveyeval']
 const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'))
+const QaManagerShortcuts = lazy(() => import('../DebugPanel/QaManagerShortcuts'))
 const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'))
 const SeasonFinaleOverlay = lazy(() => import('../SeasonFinale/SeasonFinaleOverlay'))
-const VoxPopuliFinaleOverlay = lazy(
-  () => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay')
-)
+const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay'))
 
 /**
  * AppShell — persistent wrapper around every screen.
@@ -36,21 +36,31 @@ const VoxPopuliFinaleOverlay = lazy(
  * The nav bar automatically picks it up from its own LINKS array.
  */
 export default function AppShell() {
+  const location = useLocation()
   const phase = useAppSelector((s) => s.game.phase)
+  const gameMode = useAppSelector((s) => s.game.mode)
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale)
   const voxPopuliActive = useAppSelector((s) => s.game.voxPopuli?.status === 'active')
   const finale = useAppSelector(selectFinale)
   const settings = useAppSelector(selectSettings)
   const { display } = settings
   const remoteConfig = useAppSelector(selectRemoteConfig)
+  const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
 
-  useGameMode()
+  // Gameplay owns the full Android display. Other screens restore the native
+  // status bar and continue to use the measured safe-area inset.
+  useGameMode(location.pathname === '/game')
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
     THEME_PRESETS.forEach((t) => document.body.classList.remove(`theme-${t}`))
     document.body.classList.add(`theme-${display.themePreset}`)
   }, [display.themePreset])
+
+  useEffect(() => {
+    document.body.classList.toggle('mode-surveyeval', gameMode === 'survival')
+    return () => document.body.classList.remove('mode-surveyeval')
+  }, [gameMode])
 
   // Keep viewport-fit=cover attached to every runtime viewport meta rewrite.
   useEffect(() => {
@@ -104,12 +114,23 @@ export default function AppShell() {
 
   return (
     <div className="app-shell">
+      {remoteBroadcast && (
+        <aside
+          className={`app-shell__broadcast app-shell__broadcast--${remoteBroadcast.priority ?? 'normal'}`}
+          role="status"
+          aria-label={remoteBroadcast.title ?? 'Broadcast announcement'}
+        >
+          {remoteBroadcast.title && <strong>{remoteBroadcast.title}</strong>}
+          <span>{remoteBroadcast.message}</span>
+        </aside>
+      )}
       <main className="app-shell__main">
         <Outlet />
       </main>
       <NavBar />
       <Suspense fallback={null}>
         <DebugPanel />
+        <QaManagerShortcuts />
       </Suspense>
       {/* Mount FinalFaceoff when entering jury so it can initialise the finale.
           Also remount it for the rare recovery case where jury voting already
@@ -133,6 +154,7 @@ export default function AppShell() {
       )}
       <PortraitOrientationGuard />
       <SaveRecoveryNotice />
+      <PhonePreviewSystemChrome />
     </div>
   )
 }

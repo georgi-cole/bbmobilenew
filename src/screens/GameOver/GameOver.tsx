@@ -177,9 +177,7 @@ export default function GameOver() {
     if (!archivedRef.current) {
       archivedRef.current = true
       dispatch(
-        archiveSeason(
-          buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated)
-        )
+        archiveSeason(buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated))
       )
     }
   }
@@ -287,7 +285,7 @@ export default function GameOver() {
       <div className="gameover-card">
         <p className="gameover-eyebrow">Season {season} · Official record</p>
         <h1 className="gameover-title">Season Complete</h1>
-        <p className="gameover-sub">The house is closed. The record is permanent.</p>
+        <p className="gameover-sub">The hub is closed. The record is permanent.</p>
 
         <div className="gameover-carousel" aria-live="polite">
           <div
@@ -490,13 +488,23 @@ export default function GameOver() {
                   <div className="gameover-aftermath__story-grid">
                     <div className="gameover-aftermath__photo-panel">
                       <div className="gameover-aftermath__photo-frame">
-                        <RecapImage
-                          className="gameover-aftermath__photo"
-                          sources={activeStory.imageSources}
-                          alt={activeStory.playerName}
-                          loading="eager"
-                          decoding="async"
-                        />
+                        {activeStory.imageSources.length > 0 ? (
+                          <RecapImage
+                            className="gameover-aftermath__photo"
+                            sources={activeStory.imageSources}
+                            alt={activeStory.playerName}
+                            loading="eager"
+                            decoding="async"
+                          />
+                        ) : (
+                          <div
+                            className="gameover-aftermath__photo gameover-aftermath__photo--silhouette"
+                            role="img"
+                            aria-label={`${activeStory.playerName} silhouette`}
+                          >
+                            <span aria-hidden="true" />
+                          </div>
+                        )}
                         <span className="gameover-aftermath__exclusive">
                           {editorial.exclusiveLabel}
                         </span>
@@ -512,8 +520,8 @@ export default function GameOver() {
                       </div>
                       <p className="gameover-aftermath__body">{activeStory.body}</p>
                       <ul className="gameover-aftermath__bullets">
-                        {activeStory.bulletPoints.map((bullet) => (
-                          <li key={bullet}>{bullet}</li>
+                        {[...new Set(activeStory.bulletPoints)].map((bullet, index) => (
+                          <li key={`${activeStory.playerId}-${index}`}>{bullet}</li>
                         ))}
                       </ul>
                       <aside className="gameover-aftermath__twist">

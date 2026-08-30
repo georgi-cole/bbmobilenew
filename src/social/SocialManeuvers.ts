@@ -12,7 +12,7 @@
  */
 
 import { getSocialOutcomeCopy, type SocialOutcomeKind } from './socialOutcomeCopy'
-import { SOCIAL_ACTIONS, resolveActionTargetMode } from './socialActions'
+import { resolveActionTargetMode } from './socialActions'
 import type { SocialActionDefinition } from './socialActions'
 import { evaluateSocialActionEligibility } from './socialActionEligibility'
 import { socialConfig } from './socialConfig'
@@ -36,6 +36,11 @@ import type { SocialActionLogEntry, SocialState } from './types'
 import { getSocialResourceEffect } from './socialResourceEconomy'
 import { getEffectiveSocialMode } from './socialMode'
 import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
+import {
+  getRuntimeSocialActionById,
+  getRuntimeSocialActions,
+  isActionAllowedForRealityPreset,
+} from './socialActionManager'
 
 // ── Internal store reference ──────────────────────────────────────────────
 
@@ -74,6 +79,7 @@ interface ManeuverGameState {
   lohId?: string | null
   nomineeIds?: string[]
   dramaSocialMode?: boolean
+  depressionShock?: { activeDay?: number }
   lohSocialPlan?: {
     week: number
     lohId: string
@@ -86,7 +92,7 @@ interface ManeuverGameState {
 
 interface StateForManeuvers {
   game?: ManeuverGameState
-  settings?: { gameUX?: { dramaMode?: boolean } }
+  settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
   vip?: {
     isActive?: boolean
     entitlements?: { dramaMode?: boolean }
@@ -450,7 +456,7 @@ export function initManeuvers(store: StoreAPI): void {
 
 /** Return the action definition for the given id, or undefined if not found. */
 export function getActionById(id: string): SocialActionDefinition | undefined {
-  return SOCIAL_ACTIONS.find((a) => a.id === id)
+  return getRuntimeSocialActionById(id)
 }
 
 // ── Availability & cost ───────────────────────────────────────────────────
@@ -495,7 +501,7 @@ export function getAvailableActions(
   const resolvedState = state ?? (_store?.getState() as StateForManeuvers | null)
   const socialState = resolvedState?.social
   const dramaMode = getEffectiveSocialMode(resolvedState ?? {}) === 'drama'
-  return SOCIAL_ACTIONS.filter((action) => {
+  return getRuntimeSocialActions().filter((action) => {
     if (!canAfford(actorId, normalizeActionCosts(action, 0, dramaMode), state)) {
       return false
     }
@@ -639,7 +645,7 @@ export function executeAction(
   const state = _store.getState() as {
     social: SocialState
     game?: ManeuverGameState
-    settings?: { gameUX?: { dramaMode?: boolean } }
+    settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
     vip?: {
       isActive?: boolean
       entitlements?: { dramaMode?: boolean }
@@ -647,6 +653,17 @@ export function executeAction(
   }
 
   const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const realityPreset = state.settings?.gameUX?.realityModePreset
+  if (realityPreset && !isActionAllowedForRealityPreset(action, realityPreset)) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'Unavailable for the selected Reality intensity',
+      score: 0,
+      label: 'Unavailable',
+    }
+  }
   const normalizedCosts = normalizeActionCosts(action, 0, dramaMode)
   const costs = options?.waiveCosts
     ? { energy: 0, influence: 0, info: 0 }
@@ -703,6 +720,21 @@ export function executeAction(
     }
   }
 
+  const random = options?.random ?? Math.random
+  const depressionActive = (state.game?.depressionShock?.activeDay ?? 0) > 0
+  // A depressed housemate sometimes simply cannot engage. This costs nothing
+  // and is intentionally evaluated only after ordinary eligibility checks.
+  if (depressionActive && random() < 0.18) {
+    return {
+      success: false,
+      delta: 0,
+      newEnergy: currentEnergy,
+      summary: 'They are too withdrawn to talk right now.',
+      score: 0,
+      label: 'Unmoved',
+    }
+  }
+
   if (!canAfford(actorId, costs)) {
     return {
       success: false,
@@ -717,7 +749,6 @@ export function executeAction(
   const scaledYields = options?.waiveCosts
     ? { influence: 0, info: 0 }
     : normalizeActionYields(action)
-  const random = options?.random ?? Math.random
   const priorRepeats = countPriorRepeatedActions(
     getPersistentSocialHistory(state.social as SocialStateWithHistory),
     actorId,
@@ -730,7 +761,7 @@ export function executeAction(
   const recipientTrust = state.social.relationships[targetId]?.[actorId]?.affinity ?? 0
   const rootState = _store.getState() as {
     social: SocialState
-    settings?: { gameUX?: { dramaMode?: boolean } }
+    settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
     game?: {
       week?: number
       phase?: string
@@ -876,12 +907,15 @@ export function executeAction(
         : baseDelta > 0
           ? repetitionResolution.delta
           : baseDelta
-  const formingAlliance =
+  const formedAllianceBeforeDepression =
     actionId === 'proposeAlliance' && outcome === 'success' && !betrayalOccurred
-  const relationshipDelta = formingAlliance
+  const baseRelationshipDelta = formedAllianceBeforeDepression
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - existingAffinity)
     : delta
-  const reciprocalAllianceDelta = formingAlliance
+  // The storm flips the emotional reading of half of meaningful interactions.
+  const depressionReversed = depressionActive && baseRelationshipDelta !== 0 && random() < 0.5
+  const relationshipDelta = depressionReversed ? -baseRelationshipDelta : baseRelationshipDelta
+  const reciprocalAllianceDelta = formedAllianceBeforeDepression
     ? Math.max(delta, MIN_ALLIANCE_AFFINITY - recipientTrust)
     : delta
 
@@ -896,8 +930,10 @@ export function executeAction(
     relationships: state.social.relationships,
     random,
   })
-  const finalScore = didBackfire ? -Math.abs(outcomeResult.score) : outcomeResult.score
-  const finalLabel = didBackfire ? scoreToLabel(finalScore) : outcomeResult.label
+  const finalScore =
+    didBackfire || depressionReversed ? -Math.abs(outcomeResult.score) : outcomeResult.score
+  const finalLabel =
+    didBackfire || depressionReversed ? scoreToLabel(finalScore) : outcomeResult.label
 
   // previewOnly: return outcome without mutating state.
   if (options?.previewOnly) {
@@ -1056,6 +1092,7 @@ export function executeAction(
   const relationshipTags =
     outcome === 'success' &&
     action.outcomeTag &&
+    !depressionReversed &&
     !(actionId === 'proposeAlliance' && betrayalOccurred)
       ? [action.outcomeTag]
       : undefined
@@ -1156,7 +1193,12 @@ export function executeAction(
 
   _store.dispatch(recordSocialAction({ entry }))
 
-  const verb = getOutcomeVerb({ betrayalOccurred, gaslightOccurred, didBackfire, outcome })
+  const verb = getOutcomeVerb({
+    betrayalOccurred,
+    gaslightOccurred,
+    didBackfire: didBackfire || depressionReversed,
+    outcome,
+  })
   const sign = relationshipDelta > 0 ? '+' : ''
   const lohName =
     rootState.game?.players?.find((player) => player.id === targetId)?.name ?? 'The LOH'
@@ -1196,7 +1238,7 @@ export function executeAction(
                   ? `${lohTargetPlan.targetName} is the LOH's backup plan if the nominations change.`
                   : `${lohTargetPlan.targetName} is the LOH's current target.`
             : relationshipDelta !== 0
-              ? `${action.title} ${verb} (${sign}${relationshipDelta} relationship)`
+              ? `${action.title} ${verb}${depressionReversed ? ' — the storm turned it inside out' : ''} (${sign}${relationshipDelta} relationship)`
               : `${action.title} ${verb}`)
 
   if (dramaMode) {
@@ -1262,13 +1304,17 @@ export function executeGroupAction(
   const state = _store.getState() as {
     social: SocialState
     game?: ManeuverGameState
-    settings?: { gameUX?: { dramaMode?: boolean } }
+    settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
     vip?: {
       isActive?: boolean
       entitlements?: { dramaMode?: boolean }
     }
   }
   const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const realityPreset = state.settings?.gameUX?.realityModePreset
+  if (realityPreset && !isActionAllowedForRealityPreset(action, realityPreset)) {
+    return unavailable('Unavailable for the selected Reality intensity')
+  }
   if (resolveActionTargetMode(action, dramaMode) !== 'multi')
     return unavailable('This is not a group action')
   const eligibility = evaluateSocialActionEligibility({

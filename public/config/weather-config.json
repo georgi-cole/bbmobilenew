@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 2,
+  "revision": "weather-2026-08-29-b",
+  "enabled": true,
+  "temperature": {
+    "unit": "auto",
+    "baseC": 18,
+    "minC": -8,
+    "maxC": 36,
+    "initialJitterC": 7,
+    "dailyDeltaMinC": -4,
+    "dailyDeltaMaxC": 4
+  },
+  "phenomena": {
+    "rainbowChanceAfterWet": 0.32
+  },
+  "conditions": {
+    "sunny": {
+      "family": "clear",
+      "initialWeight": 12,
+      "tempBiasC": 3,
+      "transitions": {
+        "sunny": 30,
+        "mostly_sunny": 30,
+        "partly_cloudy": 18,
+        "cloudy": 7,
+        "light_showers": 4,
+        "sun_showers": 5,
+        "clearing": 6
+      }
+    },
+    "mostly_sunny": {
+      "family": "clear",
+      "initialWeight": 14,
+      "tempBiasC": 2,
+      "transitions": {
+        "sunny": 20,
+        "mostly_sunny": 27,
+        "partly_cloudy": 25,
+        "cloudy": 9,
+        "light_showers": 4,
+        "sun_showers": 8,
+        "clearing": 7
+      }
+    },
+    "partly_cloudy": {
+      "family": "cloud",
+      "initialWeight": 16,
+      "tempBiasC": 1,
+      "transitions": {
+        "sunny": 9,
+        "mostly_sunny": 15,
+        "partly_cloudy": 27,
+        "cloudy": 18,
+        "overcast": 7,
+        "light_showers": 9,
+        "sun_showers": 8,
+        "clearing": 7
+      }
+    },
+    "cloudy": {
+      "family": "cloud",
+      "initialWeight": 14,
+      "tempBiasC": 0,
+      "transitions": {
+        "partly_cloudy": 14,
+        "cloudy": 29,
+        "overcast": 19,
+        "drizzle": 9,
+        "light_showers": 11,
+        "rainy": 8,
+        "misty": 5,
+        "clearing": 5
+      }
+    },
+    "overcast": {
+      "family": "cloud",
+      "initialWeight": 10,
+      "tempBiasC": -1,
+      "transitions": {
+        "cloudy": 19,
+        "overcast": 27,
+        "drizzle": 14,
+        "light_showers": 8,
+        "rainy": 14,
+        "heavy_rain": 4,
+        "misty": 6,
+        "foggy": 3,
+        "clearing": 5
+      }
+    },
+    "misty": {
+      "family": "mist",
+      "initialWeight": 6,
+      "tempBiasC": -1,
+      "transitions": {
+        "cloudy": 17,
+        "overcast": 14,
+        "misty": 28,
+        "foggy": 15,
+        "drizzle": 8,
+        "partly_cloudy": 8,
+        "clearing": 10
+      }
+    },
+    "foggy": {
+      "family": "mist",
+      "initialWeight": 4,
+      "tempBiasC": -2,
+      "transitions": {
+        "misty": 29,
+        "foggy": 27,
+        "overcast": 15,
+        "cloudy": 11,
+        "drizzle": 7,
+        "clearing": 11
+      }
+    },
+    "drizzle": {
+      "family": "wet",
+      "initialWeight": 6,
+      "tempBiasC": -1,
+      "transitions": {
+        "overcast": 19,
+        "cloudy": 14,
+        "drizzle": 22,
+        "light_showers": 15,
+        "rainy": 14,
+        "misty": 6,
+        "clearing": 10
+      }
+    },
+    "light_showers": {
+      "family": "wet",
+      "initialWeight": 7,
+      "tempBiasC": -1,
+      "transitions": {
+        "partly_cloudy": 14,
+        "cloudy": 11,
+        "drizzle": 7,
+        "light_showers": 20,
+        "sun_showers": 14,
+        "rainy": 13,
+        "heavy_rain": 4,
+        "clearing": 17
+      }
+    },
+    "sun_showers": {
+      "family": "wet",
+      "initialWeight": 4,
+      "tempBiasC": 1,
+      "transitions": {
+        "sunny": 6,
+        "mostly_sunny": 14,
+        "partly_cloudy": 19,
+        "light_showers": 18,
+        "sun_showers": 16,
+        "rainy": 5,
+        "clearing": 22
+      }
+    },
+    "rainy": {
+      "family": "wet",
+      "initialWeight": 7,
+      "tempBiasC": -2,
+      "transitions": {
+        "overcast": 14,
+        "drizzle": 9,
+        "light_showers": 12,
+        "sun_showers": 4,
+        "rainy": 27,
+        "heavy_rain": 9,
+        "stormy": 5,
+        "misty": 5,
+        "clearing": 15
+      }
+    },
+    "heavy_rain": {
+      "family": "wet",
+      "initialWeight": 3,
+      "tempBiasC": -3,
+      "transitions": {
+        "overcast": 10,
+        "light_showers": 9,
+        "rainy": 29,
+        "heavy_rain": 21,
+        "stormy": 14,
+        "misty": 4,
+        "clearing": 13
+      }
+    },
+    "stormy": {
+      "family": "storm",
+      "initialWeight": 2,
+      "tempBiasC": -3,
+      "minTempC": 7,
+      "transitions": {
+        "overcast": 10,
+        "partly_cloudy": 4,
+        "light_showers": 9,
+        "rainy": 20,
+        "heavy_rain": 23,
+        "stormy": 16,
+        "clearing": 18
+      }
+    },
+    "snow_showers": {
+      "family": "snow",
+      "initialWeight": 1,
+      "tempBiasC": -8,
+      "maxTempC": 5,
+      "transitions": {
+        "cloudy": 9,
+        "overcast": 13,
+        "misty": 6,
+        "snow_showers": 25,
+        "snowy": 25,
+        "clearing": 17,
+        "partly_cloudy": 5
+      }
+    },
+    "snowy": {
+      "family": "snow",
+      "initialWeight": 1,
+      "tempBiasC": -10,
+      "maxTempC": 3,
+      "transitions": {
+        "cloudy": 8,
+        "overcast": 14,
+        "misty": 8,
+        "snow_showers": 26,
+        "snowy": 27,
+        "clearing": 17
+      }
+    },
+    "clearing": {
+      "family": "transition",
+      "initialWeight": 4,
+      "tempBiasC": 1,
+      "transitions": {
+        "sunny": 19,
+        "mostly_sunny": 20,
+        "partly_cloudy": 20,
+        "cloudy": 9,
+        "light_showers": 5,
+        "sun_showers": 9,
+        "clearing": 18
+      }
+    }
+  }
+}

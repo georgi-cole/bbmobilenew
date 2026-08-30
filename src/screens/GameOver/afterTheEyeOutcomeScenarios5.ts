@@ -1,384 +1,216 @@
 import type { ScenarioSpec } from './afterTheEyeOutcomeTypes'
 
-export const AFTER_EYE_SCENARIOS_5: ScenarioSpec[] = [
+interface DramaTemplate {
+  id: string
+  category: string
+  tone: ScenarioSpec['tone']
+  weight: number
+  cooldownGroup: string
+  badge: string
+  eligibility: ScenarioSpec['eligibility']
+  headlines: string[]
+  setups: string[]
+  escalations: string[]
+  outcomes: string[]
+  twists: string[]
+}
+
+const VARIANTS_PER_TEMPLATE = 5
+
+const DRAMA_TEMPLATES: DramaTemplate[] = [
   {
-    id: 'disappearance_vanish_bookshop',
-    category: 'disappearance',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'disappearance',
-    badge: 'FOUND!',
-    eligibility: {},
-    headlines: [
-      '{name} Vanishes — Then Turns Up Running a Bookshop',
-      'No Statement, Excellent Window Display',
-    ],
-    beats: [
-      '{name} stops attending events and deletes every account.',
-      'Months later a fan recognises {object} arranging mystery novels in a quiet coastal shop.',
-      '{name} confirms nothing and offers a loyalty card.',
-    ],
-    twists: [
-      "The shop's bestseller is a memoir about disappearing.",
-      'Tourists make the quiet life less quiet.',
-    ],
-  },
-  {
-    id: 'disappearance_mystery_island',
-    category: 'disappearance',
+    id: 'financial_collapse',
+    category: 'financial_ruin',
     tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'disappearance',
-    badge: 'ISLAND MYSTERY',
+    weight: 0.95,
+    cooldownGroup: 'financial_ruin',
+    badge: 'BROKE AFTER FAME',
     eligibility: {},
-    headlines: ['{name} Disappears After Boarding a Yacht', 'Seven Days Without a Signal'],
-    beats: [
-      '{name} joins a luxury brand trip and stops posting during rough weather.',
-      'Rumours escalate from secret wedding to international arrest before the yacht reaches port.',
-      '{name} returns furious that nobody appreciated the digital detox.',
+    headlines: [
+      '{name} Burns Through the Post-Show Fortune',
+      'The Mansion, the Loans, and the Collapse',
+      "{name}'s Celebrity Lifestyle Ends in Debt",
+      'Fame Made {name} Rich — Briefly',
     ],
-    twists: ['The yacht had perfect Wi-Fi.', 'The silence was caused by a forgotten password.'],
-  },
-  {
-    id: 'disappearance_new_name',
-    category: 'disappearance',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'disappearance',
-    badge: 'NEW NAME, SAME COFFEE ORDER',
-    eligibility: {},
-    headlines: ['{name} Starts Over Under a Different Name', 'The Barista Recognised the Order'],
-    beats: [
-      '{name} leaves public life and begins working in another city under a shortened name.',
-      'The disguise survives until a former fan hears the exact same complicated coffee request.',
-      '{name} asks for privacy and becomes a local legend instead.',
+    setups: [
+      '{name} upgrades almost every part of life after the show, assuming the highest-paying months will continue forever.',
+      "A new house, staff, travel, and risky investments turn {name}'s sudden income into equally sudden expenses.",
+      '{name} builds a luxury lifestyle around projected earnings rather than money already received.',
+      'The first year after the season looks wildly successful from the outside and increasingly unstable on paper.',
+    ],
+    escalations: [
+      'Several deals end at once, tax demands arrive, and a business investment stops returning calls.',
+      'Creditors begin filing claims while {name} continues posting from a lifestyle that is mostly financed.',
+      'An accountant resigns and later says the warnings had been ignored for months.',
+      'A property sale meant to solve the problem reveals that even more debt is attached to the assets.',
+    ],
+    outcomes: [
+      '{name} sells most of the visible symbols of fame and starts rebuilding finances from a much smaller base.',
+      'Bankruptcy proceedings end the extravagant chapter and expose how little of the apparent fortune was real.',
+      '{name} avoids total insolvency only through a painful restructuring and several years of reduced spending.',
+      'The financial collapse becomes more sobering than any eviction night.',
     ],
     twists: [
-      'The barista protects the secret for a year.',
-      'The café names the drink after the alias.',
+      'The most expensive car was leased, not owned.',
+      'A supposedly profitable side business had never made money.',
+      'A former housemate had warned {name} not to sign the largest loan.',
+      'One quiet investment survives and later helps fund the recovery.',
     ],
   },
   {
-    id: 'disappearance_fake_kidnap',
-    category: 'disappearance',
+    id: 'defamation_feud',
+    category: 'public_feud',
     tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'disappearance',
-    badge: 'KIDNAPPING HOAX?',
-    eligibility: {},
-    headlines: [
-      "{name}'s 'Disappearance' Is Revealed as a Publicity Plan",
-      'The Ransom Note Included a Hashtag',
-    ],
-    beats: [
-      '{name} goes missing hours before a product launch.',
-      'A dramatic message appears online with perfect brand placement and a scheduled discount code.',
-      'Police find {name} in a rented cabin reviewing media coverage.',
-    ],
-    twists: ['The product sells out.', "The agency claims the hashtag was an intern's idea."],
-  },
-  {
-    id: 'disappearance_monastery_retreat',
-    category: 'disappearance',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'disappearance',
-    badge: 'SILENT ERA',
-    eligibility: { tagsAny: ['controversial', 'rivalry'], requiresRelation: 'rival' },
-    headlines: [
-      '{name} Spends a Year at a Silent Retreat',
-      'The First Interview Lasts Four Minutes',
-    ],
-    beats: [
-      '{name} withdraws from fame and joins a remote meditation community.',
-      'Tabloids publish weekly speculation while {name} learns to garden and refuses all phones.',
-      'The eventual return is calm, brief, and more compelling than any scandal.',
-    ],
-    twists: ['The first words are about compost.', '{rivalName} attends the same retreat later.'],
-  },
-  {
-    id: 'ordinary_life_school_teacher',
-    category: 'ordinary_life',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'ordinary_life',
-    badge: 'NORMAL JOB SHOCK',
-    eligibility: {},
-    headlines: [
-      '{name} Becomes a School Teacher',
-      'The Classroom Has a Strict No-Catchphrase Rule',
-    ],
-    beats: [
-      '{name} quietly retrains and begins teaching.',
-      'Students discover the television past and spend one week asking strategic questions about lunch seating.',
-      '{name} handles the attention, then returns to ordinary work.',
-    ],
-    twists: [
-      'The class votes on homework once and regrets it.',
-      'A former rival sends classroom supplies.',
-    ],
-  },
-  {
-    id: 'ordinary_life_hardware_store',
-    category: 'ordinary_life',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'ordinary_life',
-    badge: 'SPOTTED IN AISLE FOUR',
-    eligibility: {},
-    headlines: ['{name} Works at a Hardware Store', 'Fame Meets Discount Paint'],
-    beats: [
-      '{name} returns to a previous job and becomes known for practical advice rather than drama.',
-      'Customers occasionally request selfies while holding plumbing parts.',
-      '{name} remains polite and refuses to discuss the reunion beside power tools.',
-    ],
-    twists: [
-      "The store's sales rise.",
-      'One fan travels across the country for a screwdriver recommendation.',
-    ],
-  },
-  {
-    id: 'ordinary_life_dog_walker',
-    category: 'ordinary_life',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'ordinary_life',
-    badge: 'PACK LEADER',
-    eligibility: {},
-    headlines: [
-      '{name} Builds a Quiet Dog-Walking Business',
-      'The Clients Never Ask About the Finale',
-    ],
-    beats: [
-      '{name} swaps red carpets for early mornings and a growing pack of neighbourhood dogs.',
-      'Former housemates discover {possessive} schedule is now harder to book than any television appearance.',
-      'The business becomes stable, peaceful, and unexpectedly fashionable.',
-    ],
-    twists: ['One dog becomes more famous than {name}.', 'The branded raincoats sell out.'],
-  },
-  {
-    id: 'ordinary_life_family_bakery',
-    category: 'ordinary_life',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'ordinary_life',
-    badge: 'FLOUR POWER',
-    eligibility: { tagsAny: ['alliance_broken', 'fan_favorite'], requiresRelation: 'ally' },
-    headlines: ['{name} Returns to the Family Bakery', 'The Croissants Refuse Interviews'],
-    beats: [
-      '{name} leaves the celebrity circuit to work before sunrise.',
-      'Fans queue for pastries and receive firm instructions not to block regular customers.',
-      'The bakery thrives without launching a single influencer candle.',
-    ],
-    twists: ['A croissant is named after {allyName}.', 'The recipe remains secret.'],
-  },
-  {
-    id: 'ordinary_life_quiet_farmer',
-    category: 'ordinary_life',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'ordinary_life',
-    badge: 'COUNTRYSIDE WINNER',
-    eligibility: { tagsAny: ['low_profile', 'early_exit'], requiresRelation: 'rival' },
-    headlines: [
-      '{name} Buys a Small Farm and Wins at Life',
-      'No Cameras, Twelve Chickens, Excellent Sleep',
-    ],
-    beats: [
-      '{name} invests modestly in land and vanishes from nightlife.',
-      'Occasional photographs show muddy boots, healthy vegetables, and an expression of genuine relief.',
-      "The public decides this is the season's most enviable ending.",
-    ],
-    twists: ['The chickens have names from the cast.', '{rivalName} supplies one of the names.'],
-  },
-  {
-    id: 'bizarre_misunderstanding_royal_invite',
-    category: 'bizarre_misunderstanding',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'bizarre_misunderstanding',
-    badge: 'PALACE CONFUSION',
-    eligibility: {},
-    headlines: ['{name} Is Mistaken for a Foreign Diplomat', 'The Name Card Was One Letter Off'],
-    beats: [
-      '{name} arrives at a hotel and is escorted into an official reception.',
-      'Staff interpret {possessive} confident confusion as protocol.',
-      'The mistake is discovered only after {name} gives a short speech about teamwork.',
-    ],
-    twists: ['The actual diplomat applauds.', 'The hotel keeps the incorrect name card.'],
-  },
-  {
-    id: 'bizarre_misunderstanding_wrong_winner',
-    category: 'bizarre_misunderstanding',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'bizarre_misunderstanding',
-    badge: 'WINNER — OF SOMETHING ELSE',
-    eligibility: {},
-    headlines: [
-      '{name} Accepts an Award Meant for Another Person',
-      'The Speech Was Too Good to Interrupt',
-    ],
-    beats: [
-      '{name} hears a similar name at an industry ceremony and walks onto the stage.',
-      'The acceptance speech receives a standing ovation before organisers check the envelope.',
-      'The real recipient invites {name} to stay for photographs.',
-    ],
-    twists: [
-      'Both leave with matching trophies.',
-      'The mistake creates a joint television project.',
-    ],
-  },
-  {
-    id: 'bizarre_misunderstanding_funeral_launch',
-    category: 'bizarre_misunderstanding',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'bizarre_misunderstanding',
-    badge: 'WRONG VENUE',
-    eligibility: {},
-    headlines: ["{name}'s Product Launch Interrupts a Memorial", 'Confetti Meets Complete Silence'],
-    beats: [
-      "{name}'s team sends guests to the wrong hall in a large events complex.",
-      'Music and branded balloons enter a solemn gathering next door.',
-      "The launch is cancelled and every apology wisely avoids the word 'celebration'.",
-    ],
-    twists: ['The families later accept a private donation.', 'The venue changes its signage.'],
-  },
-  {
-    id: 'bizarre_misunderstanding_wax_museum',
-    category: 'bizarre_misunderstanding',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'bizarre_misunderstanding',
-    badge: 'STATUE OR HOUSEMATE?',
-    eligibility: {},
-    headlines: [
-      '{name} Stands Still Beside a Wax Figure for Forty Minutes',
-      'Tourists Photograph the Wrong One',
-    ],
-    beats: [
-      '{name} visits a wax museum and becomes trapped by a growing crowd.',
-      'Remaining motionless seems easier than explaining why the new statue is blinking.',
-      'Security eventually removes the actual wax figure by mistake.',
-    ],
-    twists: ['The museum offers {name} a seasonal job.', 'The wax figure is more flattering.'],
-  },
-  {
-    id: 'bizarre_misunderstanding_airport_arrest',
-    category: 'bizarre_misunderstanding',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'bizarre_misunderstanding',
-    badge: 'SUITCASE MIX-UP',
-    eligibility: {},
-    headlines: ['{name} Collects the Wrong Suitcase', 'Sequins, Cash, and a Very Nervous Magician'],
-    beats: [
-      '{name} leaves an airport with luggage identical to {possessive} own.',
-      'Customs later finds stage props, envelopes of cash, and a live dove belonging to a touring magician.',
-      '{name} spends hours explaining an outfit that is not even {possessive} size.',
-    ],
-    twists: ['The magician becomes a friend.', 'The dove refuses to leave {name}.'],
-  },
-  {
-    id: 'absurd_success_professional_reactor',
-    category: 'absurd_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'absurd_success',
-    badge: 'REACTION ROYALTY',
-    eligibility: {},
-    headlines: ['{name} Is Paid to React to Other People Reacting', 'The Face Economy Is Booming'],
-    beats: [
-      '{name} builds a career filming silent reactions to increasingly minor announcements.',
-      'Brands begin testing campaigns by watching whether one eyebrow moves.',
-      'The expression becomes an unofficial market indicator.',
-    ],
-    twists: [
-      'Economists ask for advance access.',
-      '{name} never explains what the reaction means.',
-    ],
-  },
-  {
-    id: 'absurd_success_chair_brand',
-    category: 'absurd_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'absurd_success',
-    badge: 'FURNITURE ICON',
-    eligibility: { requiresRelation: 'rival' },
-    headlines: [
-      '{name} Sells Out a Chair by Sitting in It Once',
-      'The Nation Wants the Finale Seat',
-    ],
-    beats: [
-      '{name} is photographed resting in an ordinary armchair.',
-      'Fans identify the model and empty every warehouse within hours.',
-      'The manufacturer signs {name} despite having no campaign concept.',
-    ],
-    twists: ["The chair is renamed 'The Evictee'.", 'A rival brand hires {rivalName} to stand up.'],
-  },
-  {
-    id: 'absurd_success_pigeon_oracle',
-    category: 'absurd_success',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'absurd_success',
-    badge: 'BIRD BUSINESS',
-    eligibility: {},
-    headlines: ["{name}'s Pigeon Predictions Beat the Experts", 'Peck Once for Yes'],
-    beats: [
-      '{name} posts a joke video in which a pigeon predicts television outcomes.',
-      'The bird gets seven results right and attracts bookmakers, academics, and one documentary crew.',
-      '{name} becomes manager to an animal that refuses all interviews.',
-    ],
-    twists: [
-      "The pigeon predicts {name}'s own cancellation incorrectly.",
-      'The documentary wins a festival prize.',
-    ],
-  },
-  {
-    id: 'absurd_success_lost_phone_series',
-    category: 'absurd_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'absurd_success',
-    badge: 'ACCIDENTAL MASTERPIECE',
-    eligibility: { tagsAny: ['alliance_broken', 'betrayal'], requiresRelation: 'ally' },
-    headlines: [
-      "{name}'s Lost Phone Becomes a Hit Series",
-      'Twelve Voicemails, One Cultural Moment',
-    ],
-    beats: [
-      '{name} loses a phone containing chaotic voice notes about post-show life.',
-      'The finder returns it, but a legal audio adaptation recreates the messages with actors.',
-      'Critics praise the result as raw social commentary.',
-    ],
-    twists: [
-      'None of the best lines were spoken by {name}.',
-      '{allyName} receives an unexpected writing credit.',
-    ],
-  },
-  {
-    id: 'absurd_success_silence_album',
-    category: 'absurd_success',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'absurd_success',
-    badge: 'NUMBER-ONE SILENCE',
+    weight: 1.1,
+    cooldownGroup: 'public_feud',
+    badge: 'LAWSUIT FEUD',
     eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
     headlines: [
-      '{name} Releases an Album With Almost No Singing',
-      'Forty-Two Minutes of Dramatic Pauses',
+      '{name} Sues {rivalName} as the Feud Explodes',
+      'The Rivalry Leaves Social Media and Enters Court',
+      'One Accusation Too Far',
+      '{name} and {rivalName}: From Eviction Night to Legal Fight',
     ],
-    beats: [
-      '{name} records a conceptual album built from breaths, door sounds, and one whispered catchphrase.',
-      "Listeners buy it as a joke, then critics describe the silence as 'brave'.",
-      'The album reaches number one in a category nobody knew existed.',
+    setups: [
+      'The feud between {name} and {rivalName} continues after the show through interviews, podcasts, and increasingly personal claims.',
+      '{rivalName} makes an accusation during a livestream that {name} says is demonstrably false.',
+      'Months of subtweets become explicit when {name} and {rivalName} start naming each other in public interviews.',
+      'A reunion argument is followed by weeks of escalating allegations between {name} and {rivalName}.',
+    ],
+    escalations: [
+      '{name} sends a legal notice, {rivalName} posts it online, and the dispute becomes larger overnight.',
+      'Both sides begin releasing screenshots while lawyers ask them to stop communicating publicly.',
+      'Sponsors distance themselves as the feud shifts from entertainment to potential defamation.',
+      'A scheduled debate is cancelled after legal teams warn that anything said on stage could become evidence.',
+    ],
+    outcomes: [
+      'The case settles privately, but {name} and {rivalName} never repair the relationship.',
+      'Both sides retract specific claims without offering the public the dramatic courtroom ending it expected.',
+      '{name} wins a limited legal victory that clarifies one allegation but leaves the broader feud alive.',
+      'The lawsuit drains attention, money, and goodwill from both former housemates.',
     ],
     twists: [
-      'The deluxe edition contains even less.',
-      '{rivalName} accuses {name} of stealing a pause.',
+      'The settlement includes a clause preventing either side from discussing the settlement.',
+      'A screenshot central to the feud turns out to have been forwarded by a third housemate.',
+      'The interview host who triggered the dispute later apologizes.',
+      'The pair is eventually photographed at the same event, seated at opposite ends of the room.',
+    ],
+  },
+  {
+    id: 'ally_betrayal',
+    category: 'betrayal',
+    tone: 'tragic',
+    weight: 1.15,
+    cooldownGroup: 'betrayal',
+    badge: 'ULTIMATE BETRAYAL',
+    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
+    headlines: [
+      "{name}'s Closest Ally Sells the Story",
+      'Private Messages Destroy a Post-Show Friendship',
+      'The Alliance Ends With a Leak',
+      '{name} Learns Loyalty Has a Price',
+    ],
+    setups: [
+      '{name} stays close to {allyName} after the season and shares private details about family, money, and relationships.',
+      'A former alliance between {name} and {allyName} appears stronger outside the house than it ever did inside.',
+      '{name} and {allyName} begin planning joint work while privately rebuilding trust after the game.',
+      'The friendship with {allyName} becomes one of the few parts of post-show life {name} believes is real.',
+    ],
+    escalations: [
+      'A tabloid publishes private messages that could only have come from a very small circle around {name}.',
+      '{name} discovers that personal information was offered to multiple outlets during contract negotiations.',
+      'An unpublished interview transcript reveals details {name} had told only {allyName}.',
+      'A payment record links someone close to the alliance with the outlet that broke the story.',
+    ],
+    outcomes: [
+      '{name} ends the friendship and describes the betrayal as worse than anything that happened in the house.',
+      'The alliance collapses permanently, taking several mutual friendships with it.',
+      '{allyName} denies selling the story but admits sharing information with someone who did.',
+      '{name} withdraws from the joint projects and becomes far more guarded with former castmates.',
+    ],
+    twists: [
+      'The payment was for a different story, complicating the accusation without repairing the friendship.',
+      'A mutual friend had warned {name} months earlier.',
+      'Part of the leak came from management, not {allyName}.',
+      'The two eventually exchange apologies but never become close again.',
+    ],
+  },
+  {
+    id: 'death_hoax',
+    category: 'bizarre_misunderstanding',
+    tone: 'neutral',
+    weight: 0.7,
+    cooldownGroup: 'death_hoax',
+    badge: 'DEATH HOAX',
+    eligibility: {},
+    headlines: [
+      'Internet Falsely Declares {name} Dead',
+      '{name} Wakes Up to Their Own Obituary',
+      'A Death Hoax Sends Fans Into Panic',
+      "The Most Disturbing Rumor of {name}'s Post-Show Life",
+    ],
+    setups: [
+      'A fake screenshot claiming {name} has died begins circulating overnight.',
+      'A parody account posts a convincing breaking-news graphic about {name} that loses its original context within minutes.',
+      'An old photograph and an unrelated accident report are combined into a false story about {name}.',
+      'Fans wake to thousands of posts mourning {name} despite no legitimate source reporting a death.',
+    ],
+    escalations: [
+      'Family phones are overwhelmed, former housemates post confused tributes, and the rumor reaches international fan pages.',
+      'A small website copies the claim without checking it, giving the hoax an appearance of legitimacy.',
+      'Management cannot reach {name} for several hours because the phone is switched off, making the panic worse.',
+      'Brands and media accounts begin drafting condolences before anyone confirms the basic facts.',
+    ],
+    outcomes: [
+      '{name} posts a brief video proving they are alive and condemns the hoax as cruel rather than funny.',
+      'The rumor is corrected, but {name} takes a long break from social media after seeing strangers debate the supposed death.',
+      '{name} returns safely and asks platforms to act faster on impersonation and fabricated death reports.',
+      "The episode ends without physical harm but leaves {name}'s family furious at the machinery of viral misinformation.",
+    ],
+    twists: [
+      'The original post had fewer than fifty followers before it went viral.',
+      'One tribute was written by a rival who had not spoken to {name} in years.',
+      '{name} was asleep on a flight during the worst of the panic.',
+      'The fake graphic used a photograph from the season finale.',
     ],
   },
 ]
+
+function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
+  const cycle = Math.floor(variantIndex / values.length)
+  const index =
+    (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + cycle * (salt + 1) + salt) %
+    values.length
+  return values[index]
+}
+
+function compileTemplate(template: DramaTemplate, templateIndex: number): ScenarioSpec[] {
+  return Array.from({ length: VARIANTS_PER_TEMPLATE }, (_, variantIndex) => {
+    const setup = pick(template.setups, templateIndex, variantIndex, 1)
+    const escalation = pick(template.escalations, templateIndex, variantIndex, 2)
+    const outcome = pick(template.outcomes, templateIndex, variantIndex, 3)
+
+    return {
+      id: `${template.id}_v${variantIndex + 1}`,
+      category: template.category,
+      tone: template.tone,
+      weight: template.weight * (1 - variantIndex * 0.025),
+      cooldownGroup: template.cooldownGroup,
+      badge: template.badge,
+      eligibility: { ...template.eligibility },
+      headlines: [
+        pick(template.headlines, templateIndex, variantIndex, 4),
+        pick(template.headlines, templateIndex, variantIndex + 1, 5),
+        pick(template.headlines, templateIndex, variantIndex + 2, 6),
+      ],
+      beats: [setup, escalation, outcome],
+      twists: [
+        pick(template.twists, templateIndex, variantIndex, 7),
+        pick(template.twists, templateIndex, variantIndex + 1, 8),
+        pick(template.twists, templateIndex, variantIndex + 2, 9),
+      ],
+    }
+  })
+}
+
+export const AFTER_EYE_SCENARIOS_5: ScenarioSpec[] = DRAMA_TEMPLATES.flatMap(compileTemplate)

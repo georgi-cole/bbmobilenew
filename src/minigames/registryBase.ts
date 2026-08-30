@@ -65,6 +65,10 @@ export interface GameRegistryEntry {
   maxPlayers?: number
   /** Key of the game that supersedes this one (for retired games). */
   replacedBy?: string
+  /** VIP/Premium Challenges version launched in place of this canonical game. */
+  premiumReplacementKey?: string
+  /** Direct-access registry entry reserved for VIP/Premium Challenges owners. */
+  vipOnly?: boolean
 }
 
 export function supportsPlayerCount(game: GameRegistryEntry, playerCount: number): boolean {
@@ -1115,6 +1119,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 1,
     category: 'logic',
     retired: false,
+    premiumReplacementKey: 'castleRescueRemastered',
+  },
+
+  castleRescueRemastered: {
+    key: 'castleRescueRemastered',
+    title: 'Find Your Twin',
+    description:
+      'Twin brothers Benny and Lenny went for a night walk through South Park, but somewhere along the way Lenny disappeared. Benny refuses to leave without him and must find his brother before time runs out.',
+    instructions: [
+      'Benny and Lenny are twin brothers who set out together for a quiet night walk.',
+      'Lenny is now lost somewhere in South Park, with the night growing late.',
+      'Help Benny reunite with Lenny before their time runs out.',
+      'VIP access adds premium graphics and richer visual effects while preserving the original game.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescueRemastered',
+    legacy: false,
+    weight: 0,
+    category: 'logic',
+    retired: true,
+    vipOnly: true,
   },
 
   castleRescue2: {
@@ -1145,6 +1176,33 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     weight: 1,
     category: 'logic',
     retired: false,
+    premiumReplacementKey: 'castleRescue2Remastered',
+  },
+
+  castleRescue2Remastered: {
+    key: 'castleRescue2Remastered',
+    title: 'Find Your Twin 2: Lost Again',
+    description:
+      'Benny and Lenny travelled to Romania to visit an old castle, but before closing time Lenny vanished somewhere inside its halls. Benny must find his brother before the castle closes for the night.',
+    instructions: [
+      'The twins came to Romania for a castle visit they would never forget.',
+      'Lenny is lost inside, and closing time is getting dangerously close.',
+      'Help Benny find Lenny before the castle doors close for the night.',
+      'VIP access adds premium graphics and richer visual effects while preserving the original game.',
+    ],
+    metricKind: 'points',
+    metricLabel: 'Score',
+    timeLimitMs: 150_000,
+    authoritative: false,
+    scoringAdapter: 'raw',
+    scoringParams: { minRaw: 0, maxRaw: 5000 },
+    implementation: 'react',
+    reactComponentKey: 'CastleRescue2Remastered',
+    legacy: false,
+    weight: 0,
+    category: 'logic',
+    retired: true,
+    vipOnly: true,
   },
 
   glass_bridge_brutal: {

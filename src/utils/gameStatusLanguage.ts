@@ -1,4 +1,4 @@
-import type { Phase } from '../types';
+import type { Phase } from '../types'
 
 const PHASE_LABELS: Partial<Record<Phase, string>> = {
   // i18n-ignore: Legacy status-label registry stores canonical English copy
@@ -32,16 +32,20 @@ const PHASE_LABELS: Partial<Record<Phase, string>> = {
   jury_announcement: 'Tribunal',
   jury_cinematic: 'Tribunal',
   jury: 'Tribunal',
-};
+}
 
 export function formatPhaseLabel(phase: Phase): string {
-  return PHASE_LABELS[phase] ?? phase.replace(/_/g, ' ');
+  return PHASE_LABELS[phase] ?? phase.replace(/_/g, ' ')
 }
 
 export function formatCycleLabel(season: number, week: number): string {
-  return `S${String(season).padStart(2, '0')}D${week}`;
+  return `S${String(season).padStart(2, '0')}D${week}`
+}
+
+export function formatSurveyevalCycleLabel(week: number): string {
+  return `DAY${week}`
 }
 
 export function formatCycleAriaLabel(season: number, week: number): string {
-  return `Season ${season}, day ${week}`;
+  return `Season ${season}, day ${week}`
 }

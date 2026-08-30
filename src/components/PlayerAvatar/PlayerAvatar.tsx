@@ -4,6 +4,7 @@ import { isEmoji } from '../../utils/avatar'
 import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc'
 import { getRelationshipTone, type RelationshipScale } from './relationshipOutline'
 import { SoundManager } from '../../services/sound/SoundManager'
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import './PlayerAvatar.css'
 
 interface PlayerAvatarProps {
@@ -47,7 +48,8 @@ export default function PlayerAvatar({
   showRelationshipOutline = true,
   showEvictedStyle = true,
 }: PlayerAvatarProps) {
-  const { candidates } = useResolvedAvatarSrc(player)
+  const { candidates: resolvedCandidates } = useResolvedAvatarSrc(player)
+  const candidates = resolvedCandidates.map(resolvePresentationAvatar)
   const candidatesKey = candidates.join('\n')
   const [imageState, setImageState] = useState({
     candidatesKey,

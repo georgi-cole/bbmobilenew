@@ -3,68 +3,148 @@
 /* ─── Keyframes ──────────────────────────────────────────────────────────── */
 
 @keyframes bjt-bounce {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-8px); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes bjt-reveal {
-  from { transform: scale(0.9); opacity: 0.5; box-shadow: none; }
-  to   { transform: scale(1.1); opacity: 1; box-shadow: 0 0 32px rgba(255, 215, 0, 0.8); }
+  from {
+    transform: scale(0.9);
+    opacity: 0.5;
+    box-shadow: none;
+  }
+  to {
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 32px rgba(255, 215, 0, 0.8);
+  }
 }
 
 @keyframes bjt-vs-pulse {
-  0%   { transform: scale(1);    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
-  50%  { transform: scale(1.15); text-shadow: 0 0 24px rgba(255, 215, 0, 0.9); }
-  100% { transform: scale(1);    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    transform: scale(1.15);
+    text-shadow: 0 0 24px rgba(255, 215, 0, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+  }
 }
 
 @keyframes bjt-card-slide {
-  from { transform: translateX(-20px) scale(0.8); opacity: 0; }
-  to   { transform: none; opacity: 1; }
+  from {
+    transform: translateX(-20px) scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 @keyframes bjt-win-pulse {
-  0%   { box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
-  50%  { box-shadow: 0 0 28px rgba(74, 222, 128, 0.9), 0 0 4px rgba(74, 222, 128, 0.4) inset; }
-  100% { box-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
+  0% {
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 28px rgba(74, 222, 128, 0.9),
+      0 0 4px rgba(74, 222, 128, 0.4) inset;
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  }
 }
 
 @keyframes bjt-loser-drop {
-  from { opacity: 1; transform: translateY(0); }
-  to   { opacity: 0.35; transform: translateY(8px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0.35;
+    transform: translateY(8px);
+  }
 }
 
 @keyframes bjt-bust-flash {
-  0%   { background: rgba(255, 59, 59, 0); }
-  30%  { background: rgba(255, 59, 59, 0.35); }
-  100% { background: rgba(255, 59, 59, 0); }
+  0% {
+    background: rgba(255, 59, 59, 0);
+  }
+  30% {
+    background: rgba(255, 59, 59, 0.35);
+  }
+  100% {
+    background: rgba(255, 59, 59, 0);
+  }
 }
 
 @keyframes bjt-confetti-fall {
-  0%   { transform: translateY(-5%) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(108%) rotate(720deg); opacity: 0.1; }
+  0% {
+    transform: translateY(-5%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(108%) rotate(720deg);
+    opacity: 0.1;
+  }
 }
 
 @keyframes bjt-confetti-fall-reverse {
-  0%   { transform: translateY(-5%) rotate(0deg) scaleX(-1); opacity: 1; }
-  100% { transform: translateY(108%) rotate(-720deg) scaleX(-1); opacity: 0.1; }
+  0% {
+    transform: translateY(-5%) rotate(0deg) scaleX(-1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(108%) rotate(-720deg) scaleX(-1);
+    opacity: 0.1;
+  }
 }
 
 @keyframes bjt-crown-drop {
-  from { transform: translateY(-60px) scale(0); opacity: 0; }
-  to   { transform: none; opacity: 1; }
+  from {
+    transform: translateY(-60px) scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 @keyframes bjt-title-enter {
-  0%   { transform: scale(0.5); opacity: 0; }
-  70%  { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes bjt-spotlight-pulse {
-  0%   { opacity: 0.55; }
-  50%  { opacity: 0.85; }
-  100% { opacity: 0.55; }
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.55;
+  }
 }
 
 /* ─── Base layout ─────────────────────────────────────────────────────────── */
@@ -76,11 +156,8 @@
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding:
-    calc(1.5rem + var(--safe-top))
-    calc(1rem + var(--safe-right))
-    calc(5rem + var(--safe-bottom))
-    calc(1rem + var(--safe-left));
+  padding: calc(1.5rem + var(--safe-top)) calc(1rem + var(--safe-right))
+    calc(5rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
   background: linear-gradient(135deg, #0b0f1a 0%, #1a2540 50%, #0f1e35 100%);
   color: #f0e6d3;
   font-family: inherit;
@@ -109,13 +186,17 @@
   font-size: clamp(1.4rem, 5vw, 2rem);
   font-weight: 800;
   letter-spacing: 0.04em;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow:
+    0 0 20px rgba(255, 215, 0, 0.6),
+    0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .bjt-title--winner {
   color: #ffd700;
   font-size: clamp(1.8rem, 6vw, 2.4rem);
-  text-shadow: 0 0 24px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow:
+    0 0 24px rgba(255, 215, 0, 0.8),
+    0 2px 4px rgba(0, 0, 0, 0.6);
   animation: bjt-title-enter 0.5s 0.3s ease-out both;
 }
 
@@ -139,11 +220,31 @@
   flex-shrink: 0;
 }
 
-.bjt-avatar--sm    { width: 2.5rem; height: 2.5rem; }
-.bjt-avatar--inline { width: 1.8rem; height: 1.8rem; vertical-align: middle; }
-.bjt-avatar--lg    { width: 4rem; height: 4rem; }
-.bjt-avatar--xl    { width: 6rem; height: 6rem; margin: 0.5rem auto; }
-.bjt-avatar--xxl   { width: 8rem; height: 8rem; margin: 0.5rem auto; position: relative; z-index: 1; }
+.bjt-avatar--sm {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.bjt-avatar--inline {
+  width: 1.8rem;
+  height: 1.8rem;
+  vertical-align: middle;
+}
+.bjt-avatar--lg {
+  width: 4rem;
+  height: 4rem;
+}
+.bjt-avatar--xl {
+  width: 6rem;
+  height: 6rem;
+  margin: 0.5rem auto;
+}
+.bjt-avatar--xxl {
+  width: 8rem;
+  height: 8rem;
+  margin: 0.5rem auto;
+  position: relative;
+  z-index: 1;
+}
 
 /* ─── Status badges ───────────────────────────────────────────────────────── */
 
@@ -202,7 +303,10 @@
   opacity: 0.35;
   height: 64px;
   flex-shrink: 0;
-  transition: background 0.1s, transform 0.1s, opacity 0.1s;
+  transition:
+    background 0.1s,
+    transform 0.1s,
+    opacity 0.1s;
 }
 
 .bjt-spinner-slot--active {
@@ -210,7 +314,10 @@
   opacity: 1;
   transform: scale(1.06);
   color: #ffd700;
-  transition: background 0.1s, transform 0.1s, opacity 0.1s;
+  transition:
+    background 0.1s,
+    transform 0.1s,
+    opacity 0.1s;
 }
 
 .bjt-spinner-slot--fast img {
@@ -343,7 +450,11 @@
   padding: 0.75rem 1rem;
   cursor: pointer;
   color: #f0e6d3;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.1s,
+    opacity 0.15s;
   min-width: 5rem;
 }
 
@@ -404,12 +515,16 @@
   /* Equal fixed width so both fighter cards are symmetrical */
   flex: 0 0 clamp(9rem, 42%, 13rem);
   box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .bjt-duelist--active {
   border-color: #ffd700;
-  box-shadow: 0 0 0 3px #ffd700, 0 0 20px rgba(255, 215, 0, 0.5);
+  box-shadow:
+    0 0 0 3px #ffd700,
+    0 0 20px rgba(255, 215, 0, 0.5);
 }
 
 .bjt-duelist--bust {
@@ -501,7 +616,10 @@
   font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.1s, opacity 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.1s,
+    opacity 0.15s,
+    box-shadow 0.15s;
   letter-spacing: 0.03em;
 }
 
@@ -683,7 +801,12 @@
 .bjt-spotlight {
   position: absolute;
   inset: -2.5rem;
-  background: radial-gradient(circle at 50% 55%, rgba(255, 215, 0, 0.45) 0%, rgba(255, 215, 0, 0.15) 45%, transparent 75%);
+  background: radial-gradient(
+    circle at 50% 55%,
+    rgba(255, 215, 0, 0.45) 0%,
+    rgba(255, 215, 0, 0.15) 45%,
+    transparent 75%
+  );
   border-radius: 50%;
   animation: bjt-spotlight-pulse 2s ease-in-out infinite;
   z-index: 0;
@@ -768,7 +891,9 @@
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.2);
   background: #1a2540;
-  transition: border-color 0.2s, filter 0.2s;
+  transition:
+    border-color 0.2s,
+    filter 0.2s;
 }
 
 .bjt-roster-item--eliminated .bjt-roster-avatar {
@@ -788,7 +913,9 @@
 
 .bjt-roster-item--controller.bjt-roster-item--you .bjt-roster-avatar {
   border-color: #ffd700;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 0 2px #60a5fa;
+  box-shadow:
+    0 0 8px rgba(255, 215, 0, 0.6),
+    0 0 0 2px #60a5fa;
 }
 
 .bjt-roster-name {
@@ -838,7 +965,9 @@
   font-size: 1.1rem;
   font-weight: 900;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
   letter-spacing: 0.05em;
   align-self: flex-end;
   margin-bottom: 0.25rem;
@@ -868,9 +997,20 @@
   box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
   cursor: pointer;
   border: none;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.1s;
   position: relative;
   z-index: 2;
+}
+
+.bjt-btn--skip-end {
+  align-self: center;
+  margin: 0 auto 0.75rem;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(8, 12, 24, 0.82);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .bjt-btn--continue:hover {
@@ -908,7 +1048,9 @@
   box-shadow: 0 4px 12px rgba(255, 59, 59, 0.4);
   cursor: pointer;
   border: none;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
   position: sticky;
   bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   z-index: 11;
@@ -936,7 +1078,9 @@
   padding: 0.5rem 1.1rem;
   min-width: 7rem;
   text-align: center;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .bjt-fighter-slot--filled {

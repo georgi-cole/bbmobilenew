@@ -36,12 +36,15 @@ export function isCatalogMusicTrack(value: unknown): value is CatalogMusicTrack 
   return typeof value === 'string' && (MUSIC_TRACK_IDS as readonly string[]).includes(value)
 }
 
-export function getMusicTrackDefinition(track: CatalogMusicTrack): MusicTrackDefinition {
+export function getMusicTrackDefinition(
+  track: CatalogMusicTrack
+): MusicTrackDefinition | undefined {
   return MUSIC_CATALOG[track]
 }
 
 export function getMusicTrackSoundEntry(track: CatalogMusicTrack): SoundEntry | undefined {
-  return SOUND_REGISTRY[MUSIC_CATALOG[track].soundKey]
+  const definition = getMusicTrackDefinition(track)
+  return definition ? SOUND_REGISTRY[definition.soundKey] : undefined
 }
 
 export function getDynamicMusicSoundEntries(): SoundEntry[] {
@@ -61,7 +64,10 @@ export function createMusicTrackOverrideSound(asset: MusicTrackAssetOverride): S
 }
 
 export function getMusicFallbackTrack(track: CatalogMusicTrack): MusicTrackFallback {
-  return MUSIC_CATALOG[track].fallbackTrack
+  // A generated catalog can be stale when a caller bypasses the normal npm
+  // lifecycle. Missing metadata must degrade to silence instead of throwing and
+  // taking down the game UI.
+  return getMusicTrackDefinition(track)?.fallbackTrack ?? 'none'
 }
 
 export function getMusicFallbackChain(track: CatalogMusicTrack): MusicTrackFallback[] {

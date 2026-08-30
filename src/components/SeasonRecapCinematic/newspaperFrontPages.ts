@@ -1,13 +1,13 @@
-export type NewspaperLayoutVariant = 'hero' | 'collage' | 'headline';
+export type NewspaperLayoutVariant = 'hero' | 'collage' | 'headline'
 
 export interface NewspaperArticleSnippet {
-  label: string;
-  text: string;
+  label: string
+  text: string
 }
 
 export interface NewspaperSeasonEvent {
-  id: string;
-  week: number;
+  id: string
+  week: number
   type:
     | 'fan-favorite'
     | 'backlash'
@@ -18,57 +18,57 @@ export interface NewspaperSeasonEvent {
     | 'underdog'
     | 'romance-rumor'
     | 'duo'
-    | 'finale';
-  subjectName?: string;
-  secondaryName?: string;
-  detail: string;
+    | 'finale'
+  subjectName?: string
+  secondaryName?: string
+  detail: string
 }
 
 export interface NewspaperFrontPageData {
-  id: string;
-  newspaperName: string;
-  issueDate: string;
-  issueNumber: string;
-  edition: string;
-  headline: string;
-  subheadline: string;
-  category: string;
-  price: string;
-  featuredImage: string;
-  featuredImageAlt: string;
-  secondaryImage?: string;
-  secondaryImageAlt?: string;
-  articleSnippets: NewspaperArticleSnippet[];
-  decorativeTeaserLabels: string[];
-  pageTeasers: string[];
-  layoutVariant: NewspaperLayoutVariant;
-  blackAndWhite?: boolean;
-  headlineHighlight?: string;
+  id: string
+  newspaperName: string
+  issueDate: string
+  issueNumber: string
+  edition: string
+  headline: string
+  subheadline: string
+  category: string
+  price: string
+  featuredImage: string
+  featuredImageAlt: string
+  secondaryImage?: string
+  secondaryImageAlt?: string
+  articleSnippets: NewspaperArticleSnippet[]
+  decorativeTeaserLabels: string[]
+  pageTeasers: string[]
+  layoutVariant: NewspaperLayoutVariant
+  blackAndWhite?: boolean
+  headlineHighlight?: string
 }
 
 interface HeadlineDraft {
-  headline: string;
-  subheadline: string;
-  category: string;
-  stamp: string;
+  headline: string
+  subheadline: string
+  category: string
+  stamp: string
 }
 
 interface CreateFrontPageOptions {
-  newspaperName?: string;
-  issueDate?: string;
-  issueNumber?: string;
-  edition?: string;
-  price?: string;
-  featuredImage?: string;
-  featuredImageAlt?: string;
-  secondaryImage?: string;
-  secondaryImageAlt?: string;
-  articleSnippets?: NewspaperArticleSnippet[];
-  decorativeTeaserLabels?: string[];
-  pageTeasers?: string[];
-  layoutVariant?: NewspaperLayoutVariant;
-  blackAndWhite?: boolean;
-  headlineHighlight?: string;
+  newspaperName?: string
+  issueDate?: string
+  issueNumber?: string
+  edition?: string
+  price?: string
+  featuredImage?: string
+  featuredImageAlt?: string
+  secondaryImage?: string
+  secondaryImageAlt?: string
+  articleSnippets?: NewspaperArticleSnippet[]
+  decorativeTeaserLabels?: string[]
+  pageTeasers?: string[]
+  layoutVariant?: NewspaperLayoutVariant
+  blackAndWhite?: boolean
+  headlineHighlight?: string
 }
 
 const NEWSPAPER_NAMES = [
@@ -82,23 +82,23 @@ const NEWSPAPER_NAMES = [
   'The Eviction Echo',
   'Alliance Observer',
   'Finale City Post',
-];
+]
 
-const DEFAULT_PAGE_TEASERS = ['Sports p.32', 'Weather p.4', 'Editorial p.7', 'Culture p.12'];
+const DEFAULT_PAGE_TEASERS = ['Sports p.32', 'Weather p.4', 'Editorial p.7', 'Culture p.12']
 
-const DEFAULT_PRICES = ['50¢', '75¢', 'Weekend £1'];
+const DEFAULT_PRICES = ['50¢', '75¢', 'Weekend £1']
 
 function fallbackName(name: string | undefined, fallback: string): string {
-  return name?.trim() ? name : fallback;
+  return name?.trim() ? name : fallback
 }
 
 function pickFromList<T>(list: T[], seed: number): T {
-  return list[((seed % list.length) + list.length) % list.length];
+  return list[((seed % list.length) + list.length) % list.length]
 }
 
 export function generatePlayfulHeadline(event: NewspaperSeasonEvent): HeadlineDraft {
-  const subject = fallbackName(event.subjectName, 'Mystery housemate');
-  const secondary = fallbackName(event.secondaryName, 'the house');
+  const subject = fallbackName(event.subjectName, 'Mystery housemate')
+  const secondary = fallbackName(event.secondaryName, 'the house')
 
   switch (event.type) {
     case 'fan-favorite':
@@ -107,85 +107,104 @@ export function generatePlayfulHeadline(event: NewspaperSeasonEvent): HeadlineDr
         subheadline: `${subject} kept the cheers loud while every confessional and competition win sent the gallery into overdrive.`,
         category: 'Fan Fever',
         stamp: 'EXCLUSIVE',
-      };
+      }
     case 'backlash':
       return {
         headline: `${subject} could not outrun the backlash`,
         subheadline: `${event.detail} Every glare, whisper, and side-eye kept the season’s outrage machine printing overtime.`,
         category: 'House Fallout',
         stamp: 'HOUSE IN CHAOS',
-      };
+      }
     case 'alliance':
       return {
         headline: `Secret alliance? ${subject} and ${secondary} spark fresh whispers`,
         subheadline: `${event.detail} The house swore it was strategy, but the front page called it the season’s shadiest power pact.`,
         category: 'Strategy Desk',
         stamp: 'SECRET ALLIANCE',
-      };
+      }
     case 'betrayal':
       return {
         headline: `House divided after ${subject}’s betrayal`,
         subheadline: `${event.detail} One late-night turn was enough to fracture trust across the entire block.`,
         category: 'Breaking Drama',
         stamp: 'SHOCK EVICTION',
-      };
+      }
     case 'veto':
       return {
         headline: `The Safety move that changed everything`,
         subheadline: `${subject} flipped the week on its head. ${event.detail} By sunrise, every ally was re-checking the seating chart.`,
         category: 'Competition Desk',
         stamp: 'POWER SHIFT',
-      };
+      }
     case 'chaos':
       return {
         headline: `Tears, cheers, and total chaos`,
         subheadline: `${event.detail} The season’s loudest week became pure tabloid fuel before the ink could even dry.`,
         category: 'Chaos Report',
         stamp: 'EXTRA! EXTRA!',
-      };
+      }
     case 'underdog':
       return {
         headline: `From underdog to power player`,
         subheadline: `${subject} kept surviving the block, then turned that pressure into a full-blown comeback chapter.`,
         category: 'Redemption File',
         stamp: 'FAN FAVORITE',
-      };
+      }
     case 'romance-rumor':
       return {
         headline: `Romance rumors shake the garden`,
         subheadline: `${subject} and ${secondary} kept the whispers alive. ${event.detail} Was it strategy, chemistry, or both?`,
         category: 'Society & Style',
         stamp: 'LOVE TRIANGLE?',
-      };
+      }
     case 'duo':
       return {
         headline: `${subject} and ${secondary} turn the house into a two-person headline`,
         subheadline: `${event.detail} A bromance, a brain trust, or the season’s most dangerous duo — the papers could not decide.`,
         category: 'Inside Track',
         stamp: 'DOUBLE TAKE',
-      };
+      }
     case 'finale':
       return {
         headline: `Finalists face the reckoning`,
         subheadline: `${event.detail} The season’s boldest stories now collide under one last brutal spotlight.`,
         category: 'Finale Special',
         stamp: 'FINAL 3 SPECIAL',
-      };
+      }
   }
 }
 
 export function createNewspaperFrontPage(
   event: NewspaperSeasonEvent,
   index: number,
-  options: CreateFrontPageOptions = {},
+  options: CreateFrontPageOptions = {}
 ): NewspaperFrontPageData {
-  const draft = generatePlayfulHeadline(event);
-  const seed = event.week * 17 + index * 13 + event.id.length;
-  const layoutVariant = options.layoutVariant ?? pickFromList<NewspaperLayoutVariant>(['hero', 'collage', 'headline'], seed);
-  const newspaperName = options.newspaperName ?? pickFromList(NEWSPAPER_NAMES, seed);
-  const pageTeasers = options.pageTeasers ?? DEFAULT_PAGE_TEASERS;
-  const decorativeTeaserLabels = options.decorativeTeaserLabels ?? [draft.stamp, 'Late Edition'];
-  const price = options.price ?? pickFromList(DEFAULT_PRICES, seed);
+  const draft = generatePlayfulHeadline(event)
+  const seed = event.week * 17 + index * 13 + event.id.length
+  const layoutVariant =
+    options.layoutVariant ??
+    pickFromList<NewspaperLayoutVariant>(['hero', 'collage', 'headline'], seed)
+  const newspaperName = options.newspaperName ?? pickFromList(NEWSPAPER_NAMES, seed)
+  const pageTeasers = options.pageTeasers ?? DEFAULT_PAGE_TEASERS
+  const decorativeTeaserLabels = options.decorativeTeaserLabels ?? [draft.stamp, 'Late Edition']
+  const price = options.price ?? pickFromList(DEFAULT_PRICES, seed)
+
+  const rawSnippets = options.articleSnippets ?? [
+    { label: 'Front Row', text: event.detail },
+    {
+      label: 'Buzz Meter',
+      text: `${fallbackName(event.subjectName, 'The hub')} owned the conversation.`,
+    },
+    { label: 'Night Shift', text: 'The cameras caught every whisper and every wobble.' },
+  ]
+  const normalizedHeadline = draft.headline.trim().toLocaleLowerCase()
+  const articleSnippets = rawSnippets.filter((snippet, index, snippets) => {
+    const normalized = snippet.text.trim().toLocaleLowerCase()
+    return (
+      normalized !== normalizedHeadline &&
+      snippets.findIndex((item) => item.text.trim().toLocaleLowerCase() === normalized) === index
+    )
+  })
 
   return {
     id: options.issueNumber ? `${event.id}-${options.issueNumber}` : `${event.id}-${index}`,
@@ -198,20 +217,17 @@ export function createNewspaperFrontPage(
     category: draft.category,
     price,
     featuredImage: options.featuredImage ?? '/assets/houseguests/houseguest-1.jpg',
-    featuredImageAlt: options.featuredImageAlt ?? fallbackName(event.subjectName, 'Featured houseguest'),
+    featuredImageAlt:
+      options.featuredImageAlt ?? fallbackName(event.subjectName, 'Featured houseguest'),
     secondaryImage: options.secondaryImage,
     secondaryImageAlt: options.secondaryImageAlt ?? event.secondaryName,
-    articleSnippets: options.articleSnippets ?? [
-      { label: 'Front Row', text: event.detail },
-      { label: 'Buzz Meter', text: `${fallbackName(event.subjectName, 'The house')} owned the conversation.` },
-      { label: 'Night Shift', text: 'The cameras caught every whisper and every wobble.' },
-    ],
+    articleSnippets,
     decorativeTeaserLabels,
     pageTeasers,
     layoutVariant,
     blackAndWhite: options.blackAndWhite ?? seed % 4 === 0,
     headlineHighlight: options.headlineHighlight ?? fallbackName(event.subjectName, draft.category),
-  };
+  }
 }
 
 // Swap these placeholder paths with your real houseguest portraits or screenshots.
@@ -222,7 +238,7 @@ const SAMPLE_IMAGE_PATHS = [
   '/assets/houseguests/houseguest-4.jpg',
   '/assets/houseguests/houseguest-5.jpg',
   '/assets/houseguests/houseguest-6.jpg',
-];
+]
 
 export const SAMPLE_SEASON_EVENTS: NewspaperSeasonEvent[] = [
   {
@@ -289,7 +305,8 @@ export const SAMPLE_SEASON_EVENTS: NewspaperSeasonEvent[] = [
     type: 'duo',
     subjectName: 'Theo',
     secondaryName: 'Beck',
-    detail: 'Their back-and-forth took over strategy hour and gave the season its cheekiest bromance.',
+    detail:
+      'Their back-and-forth took over strategy hour and gave the season its cheekiest bromance.',
   },
   {
     id: 'sample-finale',
@@ -299,16 +316,17 @@ export const SAMPLE_SEASON_EVENTS: NewspaperSeasonEvent[] = [
     secondaryName: 'Ivy',
     detail: 'With one last speech left to give, every headline pointed straight at finale night.',
   },
-];
+]
 
-export const SAMPLE_FINALE_NEWSPAPER_PAGES: NewspaperFrontPageData[] = SAMPLE_SEASON_EVENTS.map((event, index) =>
-  createNewspaperFrontPage(event, index, {
-    featuredImage: SAMPLE_IMAGE_PATHS[index % SAMPLE_IMAGE_PATHS.length],
-    secondaryImage: SAMPLE_IMAGE_PATHS[(index + 1) % SAMPLE_IMAGE_PATHS.length],
-    issueDate: `June ${10 + index}, 2026`,
-    issueNumber: `Issue ${520 + index}`,
-    edition: index % 2 === 0 ? 'City Final' : 'Late Night Final',
-    layoutVariant: index % 3 === 0 ? 'hero' : index % 3 === 1 ? 'collage' : 'headline',
-    blackAndWhite: index % 4 === 0,
-  }),
-);
+export const SAMPLE_FINALE_NEWSPAPER_PAGES: NewspaperFrontPageData[] = SAMPLE_SEASON_EVENTS.map(
+  (event, index) =>
+    createNewspaperFrontPage(event, index, {
+      featuredImage: SAMPLE_IMAGE_PATHS[index % SAMPLE_IMAGE_PATHS.length],
+      secondaryImage: SAMPLE_IMAGE_PATHS[(index + 1) % SAMPLE_IMAGE_PATHS.length],
+      issueDate: `June ${10 + index}, 2026`,
+      issueNumber: `Issue ${520 + index}`,
+      edition: index % 2 === 0 ? 'City Final' : 'Late Night Final',
+      layoutVariant: index % 3 === 0 ? 'hero' : index % 3 === 1 ? 'collage' : 'headline',
+      blackAndWhite: index % 4 === 0,
+    })
+)

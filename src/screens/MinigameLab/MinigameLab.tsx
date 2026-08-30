@@ -1,7 +1,7 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
 
 import MinigameHost, { type MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
-import { getPoolByFilter, type GameRegistryEntry } from '../../minigames/registry';
+import { getAllGames, type GameRegistryEntry } from '../../minigames/registry';
 import { getRouteFlag, getRouteSearchParams } from '../../utils/routeQuery';
 import './MinigameLab.css';
 
@@ -41,14 +41,14 @@ function buildParticipants(count: number): MinigameParticipant[] {
 
 function formatGameLabel(game: GameRegistryEntry | null): string {
   if (!game) return 'Unknown game';
-  return `${game.title} · ${game.category} · ${game.metricLabel}`;
+  return `${game.title}${game.vipOnly ? ' · VIP' : ''} · ${game.category} · ${game.metricLabel}`;
 }
 
 export default function MinigameLab() {
   const params = useMemo(() => getRouteSearchParams(), []);
   const activeGames = useMemo(
     () =>
-      getPoolByFilter({ retired: false }).slice().sort((left, right) => {
+      getAllGames().filter((game) => !game.retired || game.vipOnly).slice().sort((left, right) => {
         const titleDiff = left.title.localeCompare(right.title);
         return titleDiff !== 0 ? titleDiff : left.key.localeCompare(right.key);
       }),
@@ -189,7 +189,7 @@ export default function MinigameLab() {
             <select value={selectedGame?.key ?? ''} onChange={handleGameChange} aria-label="Selected game">
               {activeGames.map((game) => (
                 <option key={game.key} value={game.key}>
-                  {game.title}
+                  {game.title}{game.vipOnly ? ' · VIP' : ''}
                 </option>
               ))}
             </select>

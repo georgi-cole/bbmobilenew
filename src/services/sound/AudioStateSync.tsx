@@ -15,12 +15,19 @@ import {
   type MusicTrackAssetOverride,
 } from './musicCatalog'
 import { buildEffectiveMusicConfig, mergeMusicTrackAssets } from './musicRuntimeConfig'
+import { resolveRuntimeMusicMix, type RuntimeMusicMix } from './musicMix'
+import { GAMEPLAY_AUDIO_EXIT_EVENT } from './audioRouteOwnership'
 
 const VOLUME_RAMP_STEP_MS = 50
 const SAFETY_SEQUENCE_DUCK_LEVEL = 0.12
 const SAFETY_SEQUENCE_DUCK_MS = 1200
 const SAFETY_SEQUENCE_RESUME_MS = 900
 const SAFETY_SEQUENCE_DAY_END_FADE_MS = 1500
+
+function mixVolumeFactor(mix: RuntimeMusicMix): number {
+  if (mix === 'muted') return 0
+  return mix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1
+}
 
 function createSilentCue(assignmentId: string): ResolvedMusicCue {
   return {
@@ -58,12 +65,13 @@ function enrichMinigameTransition(
 }
 
 export default function AudioStateSync() {
-  const musicMix = useSelector((root: RootState) => root.ui.musicMix ?? 'normal')
+  const musicMix = useSelector((root: RootState) => resolveRuntimeMusicMix(root.game))
   const musicState = useSelector(
     (root: RootState) => ({
       gamePhase: root.game.phase,
       gameId: root.game.gameId,
       gameMode: root.game.mode ?? 'classic',
+      gameStatus: root.game.status,
       spectatorActive: root.game.spectatorActive,
       seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
@@ -73,6 +81,7 @@ export default function AudioStateSync() {
       socialPanelOpen: root.social.panelOpen,
       incomingInboxOpen: root.social.incomingInboxOpen,
       musicScene: root.ui.musicScene,
+      confessionalMusicMode: root.ui.confessionalMusicMode ?? 'normal',
       musicOn: root.settings.audio.musicOn,
       musicVolume: root.settings.audio.musicVolume,
       localMusicOverrides: root.settings.audio.musicConfigOverrides,
@@ -82,6 +91,7 @@ export default function AudioStateSync() {
     shallowEqual
   )
   const [hash, setHash] = useState(() => window.location.hash)
+  const [gameplayExitPending, setGameplayExitPending] = useState(false)
   const previousDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const latestDesiredRef = useRef<ResolvedMusicCue>(createSilentCue('initial'))
   const heldConfiguredCueRef = useRef<ResolvedMusicCue | null>(null)
@@ -127,9 +137,19 @@ export default function AudioStateSync() {
   }, [effectiveTrackAssets])
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash)
+    const onGameplayExit = () => setGameplayExitPending(true)
+    const onHashChange = () => {
+      setHash(window.location.hash)
+      // Once navigation reaches the gameplay route, Redux/route resolution is
+      // authoritative again. A later navigation home starts Intro Hub once.
+      setGameplayExitPending(false)
+    }
+    window.addEventListener(GAMEPLAY_AUDIO_EXIT_EVENT, onGameplayExit)
     window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
+    return () => {
+      window.removeEventListener(GAMEPLAY_AUDIO_EXIT_EVENT, onGameplayExit)
+      window.removeEventListener('hashchange', onHashChange)
+    }
   }, [])
 
   const resolverState = useMemo<MusicResolverState>(
@@ -138,6 +158,7 @@ export default function AudioStateSync() {
         phase: musicState.gamePhase,
         gameId: musicState.gameId,
         mode: musicState.gameMode,
+        status: musicState.gameStatus,
         spectatorActive: musicState.spectatorActive,
         seasonFinale:
           musicState.seasonFinalePhase != null ? { phase: musicState.seasonFinalePhase } : null,
@@ -161,6 +182,7 @@ export default function AudioStateSync() {
       },
       ui: {
         musicScene: musicState.musicScene,
+        confessionalMusicMode: musicState.confessionalMusicMode,
       },
     }),
     [musicState]
@@ -179,8 +201,9 @@ export default function AudioStateSync() {
 
   const desiredCue = useMemo<ResolvedMusicCue>(() => {
     if (!musicState.musicOn) return createSilentCue('settings.music-off')
+    if (gameplayExitPending) return createSilentCue('route.gameplay-exit')
     return resolveCue(resolverState)
-  }, [musicState.musicOn, resolveCue, resolverState])
+  }, [gameplayExitPending, musicState.musicOn, resolveCue, resolverState])
 
   useEffect(() => {
     latestDesiredRef.current = desiredCue
@@ -214,8 +237,7 @@ export default function AudioStateSync() {
 
     clearFadeIn()
 
-    const mixedMusicVolume =
-      musicState.musicVolume * (musicMixRef.current === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
+    const mixedMusicVolume = musicState.musicVolume * mixVolumeFactor(musicMixRef.current)
 
     if (!musicState.musicOn) {
       clearPostGameTimer()
@@ -306,11 +328,19 @@ export default function AudioStateSync() {
     previousMusicMixRef.current = musicMix
     if (previousMix === musicMix) return
 
-    const startVolume =
-      musicState.musicVolume * (previousMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
-    const targetVolume =
-      musicState.musicVolume * (musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_LEVEL : 1)
-    const durationMs = musicMix === 'ducked' ? SAFETY_SEQUENCE_DUCK_MS : SAFETY_SEQUENCE_RESUME_MS
+    if (musicMix === 'muted') {
+      SoundManager.setMusicVolume(0)
+      return
+    }
+
+    const startVolume = musicState.musicVolume * mixVolumeFactor(previousMix)
+    const targetVolume = musicState.musicVolume * mixVolumeFactor(musicMix)
+    const durationMs =
+      previousMix === 'muted'
+        ? SAFETY_SEQUENCE_RESUME_MS
+        : musicMix === 'ducked'
+          ? SAFETY_SEQUENCE_DUCK_MS
+          : SAFETY_SEQUENCE_RESUME_MS
     const steps = Math.max(1, Math.ceil(durationMs / VOLUME_RAMP_STEP_MS))
     let step = 0
 

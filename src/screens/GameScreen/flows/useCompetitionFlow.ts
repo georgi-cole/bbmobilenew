@@ -19,9 +19,8 @@ import { expandCupidIds, isCupidArrowActive } from '../../../features/twists/cup
 import { rankPressurePlankResults } from '../../../components/PressurePlank/pressurePlankLogic'
 
 const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
+const POS_BADGE_SRC = statusBadgeImageSrc('pos')
 const EXITED_PLAYER_SORT_VALUE = Number.NEGATIVE_INFINITY
-
-type GetTileRect = (playerId: string) => DOMRect | null
 
 interface UseCompetitionFlowOptions {
   game: RootState['game']
@@ -31,7 +30,6 @@ interface UseCompetitionFlowOptions {
   humanIsOutgoingHoh: boolean
   spectatorReactEnabled: boolean
   spectatorMode: boolean
-  getTileRect: GetTileRect
   dispatch: AppDispatch
 }
 
@@ -47,29 +45,25 @@ export function useCompetitionFlow({
   humanIsOutgoingHoh,
   spectatorReactEnabled,
   spectatorMode,
-  getTileRect,
   dispatch,
 }: UseCompetitionFlowOptions) {
   const store = useStore<RootState>()
   const pendingChallenge = useAppSelector(selectPendingChallenge)
-  // ── CeremonyOverlay — deferred LOH / POS winner commit ─────────────────
-  // When MinigameHost reports a winner, we show the CeremonyOverlay with a
-  // spotlight cutout over the winner's tile and a badge (👑/🛡️) that
-  // flies from screen centre to the tile.  Only after the animation completes
-  // do we dispatch applyMinigameWinner.  When DOMRects are unavailable
-  // (tests / headless) the overlay fires onDone immediately so the store
-  // mutation still happens — just without the visual.
+  // ── Lifted-tile reveal — deferred LOH / POS winner commit ────────────────
+  // When MinigameHost reports a winner, the live roster tile is cloned into a
+  // fixed animation layer, awarded its badge, and returned to its newly measured
+  // roster position. Only then do we dispatch applyMinigameWinner. If the live
+  // tile is unavailable (tests / headless), the store mutation continues safely.
   //
   // pendingWinnerDispatchRef stores the deferred thunk so handleCeremonyDone
   // can call it without stale-closure issues.
   const [pendingWinnerCeremony, setPendingWinnerCeremony] = useState<{
     winnerId: string
+    targetIds: string[]
     tiles: CeremonyTile[]
     caption: string
     subtitle?: string
     ariaLabel: string
-    /** Optional live-measure callback for viewport-tracking during zoom/scroll. */
-    measureA?: () => DOMRect | null
   } | null>(null)
   const pendingWinnerDispatchRef = useRef<(() => void) | null>(null)
 
@@ -90,7 +84,12 @@ export function useCompetitionFlow({
   // When the human player is the outgoing LOH, no challenge is started at all
   // (the winner is determined randomly via advance() instead).
   useEffect(() => {
-    const isCompPhase = game.phase === 'loh_comp' || game.phase === 'pos_comp'
+    const democraciaOverridesLoh =
+      game.phase === 'loh_comp' &&
+      game.democracia?.active === true &&
+      game.democracia.activatedDay === game.week
+    const isCompPhase =
+      (game.phase === 'loh_comp' || game.phase === 'pos_comp') && !democraciaOverridesLoh
     // Do not start a challenge when the human player is the outgoing LOH —
     // they are ineligible to compete; advance() will pick a winner randomly.
     // Also skip when a CeremonyOverlay is pending (challenge result already
@@ -107,6 +106,9 @@ export function useCompetitionFlow({
     hohCompParticipants,
     aliveIds,
     game.seed,
+    game.week,
+    game.democracia?.active,
+    game.democracia?.activatedDay,
     dispatch,
     humanIsOutgoingHoh,
     pendingWinnerCeremony,
@@ -200,6 +202,7 @@ export function useCompetitionFlow({
       // pendingChallenge from Redux, but this closure still holds it.
       const capturedParticipants = pendingChallenge.participants
       const capturedGameKey = pendingChallenge.game.key
+      const scheduledWinnerId = pendingChallenge.forcedWinnerId
       // prizeType was recorded at challenge-start and is reliable even
       // after the phase advances (feature thunks can transition
       // loh_comp → loh_results before this callback fires).
@@ -292,7 +295,7 @@ export function useCompetitionFlow({
 
       const scoreWinnerId = dispatch(
         completeChallenge(rawResults, {
-          authoritativeWinnerId,
+          authoritativeWinnerId: scheduledWinnerId ?? authoritativeWinnerId,
           partial: partial === true,
         })
       ) as string | null
@@ -346,6 +349,13 @@ export function useCompetitionFlow({
           : isHohComp
             ? 'Leader of the House'
             : 'Power of Safety'
+      const winBadgeCode = isVoxFinalFourComp
+        ? undefined
+        : isVoxImmunityComp
+          ? 'immune'
+          : isHohComp
+            ? 'loh'
+            : 'pos'
 
       // Prefer the canonical winner already committed to the store by the
       // game's feature thunk.  storeRef gives the live Redux state — not
@@ -355,6 +365,7 @@ export function useCompetitionFlow({
       const liveState = store.getState()
       const featureAppliedWinner = isHohComp ? liveState.game.lohId : liveState.game.posWinnerId
       const finalWinnerId =
+        scheduledWinnerId ??
         explicitWinnerId ??
         (featureAppliedWinner && capturedParticipants.includes(featureAppliedWinner)
           ? featureAppliedWinner
@@ -422,10 +433,8 @@ export function useCompetitionFlow({
       const winnerPlayers = winnerIds
         .map((id) => game.players.find((player) => player.id === id))
         .filter((player): player is Player => Boolean(player))
-      const sourceDomRect = getTileRect(finalWinnerId)
-
-      if (winnerPlayers.length === 0 || !sourceDomRect) {
-        // Defensive fallback: no DOMRect available (headless / test) — commit immediately.
+      if (winnerPlayers.length === 0) {
+        // Defensive fallback: an invalid winner cannot produce a ceremony.
         dispatch(
           applyMinigameWinner({
             winnerId: finalWinnerId,
@@ -452,15 +461,17 @@ export function useCompetitionFlow({
           screen: 'GameScreen',
         })
       }
-      const tiles: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
-        rect: getTileRect(winnerPlayer.id),
+      const winnerTileMetadata: CeremonyTile[] = winnerPlayers.map((winnerPlayer) => ({
+        rect: null,
         badge: winSymbol,
-        badgeImageSrc: isHohComp && !isVoxComp ? LOH_BADGE_SRC : undefined,
-        badgeVariant: !isVoxComp && isCupidArrowActive(game)
-          ? isHohComp
-            ? 'cupid-kiss'
-            : 'cupid-hug'
-          : undefined,
+        badgeImageSrc: !isVoxComp ? (isHohComp ? LOH_BADGE_SRC : POS_BADGE_SRC) : undefined,
+        badgeCode: winBadgeCode,
+        badgeVariant:
+          !isVoxComp && isCupidArrowActive(game)
+            ? isHohComp
+              ? 'cupid-kiss'
+              : 'cupid-hug'
+            : undefined,
         badgeStart: 'center',
         badgeLabel: `${winnerPlayer.name} wins ${winLabel}`,
       }))
@@ -475,14 +486,16 @@ export function useCompetitionFlow({
         )
       setPendingWinnerCeremony({
         winnerId: finalWinnerId,
-        tiles,
+        targetIds: winnerIds,
+        // Geometry is deliberately absent: the lift animation resolves and
+        // snapshots the live roster element after MinigameHost has unmounted.
+        tiles: winnerTileMetadata,
         caption: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}!`,
         subtitle: winSymbol,
         ariaLabel: `${winnerNames} ${isCupidArrowActive(game) ? 'win' : 'wins'} ${winLabel}`,
-        measureA: () => getTileRect(finalWinnerId),
       })
     },
-    [aliveIds.length, dispatch, game, getTileRect, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
+    [aliveIds.length, dispatch, game, humanPlayer, isF3MinigamePhase, pendingChallenge, store]
   )
 
   return {

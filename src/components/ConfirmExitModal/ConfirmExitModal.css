@@ -10,23 +10,26 @@
 }
 
 .confirm-modal__card {
-  background: linear-gradient(180deg, #071025, #0b1626);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(160deg, #1a101d, #0d0810 58%, #050406);
+  border: 1px solid rgba(224, 185, 108, 0.28);
   padding: 18px;
   width: min(560px, 94%);
   border-radius: 12px;
-  box-shadow: 0 32px 88px rgba(0,0,0,0.6);
+  box-shadow:
+    0 32px 88px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 239, 198, 0.06);
   text-align: center;
 }
 
 .confirm-modal__title {
   margin: 0 0 8px 0;
   font-size: 1.1rem;
+  color: #fff1d4;
 }
 
 .confirm-modal__desc {
   margin: 0 0 16px 0;
-  color: rgba(255,255,255,0.86);
+  color: rgba(239, 224, 195, 0.8);
 }
 
 .confirm-modal__actions {

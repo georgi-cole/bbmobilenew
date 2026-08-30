@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from 'react-redux'
 import {
-  addTvEvent,
   advance,
   awardFavoritePrize,
   commitPublicSave,
@@ -17,9 +16,11 @@ import {
   resolveFavoritePlayerWinner,
   resumeAfterPublicFavorite,
   tryActivateDayStartShock,
+  tryActivateDepressionShock,
   tryActivateDemocracia,
   tryActivateDoubleEviction,
   tryActivatePendingForcedDayStartShock,
+  tryActivatePendingForcedDepressionShock,
   tryActivatePendingForcedDemocracia,
   tryActivatePendingForcedDoubleEviction,
   tryActivatePendingForcedSpecialVeto,
@@ -46,13 +47,7 @@ import {
   getCupidPartnerId,
   isCupidArrowActive,
 } from '../../../features/twists/cupidArrow'
-import {
-  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
-  advanceBattleBackAnnouncementStep,
-  buildBattleBackFeedMessage,
-  isBattleBackReplayEligible,
-  shouldUseBattleBackMinigame,
-} from '../battleBackFlow'
+import { isBattleBackReplayEligible, shouldUseBattleBackMinigame } from '../battleBackFlow'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
 
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
@@ -149,6 +144,14 @@ export function useTwistFlow({
     }
     if (weekStartActivationResolvedRef.current) return
 
+    if (dispatch(tryActivatePendingForcedDepressionShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
+    if (dispatch(tryActivateDepressionShock())) {
+      weekStartActivationResolvedRef.current = true
+      return
+    }
     if (dispatch(tryActivatePendingForcedDayStartShock())) {
       weekStartActivationResolvedRef.current = true
       return
@@ -397,6 +400,8 @@ export function useTwistFlow({
     ? `${game.gameId}:${battleBack?.weekDecided ?? game.week}:${battleBackConfiguredCandidateIds.join(',')}`
     : 'inactive'
   const [battleBackReturnId, setBattleBackReturnId] = useState<string | null>(null)
+  const [battleBackReturnAnnouncement, setBattleBackReturnAnnouncement] =
+    useState<Announcement | null>(null)
   const [storedBattleBackUi, setStoredBattleBackUi] = useState<{
     sessionKey: string
     attemptIndex: number
@@ -444,27 +449,6 @@ export function useTwistFlow({
   const battleBackRetryCount = battleBackUi.retryCount
   const battleBackRetryOfferWinnerId = battleBackUi.retryOfferWinnerId
 
-  const battleBackAnnouncementStateKey = `${battleBackSessionKey}:${battleBackCompetitionActive}`
-  const defaultBattleBackAnnouncementStep =
-    battleBackActive && !battleBackCompetitionActive ? 0 : null
-  const [storedBattleBackAnnouncement, setStoredBattleBackAnnouncement] = useState<{
-    key: string
-    step: number | null
-  }>(() => ({
-    key: battleBackAnnouncementStateKey,
-    step: defaultBattleBackAnnouncementStep,
-  }))
-  const battleBackAnnouncementStep =
-    storedBattleBackAnnouncement.key === battleBackAnnouncementStateKey
-      ? storedBattleBackAnnouncement.step
-      : defaultBattleBackAnnouncementStep
-  const setBattleBackAnnouncementStep = useCallback(
-    (step: number | null) => {
-      setStoredBattleBackAnnouncement({ key: battleBackAnnouncementStateKey, step })
-    },
-    [battleBackAnnouncementStateKey]
-  )
-  const battleBackAnnouncementStepRef = useRef<number | null>(null)
   const showBattleBack = battleBackActive && battleBackCompetitionActive
   const battleBackAttemptSeed = useMemo(
     () => (game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0,
@@ -554,22 +538,12 @@ export function useTwistFlow({
     return variants[Math.floor(rng() * variants.length)]
   }, [battleBackAttemptSeed])
 
-  useEffect(() => {
-    battleBackAnnouncementStepRef.current = battleBackAnnouncementStep
-  }, [battleBackAnnouncementStep])
-
   const handleBattleBackAnnouncementPlay = useCallback(() => {
     if (!battleBackActive || battleBackCompetitionActive) return
-    const currentStep = battleBackAnnouncementStepRef.current
-    if (currentStep == null) return
-    const announcement = BATTLE_BACK_ANNOUNCEMENT_SEQUENCE[currentStep]
-    const { nextStep, shouldOpenCompetition } = advanceBattleBackAnnouncementStep(currentStep)
-    if (announcement) {
-      dispatch(addTvEvent({ text: buildBattleBackFeedMessage(announcement), type: 'game' }))
-    }
-    setBattleBackAnnouncementStep(nextStep)
-    if (shouldOpenCompetition) dispatch(openBattleBackCompetition())
-  }, [battleBackActive, battleBackCompetitionActive, dispatch, setBattleBackAnnouncementStep])
+    // The fullscreen shock already explains the return and its rules. Do not
+    // stack a second, third, and fourth announcement before the showdown.
+    dispatch(openBattleBackCompetition())
+  }, [battleBackActive, battleBackCompetitionActive, dispatch])
 
   useEffect(() => {
     if (!battleBackActive || battleBackCompetitionActive) return
@@ -648,7 +622,31 @@ export function useTwistFlow({
   }, [battleBackRetryOfferWinnerId, finalizeBattleBackOutcome, updateBattleBackUi])
 
   const handleBattleBackReturnDone = useCallback(() => {
+    const returningPlayer = game.players.find((player) => player.id === battleBackReturnId)
     setBattleBackReturnId(null)
+    if (!returningPlayer) {
+      dispatch(advance())
+      return
+    }
+    const variants = [
+      `${returningPlayer.name} has won the right to rejoin the game. Revenge or repentance—the hub is about to find out.`,
+      `${returningPlayer.name} fought back from elimination and reclaimed a place in the game. Old scores are waiting.`,
+      `${returningPlayer.name} is back. A second chance has entered the hub, carrying unfinished business.`,
+    ]
+    const variantIndex =
+      Array.from(returningPlayer.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) %
+      variants.length
+    setBattleBackReturnAnnouncement({
+      key: `battle_back_return_${returningPlayer.id}`,
+      title: `${returningPlayer.name} Returns`,
+      subtitle: variants[variantIndex],
+      isLive: true,
+      autoDismissMs: null,
+    })
+  }, [battleBackReturnId, dispatch, game.players])
+
+  const handleBattleBackReturnAnnouncementDismiss = useCallback(() => {
+    setBattleBackReturnAnnouncement(null)
     dispatch(advance())
   }, [dispatch])
 
@@ -697,6 +695,7 @@ export function useTwistFlow({
     dayStartShockPlayer,
     handleDayStartShockConfirm,
     battleBackReturnId,
+    battleBackReturnAnnouncement,
     battleBackAttemptIndex,
     battleBackAttemptSeed,
     battleBackCandidateIds,
@@ -714,6 +713,7 @@ export function useTwistFlow({
     handleBattleBackRetryGranted,
     handleBattleBackRetryDeclined,
     handleBattleBackReturnDone,
+    handleBattleBackReturnAnnouncementDismiss,
     favoritePlayer,
     showFavoriteVoting,
     handleFavoriteComplete,

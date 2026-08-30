@@ -27,10 +27,16 @@ import {
   sanitiseMusicConfigOverrides,
   sanitiseMusicTrackAssetOverrides,
 } from '../services/sound/musicConfigSanitizer'
+import type { GameManagerConfig, GameManagerRule } from '../gameManager/gameManager'
+import type { BroadcastOverride, CustomBroadcastMessage, Phase, TvEvent } from '../types'
+import { ALL_BROADCAST_PHASES, BROADCAST_CAMPAIGNS } from '../broadcasting/broadcastTemplateCatalog'
+import { sanitiseSocialActionOverrides } from '../social/socialActionManager'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const REMOTE_CONFIG_STORAGE_KEY = 'bbmobilenew_remote_config_v1'
+export const GITHUB_PAGES_REMOTE_CONFIG_URL =
+  'https://georgi-cole.github.io/bbmobilenew/config/live-config.json'
 
 /** TTL for the localStorage cache (1 hour). */
 const CACHE_TTL_MS = 60 * 60 * 1000
@@ -43,7 +49,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000
 export const DEFAULT_REMOTE_CONFIG_URL: string =
   (typeof import.meta !== 'undefined' &&
     (import.meta as { env?: { VITE_REMOTE_CONFIG_URL?: string } }).env?.VITE_REMOTE_CONFIG_URL) ||
-  apiUrl('/api/live-config')
+  (import.meta.env.DEV ? apiUrl('/api/live-config') : GITHUB_PAGES_REMOTE_CONFIG_URL)
 
 const FETCH_TIMEOUT_MS = 8000
 
@@ -89,6 +95,231 @@ function safeOpacity(value: unknown): number | undefined {
 function safePercentage(value: unknown): number | undefined {
   if (typeof value !== 'number' || !isFinite(value)) return undefined
   return Math.max(0, Math.min(100, value))
+}
+
+/** Repairs UTF-8 text that was incorrectly interpreted as Latin-1. */
+function repairMojibakeString(value: string): string {
+  if (!/[ðÃÂâ]/.test(value)) return value
+  try {
+    const bytes = Uint8Array.from(Array.from(value, (character) => character.charCodeAt(0) & 0xff))
+    return new TextDecoder('utf-8').decode(bytes)
+  } catch {
+    return value
+  }
+}
+
+function repairMojibakeValue(value: unknown): unknown {
+  if (typeof value === 'string') return repairMojibakeString(value)
+  if (Array.isArray(value)) return value.map(repairMojibakeValue)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, repairMojibakeValue(entry)])
+  )
+}
+
+export function repairRemoteConfigTextEncoding(config: RemoteConfig): RemoteConfig {
+  return repairMojibakeValue(config) as RemoteConfig
+}
+
+function sanitiseBroadcast(raw: unknown): RemoteConfig['broadcast'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const broadcast: NonNullable<RemoteConfig['broadcast']> = {}
+  if (typeof value.enabled === 'boolean') broadcast.enabled = value.enabled
+  const title = safeStr(value.title)
+  if (title) broadcast.title = title.slice(0, 100)
+  const message = safeStr(value.message)
+  if (message) broadcast.message = message.slice(0, 500)
+  if (value.priority === 'normal' || value.priority === 'critical') {
+    broadcast.priority = value.priority
+  }
+  const startsAt = safeStr(value.startsAt)
+  if (startsAt && !Number.isNaN(Date.parse(startsAt))) broadcast.startsAt = startsAt
+  const endsAt = safeStr(value.endsAt)
+  if (endsAt && !Number.isNaN(Date.parse(endsAt))) broadcast.endsAt = endsAt
+  return Object.keys(broadcast).length > 0 ? broadcast : undefined
+}
+
+function sanitiseGameManager(raw: unknown): GameManagerConfig | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const rules: GameManagerRule[] = []
+  if (Array.isArray(value.rules)) {
+    for (const entry of value.rules.slice(0, 100)) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+      const rule = entry as Record<string, unknown>
+      const id = safeStr(rule.id)
+      if (!id) continue
+      if (rule.trigger !== 'day' && rule.trigger !== 'players') continue
+      if (rule.competition !== 'LOH' && rule.competition !== 'POS' && rule.competition !== 'any') {
+        continue
+      }
+      if (
+        rule.selection !== 'random' &&
+        rule.selection !== 'category' &&
+        rule.selection !== 'game'
+      ) {
+        continue
+      }
+      if (rule.outcome !== 'play' && rule.outcome !== 'random' && rule.outcome !== 'player')
+        continue
+      const next: GameManagerRule = {
+        id: id.slice(0, 80),
+        enabled: rule.enabled !== false,
+        priority:
+          typeof rule.priority === 'number' && Number.isFinite(rule.priority)
+            ? Math.max(-1000, Math.min(1000, Math.round(rule.priority)))
+            : 0,
+        trigger: rule.trigger,
+        competition: rule.competition,
+        selection: rule.selection,
+        outcome: rule.outcome,
+      }
+      if (rule.trigger === 'day' && typeof rule.day === 'number') {
+        next.day = Math.max(1, Math.min(100, Math.round(rule.day)))
+      }
+      if (rule.trigger === 'players' && typeof rule.playerCount === 'number') {
+        next.playerCount = Math.max(2, Math.min(50, Math.round(rule.playerCount)))
+      }
+      if (
+        rule.category === 'arcade' ||
+        rule.category === 'logic' ||
+        rule.category === 'trivia' ||
+        rule.category === 'endurance'
+      ) {
+        next.category = rule.category
+      }
+      const gameKey = safeStr(rule.gameKey)
+      if (gameKey) next.gameKey = gameKey.slice(0, 100)
+      const winnerId = safeStr(rule.winnerId)
+      if (winnerId) next.winnerId = winnerId.slice(0, 100)
+      rules.push(next)
+    }
+  }
+  return { enabled: value.enabled !== false, rules }
+}
+
+function sanitiseRulesManager(raw: unknown): RemoteConfig['rulesManager'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const games: NonNullable<RemoteConfig['rulesManager']>['games'] = {}
+  if (value.games && typeof value.games === 'object' && !Array.isArray(value.games)) {
+    for (const [key, entry] of Object.entries(value.games).slice(0, 200)) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+      const source = entry as Record<string, unknown>
+      const description = safeStr(source.description)
+      const instructions = Array.isArray(source.instructions)
+        ? source.instructions
+            .filter((item): item is string => typeof item === 'string')
+            .slice(0, 30)
+            .map((item) => item.slice(0, 500))
+        : undefined
+      if (description || instructions?.length)
+        games[key.slice(0, 100)] = {
+          ...(description ? { description: description.slice(0, 1000) } : {}),
+          ...(instructions ? { instructions } : {}),
+        }
+    }
+  }
+  return Object.keys(games).length ? { enabled: value.enabled !== false, games } : undefined
+}
+
+function sanitiseBroadcastManager(raw: unknown): RemoteConfig['broadcastManager'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const result: NonNullable<RemoteConfig['broadcastManager']> = {}
+  if (typeof value.enabled === 'boolean') result.enabled = value.enabled
+  if (value.overrides && typeof value.overrides === 'object' && !Array.isArray(value.overrides)) {
+    const overrides: Record<string, BroadcastOverride> = {}
+    for (const [id, entry] of Object.entries(value.overrides).slice(0, 400)) {
+      if (!safeStr(id) || !entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+      const source = entry as Record<string, unknown>
+      const override: BroadcastOverride = {}
+      const text = safeStr(source.text)
+      const title = safeStr(source.title)
+      const major = safeStr(source.major)
+      if (text) override.text = text.slice(0, 500)
+      if (title) override.title = title.slice(0, 120)
+      if (major) override.major = major.slice(0, 120)
+      if (source.major === null) override.major = null
+      if (
+        source.type === 'game' ||
+        source.type === 'social' ||
+        source.type === 'vote' ||
+        source.type === 'twist' ||
+        source.type === 'diary'
+      )
+        override.type = source.type
+      if (source.level === 'minor' || source.level === 'major' || source.level === 'critical')
+        override.level = source.level
+      if (typeof source.disabled === 'boolean') override.disabled = source.disabled
+      if (typeof source.forceOnTv === 'boolean') override.forceOnTv = source.forceOnTv
+      if (typeof source.order === 'number' && Number.isFinite(source.order))
+        override.order = Math.round(source.order)
+      if (Object.keys(override).length > 0) overrides[id.slice(0, 120)] = override
+    }
+    if (Object.keys(overrides).length > 0) result.overrides = overrides
+  }
+  if (Array.isArray(value.customMessages)) {
+    const messages: CustomBroadcastMessage[] = []
+    for (const rawMessage of value.customMessages.slice(0, 200)) {
+      if (!rawMessage || typeof rawMessage !== 'object' || Array.isArray(rawMessage)) continue
+      const entry = rawMessage as Record<string, unknown>
+      const id = safeStr(entry.id)
+      const text = safeStr(entry.text)
+      if (
+        !id ||
+        !text ||
+        typeof entry.phase !== 'string' ||
+        !ALL_BROADCAST_PHASES.includes(entry.phase as Phase)
+      )
+        continue
+      if (
+        entry.type !== 'game' &&
+        entry.type !== 'social' &&
+        entry.type !== 'vote' &&
+        entry.type !== 'twist' &&
+        entry.type !== 'diary'
+      )
+        continue
+      if (entry.level !== 'minor' && entry.level !== 'major' && entry.level !== 'critical') continue
+      const message: CustomBroadcastMessage = {
+        id: id.slice(0, 120),
+        phase: entry.phase as Phase,
+        text: text.slice(0, 500),
+        type: entry.type as TvEvent['type'],
+        level: entry.level,
+        enabled: entry.enabled !== false,
+      }
+      const key = safeStr(entry.key)
+      const title = safeStr(entry.title)
+      const major = safeStr(entry.major)
+      if (key) message.key = key.slice(0, 120)
+      if (title) message.title = title.slice(0, 120)
+      if (major) message.major = major.slice(0, 120)
+      if (typeof entry.forceOnTv === 'boolean') message.forceOnTv = entry.forceOnTv
+      if (typeof entry.order === 'number' && Number.isFinite(entry.order))
+        message.order = Math.round(entry.order)
+      if (
+        typeof entry.campaign === 'string' &&
+        BROADCAST_CAMPAIGNS.includes(entry.campaign as (typeof BROADCAST_CAMPAIGNS)[number])
+      )
+        message.campaign = entry.campaign as CustomBroadcastMessage['campaign']
+      messages.push(message)
+    }
+    if (messages.length > 0) result.customMessages = messages
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+function sanitiseSocialManager(raw: unknown): RemoteConfig['socialManager'] | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const value = raw as Record<string, unknown>
+  const actionOverrides = sanitiseSocialActionOverrides(value.actionOverrides)
+  const result: NonNullable<RemoteConfig['socialManager']> = {}
+  if (typeof value.enabled === 'boolean') result.enabled = value.enabled
+  if (Object.keys(actionOverrides).length > 0) result.actionOverrides = actionOverrides
+  return Object.keys(result).length > 0 ? result : undefined
 }
 
 /** Returns true when the URL is an absolute http(s) URL. */
@@ -138,6 +369,17 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
 
   const r = raw as Record<string, unknown>
   const config: RemoteConfig = {}
+
+  const broadcast = sanitiseBroadcast(r.broadcast)
+  if (broadcast) config.broadcast = broadcast
+
+  const broadcastManager = sanitiseBroadcastManager(r.broadcastManager)
+  if (broadcastManager) config.broadcastManager = broadcastManager
+
+  const gameManager = sanitiseGameManager(r.gameManager)
+  if (gameManager) config.gameManager = gameManager
+  const rulesManager = sanitiseRulesManager(r.rulesManager)
+  if (rulesManager) config.rulesManager = rulesManager
 
   // season
   if (r.season && typeof r.season === 'object' && !Array.isArray(r.season)) {
@@ -234,6 +476,9 @@ export function sanitiseRemoteConfig(raw: unknown): RemoteConfig | null {
   // social: pure-data rules and content overlays with a bundled fallback.
   const social = sanitiseSocialRuntimeOverride(r.social)
   if (social && Object.keys(social).length > 0) config.social = social
+
+  const socialManager = sanitiseSocialManager(r.socialManager)
+  if (socialManager) config.socialManager = socialManager
 
   // operations: gradual UI rollout, kill switches and privacy-safe telemetry.
   if (r.operations && typeof r.operations === 'object' && !Array.isArray(r.operations)) {
@@ -335,7 +580,7 @@ export async function fetchRemoteConfig(): Promise<RemoteConfig | null> {
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
   try {
-    const res = await fetch(url, { signal: controller.signal })
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json: unknown = await res.json()
     const config = sanitiseRemoteConfig(json)

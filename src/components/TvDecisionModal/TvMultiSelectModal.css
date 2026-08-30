@@ -15,8 +15,12 @@
 }
 
 @keyframes tvmsFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .tv-ms-modal__card {
@@ -35,8 +39,14 @@
 }
 
 @keyframes tvmsSlideIn {
-  from { opacity: 0; transform: translateY(28px) scale(0.94); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .tv-ms-modal__header {
@@ -90,7 +100,10 @@
   color: #d8ddf0;
   font-size: 0.92rem;
   text-align: left;
-  transition: background 0.18s, border-color 0.18s, transform 0.14s;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.14s;
 }
 
 .tv-ms-modal__option:hover {
@@ -102,13 +115,21 @@
 .tv-ms-modal__option--selected {
   background: rgba(80, 130, 255, 0.18);
   border-color: rgba(100, 160, 255, 0.6);
-  box-shadow: 0 0 0 2px rgba(100, 160, 255, 0.18), 0 4px 16px rgba(80, 130, 255, 0.2);
+  box-shadow:
+    0 0 0 2px rgba(100, 160, 255, 0.18),
+    0 4px 16px rgba(80, 130, 255, 0.2);
   animation: tvmsOptionSelect 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes tvmsOptionSelect {
-  from { transform: scale(0.97); opacity: 0.7; }
-  to   { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.97);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .tv-ms-modal__option-name {
@@ -195,7 +216,9 @@
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s, box-shadow 0.15s;
+  transition:
+    opacity 0.15s,
+    box-shadow 0.15s;
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
   width: 100%;
 }
@@ -209,4 +232,55 @@
 .tv-ms-modal__btn-confirm:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Shared gameplay modal palette: smoked blackberry glass with restrained gold. */
+.tv-ms-modal__card {
+  background: linear-gradient(160deg, #17101b 0%, #0d0810 58%, #050406 100%);
+  border-color: rgba(224, 185, 108, 0.36);
+  box-shadow:
+    0 0 0 1px rgba(255, 239, 198, 0.06),
+    0 8px 60px rgba(0, 0, 0, 0.82),
+    0 0 40px rgba(135, 84, 27, 0.13);
+}
+
+.tv-ms-modal__header {
+  background: linear-gradient(135deg, #211323 0%, #130b14 56%, #19100c 100%);
+  border-bottom-color: rgba(225, 184, 101, 0.2);
+}
+
+.tv-ms-modal__title {
+  color: #fff1d4;
+}
+.tv-ms-modal__subtitle,
+.tv-ms-modal__preview {
+  color: rgba(234, 219, 188, 0.72);
+}
+.tv-ms-modal__counter,
+.tv-ms-modal__check {
+  color: #e6bd69;
+}
+
+.tv-ms-modal__option:hover {
+  background: rgba(198, 150, 62, 0.12);
+  border-color: rgba(228, 187, 101, 0.36);
+}
+
+.tv-ms-modal__option--selected {
+  background: rgba(173, 124, 40, 0.18);
+  border-color: rgba(235, 194, 108, 0.62);
+  box-shadow:
+    0 0 0 2px rgba(222, 177, 84, 0.14),
+    0 4px 16px rgba(135, 83, 18, 0.22);
+}
+
+.tv-ms-modal__footer {
+  border-top-color: rgba(225, 184, 101, 0.15);
+}
+
+.tv-ms-modal__btn-confirm {
+  background: linear-gradient(135deg, #c6963b 0%, #7a4916 100%);
+  border-color: rgba(255, 220, 139, 0.48);
+  box-shadow: 0 2px 12px rgba(142, 88, 20, 0.3);
+  color: #190f05;
 }

@@ -1,9 +1,17 @@
 /* ─── Settings Screen ─────────────────────────────────────────────────────── */
 
+.app-shell:has(.settings-screen) {
+  max-width: min(100%, 1280px);
+}
+
 .settings-screen {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--color-bg);
   color: var(--color-text);
 }
@@ -13,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
   padding: 1rem 1rem 0.5rem;
   flex-shrink: 0;
 }
@@ -34,6 +43,10 @@
 
 .settings-screen__title {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 1.3rem;
   font-weight: 900;
 }
@@ -62,7 +75,9 @@
   font-weight: 600;
   padding: 0.6rem 0.75rem;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   white-space: nowrap;
 }
 .settings-tab--active {
@@ -76,7 +91,11 @@
 /* Scrollable content area */
 .settings-content {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
 }
 
@@ -188,7 +207,7 @@
 
 .settings-helper-text {
   font-size: 0.75rem;
-  color: var(--color-text-muted, rgba(255,255,255,0.5));
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.5));
   margin-top: 4px;
 }
 
@@ -211,7 +230,9 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .settings-theme-btn--active {
   border-color: var(--color-accent);
@@ -280,23 +301,29 @@
 /* ── Theme preset CSS variables ──────────────────────────────────────────── */
 
 body.theme-midnight {
-  --color-accent:   #6366f1;
+  --color-accent: #6366f1;
   --color-accent-2: #8b5cf6;
 }
 
 body.theme-neon {
-  --color-accent:   #22d3ee;
+  --color-accent: #22d3ee;
   --color-accent-2: #a78bfa;
 }
 
 body.theme-sunset {
-  --color-accent:   #f97316;
+  --color-accent: #f97316;
   --color-accent-2: #ec4899;
 }
 
 body.theme-ocean {
-  --color-accent:   #0ea5e9;
+  --color-accent: #0ea5e9;
   --color-accent-2: #06b6d4;
+}
+
+body.theme-surveyeval {
+  --color-accent: #b6c86a;
+  --color-accent-2: #27d7df;
+  --color-bg: #111713;
 }
 
 /* ── Accessibility ──────────────────────────────────────────────────────── */
@@ -311,9 +338,9 @@ body.reduce-motion *::after {
 }
 
 body.high-contrast {
-  --color-text:       #ffffff;
+  --color-text: #ffffff;
   --color-text-muted: rgba(255, 255, 255, 0.75);
-  --color-line:       rgba(255, 255, 255, 0.3);
+  --color-line: rgba(255, 255, 255, 0.3);
 }
 
 /* ── Comp Selection panel ───────────────────────────────────────────────── */
@@ -359,7 +386,10 @@ body.high-contrast {
   font-weight: 600;
   padding: 0.3rem 0.75rem;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 .comp-selection__filter-btn--active {
   background: var(--color-accent);

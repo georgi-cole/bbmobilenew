@@ -383,12 +383,12 @@ describe('NominationAnimator wiring in GameScreen', () => {
           publicSaveApplied: false,
         },
       });
-      const view = renderWithStore(store);
+      renderWithStore(store);
 
       await act(async () => {});
 
       const labelTops = Array.from(
-        view.container.querySelectorAll<HTMLElement>('.ceremony-overlay__tile-label'),
+        document.querySelectorAll<HTMLElement>('.ceremony-overlay__tile-label'),
       ).map((node) => node.style.top);
 
       expect(new Set(labelTops).size).toBeGreaterThan(1);
@@ -403,13 +403,13 @@ describe('NominationAnimator wiring in GameScreen', () => {
       publicModeEnabled: false,
       lastHohCompFinisherId: 'p3',
     });
-    const view = renderWithStore(store);
+    renderWithStore(store);
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Play Nomination Animation/i }));
     });
 
-    expect(view.container.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(3);
+    expect(document.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(3);
     expect(screen.queryByText('Last in LOH Comp')).toBeNull();
 
     await act(async () => { vi.advanceTimersByTime(2800); });

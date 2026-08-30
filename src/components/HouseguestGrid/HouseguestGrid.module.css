@@ -4,7 +4,8 @@
   flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
-  padding: 0 8px;
+  width: 100%;
+  padding: 0;
   overflow: visible;
 }
 
@@ -73,6 +74,427 @@
   overflow: visible;
 }
 
+:global(body.mode-surveyeval) .surveyevalShock {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  color: #f4ffff;
+  background: radial-gradient(
+    circle,
+    rgba(76, 235, 255, 0.72),
+    rgba(39, 215, 223, 0.12) 52%,
+    transparent 74%
+  );
+  box-shadow:
+    inset 0 0 0 2px rgba(223, 251, 255, 0.82),
+    inset 0 0 24px rgba(39, 215, 223, 0.8);
+  text-shadow: 0 0 12px #27d7df;
+  animation: surveyevalTileShock 1650ms steps(3, end) both;
+}
+:global(body.mode-surveyeval) .surveyevalShock i {
+  position: absolute;
+  font-style: normal;
+  font-size: clamp(1.4rem, 7vw, 2.3rem);
+  animation: surveyevalSpark 1450ms ease-out both;
+}
+:global(body.mode-surveyeval) .surveyevalShock i:nth-child(1) {
+  transform: translate(-35px, -28px) rotate(-18deg);
+}
+:global(body.mode-surveyeval) .surveyevalShock i:nth-child(2) {
+  transform: translate(32px, -4px) rotate(16deg);
+  animation-delay: 80ms;
+}
+:global(body.mode-surveyeval) .surveyevalShock i:nth-child(3) {
+  transform: translate(-24px, 28px) rotate(8deg);
+  animation-delay: 130ms;
+}
+:global(body.mode-surveyeval) .surveyevalShock b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  height: 3px;
+  background: rgba(244, 255, 255, 0.96);
+  box-shadow: 0 0 8px #dffbff;
+  transform-origin: left center;
+  animation: surveyevalGlass 1550ms ease-out both;
+}
+:global(body.mode-surveyeval) .surveyevalShock b:nth-of-type(1) {
+  transform: rotate(28deg) translate(0, -20px);
+}
+:global(body.mode-surveyeval) .surveyevalShock b:nth-of-type(2) {
+  transform: rotate(148deg) translate(10px, 8px);
+  animation-delay: 70ms;
+}
+:global(body.mode-surveyeval) .surveyevalShock b:nth-of-type(3) {
+  transform: rotate(-55deg) translate(15px, 12px);
+  animation-delay: 140ms;
+}
+@keyframes surveyevalTileShock {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  28%,
+  44%,
+  78% {
+    opacity: 1;
+  }
+  20%,
+  36%,
+  58% {
+    opacity: 0.32;
+  }
+}
+@keyframes surveyevalSpark {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  28%,
+  72% {
+    opacity: 1;
+    scale: 1.18;
+  }
+  to {
+    opacity: 0;
+    scale: 0.72;
+  }
+}
+@keyframes surveyevalGlass {
+  0%,
+  24% {
+    opacity: 0;
+    scale: 0.2;
+  }
+  38%,
+  82% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.28;
+  }
+}
+
+/* A short, non-interactive weather reveal sweeps across the roster whenever a
+   daily transition begins, then leaves the avatars exactly as they were. */
+.weatherReveal {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  animation: rosterWeatherReveal 3s ease-out both;
+}
+
+:global(body.mode-surveyeval) [data-replacement-target='true'] .avatarWrap {
+  animation: surveyevalAssembly 1050ms steps(4, end) both;
+}
+@keyframes surveyevalAssembly {
+  0% {
+    opacity: 0;
+    transform: scale(0.75) rotate(-4deg);
+    filter: grayscale(1) brightness(1.8);
+  }
+  55% {
+    opacity: 0.8;
+    transform: scale(1.04) rotate(2deg);
+    filter: grayscale(0.4) brightness(1.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+    filter: none;
+  }
+}
+
+.weatherReveal::before,
+.weatherReveal::after {
+  position: absolute;
+  inset: -18%;
+  content: '';
+  pointer-events: none;
+}
+
+.weatherReveal[data-weather='sunny'] {
+  background: radial-gradient(circle at 78% 16%, rgba(255, 222, 130, 0.76), transparent 25%);
+}
+
+.weatherReveal[data-weather='sunny']::before {
+  background: conic-gradient(
+    from 8deg at 78% 16%,
+    transparent 0 8deg,
+    rgba(255, 232, 160, 0.18) 9deg 14deg,
+    transparent 15deg 34deg
+  );
+  animation: rosterWeatherSpin 3s linear both;
+}
+
+.weatherReveal[data-weather='cloudy'] {
+  background: linear-gradient(
+    180deg,
+    rgba(192, 211, 220, 0.38),
+    rgba(98, 133, 150, 0.18) 58%,
+    transparent
+  );
+}
+
+.weatherReveal[data-weather='cloudy']::before {
+  background:
+    radial-gradient(ellipse at 18% 30%, rgba(229, 239, 241, 0.34), transparent 23%),
+    radial-gradient(ellipse at 69% 18%, rgba(204, 222, 227, 0.28), transparent 28%),
+    radial-gradient(ellipse at 88% 56%, rgba(163, 191, 202, 0.2), transparent 24%);
+  animation: rosterWeatherDrift 3s ease-out both;
+}
+
+.weatherReveal[data-weather='rainy'],
+.weatherReveal[data-weather='stormy'] {
+  background: linear-gradient(
+    180deg,
+    rgba(100, 157, 188, 0.32),
+    rgba(23, 57, 79, 0.16) 64%,
+    transparent
+  );
+}
+
+.weatherReveal[data-weather='rainy']::before,
+.weatherReveal[data-weather='stormy']::before {
+  inset: -24% -8%;
+  background:
+    radial-gradient(ellipse 1px 8px at 6% 12%, rgba(220, 243, 255, 0.82) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.2px 11px at 15% 48%,
+      rgba(190, 225, 242, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 8px at 26% 26%, rgba(230, 247, 255, 0.76) 0 38%, transparent 45%),
+    radial-gradient(ellipse 1.3px 12px at 36% 70%, rgba(194, 226, 243, 0.7) 0 38%, transparent 45%),
+    radial-gradient(ellipse 1px 9px at 47% 38%, rgba(228, 246, 255, 0.78) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.2px 11px at 58% 18%,
+      rgba(191, 223, 241, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 8px at 68% 58%, rgba(228, 246, 255, 0.76) 0 38%, transparent 45%),
+    radial-gradient(
+      ellipse 1.3px 12px at 79% 32%,
+      rgba(189, 223, 241, 0.72) 0 38%,
+      transparent 45%
+    ),
+    radial-gradient(ellipse 1px 9px at 91% 76%, rgba(227, 246, 255, 0.78) 0 38%, transparent 45%);
+  filter: drop-shadow(0 0 2px rgba(192, 228, 246, 0.3));
+  animation: rosterWeatherRain 780ms linear 4 both;
+}
+
+.weatherReveal[data-weather='rainy']::after {
+  background:
+    radial-gradient(ellipse at 28% 16%, rgba(207, 226, 231, 0.32), transparent 28%),
+    radial-gradient(ellipse at 76% 34%, rgba(144, 180, 198, 0.25), transparent 31%);
+}
+
+.weatherReveal[data-weather='sunset'] {
+  background:
+    radial-gradient(circle at 78% 82%, rgba(255, 172, 99, 0.68), transparent 30%),
+    linear-gradient(180deg, rgba(159, 100, 153, 0.24), transparent 60%);
+}
+
+.weatherReveal[data-weather='starry'] {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 64% 18%, rgba(214, 226, 255, 0.74) 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 62%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 74%, rgba(207, 221, 255, 0.64) 0 1px, transparent 2px);
+  background-size: 100% 100%;
+}
+
+.weatherReveal[data-weather='starry']::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(85, 112, 211, 0.34), transparent 55%);
+}
+
+.weatherReveal[data-weather='misty'] {
+  background: linear-gradient(
+    180deg,
+    rgba(193, 218, 226, 0.28),
+    rgba(117, 151, 164, 0.2) 52%,
+    transparent
+  );
+}
+
+.weatherReveal[data-weather='misty']::before {
+  background:
+    radial-gradient(ellipse at 18% 64%, rgba(228, 240, 241, 0.5), transparent 32%),
+    radial-gradient(ellipse at 55% 38%, rgba(187, 213, 220, 0.42), transparent 35%),
+    radial-gradient(ellipse at 90% 68%, rgba(213, 231, 235, 0.38), transparent 34%);
+  filter: blur(8px);
+  animation: rosterWeatherDrift 3s ease-out both;
+}
+
+.weatherReveal[data-weather='snowy'] {
+  background: linear-gradient(
+    180deg,
+    rgba(202, 225, 246, 0.34),
+    rgba(111, 147, 185, 0.16) 65%,
+    transparent
+  );
+}
+
+.weatherReveal[data-weather='snowy']::before {
+  inset: -20% -8%;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0 1.5px, transparent 1.8px),
+    radial-gradient(circle, rgba(220, 239, 255, 0.78) 0 1px, transparent 1.4px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 1.2px, transparent 1.6px);
+  background-position:
+    0 0,
+    13px 21px,
+    27px 7px;
+  background-size:
+    42px 52px,
+    52px 64px,
+    61px 71px;
+  animation: rosterWeatherSnow 2.1s linear both;
+}
+
+.weatherReveal[data-weather='stormy'] {
+  background:
+    radial-gradient(ellipse at 46% 2%, rgba(159, 181, 255, 0.34), transparent 32%),
+    linear-gradient(180deg, rgba(45, 64, 98, 0.54), rgba(11, 24, 44, 0.26) 62%, transparent);
+}
+
+.weatherReveal[data-weather='stormy']::after {
+  top: -12%;
+  right: auto;
+  bottom: auto;
+  left: 51%;
+  width: 54px;
+  height: 128%;
+  background: linear-gradient(
+    90deg,
+    rgba(191, 215, 255, 0.42),
+    rgba(246, 250, 255, 0.98) 46%,
+    rgba(176, 205, 255, 0.46)
+  );
+  clip-path: polygon(
+    48% 0,
+    62% 0,
+    50% 25%,
+    72% 25%,
+    39% 58%,
+    56% 58%,
+    24% 100%,
+    39% 65%,
+    20% 65%,
+    48% 35%,
+    34% 35%
+  );
+  filter: drop-shadow(0 0 5px rgba(183, 211, 255, 0.95))
+    drop-shadow(0 0 18px rgba(133, 165, 255, 0.7));
+  animation: rosterWeatherLightning 2.5s steps(1, end) both;
+}
+
+.weatherReveal[data-weather='rainbow'] {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 96, 133, 0.45),
+      rgba(255, 206, 86, 0.36),
+      rgba(91, 209, 255, 0.42),
+      rgba(153, 111, 255, 0.38)
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 66%);
+}
+
+.weatherReveal[data-weather='rainbow']::before {
+  inset: 8% 10% auto;
+  height: 68%;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  border: 7px solid transparent;
+  border-top-color: rgba(255, 84, 117, 0.9);
+  border-right-color: rgba(255, 219, 92, 0.9);
+  border-left-color: rgba(86, 196, 255, 0.9);
+  filter: drop-shadow(0 0 12px rgba(235, 247, 255, 0.58));
+}
+
+@keyframes rosterWeatherReveal {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.96;
+  }
+  64% {
+    opacity: 0.64;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rosterWeatherDrift {
+  from {
+    transform: translate3d(-8%, -2%, 0);
+  }
+  to {
+    transform: translate3d(8%, 4%, 0);
+  }
+}
+
+@keyframes rosterWeatherRain {
+  from {
+    transform: translate3d(-3%, -14%, 0);
+  }
+  to {
+    transform: translate3d(5%, 18%, 0);
+  }
+}
+
+@keyframes rosterWeatherSnow {
+  from {
+    transform: translate3d(-2%, -14%, 0);
+  }
+  to {
+    transform: translate3d(4%, 18%, 0);
+  }
+}
+
+@keyframes rosterWeatherLightning {
+  0%,
+  34%,
+  38%,
+  100% {
+    opacity: 0;
+  }
+  35%,
+  37% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes rosterWeatherSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(36deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weatherReveal,
+  .weatherReveal::before {
+    animation-duration: 1.4s;
+  }
+}
+
 .gridItem {
   width: var(--game-avatar-tile-size, 100%);
   max-width: 100%;
@@ -90,11 +512,84 @@
 
 .container[data-header-mode='persistent'] .headerRow {
   position: static;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
   max-width: 100%;
-  margin: 0 0 5px;
+  width: 100%;
+  margin: 0 0 var(--game-layout-rhythm, 8px);
+  padding-inline: 6px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   animation: none;
   opacity: 1;
   transform: none;
+}
+
+.rosterLogLauncher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 58px;
+  height: 25px;
+  margin-left: auto;
+  padding: 0 7px;
+  border: 1px solid rgba(190, 174, 220, 0.09);
+  border-top-color: rgba(228, 216, 255, 0.28);
+  border-bottom-color: rgba(120, 100, 165, 0.045);
+  border-radius: 7px;
+  background:
+    radial-gradient(ellipse at 34% 0%, rgba(224, 207, 246, 0.09), transparent 54%),
+    linear-gradient(180deg, rgba(50, 27, 61, 0.72), rgba(27, 14, 37, 0.8) 46%, rgba(9, 7, 17, 0.9));
+  color: rgba(225, 216, 236, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(239, 229, 255, 0.095),
+    inset 0 -2px 4px rgba(3, 2, 8, 0.54),
+    0 2px 6px rgba(3, 2, 9, 0.32),
+    0 0 8px rgba(105, 82, 190, 0.055);
+  font: inherit;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease,
+    transform 120ms ease;
+}
+
+.rosterLogLauncher span:first-child {
+  color: rgba(201, 187, 224, 0.8);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.rosterLogLauncher:hover,
+.rosterLogLauncher:focus-visible {
+  border-color: rgba(207, 191, 238, 0.24);
+  border-top-color: rgba(238, 227, 255, 0.42);
+  background:
+    radial-gradient(ellipse at 34% 0%, rgba(234, 218, 255, 0.13), transparent 56%),
+    linear-gradient(180deg, rgba(62, 35, 75, 0.78), rgba(28, 15, 39, 0.9));
+  color: rgba(244, 237, 250, 0.94);
+}
+
+.rosterLogLauncher:active {
+  transform: scale(0.97);
+}
+
+.rosterLogLauncher:focus-visible {
+  outline: 2px solid var(--game-focus-color);
+  outline-offset: 2px;
 }
 
 .container[data-header-mode='tv-chip'] .headerRow {
@@ -126,17 +621,13 @@
 .avatarWrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: var(--game-avatar-tile-height, var(--game-avatar-tile-size, auto));
   border-radius: 10px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-card-2) 82%, #0a0e15) 0%,
-    color-mix(in srgb, var(--color-card) 88%, #090d14) 100%
-  );
+  background: #030303;
   border: 1px solid color-mix(in srgb, var(--color-accent) 26%, rgba(255, 255, 255, 0.05));
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.42),
@@ -156,20 +647,324 @@
     0 0 7px color-mix(in srgb, var(--cupid-pair-color) 5%, transparent);
 }
 
+.cupidLoveRevealed {
+  animation: cupidLoveFrameReveal 1160ms cubic-bezier(0.16, 0.86, 0.25, 1)
+    calc(var(--cupid-pair-index, 0) * 150ms) both;
+}
+
+.cupidLoveAvatar {
+  animation: cupidLovePortraitReveal 1160ms cubic-bezier(0.16, 0.86, 0.25, 1)
+    calc(var(--cupid-pair-index, 0) * 150ms) both;
+}
+
+.cupidLoveReturning {
+  animation: cupidLoveReturnFrame 1350ms cubic-bezier(0.16, 0.82, 0.24, 1) both;
+}
+
+/* A non-destructive, live expression layer lets all cast portraits take on the
+   same sad look during the shock, including custom and profile-photo avatars. */
+.depressionAvatarWrap {
+  border-color: rgba(116, 151, 198, 0.46);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.52),
+    inset 0 0 24px rgba(38, 61, 90, 0.64);
+}
+
+.depressionAvatar {
+  filter: saturate(0.42) brightness(0.72) contrast(0.92);
+  transform: translateY(2px) scale(1.025);
+}
+
+.depressionExpression {
+  position: absolute;
+  z-index: 7;
+  pointer-events: none;
+  left: 25%;
+  right: 25%;
+  top: 38%;
+  height: 26%;
+  opacity: 0.58;
+  background:
+    radial-gradient(
+      ellipse at 26% 29%,
+      transparent 0 17%,
+      rgba(14, 20, 33, 0.86) 19% 23%,
+      transparent 25%
+    ),
+    radial-gradient(
+      ellipse at 74% 29%,
+      transparent 0 17%,
+      rgba(14, 20, 33, 0.86) 19% 23%,
+      transparent 25%
+    ),
+    radial-gradient(
+      ellipse at 50% 88%,
+      transparent 0 37%,
+      rgba(15, 20, 31, 0.82) 40% 44%,
+      transparent 47%
+    );
+  filter: blur(0.25px) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.82));
+  mix-blend-mode: multiply;
+}
+
+.depressionRecoveryWrap {
+  animation: depressionBurstFrame 1250ms ease-out both;
+}
+
+.depressionRecoveryAvatar {
+  animation: depressionBurstAvatar 1250ms ease-out both;
+}
+
+.depressionBurst {
+  position: absolute;
+  inset: -18%;
+  z-index: 8;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 251, 204, 0.95) 0 8%,
+    rgba(255, 221, 113, 0.52) 22%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+  animation: depressionBurstLight 1250ms ease-out both;
+}
+
+@keyframes depressionBurstFrame {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 231, 132, 0);
+  }
+  35% {
+    box-shadow:
+      0 0 28px rgba(255, 231, 132, 0.9),
+      inset 0 0 22px rgba(255, 247, 196, 0.72);
+  }
+  100% {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+  }
+}
+
+@keyframes depressionBurstAvatar {
+  0% {
+    filter: saturate(0.42) brightness(0.72);
+    transform: scale(1.025);
+  }
+  35% {
+    filter: saturate(1.8) brightness(1.48);
+    transform: scale(1.08);
+  }
+  100% {
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes depressionBurstLight {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+.cupidLoveReturnAvatar {
+  animation: cupidLoveReturnPortrait 1350ms cubic-bezier(0.16, 0.82, 0.24, 1) both;
+}
+
+.cupidLoveStorm {
+  position: absolute;
+  inset: -48%;
+  z-index: 8;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 244, 221, 0.95) 0%,
+    rgba(255, 167, 203, 0.72) 25%,
+    rgba(247, 177, 108, 0.26) 48%,
+    transparent 70%
+  );
+  animation: cupidLoveColorStorm 1180ms cubic-bezier(0.16, 0.86, 0.25, 1)
+    calc(var(--cupid-pair-index, 0) * 150ms) both;
+}
+
+.cupidLoveStorm i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #ff8eb5;
+  font-size: 42px;
+  font-style: normal;
+  text-shadow:
+    0 0 10px #fff,
+    0 0 26px rgba(255, 125, 180, 0.95);
+  animation: cupidHeartBurst 1080ms cubic-bezier(0.14, 0.78, 0.22, 1)
+    calc(var(--cupid-pair-index, 0) * 150ms) both;
+}
+.cupidLoveStorm i:nth-child(2) {
+  color: #ffd18b;
+  animation-delay: 80ms;
+}
+.cupidLoveStorm i:nth-child(3) {
+  color: #f5a4d6;
+  animation-delay: 140ms;
+}
+.cupidLoveStorm i:nth-child(4) {
+  color: #ffb0c9;
+  animation-delay: 200ms;
+}
+
+@keyframes cupidLoveFrameReveal {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1px rgba(241, 184, 197, 0.06),
+      0 0 0 rgba(233, 151, 176, 0);
+  }
+  34% {
+    transform: scale(1.055);
+    box-shadow:
+      0 0 0 2px rgba(255, 224, 230, 0.9),
+      0 0 42px rgba(255, 117, 169, 0.92),
+      inset 0 0 32px rgba(255, 231, 192, 0.75);
+  }
+  100% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(234, 155, 174, 0.16),
+      0 0 14px rgba(213, 108, 137, 0.12);
+  }
+}
+
+@keyframes cupidLovePortraitReveal {
+  0% {
+    opacity: 0.04;
+    filter: saturate(0.45) brightness(2.25) blur(3px);
+    transform: scale(1.12);
+  }
+  34% {
+    opacity: 0.92;
+    filter: saturate(1.3) brightness(1.18) blur(0);
+    transform: scale(1.025);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes cupidLoveReturnFrame {
+  0% {
+    box-shadow:
+      0 0 0 2px rgba(255, 191, 211, 0.92),
+      0 0 42px rgba(244, 108, 163, 0.9);
+    transform: scale(1.04);
+  }
+  48% {
+    box-shadow:
+      0 0 0 1px rgba(194, 158, 188, 0.32),
+      0 0 18px rgba(140, 104, 159, 0.22);
+    transform: scale(0.985);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes cupidLoveReturnPortrait {
+  0% {
+    opacity: 0.04;
+    filter: brightness(2.25) saturate(2.2) hue-rotate(322deg) blur(2px);
+    transform: scale(1.1);
+  }
+  28% {
+    opacity: 1;
+    filter: brightness(1.42) saturate(1.5) hue-rotate(330deg);
+    transform: scale(1.04);
+  }
+  62% {
+    filter: brightness(0.9) saturate(0.35);
+    transform: scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes cupidLoveColorStorm {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-35deg);
+  }
+  26% {
+    opacity: 1;
+    transform: scale(0.78) rotate(12deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35) rotate(32deg);
+  }
+}
+
+@keyframes cupidHeartBurst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.15) rotate(-24deg);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--heart-x, 45px)), calc(-50% - 115px)) scale(1.7)
+      rotate(34deg);
+  }
+}
+.cupidLoveStorm i:nth-child(1) {
+  --heart-x: -62px;
+}
+.cupidLoveStorm i:nth-child(2) {
+  --heart-x: 58px;
+}
+.cupidLoveStorm i:nth-child(3) {
+  --heart-x: -22px;
+}
+.cupidLoveStorm i:nth-child(4) {
+  --heart-x: 28px;
+}
+
 .cupidPairMarker {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: -1px;
+  right: -1px;
   z-index: 6;
   display: grid;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 1px solid color-mix(in srgb, var(--cupid-pair-color) 88%, white 12%);
-  border-radius: 50%;
-  background: var(--cupid-pair-color);
+  width: 25px;
+  height: 21px;
+  padding: 0 2px 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--cupid-pair-color) 78%, white 22%);
+  border-radius: 3px 2px 10px 5px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.38), transparent 38%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--cupid-pair-color) 88%, #fff 12%),
+      var(--cupid-pair-color)
+    );
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 80%);
   color: #fff;
   font-size: 9px;
   font-weight: 900;
@@ -179,14 +974,57 @@
     0 2px 6px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.34);
   pointer-events: none;
+  transform: rotate(3deg);
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.cupidPairMarkerReveal {
+  animation: cupidCapLand 620ms cubic-bezier(0.2, 0.88, 0.25, 1.12)
+    calc(var(--cupid-pair-index, 0) * 125ms + 380ms) both;
+}
+
+.cupidPairFocused [class*='avatarWrap'] {
+  transform: translateY(-3px) scale(1.025);
+  border-color: color-mix(in srgb, var(--cupid-pair-color) 62%, white 12%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.5),
+    0 0 0 2px color-mix(in srgb, var(--cupid-pair-color) 40%, transparent),
+    0 0 20px color-mix(in srgb, var(--cupid-pair-color) 30%, transparent);
+}
+
+@keyframes cupidCapLand {
+  0% {
+    opacity: 0;
+    transform: translate(12px, -14px) rotate(18deg) scale(0.44);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-2px, 2px) rotate(1deg) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(3deg) scale(1);
+  }
 }
 
 :global(body.experiment-game-chrome-refined) .avatarWrap {
-  border-color: rgba(255, 255, 255, 0.1);
+  /* Quiet gallery rim: enough separation from the blackberry surface without
+     turning the roster into a grid of hard, detached cards. */
+  border-color: rgba(169, 141, 195, 0.16);
   border-radius: var(--game-radius-2);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 0 0 1px rgba(34, 23, 46, 0.3),
+    inset 0 1px 0 rgba(248, 234, 204, 0.09);
+}
+
+:global(body.experiment-game-chrome-refined) .avatarWrap::before {
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 10, 21, 0.46),
+    inset 0 1px 0 rgba(235, 216, 177, 0.11),
+    inset 0 0 16px 5px rgba(12, 9, 18, 0.56);
 }
 
 .nomination_loh {
@@ -274,9 +1112,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
-    linear-gradient(180deg, rgba(31, 37, 48, 0.92), rgba(16, 20, 28, 0.98));
+  background: transparent;
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -307,7 +1143,7 @@
 
 .evicted .avatar,
 .evicted .avatarPlaceholder {
-  filter: grayscale(100%) brightness(0.65) opacity(0.7);
+  filter: grayscale(50%) brightness(0.72) opacity(0.78);
   transition: filter 0.6s ease;
 }
 
@@ -322,19 +1158,20 @@
 /* ── Interactive hover / active states ───────────────────────────────────── */
 .tile[role='button']:hover:not(.evicted) .avatarWrap,
 .tile[role='button']:focus-visible:not(.evicted) .avatarWrap {
-  border-color: rgb(from var(--color-accent) r g b / 0.42);
+  border-color: rgba(232, 194, 92, 0.18);
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(6, 10, 17, 0.5),
+    0 8px 18px rgba(0, 0, 0, 0.44),
+    0 0 22px rgba(214, 165, 56, 0.18),
+    0 0 42px rgba(214, 165, 56, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 10px 18px rgba(0, 0, 0, 0.22);
 }
 
 .tile[role='button']:active:not(.evicted) .avatarWrap {
-  border-color: rgb(from var(--color-accent) r g b / 0.32);
+  border-color: rgba(232, 194, 92, 0.16);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(6, 10, 17, 0.42),
+    0 0 18px rgba(214, 165, 56, 0.12),
     inset 0 2px 10px rgba(0, 0, 0, 0.42);
 }
 
@@ -661,10 +1498,21 @@
   padding: 1px 2px;
 }
 
+/* In compact mode the roster must use the same cabinet width as the Faux TV.
+   The measured tile size still controls the fixed row height, while the
+   column tracks fill the available width instead of leaving a centred inset. */
+.compactSmall .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.compactSmall .gridItem {
+  width: 100%;
+}
+
 .compactSmall .tile,
 .compactSmall .hgTileInactive {
-  width: min(100%, var(--game-avatar-tile-size, var(--compact-small-tile-width, 50%)));
-  margin-inline: auto;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .compactSmall .hgPlaceholderImg {
@@ -820,15 +1668,16 @@
 :global(body.experiment-game-chrome-refined) .interactive:hover .avatarWrap,
 :global(body.experiment-game-chrome-refined) .interactive:focus-visible .avatarWrap {
   transform: translateY(-2px);
-  border-color: var(--game-focus-color);
+  border-color: rgba(232, 194, 92, 0.18);
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.38),
-    0 0 0 2px rgba(139, 125, 255, 0.16),
+    0 0 24px rgba(214, 165, 56, 0.16),
+    0 0 46px rgba(214, 165, 56, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 :global(body.experiment-game-chrome-refined) .pressing .avatarWrap {
   transform: scale(0.975);
-  border-color: rgba(151, 139, 255, 0.7);
+  border-color: rgba(232, 194, 92, 0.34);
 }
 :global(body.experiment-game-chrome-refined) .holdProgress {
   position: absolute;
@@ -840,8 +1689,11 @@
   height: 3px;
   transform-origin: left;
   border-radius: 999px;
-  background: linear-gradient(90deg, #786cff, #ad94ff);
-  box-shadow: 0 0 10px rgba(139, 125, 255, 0.72);
+  /* Match the KoleQuant preload rail: cool white into cyan and violet. */
+  background: linear-gradient(90deg, #f5f7ff 0%, #74d8ff 54%, #9a7dff 100%);
+  box-shadow:
+    0 0 12px rgba(116, 216, 255, 0.48),
+    0 0 18px rgba(154, 125, 255, 0.36);
   animation: rosterHoldProgress 450ms linear both;
 }
 @keyframes rosterHoldProgress {

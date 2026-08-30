@@ -1,20 +1,68 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
-      <stop offset="0%" stop-color="#1a0a2e"/>
-      <stop offset="100%" stop-color="#06030f"/>
+    <linearGradient id="plum-base" x1="400" y1="0" x2="400" y2="600" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09060F"/>
+      <stop offset=".42" stop-color="#12081D"/>
+      <stop offset=".74" stop-color="#1A0B28"/>
+      <stop offset="1" stop-color="#08040E"/>
+    </linearGradient>
+    <radialGradient id="upper-violet-glow" cx="0" cy="0" r="1" gradientTransform="translate(372 368) rotate(91) scale(402 570)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9B649B" stop-opacity=".19"/>
+      <stop offset=".34" stop-color="#764478" stop-opacity=".125"/>
+      <stop offset=".68" stop-color="#4A244F" stop-opacity=".052"/>
+      <stop offset="1" stop-color="#251129" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    <radialGradient id="lower-indigo-glow" cx="0" cy="0" r="1" gradientTransform="translate(662 512) rotate(127) scale(270 390)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#695584" stop-opacity=".05"/>
+      <stop offset=".52" stop-color="#45335F" stop-opacity=".022"/>
+      <stop offset="1" stop-color="#21172E" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="edge-vignette" cx="50%" cy="42%" r="72%">
+      <stop offset=".52" stop-color="#030108" stop-opacity="0"/>
+      <stop offset="1" stop-color="#020107" stop-opacity=".38"/>
+    </radialGradient>
+    <linearGradient id="nav-depth" x1="400" y1="466" x2="400" y2="600" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07040E" stop-opacity="0"/>
+      <stop offset="1" stop-color="#020106" stop-opacity=".72"/>
+    </linearGradient>
+    <linearGradient id="story-depth" x1="400" y1="0" x2="400" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#030107" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#030107" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="noise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".76" numOctaves="4" seed="18" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <filter id="shape-soften" x="-20%" y="-30%" width="140%" height="160%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <linearGradient id="watermark" x1="360" y1="0" x2="440" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D7CAFF"/>
+      <stop offset=".5" stop-color="#FFF"/>
+      <stop offset="1" stop-color="#C9B4F4"/>
+    </linearGradient>
+    <filter id="watermark-shadow" x="-50%" y="-90%" width="200%" height="280%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#030107" flood-opacity=".9"/>
+    </filter>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <rect width="800" height="600" fill="url(#glow)"/>
-  <circle cx="400" cy="300" r="220" fill="none" stroke="rgba(124,58,237,0.08)" stroke-width="1"/>
-  <circle cx="400" cy="300" r="160" fill="none" stroke="rgba(124,58,237,0.06)" stroke-width="1"/>
-  <circle cx="400" cy="300" r="100" fill="none" stroke="rgba(124,58,237,0.05)" stroke-width="1"/>
-  <text x="400" y="320" font-family="Arial Black, sans-serif" font-size="180" font-weight="900"
-        fill="rgba(124,58,237,0.06)" text-anchor="middle" dominant-baseline="middle"
-        letter-spacing="10">BB</text>
+
+  <rect width="800" height="600" fill="url(#plum-base)"/>
+  <rect width="800" height="600" fill="url(#upper-violet-glow)"/>
+  <rect width="800" height="600" fill="url(#lower-indigo-glow)"/>
+
+  <!-- Broad, near-hidden arcs give the roster area a little depth without reading as decoration. -->
+  <g filter="url(#shape-soften)" fill="none" stroke-linecap="round">
+    <path d="M-102 463C114 274 363 292 617 411C724 461 822 439 918 339" stroke="#72406D" stroke-opacity=".048" stroke-width="74"/>
+    <path d="M-95 154C118 272 302 254 469 160C617 76 751 121 905 231" stroke="#58315D" stroke-opacity=".035" stroke-width="68"/>
+  </g>
+
+  <rect width="800" height="248" fill="url(#story-depth)"/>
+  <rect width="800" height="600" fill="url(#edge-vignette)"/>
+  <rect x="0" y="466" width="800" height="134" fill="url(#nav-depth)"/>
+  <rect width="800" height="600" filter="url(#noise)" opacity=".016"/>
+
+  <g filter="url(#watermark-shadow)" text-anchor="middle">
+    <text x="400" y="304" fill="url(#watermark)" fill-opacity=".05" font-family="Georgia, 'Times New Roman', serif" font-size="23" font-weight="700" letter-spacing=".6">The Big Eye</text>
+    <text x="400" y="322" fill="#E4DAFF" fill-opacity=".032" font-family="Arial, Helvetica, sans-serif" font-size="7" font-weight="700" letter-spacing="2.5">BY KOLEQUANT</text>
+  </g>
 </svg>

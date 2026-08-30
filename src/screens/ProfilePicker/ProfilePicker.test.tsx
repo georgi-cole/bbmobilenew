@@ -4,6 +4,7 @@ import ProfilePicker from './ProfilePicker';
 
 const mockNavigate = vi.fn();
 const mockDispatch = vi.fn();
+const mockLoadSavedRunProfile = vi.fn();
 let mockLocationState: { from?: string } | null = null;
 
 const mockState: {
@@ -19,6 +20,7 @@ const mockState: {
     isGuest: boolean;
   };
   game: {
+    status?: string;
     week: number;
     phase: string;
   };
@@ -33,6 +35,18 @@ const mockState: {
     phase: 'week_start',
   },
 };
+
+function emptySavedProfile(profileId: string) {
+  return {
+    version: 2 as const,
+    profileId,
+    savedAt: new Date(0).toISOString(),
+    activeRunId: null,
+    lastPlayedRunId: null,
+    runs: {},
+    stats: { maxSurvivorDaysSurvived: 0, survivorAchievementsUnlocked: {} },
+  };
+}
 
 vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
@@ -49,9 +63,8 @@ vi.mock('../../store/archivePersistence', () => ({
 }));
 
 vi.mock('../../store/saveStatePersistence', () => ({
-  savedStateKeyForProfile: vi.fn((id: string) => `save:${id}`),
-  loadSeasonSnapshot: vi.fn(() => null),
-  clearSeasonSnapshot: vi.fn(),
+  loadSavedRunProfile: (...args: unknown[]) => mockLoadSavedRunProfile(...args),
+  clearSavedRun: vi.fn(),
 }));
 
 vi.mock('../../utils/imageDb', () => ({
@@ -71,6 +84,8 @@ describe('ProfilePicker', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockDispatch.mockReset();
+    mockLoadSavedRunProfile.mockReset();
+    mockLoadSavedRunProfile.mockImplementation((id: string) => emptySavedProfile(id));
     mockLocationState = null;
     mockState.profiles = {
       profiles: [],
@@ -104,5 +119,25 @@ describe('ProfilePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: /back to home/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+  });
+
+  it('checks the modern split-save profile before switching profiles', () => {
+    mockState.profiles = {
+      profiles: [
+        { id: 'profile-a', name: 'A', avatar: '🧑', createdAt: '2026-08-01T00:00:00.000Z' },
+        { id: 'profile-b', name: 'B', avatar: '👩', createdAt: '2026-08-02T00:00:00.000Z' },
+      ],
+      activeProfileId: 'profile-a',
+      isGuest: false,
+    };
+
+    render(<ProfilePicker />);
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+
+    expect(mockLoadSavedRunProfile).toHaveBeenCalledWith('profile-b');
+    expect(mockNavigate).toHaveBeenCalledWith('/profile', {
+      replace: true,
+      state: { from: '/game' },
+    });
   });
 });

@@ -20,9 +20,51 @@
   background: var(--color-card);
   border-radius: 50%;
   cursor: pointer;
+  isolation: isolate;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
+
+.player-avatar__face::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(.56);
+  background:
+    radial-gradient(circle at 8% 28%, #ffe7a0 0 1.2px, transparent 2.2px),
+    radial-gradient(circle at 18% 74%, #e8ae32 0 1.4px, transparent 2.4px),
+    radial-gradient(circle at 31% 14%, #ffd66b 0 1px, transparent 1.9px),
+    radial-gradient(circle at 43% 87%, #f5c24d 0 1.3px, transparent 2.2px),
+    radial-gradient(circle at 63% 7%, #fff0b9 0 1px, transparent 1.8px),
+    radial-gradient(circle at 76% 31%, #e9ad2d 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 94% 68%, #ffd86e 0 1.1px, transparent 2px),
+    radial-gradient(ellipse at 50% 50%, rgba(245, 183, 48, .22), transparent 58%);
+  filter: drop-shadow(0 0 4px rgba(255, 197, 64, .95));
+  transition: opacity .18s ease, transform .45s cubic-bezier(.2,.8,.2,1);
+}
+
+.player-avatar__face:hover::before,
+.player-avatar__face:focus-visible::before { opacity: 1; transform: scale(1.12); }
+
+.player-avatar__face::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 210, 92, .28), transparent 62%);
+  filter: blur(5px);
+  transform: scale(.68);
+  transition: opacity .2s ease, transform .5s ease;
+}
+
+.player-avatar__face:hover::after,
+.player-avatar__face:focus-visible::after { opacity: .9; transform: scale(1.08); }
 
 .player-avatar__face:hover {
   transform: scale(1.1);
@@ -68,6 +110,17 @@
   object-fit: cover;
   border-radius: 50%;
   display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.player-avatar__emoji,
+.player-avatar__badge,
+.player-avatar__you { position: relative; z-index: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  .player-avatar__face::before,
+  .player-avatar__face::after { transition: none; }
 }
 
 /* Status badge overlay */

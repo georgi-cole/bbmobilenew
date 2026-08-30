@@ -52,6 +52,10 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
       return { activeName: activeProfile?.name ?? null, isGuest: profiles.isGuest }
     })
     .toEqual({ activeName: playerName, isGuest: false })
+  const activeProfileId = (await readAppState(page)).profiles.activeProfileId
+  await page.evaluate((profileId) => {
+    localStorage.setItem(`bbmobilenew_season_tutorial_v1:${profileId}`, 'done')
+  }, activeProfileId)
   await page.getByRole('button', { name: 'Go back' }).click()
   await waitForHome(page)
 }
@@ -63,7 +67,7 @@ async function assertCampaignReady(page: Page, playerName: string): Promise<void
   await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: /HOUSEMATES/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /HUBMATES/ })).toBeVisible()
   await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
 }
 
@@ -75,7 +79,7 @@ async function startCampaignFromHome(page: Page, playerName: string): Promise<vo
 
   const playMenu = page.getByRole('navigation', { name: 'Play menu' })
   await expect(playMenu).toBeVisible()
-  await playMenu.getByRole('button', { name: 'Campaign', exact: true }).click()
+  await playMenu.getByRole('button', { name: 'Classic', exact: true }).click()
   await assertCampaignReady(page, playerName)
 }
 
@@ -198,6 +202,12 @@ async function completeActiveConfessionalDecision(page: Page): Promise<void> {
   } else {
     throw new Error(`Unsupported Confessional decision in ${before.game.phase}.`)
   }
+
+  const returnToHouse = session.getByRole('button', { name: 'Return to the House' })
+  await expect(returnToHouse).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+  await expect(session).toBeVisible()
+  await returnToHouse.click()
+  await expect(session).toBeHidden({ timeout: SCREEN_TIMEOUT_MS })
 
   await expect(page.getByRole('region', { name: 'Game action zone' })).toBeVisible({
     timeout: SCREEN_TIMEOUT_MS,
@@ -673,6 +683,33 @@ test.describe('Real player core journeys', () => {
     await expect(actionZone.getByLabel('Season 1, day 1', { exact: true })).toBeVisible()
   })
 
+  test('a completed LOH competition can be saved and resumed @persistence @release', async ({
+    page,
+  }) => {
+    const playerName = 'LOH Resume Player'
+    await startFreshCampaign(page, playerName)
+
+    await advanceToLohAnnouncement(page)
+    await closePhaseInformationIfPresent(page)
+
+    const advance = page.getByRole('button', { name: 'Advance to next phase' })
+    await expect(advance).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
+    await advance.click()
+    await resolveCompetitionThroughPlayerControls(page, 'loh_comp')
+    await expect
+      .poll(() => readAppState(page).then((state) => state.game.phase), {
+        timeout: SCREEN_TIMEOUT_MS,
+      })
+      .toBe('loh_results')
+
+    await saveAndReturnHome(page)
+    await page.reload()
+    await waitForHome(page)
+    await resumeLastRun(page, 'LOH results')
+
+    await expect(page.getByRole('button', { name: playerName, exact: true })).toBeVisible()
+  })
+
   test('production navigation returns to the active game and an unknown deep link recovers home @smoke @core-journey @mobile @release', async ({
     page,
   }) => {
@@ -680,7 +717,7 @@ test.describe('Real player core journeys', () => {
 
     await openRulesFromGame(page)
     await expect(page.getByRole('heading', { name: 'How to Play' })).toBeVisible()
-    await page.getByRole('button', { name: 'Back', exact: true }).click()
+    await page.getByRole('button', { name: 'Go back', exact: true }).click()
     await expect(page.getByRole('toolbar', { name: 'Game actions' })).toBeVisible()
 
     await page.goto('./#/route-that-does-not-exist')

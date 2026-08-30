@@ -1,36 +1,33 @@
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { SoundManager } from '../../services/sound/SoundManager';
+import type { CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { SoundManager } from '../../services/sound/SoundManager'
 import {
   createCinematicAudio,
   type CinematicAudioController,
-} from '../../services/sound/cinematicAudio';
-import {
-  HOUSEMATES_BIO_CARDS,
-  type HousematesBioCard,
-} from './housematesBioData';
-import './HousematesBioCinematic.css';
+} from '../../services/sound/cinematicAudio'
+import { HOUSEMATES_BIO_CARDS, type HousematesBioCard } from './housematesBioData'
+import './HousematesBioCinematic.css'
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-const INTRO_DURATION_MS = 3_200;
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+const INTRO_DURATION_MS = 3_200
 
 interface IntroHubAudioWindow extends Window {
-  _introhubMusicOn?: boolean;
+  _introhubMusicOn?: boolean
 }
 
-type HousematesView = 'intro' | 'map' | 'profile';
+type HousematesView = 'intro' | 'map' | 'profile'
 
 function asset(path: string): string {
-  return `${BASE}${path}`;
+  return `${BASE}${path}`
 }
 
 function portraitSrc(card: HousematesBioCard): string {
-  return asset(`/assets/Informal_attires/${card.portraitFile}`);
+  return asset(`/assets/Informal_attires/${card.portraitFile}`)
 }
 
 function backdropSrc(card: HousematesBioCard): string {
-  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`);
+  return asset(`/assets/housemate-bio-backgrounds/${card.backdrop}.png`)
 }
 
 function Intro({ onExplore }: { onExplore: () => void }) {
@@ -57,7 +54,9 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.32, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
-          Meet the<br />Housemates
+          Meet the
+          <br />
+          Players
         </motion.h1>
         <motion.p
           className="hbc-intro__sub"
@@ -65,7 +64,7 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          22 lives. One house. Follow the stories you want to know.
+          22 lives. One hub. Follow the stories you want to know.
         </motion.p>
         <motion.button
           className="hbc-primary-action"
@@ -75,26 +74,22 @@ function Intro({ onExplore }: { onExplore: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.02 }}
         >
-          Enter the house <span aria-hidden="true">→</span>
+          Enter the hub <span aria-hidden="true">→</span>
         </motion.button>
       </div>
     </motion.section>
-  );
+  )
 }
 
-function HousemateCarousel({
-  onSelect,
-}: {
-  onSelect: (index: number) => void;
-}) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeCard = HOUSEMATES_BIO_CARDS[activeIndex];
+function HousemateCarousel({ onSelect }: { onSelect: (index: number) => void }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeCard = HOUSEMATES_BIO_CARDS[activeIndex]
 
   const move = (direction: -1 | 1) => {
-    setActiveIndex((current) => (
-      (current + direction + HOUSEMATES_BIO_CARDS.length) % HOUSEMATES_BIO_CARDS.length
-    ));
-  };
+    setActiveIndex(
+      (current) => (current + direction + HOUSEMATES_BIO_CARDS.length) % HOUSEMATES_BIO_CARDS.length
+    )
+  }
 
   return (
     <motion.section
@@ -106,12 +101,12 @@ function HousemateCarousel({
     >
       <div className="hbc-carousel__aurora" aria-hidden="true" />
       <header className="hbc-carousel__heading">
-        <p className="hbc-kicker">Meet the housemates</p>
+        <p className="hbc-kicker">Meet the players</p>
         <h1>One story at a time.</h1>
         <p>Browse the cast, then tap a card to open their full story.</p>
       </header>
 
-      <div className="hbc-carousel__viewport" aria-label="Housemate carousel">
+      <div className="hbc-carousel__viewport" aria-label="Player carousel">
         <motion.div
           className="hbc-carousel__track"
           animate={{ x: `-${activeIndex * 80}vw` }}
@@ -120,12 +115,12 @@ function HousemateCarousel({
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.14}
           onDragEnd={(_, info) => {
-            if (info.offset.x <= -42) move(1);
-            if (info.offset.x >= 42) move(-1);
+            if (info.offset.x <= -42) move(1)
+            if (info.offset.x >= 42) move(-1)
           }}
         >
           {HOUSEMATES_BIO_CARDS.map((card, index) => {
-            const isActive = index === activeIndex;
+            const isActive = index === activeIndex
             return (
               <button
                 key={card.id}
@@ -135,10 +130,12 @@ function HousemateCarousel({
                 data-active={isActive ? 'true' : 'false'}
                 aria-current={isActive ? 'true' : undefined}
                 aria-label={isActive ? `Open ${card.name}'s full story` : `Show ${card.name}`}
-                style={{
-                  '--hbc-accent': card.accent,
-                  '--hbc-carousel-backdrop': `url("${backdropSrc(card)}")`,
-                } as CSSProperties}
+                style={
+                  {
+                    '--hbc-accent': card.accent,
+                    '--hbc-carousel-backdrop': `url("${backdropSrc(card)}")`,
+                  } as CSSProperties
+                }
               >
                 <div className="hbc-carousel__card-background" aria-hidden="true" />
                 <span className="hbc-carousel__card-number">
@@ -147,29 +144,34 @@ function HousemateCarousel({
                 <img src={portraitSrc(card)} alt="" aria-hidden="true" draggable={false} />
                 <span className="hbc-carousel__card-copy">
                   <strong>{card.name}</strong>
-                  <small>{card.age} · {card.profession}</small>
+                  <small>
+                    {card.age} · {card.profession}
+                  </small>
                   <em>{isActive ? 'Read full story →' : 'Tap to preview'}</em>
                 </span>
               </button>
-            );
+            )
           })}
         </motion.div>
       </div>
 
       <div className="hbc-carousel__controls">
-        <button type="button" onClick={() => move(-1)} aria-label="Previous housemate">
+        <button type="button" onClick={() => move(-1)} aria-label="Previous player">
           <span aria-hidden="true">←</span>
         </button>
         <div className="hbc-carousel__current" aria-live="polite">
           <strong>{activeCard.name}</strong>
-          <span>{String(activeIndex + 1).padStart(2, '0')} / {String(HOUSEMATES_BIO_CARDS.length).padStart(2, '0')}</span>
+          <span>
+            {String(activeIndex + 1).padStart(2, '0')} /{' '}
+            {String(HOUSEMATES_BIO_CARDS.length).padStart(2, '0')}
+          </span>
         </div>
-        <button type="button" onClick={() => move(1)} aria-label="Next housemate">
+        <button type="button" onClick={() => move(1)} aria-label="Next player">
           <span aria-hidden="true">→</span>
         </button>
       </div>
     </motion.section>
-  );
+  )
 }
 
 function HousemateProfile({
@@ -179,22 +181,24 @@ function HousemateProfile({
   onPrevious,
   onNext,
 }: {
-  card: HousematesBioCard;
-  index: number;
-  onBack: () => void;
-  onPrevious: () => void;
-  onNext: () => void;
+  card: HousematesBioCard
+  index: number
+  onBack: () => void
+  onPrevious: () => void
+  onNext: () => void
 }) {
-  const hasPrevious = index > 0;
-  const hasNext = index < HOUSEMATES_BIO_CARDS.length - 1;
+  const hasPrevious = index > 0
+  const hasNext = index < HOUSEMATES_BIO_CARDS.length - 1
 
   return (
     <motion.section
       className="hbc-profile"
-      style={{
-        '--hbc-accent': card.accent,
-        '--hbc-profile-backdrop': `url("${backdropSrc(card)}")`,
-      } as CSSProperties}
+      style={
+        {
+          '--hbc-accent': card.accent,
+          '--hbc-profile-backdrop': `url("${backdropSrc(card)}")`,
+        } as CSSProperties
+      }
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -202,7 +206,7 @@ function HousemateProfile({
       <div className="hbc-profile__backdrop" aria-hidden="true" />
       <div className="hbc-profile__grade" aria-hidden="true" />
       <button className="hbc-back-button" type="button" onClick={onBack}>
-        <span aria-hidden="true">←</span> All housemates
+        <span aria-hidden="true">←</span> All players
       </button>
 
       <div className="hbc-profile__layout">
@@ -228,10 +232,13 @@ function HousemateProfile({
           transition={{ duration: 0.56, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
         >
           <p className="hbc-profile__counter">
-            Housemate {String(index + 1).padStart(2, '0')} <span>/</span> {HOUSEMATES_BIO_CARDS.length}
+            Housemate {String(index + 1).padStart(2, '0')} <span>/</span>{' '}
+            {HOUSEMATES_BIO_CARDS.length}
           </p>
           <h1>{card.name}</h1>
-          <p className="hbc-profile__facts">{card.age} · {card.location} · {card.profession}</p>
+          <p className="hbc-profile__facts">
+            {card.age} · {card.location} · {card.profession}
+          </p>
           <div className="hbc-profile__story">
             <span>In the house</span>
             <p>{card.introduction}</p>
@@ -244,83 +251,83 @@ function HousemateProfile({
       </div>
 
       <nav className="hbc-profile__nav" aria-label="Housemate navigation">
-        <button type="button" onClick={onPrevious} disabled={!hasPrevious}>Previous</button>
+        <button type="button" onClick={onPrevious} disabled={!hasPrevious}>
+          Previous
+        </button>
         <button type="button" onClick={onNext} disabled={!hasNext}>
           Next <span aria-hidden="true">→</span>
         </button>
       </nav>
     </motion.section>
-  );
+  )
 }
 
 export interface HousematesBioCinematicProps {
-  onComplete: () => void;
+  onComplete: () => void
 }
 
 export default function HousematesBioCinematic({ onComplete }: HousematesBioCinematicProps) {
-  const reducedMotion = useReducedMotion() ?? false;
-  const [view, setView] = useState<HousematesView>('intro');
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const onCompleteRef = useRef(onComplete);
-  const audioRef = useRef<CinematicAudioController | null>(null);
-  const completeRef = useRef(false);
+  const reducedMotion = useReducedMotion() ?? false
+  const [view, setView] = useState<HousematesView>('intro')
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const onCompleteRef = useRef(onComplete)
+  const audioRef = useRef<CinematicAudioController | null>(null)
+  const completeRef = useRef(false)
 
-  const selectedCard = HOUSEMATES_BIO_CARDS[selectedIndex];
+  const selectedCard = HOUSEMATES_BIO_CARDS[selectedIndex]
 
   useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const finish = useCallback(() => {
-    if (completeRef.current) return;
-    completeRef.current = true;
-    audioRef.current?.fadeOutAndStop(420);
-    onCompleteRef.current();
-  }, []);
+    if (completeRef.current) return
+    completeRef.current = true
+    audioRef.current?.fadeOutAndStop(420)
+    onCompleteRef.current()
+  }, [])
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    SoundManager.panicStopAllMusic();
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    SoundManager.panicStopAllMusic()
 
-    const audio = createCinematicAudio(asset('/assets/sounds/HousematesBio.mp4'), 0.78, { loop: true });
-    audioRef.current = audio;
-    if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) audio.play();
+    const audio = createCinematicAudio(asset('/assets/sounds/cinematic/HousematesBio.mp4'), 0.78, {
+      loop: true,
+    })
+    audioRef.current = audio
+    if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) audio.play()
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') finish();
-    };
-    window.addEventListener('keydown', onKeyDown);
+      if (event.key === 'Escape') finish()
+    }
+    window.addEventListener('keydown', onKeyDown)
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      audio.dispose();
-      audioRef.current = null;
-      void SoundManager.syncMusic();
-    };
-  }, [finish]);
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      audio.dispose()
+      audioRef.current = null
+      void SoundManager.syncMusic()
+    }
+  }, [finish])
 
   useEffect(() => {
-    if (view !== 'intro') return undefined;
-    const timeout = window.setTimeout(
-      () => setView('map'),
-      reducedMotion ? 0 : INTRO_DURATION_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [reducedMotion, view]);
+    if (view !== 'intro') return undefined
+    const timeout = window.setTimeout(() => setView('map'), reducedMotion ? 0 : INTRO_DURATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [reducedMotion, view])
 
   const openProfile = useCallback((index: number) => {
-    setSelectedIndex(index);
-    setView('profile');
-  }, []);
+    setSelectedIndex(index)
+    setView('profile')
+  }, [])
 
   const changeProfile = useCallback((direction: -1 | 1) => {
-    setSelectedIndex((current) => Math.min(
-      HOUSEMATES_BIO_CARDS.length - 1,
-      Math.max(0, current + direction),
-    ));
-  }, []);
+    setSelectedIndex((current) =>
+      Math.min(HOUSEMATES_BIO_CARDS.length - 1, Math.max(0, current + direction))
+    )
+  }, [])
 
   return (
     <div
@@ -332,7 +339,9 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
       <button className="hbc__exit" type="button" onClick={finish} aria-label="Exit Housemates">
         Exit <span aria-hidden="true">×</span>
       </button>
-      <div className="hbc__sound" aria-label="Housemates music is playing">♫</div>
+      <div className="hbc__sound" aria-label="Housemates music is playing">
+        ♫
+      </div>
 
       <main className="hbc__stage" aria-live="polite">
         <AnimatePresence mode="wait" initial={false}>
@@ -351,5 +360,5 @@ export default function HousematesBioCinematic({ onComplete }: HousematesBioCine
         </AnimatePresence>
       </main>
     </div>
-  );
+  )
 }

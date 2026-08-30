@@ -20,7 +20,13 @@
  *   />
  */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useId } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  normalizeRectToCeremonySurface,
+  sameCeremonySurface,
+  type CeremonySurfaceMetrics,
+} from './ceremonyCoordinateSpace'
 import './CeremonyOverlay.css'
 
 export interface CeremonyTile {
@@ -30,6 +36,8 @@ export interface CeremonyTile {
   badge?: string
   /** Optional badge image source rendered instead of badge text. */
   badgeImageSrc?: string
+  /** Status code used to mirror the permanent roster badge presentation. */
+  badgeCode?: string
   /** A temporary, Cupid-only illustration used while a role badge is flying. */
   badgeVariant?: 'cupid-kiss' | 'cupid-hug'
   /** Optional role/context label shown as a pill above the spotlighted tile. */
@@ -231,7 +239,11 @@ export default function CeremonyOverlay({
 }: CeremonyOverlayProps) {
   const [visible, setVisible] = useState(true)
   const [badgePhase, setBadgePhase] = useState<BadgePhase>('hidden')
+  const [surface, setSurface] = useState<CeremonySurfaceMetrics | null>(null)
   const timersRef = useRef<number[]>([])
+  const surfaceRef = useRef<HTMLDivElement | null>(null)
+  const surfaceRafRef = useRef(0)
+  const maskId = `ceremony-cutout-mask-${useId().replace(/:/g, '')}`
 
   // Lazily resolve tiles: if resolveTiles is provided, use it on mount
   // (after DOM commit) to get accurate DOMRects. Otherwise use tilesProp.
@@ -274,6 +286,7 @@ export default function CeremonyOverlay({
   const hasValidTiles = validTiles.length > 0
   // Track whether we're still waiting for resolveTiles to run
   const pendingResolve = resolveTiles != null && resolvedTiles === null
+  const pendingSurface = hasValidTiles && surface === null
 
   const clearTimers = useCallback(() => {
     timersRef.current.forEach((id) => window.clearTimeout(id))
@@ -294,10 +307,80 @@ export default function CeremonyOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutSignal])
 
+  const measureSurface = useCallback(() => {
+    const element = surfaceRef.current
+    if (!element || typeof window === 'undefined') return
+
+    const bounds = element.getBoundingClientRect()
+    const layoutWidth = element.clientWidth
+    const layoutHeight = element.clientHeight
+
+    // jsdom and pre-layout browser frames report zero client dimensions. Keep
+    // those paths deterministic without mistaking a mocked child-sized rect for
+    // the full-screen ceremony surface.
+    const next: CeremonySurfaceMetrics =
+      layoutWidth > 0 && layoutHeight > 0
+        ? {
+            left: bounds.left,
+            top: bounds.top,
+            width: layoutWidth,
+            height: layoutHeight,
+            scaleX: bounds.width > 0 ? bounds.width / layoutWidth : 1,
+            scaleY: bounds.height > 0 ? bounds.height / layoutHeight : 1,
+          }
+        : {
+            left: 0,
+            top: 0,
+            width: window.visualViewport?.width ?? window.innerWidth ?? SSR_VIEWPORT_WIDTH,
+            height: window.visualViewport?.height ?? window.innerHeight ?? SSR_VIEWPORT_HEIGHT,
+            scaleX: 1,
+            scaleY: 1,
+          }
+
+    setSurface((current) => (sameCeremonySurface(current, next) ? current : next))
+  }, [])
+
+  const scheduleSurfaceMeasurement = useCallback(() => {
+    if (surfaceRafRef.current) window.cancelAnimationFrame(surfaceRafRef.current)
+    surfaceRafRef.current = window.requestAnimationFrame(() => {
+      surfaceRafRef.current = 0
+      measureSurface()
+    })
+  }, [measureSurface])
+
+  useLayoutEffect(() => {
+    measureSurface()
+  }, [hasValidTiles, layoutSignal, measureSurface])
+
+  useEffect(() => {
+    if (!hasValidTiles || typeof window === 'undefined') return undefined
+
+    window.addEventListener('resize', scheduleSurfaceMeasurement)
+    window.addEventListener('scroll', scheduleSurfaceMeasurement, { capture: true, passive: true })
+    window.visualViewport?.addEventListener('resize', scheduleSurfaceMeasurement)
+    window.visualViewport?.addEventListener('scroll', scheduleSurfaceMeasurement)
+
+    const observer =
+      typeof ResizeObserver !== 'undefined' && surfaceRef.current
+        ? new ResizeObserver(scheduleSurfaceMeasurement)
+        : null
+    if (observer && surfaceRef.current) observer.observe(surfaceRef.current)
+
+    scheduleSurfaceMeasurement()
+    return () => {
+      if (surfaceRafRef.current) window.cancelAnimationFrame(surfaceRafRef.current)
+      window.removeEventListener('resize', scheduleSurfaceMeasurement)
+      window.removeEventListener('scroll', scheduleSurfaceMeasurement, { capture: true })
+      window.visualViewport?.removeEventListener('resize', scheduleSurfaceMeasurement)
+      window.visualViewport?.removeEventListener('scroll', scheduleSurfaceMeasurement)
+      observer?.disconnect()
+    }
+  }, [hasValidTiles, scheduleSurfaceMeasurement])
+
   // Headless fallback: fire onDone immediately
   useEffect(() => {
     // Wait for tiles to be resolved before starting animation.
-    if (pendingResolve) return
+    if (pendingResolve || pendingSurface) return
 
     if (!hasValidTiles) {
       onDone()
@@ -318,11 +401,14 @@ export default function CeremonyOverlay({
 
     return clearTimers
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasValidTiles, durationMs, pendingResolve])
+  }, [hasValidTiles, durationMs, pendingResolve, pendingSurface])
+
+  const normalizedRects = surface
+    ? validTiles.map((tile) => normalizeRectToCeremonySurface(tile.rect!, surface))
+    : []
 
   // Compute cutout rects for the SVG mask
-  const cutouts = validTiles.map((t) => {
-    const r = t.rect!
+  const cutouts = normalizedRects.map((r) => {
     return {
       x: r.left - CUTOUT_PAD,
       y: r.top - CUTOUT_PAD,
@@ -331,16 +417,19 @@ export default function CeremonyOverlay({
     }
   })
 
-  const viewportWidth = typeof window === 'undefined' ? SSR_VIEWPORT_WIDTH : window.innerWidth
-  const viewportHeight = typeof window === 'undefined' ? SSR_VIEWPORT_HEIGHT : window.innerHeight
+  const viewportWidth = surface?.width ?? SSR_VIEWPORT_WIDTH
+  const viewportHeight = surface?.height ?? SSR_VIEWPORT_HEIGHT
 
   // Caption placement: below the lowest cutout
   const maxBottom = cutouts.length > 0 ? Math.max(...cutouts.map((c) => c.y + c.h)) : 0
   const captionTop = Math.min(maxBottom + 16, viewportHeight - 80)
 
   // Badge start/target positions
-  const badgePositions = validTiles.map((t) => {
-    const r = t.rect!
+  const badgePositions = validTiles.map((t, index) => {
+    const r = normalizedRects[index]
+    if (!r) {
+      return { startX: 0, startY: 0, targetX: 0, targetY: 0, endY: 0 }
+    }
     // Left-side anchor: align with .badgeStack { top: 4px; left: 4px } in AvatarTile.
     // Badge uses transform translate(-50%, -100%), so targetX = badge center x,
     // targetY = badge bottom y. Permanent badge center ≈ tile.left+14, bottom ≈ tile.top+24.
@@ -357,8 +446,11 @@ export default function CeremonyOverlay({
       endY = Math.max(BADGE_EXTRACT_MIN_TOP, targetY - BADGE_EXTRACT_Y_OFFSET)
     } else if (t.badgeStart && t.badgeStart !== 'center' && 'left' in t.badgeStart) {
       // Transfer from another tile
-      startX = t.badgeStart.left + t.badgeStart.width / 2
-      startY = t.badgeStart.top
+      const startRect = surface
+        ? normalizeRectToCeremonySurface(t.badgeStart, surface)
+        : t.badgeStart
+      startX = startRect.left + startRect.width / 2
+      startY = startRect.top
     } else {
       // Centre of viewport
       startX = viewportWidth / 2
@@ -402,6 +494,7 @@ export default function CeremonyOverlay({
       if (!tile.label) return layouts
 
       const cutout = cutouts[i]
+      if (!cutout) return layouts
       const displayLabel = getDisplayTileLabel(tile.label, useCompactTileLabels)
       const estimatedWidth = calculateLabelWidth(displayLabel, useCompactTileLabels)
       const clampedLeft = Math.min(
@@ -454,9 +547,9 @@ export default function CeremonyOverlay({
     }, [])
   }, [cutouts, useCompactTileLabels, validTiles, viewportWidth])
 
-  if (pendingResolve || !hasValidTiles) return null
+  if (pendingResolve || !hasValidTiles || typeof document === 'undefined') return null
 
-  return (
+  const contents = surface ? (
     <>
       <div
         className={`ceremony-overlay ${visible ? 'ceremony-overlay--visible' : 'ceremony-overlay--exiting'}`}
@@ -470,7 +563,7 @@ export default function CeremonyOverlay({
           <div className="ceremony-overlay__dim">
             <svg xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <mask id="ceremony-cutout-mask">
+                <mask id={maskId}>
                   {/* White fill = fully dimmed */}
                   <rect width="100%" height="100%" fill="white" />
                   {/* Black rects = cutout holes (transparent in the dim) */}
@@ -488,12 +581,7 @@ export default function CeremonyOverlay({
                   ))}
                 </mask>
               </defs>
-              <rect
-                width="100%"
-                height="100%"
-                fill="rgba(0,0,0,0.78)"
-                mask="url(#ceremony-cutout-mask)"
-              />
+              <rect width="100%" height="100%" fill="rgba(0,0,0,0.78)" mask={`url(#${maskId})`} />
             </svg>
           </div>
         )}
@@ -548,7 +636,7 @@ export default function CeremonyOverlay({
             style={{
               ...getBadgeStyle(i),
               zIndex: 8701,
-              position: 'fixed',
+              position: 'absolute',
             }}
             data-badge-origin={isTileBadgeOrigin(t.badgeStart) ? 'tile' : 'center'}
             data-badge-motion={t.badgeMotion ?? 'land'}
@@ -572,5 +660,12 @@ export default function CeremonyOverlay({
         )
       })}
     </>
+  ) : null
+
+  return createPortal(
+    <div ref={surfaceRef} className="ceremony-overlay-surface" data-ceremony-overlay-surface="true">
+      {contents}
+    </div>,
+    document.body
   )
 }

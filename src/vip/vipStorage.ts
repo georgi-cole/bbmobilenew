@@ -1,6 +1,14 @@
 import type { StoreEntitlementKey } from './vipConfig'
+import { getSeasonLaunchIntent } from '../modes/seasonLaunchIntent'
 
 const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
+
+/**
+ * Temporary public testing switch. Set to false before the release build that
+ * connects store purchases or rewarded ads. It affects store entitlements only,
+ * never ordinary gameplay-state locks.
+ */
+export const TEMPORARY_STORE_UNLOCKS_ENABLED = true
 
 export interface StoreEntitlements {
   survivalMode: boolean
@@ -9,6 +17,7 @@ export interface StoreEntitlements {
   dramaMode: boolean
   cupidArrow: boolean
   voxPopuli: boolean
+  premiumChallenges: boolean
   noAds: boolean
 }
 
@@ -26,6 +35,7 @@ export function createEmptyStoreEntitlements(): StoreEntitlements {
     dramaMode: false,
     cupidArrow: false,
     voxPopuli: false,
+    premiumChallenges: false,
     noAds: false,
   }
 }
@@ -40,6 +50,7 @@ function normalizeEntitlements(raw: unknown): StoreEntitlements {
     dramaMode: value.dramaMode === true,
     cupidArrow: value.cupidArrow === true,
     voxPopuli: value.voxPopuli === true,
+    premiumChallenges: value.premiumChallenges === true,
     noAds: value.noAds === true,
   }
 }
@@ -80,10 +91,18 @@ export function saveCachedVipEntitlement(value: PersistedVipEntitlement): void {
 }
 
 export function hasCachedVipAccess(): boolean {
+  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
   return loadCachedVipEntitlement().isActive
 }
 
 export function hasCachedStoreAccess(entitlement: StoreEntitlementKey): boolean {
+  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
+
+  // Valentine's Day and Season 14 are built-in Classic Cupid events rather than
+  // paid-expansion launches. During Classic construction, let the scheduler
+  // evaluate those two automatic rules even when Cupid's menu entitlement is absent.
+  if (entitlement === 'cupidArrow' && getSeasonLaunchIntent() === 'classic') return true
+
   const cached = loadCachedVipEntitlement()
   return cached.isActive || cached.entitlements[entitlement]
 }

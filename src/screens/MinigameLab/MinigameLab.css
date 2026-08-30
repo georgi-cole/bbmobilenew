@@ -25,6 +25,17 @@
   backdrop-filter: blur(18px);
 }
 
+/* The lab panel intentionally sits above the game preview so its QA controls
+ * remain available. Temporarily remove it from hit-testing/painting while the
+ * host-owned utility menu or exit confirmation is open; those surfaces live
+ * inside the MinigameHost stacking context and otherwise cannot rise above the
+ * sibling lab panel even with their own larger z-index values. */
+.minigame-lab:has(.minigame-utility-dock--open) > .minigame-lab__panel,
+.minigame-lab:has(.minigame-exit-confirm-overlay) > .minigame-lab__panel {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .minigame-lab__header {
   display: grid;
   gap: 8px;

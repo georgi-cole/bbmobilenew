@@ -8,6 +8,8 @@ const BASE_CHIP_WIDTH = 68;
 
 export interface GameTopChipProps {
   label: string;
+  /** Short label shown only when a parent header enters its compact layout. */
+  compactLabel?: string;
   icon?: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
@@ -27,6 +29,7 @@ export interface GameTopChipProps {
  */
 export default function GameTopChip({
   label,
+  compactLabel,
   icon,
   onClick,
   disabled = false,
@@ -54,7 +57,12 @@ export default function GameTopChip({
     >
       <span className="game-top-chip__content">
         {icon && <span className="game-top-chip__icon" aria-hidden="true">{icon}</span>}
-        <span className="game-top-chip__label">{normalizedLabel}</span>
+        <span className="game-top-chip__label game-top-chip__label--full">{normalizedLabel}</span>
+        {compactLabel && (
+          <span className="game-top-chip__label game-top-chip__label--compact">
+            {compactLabel.trim()}
+          </span>
+        )}
       </span>
     </Tag>
   );

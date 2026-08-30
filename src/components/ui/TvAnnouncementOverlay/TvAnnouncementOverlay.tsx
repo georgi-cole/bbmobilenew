@@ -5,36 +5,43 @@ import {
   useState,
   type FocusEvent,
   type RefObject,
-} from 'react';
-import { createPortal } from 'react-dom';
-import { useI18n } from '../../../i18n';
-import './TvAnnouncementOverlay.css';
-import './TvAnnouncementShockPrelude.css';
+  type CSSProperties,
+} from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslate } from '../../../i18n'
+import type { CupidArrowPair, Player } from '../../../types'
+import './TvAnnouncementOverlay.css'
+import './TvAnnouncementShockPrelude.css'
 
 export interface Announcement {
-  key: string;
-  title: string;
-  subtitle: string;
-  isLive: boolean;
+  key: string
+  title: string
+  subtitle: string
+  isLive: boolean
   /** ms until auto-dismiss; null = manual dismiss only */
-  autoDismissMs: number | null;
+  autoDismissMs: number | null
 }
 
 export interface TvAnnouncementOverlayProps {
-  announcement: Announcement;
-  onInfo?: () => void;
-  onDismiss?: () => void;
+  announcement: Announcement
+  onInfo?: () => void
+  onDismiss?: () => void
   /** When true, the auto-dismiss countdown is paused (e.g. while info modal is open). */
-  paused?: boolean;
+  paused?: boolean
   /** Optional ref forwarded to the ℹ️ info button for external spotlight targeting. */
-  infoButtonRef?: RefObject<HTMLButtonElement | null>;
+  infoButtonRef?: RefObject<HTMLButtonElement | null>
   /** When false, the info button is not rendered. */
-  showInfoButton?: boolean;
+  showInfoButton?: boolean
   /** Override legacy key-based shock detection when the runtime owns priority. */
-  playShockPrelude?: boolean;
+  playShockPrelude?: boolean
+  /** Render the body copy without the large broadcast title. */
+  hideTitle?: boolean
+  /** Optional Cupid matching reveal shown inside the faux TV. */
+  cupidPairs?: CupidArrowPair[]
+  cupidPlayers?: Player[]
 }
 
-const SHOCK_PRELUDE_DURATION_MS = 2320;
+const SHOCK_PRELUDE_DURATION_MS = 2320
 const FULLSCREEN_SHOCK_KEYS = new Set([
   'battle_back',
   'battle_back_shock',
@@ -50,10 +57,10 @@ const FULLSCREEN_SHOCK_KEYS = new Set([
   'vox_populi',
   'twist',
   'custom_critical',
-]);
+])
 
 function getAnnouncementThemeClass(key: string): string {
-  const isBattleBackAnnouncement = key === 'battle_back' || key.startsWith('battle_back_');
+  const isBattleBackAnnouncement = key === 'battle_back' || key.startsWith('battle_back_')
 
   if (
     key === 'pos_comp_announcement' ||
@@ -64,7 +71,7 @@ function getAnnouncementThemeClass(key: string): string {
     key === 'spotlight_veto' ||
     isBattleBackAnnouncement
   ) {
-    return 'tv-announcement--theme-pos';
+    return 'tv-announcement--theme-pos'
   }
 
   if (
@@ -77,7 +84,7 @@ function getAnnouncementThemeClass(key: string): string {
     key === 'custom_critical' ||
     key.startsWith('loh_tiebreak_')
   ) {
-    return 'tv-announcement--theme-loh';
+    return 'tv-announcement--theme-loh'
   }
 
   if (
@@ -87,15 +94,15 @@ function getAnnouncementThemeClass(key: string): string {
     key === 'double_eviction' ||
     key === 'coup_detat'
   ) {
-    return 'tv-announcement--theme-eviction';
+    return 'tv-announcement--theme-eviction'
   }
 
-  return 'tv-announcement--standard';
+  return 'tv-announcement--standard'
 }
 
 function getShockPreludeTone(key: string): string {
   if (key === 'double_eviction' || key === 'vox_double_eviction' || key === 'coup_detat') {
-    return 'eviction';
+    return 'eviction'
   }
   if (
     key === 'battle_back' ||
@@ -104,10 +111,10 @@ function getShockPreludeTone(key: string): string {
     key === 'diamond_pov' ||
     key === 'spotlight_veto'
   ) {
-    return 'power';
+    return 'power'
   }
-  if (key === 'cupid_arrow' || key === 'cupid_arrow_broken') return 'cupid';
-  return 'standard';
+  if (key === 'cupid_arrow' || key === 'cupid_arrow_broken') return 'cupid'
+  return 'standard'
 }
 
 /**
@@ -131,139 +138,142 @@ export default function TvAnnouncementOverlay({
   infoButtonRef,
   showInfoButton = true,
   playShockPrelude,
+  hideTitle = false,
+  cupidPairs = [],
+  cupidPlayers = [],
 }: TvAnnouncementOverlayProps) {
-  const { t } = useI18n();
-  const { title, subtitle, isLive, autoDismissMs } = announcement;
-  const shouldPlayShockPrelude =
-    playShockPrelude ?? FULLSCREEN_SHOCK_KEYS.has(announcement.key);
+  const t = useTranslate()
+  const { title, subtitle, isLive, autoDismissMs } = announcement
+  const shouldPlayShockPrelude = playShockPrelude ?? FULLSCREEN_SHOCK_KEYS.has(announcement.key)
   const [shockPreludeKey, setShockPreludeKey] = useState<string | null>(() =>
     shouldPlayShockPrelude ? announcement.key : null
-  );
-  const shockPreludeVisible = shockPreludeKey === announcement.key;
+  )
+  const shockPreludeVisible = shockPreludeKey === announcement.key
   const isBattleBack =
-    announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_');
-  const isDoubleEviction = announcement.key === 'double_eviction';
-  const isVipVeto = announcement.key === 'vip_veto';
-  const isDiamondPov = announcement.key === 'diamond_pov';
-  const isCoupDetat = announcement.key === 'coup_detat';
-  const isSpotlightVeto = announcement.key === 'spotlight_veto';
-  const isPublicSaveResult = announcement.key === 'public_save_result';
-  const isConfessionalRequired = announcement.key === 'confessional_required';
-  const isVoxFinalThreeVerdict = announcement.key === 'vox_final_three_verdict';
+    announcement.key === 'battle_back' || announcement.key.startsWith('battle_back_')
+  const isDoubleEviction = announcement.key === 'double_eviction'
+  const isVipVeto = announcement.key === 'vip_veto'
+  const isDiamondPov = announcement.key === 'diamond_pov'
+  const isCoupDetat = announcement.key === 'coup_detat'
+  const isSpotlightVeto = announcement.key === 'spotlight_veto'
+  const isPublicSaveResult = announcement.key === 'public_save_result'
+  const isConfessionalRequired = announcement.key === 'confessional_required'
+  const isVoxFinalThreeVerdict = announcement.key === 'vox_final_three_verdict'
   const isRoyalPurple =
     announcement.key === 'live_eviction' ||
     announcement.key === 'eviction_vote_result' ||
-    announcement.key.startsWith('loh_tiebreak_');
-  const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding';
-  const themeClass = getAnnouncementThemeClass(announcement.key);
+    announcement.key.startsWith('loh_tiebreak_')
+  const showDecisionHourglass = announcement.key === 'loh_tiebreak_deciding'
+  const themeClass = getAnnouncementThemeClass(announcement.key)
+  const cupidPlayerById = new Map(cupidPlayers.map((player) => [player.id, player.name]))
 
-  const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0;
+  const isAuto = typeof autoDismissMs === 'number' && autoDismissMs > 0
 
-  const hoverPausedRef = useRef(false);
-  const keyboardFocusPauseRef = useRef(false);
-  const startTimeRef = useRef<number>(0);
-  const elapsedRef = useRef<number>(0);
-  const rafRef = useRef<number>(0);
-  const tickRef = useRef<() => void>(() => {});
+  const hoverPausedRef = useRef(false)
+  const keyboardFocusPauseRef = useRef(false)
+  const startTimeRef = useRef<number>(0)
+  const elapsedRef = useRef<number>(0)
+  const rafRef = useRef<number>(0)
+  const tickRef = useRef<() => void>(() => {})
 
-  const isPaused = () => hoverPausedRef.current || paused || shockPreludeVisible;
+  const isPaused = () => hoverPausedRef.current || paused || shockPreludeVisible
 
   useEffect(() => {
-    if (!shockPreludeKey) return undefined;
-    const activeShockKey = shockPreludeKey;
+    if (!shockPreludeKey) return undefined
+    const activeShockKey = shockPreludeKey
     const timer = window.setTimeout(
       () => setShockPreludeKey((current) => (current === activeShockKey ? null : current)),
       SHOCK_PRELUDE_DURATION_MS
-    );
-    return () => window.clearTimeout(timer);
-  }, [shockPreludeKey]);
+    )
+    return () => window.clearTimeout(timer)
+  }, [shockPreludeKey])
 
   useLayoutEffect(() => {
     tickRef.current = () => {
-      if (!isAuto) return;
-      const now = performance.now();
-      const delta = now - startTimeRef.current;
-      startTimeRef.current = now;
-      elapsedRef.current += delta;
+      if (!isAuto) return
+      const now = performance.now()
+      const delta = now - startTimeRef.current
+      startTimeRef.current = now
+      elapsedRef.current += delta
 
-      const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current);
+      const remaining = Math.max(0, (autoDismissMs as number) - elapsedRef.current)
 
       if (remaining <= 0) {
-        onDismiss?.();
-        return;
+        onDismiss?.()
+        return
       }
-      rafRef.current = requestAnimationFrame(tickRef.current);
-    };
-  });
-
-  useEffect(() => {
-    if (!isAuto) return;
-    startTimeRef.current = performance.now();
-    elapsedRef.current = 0;
-    rafRef.current = requestAnimationFrame(tickRef.current);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [isAuto]);
-
-  useEffect(() => {
-    if (!isAuto) return;
-    if (paused || shockPreludeVisible) {
-      cancelAnimationFrame(rafRef.current);
-    } else {
-      startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tickRef.current);
+      rafRef.current = requestAnimationFrame(tickRef.current)
     }
-  }, [paused, shockPreludeVisible, isAuto]);
+  })
+
+  useEffect(() => {
+    if (!isAuto) return
+    startTimeRef.current = performance.now()
+    elapsedRef.current = 0
+    rafRef.current = requestAnimationFrame(tickRef.current)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [isAuto])
+
+  useEffect(() => {
+    if (!isAuto) return
+    if (paused || shockPreludeVisible) {
+      cancelAnimationFrame(rafRef.current)
+    } else {
+      startTimeRef.current = performance.now()
+      rafRef.current = requestAnimationFrame(tickRef.current)
+    }
+  }, [paused, shockPreludeVisible, isAuto])
 
   useEffect(() => {
     const handleKeyboardInput = () => {
-      keyboardFocusPauseRef.current = true;
-    };
+      keyboardFocusPauseRef.current = true
+    }
     const handlePointerInput = () => {
-      keyboardFocusPauseRef.current = false;
-    };
+      keyboardFocusPauseRef.current = false
+    }
 
-    window.addEventListener('keydown', handleKeyboardInput, true);
-    window.addEventListener('mousedown', handlePointerInput, true);
-    window.addEventListener('pointerdown', handlePointerInput, true);
-    window.addEventListener('touchstart', handlePointerInput, true);
+    window.addEventListener('keydown', handleKeyboardInput, true)
+    window.addEventListener('mousedown', handlePointerInput, true)
+    window.addEventListener('pointerdown', handlePointerInput, true)
+    window.addEventListener('touchstart', handlePointerInput, true)
 
     return () => {
-      window.removeEventListener('keydown', handleKeyboardInput, true);
-      window.removeEventListener('mousedown', handlePointerInput, true);
-      window.removeEventListener('pointerdown', handlePointerInput, true);
-      window.removeEventListener('touchstart', handlePointerInput, true);
-    };
-  }, []);
+      window.removeEventListener('keydown', handleKeyboardInput, true)
+      window.removeEventListener('mousedown', handlePointerInput, true)
+      window.removeEventListener('pointerdown', handlePointerInput, true)
+      window.removeEventListener('touchstart', handlePointerInput, true)
+    }
+  }, [])
 
   const handleMouseEnter = () => {
-    hoverPausedRef.current = true;
-    cancelAnimationFrame(rafRef.current);
-  };
+    hoverPausedRef.current = true
+    cancelAnimationFrame(rafRef.current)
+  }
   const handleMouseLeave = () => {
-    if (!isAuto) return;
-    hoverPausedRef.current = false;
+    if (!isAuto) return
+    hoverPausedRef.current = false
     if (!isPaused()) {
-      startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tickRef.current);
+      startTimeRef.current = performance.now()
+      rafRef.current = requestAnimationFrame(tickRef.current)
     }
-  };
+  }
   const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (!keyboardFocusPauseRef.current) return;
-    if (!(event.target instanceof HTMLElement)) return;
-    hoverPausedRef.current = true;
-    cancelAnimationFrame(rafRef.current);
-  };
+    if (!keyboardFocusPauseRef.current) return
+    if (!(event.target instanceof HTMLElement)) return
+    hoverPausedRef.current = true
+    cancelAnimationFrame(rafRef.current)
+  }
   const handleBlur = () => {
-    if (!isAuto) return;
-    hoverPausedRef.current = false;
+    if (!isAuto) return
+    hoverPausedRef.current = false
     if (!isPaused()) {
-      startTimeRef.current = performance.now();
-      rafRef.current = requestAnimationFrame(tickRef.current);
+      startTimeRef.current = performance.now()
+      rafRef.current = requestAnimationFrame(tickRef.current)
     }
-  };
+  }
 
   if (shockPreludeVisible && typeof document !== 'undefined') {
-    const tone = getShockPreludeTone(announcement.key);
+    const tone = getShockPreludeTone(announcement.key)
     return createPortal(
       <div
         className={`tv-shock-prelude tv-shock-prelude--${tone}`}
@@ -280,7 +290,7 @@ export default function TvAnnouncementOverlay({
         </div>
       </div>,
       document.body
-    );
+    )
   }
 
   return (
@@ -288,6 +298,10 @@ export default function TvAnnouncementOverlay({
       <div
         className={[
           'tv-announcement',
+          announcement.key === 'cupid_arrow' && !hideTitle
+            ? 'tv-announcement--cupid-activation'
+            : '',
+          announcement.key === 'cupid_arrow' && hideTitle ? 'tv-announcement--cupid-follow-up' : '',
           themeClass,
           isBattleBack ? 'tv-announcement--battle-back' : '',
           isDoubleEviction ? 'tv-announcement--double-eviction' : '',
@@ -318,13 +332,28 @@ export default function TvAnnouncementOverlay({
         )}
 
         <div className="tv-announcement__body">
-          <p className="tv-announcement__title">{title}</p>
+          {!hideTitle && <p className="tv-announcement__title">{title}</p>}
           {showDecisionHourglass && (
             <div className="tv-announcement__status-icon" aria-hidden="true">
               <span className="tv-announcement__status-icon-spin">⏳</span>
             </div>
           )}
           {subtitle && <p className="tv-announcement__subtitle">{subtitle}</p>}
+          {announcement.key === 'cupid_arrow' && cupidPairs.length > 0 && (
+            <div className="tv-announcement__cupid-pairs" aria-label="Cupid matches">
+              {cupidPairs.map((pair, index) => (
+                <div
+                  className="tv-announcement__cupid-pair"
+                  key={pair.id}
+                  style={{ '--cupid-pair-delay': `${index * 360}ms` } as CSSProperties}
+                >
+                  <span>{cupidPlayerById.get(pair.memberIds[0]) ?? pair.memberIds[0]}</span>
+                  <b aria-hidden="true">♥</b>
+                  <span>{cupidPlayerById.get(pair.memberIds[1]) ?? pair.memberIds[1]}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {showInfoButton && (
@@ -334,10 +363,14 @@ export default function TvAnnouncementOverlay({
             aria-label={`More info about ${title}`}
             ref={infoButtonRef}
           >
-            ℹ️
+            <svg className="tv-announcement__info-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.75 12s3.2-5.35 9.25-5.35S21.25 12 21.25 12 18.05 17.35 12 17.35 2.75 12 2.75 12Z" />
+              <circle cx="12" cy="12" r="2.25" />
+              <path d="M12 3.3v1.15M12 19.55v1.15" />
+            </svg>
           </button>
         )}
       </div>
     </div>
-  );
+  )
 }

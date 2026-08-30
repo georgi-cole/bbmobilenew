@@ -353,9 +353,23 @@
 
 @media (max-width: 640px) {
   .tetris-round-bar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.35rem 0.65rem;
     margin-bottom: 0.35rem;
+    padding: 0.38rem 0.62rem 0.55rem;
+  }
+
+  .tetris-round-bar > div:first-child {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .tetris-round-bar strong,
+  .tetris-round-bar small,
+  .tetris-round-timer {
+    display: none;
   }
 
   .tetris-round-field {

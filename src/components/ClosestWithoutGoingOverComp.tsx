@@ -4,8 +4,8 @@
  * Phases:
  *   mass_input  → strict qualifier: all players enter guesses
  *   mass_reveal → over-guessers leave, or the slowest furthest valid guess leaves
- *   choose_duel → leader picks two players to duel
- *   duel_input  → duel pair enters guesses
+ *   choose_duel → legacy/persisted 3-player leader pick only
+ *   duel_input  → final pair enters guesses
  *   duel_reveal → animated reveal of duel result
  *   complete    → champion announced
  */
@@ -27,6 +27,12 @@ import {
 } from '../features/cwgo/cwgoCompetitionSlice';
 import { resolveCompetitionOutcome } from '../features/cwgo/thunks';
 import { CWGO_QUESTIONS } from '../features/cwgo/cwgoQuestions';
+import {
+  cwgoInputPlaceholder,
+  cwgoInputUnit,
+  formatCwgoValue,
+  parseCwgoGuess,
+} from '../features/cwgo/cwgoDisplay';
 import { mulberry32 } from '../store/rng';
 import type { CwgoPrizeType, CwgoState } from '../features/cwgo/cwgoCompetitionSlice';
 import type { CwgoResult } from '../features/cwgo/cwgoHelpers';
@@ -91,9 +97,6 @@ export default function ClosestWithoutGoingOverComp({
 
   const [humanGuess, setHumanGuess] = useState('');
   const [inputError, setInputError] = useState('');
-  // Scale selector index: 0=none, 1=thousand (1e3), 2=million (1e6), 3=billion (1e9), 4=trillion (1e12)
-  const NO_SCALE_INDEX = 0;
-  const [scaleIdx, setScaleIdx] = useState(NO_SCALE_INDEX);
   // Sequential reveal stages for the duel: guesses → answer → outcome
   const [duelRevealStage, setDuelRevealStage] = useState<'guesses' | 'answer' | 'outcome'>('guesses');
   const [spectatorMode, setSpectatorMode] = useState<'playing' | 'pending' | 'watching' | 'skipping'>('playing');
@@ -118,34 +121,6 @@ export default function ClosestWithoutGoingOverComp({
 
   function playerName(id: string): string {
     return getPlayer(id)?.name ?? id;
-  }
-
-  // ── Scale helpers ──────────────────────────────────────────────────────────
-
-  const SCALES = [
-    { label: '—', value: 1 },
-    { label: 'K (thousand)', value: 1_000 },
-    { label: 'M (million)', value: 1_000_000 },
-    { label: 'B (billion)', value: 1_000_000_000 },
-    { label: 'T (trillion)', value: 1_000_000_000_000 },
-  ] as const;
-
-  /** Derive the input placeholder based on the active scale index. */
-  function inputPlaceholder(): string {
-    return scaleIdx === NO_SCALE_INDEX
-      ? 'Enter number…'
-      : `Decimals OK (×${SCALES[scaleIdx].label})`;
-  }
-
-  /**
-   * Parse the human-entered guess string, multiplying by the currently-selected
-   * scale factor. Accepts decimals (e.g. "4.5" × 1e9 = 4 500 000 000).
-   */
-  function parseScaledGuess(raw: string): number | null {
-    const n = parseFloat(raw);
-    const scaled = Math.round(n * SCALES[scaleIdx].value);
-    if (!Number.isFinite(scaled) || scaled < 0 || scaled > Number.MAX_SAFE_INTEGER) return null;
-    return scaled;
   }
 
   // Start competition on mount
@@ -185,8 +160,8 @@ export default function ClosestWithoutGoingOverComp({
   }, [cwgo?.status]);
 
   // ── Auto-advance: AI leader in choose_duel ─────────────────────────────────
-  // Automatically pick the duel pair after a short delay so the user can
-  // observe without having to click a button.
+  // Automatically pick the duel pair after a short delay so old persisted
+  // 3-player finals can still resolve cleanly.
   useEffect(() => {
     if (cwgo?.status !== 'choose_duel') return;
     const alive = cwgo.aliveIds;
@@ -285,6 +260,7 @@ export default function ClosestWithoutGoingOverComp({
   }
 
   const question = CWGO_QUESTIONS[cwgo.questionIdx];
+  const questionInputUnit = cwgoInputUnit(question);
 
   // ── Mass Input ──────────────────────────────────────────────────────────────
 
@@ -296,7 +272,7 @@ export default function ClosestWithoutGoingOverComp({
       return;
     }
 
-    const val = parseScaledGuess(humanGuess);
+    const val = parseCwgoGuess(humanGuess, question);
     if (val === null) {
       setInputError('Please enter a valid number.');
       return;
@@ -306,7 +282,6 @@ export default function ClosestWithoutGoingOverComp({
     dispatch(setResponseTimes({ [humanId]: humanResponseTimeMs() }));
     dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
     setHumanGuess('');
-    setScaleIdx(0);
     dispatch(revealMassResults());
   }
 
@@ -317,7 +292,7 @@ export default function ClosestWithoutGoingOverComp({
     const isHumanInDuel = humanId && cwgo.duelPair.includes(humanId);
 
     if (isHumanInDuel) {
-      const val = parseScaledGuess(humanGuess);
+      const val = parseCwgoGuess(humanGuess, question);
       if (val === null) {
         setInputError('Please enter a valid number.');
         return;
@@ -330,7 +305,6 @@ export default function ClosestWithoutGoingOverComp({
     // Fill AI guesses for non-human duel participant
     dispatch(autoFillAIGuesses({ humanIds: humanId ? [humanId] : [] }));
     setHumanGuess('');
-    setScaleIdx(0);
     dispatch(revealDuelResults());
   }
 
@@ -388,8 +362,8 @@ export default function ClosestWithoutGoingOverComp({
             </span>
           </p>
           <p className="cwgo__question-text">{question.prompt}</p>
-          {question.unit && (
-            <p className="cwgo__question-unit">Answer in: {question.unit}</p>
+          {questionInputUnit && (
+            <p className="cwgo__question-unit">Answer in: {questionInputUnit}</p>
           )}
         </div>
       )}
@@ -438,25 +412,14 @@ export default function ClosestWithoutGoingOverComp({
                   <input
                     type="number"
                     min={0}
+                    step={question?.scale ? 'any' : 1}
                     className="cwgo-mass-input__input"
                     value={humanGuess}
                     onChange={(e) => setHumanGuess(e.target.value)}
-                    placeholder={inputPlaceholder()}
+                    placeholder={cwgoInputPlaceholder(question)}
                     onKeyDown={(e) => e.key === 'Enter' && handleMassSubmit()}
                     autoFocus
                   />
-                  {question?.scale !== undefined && (
-                    <select
-                      className="cwgo-mass-input__scale"
-                      value={scaleIdx}
-                      onChange={(e) => setScaleIdx(Number(e.target.value))}
-                      aria-label="Scale multiplier"
-                    >
-                      {SCALES.map((s, i) => (
-                        <option key={i} value={i}>{s.label}</option>
-                      ))}
-                    </select>
-                  )}
                   <button className="cwgo-btn cwgo-btn--primary" onClick={handleMassSubmit}>
                     Submit
                   </button>
@@ -486,8 +449,8 @@ export default function ClosestWithoutGoingOverComp({
           >
             <p className="cwgo-reveal__heading">
               {cwgo.revealResults.every((result) => result.wentOver)
-                ? 'Everyone went over — the least-over guess survives.'
-                : <>Results — Answer: <strong>{question?.answer.toLocaleString()}</strong></>}
+                ? 'Everyone went over — no elimination. New question.'
+                : <>Results — Answer: <strong>{formatCwgoValue(question.answer, question, { includeUnit: true })}</strong></>}
             </p>
             <div className="cwgo-results-wrap">
               <div className="cwgo-reveal">
@@ -516,11 +479,11 @@ export default function ClosestWithoutGoingOverComp({
                         <div className="cwgo-result-row__name">{playerName(r.playerId)}</div>
                       </div>
                       <div className="cwgo-result-row__guess-wrap">
-                        <span className="cwgo-result-row__guess">{r.guess.toLocaleString()}</span>
+                        <span className="cwgo-result-row__guess">{formatCwgoValue(r.guess, question)}</span>
                         <span className="cwgo-result-row__diff">
                           {r.wentOver
-                            ? `over by ${Math.abs(r.diff).toLocaleString()}`
-                            : `diff: ${r.diff.toLocaleString()}`}
+                            ? `over by ${formatCwgoValue(Math.abs(r.diff), question)}`
+                            : `diff: ${formatCwgoValue(r.diff, question)}`}
                         </span>
                         {r.responseTimeMs !== undefined && (
                           <span className="cwgo-result-row__diff">• {(r.responseTimeMs / 1000).toFixed(1)}s</span>
@@ -661,25 +624,15 @@ export default function ClosestWithoutGoingOverComp({
                 <div className="cwgo-mass-input__input-row">
                   <input
                     type="number"
+                    min={0}
+                    step={question?.scale ? 'any' : 1}
                     className="cwgo-mass-input__input"
                     value={humanGuess}
                     onChange={(e) => setHumanGuess(e.target.value)}
-                    placeholder={inputPlaceholder()}
+                    placeholder={cwgoInputPlaceholder(question)}
                     onKeyDown={(e) => e.key === 'Enter' && handleDuelSubmit()}
                     autoFocus
                   />
-                  {question?.scale !== undefined && (
-                    <select
-                      className="cwgo-mass-input__scale"
-                      value={scaleIdx}
-                      onChange={(e) => setScaleIdx(Number(e.target.value))}
-                      aria-label="Scale multiplier"
-                    >
-                      {SCALES.map((s, i) => (
-                        <option key={i} value={i}>{s.label}</option>
-                      ))}
-                    </select>
-                  )}
                   <button className="cwgo-btn cwgo-btn--primary" onClick={handleDuelSubmit}>
                     Submit
                   </button>
@@ -733,7 +686,7 @@ export default function ClosestWithoutGoingOverComp({
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 18 }}
                 >
-                  Answer: <strong>{question?.answer.toLocaleString()}</strong>
+                  Answer: <strong>{formatCwgoValue(question.answer, question, { includeUnit: true })}</strong>
                 </motion.p>
               )}
             </AnimatePresence>
@@ -795,7 +748,7 @@ export default function ClosestWithoutGoingOverComp({
                         </motion.div>
                       )}
                       <p className="cwgo-duel__player-name">{playerName(r.playerId)}</p>
-                      <p className="cwgo-duel__score">{r.guess.toLocaleString()}</p>
+                      <p className="cwgo-duel__score">{formatCwgoValue(r.guess, question)}</p>
                       {r.responseTimeMs !== undefined && (
                         <p className="cwgo-duel__diff">{(r.responseTimeMs / 1000).toFixed(1)}s</p>
                       )}
@@ -807,8 +760,8 @@ export default function ClosestWithoutGoingOverComp({
                           transition={{ duration: 0.3 }}
                         >
                           {r.wentOver
-                            ? `over by ${Math.abs(r.diff).toLocaleString()}`
-                            : `diff: ${r.diff.toLocaleString()}`}
+                            ? `over by ${formatCwgoValue(Math.abs(r.diff), question)}`
+                            : `diff: ${formatCwgoValue(r.diff, question)}`}
                         </motion.p>
                       )}
                     </motion.div>

@@ -80,8 +80,7 @@ export default function TwinShockIntroCinematic({
     document.body.style.overflow = 'hidden';
     skipRef.current?.focus();
 
-    SoundManager.panicStopAllMusic();
-    const audio = createCinematicAudio(asset('/assets/sounds/Twin_shock_presentation.mp4'), 0.62);
+    const audio = createCinematicAudio(asset('/assets/sounds/cinematic/Twin_shock_presentation.mp4'), 0.62);
     audioRef.current = audio;
     if ((window as IntroHubAudioWindow)._introhubMusicOn !== false) audio.play();
 

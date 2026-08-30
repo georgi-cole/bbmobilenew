@@ -92,6 +92,50 @@ export interface SavedSeasonSnapshot {
   challenge?: ChallengeState
 }
 
+export interface SavedSeasonState {
+  game: GameState
+  finale: FinaleState
+  social: SocialState
+  publicOpinion?: PublicOpinionState
+  challenge?: ChallengeState
+}
+
+/**
+ * Build the durable campaign payload shared by automatic and manual saves.
+ *
+ * Completed-season history and Broadcast Manager authoring data have their own
+ * localStorage keys. Keeping them out of every run snapshot avoids duplicating
+ * large, unrelated values and prevents a runtime-only authoring value from
+ * blocking an otherwise valid campaign save.
+ */
+export function createSavedSeasonSnapshot(
+  profileId: string,
+  state: SavedSeasonState,
+  savedAt = new Date().toISOString()
+): SavedSeasonSnapshot {
+  const campaignGame = { ...state.game }
+  delete campaignGame.seasonArchives
+  delete campaignGame.broadcastOverrides
+  delete campaignGame.customBroadcasts
+  const savedAtMs = Date.parse(savedAt)
+
+  return {
+    version: 1,
+    profileId,
+    savedAt,
+    game: {
+      ...campaignGame,
+      mode: state.game.mode ?? 'classic',
+      lastPlayedAt: Number.isFinite(savedAtMs) ? savedAtMs : Date.now(),
+      saveVersion: state.game.saveVersion ?? 2,
+    },
+    finale: state.finale,
+    social: state.social,
+    publicOpinion: state.publicOpinion,
+    challenge: state.challenge,
+  }
+}
+
 export interface SavedRunProfileStats {
   maxSurvivorDaysSurvived: number
   survivorAchievementsUnlocked: SurvivorAchievementUnlockMap
@@ -230,10 +274,31 @@ function normalizeRunProfile(
   }
 }
 
+function createPersistenceReplacer(): (this: unknown, key: string, value: unknown) => unknown {
+  const ancestors: object[] = []
+
+  return function persistenceReplacer(this: unknown, _key: string, value: unknown): unknown {
+    // Redux state should not contain bigint values, but browser/native bridges
+    // can introduce one. Preserve the value instead of failing the entire save.
+    if (typeof value === 'bigint') return value.toString()
+    if (value === null || typeof value !== 'object') return value
+
+    // Keep only the active ancestor chain. Repeated sibling references are safe
+    // and should still be serialized; only an actual back-edge is omitted.
+    while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+      ancestors.pop()
+    }
+    if (ancestors.includes(value)) return undefined
+    ancestors.push(value)
+    return value
+  }
+}
+
 function serialize(value: unknown): string | null {
   try {
-    return JSON.stringify(value)
-  } catch {
+    return JSON.stringify(value, createPersistenceReplacer())
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn('[save] snapshot serialization failed', error)
     reportSavePersistenceIssue('write_failed', 'serialization_failed')
     return null
   }
@@ -291,6 +356,25 @@ function metadataFromProfile(profile: SavedRunProfile): SavedRunProfileMetadata 
   }
 }
 
+/**
+ * Read only the small split-profile metadata record. This intentionally avoids
+ * parsing every campaign slot during routine autosaves. Embedded/legacy profiles
+ * return null so their first subsequent write still goes through the full
+ * migration-safe path.
+ */
+function loadSplitMetadata(profileId: string): SavedRunProfileMetadata | null {
+  try {
+    const raw = localStorage.getItem(savedRunsKeyForProfile(profileId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<SavedRunProfile> & SavedRunProfileMetadata
+    if ('runs' in parsed) return null
+    const normalized = normalizeRunProfile(profileId, { ...parsed, runs: {} })
+    return normalized ? metadataFromProfile(normalized) : null
+  } catch {
+    return null
+  }
+}
+
 function persistSplitProfile(profile: SavedRunProfile): boolean {
   const metadataRaw = serialize(metadataFromProfile(profile))
   if (metadataRaw === null) return false
@@ -334,6 +418,58 @@ function persistSplitProfile(profile: SavedRunProfile): boolean {
     }
   }
   return true
+}
+
+/**
+ * Fast path for an already-migrated profile: write only the active run slot and
+ * the tiny metadata record. The old implementation re-serialized and rewrote all
+ * four potentially-large campaign slots on every Redux change, turning one Play
+ * press into repeated synchronous localStorage work.
+ */
+function persistSingleRunSnapshot(
+  profileId: string,
+  slot: SavedRunSlot,
+  snapshot: SavedSeasonSnapshot | null,
+  metadata: SavedRunProfileMetadata
+): boolean {
+  const metadataKey = savedRunsKeyForProfile(profileId)
+  const slotKey = savedRunSlotKeyForProfile(profileId, slot)
+  const metadataRaw = serialize(metadata)
+  const snapshotRaw = snapshot ? serialize(snapshot) : null
+  if (metadataRaw === null || (snapshot && snapshotRaw === null)) return false
+
+  const previousMetadata = localStorage.getItem(metadataKey)
+  const previousSlot = localStorage.getItem(slotKey)
+
+  const rollback = () => {
+    try {
+      if (previousMetadata === null) localStorage.removeItem(metadataKey)
+      else localStorage.setItem(metadataKey, previousMetadata)
+      if (previousSlot === null) localStorage.removeItem(slotKey)
+      else localStorage.setItem(slotKey, previousSlot)
+    } catch {
+      // Preserve the original write failure; Redux still contains the live run.
+    }
+  }
+
+  try {
+    if (snapshotRaw !== null) {
+      if (!writeStorage(slotKey, snapshotRaw)) return false
+    } else {
+      localStorage.removeItem(slotKey)
+    }
+    if (!writeStorage(metadataKey, metadataRaw)) {
+      rollback()
+      return false
+    }
+    // Once split metadata is committed the legacy single-slot payload is obsolete.
+    localStorage.removeItem(savedStateKeyForProfile(profileId))
+    return true
+  } catch (error) {
+    rollback()
+    reportSavePersistenceIssue('write_failed', classifyWriteFailure(error))
+    return false
+  }
 }
 
 export function loadSavedRunProfile(profileId: string): SavedRunProfile {
@@ -406,8 +542,42 @@ export function saveRunProfile(profile: SavedRunProfile): boolean {
 export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot): boolean {
   const mode = normalizeGameMode(snapshot.game.mode)
   const slot = getSavedRunSlot(snapshot.game)
-  const current = loadSavedRunProfile(profileId)
   const runId = getRunId(snapshot)
+  const resumable = isRunSnapshotResumable(snapshot)
+
+  // Once a profile is using the split format, routine autosaves never need to
+  // load or rewrite its other run slots. Legacy/embedded data deliberately falls
+  // back to the existing migration-safe full-profile path exactly once.
+  const metadata = loadSplitMetadata(profileId)
+  if (metadata) {
+    const survivorBest =
+      mode === 'survival'
+        ? Math.max(metadata.stats.maxSurvivorDaysSurvived, getSurvivorProgressDay(snapshot.game))
+        : metadata.stats.maxSurvivorDaysSurvived
+    const survivorAchievementsUnlocked =
+      mode === 'survival'
+        ? applySurvivorAchievementProgress(
+            metadata.stats.survivorAchievementsUnlocked,
+            getSurvivorProgressDay(snapshot.game),
+            runId,
+            snapshot.savedAt
+          ).unlocks
+        : metadata.stats.survivorAchievementsUnlocked
+
+    return persistSingleRunSnapshot(profileId, slot, resumable ? snapshot : null, {
+      ...metadata,
+      savedAt: snapshot.savedAt,
+      activeRunId: resumable ? runId : null,
+      lastPlayedRunId: resumable ? runId : metadata.lastPlayedRunId,
+      stats: {
+        ...metadata.stats,
+        maxSurvivorDaysSurvived: survivorBest,
+        survivorAchievementsUnlocked,
+      },
+    })
+  }
+
+  const current = loadSavedRunProfile(profileId)
   const survivorBest =
     mode === 'survival'
       ? Math.max(current.stats.maxSurvivorDaysSurvived, getSurvivorProgressDay(snapshot.game))
@@ -422,7 +592,6 @@ export function saveRunSnapshot(profileId: string, snapshot: SavedSeasonSnapshot
         ).unlocks
       : current.stats.survivorAchievementsUnlocked
   const nextRuns = { ...current.runs }
-  const resumable = isRunSnapshotResumable(snapshot)
   if (resumable) nextRuns[slot] = snapshot
   else delete nextRuns[slot]
 

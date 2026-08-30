@@ -1,38 +1,70 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="980" height="220" viewBox="0 0 980 220" fill="none">
   <defs>
-    <linearGradient id="shellBg" x1="0" y1="0" x2="980" y2="220">
-      <stop offset="0%" stop-color="#050D22"/>
-      <stop offset="55%" stop-color="#0A1430"/>
-      <stop offset="100%" stop-color="#060F24"/>
+    <linearGradient id="shell-glass" x1="490" y1="54" x2="490" y2="168" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#30294A" stop-opacity=".5"/>
+      <stop offset=".24" stop-color="#211C39" stop-opacity=".53"/>
+      <stop offset=".58" stop-color="#141228" stop-opacity=".58"/>
+      <stop offset="1" stop-color="#070813" stop-opacity=".67"/>
     </linearGradient>
-    <linearGradient id="topGloss" x1="490" y1="20" x2="490" y2="96">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.24)"/>
-      <stop offset="48%" stop-color="rgba(255,255,255,0.09)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    <linearGradient id="rim" x1="490" y1="54" x2="490" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F5FF" stop-opacity=".58"/>
+      <stop offset=".3" stop-color="#E3DCFF" stop-opacity=".25"/>
+      <stop offset=".72" stop-color="#BEB8E8" stop-opacity=".09"/>
+      <stop offset="1" stop-color="#918BB7" stop-opacity=".035"/>
     </linearGradient>
-    <radialGradient id="edgeGlow" cx="50%" cy="52%" r="46%">
-      <stop offset="0%" stop-color="rgba(115,130,255,0.14)"/>
-      <stop offset="52%" stop-color="rgba(98,112,255,0.05)"/>
-      <stop offset="100%" stop-color="rgba(98,112,255,0)"/>
+    <linearGradient id="inner-band" x1="490" y1="58" x2="490" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C8BDF6" stop-opacity=".075"/>
+      <stop offset=".34" stop-color="#6F659E" stop-opacity=".018"/>
+      <stop offset=".72" stop-color="#050611" stop-opacity=".06"/>
+      <stop offset="1" stop-color="#02030A" stop-opacity=".16"/>
+    </linearGradient>
+    <radialGradient id="center-reflection" cx="0" cy="0" r="1" gradientTransform="translate(490 108) rotate(90) scale(45 138)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A484E5" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#8064C8" stop-opacity="0"/>
     </radialGradient>
-    <filter id="outerGlow" x="-16%" y="-28%" width="132%" height="156%">
+    <radialGradient id="ambient-aura" cx="0" cy="0" r="1" gradientTransform="translate(490 110) rotate(90) scale(70 205)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8063D1" stop-opacity=".16"/>
+      <stop offset=".52" stop-color="#4D3C88" stop-opacity=".045"/>
+      <stop offset="1" stop-color="#392E68" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="top-atmosphere" cx="0" cy="0" r="1" gradientTransform="translate(490 50) rotate(90) scale(24 430)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A98CFF" stop-opacity=".2"/>
+      <stop offset=".42" stop-color="#7859D0" stop-opacity=".085"/>
+      <stop offset="1" stop-color="#4D377F" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shoulder-rim" x1="350" y1="55" x2="630" y2="55" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DCD4FF" stop-opacity=".08"/>
+      <stop offset=".28" stop-color="#EFEAFF" stop-opacity=".34"/>
+      <stop offset=".5" stop-color="#B9A8FF" stop-opacity=".4"/>
+      <stop offset=".72" stop-color="#EFEAFF" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#DCD4FF" stop-opacity=".08"/>
+    </linearGradient>
+    <filter id="aura-blur" x="24%" y="1%" width="52%" height="98%">
       <feGaussianBlur stdDeviation="14"/>
     </filter>
-    <clipPath id="clipShell">
-      <rect x="28" y="34" width="924" height="146" rx="73"/>
-    </clipPath>
+    <filter id="upper-glow" x="-8%" y="-400%" width="116%" height="900%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="top-atmosphere-blur" x="-8%" y="-150%" width="116%" height="400%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <filter id="soft-shadow" x="-8%" y="-28%" width="116%" height="156%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <path id="dock-shape" d="M88 55H350C382 55 397 69 418 88C437 105 458 110 490 110C522 110 543 105 562 88C583 69 598 55 630 55H892C925 55 952 79 952 110C952 141 925 165 892 165H88C55 165 28 141 28 110C28 79 55 55 88 55Z"/>
+    <clipPath id="dock-clip"><use href="#dock-shape"/></clipPath>
   </defs>
 
-  <rect x="24" y="34" width="932" height="146" rx="73" fill="rgba(92,108,255,0.14)" filter="url(#outerGlow)"/>
-  <rect x="28" y="34" width="924" height="146" rx="73" fill="url(#shellBg)" stroke="rgba(214,226,255,0.18)" stroke-width="2"/>
-
-  <g clip-path="url(#clipShell)">
-    <path d="M 72 44 H 908 Q 866 98 490 108 Q 114 98 72 44 Z" fill="url(#topGloss)" opacity="0.96"/>
-    <rect x="100" y="72" width="780" height="82" rx="34" fill="rgba(255,255,255,0.028)" stroke="rgba(255,255,255,0.075)" stroke-width="1.4"/>
-    <ellipse cx="490" cy="108" rx="172" ry="46" fill="url(#edgeGlow)"/>
-    <path d="M 114 152 H 866" stroke="rgba(255,255,255,0.025)" stroke-width="1.2" stroke-linecap="round"/>
+  <use href="#dock-shape" fill="#03040B" fill-opacity=".29" filter="url(#soft-shadow)" transform="translate(0 6)"/>
+  <ellipse cx="490" cy="50" rx="430" ry="24" fill="url(#top-atmosphere)" filter="url(#top-atmosphere-blur)"/>
+  <ellipse cx="490" cy="110" rx="205" ry="70" fill="url(#ambient-aura)" filter="url(#aura-blur)"/>
+  <use href="#dock-shape" fill="url(#shell-glass)" stroke="url(#rim)" stroke-width=".95"/>
+  <g clip-path="url(#dock-clip)">
+    <rect x="28" y="55" width="924" height="110" fill="url(#inner-band)"/>
+    <ellipse cx="490" cy="108" rx="138" ry="45" fill="url(#center-reflection)"/>
+    <path d="M91 164H889" stroke="#E8E4FF" stroke-opacity=".018" stroke-width="1" stroke-linecap="round"/>
   </g>
-
-  <path d="M 92 50 H 888" stroke="rgba(255,255,255,0.12)" stroke-width="2.1" stroke-linecap="round"/>
-  <path d="M 100 170 H 880" stroke="rgba(255,255,255,0.035)" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M89 56H346C379 56 395 70 416 89C436 106 458 111 490 111C522 111 544 106 564 89C585 70 601 56 634 56H890" stroke="#9F82F4" stroke-opacity=".52" stroke-width="5.2" stroke-linecap="round" filter="url(#upper-glow)"/>
+  <path d="M89 56H346C379 56 395 70 416 89C436 106 458 111 490 111C522 111 544 106 564 89C585 70 601 56 634 56H890" stroke="#FBFAFF" stroke-opacity=".31" stroke-width=".78" stroke-linecap="round"/>
+  <path d="M350 55C382 55 397 69 418 88C437 105 458 110 490 110C522 110 543 105 562 88C583 69 598 55 630 55" stroke="url(#shoulder-rim)" stroke-width="1.35" stroke-linecap="round"/>
 </svg>

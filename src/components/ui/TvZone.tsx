@@ -7,6 +7,7 @@ import {
   useRef,
   useId,
   startTransition,
+  useSyncExternalStore,
   type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -14,11 +15,14 @@ import type { BroadcastOverride, CupidArrowPair, Phase, Player } from '../../typ
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
+  advance,
   consumeBroadcastEvent,
+  finishCupidArrowVisualReturn,
+  revealCupidArrowVisuals,
   selectAlivePlayers,
   syncPhaseBroadcasts,
 } from '../../store/gameSlice'
-import { saveRunSnapshot } from '../../store/saveStatePersistence'
+import { createSavedSeasonSnapshot, saveRunSnapshot } from '../../store/saveStatePersistence'
 import { DEFAULT_SETTINGS, setAudio } from '../../store/settingsSlice'
 import { setMusicMix } from '../../store/uiSlice'
 import type { RootState } from '../../store/store'
@@ -33,16 +37,26 @@ import AnimatedVoteResultsModal, {
   type PublicEvictionTiebreakDisplay,
   type VoteTally,
 } from '../AnimatedVoteResultsModal/AnimatedVoteResultsModal'
+import {
+  calculateEvictionVoteRevealIntervalMs,
+  EVICTION_PUBLIC_ESTIMATE_STEPS,
+  getEvictionVotingAudioDurationMs,
+} from '../../services/sound/publicVotingAudioTiming'
 import PublicSaveReveal from '../PublicSaveReveal/PublicSaveReveal'
 import { isVisibleInMainLog, isVisibleOnTv } from '../../services/activityService'
 import type { TvEvent } from '../../types'
 import TopUtilityButton from '../TopUtilityButton/TopUtilityButton'
 import { getViewportMessageKey } from './tvZoneKeys'
-import { LIVE_VOTE_PITCHES_EVENT_KEY } from '../../constants/tvEvents'
+import {
+  getTvPresentationBroadcastLevel,
+  isCurrentPhaseBroadcastEvent,
+} from './tvZoneBroadcastGuards'
 import { getPhaseCardTemplate } from '../../broadcasting/broadcastTemplateCatalog'
+import { getDailyAtmosphere, getDailyTransitionTitle } from '../../broadcasting/dailyMoodSystem'
 import {
   formatCycleAriaLabel,
   formatCycleLabel,
+  formatSurveyevalCycleLabel,
   formatPhaseLabel,
 } from '../../utils/gameStatusLanguage'
 import ShockIntroOverlay from './ShockIntroOverlay/ShockIntroOverlay'
@@ -54,8 +68,36 @@ import VoxAudiencePulseReveal, {
 import './TvZone.css'
 import './TvZoneEnhancements.css'
 import './ShockDangerMode.css'
+import {
+  decorateDepressionShockFauxTvText,
+  getDepressionShockVisualSnapshot,
+  subscribeDepressionShockVisualPhase,
+  type DepressionShockVisualPhase,
+} from '../../features/twists/depressionShock'
 
 const NOOP = () => {}
+const normalizeHubCopy = (value: string) =>
+  value
+    .replace(/\bhousemates\b/gi, 'players')
+    .replace(/\bhouseguests\b/gi, 'players')
+    .replace(/\bhousemate\b/gi, 'player')
+    .replace(/\bhouseguest\b/gi, 'player')
+    .replace(/\bBig Brother\b/gi, 'The Big Eye')
+    .replace(/\bPower of Veto\b/gi, 'Power of Safety')
+    .replace(/\bveto\b/gi, 'Safety')
+    .replace(/\bjury\b/gi, 'Tribunal')
+    .replace(/\bjurors\b/gi, 'Tribunal members')
+    .replace(/\bjuror\b/gi, 'Tribunal member')
+    .replace(/\btwist\b/gi, 'shock')
+    .replace(/\bhouse\b/gi, 'hub')
+const normalizeAnnouncementCopy = (announcement: Announcement | null): Announcement | null =>
+  announcement
+    ? {
+        ...announcement,
+        title: normalizeHubCopy(announcement.title),
+        subtitle: normalizeHubCopy(announcement.subtitle),
+      }
+    : null
 const dismissedCriticalBroadcastEventIds = new Set<string>()
 
 // ─── Announcement configuration ──────────────────────────────────────────────
@@ -104,6 +146,11 @@ const MAJOR_KEYS = new Set([
   'custom_broadcast',
   'custom_major',
   'custom_critical',
+  'depression_shock_start',
+  'depression_shock_day_2',
+  'depression_shock_chocolates',
+  'depression_shock_melancholy',
+  'depression_shock_end',
 ])
 
 /** Maps a major key to its announcement title and subtitle. */
@@ -132,6 +179,40 @@ const ANNOUNCEMENT_META: Record<
     isLive: true,
     autoDismissMs: null,
   },
+  depression_shock_start: {
+    title: 'Depression Shock',
+    subtitle:
+      'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_day_2: {
+    title: 'The colour drains away',
+    subtitle:
+      'The storm has deepened. Today the hub loses most of its colour. Every familiar room feels colder, flatter, and farther away.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_chocolates: {
+    title: 'A small comfort',
+    subtitle:
+      'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_melancholy: {
+    title: 'Under the weather',
+    subtitle: 'The storm continues to press against every room and every conversation.',
+    isLive: true,
+    autoDismissMs: null,
+  },
+  depression_shock_end: {
+    title: 'The sun returns',
+    subtitle:
+      'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
+    isLive: true,
+    autoDismissMs: null,
+  },
   nomination_ceremony: {
     title: 'Nomination Ceremony',
     subtitle: 'Two players are nominated for elimination.',
@@ -146,7 +227,7 @@ const ANNOUNCEMENT_META: Record<
   },
   live_eviction: {
     title: 'Live Elimination',
-    subtitle: 'The house votes to eliminate.',
+    subtitle: 'The hub has spoken. One player’s journey ends tonight.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -176,7 +257,8 @@ const ANNOUNCEMENT_META: Record<
   },
   battle_back: {
     title: 'Back 2 the Game',
-    subtitle: 'Eliminated players compete for a second chance.',
+    subtitle:
+      'Tribunal members will face off. Only one can win the right to return to the hub. Press Play to begin the showdown.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -188,28 +270,26 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_double_eviction: {
     title: 'Double Elimination!',
-    subtitle:
-      'At least three nominees face the public. The audience will eliminate two housemates.',
+    subtitle: 'At least three nominees face the public. The audience will eliminate two players.',
     isLive: true,
     autoDismissMs: null,
   },
   cupid_arrow: {
     title: "Cupid's Arrow",
-    subtitle:
-      'The house is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
+    subtitle: 'The hub is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
     isLive: true,
     autoDismissMs: null,
   },
   cupid_arrow_broken: {
     title: "Cupid's Spell Is Broken",
-    subtitle: 'Four pairs have fallen. Cupid leaves the house, and every survivor now plays alone.',
+    subtitle: 'Four pairs have fallen. Cupid leaves the hub, and every survivor now plays alone.',
     isLive: true,
     autoDismissMs: null,
   },
   vox_populi: {
     title: 'VOX POPULI',
     subtitle:
-      'Housemates nominate in secret. The audience decides who leaves; Public Mode reveals the pulse.',
+      'Players nominate in secret. The audience decides who leaves; Public Mode reveals the pulse.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -228,7 +308,7 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_nominations: {
     title: 'Secret Nominations',
-    subtitle: 'Every housemate privately names two people. Cutoff ties expand the block.',
+    subtitle: 'Every player privately names two people. Cutoff ties expand the block.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -241,13 +321,13 @@ const ANNOUNCEMENT_META: Record<
   },
   vox_public_vote: {
     title: 'The Public Decides',
-    subtitle: 'The audience is voting to eliminate. Housemates do not vote.',
+    subtitle: 'The audience is voting to eliminate. The players do not vote.',
     isLive: true,
     autoDismissMs: null,
   },
   vox_final3: {
     title: 'Final 3',
-    subtitle: 'One housemate will win immunity. The audience will decide third place.',
+    subtitle: 'One player will win immunity. The audience will decide third place.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -272,7 +352,7 @@ const ANNOUNCEMENT_META: Record<
   vox_final3_interlude: {
     title: 'The Final Three',
     subtitle:
-      'The house falls quiet. Every bond, promise, and rivalry now carries final-night weight.',
+      'The hub falls quiet. Every bond, promise, and rivalry now carries final-night weight.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -314,13 +394,13 @@ const ANNOUNCEMENT_META: Record<
   },
   democracia: {
     title: 'DEMOCRACIA!',
-    subtitle: 'The house will elect the new Leader of the House by secret vote.',
+    subtitle: 'The hub will elect its new leader by secret vote.',
     isLive: true,
     autoDismissMs: null,
   },
   tribunal_phase: {
-    title: `Congrats all, you've just made it to tribunal.`,
-    subtitle: 'Your voices will crown the winner.',
+    title: 'Welcome to the Tribunal',
+    subtitle: 'The game is over for you, but your final vote will decide who deserves the crown.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -332,13 +412,13 @@ const ANNOUNCEMENT_META: Record<
   },
   loh_comp_announcement: {
     title: 'LOH Competition',
-    subtitle: 'Power is up for grabs — who will become Leader of the House?',
+    subtitle: 'Control is up for winning — who will become Leader of the Hub?',
     isLive: true,
     autoDismissMs: null,
   },
   pos_comp_announcement: {
     title: 'Power of Safety',
-    subtitle: "It's time for the Power of Safety competition!",
+    subtitle: 'The winner can protect a nominee and force the block to change.',
     isLive: true,
     autoDismissMs: null,
   },
@@ -397,11 +477,17 @@ function buildAnnouncement(
     title:
       typeof eventTitle === 'string' && eventTitle.trim()
         ? eventTitle
-        : (registryOverride?.title ?? migratedFinalFourTitle ?? registryTemplate?.title ?? meta.title),
+        : (registryOverride?.title ??
+          migratedFinalFourTitle ??
+          registryTemplate?.title ??
+          meta.title),
     subtitle:
       typeof eventSubtitle === 'string' && eventSubtitle.trim()
         ? eventSubtitle
-        : (registryOverride?.text ?? migratedFinalFourSubtitle ?? registryTemplate?.text ?? meta.subtitle),
+        : (registryOverride?.text ??
+          migratedFinalFourSubtitle ??
+          registryTemplate?.text ??
+          meta.subtitle),
   }
 }
 
@@ -428,14 +514,13 @@ function getPhaseAnnouncementKey(
         ? 'vox_final4_immunity_comp'
         : 'vox_immunity_comp'
       : 'loh_comp_announcement'
-  if (phase === 'democracia_vote') return 'democracia'
+  // Democracia already has its single critical shock card at the LOH
+  // announcement phase. Entering the ballot must open the voting UI directly,
+  // never replay that same shock as a second full-screen card.
+  if (phase === 'democracia_vote') return null
   if (phase === 'pos_comp_announcement') return 'pos_comp_announcement'
   if (phase === 'pos_ceremony')
-    return voxPopuliActive
-      ? 'vox_safety_ceremony'
-      : aliveCount === 4
-        ? 'final4'
-        : 'veto_ceremony'
+    return voxPopuliActive ? 'vox_safety_ceremony' : aliveCount === 4 ? 'final4' : 'veto_ceremony'
   if (phase === 'nominations' && voxPopuliActive) return 'vox_nominations'
   if (phase === 'nominations')
     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony'
@@ -449,16 +534,13 @@ function getPhaseAnnouncementKey(
 
 // Duration (ms) the main viewport text stays faded after an announcement is dismissed,
 // preventing jarring text transitions between the overlay disappearing and new text.
-const POST_DISMISS_FADE_MS = 300
 const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700
 const LIVE_VOTE_CUTOUT_PADDING = 12
+const LIVE_VOTE_CUTOUT_BOTTOM_PADDING = 0
 const LIVE_VOTE_CUTOUT_RADIUS = 18
 const DETOX_MESSAGE_HOLD_MS = 1500
-const CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS = new Set([
-  'loh_tiebreak_tie',
-  'loh_tiebreak_deciding',
-  'loh_tiebreak_decision',
-])
+const VOTE_RESULTS_POST_REVEAL_MS = 1000
+const VOTE_RESULTS_OUTCOME_MS = 3000
 const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
   'vox_populi',
   'vox_final3',
@@ -468,8 +550,9 @@ const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
   'vox_populi_final_two',
 ])
 
-const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon… ✨$/
-const LEGACY_DAY_START_EVENT = /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
+const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon…(?: ✨)?$/
+const LEGACY_DAY_START_EVENT =
+  /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
 
 function getDailyTransitionPhase(event: TvEvent): Phase | null {
   if (event.meta?.key === 'day_start') return 'week_start'
@@ -481,10 +564,49 @@ function getDailyTransitionPhase(event: TvEvent): Phase | null {
   return null
 }
 
-// Major events now stay entirely inside the faux-TV presentation. Keeping this
-// set empty disables the former full-screen shock stinger without changing the
-// announcement queue or the in-TV treatment.
-const SHOCK_ANNOUNCEMENT_KEYS = new Set<string>()
+function compactPhaseLabel(phase: Phase): string {
+  if (phase.startsWith('loh_')) return 'LOH'
+  if (phase.startsWith('pos_') || phase === 'pre_veto_public_save') return 'Safety'
+  if (phase.startsWith('nomination')) return 'Noms'
+  if (phase.startsWith('social')) return 'Social'
+  if (phase.startsWith('final3') || phase === 'final4_eviction') return 'Finale'
+  if (phase.startsWith('jury')) return 'Tribunal'
+  const labels: Partial<Record<Phase, string>> = {
+    season_start: 'Season',
+    week_start: 'Day',
+    week_end: 'Day End',
+    live_vote: 'Vote',
+    eviction_results: 'Results',
+    democracia_vote: 'Vote',
+    democracia_results: 'Results',
+  }
+  return labels[phase] ?? formatPhaseLabel(phase)
+}
+
+/**
+ * Announcement keys that receive the cinematic fullscreen shock sequence:
+ *   1. Fullscreen stinger (ShockIntroOverlay)
+ *   2. Faux-TV announcement card
+ *   3. Info-button spotlight
+ */
+const SHOCK_ANNOUNCEMENT_KEYS = new Set([
+  'double_eviction',
+  'vox_double_eviction',
+  'vip_veto',
+  'diamond_pov',
+  'coup_detat',
+  'spotlight_veto',
+  'battle_back',
+  'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
+  'democracia',
+  'cupid_arrow',
+  'cupid_arrow_broken',
+  'vox_populi',
+  'tribunal_phase',
+  'depression_shock_start',
+])
 
 type QueuedShockAnnouncement = {
   announcement: Announcement
@@ -532,17 +654,21 @@ type LiveVoteBackdropMetrics = {
 }
 
 type TvZoneProps = {
+  /**
+   * Temporarily owns the viewport copy while a full-screen flow is in progress.
+   * This keeps an older feed item from showing through a dimmed game background.
+   */
+  viewportMessageOverride?: string | null
   publicSaveReveal?: TvZonePublicSaveReveal | null
   onPublicSaveDone?: () => void
   voteResultsReveal?: TvZoneVoteResultsReveal | null
   democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null
   mainLogMaxVisible?: number
+  rosterLogLauncher?: boolean
   priorityAnnouncement?: Announcement | null
   onPriorityAnnouncementDismiss?: () => void
   externalAnnouncement?: Announcement | null
   onExternalAnnouncementDismiss?: () => void
-  /** Fallback text shown in the viewport when no fresh event is available and the screen would otherwise go blank. */
-  viewportFallbackMessage?: string
   /** Compact board occupancy chip shown when the roster header yields space to the board. */
   occupancyChip?: {
     label: string
@@ -585,6 +711,13 @@ export default function TvZone(props: TvZoneProps) {
   const hasPendingChallenge = useAppSelector((s: RootState) => s.challenge.pending != null)
   const reduxStore = useStore<RootState>()
   const audioSettings = useAppSelector((s) => s.settings?.audio ?? DEFAULT_SETTINGS.audio)
+  const depressionShockPhase: DepressionShockVisualPhase = useSyncExternalStore(
+    subscribeDepressionShockVisualPhase,
+    getDepressionShockVisualSnapshot,
+    (): DepressionShockVisualPhase => 'inactive'
+  )
+  const depressionShockRainyTv = depressionShockPhase === 'day1' || depressionShockPhase === 'day2'
+  const depressionShockSunnyTv = depressionShockPhase === 'sunbreak'
 
   // Filter entries for the TV viewport (excludes DR-only events).
   const tvVisibleFeed = useMemo(() => gameState.tvFeed.filter(isVisibleOnTv), [gameState.tvFeed])
@@ -592,23 +725,18 @@ export default function TvZone(props: TvZoneProps) {
   const mainLogFeed = useMemo(() => gameState.tvFeed.filter(isVisibleInMainLog), [gameState.tvFeed])
   const queuedBroadcastEvent = useMemo(() => {
     const queuedId = gameState.broadcastQueue?.[0]
-    return queuedId ? gameState.tvFeed.find((event) => event.id === queuedId) ?? null : null
-  }, [gameState.broadcastQueue, gameState.tvFeed])
-  const queuedBroadcastLevel = queuedBroadcastEvent?.meta?.broadcastLevel as
-    | 'minor'
-    | 'major'
-    | 'critical'
-    | undefined
+    if (!queuedId) return null
+    const event = gameState.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
+    return isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week) ? event : null
+  }, [gameState.broadcastQueue, gameState.phase, gameState.tvFeed, gameState.week])
+  const queuedBroadcastLevel = getTvPresentationBroadcastLevel(queuedBroadcastEvent)
   const queuedBroadcastIsCard =
     queuedBroadcastLevel === 'major' || queuedBroadcastLevel === 'critical'
   const lastPlainBroadcastEvent = useMemo(() => {
     const id = gameState.lastPlainBroadcastEventId
     if (!id) return null
     const event = gameState.tvFeed.find((candidate) => candidate.id === id)
-    if (
-      event?.meta?.phase !== gameState.phase ||
-      event?.meta?.week !== gameState.week
-    ) return null
+    if (event?.meta?.phase !== gameState.phase || event?.meta?.week !== gameState.week) return null
     return event
   }, [gameState.lastPlainBroadcastEventId, gameState.phase, gameState.tvFeed, gameState.week])
   const mainLogMaxVisible = props.mainLogMaxVisible ?? 2
@@ -622,9 +750,23 @@ export default function TvZone(props: TvZoneProps) {
   }, [latestEvent, tvVisibleFeed])
   const publicSaveRevealActive = Boolean(props.publicSaveReveal)
   const voteResultsRevealActive = Boolean(props.voteResultsReveal)
+  const [voteResultsAudioDurationMs, setVoteResultsAudioDurationMs] = useState<number | null>(null)
   const democraciaResultsRevealActive = Boolean(props.democraciaResultsReveal)
   const priorityAnnouncement = props.priorityAnnouncement ?? null
   const externalAnnouncement = props.externalAnnouncement ?? null
+
+  useEffect(() => {
+    if (!voteResultsRevealActive) {
+      return
+    }
+    let cancelled = false
+    void getEvictionVotingAudioDurationMs().then((durationMs) => {
+      if (!cancelled) setVoteResultsAudioDurationMs(durationMs)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [voteResultsRevealActive])
 
   // ── Development logging ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -645,10 +787,9 @@ export default function TvZone(props: TvZoneProps) {
   const [, setDismissedPhase] = useState<Phase | null>(null)
   // Phase-triggered announcement (set on phase transition, cleared on dismiss or non-popup phase).
   const [phaseAnnouncement, setPhaseAnnouncement] = useState<Announcement | null>(null)
-  // Brief post-dismiss text fade (POST_DISMISS_FADE_MS) to avoid jarring text transitions.
-  const [postDismissBlocked, setPostDismissBlocked] = useState(false)
   // Short-lived TV spotlight effect for Double Eviction special announcements.
   const [deSpotlightActive, setDeSpotlightActive] = useState(false)
+  const [cupidOutlinePulseActive, setCupidOutlinePulseActive] = useState(false)
   const [saveStatus, setSaveStatus] = useState<null | 'saved' | 'error'>(null)
   // Save feedback dialog — shows a mobile-friendly confirmation after save.
   const [saveFeedbackOpen, setSaveFeedbackOpen] = useState(false)
@@ -664,8 +805,8 @@ export default function TvZone(props: TvZoneProps) {
   const [shockAnnouncementQueue, setShockAnnouncementQueue] = useState<QueuedShockAnnouncement[]>(
     []
   )
-  const dismissBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deSpotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cupidOutlinePulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const detoxMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const detoxSequenceLatestIdRef = useRef<string | null>(null)
@@ -705,7 +846,9 @@ export default function TvZone(props: TvZoneProps) {
           x: rect.left - LIVE_VOTE_CUTOUT_PADDING,
           y: rect.top - LIVE_VOTE_CUTOUT_PADDING,
           w: rect.width + LIVE_VOTE_CUTOUT_PADDING * 2,
-          h: rect.height + LIVE_VOTE_CUTOUT_PADDING * 2,
+          // Do not extend the transparent cutout below the TV zone. That
+          // space belongs to the grid and must remain under the vote mask.
+          h: rect.height + LIVE_VOTE_CUTOUT_PADDING + LIVE_VOTE_CUTOUT_BOTTOM_PADDING,
         },
       })
     }
@@ -748,10 +891,26 @@ export default function TvZone(props: TvZoneProps) {
       tvVisibleFeed.find(
         (event) =>
           isBroadcastRelevant(event) &&
+          event.meta?.phase === gameState.phase &&
+          event.meta?.week === gameState.week &&
           event.meta?.broadcastManaged !== true &&
           !(event.meta?.broadcastPriority === 'critical' && dismissedPriorityEventIds.has(event.id))
       ) ?? null,
-    [dismissedPriorityEventIds, isBroadcastRelevant, tvVisibleFeed]
+    [dismissedPriorityEventIds, gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
+  )
+  // Once a phase card has been acknowledged it leaves the announcement queue,
+  // but its copy remains the canonical content for that phase. Include every
+  // current-phase source here (not only Minor sources) so dismissing a Major
+  // card can never reveal an empty screen.
+  const latestCurrentPhaseMessage = useMemo(
+    () =>
+      tvVisibleFeed.find(
+        (event) =>
+          event.meta?.phase === gameState.phase &&
+          event.meta?.week === gameState.week &&
+          isBroadcastRelevant(event)
+      ) ?? null,
+    [gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
   )
   const priorityBroadcastEvent = useMemo(
     () =>
@@ -772,44 +931,59 @@ export default function TvZone(props: TvZoneProps) {
     (!queuedBroadcastIsCard ? queuedBroadcastEvent : null) ??
     priorityBroadcastEvent ??
     latestRelevantEvent ??
-    lastPlainBroadcastEvent
+    lastPlainBroadcastEvent ??
+    latestCurrentPhaseMessage ??
+    // Results can advance their phase before their final feed item is tagged
+    // with that new phase. Preserve that latest visible result in the faux TV
+    // instead of presenting an empty viewport during the handoff.
+    latestEvent
+  const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
+  const dailyAtmosphere = dailyTransitionPhase
+    ? getDailyAtmosphere(
+        gameState.gameId,
+        gameState.week,
+        dailyTransitionPhase,
+        gameState.depressionShock
+      )
+    : null
+  const presentedDailyAtmosphere =
+    depressionShockSunnyTv && (!dailyTransitionPhase || dailyTransitionPhase === 'week_start')
+      ? 'sunny'
+      : dailyAtmosphere
+  const dailyMoonPhase = (['crescent', 'half', 'gibbous', 'full'] as const)[
+    Math.max(0, gameState.week - 1) % 4
+  ]
+  const dailyTransitionTitle = getDailyTransitionTitle({
+    atmosphere: presentedDailyAtmosphere,
+    phase: dailyTransitionPhase ?? gameState.phase,
+    week: gameState.week,
+  })
+  const voteResultsTotal =
+    props.voteResultsReveal?.nominees.reduce(
+      (sum, nominee) => sum + Math.max(0, Math.round(nominee.voteCount)),
+      0
+    ) ?? 0
+  const syncedVoteRevealIntervalMs =
+    props.voteResultsReveal?.resultMode === 'public' &&
+    voteResultsAudioDurationMs &&
+    voteResultsTotal > 0
+      ? calculateEvictionVoteRevealIntervalMs(
+          voteResultsAudioDurationMs,
+          EVICTION_PUBLIC_ESTIMATE_STEPS,
+          VOTE_RESULTS_POST_REVEAL_MS,
+          VOTE_RESULTS_OUTCOME_MS
+        )
+      : undefined
   const detoxMessageActive = Boolean(activeDetoxEvent)
 
   // ── Shock announcement sequence state ────────────────────────────────────────
   // Phase A: full-screen shock stinger (ShockIntroOverlay).
   const [shockIntroActive, setShockIntroActive] = useState(false)
+  const [cupidIntroAcknowledged, setCupidIntroAcknowledged] = useState(false)
   // Phase C: info-button spotlight (ConfessionalSpotlightOverlay reused).
   const [shockInfoSpotlightActive, setShockInfoSpotlightActive] = useState(false)
   // Ref forwarded to the TvAnnouncementOverlay info button for spotlight targeting.
   const announcementInfoButtonRef = useRef<HTMLButtonElement | null>(null)
-  // The end of Cupid's Arrow is a season climax, not an ordinary feed item.
-  // Keep an explicit broadcast alive so a Confessional prompt or phase card
-  // cannot bury the full-screen dissociation sequence.
-  const [cupidBreakAnnouncement, setCupidBreakAnnouncement] = useState<Announcement | null>(null)
-  const previousCupidStatusRef = useRef(gameState.cupidArrow?.status ?? 'inactive')
-
-  useEffect(() => {
-    const previousStatus = previousCupidStatusRef.current
-    const nextStatus = gameState.cupidArrow?.status ?? 'inactive'
-    previousCupidStatusRef.current = nextStatus
-
-    if (previousStatus === 'active' && nextStatus === 'broken') {
-      startTransition(() => {
-        setCupidBreakAnnouncement(
-          buildAnnouncement('cupid_arrow_broken', {
-            id: `cupid-arrow-break-${Date.now()}`,
-            text: "Cupid's Arrow has ended.",
-            type: 'twist',
-            timestamp: Date.now(),
-            meta: { major: 'cupid_arrow_broken' },
-          })
-        )
-      })
-    } else if (nextStatus !== 'broken') {
-      startTransition(() => setCupidBreakAnnouncement(null))
-    }
-  }, [gameState.cupidArrow?.status])
-
   // ── Phase-transition announcement detection ──────────────────────────────────
   // Fires whenever the game phase or alive-player count changes.
   // Also allows an in-place upgrade for nomination-phase overlays when
@@ -861,7 +1035,8 @@ export default function TvZone(props: TvZoneProps) {
       announcementEvent !== queuedBroadcastEvent &&
       announcementEvent.id === dismissedEventId &&
       !isUndismissedCriticalBroadcast
-    ) return null
+    )
+      return null
     const majorKey = extractMajorKey(announcementEvent)
     return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null
   }, [
@@ -901,6 +1076,7 @@ export default function TvZone(props: TvZoneProps) {
     const newEventCount = previousIndex === -1 ? 1 : previousIndex
     const newEvents = tvVisibleFeed.slice(0, newEventCount)
     const queued = [...newEvents].reverse().flatMap((event) => {
+      if (event.meta?.broadcastManaged === true && event.meta?.forceOnTv !== true) return []
       const key = extractMajorKey(event)
       if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
       // Phase-card branches used to emit a second legacy major event beside
@@ -927,16 +1103,36 @@ export default function TvZone(props: TvZoneProps) {
   // main screen, through the interview and Public Favorite handoff.
   const winnerBroadcast = useMemo(() => {
     const finale = gameState.seasonFinale
-    if (!finale || !['winnerInterview', 'publicFavoriteSetup'].includes(finale.phase)) return null
-
-    return gameState.players.find((player) => player.id === finale.winnerId) ?? null
-  }, [gameState.players, gameState.seasonFinale])
+    if (finale && ['winnerInterview', 'publicFavoriteSetup'].includes(finale.phase)) {
+      return gameState.players.find((player) => player.id === finale.winnerId) ?? null
+    }
+    // finalizeGame marks the winner before the post-finale overlay is created.
+    // During that handoff the game route is briefly visible and still reports
+    // the Tribunal phase, so use the resolved player record instead of falling
+    // back to the stale Tribunal Votes card.
+    if (gameState.phase === 'jury') {
+      return gameState.players.find((player) => player.isWinner || player.finalRank === 1) ?? null
+    }
+    return null
+  }, [gameState.phase, gameState.players, gameState.seasonFinale])
 
   const queuedShockAnnouncement = shockAnnouncementQueue[0] ?? null
   const managedEventAnnouncement =
     queuedBroadcastIsCard && eventAnnouncementSource?.id === queuedBroadcastEvent?.id
       ? eventAnnouncement
       : null
+  const cupidFauxTvAnnouncement = eventAnnouncement?.key === 'cupid_arrow'
+  const cupidFollowUpVisible = cupidFauxTvAnnouncement && cupidIntroAcknowledged
+  const cupidFollowUpAnnouncement: Announcement = {
+    key: 'cupid_arrow',
+    // Keep an accessible announcement name even though the faux-TV handoff
+    // intentionally hides the visual title.
+    title: "Cupid's Arrow",
+    subtitle:
+      'Cupid just made his love concoction.\nCheers to the newly formed couples.\nEvery pair now shares one fate.\nPower, danger, votes, and exits belong to two.\nThe Big Eye is watching. 💘',
+    isLive: true,
+    autoDismissMs: null,
+  }
   const eventAnnouncementHasShockPriority =
     eventAnnouncement != null &&
     (managedEventAnnouncement
@@ -947,7 +1143,6 @@ export default function TvZone(props: TvZoneProps) {
   // before a simultaneous phase card (for example the first LOH competition)
   // is allowed to take over the TV.
   const activeAnnouncement =
-    cupidBreakAnnouncement ??
     queuedShockAnnouncement?.announcement ??
     (eventAnnouncementHasShockPriority ? eventAnnouncement : null) ??
     priorityAnnouncement ??
@@ -955,6 +1150,7 @@ export default function TvZone(props: TvZoneProps) {
     managedEventAnnouncement ??
     phaseAnnouncement ??
     eventAnnouncement
+  const displayedAnnouncement = normalizeAnnouncementCopy(activeAnnouncement)
   const activeAnnouncementSequenceId =
     queuedShockAnnouncement?.eventId ??
     (activeAnnouncement === eventAnnouncement ? eventAnnouncementSource?.id : null) ??
@@ -970,6 +1166,7 @@ export default function TvZone(props: TvZoneProps) {
     winnerBroadcast == null &&
     activeAnnouncement != null &&
     !(shockIntroActive && isShockAnnouncement) &&
+    !(cupidFauxTvAnnouncement && !cupidIntroAcknowledged) &&
     !publicSaveRevealActive &&
     !voteResultsRevealActive &&
     !democraciaResultsRevealActive &&
@@ -988,40 +1185,52 @@ export default function TvZone(props: TvZoneProps) {
   }, [activeAnnouncement?.key, dispatch, gameState.phase, showInlineAnnouncement])
 
   const showOccupancyChip =
-    occupancyChip != null && !showInlineAnnouncement && winnerBroadcast == null
-  const suppressStaleLiveVotePitchMessage =
-    displayedEvent?.meta?.key === LIVE_VOTE_PITCHES_EVENT_KEY && gameState.phase !== 'social_2'
-  const viewportFallbackMessage = props.viewportFallbackMessage?.trim()
-  const hasFallbackViewportMessage = Boolean(viewportFallbackMessage)
+    occupancyChip != null &&
+    !cupidFollowUpVisible &&
+    (!showInlineAnnouncement || cupidFollowUpVisible) &&
+    winnerBroadcast == null
+  const viewportMessageOverride = props.viewportMessageOverride?.trim() || null
   const hideViewportMessage =
-    (postDismissBlocked && !hasFallbackViewportMessage) ||
-    (suppressStaleLiveVotePitchMessage && !hasFallbackViewportMessage) ||
-    (!displayedEvent && !hasFallbackViewportMessage) ||
-    !!activeAnnouncement ||
-    winnerBroadcast != null ||
-    publicSaveRevealActive ||
-    voteResultsRevealActive ||
-    democraciaResultsRevealActive ||
-    audiencePreviewRevealActive
-  // When the stale pitch message is suppressed but a fallback is available, use the
-  // fallback instead of the suppressed event text so the viewport stays meaningful.
+    !viewportMessageOverride &&
+    (!displayedEvent ||
+      (!!activeAnnouncement && !cupidFollowUpVisible) ||
+      winnerBroadcast != null ||
+      publicSaveRevealActive ||
+      voteResultsRevealActive ||
+      democraciaResultsRevealActive ||
+      audiencePreviewRevealActive)
+  // Existing saved seasons can still hold the former default welcome copy.
+  // Normalize that exact legacy phrase until those broadcasts are regenerated.
+  const displayedEventText = displayedEvent?.text
+    ? decorateDepressionShockFauxTvText(
+        normalizeHubCopy(displayedEvent.text),
+        depressionShockPhase,
+        `${gameState.gameId}|${gameState.week}|${displayedEvent.id}`
+      )
+    : undefined
   const viewportDisplayText =
-    suppressStaleLiveVotePitchMessage && hasFallbackViewportMessage
-      ? viewportFallbackMessage
-      : (displayedEvent?.text ?? viewportFallbackMessage)
+    viewportMessageOverride ??
+    (cupidFollowUpVisible
+      ? cupidFollowUpAnnouncement.subtitle
+      : (dailyTransitionTitle ?? displayedEventText))
   const baseViewportMessageKey = getViewportMessageKey(displayedEvent)
-  const viewportMessageKey = detoxMessageActive
-    ? `${baseViewportMessageKey}-${detoxMessageIndex}`
-    : baseViewportMessageKey
+  const viewportMessageKey = viewportMessageOverride
+    ? `override-${viewportMessageOverride}`
+    : detoxMessageActive
+      ? `${baseViewportMessageKey}-${detoxMessageIndex}`
+      : baseViewportMessageKey
   let mainTvMessage: string | undefined
-  if (winnerBroadcast) {
-    mainTvMessage = winnerBroadcast.name + ' wins The Big Eye'
+  if (viewportMessageOverride) {
+    mainTvMessage = viewportMessageOverride
+  } else if (winnerBroadcast) {
+    mainTvMessage = `${winnerBroadcast.name} won Season ${gameState.season} of The Big Eye`
   } else if (activeAnnouncement) {
-    mainTvMessage = activeAnnouncement.title
-  } else if (suppressStaleLiveVotePitchMessage) {
-    mainTvMessage = viewportFallbackMessage
+    mainTvMessage =
+      cupidFauxTvAnnouncement && cupidIntroAcknowledged
+        ? cupidFollowUpAnnouncement.subtitle
+        : activeAnnouncement.title
   } else {
-    mainTvMessage = displayedEvent?.text
+    mainTvMessage = displayedEventText
   }
 
   useEffect(() => {
@@ -1072,6 +1281,10 @@ export default function TvZone(props: TvZoneProps) {
 
   const handleDismiss = useCallback(() => {
     const currentAnnouncement = activeAnnouncement
+    // Cupid's opening proclamation can only progress through its own OK
+    // button. A central Play press must never consume it before the faux-TV
+    // handoff has been shown.
+    if (currentAnnouncement?.key === 'cupid_arrow' && !cupidIntroAcknowledged) return
     if (
       currentAnnouncement &&
       priorityBroadcastEvent &&
@@ -1084,15 +1297,7 @@ export default function TvZone(props: TvZoneProps) {
         return next
       })
     }
-    const skipPostDismissFade =
-      currentAnnouncement != null &&
-      (
-        CONTINUOUS_MAJOR_ANNOUNCEMENT_KEYS.has(currentAnnouncement.key) ||
-        currentAnnouncement === managedEventAnnouncement
-      )
-    if (cupidBreakAnnouncement) {
-      setCupidBreakAnnouncement(null)
-    } else if (queuedShockAnnouncement) {
+    if (queuedShockAnnouncement) {
       setDismissedEventId(queuedShockAnnouncement.eventId)
       setShockAnnouncementQueue((queue) => queue.slice(1))
     } else if (
@@ -1124,24 +1329,9 @@ export default function TvZone(props: TvZoneProps) {
     } else if (eventAnnouncementSource) {
       setDismissedEventId(eventAnnouncementSource.id)
     }
-    if (skipPostDismissFade) {
-      setPostDismissBlocked(false)
-      if (dismissBlockTimerRef.current !== null) {
-        clearTimeout(dismissBlockTimerRef.current)
-        dismissBlockTimerRef.current = null
-      }
-      return
-    }
-    setPostDismissBlocked(true)
-    if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
-    dismissBlockTimerRef.current = setTimeout(
-      () => setPostDismissBlocked(false),
-      POST_DISMISS_FADE_MS
-    )
   }, [
     activeAnnouncement,
     dispatch,
-    cupidBreakAnnouncement,
     queuedShockAnnouncement,
     managedEventAnnouncement,
     queuedBroadcastEvent,
@@ -1154,14 +1344,8 @@ export default function TvZone(props: TvZoneProps) {
     onPriorityAnnouncementDismiss,
     onExternalAnnouncementDismiss,
     priorityBroadcastEvent,
+    cupidIntroAcknowledged,
   ])
-
-  // Cleanup post-dismiss timer on unmount
-  useEffect(() => {
-    return () => {
-      if (dismissBlockTimerRef.current !== null) clearTimeout(dismissBlockTimerRef.current)
-    }
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -1209,6 +1393,33 @@ export default function TvZone(props: TvZoneProps) {
     }
   }, [activeAnnouncement?.key, showInlineAnnouncement])
 
+  // Cupid's post-OK message uses the standard TV stage. Give that handoff the
+  // same brief outline pulse as Double Elimination, but in Cupid rose-pink.
+  useEffect(() => {
+    if (!cupidFollowUpVisible) {
+      startTransition(() => setCupidOutlinePulseActive(false))
+      if (cupidOutlinePulseTimerRef.current !== null) {
+        clearTimeout(cupidOutlinePulseTimerRef.current)
+        cupidOutlinePulseTimerRef.current = null
+      }
+      return
+    }
+
+    startTransition(() => setCupidOutlinePulseActive(true))
+    if (cupidOutlinePulseTimerRef.current !== null) clearTimeout(cupidOutlinePulseTimerRef.current)
+    cupidOutlinePulseTimerRef.current = setTimeout(() => {
+      setCupidOutlinePulseActive(false)
+      cupidOutlinePulseTimerRef.current = null
+    }, DOUBLE_EVICTION_SPOTLIGHT_MS)
+
+    return () => {
+      if (cupidOutlinePulseTimerRef.current !== null) {
+        clearTimeout(cupidOutlinePulseTimerRef.current)
+        cupidOutlinePulseTimerRef.current = null
+      }
+    }
+  }, [cupidFollowUpVisible])
+
   // ── Shock intro sequence ──────────────────────────────────────────────────────
   // Fires whenever the active announcement key changes.
   // - Shock key  → start the stinger (phase A); spotlight cleared.
@@ -1227,12 +1438,69 @@ export default function TvZone(props: TvZoneProps) {
     })
   }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
 
+  useEffect(() => {
+    if (activeAnnouncement?.key !== 'cupid_arrow') {
+      startTransition(() => setCupidIntroAcknowledged(false))
+    }
+  }, [activeAnnouncementSequenceId, activeAnnouncement?.key])
+
+  // Recovery for saves made while the older Cupid flow could consume the
+  // announcement before reaching Play. A normal new Cupid activation retains
+  // its active announcement until Play, so it still waits for the full reveal.
+  useEffect(() => {
+    if (
+      gameState.cupidArrow?.status === 'active' &&
+      !gameState.cupidArrow.visualsRevealed &&
+      activeAnnouncement?.key !== 'cupid_arrow' &&
+      !shockIntroActive
+    ) {
+      dispatch(revealCupidArrowVisuals())
+    }
+  }, [
+    activeAnnouncement?.key,
+    dispatch,
+    gameState.cupidArrow?.status,
+    gameState.cupidArrow?.visualsRevealed,
+    shockIntroActive,
+  ])
+
   const handleShockIntroComplete = useCallback(() => {
     startTransition(() => {
       setShockIntroActive(false)
-      setShockInfoSpotlightActive(true)
+      if (activeAnnouncement?.key === 'cupid_arrow') {
+        // Cupid's second stage is the faux-TV handoff, not the info spotlight.
+        // Keeping the spotlight active here created an empty intermediate TV
+        // phase because Cupid intentionally has no info button.
+        setShockInfoSpotlightActive(false)
+        setCupidIntroAcknowledged(true)
+      } else if (activeAnnouncement?.key === 'cupid_arrow_broken') {
+        // The break reveal is acknowledged first; only then expose the roster
+        // and play the one-shot return to the original black-gold portraits.
+        // Consume this broadcast now: unlike Cupid's opening, it has no second
+        // faux-TV handoff and must not be rendered again as an inline card.
+        setShockInfoSpotlightActive(false)
+        handleDismiss()
+        document.body.classList.remove('body--cupid-returning')
+        // Let the full-screen cinematic unmount before swapping the portrait
+        // source. Otherwise the entire return beat plays underneath it.
+        window.setTimeout(() => {
+          document.body.classList.add('body--cupid-returning')
+          dispatch(finishCupidArrowVisualReturn())
+        }, 240)
+        window.setTimeout(() => document.body.classList.remove('body--cupid-returning'), 1780)
+      } else if (activeAnnouncement?.key === 'depression_shock_start') {
+        // The roster transformation belongs to the Faux-TV handoff. Trigger it
+        // only after the standard shock stinger has cleared, so it cannot play
+        // unseen beneath the fullscreen introduction.
+        setShockInfoSpotlightActive(false)
+        window.requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('depression-shock:thunder-presented'))
+        })
+      } else {
+        setShockInfoSpotlightActive(true)
+      }
     })
-  }, [])
+  }, [activeAnnouncement?.key, dispatch, handleDismiss])
 
   const handleShockSpotlightComplete = useCallback(() => {
     startTransition(() => setShockInfoSpotlightActive(false))
@@ -1264,6 +1532,9 @@ export default function TvZone(props: TvZoneProps) {
       if (queuedBroadcastEvent && (!activeAnnouncement || managedEventAnnouncement)) {
         if (managedEventAnnouncement) {
           if ((gameState.broadcastQueue?.length ?? 0) > 1) event.preventDefault()
+          if (activeAnnouncement?.key === 'depression_shock_chocolates') {
+            window.dispatchEvent(new Event('depression-shock:chocolate-presented'))
+          }
           handleDismiss()
         } else {
           // A plain message needs to block Play only when another eligible TV
@@ -1275,8 +1546,26 @@ export default function TvZone(props: TvZoneProps) {
         return
       }
       if (activeAnnouncement) {
+        if (activeAnnouncement.key === 'cupid_arrow' && !cupidFollowUpVisible) {
+          event.preventDefault()
+          return
+        }
+        if (activeAnnouncement.key === 'cupid_arrow' && cupidFollowUpVisible) {
+          // Hold the Play action for the complete avatar storm and cap landing;
+          // Day 1 is generated only after the reveal has finished.
+          event.preventDefault()
+          dispatch(revealCupidArrowVisuals())
+          window.setTimeout(() => {
+            handleDismiss()
+            dispatch(advance())
+          }, 2200)
+          return
+        }
         if (!PLAY_THROUGH_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key)) {
           event.preventDefault()
+        }
+        if (activeAnnouncement.key === 'depression_shock_chocolates') {
+          window.dispatchEvent(new Event('depression-shock:chocolate-presented'))
         }
         handleDismiss()
         return
@@ -1301,6 +1590,7 @@ export default function TvZone(props: TvZoneProps) {
     priorityBroadcastEvent,
     queuedBroadcastEvent,
     gameState.broadcastQueue?.length,
+    cupidFollowUpVisible,
   ])
 
   const handleModalClose = useCallback(() => setModalOpen(false), [])
@@ -1317,7 +1607,7 @@ export default function TvZone(props: TvZoneProps) {
 
   useEffect(() => {
     const shockSequenceActive = shockIntroActive || shockInfoSpotlightActive || detoxMessageActive
-    if (shockSequenceActive && cupidShockKey) {
+    if ((shockSequenceActive || cupidFauxTvAnnouncement) && cupidShockKey) {
       document.body.classList.add('body--cupid-shock')
       document.body.classList.remove('body--shock-active')
     } else if (shockSequenceActive) {
@@ -1331,7 +1621,13 @@ export default function TvZone(props: TvZoneProps) {
       document.body.classList.remove('body--shock-active')
       document.body.classList.remove('body--cupid-shock')
     }
-  }, [cupidShockKey, shockIntroActive, shockInfoSpotlightActive, detoxMessageActive])
+  }, [
+    cupidFauxTvAnnouncement,
+    cupidShockKey,
+    shockIntroActive,
+    shockInfoSpotlightActive,
+    detoxMessageActive,
+  ])
 
   useEffect(() => {
     if (!shockIntroActive) return
@@ -1361,9 +1657,37 @@ export default function TvZone(props: TvZoneProps) {
       : gameState.voxPopuli?.status === 'active' && gameState.phase.startsWith('final3_comp')
         ? 'Final Immunity'
         : formatPhaseLabel(gameState.phase)
+  const shortPhaseLabel = compactPhaseLabel(gameState.phase)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const headerPillsRef = useRef<HTMLUListElement>(null)
+  const headerActionsRef = useRef<HTMLDivElement>(null)
+  const phaseMeasureRef = useRef<HTMLSpanElement>(null)
+  const [compactPhaseChip, setCompactPhaseChip] = useState(false)
+
+  useLayoutEffect(() => {
+    const header = headerRef.current
+    const pills = headerPillsRef.current
+    const actions = headerActionsRef.current
+    const phaseMeasure = phaseMeasureRef.current
+    if (!header || !pills || !actions || !phaseMeasure) return
+
+    const measure = () => {
+      // Full phase text + chip padding, status-chip content, action controls,
+      // header padding and inter-column gaps. Shorten only if that real total
+      // cannot fit; viewport width alone is deliberately not used.
+      const fullPhaseWidth = phaseMeasure.getBoundingClientRect().width + 14
+      const requiredWidth = fullPhaseWidth + pills.scrollWidth + actions.offsetWidth + 20
+      setCompactPhaseChip(requiredWidth > header.clientWidth + 0.5)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(header)
+    observer.observe(pills)
+    observer.observe(actions)
+    return () => observer.disconnect()
+  })
   const isAtGameStart =
-    gameState.week === 1 &&
-    (gameState.phase === 'season_start' || gameState.phase === 'week_start')
+    gameState.week === 1 && (gameState.phase === 'season_start' || gameState.phase === 'week_start')
   const canSave = !isGuest && Boolean(activeProfileId) && !isAtGameStart && !hasPendingChallenge
   const saveChipAriaLabel = isGuest
     ? 'Save (unavailable in guest mode)'
@@ -1394,22 +1718,17 @@ export default function TvZone(props: TvZoneProps) {
 
   // Distinguish the double-eviction spotlight from the live-vote focus state.
   const isDeSpotlight = deSpotlightActive
+  const isCupidOutlinePulse = cupidOutlinePulseActive
   const isLiveVoteFocus = voteResultsRevealActive
 
   const handleSave = useCallback(() => {
     if (!canSave || !activeProfileId) return
 
     const currentState = reduxStore.getState()
-    const ok = saveRunSnapshot(activeProfileId, {
-      version: 1,
-      profileId: activeProfileId,
-      savedAt: new Date().toISOString(),
-      game: currentState.game,
-      finale: currentState.finale,
-      social: currentState.social,
-      publicOpinion: currentState.publicOpinion,
-      challenge: currentState.challenge,
-    })
+    const ok = saveRunSnapshot(
+      activeProfileId,
+      createSavedSeasonSnapshot(activeProfileId, currentState)
+    )
     setSaveStatus(ok ? 'saved' : 'error')
     setSaveFeedbackIsError(!ok)
     setSaveFeedbackOpen(true)
@@ -1423,6 +1742,7 @@ export default function TvZone(props: TvZoneProps) {
       className={[
         'tv-zone',
         isDeSpotlight ? 'tv-zone--de-spotlight' : '',
+        isCupidOutlinePulse ? 'tv-zone--cupid-outline-pulse' : '',
         isLiveVoteFocus ? 'tv-zone--live-vote-focus' : '',
         detoxMessageActive ? 'tv-zone--detox-stream' : '',
       ]
@@ -1430,7 +1750,12 @@ export default function TvZone(props: TvZoneProps) {
         .join(' ')}
       ref={tvZoneRef}
       aria-label="Game action zone"
-      style={{ '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms` } as CSSProperties}
+      style={
+        {
+          '--de-spotlight-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms`,
+          '--cupid-outline-pulse-ms': `${DOUBLE_EVICTION_SPOTLIGHT_MS}ms`,
+        } as CSSProperties
+      }
     >
       {/* ── Double Eviction spotlight backdrop (portal to body) ──────────── */}
       {isDeSpotlight &&
@@ -1500,18 +1825,38 @@ export default function TvZone(props: TvZoneProps) {
         )}
 
       {/* ── Head bar ────────────────────────────────────────────────────── */}
-      <div className="tv-zone__head">
+      <div
+        ref={headerRef}
+        className={`tv-zone__head${compactPhaseChip ? ' tv-zone__head--compact-phase' : ''}`}
+      >
         {/* Left: pinned phase chip */}
         <div className="tv-zone__head-phase">
-          <GameTopChip label={phaseLabel} tone="accent" className="tv-zone__head-chip" />
+          <span ref={phaseMeasureRef} className="tv-zone__phase-measure" aria-hidden="true">
+            {phaseLabel}
+          </span>
+          <GameTopChip
+            label={phaseLabel}
+            compactLabel={shortPhaseLabel}
+            ariaLabel={phaseLabel}
+            tone="accent"
+            className="tv-zone__head-chip tv-zone__phase-chip"
+          />
         </div>
 
         {/* Center: scrollable single-row status chips */}
-        <ul className="tv-zone__head-pills" aria-label="Game status chips">
+        <ul ref={headerPillsRef} className="tv-zone__head-pills" aria-label="Game status chips">
           <li>
             <GameTopChip
-              label={formatCycleLabel(gameState.season, gameState.week)}
-              ariaLabel={formatCycleAriaLabel(gameState.season, gameState.week)}
+              label={
+                gameState.mode === 'survival'
+                  ? formatSurveyevalCycleLabel(gameState.week)
+                  : formatCycleLabel(gameState.season, gameState.week)
+              }
+              ariaLabel={
+                gameState.mode === 'survival'
+                  ? `Day ${gameState.week}`
+                  : formatCycleAriaLabel(gameState.season, gameState.week)
+              }
               tone="neutral"
               className="tv-zone__head-chip"
             />
@@ -1538,7 +1883,7 @@ export default function TvZone(props: TvZoneProps) {
           )}
         </ul>
 
-        <div className="tv-zone__head-actions">
+        <div ref={headerActionsRef} className="tv-zone__head-actions">
           {gameState.isLive && (
             <span className="tv-zone__live-badge" aria-live="polite">
               LIVE
@@ -1579,27 +1924,81 @@ export default function TvZone(props: TvZoneProps) {
           )}
 
           <div
-            className="tv-zone__viewport"
+            className={[
+              'tv-zone__viewport',
+              dailyTransitionPhase || depressionShockRainyTv || depressionShockSunnyTv
+                ? 'tv-zone__viewport--daily-transition'
+                : '',
+              dailyTransitionPhase && presentedDailyAtmosphere
+                ? `tv-zone__viewport--${dailyTransitionPhase === 'week_start' ? 'day-start' : 'day-end'}-${presentedDailyAtmosphere}`
+                : '',
+              depressionShockRainyTv ? 'tv-zone__viewport--day-start-rainy' : '',
+              depressionShockSunnyTv ? 'tv-zone__viewport--day-start-sunny' : '',
+              voteResultsRevealActive ? 'tv-zone__viewport--vote-results' : '',
+              props.voteResultsReveal?.resultMode === 'public'
+                ? 'tv-zone__viewport--public-results'
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             role="region"
             aria-label="Live game events display"
             aria-live="polite"
             aria-atomic="true"
           >
-            <p
-              key={viewportMessageKey}
-              aria-hidden={hideViewportMessage}
+            {((dailyTransitionPhase && presentedDailyAtmosphere) ||
+              depressionShockRainyTv ||
+              depressionShockSunnyTv) && (
+              <div
+                className={`tv-zone__daily-atmosphere tv-zone__daily-atmosphere--${depressionShockRainyTv ? 'rainy' : depressionShockSunnyTv ? 'sunny' : presentedDailyAtmosphere}`}
+                data-moon-phase={
+                  !depressionShockRainyTv &&
+                  !depressionShockSunnyTv &&
+                  presentedDailyAtmosphere === 'starry'
+                    ? dailyMoonPhase
+                    : undefined
+                }
+                aria-hidden="true"
+              >
+                <span className="tv-zone__daily-fog" />
+                <span className="tv-zone__daily-orb" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--one" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--two" />
+                <span className="tv-zone__daily-cloud tv-zone__daily-cloud--three" />
+                <span className="tv-zone__daily-rain" />
+              </div>
+            )}
+            <div
               className={[
-                'tv-zone__now',
-                !detoxMessageActive && displayedEvent ? 'tv-zone__now--quick-transition' : '',
-                detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
-                hideViewportMessage ? 'tv-zone__now--hidden' : '',
+                'tv-zone__message-stage',
+                depressionShockRainyTv
+                  ? 'tv-zone__daily-card tv-zone__daily-card--rainy'
+                  : depressionShockSunnyTv
+                    ? 'tv-zone__daily-card tv-zone__daily-card--sunny'
+                    : dailyTransitionPhase && presentedDailyAtmosphere
+                      ? `tv-zone__daily-card tv-zone__daily-card--${presentedDailyAtmosphere}`
+                      : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
-              style={hideViewportMessage ? { opacity: 0 } : undefined}
             >
-              {viewportDisplayText}
-            </p>
+              <p
+                key={viewportMessageKey}
+                aria-hidden={hideViewportMessage}
+                className={[
+                  'tv-zone__now',
+                  cupidFollowUpVisible ? 'tv-zone__now--cupid-follow-up' : '',
+                  !detoxMessageActive && displayedEvent ? 'tv-zone__now--quick-transition' : '',
+                  detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
+                  hideViewportMessage ? 'tv-zone__now--hidden' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={hideViewportMessage ? { opacity: 0 } : undefined}
+              >
+                {viewportDisplayText}
+              </p>
+            </div>
 
             {/* Twist badge — broadcast-style corner ribbon anchored to the viewport */}
             {props.audiencePreviewReveal && (
@@ -1622,7 +2021,7 @@ export default function TvZone(props: TvZoneProps) {
                 announcement={{
                   key: 'season_winner',
                   // i18n-ignore: Canonical in-world winner announcement title
-                  title: `${winnerBroadcast.name} Wins The Big Eye`,
+                  title: `${winnerBroadcast.name} Won Season ${gameState.season} of The Big Eye`,
                   subtitle:
                     gameState.voxPopuli?.winnerId === winnerBroadcast.id
                       ? AUDIENCE_WINNER_SUBTITLE
@@ -1634,21 +2033,47 @@ export default function TvZone(props: TvZoneProps) {
               />
             )}
 
-            {/* Inline announcement overlay */}
-            {showInlineAnnouncement && activeAnnouncement && (
+            {/* Cupid hands back to the standard faux-TV message stage after OK.
+                Other announcements keep their established title-card overlay. */}
+            {showInlineAnnouncement && activeAnnouncement && !cupidFollowUpVisible && (
               <TvAnnouncementOverlay
                 key={activeAnnouncement.key}
-                announcement={activeAnnouncement}
+                announcement={
+                  cupidFollowUpVisible ? cupidFollowUpAnnouncement : displayedAnnouncement!
+                }
                 onInfo={handleInfo}
                 onDismiss={handleDismiss}
                 paused={modalOpen}
                 infoButtonRef={announcementInfoButtonRef}
-                playShockPrelude={
-                  activeAnnouncement === managedEventAnnouncement
-                    ? queuedBroadcastLevel === 'critical'
-                    : undefined
-                }
+                hideTitle={cupidFollowUpVisible}
+                showInfoButton={cupidFollowUpVisible || activeAnnouncement.key !== 'cupid_arrow'}
+                // The pair reveal belongs to the avatar storm. Keeping the
+                // follow-up copy short prevents the TV body from colliding
+                // with the roster below it.
+                cupidPairs={cupidFollowUpVisible ? [] : (gameState.cupidArrow?.pairs ?? [])}
+                cupidPlayers={gameState.players}
+                // ShockIntroOverlay already owns the only full-screen
+                // presentation for this sequence. The inline card is the
+                // deliberate faux-TV handoff, so it must never replay the
+                // legacy full-screen prelude after OK.
+                playShockPrelude={false}
               />
+            )}
+
+            {cupidFollowUpVisible && (
+              <button
+                type="button"
+                className="tv-zone__cupid-info-btn"
+                onClick={handleInfo}
+                aria-label="More info about Cupid's Arrow"
+                ref={announcementInfoButtonRef}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.75 12s3.2-5.35 9.25-5.35S21.25 12 21.25 12 18.05 17.35 12 17.35 2.75 12 2.75 12Z" />
+                  <circle cx="12" cy="12" r="2.25" />
+                  <path d="M12 3.3v1.15M12 19.55v1.15" />
+                </svg>
+              </button>
             )}
 
             {props.publicSaveReveal && (
@@ -1680,8 +2105,10 @@ export default function TvZone(props: TvZoneProps) {
                 publicTiebreak={props.voteResultsReveal.publicTiebreak}
                 onPublicTiebreakResolved={props.voteResultsReveal.onPublicTiebreakResolved}
                 onDone={props.voteResultsReveal.onDone}
+                revealIntervalMs={syncedVoteRevealIntervalMs}
+                postRevealDelayMs={VOTE_RESULTS_POST_REVEAL_MS}
+                countdownMs={VOTE_RESULTS_OUTCOME_MS}
                 variant="tv"
-                countdownMs={3000}
               />
             )}
           </div>
@@ -1695,6 +2122,11 @@ export default function TvZone(props: TvZoneProps) {
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
+        launcherSuppressed={
+          Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
+        }
+        launcherHidden={gameState.phase === 'week_start' || gameState.phase === 'week_end'}
+        suppressLauncher={Boolean(props.voteResultsReveal)}
       />
 
       {/* ── Phase-info modal ─────────────────────────────────────────────── */}
@@ -1712,7 +2144,7 @@ export default function TvZone(props: TvZoneProps) {
         key={activeAnnouncementSequenceId}
         active={shockIntroActive}
         shockKey={activeAnnouncement?.key ?? ''}
-        announcement={activeAnnouncement}
+        announcement={displayedAnnouncement}
         cupidPairs={gameState.cupidArrow?.pairs ?? []}
         onComplete={handleShockIntroComplete}
       />

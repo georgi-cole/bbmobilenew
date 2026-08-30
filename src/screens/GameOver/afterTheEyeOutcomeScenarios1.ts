@@ -1,402 +1,255 @@
 import type { ScenarioSpec } from './afterTheEyeOutcomeTypes'
 
-export const AFTER_EYE_SCENARIOS_1: ScenarioSpec[] = [
+interface DramaTemplate {
+  id: string
+  category: string
+  tone: ScenarioSpec['tone']
+  weight: number
+  cooldownGroup: string
+  badge: string
+  eligibility: ScenarioSpec['eligibility']
+  headlines: string[]
+  setups: string[]
+  escalations: string[]
+  outcomes: string[]
+  twists: string[]
+}
+
+const VARIANTS_PER_TEMPLATE = 5
+
+const DRAMA_TEMPLATES: DramaTemplate[] = [
   {
-    id: 'sudden_fame_airport_icon',
-    category: 'sudden_fame',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'sudden_fame',
-    badge: 'OVERNIGHT ICON',
-    eligibility: { tagsAny: ['fan_favorite', 'public_favorite'], requiresRelation: 'rival' },
-    headlines: ['{name} Causes Airport Chaos', 'Fans Mistake {name} for Global Royalty'],
-    beats: [
-      '{name} leaves the finale with one viral reaction clip and wakes up to a crowd at the airport.',
-      'Security closes two entrances after fans begin chanting a quote {name} does not remember saying.',
-      'A luggage brand signs {object} before the suitcase even reaches baggage claim.',
-    ],
-    twists: [
-      'The famous quote was actually said by {rivalName}.',
-      'The airport later sells a commemorative snack named after {name}.',
-    ],
-  },
-  {
-    id: 'sudden_fame_breakfast_face',
-    category: 'sudden_fame',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'sudden_fame',
-    badge: 'FRONT-PAGE FACE',
-    eligibility: { tagsAny: ['fan_favorite', 'winner', 'runner_up'] },
-    headlines: ['{name} Wins Breakfast Television', 'One Interview, Seven Contracts'],
-    beats: [
-      "{name} appears on a morning show for six minutes and becomes the season's most copied expression.",
-      'Brands compete to sponsor the mug, robe, and spoon visible during the interview.',
-      'The host quietly admits the segment was supposed to be about someone else.',
-    ],
-    twists: [
-      'The robe becomes more famous than the winner.',
-      '{name} later buys the studio chair at auction.',
-    ],
-  },
-  {
-    id: 'sudden_fame_meme_empire',
-    category: 'sudden_fame',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'sudden_fame',
-    badge: 'MEME EMPIRE',
-    eligibility: {},
-    headlines: ["{name}'s Face Takes Over the Internet", 'The Screenshot That Paid the Rent'],
-    beats: [
-      'A freeze-frame of {name} reacting to the finale becomes the universal answer to bad news.',
-      'The image appears on billboards, birthday cakes, and one municipal warning sign.',
-      '{name} licenses the meme and turns embarrassment into a very respectable income.',
-    ],
-    twists: [
-      'The original photographer asks for royalties.',
-      'The meme is later displayed in a small modern-art exhibition.',
-    ],
-  },
-  {
-    id: 'sudden_fame_fake_entourage',
-    category: 'sudden_fame',
+    id: 'pregnancy_claim',
+    category: 'pregnancy_parenthood',
     tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'sudden_fame',
-    badge: 'FAME FEVER',
+    weight: 1.35,
+    cooldownGroup: 'pregnancy_claim',
+    badge: 'PREGNANCY BOMBSHELL',
     eligibility: {},
-    headlines: ['{name} Hires an Entourage of Twelve', 'Too Famous to Carry a Phone'],
-    beats: [
-      '{name} decides ordinary life is no longer compatible with the new level of fame.',
-      "A stylist, a spiritual adviser, two assistants, and a person described only as 'vibe control' begin following {object}.",
-      'The entourage costs more per week than {name} actually earns.',
+    headlines: [
+      '{name} Hit by a Pregnancy Bombshell',
+      'A Former Partner Names {name} in Shocking Pregnancy Reveal',
+      'The Timeline That Put {name} at the Center of a Baby Scandal',
+      "{name}'s Post-Show Romance Takes an Unexpected Turn",
+    ],
+    setups: [
+      'Weeks after the finale, a former partner announces a pregnancy and says {name} is the other parent.',
+      'A private pregnancy announcement involving {name} leaks before either side is ready to speak.',
+      'A clinic appointment photographed by tabloids triggers rumors that {name} is about to become a parent.',
+      "An ex from before the show returns with news that instantly changes {name}'s post-season plans.",
+    ],
+    escalations: [
+      'Conflicting timelines spread online, and people close to both sides begin giving contradictory interviews.',
+      'A leaked message suggests the truth was known before the reunion, turning a private situation into a public scandal.',
+      'Family members enter the dispute and accuse management teams of turning the pregnancy into publicity.',
+      'The story intensifies when a second person claims to have seen documents that contradict the first public statement.',
+    ],
+    outcomes: [
+      '{name} confirms involvement but asks the public to stop treating a family matter like a vote.',
+      'The parties release a joint statement, refuse further details, and disappear from public view for several months.',
+      'A later update settles the central question and forces {name} to rebuild several damaged relationships.',
+      'The scandal cools only after {name} chooses a quieter life and begins preparing for an unexpected new role.',
     ],
     twists: [
-      'The vibe controller becomes the real celebrity.',
-      '{name} fires everyone through a group poll.',
+      'The first leak came from a relative, not a tabloid.',
+      'The reunion producers had footage hinting at the story but chose not to air it.',
+      'A person loudly claiming insider knowledge turns out to have invented the entire middle chapter.',
+      'The announcement becomes the one subject every former housemate refuses to discuss.',
     ],
   },
   {
-    id: 'sudden_fame_fan_stampede',
-    category: 'sudden_fame',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'sudden_fame',
-    badge: 'FAME NIGHTMARE',
-    eligibility: {},
-    headlines: ["{name}'s Meet-and-Greet Goes Off the Rails", 'The Selfie Queue Nobody Could Stop'],
-    beats: [
-      '{name} announces a tiny café appearance and accidentally attracts a crowd the venue cannot hold.',
-      'The coffee machine breaks, three fake managers appear, and a rival fan club claims the event was sabotaged.',
-      '{name} escapes through the kitchen wearing an apron and refuses public brunches for months.',
-    ],
-    twists: [
-      'The apron sells online for an absurd price.',
-      'The café rebrands the disaster as an annual festival.',
-    ],
-  },
-  {
-    id: 'career_triumph_prime_time_host',
-    category: 'career_triumph',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'career_triumph',
-    badge: 'NEW PRIME-TIME STAR',
-    eligibility: { tagsAny: ['winner', 'runner_up', 'fan_favorite'], requiresRelation: 'ally' },
-    headlines: ['{name} Steals the Show', 'From Housemate to Host'],
-    beats: [
-      '{name} is hired to present a late-night reality recap and immediately outshines the planned celebrity guest.',
-      'Producers expand the segment into a weekly show built around {possessive} dry reactions.',
-      'Ratings climb whenever {name} ignores the teleprompter.',
-    ],
-    twists: [
-      '{allyName} becomes the first recurring guest.',
-      'The original host asks to join as a correspondent.',
-    ],
-  },
-  {
-    id: 'career_triumph_luxury_designer',
-    category: 'career_triumph',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'career_triumph',
-    badge: 'LUXURY LAUNCH',
-    eligibility: { tagsAny: ['fan_favorite', 'public_favorite'], requiresRelation: 'rival' },
-    headlines: ['{name} Turns House Style Into High Fashion', 'The Robe That Became a Runway'],
-    beats: [
-      '{name} launches a clothing line inspired by the most dramatic outfits from the season.',
-      'The first collection sells out despite including a coat with four decorative microphones.',
-      'Fashion critics call it ridiculous, then quietly request samples.',
-    ],
-    twists: ['The microphone coat wins a design prize.', '{rivalName} is photographed wearing it.'],
-  },
-  {
-    id: 'career_triumph_documentary_voice',
-    category: 'career_triumph',
+    id: 'expecting_together',
+    category: 'pregnancy_parenthood',
     tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'career_triumph',
-    badge: 'SERIOUS CAREER',
-    eligibility: {},
-    headlines: ['{name} Finds an Unexpected Calling', 'The Voice Nobody Knew They Needed'],
-    beats: [
-      '{name} records narration for a documentary as a favour and becomes known for a strangely calming voice.',
-      'Nature films, crime reconstructions, and sleep apps all begin requesting the same dramatic whisper.',
-      "{name} earns more by saying 'meanwhile' than during the entire season.",
-    ],
-    twists: [
-      'A sleep app causes listeners to quote the finale in their dreams.',
-      'The documentary wins an award for sound.',
-    ],
-  },
-  {
-    id: 'career_triumph_restaurant_rescue',
-    category: 'career_triumph',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'career_triumph',
-    badge: 'SECOND ACT',
-    eligibility: {},
-    headlines: ['{name} Saves a Failing Restaurant', 'Dinner, Drama, and a Full Booking List'],
-    beats: [
-      '{name} invests in a nearly empty neighbourhood restaurant after becoming obsessed with its soup.',
-      "A blunt social-media review brings queues around the block and forces the chef to add a 'no filming' rule.",
-      'The restaurant survives and names the corner table after {name}.',
-    ],
-    twists: ['The famous soup came from a packet.', '{name} never learns the recipe.'],
-  },
-  {
-    id: 'career_triumph_weather_presenter',
-    category: 'career_triumph',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'career_triumph',
-    badge: 'UNLIKELY EXPERT',
-    eligibility: {},
-    headlines: [
-      "{name} Becomes the Nation's Favourite Weather Presenter",
-      'Forecast: Ninety Percent Drama',
-    ],
-    beats: [
-      '{name} fills in for a local weather presenter and delivers the forecast like an eviction ceremony.',
-      "Viewers begin tuning in just to hear whether the rain has 'the votes to stay'.",
-      'The station keeps {name}, although meteorologists remain visibly tired.',
-    ],
-    twists: [
-      'A storm is named unofficially after {name}.',
-      'The forecast catchphrase becomes a ringtone.',
-    ],
-  },
-  {
-    id: 'career_disaster_memoir_fiction',
-    category: 'career_disaster',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'career_disaster',
-    badge: 'BOOK BOMBSHELL',
-    eligibility: { tagsAny: ['controversial', 'betrayal'], requiresRelation: 'ally' },
-    headlines: [
-      "{name}'s Memoir Contains Almost No Truth",
-      'The Tell-All That Told Too Much — Incorrectly',
-    ],
-    beats: [
-      '{name} publishes a memoir promising every secret from the house.',
-      'Former housemates identify invented conversations, impossible dates, and an entire week that never happened.',
-      'The publisher moves the book from biography to fiction without changing the cover.',
-    ],
-    twists: [
-      '{name} wins an award for imaginative writing.',
-      '{allyName} admits one chapter is accidentally accurate.',
-    ],
-  },
-  {
-    id: 'career_disaster_perfume_disaster',
-    category: 'career_disaster',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'career_disaster',
-    badge: 'SCENT SCANDAL',
-    eligibility: {},
-    headlines: [
-      "{name}'s Luxury Perfume Clears a Shopping Centre",
-      'Aroma of Ambition, Notes of Panic',
-    ],
-    beats: [
-      "{name} launches a fragrance described as 'the smell of winning'.",
-      'The first public spray triggers alarms, evacuates a boutique, and stains a marble display purple.',
-      'The product is recalled before the launch speech ends.',
-    ],
-    twists: [
-      'Collectors drive the recalled bottles to ridiculous prices.',
-      'The formula becomes an industrial cleaner.',
-    ],
-  },
-  {
-    id: 'career_disaster_podcast_zero',
-    category: 'career_disaster',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'career_disaster',
-    badge: 'MICROPHONE MELTDOWN',
-    eligibility: { tagsAny: ['rivalry', 'controversial'], requiresRelation: 'rival' },
-    headlines: [
-      "{name}'s Podcast Loses Its Guest Before Episode One",
-      'The Show That Ended During the Intro',
-    ],
-    beats: [
-      '{name} announces a major interview podcast with dramatic lighting and no confirmed guests.',
-      'The first guest leaves after being introduced by the wrong name three times.',
-      'Episode one is replaced by a forty-minute explanation of why episode one failed.',
-    ],
-    twists: [
-      "The explanation becomes the show's only hit.",
-      '{rivalName} launches a parody podcast the same afternoon.',
-    ],
-  },
-  {
-    id: 'career_disaster_acting_cut',
-    category: 'career_disaster',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'career_disaster',
-    badge: 'CUT FROM EVERYTHING',
-    eligibility: {},
-    headlines: ["{name}'s Acting Debut Lasts Eleven Seconds", 'Hollywood Said Maybe — Then Edited'],
-    beats: [
-      '{name} lands a small role in a glossy drama and tells every interviewer it is a career-defining performance.',
-      'The final cut keeps only the back of {possessive} head and half a cough.',
-      '{name} hosts a premiere party anyway and pauses the scene to point at the screen.',
-    ],
-    twists: [
-      'The cough becomes a fan favourite.',
-      'The deleted scenes leak and are somehow worse.',
-    ],
-  },
-  {
-    id: 'career_disaster_motivational_tour',
-    category: 'career_disaster',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'career_disaster',
-    badge: 'INSPIRATION CRISIS',
-    eligibility: {},
-    headlines: [
-      "{name}'s Motivational Tour Needs Motivation",
-      'Believe in Yourself — Refunds Pending',
-    ],
-    beats: [
-      "{name} launches a seminar series about discipline, loyalty, and 'owning the room'.",
-      'The opening date starts late because {name} forgets the venue and the audience writes the speech themselves.',
-      'Three dates are cancelled and the remaining one is converted into a public apology.',
-    ],
-    twists: [
-      "The audience's improvised speech goes viral.",
-      '{name} later sells a course on recovering from failed courses.',
-    ],
-  },
-  {
-    id: 'romance_fake_romance_real',
-    category: 'romance',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'romance',
-    badge: 'SECRET LOVE',
+    weight: 1.2,
+    cooldownGroup: 'pregnancy_parenthood',
+    badge: 'NEW CHAPTER',
     eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
     headlines: [
-      "{name}'s Fake Romance Becomes Alarmingly Real",
-      'Publicity Stunt Ends in Matching Keys',
+      '{name} and {romanticName} Are Expecting',
+      'House Romance Becomes a Family',
+      "{name}'s Biggest Post-Show Surprise Is Personal",
+      'From Finale Night to Baby News',
     ],
-    beats: [
-      '{name} agrees to stage a romance with {romanticName} for magazine attention.',
-      'The pair begins arguing over whose turn it is to pretend, then quietly moves in together.',
-      'Their management teams discover the relationship is genuine from a shared grocery receipt.',
+    setups: [
+      '{name} and {romanticName} keep a pregnancy private for months after leaving the house.',
+      'A routine interview takes an emotional turn when {name} reveals that the relationship with {romanticName} has entered a new chapter.',
+      'Fans notice {name} and {romanticName} quietly stepping away from nightlife and public events without explanation.',
+      'The couple disappears from social media just as rumors begin that they are preparing for a baby.',
+    ],
+    escalations: [
+      'Speculation becomes intense after former housemates are seen arriving at a private family dinner.',
+      'A gift bag accidentally visible in a livestream gives away the news before the planned announcement.',
+      'The couple argues with management over whether the announcement should be sold as an exclusive.',
+      'A false breakup rumor spreads at exactly the moment the pair is trying to keep the pregnancy out of the press.',
+    ],
+    outcomes: [
+      'They eventually announce the news on their own terms and become unexpectedly protective of their private life.',
+      '{name} and {romanticName} reject a lucrative reality special and choose a low-profile pregnancy instead.',
+      'The reveal turns their chaotic showmance into the most stable relationship to come out of the season.',
+      'They return months later with a simple photo and no sponsorships, surprising almost everyone.',
     ],
     twists: [
-      'The breakup announcement is cancelled.',
-      "They later insist the entire thing was 'always private'.",
+      'The cast had known for weeks and somehow kept the secret.',
+      'The first congratulatory message comes from the housemate least expected to support them.',
+      'A magazine prints the wrong due month and creates a second wave of rumors.',
+      'The couple names no brands, despite receiving dozens of offers.',
     ],
   },
   {
-    id: 'romance_rival_wedding',
-    category: 'romance',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'romance',
-    badge: 'WEDDING SHOCK',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: ['{name} Marries Into the Rival Camp', 'The Ceremony Nobody Saw Coming'],
-    beats: [
-      '{name} begins dating a close relative of {rivalName} after an awkward reunion dinner.',
-      'The relationship advances so quickly that former enemies are seated at the same wedding table.',
-      '{rivalName} gives a speech that starts hostile and ends in tears.',
-    ],
-    twists: [
-      'The cake contains a tiny replica of the house.',
-      'The marriage lasts longer than the rivalry.',
-    ],
-  },
-  {
-    id: 'romance_engagement_sponsor',
-    category: 'romance',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'romance',
-    badge: 'LOVE FOR SALE',
-    eligibility: {},
-    headlines: [
-      "{name}'s Engagement Is Sponsored by Six Brands",
-      'The Ring Came With a Discount Code',
-    ],
-    beats: [
-      '{name} announces an engagement through a twelve-slide advertisement.',
-      'Fans spot three different ring boxes and a contract reflected in the champagne bucket.',
-      'The couple spends the honeymoon filming product tutorials in separate rooms.',
-    ],
-    twists: [
-      'The sponsor extends the engagement for another month.',
-      'The wedding is cancelled but the content performs well.',
-    ],
-  },
-  {
-    id: 'romance_mystery_date',
-    category: 'romance',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'romance',
-    badge: 'MYSTERY COMPANION',
-    eligibility: {},
-    headlines: [
-      '{name} Is Seen With the Same Mystery Date Everywhere',
-      'Seven Sightings, Zero Confirmation',
-    ],
-    beats: [
-      '{name} is photographed leaving restaurants, cinemas, and a pet shop with an unidentified companion.',
-      'Every former housemate denies knowing the person while clearly knowing the person.',
-      '{name} refuses to comment and posts a picture of two toothbrushes instead.',
-    ],
-    twists: [
-      'The mystery date is a cousin helping with a move.',
-      'The toothbrush post was an advertisement.',
-    ],
-  },
-  {
-    id: 'romance_wedding_reveal',
-    category: 'romance',
+    id: 'altar_disappearance',
+    category: 'marriage_breakup',
     tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'romance',
-    badge: 'ALTAR BOMBSHELL',
-    eligibility: { tagsAny: ['rivalry', 'controversial'], requiresRelation: 'rival' },
-    headlines: ["{name}'s Wedding Stops at the Objection", 'A Former Housemate Brings Receipts'],
-    beats: [
-      '{name} reaches the altar after a whirlwind public romance.',
-      '{rivalName} appears during the ceremony with screenshots suggesting the relationship began before another one ended.',
-      'The guests remain seated because nobody is certain whether the confrontation is part of the entertainment.',
+    weight: 1.1,
+    cooldownGroup: 'wedding_disaster',
+    badge: 'LEFT AT THE ALTAR',
+    eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
+    headlines: [
+      "{name}'s Wedding Ends Before the Vows",
+      'A Missing Bridegroom, a Full Church, and {name}',
+      'The Ceremony That Became a Search Party',
+      '{name} Faces the Ultimate Wedding Shock',
+    ],
+    setups: [
+      '{name} and {romanticName} plan a private wedding only for details to leak days before the ceremony.',
+      'After months of public declarations, {name} arrives for a wedding with {romanticName} expecting the cameras to stay outside.',
+      'A heavily guarded ceremony is arranged for {name} and {romanticName} after repeated rumors that the relationship is unstable.',
+      'The cast gathers for what is supposed to be the most glamorous wedding of the year.',
+    ],
+    escalations: [
+      '{romanticName} vanishes hours before the vows, leaving a phone, a handwritten note, and several furious relatives behind.',
+      'One side of the wedding party abruptly leaves after a private argument nobody will explain.',
+      'A message sent minutes before the ceremony suggests one partner learned something devastating that morning.',
+      'Guests are asked to remain seated while the wedding planner quietly removes one name from every sign.',
+    ],
+    outcomes: [
+      'The wedding is cancelled, and {name} disappears from public life while lawyers untangle contracts tied to the event.',
+      '{name} gives one brief statement, ends the relationship, and refuses to reveal what happened until months later.',
+      "The couple never reaches the altar, and the breakup becomes the season's most discussed post-show scandal.",
+      '{name} eventually returns without the ring and says only that the truth was worse than the rumors.',
     ],
     twists: [
-      'The screenshots belong to a different couple.',
-      'The reception continues without the wedding.',
+      'The missing partner had already checked into a hotel under another name.',
+      'A bridesmaid knew the ceremony would collapse and told nobody.',
+      'The wedding video becomes evidence in a later legal dispute.',
+      'The venue keeps the deposit and books a reunion special in the same ballroom.',
+    ],
+  },
+  {
+    id: 'affair_photos',
+    category: 'cheating_scandal',
+    tone: 'bad',
+    weight: 1.35,
+    cooldownGroup: 'affair',
+    badge: 'AFFAIR EXPOSED',
+    eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
+    headlines: [
+      "Secret Photos Rock {name}'s Romance",
+      '{name}, {romanticName}, and the Hotel Balcony Mystery',
+      'A Midnight Sighting Blows Up the Showmance',
+      'The Affair Rumor {name} Cannot Ignore',
+    ],
+    setups: [
+      '{name} and {romanticName} are still publicly together when photographs place {name} with someone else after midnight.',
+      'A supposedly private weekend for {name} becomes tabloid news after a hotel guest recognizes the former housemate.',
+      'The relationship with {romanticName} appears stable until a sequence of late-night photographs begins circulating.',
+      '{name} is seen leaving a private apartment hours after posting a romantic tribute to {romanticName}.',
+    ],
+    escalations: [
+      '{romanticName} unfollows {name}, then deletes every photograph from the relationship within minutes.',
+      'A voice note leaks in which somebody appears to warn {name} that the story is about to break.',
+      "The mystery companion gives a short interview that contradicts {name}'s first explanation.",
+      'Former housemates take sides publicly, turning the relationship crisis into a cast-wide feud.',
+    ],
+    outcomes: [
+      '{name} admits crossing a line, and the relationship with {romanticName} ends in a joint statement that reads anything but joint.',
+      'The pair separates while insisting the full story is more complicated than the photographs suggest.',
+      '{name} denies an affair but confirms the relationship with {romanticName} is over.',
+      'Months later, {name} and {romanticName} attempt a reconciliation that lasts only long enough to restart the headlines.',
+    ],
+    twists: [
+      'The photographer was invited to the building by someone close to the couple.',
+      'The mystery companion had previously dated another housemate.',
+      'One photograph was taken weeks earlier than the tabloid claimed.',
+      'A second batch of images changes which partner the public believes.',
+    ],
+  },
+  {
+    id: 'love_triangle',
+    category: 'cheating_scandal',
+    tone: 'bad',
+    weight: 1.15,
+    cooldownGroup: 'love_triangle',
+    badge: 'LOVE TRIANGLE',
+    eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
+    headlines: [
+      '{name} Caught in a Three-Way Romance Scandal',
+      'The Love Triangle Nobody Saw Coming',
+      'Two Relationships, One Impossible Timeline',
+      "{name}'s Secret Messages Ignite a Cast War",
+    ],
+    setups: [
+      "{name}'s relationship with {romanticName} is thrown into chaos when private messages with a second person surface.",
+      "A reunion afterparty exposes a second romantic connection that overlaps with {name}'s relationship with {romanticName}.",
+      'Fans reconstruct weeks of deleted posts and conclude that {name} may have been maintaining two relationships.',
+      'A former flame reappears just as {name} and {romanticName} begin discussing moving in together.',
+    ],
+    escalations: [
+      'The second person releases timestamps, while {romanticName} says the timeline proves a betrayal.',
+      'Three different versions of the same weekend are published within twenty-four hours.',
+      'A private group chat leaks and shows friends warning {name} that the situation was becoming impossible to hide.',
+      'The argument moves from private messages to live television after both sides accept separate interview invitations.',
+    ],
+    outcomes: [
+      '{name} loses both relationships and spends months trying to repair friendships damaged by the fallout.',
+      'The triangle ends with {romanticName} walking away and the second relationship collapsing under public pressure.',
+      '{name} chooses one relationship, but the decision creates a permanent split in the former cast.',
+      'Nobody gets the clean ending they expected, and the story continues through several contradictory reunions.',
+    ],
+    twists: [
+      'The two partners eventually compare messages and become friends.',
+      'A producer had warned {name} that the overlap would be discovered.',
+      'The most damaging screenshot turns out to be real but badly out of context.',
+      'The cast member defending {name} most loudly later changes sides.',
     ],
   },
 ]
+
+function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
+  const cycle = Math.floor(variantIndex / values.length)
+  const index =
+    (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + cycle * (salt + 1) + salt) %
+    values.length
+  return values[index]
+}
+
+function compileTemplate(template: DramaTemplate, templateIndex: number): ScenarioSpec[] {
+  return Array.from({ length: VARIANTS_PER_TEMPLATE }, (_, variantIndex) => {
+    const setup = pick(template.setups, templateIndex, variantIndex, 1)
+    const escalation = pick(template.escalations, templateIndex, variantIndex, 2)
+    const outcome = pick(template.outcomes, templateIndex, variantIndex, 3)
+
+    return {
+      id: `${template.id}_v${variantIndex + 1}`,
+      category: template.category,
+      tone: template.tone,
+      weight: template.weight * (1 - variantIndex * 0.025),
+      cooldownGroup: template.cooldownGroup,
+      badge: template.badge,
+      eligibility: { ...template.eligibility },
+      headlines: [
+        pick(template.headlines, templateIndex, variantIndex, 4),
+        pick(template.headlines, templateIndex, variantIndex + 1, 5),
+        pick(template.headlines, templateIndex, variantIndex + 2, 6),
+      ],
+      beats: [setup, escalation, outcome],
+      twists: [
+        pick(template.twists, templateIndex, variantIndex, 7),
+        pick(template.twists, templateIndex, variantIndex + 1, 8),
+        pick(template.twists, templateIndex, variantIndex + 2, 9),
+      ],
+    }
+  })
+}
+
+export const AFTER_EYE_SCENARIOS_1: ScenarioSpec[] = DRAMA_TEMPLATES.flatMap(compileTemplate)

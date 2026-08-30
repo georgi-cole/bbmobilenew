@@ -26,12 +26,12 @@ test.describe('Housemate biographies @core-journey', () => {
     await closeDebugPanelIfOpen(page)
 
     await mainMenu
-      .getByRole('button', { name: 'Housemates', exact: true })
+      .getByRole('button', { name: 'Hubmates', exact: true })
       .evaluate((button) => (button as HTMLButtonElement).click())
 
     const cinematic = page.getByRole('dialog', { name: 'Meet the Housemates' })
     await expect(cinematic).toBeVisible()
-    await cinematic.getByRole('button', { name: 'Enter the house' }).click()
+    await cinematic.getByRole('button', { name: 'Enter the hub' }).click()
     await cinematic.getByRole('button', { name: "Open Aria's full story" }).click()
     await expect(cinematic.getByRole('heading', { name: 'Aria' })).toBeVisible({
       timeout: 10_000,
@@ -52,7 +52,13 @@ test.describe('Housemate biographies @core-journey', () => {
       throw new Error('Biography layout measurements are unavailable')
     }
 
-    expect(portraitBox.height).toBeGreaterThan(viewport.height * 0.72)
+    // Desktop intentionally caps the portrait stage at 760px (`min(71dvh, 760px)`).
+    // Mobile uses the uncapped viewport-relative layout. Assert the actual design
+    // contract rather than requiring >72vh on tall desktops, which contradicts
+    // the explicit desktop cap.
+    const minimumPortraitHeight =
+      viewport.width >= 700 ? Math.min(viewport.height * 0.71, 760) - 2 : viewport.height * 0.72
+    expect(portraitBox.height).toBeGreaterThanOrEqual(minimumPortraitHeight)
     expect(portraitBox.y).toBeGreaterThanOrEqual(80)
     expect(portraitBox.y + portraitBox.height).toBeLessThanOrEqual(viewport.height - 50)
     expect(copyBox.width).toBeLessThanOrEqual(viewport.width * 0.5)

@@ -14,6 +14,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import cwgoReducer, {
   startCwgoCompetition,
   setGuesses,
+  setResponseTimes,
   revealMassResults,
   confirmMassElimination,
 } from '../../src/features/cwgo/cwgoCompetitionSlice';
@@ -60,33 +61,25 @@ describe('cwgoCompetitionSlice — questionOrder', () => {
     expect(questionIdx).toBe(questionOrder[0]);
   });
 
-  it('questionIdx advances to questionOrder[round] when the final starts', async () => {
+  it('questionIdx advances to questionOrder[round] after a qualifier round', () => {
     const store = makeStore();
     store.dispatch(startCwgoCompetition({
-      participantIds: ['alice', 'bob', 'carol', 'dave', 'eve'],
+      participantIds: ['alice', 'bob', 'carol', 'dave'],
       prizeType: 'LOH',
       seed: 555,
     }));
 
-    const { CWGO_QUESTIONS: questions } = await import('../../src/features/cwgo/cwgoQuestions');
-    const { questionIdx } = store.getState().cwgo;
-    const answer = questions[questionIdx].answer;
-
-    // alice+bob+carol go under (survive), dave+eve go over (eliminated) → 3 survive → choose_duel
-    store.dispatch(setGuesses({
-      alice: Math.max(1, answer - 1),
-      bob: Math.max(1, answer - 2),
-      carol: Math.max(1, answer - 3),
-      dave: answer + 100,
-      eve: answer + 200,
-    }));
+    // All guesses are valid and equal, so response time removes only the slowest
+    // contestant. Three remain and continue qualifying on the next question.
+    store.dispatch(setGuesses({ alice: 0, bob: 0, carol: 0, dave: 0 }));
+    store.dispatch(setResponseTimes({ alice: 9_000, bob: 1_000, carol: 2_000, dave: 3_000 }));
     store.dispatch(revealMassResults());
     store.dispatch(confirmMassElimination());
-    expect(store.getState().cwgo.status).toBe('choose_duel');
-    expect(store.getState().cwgo.stage).toBe('final');
+    expect(store.getState().cwgo.status).toBe('mass_input');
+    expect(store.getState().cwgo.stage).toBe('qualifier');
 
-    const finalState = store.getState().cwgo;
-    expect(finalState.round).toBe(1);
-    expect(finalState.questionIdx).toBe(finalState.questionOrder[1 % finalState.questionOrder.length]);
+    const nextState = store.getState().cwgo;
+    expect(nextState.round).toBe(1);
+    expect(nextState.questionIdx).toBe(nextState.questionOrder[1 % nextState.questionOrder.length]);
   });
 });

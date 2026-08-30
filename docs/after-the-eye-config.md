@@ -12,9 +12,21 @@ Loading order is:
 
 A failed request or malformed edit cannot block the finale. Remote content is treated strictly as text data and is never injected as HTML.
 
-## Editing the databank
+## Modular drama databank
 
-Each compact source scenario contains:
+The individual story files now define drama templates rather than one-off finished articles. A template supplies interchangeable narrative pools:
+
+- `headlines`
+- `setups`
+- `escalations`
+- `outcomes`
+- `twists`
+
+Each template is compiled into five stable `ScenarioSpec` variants. The linked relationship databank uses the same model and compiles three variants per template. The current source bank produces 120 individual outcomes and 30 relationship-linked outcomes before the normal seeded runtime selection is applied.
+
+This means two seasons can draw from the same broad archetype - pregnancy, affair, family secret, accident, blackmail, recovery, wedding disaster, financial collapse, legal scandal, disappearance, and so on - without receiving the same setup/escalation/outcome combination.
+
+The compiled scenario still contains the standard runtime fields:
 
 - `id`: stable unique identifier.
 - `category`: a key from the supported categories.
@@ -24,13 +36,21 @@ Each compact source scenario contains:
 - `eligibility`: optional season-tag and relationship rules.
 - Multiple `headlines`, three narrative `beats`, and multiple `twists`.
 
-The generator expands those beats into several subheadline and body structures, then writes the complete server JSON.
+`tone` is internal selection and balancing metadata. Player-facing copy uses the neutral `AFTERMATH` label rather than exposing excellent/good/neutral/bad/tragic as a verdict.
+
+The generator expands the three compiled beats into several subheadline and article-body structures, then writes the complete server JSON. The runtime continues to use the season seed, scenario weights, player tags, relationship graph, used-scenario IDs, tone/category diversity penalties, and cooldown groups when assigning stories.
+
+## Relationships and eligibility
+
+Relationship-specific plots only become eligible when the played season provides the required relationship context. Individual templates can require an ally, rival, or romantic partner. Linked templates use the actual paired housemates for romantic, betrayal, rival, and ally stories.
 
 Supported placeholders are:
 
 `{name}`, `{firstName}`, `{subject}`, `{object}`, `{possessive}`, `{placement}`, `{allyName}`, `{rivalName}`, `{romanticName}`, `{partnerName}`, `{competitionWins}`, `{nominationCount}`, `{seasonNumber}`, `{winnerName}`, and `{publicApproval}`.
 
 A scenario using `{allyName}`, `{rivalName}`, or `{romanticName}` must declare the matching `eligibility.requiresRelation`. `{partnerName}` is reserved for linked scenarios.
+
+## Validation and generation
 
 After editing the source databank, run:
 
@@ -39,7 +59,9 @@ npm run generate:after-eye
 npm run validate:after-eye
 ```
 
-The first command writes `public/config/afterTheEyeOutcomes.json`; the second checks IDs, categories, relationships, placeholders, weights, required text collections, and whether an existing generated file is current. Normal development and production builds run generation automatically.
+The generator checks IDs, categories, relationships, placeholders, weights, required text collections, all five internal tone tiers, a minimum of 100 compiled individual scenarios, a minimum linked-story bank, and presence of the core high-drama categories. Normal development and production builds run generation automatically.
+
+The first command writes `public/config/afterTheEyeOutcomes.json`; the second also checks whether an existing generated file is current.
 
 ## Editing only the deployed server copy
 

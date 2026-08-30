@@ -1,10 +1,16 @@
 /* DiaryRoom */
 .diary-room {
+  --color-bg: #090611;
+  --color-card: #17141d;
+  --color-card-2: #1d1823;
   display: flex;
   flex-direction: column;
   min-height: 100%;
   height: 100%;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 24%, rgba(112, 72, 156, 0.1), transparent 52%),
+    linear-gradient(180deg, #0d0718, #090611 68%);
 }
 
 .diary-room__shell {
@@ -27,7 +33,7 @@
   gap: 12px;
   padding: 16px 16px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: var(--color-bg);
+  background: linear-gradient(180deg, rgba(29, 23, 36, 0.92), rgba(11, 9, 15, 0.96));
   flex-shrink: 0;
 }
 
@@ -385,6 +391,9 @@
 
 /* ── Body ────────────────────────────────────────────────────────────────── */
 .diary-room__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -392,6 +401,51 @@
   -webkit-overflow-scrolling: touch;
   padding: 16px 16px calc(16px + var(--safe-bottom));
   box-sizing: border-box;
+}
+
+/* The supplied reference becomes a quiet piece of wall art behind the
+   conversation: framed, softened, and partially veiled so it adds character
+   without competing with the private chat. */
+.diary-room__body::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 88px;
+  bottom: 116px;
+  left: 20px;
+  right: 20px;
+  width: auto;
+  height: auto;
+  border: 9px solid #26213a;
+  border-radius: 5px;
+  background:
+    linear-gradient(rgba(40, 30, 74, 0.16), rgba(40, 30, 74, 0.16)),
+    url('/assets/diary-room/confessional-painting.png') center / cover;
+  background-blend-mode: soft-light, normal;
+  filter: saturate(0.78) contrast(1.04) brightness(0.72);
+  box-shadow:
+    0 0 0 2px rgba(214, 191, 255, 0.16),
+    0 18px 34px rgba(5, 4, 16, 0.42),
+    inset 0 0 24px rgba(13, 8, 28, 0.28);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.diary-room__body::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: min(72vw, 360px);
+  background: radial-gradient(ellipse at 50% 30%, rgba(167, 139, 250, 0.1), transparent 62%);
+  pointer-events: none;
+}
+
+.diary-room__body > * {
+  position: relative;
+  z-index: 1;
 }
 
 .diary-room__locked {
@@ -402,7 +456,7 @@
   padding: 24px 16px;
   text-align: center;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(19, 23, 38, 0.96) 0%, rgba(11, 14, 25, 0.96) 100%);
+  background: linear-gradient(180deg, rgba(28, 15, 44, 0.96) 0%, rgba(11, 7, 20, 0.97) 100%);
   border: 1px solid rgba(139, 92, 246, 0.18);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
 }
@@ -413,7 +467,7 @@
   aspect-ratio: 2 / 3;
   overflow: hidden;
   border-radius: 22px;
-  background: rgba(9, 11, 23, 0.98);
+  background: rgba(11, 7, 20, 0.98);
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.34),
     0 0 0 1px rgba(216, 180, 254, 0.12);
@@ -464,6 +518,8 @@
 .diary-room__textarea {
   width: 100%;
   box-sizing: border-box;
+  height: 3.1rem;
+  min-height: 3.1rem;
   background: var(--color-card);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -471,7 +527,7 @@
   font-size: 0.95rem;
   font-family: inherit;
   padding: 12px 14px;
-  resize: vertical;
+  resize: none;
   line-height: 1.5;
 }
 
@@ -496,14 +552,14 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 38px;
-  padding: 8px 12px;
+  min-height: 30px;
+  padding: 5px 8px;
   border: 1px solid rgba(196, 181, 253, 0.34);
   border-radius: 10px;
   background: rgba(139, 92, 246, 0.1);
   color: #c4b5fd;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 800;
   cursor: pointer;
   transition:
@@ -541,8 +597,8 @@
   color: #fff;
   border: none;
   border-radius: 10px;
-  padding: 10px 20px;
-  font-size: 0.9rem;
+  padding: 7px 12px;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -569,7 +625,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1 1 auto;
   min-height: 100%;
+  box-sizing: border-box;
 }
 
 .diary-room__mini-game-card {
@@ -579,7 +637,7 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(17, 24, 39, 0.92);
+  background: rgba(25, 23, 30, 0.94);
   border: 1px solid rgba(139, 92, 246, 0.35);
   color: var(--color-text);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
@@ -678,6 +736,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: auto;
 }
 
 /* ── Chat bubble list ────────────────────────────────────────────────────── */
@@ -685,9 +744,11 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 50vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
-  padding: 4px 2px;
+  padding: 4px 10px;
   /* Custom scrollbar — webkit */
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 92, 246, 0.4) transparent;
@@ -760,12 +821,14 @@
 
 .diary-room__bubble--decision {
   max-width: min(92%, 540px);
-  background: linear-gradient(160deg, rgba(20, 26, 52, 0.98) 0%, rgba(13, 16, 34, 0.98) 100%);
-  border-color: rgba(129, 140, 248, 0.28);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(211, 106, 171, 0.12), transparent 32%),
+    linear-gradient(160deg, rgba(43, 27, 53, 0.98) 0%, rgba(17, 11, 23, 0.98) 100%);
+  border-color: rgba(211, 106, 171, 0.3);
   box-shadow:
-    0 0 0 1px rgba(129, 140, 248, 0.08),
-    0 14px 30px rgba(15, 23, 42, 0.34),
-    0 0 28px rgba(99, 102, 241, 0.12);
+    0 0 0 1px rgba(241, 165, 204, 0.07),
+    0 14px 30px rgba(8, 4, 12, 0.42),
+    0 0 28px rgba(211, 106, 171, 0.1);
 }
 
 .diary-room__bubble-author {

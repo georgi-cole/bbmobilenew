@@ -19,32 +19,42 @@
 /* ── Design Tokens ────────────────────────────────────────────────────────── */
 :root {
   /* Palette */
-  --color-bg:          #0d111a;
-  --color-card:        #141b26;
-  --color-card-2:      #1a2336;
-  --color-text:        rgba(255, 255, 255, 0.92);
-  --color-text-muted:  rgba(255, 255, 255, 0.48);
-  --color-accent:      #6366f1;
-  --color-accent-2:    #8b5cf6;
-  --color-line:        rgba(255, 255, 255, 0.08);
-  --color-gold-primary:   #fbbf24;
+  --color-bg: #0d111a;
+  --color-card: #141b26;
+  --color-card-2: #1a2336;
+  --color-text: rgba(255, 255, 255, 0.92);
+  --color-text-muted: rgba(255, 255, 255, 0.48);
+  --color-accent: #6366f1;
+  --color-accent-2: #8b5cf6;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-gold-primary: #fbbf24;
   --color-gold-secondary: #f59e0b;
-  --color-gold-deep:      #d97706;
+  --color-gold-deep: #d97706;
 
   /* TV surface (used by TvZone) */
-  --tv-surface:        #0b121a;
+  --tv-surface: #0b121a;
 
   /* Safe-area layout */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-area-inset-top: var(--safe-top);
-  --safe-area-inset-left: var(--safe-left);
-  --safe-area-inset-right: var(--safe-right);
-  --safe-area-inset-bottom: var(--safe-bottom);
+  /* Capacitor SystemBars replaces these values with measured Android window
+     insets when the WebView draws edge-to-edge. Keeping the aliases separate
+     lets the same variables work in browsers, iOS and native Android. */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-top: var(--safe-area-inset-top);
+  --safe-bottom: var(--safe-area-inset-bottom);
+  --safe-left: var(--safe-area-inset-left);
+  --safe-right: var(--safe-area-inset-right);
+  /* One top-edge contract for every screen. Capacitor's measured inset wins
+     during normal operation; the fallback only covers WKWebView's zero-inset
+     startup frame on native iOS. */
   --app-safe-area-top-fallback: 0px;
-  --app-safe-area-top: max(var(--app-safe-area-top-fallback), var(--safe-top));
+  --app-safe-area-top: max(
+    var(--app-safe-area-top-fallback),
+    var(--safe-top),
+    env(safe-area-inset-top, 0px)
+  );
   --app-safe-area-top-extra: max(0px, calc(var(--app-safe-area-top) - 16px));
   --floating-corner-top-base: 12px;
   --floating-corner-top-safe-padding: 8px;
@@ -66,7 +76,11 @@
   );
 
   /* Typography */
-  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Montserrat',
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 16px;
   line-height: 1.5;
   font-weight: 500;
@@ -76,11 +90,14 @@
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -94,14 +111,9 @@ html, body {
   height: 100%;
 }
 
-html.is-capacitor {
-  --app-safe-area-top-fallback: 16px;
-}
-
-html.is-chrome-android {
-  /* Clear centered punch-hole cameras before drawing the TV header edge. */
-  --app-safe-area-top-fallback: 44px;
-}
+/* Never infer an inset from the device user agent. Android reports its actual
+   system-bar/cutout inset through Capacitor SystemBars; a fixed Pixel fallback
+   creates a visible dead band on non-cutout devices such as Pixel XL. */
 
 /* ── Base elements ────────────────────────────────────────────────────────── */
 button {
@@ -109,7 +121,8 @@ button {
 }
 
 /* Remove default blue tap highlight on mobile */
-button, a {
+button,
+a {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -175,9 +188,7 @@ button, a {
 .game-button--primary {
   --game-button-bg: linear-gradient(135deg, rgba(92, 100, 255, 0.96), rgba(136, 84, 255, 0.96));
   --game-button-border: rgba(255, 255, 255, 0.15);
-  --game-button-shadow:
-    0 12px 28px rgba(56, 70, 255, 0.24),
-    0 0 22px rgba(139, 92, 246, 0.12);
+  --game-button-shadow: 0 12px 28px rgba(56, 70, 255, 0.24), 0 0 22px rgba(139, 92, 246, 0.12);
 }
 
 .game-button--secondary {
@@ -260,12 +271,13 @@ button, a {
   width: 4px;
   height: 4px;
 }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
-
 
 /* ── Accessibility utilities ──────────────────────────────────────────────── */
 .visually-hidden {

@@ -1,396 +1,255 @@
 import type { ScenarioSpec } from './afterTheEyeOutcomeTypes'
 
-export const AFTER_EYE_SCENARIOS_2: ScenarioSpec[] = [
+interface DramaTemplate {
+  id: string
+  category: string
+  tone: ScenarioSpec['tone']
+  weight: number
+  cooldownGroup: string
+  badge: string
+  eligibility: ScenarioSpec['eligibility']
+  headlines: string[]
+  setups: string[]
+  escalations: string[]
+  outcomes: string[]
+  twists: string[]
+}
+
+const VARIANTS_PER_TEMPLATE = 5
+
+const DRAMA_TEMPLATES: DramaTemplate[] = [
   {
-    id: 'cheating_scandal_hotel_lobby',
-    category: 'cheating_scandal',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'cheating_scandal',
-    badge: 'CAUGHT',
-    eligibility: { tagsAny: ['romance', 'controversial'], requiresRelation: 'romantic' },
-    headlines: [
-      '{name} Is Caught in the Wrong Hotel Lobby',
-      'One Lift, Two Relationships, No Explanation',
-    ],
-    beats: [
-      '{name} is photographed entering a hotel with {romanticName} while publicly dating someone else.',
-      'The pair claims they were discussing charity work at 2:14 a.m. beside a room-service trolley.',
-      'Three contradictory statements appear before breakfast.',
-    ],
-    twists: [
-      'The charity is registered the next day.',
-      'The trolley attendant becomes a key witness.',
-    ],
-  },
-  {
-    id: 'cheating_scandal_reunion_triangle',
-    category: 'cheating_scandal',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'cheating_scandal',
-    badge: 'TRIANGLE EXPLODES',
+    id: 'secret_marriage',
+    category: 'romance',
+    tone: 'excellent',
+    weight: 1.1,
+    cooldownGroup: 'secret_marriage',
+    badge: 'SECRETLY MARRIED',
     eligibility: { tagsAny: ['romance'], requiresRelation: 'romantic' },
     headlines: [
-      "{name}'s Reunion Flirtation Becomes a Three-Person Crisis",
-      'Old Sparks, New Partners, Live Cameras',
+      '{name} and {romanticName} Secretly Married',
+      'The Marriage Hidden From Everyone',
+      'No Cameras, No Sponsors, Just Vows',
+      "{name}'s Biggest Secret Was a Wedding Ring",
     ],
-    beats: [
-      '{name} reconnects with {romanticName} during a reunion special.',
-      'Their current partners discover the private messages while the aftershow is still broadcasting.',
-      'The reunion receives record ratings and four separate apology videos.',
+    setups: [
+      '{name} and {romanticName} quietly marry after telling friends they are taking a short vacation.',
+      'Months of breakup rumors hide the fact that {name} and {romanticName} have already exchanged vows.',
+      'A courthouse record reveals that {name} and {romanticName} married long before the reunion special.',
+      'The couple rejects a televised wedding and disappears for a ceremony attended by fewer than ten people.',
     ],
-    twists: ['Both original couples swap partners.', 'The network orders a follow-up special.'],
+    escalations: [
+      'The secret unravels when a hotel accidentally addresses the pair by a shared surname.',
+      'A former housemate notices matching rings during an unrelated livestream.',
+      'A legal document appears online and sends fan communities into detective mode.',
+      'Their management teams deny the rumor for hours before realizing the paperwork is public.',
+    ],
+    outcomes: [
+      'The pair confirms the marriage and says keeping one thing private was the best decision they made after the show.',
+      '{name} and {romanticName} emerge stronger than expected and turn down offers for a wedding reenactment.',
+      'The marriage becomes the rare post-season surprise that actually improves both reputations.',
+      'They celebrate publicly only after the story is already impossible to contain.',
+    ],
+    twists: [
+      'The witness was a former rival from the house.',
+      'The rings were bought months before the finale.',
+      "The couple's families met for the first time at the ceremony.",
+      'A fake breakup announcement had been planned to protect the date.',
+    ],
   },
   {
-    id: 'cheating_scandal_wrong_caption',
-    category: 'cheating_scandal',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'cheating_scandal',
-    badge: 'POSTED BY MISTAKE',
-    eligibility: {},
-    headlines: [
-      '{name} Uploads the Wrong Anniversary Photo',
-      'The Caption Was Sweet. The Person Was Not the Partner.',
-    ],
-    beats: [
-      '{name} posts a romantic anniversary tribute using a photo taken with somebody else.',
-      'The image stays online for nine minutes, long enough for fans to identify the restaurant, date, and dessert.',
-      '{name} blames an assistant who publicly denies having access to the account.',
-    ],
-    twists: ['The dessert becomes a trending search.', 'The assistant gets a better job.'],
-  },
-  {
-    id: 'cheating_scandal_double_booking',
-    category: 'cheating_scandal',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'cheating_scandal',
-    badge: 'DOUBLE-BOOKED LOVE',
-    eligibility: {},
-    headlines: [
-      '{name} Schedules Two Dates at the Same Restaurant',
-      'Table Seven Meets Table Nine',
-    ],
-    beats: [
-      '{name} accidentally books overlapping dinners with two romantic interests.',
-      'A waiter notices identical flowers and seats the parties within direct view of each other.',
-      'The restaurant livestreams nothing, but every customer somehow has footage.',
-    ],
-    twists: ['The two dates become friends.', '{name} is banned from making online reservations.'],
-  },
-  {
-    id: 'cheating_scandal_fake_cheating',
-    category: 'cheating_scandal',
+    id: 'family_sibling',
+    category: 'family_secret',
     tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'cheating_scandal',
-    badge: "SCANDAL THAT WASN'T",
+    weight: 1.15,
+    cooldownGroup: 'family_secret',
+    badge: 'FAMILY SECRET',
     eligibility: {},
     headlines: [
-      '{name} Is Accused of Cheating on a Relationship That Never Existed',
-      'The Couple Denies Being a Couple',
+      "A Stranger Claims to Be {name}'s Sibling",
+      'The Family Secret That Found {name} on Television',
+      "One Message Rewrites {name}'s Family History",
+      'DNA Rumors Surround {name} After the Finale',
     ],
-    beats: [
-      '{name} is linked to two people after months of deliberately vague publicity.',
-      'Both supposed partners deny any romance, then become offended that the public believed the other one.',
-      'The scandal collapses into a debate about whether staged dating counts as dating.',
+    setups: [
+      'A stranger contacts {name} after the finale claiming they share a parent nobody has discussed publicly.',
+      'An old family photograph posted online raises questions about a possible sibling {name} never knew existed.',
+      'A private message from another country tells {name} that the family story told for years may be incomplete.',
+      'A genealogy search carried out by a relative unexpectedly links {name} to another family.',
+    ],
+    escalations: [
+      'Relatives give conflicting accounts, and an old birth record becomes the focus of intense speculation.',
+      '{name} initially dismisses the claim until dates and photographs begin matching private family memories.',
+      'The alleged sibling refuses payment for interviews and asks only for a private meeting.',
+      'A tabloid offers both sides money for a DNA test, which {name} publicly rejects.',
+    ],
+    outcomes: [
+      '{name} confirms a new family connection but asks that the relationship continue away from cameras.',
+      'The claim remains partly unresolved, leaving {name} with more questions than answers.',
+      'A private meeting takes place, and both sides later describe the result as life-changing without giving details.',
+      'The public mystery fades while a cautious private relationship begins.',
     ],
     twists: [
-      'All three sign the same management agency.',
-      'A documentary buys the rights to the confusion.',
+      'The person who first leaked the story was trying to stop the meeting, not promote it.',
+      'A relative who denied everything had known for decades.',
+      'The alleged sibling had never watched the show.',
+      'The most sensational tabloid detail proves to be completely false.',
     ],
   },
   {
-    id: 'public_feud_podcast_feud',
-    category: 'public_feud',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'public_feud',
-    badge: 'MIC WAR',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
+    id: 'inheritance',
+    category: 'financial_success',
+    tone: 'excellent',
+    weight: 0.9,
+    cooldownGroup: 'inheritance',
+    badge: 'FORTUNE REVEALED',
+    eligibility: {},
     headlines: [
-      '{name} and {rivalName} Destroy a Podcast in Episode One',
-      'Former Rivals Last Twenty-Three Minutes',
+      '{name} Inherits a Fortune From a Near Stranger',
+      "A Secret Will Changes {name}'s Life",
+      'The Estate Nobody Expected',
+      "{name}'s Post-Show Payday Has Nothing to Do With Fame",
     ],
-    beats: [
-      '{name} launches a reconciliation podcast with {rivalName}.',
-      'The opening pleasantries collapse when both bring different lists of topics the other promised not to mention.',
-      'The microphones stay on through a commercial break and the partnership ends live.',
+    setups: [
+      '{name} is named in the will of a distant relative the family rarely discussed.',
+      'A lawyer contacts {name} about an estate connected to a branch of the family thought to have disappeared.',
+      'An elderly family friend leaves {name} a property and a sealed letter explaining a decades-old debt.',
+      'A forgotten inheritance case reopens just weeks after {name} leaves the house.',
+    ],
+    escalations: [
+      'Several relatives challenge the will and accuse {name} of benefiting from family secrets.',
+      'The estate includes a valuable property but also documents that expose an old conflict.',
+      'A second claimant appears with a competing version of the will.',
+      'The money becomes secondary when the legal file reveals why {name} was chosen.',
+    ],
+    outcomes: [
+      '{name} keeps part of the estate, settles with the family, and uses the money to build a far quieter life.',
+      'The dispute ends in mediation, leaving {name} financially secure but permanently estranged from several relatives.',
+      '{name} wins the case and places part of the inheritance into a family trust.',
+      "The estate is divided, but the letter changes {name}'s understanding of the family more than the money does.",
     ],
     twists: [
-      'The unaired break becomes the most downloaded clip.',
-      'They return for episode two to argue about episode one.',
+      'The most valuable item in the estate is not the house but a forgotten collection in storage.',
+      "One relative fighting the will later becomes {name}'s closest ally.",
+      'The sealed letter contains an apology written years before the show.',
+      'The lawyer handling the case turns out to be a fan of the season.',
     ],
   },
   {
-    id: 'public_feud_lawsuit_song',
-    category: 'public_feud',
+    id: 'blackmail_audio',
+    category: 'crime_scandal',
     tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'public_feud',
-    badge: 'FEUD GOES MUSICAL',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: ['{name} Answers a Lawsuit With a Diss Track', 'Legal Team Begs for Silence'],
-    beats: [
-      '{name} receives a formal complaint from {rivalName} and responds by recording a song.',
-      'The lyrics reveal more evidence than the opposing lawyers had requested.',
-      'The track charts briefly while the case becomes much harder to defend.',
-    ],
-    twists: ['The judge quotes the chorus.', '{rivalName} releases an acoustic reply.'],
-  },
-  {
-    id: 'public_feud_petty_products',
-    category: 'public_feud',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'public_feud',
-    badge: 'PETTY BUSINESS',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
+    weight: 1.25,
+    cooldownGroup: 'blackmail',
+    badge: 'BLACKMAIL CLAIM',
+    eligibility: { tagsAny: ['rivalry', 'controversial'], requiresRelation: 'rival' },
     headlines: [
-      "{name} Launches a Product Named After {rivalName}'s Worst Moment",
-      'The Feud Reaches the Gift Shop',
+      '{name} Says Someone Tried to Blackmail Them',
+      'A Secret Recording Puts {name} and {rivalName} at War',
+      'Cash, Audio, and a Threat to Go Public',
+      "{name}'s Feud Takes a Criminal Turn",
     ],
-    beats: [
-      '{name} turns an old argument with {rivalName} into a novelty product.',
-      'Fans buy it as a joke until the rival launches a competing version with better packaging.',
-      'Both sides claim victory while accountants quietly celebrate.',
+    setups: [
+      '{name} receives a demand for money in exchange for keeping a private recording out of the press.',
+      'An anonymous account sends {name} clips from a conversation that was never meant to leave a private room.',
+      'A person claiming access to damaging audio contacts both {name} and {rivalName}.',
+      'The feud between {name} and {rivalName} escalates when an intermediary offers to sell a secret recording.',
+    ],
+    escalations: [
+      '{name} refuses to pay and reports the demand, while excerpts begin appearing online anyway.',
+      '{rivalName} denies involvement, but old messages make the public suspicious of everyone around the feud.',
+      'Lawyers warn both sides to stop speaking publicly as police begin reviewing the messages.',
+      'A second demand arrives from a different account, suggesting the recording has been copied.',
+    ],
+    outcomes: [
+      'The blackmail attempt becomes a formal investigation, and {name} withdraws from public appearances until it is resolved.',
+      '{name} is cleared of the rumor at the center of the recording, but the feud with {rivalName} becomes permanent.',
+      'Authorities identify a third party behind the demand, leaving both former rivals embarrassed by months of accusations.',
+      'The recording is eventually released and proves far less damaging than the blackmail itself.',
     ],
     twists: [
-      'The products are manufactured in the same factory.',
-      'The rivals eventually merge the brands.',
+      'The original recording came from a device neither {name} nor {rivalName} owned.',
+      'The person demanding money had never met either housemate.',
+      'A heavily edited clip had reversed the meaning of the conversation.',
+      '{rivalName} ultimately provides evidence that helps {name}.',
     ],
   },
   {
-    id: 'public_feud_award_seating',
-    category: 'public_feud',
+    id: 'jewelry_arrest',
+    category: 'crime_scandal',
     tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'public_feud',
-    badge: 'RED CARPET WAR',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: [
-      '{name} Refuses a Seat Near {rivalName}',
-      'One Awards Show, Seventeen Seating Charts',
-    ],
-    beats: [
-      '{name} demands to be placed far from {rivalName} at a television awards ceremony.',
-      'Organisers redraw the room repeatedly until the two are accidentally placed back-to-back.',
-      "A chair movement becomes the night's most analysed footage.",
-    ],
-    twists: ['Neither wins an award.', 'The chairs are auctioned as a pair.'],
-  },
-  {
-    id: 'public_feud_feud_business',
-    category: 'public_feud',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'public_feud',
-    badge: 'ENEMIES CASH IN',
-    eligibility: { tagsAny: ['rivalry'], requiresRelation: 'rival' },
-    headlines: ['{name} Turns the Feud Into a Business', 'Hate, But Make It Profitable'],
-    beats: [
-      '{name} and {rivalName} agree to sell tickets to a public debate.',
-      'The event expands into a tour after audiences discover the insults are weirdly well rehearsed.',
-      'The rivals earn enough money to postpone reconciliation indefinitely.',
-    ],
-    twists: ['They share an accountant.', 'The final show ends with a suspiciously friendly hug.'],
-  },
-  {
-    id: 'betrayal_memoir_exposes_ally',
-    category: 'betrayal',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'betrayal',
-    badge: 'BETRAYAL IN PRINT',
-    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
-    headlines: ['{name} Exposes {allyName} in a Tell-All', 'The Alliance Ends on Page Forty-Seven'],
-    beats: [
-      '{name} publishes private messages from {allyName} while promoting a book about loyalty.',
-      'The leaked conversation reveals both had planned to blame the other if the season went badly.',
-      'The friendship collapses through footnotes and competing audiobook versions.',
-    ],
-    twists: [
-      'The messages were already public in a forgotten livestream.',
-      'The book dedication still thanks {allyName}.',
-    ],
-  },
-  {
-    id: 'betrayal_business_backstab',
-    category: 'betrayal',
-    tone: 'tragic',
-    weight: 1.0,
-    cooldownGroup: 'betrayal',
-    badge: 'PARTNERSHIP AMBUSH',
-    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
-    headlines: ['{name} Locks {allyName} Out of Their Own Launch', 'Best Friends, One Password'],
-    beats: [
-      '{name} starts a business with {allyName} and changes every account password hours before launch.',
-      "Customers watch the former allies fight through the brand's official support chat.",
-      'The website sells out only because people think the chaos is performance art.',
-    ],
-    twists: [
-      'The passwords were written on the launch cake.',
-      'The pair reunites solely to divide the profits.',
-    ],
-  },
-  {
-    id: 'betrayal_wedding_secret',
-    category: 'betrayal',
-    tone: 'bad',
-    weight: 1.0,
-    cooldownGroup: 'betrayal',
-    badge: 'RECEPTION REVEAL',
-    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
-    headlines: [
-      "{name} Reveals {allyName}'s Secret at the Wedding",
-      'The Toast That Ended a Friendship',
-    ],
-    beats: [
-      '{name} is invited to give a warm wedding speech for {allyName}.',
-      'The toast drifts into an old house secret that nobody outside the cast was meant to know.',
-      'Music starts early in an unsuccessful attempt to drown out the final sentence.',
-    ],
-    twists: ['Half the guests already knew.', "The videographer labels the clip 'best speech'."],
-  },
-  {
-    id: 'betrayal_secret_groupchat',
-    category: 'betrayal',
-    tone: 'neutral',
-    weight: 1.0,
-    cooldownGroup: 'betrayal',
-    badge: 'GROUP CHAT LEAK',
-    eligibility: { tagsAny: ['alliance_broken', 'betrayal'], requiresRelation: 'ally' },
-    headlines: ['{name} Leaks the Alliance Group Chat', 'Every Screenshot Has a Different Crop'],
-    beats: [
-      '{name} accidentally uploads a screen recording containing months of messages with {allyName}.',
-      'Fans analyse typing indicators, deleted messages, and a suspicious contact nickname.',
-      'The leak proves the alliance was both more loyal and more petty than anyone expected.',
-    ],
-    twists: [
-      'The most damaging message is about takeaway food.',
-      '{allyName} responds with the missing screenshots.',
-    ],
-  },
-  {
-    id: 'betrayal_betrayal_redemption',
-    category: 'betrayal',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'betrayal',
-    badge: 'FORGIVEN — AT A PRICE',
-    eligibility: { tagsAny: ['betrayal', 'alliance_broken'], requiresRelation: 'ally' },
-    headlines: ["{name} Buys Back {allyName}'s Trust", 'The Most Expensive Apology of the Year'],
-    beats: [
-      '{name} publicly admits betraying {allyName} and stages an apology with no sponsorships.',
-      'The sincerity shocks viewers until a giant wrapped gift is wheeled onto the set.',
-      'The friendship resumes under a written agreement banning surprise interviews.',
-    ],
-    twists: [
-      'The gift is a framed screenshot of the betrayal.',
-      'Their reunion special becomes a hit.',
-    ],
-  },
-  {
-    id: 'financial_success_boring_investment',
-    category: 'financial_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'financial_success',
-    badge: 'SECRET MILLIONAIRE',
-    eligibility: { tagsAny: ['low_profile', 'early_exit'] },
-    headlines: ['{name} Quietly Makes a Fortune', 'No Yacht, No Speech, Just Compound Interest'],
-    beats: [
-      '{name} ignores the influencer circuit and invests the appearance money in an unglamorous logistics company.',
-      'The company expands while other cast members post sponsored candles.',
-      '{name} becomes the richest housemate and continues wearing the same finale jacket.',
-    ],
-    twists: [
-      "The company delivers half the cast's merchandise.",
-      'Nobody believes the fortune until tax records leak.',
-    ],
-  },
-  {
-    id: 'financial_success_snack_empire',
-    category: 'financial_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'financial_success',
-    badge: 'SNACK TYCOON',
-    eligibility: { requiresRelation: 'rival' },
-    headlines: ["{name}'s Late-Night Snack Becomes an Empire", 'The Recipe Was Almost an Accident'],
-    beats: [
-      '{name} recreates a strange snack eaten repeatedly in the house.',
-      'A supermarket order turns the joke into a national product with five unnecessary flavours.',
-      'The packaging uses a dramatic screenshot of {name} staring into the fridge.',
-    ],
-    twists: [
-      'The least appealing flavour becomes the bestseller.',
-      '{rivalName} requests a royalty for suggesting the original snack.',
-    ],
-  },
-  {
-    id: 'financial_success_appearance_fees',
-    category: 'financial_success',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'financial_success',
-    badge: 'BOOKED SOLID',
+    weight: 0.95,
+    cooldownGroup: 'crime_arrest',
+    badge: 'ARREST SHOCK',
     eligibility: {},
     headlines: [
-      '{name} Perfects the Paid Appearance',
-      'Forty Minutes, One Selfie Wall, Excellent Invoice',
+      '{name} Questioned After Luxury Jewelry Vanishes',
+      'A Party, a Missing Necklace, and {name}',
+      "Police Enter {name}'s Post-Show Story",
+      'The Night That Turned Into a Criminal Investigation',
     ],
-    beats: [
-      '{name} discovers that nightclub openings and shopping-centre appearances pay better than long interviews.',
-      'A strict seven-minute speech and twelve-minute photo schedule becomes famous among event planners.',
-      '{name} works less than everyone else and earns more than most.',
+    setups: [
+      '{name} attends a private celebrity party where an expensive piece of jewelry disappears before dawn.',
+      'A luxury event becomes a police matter after a borrowed necklace cannot be found and security footage places {name} nearby.',
+      'Hours after posing for photographers, {name} is contacted by investigators about property missing from the same venue.',
+      'A host reports valuables missing after an afterparty attended by {name} and several unnamed guests.',
     ],
-    twists: [
-      'One venue hires a lookalike by mistake.',
-      'The schedule is later taught in a business seminar.',
+    escalations: [
+      '{name} is questioned, tabloids report an arrest before facts are clear, and sponsors suspend campaigns.',
+      'A witness changes their story twice, while a blurry security clip is treated online as definitive proof.',
+      'The missing item appears in a vehicle connected to the event, deepening suspicion without establishing who put it there.',
+      'Lawyers demand corrections as false details spread faster than the official investigation.',
     ],
-  },
-  {
-    id: 'financial_success_auction_props',
-    category: 'financial_success',
-    tone: 'good',
-    weight: 1.0,
-    cooldownGroup: 'financial_success',
-    badge: 'HOUSE RELIC BONANZA',
-    eligibility: {},
-    headlines: [
-      '{name} Auctions Every Meaningless Souvenir',
-      'Fans Pay Thousands for a Bent Spoon',
-    ],
-    beats: [
-      '{name} saves ordinary objects associated with the season and sells them as authenticated memorabilia.',
-      'Bidding escalates over a robe belt, a cracked mug, and a note nobody can read.',
-      'The collection funds a comfortable new home.',
-    ],
-    twists: ['The most expensive item is not from the house.', 'A museum requests the bent spoon.'],
-  },
-  {
-    id: 'financial_success_app_success',
-    category: 'financial_success',
-    tone: 'excellent',
-    weight: 1.0,
-    cooldownGroup: 'financial_success',
-    badge: 'TECH SURPRISE',
-    eligibility: {},
-    headlines: [
-      '{name} Launches an App That Actually Works',
-      'The Rare Celebrity Product With Customer Support',
-    ],
-    beats: [
-      '{name} funds a simple app based on organising group decisions.',
-      'Users praise it for solving arguments without requiring anyone to watch a motivational video.',
-      'The app grows internationally while {name} refuses to explain the code.',
+    outcomes: [
+      '{name} is released while the investigation continues, but the reputational damage arrives immediately.',
+      'The case against {name} weakens, yet several contracts do not return.',
+      'Another suspect eventually emerges, leaving {name} legally safer but publicly shaken.',
+      'No charge survives scrutiny, but {name} describes the episode as the moment fame stopped feeling glamorous.',
     ],
     twists: [
-      'The developer is a former fan account administrator.',
-      "The app is used to plan a rival's wedding.",
+      'The jewelry had been moved by event staff before anyone called police.',
+      "A viral 'security video' was from a different night.",
+      'The person who first accused {name} later retracts the statement.',
+      'The missing item is recovered from a location searched on the first day.',
     ],
   },
 ]
+
+function pick(values: string[], templateIndex: number, variantIndex: number, salt: number): string {
+  const cycle = Math.floor(variantIndex / values.length)
+  const index =
+    (templateIndex * (salt + 3) + variantIndex * (salt * 2 + 1) + cycle * (salt + 1) + salt) %
+    values.length
+  return values[index]
+}
+
+function compileTemplate(template: DramaTemplate, templateIndex: number): ScenarioSpec[] {
+  return Array.from({ length: VARIANTS_PER_TEMPLATE }, (_, variantIndex) => {
+    const setup = pick(template.setups, templateIndex, variantIndex, 1)
+    const escalation = pick(template.escalations, templateIndex, variantIndex, 2)
+    const outcome = pick(template.outcomes, templateIndex, variantIndex, 3)
+
+    return {
+      id: `${template.id}_v${variantIndex + 1}`,
+      category: template.category,
+      tone: template.tone,
+      weight: template.weight * (1 - variantIndex * 0.025),
+      cooldownGroup: template.cooldownGroup,
+      badge: template.badge,
+      eligibility: { ...template.eligibility },
+      headlines: [
+        pick(template.headlines, templateIndex, variantIndex, 4),
+        pick(template.headlines, templateIndex, variantIndex + 1, 5),
+        pick(template.headlines, templateIndex, variantIndex + 2, 6),
+      ],
+      beats: [setup, escalation, outcome],
+      twists: [
+        pick(template.twists, templateIndex, variantIndex, 7),
+        pick(template.twists, templateIndex, variantIndex + 1, 8),
+        pick(template.twists, templateIndex, variantIndex + 2, 9),
+      ],
+    }
+  })
+}
+
+export const AFTER_EYE_SCENARIOS_2: ScenarioSpec[] = DRAMA_TEMPLATES.flatMap(compileTemplate)

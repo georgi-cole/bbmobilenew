@@ -8,7 +8,11 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { setDebugOverrides, clearDebugOverrides } from '../../store/challengeSlice';
 import { getAllGames } from '../../minigames/registry';
 
-const ALL_GAMES = getAllGames().filter((g) => !g.retired);
+const ALL_GAMES = getAllGames().filter((g) => !g.retired || g.vipOnly);
+
+function debugGameTitle(game: (typeof ALL_GAMES)[number]): string {
+  return `${game.title}${game.vipOnly ? ' · VIP' : ''}`;
+}
 
 export default function MinigameDebugControls() {
   const dispatch = useAppDispatch();
@@ -20,7 +24,8 @@ export default function MinigameDebugControls() {
   const [fastFwd, setFastFwd] = useState(debug.fastForwardCountdown ?? false);
   const [gamePickerOpen, setGamePickerOpen] = useState(false);
 
-  const selectedGameTitle = ALL_GAMES.find((game) => game.key === localKey)?.title ?? '(random)';
+  const selected = ALL_GAMES.find((game) => game.key === localKey);
+  const selectedGameTitle = selected ? debugGameTitle(selected) : '(random)';
 
   const handleApply = () => {
     dispatch(
@@ -87,7 +92,7 @@ export default function MinigameDebugControls() {
                     setGamePickerOpen(false);
                   }}
                 >
-                  {game.title}
+                  {debugGameTitle(game)}
                 </button>
               ))}
             </div>

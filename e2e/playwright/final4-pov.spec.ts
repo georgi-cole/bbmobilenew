@@ -67,7 +67,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
    * AI POS holder path:
    * 1. Set up nominees and an AI POS winner via DebugPanel.
    * 2. Force phase to final4_eviction.
-   * 3. Click Continue — advance() emits plea messages then AI picks the evictee.
+   * 3. Advance once to emit the plea beat, then advance again for the AI sole-vote decision.
    * 4. Assert TV feed contains plea request, nominee pleas, and the eviction message.
    * 5. Assert game has advanced to Final 3.
    */
@@ -87,11 +87,16 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
     await forceF4Btn.click()
 
     // Debug mode intentionally bypasses the public control dock during forced
-    // ceremony states. Advance through the stable debug control instead.
-    await page.getByRole('button', { name: 'Advance Phase' }).click()
-
-    // After advance(): plea sequence + AI eviction decision should appear in TV feed
+    // ceremony states. The first debug advance presents the plea beat.
+    const advancePhase = page.getByRole('button', { name: 'Advance Phase' })
+    await advancePhase.click()
     await expectTvFeedText(page, /asks nominees for their pleas/i)
+
+    // Final 4 is intentionally staged so a single physical Play/advance cannot
+    // both present the pleas and commit the authoritative eviction. In debug
+    // mode there is no plea cinematic callback, so explicitly advance the
+    // decision beat after the pleas have been observed.
+    await advancePhase.click()
     await expectTvFeedText(page, /has chosen to evict/i)
 
     // Game must have advanced to The Finale — check the phase pill which reliably

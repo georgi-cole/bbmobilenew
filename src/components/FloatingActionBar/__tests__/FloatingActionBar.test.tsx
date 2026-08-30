@@ -352,11 +352,13 @@ describe('FloatingActionBar – layout', () => {
       button.getAttribute('aria-label')
     )
     expect(labels).toEqual([
+      'Home',
       'Social',
       'Incoming requests',
       'Advance to next phase',
       'Public meter',
       'Confessional',
+      'More',
     ])
   })
 

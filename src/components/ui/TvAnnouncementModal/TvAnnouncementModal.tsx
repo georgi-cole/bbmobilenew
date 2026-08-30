@@ -77,15 +77,15 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'VOX POPULI',
     category: 'Season Expansion',
     body: VOX_POPULI_INFO_SUMMARY,
-    shockDetail: 'Open the full guide for the daily loop, ballot ties, Safety backups, doubles, and the audience-led finale.',
+    shockDetail:
+      'Open the full guide for the daily loop, ballot ties, Safety backups, doubles, and the audience-led finale.',
     rulesRoute: '/vox-populi-rules',
   },
   vox_immunity_comp: {
     icon: '🛡️',
     label: 'IMMUNITY COMPETITION',
     category: 'Vox Populi',
-    body:
-      'Every remaining housemate may compete. Today’s winner earns immunity and cannot be nominated. The last-place finisher is placed directly on the block before the secret nominations are counted.',
+    body: 'Every remaining housemate may compete. Today’s winner earns immunity and cannot be nominated. The last-place finisher is placed directly on the block before the secret nominations are counted.',
     shockDetail:
       'The Final 4 reverses the balance: nobody earns immunity, last place starts on the block, and the other three each cast one secret vote.',
   },
@@ -93,8 +93,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '4️⃣',
     label: 'FINAL 4 COMPETITION',
     category: 'Vox Populi Endgame',
-    body:
-      'Four housemates remain. Nobody earns immunity; the last-place finisher begins on the block.',
+    body: 'Four housemates remain. Nobody earns immunity; the last-place finisher begins on the block.',
     shockDetail:
       'The other three housemates each cast one secret nomination vote. The highest total joins last place on the block; a tie expands it.',
   },
@@ -102,8 +101,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🗳️',
     label: 'SECRET NOMINATIONS',
     category: 'Vox Populi',
-    body:
-      'Housemates enter the Confessional one at a time and privately name two eligible people. They cannot nominate themselves or the immunity winner.',
+    body: 'Housemates enter the Confessional one at a time and privately name two eligible people. They cannot nominate themselves or the immunity winner.',
     shockDetail:
       'The two highest nomination totals are placed on the block. If players are tied at the cutoff, every tied player is nominated. At Final 4, the other three cast one vote each and the highest total joins the last-place nominee.',
   },
@@ -111,8 +109,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🎭',
     label: 'POWER OF SAFETY',
     category: 'Vox Populi',
-    body:
-      'The Safety holder may keep the block unchanged or save one current nominee. If the winner is on the block, they automatically save themself.',
+    body: 'The Safety holder may keep the block unchanged or save one current nominee. If the winner is on the block, they automatically save themself.',
     shockDetail:
       'After a save, the next-highest housemate in the original secret-nomination totals joins the block only when fewer than two nominees remain. On an eligible Double Elimination day, the ranking restores the block only when fewer than three nominees remain. If enough nominees are still in danger, no backup is added.',
   },
@@ -120,8 +117,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '📡',
     label: 'THE PUBLIC DECIDES',
     category: 'Live Audience Vote',
-    body:
-      'The nominees face a public vote to eliminate. The nominee with the highest share of the audience vote leaves the house. Housemates do not vote and there is no Leader of the House tiebreak.',
+    body: 'The nominees face a public vote to eliminate. The nominee with the highest share of the audience vote leaves the house. Housemates do not vote and there is no Leader of the House tiebreak.',
     shockDetail:
       'Public Mode can show changing approval, momentum, and hints for building popularity, but it never saves a nominee in Vox Populi. On an eligible Double Elimination day, at least three nominees must face the vote and the two highest audience totals are eliminated.',
   },
@@ -129,8 +125,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏁',
     label: 'FINAL 3',
     category: 'Vox Populi Finale',
-    body:
-      'The last three housemates compete for final immunity. The winner is guaranteed a place in the Final 2.',
+    body: 'The last three housemates compete for final immunity. The winner is guaranteed a place in the Final 2.',
     shockDetail:
       'The audience votes to eliminate one of the other two housemates. Once the Final 2 is formed, the audience votes again—this time to crown the season winner. There is no Tribunal and no sole housemate vote.',
   },
@@ -164,18 +159,26 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     category: 'Tribunal Phase',
     body: 'The Tribunal — made up of the last eliminated players — casts their votes to award the grand prize. Each judge votes for the finalist they believe most deserves to win based on game play, social game, and competition performance. The finalist with the most Tribunal votes is crowned the winner of The Big Eye.',
   },
+  tribunal_phase: {
+    icon: '⚖️',
+    label: 'THE TRIBUNAL',
+    category: 'Final Decision',
+    body: 'The final eliminated players now become the Tribunal. They will compare the finalists’ strategy, social play, and competition record before casting the votes that decide the champion.',
+    shockDetail:
+      'Listen carefully: every testimony reveals what each Tribunal member valued — and which finalist earned their respect.',
+  },
   battle_back: {
     icon: '🔥',
     label: 'BACK 2 THE GAME',
-    category: 'Twist',
+    category: 'Shock',
     body: 'A Back 2 the Game shock has been activated. Recently eliminated players will face off in a special competition for a chance to re-enter The Big Eye. Alliances can shift instantly — and the returning player gets a fresh shot at the prize.',
     shockDetail:
       'Eliminated players compete head-to-head in a specially designed challenge. Only one winner earns the right to return. Upon re-entry, the returning player is immediately eligible for all competitions, nominations, and votes — existing alliances must adapt at once.',
   },
   battle_back_shock: {
     icon: '🔥',
-    label: 'SHOCK TWIST',
-    category: 'Twist',
+    label: 'BACK 2 THE GAME',
+    category: 'Shock',
     body: 'Back 2 the Game has been activated. One of the recently eliminated players now has a chance to fight their way back into the house.',
     shockDetail:
       'This is not a standard elimination week. The Back 2 the Game shock changes the trajectory of the game by giving a previously eliminated player a route back in. All current alliance plans, targets, and strategies must account for a possible new returnee.',
@@ -183,7 +186,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   battle_back_rules: {
     icon: '📜',
     label: 'BACK 2 THE GAME RULES',
-    category: 'Twist',
+    category: 'Shock',
     body: 'The Back 2 the Game field is set. Recently eliminated players will compete head-to-head, and only one winner can earn their return to the game.',
     shockDetail:
       'Only Tribunal members who have been eliminated are eligible to compete. Each player faces off in a single-elimination bracket or direct challenge format chosen by Big Eye. The winner earns immediate, full re-entry: eligible for all competitions, nominations, and votes from the next phase onward.',
@@ -199,14 +202,14 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   double_eviction: {
     icon: '⚡',
     label: 'DOUBLE ELIMINATION',
-    category: 'Twist',
+    category: 'Shock',
     body: "A Double Elimination has been triggered! Tonight's Leader of the House must nominate THREE players for elimination. After a Power of Safety competition and ceremony, the remaining players vote to eliminate TWO of those nominees in a single live show. Alliances shatter, plans collapse, and the game changes forever in one night.",
     shockDetail:
       'The Double Elimination runs as a compressed, fast-paced week: three nominees are put up, a Safety competition determines who can be saved, and after the Safety Ceremony the house votes out two players in one sitting. Strategic timelines are cut short — every conversation and every alliance decision must happen immediately.',
   },
   cupid_arrow: {
     icon: '🏹',
-    label: "CUPID HAS CHOSEN",
+    label: 'CUPID HAS CHOSEN',
     category: 'Season Expansion',
     body: 'Cupid has matched every housemate with a partner. For now, you are not playing alone: every pair shares one fate inside The Big Eye house.',
     shockDetail:
@@ -272,7 +275,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏆',
     label: 'LOH COMPETITION',
     category: 'Competition',
-    body: 'The Leader of the House competition is about to begin. Every eligible player is fighting for the most powerful position in the game. The winner becomes the new Leader of the House and gains the authority to nominate two of their fellow players for elimination. Power is up for grabs — who will reign supreme today?',
+    body: 'The Leader of the House competition is about to begin. Every eligible player is fighting for the most powerful position in the game. The winner becomes the new Leader of the House and gains the authority to nominate two of their fellow players for elimination. Control is up for winning — who will reign supreme today?',
   },
   pos_comp_announcement: {
     icon: '🎭',
@@ -285,7 +288,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
 PHASE_COPY.cupid_arrow.shockDetail =
   'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Once four pairs have left the house, Cupid’s spell breaks and everyone returns to an individual game.'
 PHASE_COPY.cupid_arrow.shockDetail =
-  'When one partner wins power, both partners share it. When danger reaches one partner, it reaches both. Each pair makes one eviction choice together, worth two votes. Protect your partner: their fate is tied to yours.'
+  'Partners deliberate together and cast one joint ballot worth two votes. Power won by one partner is shared by both, and the partner of the Power of Safety winner is protected from replacement nomination. If danger reaches one partner, both are exposed; pair eliminations resolve together. Protect your bond: the Big Eye is watching.'
 PHASE_COPY.cupid_arrow_broken.body =
   'Four pairs have fallen. Cupid’s spell has ended, the bonds are gone, and the house is no longer divided into pairs.'
 PHASE_COPY.cupid_arrow_broken.shockDetail =
@@ -351,7 +354,22 @@ export default function TvAnnouncementModal({
 
   if (!open) return null
 
-  const copy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
+  const sourceCopy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
+  const normalizeHubCopy = (value: string) =>
+    value
+      .replace(/\bhousemates\b/gi, 'players')
+      .replace(/\bhouseguest(s)?\b/gi, (_match, plural: string | undefined) =>
+        plural ? 'players' : 'player'
+      )
+      .replace(/\bhouse\b/gi, 'hub')
+      .replace(/\bjury\b/gi, 'Tribunal')
+      .replace(/\btwist\b/gi, 'shock')
+      .replace(/\bveto\b/gi, 'Safety')
+  const copy = {
+    ...sourceCopy,
+    body: normalizeHubCopy(sourceCopy.body),
+    shockDetail: sourceCopy.shockDetail ? normalizeHubCopy(sourceCopy.shockDetail) : undefined,
+  }
 
   return createPortal(
     <div

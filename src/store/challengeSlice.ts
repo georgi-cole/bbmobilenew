@@ -30,6 +30,7 @@ import type { CwgoPrizeType } from '../features/cwgo/cwgoCompetitionSlice'
 import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
 import type { MusicMinigameVariant } from '../services/sound/musicConfig'
 import { rankPressurePlankResults } from '../components/PressurePlank/pressurePlankLogic'
+import { resolveGameManagerRule } from '../gameManager/gameManager'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,8 @@ export interface PendingChallenge {
   aiTiebreakers?: Record<string, number>
   /** Prize type captured at challenge creation (LOH or POS). */
   prizeType?: CwgoPrizeType | string
+  /** A valid producer-selected winner, resolved when this challenge was scheduled. */
+  forcedWinnerId?: string
 }
 
 const initialState: ChallengeState = {
@@ -168,6 +171,16 @@ const challengeSlice = createSlice({
           : null,
       }
     },
+  },
+  extraReducers: (builder) => {
+    // A game reset always starts a distinct campaign. Keeping a pending
+    // challenge is unsafe because player IDs are reused by the fresh roster,
+    // allowing GameScreen to mount and resolve the previous campaign's
+    // competition before the new campaign reaches a competition phase.
+    builder.addMatcher(
+      (action) => action.type === 'game/resetGame',
+      () => ({ ...initialState, history: [], debug: {} })
+    )
   },
 })
 
@@ -240,6 +253,14 @@ export const startChallenge =
     // Late-season bias is based on active competitors (jury members no longer play comps).
     const activeCompetitorCount = selectAlivePlayers(state).length
     const scheduledPlayerCount = participants.length || activeCompetitorCount
+    const competitionType = opts.prizeType === 'POS' ? 'POS' : 'LOH'
+    const managerConfig =
+      state.remoteConfig?.config?.gameManager ?? state.settings?.gameUX?.gameManager
+    const managerRule = resolveGameManagerRule(managerConfig, {
+      day: state.game.week,
+      playerCount: scheduledPlayerCount,
+      competition: competitionType,
+    })
     const eligibleForRoster = (game: GameRegistryEntry) =>
       supportsPlayerCount(game, scheduledPlayerCount)
     const lateSeasonBias =
@@ -269,10 +290,13 @@ export const startChallenge =
       const availablePool = getPoolByFilter({ retired: false, excludeKeys }).filter(
         eligibleForRoster
       )
+      // Rescue the King is retired from the Surveyeval competition rotation
+      // only. It remains available to every other mode and to direct tests.
+      const surveyevalPool = availablePool.filter((game) => game.key !== 'rescueTheKing')
       const pool = category
-        ? availablePool.filter((game) => game.category === category)
-        : availablePool
-      const selectionPool = pool.length > 0 ? pool : availablePool
+        ? surveyevalPool.filter((game) => game.category === category)
+        : surveyevalPool
+      const selectionPool = pool.length > 0 ? pool : surveyevalPool
       if (selectionPool.length === 0) {
         throw new Error('[challengeSlice] No non-retired Survival games are available')
       }
@@ -346,6 +370,22 @@ export const startChallenge =
       const found = getGame(forceKey)
       if (!found) throw new Error(`[challengeSlice] Unknown game key: ${forceKey}`)
       gameEntry = found
+    } else if (managerRule?.selection === 'game') {
+      const configured = managerRule.gameKey ? getGame(managerRule.gameKey) : undefined
+      gameEntry =
+        configured &&
+        !configured.retired &&
+        eligibleForRoster(configured) &&
+        !(state.game.mode === 'survival' && configured.key === 'rescueTheKing')
+          ? configured
+          : state.game.mode === 'survival'
+            ? pickSurvivorGame()
+            : pickFromRegistry()
+    } else if (managerRule?.selection === 'category' && managerRule.category) {
+      gameEntry =
+        state.game.mode === 'survival'
+          ? pickSurvivorGame(managerRule.category, opts.excludeKeys)
+          : pickFromRegistry(managerRule.category)
     } else if (state.game.mode === 'survival') {
       gameEntry = pickSurvivorGame(opts.category, opts.excludeKeys)
     } else {
@@ -476,6 +516,11 @@ export const startChallenge =
       const twinHintGame = getGame('castleRescue')
       if (twinHintGame) gameEntry = twinHintGame
     }
+    // Final Surveyeval eligibility guard. This also covers forced/debug keys
+    // and any future scheduler branch added above.
+    if (state.game.mode === 'survival' && gameEntry.key === 'rescueTheKing') {
+      gameEntry = pickSurvivorGame(opts.category, [...(opts.excludeKeys ?? []), 'rescueTheKing'])
+    }
     // Derive a per-challenge seed from the base seed + game key hash.
     const challengeSeed = deriveSeed(gameSeed, gameEntry.key)
 
@@ -510,6 +555,18 @@ export const startChallenge =
         : resolvedParticipants
     const finalParticipants =
       eligibleParticipants.length > 0 ? eligibleParticipants : resolvedParticipants
+    const forcedWinnerId =
+      managerRule?.outcome === 'player' &&
+      managerRule.winnerId &&
+      finalParticipants.includes(managerRule.winnerId)
+        ? managerRule.winnerId
+        : managerRule?.outcome === 'random' && finalParticipants.length > 0
+          ? finalParticipants[
+              Math.floor(
+                mulberry32((selectionSeed ^ 0x6d2b79f5) >>> 0)() * finalParticipants.length
+              )
+            ]
+          : undefined
 
     // Pre-compute AI scores for all non-human participants.
     const humanId = gameState?.players?.find((p) => p.isUser)?.id
@@ -570,6 +627,7 @@ export const startChallenge =
       aiScores,
       aiTiebreakers,
       prizeType: opts.prizeType,
+      forcedWinnerId,
     }
 
     dispatch(setPendingChallenge(pending))
@@ -628,7 +686,12 @@ export const completeChallenge =
       participants.includes(options.authoritativeWinnerId)
         ? options.authoritativeWinnerId
         : null
-    const winnerId = explicitWinnerId ?? winner?.playerId ?? participants[0] ?? ''
+    const scheduledWinnerId =
+      pending.forcedWinnerId && participants.includes(pending.forcedWinnerId)
+        ? pending.forcedWinnerId
+        : null
+    const winnerId =
+      scheduledWinnerId ?? explicitWinnerId ?? winner?.playerId ?? participants[0] ?? ''
 
     const run: ChallengeRun = {
       id: pending.id,
@@ -642,13 +705,14 @@ export const completeChallenge =
       timestamp: Date.now(),
       authoritative:
         game.key === 'pressurePlank' ||
+        scheduledWinnerId !== null ||
         explicitWinnerId !== null ||
         winner?.authoritativeWinner === true,
       partial: options?.partial === true,
     }
 
     dispatch(recordRun(run))
-    if (explicitWinnerId) {
+    if (scheduledWinnerId || explicitWinnerId) {
       // An authoritative React minigame winner may not align with the generic
       // challenge-score ranking, so apply only the winner boost here and avoid
       // placement bonuses based on fallback scores.

@@ -1,28 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="188" height="188" viewBox="0 0 188 188" fill="none">
   <defs>
-    <radialGradient id="playCore" cx="50%" cy="40%" r="68%">
-      <stop offset="0%" stop-color="#8B86FF"/>
-      <stop offset="55%" stop-color="#6160F2"/>
-      <stop offset="100%" stop-color="#3534BE"/>
+    <radialGradient id="play-core" cx="39%" cy="29%" r="80%">
+      <stop stop-color="#8E74C7"/>
+      <stop offset=".3" stop-color="#5F478E"/>
+      <stop offset=".68" stop-color="#382759"/>
+      <stop offset="1" stop-color="#171129"/>
     </radialGradient>
-    <linearGradient id="playShine" x1="94" y1="22" x2="94" y2="88">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.34)"/>
-      <stop offset="50%" stop-color="rgba(255,255,255,0.10)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    <linearGradient id="play-rim" x1="47" y1="35" x2="141" y2="151" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF" stop-opacity=".9"/>
+      <stop offset=".46" stop-color="#E3DCFF" stop-opacity=".44"/>
+      <stop offset="1" stop-color="#C1B4FF" stop-opacity=".58"/>
     </linearGradient>
-    <filter id="playGlow" x="-24%" y="-24%" width="148%" height="148%">
-      <feGaussianBlur stdDeviation="10"/>
+    <radialGradient id="play-halo" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#9B7DFF" stop-opacity=".3"/>
+      <stop offset=".48" stop-color="#7459D6" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#4C3B9F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="inner-light" cx="0" cy="0" r="1" gradientTransform="translate(82 73) rotate(52) scale(65)">
+      <stop stop-color="#EEE6FF" stop-opacity=".28"/>
+      <stop offset=".36" stop-color="#B99FFF" stop-opacity=".105"/>
+      <stop offset="1" stop-color="#6F55B6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glass-glint" cx="0" cy="0" r="1" gradientTransform="translate(69 57) rotate(48) scale(50)">
+      <stop stop-color="#FFF" stop-opacity=".34"/>
+      <stop offset=".24" stop-color="#F4EEFF" stop-opacity=".13"/>
+      <stop offset=".7" stop-color="#D8CAFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vertical-halo" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#B196FF" stop-opacity=".42"/>
+      <stop offset=".42" stop-color="#8062E2" stop-opacity=".19"/>
+      <stop offset="1" stop-color="#5D45B3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="axis-bloom" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#B89CFF" stop-opacity=".34"/>
+      <stop offset=".5" stop-color="#8164DF" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#6047B0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="edge-depth" cx="50%" cy="46%" r="54%">
+      <stop offset=".55" stop-color="#090714" stop-opacity="0"/>
+      <stop offset=".82" stop-color="#090714" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#05040C" stop-opacity=".34"/>
+    </radialGradient>
+    <filter id="play-glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="12"/>
     </filter>
-    <clipPath id="clipPlay">
-      <circle cx="94" cy="94" r="60"/>
-    </clipPath>
+    <filter id="vertical-glow" x="-35%" y="-28%" width="170%" height="156%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <filter id="axis-glow" x="-55%" y="-180%" width="210%" height="460%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+    <filter id="glyph-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4"/>
+    </filter>
   </defs>
-  <circle cx="94" cy="94" r="72" fill="rgba(116,118,255,0.46)" filter="url(#playGlow)"/>
-  <circle cx="94" cy="94" r="60" fill="url(#playCore)" stroke="rgba(255,255,255,0.42)" stroke-width="2.2"/>
-  <g clip-path="url(#clipPlay)">
-    <path d="M 40 38 H 148 Q 138 68 94 76 Q 50 68 40 38 Z" fill="url(#playShine)" opacity="0.96"/>
-    <path d="M 44 126 Q 94 138 144 126 V 166 H 44 Z" fill="rgba(0,0,0,0.12)"/>
-  </g>
-  <circle cx="94" cy="94" r="52" stroke="rgba(255,255,255,0.08)" stroke-width="1.2"/>
-  <polygon points="82,68 122,94 82,120" fill="white"/>
+
+  <ellipse cx="94" cy="94" rx="66" ry="86" fill="url(#vertical-halo)" filter="url(#vertical-glow)"/>
+  <ellipse cx="94" cy="33" rx="43" ry="14" fill="url(#axis-bloom)" filter="url(#axis-glow)"/>
+  <ellipse cx="94" cy="155" rx="43" ry="14" fill="url(#axis-bloom)" filter="url(#axis-glow)"/>
+  <circle cx="94" cy="94" r="66" fill="url(#play-halo)" filter="url(#play-glow)"/>
+  <circle cx="94" cy="94" r="57" fill="#171129"/>
+  <circle cx="94" cy="94" r="57" fill="url(#play-core)" stroke="url(#play-rim)" stroke-width="1.08"/>
+  <circle cx="94" cy="94" r="55" fill="url(#inner-light)"/>
+  <circle cx="94" cy="94" r="55" fill="url(#glass-glint)"/>
+  <circle cx="94" cy="94" r="56" fill="url(#edge-depth)"/>
+  <path d="M80 73L116 94L80 115V73Z" fill="#FFF" fill-opacity=".28" filter="url(#glyph-glow)"/>
+  <path d="M80 73L116 94L80 115V73Z" fill="#FAF9FF" fill-opacity=".96"/>
 </svg>

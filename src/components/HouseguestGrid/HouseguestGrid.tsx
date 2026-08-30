@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import AvatarTile from './AvatarTile'
 import StatusPill from '../ui/StatusPill'
 import SurvivorStandoutCard from '../SurvivorStandout/SurvivorStandoutCard'
 import SpotlightEvictionOverlay from '../Eviction/SpotlightEvictionOverlay'
 import styles from './HouseguestGrid.module.css'
-import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { clearSurvivorReplacementTransition } from '../../store/gameSlice'
-import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
-import { getCupidPair, isCupidArrowActive } from '../../features/twists/cupidArrow'
+import './cupidRoseGold/CupidRoseGold.css'
 
-const HOUSEMATES_SECTION_TITLE = 'HOUSEMATES'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { advance, clearSurvivorReplacementTransition } from '../../store/gameSlice'
+import { selectSurvivorStandout, type SurvivorStandoutMode } from '../../modes/survivorStandout'
+import { getCupidPair, isCupidArrowVisualsRevealed } from '../../features/twists/cupidArrow'
+import { resolveCupidLoveAvatar } from '../../utils/cupidLoveAvatar'
+
+const HOUSEMATES_SECTION_TITLE = 'HUBMATES'
 
 type RoboStatsSummary = {
   daysInGame?: number | null
@@ -64,6 +67,7 @@ export type Houseguest = {
    * active, so the shared-layout portrait is the only visible instance.
    */
   isEvicting?: boolean
+  isSurveyevalEvicting?: boolean
   nominationCeremonyState?: 'loh' | 'danger' | 'locked'
 }
 
@@ -91,6 +95,8 @@ type Props = {
   returningPlayerId?: string | null
   /** Called after the reverse-eviction cinematic settles into the roster tile. */
   onReturnAnimationDone?: () => void
+  /** Shows the game-log launcher at the right edge of a persistent roster header. */
+  showRosterLogLauncher?: boolean
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -133,11 +139,65 @@ export default function HouseguestGrid({
   occupancyLabel,
   returningPlayerId = null,
   onReturnAnimationDone,
+  showRosterLogLauncher = false,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
   const dispatch = useAppDispatch()
   const game = useAppSelector((s) => s.game)
+  const cupidVisualsRevealed = isCupidArrowVisualsRevealed(game)
+  const previousCupidVisualsRevealedRef = useRef(cupidVisualsRevealed)
+  const cupidPairFocusTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const [cupidRevealAnimating, setCupidRevealAnimating] = useState(false)
+  const [cupidReturnAnimating, setCupidReturnAnimating] = useState(false)
+  const [focusedCupidPairId, setFocusedCupidPairId] = useState<string | null>(null)
   const challengeHistory = useAppSelector((s) => s.challenge?.history ?? [])
+
+  useEffect(() => {
+    const wasRevealed = previousCupidVisualsRevealedRef.current
+    previousCupidVisualsRevealedRef.current = cupidVisualsRevealed
+    if (!wasRevealed && cupidVisualsRevealed) {
+      const revealTimer = window.setTimeout(() => setCupidRevealAnimating(true), 0)
+      const resetTimer = window.setTimeout(() => setCupidRevealAnimating(false), 2200)
+      return () => {
+        window.clearTimeout(revealTimer)
+        window.clearTimeout(resetTimer)
+      }
+    }
+    if (wasRevealed && !cupidVisualsRevealed && game.cupidArrow?.status === 'broken') {
+      const returnTimer = window.setTimeout(() => {
+        setCupidRevealAnimating(false)
+        setCupidReturnAnimating(true)
+      }, 0)
+      const resetTimer = window.setTimeout(() => setCupidReturnAnimating(false), 1350)
+      return () => {
+        window.clearTimeout(returnTimer)
+        window.clearTimeout(resetTimer)
+      }
+    }
+    if (!cupidVisualsRevealed) {
+      const resetTimer = window.setTimeout(() => setCupidRevealAnimating(false), 0)
+      return () => window.clearTimeout(resetTimer)
+    }
+  }, [cupidVisualsRevealed, game.cupidArrow?.status])
+
+  useEffect(
+    () => () => {
+      if (cupidPairFocusTimerRef.current) window.clearTimeout(cupidPairFocusTimerRef.current)
+    },
+    []
+  )
+
+  const focusCupidPair = (pairId: string | null, hold = false) => {
+    if (!cupidVisualsRevealed || !pairId) return
+    if (cupidPairFocusTimerRef.current) window.clearTimeout(cupidPairFocusTimerRef.current)
+    setFocusedCupidPairId(pairId)
+    if (hold) {
+      cupidPairFocusTimerRef.current = window.setTimeout(() => {
+        setFocusedCupidPairId(null)
+        cupidPairFocusTimerRef.current = null
+      }, 1200)
+    }
+  }
   const returningPlayer = useMemo(
     () =>
       returningPlayerId
@@ -168,41 +228,8 @@ export default function HouseguestGrid({
     return statsById
   }, [game.mode, game.modeSpecific, game.players, game.week])
   const renderedHouseguests = useMemo(() => {
-    if (game.mode !== 'survival' || survivorReplacementTransition === null) return houseguests
-
-    const outgoing = survivorReplacementTransition.outgoingPlayerSnapshot
-    const incomingId = survivorReplacementTransition.incomingPlayerId
-    const slot = survivorReplacementTransition.slot
-    const incomingIndex = houseguests.findIndex(
-      (houseguest) => String(houseguest.id) === incomingId
-    )
-    const slotIndex = game.players.findIndex((player) => player.survivorSlot === slot)
-    const targetIndex = incomingIndex >= 0 ? incomingIndex : slotIndex
-    if (targetIndex < 0 || targetIndex >= houseguests.length) return houseguests
-
-    return houseguests.map((houseguest, index) =>
-      index === targetIndex
-        ? {
-            id: outgoing.id,
-            name: outgoing.name,
-            avatarUrl: outgoing.avatar,
-            isEvicted: true,
-            isYou: outgoing.isUser,
-            roboStats: outgoing.isRobo
-              ? {
-                  daysInGame: Math.max(1, game.week - (outgoing.survivorEntryDay ?? 1) + 1),
-                  lohWins: outgoing.stats?.lohWins ?? 0,
-                  posWins: outgoing.stats?.posWins ?? 0,
-                  averageLohRank: null,
-                  averagePosRank: null,
-                }
-              : undefined,
-            statuses: [],
-            showPermanentBadge: false,
-          }
-        : houseguest
-    )
-  }, [game.mode, game.players, game.week, houseguests, survivorReplacementTransition])
+    return houseguests
+  }, [houseguests])
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
   const showSurvivorStandout = game.mode === 'survival' && overlaySelector === '.game-control-dock'
   const survivorStandout = useMemo(
@@ -231,6 +258,7 @@ export default function HouseguestGrid({
     )
     const timer = window.setTimeout(() => {
       dispatch(clearSurvivorReplacementTransition())
+      dispatch(advance())
     }, remainingMs)
     return () => window.clearTimeout(timer)
   }, [dispatch, survivorReplacementTransition])
@@ -309,6 +337,8 @@ export default function HouseguestGrid({
         data-compact-layout={effectiveCompactLayout}
         data-roster-mode={rosterMode}
         data-header-mode={headerMode}
+        data-surveyeval-replacement={survivorReplacementTransition ? 'active' : undefined}
+        data-houseguest-roster="true"
       >
         <div key={headerSignal} className={styles.headerRow} aria-live="polite">
           <h3 id="houseguests-heading" className={styles.header}>
@@ -324,13 +354,24 @@ export default function HouseguestGrid({
             <StatusPill
               variant="ghost"
               label={occupancyLabel}
-              ariaLabel={`${occupancyLabel} housemates`}
+              ariaLabel={`${occupancyLabel} players`}
             />
+          )}
+          {showRosterLogLauncher && (
+            <button
+              type="button"
+              className={styles.rosterLogLauncher}
+              aria-label="Open game log"
+              onClick={() => window.dispatchEvent(new CustomEvent('tv:open-game-log'))}
+            >
+              <span aria-hidden="true">☷</span>
+              <span>Log</span>
+            </button>
           )}
         </div>
 
         <p id="houseguests-interaction-instructions" className={styles.interactionInstructions}>
-          Tap a housemate to interact. Press and hold to preview their profile.
+          Tap a player to interact. Press and hold to preview their profile.
         </p>
 
         <ul
@@ -340,16 +381,33 @@ export default function HouseguestGrid({
         >
           {renderedHouseguests.map((hg) => {
             const resolvedRoboStats = hg.roboStats ?? survivorRoboStatsById.get(String(hg.id))
-            const cupidPair = isCupidArrowActive(game) ? getCupidPair(game, String(hg.id)) : null
+            const cupidPair = cupidVisualsRevealed ? getCupidPair(game, String(hg.id)) : null
             const cupidPartnerId = cupidPair?.memberIds.find((id) => id !== String(hg.id))
             const cupidPartnerName = cupidPartnerId
               ? game.players.find((player) => player.id === cupidPartnerId)?.name
               : undefined
             return (
-              <li key={hg.id} className={itemClassName} data-player-id={String(hg.id)}>
+              <li
+                key={hg.id}
+                className={`${itemClassName}${focusedCupidPairId === cupidPair?.id ? ` ${styles.cupidPairFocused}` : ''}`}
+                data-player-id={String(hg.id)}
+                data-replacement-target={
+                  survivorReplacementTransition?.incomingPlayerId === String(hg.id)
+                    ? 'true'
+                    : undefined
+                }
+                data-depression-target={!hg.isYou && !hg.isEvicted ? 'true' : undefined}
+                onPointerEnter={() => focusCupidPair(cupidPair?.id ?? null)}
+                onPointerLeave={() => setFocusedCupidPairId(null)}
+                onFocusCapture={() => focusCupidPair(cupidPair?.id ?? null)}
+                onBlurCapture={() => setFocusedCupidPairId(null)}
+                onPointerDown={() => focusCupidPair(cupidPair?.id ?? null, true)}
+              >
                 <AvatarTile
                   name={hg.name}
-                  avatarUrl={hg.avatarUrl}
+                  avatarUrl={
+                    cupidVisualsRevealed ? resolveCupidLoveAvatar(hg.avatarUrl) : hg.avatarUrl
+                  }
                   isEvicted={hg.isEvicted}
                   isYou={hg.isYou}
                   onClick={hg.onClick}
@@ -361,13 +419,21 @@ export default function HouseguestGrid({
                   showPermanentBadge={hg.showPermanentBadge}
                   layoutId={hg.layoutId}
                   isEvicting={hg.isEvicting}
+                  isSurveyevalEvicting={hg.isSurveyevalEvicting}
                   nominationCeremonyState={hg.nominationCeremonyState}
                   descriptionId="houseguests-interaction-instructions"
                   pairColor={cupidPair?.color}
+                  pairIndex={cupidPair ? Number(cupidPair.id.replace(/\D+/g, '')) - 1 : undefined}
                   pairLabel={
                     cupidPair ? `Pair ${cupidPair.id.replace('cupid-pair-', '')}` : undefined
                   }
                   partnerName={cupidPartnerName}
+                  cupidLoveRevealed={cupidRevealAnimating}
+                  cupidLoveReturning={cupidReturnAnimating}
+                  depressionActive={(game.depressionShock?.activeDay ?? 0) > 0 && !hg.isEvicted}
+                  depressionRecovery={
+                    game.depressionShock?.recoveryWeek === game.week && !hg.isEvicted
+                  }
                 />
               </li>
             )

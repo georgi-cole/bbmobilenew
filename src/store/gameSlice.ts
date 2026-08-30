@@ -3,6 +3,7 @@ import type { RootState, AppDispatch } from './store'
 import type {
   DemocraciaResultDisplay,
   DayStartShockState,
+  DepressionShockState,
   GameState,
   Player,
   Phase,
@@ -16,6 +17,7 @@ import type {
   SpecialVetoType,
   ForcedShockType,
   BroadcastOverride,
+  BroadcastCampaign,
   BroadcastLevel,
   CustomBroadcastMessage,
 } from '../types'
@@ -114,11 +116,13 @@ import {
 import {
   getDefaultBroadcastOrder,
   getBroadcastTemplate,
+  getBroadcastTemplateForMajor,
   getPhaseCardTemplate,
   matchBroadcastTemplate,
   renderBroadcastTemplate,
 } from '../broadcasting/broadcastTemplateCatalog'
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
+import { loadDepressionShockState } from '../features/twists/depressionShock'
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -144,6 +148,8 @@ const PHASE_ORDER: Phase[] = [
 const IMMUNITY_REPLACEMENT_SEED_MODIFIER = 0x51c4f1d3
 const DAY_START_SHOCK_MIN_WEEK = 3
 const DAY_START_SHOCK_RNG_SALT = 0x7c2f5d19
+const DEPRESSION_SHOCK_MIN_WEEK = 5
+const DEPRESSION_SHOCK_RNG_SALT = 0x0de9a551 // distinguished from every other seasonal roll
 const AI_LOH_REVENGE_THREAT_WEIGHT = 6
 const AI_LOH_BASE_THREAT_WEIGHT = 2
 const AI_LOH_WIN_THREAT_WEIGHT = 4
@@ -197,6 +203,8 @@ function formatForcedShockLabel(type: ForcedShockType): string {
       return 'Morning Shock'
     case 'twinShock':
       return 'Twin Shock'
+    case 'depressionShock':
+      return 'Depression Shock'
     default:
       return type
   }
@@ -239,10 +247,38 @@ function getForcedShockSafePhase(type: ForcedShockType): Phase {
     case 'democracia':
       return 'loh_comp_announcement'
     case 'dayStartShock':
+    case 'depressionShock':
       return 'week_start'
     default:
       return 'pos_results'
   }
+}
+
+function createInitialDepressionShockState(): DepressionShockState {
+  return {
+    rollResolved: false,
+    pendingActivation: false,
+    activatedWeek: null,
+    activeDay: 0,
+    recoveryWeek: null,
+    completed: false,
+  }
+}
+
+function isDepressionShockEligibleMode(state: GameState): boolean {
+  // Vox Populi deliberately runs on the Classic game engine. Cupid and
+  // Survival have their own season-defining visual language, so neither is
+  // eligible for this compact weather shock.
+  return (
+    state.mode !== 'survival' &&
+    state.cupidArrow?.status !== 'scheduled' &&
+    !isCupidArrowActive(state)
+  )
+}
+
+function activeHousemateCount(state: GameState): number {
+  return state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    .length
 }
 
 // ─── Houseguest pool ─────────────────────────────────────────────────────────
@@ -269,7 +305,7 @@ const TWIN_SHOCK_LIA_FLIP_AVATAR = resolveSkinAssetPathWithFallback(
 )
 const TWIN_SHOCK_COMBINED_AVATAR = resolveSkinAssetPathWithFallback(
   'Ali_lia_avatar.webp',
-  'Lia_Ali_avatar.webp'
+  'Ali_avatar.webp'
 )
 const TWIN_SHOCK_LIA_POOL_ENTRY = {
   id: TWIN_SHOCK_LIA_ID,
@@ -296,6 +332,9 @@ function buildSecretMissionTasksForTemplate(
     templateId: template.id,
     tasks: buildMissionTasks(template, triggeredDay, {
       targetCandidateIds: buildSecretMissionTargetCandidates(state),
+      capabilities: {
+        publicModeEnabled: state.publicModeEnabled === true,
+      },
       missionNumber: state.secretMission?.missionNumber,
       excludedTaskSetSignatures: state.secretMissionTaskSetHistory ?? [],
     }),
@@ -410,11 +449,11 @@ export function createInitialGameState(options?: {
   const expansionDebugAccess = import.meta.env.DEV || canAccessSpecialSettings()
   const forceClassicLocal = import.meta.env.DEV && import.meta.env.VITE_FORCE_CLASSIC === 'true'
   const cupidScheduleOptions = {
-      season,
-      seasonArchives,
-      seed,
-      seasonOverride: freshSettings.sim.cupidArrowSeasonOverride,
-    }
+    season,
+    seasonArchives,
+    seed,
+    seasonOverride: freshSettings.sim.cupidArrowSeasonOverride,
+  }
   // Cupid may organically enter a Classic season only for an owner. An explicit
   // debug season override remains available for testing, but DEV alone is not ownership.
   const cupidArrowIsScheduled =
@@ -448,12 +487,21 @@ export function createInitialGameState(options?: {
     isDev: import.meta.env.DEV,
     hasSpecialAccess: canAccessSpecialSettings(),
   })
+  const initialBroadcastCampaign: BroadcastCampaign = cupidArrowIsScheduled
+    ? 'cupid'
+    : voxPopuliIsScheduled
+      ? 'vox_populi'
+      : 'classic'
 
   // Season-opening broadcasts are built from the same persistent registry as
   // every later phase. This makes edits, disabling, and mixed built-in/custom
   // ordering effective before the first Play press as well.
   const seasonStartBuiltIns = [
-    { id: 'season.welcome', variables: [String(season)], include: true },
+    {
+      id: cupidArrowIsScheduled ? 'season.welcome-cupid' : 'season.welcome',
+      variables: [String(season)],
+      include: true,
+    },
     { id: 'season.public-mode-rule', variables: [publicModeEnabled ? 'ON' : 'OFF'], include: true },
     { id: 'season.vox-populi-intro', variables: [], include: voxPopuliIsScheduled },
   ].flatMap(({ id, variables, include }) => {
@@ -465,38 +513,48 @@ export function createInitialGameState(options?: {
     const forceOnTv = override?.forceOnTv ?? template.forceOnTv ?? false
     const defaultMajor = template.major
     const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
-    const major = level === 'critical'
-      ? selectedMajor ?? 'custom_critical'
-      : level === 'major'
-        ? selectedMajor ?? 'custom_major'
-        : undefined
-    return [{
-      id,
-      order: override?.order ?? getDefaultBroadcastOrder(template),
-      text: renderBroadcastTemplate(override?.text ?? template.text, variables),
-      type: override?.type ?? template.type,
-      level,
-      major,
-      forceOnTv,
-      title: override?.title,
-      customId: undefined as string | undefined,
-      templateId: id,
-      variables,
-    }]
+    const major =
+      level === 'critical'
+        ? (selectedMajor ?? 'custom_critical')
+        : level === 'major'
+          ? (selectedMajor ?? 'custom_major')
+          : undefined
+    return [
+      {
+        id,
+        order: override?.order ?? getDefaultBroadcastOrder(template),
+        text: renderBroadcastTemplate(override?.text ?? template.text, variables),
+        type: override?.type ?? template.type,
+        level,
+        major,
+        forceOnTv,
+        title: override?.title,
+        customId: undefined as string | undefined,
+        templateId: id,
+        variables,
+      },
+    ]
   })
   const seasonStartCustom = broadcastConfig.customMessages
-    .filter((message) => message.enabled && message.phase === 'season_start' && message.text.trim())
+    .filter(
+      (message) =>
+        message.enabled &&
+        message.phase === 'season_start' &&
+        (!message.campaign || message.campaign === initialBroadcastCampaign) &&
+        message.text.trim()
+    )
     .map((message) => ({
       id: message.id,
       order: message.order ?? 10000,
       text: message.text,
       type: message.type,
       level: message.level,
-      major: message.level === 'critical'
-        ? message.major ?? 'custom_critical'
-        : message.level === 'major'
-          ? message.major ?? 'custom_major'
-          : undefined,
+      major:
+        message.level === 'critical'
+          ? (message.major ?? 'custom_critical')
+          : message.level === 'major'
+            ? (message.major ?? 'custom_major')
+            : undefined,
       forceOnTv: message.forceOnTv !== false,
       title: message.title,
       customId: message.id,
@@ -504,34 +562,33 @@ export function createInitialGameState(options?: {
       variables: [] as string[],
     }))
   const seasonStartTime = Date.now()
-  const seasonStartItems = [...seasonStartBuiltIns, ...seasonStartCustom]
-    .sort((left, right) => left.order - right.order)
+  const seasonStartItems = [...seasonStartBuiltIns, ...seasonStartCustom].sort(
+    (left, right) => left.order - right.order
+  )
   const initialTvFeed: TvEvent[] = seasonStartItems.map((item, index) => ({
-      id: `season-start-${item.id}-${index}`,
-      text: item.text,
-      type: item.type,
-      timestamp: seasonStartTime + index,
+    id: `season-start-${item.id}-${index}`,
+    text: item.text,
+    type: item.type,
+    timestamp: seasonStartTime + index,
+    ...(item.major ? { major: item.major } : {}),
+    meta: {
+      phase: 'season_start',
+      week: 1,
+      broadcastTemplateId: item.templateId,
+      broadcastOrder: item.order,
+      broadcastLevel: item.level,
+      broadcastManaged: true,
+      broadcastVariables: item.variables,
+      ...(item.customId ? { customBroadcastId: item.customId } : {}),
       ...(item.major ? { major: item.major } : {}),
-      meta: {
-        phase: 'season_start',
-        week: 1,
-        broadcastTemplateId: item.templateId,
-        broadcastOrder: item.order,
-        broadcastLevel: item.level,
-        broadcastManaged: true,
-        broadcastVariables: item.variables,
-        ...(item.customId ? { customBroadcastId: item.customId } : {}),
-        ...(item.major ? { major: item.major } : {}),
-        ...(item.level === 'critical' ? { broadcastPriority: 'critical' } : {}),
-        ...(item.forceOnTv ? { forceOnTv: true } : {}),
-        ...(item.level !== 'minor' ? { announcementSubtitle: item.text } : {}),
-        ...(item.level !== 'minor' && item.title ? { announcementTitle: item.title } : {}),
-      },
-    }))
+      ...(item.level === 'critical' ? { broadcastPriority: 'critical' } : {}),
+      ...(item.forceOnTv ? { forceOnTv: true } : {}),
+      ...(item.level !== 'minor' ? { announcementSubtitle: item.text } : {}),
+      ...(item.level !== 'minor' && item.title ? { announcementTitle: item.title } : {}),
+    },
+  }))
   const initialBroadcastQueue = initialTvFeed
-    .filter((event) =>
-      event.meta?.forceOnTv === true || event.meta?.broadcastLevel === 'major' || event.meta?.broadcastLevel === 'critical'
-    )
+    .filter((event) => event.meta?.forceOnTv === true)
     .map((event) => event.id)
   return {
     gameId: crypto.randomUUID(),
@@ -606,6 +663,7 @@ export function createInitialGameState(options?: {
       awaitingVipSecondSaveTarget: false,
     },
     pendingForcedShock: null,
+    depressionShock: createInitialDepressionShockState(),
     dayStartShock: null,
     dayStartShockUsedThisSeason: false,
     tribunalPhaseAnnounced: false,
@@ -636,6 +694,7 @@ export function createInitialGameState(options?: {
       pairs: [],
       eliminatedPairCount: 0,
       pendingPartnerEvictionId: null,
+      visualsRevealed: false,
     },
     voxPopuli: initialVoxPopuli,
     coLohIds: null,
@@ -655,13 +714,16 @@ let _pendingPhaseCustoms: CustomBroadcastMessage[] | null = null
 let _flushingPhaseCustom = false
 const MAX_GAME_HISTORY_EVENTS = 1000
 
+if (initialState.cupidArrow?.status === 'scheduled') {
+  activateCupidArrowForSeason(initialState)
+}
+
 function inferObservedBroadcastSource(state: GameState, phase: Phase, text: string) {
   const playerNames = [...new Set(state.players.map((player) => player.name).filter(Boolean))]
     .sort((a, b) => b.length - a.length)
     .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const tokenPattern = playerNames.length > 0
-    ? new RegExp(`${playerNames.join('|')}|\\b\\d+\\b`, 'g')
-    : /\b\d+\b/g
+  const tokenPattern =
+    playerNames.length > 0 ? new RegExp(`${playerNames.join('|')}|\\b\\d+\\b`, 'g') : /\b\d+\b/g
   const variables: string[] = []
   const sourceText = text.replace(tokenPattern, (value) => {
     variables.push(value)
@@ -669,6 +731,32 @@ function inferObservedBroadcastSource(state: GameState, phase: Phase, text: stri
   })
   const sourceHash = (hashString(`${phase}|${sourceText}`) >>> 0).toString(36)
   return { id: `observed.${phase}.${sourceHash}`, sourceText, variables }
+}
+
+function currentBroadcastCampaign(state: GameState): BroadcastCampaign {
+  const depressionShock = loadDepressionShockState(state.gameId)
+  if (
+    depressionShock.status === 'active' &&
+    depressionShock.activatedDay != null &&
+    state.week >= depressionShock.activatedDay &&
+    state.week <= depressionShock.activatedDay + 2
+  ) {
+    return 'depression_shock'
+  }
+  if (state.mode === 'survival') return 'survival'
+  if (
+    state.cupidArrow?.status === 'scheduled' ||
+    state.cupidArrow?.status === 'active' ||
+    state.expansionMode === 'cupidArrow'
+  )
+    return 'cupid'
+  if (
+    state.voxPopuli?.status === 'scheduled' ||
+    state.voxPopuli?.status === 'active' ||
+    state.expansionMode === 'voxPopuli'
+  )
+    return 'vox_populi'
+  return 'classic'
 }
 
 function buildTvMeta(
@@ -710,18 +798,24 @@ function managedBroadcastOrder(state: GameState, event: TvEvent): number {
 }
 
 function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
-  const level = event.meta?.broadcastLevel as BroadcastLevel | undefined
-  const shouldShow = event.meta?.forceOnTv === true || level === 'major' || level === 'critical'
+  const shouldShow = event.meta?.forceOnTv === true
   if (!shouldShow || event.meta?.broadcastConsumed === true) return
-  const queue = [...(state.broadcastQueue ?? [])].filter((id) =>
-    state.tvFeed.some((candidate) => candidate.id === id && candidate.meta?.broadcastConsumed !== true)
+  const activeEventsById = new Map(
+    state.tvFeed
+      .filter((candidate) => candidate.meta?.broadcastConsumed !== true)
+      .map((candidate) => [candidate.id, candidate] as const)
   )
+  const queue = [...(state.broadcastQueue ?? [])].filter((id) => activeEventsById.has(id))
   if (!queue.includes(event.id)) queue.push(event.id)
   const orderFor = (id: string) => {
-    const candidate = state.tvFeed.find((item) => item.id === id)
+    const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
-  queue.sort((left, right) => orderFor(left) - orderFor(right))
+  const priorityFor = (id: string) =>
+    activeEventsById.get(id)?.meta?.broadcastPriority === 'critical' ? 0 : 1
+  queue.sort(
+    (left, right) => priorityFor(left) - priorityFor(right) || orderFor(left) - orderFor(right)
+  )
   state.broadcastQueue = queue
 }
 
@@ -731,21 +825,19 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
     : undefined
   if (
     state.lastPlainBroadcastEventId &&
-    (
-      retainedPlainEvent?.meta?.phase !== phase ||
-      retainedPlainEvent?.meta?.week !== state.week
-    )
+    (retainedPlainEvent?.meta?.phase !== phase || retainedPlainEvent?.meta?.week !== state.week)
   ) {
     state.lastPlainBroadcastEventId = null
   }
 
   const eligible = state.tvFeed.filter((event) => {
     if (event.meta?.phase !== phase || event.meta?.week !== state.week) return false
-    if (event.meta?.broadcastManaged !== true || event.meta?.broadcastConsumed === true) return false
-    const level = event.meta?.broadcastLevel as BroadcastLevel | undefined
-    if (event.meta?.forceOnTv !== true && level !== 'major' && level !== 'critical') return false
+    if (event.meta?.broadcastManaged !== true || event.meta?.broadcastConsumed === true)
+      return false
+    if (event.meta?.forceOnTv !== true) return false
     const templateId = event.meta?.broadcastTemplateId
-    if (typeof templateId === 'string' && state.broadcastOverrides?.[templateId]?.disabled) return false
+    if (typeof templateId === 'string' && state.broadcastOverrides?.[templateId]?.disabled)
+      return false
     const customId = event.meta?.customBroadcastId
     if (typeof customId === 'string') {
       const custom = state.customBroadcasts?.find((message) => message.id === customId)
@@ -755,6 +847,8 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
   })
   eligible.sort(
     (left, right) =>
+      (left.meta?.broadcastPriority === 'critical' ? 0 : 1) -
+        (right.meta?.broadcastPriority === 'critical' ? 0 : 1) ||
       managedBroadcastOrder(state, left) - managedBroadcastOrder(state, right) ||
       left.timestamp - right.timestamp ||
       left.id.localeCompare(right.id)
@@ -765,27 +859,48 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
 function refreshManagedBroadcastDefinition(state: GameState, event: TvEvent) {
   if (event.meta?.broadcastManaged !== true || event.meta?.broadcastConsumed === true) return
   const customId = event.meta?.customBroadcastId
-  const custom = typeof customId === 'string'
-    ? state.customBroadcasts?.find((message) => message.id === customId)
-    : undefined
-  const templateId = event.meta?.broadcastTemplateId
+  const custom =
+    typeof customId === 'string'
+      ? state.customBroadcasts?.find((message) => message.id === customId)
+      : undefined
+  let templateId = event.meta?.broadcastTemplateId
+  const eventMajor = event.meta?.major ?? event.major
+  if (
+    event.meta?.phase === 'season_start' &&
+    eventMajor === 'vox_populi' &&
+    templateId !== 'season.vox-populi-intro'
+  ) {
+    templateId = 'season.vox-populi-intro'
+    event.meta = {
+      ...(event.meta ?? {}),
+      broadcastTemplateId: templateId,
+      broadcastVariables: [],
+    }
+    delete event.meta.broadcastSourceText
+  }
   const template = typeof templateId === 'string' ? getBroadcastTemplate(templateId) : undefined
-  const override = typeof templateId === 'string' ? state.broadcastOverrides?.[templateId] : undefined
+  const override =
+    typeof templateId === 'string' ? state.broadcastOverrides?.[templateId] : undefined
   const variables = Array.isArray(event.meta?.broadcastVariables)
     ? event.meta.broadcastVariables.filter((value): value is string => typeof value === 'string')
     : []
-  const level = custom?.level ?? override?.level ?? template?.level ??
-    (event.meta?.broadcastLevel as BroadcastLevel | undefined) ?? 'minor'
+  const level =
+    custom?.level ??
+    override?.level ??
+    template?.level ??
+    (event.meta?.broadcastLevel as BroadcastLevel | undefined) ??
+    'minor'
   const forceOnTv = custom
     ? custom.forceOnTv !== false
-    : override?.forceOnTv ?? template?.forceOnTv ?? (event.meta?.forceOnTv === true)
-  const configuredMajor = custom?.major ??
-    (override?.major === null ? undefined : (override?.major ?? template?.major))
-  const major = level === 'critical'
-    ? configuredMajor ?? 'custom_critical'
-    : level === 'major'
-      ? configuredMajor ?? 'custom_major'
-      : undefined
+    : (override?.forceOnTv ?? template?.forceOnTv ?? event.meta?.forceOnTv === true)
+  const configuredMajor =
+    custom?.major ?? (override?.major === null ? undefined : (override?.major ?? template?.major))
+  const major =
+    level === 'critical'
+      ? (configuredMajor ?? 'custom_critical')
+      : level === 'major'
+        ? (configuredMajor ?? 'custom_major')
+        : undefined
 
   if (custom) {
     event.text = custom.text
@@ -821,43 +936,71 @@ function pushEvent(
   type: TvEvent['type'],
   meta?: TvEvent['meta']
 ): TvEvent | undefined {
-  const explicitTemplateId = meta?.broadcastTemplateId ?? meta?.templateId
-  const hintedPhase = typeof meta?.phase === 'string'
-    ? (meta.phase as Phase)
-    : (_activeBroadcastPhase ?? state.phase)
+  const legacyVoxIntro =
+    (meta?.phase ?? _activeBroadcastPhase ?? state.phase) === 'season_start' &&
+    (meta?.major === 'vox_populi' || meta?.announcementKey === 'vox_populi')
+  const explicitTemplateId =
+    meta?.broadcastTemplateId ??
+    meta?.templateId ??
+    (legacyVoxIntro
+      ? 'season.vox-populi-intro'
+      : typeof meta?.major === 'string'
+        ? getBroadcastTemplateForMajor(meta.major, meta?.phase as Phase | undefined)?.id
+        : undefined)
+  const hintedPhase =
+    typeof meta?.phase === 'string' ? (meta.phase as Phase) : (_activeBroadcastPhase ?? state.phase)
   const matched = matchBroadcastTemplate(text, hintedPhase, explicitTemplateId)
   const template = matched?.template
   const authoredTemplateId = typeof explicitTemplateId === 'string' ? explicitTemplateId : null
-  const observed = template || authoredTemplateId
-    ? null
-    : inferObservedBroadcastSource(state, hintedPhase, text)
+  const observed =
+    template || authoredTemplateId ? null : inferObservedBroadcastSource(state, hintedPhase, text)
   const templateId = template?.id ?? authoredTemplateId ?? observed?.id
+  const isDeclaredSource = Boolean(template || authoredTemplateId || meta?.customBroadcastId)
   const variables = matched?.variables ?? observed?.variables ?? []
   const override = templateId ? state.broadcastOverrides?.[templateId] : undefined
   if (override?.disabled) return undefined
 
-  const finalText = override?.text
-    ? renderBroadcastTemplate(override.text, variables)
-    : text
+  const finalText = override?.text ? renderBroadcastTemplate(override.text, variables) : text
   const finalType = override?.type ?? type
   const authoredLevel = meta?.broadcastLevel as BroadcastLevel | undefined
   const defaultMajor = template?.major ?? (typeof meta?.major === 'string' ? meta.major : undefined)
-  const finalLevel = override?.level ?? template?.level ?? authoredLevel ??
-    (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor')
+  const finalLevel =
+    override?.level ??
+    (isDeclaredSource
+      ? (template?.level ??
+        authoredLevel ??
+        (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor'))
+      : 'minor')
   const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
-  const forceOnTv = override?.forceOnTv ??
-    (typeof meta?.forceOnTv === 'boolean' ? meta.forceOnTv : undefined) ??
-    template?.forceOnTv ??
-    true
-  const finalMajor = finalLevel === 'critical'
-    ? selectedMajor ?? 'custom_critical'
-    : finalLevel === 'major'
-      ? selectedMajor ?? 'custom_major'
-      : undefined
-  const intendedPhase = template?.phase ?? hintedPhase
-  const broadcastOrder = override?.order ??
-    (template ? getDefaultBroadcastOrder(template) :
-      typeof meta?.broadcastOrder === 'number' ? meta.broadcastOrder : 10000)
+  const forceOnTv =
+    override?.forceOnTv ??
+    (isDeclaredSource
+      ? ((typeof meta?.forceOnTv === 'boolean' ? meta.forceOnTv : undefined) ??
+        template?.forceOnTv ??
+        true)
+      : false)
+  const finalMajor =
+    finalLevel === 'critical'
+      ? (selectedMajor ?? 'custom_critical')
+      : finalLevel === 'major'
+        ? (selectedMajor ?? 'custom_major')
+        : undefined
+  // Cupid activation/dissociation can be triggered outside their catalogued
+  // phase (including QA). Keep the live phase or the TV queue filters them out.
+  const preserveActivationPhase =
+    meta?.major === 'cupid_arrow' ||
+    meta?.major === 'cupid_arrow_broken' ||
+    meta?.major === 'depression_shock_start' ||
+    meta?.major === 'depression_shock_day_2' ||
+    meta?.major === 'depression_shock_end'
+  const intendedPhase = preserveActivationPhase ? hintedPhase : (template?.phase ?? hintedPhase)
+  const broadcastOrder =
+    override?.order ??
+    (template
+      ? getDefaultBroadcastOrder(template)
+      : typeof meta?.broadcastOrder === 'number'
+        ? meta.broadcastOrder
+        : 10000)
   if (
     !_flushingPhaseCustom &&
     !meta?.customBroadcastId &&
@@ -869,6 +1012,7 @@ function pushEvent(
   const finalMeta: TvEvent['meta'] = {
     ...meta,
     phase: intendedPhase,
+    broadcastCampaign: template?.campaign ?? currentBroadcastCampaign(state),
     ...(templateId ? { broadcastTemplateId: templateId } : {}),
     ...(observed ? { broadcastSourceText: observed.sourceText } : {}),
     broadcastVariables: variables,
@@ -879,13 +1023,27 @@ function pushEvent(
     ...(finalLevel !== 'minor' && override?.title ? { announcementTitle: override.title } : {}),
     ...(finalLevel !== 'minor' ? { announcementSubtitle: finalText } : {}),
   }
+  if (!forceOnTv) delete finalMeta.forceOnTv
   if (finalLevel === 'minor' || !finalMajor) delete finalMeta.major
   else finalMeta.major = finalMajor
   if (finalLevel === 'critical') finalMeta.broadcastPriority = 'critical'
   else if (override?.level) delete finalMeta.broadcastPriority
 
   const duplicate = findDuplicateDayBroadcast(state, finalText)
-  if (duplicate) return duplicate
+  if (duplicate) {
+    if (meta?.requeueDuplicateBroadcast === true) {
+      duplicate.text = finalText
+      duplicate.type = finalType
+      duplicate.major = finalMajor
+      duplicate.meta = {
+        ...(duplicate.meta ?? {}),
+        ...finalMeta,
+        broadcastConsumed: false,
+      }
+      enqueueManagedBroadcast(state, duplicate)
+    }
+    return duplicate
+  }
 
   const ts = Date.now()
   const event: TvEvent = {
@@ -1033,6 +1191,27 @@ function activateCupidArrowForSeason(state: GameState) {
   state.cupidArrow.pairs = pairs
   state.cupidArrow.eliminatedPairCount = 0
   state.cupidArrow.pendingPartnerEvictionId = null
+  state.cupidArrow.visualsRevealed = false
+  const cupidWelcome = getBroadcastTemplate('season.welcome-cupid')
+  if (cupidWelcome) {
+    state.tvFeed.forEach((event) => {
+      if (
+        event.meta?.broadcastTemplateId !== 'season.welcome' &&
+        event.meta?.broadcastTemplateId !== 'season.welcome-cupid'
+      )
+        return
+      const override = state.broadcastOverrides?.[cupidWelcome.id]
+      event.text = renderBroadcastTemplate(override?.text ?? cupidWelcome.text, [
+        String(state.season),
+      ])
+      event.meta = {
+        ...event.meta,
+        broadcastTemplateId: cupidWelcome.id,
+        broadcastCampaign: 'cupid',
+        broadcastVariables: [String(state.season)],
+      }
+    })
+  }
   // Cupid's Arrow is a full-season expansion format, not a temporary shock.
   state.twistActive = false
   state.twistActivatedThisWeek = false
@@ -1056,15 +1235,16 @@ function activateCupidArrowForSeason(state: GameState) {
     state,
     `🏹 The lights soften. A golden arrow crosses the house, splitting into eight trails of light. Cupid has chosen: ${pairNames}. From this moment, every victory, every danger, every vote, and every exit belongs to the pair. 💘`,
     'twist',
-    { major: 'cupid_arrow' }
+    {
+      major: 'cupid_arrow',
+      broadcastTemplateId: 'cupid.activation',
+      phase: state.phase,
+    }
   )
 }
 
 function activateVoxPopuliForSeason(state: GameState) {
-  if (
-    state.voxPopuli?.status !== 'scheduled' ||
-    state.season !== state.voxPopuli.scheduledSeason
-  ) {
+  if (state.voxPopuli?.status !== 'scheduled' || state.season !== state.voxPopuli.scheduledSeason) {
     return
   }
   state.voxPopuli.status = 'active'
@@ -1090,12 +1270,13 @@ function activateVoxPopuliForSeason(state: GameState) {
       timestamp: Date.now(),
     },
   ]
-  pushEvent(
-    state,
-    `VOX POPULI is now in force. The competition winner earns immunity, the last-place finisher goes onto the block, every housemate casts two secret nomination votes, and the audience decides who leaves. Public Mode can reveal audience standings and guidance, but it never saves a nominee or changes the official result.`,
-    'twist',
-    { major: 'vox_populi', broadcastPriority: 'critical' }
-  )
+  const intro = getBroadcastTemplate('season.vox-populi-intro')
+  if (intro) {
+    pushEvent(state, intro.text, intro.type, {
+      broadcastTemplateId: intro.id,
+      phase: intro.phase,
+    })
+  }
 }
 
 function breakCupidArrowSpell(state: GameState) {
@@ -1103,11 +1284,22 @@ function breakCupidArrowSpell(state: GameState) {
   state.cupidArrow.status = 'broken'
   state.cupidArrow.pendingPartnerEvictionId = null
   state.twistActive = false
+  // QA can unlock and replay Cupid in the same day. Remove the prior consumed
+  // break event so duplicate suppression cannot swallow the new cinematic.
+  state.tvFeed = state.tvFeed.filter(
+    (event) => event.meta?.major !== 'cupid_arrow_broken' && event.major !== 'cupid_arrow_broken'
+  )
   pushEvent(
     state,
-    `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye house. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
+    `💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye hub. The rose glow fades: every survivor now plays alone. What the pairs felt—and what they did to each other—remains.`,
     'twist',
-    { major: 'cupid_arrow_broken' }
+    {
+      major: 'cupid_arrow_broken',
+      broadcastTemplateId: 'cupid.spell-broken',
+      phase: state.phase,
+      broadcastPriority: 'critical',
+      forceOnTv: true,
+    }
   )
 }
 
@@ -1197,7 +1389,8 @@ function resolveCupidPairEviction(state: GameState): boolean {
     pushEvent(
       state,
       `The nominated pairs are tied. ${tieBreaker.name}, your LOH pair must decide which pair leaves. 🗳️`,
-      'game'
+      'game',
+      { broadcastTemplateId: 'cupid.pair-tiebreak-prompt', phase: 'eviction_results' }
     )
     return true
   }
@@ -1416,8 +1609,7 @@ function castVoxAiNominationBallots(state: GameState, rng: () => number) {
   if (!state.voxPopuli) return
   const alive = getAlivePlayers(state)
   const immunityWinnerId = getVoxNominationImmunityId(state)
-  const autoNomineeId =
-    state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
+  const autoNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
   for (const voter of alive) {
     if (voter.isUser) continue
     if (isVoxFinalFour(state) && voter.id === autoNomineeId) continue
@@ -1472,8 +1664,22 @@ function finalizeVoxNominations(state: GameState) {
   // classic LOH nomination record would create false revenge logic next day.
   state.currentWeekNominationRecord = null
 
-  const automaticNomineeId =
-    state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
+  // The Confessional instruction is actionable only while the human ballot is
+  // outstanding. Retire it before queuing the result so returning from the
+  // Confessional immediately hands the faux TV to the completed ballot.
+  const ballotPrompt = state.tvFeed.find(
+    (event) =>
+      event.meta?.week === state.week &&
+      event.meta?.broadcastTemplateId === 'nominations.vox-ballot' &&
+      event.meta?.broadcastConsumed !== true
+  )
+  if (ballotPrompt) {
+    ballotPrompt.meta = { ...(ballotPrompt.meta ?? {}), broadcastConsumed: true }
+    state.broadcastQueue = (state.broadcastQueue ?? []).filter((id) => id !== ballotPrompt.id)
+    if (state.lastPlainBroadcastEventId === ballotPrompt.id) state.lastPlainBroadcastEventId = null
+  }
+
+  const automaticNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
   const automaticNominee = automaticNomineeId
     ? state.players.find((candidate) => candidate.id === automaticNomineeId)
     : null
@@ -1502,12 +1708,15 @@ function finalizeVoxNominations(state: GameState) {
           ballotNominees.length === 1 ? 'is' : 'are'
         } nominated for the audience vote.`
       : 'The secret ballot is complete.'
-  pushEvent(
-    state,
-    resultCopy,
-    'game',
-    { major: 'vox_populi_nomination_result', broadcastPriority: 'critical' }
-  )
+  pushEvent(state, resultCopy, 'game', {
+    broadcastTemplateId: automaticNominee
+      ? ballotNominees.length > 0
+        ? 'nominations.vox-result-with-auto'
+        : 'nominations.vox-auto-remains'
+      : ballotNominees.length > 0
+        ? 'nominations.vox-result'
+        : 'nominations.vox-ballot-complete',
+  })
 }
 
 function pickStrategicAiPlayer(
@@ -1690,18 +1899,13 @@ function restoreVoxNomineeMinimum(state: GameState): string[] {
   return replacements
 }
 
-function pushVoxSafetyOutcome(
-  state: GameState,
-  holderId: string | null,
-  savedId: string
-): void {
+function pushVoxSafetyOutcome(state: GameState, holderId: string | null, savedId: string): void {
   const holder = holderId ? state.players.find((player) => player.id === holderId) : null
   const saved = state.players.find((player) => player.id === savedId)
   const savedName = saved?.name ?? 'A nominee'
   if (state.voxPopuli) {
     state.voxPopuli.safetySaveCounts ??= {}
-    state.voxPopuli.safetySaveCounts[savedId] =
-      (state.voxPopuli.safetySaveCounts[savedId] ?? 0) + 1
+    state.voxPopuli.safetySaveCounts[savedId] = (state.voxPopuli.safetySaveCounts[savedId] ?? 0) + 1
   }
   const saveLine =
     holder?.id === savedId
@@ -1714,9 +1918,16 @@ function pushVoxSafetyOutcome(
     state.doubleEviction?.weekActive && nomineeNames.length >= 3
       ? `${formatNameList(nomineeNames)} will now face the audience, and two of them will leave tonight.`
       : `${formatNameList(nomineeNames)} will now face the audience, who will decide whose game ends tonight.`
+  const isSelfSave = holder?.id === savedId
+  const isDouble = Boolean(state.doubleEviction?.weekActive && nomineeNames.length >= 3)
   pushEvent(state, `${saveLine} ${publicLine}`, 'game', {
-    major: 'vox_populi_safety_outcome',
-    broadcastPriority: 'critical',
+    broadcastTemplateId: isSelfSave
+      ? isDouble
+        ? 'safety.vox-self-save-double'
+        : 'safety.vox-self-save'
+      : isDouble
+        ? 'safety.vox-save-double'
+        : 'safety.vox-save',
     savedId,
     nomineeIds: [...state.nomineeIds],
   })
@@ -1735,8 +1946,7 @@ function pushVoxSafetyStandPat(state: GameState, holderId: string | null): void 
     } on the block and will face the audience.`,
     'game',
     {
-      major: 'vox_populi_safety_outcome',
-      broadcastPriority: 'critical',
+      broadcastTemplateId: 'safety.vox-hold',
       nomineeIds: [...state.nomineeIds],
     }
   )
@@ -1814,11 +2024,7 @@ function resetVoxFinalThreeRound(state: GameState): void {
   }
 }
 
-function pushVoxFinalThreeResult(
-  state: GameState,
-  title: string,
-  subtitle: string
-): void {
+function pushVoxFinalThreeResult(state: GameState, title: string, subtitle: string): void {
   pushEvent(state, subtitle, 'game', {
     major: 'vox_final3_result',
     broadcastPriority: 'critical',
@@ -1845,19 +2051,28 @@ function pushVoxPostEvictionReaction(state: GameState, evictee: Player): void {
   const rng = mulberry32((state.seed ^ Math.imul(state.week + 1, 0x9e3779b1) ^ seedOffset) >>> 0)
   const closeScenes = [
     (name: string) => `${name} is crying quietly in the bedroom after ${evictee.name}'s exit.`,
-    (name: string) => `${name} has slipped into the yard to sob alone after saying goodbye to ${evictee.name}.`,
-    (name: string) => `${name} is clutching ${evictee.name}'s empty pillow, trying to hold it together.`,
-    (name: string) => `${name} is sitting silently by the pool, still shaken by ${evictee.name}'s elimination.`,
-    (name: string) => `${name} broke down in the dressing room once ${evictee.name}'s suitcase disappeared.`,
+    (name: string) =>
+      `${name} has slipped into the yard to sob alone after saying goodbye to ${evictee.name}.`,
+    (name: string) =>
+      `${name} is clutching ${evictee.name}'s empty pillow, trying to hold it together.`,
+    (name: string) =>
+      `${name} is sitting silently by the pool, still shaken by ${evictee.name}'s elimination.`,
+    (name: string) =>
+      `${name} broke down in the dressing room once ${evictee.name}'s suitcase disappeared.`,
     (name: string) => `${name} is being comforted in the bedroom after losing ${evictee.name}.`,
   ]
   const rivalScenes = [
-    (name: string) => `${name} has opened the sparkling cider. Their biggest rival, ${evictee.name}, is gone.`,
-    (name: string) => `${name} is already calling ${evictee.name}'s exit the turning point of the season.`,
-    (name: string) => `${name} cannot hide a relieved smile now that rival ${evictee.name} has left the house.`,
+    (name: string) =>
+      `${name} has opened the sparkling cider. Their biggest rival, ${evictee.name}, is gone.`,
+    (name: string) =>
+      `${name} is already calling ${evictee.name}'s exit the turning point of the season.`,
+    (name: string) =>
+      `${name} cannot hide a relieved smile now that rival ${evictee.name} has left the house.`,
     (name: string) => `${name} has quietly begun a victory lap after outlasting ${evictee.name}.`,
-    (name: string) => `${name} is telling allies that ${evictee.name}'s exit has opened the road to the finale.`,
-    (name: string) => `${name} raised a private toast in the kitchen after rival ${evictee.name} walked out.`,
+    (name: string) =>
+      `${name} is telling allies that ${evictee.name}'s exit has opened the road to the finale.`,
+    (name: string) =>
+      `${name} raised a private toast in the kitchen after rival ${evictee.name} walked out.`,
   ]
   const useCloseScene = Boolean(closest && closest.affinity >= 25)
   const useRivalScene = Boolean(!useCloseScene && rival && rival.affinity <= -25)
@@ -1880,6 +2095,7 @@ function emitCustomBroadcast(state: GameState, custom: CustomBroadcastMessage, p
     broadcastOrder: custom.order ?? 10000,
     broadcastLevel: custom.level,
     forceOnTv: custom.forceOnTv !== false,
+    broadcastCampaign: custom.campaign ?? currentBroadcastCampaign(state),
     ...(custom.level !== 'minor' && custom.major ? { major: custom.major } : {}),
     ...(custom.level === 'critical' ? { broadcastPriority: 'critical' } : {}),
     ...(custom.title ? { announcementTitle: custom.title } : {}),
@@ -1891,13 +2107,15 @@ function emitCustomBroadcast(state: GameState, custom: CustomBroadcastMessage, p
 function beginPhaseBroadcastSequence(state: GameState, phase: Phase) {
   _activeBroadcastPhase = phase
   _pendingPhaseCustoms = (state.customBroadcasts ?? [])
-    .filter((custom) =>
-      custom.enabled &&
-      custom.phase === phase &&
-      custom.text.trim() &&
-      !state.tvFeed.some(
-        (event) => event.meta?.week === state.week && event.meta?.customBroadcastId === custom.id
-      )
+    .filter(
+      (custom) =>
+        custom.enabled &&
+        custom.phase === phase &&
+        (!custom.campaign || custom.campaign === currentBroadcastCampaign(state)) &&
+        custom.text.trim() &&
+        !state.tvFeed.some(
+          (event) => event.meta?.week === state.week && event.meta?.customBroadcastId === custom.id
+        )
     )
     .sort((a, b) => (a.order ?? 10000) - (b.order ?? 10000))
 }
@@ -2270,18 +2488,7 @@ function shouldQueueTwinShockBeforeDayEnd(state: GameState): boolean {
 }
 
 function pushTwinShockAnnouncement(state: GameState, text: string, major: string) {
-  const ts = Date.now()
-  state.tvFeed = [
-    {
-      id: `${state.phase}-w${state.week}-${ts}-${major}`,
-      text,
-      type: 'twist' as const,
-      timestamp: ts,
-      major,
-      meta: buildTvMeta(state, { major }),
-    },
-    ...state.tvFeed,
-  ].slice(0, MAX_GAME_HISTORY_EVENTS)
+  pushEvent(state, text, 'twist', { major })
 }
 
 function ensureCompetitionStateForPlayer(state: GameState, playerId: string) {
@@ -2578,11 +2785,7 @@ function applyLohWinner(state: GameState, winnerId: string, source?: string) {
 }
 
 function announceVoxLastPlaceNominee(state: GameState): void {
-  if (
-    !isVoxPopuliActive(state) ||
-    !state.voxPopuli ||
-    !state.lastHohCompFinisherId
-  ) {
+  if (!isVoxPopuliActive(state) || !state.voxPopuli || !state.lastHohCompFinisherId) {
     return
   }
   state.voxPopuli.autoNomineeId = state.lastHohCompFinisherId
@@ -2594,8 +2797,7 @@ function announceVoxLastPlaceNominee(state: GameState): void {
     `${lastPlaceName} finished in last place in the immunity competition and is now on the block for today's audience vote.`,
     'game',
     {
-      major: 'vox_populi_last_place_nominee',
-      broadcastPriority: 'critical',
+      broadcastTemplateId: 'loh.vox-last-place',
       playerId: state.lastHohCompFinisherId,
     }
   )
@@ -2865,13 +3067,14 @@ const gameSlice = createSlice({
       state.lohSafetyAdvice = action.payload
     },
     addTvEvent(state, action: PayloadAction<Omit<TvEvent, 'id' | 'timestamp'>>) {
-      const event: TvEvent = {
-        ...action.payload,
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-        meta: buildTvMeta(state, action.payload.meta),
+      const event = pushEvent(state, action.payload.text, action.payload.type, {
+        ...(action.payload.meta ?? {}),
+        ...(action.payload.major ? { major: action.payload.major } : {}),
+      })
+      if (event) {
+        event.channels = action.payload.channels
+        event.source = action.payload.source
       }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
     },
     /** Update one existing broadcast without replacing its identity or position in the timeline. */
     updateTvEvent(
@@ -2908,11 +3111,12 @@ const gameSlice = createSlice({
       } else {
         delete meta.broadcastPriority
       }
-      meta.broadcastLevel = action.payload.broadcastPriority === 'critical'
-        ? 'critical'
-        : action.payload.major
-          ? 'major'
-          : 'minor'
+      meta.broadcastLevel =
+        action.payload.broadcastPriority === 'critical'
+          ? 'critical'
+          : action.payload.major
+            ? 'major'
+            : 'minor'
       meta.broadcastManaged = true
       if (action.payload.forceOnTv) {
         meta.forceOnTv = true
@@ -2921,7 +3125,8 @@ const gameSlice = createSlice({
       }
       if (meta.broadcastLevel !== 'minor') {
         meta.announcementSubtitle = action.payload.text
-        if (action.payload.announcementTitle) meta.announcementTitle = action.payload.announcementTitle
+        if (action.payload.announcementTitle)
+          meta.announcementTitle = action.payload.announcementTitle
       } else {
         delete meta.announcementTitle
         delete meta.announcementSubtitle
@@ -2938,20 +3143,33 @@ const gameSlice = createSlice({
       }
     },
     /** Change the source definition used by future Play-driven broadcasts. */
-    setBroadcastOverride(
-      state,
-      action: PayloadAction<{ id: string; changes: BroadcastOverride }>
-    ) {
+    setBroadcastOverride(state, action: PayloadAction<{ id: string; changes: BroadcastOverride }>) {
       state.broadcastOverrides ??= {}
       state.broadcastOverrides[action.payload.id] = {
         ...(state.broadcastOverrides[action.payload.id] ?? {}),
         ...action.payload.changes,
       }
+      state.tvFeed.forEach((event) => {
+        const isLegacyVoxIntro =
+          action.payload.id === 'season.vox-populi-intro' &&
+          event.meta?.phase === 'season_start' &&
+          (event.meta?.major ?? event.major) === 'vox_populi'
+        if (event.meta?.broadcastTemplateId === action.payload.id || isLegacyVoxIntro) {
+          refreshManagedBroadcastDefinition(state, event)
+        }
+      })
+      rebuildManagedBroadcastQueue(state, state.phase)
     },
     /** Restore a built-in message to its source copy and classification. */
     resetBroadcastOverride(state, action: PayloadAction<string>) {
       if (!state.broadcastOverrides) return
       delete state.broadcastOverrides[action.payload]
+      state.tvFeed.forEach((event) => {
+        if (event.meta?.broadcastTemplateId === action.payload) {
+          refreshManagedBroadcastDefinition(state, event)
+        }
+      })
+      rebuildManagedBroadcastQueue(state, state.phase)
     },
     /**
      * Apply authoring changes saved by another browser tab. The storage event
@@ -2981,16 +3199,44 @@ const gameSlice = createSlice({
      * phase. TvZone calls this on mount/phase entry so special phases and
      * messages authored while the manager was open use the same runtime queue.
      */
-    syncPhaseBroadcasts(
-      state,
-      action: PayloadAction<{ phase: Phase; cardMajor?: string | null }>
-    ) {
+    syncPhaseBroadcasts(state, action: PayloadAction<{ phase: Phase; cardMajor?: string | null }>) {
       if (state.phase !== action.payload.phase) return
       beginPhaseBroadcastSequence(state, action.payload.phase)
       const cardMajor = action.payload.cardMajor ?? null
       const activeCardTemplate = cardMajor
         ? getPhaseCardTemplate(action.payload.phase, cardMajor)
         : undefined
+
+      // A shock activation can emit its legacy event in the same turn that a
+      // phase is upgraded to a manager-controlled branch card (Democracia,
+      // Double Elimination, and similar). They describe the same beat. Keep
+      // one canonical card and consume every sibling before the TV can queue
+      // separate fullscreen announcements for each of them.
+      if (cardMajor && activeCardTemplate) {
+        const canonicalCardText = renderBroadcastTemplate(
+          state.broadcastOverrides?.[activeCardTemplate.id]?.text ?? activeCardTemplate.text,
+          []
+        )
+          .replace(/\s+/g, ' ')
+          .trim()
+        const sameMajorEvents = state.tvFeed.filter(
+          (event) =>
+            event.meta?.phase === action.payload.phase &&
+            event.meta?.week === state.week &&
+            event.meta?.broadcastConsumed !== true &&
+            (event.meta?.major ?? event.major) === cardMajor
+        )
+        const canonicalEvent = sameMajorEvents.find(
+          (event) =>
+            event.meta?.broadcastTemplateId === activeCardTemplate.id &&
+            event.text.replace(/\s+/g, ' ').trim() === canonicalCardText
+        )
+        for (const event of sameMajorEvents) {
+          if (event !== canonicalEvent) {
+            event.meta = { ...(event.meta ?? {}), broadcastConsumed: true }
+          }
+        }
+      }
 
       // A phase can change its branch without changing the phase name (for
       // example, the ordinary LOH card becoming Democracia). Keep the old
@@ -2999,11 +3245,9 @@ const gameSlice = createSlice({
       for (const event of state.tvFeed) {
         if (event.meta?.phase !== action.payload.phase || event.meta?.week !== state.week) continue
         const templateId = event.meta?.broadcastTemplateId
-        const template = typeof templateId === 'string' ? getBroadcastTemplate(templateId) : undefined
-        if (
-          template?.kind === 'phase_card' &&
-          template.id !== activeCardTemplate?.id
-        ) {
+        const template =
+          typeof templateId === 'string' ? getBroadcastTemplate(templateId) : undefined
+        if (template?.kind === 'phase_card' && template.id !== activeCardTemplate?.id) {
           event.meta = { ...(event.meta ?? {}), broadcastConsumed: true }
         }
       }
@@ -3058,11 +3302,10 @@ const gameSlice = createSlice({
       const index = state.customBroadcasts.findIndex((message) => message.id === action.payload.id)
       if (index !== -1) state.customBroadcasts[index] = action.payload
     },
-    reorderCustomBroadcasts(
-      state,
-      action: PayloadAction<{ phase: Phase; orderedIds: string[] }>
-    ) {
-      const orderById = new Map(action.payload.orderedIds.map((id, index) => [id, (index + 1) * 10]))
+    reorderCustomBroadcasts(state, action: PayloadAction<{ phase: Phase; orderedIds: string[] }>) {
+      const orderById = new Map(
+        action.payload.orderedIds.map((id, index) => [id, (index + 1) * 10])
+      )
       for (const message of state.customBroadcasts ?? []) {
         if (message.phase !== action.payload.phase) continue
         const order = orderById.get(message.id)
@@ -3471,7 +3714,9 @@ const gameSlice = createSlice({
         state.phase = 'final3_comp2'
       } else if (state.phase === 'final3_comp2_minigame') {
         state.f3Part2WinnerId = winnerId
-        const partOneWinnerName = state.players.find((player) => player.id === state.f3Part1WinnerId)?.name
+        const partOneWinnerName = state.players.find(
+          (player) => player.id === state.f3Part1WinnerId
+        )?.name
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
@@ -3708,13 +3953,11 @@ const gameSlice = createSlice({
       if (!state.awaitingNominations || state.phase !== 'nomination_results') return
       if (isVoxPopuliActive(state) && state.voxPopuli) {
         const human = state.players.find(
-          (player) =>
-            player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+          (player) => player.isUser && player.status !== 'evicted' && player.status !== 'jury'
         )
         if (!human) return
-          const immunityWinnerId = getVoxNominationImmunityId(state)
-        const autoNomineeId =
-          state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
+        const immunityWinnerId = getVoxNominationImmunityId(state)
+        const autoNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
         const eligible = state.players.filter(
           (candidate) =>
             candidate.status !== 'evicted' &&
@@ -3821,6 +4064,20 @@ const gameSlice = createSlice({
       const eventText = autoNomineeClause
         ? `${nameList} have been nominated for elimination. ${autoNomineeClause}. 🎯`
         : `${nameList} have been nominated for elimination by ${hohName}. 🎯`
+      const obsoletePrompt = state.tvFeed.find(
+        (event) =>
+          event.meta?.phase === state.phase &&
+          event.meta?.week === state.week &&
+          event.meta?.broadcastConsumed !== true &&
+          event.text.includes("it's time to make your nominations")
+      )
+      if (obsoletePrompt) {
+        obsoletePrompt.meta = { ...(obsoletePrompt.meta ?? {}), broadcastConsumed: true }
+        state.broadcastQueue = (state.broadcastQueue ?? []).filter((id) => id !== obsoletePrompt.id)
+        if (state.lastPlainBroadcastEventId === obsoletePrompt.id) {
+          state.lastPlainBroadcastEventId = null
+        }
+      }
       pushEvent(state, eventText, 'game')
     },
 
@@ -4172,7 +4429,7 @@ const gameSlice = createSlice({
 
     /**
      * Activate the Democracia twist for the current day.
-     * Sets the Democracia state to active and pushes the TV announcement.
+     * Its manager-controlled LOH branch card is the single announcement source.
      * Called by tryActivateDemocracia / tryActivatePendingForcedDemocracia thunks.
      */
     activateDemocracia(state) {
@@ -4203,16 +4460,6 @@ const gameSlice = createSlice({
       state.democracia.resultDisplay = null
       state.twistActive = true
       state.twistActivatedThisWeek = true
-      const ts = Date.now()
-      const event: TvEvent = {
-        id: `democracia-w${state.week}-${ts}`,
-        text: `🗳️ DEMOCRACIA! Today, instead of a Leader of the House competition, the house will elect its leader by popular vote!`,
-        type: 'twist',
-        major: 'democracia',
-        meta: buildTvMeta(state, { major: 'democracia' }),
-        timestamp: ts,
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
     },
 
     /**
@@ -4395,12 +4642,9 @@ const gameSlice = createSlice({
       if (action.payload.context === 'eviction') {
         state.phase = 'eviction_results'
       }
-      pushEvent(
-        state,
-        `The audience vote is closed. The result is final.`,
-        'vote',
-        { major: 'vox_populi_public_vote_closed' }
-      )
+      pushEvent(state, `The audience vote is closed. The result is final.`, 'vote', {
+        major: 'vox_populi_public_vote_closed',
+      })
     },
 
     commitVoxAudiencePreview(
@@ -4432,6 +4676,25 @@ const gameSlice = createSlice({
      */
     dismissEvictionSplash(state) {
       state.evictionSplashId = null
+    },
+
+    continueSurvivorAfterAd(state) {
+      if (state.mode !== 'survival' || state.status !== 'failed') return
+      const modeSpecific = state.modeSpecific?.kind === 'survival' ? state.modeSpecific : null
+      if (!modeSpecific || (modeSpecific.adContinueCount ?? 0) >= 3) return
+      const human = state.players.find((player) => player.isUser)
+      if (!human) return
+      human.status = 'active'
+      state.status = 'active'
+      state.phase = 'week_start'
+      state.pendingEviction = null
+      state.voteResults = null
+      state.nomineeIds = []
+      state.awaitingHumanVote = false
+      state.modeSpecific = {
+        ...modeSpecific,
+        adContinueCount: (modeSpecific.adContinueCount ?? 0) + 1,
+      }
     },
 
     /**
@@ -4496,7 +4759,23 @@ const gameSlice = createSlice({
       state.pendingEviction = null
       state.dayStartShock = null
 
-      pushEvent(state, msg, 'game')
+      const cupidEvictionTemplateId = msg.includes(
+        "Cupid's Arrow means you are eliminated together"
+      )
+        ? msg.includes(' breaks the tie. ')
+          ? 'cupid.pair-tiebreak-eviction'
+          : 'cupid.pair-eviction'
+        : wasCupidPartnerFollowup
+          ? 'cupid.partner-eviction'
+          : undefined
+      pushEvent(
+        state,
+        msg,
+        'game',
+        cupidEvictionTemplateId
+          ? { broadcastTemplateId: cupidEvictionTemplateId, phase: 'eviction_results' }
+          : undefined
+      )
 
       if (
         cupidPartner &&
@@ -4641,7 +4920,10 @@ const gameSlice = createSlice({
         partner
           ? `${player.name} has chosen to self-evict. Cupid's Arrow also eliminates ${partner}. 🚪💔`
           : `${player.name} has chosen to self-evict from The Big Eye house. 🚪`,
-        'game'
+        'game',
+        partner
+          ? { broadcastTemplateId: 'cupid.self-eviction-pair', phase: 'eviction_results' }
+          : undefined
       )
     },
 
@@ -4731,16 +5013,12 @@ const gameSlice = createSlice({
       state.battleBack = bb
       state.twistActive = true
       // Push event WITH major: 'battle_back' so TvZone shows the TvAnnouncementOverlay.
-      const ts = Date.now()
-      const event = {
-        id: `${state.phase}-w${state.week}-${ts}-bb`,
-        text: `🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆`,
-        type: 'twist' as const,
-        timestamp: ts,
-        major: 'battle_back',
-        meta: buildTvMeta(state, { major: 'battle_back' }),
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        `🔥 SHOCK: Back 2 the Game is here! Tribunal members will compete for a chance to return! 🏆`,
+        'twist',
+        { major: 'battle_back' }
+      )
     },
 
     /**
@@ -4812,8 +5090,8 @@ const gameSlice = createSlice({
     /**
      * Activate the Double Eviction twist for the current week.
      * Sets `doubleEviction.weekActive = true`, increments `usedCount`, sets
-     * `twistActive`, and pushes a TV event with `major: 'double_eviction'` so
-     * TvZone shows the announcement overlay.
+     * `twistActive`. The manager-controlled nominations card is the single
+     * announcement source for this branch.
      * Called by the `tryActivateDoubleEviction` thunk when the probability roll passes.
      */
     activateDoubleEviction(state) {
@@ -4825,22 +5103,6 @@ const gameSlice = createSlice({
       state.doubleEviction.pendingSecondEviction = null
       state.twistActive = true
       state.twistActivatedThisWeek = true
-      // Push event WITH major: 'double_eviction' so TvZone shows the overlay.
-      const ts = Date.now()
-      const voxDoubleEvictionText = isVoxPopuliActive(state)
-        ? `DOUBLE ELIMINATION! The last-place nominee joins the secret ballot's top two and any cutoff ties. At least three nominees must remain after Safety before the audience can eliminate the two highest public vote-getters.`
-        : null
-      const announcementKey = voxDoubleEvictionText ? 'vox_double_eviction' : 'double_eviction'
-      const event: TvEvent = {
-        id: `nominations-w${state.week}-${ts}-de`,
-        text: `⚡ DOUBLE ELIMINATION! Tonight the LOH must nominate THREE players. TWO will be eliminated live! ⚡`,
-        type: 'twist',
-        timestamp: ts,
-        major: announcementKey,
-        meta: buildTvMeta(state, { major: announcementKey }),
-      }
-      if (voxDoubleEvictionText) event.text = voxDoubleEvictionText
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
     },
 
     /**
@@ -4883,16 +5145,10 @@ const gameSlice = createSlice({
         coup: 'coup_detat',
         spotlight: 'spotlight_veto',
       }
-      const ts = Date.now()
-      const event: TvEvent = {
-        id: `special-veto-${type}-w${week}-${ts}`,
-        text: typeLabels[type],
-        type: 'twist',
+      pushEvent(state, typeLabels[type], 'twist', {
         major: majorKeys[type],
-        meta: buildTvMeta(state, { major: majorKeys[type] }),
-        timestamp: ts,
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+        week,
+      })
     },
 
     setCupidArrowSchedule(state, action: PayloadAction<number | null>) {
@@ -4906,6 +5162,7 @@ const gameSlice = createSlice({
         pairs: [],
         eliminatedPairCount: 0,
         pendingPartnerEvictionId: null,
+        visualsRevealed: false,
       }
       state.cupidArrow.scheduledSeason = scheduledSeason
       if (state.cupidArrow.status === 'active' || state.cupidArrow.status === 'broken') return
@@ -4925,6 +5182,7 @@ const gameSlice = createSlice({
         pairs: [],
         eliminatedPairCount: 0,
         pendingPartnerEvictionId: null,
+        visualsRevealed: false,
       }
       state.cupidArrow.scheduledSeason = state.season
       state.cupidArrow.status = 'scheduled'
@@ -4933,6 +5191,14 @@ const gameSlice = createSlice({
 
     breakCupidArrowNow(state) {
       breakCupidArrowSpell(state)
+    },
+
+    revealCupidArrowVisuals(state) {
+      if (state.cupidArrow?.status === 'active') state.cupidArrow.visualsRevealed = true
+    },
+
+    finishCupidArrowVisualReturn(state) {
+      if (state.cupidArrow?.status === 'broken') state.cupidArrow.visualsRevealed = false
     },
 
     setVoxPopuliSchedule(state, action: PayloadAction<number | null>) {
@@ -4977,7 +5243,10 @@ const gameSlice = createSlice({
         )
         return
       }
-      const earliestWeek = getForcedShockActivationWeek(state, getForcedShockSafePhase(type))
+      const earliestWeek = Math.max(
+        type === 'depressionShock' ? DEPRESSION_SHOCK_MIN_WEEK : 0,
+        getForcedShockActivationWeek(state, getForcedShockSafePhase(type))
+      )
       state.pendingForcedShock = {
         type,
         requestedWeek: state.week,
@@ -5013,6 +5282,81 @@ const gameSlice = createSlice({
       state.dayStartShock = action.payload
       state.dayStartShockUsedThisSeason = true
       state.twistActivatedThisWeek = true
+    },
+
+    /** Start (or advance) the two-day Depression Shock at a clear day boundary. */
+    activateDepressionShock(state, action: PayloadAction<{ source: 'random' | 'debug' }>) {
+      if (!isDepressionShockEligibleMode(state)) return
+      const shock = state.depressionShock ?? createInitialDepressionShockState()
+      const isSecondDay = shock.activatedWeek !== null && state.week > shock.activatedWeek
+
+      shock.rollResolved = true
+      shock.pendingActivation = false
+      shock.activatedWeek ??= state.week
+      shock.activeDay = isSecondDay ? 2 : 1
+      shock.recoveryWeek = isSecondDay ? state.week + 1 : null
+      state.depressionShock = shock
+      state.twistActivatedThisWeek = true
+      state.twistActive = true
+
+      if (shock.activeDay === 1) {
+        pushEvent(
+          state,
+          'The weather has been bad for so long that the housemates have slipped into depression. Watch out — they may not act like themselves. 🌧️',
+          'twist',
+          { major: 'depression_shock_start', source: action.payload.source }
+        )
+        pushEvent(
+          state,
+          'A sudden argument breaks out over nothing at all. The storm has everyone on edge. ⚡',
+          'social',
+          { major: 'depression_shock_fight' }
+        )
+      } else {
+        pushEvent(
+          state,
+          'The house is still very depressed. Colour drains from the rooms as the storm refuses to lift. 🌫️',
+          'twist',
+          { major: 'depression_shock_day_two' }
+        )
+        pushEvent(
+          state,
+          'The Big Eye sends chocolates to the house in a small attempt to lift the mood. 🍫',
+          'game',
+          { major: 'depression_shock_chocolates' }
+        )
+        pushEvent(
+          state,
+          'A harmless kitchen comment turns into another unexpected fight. Nobody seems to know why. ⚡',
+          'social',
+          { major: 'depression_shock_fight' }
+        )
+      }
+    },
+
+    /** Restore the house on the morning after the second storm day. */
+    endDepressionShock(state) {
+      const shock = state.depressionShock
+      if (!shock || shock.activeDay !== 2) return
+      shock.activeDay = 0
+      shock.completed = true
+      shock.recoveryWeek = state.week
+      state.twistActive = false
+      pushEvent(
+        state,
+        'A sunny break tears through the clouds. Light floods the house, a rainbow arcs overhead, and the housemates finally return to themselves. 🌈',
+        'twist',
+        { major: 'depression_shock_recovery' }
+      )
+    },
+
+    /** Persist the one seasonal roll without consuming a blocked day. */
+    setDepressionShockRoll(state, action: PayloadAction<{ passed: boolean }>) {
+      const shock = state.depressionShock ?? createInitialDepressionShockState()
+      shock.rollResolved = true
+      shock.pendingActivation = action.payload.passed
+      shock.completed = !action.payload.passed
+      state.depressionShock = shock
     },
 
     /**
@@ -5214,16 +5558,12 @@ const gameSlice = createSlice({
       state.twistActive = true
       // Push a TV event WITH major: 'twist' so the TV filler shows the announcement
       // while the voting overlay waits for openFavoritePlayerVoting.
-      const ts = Date.now()
-      const event = {
-        id: `${state.phase}-w${state.week}-${ts}-fp`,
-        text: `⭐ THE PUBLIC DECIDES: Vote for your Public's Favorite Player! 🏆`,
-        type: 'twist' as const,
-        timestamp: ts,
-        major: 'twist',
-        meta: buildTvMeta(state, { major: 'twist' }),
-      }
-      state.tvFeed = [event, ...state.tvFeed].slice(0, MAX_GAME_HISTORY_EVENTS)
+      pushEvent(
+        state,
+        `⭐ THE PUBLIC DECIDES: Vote for your Public's Favorite Player! 🏆`,
+        'twist',
+        { major: 'twist' }
+      )
       // Append a start event to game history
       if (!state.history) state.history = []
       state.history.push({
@@ -5509,6 +5849,50 @@ const gameSlice = createSlice({
         { major: 'vox_final3', broadcastPriority: 'critical' }
       )
     },
+    /**
+     * Debug-only Classic Final Three entry point. Keeps the human plus two
+     * active AI players, moves everybody else to the Tribunal, and clears all
+     * ceremony/minigame state so the normal three-part Classic finale can run.
+     */
+    prepareClassicFinalThreeTest(state) {
+      if (isVoxPopuliActive(state)) return
+      const human = state.players.find((player) => player.isUser)
+      if (!human) return
+      const activeAi = state.players.filter(
+        (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+      )
+      const fallbackAi = state.players.filter(
+        (player) => !player.isUser && !activeAi.some((candidate) => candidate.id === player.id)
+      )
+      const finalists = [human, ...activeAi, ...fallbackAi].slice(0, 3)
+      if (finalists.length !== 3) return
+
+      resetVoxFinalThreeRound(state)
+      const finalistIds = new Set(finalists.map((player) => player.id))
+      state.players.forEach((player) => {
+        player.isWinner = false
+        player.finalRank = undefined
+        player.seasonPlacement = undefined
+        if (finalistIds.has(player.id)) {
+          player.status = 'active'
+          player.evictedAtWeek = undefined
+        } else {
+          player.status = 'jury'
+          player.evictedAtWeek ??= state.week
+        }
+      })
+      state.tvFeed = []
+      state.broadcastQueue = []
+      state.evictionSplashId = null
+      state.evictionOverlayPlayerId = null
+      state.phase = 'final3'
+      pushEvent(
+        state,
+        `Final 3! ${formatNameList(finalists.map((player) => player.name))} remain. The three-part finale begins now.`,
+        'game',
+        { major: 'final3_announcement', broadcastPriority: 'critical' }
+      )
+    },
     /** Force entry into Final 4 eviction phase (debug only). */
     forcePhase(state, action: PayloadAction<Phase>) {
       state.phase = action.payload
@@ -5537,12 +5921,10 @@ const gameSlice = createSlice({
     completeVoxFinalistShowcase(state) {
       if (!isVoxPopuliActive(state) || state.voxPopuli?.finaleStage !== 'showcase') return
       state.voxPopuli.finaleStage = 'ready'
-      pushEvent(
-        state,
-        `Ready for the Finale? Make your move.`,
-        'game',
-        { major: 'vox_populi_finale_ready', broadcastPriority: 'critical' }
-      )
+      pushEvent(state, `Ready for the Finale? Make your move.`, 'game', {
+        major: 'vox_populi_finale_ready',
+        broadcastPriority: 'critical',
+      })
     },
     startVoxFinalVote(state) {
       if (
@@ -5812,15 +6194,19 @@ const gameSlice = createSlice({
         fresh.voxPopuli.status =
           fresh.voxPopuli.scheduledSeason === season ? 'scheduled' : 'inactive'
       }
+      if (fresh.cupidArrow?.status === 'scheduled') {
+        activateCupidArrowForSeason(fresh)
+      }
       // Preserve the manager-built Season Start sequence. Only refresh the
       // dynamic season placeholder after the archive-derived season is known.
       fresh.tvFeed = fresh.tvFeed.map((event) =>
-        event.meta?.broadcastTemplateId === 'season.welcome'
+        event.meta?.broadcastTemplateId === 'season.welcome' ||
+        event.meta?.broadcastTemplateId === 'season.welcome-cupid'
           ? {
               ...event,
               text: renderBroadcastTemplate(
-                fresh.broadcastOverrides?.['season.welcome']?.text ??
-                  getBroadcastTemplate('season.welcome')?.text ??
+                fresh.broadcastOverrides?.[event.meta.broadcastTemplateId]?.text ??
+                  getBroadcastTemplate(event.meta.broadcastTemplateId)?.text ??
                   event.text,
                 [String(season)]
               ),
@@ -5844,10 +6230,18 @@ const gameSlice = createSlice({
         gameId: action.payload.gameId ?? crypto.randomUUID(),
         hasSeenConfessionalSpotlight: action.payload.hasSeenConfessionalSpotlight ?? false,
         status: action.payload.status ?? 'active',
+        // Season archives are persisted independently from in-progress runs.
+        // New snapshots omit them to stay small, so retain the active profile's
+        // already-loaded archive history while hydrating a campaign.
+        seasonArchives: state.seasonArchives ?? [],
         // Broadcast Manager configuration is permanent authoring data, not a
         // campaign snapshot. Never let an older saved run overwrite it.
         broadcastOverrides: state.broadcastOverrides ?? {},
         customBroadcasts: state.customBroadcasts ?? [],
+        tvFeed: (action.payload.tvFeed ?? []).map((event) => ({
+          ...event,
+          meta: event.meta ? { ...event.meta } : undefined,
+        })),
         broadcastQueue: action.payload.broadcastQueue ?? [],
         lastPlainBroadcastEventId: action.payload.lastPlainBroadcastEventId ?? null,
         twinShock: action.payload.twinShock ?? createInitialTwinShockState(),
@@ -5859,12 +6253,22 @@ const gameSlice = createSlice({
         twinShockResolution: action.payload.twinShockResolution ?? null,
         twinShockResolvedDay: action.payload.twinShockResolvedDay ?? null,
         twinShockDiscoveredByUser: action.payload.twinShockDiscoveredByUser ?? false,
+        // Saved Cupid seasons from before the visual-reveal handoff already
+        // completed their announcement. Preserve their established look; only
+        // a newly activated Cupid season explicitly starts at `false`.
+        cupidArrow: action.payload.cupidArrow
+          ? {
+              ...action.payload.cupidArrow,
+              visualsRevealed:
+                action.payload.cupidArrow.visualsRevealed ??
+                action.payload.cupidArrow.status === 'active',
+            }
+          : undefined,
         voxPopuli: action.payload.voxPopuli
           ? {
               ...createInitialVoxPopuliState(action.payload.voxPopuli.scheduledSeason),
               ...action.payload.voxPopuli,
-              lastReplacementNomineeIds:
-                action.payload.voxPopuli.lastReplacementNomineeIds ?? [],
+              lastReplacementNomineeIds: action.payload.voxPopuli.lastReplacementNomineeIds ?? [],
             }
           : createInitialVoxPopuliState(null),
         voteResultsMode: action.payload.voteResultsMode ?? 'house',
@@ -5885,6 +6289,7 @@ const gameSlice = createSlice({
             pairs: [],
             eliminatedPairCount: 0,
             pendingPartnerEvictionId: null,
+            visualsRevealed: false,
           }
         }
         if (hydrated.voxPopuli) {
@@ -5900,12 +6305,42 @@ const gameSlice = createSlice({
           }
         }
       }
+      hydrated.tvFeed.forEach((event) => refreshManagedBroadcastDefinition(hydrated, event))
+      rebuildManagedBroadcastQueue(hydrated, hydrated.phase)
       return hydrated
     },
 
     clearSurvivorReplacementTransition(state) {
       if (state.modeSpecific?.kind !== 'survival') return
       state.modeSpecific.replacementTransition = null
+    },
+
+    revealSurvivorReplacement(state) {
+      if (state.modeSpecific?.kind !== 'survival') return
+      const pending = state.modeSpecific.replacementPending
+      if (!pending) return
+      const playerIndex = state.players.findIndex(
+        (player) =>
+          player.survivorSlot === pending.slot || player.id === pending.outgoingPlayerSnapshot.id
+      )
+      if (playerIndex < 0) return
+      state.players[playerIndex] = pending.incomingPlayer
+      state.modeSpecific.totalRoboContestantsEvicted += 1
+      state.modeSpecific.replacementPending = null
+      state.modeSpecific.replacementTransition = {
+        mode: 'survival',
+        outgoingPlayerSnapshot: pending.outgoingPlayerSnapshot,
+        incomingPlayerId: pending.incomingPlayer.id,
+        slot: pending.slot,
+        startedAt: Date.now(),
+        durationMs: 2000,
+      }
+      pushEvent(
+        state,
+        `${pending.incomingPlayer.name} enters as a replacement synthetic contestant.`,
+        'game',
+        { broadcastTemplateId: 'survival.replacement-enters', phase: state.phase, week: state.week }
+      )
     },
 
     setHasSeenConfessionalSpotlight(state, action: PayloadAction<boolean>) {
@@ -6078,7 +6513,8 @@ const gameSlice = createSlice({
             'THE FINAL THREE',
             `The final three wake to an almost empty house. Breakfast is polite, but every pause carries the weight of the last immunity battle. Tonight, one of them can still be placed beyond the audience's reach.`
           )
-        ) return
+        )
+          return
         // Part 1: all 3 finalists compete; winner advances to Part 3; 2 losers go to Part 2
         const seedRng = mulberry32(state.seed)
         state.seed = (seedRng() * 0x100000000) >>> 0
@@ -6134,7 +6570,8 @@ const gameSlice = createSlice({
             'THE ROAD BACK',
             `${partOneWinnerName ?? 'The Part 1 winner'} waits for Part 3 while the other two finalists fight for the remaining place. Only one will join the final immunity showdown.`
           )
-        ) return
+        )
+          return
         // Part 2: the 2 Part-1 losers compete; winner advances to Part 3
         const seedRng = mulberry32(state.seed)
         state.seed = (seedRng() * 0x100000000) >>> 0
@@ -6203,7 +6640,8 @@ const gameSlice = createSlice({
             'THE LAST SHOWDOWN',
             `${formatNameList(immunityFinalists)} meet in Part 3 for final immunity. The Part 2 loser is already on the block; the Part 3 loser will join them for the audience vote.`
           )
-        ) return
+        )
+          return
         // Part 3: Part-1 winner vs Part-2 winner → Final LOH crowned
         const seedRng = mulberry32(state.seed)
         state.seed = (seedRng() * 0x100000000) >>> 0
@@ -6744,6 +7182,12 @@ const gameSlice = createSlice({
 
       beginPhaseBroadcastSequence(state, nextPhase)
       switch (nextPhase) {
+        case 'season_start': {
+          // Cupid is a season-opening shock: reveal the bonds as soon as the
+          // season begins, before the first week-start card is shown.
+          activateCupidArrowForSeason(state)
+          break
+        }
         case 'week_start': {
           const enteringDayOne = state.phase === 'season_start'
           activateVoxPopuliForSeason(state)
@@ -6837,11 +7281,11 @@ const gameSlice = createSlice({
             state.players.some((player) => player.status === 'jury')
           const tribunalEvent = tribunalPhaseBegins
             ? pushEvent(
-              state,
-              `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
-              'game',
-              { major: 'tribunal_phase', phase: 'week_start' }
-            )
+                state,
+                `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
+                'game',
+                { major: 'tribunal_phase', phase: 'week_start' }
+              )
             : null
           if (tribunalEvent) {
             state.tribunalPhaseAnnounced = true
@@ -7091,13 +7535,28 @@ const gameSlice = createSlice({
           const aiPool = autoNomineeUnitIds
             ? pool.filter((p) => !autoNomineeUnitIds.has(p.id))
             : pool
-          const nominees = pickStrategicNominationTargets(
+          let nominees = pickStrategicNominationTargets(
             state,
             state.lohId!,
             aiPool,
             nomineeCount,
             rng
           )
+          if ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35) {
+            const alternatives = aiPool.filter(
+              (candidate) => !nominees.some((nominee) => nominee.id === candidate.id)
+            )
+            const unexpected = alternatives.length > 0 ? seededPick(rng, alternatives) : null
+            if (unexpected) {
+              nominees = [unexpected, ...nominees.slice(1)]
+              pushEvent(
+                state,
+                `${lohPlayer?.name ?? 'The LOH'} makes an unexpectedly emotional nomination as the storm hangs over the house. 🌧️`,
+                'social',
+                { major: 'depression_shock_surprise_nomination' }
+              )
+            }
+          }
           state.nomineeIds = nominees.map((n) => n.id)
           nominees.forEach((n) => {
             const p = state.players.find((pl) => pl.id === n.id)
@@ -7605,7 +8064,8 @@ const gameSlice = createSlice({
             const eligible = getReplacementEligiblePlayers(state, alive)
             const useIt =
               shouldUseSafetyForTwin(state, posWinner?.id, nominees) ||
-              shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible)
+              shouldAiUseTargetedSafetyPower(state, posWinner?.id, nominees, eligible) ||
+              ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35)
             const saveTarget = useIt
               ? pickSafetySaveTarget(state, posWinner?.id, nominees, rng)
               : null
@@ -7943,12 +8403,10 @@ const gameSlice = createSlice({
           break
         }
         case 'week_end': {
-          pushEvent(
-            state,
-            `Day ${state.week} has come to an end. A new day begins soon… ✨`,
-            'game',
-            { key: 'day_end', phase: 'week_end' }
-          )
+          pushEvent(state, `Day ${state.week} has come to an end. A new day begins soon…`, 'game', {
+            key: 'day_end',
+            phase: 'week_end',
+          })
           break
         }
       }
@@ -8434,6 +8892,8 @@ export const {
   commitVoxAudiencePreview,
   dismissVoteResults,
   dismissEvictionSplash,
+  continueSurvivorAfterAd,
+  revealSurvivorReplacement,
   setEvictionOverlay,
   clearEvictionOverlay,
   finalizePendingEviction,
@@ -8464,6 +8924,8 @@ export const {
   setCupidArrowSchedule,
   activateCupidArrowNow,
   breakCupidArrowNow,
+  revealCupidArrowVisuals,
+  finishCupidArrowVisualReturn,
   setVoxPopuliSchedule,
   activateVoxPopuliNow,
   setSeasonExpansion,
@@ -8472,6 +8934,9 @@ export const {
   consumeForcedShock,
   activateDayStartShock,
   confirmDayStartShock,
+  activateDepressionShock,
+  endDepressionShock,
+  setDepressionShockRoll,
   submitDiamondReplacement,
   submitCoupReplacement,
   submitVipSecondUseDecision,
@@ -8490,6 +8955,7 @@ export const {
   forcePovWinner,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
+  prepareClassicFinalThreeTest,
   forcePhase,
   clearBlockingFlags,
   archiveSeason,
@@ -9146,9 +9612,9 @@ export const fastForwardToEviction = () => (dispatch: AppDispatch, getState: () 
       const publicSaveResult = resolvePairAwarePublicSave(rootState)
       const savedId = publicSaveResult.savedId || state.nomineeIds[0]
       dispatch(
-      commitPublicSave({
-        savedId,
-      })
+        commitPublicSave({
+          savedId,
+        })
       )
     } else {
       dispatch(advance())
@@ -9402,6 +9868,72 @@ export const tryActivateSecretMission =
     dispatch(
       triggerSecretMission(isSecondMissionAttempt ? { day: game.week, maxDaySpan } : game.week)
     )
+    return true
+  }
+
+/**
+ * Resolve the seasonal Depression Shock at a day boundary. It receives one
+ * 25% roll per eligible season; a successful roll waits for a shock-free day.
+ */
+export const tryActivateDepressionShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game, settings } = getState()
+    const current = game.depressionShock ?? createInitialDepressionShockState()
+
+    if (game.phase !== 'week_start' || game.week < DEPRESSION_SHOCK_MIN_WEEK) return false
+    if (current.completed) return false
+
+    // The second storm day and recovery are both state-driven, never rerolled.
+    if (current.activeDay === 2 && current.recoveryWeek === game.week) {
+      dispatch(endDepressionShock())
+      return false
+    }
+    if (
+      current.activeDay === 1 &&
+      current.activatedWeek !== null &&
+      game.week > current.activatedWeek
+    ) {
+      if (game.twistActivatedThisWeek || game.dayStartShock) return false
+      dispatch(activateDepressionShock({ source: 'random' }))
+      return true
+    }
+
+    if (!settings.sim.enableTwists || !isDepressionShockEligibleMode(game)) return false
+    if (activeHousemateCount(game) < 6) return false
+    if (!current.rollResolved) {
+      const rng = mulberry32((game.seed ^ DEPRESSION_SHOCK_RNG_SALT) >>> 0)
+      const passed = rng() < 0.25
+      // Store the one-time roll before checking the day availability so a
+      // successful season can defer behind Twin Shock or another live shock.
+      dispatch(
+        setDepressionShockRoll({
+          passed,
+        })
+      )
+      if (!passed) return false
+    }
+
+    const resolved = getState().game.depressionShock
+    if (!resolved?.pendingActivation || game.twistActivatedThisWeek || game.dayStartShock)
+      return false
+    dispatch(activateDepressionShock({ source: 'random' }))
+    return true
+  }
+
+/** Activate a debug-queued Depression Shock at the next valid morning. */
+export const tryActivatePendingForcedDepressionShock =
+  () =>
+  (dispatch: AppDispatch, getState: () => RootState): boolean => {
+    const { game } = getState()
+    const pending = game.pendingForcedShock
+    if (!pending || pending.type !== 'depressionShock') return false
+    if (!isDepressionShockEligibleMode(game) || game.phase !== 'week_start') return false
+    if (game.week < Math.max(DEPRESSION_SHOCK_MIN_WEEK, pending.earliestWeek)) return false
+    if (game.twistActivatedThisWeek || game.dayStartShock || activeHousemateCount(game) < 6)
+      return false
+    dispatch(activateDepressionShock({ source: 'debug' }))
+    dispatch(consumeForcedShock())
     return true
   }
 

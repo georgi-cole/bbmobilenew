@@ -8,6 +8,8 @@
  *   is-standalone      — launched from iOS/Android home-screen (A2HS / PWA)
  *                        OR running inside a Capacitor native WebView
  *   is-capacitor       — running inside a Capacitor native WebView
+ *   is-capacitor-ios   — running inside the native iOS WebView
+ *   is-capacitor-android — running inside the native Android WebView
  *   is-webkit          — running inside a WebKit-based browser (Safari, iOS Chrome,
  *                        iOS WebView); NOT set for desktop Chrome/Edge/Firefox
  *   is-chrome-android  — Chrome on Android (supports backdrop-filter well, but may
@@ -16,6 +18,45 @@
  * Import and call applyDisplayModeClasses() once at app entry (main.tsx).
  */
 
+interface CapacitorRuntimeLike {
+  isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
+}
+
+/**
+ * iOS can briefly report a zero CSS safe area while WKWebView is starting.
+ * Keep a conservative phone-shaped floor until env(safe-area-inset-top) is
+ * available. Android is intentionally excluded: Capacitor either injects the
+ * measured CSS variable or insets the WebView itself on older WebView builds.
+ */
+export function getNativeTopInsetFallbackPx(
+  platform: string,
+  screenWidth: number,
+  screenHeight: number,
+): number {
+  if (platform !== 'ios') return 0;
+
+  const shortSide = Math.min(screenWidth, screenHeight);
+  const longSide = Math.max(screenWidth, screenHeight);
+  const aspectRatio = shortSide > 0 ? longSide / shortSide : 0;
+
+  // iPad status bars are much shallower than modern iPhone sensor housings.
+  if (aspectRatio > 0 && aspectRatio < 1.6) return 24;
+  if (shortSide >= 390 && longSide >= 844) return 59;
+  if (longSide >= 812) return 44;
+  return 20;
+}
+
+function readCssSafeAreaTopPx(): number {
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)';
+  document.documentElement.appendChild(probe);
+  const measured = Number.parseFloat(getComputedStyle(probe).paddingTop);
+  probe.remove();
+  return Number.isFinite(measured) ? measured : 0;
+}
+
 /**
  * Applies display-mode CSS classes to `document.documentElement`.
  * Safe to call before the DOM is fully loaded (only touches <html>).
@@ -23,6 +64,7 @@
 export function applyDisplayModeClasses(): void {
   const html = document.documentElement;
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const capacitor = (window as Window & { Capacitor?: CapacitorRuntimeLike }).Capacitor;
 
   // ── Capacitor native WebView ─────────────────────────────────────────────
   // Capacitor injects window.Capacitor when running inside a native shell.
@@ -31,11 +73,22 @@ export function applyDisplayModeClasses(): void {
   const isCapacitor =
     typeof window !== 'undefined' &&
     (
-      window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }
+      window as Window & { Capacitor?: CapacitorRuntimeLike }
     ).Capacitor?.isNativePlatform?.() === true;
 
   if (isCapacitor) {
     html.classList.add('is-capacitor');
+    const platform = capacitor?.getPlatform?.() ?? '';
+    if (platform === 'ios' || platform === 'android') {
+      html.classList.add(`is-capacitor-${platform}`);
+    }
+
+    if (readCssSafeAreaTopPx() < 1) {
+      const fallbackPx = getNativeTopInsetFallbackPx(platform, screen.width, screen.height);
+      if (fallbackPx > 0) {
+        html.style.setProperty('--app-safe-area-top-fallback', `${fallbackPx}px`);
+      }
+    }
   }
 
   // ── Standalone (A2HS / PWA / Capacitor native) ───────────────────────────

@@ -1,11 +1,14 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import AvatarTile from '../AvatarTile'
+import { setDepressionShockVisualPhase } from '../../../features/twists/depressionShock'
+
+afterEach(() => setDepressionShockVisualPhase('inactive'))
 
 describe('AvatarTile', () => {
   it('exposes interaction guidance without an unrelated visual indicator', () => {
     const { container } = render(
-      <AvatarTile name="Taylor" onClick={vi.fn()} descriptionId="roster-help" />,
+      <AvatarTile name="Taylor" onClick={vi.fn()} descriptionId="roster-help" />
     )
     const tile = screen.getByRole('button', { name: 'Taylor' })
     expect(tile).toHaveAttribute('aria-describedby', 'roster-help')
@@ -13,13 +16,7 @@ describe('AvatarTile', () => {
     expect(container.querySelector('[class*="interactionCue"]')).toBeNull()
   })
   it('renders the nomination badge asset for nominated players', () => {
-    render(
-      <AvatarTile
-        name="Taylor"
-        avatarUrl="/avatars/Taylor.png"
-        statuses="nominated"
-      />,
-    )
+    render(<AvatarTile name="Taylor" avatarUrl="/avatars/Taylor.png" statuses="nominated" />)
 
     const badge = screen.getByLabelText('Nominated')
     const badgeImage = badge.querySelector('img')
@@ -27,5 +24,15 @@ describe('AvatarTile', () => {
     expect(badge).not.toHaveTextContent('❓')
     expect(badgeImage).not.toBeNull()
     expect(badgeImage?.getAttribute('src')).toContain('/assets/avatar_badges/nomination_badge.png')
+  })
+
+  it('uses the generated sad portrait while Depression Shock is active', () => {
+    setDepressionShockVisualPhase('day1')
+    render(<AvatarTile name="Lia" avatarUrl="/bbmobilenew/assets/skins/Lia_avatar.webp" />)
+
+    expect(screen.getByRole('img', { name: 'Lia' })).toHaveAttribute(
+      'src',
+      '/assets/skins/Lia_sad_avatar.png'
+    )
   })
 })

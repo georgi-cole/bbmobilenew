@@ -1856,7 +1856,7 @@ export default function DiaryRoom() {
                   value={entry}
                   onChange={(e) => setEntry(e.target.value)}
                   placeholder="What are you thinking?"
-                  rows={3}
+                  rows={2}
                   maxLength={280}
                   aria-label="Diary entry"
                 />

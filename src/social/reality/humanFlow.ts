@@ -9,12 +9,13 @@ import {
   createInitialRealitySimulationState,
   deriveRealitySimulationSeed,
 } from '../realitySimulation'
-import { REALITY_ACTION_BY_ID, type RealityActorSnapshot } from './actionContract'
+import { getRealityActionContract, type RealityActorSnapshot } from './actionContract'
 import { runRealityOpportunity } from './orchestrator'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
 import type { RealityContext } from './types'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
+import { shouldDepressionShockRefuseConversation } from '../../features/twists/depressionShock'
 
 export interface HumanRealityActionInput {
   actorId: string
@@ -33,7 +34,7 @@ function getHumanRepetitionSuccessChances(actionId: string): readonly number[] |
   if (legacyAction?.kind === 'intel_gain' && legacyAction.targetMode !== 'none') {
     return INFORMATION_REPETITION_SUCCESS_CHANCES
   }
-  const contract = REALITY_ACTION_BY_ID.get(actionId)
+  const contract = getRealityActionContract(actionId)
   if (
     contract?.purposes.includes('BOND') &&
     !contract.purposes.includes('COMMITMENT') &&
@@ -212,6 +213,34 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const targetIds = input.targetIds ?? [input.targetId]
     if (!action) return result(false, 'Unknown action', energy)
 
+    // During Depression Shock, a housemate may simply shut the conversation
+    // down. Resolve this before affordability/execution so a refusal costs the
+    // human no energy, influence or information.
+    if (
+      shouldDepressionShockRefuseConversation({
+        gameId: state.game.gameId,
+        week: state.game.week,
+        actorId: input.actorId,
+        targetIds,
+        actionId: input.actionId,
+      })
+    ) {
+      const targetNames = targetIds
+        .filter((targetId) => targetId !== input.actorId)
+        .map(
+          (targetId) =>
+            state.game.players.find((player) => player.id === targetId)?.name ?? targetId
+        )
+      const subject = targetNames.length === 1 ? targetNames[0] : 'The housemates'
+      return result(
+        false,
+        `${subject} refused to talk right now. The mood in the House is too low.`,
+        energy,
+        0,
+        'Refused'
+      )
+    }
+
     // Classic is a complete, independent social ruleset. It must never create
     // premium Reality events, causal memories, or simulation traces.
     if (getEffectiveSocialMode(state) !== 'drama') {
@@ -263,7 +292,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       )
     }
 
-    const contract = REALITY_ACTION_BY_ID.get(input.actionId)
+    const contract = getRealityActionContract(input.actionId)
     if (!contract) return result(false, 'Unknown action', energy)
     const direction =
       targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'

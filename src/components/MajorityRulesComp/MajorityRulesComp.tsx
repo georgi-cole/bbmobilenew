@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import type { RootState } from '../../store/store';
 import type { PlayerStatus } from '../../types';
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import {
   advanceIntro,
@@ -138,7 +139,7 @@ function MajorityRulesPortrait({
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
   const candidates = useMemo(
-    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }),
+    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).map(resolvePresentationAvatar),
     [player.avatar, player.id, player.name],
   );
   return (

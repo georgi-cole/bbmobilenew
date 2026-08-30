@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TVLog from '../TVLog';
 import { tease } from '../../../utils/tvLogTemplates';
@@ -186,8 +186,23 @@ describe('TVLog — refined on-demand module', () => {
     render(<TVLog entries={entries} maxVisible={2} inlineVisible />);
 
     expect(screen.getByText('Survivor round begins')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Open game log/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Open game log, /i })).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
+
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });
+
+  it('opens the full log when an inline House Feed row is tapped', async () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    const entries: TvEvent[] = [
+      makeEvent({ id: 'latest', text: 'The POV ceremony is complete', type: 'game' }),
+      makeEvent({ id: 'earlier', text: 'The nominees react to the result', type: 'social' }),
+    ];
+    render(<TVLog entries={entries} inlineVisible />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Open game log from Game event/i }));
+    const dialog = screen.getByRole('dialog', { name: 'Game log' });
+    expect(within(dialog).getByText('The nominees react to the result')).toBeDefined();
 
     document.body.classList.remove('experiment-game-chrome-refined');
   });

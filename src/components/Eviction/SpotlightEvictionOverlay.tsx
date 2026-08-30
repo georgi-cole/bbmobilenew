@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Player } from '../../types'
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
+import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import { useAppDispatch } from '../../store/hooks'
 import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice'
 import './SpotlightEvictionOverlay.css'
@@ -40,7 +41,7 @@ const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)'
 
 // Portrait layout transition: camera-push ease-out over 600 ms
 const PORTRAIT_SPRING = {
-  duration: 0.6,
+  duration: 0.48,
   ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
 }
 
@@ -98,7 +99,9 @@ export default function SpotlightEvictionOverlay({
   variant = 'eviction',
 }: Props) {
   const dispatch = useAppDispatch()
-  const [candidates] = useState(() => resolveAvatarCandidates(evictee))
+  const [candidates] = useState(() =>
+    resolveAvatarCandidates(evictee).map(resolvePresentationAvatar)
+  )
   const [candidateIdx, setCandidateIdx] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
 
@@ -357,11 +360,10 @@ export default function SpotlightEvictionOverlay({
             animate={
               isReturn && desaturated
                 ? {
-                    scaleX: 1.12,
-                    scaleY: 0.88,
+                    scale: 1,
                     filter: CINEMATIC_FILTER,
                   }
-                : { scaleX: 1, scaleY: 1, filter: 'none' }
+                : { scale: 1, filter: 'none' }
             }
             transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
           >
@@ -377,8 +379,7 @@ export default function SpotlightEvictionOverlay({
               desaturated
                 ? isReturn
                   ? {
-                      scaleX: 1.12,
-                      scaleY: 0.88,
+                      scale: 1,
                       filter: CINEMATIC_FILTER,
                       y: 0,
                     }

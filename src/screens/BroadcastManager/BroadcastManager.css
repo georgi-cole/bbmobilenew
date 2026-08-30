@@ -67,6 +67,22 @@
 .broadcast-manager__back {
   white-space: nowrap;
 }
+.broadcast-manager__campaign-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  color: #b7c2dd;
+  font-weight: 700;
+}
+.broadcast-manager__campaign-filter select {
+  min-width: 11rem;
+  border: 1px solid rgba(220, 230, 255, 0.24);
+  border-radius: 0.55rem;
+  color: inherit;
+  background: #111a34;
+  padding: 0.5rem 0.7rem;
+}
 
 .broadcast-manager__layout {
   display: grid;

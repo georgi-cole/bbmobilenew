@@ -47,8 +47,7 @@ vi.mock('react-router', async () => {
 
 vi.mock('../../../store/hooks', () => ({
   useAppDispatch: () => mockDispatch,
-  useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector(mockState),
+  useAppSelector: (selector: (state: unknown) => unknown) => selector(mockState),
 }));
 
 vi.mock('../../../hooks/useBackgroundTheme', () => ({
@@ -162,7 +161,7 @@ describe('HomeHub', () => {
     mockDispatch.mockReset();
     mockNavigate.mockReset();
     preloadImageMock.mockReset();
-    preloadImageMock.mockResolvedValue(undefined);
+    preloadImageMock.mockImplementation(async (url: string) => ({ url, status: 'loaded' as const }));
   });
 
   afterEach(() => {
@@ -248,16 +247,16 @@ describe('HomeHub', () => {
 
     let resolveInitialBg = () => {};
     let resolveRemoteBg = () => {};
-    preloadImageMock.mockImplementation((url: string) => new Promise<void>((resolve) => {
+    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
       if (url === '/assets/background.jpg') {
-        resolveInitialBg = resolve;
+        resolveInitialBg = () => resolve({ url, status: 'loaded' });
         return;
       }
       if (url === 'https://example.com/remote-bg.jpg') {
-        resolveRemoteBg = resolve;
+        resolveRemoteBg = () => resolve({ url, status: 'loaded' });
         return;
       }
-      resolve();
+      resolve({ url, status: 'loaded' });
     }));
 
     try {
@@ -344,8 +343,8 @@ describe('HomeHub', () => {
 
   it('keeps the Kolequant splash up until the full hub bundle is ready', async () => {
     const pendingResolvers: Array<() => void> = [];
-    preloadImageMock.mockImplementation(() => new Promise<void>((resolve) => {
-      pendingResolvers.push(resolve);
+    preloadImageMock.mockImplementation((url: string) => new Promise((resolve) => {
+      pendingResolvers.push(() => resolve({ url, status: 'loaded' }));
     }));
 
     const view = renderHomeHub();
@@ -395,7 +394,7 @@ describe('HomeHub', () => {
     expect(screen.queryByRole('button', { name: 'Debug Menu: Off' })).toBeNull();
   });
 
-  it('opens the store from Surveyeval without VIP or survivalMode access', async () => {
+  it('opens Surveyeval directly while temporary store unlocks are enabled', async () => {
     const view = renderHomeHub();
 
     fireEvent.click(screen.getByTestId('kolequant-splash'));
@@ -407,13 +406,13 @@ describe('HomeHub', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
     fireEvent.click(screen.getByRole('button', { name: 'Surveyeval' }));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/store', { state: { returnTo: '/?menu=play' } });
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/store', { state: { returnTo: '/?menu=play' } });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     view.unmount();
   });
 
-  it('opens the Housemates cinematic below Profile on the intro hub and returns there', async () => {
+  it('opens the Hubmates cinematic below Profile on the intro hub and returns there', async () => {
     renderHomeHub();
     fireEvent.click(screen.getByTestId('kolequant-splash'));
 
@@ -421,16 +420,16 @@ describe('HomeHub', () => {
       expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     });
     const profile = screen.getByRole('button', { name: 'Profile' });
-    const housemates = screen.getByRole('button', { name: 'Housemates' });
-    expect(profile.compareDocumentPosition(housemates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(housemates).toHaveAttribute('data-has-icon', 'true');
+    const hubmates = screen.getByRole('button', { name: 'Hubmates' });
+    expect(profile.compareDocumentPosition(hubmates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hubmates).toHaveAttribute('data-has-icon', 'true');
 
-    fireEvent.click(housemates);
+    fireEvent.click(hubmates);
     expect(screen.getByTestId('housemates-bio-cinematic')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Return to IntroHub' }));
     expect(screen.queryByTestId('housemates-bio-cinematic')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Housemates' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hubmates' })).toBeInTheDocument();
   });
 
   it('mirrors the current Redux game state onto window.game for the intro hub', async () => {

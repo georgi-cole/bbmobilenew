@@ -2,8 +2,29 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import useGameMode from '../useGameMode';
 
-function GameModeHarness() {
-  useGameMode();
+const { getPlatform, hideStatusBar, isNativePlatform, showStatusBar } = vi.hoisted(() => ({
+  getPlatform: vi.fn(() => 'android'),
+  hideStatusBar: vi.fn().mockResolvedValue(undefined),
+  isNativePlatform: vi.fn(() => true),
+  showStatusBar: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@capacitor/core', () => ({
+  Capacitor: {
+    getPlatform,
+    isNativePlatform,
+  },
+  SystemBars: {
+    hide: hideStatusBar,
+    show: showStatusBar,
+  },
+  SystemBarType: {
+    StatusBar: 'StatusBar',
+  },
+}));
+
+function GameModeHarness({ hideNativeStatusBar = false }: { hideNativeStatusBar?: boolean }) {
+  useGameMode(hideNativeStatusBar);
   return <div>game mode</div>;
 }
 
@@ -38,6 +59,10 @@ describe('useGameMode', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    hideStatusBar.mockClear();
+    getPlatform.mockClear();
+    isNativePlatform.mockClear();
+    showStatusBar.mockClear();
     setVisibilityState('visible');
   });
 
@@ -83,6 +108,83 @@ describe('useGameMode', () => {
     });
     expect(removeEventListener).toHaveBeenCalledWith('release', expect.any(Function));
     expect(unlock).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides only the native status bar during gameplay and restores it on exit', async () => {
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: {},
+    });
+
+    const { unmount } = render(<GameModeHarness hideNativeStatusBar />);
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledWith({ bar: 'StatusBar' });
+    });
+    expect(showStatusBar).not.toHaveBeenCalled();
+
+    unmount();
+
+    await waitFor(() => {
+      expect(showStatusBar).toHaveBeenCalledWith({ bar: 'StatusBar' });
+    });
+  });
+
+  it('re-hides the native status bar when gameplay becomes visible again', async () => {
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: {},
+    });
+
+    render(<GameModeHarness hideNativeStatusBar />);
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(1);
+    });
+
+    setVisibilityState('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    setVisibilityState('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('re-hides the native status bar when the Android activity regains focus', async () => {
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: {},
+    });
+
+    render(<GameModeHarness hideNativeStatusBar />);
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(1);
+    });
+
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() => {
+      expect(hideStatusBar).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('keeps the measured iOS safe-area behavior unchanged', async () => {
+    getPlatform.mockReturnValueOnce('ios');
+    Object.defineProperty(screen, 'orientation', {
+      configurable: true,
+      value: {},
+    });
+
+    render(<GameModeHarness hideNativeStatusBar />);
+
+    await waitFor(() => {
+      expect(getPlatform).toHaveBeenCalledTimes(1);
+    });
+    expect(hideStatusBar).not.toHaveBeenCalled();
+    expect(showStatusBar).not.toHaveBeenCalled();
   });
 
   it('re-requests wake lock when the document becomes visible again', async () => {

@@ -114,8 +114,10 @@ describe('SpotlightAnimation — fast-path (no measure callbacks)', () => {
     const scrollCalls = (window.addEventListener as ReturnType<typeof vi.spyOn>).mock.calls.filter(
       ([type]) => type === 'scroll',
     );
-    expect(resizeCalls).toHaveLength(0);
-    expect(scrollCalls).toHaveLength(0);
+    // CeremonyOverlay owns one surface-coordinate listener pair even when the
+    // SpotlightAnimation wrapper itself has no live tile callbacks.
+    expect(resizeCalls).toHaveLength(1);
+    expect(scrollCalls).toHaveLength(1);
 
     unmount();
   });
@@ -279,6 +281,39 @@ describe('SpotlightAnimation — viewport tracking with measureA', () => {
       rafSpy.mockRestore();
       cafSpy.mockRestore();
     }
+  });
+});
+
+describe('SpotlightAnimation — post-minigame layout settling', () => {
+  it('does not render captured cutouts before measuring every live tile', async () => {
+    let rafCallback: FrameRequestCallback | null = null;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafCallback = callback;
+      return 1;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+    const measureTiles = vi.fn(() => [
+      { rect: makeRect(90, 140), badge: '👑' },
+      { rect: makeRect(190, 140), badge: '👑' },
+    ] satisfies CeremonyTile[]);
+    const { container } = render(
+      <SpotlightAnimation
+        tiles={[{ rect: makeRect(1, 2), badge: '👑' }]}
+        measureTiles={measureTiles}
+        caption="Fresh geometry"
+        onDone={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.ceremony-overlay')).toBeNull();
+    expect(rafCallback).not.toBeNull();
+    await act(async () => {
+      rafCallback?.(0);
+    });
+
+    expect(measureTiles).toHaveBeenCalled();
+    expect(document.querySelectorAll('.ceremony-overlay__glow')).toHaveLength(2);
   });
 });
 

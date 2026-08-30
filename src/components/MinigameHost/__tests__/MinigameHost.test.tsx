@@ -10,6 +10,10 @@ vi.mock('../../../services/sound/SoundManager', () => ({
   },
 }))
 
+vi.mock('../../../i18n/I18nContext', () => ({
+  useI18n: () => ({ t: (key: string) => key }),
+}))
+
 vi.mock('../../../minigames/LegacyMinigameWrapper', () => ({
   default: ({ onComplete }: { onComplete: (result: { value: number }) => void }) => (
     <button onClick={() => onComplete({ value: 5 })} type="button">

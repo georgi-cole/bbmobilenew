@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
-import { advance, hydrateGame, setHasSeenConfessionalSpotlight } from '../../store/gameSlice'
+import {
+  advance,
+  continueSurvivorAfterAd,
+  hydrateGame,
+  revealSurvivorReplacement,
+  setHasSeenConfessionalSpotlight,
+} from '../../store/gameSlice'
 import {
   openIncomingInbox,
   openSocialPanel,
@@ -32,6 +38,7 @@ import {
   isSurvivorRunTerminal,
 } from '../../modes/survivorRun'
 import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal'
+import AdPrompt from '../AdPrompt/AdPrompt'
 import GameControlDock from '../GameControlDock/GameControlDock'
 import ConfessionalSpotlightOverlay from './ConfessionalSpotlightOverlay'
 import { resolveBalancedDockBottom } from './floatingActionBarLayout'
@@ -90,10 +97,20 @@ export default function FloatingActionBar({
     advancedProgressRef.current = null
   }, [advanceProgressKey])
   const isSurvivorMode = game.mode === 'survival'
+  const survivorReplacementPending =
+    isSurvivorMode &&
+    game.modeSpecific?.kind === 'survival' &&
+    Boolean(game.modeSpecific.replacementPending)
+  const survivorReplacementTransitionActive =
+    isSurvivorMode &&
+    game.modeSpecific?.kind === 'survival' &&
+    Boolean(game.modeSpecific.replacementTransition)
   const survivorTerminalActive = isSurvivorRunTerminal(game)
   const battleBackAnnouncementActive =
     game.battleBack?.active === true && game.battleBack.competitionActive !== true
   const voxPopuliActive = game.voxPopuli?.status === 'active'
+  const voxTransitionOwnsPlay =
+    game.voxPopuli?.awaitingPublicVote === true || game.voxPopuli?.finaleStage === 'ready'
 
   const humanPlayer = players.find((p) => p.isUser)
   const humanEnergy = humanPlayer ? (energyBank?.[humanPlayer.id] ?? 0) : null
@@ -132,6 +149,7 @@ export default function FloatingActionBar({
     id: number
     message: string
   } | null>(null)
+  const [showSurvivorAdContinue, setShowSurvivorAdContinue] = useState(false)
   const prevEnergyRef = useRef(humanEnergy)
   useEffect(() => {
     if (humanEnergy === null || humanEnergy === prevEnergyRef.current) {
@@ -170,7 +188,7 @@ export default function FloatingActionBar({
   const confessionalIconRef = useRef<HTMLImageElement | null>(null)
   const dockRef = useRef<HTMLDivElement | null>(null)
   const prevConfessionalCountRef = useRef(confessionalAlertCount)
-  const hasPendingConfessionalDecision = activeConfessionalDecision !== null
+  const hasPendingConfessionalDecision = !isSurvivorMode && activeConfessionalDecision !== null
   const hasSeenConfessionalSpotlight = game.hasSeenConfessionalSpotlight === true
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
@@ -200,12 +218,17 @@ export default function FloatingActionBar({
     triggeredConfessionalDecisionKey === activeConfessionalDecisionKey
   const primaryDisabled =
     survivorTerminalActive ||
-    (hasPendingConfessionalDecision ? confessionalPromptActivated : isWaiting)
+    survivorReplacementTransitionActive ||
+    (survivorReplacementPending
+      ? false
+      : hasPendingConfessionalDecision
+        ? confessionalPromptActivated
+        : isWaiting)
   const primaryPulse = survivorTerminalActive
     ? false
     : hasPendingConfessionalDecision
       ? !confessionalPromptActivated
-      : canAdvance && !isWaiting
+      : survivorReplacementPending || (canAdvance && !isWaiting)
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated
   const confessionalSpotlightEligible =
     hasPendingConfessionalDecision && confessionalPromptActivated && !hasSeenConfessionalSpotlight
@@ -281,6 +304,10 @@ export default function FloatingActionBar({
   const handlePrimaryActionClick = useCallback(() => {
     if (survivorTerminalActive) return
     setBlockedAnnouncement(null)
+    if (survivorReplacementPending) {
+      dispatch(revealSurvivorReplacement())
+      return
+    }
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey)
       setConfessionalFlashTick((tick) => tick + 1)
@@ -290,11 +317,17 @@ export default function FloatingActionBar({
       dispatchPlayPressedEvent()
       return
     }
+
+    // Some presentation state machines use the global Play signal to perform
+    // their own authoritative transition. They must get the press without an
+    // additional generic advance() in the same event turn, even if an older
+    // listener forgot to call preventDefault().
+    if (battleBackAnnouncementActive || voxTransitionOwnsPlay) {
+      dispatchPlayPressedEvent()
+      return
+    }
+
     if (advancedProgressRef.current === advanceProgressKey) {
-      if (battleBackAnnouncementActive) {
-        dispatchPlayPressedEvent()
-        return
-      }
       // Vox Populi can intentionally queue several manual broadcast cards
       // within one reducer phase. Repeated Play presses reveal those cards
       // without repeating the underlying phase transition.
@@ -317,17 +350,31 @@ export default function FloatingActionBar({
     dispatchPlayPressedEvent,
     hasPendingConfessionalDecision,
     hasSeenConfessionalSpotlight,
+    survivorReplacementPending,
     survivorTerminalActive,
     voxPopuliActive,
+    voxTransitionOwnsPlay,
   ])
 
   const handleToolClick = useCallback(() => {
+    if (isSurvivorMode) {
+      showSurvivorBlockedMessage(
+        'The confessional is now being used as a storage room for the robotic players parts. Access is denied.'
+      )
+      return
+    }
     if (confessionalSpotlightEligible) {
       completeConfessionalSpotlight()
     }
     setTriggeredConfessionalDecisionKey(null)
     navigate('/diary-room')
-  }, [completeConfessionalSpotlight, confessionalSpotlightEligible, navigate])
+  }, [
+    completeConfessionalSpotlight,
+    confessionalSpotlightEligible,
+    isSurvivorMode,
+    navigate,
+    showSurvivorBlockedMessage,
+  ])
 
   const handlePublicMeterClick = useCallback(() => {
     if (game.publicModeEnabled !== true) {
@@ -347,9 +394,30 @@ export default function FloatingActionBar({
   }, [activeProfileId, dispatch, isGuest, navigate])
 
   const handleReturnHome = useCallback(() => {
+    const legacyHomeButton = document.querySelector<HTMLButtonElement>(
+      '.nav-bar button[aria-label="Home"]'
+    )
+    if (legacyHomeButton) {
+      legacyHomeButton.click()
+      return
+    }
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
     navigate('/')
   }, [dispatch, navigate])
+
+  const handleMoreClick = useCallback(
+    (destination: 'settings' | 'profile' | 'rules' | 'leaderboard' | 'store') => {
+      const routes = {
+        settings: '/settings',
+        profile: '/profile',
+        rules: '/rules',
+        leaderboard: '/leaderboard',
+        store: '/store',
+      } as const
+      navigate(routes[destination])
+    },
+    [navigate]
+  )
 
   // Center the dock in the real rendered space between the content immediately
   // above it and the navbar. The whole houseguest section is the upper boundary
@@ -378,6 +446,12 @@ export default function FloatingActionBar({
         getComputedStyle(gameScreen).getPropertyValue('--game-action-dock-gap')
       )
       const minimumGap = Number.isFinite(configuredGap) ? configuredGap : 8
+      // On the game screen the nav is deliberately folded into the dock. Its
+      // hidden rectangle must not become the dock's lower boundary.
+      if (navRect.height <= 0) {
+        dock.style.bottom = `${Math.round(minimumGap)}px`
+        return
+      }
       const bottomOffset = resolveBalancedDockBottom({
         gameBottom: gameRect.bottom,
         lowerBoundary,
@@ -422,14 +496,37 @@ export default function FloatingActionBar({
         </div>
       )}
       <ConfirmExitModal
-        open={survivorTerminalActive}
+        open={survivorTerminalActive && !showSurvivorAdContinue}
         title="Surveyeval run ended"
         description={survivorEndDescription}
         confirmLabel="Start New Surveyeval"
         cancelLabel="Return Home"
+        secondaryLabel={
+          game.modeSpecific?.kind === 'survival' && (game.modeSpecific.adContinueCount ?? 0) < 3
+            ? 'Watch ad for another chance'
+            : undefined
+        }
         onConfirm={handleStartNewSurvivor}
+        onSecondary={() => setShowSurvivorAdContinue(true)}
         onCancel={handleReturnHome}
       />
+      {survivorTerminalActive &&
+        (game.modeSpecific?.kind !== 'survival' ||
+          (game.modeSpecific.adContinueCount ?? 0) < 3) && (
+          <AdPrompt
+            title="System recovery available"
+            description={`Watch a short ad to reassemble your avatar and return to the run. Recovery ${((game.modeSpecific?.kind === 'survival' ? game.modeSpecific.adContinueCount : 0) ?? 0) + 1} of 3.`}
+            icon="⚡"
+            watchLabel="Watch ad · Reassemble"
+            skipLabel="Not now"
+            onWatch={() => {
+              setShowSurvivorAdContinue(false)
+              window.setTimeout(() => dispatch(continueSurvivorAfterAd()), 450)
+            }}
+            onSkip={() => setShowSurvivorAdContinue(false)}
+            pending={false}
+          />
+        )}
       <GameControlDock
         dockRef={dockRef}
         onChatClick={handleChatClick}
@@ -437,11 +534,14 @@ export default function FloatingActionBar({
         onPrimaryActionClick={handlePrimaryActionClick}
         onPublicMeterClick={handlePublicMeterClick}
         onToolClick={handleToolClick}
+        onHomeClick={handleReturnHome}
+        onMoreClick={handleMoreClick}
         disabled={survivorTerminalActive}
         primaryDisabled={primaryDisabled}
         socialDisabled={socialModulesUnavailable}
         incomingRequestsDisabled={incomingSocialModuleUnavailable}
         publicMeterDisabled={game.publicModeEnabled !== true}
+        confessionalDisabled={isSurvivorMode}
         chatBadgeCount={!socialModulesUnavailable && humanEnergy !== null ? humanEnergy : undefined}
         chatFlash={!socialModulesUnavailable && isFlashing}
         incomingRequestsBadgeCount={
@@ -451,7 +551,9 @@ export default function FloatingActionBar({
           game.publicModeEnabled === true && publicRequestCount > 0 ? publicRequestCount : undefined
         }
         primaryPulse={primaryPulse}
-        confessionalBadgeCount={confessionalAlertCount > 0 ? confessionalAlertCount : undefined}
+        confessionalBadgeCount={
+          !isSurvivorMode && confessionalAlertCount > 0 ? confessionalAlertCount : undefined
+        }
         confessionalFlash={isConfessionalFlashing}
         confessionalFlashTick={confessionalFlashTick}
         confessionalPersistentFlash={confessionalPersistentFlash}
