@@ -39,6 +39,30 @@ export function getDepressionShockLifecycleForGame(
 }
 
 /**
+ * True only while the recovery/sunrise presentation is still pending or
+ * running. Once it completes, later fullscreen events on the same game day are
+ * allowed normally.
+ */
+export function isDepressionShockRecoveryPresentationPending(
+  state: DepressionShockState,
+  week: number
+): boolean {
+  return (
+    state.status === 'active' &&
+    state.activatedDay != null &&
+    week === state.activatedDay + DEPRESSION_SHOCK_DURATION_DAYS &&
+    !state.endingSeen
+  )
+}
+
+export function isDepressionShockRecoveryPresentationPendingForGame(
+  gameId: string,
+  week: number
+): boolean {
+  return isDepressionShockRecoveryPresentationPending(loadDepressionShockState(gameId), week)
+}
+
+/**
  * Temporary one-way adapter for the legacy GameState.depressionShock shape.
  * No scheduling decision may be read back from this mirror.
  */
