@@ -38,6 +38,16 @@ test(
     await waitForHome(page)
     await createProfile(page)
 
+    const frozenPowerOnFrame = await page.addStyleTag({
+      content: `
+        body.body--season-tv-wake .tv-zone__viewport,
+        body.body--season-tv-wake .tv-zone__viewport::before {
+          animation-delay: -170ms !important;
+          animation-play-state: paused !important;
+        }
+      `,
+    })
+
     await page
       .getByRole('navigation', { name: 'Main menu' })
       .getByRole('button', { name: 'Play', exact: true })
@@ -51,11 +61,11 @@ test(
         timeout: SCREEN_TIMEOUT_MS,
       })
       .toBe(true)
-    await page.waitForTimeout(260)
     await page.screenshot({
       path: testInfo.outputPath('season-opening-1-tv-power-on.png'),
       fullPage: false,
     })
+    await frozenPowerOnFrame.evaluate((node) => node.remove())
 
     const welcome = page.getByText(/Welcome to The Big Eye\. Season 1 begins now\./)
     await expect(welcome).toBeVisible({ timeout: SCREEN_TIMEOUT_MS })
