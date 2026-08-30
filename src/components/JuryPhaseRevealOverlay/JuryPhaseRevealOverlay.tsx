@@ -10,12 +10,12 @@
  *
  * Reduced-motion / no-animations fast-path: skips directly to the final state
  * (all jurors visible, card and actions shown without animation).
- *
- * Timing constants are centralised below for easy tuning.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Player } from '../../types'
+import { useAppSelector } from '../../store/hooks'
+import { getDepressionShockLifecycleForGame } from '../../features/twists/depressionShockLifecycle'
 import {
   resolveAvatarCandidates,
   resolveFormalCutout,
@@ -63,10 +63,13 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSpyJury }: Props) {
+  const gameId = useAppSelector((state) => state.game.gameId)
+  const week = useAppSelector((state) => state.game.week)
   const [stage, setStage] = useState<OverlayStage>('idle')
   const [visibleJurorCount, setVisibleJurorCount] = useState(0)
   const [showOpeningLine, setShowOpeningLine] = useState(false)
   const [showSpyHint, setShowSpyHint] = useState(false)
+  const [suppressedOpenCycle, setSuppressedOpenCycle] = useState(false)
   /**
    * When true, the root element gains `.jpro--instant` which zeroes all
    * child animation durations. Set by the Skip button so the final assembled
@@ -74,17 +77,34 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
    */
   const [instant, setInstant] = useState(false)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const depressionShockLifecycle = getDepressionShockLifecycleForGame(gameId, week)
+  const shockRecoveryOwnsFullscreen = open && depressionShockLifecycle === 'recovery'
+
+  // If Tribunal begins while the Depression Shock sunrise is resolving, Faux TV
+  // keeps the Tribunal major event but this fullscreen reveal is skipped for the
+  // entire occurrence. It must not appear late after colour has returned.
+  useEffect(() => {
+    if (!open) {
+      setSuppressedOpenCycle(false)
+      return
+    }
+    if (shockRecoveryOwnsFullscreen) setSuppressedOpenCycle(true)
+  }, [open, shockRecoveryOwnsFullscreen])
+
+  const presentationOpen = open && !shockRecoveryOwnsFullscreen && !suppressedOpenCycle
 
   useEffect(() => {
-    if (!open) return
-    const sources = jurors.flatMap((juror) => [
-      resolveAvatarCandidates(juror)[0],
-      resolveFormalCutout(juror),
-      resolveSilhouetteFallback(juror),
-    ]).filter((source): source is string => Boolean(source))
+    if (!presentationOpen) return
+    const sources = jurors
+      .flatMap((juror) => [
+        resolveAvatarCandidates(juror)[0],
+        resolveFormalCutout(juror),
+        resolveSilhouetteFallback(juror),
+      ])
+      .filter((source): source is string => Boolean(source))
 
     void preloadImages([...new Set(sources)])
-  }, [jurors, open])
+  }, [jurors, presentationOpen])
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -110,7 +130,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
       setVisibleJurorCount(jurorCount)
       setStage('actions')
     },
-    [clearTimers],
+    [clearTimers]
   )
 
   // Auto-dismiss the Spy Jury hint after a brief delay.
@@ -127,7 +147,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
 
   // Drive the staged sequence when the overlay opens / closes.
   useEffect(() => {
-    if (!open) {
+    if (!presentationOpen) {
       clearTimers()
       setStage('idle')
       setInstant(false)
@@ -161,10 +181,7 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
       setShowOpeningLine(true)
     }, BACKDROP_SETTLE_MS)
 
-    push(
-      () => setShowOpeningLine(false),
-      BACKDROP_SETTLE_MS + OPENING_LINE_ANIMATION_MS,
-    )
+    push(() => setShowOpeningLine(false), BACKDROP_SETTLE_MS + OPENING_LINE_ANIMATION_MS)
 
     // Stage 3: jurors ignite one-by-one
     const jurorsStart = BACKDROP_SETTLE_MS + OPENING_LINE_ANIMATION_MS + OPENING_LINE_FADE_MS
@@ -182,13 +199,20 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
     push(() => setStage('actions'), titleCardAt + TITLE_CARD_SETTLE_MS + ACTIONS_REVEAL_DELAY_MS)
 
     return clearTimers
-  }, [open, jurors.length, noAnimations, prefersReducedMotion, clearTimers, skipToFinal])
+  }, [
+    presentationOpen,
+    jurors.length,
+    noAnimations,
+    prefersReducedMotion,
+    clearTimers,
+    skipToFinal,
+  ])
 
   const handleSkip = useCallback(() => {
     skipToFinal(jurors.length)
   }, [skipToFinal, jurors.length])
 
-  if (!open) return null
+  if (!presentationOpen) return null
 
   const showJurors = stage === 'jurors' || stage === 'title_card' || stage === 'actions'
   const showCard = stage === 'title_card' || stage === 'actions'
@@ -267,20 +291,12 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
         {/* Stage 5: actions */}
         {showActions && (
           <div className="jpro__actions">
-            <button
-              className="jpro__btn-primary"
-              type="button"
-              onClick={onEnterVote}
-            >
+            <button className="jpro__btn-primary" type="button" onClick={onEnterVote}>
               Enter Tribunal Vote
             </button>
             {onSpyJury && (
               <>
-                <button
-                  className="jpro__btn-secondary"
-                  type="button"
-                  onClick={handleSpyJury}
-                >
+                <button className="jpro__btn-secondary" type="button" onClick={handleSpyJury}>
                   Spy Tribunal
                 </button>
                 {showSpyHint && (
@@ -316,7 +332,7 @@ function JurorAvatar({ player }: { player: Player }) {
   // cinematic never shows pixel-art dice avatars — only genuine photos or
   // clean styled initials/emoji circles.
   const candidates = resolveAvatarCandidates(player).filter(
-    (c) => !c.startsWith('https://api.dicebear.com'),
+    (c) => !c.startsWith('https://api.dicebear.com')
   )
 
   const src = candidates[candidateIdx] ?? ''
