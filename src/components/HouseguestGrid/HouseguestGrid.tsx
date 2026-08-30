@@ -48,7 +48,7 @@ export type Houseguest = {
    */
   statuses?: string | string[]
   /**
-   * Final placement rank: 1 (winner 🥇, 2 = runner-up 🥈, 3 = 3rd place 🥉).
+   * Final placement rank: 1 (winner 🥇), 2 (runner-up 🥈), or 3 (3rd 🥉).
    */
   finalRank?: 1 | 2 | 3 | null
   /**
