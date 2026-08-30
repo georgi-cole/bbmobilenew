@@ -439,14 +439,6 @@ export default function HangmanChallengeComp({
     }
   }, [elapsedSeconds, phase, roundState.boxesSpawned, roundState.visibleBox])
 
-  // A mystery box is a decision, not a persistent panel beneath the board.
-  // Present it once as soon as it arrives, then return all screen space to the
-  // puzzle after the player accepts or declines it.
-  useEffect(() => {
-    if (!roundState.visibleBox || phase !== 'playing') return
-    setMysteryBoxDialog((current) => current ?? { stage: 'offer' })
-  }, [phase, roundState.visibleBox])
-
   useEffect(() => {
     if (!roundState.boardFlash) return undefined
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current)
@@ -1051,6 +1043,10 @@ export default function HangmanChallengeComp({
           .map((entry) => entry.participantName)
       : []
 
+  const mysteryBoxDialogView =
+    mysteryBoxDialog ??
+    (phase === 'playing' && roundState.visibleBox ? { stage: 'offer' as const } : null)
+
   return (
     <div
       className={`hangman-challenge${roundState.boardFlash ? ` hangman-challenge--${roundState.boardFlash}` : ''}`}
@@ -1238,19 +1234,19 @@ export default function HangmanChallengeComp({
         </>
       )}
 
-      {mysteryBoxDialog && (
+      {mysteryBoxDialogView && (
         <div className="hangman-challenge__mystery-layer" role="presentation">
           <section
             className="hangman-challenge__mystery-dialog"
             role="dialog"
             aria-modal="true"
             aria-label={
-              mysteryBoxDialog.stage === 'offer'
+              mysteryBoxDialogView.stage === 'offer'
                 ? 'Mystery box available'
                 : 'Mystery box effect applied'
             }
           >
-            {mysteryBoxDialog.stage === 'offer' ? (
+            {mysteryBoxDialogView.stage === 'offer' ? (
               <>
                 <p className="hangman-challenge__eyebrow">Mystery box</p>
                 <h3>A sealed case is available</h3>
@@ -1277,8 +1273,8 @@ export default function HangmanChallengeComp({
             ) : (
               <>
                 <p className="hangman-challenge__eyebrow">Case effect applied</p>
-                <h3>{mysteryBoxDialog.effect.label}</h3>
-                <p>{mysteryBoxDialog.effect.description}</p>
+                <h3>{mysteryBoxDialogView.effect.label}</h3>
+                <p>{mysteryBoxDialogView.effect.description}</p>
                 <button
                   type="button"
                   className="hangman-challenge__cta hangman-challenge__cta--box"
