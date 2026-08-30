@@ -9,9 +9,10 @@ import {
 import SeasonTutorialTour from './SeasonTutorialTour'
 import { hasHandledSeasonTutorial, markSeasonTutorialHandled } from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
+import './SeasonOpeningCinematic.css'
 
-const TV_WAKE_MS = 900
-const WELCOME_DELAY_MS = 620
+const TV_WAKE_MS = 1150
+const WELCOME_DELAY_MS = 1250
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
@@ -151,6 +152,12 @@ export default function SeasonStartOnboardingController() {
       document.body.classList.remove('body--season-tv-wake')
     }
   }, [eligibleSeasonStart, gameId])
+
+  useEffect(() => {
+    const welcomeVisible = queuedEvent?.meta?.seasonOnboardingWelcome === true
+    document.body.classList.toggle('body--season-opening-welcome', welcomeVisible)
+    return () => document.body.classList.remove('body--season-opening-welcome')
+  }, [queuedEvent])
 
   const addOpeningWelcome = useCallback(() => {
     if (welcomeExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
