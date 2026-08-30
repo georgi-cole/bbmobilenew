@@ -50,6 +50,7 @@ import { isDebugAccessGranted, persistDebugAccess } from '../../utils/debugMode'
 import type { ForcedShockType, Phase } from '../../types'
 import type { IncomingInteraction, IncomingInteractionType } from '../../social/types'
 import { selectDebugExpansionUnlocks, setDebugExpansionUnlock } from '../../store/uiSlice'
+import { IS_RELEASE_BUILD } from '../../config/buildTarget'
 import {
   activateDepressionShockForDebug,
   setDepressionShockStageForDebug,
@@ -181,7 +182,7 @@ export default function DebugPanel() {
   const [searchParams] = useSearchParams()
   const isPhonePreview =
     searchParams.get('phonePreview') === 'true' || window.name.startsWith('phone-preview:')
-  const isE2E = (window as { __E2E__?: boolean }).__E2E__ === true
+  const isE2E = !IS_RELEASE_BUILD && (window as { __E2E__?: boolean }).__E2E__ === true
   const isDebug = isE2E || isDebugAccessGranted(searchParams, window.location.hostname)
 
   useEffect(() => {

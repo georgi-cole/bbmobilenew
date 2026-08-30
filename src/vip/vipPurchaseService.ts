@@ -13,6 +13,7 @@ import {
   type StoreProductKey,
 } from './vipConfig'
 import { createEmptyStoreEntitlements, type StoreEntitlements } from './vipStorage'
+import { IS_ADMIN_BUILD } from '../config/buildTarget'
 
 export interface StoreProduct {
   key: StoreProductKey
@@ -133,7 +134,9 @@ export async function loadVipStoreSnapshot(options?: {
   if (!isNativeBillingPlatform()) {
     return {
       billingAvailable: false,
-      isActive: import.meta.env.DEV && import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true',
+      isActive:
+        IS_ADMIN_BUILD ||
+        (import.meta.env.DEV && import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'),
       entitlements: createEmptyStoreEntitlements(),
       products: {},
       verifiedAt,

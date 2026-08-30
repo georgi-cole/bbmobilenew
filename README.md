@@ -35,9 +35,16 @@ npm run bootstrap
 ## Build
 
 ```bash
-npm run build      # output in dist/
+npm run build      # public/release build, output in dist/
 npm run preview    # preview the production build
 ```
+
+### Private test build and public release build
+
+- `npm run dev:admin` or `npm run build:admin`: private test build with debug tools and test store access.
+- `npm run build:release`: public build with debug disabled and paid features locked until purchased.
+
+Do not deploy the admin build to a public URL. The `main` deployment uses `npm run build`, which is the locked release build.
 
 ### Mobile builds
 
@@ -110,52 +117,52 @@ below the main TV viewport in `TvZone`.
 
 **Props**
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `entries` | `TvEvent[]` | — | Full list of TV events, newest first |
-| `mainTVMessage` | `string?` | `undefined` | Text shown in the TV viewport; the first log entry is suppressed when it matches, preventing a duplicate row |
-| `maxVisible` | `number?` | `3` | Number of rows visible before the log scrolls |
+| Prop            | Type        | Default     | Description                                                                                                  |
+| --------------- | ----------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
+| `entries`       | `TvEvent[]` | —           | Full list of TV events, newest first                                                                         |
+| `mainTVMessage` | `string?`   | `undefined` | Text shown in the TV viewport; the first log entry is suppressed when it matches, preventing a duplicate row |
+| `maxVisible`    | `number?`   | `3`         | Number of rows visible before the log scrolls                                                                |
 
 **Teaser truncation** — long event texts are clipped to 60 characters in the
-collapsed state.  Click/tap any row to toggle the full text.
+collapsed state. Click/tap any row to toggle the full text.
 
 **Message templates** — `src/data/tv-log-templates.json` defines `teaser` and
-`full` template strings for each event type in a Big-Brother tone.  The
+`full` template strings for each event type in a Big-Brother tone. The
 `getTemplate(type)` utility in `src/utils/tvLogTemplates.ts` returns the right
 pair for generating event text — intended for use at **event-creation time**
 (e.g. when building the `text` passed to `addTvEvent()`), not inside TVLog
-itself.  The `tease(text, maxLen?)` function handles plain-text truncation of
+itself. The `tease(text, maxLen?)` function handles plain-text truncation of
 whatever text is passed into the component.
 
 ### TV Announcement Overlay
 
 `TvZone` renders an inline broadcast-stinger overlay (`TvAnnouncementOverlay`)
 inside the TV viewport whenever a **major** game event arrives or a popup phase
-transition is detected.  The overlay displays a styled full-bleed announcement
+transition is detected. The overlay displays a styled full-bleed announcement
 (title, subtitle, optional live badge) and exposes an info button that opens a
 fullscreen `TvAnnouncementModal` with detailed phase copy.
 
 **Triggering an announcement**
 
 Announcements are driven by **game-phase transitions** (see phase reference
-table below).  For backwards compatibility, setting `meta.major` (or the
+table below). For backwards compatibility, setting `meta.major` (or the
 top-level `major` field) on a `TvEvent` to one of the recognised keys also
 triggers an overlay:
 
-| Key | Auto-dismiss |
-|-----|-------------|
-| `nomination_ceremony` | manual |
-| `veto_ceremony` | manual |
-| `live_eviction` | manual |
-| `final4` | manual |
-| `final3_announcement` | manual |
-| `final_hoh` | manual |
-| `jury` | manual |
-| `battle_back` | manual |
-| `double_eviction` | manual |
-| `twist` | manual |
-| `hoh_comp_announcement` | manual |
-| `pos_comp_announcement` | manual |
+| Key                     | Auto-dismiss |
+| ----------------------- | ------------ |
+| `nomination_ceremony`   | manual       |
+| `veto_ceremony`         | manual       |
+| `live_eviction`         | manual       |
+| `final4`                | manual       |
+| `final3_announcement`   | manual       |
+| `final_hoh`             | manual       |
+| `jury`                  | manual       |
+| `battle_back`           | manual       |
+| `double_eviction`       | manual       |
+| `twist`                 | manual       |
+| `hoh_comp_announcement` | manual       |
+| `pos_comp_announcement` | manual       |
 
 > **Note:** The correct key for the Final 3 announcement is `final3_announcement`.
 > Earlier documentation erroneously listed this as `final3`.
@@ -169,7 +176,7 @@ addTvEvent({
   text: 'The nominations are set — Rune and Nova are on the block.',
   timestamp: Date.now(),
   meta: { major: 'nomination_ceremony', week: 1 },
-});
+})
 ```
 
 All overlay announcements are dismissed by the central Play/Continue FAB
@@ -194,20 +201,20 @@ flatten `border-radius` on `<button>` elements, and ignore custom shadows.
 
 ### How the fix works
 
-* **`src/main.tsx`** — detects standalone mode via `navigator.standalone` and
+- **`src/main.tsx`** — detects standalone mode via `navigator.standalone` and
   `matchMedia('(display-mode: standalone)')` and adds `is-standalone` to
   `<html>`.
-* **`src/styles/_ios-standalone-fixes.css`** — scoped under both
+- **`src/styles/_ios-standalone-fixes.css`** — scoped under both
   `@media (display-mode: standalone)` and `html.is-standalone` to ensure rules
   fire even before JS has run. Key overrides:
-  * `-webkit-appearance: none` — prevents Safari from rendering native button
+  - `-webkit-appearance: none` — prevents Safari from rendering native button
     chrome.
-  * `border-radius: 28px 8px 28px 8px` — explicit px values that WebKit honours
+  - `border-radius: 28px 8px 28px 8px` — explicit px values that WebKit honours
     in standalone context.
-  * `border-radius: inherit` on `::before` / `::after` pseudo-elements.
-  * `backdrop-filter: none` + enhanced `box-shadow` — consistent shadow without
+  - `border-radius: inherit` on `::before` / `::after` pseudo-elements.
+  - `backdrop-filter: none` + enhanced `box-shadow` — consistent shadow without
     relying on blur compositing.
-* **`index.html`** — `apple-mobile-web-app-capable` and related meta tags
+- **`index.html`** — `apple-mobile-web-app-capable` and related meta tags
   enable proper standalone behaviour and status-bar integration.
 
 ### Remote debugging on iOS
@@ -237,19 +244,17 @@ What this button does:
 Use it for quick end-to-end sanity checks of old and new games, especially when you want to
 verify that the cycle still behaves realistically without manually playing through each step.
 
-
-
 The **Weekly Diary Room Log** feature lets admins record and publish a
 structured summary of each The Big Eye week. Guests can view published
 weeks; only admins may create, edit, or export unpublished drafts.
 
 ### Feature flag
 
-| Variable | Default | Description |
-|---|---|---|
-| `FEATURE_DIARY_WEEK` (server) | `true` | Set to `false` to disable the backend routes entirely. |
-| `VITE_FEATURE_DIARY_WEEK` (frontend) | `true` | Set to `false` to hide the Weekly tab in the UI. |
-| `ADMIN_API_KEY` (server) | _(unset)_ | Secret key required for admin write operations. |
+| Variable                             | Default   | Description                                            |
+| ------------------------------------ | --------- | ------------------------------------------------------ |
+| `FEATURE_DIARY_WEEK` (server)        | `true`    | Set to `false` to disable the backend routes entirely. |
+| `VITE_FEATURE_DIARY_WEEK` (frontend) | `true`    | Set to `false` to hide the Weekly tab in the UI.       |
+| `ADMIN_API_KEY` (server)             | _(unset)_ | Secret key required for admin write operations.        |
 
 ### Migration
 
@@ -271,13 +276,13 @@ To revert, run the DOWN section at the bottom of the migration file.
 
 All routes are under `/api` and rate-limited together with the rest of the API.
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/seasons/:seasonId/weeks` | Guest | List weeks. Add `?publishedOnly=true` to hide drafts (admins always see all). |
-| `GET` | `/api/seasons/:seasonId/weeks/:weekNumber` | Guest (published only) | Fetch a single week. |
-| `POST` | `/api/seasons/:seasonId/weeks` | **Admin** | Create a new week. |
-| `PATCH` | `/api/seasons/:seasonId/weeks/:weekNumber` | **Admin** | Partially update a week. |
-| `GET` | `/api/weeks/:id/export?format=json` | Guest (published only) | Export full week payload as JSON. |
+| Method  | Path                                       | Auth                   | Description                                                                   |
+| ------- | ------------------------------------------ | ---------------------- | ----------------------------------------------------------------------------- |
+| `GET`   | `/api/seasons/:seasonId/weeks`             | Guest                  | List weeks. Add `?publishedOnly=true` to hide drafts (admins always see all). |
+| `GET`   | `/api/seasons/:seasonId/weeks/:weekNumber` | Guest (published only) | Fetch a single week.                                                          |
+| `POST`  | `/api/seasons/:seasonId/weeks`             | **Admin**              | Create a new week.                                                            |
+| `PATCH` | `/api/seasons/:seasonId/weeks/:weekNumber` | **Admin**              | Partially update a week.                                                      |
+| `GET`   | `/api/weeks/:id/export?format=json`        | Guest (published only) | Export full week payload as JSON.                                             |
 
 Admin requests must include the `x-admin-key` header matching `ADMIN_API_KEY`.
 
@@ -296,13 +301,13 @@ Admin requests must include the `x-admin-key` header matching `ADMIN_API_KEY`.
   "replacementNominee": null,
   "evictionVotes": [
     { "voter": "Alice", "votedFor": "Charlie" },
-    { "voter": "Bob",   "votedFor": "Charlie" },
-    { "voter": "Eve",   "votedFor": "Dave" }
+    { "voter": "Bob", "votedFor": "Charlie" },
+    { "voter": "Eve", "votedFor": "Dave" },
   ],
   "socialEvents": ["Pool party on Day 3", "Cooking competition Day 5"],
   "misc": ["Houseguest twist announced"],
   "notes": "Quiet week overall.",
-  "published": false
+  "published": false,
 }
 ```
 
@@ -351,29 +356,28 @@ All 15 integration tests should pass (create, fetch, patch, export, list).
 - [ ] Export JSON downloads a `.json` file
 - [ ] A non-admin `curl -X POST /api/seasons/1/weeks` returns `403 Forbidden`
 
-
 ## TvZone Announcement Overlay — phase trigger reference
 
-The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, not text heuristics.  Popups are shown only for the following phases:
+The inline stinger overlay in `TvZone` is driven by **game-phase transitions**, not text heuristics. Popups are shown only for the following phases:
 
-| Phase                    | Trigger condition                       | Announcement shown            |
-|--------------------------|-----------------------------------------|-------------------------------|
-| `hoh_comp_announcement`  | any alive count                         | HOH Competition               |
-| `pos_comp_announcement`  | any alive count                         | Power of Safety               |
-| `nominations`            | any alive count                         | Nomination Ceremony           |
-| `pov_ceremony`           | alive count !== 4                       | Veto Ceremony                 |
-| `pov_ceremony`           | alive count === 4                       | Final 4 — Veto Ceremony       |
-| `live_vote`              | any alive count                         | Live Eviction                 |
-| `final3`                 | alive count === 3                       | Final 3                       |
-| `final3_decision`        | any alive count                         | Final HOH Decision            |
-| `jury`                   | any alive count                         | Jury Votes                    |
+| Phase                   | Trigger condition | Announcement shown      |
+| ----------------------- | ----------------- | ----------------------- |
+| `hoh_comp_announcement` | any alive count   | HOH Competition         |
+| `pos_comp_announcement` | any alive count   | Power of Safety         |
+| `nominations`           | any alive count   | Nomination Ceremony     |
+| `pov_ceremony`          | alive count !== 4 | Veto Ceremony           |
+| `pov_ceremony`          | alive count === 4 | Final 4 — Veto Ceremony |
+| `live_vote`             | any alive count   | Live Eviction           |
+| `final3`                | alive count === 3 | Final 3                 |
+| `final3_decision`       | any alive count   | Final HOH Decision      |
+| `jury`                  | any alive count   | Jury Votes              |
 
 **No overlay** is shown for: `week_start`, `hoh_comp`, `pov_comp`, `final3_comp1`, `final3_comp2`, `final3_comp3`, and all other phases — these remain normal text messages.
 
-All overlay announcements require manual dismissal.  The central Play/Continue FAB should dispatch the following event to dismiss an active announcement:
+All overlay announcements require manual dismissal. The central Play/Continue FAB should dispatch the following event to dismiss an active announcement:
 
 ```js
-window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'));
+window.dispatchEvent(new CustomEvent('tv:announcement-dismiss'))
 ```
 
 An explicit `event.meta.major` or `event.major` field on a `TvEvent` can also trigger an overlay for backwards compatibility (valid keys: `nomination_ceremony`, `veto_ceremony`, `live_eviction`, `final4`, `final3_announcement`, `final_hoh`, `jury`, `battle_back`, `double_eviction`, `twist`, `hoh_comp_announcement`, `pos_comp_announcement`).
@@ -392,24 +396,24 @@ and does **not** require changes to the Vite/React build pipeline.
 
 ![Intro Hub UI](https://github.com/user-attachments/assets/7696ee07-0268-4102-8a63-349a79c418c4)
 
-*Chips in all four corners with notification dots on News (bottom-left) and Store (bottom-right).*
+_Chips in all four corners with notification dots on News (bottom-left) and Store (bottom-right)._
 
 ### Added files
 
-| File | Description |
-|---|---|
-| `css/intro-hub.css` | Chip styles (rounded pill, badge dot, corner positions) |
-| `js/ui/introHub.js` | Hub module — auto-inits `#intro-hub`, exposes runtime API |
-| `tests/test_intro_hub.html` | Standalone test page (open directly in a browser) |
-| `css/houseguests-modal.css` | Modal styles — copied from `georgi-cole/bbmobile` |
-| `js/data/houseguests.js` | Houseguest data source — copied from `georgi-cole/bbmobile` |
-| `js/data/houseguests.js.backup` | Original backup — copied from `georgi-cole/bbmobile` |
-| `js/ui/houseguestsModal.js` | Houseguests list/detail modal — copied from `georgi-cole/bbmobile` |
-| `js/houseguest-profile.js` | Full-screen profile modal — copied from `georgi-cole/bbmobile` |
-| `js/ui/houseguestSheet.js` | Bottom sheet profile — copied from `georgi-cole/bbmobile` |
-| `src/ui/houseguestsList.js` | Guest card handlers — copied from `georgi-cole/bbmobile` |
-| `screenshots/intro-hub-1.png` | Placeholder screenshot (replace with real screenshot) |
-| `screenshots/intro-hub-2.png` | Placeholder screenshot (replace with real screenshot) |
+| File                            | Description                                                        |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `css/intro-hub.css`             | Chip styles (rounded pill, badge dot, corner positions)            |
+| `js/ui/introHub.js`             | Hub module — auto-inits `#intro-hub`, exposes runtime API          |
+| `tests/test_intro_hub.html`     | Standalone test page (open directly in a browser)                  |
+| `css/houseguests-modal.css`     | Modal styles — copied from `georgi-cole/bbmobile`                  |
+| `js/data/houseguests.js`        | Houseguest data source — copied from `georgi-cole/bbmobile`        |
+| `js/data/houseguests.js.backup` | Original backup — copied from `georgi-cole/bbmobile`               |
+| `js/ui/houseguestsModal.js`     | Houseguests list/detail modal — copied from `georgi-cole/bbmobile` |
+| `js/houseguest-profile.js`      | Full-screen profile modal — copied from `georgi-cole/bbmobile`     |
+| `js/ui/houseguestSheet.js`      | Bottom sheet profile — copied from `georgi-cole/bbmobile`          |
+| `src/ui/houseguestsList.js`     | Guest card handlers — copied from `georgi-cole/bbmobile`           |
+| `screenshots/intro-hub-1.png`   | Placeholder screenshot (replace with real screenshot)              |
+| `screenshots/intro-hub-2.png`   | Placeholder screenshot (replace with real screenshot)              |
 
 ### How to test locally
 
@@ -446,46 +450,42 @@ inside a component and load the static scripts as side-effects.
 3. **Load the JS modules** as side-effects in the component's `useEffect`:
 
 ```tsx
-import { useEffect } from 'react';
+import { useEffect } from 'react'
 
 useEffect(() => {
   // Load houseguest data first, then the modal, then the hub
-  const scripts = [
-    '/js/data/houseguests.js',
-    '/js/ui/houseguestsModal.js',
-    '/js/ui/introHub.js',
-  ];
-  scripts.forEach(src => {
+  const scripts = ['/js/data/houseguests.js', '/js/ui/houseguestsModal.js', '/js/ui/introHub.js']
+  scripts.forEach((src) => {
     if (!document.querySelector(`script[src="${src}"]`)) {
-      const s = document.createElement('script');
-      s.src = src;
-      document.body.appendChild(s);
+      const s = document.createElement('script')
+      s.src = src
+      document.body.appendChild(s)
     }
-  });
-}, []);
+  })
+}, [])
 ```
 
-   Or copy the modules into `src/` and import them as ES modules — they use
-   `(function(global){ ... })(window)` UMD wrappers that work in either context.
+Or copy the modules into `src/` and import them as ES modules — they use
+`(function(global){ ... })(window)` UMD wrappers that work in either context.
 
 4. **Pre-configure notifications** before the hub loads:
 
 ```ts
-window.game = window.game || {};
-window.game.hubNotifications = { news: true };
+window.game = window.game || {}
+window.game.hubNotifications = { news: true }
 ```
 
 ### Runtime notification API
 
 ```js
 // Show a notification dot on the 'news' chip
-window.game.hub.setNotification('news', true);
+window.game.hub.setNotification('news', true)
 
 // Clear the dot
-window.game.hub.setNotification('news', false);
+window.game.hub.setNotification('news', false)
 
 // Re-read window.game.hubNotifications and apply all dots at once
-window.game.hub.refreshNotifications();
+window.game.hub.refreshNotifications()
 ```
 
 ### Houseguests chip integration

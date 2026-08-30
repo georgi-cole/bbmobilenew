@@ -1,40 +1,41 @@
-const LOCAL_DEBUG_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
-export const DEBUG_ACCESS_STORAGE_KEY = 'bbmobilenew:qa-debug-access';
+import { IS_ADMIN_BUILD, IS_RELEASE_BUILD } from '../config/buildTarget'
+const LOCAL_DEBUG_HOSTS = new Set(['localhost', '127.0.0.1', '::1'])
+export const DEBUG_ACCESS_STORAGE_KEY = 'bbmobilenew:qa-debug-access'
 
-type DebugLocationLike = Pick<Location, 'hostname' | 'search' | 'hash'>;
+type DebugLocationLike = Pick<Location, 'hostname' | 'search' | 'hash'>
 
 function readQueryParam(fragment: string, key: string): string | null {
-  const queryIndex = fragment.indexOf('?');
-  if (queryIndex < 0) return null;
-  return new URLSearchParams(fragment.slice(queryIndex + 1)).get(key);
+  const queryIndex = fragment.indexOf('?')
+  if (queryIndex < 0) return null
+  return new URLSearchParams(fragment.slice(queryIndex + 1)).get(key)
 }
 
 function isLocalDebugHost(hostname: string): boolean {
-  return LOCAL_DEBUG_HOSTS.has(hostname);
+  return LOCAL_DEBUG_HOSTS.has(hostname)
 }
 
 function readPersistedDebugAccess(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return false
   try {
-    return window.localStorage.getItem(DEBUG_ACCESS_STORAGE_KEY) === '1';
+    return window.localStorage.getItem(DEBUG_ACCESS_STORAGE_KEY) === '1'
   } catch {
-    return false;
+    return false
   }
 }
 
 export function persistDebugAccess(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(DEBUG_ACCESS_STORAGE_KEY, '1');
+    window.localStorage.setItem(DEBUG_ACCESS_STORAGE_KEY, '1')
   } catch {
     // Debug access still works for the current URL when storage is unavailable.
   }
 }
 
 export function revokeDebugAccess(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return
   try {
-    window.localStorage.removeItem(DEBUG_ACCESS_STORAGE_KEY);
+    window.localStorage.removeItem(DEBUG_ACCESS_STORAGE_KEY)
   } catch {
     // Best effort. Callers reload after revoking so URL gating is re-evaluated.
   }
@@ -43,42 +44,43 @@ export function revokeDebugAccess(): void {
 function hasDebugQaAccess(locationLike: DebugLocationLike): boolean {
   const debugRequested =
     readQueryParam(locationLike.search, 'debug') === '1' ||
-    readQueryParam(locationLike.hash, 'debug') === '1';
+    readQueryParam(locationLike.hash, 'debug') === '1'
 
-  if (!debugRequested) return false;
+  if (!debugRequested) return false
 
   return (
     isLocalDebugHost(locationLike.hostname) ||
     readQueryParam(locationLike.search, 'qa') === '1' ||
     readQueryParam(locationLike.hash, 'qa') === '1'
-  );
+  )
 }
 
 function isRemoteQaSession(locationLike: DebugLocationLike): boolean {
-  if (isLocalDebugHost(locationLike.hostname)) return false;
+  if (isLocalDebugHost(locationLike.hostname)) return false
 
   return (
     readQueryParam(locationLike.search, 'qa') === '1' ||
     readQueryParam(locationLike.hash, 'qa') === '1'
-  );
+  )
 }
 
-export function isDebugAccessGranted(
-  searchParams: URLSearchParams,
-  hostname: string,
-): boolean {
+export function isDebugAccessGranted(searchParams: URLSearchParams, hostname: string): boolean {
+  if (IS_ADMIN_BUILD) return true
+  if (IS_RELEASE_BUILD) return false
   const requested =
     searchParams.get('debug') === '1' &&
-    (isLocalDebugHost(hostname) || searchParams.get('qa') === '1');
-  return requested || readPersistedDebugAccess();
+    (isLocalDebugHost(hostname) || searchParams.get('qa') === '1')
+  return requested || readPersistedDebugAccess()
 }
 
 export function canAccessSpecialSettings(locationLike?: DebugLocationLike): boolean {
-  if (typeof window === 'undefined') return false;
-  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
+  if (typeof window === 'undefined') return false
+  if (IS_RELEASE_BUILD) return false
+  if (IS_ADMIN_BUILD) return true
+  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true
 
-  const resolvedLocation = locationLike ?? window.location;
-  return hasDebugQaAccess(resolvedLocation) || readPersistedDebugAccess();
+  const resolvedLocation = locationLike ?? window.location
+  return hasDebugQaAccess(resolvedLocation) || readPersistedDebugAccess()
 }
 
 /**
@@ -97,13 +99,13 @@ export function canAccessSpecialSettings(locationLike?: DebugLocationLike): bool
  * Returns false in SSR/non-browser environments, normal production runs,
  * and remote qa=1 sessions.
  */
-export function detectDebugMode(
-  locationLike?: DebugLocationLike,
-): boolean {
-  if (typeof window === 'undefined') return false;
-  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true;
+export function detectDebugMode(locationLike?: DebugLocationLike): boolean {
+  if (typeof window === 'undefined') return false
+  if (IS_RELEASE_BUILD) return false
+  if (IS_ADMIN_BUILD) return true
+  if ((window as { __E2E__?: boolean }).__E2E__ === true) return true
 
-  const resolvedLocation = locationLike ?? window.location;
-  if (isRemoteQaSession(resolvedLocation)) return false;
-  return hasDebugQaAccess(resolvedLocation);
+  const resolvedLocation = locationLike ?? window.location
+  if (isRemoteQaSession(resolvedLocation)) return false
+  return hasDebugQaAccess(resolvedLocation)
 }
