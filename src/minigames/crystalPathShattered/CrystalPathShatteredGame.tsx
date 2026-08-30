@@ -687,7 +687,7 @@ export default function CrystalPathShatteredGame({
   const activeEffects = activePlayer ? pruneEffects(activePlayer.effects, Date.now()) : [];
 
   // Prize label for complete screen.
-  const prizeLabel = prizeType === 'POS' ? 'Power of Safety' : 'Head of Household';
+  const prizeLabel = prizeType === 'POS' ? 'Power of Safety' : 'Leader of the House';
 
   // SP color band helper
   const spLevel = (sp: number): 'is-safe' | 'is-warn' | 'is-danger' => {

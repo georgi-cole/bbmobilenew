@@ -45,6 +45,8 @@ const SHOCK_PRELUDE_DURATION_MS = 2320
 const FULLSCREEN_SHOCK_KEYS = new Set([
   'battle_back',
   'battle_back_shock',
+  'battle_back_rules',
+  'battle_back_challenge',
   'double_eviction',
   'vox_double_eviction',
   'vip_veto',
@@ -55,6 +57,10 @@ const FULLSCREEN_SHOCK_KEYS = new Set([
   'cupid_arrow',
   'cupid_arrow_broken',
   'vox_populi',
+  'tribunal_phase',
+  'depression_shock_start',
+  'depression_shock_day_2',
+  'depression_shock_end',
   'twist',
   'custom_critical',
 ])

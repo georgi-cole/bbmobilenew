@@ -124,7 +124,10 @@ export const syncCreditsSoundtrackToTime = (elapsedSeconds: number, shouldPlay: 
 
   const desiredTime = CINEMATIC_AUDIO.sourceStartInSeconds + Math.max(0, elapsedSeconds)
   if (soundtrack.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    if (Math.abs(soundtrack.currentTime - desiredTime) > 0.2) {
+    // Re-seeking an HTMLAudioElement several times per second causes audible
+    // gaps on mobile WebKit. Normal playback remains in sync; only correct a
+    // genuine discontinuity such as a pause/resume or an explicit seek.
+    if (Math.abs(soundtrack.currentTime - desiredTime) > 1) {
       soundtrack.currentTime = desiredTime
     }
     soundtrack.volume = getSoundtrackVolume(elapsedSeconds)

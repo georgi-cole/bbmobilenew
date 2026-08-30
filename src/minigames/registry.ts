@@ -21,20 +21,19 @@ const FIT_ME_IN_INSTRUCTION_KEYS: TranslationKey[] = [
   'fitMeIn.rules.fourPlayers',
   'fitMeIn.rules.threePlayers',
   'fitMeIn.rules.mosaicFinal',
-  'fitMeIn.rules.scoring',
 ]
 
 const FIT_ME_IN_INSTRUCTIONS = [
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.freshBoard.
-  'Every round starts on a fresh board and has a fixed time limit.',
+  'Each round starts with a fresh board. Clear lines to score before time runs out.',
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.fivePlus.
-  'With 5 or more players, the last-ranked player leaves after rounds 1 and 2; round 3 keeps only the top 2.',
+  '5+ players: last place leaves after Rounds 1 and 2; Round 3 keeps the top 2.',
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.fourPlayers.
-  'With 4 players, last place leaves in round 1 and round 2 keeps the top 2.',
+  '4 players: last place leaves after Round 1; Round 2 keeps the top 2.',
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.threePlayers.
-  'With 3 players, a 90-second semifinal keeps the top 2.',
+  '3 players: a 90-second semifinal keeps the top 2.',
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.mosaicFinal.
-  'The final is a fresh head-to-head board. Its locked squares become mini houseguest avatars.',
+  'Final: two players get a fresh board. The highest score wins.',
   // i18n-ignore: Canonical English fallback; the shared rules modal uses fitMeIn.rules.scoring.
   'Score comes from line clears and controlled drops. The highest final-round score wins.',
 ]

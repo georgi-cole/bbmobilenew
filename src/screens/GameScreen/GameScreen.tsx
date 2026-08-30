@@ -1326,6 +1326,10 @@ export default function GameScreen() {
     freezeLayout: flowCoordination.activeFlow !== null,
   })
   const gameTvLogRows = responsiveGameLayout.tvLogRows
+  // An inline log beneath the Faux TV is the House Feed presentation. It owns
+  // the activity affordance and the occupancy count, so the roster must not
+  // render a duplicate row beside its title.
+  const inlineHouseFeedVisible = gameTvLogRows > 0
   const housemateOccupancyLabel = `${alivePlayers.length}/${game.mode === 'survival' ? 8 + (game.modeSpecific?.kind === 'survival' ? (game.modeSpecific.totalRoboContestantsEvicted ?? 0) : 0) : game.players.length}`
   const showSurveyevalVoteModal =
     game.mode === 'survival' && game.phase === 'live_vote' && game.awaitingHumanVote
@@ -1333,7 +1337,7 @@ export default function GameScreen() {
     .map((id) => game.players.find((player) => player.id === id))
     .filter((player): player is Player => Boolean(player))
   const rosterOccupancyChip =
-    responsiveGameLayout.rosterHeaderMode === 'tv-chip'
+    inlineHouseFeedVisible || responsiveGameLayout.rosterHeaderMode === 'tv-chip'
       ? {
           label: housemateOccupancyLabel,
           ariaLabel: `Housemates ${alivePlayers.length} of ${game.players.length}`,
@@ -2543,10 +2547,12 @@ export default function GameScreen() {
           rosterMode={responsiveGameLayout.rosterMode}
           headerMode={responsiveGameLayout.rosterHeaderMode}
           layoutRevision={responsiveGameLayout.revision}
-          occupancyLabel={housemateOccupancyLabel}
+          occupancyLabel={inlineHouseFeedVisible ? undefined : housemateOccupancyLabel}
           returningPlayerId={battleBackReturnId}
           onReturnAnimationDone={handleBattleBackReturnDone}
-          showRosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
+          showRosterLogLauncher={
+            responsiveGameLayout.rosterHeaderMode === 'persistent' && !inlineHouseFeedVisible
+          }
         />
         {previewPlayer && (
           <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />

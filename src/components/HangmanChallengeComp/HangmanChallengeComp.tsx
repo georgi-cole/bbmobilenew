@@ -75,6 +75,11 @@ interface VisibleMysteryBox {
   spawnedAtSecond: number
 }
 
+type MysteryBoxDialog =
+  | { stage: 'offer' }
+  | { stage: 'result'; effect: MysteryBoxDefinition }
+  | null
+
 interface RoundSummary {
   participantId: string
   participantName: string
@@ -278,6 +283,7 @@ export default function HangmanChallengeComp({
   const [phase, setPhase] = useState<GamePhase>('intro')
   const [roundIndex, setRoundIndex] = useState(0)
   const [roundState, setRoundState] = useState<RoundState>(createEmptyRoundState)
+  const [mysteryBoxDialog, setMysteryBoxDialog] = useState<MysteryBoxDialog>(null)
   const [breakdown, setBreakdown] = useState<RoundScoreBreakdown | null>(null)
   const [animatedRoundScore, setAnimatedRoundScore] = useState(0)
   const [roundLeaderboard, setRoundLeaderboard] = useState<RoundSummary[]>([])
@@ -364,6 +370,7 @@ export default function HangmanChallengeComp({
     setBreakdown(null)
     setAnimatedRoundScore(0)
     setLetterInput('')
+    setMysteryBoxDialog(null)
   }, [])
 
   useEffect(() => {
@@ -475,6 +482,7 @@ export default function HangmanChallengeComp({
   const openMysteryBox = useCallback(() => {
     if (!roundState.visibleBox || phase !== 'playing' || boxesLocked) return
     const effect = chooseMysteryEffect()
+    setMysteryBoxDialog({ stage: 'result', effect })
     const hiddenLetters = () =>
       findRandomHiddenLetters(
         currentWord.text,
@@ -723,6 +731,11 @@ export default function HangmanChallengeComp({
     roundState.revealedLetters,
     roundState.visibleBox,
   ])
+
+  const rejectMysteryBox = useCallback(() => {
+    setRoundState((previous) => ({ ...previous, visibleBox: null }))
+    setMysteryBoxDialog(null)
+  }, [])
 
   const guessLetter = useCallback(
     (letter: string) => {
@@ -1030,6 +1043,10 @@ export default function HangmanChallengeComp({
           .map((entry) => entry.participantName)
       : []
 
+  const mysteryBoxDialogView =
+    mysteryBoxDialog ??
+    (phase === 'playing' && roundState.visibleBox ? { stage: 'offer' as const } : null)
+
   return (
     <div
       className={`hangman-challenge${roundState.boardFlash ? ` hangman-challenge--${roundState.boardFlash}` : ''}`}
@@ -1123,38 +1140,6 @@ export default function HangmanChallengeComp({
                 ))}
               </div>
             </section>
-            <div className="hangman-challenge__box-panel">
-              <div className="hangman-challenge__used-head">
-                <span>Mystery box</span>
-                <strong>
-                  {roundState.boxesOpened}/{Math.min(3, roundState.boxesSpawned)}
-                </strong>
-              </div>
-              {roundState.visibleBox ? (
-                <div className={`hangman-challenge__box${boxesLocked ? ' is-locked' : ''}`}>
-                  <p>{roundState.clueMessage ?? 'A sealed case is live on the board.'}</p>
-                  <button
-                    className="hangman-challenge__cta hangman-challenge__cta--box"
-                    disabled={boxesLocked}
-                    onClick={openMysteryBox}
-                    type="button"
-                  >
-                    {boxesLocked ? 'Locked by effect' : 'Open mystery box'}
-                  </button>
-                </div>
-              ) : (
-                <div className="hangman-challenge__box hangman-challenge__box--idle">
-                  <p>No mystery box is live right now.</p>
-                  <small>Stay in the round and the next case will light up when it is ready.</small>
-                </div>
-              )}
-            </div>
-            {roundState.boxLog.length > 0 && (
-              <div className="hangman-challenge__effect-result" role="status" aria-live="polite">
-                <strong>Case effect applied</strong>
-                <span>{roundState.boxLog.at(-1)}</span>
-              </div>
-            )}
             <section
               className={`hangman-challenge__keyboard-panel${keyboardDistorted ? ' is-distorted' : ''}`}
               aria-label="Letter entry"
@@ -1246,15 +1231,62 @@ export default function HangmanChallengeComp({
               ))}
             </div>
           )}
-
-          {roundState.boxLog.length > 0 && (
-            <div className="hangman-challenge__feed" aria-live="polite">
-              {roundState.boxLog.map((entry) => (
-                <p key={entry}>{entry}</p>
-              ))}
-            </div>
-          )}
         </>
+      )}
+
+      {mysteryBoxDialogView && (
+        <div className="hangman-challenge__mystery-layer" role="presentation">
+          <section
+            className="hangman-challenge__mystery-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              mysteryBoxDialogView.stage === 'offer'
+                ? 'Mystery box available'
+                : 'Mystery box effect applied'
+            }
+          >
+            {mysteryBoxDialogView.stage === 'offer' ? (
+              <>
+                <p className="hangman-challenge__eyebrow">Mystery box</p>
+                <h3>A sealed case is available</h3>
+                <p>Open it for an immediate effect, or leave it and continue the round.</p>
+                <div className="hangman-challenge__mystery-actions">
+                  <button
+                    type="button"
+                    className="hangman-challenge__cta"
+                    onClick={rejectMysteryBox}
+                  >
+                    Continue without it
+                  </button>
+                  <button
+                    type="button"
+                    className="hangman-challenge__cta hangman-challenge__cta--box"
+                    disabled={boxesLocked}
+                    autoFocus
+                    onClick={openMysteryBox}
+                  >
+                    Open mystery box
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="hangman-challenge__eyebrow">Case effect applied</p>
+                <h3>{mysteryBoxDialogView.effect.label}</h3>
+                <p>{mysteryBoxDialogView.effect.description}</p>
+                <button
+                  type="button"
+                  className="hangman-challenge__cta hangman-challenge__cta--box"
+                  autoFocus
+                  onClick={() => setMysteryBoxDialog(null)}
+                >
+                  OK
+                </button>
+              </>
+            )}
+          </section>
+        </div>
       )}
 
       {phase === 'breakdown' && breakdown && (

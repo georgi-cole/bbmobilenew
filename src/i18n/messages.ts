@@ -9,16 +9,15 @@ export const EN_US_MESSAGES = {
   'seasonRecap.finale.title': 'Finale',
   'seasonRecap.finale.detail.two': '{first} and {second} entered the final decision.',
   'seasonRecap.finale.detail.one': 'The season reached its final decision.',
-  'fitMeIn.description':
-    'Survive an adaptive multi-round fitting tournament and reach the Houseguest Mosaic Final.',
-  'fitMeIn.rules.freshBoard': 'Every round starts on a fresh board and has a fixed time limit.',
+  'fitMeIn.description': 'Clear lines, survive each cut, and win the final head-to-head.',
+  'fitMeIn.rules.freshBoard':
+    'Each round starts with a fresh board. Clear lines to score before time runs out.',
   'fitMeIn.rules.fivePlus':
-    'With 5 or more players, the last-ranked player leaves after rounds 1 and 2; round 3 keeps only the top 2.',
+    '5+ players: last place leaves after Rounds 1 and 2; Round 3 keeps the top 2.',
   'fitMeIn.rules.fourPlayers':
-    'With 4 players, last place leaves in round 1 and round 2 keeps the top 2.',
-  'fitMeIn.rules.threePlayers': 'With 3 players, a 90-second semifinal keeps the top 2.',
-  'fitMeIn.rules.mosaicFinal':
-    'The final is a fresh head-to-head board. Its locked squares become mini houseguest avatars.',
+    '4 players: last place leaves after Round 1; Round 2 keeps the top 2.',
+  'fitMeIn.rules.threePlayers': '3 players: a 90-second semifinal keeps the top 2.',
+  'fitMeIn.rules.mosaicFinal': 'Final: two players get a fresh board. The highest score wins.',
   'fitMeIn.rules.scoring':
     'Score comes from line clears and controlled drops. The highest final-round score wins.',
   'fitMeIn.round.semifinal': 'Semifinal',

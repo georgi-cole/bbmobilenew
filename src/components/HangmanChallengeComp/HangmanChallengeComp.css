@@ -558,6 +558,56 @@
   font-size: 0.62rem;
 }
 
+/* Mystery boxes deliberately use the same compact decision treatment as the
+   Battery Low offers. They must never expand the live board or duplicate their
+   result in a secondary activity panel. */
+.hangman-challenge__mystery-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3, 6, 13, 0.7);
+  backdrop-filter: blur(5px);
+}
+
+.hangman-challenge__mystery-dialog {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(119, 213, 255, 0.4);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(73, 158, 214, 0.26), transparent 58%),
+    linear-gradient(180deg, #17283c, #09111d);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.55),
+    0 0 36px rgba(77, 190, 255, 0.15);
+  text-align: center;
+}
+
+.hangman-challenge__mystery-dialog h3,
+.hangman-challenge__mystery-dialog p {
+  margin: 0;
+}
+
+.hangman-challenge__mystery-dialog > p:not(.hangman-challenge__eyebrow) {
+  color: rgba(245, 247, 251, 0.76);
+  line-height: 1.45;
+}
+
+.hangman-challenge__mystery-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.hangman-challenge__mystery-dialog > .hangman-challenge__cta--box {
+  min-height: 46px;
+}
+
 .hangman-challenge__alphabet {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

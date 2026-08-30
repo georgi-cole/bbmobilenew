@@ -5886,12 +5886,9 @@ const gameSlice = createSlice({
       state.evictionSplashId = null
       state.evictionOverlayPlayerId = null
       state.phase = 'final3'
-      pushEvent(
-        state,
-        `Final 3! ${formatNameList(finalists.map((player) => player.name))} remain. The three-part finale begins now.`,
-        'game',
-        { major: 'final3_announcement', broadcastPriority: 'critical' }
-      )
+      // TvZone's phase broadcast is the single, prominent Final Three
+      // announcement. Do not append a near-identical feed event underneath
+      // it, which otherwise reads as the same news twice.
     },
     /** Force entry into Final 4 eviction phase (debug only). */
     forcePhase(state, action: PayloadAction<Phase>) {
@@ -8056,7 +8053,9 @@ const gameSlice = createSlice({
             state.awaitingPovDecision = true
             pushEvent(
               state,
-              `${posDecisionPlayer.name}, will your pair use the Power of Safety? ⚡`,
+              isCupidArrowActive(state)
+                ? `${posDecisionPlayer.name}, will your pair use the Power of Safety? ⚡`
+                : `${posDecisionPlayer.name}, will you use the Power of Safety? ⚡`,
               'game'
             )
           } else {

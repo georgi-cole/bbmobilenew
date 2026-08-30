@@ -87,11 +87,27 @@ describe('Credits', () => {
     expect(screen.queryByRole('button', { name: 'Tap to start credits' })).toBeNull()
   })
 
+  it('reveals the video as soon as its first frame has decoded', () => {
+    renderCredits()
+
+    const video = screen.getByTestId('credits-background-video')
+    expect(video).not.toHaveClass('is-ready')
+    fireEvent.loadedData(video)
+    expect(video).toHaveClass('is-ready')
+  })
+
+  it('honours autoplay when credits are embedded after the finale', () => {
+    renderCredits({ autoPlay: false })
+
+    expect(screen.getByTestId('credits-background-video')).not.toHaveAttribute('autoplay')
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
+  })
+
   it('keeps runtime-loaded credit cards above the video', async () => {
     renderCredits()
 
     await waitFor(() => expect(contentMock.load).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(screen.getByText('Runtime Producer')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Runtime Producer').length).toBeGreaterThan(0))
     expect(screen.getByTestId('credits-background-video').parentElement).toHaveAttribute(
       'data-content-source',
       'runtime'

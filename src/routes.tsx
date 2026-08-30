@@ -40,6 +40,9 @@ const PhonePreviewPage = lazy(() => import('./screens/PhonePreviewPage/PhonePrev
 const SeasonRecapPreview = import.meta.env.DEV
   ? lazy(() => import('./screens/SeasonRecapPreview/SeasonRecapPreview'))
   : null
+const ReleaseFixesPreview = import.meta.env.DEV
+  ? lazy(() => import('./screens/ReleaseFixesPreview/ReleaseFixesPreview'))
+  : null
 
 const load = (element: ReactNode) => (
   <Suspense fallback={<RouteLoadingScreen />}>{element}</Suspense>
@@ -152,6 +155,18 @@ export const router = createHashRouter([
             </Suspense>
           ),
           errorElement: <RouteErrorBoundary />,
+        },
+      ]
+    : []),
+  ...(ReleaseFixesPreview != null
+    ? [
+        {
+          path: '/release-fixes',
+          element: (
+            <Suspense fallback={null}>
+              <ReleaseFixesPreview />
+            </Suspense>
+          ),
         },
       ]
     : []),
