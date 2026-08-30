@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Player } from '../../types'
 import { useAppSelector } from '../../store/hooks'
-import { getDepressionShockLifecycleForGame } from '../../features/twists/depressionShockLifecycle'
+import { isDepressionShockRecoveryPresentationPendingForGame } from '../../features/twists/depressionShockLifecycle'
 import {
   resolveAvatarCandidates,
   resolveFormalCutout,
@@ -77,8 +77,8 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
    */
   const [instant, setInstant] = useState(false)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
-  const depressionShockLifecycle = getDepressionShockLifecycleForGame(gameId, week)
-  const shockRecoveryOwnsFullscreen = open && depressionShockLifecycle === 'recovery'
+  const shockRecoveryOwnsFullscreen =
+    open && isDepressionShockRecoveryPresentationPendingForGame(gameId, week)
 
   // If Tribunal begins while the Depression Shock sunrise is resolving, Faux TV
   // keeps the Tribunal major event but this fullscreen reveal is skipped for the
