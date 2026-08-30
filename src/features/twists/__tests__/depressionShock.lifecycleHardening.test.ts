@@ -9,6 +9,7 @@ import {
 import {
   buildLegacyDepressionShockMirror,
   getDepressionShockLifecyclePhase,
+  isDepressionShockRecoveryPresentationPending,
 } from '../depressionShockLifecycle'
 import {
   DEPRESSION_SHOCK_WEATHER_CONDITIONS,
@@ -69,6 +70,19 @@ describe('Depression Shock lifecycle hardening', () => {
     expect(getDailyAtmosphere(gameId, 8, 'week_start')).toBe('stormy')
     expect(getDailyAtmosphere(gameId, 8, 'week_end')).toBe('stormy')
     expect(getDailyAtmosphere(gameId, 9, 'week_start')).toBe('rainbow')
+  })
+
+  it('gives the recovery cinematic fullscreen priority only while it is unresolved', () => {
+    const state = activeShock(7)
+    expect(isDepressionShockRecoveryPresentationPending(state, 9)).toBe(true)
+
+    const completed = saveDepressionShockState({
+      ...state,
+      status: 'completed',
+      endingSeen: true,
+      completedDay: 9,
+    })
+    expect(isDepressionShockRecoveryPresentationPending(completed, 9)).toBe(false)
   })
 
   it('does not mechanically repeat melancholic Faux TV endings', () => {
