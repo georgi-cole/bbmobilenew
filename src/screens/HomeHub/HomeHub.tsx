@@ -36,6 +36,7 @@ import {
   rulesetLabel,
   type SeasonRuleset,
 } from '../../modes/seasonRulesets'
+import { withSeasonLaunchIntent } from '../../modes/seasonLaunchIntent'
 import { withRunAutosaveSuspended } from '../../store/runAutosaveGate'
 import useBackgroundTheme from '../../hooks/useBackgroundTheme'
 import KolequantSplash from '../../components/KolequantSplash/KolequantSplash'
@@ -391,24 +392,27 @@ export default function HomeHub() {
     beginGameplayAudioExit()
     // resetGame creates the new run ID. Keep reset + ruleset selection inside a
     // single autosave-suspended operation so an expansion never briefly saves a
-    // second Classic slot before expansionMode is applied.
+    // second Classic slot before expansionMode is applied. The transient launch
+    // intent also lets reset-time schedulers distinguish Classic from Vox/Cupid.
     withRunAutosaveSuspended(() => {
-      if (!isGuest && activeProfileId) {
-        const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
-        dispatch(resetGame(archives))
-      } else {
-        dispatch(resetGame(undefined))
-      }
+      withSeasonLaunchIntent(ruleset, () => {
+        if (!isGuest && activeProfileId) {
+          const archives = loadSeasonArchives(archiveKeyForProfile(activeProfileId)) ?? []
+          dispatch(resetGame(archives))
+        } else {
+          dispatch(resetGame(undefined))
+        }
 
-      const expansion = rulesetExpansion(ruleset)
-      dispatch(setSeasonExpansion(expansion))
-      if (expansion === 'cupidArrow') {
-        dispatch(setVoxPopuliSchedule(null))
-        dispatch(activateCupidArrowNow())
-      } else if (expansion === 'voxPopuli') {
-        dispatch(setCupidArrowSchedule(null))
-        dispatch(activateVoxPopuliNow())
-      }
+        const expansion = rulesetExpansion(ruleset)
+        dispatch(setSeasonExpansion(expansion))
+        if (expansion === 'cupidArrow') {
+          dispatch(setVoxPopuliSchedule(null))
+          dispatch(activateCupidArrowNow())
+        } else if (expansion === 'voxPopuli') {
+          dispatch(setCupidArrowSchedule(null))
+          dispatch(activateVoxPopuliNow())
+        }
+      })
     })
 
     setPlaySelectionOpen(false)

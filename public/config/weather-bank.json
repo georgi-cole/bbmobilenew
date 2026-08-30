@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 2,
+  "revision": "weather-bank-2026-08-29-a",
+  "dayStartTitles": {
+    "sunny": [
+      "Day {day} opens under clear skies. ☀️\n{temp}",
+      "Bright skies settle over the hub. ☀️\n{temp}"
+    ],
+    "mostly_sunny": [
+      "Day {day} starts bright, with just a few clouds passing through. 🌤️\n{temp}",
+      "Sunshine wins most of the sky this morning. 🌤️\n{temp}"
+    ],
+    "partly_cloudy": [
+      "Day {day} opens with sun and cloud sharing the sky. ⛅\n{temp}",
+      "Patches of sun move between the clouds. ⛅\n{temp}"
+    ],
+    "cloudy": [
+      "Day {day} eases in beneath soft clouds. ☁️\n{temp}",
+      "A quiet blanket of cloud hangs over the hub. ☁️\n{temp}"
+    ],
+    "overcast": [
+      "Day {day} begins under a solid grey sky. ☁️\n{temp}",
+      "The morning arrives muted beneath heavy cloud. ☁️\n{temp}"
+    ],
+    "misty": [
+      "Day {day} opens behind a thin veil of mist. 🌫️\n{temp}",
+      "Soft mist hangs around the hub this morning. 🌫️\n{temp}"
+    ],
+    "foggy": [
+      "Day {day} wakes inside a bank of fog. 🌫️\n{temp}",
+      "Thick fog has swallowed the view beyond the windows. 🌫️\n{temp}"
+    ],
+    "drizzle": [
+      "A fine drizzle greets Day {day}. 🌧️\n{temp}",
+      "Day {day} starts damp, with drizzle hanging in the air. 🌧️\n{temp}"
+    ],
+    "light_showers": [
+      "Day {day} begins with passing showers. 🌦️\n{temp}",
+      "Scattered showers move across the hub this morning. 🌦️\n{temp}"
+    ],
+    "sun_showers": [
+      "Sunshine and showers arrive together on Day {day}. 🌦️\n{temp}",
+      "The sun is out, but so is the rain. 🌦️\n{temp}"
+    ],
+    "rainy": [
+      "Day {day} wakes to steady rain at the windows. 🌧️\n{temp}",
+      "Rain has settled in over the hub. 🌧️\n{temp}"
+    ],
+    "heavy_rain": [
+      "Day {day} opens beneath a curtain of heavy rain. 🌧️\n{temp}",
+      "Rain is coming down hard around the hub this morning. 🌧️\n{temp}"
+    ],
+    "stormy": [
+      "Day {day} begins beneath a distant rumble. ⚡\n{temp}",
+      "Thunder rolls beyond the walls as Day {day} begins. ⛈️\n{temp}"
+    ],
+    "snow_showers": [
+      "Day {day} starts with snow showers drifting past the windows. 🌨️\n{temp}",
+      "Flurries come and go outside the hub. 🌨️\n{temp}"
+    ],
+    "snowy": [
+      "Day {day} arrives with quiet snow settling outside. ❄️\n{temp}",
+      "Snow is falling steadily beyond the windows. ❄️\n{temp}"
+    ],
+    "clearing": [
+      "Day {day} begins as the cloud starts to break. 🌤️\n{temp}",
+      "The weather is clearing and brighter gaps are opening overhead. 🌤️\n{temp}"
+    ]
+  },
+  "dayEndTitles": {
+    "sunset": [
+      "Day {day} settles into golden hour. Everything else can wait until morning. 🌇",
+      "Warm evening light closes Day {day} over the hub. 🌇"
+    ],
+    "starry": [
+      "Day {day} winds down beneath a clear, quiet sky. ✨",
+      "The sky clears for the close of Day {day}, with stars above the hub. ✨"
+    ],
+    "partly_cloudy": [
+      "Day {day} fades beneath broken cloud and the last light of evening. ⛅",
+      "Clouds drift through the fading light as Day {day} comes to a close. ⛅"
+    ],
+    "cloudy": [
+      "Day {day} closes beneath a calm layer of cloud. ☁️",
+      "The cloudy sky darkens gently as Day {day} winds down. ☁️"
+    ],
+    "overcast": [
+      "Day {day} ends under a quiet, overcast sky. ☁️",
+      "The grey sky holds through the end of Day {day}. ☁️"
+    ],
+    "rainy": [
+      "Day {day} ends with rain on the glass and the hub tucked inside. 🌧️",
+      "Rain keeps falling as Day {day} draws to a close. 🌧️"
+    ],
+    "misty": [
+      "Day {day} fades into a soft silver mist. 🌫️",
+      "Mist gathers again as the light leaves Day {day}. 🌫️"
+    ],
+    "foggy": [
+      "Fog closes around the hub as Day {day} ends. 🌫️",
+      "Day {day} disappears into a thick, quiet fog. 🌫️"
+    ],
+    "snowy": [
+      "Day {day} closes with snow settling softly outside. ❄️",
+      "Snow continues through the fading light at the end of Day {day}. ❄️"
+    ],
+    "stormy": [
+      "Day {day} ends with thunder rolling somewhere beyond the walls. ⚡",
+      "The storm is still rumbling as Day {day} comes to an end. ⛈️"
+    ],
+    "rainbow": [
+      "The shower moves on and a last rainbow catches the evening light. 🌈",
+      "Day {day} closes brighter than it began, with colour still hanging in the sky. 🌈"
+    ]
+  },
+  "bulletins": [
+    {
+      "id": "trend-warmer-1",
+      "text": "Temperatures climbed {delta} since yesterday. {players} have already migrated toward the sunniest corner of the hub.",
+      "minDeltaC": 2,
+      "weight": 3
+    },
+    {
+      "id": "trend-warmer-2",
+      "text": "It is {temp} outside - noticeably warmer than yesterday. Jackets are disappearing quickly.",
+      "minDeltaC": 2,
+      "weight": 3
+    },
+    {
+      "id": "trend-warmer-3",
+      "text": "A warmer afternoon has arrived at {temp}. {player} is already campaigning for more time outside.",
+      "minDeltaC": 2,
+      "weight": 2
+    },
+    {
+      "id": "trend-cooler-1",
+      "text": "Temperatures dropped {delta} since yesterday. {player} has suggested a campfire before anyone else can claim the warmest seat.",
+      "maxDeltaC": -2,
+      "weight": 3
+    },
+    {
+      "id": "trend-cooler-2",
+      "text": "A cooler turn has taken hold at {temp}. The blankets have quietly started changing hands.",
+      "maxDeltaC": -2,
+      "weight": 3
+    },
+    {
+      "id": "trend-cooler-3",
+      "text": "The temperature is down {delta} from yesterday. {players} are debating whether the patio is still worth it.",
+      "maxDeltaC": -2,
+      "weight": 2
+    },
+    {
+      "id": "trend-stable-1",
+      "text": "The weather is holding steady at {temp}. Even the forecast seems comfortable where it is.",
+      "minDeltaC": -1,
+      "maxDeltaC": 1,
+      "weight": 2
+    },
+    {
+      "id": "trend-stable-2",
+      "text": "Very little has changed outside today - {temp}, and almost exactly where yesterday left things.",
+      "minDeltaC": -1,
+      "maxDeltaC": 1,
+      "weight": 2
+    },
+    {
+      "id": "sunny-patio-1",
+      "text": "At {temp}, the patio is winning. {players} have already claimed the best patch of sun.",
+      "conditions": ["sunny", "mostly_sunny"],
+      "minTempC": 18,
+      "weight": 4
+    },
+    {
+      "id": "sunny-patio-2",
+      "text": "The sun is still doing most of the work today. {player} appears to have unofficially reserved a sunbathing spot.",
+      "conditions": ["sunny", "mostly_sunny"],
+      "minTempC": 20,
+      "weight": 3
+    },
+    {
+      "id": "sunny-streak-1",
+      "text": "The sun has been shining for {streak} days. The hub is starting to treat clear skies as a house rule.",
+      "conditions": ["sunny"],
+      "minStreak": 3,
+      "weight": 5
+    },
+    {
+      "id": "sunny-streak-2",
+      "text": "Another clear day makes it {streak} in a row. {players} have stopped checking whether they need jackets.",
+      "conditions": ["sunny"],
+      "minStreak": 3,
+      "weight": 4
+    },
+    {
+      "id": "partly-cloudy-1",
+      "text": "Sun and cloud have been taking turns all afternoon. {player} keeps moving seats to stay in the light.",
+      "conditions": ["partly_cloudy", "mostly_sunny"],
+      "weight": 3
+    },
+    {
+      "id": "cloudy-1",
+      "text": "Cloud has held over the hub all day. It is still {temp}, but nobody seems in a hurry to leave the sofa.",
+      "conditions": ["cloudy", "overcast"],
+      "weight": 3
+    },
+    {
+      "id": "cloudy-streak-1",
+      "text": "Another grey day makes {streak} in a row. {player} has formally requested a little sunlight.",
+      "conditions": ["cloudy", "overcast"],
+      "minStreak": 3,
+      "weight": 4
+    },
+    {
+      "id": "mist-1",
+      "text": "The mist has been slow to lift today. The world beyond the garden still looks slightly unfinished.",
+      "conditions": ["misty"],
+      "weight": 4
+    },
+    {
+      "id": "fog-1",
+      "text": "The fog is still clinging to the hub. {players} can barely make out the far side of the garden.",
+      "conditions": ["foggy"],
+      "weight": 4
+    },
+    {
+      "id": "drizzle-1",
+      "text": "The drizzle never quite became proper rain, but it has been enough to keep everyone hovering near the doors.",
+      "conditions": ["drizzle"],
+      "weight": 4
+    },
+    {
+      "id": "showers-1",
+      "text": "Showers keep passing through without committing to the day. {player} has given up trying to time a dry trip outside.",
+      "conditions": ["light_showers"],
+      "weight": 4
+    },
+    {
+      "id": "sun-showers-1",
+      "text": "The hub has managed sunshine and rain at the same time. Half the garden is bright; the other half is getting wet.",
+      "conditions": ["sun_showers"],
+      "weight": 5
+    },
+    {
+      "id": "sun-showers-2",
+      "text": "A sun shower caught {players} outside. Neither seems entirely convinced they should run for cover.",
+      "conditions": ["sun_showers"],
+      "weight": 4
+    },
+    {
+      "id": "rain-1",
+      "text": "Rain has everyone clustered indoors at {temp}. {player} has put something warm on and accepted the situation.",
+      "conditions": ["rainy"],
+      "weight": 4
+    },
+    {
+      "id": "rain-2",
+      "text": "The rain is still tapping at the windows. Indoor plans have quietly won the afternoon.",
+      "conditions": ["rainy", "drizzle"],
+      "weight": 4
+    },
+    {
+      "id": "rain-streak-1",
+      "text": "Rain again - {streak} wet days in a row. The hub has become very good at inventing indoor plans.",
+      "conditions": ["rainy"],
+      "minStreak": 3,
+      "weight": 5
+    },
+    {
+      "id": "heavy-rain-1",
+      "text": "The rain has intensified enough to erase any serious outdoor plans. {players} are watching it hammer the windows instead.",
+      "conditions": ["heavy_rain"],
+      "weight": 5
+    },
+    {
+      "id": "storm-1",
+      "text": "Thunder is getting closer. Nobody needed much convincing to bring the afternoon indoors.",
+      "conditions": ["stormy"],
+      "weight": 5
+    },
+    {
+      "id": "storm-2",
+      "text": "The storm is still pressing against the hub. {player} is pretending the latest thunderclap did not make them jump.",
+      "conditions": ["stormy"],
+      "weight": 4
+    },
+    {
+      "id": "snow-showers-1",
+      "text": "Flurries have been coming and going all afternoon. {players} are waiting for one good burst before heading outside.",
+      "conditions": ["snow_showers"],
+      "weight": 5
+    },
+    {
+      "id": "snow-1",
+      "text": "Snow is settling outside at {temp}. {players} are already debating who gets to leave the first footprints.",
+      "conditions": ["snowy"],
+      "weight": 5
+    },
+    {
+      "id": "snow-2",
+      "text": "The garden is turning white. {player} has been checking the window often enough for everyone to notice.",
+      "conditions": ["snowy"],
+      "weight": 4
+    },
+    {
+      "id": "clearing-1",
+      "text": "The cloud has started to break apart. Brighter patches are finally reaching the garden.",
+      "conditions": ["clearing"],
+      "weight": 5
+    },
+    {
+      "id": "clearing-2",
+      "text": "The worst of the weather has moved on. {players} are cautiously rediscovering the outdoors.",
+      "conditions": ["clearing"],
+      "weight": 4
+    },
+    {
+      "id": "rainbow-1",
+      "text": "Sunlight has caught the last of the rain and a rainbow has appeared over the hub. {players} made it to the window almost immediately.",
+      "phenomenon": "rainbow",
+      "weight": 10
+    },
+    {
+      "id": "rainbow-2",
+      "text": "The shower is moving away, but it left a rainbow behind. For once, everyone is looking in the same direction.",
+      "phenomenon": "rainbow",
+      "weight": 10
+    },
+    {
+      "id": "rainbow-3",
+      "text": "A brief rainbow has formed beyond the garden after the rain. {player} was the first to spot it.",
+      "phenomenon": "rainbow",
+      "weight": 9
+    },
+    {
+      "id": "cold-1",
+      "text": "It is only {temp} outside. The warmest seats in the hub have become unexpectedly strategic territory.",
+      "maxTempC": 7,
+      "weight": 3
+    },
+    {
+      "id": "hot-1",
+      "text": "The temperature has reached {temp}. Shade and cold drinks are suddenly the most valuable resources in the hub.",
+      "minTempC": 29,
+      "weight": 3
+    },
+    {
+      "id": "mild-1",
+      "text": "It is a mild {temp} outside. {players} have suggested taking the next quiet conversation outdoors.",
+      "minTempC": 15,
+      "maxTempC": 24,
+      "conditions": ["sunny", "mostly_sunny", "partly_cloudy", "clearing"],
+      "weight": 2
+    }
+  ]
+}

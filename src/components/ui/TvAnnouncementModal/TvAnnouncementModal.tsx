@@ -77,15 +77,15 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'VOX POPULI',
     category: 'Season Expansion',
     body: VOX_POPULI_INFO_SUMMARY,
-    shockDetail: 'Open the full guide for the daily loop, ballot ties, Safety backups, doubles, and the audience-led finale.',
+    shockDetail:
+      'Open the full guide for the daily loop, ballot ties, Safety backups, doubles, and the audience-led finale.',
     rulesRoute: '/vox-populi-rules',
   },
   vox_immunity_comp: {
     icon: '🛡️',
     label: 'IMMUNITY COMPETITION',
     category: 'Vox Populi',
-    body:
-      'Every remaining housemate may compete. Today’s winner earns immunity and cannot be nominated. The last-place finisher is placed directly on the block before the secret nominations are counted.',
+    body: 'Every remaining housemate may compete. Today’s winner earns immunity and cannot be nominated. The last-place finisher is placed directly on the block before the secret nominations are counted.',
     shockDetail:
       'The Final 4 reverses the balance: nobody earns immunity, last place starts on the block, and the other three each cast one secret vote.',
   },
@@ -93,8 +93,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '4️⃣',
     label: 'FINAL 4 COMPETITION',
     category: 'Vox Populi Endgame',
-    body:
-      'Four housemates remain. Nobody earns immunity; the last-place finisher begins on the block.',
+    body: 'Four housemates remain. Nobody earns immunity; the last-place finisher begins on the block.',
     shockDetail:
       'The other three housemates each cast one secret nomination vote. The highest total joins last place on the block; a tie expands it.',
   },
@@ -102,8 +101,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🗳️',
     label: 'SECRET NOMINATIONS',
     category: 'Vox Populi',
-    body:
-      'Housemates enter the Confessional one at a time and privately name two eligible people. They cannot nominate themselves or the immunity winner.',
+    body: 'Housemates enter the Confessional one at a time and privately name two eligible people. They cannot nominate themselves or the immunity winner.',
     shockDetail:
       'The two highest nomination totals are placed on the block. If players are tied at the cutoff, every tied player is nominated. At Final 4, the other three cast one vote each and the highest total joins the last-place nominee.',
   },
@@ -111,8 +109,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🎭',
     label: 'POWER OF SAFETY',
     category: 'Vox Populi',
-    body:
-      'The Safety holder may keep the block unchanged or save one current nominee. If the winner is on the block, they automatically save themself.',
+    body: 'The Safety holder may keep the block unchanged or save one current nominee. If the winner is on the block, they automatically save themself.',
     shockDetail:
       'After a save, the next-highest housemate in the original secret-nomination totals joins the block only when fewer than two nominees remain. On an eligible Double Elimination day, the ranking restores the block only when fewer than three nominees remain. If enough nominees are still in danger, no backup is added.',
   },
@@ -120,8 +117,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '📡',
     label: 'THE PUBLIC DECIDES',
     category: 'Live Audience Vote',
-    body:
-      'The nominees face a public vote to eliminate. The nominee with the highest share of the audience vote leaves the house. Housemates do not vote and there is no Leader of the House tiebreak.',
+    body: 'The nominees face a public vote to eliminate. The nominee with the highest share of the audience vote leaves the house. Housemates do not vote and there is no Leader of the House tiebreak.',
     shockDetail:
       'Public Mode can show changing approval, momentum, and hints for building popularity, but it never saves a nominee in Vox Populi. On an eligible Double Elimination day, at least three nominees must face the vote and the two highest audience totals are eliminated.',
   },
@@ -129,8 +125,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '🏁',
     label: 'FINAL 3',
     category: 'Vox Populi Finale',
-    body:
-      'The last three housemates compete for final immunity. The winner is guaranteed a place in the Final 2.',
+    body: 'The last three housemates compete for final immunity. The winner is guaranteed a place in the Final 2.',
     shockDetail:
       'The audience votes to eliminate one of the other two housemates. Once the Final 2 is formed, the audience votes again—this time to crown the season winner. There is no Tribunal and no sole housemate vote.',
   },
@@ -169,7 +164,8 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     label: 'THE TRIBUNAL',
     category: 'Final Decision',
     body: 'The final eliminated players now become the Tribunal. They will compare the finalists’ strategy, social play, and competition record before casting the votes that decide the champion.',
-    shockDetail: 'Listen carefully: every testimony reveals what each Tribunal member valued — and which finalist earned their respect.',
+    shockDetail:
+      'Listen carefully: every testimony reveals what each Tribunal member valued — and which finalist earned their respect.',
   },
   battle_back: {
     icon: '🔥',
@@ -213,7 +209,7 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
   },
   cupid_arrow: {
     icon: '🏹',
-    label: "CUPID HAS CHOSEN",
+    label: 'CUPID HAS CHOSEN',
     category: 'Season Expansion',
     body: 'Cupid has matched every housemate with a partner. For now, you are not playing alone: every pair shares one fate inside The Big Eye house.',
     shockDetail:
@@ -359,19 +355,20 @@ export default function TvAnnouncementModal({
   if (!open) return null
 
   const sourceCopy = PHASE_COPY[announcementKey] ?? FALLBACK_COPY
-  const normalizeHubCopy = (value: string) => value
-    .replace(/\bhousemates\b/gi, 'players')
-    .replace(/\bhouseguest(s)?\b/gi, (_match, plural: string | undefined) => plural ? 'players' : 'player')
-    .replace(/\bhouse\b/gi, 'hub')
-    .replace(/\bjury\b/gi, 'Tribunal')
-    .replace(/\btwist\b/gi, 'shock')
-    .replace(/\bveto\b/gi, 'Safety')
+  const normalizeHubCopy = (value: string) =>
+    value
+      .replace(/\bhousemates\b/gi, 'players')
+      .replace(/\bhouseguest(s)?\b/gi, (_match, plural: string | undefined) =>
+        plural ? 'players' : 'player'
+      )
+      .replace(/\bhouse\b/gi, 'hub')
+      .replace(/\bjury\b/gi, 'Tribunal')
+      .replace(/\btwist\b/gi, 'shock')
+      .replace(/\bveto\b/gi, 'Safety')
   const copy = {
     ...sourceCopy,
     body: normalizeHubCopy(sourceCopy.body),
-    shockDetail: sourceCopy.shockDetail
-      ? normalizeHubCopy(sourceCopy.shockDetail)
-      : undefined,
+    shockDetail: sourceCopy.shockDetail ? normalizeHubCopy(sourceCopy.shockDetail) : undefined,
   }
 
   return createPortal(

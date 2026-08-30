@@ -1,80 +1,80 @@
-import type { GameState as BaseGameState, Player as BasePlayer } from '../types';
+import type { GameState as BaseGameState, Player as BasePlayer } from '../types'
 
-export type GameMode = 'classic' | 'survival';
-export type SeasonExpansionMode = 'cupidArrow' | 'voxPopuli';
-export type GameRunStatus = 'active' | 'paused' | 'completed' | 'failed';
+export type GameMode = 'classic' | 'survival'
+export type SeasonExpansionMode = 'cupidArrow' | 'voxPopuli'
+export type GameRunStatus = 'active' | 'paused' | 'completed' | 'failed'
 
 export interface ClassicModeState {
-  kind: 'classic';
+  kind: 'classic'
 }
 
 export interface SurvivorModeState {
-  kind: 'survival';
-  currentDay: number;
-  totalRoboContestantsEvicted: number;
-  bestDayReached: number;
-  startingCastSize: number;
-  nextRoboIndex: number;
-  adContinueCount?: number;
-  replacementPending?: SurvivorReplacementPending | null;
-  replacementTransition?: SurvivorReplacementTransition | null;
+  kind: 'survival'
+  currentDay: number
+  totalRoboContestantsEvicted: number
+  bestDayReached: number
+  startingCastSize: number
+  nextRoboIndex: number
+  adContinueCount?: number
+  replacementPending?: SurvivorReplacementPending | null
+  replacementTransition?: SurvivorReplacementTransition | null
   competitionRotation: {
-    usedKeys: string[];
-    round: number;
-  };
+    usedKeys: string[]
+    round: number
+  }
 }
 
 export interface SurvivorReplacementTransition {
-  mode: 'survival';
-  outgoingPlayerSnapshot: BasePlayer;
-  incomingPlayerId: string;
-  slot: number;
-  startedAt: number;
-  durationMs: number;
+  mode: 'survival'
+  outgoingPlayerSnapshot: BasePlayer
+  incomingPlayerId: string
+  slot: number
+  startedAt: number
+  durationMs: number
 }
 
 export interface SurvivorReplacementPending {
-  mode: 'survival';
-  outgoingPlayerSnapshot: BasePlayer;
-  incomingPlayer: BasePlayer;
-  slot: number;
-  queuedAt: number;
+  mode: 'survival'
+  outgoingPlayerSnapshot: BasePlayer
+  incomingPlayer: BasePlayer
+  slot: number
+  queuedAt: number
 }
 
-export type ModeSpecificState = ClassicModeState | SurvivorModeState;
+export type ModeSpecificState = ClassicModeState | SurvivorModeState
 
 export type GameRunState = BaseGameState & {
-  runId?: string;
-  mode?: GameMode;
-  status?: GameRunStatus;
-  modeSpecific?: ModeSpecificState;
-  createdAt?: number;
-  lastPlayedAt?: number;
-  saveVersion?: number;
-};
+  runId?: string
+  mode?: GameMode
+  status?: GameRunStatus
+  modeSpecific?: ModeSpecificState
+  createdAt?: number
+  lastPlayedAt?: number
+  saveVersion?: number
+}
 
 export type RoboPlayer = BasePlayer & {
-  isRobo?: boolean;
-  survivorEntryDay?: number;
-  survivorSlot?: number;
-};
+  isRobo?: boolean
+  survivorEntryDay?: number
+  survivorSlot?: number
+}
 
 declare module '../types' {
   interface Player {
-    isRobo?: boolean;
-    survivorEntryDay?: number;
-    survivorSlot?: number;
+    isRobo?: boolean
+    survivorEntryDay?: number
+    survivorSlot?: number
   }
 
   interface GameState {
-    runId?: string;
-    mode?: GameMode;
-    status?: GameRunStatus;
-    modeSpecific?: ModeSpecificState;
-    createdAt?: number;
-    lastPlayedAt?: number;
-    saveVersion?: number;
+    runId?: string
+    mode?: GameMode
+    status?: GameRunStatus
+    modeSpecific?: ModeSpecificState
+    createdAt?: number
+    lastPlayedAt?: number
+    saveVersion?: number
     /** Standalone expansion selected from the Play menu. Organic Classic twists leave this null. */
-    expansionMode?: SeasonExpansionMode | null;
+    expansionMode?: SeasonExpansionMode | null
   }
 }

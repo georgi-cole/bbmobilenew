@@ -1,7 +1,16 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'node:fs'
 
 const baseURL = 'http://127.0.0.1:4173/bbmobilenew/'
-const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ??
+  (process.platform === 'win32'
+    ? [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      ].find((candidate) => existsSync(candidate))
+    : undefined)
 const chromiumLaunchOptions = chromiumExecutablePath
   ? { launchOptions: { executablePath: chromiumExecutablePath } }
   : {}
@@ -9,6 +18,8 @@ const chromiumLaunchOptions = chromiumExecutablePath
 export default defineConfig({
   testDir: './e2e/playwright',
   outputDir: 'test-results',
+  fullyParallel: false,
+  workers: process.env.CI ? 2 : 1,
   retries: 0,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {

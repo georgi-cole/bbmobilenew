@@ -631,8 +631,8 @@ export function buildDepressionShockAvatarCandidates(
   const stems = [...new Set([...sourceStems, nameStem, playerId].filter(Boolean))]
 
   return stems.flatMap((stem) => [
-    `${prefix}assets/skins/${stem}_sad_avatar.png`,
     `${prefix}assets/skins/${stem}_sad_avatar.webp`,
+    `${prefix}assets/skins/${stem}_sad_avatar.png`,
     `${prefix}assets/skins/${stem}_depressed_avatar.webp`,
   ])
 }

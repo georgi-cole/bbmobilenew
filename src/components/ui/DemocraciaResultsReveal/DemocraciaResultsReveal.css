@@ -60,7 +60,7 @@
   font-size: clamp(1rem, 4.2vw, 1.6rem);
   font-weight: 900;
   line-height: 1.05;
-  letter-spacing: .02em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -95,7 +95,7 @@
   align-items: center;
   min-width: 0;
   gap: 0.2rem;
-  padding: clamp(0.2rem, .8vh, .35rem) clamp(.15rem, .7vw, .3rem);
+  padding: clamp(0.2rem, 0.8vh, 0.35rem) clamp(0.15rem, 0.7vw, 0.3rem);
   border: 0;
   border-radius: 0;
   background: transparent;

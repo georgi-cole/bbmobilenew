@@ -98,7 +98,9 @@ body.mode-surveyeval:has(.game-screen-shell),
 body.mode-surveyeval:has(.game-screen-shell) .app-shell,
 body.mode-surveyeval .game-screen-shell {
   background-color: #111713;
-  background-image: linear-gradient(rgba(17, 23, 19, 0.72), rgba(17, 23, 19, 0.72)), url('/assets/surveyeval-camo-bg.png');
+  background-image:
+    linear-gradient(rgba(17, 23, 19, 0.72), rgba(17, 23, 19, 0.72)),
+    url('/assets/surveyeval-camo-bg.png');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
@@ -107,8 +109,13 @@ body.mode-surveyeval .game-screen-shell {
 body.mode-surveyeval .game-control-dock,
 body.mode-surveyeval .game-control-dock__more-menu,
 body.mode-surveyeval .status-pill,
-body.mode-surveyeval .tv-zone__head-chip { border-color: rgba(182, 200, 106, 0.38); }
-body.mode-surveyeval .game-control-dock .fab-icon.confessional { opacity: .28; filter: grayscale(1); }
+body.mode-surveyeval .tv-zone__head-chip {
+  border-color: rgba(182, 200, 106, 0.38);
+}
+body.mode-surveyeval .game-control-dock .fab-icon.confessional {
+  opacity: 0.28;
+  filter: grayscale(1);
+}
 
 /* Gameplay background shell */
 .game-screen-shell {
@@ -222,7 +229,6 @@ body:has(.game-screen--cupid-revealed) [class*='HouseguestGrid_avatarWrap'] {
     0 0 14px rgba(213, 108, 137, 0.12),
     inset 0 1px 0 rgba(255, 238, 240, 0.1);
 }
-
 
 /* The broken state is mounted for the shock's return beat, so this animation
    flashes the tile treatment back to the normal black-gold portraits once. */

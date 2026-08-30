@@ -2,9 +2,11 @@
  * Redux slice for the "Closest Without Going Over" (CWGO) competition.
  *
  * State machine flow:
- *   idle → mass_input → mass_reveal → (if >2 alive) choose_duel → duel_input
- *        → duel_reveal → (repeat until 1 alive) → complete
- *   OR:  mass_reveal → complete (if 1 alive after mass)
+ *   idle → mass_input → mass_reveal → (repeat while >2 alive)
+ *        → duel_input → duel_reveal → (repeat until 1 alive) → complete
+ *
+ * The final always starts with exactly two players. choose_duel remains only as
+ * a defensive/legacy state for persisted games created by older builds.
  */
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { mulberry32 } from '../../store/rng'
@@ -211,18 +213,14 @@ const cwgoSlice = createSlice({
       state.questionIdx = pickQuestionFromOrder(questionOrder, 0)
       if (participantIds.length <= 1) {
         state.status = 'complete'
-      } else if (participantIds.length <= 3) {
+      } else if (participantIds.length === 2) {
         state.stage = 'final'
         participantIds.forEach((id) => {
           state.playerScores[id] = 3
         })
         state.leaderId = participantIds[0] ?? null
-        if (participantIds.length === 2) {
-          state.duelPair = [participantIds[0], participantIds[1]]
-          state.status = 'duel_input'
-        } else {
-          state.status = 'choose_duel'
-        }
+        state.duelPair = [participantIds[0], participantIds[1]]
+        state.status = 'duel_input'
       }
       console.log('[cwgo] startCwgoCompetition', {
         safeSeed,
@@ -292,7 +290,7 @@ const cwgoSlice = createSlice({
         state.responseTimesMs,
         state.seed ^ state.round
       )
-      // Track the mass-round winner as the leader for the duel-pick phase.
+      // Track the mass-round winner for legacy/persisted choose-duel states.
       const massWinnerId = computeWinnerClosestWithoutGoingOver(
         entries,
         question.answer,
@@ -313,7 +311,7 @@ const cwgoSlice = createSlice({
 
     /**
      * Confirm the mass elimination — moves eliminated players out of aliveIds.
-     * Transitions to: complete (1 alive), choose_duel (>2 alive), or duel_input (==2 alive).
+     * Qualifiers continue until exactly two players remain, then the final duel starts.
      */
     confirmMassElimination(state) {
       if (state.status !== 'mass_reveal') return
@@ -342,29 +340,25 @@ const cwgoSlice = createSlice({
       state.round += 1
       state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round)
 
-      if (redraw || surviving.length > 3) {
+      if (redraw || surviving.length > 2) {
         state.status = 'mass_input'
       } else if (surviving.length <= 1) {
+        // Defensive only: computeMassElimination preserves two finalists when a
+        // qualifier begins with 3+ players.
         state.status = 'complete'
-      } else if (surviving.length === 2) {
-        state.stage = 'final'
-        surviving.forEach((id) => {
-          state.playerScores[id] = 3
-        })
-        state.duelPair = [surviving[0], surviving[1]]
-        state.status = 'duel_input'
       } else {
         state.stage = 'final'
         surviving.forEach((id) => {
           state.playerScores[id] = 3
         })
-        state.leaderId = surviving.includes(state.leaderId ?? '') ? state.leaderId : surviving[0]
-        state.status = 'choose_duel'
+        state.duelWinnerId = null
+        state.duelPair = [surviving[0], surviving[1]]
+        state.status = 'duel_input'
       }
     },
 
     /**
-     * Set the duel pair (called by leader or AI leader logic).
+     * Set the duel pair (called only by legacy/persisted 3-player final states).
      * Transitions from choose_duel → duel_input.
      */
     chooseDuelPair(state, action: PayloadAction<[string, string]>) {
@@ -375,6 +369,7 @@ const cwgoSlice = createSlice({
       if (state.aliveIds.length > 2 && (first === state.leaderId || second === state.leaderId))
         return
       state.duelPair = action.payload
+      state.duelWinnerId = null
       state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round)
       // Clear any previous guesses and move into duel input phase
       state.guesses = {}
@@ -415,8 +410,8 @@ const cwgoSlice = createSlice({
     },
 
     /**
-     * Confirm duel result — eliminates the loser from aliveIds.
-     * Transitions to: complete (1 alive), choose_duel (>2 alive).
+     * Confirm duel result. The loser drops one life; the same two finalists move
+     * directly to the next question until one reaches zero lives.
      */
     confirmDuelElimination(state) {
       if (state.status !== 'duel_reveal') return
@@ -446,8 +441,8 @@ const cwgoSlice = createSlice({
       }
 
       state.leaderId = state.duelWinnerId
-
       state.duelPair = null
+      state.duelWinnerId = null
       state.guesses = {}
       state.responseTimesMs = {}
       state.round += 1
@@ -455,9 +450,14 @@ const cwgoSlice = createSlice({
       if (state.aliveIds.length <= 1) {
         state.status = 'complete'
       } else {
-        // Advance question so the pick screen doesn't show the previous duel's question
         state.questionIdx = pickQuestionFromOrder(state.questionOrder, state.round)
-        state.status = 'choose_duel'
+        if (state.aliveIds.length === 2) {
+          state.duelPair = [state.aliveIds[0], state.aliveIds[1]]
+          state.status = 'duel_input'
+        } else {
+          // Defensive fallback for a persisted legacy 3-player final.
+          state.status = 'choose_duel'
+        }
       }
     },
 

@@ -66,6 +66,7 @@ export default function MinigameLab() {
   const [previewNonce, setPreviewNonce] = useState(0);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [completionCount, setCompletionCount] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const freezeEnabled = getRouteFlag('freeze');
   const selectedGame =
@@ -111,11 +112,63 @@ export default function MinigameLab() {
     clearLastResult();
   };
 
+  const handleCloseLab = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.hash = '#/';
+    }
+  };
+
+  if (isMinimized) {
+    return (
+      <main className="minigame-lab minigame-lab--minimized" data-testid="minigame-lab">
+        {selectedGame && (
+          <MinigameHost
+            key={previewKey}
+            game={selectedGame}
+            gameOptions={{ seed }}
+            participants={participants}
+            skipRules={skipRules}
+            skipCountdown={skipCountdown}
+            onDone={(rawValue, partial, completion) => {
+              setCompletionCount((current) => current + 1);
+              const rounded = Math.round(rawValue);
+              setLastResult(
+                completion?.authoritativeWinnerId
+                  ? `${selectedGame.title}: authoritative winner ${completion.authoritativeWinnerId} (${rounded})${partial ? ' [partial]' : ''}`
+                  : `${selectedGame.title}: completed with ${rounded}${partial ? ' [partial]' : ''}`,
+              );
+            }}
+          />
+        )}
+        <button
+          type="button"
+          className="minigame-lab__restore"
+          onClick={() => setIsMinimized(false)}
+          aria-label="Restore minigame lab"
+        >
+          Open Lab
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main className="minigame-lab" data-testid="minigame-lab">
       <section className="minigame-lab__panel" aria-label="Minigame lab controls">
         <div className="minigame-lab__header">
-          <p className="minigame-lab__eyebrow">Minigame lab</p>
+          <div className="minigame-lab__header-row">
+            <p className="minigame-lab__eyebrow">Minigame lab</p>
+            <div className="minigame-lab__window-actions">
+              <button type="button" onClick={() => setIsMinimized(true)} aria-label="Minimize minigame lab">
+                Minimize
+              </button>
+              <button type="button" onClick={handleCloseLab} aria-label="Close minigame lab">
+                Close
+              </button>
+            </div>
+          </div>
           <h1 className="minigame-lab__title">Registry-backed QA arena</h1>
           <p className="minigame-lab__lede">
             Pick any active mini-game, freeze the frame when needed, and verify the host contract without digging through the full app.

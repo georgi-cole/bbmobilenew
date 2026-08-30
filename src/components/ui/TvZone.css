@@ -858,21 +858,38 @@ body.experiment-game-chrome-refined .tv-zone__viewport.tv-zone__viewport--day-en
 }
 
 body.mode-surveyeval .tv-zone__head {
-  background: linear-gradient(105deg, rgba(7, 13, 11, 0.98), rgba(23, 37, 28, 0.98) 72%, rgba(37, 62, 55, 0.98));
+  background: linear-gradient(
+    105deg,
+    rgba(7, 13, 11, 0.98),
+    rgba(23, 37, 28, 0.98) 72%,
+    rgba(37, 62, 55, 0.98)
+  );
   border-bottom-color: rgba(182, 200, 106, 0.28);
-  box-shadow: inset 0 1px rgba(223, 251, 255, 0.12), 0 5px 14px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    inset 0 1px rgba(223, 251, 255, 0.12),
+    0 5px 14px rgba(0, 0, 0, 0.22);
 }
-body.mode-surveyeval .tv-zone__head-pills .game-top-chip--neutral { background: linear-gradient(180deg, rgba(43, 61, 47, 0.8), rgba(15, 29, 28, 0.92)); }
+body.mode-surveyeval .tv-zone__head-pills .game-top-chip--neutral {
+  background: linear-gradient(180deg, rgba(43, 61, 47, 0.8), rgba(15, 29, 28, 0.92));
+}
 
 .tv-zone__daily-atmosphere--rainbow {
   filter: saturate(1.25) brightness(1.15);
-  background: linear-gradient(135deg, rgba(255, 85, 129, 0.28), rgba(255, 220, 97, 0.22), rgba(92, 204, 255, 0.28), rgba(156, 115, 255, 0.25));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 85, 129, 0.28),
+    rgba(255, 220, 97, 0.22),
+    rgba(92, 204, 255, 0.28),
+    rgba(156, 115, 255, 0.25)
+  );
 }
 
 .tv-zone__daily-atmosphere--rainbow .tv-zone__daily-orb {
   opacity: 1;
   background: radial-gradient(circle at 35% 35%, #fff, #ffeaa3 34%, #ffbe74 72%);
-  box-shadow: 0 0 22px rgba(255, 243, 176, 0.8), 0 0 70px rgba(255, 203, 117, 0.46);
+  box-shadow:
+    0 0 22px rgba(255, 243, 176, 0.8),
+    0 0 70px rgba(255, 203, 117, 0.46);
 }
 
 .tv-zone__daily-atmosphere--sunset .tv-zone__daily-orb {
@@ -1291,7 +1308,10 @@ body.experiment-game-chrome-refined .tv-zone__viewport--public-results {
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 2px 8px rgba(0, 0, 0, 0.22);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .tv-zone__cupid-info-btn:hover,

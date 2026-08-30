@@ -9,7 +9,7 @@
  * each AI player spins up to MAX_SPINS_PER_TURN times, applies sector effects,
  * and stops when they decide to bank or when their spins are exhausted.
  */
-import { cryptoSeed } from './cryptoSpin';
+import { cryptoSeed } from './cryptoSpin'
 import {
   WHEEL_SECTORS,
   MAX_SPINS_PER_TURN,
@@ -17,16 +17,16 @@ import {
   pickSectorIndex,
   resolve666Effect,
   type RiskWheelAiPersonality,
-} from './riskWheelSlice';
+} from './riskWheelSlice'
 
 export interface AiSimPlayer {
-  id: string;
-  personality?: RiskWheelAiPersonality;
+  id: string
+  personality?: RiskWheelAiPersonality
 }
 
 export interface AiSimResult {
-  id: string;
-  score: number;
+  id: string
+  score: number
 }
 
 /**
@@ -40,50 +40,49 @@ export interface AiSimResult {
  *                   with the `0 = default/unset` convention used by MinigameHost.
  * @returns          Array of {id, score} for each simulated player.
  */
-export function simulateAiTurns(
-  players: AiSimPlayer[],
-  seed?: number,
-): AiSimResult[] {
+export function simulateAiTurns(players: AiSimPlayer[], seed?: number): AiSimResult[] {
   // seed=0 and seed=undefined are both treated as "no seed provided" — use
   // crypto-random.  Any other value (including negative numbers, which become
   // large positive values after >>>0) is used as a deterministic seed.
-  const effectiveSeed = seed !== undefined && seed !== 0 ? seed >>> 0 : cryptoSeed();
+  const effectiveSeed = seed !== undefined && seed !== 0 ? seed >>> 0 : cryptoSeed()
   // Use a separate RNG stream from the spin RNG to avoid entanglement.
-  const results: AiSimResult[] = [];
-  let rngCallCount = 0;
-  const activePlayerIds = players.map((player) => player.id);
-  const roundScores: Record<string, number> = Object.fromEntries(activePlayerIds.map((id) => [id, 0]));
+  const results: AiSimResult[] = []
+  let rngCallCount = 0
+  const activePlayerIds = players.map((player) => player.id)
+  const roundScores: Record<string, number> = Object.fromEntries(
+    activePlayerIds.map((id) => [id, 0])
+  )
 
   for (const player of players) {
-    let score = 0;
-    const personality = player.personality ?? 'balanced';
+    let score = 0
+    const personality = player.personality ?? 'balanced'
 
     for (let spin = 0; spin < MAX_SPINS_PER_TURN; spin++) {
-      const sectorIdx = pickSectorIndex(effectiveSeed, rngCallCount);
-      rngCallCount += 1;
+      const sectorIdx = pickSectorIndex(effectiveSeed, rngCallCount)
+      rngCallCount += 1
 
-      const sector = WHEEL_SECTORS[sectorIdx];
-      if (!sector) break;
+      const sector = WHEEL_SECTORS[sectorIdx]
+      if (!sector) break
 
       if (sector.type === 'bankrupt') {
-        score = 0;
-        break;
+        score = 0
+        break
       } else if (sector.type === 'skip') {
-        break;
+        break
       } else if (sector.type === 'zero') {
         // No score change; AI may still spin again unless last spin.
       } else if (sector.type === 'devil') {
-        const effect = resolve666Effect(effectiveSeed, rngCallCount);
-        rngCallCount += 1;
-        score += effect === 'add' ? 666 : -666;
+        const effect = resolve666Effect(effectiveSeed, rngCallCount)
+        rngCallCount += 1
+        score += effect === 'add' ? 666 : -666
       } else if (sector.type === 'points') {
-        score += sector.value ?? 0;
+        score += sector.value ?? 0
       }
 
       // Decision: spin again?
-      const isLastSpin = spin >= MAX_SPINS_PER_TURN - 1;
-      if (isLastSpin) break;
-      roundScores[player.id] = score;
+      const isLastSpin = spin >= MAX_SPINS_PER_TURN - 1
+      if (isLastSpin) break
+      roundScores[player.id] = score
       const shouldStop = aiShouldStop({
         seed: effectiveSeed,
         round: 1,
@@ -95,13 +94,13 @@ export function simulateAiTurns(
         spinsRemaining: MAX_SPINS_PER_TURN - spin - 1,
         initialPlayerCount: players.length,
         decisionIndex: spin,
-      });
-      if (shouldStop) break;
+      })
+      if (shouldStop) break
     }
 
-    roundScores[player.id] = score;
-    results.push({ id: player.id, score });
+    roundScores[player.id] = score
+    results.push({ id: player.id, score })
   }
 
-  return results;
+  return results
 }

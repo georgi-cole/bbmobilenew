@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import { FEATURE_LOCALIZATION_SETTINGS } from '../../config/featureFlags'
+import {
+  isSeasonTutorialEnabled,
+  setSeasonTutorialEnabled,
+} from '../../onboarding/seasonTutorialPreference'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { AppDispatch } from '../../store/store'
 import {
@@ -82,6 +86,8 @@ export default function Settings() {
   const isVipActive = useAppSelector(selectIsVipActive)
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
+  const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
+  const isGuest = useAppSelector((state) => state.profiles.isGuest)
   const realityAgeEligibility = useAppSelector((state) =>
     getProfileRealityAgeEligibility(state.profiles)
   )
@@ -89,6 +95,9 @@ export default function Settings() {
   const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride
   const showRealitySettings = hasRealityAccess && settings.gameUX.dramaMode
   const [lockedFeature, setLockedFeature] = useState<LockedFeature | null>(null)
+  const [tutorialEnabled, setTutorialEnabled] = useState(() =>
+    isSeasonTutorialEnabled(activeProfileId, isGuest)
+  )
 
   const themeOptions: DropdownItem['options'] = [
     { value: 'midnight', label: t('settings.theme.midnight') },
@@ -277,6 +286,10 @@ export default function Settings() {
     }
   }, [dispatch, realityAgeEligibility, settings.gameUX.realityModePreset])
 
+  useEffect(() => {
+    setTutorialEnabled(isSeasonTutorialEnabled(activeProfileId, isGuest))
+  }, [activeProfileId, isGuest])
+
   function renderItem(item: SettingItem) {
     if (
       (item.id === 'realityModePreset' || item.id === 'romanceStorylines') &&
@@ -398,6 +411,24 @@ export default function Settings() {
             {section.items.map(renderItem)}
           </section>
         ))}
+        <div className="settings-row">
+          <label className="settings-row__label" htmlFor="setting-replay-tutorial">
+            Replay tutorial
+          </label>
+          <input
+            id="setting-replay-tutorial"
+            type="checkbox"
+            className="settings-toggle"
+            checked={tutorialEnabled}
+            disabled={isGuest}
+            onChange={(event) => {
+              const enabled = event.target.checked
+              setSeasonTutorialEnabled(activeProfileId, isGuest, enabled)
+              setTutorialEnabled(isGuest ? true : enabled)
+            }}
+            aria-label="Toggle Replay tutorial"
+          />
+        </div>
         <button
           type="button"
           className="settings-row settings-row--legal"
