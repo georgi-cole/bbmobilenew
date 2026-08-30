@@ -72,7 +72,8 @@ export function buildLegacyDepressionShockMirror(
 ): LegacyDepressionShockState {
   const lifecycle = getDepressionShockLifecyclePhase(state, week)
   return {
-    rollResolved: state.rollPassed !== null || state.status === 'failed' || state.status === 'completed',
+    rollResolved:
+      state.rollPassed !== null || state.status === 'failed' || state.status === 'completed',
     pendingActivation: state.status === 'queued',
     activatedWeek: state.activatedDay,
     activeDay: lifecycle === 'day1' ? 1 : lifecycle === 'day2' ? 2 : 0,
