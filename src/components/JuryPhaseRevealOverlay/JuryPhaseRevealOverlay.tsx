@@ -44,8 +44,6 @@ const JURORS_HOLD_MS = 700
 const TITLE_CARD_SETTLE_MS = 450
 /** Delay after the title card settles before action buttons appear. */
 const ACTIONS_REVEAL_DELAY_MS = 350
-/** How long the "coming soon" hint under Spy Jury stays visible (ms). */
-const SPY_JURY_HINT_MS = 1800
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type OverlayStage = 'idle' | 'backdrop' | 'opening_line' | 'jurors' | 'title_card' | 'actions'
