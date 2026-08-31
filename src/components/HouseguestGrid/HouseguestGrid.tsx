@@ -430,7 +430,6 @@ export default function HouseguestGrid({
                   partnerName={cupidPartnerName}
                   cupidLoveRevealed={cupidRevealAnimating}
                   cupidLoveReturning={cupidReturnAnimating}
-                  depressionActive={(game.depressionShock?.activeDay ?? 0) > 0 && !hg.isEvicted}
                   depressionRecovery={
                     game.depressionShock?.recoveryWeek === game.week && !hg.isEvicted
                   }
