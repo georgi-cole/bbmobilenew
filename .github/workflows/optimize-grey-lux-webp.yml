@@ -1,0 +1,129 @@
+name: Optimize grey lux WebP avatars
+
+on:
+  push:
+    branches:
+      - chore/optimize-grey-lux-webp-20260831
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install WebP tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y webp imagemagick
+
+      - name: Optimize avatars to <= 300 KB
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="public/assets/skins/backup-grey-lux"
+          MAX_BYTES=$((300 * 1024))
+          SOFT_MIN_BYTES=$((200 * 1024))
+
+          shopt -s nullglob
+          files=("$DIR"/*.webp)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No WebP files found in $DIR"
+            exit 1
+          fi
+
+          for file in "${files[@]}"; do
+            original_bytes=$(stat -c%s "$file")
+            read -r width height <<< "$(identify -format '%w %h' "$file")"
+
+            max_side=$width
+            if [ "$height" -gt "$max_side" ]; then max_side=$height; fi
+
+            target_side=$max_side
+            if [ "$target_side" -gt 1100 ]; then target_side=1100; fi
+
+            quality=84
+            tmp="${file}.tmp.webp"
+
+            encode() {
+              local side="$1"
+              local q="$2"
+              local new_w new_h
+              if [ "$width" -ge "$height" ]; then
+                new_w="$side"
+                new_h=$(( height * side / width ))
+              else
+                new_h="$side"
+                new_w=$(( width * side / height ))
+              fi
+              if [ "$new_w" -lt 1 ]; then new_w=1; fi
+              if [ "$new_h" -lt 1 ]; then new_h=1; fi
+              cwebp -quiet -mt -m 6 -q "$q" -alpha_q 90 -resize "$new_w" "$new_h" "$file" -o "$tmp"
+            }
+
+            encode "$target_side" "$quality"
+            bytes=$(stat -c%s "$tmp")
+
+            while [ "$bytes" -gt "$MAX_BYTES" ] && [ "$quality" -gt 64 ]; do
+              quality=$((quality - 4))
+              encode "$target_side" "$quality"
+              bytes=$(stat -c%s "$tmp")
+            done
+
+            while [ "$bytes" -gt "$MAX_BYTES" ] && [ "$target_side" -gt 640 ]; do
+              target_side=$((target_side * 90 / 100))
+              quality=80
+              encode "$target_side" "$quality"
+              bytes=$(stat -c%s "$tmp")
+              while [ "$bytes" -gt "$MAX_BYTES" ] && [ "$quality" -gt 64 ]; do
+                quality=$((quality - 4))
+                encode "$target_side" "$quality"
+                bytes=$(stat -c%s "$tmp")
+              done
+            done
+
+            if [ "$bytes" -lt "$SOFT_MIN_BYTES" ]; then
+              for try_q in 88 92; do
+                encode "$target_side" "$try_q"
+                try_bytes=$(stat -c%s "$tmp")
+                if [ "$try_bytes" -le "$MAX_BYTES" ]; then
+                  quality=$try_q
+                  bytes=$try_bytes
+                else
+                  break
+                fi
+                if [ "$bytes" -ge "$SOFT_MIN_BYTES" ]; then
+                  break
+                fi
+              done
+            fi
+
+            if [ "$bytes" -gt "$MAX_BYTES" ]; then
+              echo "ERROR: $file remains larger than 300 KB ($bytes bytes)"
+              exit 1
+            fi
+
+            mv "$tmp" "$file"
+            pct=$(( 100 - (bytes * 100 / original_bytes) ))
+            echo "$(basename "$file"): $((original_bytes/1024)) KB -> $((bytes/1024)) KB (${pct}% smaller), max-side=${target_side}px, q=${quality}"
+          done
+
+          echo "Final sizes:"
+          find "$DIR" -maxdepth 1 -type f -name '*.webp' -printf '%f %k KB\n' | sort
+
+      - name: Remove temporary workflow from final branch diff
+        run: git rm .github/workflows/optimize-grey-lux-webp.yml
+
+      - name: Commit optimized avatars
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/assets/skins/backup-grey-lux/*.webp
+          git commit -m "Optimize grey lux WebP avatars"
+          git push origin HEAD:chore/optimize-grey-lux-webp-20260831
