@@ -994,8 +994,18 @@ export default function FamousFiguresComp({
             Submit
           </button>
         </div>
-        <InlineKeyboard value={guessInput} onChange={setGuessInput} onSubmit={handleSubmitGuess}
-          disabled={ff.status !== 'round_active' || successOverlay !== null || humanCorrect || humanId === null || humanCursor >= ff.totalRounds} />
+        <InlineKeyboard
+          value={guessInput}
+          onChange={setGuessInput}
+          onSubmit={handleSubmitGuess}
+          disabled={
+            ff.status !== 'round_active' ||
+            successOverlay !== null ||
+            humanCorrect ||
+            humanId === null ||
+            humanCursor >= ff.totalRounds
+          }
+        />
         <div className={feedbackClass} aria-live="assertive">
           {feedbackMsg}
         </div>

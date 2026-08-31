@@ -136,7 +136,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote }: Pr
       setInstant(false)
       setVisibleJurorCount(0)
       setShowOpeningLine(false)
-      setShowSpyHint(false)
       return
     }
 
@@ -316,7 +315,9 @@ function JurorAvatar({ player }: { player: Player }) {
   // Build the candidate list, excluding external Dicebear SVGs so the
   // cinematic never shows pixel-art dice avatars — only genuine photos or
   // clean styled initials/emoji circles.
-  const candidates = resolveAvatarCandidates(player).filter((candidate) => !isDicebearAvatarUrl(candidate))
+  const candidates = resolveAvatarCandidates(player).filter(
+    (candidate) => !isDicebearAvatarUrl(candidate)
+  )
 
   const src = candidates[candidateIdx] ?? ''
   const fallback = isEmoji(player.avatar ?? '')

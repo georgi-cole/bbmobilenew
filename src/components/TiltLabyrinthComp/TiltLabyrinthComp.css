@@ -12,7 +12,12 @@
   box-sizing: border-box;
   background: linear-gradient(180deg, #0b1020, #0f1530);
   color: #e8f3ff;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   overflow: hidden;
 }
 
@@ -27,8 +32,7 @@
   max-width: 760px;
   padding: 4px 8px;
   margin-bottom: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid rgba(125, 211, 252, 0.08);
   border-radius: 8px;
   box-shadow:
@@ -53,8 +57,12 @@
 }
 
 @keyframes tiltLab-timer-pulse {
-  from { opacity: 1; }
-  to   { opacity: 0.55; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -118,7 +126,10 @@
   background: rgba(250, 204, 21, 0.12);
   border-color: rgba(250, 204, 21, 0.34);
   color: #fde68a;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .tilt-labyrinth-status-chip--hint:not(:disabled):hover,
@@ -152,8 +163,7 @@
     0 22px 48px rgba(2, 6, 23, 0.42),
     0 0 26px rgba(78, 168, 222, 0.2);
   border: 1.5px solid rgba(96, 165, 250, 0.34);
-  background:
-    radial-gradient(circle at top, rgba(96, 165, 250, 0.16), rgba(15, 23, 42, 0.62));
+  background: radial-gradient(circle at top, rgba(96, 165, 250, 0.16), rgba(15, 23, 42, 0.62));
 }
 
 .tilt-labyrinth-canvas {
@@ -187,14 +197,13 @@
 }
 
 .tilt-labyrinth-canvas-wrap::after {
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(148, 163, 184, 0.05) 0,
-      rgba(148, 163, 184, 0.05) 1px,
-      transparent 1px,
-      transparent 10px
-    );
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.05) 0,
+    rgba(148, 163, 184, 0.05) 1px,
+    transparent 1px,
+    transparent 10px
+  );
   opacity: 0.4;
 }
 
@@ -213,7 +222,12 @@
 .tilt-labyrinth-results {
   background: linear-gradient(180deg, #0b1020, #0f1530);
   color: #e8f3ff;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
 }
 
 .tilt-labyrinth-results-hero {
@@ -307,4 +321,9 @@
   color: #7dd3fc;
   font-size: 0.78rem;
 }
-.tilt-labyrinth-time small { display:inline; font-size:.68rem; opacity:.72; white-space:nowrap; }
+.tilt-labyrinth-time small {
+  display: inline;
+  font-size: 0.68rem;
+  opacity: 0.72;
+  white-space: nowrap;
+}

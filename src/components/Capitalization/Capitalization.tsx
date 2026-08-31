@@ -516,7 +516,12 @@ export default function Capitalization({
                           {t('capitalization.hintHalf')}
                         </button>
                       </div>
-                      <InlineKeyboard value={answerInput} onChange={setAnswerInput} onSubmit={submitAnswer} disabled={inputDisabled} />
+                      <InlineKeyboard
+                        value={answerInput}
+                        onChange={setAnswerInput}
+                        onSubmit={submitAnswer}
+                        disabled={inputDisabled}
+                      />
                       {hintOptions && (
                         <div
                           className="capitalization__hint-options"
