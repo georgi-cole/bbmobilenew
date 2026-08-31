@@ -116,7 +116,9 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Keep portraits proportional across the rectangular roster tile. */
+  object-fit: contain;
+  object-position: center;
   transition:
     opacity 900ms ease,
     transform 900ms ease,
@@ -276,7 +278,8 @@
 .twin-shock-reveal--ali_enters.twin-shock-reveal--intro .twin-shock-reveal__avatar--before,
 .twin-shock-reveal--ali_enters.twin-shock-reveal--transform .twin-shock-reveal__avatar--before {
   filter: grayscale(1) saturate(0) contrast(1.08) brightness(0.68);
-  transform: scaleX(1.14) scaleY(0.84) rotate(-1.2deg);
+  /* Keep the outgoing portrait proportional while the elimination slash appears. */
+  transform: scale(1) rotate(-1.2deg);
 }
 
 .twin-shock-reveal--ali_enters.twin-shock-reveal--transform .twin-shock-reveal__avatar-wrap::after,

@@ -739,7 +739,6 @@ export default function GameScreen() {
     showFinal3Modal,
     final3Options,
     handleEnterJuryVote,
-    handleSpyJury,
   } = useEndgameFlow({
     game,
     alivePlayers,
@@ -1805,7 +1804,6 @@ export default function GameScreen() {
           open={game.phase === 'jury_announcement'}
           jurors={juryPlayers}
           onEnterVote={handleEnterJuryVote}
-          onSpyJury={handleSpyJury}
         />
 
         {/* ── MinigameHost (challenge flow) ────────────────────────────────── */}

@@ -44,8 +44,6 @@ const JURORS_HOLD_MS = 700
 const TITLE_CARD_SETTLE_MS = 450
 /** Delay after the title card settles before action buttons appear. */
 const ACTIONS_REVEAL_DELAY_MS = 350
-/** How long the "coming soon" hint under Spy Jury stays visible (ms). */
-const SPY_JURY_HINT_MS = 1800
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type OverlayStage = 'idle' | 'backdrop' | 'opening_line' | 'jurors' | 'title_card' | 'actions'
@@ -57,18 +55,15 @@ interface Props {
   jurors: Player[]
   /** Called when the user explicitly taps "Enter Jury Vote". */
   onEnterVote: () => void
-  /** Called when the user taps "Spy Jury". */
-  onSpyJury?: () => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSpyJury }: Props) {
+export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote }: Props) {
   const gameId = useAppSelector((state) => state.game.gameId)
   const week = useAppSelector((state) => state.game.week)
   const [stage, setStage] = useState<OverlayStage>('idle')
   const [visibleJurorCount, setVisibleJurorCount] = useState(0)
   const [showOpeningLine, setShowOpeningLine] = useState(false)
-  const [showSpyHint, setShowSpyHint] = useState(false)
   const [suppressedOpenCycle, setSuppressedOpenCycle] = useState(false)
   /**
    * When true, the root element gains `.jpro--instant` which zeroes all
@@ -133,18 +128,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
     [clearTimers]
   )
 
-  // Auto-dismiss the Spy Jury hint after a brief delay.
-  useEffect(() => {
-    if (!showSpyHint) return
-    const id = setTimeout(() => setShowSpyHint(false), SPY_JURY_HINT_MS)
-    return () => clearTimeout(id)
-  }, [showSpyHint])
-
-  const handleSpyJury = useCallback(() => {
-    setShowSpyHint(true)
-    onSpyJury?.()
-  }, [onSpyJury])
-
   // Drive the staged sequence when the overlay opens / closes.
   useEffect(() => {
     if (!presentationOpen) {
@@ -153,7 +136,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
       setInstant(false)
       setVisibleJurorCount(0)
       setShowOpeningLine(false)
-      setShowSpyHint(false)
       return
     }
 
@@ -294,18 +276,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
             <button className="jpro__btn-primary" type="button" onClick={onEnterVote}>
               Enter Tribunal Vote
             </button>
-            {onSpyJury && (
-              <>
-                <button className="jpro__btn-secondary" type="button" onClick={handleSpyJury}>
-                  Spy Tribunal
-                </button>
-                {showSpyHint && (
-                  <p className="jpro__spy-hint" role="status" aria-live="polite">
-                    Tribunal House coming soon.
-                  </p>
-                )}
-              </>
-            )}
           </div>
         )}
       </div>
@@ -345,7 +315,9 @@ function JurorAvatar({ player }: { player: Player }) {
   // Build the candidate list, excluding external Dicebear SVGs so the
   // cinematic never shows pixel-art dice avatars — only genuine photos or
   // clean styled initials/emoji circles.
-  const candidates = resolveAvatarCandidates(player).filter((candidate) => !isDicebearAvatarUrl(candidate))
+  const candidates = resolveAvatarCandidates(player).filter(
+    (candidate) => !isDicebearAvatarUrl(candidate)
+  )
 
   const src = candidates[candidateIdx] ?? ''
   const fallback = isEmoji(player.avatar ?? '')
