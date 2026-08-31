@@ -8,7 +8,7 @@
   overflow: hidden;
   isolation: isolate;
   color: #f8f8ff;
-  background: #040713;
+  background: #08050f;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -19,8 +19,8 @@
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(2, 5, 15, .32), transparent 30%, rgba(2, 5, 15, .08) 54%, rgba(2, 5, 15, .92)),
-    radial-gradient(circle at 50% 40%, transparent 28%, rgba(2, 5, 15, .34) 76%);
+    linear-gradient(180deg, rgba(8, 5, 15, .32), transparent 30%, rgba(8, 5, 15, .08) 54%, rgba(8, 5, 15, .92)),
+    radial-gradient(circle at 50% 40%, transparent 28%, rgba(8, 5, 15, .34) 76%);
 }
 
 .twin-intro__photo {
@@ -102,7 +102,7 @@
   border: 1px solid rgba(255,255,255,.22);
   border-radius: 999px;
   color: rgba(255,255,255,.9);
-  background: rgba(5, 8, 20, .55);
+  background: rgba(20, 10, 30, .62);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   font: inherit;
@@ -135,7 +135,7 @@
   text-transform: uppercase;
 }
 
-.twin-intro__counter span { color: #bbc3e8; font-size: .56rem; font-weight: 850; letter-spacing: .18em; }
+.twin-intro__counter span { color: #c4b5fd; font-size: .56rem; font-weight: 850; letter-spacing: .18em; }
 .twin-intro__counter strong { font-family: Georgia, serif; font-size: 1.18rem; font-weight: 500; letter-spacing: .04em; }
 
 .twin-intro__signal,
@@ -263,7 +263,7 @@
   border: 1px solid rgba(179, 193, 255, .23);
   border-radius: 24px;
   text-align: center;
-  background: linear-gradient(135deg, rgba(17, 20, 51, .76), rgba(3, 7, 19, .8));
+  background: linear-gradient(135deg, rgba(49, 25, 67, .78), rgba(10, 6, 18, .86));
   box-shadow: 0 24px 70px rgba(0,0,0,.5);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -287,8 +287,8 @@
   width: 100%;
   height: 100%;
   transform-origin: left;
-  background: linear-gradient(90deg, #8073ff, #c9c3ff, #62dce1);
-  box-shadow: 0 0 14px rgba(128, 115, 255, .8);
+  background: linear-gradient(90deg, #8b5cf6, #f0abfc, #fbbf24);
+  box-shadow: 0 0 14px rgba(139, 92, 246, .8);
 }
 
 @keyframes twin-intro-camera {
