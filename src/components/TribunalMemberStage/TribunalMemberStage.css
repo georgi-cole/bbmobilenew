@@ -180,7 +180,7 @@
 .tms-cutout {
   height: 100%;
   width: auto;
-  max-width: min(240px, 48vw);
+  max-width: min(300px, 62vw);
   object-fit: contain;
   object-position: bottom;
   filter: drop-shadow(0 8px 32px rgba(99, 102, 241, 0.35)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.6));

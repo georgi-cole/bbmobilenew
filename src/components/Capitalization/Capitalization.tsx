@@ -29,6 +29,7 @@ import {
   type CapitalizationStanding,
 } from './capitalizationUtils'
 import './Capitalization.css'
+import InlineKeyboard from '../InlineKeyboard/InlineKeyboard'
 
 const SPIN_DURATION_MS = 2600
 
@@ -494,6 +495,8 @@ export default function Capitalization({
                           ref={inputRef}
                           id="capitalization-answer"
                           type="text"
+                          inputMode="none"
+                          readOnly
                           value={answerInput}
                           disabled={inputDisabled}
                           onChange={(event) => setAnswerInput(event.target.value)}
@@ -513,6 +516,7 @@ export default function Capitalization({
                           {t('capitalization.hintHalf')}
                         </button>
                       </div>
+                      <InlineKeyboard value={answerInput} onChange={setAnswerInput} onSubmit={submitAnswer} disabled={inputDisabled} />
                       {hintOptions && (
                         <div
                           className="capitalization__hint-options"

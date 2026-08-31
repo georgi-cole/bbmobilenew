@@ -57,18 +57,15 @@ interface Props {
   jurors: Player[]
   /** Called when the user explicitly taps "Enter Jury Vote". */
   onEnterVote: () => void
-  /** Called when the user taps "Spy Jury". */
-  onSpyJury?: () => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSpyJury }: Props) {
+export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote }: Props) {
   const gameId = useAppSelector((state) => state.game.gameId)
   const week = useAppSelector((state) => state.game.week)
   const [stage, setStage] = useState<OverlayStage>('idle')
   const [visibleJurorCount, setVisibleJurorCount] = useState(0)
   const [showOpeningLine, setShowOpeningLine] = useState(false)
-  const [showSpyHint, setShowSpyHint] = useState(false)
   const [suppressedOpenCycle, setSuppressedOpenCycle] = useState(false)
   /**
    * When true, the root element gains `.jpro--instant` which zeroes all
@@ -132,18 +129,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
     },
     [clearTimers]
   )
-
-  // Auto-dismiss the Spy Jury hint after a brief delay.
-  useEffect(() => {
-    if (!showSpyHint) return
-    const id = setTimeout(() => setShowSpyHint(false), SPY_JURY_HINT_MS)
-    return () => clearTimeout(id)
-  }, [showSpyHint])
-
-  const handleSpyJury = useCallback(() => {
-    setShowSpyHint(true)
-    onSpyJury?.()
-  }, [onSpyJury])
 
   // Drive the staged sequence when the overlay opens / closes.
   useEffect(() => {
@@ -294,18 +279,6 @@ export default function JuryPhaseRevealOverlay({ open, jurors, onEnterVote, onSp
             <button className="jpro__btn-primary" type="button" onClick={onEnterVote}>
               Enter Tribunal Vote
             </button>
-            {onSpyJury && (
-              <>
-                <button className="jpro__btn-secondary" type="button" onClick={handleSpyJury}>
-                  Spy Tribunal
-                </button>
-                {showSpyHint && (
-                  <p className="jpro__spy-hint" role="status" aria-live="polite">
-                    Tribunal House coming soon.
-                  </p>
-                )}
-              </>
-            )}
           </div>
         )}
       </div>

@@ -87,6 +87,34 @@ const FIXES: FixPreview[] = [
     href: '#/credits',
     action: 'Open credits',
   },
+  {
+    id: 12,
+    title: 'Centered vote control',
+    result: 'Nominee controls keep the selection indicator vertically centered.',
+    href: '#/game',
+    action: 'Open confessional vote',
+  },
+  {
+    id: 13,
+    title: 'In-game answer keyboard',
+    result: 'Famous Figures and Capitalization accept answers without opening the phone keyboard.',
+    href: '#/minigame-lab?game=famous_figures&seed=424242&players=4',
+    action: 'Open Famous Figures',
+  },
+  {
+    id: 14,
+    title: 'Tribunal reveal',
+    result: 'Juror portraits use a larger cinematic treatment and cleaner message balance.',
+    href: '#/game',
+    action: 'Open tribunal preview',
+  },
+  {
+    id: 15,
+    title: 'Tilt Labyrinth results',
+    result: 'Standings rows are denser, aligned, and readable on narrow screens.',
+    href: '#/minigame-lab?game=tilt_labyrinth&seed=424242&players=16',
+    action: 'Open Tilt Labyrinth',
+  },
 ]
 
 /** Dev-only release checklist: a direct route into every repaired surface. */
