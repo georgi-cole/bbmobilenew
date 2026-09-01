@@ -15,7 +15,7 @@ const { version: appVersion } = JSON.parse(
 const mobileModes = new Set(['capacitor', 'ios', 'android'])
 
 export default defineConfig(({ mode }) => ({
-  base: mobileModes.has(mode) ? './' : (import.meta.env.VITE_BASE_PATH || '/bbmobilenew/'),
+  base: mobileModes.has(mode) ? './' : (process.env.VITE_BASE_PATH || '/bbmobilenew/'),
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
