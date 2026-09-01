@@ -136,7 +136,7 @@ export async function loadVipStoreSnapshot(options?: {
       billingAvailable: false,
       isActive:
         IS_ADMIN_BUILD ||
-        (import.meta.env.DEV && import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'),
+        import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true',
       entitlements: createEmptyStoreEntitlements(),
       products: {},
       verifiedAt,
