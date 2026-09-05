@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/preserve-manual-memoization -- this legacy controller intentionally coordinates stable callbacks with external game state. */
 import {
   useState,
   useCallback,
@@ -1107,13 +1108,13 @@ export default function TvZone(props: TvZoneProps) {
   }, [
     announcementPrerollEvent,
     seasonStartExpansionEvent,
-    queuedBroadcastEvent,
     queuedBroadcastIsCard,
     priorityBroadcastEvent,
     latestExplicitMajorEvent,
     latestRelevantEvent,
     dismissedEventId,
     dismissedPriorityEventIds,
+    queuedBroadcastEvent,
   ])
   const eventAnnouncementSource =
     seasonStartExpansionEvent ??
@@ -1412,7 +1413,6 @@ export default function TvZone(props: TvZoneProps) {
     dispatch,
     queuedShockAnnouncement,
     managedEventAnnouncement,
-    queuedBroadcastEvent,
     priorityAnnouncement,
     externalAnnouncement,
     eventAnnouncementHasShockPriority,
@@ -1583,7 +1583,7 @@ export default function TvZone(props: TvZoneProps) {
         setShockInfoSpotlightActive(true)
       }
     })
-  }, [activeAnnouncement?.key, dispatch, eventAnnouncementSource, handleDismiss])
+  }, [activeAnnouncement?.key, dispatch, handleDismiss])
 
   const handleShockSpotlightComplete = useCallback(() => {
     startTransition(() => setShockInfoSpotlightActive(false))
@@ -1829,7 +1829,7 @@ export default function TvZone(props: TvZoneProps) {
 
     if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current)
     saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
-  }, [activeProfileId, canSave, reduxStore])
+  }, [activeProfileId, canSave, reduxStore, setSaveFeedbackIsError, setSaveFeedbackOpen])
 
   return (
     <section
