@@ -130,6 +130,7 @@ export default function Capitalization({
   const currentContinentIndex =
     Math.floor(questionIndex / CAPITALIZATION_QUESTIONS_PER_CONTINENT) + 1
   const humanStanding = standings.find((standing) => standing.participantId === humanId) ?? null
+  const humanEliminated = humanStanding?.eliminatedAfterQuestion !== null
   const rankedStandings = useMemo(() => rankCapitalizationStandings(standings), [standings])
   const activeCount = standings.filter(
     (standing) => standing.eliminatedAfterQuestion === null
@@ -181,14 +182,13 @@ export default function Capitalization({
     (humanPerformance: CapitalizationRoundPerformance) => {
       if (!currentQuestion || phase !== 'question') return
 
-      const performanceByParticipantId: Record<string, CapitalizationRoundPerformance> = {
-        [humanId]: humanPerformance,
-      }
       const activeIds = new Set(
         standings
           .filter((standing) => standing.eliminatedAfterQuestion === null)
           .map((standing) => standing.participantId)
       )
+      const performanceByParticipantId: Record<string, CapitalizationRoundPerformance> =
+        activeIds.has(humanId) ? { [humanId]: humanPerformance } : {}
 
       resolvedParticipants.forEach((participant) => {
         if (participant.isHuman || !activeIds.has(participant.id)) return
@@ -329,6 +329,23 @@ export default function Capitalization({
     })
   }, [attempts, currentQuestion, hintUsed, phase, resolveQuestion])
 
+  // Once eliminated, the player remains on the scoreboard as a spectator.
+  // Continue simulating the active AI field so the final winner is still
+  // resolved from the complete nine-question run.
+  useEffect(() => {
+    if (!humanEliminated || !currentQuestion || phase !== 'question') return undefined
+    const timer = window.setTimeout(() => {
+      setAutoAdvanceReview(true)
+      resolveQuestion({
+        guessed: false,
+        skipped: true,
+        attempts: 1,
+        timeMs: 0,
+      })
+    }, 650)
+    return () => window.clearTimeout(timer)
+  }, [currentQuestion, humanEliminated, phase, resolveQuestion])
+
   const continueFromScoreboard = useCallback(() => {
     if (!scoreboard) return
     if (scoreboard.final) {
@@ -356,7 +373,7 @@ export default function Capitalization({
   }, [autoAdvanceReview, continueFromScoreboard, phase, scoreboard])
 
   const winner = scoreboard?.standings[0] ?? rankedStandings[0] ?? null
-  const inputDisabled = phase !== 'question'
+  const inputDisabled = phase !== 'question' || humanEliminated
   const showCheckpoint = phase === 'scoreboard' && scoreboard
   const showGlobe = phase === 'spinning'
   const isBattleBackContext = context === 'battleBack'
@@ -479,7 +496,7 @@ export default function Capitalization({
                     </div>
                   </div>
 
-                  {phase === 'question' && (
+                  {phase === 'question' && !humanEliminated && (
                     <form
                       className="capitalization__answer-form"
                       onSubmit={(event) => {
@@ -540,6 +557,13 @@ export default function Capitalization({
                       )}
                       {inputError && <p className="capitalization__error">{inputError}</p>}
                     </form>
+                  )}
+
+                  {phase === 'question' && humanEliminated && (
+                    <p className="capitalization__feedback" aria-live="polite">
+                      You were eliminated after Question {humanStanding?.eliminatedAfterQuestion}. The
+                      remaining contestants are playing out the round.
+                    </p>
                   )}
 
                   <div className="capitalization__feedback" aria-live="polite">

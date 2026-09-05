@@ -208,6 +208,8 @@ export interface SocialActionDefinition {
   requiresKnownSecret?: boolean
   /** Expansion-specific relationship action shown only during Vox Populi seasons. */
   voxOnly?: boolean
+  /** Not meaningful under Vox Populi's secret-ballot, audience-vote format. */
+  unavailableInVox?: boolean
 }
 
 /** Resolve the target shape without leaking Drama Mode behavior into Normal Mode. */
@@ -490,6 +492,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     yields: { influence: 0.04 },
     requiredTargetStatus: ['loh', 'loh+pos'],
     dramaAllowedPhases: ['loh_results', 'social_1', 'nominations'],
+    unavailableInVox: true,
   },
   {
     id: 'suggest_replacement',
@@ -514,6 +517,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
       'pos_results',
       'pos_ceremony',
     ],
+    unavailableInVox: true,
   },
   {
     id: 'ask_use_safety',
@@ -571,6 +575,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     requiredActorStatus: ['loh', 'loh+pos'],
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
     allowedPhases: ['pos_results', 'pos_ceremony'],
+    unavailableInVox: true,
   },
   {
     id: 'warn_about_danger',
@@ -586,6 +591,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'warning',
     availabilityHint: 'Requires target intel from the LOH',
     dramaOnly: true,
+    unavailableInVox: true,
     allowedPhases: [
       'social_1',
       'nominations',
@@ -610,6 +616,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     outcomeTag: 'nomination_reason',
     availabilityHint: 'Available when you are nominated',
     requiredTargetStatus: ['loh', 'loh+pos'],
+    unavailableInVox: true,
   },
   {
     id: 'ask_loh_target',
@@ -624,6 +631,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Ask the current LOH about their plan',
     yields: { info: 1 },
     requiredTargetStatus: ['loh', 'loh+pos'],
+    unavailableInVox: true,
   },
   {
     id: 'warn_about_player',
@@ -658,6 +666,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     availabilityHint: 'Requires nominees on the block',
     dramaAllowedPhases: ['pos_ceremony_results', 'social_2'],
     yields: { influence: 0.03 },
+    unavailableInVox: true,
   },
   ...DRAMA_SOCIAL_ACTIONS,
   // ── AI-only shims (kept for SocialPolicy / AI engine compatibility) ────────

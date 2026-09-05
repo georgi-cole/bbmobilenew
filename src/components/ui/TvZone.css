@@ -1110,6 +1110,16 @@ body.mode-surveyeval .tv-zone__head-pills .game-top-chip--neutral {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
+/* Depression Shock can use all four rows of the faux-TV copy area. Give the
+   last line room for its descenders instead of clipping it at the clamp edge. */
+.tv-zone__daily-card .tv-zone__now--depression-shock {
+  max-width: 32rem;
+  max-height: calc(1.28em * 4 + 0.45rem);
+  padding-block: 0.28rem;
+  font-size: clamp(0.72rem, 3cqw, 0.94rem);
+  line-height: 1.28;
+}
+
 .tv-zone__daily-mood {
   position: relative;
   z-index: 3;

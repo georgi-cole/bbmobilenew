@@ -31,6 +31,11 @@ import { TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
 import type { MusicMinigameVariant } from '../services/sound/musicConfig'
 import { rankPressurePlankResults } from '../components/PressurePlank/pressurePlankLogic'
 import { resolveGameManagerRule } from '../gameManager/gameManager'
+import {
+  applyCompetitionIntentToScore,
+  decideCompetitionIntent,
+  type CompetitionIntent,
+} from '../social/intelligenceSystem'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +79,8 @@ export interface ChallengeRun {
   authoritative: boolean
   /** True when the human dismissed the challenge before it completed. */
   partial?: boolean
+  /** Hidden AI intent captured for intelligence and reproducible score analysis. */
+  competitionIntents?: Record<string, CompetitionIntent>
 }
 
 export interface ChallengeState {
@@ -112,6 +119,8 @@ export interface PendingChallenge {
   prizeType?: CwgoPrizeType | string
   /** A valid producer-selected winner, resolved when this challenge was scheduled. */
   forcedWinnerId?: string
+  /** Hidden intention chosen before scores are simulated. */
+  competitionIntents?: Record<string, CompetitionIntent>
 }
 
 const initialState: ChallengeState = {
@@ -505,6 +514,17 @@ export const startChallenge =
           break
         }
 
+        case 'competition-map': {
+          // The campaign map is intentionally ordered. Pick the first eligible
+          // unused entry rather than passing it through the seeded random pool.
+          // Once the contextual lane is exhausted, start that lane again from
+          // its first entry while retaining the map's order.
+          const bracketPool = getBracketTemplatePool(opts.excludeKeys)
+          const unusedPool = bracketPool.filter((game) => !allHistoryGameKeys.includes(game.key))
+          gameEntry = (unusedPool[0] ?? bracketPool[0]) ?? pickFromRegistry(opts.category, opts.excludeKeys)
+          break
+        }
+
         case 'random-games':
         default:
           gameEntry = pickFromRegistry(opts.category, opts.excludeKeys)
@@ -573,10 +593,28 @@ export const startChallenge =
     const aiScores: Record<string, number> = {}
     const minigameModel = getMinigameAiModelForGame(gameEntry)
     const timeLimitMs = gameEntry.timeLimitMs > 0 ? gameEntry.timeLimitMs : undefined
+    const identityMode =
+      gameState.mode === 'survival'
+        ? 'survival'
+        : gameState.voxPopuli?.status === 'active'
+          ? 'vox_populi'
+          : gameState.cupidArrow?.status === 'active'
+            ? 'cupid'
+            : 'classic'
+    const competitionIntents: Record<string, CompetitionIntent> = {}
     finalParticipants.forEach((pid, index) => {
       if (pid !== humanId) {
         const player = gameState?.players?.find((p) => p.id === pid)
-        aiScores[pid] = simulateMinigameAiScore({
+        const intent = decideCompetitionIntent(perChallengeSeed, pid, player?.aiGameIdentity, {
+          mode: identityMode,
+          day: gameState.week,
+          phase: gameState.phase,
+          prizeType: opts.prizeType,
+          playerStatus: player?.status,
+          forcedWinner: forcedWinnerId === pid,
+        })
+        competitionIntents[pid] = intent
+        const simulatedScore = simulateMinigameAiScore({
           gameKey: gameEntry.key,
           minigameModel,
           seed: perChallengeSeed,
@@ -584,9 +622,18 @@ export const startChallenge =
           participantIndex: index,
           profile: player?.competitionProfile ?? getDefaultCompetitionProfile(),
           seasonState: getCompetitionSeasonState(gameState?.competitionSeasonStateByPlayerId, pid),
+          aiGameIdentity: player?.aiGameIdentity,
+          identityMode,
           timeLimitMs,
           timeLimitSeconds: timeLimitMs ? timeLimitMs / 1000 : undefined,
         })
+        aiScores[pid] = applyCompetitionIntentToScore(
+          simulatedScore,
+          minigameModel,
+          intent,
+          perChallengeSeed,
+          pid
+        )
       }
     })
 
@@ -628,6 +675,7 @@ export const startChallenge =
       aiTiebreakers,
       prizeType: opts.prizeType,
       forcedWinnerId,
+      competitionIntents,
     }
 
     dispatch(setPendingChallenge(pending))
@@ -709,6 +757,7 @@ export const completeChallenge =
         explicitWinnerId !== null ||
         winner?.authoritativeWinner === true,
       partial: options?.partial === true,
+      competitionIntents: pending.competitionIntents,
     }
 
     dispatch(recordRun(run))
@@ -721,6 +770,8 @@ export const completeChallenge =
           participants,
           winnerId,
           includePlacementBonuses: false,
+          competitionIntents: pending.competitionIntents,
+          gameKey: game.key,
         })
       )
     } else {
@@ -730,6 +781,8 @@ export const completeChallenge =
           scores: canonicalScores,
           winnerId,
           includePlacementBonuses: true,
+          competitionIntents: pending.competitionIntents,
+          gameKey: game.key,
         })
       )
     }

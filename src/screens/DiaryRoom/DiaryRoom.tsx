@@ -549,7 +549,12 @@ export default function DiaryRoom() {
   const [ticTacToeThinking, setTicTacToeThinking] = useState(false)
   const activeVoteBreakdown =
     gameState.voxPopuli?.status !== 'active' &&
-    isEvictionVoteBreakdownActive(voteBreakdownUnlock, currentWeekForMission, phase)
+    isEvictionVoteBreakdownActive(
+      voteBreakdownUnlock,
+      currentWeekForMission,
+      phase,
+      gameState.gameId,
+    )
       ? voteBreakdownUnlock
       : null
   const voteBreakdownPlayerNamesById = useMemo(

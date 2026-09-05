@@ -46,7 +46,7 @@ function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: nu
  * It keeps the glossy transparent visual language without shipping large
  * raster files and remains sharp on every device density.
  */
-function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; rainbow: boolean }) {
+export function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; rainbow: boolean }) {
   const id = useId().replace(/:/g, '')
   const wet = ['drizzle', 'light_showers', 'sun_showers', 'rainy', 'heavy_rain'].includes(condition)
   const snow = condition === 'snow_showers' || condition === 'snowy'
@@ -74,6 +74,11 @@ function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; r
           <stop offset="0.38" stopColor="#eef5ff" />
           <stop offset="0.72" stopColor="#bed4ee" />
           <stop offset="1" stopColor="#7fa5d5" />
+        </linearGradient>
+        <linearGradient id={`${id}-cloud-rim`} x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.9" />
+          <stop offset="0.42" stopColor="#d7e8fb" stopOpacity="0.55" />
+          <stop offset="1" stopColor="#86a9d6" stopOpacity="0.18" />
         </linearGradient>
         <linearGradient id={`${id}-cloud-dark`} x1="0.18" y1="0.06" x2="0.78" y2="1">
           <stop offset="0" stopColor="#d9e5f5" />
@@ -130,39 +135,22 @@ function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; r
           className={`weather-tv-card__cloud-shape${darkCloud ? ' weather-tv-card__cloud-shape--dark' : ''}`}
           filter={`url(#${id}-shadow)`}
         >
-          <ellipse
-            cx="87"
-            cy="71"
-            rx={denseCloud ? 43 : 38}
-            ry={denseCloud ? 22 : 19}
+          <path
+            d={
+              denseCloud
+                ? 'M43 78c-8-1-13-7-13-14 0-8 7-14 16-14 2-13 13-22 27-22 11 0 20 6 24 15 4-4 10-6 16-6 12 0 22 8 23 19 8 1 14 6 14 13 0 6-5 10-12 10H43Z'
+                : 'M47 78c-7-1-12-6-12-12 0-7 6-12 14-12 2-11 12-18 23-18 10 0 18 5 22 13 4-3 9-5 14-5 10 0 18 7 19 16 7 1 12 5 12 11 0 5-4 8-10 8H47Z'
+            }
             fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+            stroke={`url(#${id}-cloud-rim)`}
+            strokeWidth="1.4"
+            strokeLinejoin="round"
           />
-          <circle
-            cx="60"
-            cy="64"
-            r={denseCloud ? 21 : 18}
-            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
+          <path
+            className="weather-tv-card__cloud-highlight"
+            d="M48 53c8-10 22-14 36-8 7 3 11 7 14 12-12-5-25-6-38-2-5 1-9 2-12 1Z"
           />
-          <circle
-            cx="86"
-            cy="54"
-            r={denseCloud ? 28 : 24}
-            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
-          />
-          <circle
-            cx="112"
-            cy="64"
-            r={denseCloud ? 20 : 17}
-            fill={`url(#${id}-${darkCloud ? 'cloud-dark' : 'cloud'})`}
-          />
-          <ellipse className="weather-tv-card__cloud-highlight" cx="75" cy="49" rx="17" ry="7" />
-          <ellipse
-            className="weather-tv-card__cloud-highlight weather-tv-card__cloud-highlight--small"
-            cx="105"
-            cy="58"
-            rx="8"
-            ry="4"
-          />
+          <path className="weather-tv-card__cloud-sheen" d="M45 72c18 5 48 5 73-2" />
         </g>
       )}
 

@@ -16,6 +16,7 @@ import type { Player } from '../../types'
 import { resolveAvatar } from '../../utils/avatar'
 import { selectSettings } from '../../store/settingsSlice'
 import { setMusicScene } from '../../store/uiSlice'
+import { SoundManager } from '../../services/sound/SoundManager'
 import FinalLightsOutSequence from '../FinalLightsOutSequence/FinalLightsOutSequence'
 import Credits from '../../screens/Credits/Credits'
 import { buildFinalGoodbyeMessages } from './finaleGoodbyes'
@@ -186,6 +187,15 @@ export default function SeasonFinaleOverlay() {
     navigate('/game-over')
   }, [finale?.phase, location.pathname, navigate])
 
+  useEffect(() => {
+    if (finale?.phase !== 'winnerCinematic') return
+    void SoundManager.play('tv:winner_reveal')
+    const reactionTimer = window.setTimeout(() => {
+      void SoundManager.play('tv:finale_winner_stinger')
+    }, 1500)
+    return () => window.clearTimeout(reactionTimer)
+  }, [finale?.phase])
+
   if (!finale || !winner) return null
 
   if (finale.phase === 'publicFavoriteFlow' || finale.phase === 'seasonComplete') {
@@ -217,7 +227,18 @@ export default function SeasonFinaleOverlay() {
             </div>
             <div className="season-finale__winner-copy">
               <div className="season-finale__trophy-wrap" aria-hidden="true">
-                <span className="season-finale__trophy">🏆</span>
+                <svg className="season-finale__trophy" viewBox="0 0 64 64" focusable="false">
+                  <defs>
+                    <linearGradient id="winner-trophy-gold" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="#fff3a7" />
+                      <stop offset="0.42" stopColor="#f3c851" />
+                      <stop offset="0.78" stopColor="#ba7620" />
+                      <stop offset="1" stopColor="#ffe28a" />
+                    </linearGradient>
+                  </defs>
+                  <path fill="url(#winner-trophy-gold)" d="M18 9h28v9h8c0 12-7 19-17 20l-1 8h8v7H20v-7h8l-1-8C17 37 10 30 10 18h8V9Zm-1 15c1 4 4 7 9 8l-1-8h-8Zm22 8c5-1 8-4 9-8h-8l-1 8Z" />
+                  <path fill="rgba(82, 45, 8, .34)" d="M20 53h24v4H20z" />
+                </svg>
               </div>
               <h2>{winner.name}</h2>
               <p>

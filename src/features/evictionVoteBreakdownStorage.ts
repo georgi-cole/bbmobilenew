@@ -5,6 +5,8 @@ const STORAGE_KEY = 'bb_eviction_vote_breakdown_v1';
 export type EvictionVoteBreakdownStatus = 'available' | 'revealed' | 'declined';
 
 export interface EvictionVoteBreakdownUnlock {
+  /** Identifies the season/run that produced this unlock. */
+  gameId?: string;
   week: number;
   phase: Phase;
   votes: Record<string, string>;
@@ -54,9 +56,14 @@ export function isEvictionVoteBreakdownActive(
   unlock: EvictionVoteBreakdownUnlock | null,
   week: number,
   phase: Phase,
+  gameId?: string,
 ): unlock is EvictionVoteBreakdownUnlock {
   return Boolean(
     unlock &&
+    // Older unlocks predate per-game scoping. Keep those session-local records
+    // usable, while still isolating records that explicitly identify another
+    // game.
+    (!gameId || !unlock.gameId || unlock.gameId === gameId) &&
     unlock.week === week &&
     unlock.phase === 'eviction_results' &&
     (phase === 'eviction_results' || phase === 'week_end'),

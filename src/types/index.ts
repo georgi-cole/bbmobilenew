@@ -7,6 +7,7 @@ import type { CompetitionSeasonState, CompetitionSkillProfile } from '../ai/comp
 import type { SocialState } from '../social/types'
 import type { ActivityChannel, ActivitySource } from '../services/activityService'
 import type { SeasonArchive } from '../store/seasonArchive'
+import type { AiGameIdentity } from '../ai/aiGameIdentity'
 
 export type PlayerStatus =
   | 'active'
@@ -31,6 +32,8 @@ export interface Player {
   isUser?: boolean
   /** Optional competition skill profile for AI simulations. */
   competitionProfile?: CompetitionSkillProfile
+  /** Hidden season-long behavioural identity for simulated contestants. */
+  aiGameIdentity?: AiGameIdentity
   stats?: {
     lohWins: number
     posWins: number
@@ -89,6 +92,8 @@ export interface MinigameResult {
    * Empty or absent = not yet determined (falls back to score-based ranking).
    */
   placements?: string[]
+  /** Hidden AI intention used by the intelligence system. */
+  competitionIntents?: Record<string, import('../social/intelligenceSystem').CompetitionIntent>
 }
 
 /**
@@ -132,6 +137,8 @@ export interface MinigameSession {
    * `aiScores` via `launchMinigame` leave this false/undefined.
    */
   hybridResolveOnComplete?: boolean
+  /** Hidden intention chosen before AI scores are produced. */
+  competitionIntents?: Record<string, import('../social/intelligenceSystem').CompetitionIntent>
 }
 
 /**

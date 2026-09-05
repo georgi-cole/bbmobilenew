@@ -86,8 +86,8 @@ export default function Settings() {
   const isVipActive = useAppSelector(selectIsVipActive)
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
-  const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
-  const isGuest = useAppSelector((state) => state.profiles.isGuest)
+  const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const realityAgeEligibility = useAppSelector((state) =>
     getProfileRealityAgeEligibility(state.profiles)
   )

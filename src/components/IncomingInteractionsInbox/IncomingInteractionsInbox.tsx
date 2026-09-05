@@ -17,6 +17,7 @@ import {
   getIncomingInteractionResponseLabel,
   getIncomingInteractionResponseOptions,
   getIncomingInteractionTone,
+  orderIncomingInteractionResponseOptions,
 } from '../../social/incomingInteractionPresentation'
 import {
   getIncomingSocialModuleAvailability,
@@ -224,11 +225,14 @@ function InteractionItem({
   const responseOptions = useMemo(
     () =>
       shouldShowActions
-        ? getIncomingInteractionResponseOptions(
-            interaction.type,
+        ? orderIncomingInteractionResponseOptions(
             interaction,
-            tone,
-            interactionDramaMode
+            getIncomingInteractionResponseOptions(
+              interaction.type,
+              interaction,
+              tone,
+              interactionDramaMode
+            )
           )
         : [],
     [shouldShowActions, interaction, tone, interactionDramaMode]

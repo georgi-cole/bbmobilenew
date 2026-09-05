@@ -639,6 +639,38 @@
     box-shadow 0.2s ease;
 }
 
+/* Live vote: reuse the nomination transition's inner-frame treatment, dyed red.
+   The emphasis stays inside each nominee tile instead of becoming a separate
+   border glow or an overlay across the roster. */
+.liveEvictionNominee {
+  border-color: rgba(248, 87, 87, 0.86);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(248, 87, 87, 0.34),
+    inset 0 1px 0 rgba(255, 228, 228, 0.12),
+    inset 0 0 0 1px rgba(248, 87, 87, 0.36);
+}
+
+.liveEvictionNominee::before {
+  animation: liveEvictionNomineeSweep 2.2s linear infinite;
+}
+
+@keyframes liveEvictionNomineeSweep {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset -18px 0 24px rgba(220, 38, 38, 0.34),
+      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset 18px 0 24px rgba(248, 87, 87, 0.42),
+      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
+  }
+}
+
 .tile[data-cupid-pair] .avatarWrap {
   border-color: color-mix(in srgb, var(--cupid-pair-color) 20%, rgba(255, 255, 255, 0.11));
   box-shadow:
@@ -1636,6 +1668,7 @@
 
   .nomination_loh,
   .nomination_danger::before,
+  .liveEvictionNominee::before,
   .roboStatsSheet {
     animation: none !important;
   }

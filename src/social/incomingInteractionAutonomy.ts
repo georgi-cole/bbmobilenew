@@ -36,10 +36,13 @@ import { createDeterministicSocialRandom } from './socialExecutionGuard'
 import { getSocialPersonality } from './socialPersonalityBank'
 import { getEffectiveSocialMode } from './socialMode'
 import { getRemoteScenarioLines, isIncomingInteractionActionable } from './socialRuntimeConfig'
+import { formatIncomingIntel, selectIntelFactForActor } from './intelligenceSystem'
+import type { RealityDomainState } from './reality/types'
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
   IncomingInteractionType,
+  IntelligenceDelivery,
   RelationshipsMap,
   ScheduledIncomingInteraction,
   SocialActionLogEntry,
@@ -79,6 +82,8 @@ export interface AutonomyContext {
   dramaMode?: boolean
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
   random?: () => number
+  reality?: RealityDomainState
+  intelligenceDeliveries?: IntelligenceDelivery[]
 }
 
 /** Minimal Redux-like store interface required by the autonomy scheduler. */
@@ -100,6 +105,8 @@ export interface AutonomyStore {
       socialMemory?: SocialMemoryMap
       sessionLogs?: SocialActionLogEntry[]
       actionHistory?: SocialActionLogEntry[]
+      reality?: RealityDomainState
+      intelligenceDeliveries?: IntelligenceDelivery[]
     }
     game?: {
       players?: AutonomyPlayer[]
@@ -792,7 +799,8 @@ export function evaluateIncomingInteractionEnqueueDecision(
     return { allowed: false, reason: 'blocked_by_context_rules' }
   }
   const planPriority = getIncomingInteractionPriority(plan.type, plan.scenarioKey)
-  const isMajorInteraction = (context.dramaMode || context.voxPopuliActive) && planPriority === 'high'
+  const isMajorInteraction =
+    (context.dramaMode || context.voxPopuliActive) && planPriority === 'high'
   const isCriticalConsultation = plan.scenarioKey === 'loh_consults_safety_holder'
 
   const globalActive = pendingInteractions.filter(
@@ -889,9 +897,13 @@ export function evaluateIncomingInteractionEnqueueDecision(
         )
       : 0) +
     ((context.dramaMode || context.voxPopuliActive) && isCriticalEventScenario(plan)
-      ? context.voxPopuliActive ? 0.96 : 0.9
+      ? context.voxPopuliActive
+        ? 0.96
+        : 0.9
       : eventDrivenScenarios.has(plan.scenarioKey)
-        ? context.voxPopuliActive ? 0.34 : 0.2
+        ? context.voxPopuliActive
+          ? 0.34
+          : 0.2
         : 0)
   if (score < cfg.scoreThreshold) {
     if (socialConfig.verbose) {
@@ -1137,8 +1149,7 @@ function generateInteractionText(
   plan: InteractionPlan,
   context: AutonomyContext,
   pendingInteractions: IncomingInteraction[] = [],
-  rng: () => number = Math.random,
-  dramaMode = false
+  rng: () => number = Math.random
 ): { text: string; variantFamilyId: string; variantId: string } {
   // Build context for token replacement.
   const textContext = buildInteractionTextContext(actorId, playerId, context)
@@ -1194,9 +1205,10 @@ function generateInteractionText(
     }
   }
 
-  // Use the rich variant bank when families are available for this scenario.
+  // Use the rich variant bank in every mode. Normal mode must not fall back
+  // to the smaller legacy text pool while Drama receives the living dialogue.
   const variantFamilies = SCENARIO_VARIANT_POOLS[plan.scenarioKey]
-  if (dramaMode && variantFamilies && variantFamilies.length > 0) {
+  if (variantFamilies && variantFamilies.length > 0) {
     const voiceProfile = getVoiceProfile(actorId)
     const { text, familyId, variantId } = pickVariantText(
       variantFamilies,
@@ -1306,8 +1318,7 @@ export function scheduleIncomingInteractionsForPhase(
     specialVeto: contextOverride?.specialVeto ?? gameState?.specialVeto?.activeType ?? null,
     lastHohCompFinisherId:
       contextOverride?.lastHohCompFinisherId ?? gameState?.lastHohCompFinisherId ?? null,
-    voxPopuliActive:
-      contextOverride?.voxPopuliActive ?? gameState?.voxPopuli?.status === 'active',
+    voxPopuliActive: contextOverride?.voxPopuliActive ?? gameState?.voxPopuli?.status === 'active',
     playerSocialActionCount:
       contextOverride?.playerSocialActionCount ??
       (socialState.actionHistory ?? socialState.sessionLogs ?? []).filter(
@@ -1317,6 +1328,9 @@ export function scheduleIncomingInteractionsForPhase(
           entry.outcome === 'success' &&
           entry.week === week
       ).length,
+    reality: contextOverride?.reality ?? socialState.reality,
+    intelligenceDeliveries:
+      contextOverride?.intelligenceDeliveries ?? socialState.intelligenceDeliveries ?? [],
     random:
       contextOverride?.random ??
       createDeterministicSocialRandom([gameState?.seed ?? 0, week, phase, playerId]),
@@ -1370,17 +1384,12 @@ export function scheduleIncomingInteractionsForPhase(
   const interactionConfig = getIncomingInteractionConfig(context)
   const checkpointBudget =
     criticalDecisionCount > 0
-      ? Math.max(
-          interactionConfig.maxGeneratedPerCheckpoint,
-          Math.min(3, criticalDecisionCount)
-        )
+      ? Math.max(interactionConfig.maxGeneratedPerCheckpoint, Math.min(3, criticalDecisionCount))
       : interactionConfig.maxGeneratedPerCheckpoint
-  const weeklyGenerationLimit = context.dramaMode || context.voxPopuliActive
-    ? Math.max(
-        interactionConfig.maxPerWeek,
-        alreadyCreatedThisWeek + criticalDecisionCount
-      )
-    : 4
+  const weeklyGenerationLimit =
+    context.dramaMode || context.voxPopuliActive
+      ? Math.max(interactionConfig.maxPerWeek, alreadyCreatedThisWeek + criticalDecisionCount)
+      : 4
   const generationBudget = Math.max(
     0,
     Math.min(checkpointBudget, weeklyGenerationLimit - alreadyCreatedThisWeek)
@@ -1426,21 +1435,56 @@ export function scheduleIncomingInteractionsForPhase(
     }
 
     const useVoxDrama = dramaMode || context.voxPopuliActive === true
+    const privateIntelToday = (context.intelligenceDeliveries ?? []).filter(
+      (delivery) =>
+        delivery.day === week &&
+        delivery.recipientId === playerId &&
+        (delivery.channel === 'social_action' || delivery.channel === 'incoming')
+    ).length
+    const pendingIntelToday = pendingInteractions.filter(
+      (interaction) =>
+        interaction.createdWeek === week && typeof interaction.payload?.intelFactId === 'string'
+    )
+    const candidateIntelLead =
+      week >= 3 &&
+      privateIntelToday + pendingIntelToday.length < 2 &&
+      context.reality &&
+      (plan.type === 'gossip' || plan.type === 'warning')
+        ? selectIntelFactForActor(context.reality, actor.id, playerId, week)
+        : null
+    const intelLead =
+      candidateIntelLead &&
+      !pendingIntelToday.some(
+        (interaction) => interaction.payload?.intelFactId === candidateIntelLead.fact.id
+      )
+        ? candidateIntelLead
+        : null
+    const interactionType: IncomingInteractionType =
+      intelLead?.fact.propositionType === 'TARGETING' && intelLead.fact.objectId === playerId
+        ? 'warning'
+        : plan.type
     const textResult = generateInteractionText(
       actor.id,
       playerId,
       plan,
       context,
       pendingInteractions,
-      context.random,
-      useVoxDrama
+      context.random
     )
-    const subject = useVoxDrama
+    const subject = intelLead
+      ? context.players.find(
+          (candidate) =>
+            candidate.id === intelLead.fact.subjectIds[0] ||
+            candidate.id === intelLead.fact.objectId
+        )
+      : useVoxDrama
       ? selectInteractionSubject(actor.id, playerId, plan.type, context)
       : undefined
     const subjectName = subject?.name ?? subject?.id
     const interactionText =
-      subjectName && (plan.type === 'gossip' || plan.type === 'warning')
+      intelLead
+        ? formatIncomingIntel(intelLead.fact, context.players as Array<{ id: string; name: string }>, playerId)
+        : subjectName && (plan.type === 'gossip' || plan.type === 'warning')
         ? getNamedInteractionText(
             plan.scenarioKey,
             plan.type,
@@ -1451,7 +1495,7 @@ export function scheduleIncomingInteractionsForPhase(
     const interaction = createIncomingInteraction({
       id: generateInteractionId(),
       fromId: actor.id,
-      type: plan.type,
+      type: interactionType,
       text: interactionText,
       week,
       phase,
@@ -1462,6 +1506,15 @@ export function scheduleIncomingInteractionsForPhase(
         variantId: textResult.variantId,
         actorStatus: actor.status,
         subjectId: subject?.id,
+        ...(intelLead
+          ? {
+              intelFactId: intelLead.fact.id,
+              intelConfidence: intelLead.belief.confidence,
+              intelSourceChain: intelLead.belief.sourceChain,
+              evidence: intelLead.belief.confidence >= 0.64 ? 'credible' : 'weak',
+              truth: 'uncertain',
+            }
+          : {}),
         nomineeIds: context.nomineeIds ?? [],
         nomineeNames: (context.nomineeIds ?? []).map((nomineeId) =>
           getPlayerName(context, nomineeId, nomineeId)
@@ -1495,8 +1548,7 @@ export function scheduleIncomingInteractionsForPhase(
       week,
     })
     const dedupeReason =
-      mustDeliverConsultationNow &&
-      candidateDedupeReason !== 'deduped_same_scenario'
+      mustDeliverConsultationNow && candidateDedupeReason !== 'deduped_same_scenario'
         ? null
         : candidateDedupeReason
     if (dedupeReason) {
@@ -1532,7 +1584,9 @@ export function scheduleIncomingInteractionsForPhase(
     if (!slot) {
       const dropReason =
         visibleActiveCount >=
-        (context.voxPopuliActive ? 7 : socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible)
+        (context.voxPopuliActive
+          ? 7
+          : socialConfig.incomingInteractionDeliveryConfig.maxActiveVisible)
           ? 'blocked_by_visible_cap'
           : 'blocked_by_delivery_cap'
       logIncomingInteractionDecision(store.dispatch, {

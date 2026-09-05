@@ -34,6 +34,20 @@ describe('Find Your Twin production editions', () => {
     ['lost again', RemasteredBennyLennyCastleRescueGame],
   ] as const)('mounts the explicit remastered renderer for %s', (_label, Component) => {
     const { container } = render(<Component autoStart={false} />)
-    expect(container.querySelector('canvas')).toHaveAttribute('data-game-edition', 'remastered')
+    expect(container.querySelector('iframe')).toHaveAttribute('src', expect.stringContaining('/minigames/twin-remastered/'))
+    expect(container.querySelector('canvas')).toBeNull()
+  })
+
+  it('reports a trusted completion once and ignores messages from other windows', () => {
+    const onFinish = vi.fn()
+    const { container } = render(<RemasteredCastleRescueGame autoStart={false} onFinish={onFinish} />)
+    const frame = container.querySelector('iframe')!
+    const data = { type: 'twin:complete', score: 1234 }
+    window.dispatchEvent(new MessageEvent('message', { data, origin: location.origin, source: window }))
+    expect(onFinish).not.toHaveBeenCalled()
+    for (let i = 0; i < 2; i++) {
+      window.dispatchEvent(new MessageEvent('message', { data, origin: location.origin, source: frame.contentWindow }))
+    }
+    expect(onFinish).toHaveBeenCalledExactlyOnceWith(1234)
   })
 })

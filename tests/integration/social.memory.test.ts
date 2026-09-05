@@ -56,6 +56,41 @@ describe('social memory integration for incoming interactions', () => {
     expect(entry.recentEvents[0].type).toBe('appreciated_compliment')
   })
 
+  it('projects a contextual incoming conversation into both sides of the main relationship graph', () => {
+    const store = makeStore()
+    const { players, week } = store.getState().game
+    const human = players.find((p) => p.isUser)!
+    const ai = players.find((p) => !p.isUser)!
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'contextual-relationship-change',
+          fromId: ai.id,
+          type: 'check_in',
+          payload: { scenarioKey: 'week_start_ally_check_in' },
+          createdWeek: week,
+          expiresAtWeek: week + 1,
+        })
+      )
+    )
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'contextual-relationship-change',
+        responseType: 'positive',
+        responseLabel: 'Share your read',
+      }) as never
+    )
+
+    const social = store.getState().social
+    const interaction = social.incomingInteractions.find(
+      (entry) => entry.id === 'contextual-relationship-change'
+    )
+    expect(social.relationships[ai.id]?.[human.id]?.affinity).toBeGreaterThan(0)
+    expect(social.relationships[human.id]?.[ai.id]?.affinity).toBeGreaterThan(0)
+    expect(interaction?.outcomeText).toMatch(/where the two of you stand this week/i)
+  })
+
   it('records neglect when interactions expire at week end', () => {
     const store = makeStore()
     const { players, week } = store.getState().game

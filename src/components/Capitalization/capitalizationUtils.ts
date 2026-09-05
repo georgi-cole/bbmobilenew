@@ -245,9 +245,12 @@ export function applyCapitalizationPerformance(
   })
 }
 
-export function getCapitalizationEliminationCount(activeAiCount: number): number {
-  if (activeAiCount <= 1) return 0
-  return Math.min(Math.ceil(activeAiCount * CAPITALIZATION_ELIMINATION_RATE), activeAiCount - 1)
+export function getCapitalizationEliminationCount(activePlayerCount: number): number {
+  if (activePlayerCount <= 1) return 0
+  return Math.min(
+    Math.ceil(activePlayerCount * CAPITALIZATION_ELIMINATION_RATE),
+    activePlayerCount - 1
+  )
 }
 
 export function eliminateCapitalizationField(
@@ -257,13 +260,13 @@ export function eliminateCapitalizationField(
   standings: CapitalizationStanding[]
   eliminatedIds: string[]
 } {
-  const activeAi = standings.filter(
-    (standing) => !standing.isHuman && standing.eliminatedAfterQuestion === null
-  )
-  const eliminationCount = getCapitalizationEliminationCount(activeAi.length)
+  // The player is a contestant, not a protected observer. Checkpoints rank
+  // the whole active field so a skipped run can be eliminated like any AI.
+  const activePlayers = standings.filter((standing) => standing.eliminatedAfterQuestion === null)
+  const eliminationCount = getCapitalizationEliminationCount(activePlayers.length)
   if (eliminationCount <= 0) return { standings, eliminatedIds: [] }
 
-  const eliminatedIds = activeAi
+  const eliminatedIds = activePlayers
     .slice()
     .sort(compareCapitalizationStandingsForElimination)
     .slice(0, eliminationCount)

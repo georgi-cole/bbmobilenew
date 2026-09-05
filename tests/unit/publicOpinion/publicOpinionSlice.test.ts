@@ -73,6 +73,7 @@ describe('publicOpinionSlice', () => {
     expect(feed[0].text.length).toBeGreaterThan(0);
     expect(feed[0].text).not.toContain('LOH');
     expect(feed[0].delta).toBe(5);
+    expect(feed[0].reason).toBe('Won LOH');
   });
 
   it('updateApproval with addToFeed:false updates approval silently without a feed entry', () => {
@@ -82,6 +83,34 @@ describe('publicOpinionSlice', () => {
     const { profiles, feed } = store.getState().publicOpinion;
     expect(profiles['p1'].approval).toBe(publicOpinionConfig.DEFAULT_APPROVAL + 5);
     expect(feed.length).toBe(0);
+  });
+
+  it('turns competition outcomes into Game rating changes and recomputes the overall average', () => {
+    const store = makeStore();
+    store.dispatch(initializeProfiles(['p1']));
+    store.dispatch(updateApproval({ playerId: 'p1', delta: 3, reason: 'hoh_win', week: 1 }));
+
+    const profile = store.getState().publicOpinion.profiles['p1'];
+    expect(profile.audienceBreakdown?.gameplay).toBe(59);
+    expect(profile.audienceBreakdown?.charisma).toBe(50);
+    expect(profile.audienceBreakdown?.integrity).toBe(50);
+    expect(profile.approval).toBe(53);
+    expect(profile.audienceBreakdown?.recentChanges[0]).toMatchObject({
+      metric: 'gameplay',
+      delta: 3,
+      reason: 'hoh_win',
+    });
+  });
+
+  it('makes integrity carry the largest share of a promise-break reaction', () => {
+    const store = makeStore();
+    store.dispatch(initializeProfiles(['p1']));
+    store.dispatch(updateApproval({ playerId: 'p1', delta: -2, reason: 'vote_promise_broken', week: 2 }));
+
+    const breakdown = store.getState().publicOpinion.profiles['p1'].audienceBreakdown!;
+    expect(breakdown.integrity).toBeLessThan(breakdown.charisma);
+    expect(breakdown.integrity).toBeLessThan(breakdown.gameplay);
+    expect(breakdown.recentChanges[0].metric).toBe('integrity');
   });
   it('addDirection adds to directions array', () => {
     const store = makeStore();

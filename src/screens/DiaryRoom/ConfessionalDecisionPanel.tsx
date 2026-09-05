@@ -144,7 +144,11 @@ function DecisionUnitRow({
           <PlayerAvatar key={player.id} player={player} selected={selected} size="md" />
         ))}
       </span>
-      <span className="cdp-option__name">{unit.label}</span>
+      <span className="cdp-option__name cdp-option__name--pair">
+        {unit.players.map((player) => (
+          <span key={player.id}>{player.name}</span>
+        ))}
+      </span>
       <span className="cdp-option__pair-dot" aria-hidden="true">
         {unit.pairNumber}
       </span>

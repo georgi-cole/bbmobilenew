@@ -163,6 +163,7 @@ export default function CompSelection({
             <option value="retired">Retired games</option>
             <option value="misc">Misc</option>
             <option value="unique">Unique (no repeats)</option>
+            <option value="competition-map">Competition map order (recommended)</option>
           </select>
         </label>
       </div>

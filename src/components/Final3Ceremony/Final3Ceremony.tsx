@@ -30,6 +30,7 @@ import {
 import { mulberry32, seededPick } from '../../store/rng';
 import { pickPhrase, NOMINEE_PLEA_TEMPLATES } from '../../utils/juryUtils';
 import ChatOverlay from '../ChatOverlay/ChatOverlay';
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
 import TvDecisionModal from '../TvDecisionModal/TvDecisionModal';
 import SpotlightEvictionOverlay from '../Eviction/SpotlightEvictionOverlay';
 import type { ChatLine } from '../ChatOverlay/ChatOverlay';
@@ -252,6 +253,9 @@ export default function Final3Ceremony() {
           lines={pleaLines}
           skippable
           header={{ title: 'The Finale 🏠', subtitle: 'Nominees make their final pleas.' }}
+          avatarRenderer={(player) => (
+            <PlayerAvatar player={player} size="sm" showEvictedStyle={false} />
+          )}
           onComplete={handlePleaComplete}
           ariaLabel="The Finale plea chat"
         />
@@ -275,6 +279,9 @@ export default function Final3Ceremony() {
           lines={announceLines}
           skippable
           header={{ title: 'The Finale 🚪', subtitle: 'The Final LOH has made their decision.' }}
+          avatarRenderer={(player) => (
+            <PlayerAvatar player={player} size="sm" showEvictedStyle={false} />
+          )}
           onComplete={handleAnnounceComplete}
           ariaLabel="The Finale elimination announcement"
         />

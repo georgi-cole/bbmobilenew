@@ -483,6 +483,8 @@ describe('DiaryRoom', () => {
       },
     });
 
+    await flushConversationTimers();
+
     expect(screen.getByText(/are you ready to peek behind the curtain/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'No' })).toBeTruthy();
@@ -510,6 +512,8 @@ describe('DiaryRoom', () => {
         }));
       },
     });
+
+    await flushConversationTimers();
 
     const voteRevealOffer = screen.getByLabelText(/vote reveal offer/i);
     const chat = screen.getByLabelText(/confessional chat/i);
@@ -595,6 +599,8 @@ describe('DiaryRoom', () => {
         }));
       },
     });
+
+    await flushConversationTimers();
 
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
 
@@ -729,6 +735,8 @@ describe('DiaryRoom', () => {
         }));
       },
     });
+
+    await flushConversationTimers();
 
     fireEvent.click(screen.getByRole('button', { name: 'No' }));
     fireEvent.click(screen.getByRole('button', { name: /go back/i }));

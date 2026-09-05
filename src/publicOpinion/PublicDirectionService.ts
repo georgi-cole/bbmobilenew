@@ -3,42 +3,36 @@ import { mulberry32, seededPick, seededPickN } from '../store/rng'
 import { publicOpinionConfig } from './publicOpinionConfig'
 import type { PublicDirection, DirectionType } from './types'
 import type { RelationshipsMap } from '../social/types'
-
-const DIRECTION_TYPES: DirectionType[] = [
-  'get_closer',
-  'target_player',
-  'protect_player',
-  'win_competition',
-  'make_bold_move',
-  'apologize',
-  'expose_player',
-  'align_with',
-  'confront_player',
-  'show_loyalty',
-  'start_drama',
-  'win_veto',
-  'flip_vote',
-  'influence_hoh',
-  'break_alliance',
-  'reinforce_alliance',
-  'repair_relationship',
-  'create_chaos',
-]
-
-const SOLO_DIRECTION_TYPES: DirectionType[] = [
-  'win_competition',
-  'make_bold_move',
-  'win_veto',
-  'flip_vote',
-  'create_chaos',
-]
+import type { DramaAlliance } from '../social/types'
+import type { RealityAlliance } from '../social/reality/types'
+import {
+  getEligibleDirectionCandidates,
+  type DirectionCandidate,
+} from './publicDirectionContracts'
 
 function buildDescription(
   type: DirectionType,
   playerName: string,
   relatedName?: string,
-  targetName?: string
+  targetName?: string,
+  voxPopuliActive = false,
 ): string {
+  if (voxPopuliActive) {
+    switch (type) {
+      case 'get_closer':
+        return `Win viewers over by building a real connection with ${relatedName ?? 'someone'}`
+      case 'align_with':
+        return `Make a visible pact with ${relatedName ?? 'someone'} that viewers can trust`
+      case 'repair_relationship':
+        return `Repair things with ${relatedName ?? 'someone'} before the audience turns on you`
+      case 'reinforce_alliance':
+        return `Prove your loyalty to ${relatedName ?? 'an ally'} in front of the viewers`
+      case 'win_competition':
+        return `${playerName}, win immunity and give the audience a reason to back you!`
+      case 'win_veto':
+        return `${playerName}, win safety and change your public story!`
+    }
+  }
   switch (type) {
     case 'get_closer':
       return `Get closer to ${relatedName ?? 'a player'}`
@@ -87,8 +81,15 @@ export function generateDirectionsForCycle(params: {
   seed: number
   count?: number
   relationships?: RelationshipsMap
+  realityAlliances?: Record<string, RealityAlliance>
+  dramaAlliances?: readonly DramaAlliance[]
+  /** The actor's Cupid partner cannot be the target of a break-alliance ask. */
+  cupidPartnersByPlayerId?: Record<string, string>
   /** Removes LOH/house-vote missions when the audience controls the format. */
   voxPopuliActive?: boolean
+  /** Public Mode gives the human a primary request whenever they are still active. */
+  prioritizeHuman?: boolean
+  dramaMode?: boolean
 }): PublicDirection[] {
   const {
     players,
@@ -96,7 +97,12 @@ export function generateDirectionsForCycle(params: {
     seed,
     count = publicOpinionConfig.directionsPerCycle,
     relationships,
+    realityAlliances,
+    dramaAlliances,
+    cupidPartnersByPlayerId = {},
     voxPopuliActive = false,
+    prioritizeHuman = false,
+    dramaMode = false,
   } = params
 
   const activePlayers = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
@@ -107,65 +113,32 @@ export function generateDirectionsForCycle(params: {
   const directions: PublicDirection[] = []
 
   const selectedPlayers = seededPickN(rng, activePlayers, Math.min(count, activePlayers.length))
-  const humanPlayer = voxPopuliActive ? activePlayers.find((player) => player.isUser) : undefined
+  const humanPlayer = prioritizeHuman || voxPopuliActive
+    ? activePlayers.find((player) => player.isUser)
+    : undefined
   if (humanPlayer && !selectedPlayers.some((player) => player.id === humanPlayer.id)) {
     if (selectedPlayers.length === 0) selectedPlayers.push(humanPlayer)
     else selectedPlayers[selectedPlayers.length - 1] = humanPlayer
   }
 
   for (const player of selectedPlayers) {
-    let dirType: DirectionType = seededPick(rng, DIRECTION_TYPES)
-    if (voxPopuliActive && (dirType === 'influence_hoh' || dirType === 'flip_vote')) {
-      dirType = rng() < 0.5 ? 'make_bold_move' : 'show_loyalty'
-    }
-    const repairCandidates = activePlayers.filter(
-      (candidate) =>
-        candidate.id !== player.id &&
-        (relationships?.[player.id]?.[candidate.id]?.affinity ?? 0) < 15
-    )
-    if (
-      (dirType === 'apologize' || dirType === 'repair_relationship') &&
-      repairCandidates.length === 0
-    ) {
-      dirType = 'get_closer'
-    }
-    // A current LOH cannot meaningfully be asked to influence themselves.
-    if (dirType === 'influence_hoh' && player.status.includes('loh')) {
-      dirType = 'make_bold_move'
-    }
-    const isSolo = SOLO_DIRECTION_TYPES.includes(dirType)
-
-    let relatedPlayerId: string | undefined
-    let relatedName: string | undefined
-    let targetPlayerId: string | undefined
-    let targetName: string | undefined
-
-    if (!isSolo && activePlayers.length > 1) {
-      const others =
-        dirType === 'influence_hoh'
-          ? activePlayers.filter(
-              (candidate) => candidate.id !== player.id && candidate.status.includes('loh')
-            )
-          : dirType === 'apologize' || dirType === 'repair_relationship'
-            ? repairCandidates
-            : activePlayers.filter((candidate) => candidate.id !== player.id)
-      const related = seededPick(rng, others)
-      relatedPlayerId = related.id
-      relatedName = related.name
-    }
-
-    if (dirType === 'influence_hoh') {
-      const targetCandidates = activePlayers.filter(
-        (candidate) => candidate.id !== player.id && candidate.id !== relatedPlayerId
-      )
-      const fallbackCandidates = activePlayers.filter((candidate) => candidate.id !== player.id)
-      const targetPool = targetCandidates.length > 0 ? targetCandidates : fallbackCandidates
-      if (targetPool.length > 0) {
-        const target = seededPick(rng, targetPool)
-        targetPlayerId = target.id
-        targetName = target.name
-      }
-    }
+    const eligible = getEligibleDirectionCandidates(player, {
+      players: activePlayers,
+      relationships,
+      realityAlliances,
+      dramaAlliances,
+      cupidPairIds: cupidPartnersByPlayerId[player.id] ? [cupidPartnersByPlayerId[player.id]] : [],
+      voxPopuliActive,
+      dramaMode,
+    })
+    // The solo competition route is intentionally retained as the final safe
+    // fallback, but every selected candidate has a concrete completion path.
+    const candidate: DirectionCandidate = seededPick(rng, eligible)
+    const dirType: DirectionType = candidate.type
+    const relatedPlayerId = candidate.relatedPlayer?.id
+    const relatedName = candidate.relatedPlayer?.name
+    const targetPlayerId = candidate.targetPlayer?.id
+    const targetName = candidate.targetPlayer?.name
 
     const direction: PublicDirection = {
       id: `dir-${week}-${player.id}-${dirType}-${Math.floor(rng() * 10000)}`,
@@ -173,7 +146,7 @@ export function generateDirectionsForCycle(params: {
       playerId: player.id,
       relatedPlayerId,
       targetPlayerId,
-      description: buildDescription(dirType, player.name, relatedName, targetName),
+      description: buildDescription(dirType, player.name, relatedName, targetName, voxPopuliActive),
       status: 'active',
       createdWeek: week,
       expiresAtWeek: week + 1,
@@ -181,6 +154,9 @@ export function generateDirectionsForCycle(params: {
       // is derived from the outcome status via publicOpinionConfig.directionRewards
       approvalDelta: publicOpinionConfig.directionRewards.success,
       progressPercent: 0,
+      actionHint: candidate.actionHint,
+      rationale: candidate.rationale,
+      completionLabel: candidate.completionLabel,
     }
 
     directions.push(direction)

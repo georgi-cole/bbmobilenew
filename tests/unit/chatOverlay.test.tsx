@@ -152,8 +152,8 @@ describe('ChatOverlay', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /skip/i }));
 
-    expect(screen.getByAltText('Host').getAttribute('src')).toContain('silhouette_');
-    expect(screen.getByAltText('You').getAttribute('src')).toContain('silhouette_');
+    expect(screen.getByText('🎤')).toBeInTheDocument();
+    expect(screen.getByAltText('You').getAttribute('src')).toContain('assets/skins/You.png');
   });
 
   it('renders header title and subtitle when provided', () => {

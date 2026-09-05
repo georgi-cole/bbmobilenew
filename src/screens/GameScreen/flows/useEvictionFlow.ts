@@ -49,6 +49,7 @@ const AI_TIE_RESULT_DELAY_MS = 3000
 type AiTiebreakStage = 'tie' | 'deciding' | 'decision' | 'result'
 
 export type VoteBreakdownSnapshot = {
+  gameId: string
   votes: Record<string, string>
   nomineeIds: string[]
   evicteeId: string | null
@@ -245,8 +246,8 @@ export function useEvictionFlow({
 
   const hasActiveVoteBreakdownUnlock = useCallback(() => {
     const unlock = loadEvictionVoteBreakdownUnlock()
-    return isEvictionVoteBreakdownActive(unlock, game.week, game.phase)
-  }, [game.phase, game.week])
+    return isEvictionVoteBreakdownActive(unlock, game.week, game.phase, game.gameId)
+  }, [game.gameId, game.phase, game.week])
 
   const queueVoteBreakdownPrompt = useCallback(() => {
     if (!canOfferVoteBreakdown || hasActiveVoteBreakdownUnlock()) return false
@@ -284,6 +285,7 @@ export function useEvictionFlow({
         autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
         // Snapshot vote data now before any state changes.
         postEvictionVoteSnapshotRef.current = {
+          gameId: game.gameId,
           votes: { ...(game.votes ?? {}) },
           nomineeIds: [...game.nomineeIds],
           evicteeId: game.pendingEviction.evicteeId,
@@ -410,6 +412,7 @@ export function useEvictionFlow({
     // phase may be week_end). Use the snapshot captured at vote-results dismiss time
     // to save the correct week/phase and per-voter vote data.
     const snapshot = postEvictionVoteSnapshotRef.current ?? {
+      gameId: game.gameId,
       week: game.week,
       phase: game.phase,
       votes: { ...(game.votes ?? {}) },
@@ -432,6 +435,7 @@ export function useEvictionFlow({
       setPostEvictionVoteBreakdown(snapshot)
     } else {
       saveEvictionVoteBreakdownUnlock({
+        gameId: snapshot.gameId,
         week: snapshot.week,
         phase: snapshot.phase,
         votes: snapshot.votes,
@@ -458,6 +462,7 @@ export function useEvictionFlow({
     }
   }, [
     dispatch,
+    game.gameId,
     game.nomineeIds,
     game.pendingEviction?.evicteeId,
     game.phase,

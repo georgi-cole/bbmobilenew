@@ -3,6 +3,7 @@ import {
   getIncomingInteractionResponseLabel,
   getIncomingInteractionResponseOptions,
   getIncomingInteractionTone,
+  orderIncomingInteractionResponseOptions,
 } from '../incomingInteractionPresentation'
 import type { IncomingInteraction, RelationshipsMap, SocialMemoryMap } from '../types'
 
@@ -93,6 +94,28 @@ describe('incomingInteractionPresentation', () => {
       'neutral',
       'negative',
       'dismiss',
+    ])
+  })
+
+  it('does not display player actions as a predictable kindness-to-hostility scale', () => {
+    const interaction = makeInteraction({
+      id: 'shuffled-live-vote-actions',
+      type: 'deal_offer',
+      payload: { scenarioKey: 'live_vote_pitch' },
+    })
+    const ordered = orderIncomingInteractionResponseOptions(
+      interaction,
+      getIncomingInteractionResponseOptions('deal_offer', interaction)
+    )
+
+    const first = ordered[0]?.responseType
+    const last = ordered[ordered.length - 1]?.responseType
+    expect(first === 'accept' && last === 'dismiss').toBe(false)
+    expect(ordered.map((option) => option.label)).not.toEqual([
+      'Accept',
+      'Stall',
+      'Decline',
+      'Dismiss',
     ])
   })
 

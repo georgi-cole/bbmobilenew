@@ -123,6 +123,18 @@ import {
 } from '../broadcasting/broadcastTemplateCatalog'
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
 import { loadDepressionShockState } from '../features/twists/depressionShock'
+import {
+  allianceIdentityBias,
+  assignAiGameIdentities,
+  betrayalChanceModifier,
+  nominationIdentityBias,
+  type AiIdentityMode,
+} from '../ai/aiGameIdentity'
+import {
+  applyCompetitionIntentToScore,
+  decideCompetitionIntent,
+  type CompetitionIntent,
+} from '../social/intelligenceSystem'
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -492,6 +504,9 @@ export function createInitialGameState(options?: {
     : voxPopuliIsScheduled
       ? 'vox_populi'
       : 'classic'
+  const aiIdentityMode: AiIdentityMode =
+    cupidArrowIsScheduled ? 'cupid' : voxPopuliIsScheduled ? 'vox_populi' : 'classic'
+  const playersWithIdentity = assignAiGameIdentities(freshPlayers, seed, aiIdentityMode)
 
   // Season-opening broadcasts are built from the same persistent registry as
   // every later phase. This makes edits, disabling, and mixed built-in/custom
@@ -589,6 +604,14 @@ export function createInitialGameState(options?: {
   }))
   const initialBroadcastQueue = initialTvFeed
     .filter((event) => event.meta?.forceOnTv === true)
+    .sort(
+      (left, right) =>
+        managedBroadcastPriority(left) - managedBroadcastPriority(right) ||
+        (typeof left.meta?.broadcastOrder === 'number' ? left.meta.broadcastOrder : 10000) -
+          (typeof right.meta?.broadcastOrder === 'number' ? right.meta.broadcastOrder : 10000) ||
+        left.timestamp - right.timestamp ||
+        left.id.localeCompare(right.id)
+    )
     .map((event) => event.id)
   return {
     gameId: crypto.randomUUID(),
@@ -636,8 +659,8 @@ export function createInitialGameState(options?: {
     voteResultsMode: 'house',
     evictionSplashId: null,
     pendingEviction: null,
-    players: freshPlayers,
-    competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(freshPlayers),
+    players: playersWithIdentity,
+    competitionSeasonStateByPlayerId: buildInitialCompetitionSeasonState(playersWithIdentity),
     tvFeed: initialTvFeed,
     broadcastQueue: initialBroadcastQueue,
     lastPlainBroadcastEventId: null,
@@ -797,12 +820,29 @@ function managedBroadcastOrder(state: GameState, event: TvEvent): number {
   return typeof event.meta?.broadcastOrder === 'number' ? event.meta.broadcastOrder : 10000
 }
 
+/** Season-expansion activations always open the season before welcome copy. */
+function managedBroadcastPriority(event: TvEvent): number {
+  const major = event.meta?.major ?? event.major
+  if (
+    event.meta?.phase === 'season_start' &&
+    (major === 'vox_populi' || major === 'cupid_arrow')
+  ) {
+    return -1
+  }
+  return event.meta?.broadcastPriority === 'critical' ? 0 : 1
+}
+
 function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
   const shouldShow = event.meta?.forceOnTv === true
   if (!shouldShow || event.meta?.broadcastConsumed === true) return
   const activeEventsById = new Map(
     state.tvFeed
-      .filter((candidate) => candidate.meta?.broadcastConsumed !== true)
+      .filter(
+        (candidate) =>
+          candidate.meta?.broadcastConsumed !== true &&
+          candidate.meta?.phase === state.phase &&
+          candidate.meta?.week === state.week
+      )
       .map((candidate) => [candidate.id, candidate] as const)
   )
   const queue = [...(state.broadcastQueue ?? [])].filter((id) => activeEventsById.has(id))
@@ -811,8 +851,10 @@ function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
     const candidate = activeEventsById.get(id)
     return candidate ? managedBroadcastOrder(state, candidate) : 10000
   }
-  const priorityFor = (id: string) =>
-    activeEventsById.get(id)?.meta?.broadcastPriority === 'critical' ? 0 : 1
+  const priorityFor = (id: string) => {
+    const candidate = activeEventsById.get(id)
+    return candidate ? managedBroadcastPriority(candidate) : 1
+  }
   queue.sort(
     (left, right) => priorityFor(left) - priorityFor(right) || orderFor(left) - orderFor(right)
   )
@@ -847,8 +889,7 @@ function rebuildManagedBroadcastQueue(state: GameState, phase: Phase) {
   })
   eligible.sort(
     (left, right) =>
-      (left.meta?.broadcastPriority === 'critical' ? 0 : 1) -
-        (right.meta?.broadcastPriority === 'critical' ? 0 : 1) ||
+      managedBroadcastPriority(left) - managedBroadcastPriority(right) ||
       managedBroadcastOrder(state, left) - managedBroadcastOrder(state, right) ||
       left.timestamp - right.timestamp ||
       left.id.localeCompare(right.id)
@@ -972,13 +1013,16 @@ function pushEvent(
         (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor'))
       : 'minor')
   const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
+  // `forceOnTv` is an explicit delivery instruction from the event producer.
+  // It must work for live/observed events too, not only catalogued templates:
+  // Broadcast Manager and season-start flows both rely on this to promote an
+  // otherwise ordinary log line onto the faux TV.
   const forceOnTv =
-    override?.forceOnTv ??
-    (isDeclaredSource
-      ? ((typeof meta?.forceOnTv === 'boolean' ? meta.forceOnTv : undefined) ??
-        template?.forceOnTv ??
-        true)
-      : false)
+    meta?.forceOnTv === true ||
+    (override?.forceOnTv ??
+      (isDeclaredSource
+        ? (template?.forceOnTv ?? true)
+        : false))
   const finalMajor =
     finalLevel === 'critical'
       ? (selectedMajor ?? 'custom_critical')
@@ -1239,6 +1283,9 @@ function activateCupidArrowForSeason(state: GameState) {
       major: 'cupid_arrow',
       broadcastTemplateId: 'cupid.activation',
       phase: state.phase,
+      broadcastLevel: 'critical',
+      broadcastPriority: 'critical',
+      forceOnTv: true,
     }
   )
 }
@@ -1275,6 +1322,10 @@ function activateVoxPopuliForSeason(state: GameState) {
     pushEvent(state, intro.text, intro.type, {
       broadcastTemplateId: intro.id,
       phase: intro.phase,
+      major: 'vox_populi',
+      broadcastLevel: 'critical',
+      broadcastPriority: 'critical',
+      forceOnTv: true,
     })
   }
 }
@@ -1484,6 +1535,13 @@ function getStrategicRelationship(state: GameState, actorId: string, targetId: s
   return state.strategicRelationships?.[actorId]?.[targetId] ?? null
 }
 
+function getAiIdentityMode(state: GameState): AiIdentityMode {
+  if (state.mode === 'survival') return 'survival'
+  if (isVoxPopuliActive(state)) return 'vox_populi'
+  if (isCupidArrowActive(state)) return 'cupid'
+  return 'classic'
+}
+
 function getEarlyHumanGrace(
   state: GameState,
   candidate: Player | undefined,
@@ -1515,7 +1573,9 @@ function getVoxNominationMomentumScore(state: GameState, candidate: Player): num
 function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
   const relationship = getStrategicRelationship(state, holderId, nominee.id)
   if (!relationship) return -getAiThreatScore(state, nominee) * 3
+  const holder = state.players.find((player) => player.id === holderId)
   let score = relationship.affinity - getAiThreatScore(state, nominee) * 3
+  score += allianceIdentityBias(holder?.aiGameIdentity) * (relationship.tags.includes('alliance') ? 1 : 0.18)
   if (!state.dramaSocialMode) {
     if (relationship.tags.includes('alliance')) score += 55
     if (relationship.tags.includes('protection') || relationship.tags.includes('shield'))
@@ -1556,7 +1616,18 @@ export function getNominationTargetScore(
   if (tags.has('target')) score += 55
   if (tags.has('rivalry')) score += 45
   if (tags.has('suspicious') || tags.has('unreliable')) score += 18
-  score += getVoxNominationMomentumScore(state, candidate)
+  const voxMomentum = getVoxNominationMomentumScore(state, candidate)
+  score += voxMomentum
+  const loh = state.players.find((player) => player.id === lohId)
+  const identityMode = getAiIdentityMode(state)
+  score += nominationIdentityBias(loh?.aiGameIdentity, identityMode)
+  if (identityMode === 'vox_populi' && loh?.aiGameIdentity) {
+    // Vox players who care about their public image prefer a house-consensus
+    // nomination over a conspicuous personal feud. Media strategists still
+    // retain enough threat focus to make opportunistic moves when protected.
+    score += voxMomentum * (0.4 + loh.aiGameIdentity.audienceFocus)
+    if (loh.aiGameIdentity.archetype === 'media_strategist') score += getAiThreatScore(state, candidate) * 1.5
+  }
   const priorNominations = state.lastWeekNominationRecord
   if (priorNominations?.lohId === candidate.id && priorNominations.nomineeIds.includes(lohId)) {
     // Revenge matters, but alliances and stronger strategic reasons can still outweigh it.
@@ -2273,7 +2344,10 @@ function incrementTimesNominated(state: GameState, playerId: string) {
   }
 }
 
-type CompetitionSeasonUpdatePayload = Omit<CompetitionSeasonUpdateInput, 'playerIds'>
+type CompetitionSeasonUpdatePayload = Omit<CompetitionSeasonUpdateInput, 'playerIds'> & {
+  competitionIntents?: Record<string, CompetitionIntent>
+  gameKey?: string
+}
 type ApplyMinigameWinnerPayload = {
   winnerId: string
   participants?: string[]
@@ -2976,6 +3050,8 @@ export function chooseAiEvictionVote(
 ): string {
   if (nomineeIds.length <= 1) return nomineeIds[0]
 
+  const voter = state.players.find((player) => player.id === voterId)
+  const voterIdentity = voter?.aiGameIdentity
   const scored = nomineeIds.map((nomineeId) => {
     const nominee = state.players.find((player) => player.id === nomineeId)
     const relationship = getStrategicRelationship(state, voterId, nomineeId)
@@ -2992,10 +3068,13 @@ export function chooseAiEvictionVote(
     if (tags.has('betrayal')) score += 35
     if (tags.has('protection') || tags.has('shield')) score -= 20
     if (tags.has('alliance')) {
-      const backstabChance = Math.min(0.22, 0.05 + threat * 0.015)
+      const backstabChance = Math.max(0, Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity)))
       if (rng() < backstabChance) score += 95
-      else score -= 90
+      else score -= 90 + allianceIdentityBias(voterIdentity)
     }
+
+    if (voterIdentity?.archetype === 'chaos_agent') score += rng() * 12
+    if (voterIdentity?.archetype === 'active_floater') score -= Math.max(0, 7 - threat) * 2
 
     return { nomineeId, score }
   })
@@ -3120,6 +3199,11 @@ const gameSlice = createSlice({
       meta.broadcastManaged = true
       if (action.payload.forceOnTv) {
         meta.forceOnTv = true
+        // A live log entry can be promoted from Broadcast Manager after it was
+        // already consumed by an older presentation rule. Force to TV means
+        // show this current event now, not only on a future season.
+        delete meta.broadcastConsumed
+        if (state.lastPlainBroadcastEventId === event.id) state.lastPlainBroadcastEventId = null
       } else {
         delete meta.forceOnTv
       }
@@ -3155,6 +3239,14 @@ const gameSlice = createSlice({
           event.meta?.phase === 'season_start' &&
           (event.meta?.major ?? event.major) === 'vox_populi'
         if (event.meta?.broadcastTemplateId === action.payload.id || isLegacyVoxIntro) {
+          if (
+            action.payload.changes.forceOnTv === true &&
+            event.meta?.phase === state.phase &&
+            event.meta?.week === state.week
+          ) {
+            event.meta = { ...(event.meta ?? {}), broadcastConsumed: false }
+            if (state.lastPlainBroadcastEventId === event.id) state.lastPlainBroadcastEventId = null
+          }
           refreshManagedBroadcastDefinition(state, event)
         }
       })
@@ -3441,6 +3533,17 @@ const gameSlice = createSlice({
             aiParticipants,
             seed: session.seed,
           })
+        }
+
+        const sessionModel = getMinigameAiModel(session.key)
+        for (const [id, score] of Object.entries(resolvedAiScores)) {
+          resolvedAiScores[id] = applyCompetitionIntentToScore(
+            score,
+            sessionModel,
+            session.competitionIntents?.[id] ?? 'compete',
+            session.seed,
+            id
+          )
         }
 
         scores = { ...resolvedAiScores }
@@ -7281,7 +7384,7 @@ const gameSlice = createSlice({
                 state,
                 `Congrats all, you've just made it to tribunal. Your voices will crown the winner.`,
                 'game',
-                { major: 'tribunal_phase', phase: 'week_start' }
+                { major: 'tribunal_phase', broadcastLevel: 'major', phase: 'week_start' }
               )
             : null
           if (tribunalEvent) {
@@ -9727,12 +9830,29 @@ export const startMinigame =
     // Always precompute AI scores for AI-only runs (no UI is involved) and for
     // endurance/non-hybrid games (which keep the old precomputed path).
     // For hybrid games with a human participant, precomputation is skipped.
-    const aiScores: Record<string, number> = {}
+      const aiScores: Record<string, number> = {}
 
     const hasHuman = opts.participants.some((id) => {
       const p = state.players.find((pl) => pl.id === id)
       return !!p?.isUser
     })
+    const competitionIntents: Record<string, CompetitionIntent> = {}
+    for (const id of opts.participants) {
+      const player = state.players.find((candidate) => candidate.id === id)
+      if (!player || player.isUser) continue
+      competitionIntents[id] = decideCompetitionIntent(
+        invocationSeed,
+        id,
+        player.aiGameIdentity,
+        {
+          mode: getAiIdentityMode(state),
+          day: state.week,
+          phase: state.phase,
+          prizeType: state.phase === 'loh_comp' ? 'LOH' : state.phase === 'pos_comp' ? 'POS' : undefined,
+          playerStatus: player.status,
+        }
+      )
+    }
 
     if (!isHybrid || !hasHuman) {
       // Precompute for: (a) AI-only runs, (b) endurance/non-hybrid games,
@@ -9740,16 +9860,25 @@ export const startMinigame =
       opts.participants.forEach((id, index) => {
         const p = state.players.find((pl) => pl.id === id)
         if (p && !p.isUser) {
-          aiScores[id] = simulateMinigameAiScore({
+          const simulatedScore = simulateMinigameAiScore({
             gameKey: opts.key,
             seed: invocationSeed,
             playerId: id,
             participantIndex: index,
             profile: p.competitionProfile ?? getDefaultCompetitionProfile(),
             seasonState: getCompetitionSeasonState(state.competitionSeasonStateByPlayerId, id),
+            aiGameIdentity: p.aiGameIdentity,
+            identityMode: getAiIdentityMode(state),
             timeLimitSeconds: opts.options.timeLimit,
             minigameModel: model,
           })
+          aiScores[id] = applyCompetitionIntentToScore(
+            simulatedScore,
+            model,
+            competitionIntents[id] ?? 'compete',
+            invocationSeed,
+            id
+          )
         }
       })
     }
@@ -9763,12 +9892,19 @@ export const startMinigame =
           ? rankPressurePlankResults(opts.participants, aiScores, invocationSeed)[0]?.playerId
           : determineWinner(opts.participants, aiScores)
       if (!winnerId) throw new Error('startMinigame could not resolve a winner')
-      const result: MinigameResult = { seedUsed: invocationSeed, scores: aiScores, winnerId }
+      const result: MinigameResult = {
+        seedUsed: invocationSeed,
+        scores: aiScores,
+        winnerId,
+        competitionIntents,
+      }
       dispatch(
         applyCompetitionSeasonUpdate({
           participants: opts.participants,
           scores: aiScores,
           winnerId,
+          competitionIntents,
+          gameKey: opts.key,
         })
       )
       return result
@@ -9782,6 +9918,7 @@ export const startMinigame =
       seed: invocationSeed,
       options: opts.options,
       aiScores,
+      competitionIntents,
       ...(isHybrid ? { hybridResolveOnComplete: true } : {}),
     }
     dispatch(launchMinigame(session))

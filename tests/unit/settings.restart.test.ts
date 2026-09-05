@@ -350,7 +350,7 @@ describe('getRestartRelevantSnapshot() (localStorage wrapper)', () => {
     expect(snapshot.gameUX.castSize).toBe(DEFAULT_SETTINGS.gameUX.castSize);
   });
 
-  it('migrates the old empty user-selection default to the mapped unique mode', () => {
+  it('migrates the old empty user-selection default to the ordered competition map mode', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -365,7 +365,7 @@ describe('getRestartRelevantSnapshot() (localStorage wrapper)', () => {
       }),
     );
 
-    expect(loadSettings().gameUX.compSelection.mode).toBe('unique');
+    expect(loadSettings().gameUX.compSelection.mode).toBe('competition-map');
   });
 });
 

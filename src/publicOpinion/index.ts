@@ -3,9 +3,20 @@ export type {
   PlayerPublicProfile,
   PublicFeedEntry,
   PublicOpinionState,
+  AudienceBreakdown,
+  AudienceMetric,
+  AudienceMetricChange,
   DirectionStatus,
   DirectionType,
 } from './types';
+export {
+  audienceMetricDescriptions,
+  audienceMetricLabels,
+  getAudienceArchetype,
+  getAudienceBreakdown,
+  getAudienceRead,
+} from './audienceBreakdown';
+export type { AudienceArchetype } from './audienceBreakdown';
 export { publicOpinionConfig } from './publicOpinionConfig';
 export {
   default as publicOpinionReducer,

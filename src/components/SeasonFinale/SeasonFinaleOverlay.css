@@ -123,10 +123,13 @@
 }
 
 .season-finale__trophy {
-  display: inline-block;
-  font-size: 2rem;
-  filter: drop-shadow(0 0 18px rgba(255, 212, 59, 0.45));
-  animation: season-finale-trophy-spin 10s linear infinite;
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  overflow: visible;
+  filter: drop-shadow(0 0 14px rgba(255, 207, 77, 0.6));
+  transform-style: preserve-3d;
+  animation: season-finale-trophy-spin 5.5s linear infinite;
 }
 
 .season-finale__button {
@@ -201,10 +204,10 @@
 
 @keyframes season-finale-trophy-spin {
   from {
-    transform: rotate(0deg);
+    transform: perspective(180px) rotateY(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: perspective(180px) rotateY(360deg);
   }
 }
 
@@ -258,10 +261,6 @@
   box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12), 0 20px 40px rgba(2, 6, 23, 0.42);
 }
 
-.season-finale__trophy {
-  filter: grayscale(1) brightness(1.8) drop-shadow(0 0 18px rgba(129, 140, 248, 0.5));
-}
-
 .season-finale__button {
   color: white;
   background: linear-gradient(110deg, var(--color-accent, #6366f1), var(--color-accent-2, #8b5cf6));
@@ -272,4 +271,36 @@
   background:
     radial-gradient(circle at 50% 28%, rgba(99, 102, 241, 0.24), transparent 20%),
     linear-gradient(180deg, rgba(8, 11, 20, 0.04), rgba(2, 6, 18, 0.98));
+}
+
+/* Winner reveal: royal purple, black and broadcast gold. */
+.season-finale--winner {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(184, 137, 255, 0.22), transparent 30%),
+    radial-gradient(circle at 12% 80%, rgba(92, 36, 145, 0.28), transparent 35%),
+    linear-gradient(180deg, #160d27 0%, #08050e 78%, #020207 100%);
+}
+
+.season-finale__winner-card {
+  border-color: rgba(226, 190, 92, 0.68);
+  background:
+    linear-gradient(145deg, rgba(111, 54, 169, 0.36), rgba(34, 14, 52, 0.16) 56%, rgba(0, 0, 0, 0.3)),
+    rgba(8, 5, 16, 0.96);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.7), 0 0 90px rgba(121, 55, 189, 0.28), 0 0 24px rgba(232, 194, 93, 0.12);
+}
+
+.season-finale__eyebrow { color: #f1cf75; }
+
+.season-finale__winner-portrait {
+  background: linear-gradient(135deg, #fff0a6, #bd8730 42%, #7d3bb2 78%, #241033);
+  box-shadow: 0 0 0 6px rgba(232, 194, 93, 0.14), 0 0 34px rgba(137, 68, 211, 0.38), 0 20px 40px rgba(0, 0, 0, 0.58);
+}
+
+.season-finale__button {
+  background: linear-gradient(110deg, #b77a24, #f4d77e 48%, #8b4ec3);
+  box-shadow: 0 12px 30px rgba(190, 133, 43, 0.32), 0 0 22px rgba(139, 78, 195, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .season-finale__trophy { animation: none; }
 }

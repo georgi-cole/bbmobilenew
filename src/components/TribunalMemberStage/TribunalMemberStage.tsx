@@ -22,6 +22,7 @@ import { PUBLIC_JUROR_ID } from '../../store/finaleSlice'
 import {
   resolveFormalCutout,
   resolveFullSizeCutoutFallback,
+  resolveInformalCutout,
   resolveSilhouetteFallback,
 } from '../../utils/avatar'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
@@ -55,12 +56,26 @@ function PublicCutoutPlaceholder() {
 }
 
 function SilhouetteAvatar({ player }: { player: Player }) {
+  const [silhouetteFailed, setSilhouetteFailed] = useState(false)
+
+  if (silhouetteFailed) {
+    return (
+      <PlayerAvatar
+        player={player}
+        size="sm"
+        showRelationshipOutline={false}
+        showEvictedStyle={false}
+      />
+    )
+  }
+
   return (
     <img
       className="tms-vote-prompt__avatar"
       src={resolveSilhouetteFallback(player)}
       alt={player.name}
       draggable={false}
+      onError={() => setSilhouetteFailed(true)}
     />
   )
 }
@@ -113,7 +128,19 @@ export default function TribunalMemberStage({
   if (!current && !awaitingHumanPlayer) return null
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID
-  const formalSrc = current && !isPublic ? resolveFormalCutout(current.juror) : null
+  const isSol =
+    current &&
+    !isPublic &&
+    (current.juror.id.toLowerCase() === 'sol' || current.juror.name.toLowerCase() === 'sol')
+  // Sol_formal.png is a black silhouette asset. Use Sol's visible full-body
+  // informal cutout for this cinematic instead of presenting an unreadable
+  // shadow on the Tribunal stage.
+  const formalSrc =
+    current && !isPublic
+      ? isSol
+        ? resolveInformalCutout(current.juror) ?? resolveFormalCutout(current.juror)
+        : resolveFormalCutout(current.juror)
+      : null
   const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null
   const cutoutSrc =
     current && !isPublic

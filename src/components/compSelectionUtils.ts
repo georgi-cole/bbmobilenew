@@ -27,6 +27,8 @@
  * - `bracket-template`   – select from the default bracket template pool for the
  *                          current player count and competition type (LOH/POS).
  *                          Falls back to random selection when the bracket pool is empty.
+ * - `competition-map`    – follow the competition map's declared order for the
+ *                          current day, roster size, phase, and LOH/POS slot.
  */
 export type CompSelectionMode =
   | 'random-games'
@@ -39,7 +41,8 @@ export type CompSelectionMode =
   | 'retired'
   | 'misc'
   | 'unique'
-  | 'bracket-template';
+  | 'bracket-template'
+  | 'competition-map';
 
 /** A competition entry returned by fetchGames(). */
 export interface CompGame {
@@ -57,7 +60,7 @@ export interface CompGame {
 
 /** Shape of the save payload sent to onSave(). */
 export interface CompSelectionPayload {
-  /** Selection strategy for the challenge scheduler. Defaults to `'unique'`. */
+  /** Selection strategy for the challenge scheduler. Defaults to `'competition-map'`. */
   mode?: CompSelectionMode;
   /**
    * Registry key of the single game to always use.

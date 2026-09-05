@@ -46,9 +46,15 @@ export default function JurorBubble({
       ]
         .filter(Boolean)
         .join(' ')}
+      data-juror-id={juror.id}
     >
       {isFlashing && <div className="jb-flash-ring" aria-hidden="true" />}
-      <PlayerAvatar player={juror} size="sm" showRelationshipOutline={false} />
+      <PlayerAvatar
+        player={juror}
+        size="sm"
+        showRelationshipOutline={false}
+        showEvictedStyle={false}
+      />
       <div className="jb-body">
         <span className="jb-name">
           {juror.name}

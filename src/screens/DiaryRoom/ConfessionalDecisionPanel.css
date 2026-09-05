@@ -112,6 +112,15 @@
   line-height: 1.15;
 }
 
+.cdp-option__name--pair {
+  display: grid;
+  gap: 1px;
+}
+
+.cdp-option__name--pair > span {
+  display: block;
+}
+
 .cdp-option__avatar {
   display: inline-flex;
   flex: 0 0 auto;
@@ -171,6 +180,12 @@
     min-width: 0;
     padding-inline: 0.58rem;
     border-radius: 1rem;
+  }
+
+  .cdp-option__name {
+    min-width: 0;
+    font-size: 0.78rem;
+    line-height: 1.18;
   }
 }
 

@@ -92,6 +92,8 @@ type Props = {
   depressionActive?: boolean
   /** One-morning recovery animation after the storm breaks. */
   depressionRecovery?: boolean
+  /** A restrained live-elimination rim light for the current nominees. */
+  liveEvictionNominee?: boolean
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -182,6 +184,7 @@ export default function AvatarTile({
   cupidLoveReturning = false,
   depressionActive = false,
   depressionRecovery = false,
+  liveEvictionNominee = false,
 }: Props) {
   const depressionShockPortraitMode = React.useSyncExternalStore(
     subscribeDepressionShockPortraitMode,
@@ -463,6 +466,7 @@ export default function AvatarTile({
             cupidLoveReturning ? styles.cupidLoveReturning : '',
             depressionActive ? styles.depressionAvatarWrap : '',
             depressionRecovery ? styles.depressionRecoveryWrap : '',
+            liveEvictionNominee ? styles.liveEvictionNominee : '',
             nominationCeremonyState ? styles[`nomination_${nominationCeremonyState}`] : '',
           ]
             .filter(Boolean)

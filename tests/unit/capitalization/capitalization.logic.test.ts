@@ -193,7 +193,7 @@ describe('Capitalization AI and eliminations', () => {
     expect(computeCapitalizationQuestionScore(performance)).toBe(0);
   });
 
-  it('eliminates roughly thirty percent of the lowest-scoring AI players and preserves the human', () => {
+  it('eliminates roughly thirty percent of the lowest-scoring active players, including the human', () => {
     const participants = [
       { id: 'human', name: 'You', isHuman: true, precomputedScore: 0 },
       ...Array.from({ length: 10 }, (_, index) => ({
@@ -205,15 +205,15 @@ describe('Capitalization AI and eliminations', () => {
     ];
     const standings = createCapitalizationStandings(participants).map((standing) => ({
       ...standing,
-      cumulativeScore: standing.isHuman ? 1 : Number(standing.participantId.replace('ai-', '')),
+      cumulativeScore: standing.isHuman ? -1 : Number(standing.participantId.replace('ai-', '')),
     }));
 
     const result = eliminateCapitalizationField(standings, 3);
     const ranked = rankCapitalizationStandings(result.standings);
 
-    expect(result.eliminatedIds).toHaveLength(3);
-    expect(result.eliminatedIds).toEqual(['ai-0', 'ai-1', 'ai-2']);
-    expect(result.eliminatedIds).not.toContain('human');
+    expect(result.eliminatedIds).toHaveLength(4);
+    expect(result.eliminatedIds).toEqual(['human', 'ai-0', 'ai-1', 'ai-2']);
+    expect(result.eliminatedIds).toContain('human');
     expect(ranked[ranked.length - 1].eliminatedAfterQuestion).toBe(3);
   });
 });

@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Player } from '../../types';
-import { resolveAvatarCandidates, resolveSilhouetteFallback, isEmoji } from '../../utils/avatar';
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import './ChatOverlay.css';
 
 export interface ChatLine {
@@ -71,7 +71,7 @@ function ChatAvatar({ player }: { player: Player }) {
   // Emoji avatars (including the finale host microphone) are intentional
   // artwork, not filenames. Render them directly so the resolver cannot try
   // a speculative `Host_avatar.webp` and show a broken thumbnail first.
-  if (isEmoji(avatar)) {
+  if (isEmoji(avatar) && player.id === 'host') {
     return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
   }
 
@@ -263,15 +263,7 @@ export default function ChatOverlay({
             >
               {showAvatars && line.player && (
                 <div className="chat-overlay__avatar">
-                  {line.role === 'host' || line.role === 'user' ? (
-                    <img
-                      className="chat-overlay__avatar-img"
-                      src={resolveSilhouetteFallback(line.player)}
-                      alt={line.player.name}
-                    />
-                  ) : (
-                    renderAvatar(line.player)
-                  )}
+                  {renderAvatar(line.player)}
                 </div>
               )}
               <div className="chat-overlay__bubble">

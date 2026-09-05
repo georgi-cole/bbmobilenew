@@ -289,7 +289,7 @@ describe('IncomingInteractionsInbox', () => {
 
     const actions = [...document.querySelectorAll('.inbox-action')]
     expect(actions).toHaveLength(4)
-    expect(new Set(actions.map((element) => element.className))).toHaveLength(1)
+    expect(new Set(actions.map((element) => element.className))).toHaveLength(4)
     expect(document.querySelector('.inbox-action small')).toBeNull()
     expect(screen.queryByText(/Sets a clear boundary and damages trust/i)).not.toBeInTheDocument()
   })

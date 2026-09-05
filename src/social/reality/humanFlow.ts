@@ -142,6 +142,62 @@ function playerName(state: RootState, playerId: string | null | undefined): stri
 }
 
 /**
+ * A Cupid pair does not share a single opinion, but they are unusually likely
+ * to compare notes.  Let a meaningful one-on-one interaction lightly colour
+ * the human's connection with the other half of that pair.
+ */
+function applyCupidPartnerRipple(
+  dispatch: AppDispatch,
+  state: RootState,
+  actorId: string,
+  targetIds: readonly string[],
+  targetDeltas: Record<string, number> | undefined,
+  fallbackDelta: number
+): string | null {
+  if (!state.game.cupidArrow || targetIds.length === 0) return null
+  const targetSet = new Set(targetIds)
+  const echoedPartnerIds = new Set<string>()
+
+  for (const targetId of targetIds) {
+    const partnerId = getCupidPartnerId(state.game, targetId)
+    if (
+      !partnerId ||
+      partnerId === actorId ||
+      targetSet.has(partnerId) ||
+      echoedPartnerIds.has(partnerId)
+    ) {
+      continue
+    }
+    const directDelta = targetDeltas?.[targetId] ?? fallbackDelta
+    if (!Number.isFinite(directDelta) || Math.abs(directDelta) < 2) continue
+    const echoDelta = Math.sign(directDelta) * Math.max(1, Math.round(Math.abs(directDelta) * 0.35))
+    dispatch(
+      updateRelationship({
+        source: actorId,
+        target: partnerId,
+        delta: echoDelta,
+        tags: ['cupid_ripple'],
+        actionSource: 'manual',
+      })
+    )
+    dispatch(
+      updateRelationship({
+        source: partnerId,
+        target: actorId,
+        delta: Math.sign(echoDelta) * Math.max(1, Math.round(Math.abs(echoDelta) * 0.5)),
+        tags: ['cupid_ripple'],
+        actionSource: 'manual',
+      })
+    )
+    echoedPartnerIds.add(partnerId)
+  }
+
+  if (echoedPartnerIds.size === 0) return null
+  const names = [...echoedPartnerIds].map((id) => playerName(state, id))
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+}
+
+/**
  * The generic narrative used to keep describing a hypothetical Safety change
  * after the ceremony had already locked. Build the reply from the authoritative
  * block and persisted LOH plan instead.
@@ -433,6 +489,16 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         })
       )
     }
+    const cupidRipplePartnerNames = succeeded
+      ? applyCupidPartnerRipple(
+          dispatch,
+          state,
+          input.actorId,
+          targetIds,
+          compatibility.targetDeltas,
+          compatibility.delta
+        )
+      : null
     const baseSummary =
       input.actionId === 'warn_about_danger' && succeeded
         ? dangerWarningDiscovered
@@ -445,7 +511,11 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         : compatibility.summary
     return {
       ...compatibility,
-      summary: buildLohConsultationSummary(state, input, baseSummary),
+      summary: `${buildLohConsultationSummary(state, input, baseSummary)}${
+        cupidRipplePartnerNames
+          ? ` The exchange is likely to travel through the Cupid bond to ${cupidRipplePartnerNames}.`
+          : ''
+      }`,
       label: orchestration.response?.kind ?? compatibility.label,
       score: orchestration.score?.total ?? compatibility.score,
     }

@@ -408,12 +408,39 @@ export default function FinalFaceoff() {
     socialReality,
   ])
 
-  // ── Auto-scroll jury list ──────────────────────────────────────────────
+  // ── Keep the currently revealed voter in view ──────────────────────────
   useEffect(() => {
-    if (jurorListRef.current) {
-      jurorListRef.current.scrollTop = jurorListRef.current.scrollHeight
+    const list = jurorListRef.current
+    if (!list || revealed.length === 0) return
+
+    // The flashing juror is the vote currently being attributed. During the
+    // brief state transition before the flash is set, the newest reveal is
+    // the correct fallback target.
+    const activeJurorId = flashingJurorId ?? revealed[revealed.length - 1]?.jurorId
+    if (!activeJurorId) return
+
+    const activeBubble = Array.from(list.querySelectorAll<HTMLElement>('[data-juror-id]')).find(
+      (element) => element.dataset.jurorId === activeJurorId
+    )
+    if (!activeBubble) return
+
+    const padding = 8
+    const targetTop = activeBubble.offsetTop
+    const targetBottom = targetTop + activeBubble.offsetHeight
+    const visibleTop = list.scrollTop
+    const visibleBottom = visibleTop + list.clientHeight
+    let nextScrollTop = visibleTop
+
+    if (targetTop < visibleTop) {
+      nextScrollTop = Math.max(0, targetTop - padding)
+    } else if (targetBottom > visibleBottom) {
+      nextScrollTop = targetBottom - list.clientHeight + padding
     }
-  }, [revealed.length])
+
+    if (nextScrollTop !== visibleTop) {
+      list.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
+    }
+  }, [flashingJurorId, revealed])
 
   if (!finale.isActive) return null
 

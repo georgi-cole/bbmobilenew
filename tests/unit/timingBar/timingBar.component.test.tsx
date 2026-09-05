@@ -179,7 +179,7 @@ describe('TimingBar', () => {
       players,
     );
 
-    expect(screen.getByText(/Round 1 • 2 players/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 1' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Begin Round 1 ▶' }));
 

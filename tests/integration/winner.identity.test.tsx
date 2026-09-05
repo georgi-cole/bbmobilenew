@@ -55,6 +55,7 @@ import GameScreen from '../../src/screens/GameScreen/GameScreen';
 let capturedOnDone:
   ((rawValue: number, partial?: boolean, completion?: { authoritativeWinnerId?: string | null }) => void)
   | null = null;
+let capturedCeremonyOnDone: (() => void) | null = null;
 
 vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
   default: ({
@@ -77,6 +78,13 @@ vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: () => <div data-testid="tv-zone" />,
+}));
+
+vi.mock('../../src/components/WinnerTileLiftAnimation/WinnerTileLiftAnimation', () => ({
+  default: ({ onDone }: { onDone: () => void }) => {
+    capturedCeremonyOnDone = onDone;
+    return null;
+  },
 }));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -184,6 +192,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
   beforeEach(() => {
     vi.useFakeTimers();
     capturedOnDone = null;
+    capturedCeremonyOnDone = null;
   });
 
   afterEach(() => {
@@ -316,6 +325,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     await act(async () => {
       capturedOnDone!(1000);
     });
+    await act(async () => { capturedCeremonyOnDone?.(); });
 
     // Some winner must be applied (the score-based path picks p0 or highest scorer).
     expect(store.getState().game.lohId).not.toBeNull();
@@ -335,6 +345,7 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
     await act(async () => {
       capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' });
     });
+    await act(async () => { capturedCeremonyOnDone?.(); });
 
     expect(store.getState().game.lohId).toBe('p2');
     expect(store.getState().game.phase).toBe('loh_results');

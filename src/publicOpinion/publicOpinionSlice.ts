@@ -1,6 +1,7 @@
 import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
 import { publicOpinionConfig } from './publicOpinionConfig';
 import { createPublicNarrative } from './publicNarratives';
+import { applyAudienceApprovalDelta, createAudienceBreakdown } from './audienceBreakdown';
 import type {
   PublicOpinionState,
   PlayerPublicProfile,
@@ -41,15 +42,17 @@ function applyDirectionCompletionRewards(
 
   profile.completedDirectionCount += 1;
   const delta = publicOpinionConfig.directionRewards.success;
+  const applied = applyAudienceApprovalDelta(profile, {
+    delta,
+    reason: 'direction_completed',
+    week,
+  });
   profile.previousApproval = profile.approval;
-  const newApproval = Math.min(
-    publicOpinionConfig.MAX_APPROVAL,
-    Math.max(publicOpinionConfig.MIN_APPROVAL, profile.approval + delta),
-  );
-  profile.approval = newApproval;
-  profile.seasonApprovals.push(newApproval);
-  if (delta > 0) {
-    profile.cumulativePositiveDelta += delta;
+  profile.audienceBreakdown = applied.breakdown;
+  profile.approval = applied.approval;
+  profile.seasonApprovals.push(applied.approval);
+  if (applied.appliedDelta > 0) {
+    profile.cumulativePositiveDelta += applied.appliedDelta;
   }
   state.lastUpdatedWeek = week;
 
@@ -62,9 +65,10 @@ function applyDirectionCompletionRewards(
       delta,
       week,
     }),
-    delta,
+    delta: applied.appliedDelta,
     week,
     timestamp: Date.now(),
+    reason: 'direction_completed',
   };
   state.feed.unshift(feedEntry);
   if (state.feed.length > 50) {
@@ -78,8 +82,12 @@ const publicOpinionSlice = createSlice({
   name: 'publicOpinion',
   initialState,
   reducers: {
-    initializeProfiles(state, action: PayloadAction<string[]>) {
-      for (const playerId of action.payload) {
+    initializeProfiles(
+      state,
+      action: PayloadAction<Array<string | { id: string; aiGameIdentity?: { archetype?: string; audienceFocus?: number; competitionDrive?: number } }>>,
+    ) {
+      for (const entry of action.payload) {
+        const playerId = typeof entry === 'string' ? entry : entry.id;
         if (!state.profiles[playerId]) {
           state.profiles[playerId] = {
             playerId,
@@ -88,6 +96,10 @@ const publicOpinionSlice = createSlice({
             seasonApprovals: [publicOpinionConfig.DEFAULT_APPROVAL],
             completedDirectionCount: 0,
             cumulativePositiveDelta: 0,
+            audienceBreakdown: createAudienceBreakdown(
+              publicOpinionConfig.DEFAULT_APPROVAL,
+              typeof entry === 'string' ? undefined : entry.aiGameIdentity,
+            ),
           };
         }
       }
@@ -103,6 +115,14 @@ const publicOpinionSlice = createSlice({
           Math.max(publicOpinionConfig.MIN_APPROVAL, Math.round(rawApproval)),
         );
 
+        const currentBreakdown = profile.audienceBreakdown ?? createAudienceBreakdown(profile.approval);
+        const shift = approval - profile.approval;
+        profile.audienceBreakdown = {
+          charisma: Math.min(100, Math.max(0, currentBreakdown.charisma + shift)),
+          gameplay: Math.min(100, Math.max(0, currentBreakdown.gameplay + shift)),
+          integrity: Math.min(100, Math.max(0, currentBreakdown.integrity + shift)),
+          recentChanges: [],
+        };
         profile.previousApproval = approval;
         profile.approval = approval;
         profile.seasonApprovals = [approval];
@@ -130,6 +150,8 @@ const publicOpinionSlice = createSlice({
          * (e.g. the LOH who nominated the subject).
          */
         attributedToId?: string;
+        /** A small seeded audience-mood adjustment supplied by the middleware. */
+        audienceVariance?: number;
       }>,
     ) {
       const {
@@ -142,19 +164,23 @@ const publicOpinionSlice = createSlice({
         addToFeed = true,
         eventType,
         attributedToId,
+        audienceVariance = 0,
       } = action.payload;
       const profile = state.profiles[playerId];
       if (!profile) return;
 
+      const applied = applyAudienceApprovalDelta(profile, {
+        delta: delta + audienceVariance,
+        reason,
+        week,
+        eventType,
+      });
       profile.previousApproval = profile.approval;
-      const newApproval = Math.min(
-        publicOpinionConfig.MAX_APPROVAL,
-        Math.max(publicOpinionConfig.MIN_APPROVAL, profile.approval + delta),
-      );
-      profile.approval = newApproval;
-      profile.seasonApprovals.push(newApproval);
-      if (delta > 0) {
-        profile.cumulativePositiveDelta += delta;
+      profile.audienceBreakdown = applied.breakdown;
+      profile.approval = applied.approval;
+      profile.seasonApprovals.push(applied.approval);
+      if (applied.appliedDelta > 0) {
+        profile.cumulativePositiveDelta += applied.appliedDelta;
       }
       state.lastUpdatedWeek = week;
 
@@ -173,10 +199,11 @@ const publicOpinionSlice = createSlice({
         const feedEntry: PublicFeedEntry = {
           id: `${playerId}-${week}-${Date.now()}-${state.feed.length}`,
           playerId,
-          text: headlineText ?? createPublicNarrative({ reason, playerId, delta, week }),
-          delta,
+          text: headlineText ?? createPublicNarrative({ reason, playerId, delta: applied.appliedDelta, week }),
+          delta: applied.appliedDelta,
           week,
           timestamp: Date.now(),
+          reason,
           isHeadline: isHeadline ?? false,
           eventType,
           attributedToId,
@@ -224,13 +251,15 @@ const publicOpinionSlice = createSlice({
         const profile = state.profiles[direction.playerId];
         if (profile) {
           const delta = publicOpinionConfig.directionRewards.fail;
+          const applied = applyAudienceApprovalDelta(profile, {
+            delta,
+            reason: 'direction_failed',
+            week,
+          });
           profile.previousApproval = profile.approval;
-          const newApproval = Math.min(
-            publicOpinionConfig.MAX_APPROVAL,
-            Math.max(publicOpinionConfig.MIN_APPROVAL, profile.approval + delta),
-          );
-          profile.approval = newApproval;
-          profile.seasonApprovals.push(newApproval);
+          profile.audienceBreakdown = applied.breakdown;
+          profile.approval = applied.approval;
+          profile.seasonApprovals.push(applied.approval);
           state.lastUpdatedWeek = week;
 
           const feedEntry: PublicFeedEntry = {
@@ -239,12 +268,13 @@ const publicOpinionSlice = createSlice({
             text: createPublicNarrative({
               reason: 'direction_failed',
               playerId: direction.playerId,
-              delta,
+              delta: applied.appliedDelta,
               week,
             }),
             delta,
             week,
             timestamp: Date.now(),
+            reason: 'direction_failed',
           };
           state.feed.unshift(feedEntry);
           if (state.feed.length > 50) {

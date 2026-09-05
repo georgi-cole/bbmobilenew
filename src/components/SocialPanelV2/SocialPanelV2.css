@@ -90,6 +90,93 @@
     linear-gradient(135deg, #0d0718 0%, #180c29 100%);
 }
 
+.sp2-intel {
+  flex: 0 0 auto;
+  margin: 0.45rem 0.55rem 0;
+  border: 1px solid rgba(111, 175, 255, 0.18);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(40, 59, 92, 0.38), rgba(24, 17, 39, 0.72));
+  overflow: hidden;
+}
+
+.sp2-intel__summary {
+  min-height: 42px;
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sp2-intel__summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp2-intel__title {
+  color: #b9d7ff;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sp2-intel__title::before {
+  content: '◈';
+  margin-right: 0.38rem;
+  color: #78aef5;
+}
+
+.sp2-intel__count,
+.sp2-intel__day,
+.sp2-intel__source {
+  color: rgba(226, 232, 240, 0.55);
+  font-size: 0.66rem;
+  font-weight: 650;
+}
+
+.sp2-intel__list {
+  max-height: min(34dvh, 18rem);
+  padding: 0 0.55rem 0.55rem;
+  display: grid;
+  gap: 0.42rem;
+  overflow-y: auto;
+}
+
+.sp2-intel__lead {
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(5, 8, 17, 0.52);
+}
+
+.sp2-intel__lead-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sp2-intel__confidence {
+  font-size: 0.59rem;
+  font-weight: 850;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.sp2-intel__confidence--unverified { color: #c4b5fd; }
+.sp2-intel__confidence--credible { color: #93c5fd; }
+.sp2-intel__confidence--confirmed { color: #86efac; }
+
+.sp2-intel__lead p {
+  margin: 0.26rem 0 0.18rem;
+  color: rgba(248, 250, 252, 0.9);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .sp2-header__title {
   flex: 0 0 auto;
   transform: translateY(0.1rem);
@@ -179,6 +266,55 @@
 /* HousePulse owns its internal visuals. This keeps its summary from crowding the sheet. */
 .house-pulse__summary {
   flex: 0 0 auto;
+}
+
+.sp2-public-request {
+  display: grid;
+  gap: 0.26rem;
+  margin: 0.45rem 0.55rem 0;
+  padding: 0.68rem 0.75rem;
+  border: 1px solid rgba(137, 122, 255, 0.52);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(126, 81, 255, 0.22), transparent 56%),
+    rgba(40, 31, 73, 0.7);
+  box-shadow: 0 0 18px rgba(96, 72, 220, 0.14);
+  color: rgba(244, 242, 255, 0.92);
+}
+
+.sp2-public-request__eyebrow {
+  color: #c2b8ff;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sp2-public-request > span {
+  color: rgba(224, 219, 244, 0.72);
+  font-size: 0.75rem;
+}
+
+.sp2-public-request__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: #b8f1cf;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.sp2-public-request button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(203, 192, 255, 0.6);
+  border-radius: 999px;
+  padding: 0.34rem 0.58rem;
+  background: rgba(111, 88, 220, 0.42);
+  color: #fff;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
 }
 
 .sp2-body {

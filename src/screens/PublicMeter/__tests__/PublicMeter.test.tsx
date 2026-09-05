@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Route, Routes } from 'react-router';
@@ -70,5 +70,15 @@ describe('PublicMeter tabs', () => {
     expect(screen.queryByText('Your Approval')).toBeNull();
     expect(screen.getAllByText('Public Requests').length).toBeGreaterThan(0);
     expect(screen.queryByText('Win the next competition!')).not.toBeNull();
+  });
+
+  it('opens the audience dossier from the hero', () => {
+    renderPublicMeter('/public-meter');
+    fireEvent.click(screen.getByRole('button', { name: /open your audience dossier/i }));
+
+    expect(screen.getByRole('dialog', { name: /you/i })).not.toBeNull();
+    expect(screen.getByText('Charisma')).not.toBeNull();
+    expect(screen.getByText('Game')).not.toBeNull();
+    expect(screen.getByText('Integrity')).not.toBeNull();
   });
 });

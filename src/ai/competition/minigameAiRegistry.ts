@@ -497,7 +497,7 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_HYBRID,
     weights: WEIGHTS_HYBRID,
     minScore: 0,
-    maxScore: 2000,
+    maxScore: 2300,
     notes: 'VIP remaster preserves the original Find Your Twin scoring model.',
   },
   castleRescue2Remastered: {
@@ -507,7 +507,7 @@ export const minigameAiRegistry: Record<string, MinigameAiModel> = {
     volatility: VOLATILITY_HYBRID,
     weights: WEIGHTS_HYBRID,
     minScore: 0,
-    maxScore: 2000,
+    maxScore: 2300,
     notes: 'VIP remaster preserves the Find Your Twin 2 scoring model.',
   },
   glass_bridge_brutal: {

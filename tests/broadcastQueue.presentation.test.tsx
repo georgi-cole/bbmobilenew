@@ -5,7 +5,9 @@ import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import TvZone from '../src/components/ui/TvZone'
+import SeasonStartOnboardingController from '../src/onboarding/SeasonStartOnboardingController'
 import gameReducer, {
+  addTvEvent,
   addCustomBroadcast,
   consumeBroadcastEvent,
   setPhase,
@@ -42,6 +44,72 @@ function makeStore() {
 }
 
 describe('manager-driven faux-TV queue', () => {
+  it.each([
+    ['vox_populi', 'VOX POPULI is now in force.'],
+    ['cupid_arrow', 'Cupid has chosen the pairs.'],
+  ] as const)(
+    'shows %s fullscreen before the forced season welcome reaches the faux TV',
+    async (major, activationText) => {
+      const store = makeStore()
+      for (const id of store.getState().game.broadcastQueue ?? []) {
+        store.dispatch(consumeBroadcastEvent(id))
+      }
+      const { phase, week } = store.getState().game
+      store.dispatch(
+        addTvEvent({
+          text: activationText,
+          type: 'twist',
+          meta: {
+            phase,
+            week,
+            broadcastManaged: true,
+            broadcastLevel: 'critical',
+            broadcastPriority: 'critical',
+            forceOnTv: true,
+            major,
+          },
+        })
+      )
+      store.dispatch(
+        addTvEvent({
+          text: 'Welcome to The Big Eye. Season 2 begins now.',
+          type: 'game',
+          meta: {
+            phase,
+            week,
+            broadcastManaged: true,
+            broadcastLevel: 'minor',
+            forceOnTv: true,
+            seasonOnboardingWelcome: true,
+          },
+        })
+      )
+
+      render(
+        <I18nContext.Provider value={TEST_I18N}>
+          <Provider store={store}>
+            <MemoryRouter>
+              <TvZone />
+              <SeasonStartOnboardingController />
+            </MemoryRouter>
+          </Provider>
+        </I18nContext.Provider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('shock-intro-overlay')).toBeInTheDocument()
+      })
+      act(() => {
+        window.dispatchEvent(new CustomEvent('ui:playPressed', { cancelable: true }))
+      })
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'Live game events display' })).toHaveTextContent(
+          'Welcome to The Big Eye. Season 2 begins now.'
+        )
+      })
+    }
+  )
+
   it('does not retain a consumed forced-minor message after its phase ends', async () => {
     const store = makeStore()
     for (const id of store.getState().game.broadcastQueue ?? []) {

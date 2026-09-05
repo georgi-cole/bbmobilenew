@@ -92,7 +92,7 @@ describe('GridOfLuck component', () => {
     expect(playerCards[2]).toHaveAccessibleName(/vex 500 lp/i);
   });
 
-  it('prefers local png avatar candidates for named houseguests', () => {
+  it('prefers the lighter local WebP avatar candidates for named houseguests', () => {
     render(
       <GridOfLuck
         participants={[
@@ -105,7 +105,7 @@ describe('GridOfLuck component', () => {
       />,
     );
 
-    expect(screen.getByAltText('Kian').getAttribute('src')).toContain('assets/skins/Kian_avatar.webp');
-    expect(screen.getByAltText('Aria').getAttribute('src')).toContain('assets/skins/Aria_avatar.webp');
+    expect(screen.getByAltText('Kian').getAttribute('src')).toContain('assets/skins/backup-grey-lux/Kian_avatar.webp');
+    expect(screen.getByAltText('Aria').getAttribute('src')).toContain('assets/skins/backup-grey-lux/Aria_avatar.webp');
   });
 });

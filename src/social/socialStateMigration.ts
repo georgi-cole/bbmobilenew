@@ -58,6 +58,7 @@ function cloneInitialState(): SocialState {
     weekStartRelSnapshot: {},
     realitySimulation: normalizeRealitySimulationState(undefined),
     reality: normalizeRealityDomainState(undefined),
+    intelligenceDeliveries: [],
   }
 }
 
@@ -87,6 +88,9 @@ export function migrateSocialState(raw: SocialState): SocialState {
     relationships: normalizeRelationshipsForTags(input.relationships ?? {}),
     sessionLogs: Array.isArray(input.sessionLogs) ? input.sessionLogs : [],
     actionHistory: (legacyHistory as SocialActionLogEntry[]).slice(-historyLimit),
+    intelligenceDeliveries: Array.isArray(input.intelligenceDeliveries)
+      ? input.intelligenceDeliveries.slice(-120)
+      : [],
     incomingInteractions: Array.isArray(input.incomingInteractions)
       ? input.incomingInteractions.map((interaction) =>
           normalizeIncomingInteractionContract(interaction)

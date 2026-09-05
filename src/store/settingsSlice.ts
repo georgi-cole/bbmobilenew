@@ -144,7 +144,7 @@ function normalizeCompSelection(
   }
 
   if (compSelection?.mode === undefined || isLegacyEmptyUserSelection(compSelection)) {
-    merged.mode = 'unique'
+    merged.mode = 'competition-map'
   }
 
   return merged
@@ -220,7 +220,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
     dramaModeAdminOverride: false,
     castSize: 16,
     compSelection: {
-      mode: 'unique' as const,
+      mode: 'competition-map' as const,
       enabledIds: [],
       weeklyLimit: null,
       filterCategory: null,

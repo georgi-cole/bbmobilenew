@@ -230,6 +230,7 @@ export default function HouseguestGrid({
   const renderedHouseguests = useMemo(() => {
     return houseguests
   }, [houseguests])
+  const liveEliminationActive = game.phase === 'live_vote' || game.phase === 'eviction_results'
   const headerSignal = occupancyLabel ?? `${renderedHouseguests.length}`
   const showSurvivorStandout = game.mode === 'survival' && overlaySelector === '.game-control-dock'
   const survivorStandout = useMemo(
@@ -354,7 +355,7 @@ export default function HouseguestGrid({
             <StatusPill
               variant="ghost"
               label={occupancyLabel}
-              ariaLabel={`${occupancyLabel} players`}
+              ariaLabel={`${occupancyLabel} housemates`}
             />
           )}
           {showRosterLogLauncher && (
@@ -432,6 +433,13 @@ export default function HouseguestGrid({
                   cupidLoveReturning={cupidReturnAnimating}
                   depressionRecovery={
                     game.depressionShock?.recoveryWeek === game.week && !hg.isEvicted
+                  }
+                  liveEvictionNominee={
+                    liveEliminationActive &&
+                    !hg.isEvicted &&
+                    (Array.isArray(hg.statuses) ? hg.statuses : hg.statuses?.split('+') ?? []).includes(
+                      'nominated'
+                    )
                   }
                 />
               </li>

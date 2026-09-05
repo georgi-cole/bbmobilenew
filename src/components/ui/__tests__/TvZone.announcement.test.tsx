@@ -225,7 +225,7 @@ describe('TvZone — announcement overlay', () => {
           makeEvent({
             id: 'critical-nomination-result',
             text: 'Lia is nominated with 6 votes. Ivy is nominated with 4 votes.',
-            meta: { week: 1, broadcastPriority: 'critical' },
+            meta: { week: 1, broadcastPriority: 'critical', forceOnTv: true },
           }),
         ),
       );
@@ -253,10 +253,10 @@ describe('TvZone — announcement overlay', () => {
       );
     });
 
-    expect(playWasAccepted).toBe(false);
+    expect(playWasAccepted).toBe(true);
 
     expect(document.querySelector('.tv-zone__now')?.textContent).toContain(
-      'A conversation is unfolding in the kitchen',
+      'Lia is nominated with 6 votes',
     );
   });
 

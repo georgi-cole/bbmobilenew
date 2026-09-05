@@ -8,6 +8,7 @@ import { mulberry32 } from '../../store/rng';
 import { minigameAiRegistry } from './minigameAiRegistry';
 import { simulateQuickTapAiScore as simulateQuickTapAiScore_ } from './quickTapSimulation';
 import { simulateSnakeAiScore as simulateSnakeAiScore_ } from './snakeAiSimulator';
+import { competitionIdentityMultiplier, type AiGameIdentity, type AiIdentityMode } from '../aiGameIdentity';
 import type {
   CompetitionSeasonState,
   CompetitionSkillProfile,
@@ -641,6 +642,27 @@ export interface SimulateMinigameAiScoreArgs {
   timeLimitMs?: number;
   /** Pre-resolved model; if omitted it is looked up from the registry. */
   minigameModel?: MinigameAiModel;
+  /** Season identity influence; Social modes use this lightly, Survival uses it strongly. */
+  aiGameIdentity?: AiGameIdentity;
+  identityMode?: AiIdentityMode;
+}
+
+function applyIdentityToScore(
+  score: number,
+  gameKey: string,
+  seed: number,
+  playerId: string | undefined,
+  identity: AiGameIdentity | undefined,
+  mode: AiIdentityMode | undefined,
+  suppliedModel: MinigameAiModel | undefined,
+): number {
+  if (!identity || !mode) return score
+  const model = suppliedModel ?? getMinigameAiModel(gameKey)
+  const multiplier = competitionIdentityMultiplier(identity, mode, seed, playerId)
+  const adjusted = Math.round(score * multiplier)
+  const minimum = model.minScore ?? 0
+  const maximum = model.maxScore
+  return typeof maximum === 'number' ? Math.max(minimum, Math.min(maximum, adjusted)) : Math.max(minimum, adjusted)
 }
 
 /**
@@ -664,8 +686,10 @@ export function simulateMinigameAiScore({
   timeLimitSeconds,
   timeLimitMs,
   minigameModel,
+  aiGameIdentity,
+  identityMode,
 }: SimulateMinigameAiScoreArgs): number {
-  if (gameKey === 'castleRescue' || gameKey === 'castleRescue2') {
+  if (gameKey === 'castleRescue' || gameKey === 'castleRescue2' || gameKey === 'castleRescueRemastered' || gameKey === 'castleRescue2Remastered') {
     const resolvedProfile = profile ?? getDefaultCompetitionProfile();
     const baseAbility =
       (resolvedProfile.physical +
@@ -679,13 +703,13 @@ export function simulateMinigameAiScore({
     const difficulty: FindYourTwinExperimentDifficulty =
       adjustedAbility >= 62 ? 'competitive' : adjustedAbility <= 42 ? 'friendly' : 'balanced';
 
-    return simulateFindYourTwinCompetitionScore({
+    return applyIdentityToScore(simulateFindYourTwinCompetitionScore({
       seed,
       playerId,
       participantIndex,
       difficulty,
       timeLimitMs,
-    });
+    }), gameKey, seed, playerId, aiGameIdentity, identityMode, minigameModel);
   }
 
   if (gameKey === 'quickTap' || gameKey === 'laneRacers') {
@@ -695,26 +719,26 @@ export function simulateMinigameAiScore({
         : typeof timeLimitMs === 'number' && timeLimitMs > 0
           ? timeLimitMs / 1000
           : 30;
-    return simulateQuickTapAiScore_({
+    return applyIdentityToScore(simulateQuickTapAiScore_({
       seed,
       playerId,
       participantIndex,
       profile,
       timeLimitSeconds: timeLimit,
-    });
+    }), gameKey, seed, playerId, aiGameIdentity, identityMode, minigameModel);
   }
 
   if (gameKey === 'snake') {
-    return simulateSnakeAiScore_({
+    return applyIdentityToScore(simulateSnakeAiScore_({
       sessionSeed: seed,
       // simulateSnakeAiScore requires a non-undefined string; fall back to a
       // deterministic participant-index identifier when no playerId is provided.
       playerId: playerId ?? `participant-${participantIndex ?? 0}`,
       profile,
-    }).score;
+    }).score, gameKey, seed, playerId, aiGameIdentity, identityMode, minigameModel);
   }
 
-  return simulateAiPerformance({
+  return applyIdentityToScore(simulateAiPerformance({
     minigameKey: gameKey,
     seed,
     playerId,
@@ -723,7 +747,7 @@ export function simulateMinigameAiScore({
     minigameModel,
     seasonState,
     options: { timeLimitSeconds, timeLimitMs },
-  });
+  }), gameKey, seed, playerId, aiGameIdentity, identityMode, minigameModel);
 }
 
 export {

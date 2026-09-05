@@ -88,7 +88,7 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
 
   // ── Get closer to a player ──────────────────────────────────────────────
   get_closer: [
-    { eventType: 'positive_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'positive_social',   requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
     { eventType: 'showed_loyalty',    requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
     { eventType: 'apologized_to',     requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
@@ -110,7 +110,7 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
 
   // ── Repair relationship (standalone type alias) ─────────────────────────
   repair_relationship: [
-    { eventType: 'apologized_to',     requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'apologized_to',     requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'positive_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
     { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
@@ -146,30 +146,30 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
 
   // ── Break up an alliance ────────────────────────────────────────────────
   break_alliance: [
-    { eventType: 'broke_alliance',    requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
-    { eventType: 'betrayal',          requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'broke_alliance',    requiresRelatedTarget: true,  weight: 100 },
+    { eventType: 'betrayal',          requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'negative_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
     { eventType: 'spread_rumor',      requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
 
   // ── Reinforce an alliance ───────────────────────────────────────────────
   reinforce_alliance: [
-    { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
-    { eventType: 'showed_loyalty',    requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
+    { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: 100 },
+    { eventType: 'showed_loyalty',    requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'positive_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
     { eventType: 'saved_from_block',  requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
 
   // ── Align with a player ─────────────────────────────────────────────────
   align_with: [
-    { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'formed_alliance',   requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'positive_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
     { eventType: 'showed_loyalty',    requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],
 
   // ── Confront a rival ────────────────────────────────────────────────────
   confront_player: [
-    { eventType: 'confronted_player', requiresRelatedTarget: true,  weight: publicOpinionConfig.missionDirectProgressWeight },
+    { eventType: 'confronted_player', requiresRelatedTarget: true,  weight: 100 },
     { eventType: 'negative_social',   requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
     { eventType: 'spread_rumor',      requiresRelatedTarget: true,  weight: publicOpinionConfig.missionIndirectProgressWeight },
   ],

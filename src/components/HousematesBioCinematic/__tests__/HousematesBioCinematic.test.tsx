@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import HousematesBioCinematic from '../HousematesBioCinematic';
 
@@ -35,10 +35,10 @@ vi.mock('../../../services/sound/cinematicAudio', () => ({
 }));
 
 describe('Housemates archive', () => {
-  it('changes from an intro segment into a browseable map and side-by-side profile', () => {
+  it('changes from an intro segment into a browseable map and side-by-side profile', async () => {
     render(<HousematesBioCinematic onComplete={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /enter the house/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /aria/i })).toBeInTheDocument());
     const ariaNode = screen.getByRole('button', { name: /aria/i });
     fireEvent.click(ariaNode);
 

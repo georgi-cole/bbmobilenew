@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useAppSelector } from '../../store/hooks'
 import {
@@ -7,7 +7,12 @@ import {
   selectPublicFeed,
   selectAllDirections,
   publicOpinionConfig,
+  audienceMetricDescriptions,
+  audienceMetricLabels,
+  getAudienceArchetype,
+  getAudienceBreakdown,
   type PublicDirection,
+  type PublicFeedEntry,
 } from '../../publicOpinion'
 import type { Player } from '../../types'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
@@ -15,6 +20,7 @@ import './PublicMeter.css'
 
 const DICEBEAR_HOST = 'dicebear.com'
 type PublicMeterTab = 'overview' | 'requests'
+const audienceMetrics = ['charisma', 'gameplay', 'integrity'] as const
 
 function isDicebearAvatarUrl(candidateUrl: string): boolean {
   try {
@@ -80,6 +86,101 @@ function getFeedSignal(delta: number): { symbol: string; className: string; labe
     className: 'feed-entry__signal feed-entry__signal--neutral',
     label: 'steady',
   }
+}
+
+const backupGreyLuxFiles = new Set([
+  'Ali', 'Aria', 'Ash', 'Bea', 'Blue', 'Dex', 'Echo', 'Finn', 'Ivy', 'Jax', 'Kai',
+  'Kian', 'Lia', 'Lux', 'Nico', 'Noa', 'Nova', 'Pax', 'Quinn', 'Rae', 'Remy', 'Rey',
+  'Rune', 'Sol', 'Vee', 'Zed', 'mimi',
+])
+
+function getBackupGreyLuxAvatar(player: Player): string | null {
+  const fileName = player.name === 'Mimi' ? 'mimi' : player.name
+  if (!backupGreyLuxFiles.has(fileName)) return null
+  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+  return `${base}/assets/skins/backup-grey-lux/${fileName}_avatar.webp`
+}
+
+function pickMomentVariant(seed: string, variants: string[]): string {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (Math.imul(hash, 31) + seed.charCodeAt(index)) | 0
+  }
+  return variants[Math.abs(hash) % variants.length]
+}
+
+function getAudienceMoment(
+  entry: PublicFeedEntry,
+  playerName: string,
+  attributedName?: string,
+): string {
+  const reason = `${entry.reason ?? ''} ${entry.eventType ?? ''}`.toLowerCase()
+  const actor = attributedName && attributedName !== playerName ? attributedName : null
+  const variants = (copy: string[]) => pickMomentVariant(`${entry.id}:${reason}`, copy)
+
+  if (/(challenge_quit|quit_early)/.test(reason)) {
+    return variants([
+      `${playerName} stepped away from the challenge early, and the feeds are asking whether the pressure finally got real.`,
+      `The challenge moved on without ${playerName}. Outside, viewers are already debating that early exit.`,
+    ])
+  }
+  if (/(last_place|weak_competition)/.test(reason)) {
+    return variants([
+      `${playerName} landed at the bottom of the board, and the audience has noticed the shaky finish.`,
+      `${playerName}'s competition night went sideways. The group chat is wondering where the fight went.`,
+    ])
+  }
+  if (/(strong_competition|hoh_win|immunity_win|pov_win)/.test(reason)) {
+    return variants([
+      `${playerName} owned the competition, and viewers are clocking a player who suddenly looks dangerous.`,
+      `${playerName} took control when it mattered. Outside, the “main character” comments are arriving fast.`,
+    ])
+  }
+  if (/(vote_promise_broken|conflicting_vote_promises)/.test(reason)) {
+    return `${playerName}'s words and vote did not match — and the audience caught every second of it.`
+  }
+  if (/(vote_promise_kept|showed_loyalty|loyal)/.test(reason)) {
+    return `${playerName} stood by their word when the room got tense. Viewers are calling it rare loyalty.`
+  }
+  if (/(betray|break_alliance)/.test(reason)) {
+    return actor
+      ? `${playerName} just cut loose from ${actor}, and the fallout is already becoming the house's biggest storyline.`
+      : `${playerName} just cut a loyalty loose, and the outside world is bracing for the fallout.`
+  }
+  if (/(rumor|conflict|confront|poor_social|negative_social)/.test(reason)) {
+    return `${playerName} has found themself in the middle of fresh house chatter — and viewers are not looking away.`
+  }
+  if (/(high_quality_social|social_warmth|positive_social|apolog|repair)/.test(reason)) {
+    return actor
+      ? `${playerName} and ${actor} were seen getting unusually close, and viewers loved the chemistry.`
+      : `${playerName} worked the room with real charm tonight. Outside, a quiet fan club is starting to form.`
+  }
+  if (/(nomination_backlash|nominated_target|nominated)/.test(reason)) {
+    return actor
+      ? `${actor}'s move put ${playerName} in the spotlight, and the audience is already picking sides.`
+      : `${playerName} is suddenly in the hot seat. The feeds are watching every reaction.`
+  }
+  if (/(direction_completed)/.test(reason)) {
+    return `${playerName} delivered the moment viewers were waiting for — a public request has landed.`
+  }
+  if (/(direction_failed)/.test(reason)) {
+    return `${playerName} let a public moment slip away, and the audience has definitely noticed.`
+  }
+  return variants([
+    `${playerName} just gave the outside world something new to talk about.`,
+    `Another ${playerName} moment is sparking fresh debate beyond the house walls.`,
+  ])
+}
+
+function getAudienceTriggerLabel(reason: string): string {
+  const signal = reason.toLowerCase()
+  if (/(competition|hoh|pov|immunity|last_place|quit_early)/.test(signal)) return 'Competition'
+  if (/(nomination|nominated|vote|evict)/.test(signal)) return 'Nominations'
+  if (/(betray|alliance|loyal|promise)/.test(signal)) return 'Alliance'
+  if (/(rumor|conflict|confront|drama)/.test(signal)) return 'Conflict'
+  if (/(social|warmth|interaction|apolog|repair|closer)/.test(signal)) return 'Social move'
+  if (/(direction_completed|direction_failed)/.test(signal)) return 'Public request'
+  return 'House moment'
 }
 
 function getApprovalToneClass(approval: number): string {
@@ -168,9 +269,11 @@ function PublicMeterAvatar({
 }) {
   const candidates = useMemo(() => {
     if (!player) return []
-    return resolveAvatarCandidates(player).filter(
+    const lighterPortrait = getBackupGreyLuxAvatar(player)
+    const resolvedCandidates = resolveAvatarCandidates(player).filter(
       (candidateUrl) => !isDicebearAvatarUrl(candidateUrl)
     )
+    return lighterPortrait ? [lighterPortrait, ...resolvedCandidates] : resolvedCandidates
   }, [player])
   const [candidateIndex, setCandidateIndex] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
@@ -219,6 +322,7 @@ function PublicMeterAvatar({
 export default function PublicMeter() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const publicOpinion = useAppSelector(selectPublicOpinion)
   const rankedProfiles = useAppSelector(selectRankedProfiles)
   const feed = useAppSelector(selectPublicFeed)
@@ -231,6 +335,10 @@ export default function PublicMeter() {
   const userFeed = useMemo(
     () => (userPlayer ? feed.filter((entry) => entry.playerId === userPlayer.id).slice(0, 4) : []),
     [feed, userPlayer]
+  )
+  const publicFeed = useMemo(
+    () => feed.filter((entry) => !userPlayer || entry.playerId !== userPlayer.id),
+    [feed, userPlayer],
   )
   const userActiveDirections = useMemo(
     () =>
@@ -252,6 +360,15 @@ export default function PublicMeter() {
   )
 
   const hasProfiles = Object.keys(publicOpinion.profiles).length > 0
+  const selectedProfile = selectedPlayerId ? publicOpinion.profiles[selectedPlayerId] : undefined
+  const selectedPlayer = selectedPlayerId
+    ? game.players.find((player) => player.id === selectedPlayerId)
+    : undefined
+  const selectedDirections = selectedPlayerId
+    ? allDirections.filter(
+        (direction) => direction.playerId === selectedPlayerId && direction.status === 'active'
+      )
+    : []
   const activePlayerIds = useMemo(
     () =>
       new Set(
@@ -273,19 +390,23 @@ export default function PublicMeter() {
           .filter(
             (direction) => direction.status === group.key && activePlayerIds.has(direction.playerId)
           )
-          .sort((left, right) => right.createdWeek - left.createdWeek),
+          .sort((left, right) => {
+            const leftIsUser = game.players.find((player) => player.id === left.playerId)?.isUser ? 1 : 0
+            const rightIsUser = game.players.find((player) => player.id === right.playerId)?.isUser ? 1 : 0
+            return rightIsUser - leftIsUser || right.createdWeek - left.createdWeek
+          }),
       })),
-    [activePlayerIds, allDirections]
+    [activePlayerIds, allDirections, game.players]
   )
   const requestedTab = searchParams.get('tab')
   const activeTab: PublicMeterTab = requestedTab === 'requests' ? 'requests' : 'overview'
 
   function handleTabChange(tab: PublicMeterTab) {
     if (tab === 'overview') {
-      setSearchParams({})
+      setSearchParams({}, { replace: true })
       return
     }
-    setSearchParams({ tab: 'requests' })
+    setSearchParams({ tab: 'requests' }, { replace: true })
   }
 
   if (!hasProfiles) {
@@ -296,7 +417,7 @@ export default function PublicMeter() {
           <button
             className="public-meter__back-btn"
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/game')}
             aria-label="Go back"
           >
             ↩
@@ -316,13 +437,14 @@ export default function PublicMeter() {
     <div className="public-meter">
       <div className="public-meter__header">
         <div className="public-meter__title-wrap">
+          <span className="public-meter__eyebrow">THE OUTSIDE WORLD</span>
           <h1 className="public-meter__title">📊 Public Meter</h1>
           <span className="public-meter__subtitle">The audience is always watching.</span>
         </div>
         <button
           className="public-meter__back-btn"
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/game')}
           aria-label="Go back"
         >
           ↩
@@ -370,45 +492,62 @@ export default function PublicMeter() {
 
       {activeTab === 'overview' && userProfile && userPlayer && (
         <div className="public-meter__section public-meter__section--hero">
-          <div className="public-meter__hero-head">
-            <div className="public-meter__hero-player">
-              <PublicMeterAvatar player={userPlayer} size="md" />
+          <div className="public-meter__on-air" aria-label="Audience feed is live">
+            <span className="public-meter__on-air-lamp" aria-hidden="true" />
+            <span>Audience Live</span>
+            <span className="public-meter__on-air-day">Day {game.week}</span>
+          </div>
+          <div className="public-meter__lens-stage">
+            <div
+              className="public-meter__lens"
+              style={{ '--approval': `${userProfile.approval}%` } as CSSProperties}
+              role="progressbar"
+              aria-label="Your public approval rating"
+              aria-valuenow={userProfile.approval}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="public-meter__lens-glass">
+                <PublicMeterAvatar player={userPlayer} size="md" />
+                <span className="public-meter__lens-score">{userProfile.approval}%</span>
+              </div>
+            </div>
+            <div className="public-meter__hero-copy">
               <div>
                 <h2 className="public-meter__section-title">Your Approval</h2>
                 <p className="public-meter__section-caption">
                   How the outside world feels right now.
                 </p>
               </div>
+              <div className="public-meter__verdict" aria-label="Current audience verdict">
+                <span>The crowd is</span>
+                <strong>{getApprovalBand(userProfile.approval)}</strong>
+              </div>
+              <div className="approval-bar__info">
+                {(() => {
+                  const trend = getTrend(userProfile.approval, userProfile.previousApproval)
+                  return (
+                    <span className={`approval-bar__trend ${trend.className}`}>
+                      {trend.symbol}
+                      {trend.diff !== 0 ? ` ${trend.diff > 0 ? '+' : ''}${trend.diff}` : ''}
+                    </span>
+                  )
+                })()}
+                <span className="approval-bar__band">{getApprovalBand(userProfile.approval)}</span>
+                {isInactivePlayer(userPlayer) && (
+                  <span className="public-meter__status-pill public-meter__status-pill--inactive">
+                    {userPlayer.status === 'jury' ? 'Tribunal phase' : 'Out of game'}
+                  </span>
+                )}
+              </div>
             </div>
-            {isInactivePlayer(userPlayer) && (
-              <span className="public-meter__status-pill public-meter__status-pill--inactive">
-                {userPlayer.status === 'jury' ? 'Tribunal phase' : 'Out of game'}
-              </span>
-            )}
           </div>
           <div className="approval-bar">
             <div
               className={`approval-bar__fill ${getApprovalToneClass(userProfile.approval)}`}
               style={{ width: `${userProfile.approval}%` }}
-              role="progressbar"
-              aria-label="Your public approval rating"
-              aria-valuenow={userProfile.approval}
-              aria-valuemin={0}
-              aria-valuemax={100}
+              aria-hidden="true"
             />
-          </div>
-          <div className="approval-bar__info">
-            <span className="approval-bar__percent">{userProfile.approval}%</span>
-            {(() => {
-              const trend = getTrend(userProfile.approval, userProfile.previousApproval)
-              return (
-                <span className={`approval-bar__trend ${trend.className}`}>
-                  {trend.symbol}
-                  {trend.diff !== 0 ? ` ${trend.diff > 0 ? '+' : ''}${trend.diff}` : ''}
-                </span>
-              )
-            })()}
-            <span className="approval-bar__band">{getApprovalBand(userProfile.approval)}</span>
           </div>
           <details className="public-meter__explain">
             <summary>What changed</summary>
@@ -417,11 +556,10 @@ export default function PublicMeter() {
                 <div className="public-meter__cause-list">
                   {userFeed.slice(0, 3).map((entry) => (
                     <span key={entry.id}>
-                      <strong className={entry.delta >= 0 ? 'trend--up' : 'trend--down'}>
-                        {entry.delta >= 0 ? '+' : ''}
-                        {entry.delta}
+                      <strong className={getFeedSignal(entry.delta).className} aria-hidden="true">
+                        {getFeedSignal(entry.delta).symbol}
                       </strong>{' '}
-                      {entry.text}
+                      {getAudienceMoment(entry, userPlayer.name)}
                     </span>
                   ))}
                 </div>
@@ -441,27 +579,37 @@ export default function PublicMeter() {
               </p>
             </div>
           </details>
+          <button
+            className="public-meter__dossier-link"
+            type="button"
+            onClick={() => setSelectedPlayerId(userPlayer.id)}
+          >
+            Open your audience dossier <span aria-hidden="true">→</span>
+          </button>
         </div>
       )}
 
       {activeTab === 'overview' && (
-        <div className="public-meter__section">
+        <div className="public-meter__section public-meter__section--rankings">
           <div className="public-meter__section-heading">
             <h2 className="public-meter__section-title">Public Rankings</h2>
             <span className="public-meter__section-caption">
               See how every remaining housemate is landing with the outside world.
             </span>
           </div>
-          <div className="ranking-list">
+          <div className="ranking-list" tabIndex={0} aria-label="Scrollable public rankings">
             {rankedProfiles.map((profile, index) => {
               const player = game.players.find((p) => p.id === profile.playerId)
               const isUser = player?.isUser ?? false
               const inactive = isInactivePlayer(player)
               const trend = getTrend(profile.approval, profile.previousApproval)
               return (
-                <div
+                <button
                   key={profile.playerId}
+                  type="button"
                   className={`ranking-row${isUser ? ' ranking-row--self' : ''}${inactive ? ' ranking-row--inactive' : ''}`}
+                  onClick={() => setSelectedPlayerId(profile.playerId)}
+                  aria-label={`Open ${player?.name ?? profile.playerId}'s audience dossier`}
                 >
                   <span className="ranking-row__rank">#{index + 1}</span>
                   <PublicMeterAvatar player={player} inactive={inactive} size="sm" />
@@ -475,7 +623,7 @@ export default function PublicMeter() {
                   </div>
                   <span className="ranking-row__approval">{profile.approval}%</span>
                   <span className={`ranking-row__trend ${trend.className}`}>{trend.symbol}</span>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -483,19 +631,22 @@ export default function PublicMeter() {
       )}
 
       {activeTab === 'overview' && (
-        <div className="public-meter__section">
+        <div className="public-meter__section public-meter__section--feed">
           <div className="public-meter__section-heading">
             <h2 className="public-meter__section-title">Public Feed</h2>
             <span className="public-meter__section-caption">
               Your visible choices shape the audience reaction.
             </span>
           </div>
-          {feed.length === 0 ? (
+          {publicFeed.length === 0 ? (
             <p className="public-meter__empty-note">No public activity yet this season.</p>
           ) : (
             <div className="feed-list">
-              {feed.slice(0, 20).map((entry) => {
+              {publicFeed.slice(0, 20).map((entry) => {
                 const player = game.players.find((p) => p.id === entry.playerId)
+                const attributedPlayer = entry.attributedToId
+                  ? game.players.find((candidate) => candidate.id === entry.attributedToId)
+                  : undefined
                 const signal = getFeedSignal(entry.delta)
                 return (
                   <div key={entry.id} className="feed-entry">
@@ -505,7 +656,9 @@ export default function PublicMeter() {
                       size="sm"
                     />
                     <div className="feed-entry__body">
-                      <span className="feed-entry__text">{entry.text}</span>
+                      <span className="feed-entry__text">
+                        {getAudienceMoment(entry, player?.name ?? entry.playerId, attributedPlayer?.name)}
+                      </span>
                       <span className="feed-entry__meta">Day {entry.week}</span>
                     </div>
                     <span
@@ -524,7 +677,7 @@ export default function PublicMeter() {
       )}
 
       {activeTab === 'requests' && (
-        <div className="public-meter__section">
+        <div className="public-meter__section public-meter__section--requests">
           <div className="public-meter__section-heading">
             <h2 className="public-meter__section-title">Public Requests</h2>
             <span className="public-meter__section-caption">
@@ -543,6 +696,7 @@ export default function PublicMeter() {
                       {group.items.map((direction) => {
                         const player = game.players.find((p) => p.id === direction.playerId)
                         const directionSignal = getDirectionSignal(direction)
+                        const isYourDirection = player?.isUser === true
                         return (
                           <div
                             key={direction.id}
@@ -567,6 +721,30 @@ export default function PublicMeter() {
                                 isVoxPopuli
                               )}
                             </p>
+                            {direction.status === 'active' && direction.rationale && (
+                              <p className="direction-card__rationale">Why now: {direction.rationale}</p>
+                            )}
+                            {direction.status === 'active' && direction.actionHint && (
+                              <p className="direction-card__action-hint">
+                                <strong>How:</strong> {direction.actionHint}
+                              </p>
+                            )}
+                            {direction.status === 'active' && isYourDirection && (
+                              <div
+                                className="direction-card__progress"
+                                role="progressbar"
+                                aria-label="Public request progress"
+                                aria-valuenow={direction.progressPercent ?? 0}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                              >
+                                <span style={{ width: `${direction.progressPercent ?? 0}%` }} />
+                                <small>
+                                  {direction.completionLabel ?? 'Complete the requested move'} ·{' '}
+                                  {direction.progressPercent ?? 0}%
+                                </small>
+                              </div>
+                            )}
                             <div className="direction-card__meta">
                               <span>{getDirectionWindowLabel(direction)}</span>
                               <span className={directionSignal.className}>
@@ -582,6 +760,83 @@ export default function PublicMeter() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {selectedProfile && (
+        <div className="audience-dossier__backdrop" role="presentation" onMouseDown={() => setSelectedPlayerId(null)}>
+          <section
+            className="audience-dossier"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="audience-dossier-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              className="audience-dossier__back"
+              type="button"
+              onClick={() => setSelectedPlayerId(null)}
+              aria-label="Close audience dossier"
+            >
+              <span aria-hidden="true">↩</span>
+            </button>
+            <div className="audience-dossier__identity">
+              <PublicMeterAvatar
+                player={selectedPlayer}
+                inactive={isInactivePlayer(selectedPlayer)}
+                size="md"
+              />
+              <div>
+                <span className="audience-dossier__eyebrow">Audience dossier</span>
+                <h2 id="audience-dossier-title">{selectedPlayer?.name ?? selectedProfile.playerId}</h2>
+                <span className="audience-dossier__archetype">{getAudienceArchetype(selectedProfile)}</span>
+              </div>
+              <strong className="audience-dossier__overall" aria-label="Overall audience rating">
+                {selectedProfile.approval}%
+                <small>overall</small>
+              </strong>
+            </div>
+
+            <div className="audience-dossier__metrics" aria-label="Audience rating breakdown">
+              {audienceMetrics.map((metric) => {
+                const breakdown = getAudienceBreakdown(selectedProfile)
+                const value = breakdown[metric]
+                return (
+                  <div key={metric} className={`audience-metric audience-metric--${metric}`}>
+                    <div className="audience-metric__heading">
+                      <span>{audienceMetricLabels[metric]}</span>
+                      <strong>{value}</strong>
+                    </div>
+                    <div className="audience-metric__track" aria-hidden="true">
+                      <span style={{ width: `${value}%` }} />
+                    </div>
+                    <p>{audienceMetricDescriptions[metric]}</p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {getAudienceBreakdown(selectedProfile).recentChanges[0] && (
+              <div className="audience-dossier__trigger">
+                <div className="audience-dossier__trigger-heading">
+                  <span>{getAudienceTriggerLabel(getAudienceBreakdown(selectedProfile).recentChanges[0].reason)}</span>
+                  <strong
+                    className={getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).className}
+                    aria-label={getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).label}
+                  >
+                    {getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).symbol}
+                  </strong>
+                </div>
+              </div>
+            )}
+
+            {selectedDirections.length > 0 && (
+              <div className="audience-dossier__request">
+                <span>Audience ask in play</span>
+                <strong>{getDirectionDescription(selectedDirections[0], game.players, game.lohId, isVoxPopuli)}</strong>
+              </div>
+            )}
+          </section>
         </div>
       )}
     </div>

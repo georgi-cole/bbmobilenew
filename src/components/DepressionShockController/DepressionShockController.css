@@ -1,5 +1,11 @@
 /* Day two alone loses most of its colour. */
-html[data-depression-shock='day2'] .game-screen-shell {
+html[data-depression-shock='day2'],
+html[data-depression-shock='day1'] {
+  --depression-shock-drain: 1;
+}
+
+html[data-depression-shock='day2'] .game-screen-shell,
+html[data-depression-shock='day2'] .game-screen-shell .game-screen__content {
   filter: saturate(0.4) brightness(0.88) contrast(1.04);
   transition: filter 1000ms ease;
 }

@@ -10,6 +10,8 @@ import gameReducer from '../src/store/gameSlice'
 import settingsReducer, { setGameUX } from '../src/store/settingsSlice'
 import vipReducer, { initializeVip } from '../src/store/vipSlice'
 import { restartApp } from '../src/utils/restartApp'
+import { I18nProvider } from '../src/i18n'
+import profilesReducer from '../src/store/profilesSlice'
 
 vi.mock('../src/utils/restartApp', () => ({
   restartApp: vi.fn(),
@@ -26,6 +28,7 @@ function makeStore(
       game: gameReducer,
       settings: settingsReducer,
       vip: vipReducer,
+      profiles: profilesReducer,
     },
   })
   if (vipActive || publicModeOwned || tribunalHouseOwned || dramaModeOwned) {
@@ -65,12 +68,14 @@ function renderSettings(
   }
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
-        <Routes>
-          <Route path="/game" element={<div>Game route</div>} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </MemoryRouter>
+      <I18nProvider>
+        <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+          <Routes>
+            <Route path="/game" element={<div>Game route</div>} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>
     </Provider>
   )
   return { store }
@@ -80,12 +85,14 @@ function renderSettingsAdmin(initialEntries = ['/settingsatiste']) {
   const store = makeStore()
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
-        <Routes>
-          <Route path="/game" element={<div>Game route</div>} />
-          <Route path="/settingsatiste" element={<SettingsAdmin />} />
-        </Routes>
-      </MemoryRouter>
+      <I18nProvider>
+        <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+          <Routes>
+            <Route path="/game" element={<div>Game route</div>} />
+            <Route path="/settingsatiste" element={<SettingsAdmin />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>
     </Provider>
   )
   return { store }
@@ -94,6 +101,8 @@ function renderSettingsAdmin(initialEntries = ['/settingsatiste']) {
 describe('Settings screen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    sessionStorage.clear()
   })
 
   it('uses the back button as a normal navigation action', async () => {
@@ -365,7 +374,7 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/toggle spectator mode/i)).toBeChecked()
     expect(screen.getByLabelText(/toggle tribunal house/i)).not.toBeChecked()
     expect((screen.getByLabelText(/cast size/i) as HTMLInputElement).value).toBe('16')
-    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('unique')
+    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('competition-map')
   })
 
   it('lets QA set a forced secret mission week in debug settings', async () => {

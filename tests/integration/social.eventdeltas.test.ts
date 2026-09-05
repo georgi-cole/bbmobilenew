@@ -18,6 +18,7 @@ import gameReducer, {
   setReplacementNominee,
   submitHumanVote,
   commitPublicSave,
+  setPhase,
 } from '../../src/store/gameSlice';
 import socialReducer, {
   setEnergyBankEntry,
@@ -44,6 +45,7 @@ describe('event delta – LOH win (+5 energy)', () => {
   it('grants +5 energy to the LOH winner via game/advance', () => {
     const store = makeStore();
     SocialEngine.init(store);
+    store.dispatch(setPhase('week_start'));
 
     // Provision all alive players with some energy
     const players = store.getState().game.players;

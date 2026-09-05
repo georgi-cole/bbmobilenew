@@ -52,7 +52,7 @@ describe('IntroHub side utility buttons', () => {
     expect(document.querySelector('[data-hub-id="feedback"] .hub-chip__icon--feedback')).not.toBeNull();
     expect(mirroredIntroHubScript).toContain("icon: 'housemates'");
     expect(mirroredIntroHubScript).toContain(
-      "icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`;",
+      'icon.className = `hub-chip__icon hub-chip__icon--${def.icon}`',
     );
     expect(mirroredIntroHubScript).toContain('navigator.share');
     expect(mirroredIntroHubScript).toContain('collectAchievementStats');

@@ -3,6 +3,7 @@ import type { SurvivorModeState } from './modeTypes'
 import { getDefaultCompetitionProfile, getDefaultCompetitionSeasonState } from '../ai/competition'
 import { createInitialGameState } from '../store/gameSlice'
 import { createInitialVoxPopuliState } from '../features/twists/voxPopuli'
+import { assignAiGameIdentities } from '../ai/aiGameIdentity'
 import {
   getBroadcastTemplate,
   getDefaultBroadcastOrder,
@@ -201,7 +202,7 @@ export function createSurvivorRun(): GameState {
   const runId = makeRunId('survival')
   const human = base.players.find((player) => player.isUser) ?? base.players[0]
   const startingCastSize = SURVIVOR_STARTING_CAST_SIZE
-  const players = [
+  const players = assignAiGameIdentities([
     {
       ...human,
       id: 'user',
@@ -214,7 +215,7 @@ export function createSurvivorRun(): GameState {
     ...Array.from({ length: startingCastSize - 1 }, (_, index) =>
       buildRoboPlayer(index, runId, 1, index + 1)
     ),
-  ]
+  ], base.seed ^ runId.length, 'survival')
   const now = Date.now()
   const modeSpecific = createSurvivorModeState(startingCastSize)
 
@@ -263,12 +264,13 @@ export function createSurvivorRun(): GameState {
 export function buildReplacementRobo(state: GameState, slot?: number): Player {
   const survivorState = getSurvivorModeState(state)
   const currentDay = Math.max(survivorState.currentDay, state.week)
-  return buildRoboPlayer(
+  const replacement = buildRoboPlayer(
     survivorState.nextRoboIndex,
     state.runId ?? state.gameId,
     currentDay,
     slot ?? survivorState.nextRoboIndex + 1
   )
+  return assignAiGameIdentities([replacement], state.seed ^ survivorState.nextRoboIndex, 'survival')[0]
 }
 
 export function markSurvivorDay(state: GameState): GameState {

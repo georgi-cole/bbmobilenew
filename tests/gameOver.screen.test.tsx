@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -8,6 +8,25 @@ import gameReducer from '../src/store/gameSlice';
 import settingsReducer from '../src/store/settingsSlice';
 import profilesReducer from '../src/store/profilesSlice';
 import type { Player } from '../src/types';
+
+class TestImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  decoding = 'async';
+  decode = async () => undefined;
+
+  set src(_value: string) {
+    queueMicrotask(() => this.onerror?.());
+  }
+}
+
+beforeEach(() => {
+  vi.stubGlobal('Image', TestImage);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function makeStore(gameOverrides: Record<string, unknown> = {}) {
   const baseGame = gameReducer(undefined, { type: '@@INIT' });
@@ -281,11 +300,13 @@ describe('GameOver screen', () => {
     fireEvent.click(screen.getByRole('button', { name: /^aftermath$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^watch ad$/i }));
 
+    // The aftermath flow waits for its first recap image with a bounded
+    // timeout before entering the story.
     await waitFor(() => {
       expect(screen.getByText('Late Edition')).toBeInTheDocument();
       expect(screen.getByText(/What happened next/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^results$/i })).toBeInTheDocument();
-    });
+    }, { timeout: 6_000 });
 
     const aftermathScroller = document.querySelector('.gameover-aftermath__scroll');
     const aftermathActions = document.querySelector('.gameover-aftermath__actions');
@@ -294,6 +315,8 @@ describe('GameOver screen', () => {
     expect(aftermathScroller?.contains(aftermathActions)).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
-    expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled();
+    });
   });
 });

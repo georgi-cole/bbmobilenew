@@ -1,11 +1,11 @@
 /* Focused fixes for required Confessional decisions on narrow mobile screens. */
 
 .required-confessional .rcd-player__copy strong {
-  overflow: hidden;
-  overflow-wrap: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
   word-break: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .required-confessional[data-decision-type='eviction_vote'] .rcd-grid {

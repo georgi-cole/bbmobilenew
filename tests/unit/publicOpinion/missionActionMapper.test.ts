@@ -246,6 +246,20 @@ describe('resolveEventMissionProgress', () => {
     };
     const signals = resolveEventMissionProgress(event, [direction]);
     expect(signals).toHaveLength(1);
-    expect(signals[0].newProgress).toBe(30 + publicOpinionConfig.missionDirectProgressWeight);
+    expect(signals[0].newProgress).toBe(100);
+    expect(signals[0].isComplete).toBe(true);
+  });
+
+  it('break_alliance: the exact break event completes the request in one action', () => {
+    const direction = makeDirection({ type: 'break_alliance', relatedPlayerId: 'nova' });
+    const event: MissionGameEvent = {
+      type: 'broke_alliance',
+      actorId: 'actor',
+      targetId: 'nova',
+      week: 2,
+    };
+    const signals = resolveEventMissionProgress(event, [direction]);
+    expect(signals[0].newProgress).toBe(100);
+    expect(signals[0].isComplete).toBe(true);
   });
 });

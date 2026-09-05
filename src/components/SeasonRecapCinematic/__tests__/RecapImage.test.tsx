@@ -29,7 +29,7 @@ describe('RecapImage', () => {
     fireEvent.load(image);
 
     await waitFor(() => {
-      expect(image.getAttribute('data-image-state')).toBe('resolved');
+      expect(image.getAttribute('data-image-state')).toBe('loaded');
       expect(image).toHaveStyle({ opacity: '1' });
     });
   });

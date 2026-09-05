@@ -11,6 +11,7 @@ interface SocialExecutionState {
     week?: number
     dramaSocialMode?: boolean
     players?: Array<{ id: string; status: string; isUser?: boolean }>
+    voxPopuli?: { status?: 'inactive' | 'scheduled' | 'active' | 'complete' } | null
   }
   settings?: { gameUX?: { dramaMode?: boolean; realityModePreset?: string } }
   vip?: {
@@ -41,6 +42,9 @@ export function validateSocialExecution(
   state: SocialExecutionState,
   selection: SocialExecutionSelection
 ) {
+  if (state.game?.voxPopuli?.status === 'active' && selection.action.unavailableInVox) {
+    return { eligible: false, reason: 'This action does not apply to Vox Populi rules.' }
+  }
   const realityPreset = state.settings?.gameUX?.realityModePreset
   if (realityPreset && !isActionAllowedForRealityPreset(selection.action, realityPreset)) {
     return { eligible: false, reason: 'Unavailable for the selected Reality intensity.' }

@@ -129,7 +129,11 @@ function DecisionUnitCard({
         ))}
       </span>
       <span className="rcd-player__copy">
-        <strong>{unit.label}</strong>
+        <strong className="rcd-player__names">
+          {unit.players.map((player) => (
+            <span key={player.id}>{player.name}</span>
+          ))}
+        </strong>
         {tag && <small>{tag}</small>}
       </span>
       <span className="rcd-player__pair-dot" aria-hidden="true">

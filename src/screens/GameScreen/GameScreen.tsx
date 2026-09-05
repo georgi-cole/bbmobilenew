@@ -62,6 +62,7 @@ import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShoc
 import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
 import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
 import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
+import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import SocialPanel from '../../components/SocialPanel/SocialPanel'
 import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
 import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox'
@@ -1347,7 +1348,7 @@ export default function GameScreen() {
     <LayoutGroup id="game-layout">
       <div
         ref={gameScreenRef}
-        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}${game.depressionShock?.activeDay === 2 ? ' game-screen--depression-day-two' : ''}`}
+        className={`game-screen game-screen-shell${responsiveGameLayout.compactRoster ? ' game-screen--compact-roster-balance' : ''}${isCupidArrowActive(game) ? ' game-screen--cupid-active' : ''}${game.cupidArrow?.visualsRevealed ? ' game-screen--cupid-revealed' : ''}${game.cupidArrow?.status === 'broken' ? ' game-screen--cupid-broken' : ''}${game.depressionShock?.activeDay === 2 ? ' game-screen--depression-day-two' : ''}${['live_vote', 'eviction_results'].includes(game.phase) ? ' game-screen--eviction-atmosphere' : ''}`}
         style={responsiveGameLayout.cssVars}
         data-layout-size={responsiveGameLayout.layoutSize}
         data-roster-mode={responsiveGameLayout.rosterMode}
@@ -1374,6 +1375,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            houseFeedEnabled={settings.gameUX.houseFeed}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
@@ -1401,6 +1403,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            houseFeedEnabled={settings.gameUX.houseFeed}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
@@ -1431,6 +1434,7 @@ export default function GameScreen() {
                 : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            houseFeedEnabled={settings.gameUX.houseFeed}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
@@ -1471,6 +1475,7 @@ export default function GameScreen() {
                         : handlePreAdAnnouncementDismiss
             }
             mainLogMaxVisible={gameTvLogRows}
+            houseFeedEnabled={settings.gameUX.houseFeed}
             rosterLogLauncher={responsiveGameLayout.rosterHeaderMode === 'persistent'}
             occupancyChip={rosterOccupancyChip}
             audiencePreviewAction={voxAudiencePreviewAction}
@@ -1756,6 +1761,9 @@ export default function GameScreen() {
             lines={final4PleaLines}
             skippable
             header={{ title: 'Final 4 🏡', subtitle: 'Hear from the nominees before the vote.' }}
+            avatarRenderer={(player) => (
+              <PlayerAvatar player={player} size="sm" showEvictedStyle={false} />
+            )}
             onComplete={handleFinal4PleaComplete}
             ariaLabel="Final 4 plea chat"
           />
@@ -1779,6 +1787,9 @@ export default function GameScreen() {
             lines={final4AnnounceLines}
             skippable
             header={{ title: 'Final 4 🚪', subtitle: 'The decision has been made.' }}
+            avatarRenderer={(player) => (
+              <PlayerAvatar player={player} size="sm" showEvictedStyle={false} />
+            )}
             onComplete={handleFinal4AnnounceComplete}
             ariaLabel="Final 4 elimination announcement"
           />

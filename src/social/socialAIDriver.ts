@@ -61,6 +61,8 @@ import {
 } from './realitySimulation'
 import { normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
+import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './interactionVariantBank'
+import { allianceIdentityBias, type AiGameIdentity } from '../ai/aiGameIdentity'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -72,6 +74,7 @@ interface DriverPlayer {
   name: string
   status: string
   isUser?: boolean
+  aiGameIdentity?: AiGameIdentity
 }
 
 interface DriverState {
@@ -401,15 +404,64 @@ const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
   ],
 }
 
+/**
+ * AI background moves still need to arrive as real scenes, not anonymous
+ * `background_*` messages. These routes give their copy, player choices, and
+ * resolution the same scenario-specific treatment as autonomous interactions.
+ */
+const HUMAN_FACING_ACTION_SCENARIOS: Partial<Record<string, string>> = {
+  ally: 'week_start_alliance_lock',
+  proposeAlliance: 'week_start_alliance_lock',
+  compliment: 'generic_check_in',
+  protect: 'alliance_reassurance',
+  whisper: 'generic_gossip',
+  share_intel: 'generic_gossip',
+  rumor: 'betrayal_warning',
+  confront: 'targeted_snark',
+  startFight: 'targeted_snark',
+  ask_use_safety: 'nominee_veto_pitch',
+  nominate: 'nomination_aftershock',
+  group_chat: 'social_momentum_notice',
+}
+
+export function getHumanFacingActionScenario(actionId: string): string {
+  return HUMAN_FACING_ACTION_SCENARIOS[actionId] ?? 'generic_check_in'
+}
+
 function pickHumanFacingText(
   actionId: string,
   actorId: string,
+  playerName: string,
   week: number,
   phase: string
-): string {
+): { text: string; scenarioKey: string; variantFamilyId: string; variantId: string } {
+  const scenarioKey = getHumanFacingActionScenario(actionId)
+  const variantFamilies = SCENARIO_VARIANT_POOLS[scenarioKey]
   const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.']
   const random = createDeterministicSocialRandom([actorId, actionId, week, phase])
-  return variants[Math.floor(random() * variants.length)] ?? variants[0]
+  if (variantFamilies?.length) {
+    const { text, familyId, variantId } = pickVariantText(
+      variantFamilies,
+      getVoiceProfile(actorId),
+      new Set(),
+      0,
+      random,
+      new Set()
+    )
+    return {
+      text: text.replaceAll('{player}', playerName),
+      scenarioKey,
+      variantFamilyId: familyId,
+      variantId,
+    }
+  }
+  const text = variants[Math.floor(random() * variants.length)] ?? variants[0]
+  return {
+    text,
+    scenarioKey,
+    variantFamilyId: `legacy_background_${actionId}`,
+    variantId: `legacy_background_${actionId}:${variants.indexOf(text)}`,
+  }
 }
 
 function routeHumanFacingAction(
@@ -458,18 +510,20 @@ function routeHumanFacingAction(
   }
 
   const mode = getEffectiveSocialMode(current)
+  const content = pickHumanFacingText(actionId, actorId, human.name ?? 'you', week, phase)
   const interaction = createIncomingInteraction({
     id: `ai-action-${actionId}-${actorId}-${deterministicSequence}`,
     fromId: actorId,
     type,
-    text: pickHumanFacingText(actionId, actorId, week, phase),
+    text: content.text,
     week,
     phase,
     mode,
     payload: {
       originActionId: actionId,
-      scenarioKey: `background_${actionId}`,
-      variantFamilyId: `background_${actionId}`,
+      scenarioKey: content.scenarioKey,
+      variantFamilyId: content.variantFamilyId,
+      variantId: content.variantId,
       source: 'background_social',
       ...(actionId === 'group_chat' ? { groupScene: true } : {}),
       ...(subjectId ? { subjectId } : {}),
@@ -590,7 +644,7 @@ function candidateForPlayer(
         })
       : null
 
-  const actionId =
+  const policyActionId =
     dramaMove?.actionId ??
     chooseActionFor(player.id, {
       players: state.game.players,
@@ -604,6 +658,14 @@ function candidateForPlayer(
         isAISocialActionVisible(candidateId, dramaMode ? 'drama' : 'normal')
       ),
     } as Parameters<typeof chooseActionFor>[1])
+  const allianceBias = allianceIdentityBias(player.aiGameIdentity)
+  const actionId =
+    !dramaMove &&
+    allianceBias >= 20 &&
+    policyActionId !== 'proposeAlliance' &&
+    (_tickCount + attempt + player.id.length) % 5 === 0
+      ? 'proposeAlliance'
+      : policyActionId
   if (actionId === 'idle') return null
 
   const action = getActionById(actionId)
