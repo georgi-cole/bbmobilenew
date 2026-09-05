@@ -751,7 +751,7 @@ export default function MajorityRulesComp({
             <h3>House status</h3>
             <span>Scroll the avatar rail to track who is still in.</span>
           </div>
-          <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} variant="rail" />
+          <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} variant="rail" wrap={true} />
         </div>
       )}
     </motion.div>

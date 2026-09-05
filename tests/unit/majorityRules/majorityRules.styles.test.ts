@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('MajorityRules styles', () => {
-  it('keeps the shell vertically scrollable on mobile-sized viewports', () => {
+  it('keeps the shell fixed to the host viewport without a page scroll surface', () => {
     const css = readFileSync(
       resolve(process.cwd(), 'src/components/MajorityRulesComp/MajorityRulesComp.css'),
       'utf8',
@@ -16,15 +16,12 @@ describe('MajorityRules styles', () => {
     expect(shellRuleEnd).toBeGreaterThan(shellRuleStart);
 
     const shellRuleBody = css.slice(shellRuleStart, shellRuleEnd);
-    const vhIndex = shellRuleBody.indexOf('max-height: 100vh;');
     const dvhIndex = shellRuleBody.indexOf('max-height: 100dvh;');
 
-    expect(vhIndex).toBeGreaterThanOrEqual(0);
-    expect(dvhIndex).toBeGreaterThan(vhIndex);
+    expect(dvhIndex).toBeGreaterThanOrEqual(0);
     expect(shellRuleBody).toContain('overflow-x: hidden;');
-    expect(shellRuleBody).toContain('overflow-y: auto;');
+    expect(shellRuleBody).toContain('overflow-y: hidden;');
     expect(shellRuleBody).toContain('overscroll-behavior: contain;');
-    expect(shellRuleBody).toContain('-webkit-overflow-scrolling: touch;');
   });
 
   it('wraps crowded intro avatar rails into centered rows', () => {
@@ -45,7 +42,7 @@ describe('MajorityRules styles', () => {
     expect(wrappedRailRuleBody).toContain('overflow-x: visible;');
   });
 
-  it('lets tall phase cards scroll vertically so the action buttons stay reachable', () => {
+  it('keeps phase cards inside the fixed viewport so action buttons stay reachable', () => {
     const css = readFileSync(
       resolve(process.cwd(), 'src/components/MajorityRulesComp/MajorityRulesComp.css'),
       'utf8',
@@ -59,7 +56,7 @@ describe('MajorityRules styles', () => {
 
     const cardRuleBody = css.slice(cardRuleStart, cardRuleEnd);
     expect(cardRuleBody).toContain('overflow-x: hidden;');
-    expect(cardRuleBody).toContain('overflow-y: auto;');
+    expect(cardRuleBody).toContain('overflow-y: hidden;');
     expect(cardRuleBody).toContain('max-height: 100%;');
     expect(cardRuleBody).toContain('min-height: 0;');
     expect(cardRuleBody).toContain('-webkit-overflow-scrolling: touch;');
