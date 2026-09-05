@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { Player } from '../../types'
-import { resolveInformalCutoutCandidates } from '../../utils/avatar'
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage'
 import { getDayStartShockObjectPronoun } from './dayStartShockCopy'
 import './DayStartShockPopup.css'
 
@@ -21,8 +21,6 @@ interface DayStartShockPopupProps {
  */
 export default function DayStartShockPopup({ player, reason, onConfirm }: DayStartShockPopupProps) {
   const prefersReducedMotion = useReducedMotion()
-  const cutoutCandidates = useMemo(() => resolveInformalCutoutCandidates(player), [player])
-  const [failedCutouts, setFailedCutouts] = useState<ReadonlySet<string>>(() => new Set())
   const objectPronoun = getDayStartShockObjectPronoun(player)
 
   useEffect(() => {
@@ -34,10 +32,6 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
   }, [])
 
   if (typeof document === 'undefined') return null
-
-  const activeCutout =
-    cutoutCandidates.find((candidate) => !failedCutouts.has(candidate)) ??
-    cutoutCandidates[cutoutCandidates.length - 1]
 
   return createPortal(
     <div className="day-start-shock" role="presentation" data-testid="day-start-shock-popup">
@@ -69,16 +63,11 @@ export default function DayStartShockPopup({ player, reason, onConfirm }: DaySta
           <div className="day-start-shock__hero">
             <div className="day-start-shock__spotlight" aria-hidden="true" />
             <div className="day-start-shock__cutout-wrap">
-              <img
+              <FullSizeCutoutImage
+                player={player}
+                attire="informal"
                 className="day-start-shock__cutout"
-                src={activeCutout}
                 alt={player.name}
-                onError={() => {
-                  if (!activeCutout) return
-                  setFailedCutouts((current) =>
-                    current.has(activeCutout) ? current : new Set(current).add(activeCutout)
-                  )
-                }}
               />
             </div>
             <div className="day-start-shock__stamp" aria-hidden="true">
