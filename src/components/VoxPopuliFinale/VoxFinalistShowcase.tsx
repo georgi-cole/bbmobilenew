@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '../../types'
-import { resolveAvatar, resolveFormalCutout, resolveInformalCutout } from '../../utils/avatar'
 import { HOUSEMATES_BIO_CARDS } from '../HousematesBioCinematic/housematesBioData'
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage'
 import './VoxFinalistShowcase.css'
 
 export interface VoxFinalistCase {
@@ -45,11 +45,6 @@ export default function VoxFinalistShowcase({ finalists, onComplete }: Props) {
   const bio = HOUSEMATES_BIO_CARDS.find(
     (card) => card.id.toLowerCase() === current.player.id.toLowerCase()
   )
-  const portrait =
-    current.kind === 'story'
-      ? resolveInformalCutout(current.player) ?? resolveAvatar(current.player)
-      : resolveFormalCutout(current.player) ?? resolveAvatar(current.player)
-
   const skip = () => {
     if (completedRef.current) return
     completedRef.current = true
@@ -86,7 +81,11 @@ export default function VoxFinalistShowcase({ finalists, onComplete }: Props) {
           </div>
           <div className="vox-finalist-showcase__portrait">
             <span aria-hidden="true" />
-            <img src={portrait} alt={current.player.name} />
+            <FullSizeCutoutImage
+              player={current.player}
+              attire={current.kind === 'story' ? 'informal' : 'formal'}
+              alt={current.player.name}
+            />
           </div>
           <strong className="vox-finalist-showcase__vote-line">
             {current.kind === 'story' ? 'One last look at the journey.' : `Does ${current.player.name} deserve your vote?`}
