@@ -21,13 +21,17 @@ export default function IntelLeads({ reality, humanId, players, currentDay }: Pr
     <details className="sp2-intel">
       <summary className="sp2-intel__summary">
         <span className="sp2-intel__title">Intel</span>
-        <span className="sp2-intel__count">{leads.length} active lead{leads.length === 1 ? '' : 's'}</span>
+        <span className="sp2-intel__count">
+          {leads.length} active lead{leads.length === 1 ? '' : 's'}
+        </span>
       </summary>
       <div className="sp2-intel__list">
         {leads.slice(0, 6).map((lead) => (
           <article className="sp2-intel__lead" key={lead.factId}>
             <div className="sp2-intel__lead-topline">
-              <span className={`sp2-intel__confidence sp2-intel__confidence--${lead.confidence.toLowerCase()}`}>
+              <span
+                className={`sp2-intel__confidence sp2-intel__confidence--${lead.confidence.toLowerCase()}`}
+              >
                 {lead.confidence}
               </span>
               <span className="sp2-intel__day">Day {lead.day}</span>

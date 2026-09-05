@@ -281,7 +281,8 @@ function baseDelta(kind: SceneDefinition['kind'], stance: OutcomeStance): number
 
 function focusFromMessage(interaction: IncomingInteraction, fallback: string): string {
   const message = interaction.text.toLowerCase()
-  if (/not adding up|direct answer|something between us/.test(message)) return 'what was not adding up'
+  if (/not adding up|direct answer|something between us/.test(message))
+    return 'what was not adding up'
   if (/wanted to talk.*direct|talk to you directly/.test(message)) return 'what had shifted'
   if (/where.*stand|in my corner|trust/.test(message)) return 'where the two of you stood'
   if (/safe|safety|block|nominee/.test(message)) return 'the Safety decision and its fallout'
@@ -296,13 +297,12 @@ function describeResponseAction(
   focus: string
 ): string {
   const action = (label ?? '').toLowerCase()
-  if (/make.*explain/.test(action))
-    return `asked ${fromName} to spell out exactly ${focus}`
-  if (/ask.*why|ask what changed/.test(action))
-    return `asked ${fromName} to explain ${focus}`
+  if (/make.*explain/.test(action)) return `asked ${fromName} to spell out exactly ${focus}`
+  if (/ask.*why|ask what changed/.test(action)) return `asked ${fromName} to explain ${focus}`
   if (/ask.*(specific|detail|proof|source|case|plan|need|offer|term)/.test(action))
     return `asked ${fromName} for specifics before showing your hand`
-  if (/hear|listen/.test(action)) return `let ${fromName} make their case without promising anything`
+  if (/hear|listen/.test(action))
+    return `let ${fromName} make their case without promising anything`
   if (/share|honest|let.*in|reassure|thank|celebrate|accept|offer safety|promise/.test(action))
     return `gave ${fromName} a candid answer about ${focus}`
   if (/keep|guard|measured|light|noncommittal|cool|nod/.test(action))
@@ -341,7 +341,10 @@ function consequenceFor(
     return `${fromName} left with a clearer reason to work with you, but will measure it against your next move.${relationshipRead}`
   }
   if (stance === 'neutral') {
-    const nextStep = kind === 'pressure' ? 'They will keep looking for another route.' : 'They now know which part to watch.'
+    const nextStep =
+      kind === 'pressure'
+        ? 'They will keep looking for another route.'
+        : 'They now know which part to watch.'
     return `${fromName} got an answer, not a promise. ${nextStep}${relationshipRead}`
   }
   if (stance === 'negative') {

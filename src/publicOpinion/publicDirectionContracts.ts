@@ -35,10 +35,10 @@ export interface DirectionContractContext {
 function hasRealityAlliance(
   alliances: Record<string, RealityAlliance> | undefined,
   actorId: string,
-  targetId: string,
+  targetId: string
 ): { active: boolean; fractured: boolean } {
-  const match = Object.values(alliances ?? {}).find((alliance) =>
-    alliance.memberIds.includes(actorId) && alliance.memberIds.includes(targetId),
+  const match = Object.values(alliances ?? {}).find(
+    (alliance) => alliance.memberIds.includes(actorId) && alliance.memberIds.includes(targetId)
   )
   return {
     active: match?.status === 'ACTIVE' || match?.status === 'DORMANT',
@@ -49,10 +49,11 @@ function hasRealityAlliance(
 function hasDramaAlliance(
   alliances: readonly DramaAlliance[] | undefined,
   actorId: string,
-  targetId: string,
+  targetId: string
 ): { active: boolean; fractured: boolean } {
-  const match = alliances?.find((alliance) =>
-    alliance.participantIds.includes(actorId) && alliance.participantIds.includes(targetId),
+  const match = alliances?.find(
+    (alliance) =>
+      alliance.participantIds.includes(actorId) && alliance.participantIds.includes(targetId)
   )
   return { active: match?.status === 'active', fractured: match?.status === 'strained' }
 }
@@ -65,7 +66,7 @@ function hasDramaAlliance(
 export function getRelationshipFacts(
   context: DirectionContractContext,
   actorId: string,
-  targetId: string,
+  targetId: string
 ): RelationshipFacts {
   const outward = context.relationships?.[actorId]?.[targetId]
   const inward = context.relationships?.[targetId]?.[actorId]
@@ -95,7 +96,7 @@ function isActive(player: Player): boolean {
 /** Build only requests that have a current, named route to completion. */
 export function getEligibleDirectionCandidates(
   actor: Player,
-  context: DirectionContractContext,
+  context: DirectionContractContext
 ): DirectionCandidate[] {
   const others = context.players.filter((player) => isActive(player) && player.id !== actor.id)
   const candidates: DirectionCandidate[] = [
@@ -178,14 +179,21 @@ export function getEligibleDirectionCandidates(
   // Vox is audience-led: omit role- and house-vote-dependent asks entirely.
   return context.voxPopuliActive
     ? candidates.filter((candidate) =>
-        ['win_competition', 'win_veto', 'get_closer', 'align_with', 'repair_relationship', 'reinforce_alliance'].includes(candidate.type),
+        [
+          'win_competition',
+          'win_veto',
+          'get_closer',
+          'align_with',
+          'repair_relationship',
+          'reinforce_alliance',
+        ].includes(candidate.type)
       )
     : candidates
 }
 
 export function isDirectionStillValid(
   direction: { type: DirectionType; playerId: string; relatedPlayerId?: string },
-  context: DirectionContractContext,
+  context: DirectionContractContext
 ): boolean {
   const actor = context.players.find((player) => player.id === direction.playerId)
   if (!actor || !isActive(actor)) return false
@@ -201,6 +209,7 @@ export function isDirectionStillValid(
   if (!relationshipBoundTypes.includes(direction.type)) return true
   if (!direction.relatedPlayerId) return true
   return getEligibleDirectionCandidates(actor, context).some(
-    (candidate) => candidate.type === direction.type && candidate.relatedPlayer?.id === direction.relatedPlayerId,
+    (candidate) =>
+      candidate.type === direction.type && candidate.relatedPlayer?.id === direction.relatedPlayerId
   )
 }

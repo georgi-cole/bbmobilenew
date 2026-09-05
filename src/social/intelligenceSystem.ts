@@ -117,8 +117,7 @@ export function applyCompetitionIntentToScore(
 ): number {
   if (intent === 'compete' || !Number.isFinite(score)) return score
   const draw = seededUnit(seed, `${playerId}:${model.key}:${intent}:performance`)
-  const factor =
-    intent === 'throw' ? 0.24 + draw * 0.24 : 0.78 + draw * 0.14
+  const factor = intent === 'throw' ? 0.24 + draw * 0.24 : 0.78 + draw * 0.14
   const minimum = model.minScore ?? 0
   const maximum = model.maxScore
   if (model.scoreDirection === 'lower-is-better') {
@@ -237,9 +236,8 @@ export function getIntelLeadViews(
         currentDay - belief.lastUpdatedDay <= 4
     )
     .map((belief) => ({ belief, fact: domain.facts[belief.id.replace(`belief:${ownerId}:`, '')] }))
-    .filter(
-      (entry): entry is { belief: RealityBelief; fact: RealityFact } =>
-        Boolean(entry.fact && SUPPORTED_INTEL_PROPOSITIONS.has(entry.fact.propositionType))
+    .filter((entry): entry is { belief: RealityBelief; fact: RealityFact } =>
+      Boolean(entry.fact && SUPPORTED_INTEL_PROPOSITIONS.has(entry.fact.propositionType))
     )
     .map(({ belief, fact }) => {
       const memory = (domain.memoriesByOwner[ownerId] ?? []).find((entry) =>
@@ -256,10 +254,7 @@ export function getIntelLeadViews(
         subjectIds: [...fact.subjectIds],
       }
     })
-    .sort(
-      (left, right) =>
-        right.confidenceValue - left.confidenceValue || right.day - left.day
-    )
+    .sort((left, right) => right.confidenceValue - left.confidenceValue || right.day - left.day)
 }
 
 export function makeIntelMemory(input: {
@@ -285,7 +280,8 @@ export function makeIntelMemory(input: {
     surprise: 0.62,
     emotionalValence: input.fact.propositionType === 'ROMANTIC_MOMENT' ? 0.2 : -0.12,
     emotionalIntensity: 0.48,
-    secrecy: input.fact.visibility === 'PAIR_ONLY' || input.fact.visibility === 'PRIVATE' ? 0.84 : 0.4,
+    secrecy:
+      input.fact.visibility === 'PAIR_ONLY' || input.fact.visibility === 'PRIVATE' ? 0.84 : 0.4,
     strategicRelevance: input.fact.propositionType === 'ROMANTIC_MOMENT' ? 0.48 : 0.82,
     visibility: input.fact.visibility,
     tags: ['intel', input.fact.propositionType.toLowerCase()],
@@ -307,26 +303,29 @@ export function selectIntelFactForActor(
       belief,
       fact: domain.facts[belief.id.replace(`belief:${actorId}:`, '')],
     }))
-    .filter(
-      (entry): entry is { belief: RealityBelief; fact: RealityFact } =>
-        Boolean(
-          entry.fact &&
-            SUPPORTED_INTEL_PROPOSITIONS.has(entry.fact.propositionType) &&
-            entry.belief.status === 'ACTIVE' &&
-            currentDay - entry.belief.lastUpdatedDay <= 3 &&
-            !entry.fact.subjectIds.includes(actorId) &&
-            entry.fact.objectId !== actorId
-        )
+    .filter((entry): entry is { belief: RealityBelief; fact: RealityFact } =>
+      Boolean(
+        entry.fact &&
+        SUPPORTED_INTEL_PROPOSITIONS.has(entry.fact.propositionType) &&
+        entry.belief.status === 'ACTIVE' &&
+        currentDay - entry.belief.lastUpdatedDay <= 3 &&
+        !entry.fact.subjectIds.includes(actorId) &&
+        entry.fact.objectId !== actorId
+      )
     )
     .filter(({ fact, belief }) => {
       const recipientBelief = recipientBeliefs[`belief:${recipientId}:${fact.id}`]
       return !recipientBelief || recipientBelief.confidence + 0.08 < belief.confidence
     })
     .sort((left, right) => {
-      const leftRelevant = left.fact.objectId === recipientId || left.fact.subjectIds.includes(recipientId)
+      const leftRelevant =
+        left.fact.objectId === recipientId || left.fact.subjectIds.includes(recipientId)
       const rightRelevant =
         right.fact.objectId === recipientId || right.fact.subjectIds.includes(recipientId)
-      return Number(rightRelevant) - Number(leftRelevant) || right.belief.confidence - left.belief.confidence
+      return (
+        Number(rightRelevant) - Number(leftRelevant) ||
+        right.belief.confidence - left.belief.confidence
+      )
     })
   return candidates[0] ?? null
 }
@@ -338,19 +337,21 @@ export function selectDiscoverableFact(
   deliveredFactIds: ReadonlySet<string>,
   observableOnly = false
 ): RealityFact | null {
-  return Object.values(domain.facts)
-    .filter(
-      (fact) =>
-        SUPPORTED_INTEL_PROPOSITIONS.has(fact.propositionType) &&
-        currentDay - fact.day <= 4 &&
-        !deliveredFactIds.has(fact.id) &&
-        !fact.subjectIds.includes(actorId) &&
-        (!observableOnly ||
-          fact.witnessIds.length > 0 ||
-          fact.visibility === 'GROUP_VISIBLE' ||
-          fact.visibility === 'HOUSE_PUBLIC')
-    )
-    .sort((left, right) => right.day - left.day || left.id.localeCompare(right.id))[0] ?? null
+  return (
+    Object.values(domain.facts)
+      .filter(
+        (fact) =>
+          SUPPORTED_INTEL_PROPOSITIONS.has(fact.propositionType) &&
+          currentDay - fact.day <= 4 &&
+          !deliveredFactIds.has(fact.id) &&
+          !fact.subjectIds.includes(actorId) &&
+          (!observableOnly ||
+            fact.witnessIds.length > 0 ||
+            fact.visibility === 'GROUP_VISIBLE' ||
+            fact.visibility === 'HOUSE_PUBLIC')
+      )
+      .sort((left, right) => right.day - left.day || left.id.localeCompare(right.id))[0] ?? null
+  )
 }
 
 export function selectFauxTvFact(
@@ -358,15 +359,17 @@ export function selectFauxTvFact(
   currentDay: number,
   deliveredFactIds: ReadonlySet<string>
 ): RealityFact | null {
-  return Object.values(domain.facts)
-    .filter(
-      (fact) =>
-        SUPPORTED_INTEL_PROPOSITIONS.has(fact.propositionType) &&
-        fact.witnessIds.length > 0 &&
-        currentDay - fact.day <= 3 &&
-        !deliveredFactIds.has(fact.id)
-    )
-    .sort((left, right) => right.day - left.day || left.id.localeCompare(right.id))[0] ?? null
+  return (
+    Object.values(domain.facts)
+      .filter(
+        (fact) =>
+          SUPPORTED_INTEL_PROPOSITIONS.has(fact.propositionType) &&
+          fact.witnessIds.length > 0 &&
+          currentDay - fact.day <= 3 &&
+          !deliveredFactIds.has(fact.id)
+      )
+      .sort((left, right) => right.day - left.day || left.id.localeCompare(right.id))[0] ?? null
+  )
 }
 
 function pickWitnesses(
@@ -410,9 +413,15 @@ export function buildIntelFactFromSocialAction(
   if (['proposeAlliance', 'ride_or_die'].includes(entry.actionId)) {
     propositionType = 'SECRET_ALLIANCE'
   } else if (
-    ['flirt', 'private_flirt', 'late_night_talk', 'cuddle', 'kiss_under_covers', 'pool_makeout', 'spend_night'].includes(
-      entry.actionId
-    )
+    [
+      'flirt',
+      'private_flirt',
+      'late_night_talk',
+      'cuddle',
+      'kiss_under_covers',
+      'pool_makeout',
+      'spend_night',
+    ].includes(entry.actionId)
   ) {
     propositionType = 'ROMANTIC_MOMENT'
     witnessMaximum = 2

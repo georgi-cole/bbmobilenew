@@ -30,32 +30,36 @@
  *     `window.game.__authoritativeWinner`.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, act } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { MemoryRouter } from 'react-router';
-import { configureStore } from '@reduxjs/toolkit';
-import gameReducer, { setPhase } from '../../src/store/gameSlice';
-import profilesReducer from '../../src/store/profilesSlice';
-import challengeReducer from '../../src/store/challengeSlice';
-import socialReducer from '../../src/social/socialSlice';
-import uiReducer from '../../src/store/uiSlice';
-import settingsReducer from '../../src/store/settingsSlice';
-import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, act } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { MemoryRouter } from 'react-router'
+import { configureStore } from '@reduxjs/toolkit'
+import gameReducer, { setPhase } from '../../src/store/gameSlice'
+import profilesReducer from '../../src/store/profilesSlice'
+import challengeReducer from '../../src/store/challengeSlice'
+import socialReducer from '../../src/social/socialSlice'
+import uiReducer from '../../src/store/uiSlice'
+import settingsReducer from '../../src/store/settingsSlice'
+import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import holdTheWallReducer, {
   startHoldTheWall,
   dropPlayer,
-} from '../../src/features/holdTheWall/holdTheWallSlice';
-import { resolveHoldTheWallOutcome } from '../../src/features/holdTheWall/thunks';
-import type { GameState, Player } from '../../src/types';
-import GameScreen from '../../src/screens/GameScreen/GameScreen';
+} from '../../src/features/holdTheWall/holdTheWallSlice'
+import { resolveHoldTheWallOutcome } from '../../src/features/holdTheWall/thunks'
+import type { GameState, Player } from '../../src/types'
+import GameScreen from '../../src/screens/GameScreen/GameScreen'
 
 // ── Module-level captured callbacks ────────────────────────────────────────
 
 let capturedOnDone:
-  ((rawValue: number, partial?: boolean, completion?: { authoritativeWinnerId?: string | null }) => void)
-  | null = null;
-let capturedCeremonyOnDone: (() => void) | null = null;
+  | ((
+      rawValue: number,
+      partial?: boolean,
+      completion?: { authoritativeWinnerId?: string | null }
+    ) => void)
+  | null = null
+let capturedCeremonyOnDone: (() => void) | null = null
 
 vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
   default: ({
@@ -64,28 +68,28 @@ vi.mock('../../src/components/MinigameHost/MinigameHost', () => ({
     onDone: (
       rawValue: number,
       partial?: boolean,
-      completion?: { authoritativeWinnerId?: string | null },
-    ) => void;
+      completion?: { authoritativeWinnerId?: string | null }
+    ) => void
   }) => {
-    capturedOnDone = onDone;
-    return <div data-testid="minigame-mock" />;
+    capturedOnDone = onDone
+    return <div data-testid="minigame-mock" />
   },
-}));
+}))
 
 vi.mock('../../src/minigames/LegacyMinigameWrapper', () => ({
   default: () => null,
-}));
+}))
 
 vi.mock('../../src/components/ui/TvZone', () => ({
   default: () => <div data-testid="tv-zone" />,
-}));
+}))
 
 vi.mock('../../src/components/WinnerTileLiftAnimation/WinnerTileLiftAnimation', () => ({
   default: ({ onDone }: { onDone: () => void }) => {
-    capturedCeremonyOnDone = onDone;
-    return null;
+    capturedCeremonyOnDone = onDone
+    return null
   },
-}));
+}))
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -96,7 +100,7 @@ function makePlayers(count: number, userIndex = 0): Player[] {
     avatar: '🧑',
     status: 'active' as const,
     isUser: i === userIndex,
-  }));
+  }))
 }
 
 function makeStore(gameOverrides: Partial<GameState> = {}) {
@@ -129,7 +133,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
     players: makePlayers(4), // p0 = human, p1..p3 = AI
     tvFeed: [],
     isLive: false,
-  };
+  }
   return configureStore({
     reducer: {
       game: gameReducer,
@@ -142,7 +146,7 @@ function makeStore(gameOverrides: Partial<GameState> = {}) {
       holdTheWall: holdTheWallReducer,
     },
     preloadedState: { game: { ...base, ...gameOverrides } },
-  });
+  })
 }
 
 function renderWithStore(store: ReturnType<typeof makeStore>) {
@@ -151,21 +155,21 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
       <MemoryRouter>
         <GameScreen />
       </MemoryRouter>
-    </Provider>,
-  );
+    </Provider>
+  )
 }
 
 function installSpectatorSimulationMock() {
-  const capturedInitialWinnerIds: Array<string | null | undefined> = [];
+  const capturedInitialWinnerIds: Array<string | null | undefined> = []
   vi.doMock('../../src/components/ui/SpectatorView/progressEngine', () => ({
     useSpectatorSimulation: ({
       competitorIds,
       initialWinnerId,
     }: {
-      competitorIds: string[];
-      initialWinnerId?: string | null;
+      competitorIds: string[]
+      initialWinnerId?: string | null
     }) => {
-      capturedInitialWinnerIds.push(initialWinnerId);
+      capturedInitialWinnerIds.push(initialWinnerId)
       return {
         state: {
           competitors: competitorIds.map((id) => ({
@@ -180,38 +184,38 @@ function installSpectatorSimulationMock() {
         },
         setAuthoritativeWinner: vi.fn(),
         skip: vi.fn(),
-      };
+      }
     },
-  }));
-  return capturedInitialWinnerIds;
+  }))
+  return capturedInitialWinnerIds
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('winner identity — feature-thunk winner takes precedence over score-based winner', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    capturedOnDone = null;
-    capturedCeremonyOnDone = null;
-  });
+    vi.useFakeTimers()
+    capturedOnDone = null
+    capturedCeremonyOnDone = null
+  })
 
   afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
 
   it('uses the feature-thunk winner (lohId) even when game.phase has already advanced to loh_results', async () => {
     // jsdom returns zero-sized DOMRects by default → defensive fallback path
     // (applyMinigameWinner dispatched immediately, no ceremony animation).
-    const store = makeStore();
-    renderWithStore(store);
+    const store = makeStore()
+    renderWithStore(store)
 
     // Phase → loh_comp → GameScreen starts the challenge and renders MinigameHost.
     await act(async () => {
-      store.dispatch(setPhase('loh_comp'));
-    });
+      store.dispatch(setPhase('loh_comp'))
+    })
 
-    expect(capturedOnDone).not.toBeNull();
+    expect(capturedOnDone).not.toBeNull()
 
     // Simulate the Hold-the-Wall scenario: the feature thunk runs before onDone.
     // Player p2 is the last one standing — apply the winner to the store as the
@@ -223,53 +227,53 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
           humanId: 'p0',
           prizeType: 'LOH',
           seed: 1,
-        }),
-      );
+        })
+      )
       // Eliminate everyone except p2
-      store.dispatch(dropPlayer('p0'));
-      store.dispatch(dropPlayer('p1'));
-      store.dispatch(dropPlayer('p3'));
-    });
+      store.dispatch(dropPlayer('p0'))
+      store.dispatch(dropPlayer('p1'))
+      store.dispatch(dropPlayer('p3'))
+    })
 
     // resolveHoldTheWallOutcome: applies p2 as winner, transitions phase
     // to loh_results.
     await act(async () => {
-      store.dispatch(resolveHoldTheWallOutcome());
-    });
+      store.dispatch(resolveHoldTheWallOutcome())
+    })
 
     // At this point game.phase === 'loh_results' and game.lohId === 'p2'.
-    expect(store.getState().game.lohId).toBe('p2');
-    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.lohId).toBe('p2')
+    expect(store.getState().game.phase).toBe('loh_results')
 
     // Now onDone fires (e.g. after the 5 s winner-screen timer).
     // rawValue=1 is the sentinel passed by all React minigames.
     // completeChallenge would use pre-simulated AI scores, potentially
     // picking a different player as score-based winner.
     await act(async () => {
-      capturedOnDone!(1);
-    });
+      capturedOnDone!(1)
+    })
 
     // The game.lohId MUST remain p2 — the feature-thunk winner must not
     // be overwritten by a stale score-based winner from completeChallenge.
-    expect(store.getState().game.lohId).toBe('p2');
+    expect(store.getState().game.lohId).toBe('p2')
     // Phase should still be loh_results (applyMinigameWinner is a no-op when
     // lohId is already set).
-    expect(store.getState().game.phase).toBe('loh_results');
-  });
+    expect(store.getState().game.phase).toBe('loh_results')
+  })
 
   it('prizeType from pendingChallenge correctly identifies LOH comp even when game.phase has already advanced', async () => {
-    const store = makeStore();
-    renderWithStore(store);
+    const store = makeStore()
+    renderWithStore(store)
 
     await act(async () => {
-      store.dispatch(setPhase('loh_comp'));
-    });
+      store.dispatch(setPhase('loh_comp'))
+    })
 
-    expect(capturedOnDone).not.toBeNull();
+    expect(capturedOnDone).not.toBeNull()
 
     // Verify pendingChallenge has prizeType='LOH' captured at challenge-start
-    const pending = store.getState().challenge.pending;
-    expect(pending?.prizeType).toBe('LOH');
+    const pending = store.getState().challenge.pending
+    expect(pending?.prizeType).toBe('LOH')
 
     // Simulate feature thunk winner applied + phase advanced
     await act(async () => {
@@ -279,80 +283,84 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
           humanId: 'p0',
           prizeType: 'LOH',
           seed: 2,
-        }),
-      );
-      store.dispatch(dropPlayer('p0'));
-      store.dispatch(dropPlayer('p1'));
-      store.dispatch(dropPlayer('p3'));
-    });
+        })
+      )
+      store.dispatch(dropPlayer('p0'))
+      store.dispatch(dropPlayer('p1'))
+      store.dispatch(dropPlayer('p3'))
+    })
 
     await act(async () => {
-      store.dispatch(resolveHoldTheWallOutcome());
-    });
+      store.dispatch(resolveHoldTheWallOutcome())
+    })
 
-    expect(store.getState().game.phase).toBe('loh_results');
+    expect(store.getState().game.phase).toBe('loh_results')
 
     // onDone fires — the isHohComp determination must use prizeType, not
     // game.phase (which is already 'loh_results').  If isHohComp were
     // derived from game.phase, it would be false and the logic would
     // incorrectly look for a POS winner.
     await act(async () => {
-      capturedOnDone!(1);
-    });
+      capturedOnDone!(1)
+    })
 
     // prize applied to LOH (not POS)
-    expect(store.getState().game.lohId).toBe('p2');
-    expect(store.getState().game.posWinnerId).toBeNull();
-  });
+    expect(store.getState().game.lohId).toBe('p2')
+    expect(store.getState().game.posWinnerId).toBeNull()
+  })
 
   it('falls back to score-based winner when no feature thunk has pre-applied a winner', async () => {
     // For a regular score-based game (no feature thunk involved), the
     // completeChallenge path determines the winner from scores.
     // This test verifies the fallback behaviour is preserved.
-    const store = makeStore();
-    renderWithStore(store);
+    const store = makeStore()
+    renderWithStore(store)
 
     await act(async () => {
-      store.dispatch(setPhase('loh_comp'));
-    });
+      store.dispatch(setPhase('loh_comp'))
+    })
 
-    expect(capturedOnDone).not.toBeNull();
+    expect(capturedOnDone).not.toBeNull()
 
     // No feature thunk runs; game.lohId is still null.
-    expect(store.getState().game.lohId).toBeNull();
+    expect(store.getState().game.lohId).toBeNull()
 
     // onDone fires with a high rawValue for the human player (p0 wins).
     await act(async () => {
-      capturedOnDone!(1000);
-    });
-    await act(async () => { capturedCeremonyOnDone?.(); });
+      capturedOnDone!(1000)
+    })
+    await act(async () => {
+      capturedCeremonyOnDone?.()
+    })
 
     // Some winner must be applied (the score-based path picks p0 or highest scorer).
-    expect(store.getState().game.lohId).not.toBeNull();
-    expect(store.getState().game.phase).toBe('loh_results');
-  });
+    expect(store.getState().game.lohId).not.toBeNull()
+    expect(store.getState().game.phase).toBe('loh_results')
+  })
 
   it('prefers an authoritative winner returned by the React minigame over score-based challenge results', async () => {
-    const store = makeStore();
-    renderWithStore(store);
+    const store = makeStore()
+    renderWithStore(store)
 
     await act(async () => {
-      store.dispatch(setPhase('loh_comp'));
-    });
+      store.dispatch(setPhase('loh_comp'))
+    })
 
-    expect(capturedOnDone).not.toBeNull();
+    expect(capturedOnDone).not.toBeNull()
 
     await act(async () => {
-      capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' });
-    });
-    await act(async () => { capturedCeremonyOnDone?.(); });
+      capturedOnDone!(1, false, { authoritativeWinnerId: 'p2' })
+    })
+    await act(async () => {
+      capturedCeremonyOnDone?.()
+    })
 
-    expect(store.getState().game.lohId).toBe('p2');
-    expect(store.getState().game.phase).toBe('loh_results');
-    expect(store.getState().challenge.history[0]?.winnerId).toBe('p2');
-    expect(store.getState().challenge.history[0]?.authoritative).toBe(true);
-  });
-});
+    expect(store.getState().game.lohId).toBe('p2')
+    expect(store.getState().game.phase).toBe('loh_results')
+    expect(store.getState().challenge.history[0]?.winnerId).toBe('p2')
+    expect(store.getState().challenge.history[0]?.authoritative).toBe(true)
+  })
+})
 
 // ── SpectatorView winner-precedence unit tests ────────────────────────────
 //
@@ -363,30 +371,29 @@ describe('winner identity — feature-thunk winner takes precedence over score-b
 
 describe('SpectatorView — winner precedence after the fix', () => {
   afterEach(() => {
-    vi.resetModules();
-    vi.doUnmock('../../src/components/ui/SpectatorView/progressEngine');
-    vi.restoreAllMocks();
+    vi.resetModules()
+    vi.doUnmock('../../src/components/ui/SpectatorView/progressEngine')
+    vi.restoreAllMocks()
     // Clean up any window.game mock
     if ((window as unknown as Record<string, unknown>).game) {
-      delete (window as unknown as Record<string, unknown>).game;
+      delete (window as unknown as Record<string, unknown>).game
     }
-  });
+  })
 
   it('resolvedExpectedWinner beats windowAuthWinner and reduxWinner', async () => {
-    vi.resetModules();
-    const capturedInitialWinnerIds = installSpectatorSimulationMock();
+    vi.resetModules()
+    const capturedInitialWinnerIds = installSpectatorSimulationMock()
 
     // Dynamically import after the hook mock is installed.
-    const { default: SpectatorView } = await import(
-      '../../src/components/ui/SpectatorView/SpectatorView'
-    );
+    const { default: SpectatorView } =
+      await import('../../src/components/ui/SpectatorView/SpectatorView')
 
-    const competitorIds = ['p1', 'p2', 'p3'];
+    const competitorIds = ['p1', 'p2', 'p3']
 
     // Set up a window.game.__authoritativeWinner that would lose to expectedWinnerId
-    (window as unknown as Record<string, unknown>).game = {
+    ;(window as unknown as Record<string, unknown>).game = {
       __authoritativeWinner: { playerId: 'p3' },
-    };
+    }
 
     const { unmount } = render(
       <Provider
@@ -401,16 +408,34 @@ describe('SpectatorView — winner precedence after the fix', () => {
           },
           preloadedState: {
             game: {
-              season: 1, week: 1, phase: 'loh_comp', seed: 1,
+              season: 1,
+              week: 1,
+              phase: 'loh_comp',
+              seed: 1,
               lohId: 'p2', // reduxWinner candidate
-              prevHohId: null, nomineeIds: [], posWinnerId: null,
-              replacementNeeded: false, awaitingNominations: false,
-              pendingNominee1Id: null, pendingMinigame: null, minigameResult: null,
-              twistActive: false, awaitingPovDecision: false, awaitingPovSaveTarget: false,
-              votes: {}, voteResults: null, awaitingHumanVote: false, awaitingTieBreak: false,
-              tiedNomineeIds: null, awaitingFinal3Eviction: false, f3Part1WinnerId: null,
-              f3Part2WinnerId: null, evictionSplashId: null,
-              players: makePlayers(4), tvFeed: [], isLive: false,
+              prevHohId: null,
+              nomineeIds: [],
+              posWinnerId: null,
+              replacementNeeded: false,
+              awaitingNominations: false,
+              pendingNominee1Id: null,
+              pendingMinigame: null,
+              minigameResult: null,
+              twistActive: false,
+              awaitingPovDecision: false,
+              awaitingPovSaveTarget: false,
+              votes: {},
+              voteResults: null,
+              awaitingHumanVote: false,
+              awaitingTieBreak: false,
+              tiedNomineeIds: null,
+              awaitingFinal3Eviction: false,
+              f3Part1WinnerId: null,
+              f3Part2WinnerId: null,
+              evictionSplashId: null,
+              players: makePlayers(4),
+              tvFeed: [],
+              isLive: false,
             } as GameState,
           },
         })}
@@ -419,29 +444,34 @@ describe('SpectatorView — winner precedence after the fix', () => {
           competitorIds={competitorIds}
           expectedWinnerId="p1" // should win; highest priority
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
     // SpectatorView should prefer the explicit expected winner over the
     // legacy window global and Redux fallback, and pass that winner into the
     // simulation hook as the authoritative initial winner.
-    expect(capturedInitialWinnerIds).toEqual(['p1']);
+    expect(capturedInitialWinnerIds).toEqual(['p1'])
 
-    unmount();
-  });
+    unmount()
+  })
 
   it('windowAuthWinner reads playerId from an object-shaped __authoritativeWinner', async () => {
-    vi.resetModules();
-    const capturedInitialWinnerIds = installSpectatorSimulationMock();
+    vi.resetModules()
+    const capturedInitialWinnerIds = installSpectatorSimulationMock()
 
-    const { default: SpectatorView } = await import(
-      '../../src/components/ui/SpectatorView/SpectatorView'
-    );
+    const { default: SpectatorView } =
+      await import('../../src/components/ui/SpectatorView/SpectatorView')
 
-    const competitorIds = ['p1', 'p2'];
-    (window as unknown as Record<string, unknown>).game = {
-      __authoritativeWinner: { playerId: 'p1', score: 100, minigame: 'holdWall', compType: 'loh', timestamp: 0 },
-    };
+    const competitorIds = ['p1', 'p2']
+    ;(window as unknown as Record<string, unknown>).game = {
+      __authoritativeWinner: {
+        playerId: 'p1',
+        score: 100,
+        minigame: 'holdWall',
+        compType: 'loh',
+        timestamp: 0,
+      },
+    }
 
     const store = configureStore({
       reducer: {
@@ -454,32 +484,49 @@ describe('SpectatorView — winner precedence after the fix', () => {
       },
       preloadedState: {
         game: {
-          season: 1, week: 1, phase: 'loh_comp', seed: 1,
-          lohId: null, prevHohId: null, nomineeIds: [], posWinnerId: null,
-          replacementNeeded: false, awaitingNominations: false,
-          pendingNominee1Id: null, pendingMinigame: null, minigameResult: null,
-          twistActive: false, awaitingPovDecision: false, awaitingPovSaveTarget: false,
-          votes: {}, voteResults: null, awaitingHumanVote: false, awaitingTieBreak: false,
-          tiedNomineeIds: null, awaitingFinal3Eviction: false, f3Part1WinnerId: null,
-          f3Part2WinnerId: null, evictionSplashId: null,
-          players: makePlayers(3), tvFeed: [], isLive: false,
+          season: 1,
+          week: 1,
+          phase: 'loh_comp',
+          seed: 1,
+          lohId: null,
+          prevHohId: null,
+          nomineeIds: [],
+          posWinnerId: null,
+          replacementNeeded: false,
+          awaitingNominations: false,
+          pendingNominee1Id: null,
+          pendingMinigame: null,
+          minigameResult: null,
+          twistActive: false,
+          awaitingPovDecision: false,
+          awaitingPovSaveTarget: false,
+          votes: {},
+          voteResults: null,
+          awaitingHumanVote: false,
+          awaitingTieBreak: false,
+          tiedNomineeIds: null,
+          awaitingFinal3Eviction: false,
+          f3Part1WinnerId: null,
+          f3Part2WinnerId: null,
+          evictionSplashId: null,
+          players: makePlayers(3),
+          tvFeed: [],
+          isLive: false,
         } as GameState,
       },
-    });
+    })
 
     const { unmount } = render(
       <Provider store={store}>
-        <SpectatorView
-          competitorIds={competitorIds}
-        />
-      </Provider>,
-    );
+        <SpectatorView competitorIds={competitorIds} />
+      </Provider>
+    )
 
-    await act(async () => {});
-    unmount();
+    await act(async () => {})
+    unmount()
 
     // The object-shaped legacy global should resolve to its playerId and be
     // passed through as the authoritative initial winner.
-    expect(capturedInitialWinnerIds).toEqual(['p1']);
-  });
-});
+    expect(capturedInitialWinnerIds).toEqual(['p1'])
+  })
+})

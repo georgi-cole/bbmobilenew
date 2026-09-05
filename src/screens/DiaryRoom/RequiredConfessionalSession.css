@@ -188,7 +188,9 @@
   gap: 1px;
 }
 
-.rcd-player__names > span { display: block; }
+.rcd-player__names > span {
+  display: block;
+}
 
 .rcd-player__avatar {
   display: inline-flex;

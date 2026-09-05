@@ -46,7 +46,13 @@ function GlossySnowflake({ x, y, scale = 1 }: { x: number; y: number; scale?: nu
  * It keeps the glossy transparent visual language without shipping large
  * raster files and remains sharp on every device density.
  */
-export function WeatherGlyph({ condition, rainbow }: { condition: WeatherConditionId; rainbow: boolean }) {
+export function WeatherGlyph({
+  condition,
+  rainbow,
+}: {
+  condition: WeatherConditionId
+  rainbow: boolean
+}) {
   const id = useId().replace(/:/g, '')
   const wet = ['drizzle', 'light_showers', 'sun_showers', 'rainy', 'heavy_rain'].includes(condition)
   const snow = condition === 'snow_showers' || condition === 'snowy'

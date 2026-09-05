@@ -815,9 +815,7 @@ export default function SocialPanelV2() {
           <section className="sp2-public-request" aria-label="Active public request">
             <div className="sp2-public-request__eyebrow">Audience directive</div>
             <strong>{activePublicDirection.description}</strong>
-            {activePublicDirection.rationale && (
-              <span>{activePublicDirection.rationale}</span>
-            )}
+            {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
             <div className="sp2-public-request__footer">
               <span>
                 {activePublicDirection.completionLabel ?? 'Complete the requested move'} · +

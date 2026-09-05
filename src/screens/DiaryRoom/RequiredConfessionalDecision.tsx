@@ -203,9 +203,8 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
   const voxAutoNomineeId = isVoxPopuli
     ? (game.voxPopuli?.autoNomineeId ?? game.lastHohCompFinisherId)
     : null
-  const voxImmunityWinnerId = isVoxPopuli && !isVoxFinalFour
-    ? (game.voxPopuli?.immunityWinnerId ?? game.lohId)
-    : null
+  const voxImmunityWinnerId =
+    isVoxPopuli && !isVoxFinalFour ? (game.voxPopuli?.immunityWinnerId ?? game.lohId) : null
   const options = alivePlayers.filter(
     (player) =>
       (!isVoxPopuli || !voxImmunityWinnerId || player.id !== voxImmunityWinnerId) &&
@@ -277,8 +276,8 @@ function NominationsDecision({ presentation, onDecisionCommitted }: Omit<Props, 
       isVoxPopuli
         ? `Secret votes cast for ${formatNameList(selectedNames)}.`
         : autoNomineeName
-        ? `Nominated ${formatNameList(selectedNames)}; ${autoNomineeName} is the last-place nominee.`
-        : `Nominated ${formatNameList(selectedNames)}.`
+          ? `Nominated ${formatNameList(selectedNames)}; ${autoNomineeName} is the last-place nominee.`
+          : `Nominated ${formatNameList(selectedNames)}.`
     )
   }
 

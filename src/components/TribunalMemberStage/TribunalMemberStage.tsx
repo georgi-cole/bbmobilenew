@@ -138,7 +138,7 @@ export default function TribunalMemberStage({
   const formalSrc =
     current && !isPublic
       ? isSol
-        ? resolveInformalCutout(current.juror) ?? resolveFormalCutout(current.juror)
+        ? (resolveInformalCutout(current.juror) ?? resolveFormalCutout(current.juror))
         : resolveFormalCutout(current.juror)
       : null
   const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null

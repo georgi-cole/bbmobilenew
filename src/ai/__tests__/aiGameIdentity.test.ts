@@ -21,13 +21,22 @@ describe('season AI identities', () => {
     expect(first.slice(1).map((player) => player.aiGameIdentity)).toEqual(
       second.slice(1).map((player) => player.aiGameIdentity)
     )
-    expect(new Set(first.slice(1).map((player) => player.aiGameIdentity?.archetype)).size).toBeGreaterThan(8)
+    expect(
+      new Set(first.slice(1).map((player) => player.aiGameIdentity?.archetype)).size
+    ).toBeGreaterThan(8)
   })
 
   it('uses survival-focused identities to shape only competition performance', () => {
-    const [identity] = assignAiGameIdentities<TestIdentityPlayer>([{ id: 'robo-1' }], 77, 'survival')
-      .map((player) => player.aiGameIdentity)
-    expect(competitionIdentityMultiplier(identity, 'survival', 77, 'robo-1')).toBeGreaterThanOrEqual(0.8)
-    expect(competitionIdentityMultiplier(identity, 'survival', 77, 'robo-1')).toBeLessThanOrEqual(1.16)
+    const [identity] = assignAiGameIdentities<TestIdentityPlayer>(
+      [{ id: 'robo-1' }],
+      77,
+      'survival'
+    ).map((player) => player.aiGameIdentity)
+    expect(
+      competitionIdentityMultiplier(identity, 'survival', 77, 'robo-1')
+    ).toBeGreaterThanOrEqual(0.8)
+    expect(competitionIdentityMultiplier(identity, 'survival', 77, 'robo-1')).toBeLessThanOrEqual(
+      1.16
+    )
   })
 })

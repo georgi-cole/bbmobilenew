@@ -9,11 +9,7 @@ import {
   selectDiscoverableFact,
   selectFauxTvFact,
 } from './intelligenceSystem'
-import {
-  learnRealityKnowledge,
-  recordIntelligenceDelivery,
-  recordRealityFact,
-} from './socialSlice'
+import { learnRealityKnowledge, recordIntelligenceDelivery, recordRealityFact } from './socialSlice'
 import type { RealityFact, RealityMemorySource } from './reality/types'
 import type { SocialActionLogEntry, SocialState } from './types'
 
@@ -78,16 +74,7 @@ function recordSocialFact(
   if (!fact || state.social.reality.facts[fact.id]) return
   api.dispatch(recordRealityFact(fact))
   for (const participantId of fact.participantIds) {
-    learnFact(
-      api,
-      fact,
-      participantId,
-      'DIRECT',
-      [entry.actorId],
-      0.94,
-      fact.day,
-      fact.phase
-    )
+    learnFact(api, fact, participantId, 'DIRECT', [entry.actorId], 0.94, fact.day, fact.phase)
   }
   for (const witnessId of fact.witnessIds) {
     learnFact(api, fact, witnessId, 'WITNESSED', [entry.actorId], 0.8, fact.day, fact.phase)
@@ -177,8 +164,7 @@ function recordCompetitionSuspicion(
     if (historicalThrows < 2) continue
     const alreadyExists = Object.values(state.social.reality.facts).some(
       (fact) =>
-        fact.propositionType === 'COMPETITION_THROW_SUSPICION' &&
-        fact.subjectIds.includes(playerId)
+        fact.propositionType === 'COMPETITION_THROW_SUSPICION' && fact.subjectIds.includes(playerId)
     )
     if (alreadyExists) continue
 
@@ -305,9 +291,11 @@ export const intelligenceMiddleware: Middleware = (api) => (next) => (action) =>
     recordCompetitionSuspicion(
       api,
       state,
-      (action as unknown as {
-        payload: { competitionIntents?: Record<string, CompetitionIntent>; gameKey?: string }
-      }).payload
+      (
+        action as unknown as {
+          payload: { competitionIntents?: Record<string, CompetitionIntent>; gameKey?: string }
+        }
+      ).payload
     )
   }
 

@@ -202,20 +202,24 @@ export function createSurvivorRun(): GameState {
   const runId = makeRunId('survival')
   const human = base.players.find((player) => player.isUser) ?? base.players[0]
   const startingCastSize = SURVIVOR_STARTING_CAST_SIZE
-  const players = assignAiGameIdentities([
-    {
-      ...human,
-      id: 'user',
-      status: 'active' as const,
-      isUser: true,
-      isRobo: false,
-      survivorEntryDay: 1,
-      survivorSlot: 0,
-    },
-    ...Array.from({ length: startingCastSize - 1 }, (_, index) =>
-      buildRoboPlayer(index, runId, 1, index + 1)
-    ),
-  ], base.seed ^ runId.length, 'survival')
+  const players = assignAiGameIdentities(
+    [
+      {
+        ...human,
+        id: 'user',
+        status: 'active' as const,
+        isUser: true,
+        isRobo: false,
+        survivorEntryDay: 1,
+        survivorSlot: 0,
+      },
+      ...Array.from({ length: startingCastSize - 1 }, (_, index) =>
+        buildRoboPlayer(index, runId, 1, index + 1)
+      ),
+    ],
+    base.seed ^ runId.length,
+    'survival'
+  )
   const now = Date.now()
   const modeSpecific = createSurvivorModeState(startingCastSize)
 
@@ -270,7 +274,11 @@ export function buildReplacementRobo(state: GameState, slot?: number): Player {
     currentDay,
     slot ?? survivorState.nextRoboIndex + 1
   )
-  return assignAiGameIdentities([replacement], state.seed ^ survivorState.nextRoboIndex, 'survival')[0]
+  return assignAiGameIdentities(
+    [replacement],
+    state.seed ^ survivorState.nextRoboIndex,
+    'survival'
+  )[0]
 }
 
 export function markSurvivorDay(state: GameState): GameState {

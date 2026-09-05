@@ -219,8 +219,8 @@ function NominationsPanel({ onDecisionCommitted }: DecisionPanelProps) {
     const nominationSummary = isVoxPopuli
       ? `I cast my secret nomination votes for ${formatNameList(selectedNames)}.`
       : autoNomineeName
-      ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is already the last-place nominee.`
-      : `I nominate ${formatNameList(selectedNames)}.`
+        ? `I nominate ${formatNameList(selectedNames)}. ${autoNomineeName} is already the last-place nominee.`
+        : `I nominate ${formatNameList(selectedNames)}.`
     onDecisionCommitted?.(nominationSummary)
     dispatch(commitNominees(selected))
   }

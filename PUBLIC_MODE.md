@@ -25,16 +25,16 @@ Classic and Cupid can receive relationship, loyalty, betrayal, confrontation, co
 
 The mapping is intentionally explicit in `publicOpinionMiddleware.ts` and `MissionActionMapper.ts`:
 
-| Player/game action | Public request progress |
-| --- | --- |
-| Repair, apologize, clear the air | `apologized_to` |
-| Break an alliance or bromance | `broke_alliance` |
-| Propose an alliance | `formed_alliance` |
-| Betray | `betrayal` |
-| Spread a rumor | `spread_rumor` |
-| Confront or publicly call out | `confronted_player` |
-| Pitch/ask for a target | `influenced_hoh` |
-| Ally/protect | `showed_loyalty` |
+| Player/game action               | Public request progress |
+| -------------------------------- | ----------------------- |
+| Repair, apologize, clear the air | `apologized_to`         |
+| Break an alliance or bromance    | `broke_alliance`        |
+| Propose an alliance              | `formed_alliance`       |
+| Betray                           | `betrayal`              |
+| Spread a rumor                   | `spread_rumor`          |
+| Confront or publicly call out    | `confronted_player`     |
+| Pitch/ask for a target           | `influenced_hoh`        |
+| Ally/protect                     | `showed_loyalty`        |
 
 Direct actions are weighted as exact matches. Indirect social actions may contribute partial progress where the request supports it. The configured completion threshold is 100; completion rewards, failure penalties, and approval-band behavior live in `src/publicOpinion/publicOpinionConfig.ts`.
 
@@ -50,10 +50,10 @@ Direct actions are weighted as exact matches. Indirect social actions may contri
 
 Every public profile has three live ratings. The visible overall approval is their arithmetic mean, rounded to a whole number. This keeps the headline score understandable while making the audience reaction explainable rather than a single opaque number.
 
-| Rating | What informs it |
-| --- | --- |
-| **Charisma** | Social warmth, conflicts, apologies, visible rapport, and how naturally a moment plays on-screen. |
-| **Game** | Competition results, veto/safety moves, nominations, strategic influence, and decisive gameplay. |
+| Rating        | What informs it                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------- |
+| **Charisma**  | Social warmth, conflicts, apologies, visible rapport, and how naturally a moment plays on-screen.       |
+| **Game**      | Competition results, veto/safety moves, nominations, strategic influence, and decisive gameplay.        |
 | **Integrity** | Promises kept or broken, loyalty, alliance conduct, betrayals, and whether a vote matches a commitment. |
 
 Opening profiles receive a small, balanced lean from the AI contestant identity (for example, social butterflies begin with more Charisma texture and loyal anchors with more Integrity texture), without changing their starting overall approval. The human player starts neutral and earns their profile through play.

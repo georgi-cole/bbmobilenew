@@ -1,17 +1,16 @@
-import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit';
-import { publicOpinionConfig } from './publicOpinionConfig';
-import { createPublicNarrative } from './publicNarratives';
-import { applyAudienceApprovalDelta, createAudienceBreakdown } from './audienceBreakdown';
+import { createSlice, createSelector, type PayloadAction } from '@reduxjs/toolkit'
+import { publicOpinionConfig } from './publicOpinionConfig'
+import { createPublicNarrative } from './publicNarratives'
+import { applyAudienceApprovalDelta, createAudienceBreakdown } from './audienceBreakdown'
 import type {
   PublicOpinionState,
   PlayerPublicProfile,
   PublicDirection,
   PublicFeedEntry,
-} from './types';
+} from './types'
 
 // Minimal type for selectors to avoid circular import with store.ts
-type StateWithPublicOpinion = { publicOpinion: PublicOpinionState };
-
+type StateWithPublicOpinion = { publicOpinion: PublicOpinionState }
 
 const initialState: PublicOpinionState = {
   profiles: {},
@@ -20,7 +19,7 @@ const initialState: PublicOpinionState = {
   lastUpdatedWeek: 0,
   feedPostsThisDay: 0,
   currentFeedDay: 0,
-};
+}
 
 // ── Shared helper (used by both resolveDirection and updateMissionProgress) ───
 
@@ -32,29 +31,29 @@ const initialState: PublicOpinionState = {
 function applyDirectionCompletionRewards(
   state: PublicOpinionState,
   direction: PublicDirection,
-  week: number,
+  week: number
 ): void {
-  direction.status = 'completed';
-  direction.completedWeek = week;
+  direction.status = 'completed'
+  direction.completedWeek = week
 
-  const profile = state.profiles[direction.playerId];
-  if (!profile) return;
+  const profile = state.profiles[direction.playerId]
+  if (!profile) return
 
-  profile.completedDirectionCount += 1;
-  const delta = publicOpinionConfig.directionRewards.success;
+  profile.completedDirectionCount += 1
+  const delta = publicOpinionConfig.directionRewards.success
   const applied = applyAudienceApprovalDelta(profile, {
     delta,
     reason: 'direction_completed',
     week,
-  });
-  profile.previousApproval = profile.approval;
-  profile.audienceBreakdown = applied.breakdown;
-  profile.approval = applied.approval;
-  profile.seasonApprovals.push(applied.approval);
+  })
+  profile.previousApproval = profile.approval
+  profile.audienceBreakdown = applied.breakdown
+  profile.approval = applied.approval
+  profile.seasonApprovals.push(applied.approval)
   if (applied.appliedDelta > 0) {
-    profile.cumulativePositiveDelta += applied.appliedDelta;
+    profile.cumulativePositiveDelta += applied.appliedDelta
   }
-  state.lastUpdatedWeek = week;
+  state.lastUpdatedWeek = week
 
   const feedEntry: PublicFeedEntry = {
     id: `${direction.playerId}-${week}-${Date.now()}-dir-completed`,
@@ -69,10 +68,10 @@ function applyDirectionCompletionRewards(
     week,
     timestamp: Date.now(),
     reason: 'direction_completed',
-  };
-  state.feed.unshift(feedEntry);
+  }
+  state.feed.unshift(feedEntry)
   if (state.feed.length > 50) {
-    state.feed = state.feed.slice(0, 50);
+    state.feed = state.feed.slice(0, 50)
   }
 }
 
@@ -84,10 +83,22 @@ const publicOpinionSlice = createSlice({
   reducers: {
     initializeProfiles(
       state,
-      action: PayloadAction<Array<string | { id: string; aiGameIdentity?: { archetype?: string; audienceFocus?: number; competitionDrive?: number } }>>,
+      action: PayloadAction<
+        Array<
+          | string
+          | {
+              id: string
+              aiGameIdentity?: {
+                archetype?: string
+                audienceFocus?: number
+                competitionDrive?: number
+              }
+            }
+        >
+      >
     ) {
       for (const entry of action.payload) {
-        const playerId = typeof entry === 'string' ? entry : entry.id;
+        const playerId = typeof entry === 'string' ? entry : entry.id
         if (!state.profiles[playerId]) {
           state.profiles[playerId] = {
             playerId,
@@ -98,61 +109,62 @@ const publicOpinionSlice = createSlice({
             cumulativePositiveDelta: 0,
             audienceBreakdown: createAudienceBreakdown(
               publicOpinionConfig.DEFAULT_APPROVAL,
-              typeof entry === 'string' ? undefined : entry.aiGameIdentity,
+              typeof entry === 'string' ? undefined : entry.aiGameIdentity
             ),
-          };
+          }
         }
       }
     },
 
     setProfileApprovals(state, action: PayloadAction<Record<string, number>>) {
       for (const [playerId, rawApproval] of Object.entries(action.payload)) {
-        const profile = state.profiles[playerId];
-        if (!profile) continue;
+        const profile = state.profiles[playerId]
+        if (!profile) continue
 
         const approval = Math.min(
           publicOpinionConfig.MAX_APPROVAL,
-          Math.max(publicOpinionConfig.MIN_APPROVAL, Math.round(rawApproval)),
-        );
+          Math.max(publicOpinionConfig.MIN_APPROVAL, Math.round(rawApproval))
+        )
 
-        const currentBreakdown = profile.audienceBreakdown ?? createAudienceBreakdown(profile.approval);
-        const shift = approval - profile.approval;
+        const currentBreakdown =
+          profile.audienceBreakdown ?? createAudienceBreakdown(profile.approval)
+        const shift = approval - profile.approval
         profile.audienceBreakdown = {
           charisma: Math.min(100, Math.max(0, currentBreakdown.charisma + shift)),
           gameplay: Math.min(100, Math.max(0, currentBreakdown.gameplay + shift)),
           integrity: Math.min(100, Math.max(0, currentBreakdown.integrity + shift)),
           recentChanges: [],
-        };
-        profile.previousApproval = approval;
-        profile.approval = approval;
-        profile.seasonApprovals = [approval];
+        }
+        profile.previousApproval = approval
+        profile.approval = approval
+        profile.seasonApprovals = [approval]
       }
     },
 
     updateApproval(
       state,
       action: PayloadAction<{
-        playerId: string;
-        delta: number;
-        reason: string;
-        week: number;
-        isHeadline?: boolean;
-        headlineText?: string;
+        playerId: string
+        delta: number
+        reason: string
+        week: number
+        isHeadline?: boolean
+        headlineText?: string
         /** When false, approval is updated silently without a Public Feed entry. Default: true. */
-        addToFeed?: boolean;
+        addToFeed?: boolean
         /**
          * The game event type that triggered this update (e.g. 'nomination',
          * 'eviction', 'hoh_win', 'pov_save', 'public_save').
          */
-        eventType?: string;
+        eventType?: string
         /**
          * ID of the player responsible for triggering this change
          * (e.g. the LOH who nominated the subject).
          */
-        attributedToId?: string;
+        attributedToId?: string
         /** A small seeded audience-mood adjustment supplied by the middleware. */
-        audienceVariance?: number;
-      }>,
+        audienceVariance?: number
+      }>
     ) {
       const {
         playerId,
@@ -165,41 +177,43 @@ const publicOpinionSlice = createSlice({
         eventType,
         attributedToId,
         audienceVariance = 0,
-      } = action.payload;
-      const profile = state.profiles[playerId];
-      if (!profile) return;
+      } = action.payload
+      const profile = state.profiles[playerId]
+      if (!profile) return
 
       const applied = applyAudienceApprovalDelta(profile, {
         delta: delta + audienceVariance,
         reason,
         week,
         eventType,
-      });
-      profile.previousApproval = profile.approval;
-      profile.audienceBreakdown = applied.breakdown;
-      profile.approval = applied.approval;
-      profile.seasonApprovals.push(applied.approval);
+      })
+      profile.previousApproval = profile.approval
+      profile.audienceBreakdown = applied.breakdown
+      profile.approval = applied.approval
+      profile.seasonApprovals.push(applied.approval)
       if (applied.appliedDelta > 0) {
-        profile.cumulativePositiveDelta += applied.appliedDelta;
+        profile.cumulativePositiveDelta += applied.appliedDelta
       }
-      state.lastUpdatedWeek = week;
+      state.lastUpdatedWeek = week
 
       // Reset daily feed budget when the week (day) has changed.
       if (week !== state.currentFeedDay) {
-        state.feedPostsThisDay = 0;
-        state.currentFeedDay = week;
+        state.feedPostsThisDay = 0
+        state.currentFeedDay = week
       }
 
       // Enforce the daily feed budget: headline events are always allowed through;
       // regular event-driven posts are gated by feedBudgetPerDay.
       const budgetExceeded =
-        !isHeadline && state.feedPostsThisDay >= publicOpinionConfig.feedBudgetPerDay;
+        !isHeadline && state.feedPostsThisDay >= publicOpinionConfig.feedBudgetPerDay
 
       if (addToFeed && !budgetExceeded) {
         const feedEntry: PublicFeedEntry = {
           id: `${playerId}-${week}-${Date.now()}-${state.feed.length}`,
           playerId,
-          text: headlineText ?? createPublicNarrative({ reason, playerId, delta: applied.appliedDelta, week }),
+          text:
+            headlineText ??
+            createPublicNarrative({ reason, playerId, delta: applied.appliedDelta, week }),
           delta: applied.appliedDelta,
           week,
           timestamp: Date.now(),
@@ -207,60 +221,60 @@ const publicOpinionSlice = createSlice({
           isHeadline: isHeadline ?? false,
           eventType,
           attributedToId,
-        };
-        state.feed.unshift(feedEntry);
+        }
+        state.feed.unshift(feedEntry)
         if (state.feed.length > 50) {
-          state.feed = state.feed.slice(0, 50);
+          state.feed = state.feed.slice(0, 50)
         }
         // Only count non-headline posts toward the daily budget; headline events
         // (generated by PublicHeadlineService at week_start) have their own
         // headlineEventsPerDayMin/Max budget managed by that service.
         if (!isHeadline) {
-          state.feedPostsThisDay += 1;
+          state.feedPostsThisDay += 1
         }
       }
     },
 
     addDirection(state, action: PayloadAction<PublicDirection>) {
-      state.directions.push(action.payload);
+      state.directions.push(action.payload)
     },
 
     resolveDirection(
       state,
       action: PayloadAction<{
-        directionId: string;
-        status: 'completed' | 'failed' | 'expired';
-        week: number;
-      }>,
+        directionId: string
+        status: 'completed' | 'failed' | 'expired'
+        week: number
+      }>
     ) {
-      const { directionId, status, week } = action.payload;
-      const direction = state.directions.find((d) => d.id === directionId);
-      if (!direction) return;
+      const { directionId, status, week } = action.payload
+      const direction = state.directions.find((d) => d.id === directionId)
+      if (!direction) return
 
       if (status === 'completed') {
         // Guard: already completed (e.g. completed via updateMissionProgress) — no-op.
-        if (direction.status === 'completed') return;
-        applyDirectionCompletionRewards(state, direction, week);
-        return;
+        if (direction.status === 'completed') return
+        applyDirectionCompletionRewards(state, direction, week)
+        return
       }
 
-      direction.status = status;
+      direction.status = status
 
       // Apply fail penalty; expired directions carry no penalty.
       if (status === 'failed') {
-        const profile = state.profiles[direction.playerId];
+        const profile = state.profiles[direction.playerId]
         if (profile) {
-          const delta = publicOpinionConfig.directionRewards.fail;
+          const delta = publicOpinionConfig.directionRewards.fail
           const applied = applyAudienceApprovalDelta(profile, {
             delta,
             reason: 'direction_failed',
             week,
-          });
-          profile.previousApproval = profile.approval;
-          profile.audienceBreakdown = applied.breakdown;
-          profile.approval = applied.approval;
-          profile.seasonApprovals.push(applied.approval);
-          state.lastUpdatedWeek = week;
+          })
+          profile.previousApproval = profile.approval
+          profile.audienceBreakdown = applied.breakdown
+          profile.approval = applied.approval
+          profile.seasonApprovals.push(applied.approval)
+          state.lastUpdatedWeek = week
 
           const feedEntry: PublicFeedEntry = {
             id: `${direction.playerId}-${week}-${Date.now()}-dir-failed`,
@@ -275,20 +289,20 @@ const publicOpinionSlice = createSlice({
             week,
             timestamp: Date.now(),
             reason: 'direction_failed',
-          };
-          state.feed.unshift(feedEntry);
+          }
+          state.feed.unshift(feedEntry)
           if (state.feed.length > 50) {
-            state.feed = state.feed.slice(0, 50);
+            state.feed = state.feed.slice(0, 50)
           }
         }
       }
     },
 
     pruneExpiredDirections(state, action: PayloadAction<{ week: number }>) {
-      const { week } = action.payload;
+      const { week } = action.payload
       for (const direction of state.directions) {
         if (direction.status === 'active' && direction.expiresAtWeek <= week) {
-          direction.status = 'expired';
+          direction.status = 'expired'
         }
       }
     },
@@ -299,8 +313,8 @@ const publicOpinionSlice = createSlice({
      * event-driven feed cards.
      */
     resetDailyFeedBudget(state, action: PayloadAction<{ week: number }>) {
-      state.feedPostsThisDay = 0;
-      state.currentFeedDay = action.payload.week;
+      state.feedPostsThisDay = 0
+      state.currentFeedDay = action.payload.week
     },
 
     /**
@@ -312,33 +326,33 @@ const publicOpinionSlice = createSlice({
     updateMissionProgress(
       state,
       action: PayloadAction<{
-        directionId: string;
-        progressPercent: number;
-        week: number;
-      }>,
+        directionId: string
+        progressPercent: number
+        week: number
+      }>
     ) {
-      const { directionId, progressPercent, week } = action.payload;
-      const direction = state.directions.find((d) => d.id === directionId);
-      if (!direction || direction.status !== 'active') return;
+      const { directionId, progressPercent, week } = action.payload
+      const direction = state.directions.find((d) => d.id === directionId)
+      if (!direction || direction.status !== 'active') return
 
-      direction.progressPercent = Math.min(100, Math.max(0, progressPercent));
+      direction.progressPercent = Math.min(100, Math.max(0, progressPercent))
 
       if (direction.progressPercent >= publicOpinionConfig.missionCompletionThreshold) {
-        applyDirectionCompletionRewards(state, direction, week);
+        applyDirectionCompletionRewards(state, direction, week)
       }
     },
 
     hydratePublicOpinion(_state, action: PayloadAction<PublicOpinionState>) {
-      return action.payload;
+      return action.payload
     },
   },
   extraReducers: (builder) => {
     builder.addMatcher(
       (action) => action.type === 'game/resetGame',
-      () => ({ ...initialState }),
-    );
+      () => ({ ...initialState })
+    )
   },
-});
+})
 
 export const {
   initializeProfiles,
@@ -350,33 +364,32 @@ export const {
   resetDailyFeedBudget,
   updateMissionProgress,
   hydratePublicOpinion,
-} = publicOpinionSlice.actions;
+} = publicOpinionSlice.actions
 
-export default publicOpinionSlice.reducer;
+export default publicOpinionSlice.reducer
 
 // Selectors
 export const selectPublicOpinion = (state: StateWithPublicOpinion): PublicOpinionState =>
-  state.publicOpinion;
+  state.publicOpinion
 
 export const selectPlayerProfile = (
   state: StateWithPublicOpinion,
-  playerId: string,
-): PlayerPublicProfile | undefined => state.publicOpinion.profiles[playerId];
+  playerId: string
+): PlayerPublicProfile | undefined => state.publicOpinion.profiles[playerId]
 
 export const selectRankedProfiles = createSelector(
   (state: StateWithPublicOpinion) => state.publicOpinion.profiles,
-  (profiles) =>
-    Object.values(profiles).sort((a, b) => b.approval - a.approval),
-);
+  (profiles) => Object.values(profiles).sort((a, b) => b.approval - a.approval)
+)
 
 export const selectActiveDirections = (
   state: StateWithPublicOpinion,
-  playerId: string,
+  playerId: string
 ): PublicDirection[] =>
-  state.publicOpinion.directions.filter((d) => d.playerId === playerId && d.status === 'active');
+  state.publicOpinion.directions.filter((d) => d.playerId === playerId && d.status === 'active')
 
 export const selectAllDirections = (state: StateWithPublicOpinion): PublicDirection[] =>
-  state.publicOpinion.directions;
+  state.publicOpinion.directions
 
 export const selectPublicFeed = (state: StateWithPublicOpinion): PublicFeedEntry[] =>
-  state.publicOpinion.feed;
+  state.publicOpinion.feed

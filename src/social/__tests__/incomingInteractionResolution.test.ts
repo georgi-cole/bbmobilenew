@@ -140,9 +140,15 @@ describe('incoming interaction contextual resolution', () => {
       playerAffinity: -2,
     })
 
-    expect(resolution.outcomeText).toMatch(/asked Mimi to spell out exactly what was not adding up/i)
-    expect(resolution.outcomeText).toMatch(/real answer.*not enough certainty|immediate issue better/i)
-    expect(resolution.outcomeText).not.toMatch(/measured answer|reading between the lines|conversation about/i)
+    expect(resolution.outcomeText).toMatch(
+      /asked Mimi to spell out exactly what was not adding up/i
+    )
+    expect(resolution.outcomeText).toMatch(
+      /real answer.*not enough certainty|immediate issue better/i
+    )
+    expect(resolution.outcomeText).not.toMatch(
+      /measured answer|reading between the lines|conversation about/i
+    )
   })
 
   it('uses the authored fallout branch rather than a generic relationship sentence', () => {
@@ -166,6 +172,8 @@ describe('incoming interaction contextual resolution', () => {
 
     expect(authored).not.toBeNull()
     expect(resolution.outcomeText).toMatch(/Safety ceremony shaping the block/i)
-    expect(resolution.outcomeText).toMatch(/Mimi knows Safety is still possible|Mimi leaves with a conditional opening/i)
+    expect(resolution.outcomeText).toMatch(
+      /Mimi knows Safety is still possible|Mimi leaves with a conditional opening/i
+    )
   })
 })

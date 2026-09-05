@@ -437,9 +437,10 @@ export default function HouseguestGrid({
                   liveEvictionNominee={
                     liveEliminationActive &&
                     !hg.isEvicted &&
-                    (Array.isArray(hg.statuses) ? hg.statuses : hg.statuses?.split('+') ?? []).includes(
-                      'nominated'
-                    )
+                    (Array.isArray(hg.statuses)
+                      ? hg.statuses
+                      : (hg.statuses?.split('+') ?? [])
+                    ).includes('nominated')
                   }
                 />
               </li>

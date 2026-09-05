@@ -739,8 +739,7 @@ export default function TvZone(props: TvZoneProps) {
       tvVisibleFeed.find((event) => {
         const key = extractMajorKey(event)
         return (
-          (key === 'vox_populi' || key === 'cupid_arrow') &&
-          event.meta?.broadcastConsumed !== true
+          (key === 'vox_populi' || key === 'cupid_arrow') && event.meta?.broadcastConsumed !== true
         )
       }) ?? null
     )
@@ -1138,7 +1137,6 @@ export default function TvZone(props: TvZoneProps) {
         if (initialKey && SHOCK_ANNOUNCEMENT_KEYS.has(initialKey)) {
           seenShockEventIdsRef.current.add(latestVisibleId)
         }
-
       }
       return
     }
@@ -1189,8 +1187,8 @@ export default function TvZone(props: TvZoneProps) {
 
   const queuedShockAnnouncement = shockAnnouncementQueue[0] ?? null
   const managedEventAnnouncement =
-    ((queuedBroadcastIsCard && eventAnnouncementSource?.id === queuedBroadcastEvent?.id) ||
-      eventAnnouncementSource?.id === seasonStartExpansionEvent?.id)
+    (queuedBroadcastIsCard && eventAnnouncementSource?.id === queuedBroadcastEvent?.id) ||
+    eventAnnouncementSource?.id === seasonStartExpansionEvent?.id
       ? eventAnnouncement
       : null
   const cupidFauxTvAnnouncement = eventAnnouncement?.key === 'cupid_arrow'
@@ -1381,10 +1379,7 @@ export default function TvZone(props: TvZoneProps) {
     if (queuedShockAnnouncement) {
       setDismissedEventId(queuedShockAnnouncement.eventId)
       setShockAnnouncementQueue((queue) => queue.slice(1))
-    } else if (
-      managedEventAnnouncement &&
-      currentAnnouncement === managedEventAnnouncement
-    ) {
+    } else if (managedEventAnnouncement && currentAnnouncement === managedEventAnnouncement) {
       const eventId = eventAnnouncementSource?.id
       if (eventId) {
         setDismissedEventId(eventId)

@@ -561,8 +561,8 @@ export default function Capitalization({
 
                   {phase === 'question' && humanEliminated && (
                     <p className="capitalization__feedback" aria-live="polite">
-                      You were eliminated after Question {humanStanding?.eliminatedAfterQuestion}. The
-                      remaining contestants are playing out the round.
+                      You were eliminated after Question {humanStanding?.eliminatedAfterQuestion}.
+                      The remaining contestants are playing out the round.
                     </p>
                   )}
 

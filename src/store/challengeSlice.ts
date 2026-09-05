@@ -521,7 +521,8 @@ export const startChallenge =
           // its first entry while retaining the map's order.
           const bracketPool = getBracketTemplatePool(opts.excludeKeys)
           const unusedPool = bracketPool.filter((game) => !allHistoryGameKeys.includes(game.key))
-          gameEntry = (unusedPool[0] ?? bracketPool[0]) ?? pickFromRegistry(opts.category, opts.excludeKeys)
+          gameEntry =
+            unusedPool[0] ?? bracketPool[0] ?? pickFromRegistry(opts.category, opts.excludeKeys)
           break
         }
 

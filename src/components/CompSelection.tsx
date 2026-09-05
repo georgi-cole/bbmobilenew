@@ -8,15 +8,20 @@
  * See specs/COMP_SELECTION.md for the full design spec.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
 import {
   type CompGame,
   type CompSelectionMode,
   type CompSelectionPayload,
   type CompSelectionProps,
-} from './compSelectionUtils';
+} from './compSelectionUtils'
 
-export type { CompGame, CompSelectionMode, CompSelectionPayload, CompSelectionProps } from './compSelectionUtils';
+export type {
+  CompGame,
+  CompSelectionMode,
+  CompSelectionPayload,
+  CompSelectionProps,
+} from './compSelectionUtils'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -37,64 +42,60 @@ export default function CompSelection({
   onChange,
   initialPayload,
 }: CompSelectionProps) {
-  const [games, setGames] = useState<CompGame[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [mode, setMode] = useState<CompSelectionMode>(
-    initialPayload?.mode ?? 'unique',
-  );
-  const [selectedGameId, setSelectedGameId] = useState<string>(
-    initialPayload?.selectedGameId ?? '',
-  );
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [games, setGames] = useState<CompGame[]>([])
+  const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [mode, setMode] = useState<CompSelectionMode>(initialPayload?.mode ?? 'unique')
+  const [selectedGameId, setSelectedGameId] = useState<string>(initialPayload?.selectedGameId ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   const buildPayload = (
     nextMode: CompSelectionMode,
-    nextSelectedGameId: string,
+    nextSelectedGameId: string
   ): CompSelectionPayload => ({
     mode: nextMode,
     ...(nextMode === 'single-game' && { selectedGameId: nextSelectedGameId }),
-  });
+  })
 
   // Load games on mount (needed to populate the single-game dropdown)
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setFetchError(null);
+    let cancelled = false
+    setLoading(true)
+    setFetchError(null)
     fetchGames()
       .then((data) => {
-        if (cancelled) return;
-        setGames(data);
+        if (cancelled) return
+        setGames(data)
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
-        setFetchError(
-          err instanceof Error ? err.message : 'Failed to load competitions.',
-        );
+        if (cancelled) return
+        setFetchError(err instanceof Error ? err.message : 'Failed to load competitions.')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [fetchGames]);
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [fetchGames])
 
   const handleSave = async () => {
-    if (!onSave) return;
-    const payload = buildPayload(mode, selectedGameId);
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
+    if (!onSave) return
+    const payload = buildPayload(mode, selectedGameId)
+    setSaving(true)
+    setSaveError(null)
+    setSaveSuccess(false)
     try {
-      await onSave(payload);
-      setSaveSuccess(true);
+      await onSave(payload)
+      setSaveSuccess(true)
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : 'Save failed.');
+      setSaveError(err instanceof Error ? err.message : 'Save failed.')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ export default function CompSelection({
       <div className="comp-selection comp-selection--loading" aria-live="polite">
         Loading competitions…
       </div>
-    );
+    )
   }
 
   if (fetchError) {
@@ -111,7 +112,7 @@ export default function CompSelection({
       <div className="comp-selection comp-selection--error" role="alert">
         <p>⚠️ {fetchError}</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -129,26 +130,26 @@ export default function CompSelection({
             className="comp-selection__mode-select"
             value={mode}
             onChange={(e) => {
-              const nextMode = e.target.value as CompSelectionMode;
-              setMode(nextMode);
-              setSaveSuccess(false);
+              const nextMode = e.target.value as CompSelectionMode
+              setMode(nextMode)
+              setSaveSuccess(false)
 
               if (nextMode === 'single-game') {
                 // Ensure we never emit a single-game payload with an empty game id.
-                let effectiveGameId = selectedGameId;
+                let effectiveGameId = selectedGameId
 
                 // Auto-select a default game if none is currently selected.
                 if (!effectiveGameId && games.length > 0) {
-                  effectiveGameId = games[0].id;
-                  setSelectedGameId(effectiveGameId);
+                  effectiveGameId = games[0].id
+                  setSelectedGameId(effectiveGameId)
                 }
 
                 // Only emit onChange once we have a non-empty game id.
                 if (effectiveGameId) {
-                  onChange?.(buildPayload(nextMode, effectiveGameId));
+                  onChange?.(buildPayload(nextMode, effectiveGameId))
                 }
               } else {
-                onChange?.(buildPayload(nextMode, selectedGameId));
+                onChange?.(buildPayload(nextMode, selectedGameId))
               }
             }}
             aria-label="Selection mode"
@@ -177,10 +178,10 @@ export default function CompSelection({
               className="comp-selection__single-select"
               value={selectedGameId}
               onChange={(e) => {
-                const nextSelectedGameId = e.target.value;
-                setSelectedGameId(nextSelectedGameId);
-                setSaveSuccess(false);
-                onChange?.(buildPayload(mode, nextSelectedGameId));
+                const nextSelectedGameId = e.target.value
+                setSelectedGameId(nextSelectedGameId)
+                setSaveSuccess(false)
+                onChange?.(buildPayload(mode, nextSelectedGameId))
               }}
               aria-label="Select game"
             >
@@ -197,10 +198,14 @@ export default function CompSelection({
 
       {/* ── Save feedback ─────────────────────────────────────────────── */}
       {onSave && saveError && (
-        <p className="comp-selection__save-error" role="alert">⚠️ {saveError}</p>
+        <p className="comp-selection__save-error" role="alert">
+          ⚠️ {saveError}
+        </p>
       )}
       {onSave && saveSuccess && (
-        <p className="comp-selection__save-success" aria-live="polite">✅ Saved!</p>
+        <p className="comp-selection__save-success" aria-live="polite">
+          ✅ Saved!
+        </p>
       )}
 
       {/* ── Save button ───────────────────────────────────────────────── */}
@@ -215,5 +220,5 @@ export default function CompSelection({
         </button>
       )}
     </div>
-  );
+  )
 }

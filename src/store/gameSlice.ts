@@ -504,8 +504,11 @@ export function createInitialGameState(options?: {
     : voxPopuliIsScheduled
       ? 'vox_populi'
       : 'classic'
-  const aiIdentityMode: AiIdentityMode =
-    cupidArrowIsScheduled ? 'cupid' : voxPopuliIsScheduled ? 'vox_populi' : 'classic'
+  const aiIdentityMode: AiIdentityMode = cupidArrowIsScheduled
+    ? 'cupid'
+    : voxPopuliIsScheduled
+      ? 'vox_populi'
+      : 'classic'
   const playersWithIdentity = assignAiGameIdentities(freshPlayers, seed, aiIdentityMode)
 
   // Season-opening broadcasts are built from the same persistent registry as
@@ -823,10 +826,7 @@ function managedBroadcastOrder(state: GameState, event: TvEvent): number {
 /** Season-expansion activations always open the season before welcome copy. */
 function managedBroadcastPriority(event: TvEvent): number {
   const major = event.meta?.major ?? event.major
-  if (
-    event.meta?.phase === 'season_start' &&
-    (major === 'vox_populi' || major === 'cupid_arrow')
-  ) {
+  if (event.meta?.phase === 'season_start' && (major === 'vox_populi' || major === 'cupid_arrow')) {
     return -1
   }
   return event.meta?.broadcastPriority === 'critical' ? 0 : 1
@@ -1019,10 +1019,7 @@ function pushEvent(
   // otherwise ordinary log line onto the faux TV.
   const forceOnTv =
     meta?.forceOnTv === true ||
-    (override?.forceOnTv ??
-      (isDeclaredSource
-        ? (template?.forceOnTv ?? true)
-        : false))
+    (override?.forceOnTv ?? (isDeclaredSource ? (template?.forceOnTv ?? true) : false))
   const finalMajor =
     finalLevel === 'critical'
       ? (selectedMajor ?? 'custom_critical')
@@ -1575,7 +1572,9 @@ function getSafetyRelationshipScore(state: GameState, holderId: string, nominee:
   if (!relationship) return -getAiThreatScore(state, nominee) * 3
   const holder = state.players.find((player) => player.id === holderId)
   let score = relationship.affinity - getAiThreatScore(state, nominee) * 3
-  score += allianceIdentityBias(holder?.aiGameIdentity) * (relationship.tags.includes('alliance') ? 1 : 0.18)
+  score +=
+    allianceIdentityBias(holder?.aiGameIdentity) *
+    (relationship.tags.includes('alliance') ? 1 : 0.18)
   if (!state.dramaSocialMode) {
     if (relationship.tags.includes('alliance')) score += 55
     if (relationship.tags.includes('protection') || relationship.tags.includes('shield'))
@@ -1626,7 +1625,8 @@ export function getNominationTargetScore(
     // nomination over a conspicuous personal feud. Media strategists still
     // retain enough threat focus to make opportunistic moves when protected.
     score += voxMomentum * (0.4 + loh.aiGameIdentity.audienceFocus)
-    if (loh.aiGameIdentity.archetype === 'media_strategist') score += getAiThreatScore(state, candidate) * 1.5
+    if (loh.aiGameIdentity.archetype === 'media_strategist')
+      score += getAiThreatScore(state, candidate) * 1.5
   }
   const priorNominations = state.lastWeekNominationRecord
   if (priorNominations?.lohId === candidate.id && priorNominations.nomineeIds.includes(lohId)) {
@@ -3068,7 +3068,10 @@ export function chooseAiEvictionVote(
     if (tags.has('betrayal')) score += 35
     if (tags.has('protection') || tags.has('shield')) score -= 20
     if (tags.has('alliance')) {
-      const backstabChance = Math.max(0, Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity)))
+      const backstabChance = Math.max(
+        0,
+        Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity))
+      )
       if (rng() < backstabChance) score += 95
       else score -= 90 + allianceIdentityBias(voterIdentity)
     }
@@ -9830,7 +9833,7 @@ export const startMinigame =
     // Always precompute AI scores for AI-only runs (no UI is involved) and for
     // endurance/non-hybrid games (which keep the old precomputed path).
     // For hybrid games with a human participant, precomputation is skipped.
-      const aiScores: Record<string, number> = {}
+    const aiScores: Record<string, number> = {}
 
     const hasHuman = opts.participants.some((id) => {
       const p = state.players.find((pl) => pl.id === id)
@@ -9840,18 +9843,14 @@ export const startMinigame =
     for (const id of opts.participants) {
       const player = state.players.find((candidate) => candidate.id === id)
       if (!player || player.isUser) continue
-      competitionIntents[id] = decideCompetitionIntent(
-        invocationSeed,
-        id,
-        player.aiGameIdentity,
-        {
-          mode: getAiIdentityMode(state),
-          day: state.week,
-          phase: state.phase,
-          prizeType: state.phase === 'loh_comp' ? 'LOH' : state.phase === 'pos_comp' ? 'POS' : undefined,
-          playerStatus: player.status,
-        }
-      )
+      competitionIntents[id] = decideCompetitionIntent(invocationSeed, id, player.aiGameIdentity, {
+        mode: getAiIdentityMode(state),
+        day: state.week,
+        phase: state.phase,
+        prizeType:
+          state.phase === 'loh_comp' ? 'LOH' : state.phase === 'pos_comp' ? 'POS' : undefined,
+        playerStatus: player.status,
+      })
     }
 
     if (!isHybrid || !hasHuman) {

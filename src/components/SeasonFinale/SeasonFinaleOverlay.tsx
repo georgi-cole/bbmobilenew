@@ -236,7 +236,10 @@ export default function SeasonFinaleOverlay() {
                       <stop offset="1" stopColor="#ffe28a" />
                     </linearGradient>
                   </defs>
-                  <path fill="url(#winner-trophy-gold)" d="M18 9h28v9h8c0 12-7 19-17 20l-1 8h8v7H20v-7h8l-1-8C17 37 10 30 10 18h8V9Zm-1 15c1 4 4 7 9 8l-1-8h-8Zm22 8c5-1 8-4 9-8h-8l-1 8Z" />
+                  <path
+                    fill="url(#winner-trophy-gold)"
+                    d="M18 9h28v9h8c0 12-7 19-17 20l-1 8h8v7H20v-7h8l-1-8C17 37 10 30 10 18h8V9Zm-1 15c1 4 4 7 9 8l-1-8h-8Zm22 8c5-1 8-4 9-8h-8l-1 8Z"
+                  />
                   <path fill="rgba(82, 45, 8, .34)" d="M20 53h24v4H20z" />
                 </svg>
               </div>

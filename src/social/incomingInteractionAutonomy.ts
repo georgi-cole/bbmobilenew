@@ -1478,13 +1478,16 @@ export function scheduleIncomingInteractionsForPhase(
             candidate.id === intelLead.fact.objectId
         )
       : useVoxDrama
-      ? selectInteractionSubject(actor.id, playerId, plan.type, context)
-      : undefined
+        ? selectInteractionSubject(actor.id, playerId, plan.type, context)
+        : undefined
     const subjectName = subject?.name ?? subject?.id
-    const interactionText =
-      intelLead
-        ? formatIncomingIntel(intelLead.fact, context.players as Array<{ id: string; name: string }>, playerId)
-        : subjectName && (plan.type === 'gossip' || plan.type === 'warning')
+    const interactionText = intelLead
+      ? formatIncomingIntel(
+          intelLead.fact,
+          context.players as Array<{ id: string; name: string }>,
+          playerId
+        )
+      : subjectName && (plan.type === 'gossip' || plan.type === 'warning')
         ? getNamedInteractionText(
             plan.scenarioKey,
             plan.type,

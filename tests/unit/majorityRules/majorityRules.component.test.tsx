@@ -1,17 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { configureStore } from '@reduxjs/toolkit'
 import majorityRulesReducer, {
   advanceIntro,
   type MajorityRulesState,
   setHumanAnswer,
-} from '../../../src/features/majorityRules/majorityRulesSlice';
-import { MAJORITY_RULES_QUESTIONS } from '../../../src/features/majorityRules/helpers';
-import MajorityRulesComp from '../../../src/components/MajorityRulesComp/MajorityRulesComp';
+} from '../../../src/features/majorityRules/majorityRulesSlice'
+import { MAJORITY_RULES_QUESTIONS } from '../../../src/features/majorityRules/helpers'
+import MajorityRulesComp from '../../../src/components/MajorityRulesComp/MajorityRulesComp'
 
 function buildPlayer(id: string, name: string, isUser = false) {
-  return { id, name, avatar: '', status: 'active', isUser };
+  return { id, name, avatar: '', status: 'active', isUser }
 }
 
 function makeStore(
@@ -21,21 +21,21 @@ function makeStore(
     buildPlayer('mimi', 'Mimi'),
     buildPlayer('rae', 'Rae'),
   ],
-  initialMajorityRules?: MajorityRulesState,
+  initialMajorityRules?: MajorityRulesState
 ) {
   const gameReducer = (
     state = {
       players,
       phase: 'loh_comp',
-    },
-  ) => state;
+    }
+  ) => state
 
   const majorityReducer = (state: MajorityRulesState | undefined, action: { type: string }) => {
     if (initialMajorityRules && state && action.type === 'majorityRules/initMajorityRules') {
-      return state;
+      return state
     }
-    return majorityRulesReducer(state, action);
-  };
+    return majorityRulesReducer(state, action)
+  }
 
   return configureStore({
     reducer: {
@@ -43,12 +43,12 @@ function makeStore(
       game: gameReducer,
     },
     preloadedState: initialMajorityRules ? { majorityRules: initialMajorityRules } : undefined,
-  });
+  })
 }
 
 describe('MajorityRulesComp', () => {
   it('uses live houseguest names and avatar candidates when participant ids match game players', async () => {
-    const store = makeStore();
+    const store = makeStore()
 
     render(
       <Provider store={store}>
@@ -63,23 +63,27 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
+    await act(async () => {})
 
-    expect(screen.getByText('Finn')).toBeInTheDocument();
-    expect(screen.getByText('Mimi')).toBeInTheDocument();
-    expect(screen.getByText('Rae')).toBeInTheDocument();
+    expect(screen.getByText('Finn')).toBeInTheDocument()
+    expect(screen.getByText('Mimi')).toBeInTheDocument()
+    expect(screen.getByText('Rae')).toBeInTheDocument()
 
-    const finnPortrait = screen.getAllByTestId('mr-portrait-finn')[0];
-    expect(finnPortrait.getAttribute('src')).toContain('assets/skins/backup-grey-lux/Finn_avatar.webp');
-  });
+    const finnPortrait = screen.getAllByTestId('mr-portrait-finn')[0]
+    expect(finnPortrait.getAttribute('src')).toContain(
+      'assets/skins/backup-grey-lux/Finn_avatar.webp'
+    )
+  })
 
   it('switches to a compact avatar rail when the roster is large', async () => {
-    const ids = ['user', ...Array.from({ length: 11 }, (_, playerNumber) => `p${playerNumber + 2}`)];
-    const players = ids.map((id, index) => buildPlayer(id, index === 0 ? 'You' : `AI_${index}`, index === 0));
-    const store = makeStore(players);
+    const ids = ['user', ...Array.from({ length: 11 }, (_, playerNumber) => `p${playerNumber + 2}`)]
+    const players = ids.map((id, index) =>
+      buildPlayer(id, index === 0 ? 'You' : `AI_${index}`, index === 0)
+    )
+    const store = makeStore(players)
 
     render(
       <Provider store={store}>
@@ -95,19 +99,19 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
+    await act(async () => {})
 
-    expect(screen.getByTestId('mr-avatar-rail')).toHaveClass('majority-rules-avatar-rail--wrapped');
-    expect(screen.getByTestId('mr-avatar-rail-item-user')).toBeInTheDocument();
-    expect(screen.getByTestId('mr-avatar-rail-item-p12')).toBeInTheDocument();
-  });
+    expect(screen.getByTestId('mr-avatar-rail')).toHaveClass('majority-rules-avatar-rail--wrapped')
+    expect(screen.getByTestId('mr-avatar-rail-item-user')).toBeInTheDocument()
+    expect(screen.getByTestId('mr-avatar-rail-item-p12')).toBeInTheDocument()
+  })
 
   it('keeps the intro card visible for five seconds before advancing', async () => {
-    vi.useFakeTimers();
-    const store = makeStore();
+    vi.useFakeTimers()
+    const store = makeStore()
 
     render(
       <Provider store={store}>
@@ -122,39 +126,39 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
+    await act(async () => {})
 
-    expect(screen.getByText('Majority Rules')).toBeInTheDocument();
-    expect(store.getState().majorityRules.phase).toBe('intro');
-
-    act(() => {
-      vi.advanceTimersByTime(4999);
-    });
-
-    expect(store.getState().majorityRules.phase).toBe('intro');
-    expect(screen.getByText('Majority Rules')).toBeInTheDocument();
+    expect(screen.getByText('Majority Rules')).toBeInTheDocument()
+    expect(store.getState().majorityRules.phase).toBe('intro')
 
     act(() => {
-      vi.advanceTimersByTime(1);
-    });
+      vi.advanceTimersByTime(4999)
+    })
 
-    expect(store.getState().majorityRules.phase).toBe('question');
+    expect(store.getState().majorityRules.phase).toBe('intro')
+    expect(screen.getByText('Majority Rules')).toBeInTheDocument()
 
-    vi.useRealTimers();
-  });
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+
+    expect(store.getState().majorityRules.phase).toBe('question')
+
+    vi.useRealTimers()
+  })
 
   it('does not reinitialize when parent rerenders pass new participant array references', async () => {
-    const store = makeStore();
-    const participantIds = ['user', 'finn', 'mimi', 'rae'];
+    const store = makeStore()
+    const participantIds = ['user', 'finn', 'mimi', 'rae']
     const participants = [
       { id: 'user', name: 'PLAYER_1', isHuman: true, precomputedScore: 0, previousPR: null },
       { id: 'finn', name: 'PLAYER_2', isHuman: false, precomputedScore: 0, previousPR: null },
       { id: 'mimi', name: 'PLAYER_3', isHuman: false, precomputedScore: 0, previousPR: null },
       { id: 'rae', name: 'PLAYER_4', isHuman: false, precomputedScore: 0, previousPR: null },
-    ];
+    ]
 
     const { rerender } = render(
       <Provider store={store}>
@@ -164,23 +168,23 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
-
-    act(() => {
-      store.dispatch(advanceIntro());
-    });
-
-    const chosenOptionId = store.getState().majorityRules.currentQuestion?.options[0]?.id;
-    expect(chosenOptionId).toBeTruthy();
+    await act(async () => {})
 
     act(() => {
-      store.dispatch(setHumanAnswer({ playerId: 'user', optionId: chosenOptionId! }));
-    });
+      store.dispatch(advanceIntro())
+    })
 
-    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
+    const chosenOptionId = store.getState().majorityRules.currentQuestion?.options[0]?.id
+    expect(chosenOptionId).toBeTruthy()
+
+    act(() => {
+      store.dispatch(setHumanAnswer({ playerId: 'user', optionId: chosenOptionId! }))
+    })
+
+    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId)
 
     rerender(
       <Provider store={store}>
@@ -190,18 +194,18 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
+    await act(async () => {})
 
-    expect(store.getState().majorityRules.phase).toBe('question');
-    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId);
-  });
+    expect(store.getState().majorityRules.phase).toBe('question')
+    expect(store.getState().majorityRules.draftAnswers.user).toBe(chosenOptionId)
+  })
 
   it('pauses after elimination and resumes normal timing when the user continues watching', async () => {
-    vi.useFakeTimers();
-    const question = MAJORITY_RULES_QUESTIONS[0];
+    vi.useFakeTimers()
+    const question = MAJORITY_RULES_QUESTIONS[0]
     const store = makeStore(undefined, {
       phase: 'reveal',
       competitionType: 'LOH',
@@ -240,7 +244,7 @@ describe('MajorityRulesComp', () => {
       finalDuel: null,
       winnerId: null,
       outcomeResolved: false,
-    });
+    })
 
     render(
       <Provider store={store}>
@@ -255,39 +259,39 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
-    expect(store.getState().majorityRules.phase).toBe('reveal');
-    expect(screen.getByLabelText('Vote aggregation')).toBeInTheDocument();
-    expect(screen.getByText('Majority · 3/5 (60%)')).toBeInTheDocument();
-    expect(screen.getAllByText('Minority · 1/5 (20%)')).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Continue watching' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Skip to results' })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(store.getState().majorityRules.phase).toBe('reveal');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continue watching' }));
+    await act(async () => {})
+    expect(store.getState().majorityRules.phase).toBe('reveal')
+    expect(screen.getByLabelText('Vote aggregation')).toBeInTheDocument()
+    expect(screen.getByText('Majority · 3/5 (60%)')).toBeInTheDocument()
+    expect(screen.getAllByText('Minority · 1/5 (20%)')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Continue watching' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Skip to results' })).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimersByTime(2999);
-    });
-    expect(store.getState().majorityRules.phase).toBe('reveal');
+      vi.advanceTimersByTime(3000)
+    })
+    expect(store.getState().majorityRules.phase).toBe('reveal')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue watching' }))
 
     act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(store.getState().majorityRules.phase).toBe('question');
-    vi.useRealTimers();
-  });
+      vi.advanceTimersByTime(2999)
+    })
+    expect(store.getState().majorityRules.phase).toBe('reveal')
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(store.getState().majorityRules.phase).toBe('question')
+    vi.useRealTimers()
+  })
 
   it('fast-forwards the existing game state when the eliminated user skips to results', async () => {
-    vi.useFakeTimers();
-    const question = MAJORITY_RULES_QUESTIONS[0];
+    vi.useFakeTimers()
+    const question = MAJORITY_RULES_QUESTIONS[0]
     const store = makeStore(undefined, {
       phase: 'question',
       competitionType: 'LOH',
@@ -315,7 +319,7 @@ describe('MajorityRulesComp', () => {
       finalDuel: null,
       winnerId: null,
       outcomeResolved: false,
-    });
+    })
 
     render(
       <Provider store={store}>
@@ -330,24 +334,24 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
-    fireEvent.click(screen.getByRole('button', { name: 'Skip to results' }));
-    expect(screen.getByRole('status')).toHaveTextContent('Fast-forwarding the live game');
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: 'Skip to results' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Fast-forwarding the live game')
 
-    act(() => vi.advanceTimersByTime(24));
-    expect(store.getState().majorityRules.phase).toBe('question');
-    act(() => vi.advanceTimersByTime(1));
-    expect(store.getState().majorityRules.phase).toBe('reveal');
-    expect(store.getState().majorityRules.roundNumber).toBe(12);
-    expect(store.getState().majorityRules.currentQuestion?.id).toBe(question.id);
-    vi.useRealTimers();
-  });
+    act(() => vi.advanceTimersByTime(24))
+    expect(store.getState().majorityRules.phase).toBe('question')
+    act(() => vi.advanceTimersByTime(1))
+    expect(store.getState().majorityRules.phase).toBe('reveal')
+    expect(store.getState().majorityRules.roundNumber).toBe(12)
+    expect(store.getState().majorityRules.currentQuestion?.id).toBe(question.id)
+    vi.useRealTimers()
+  })
 
   it('keeps the winner screen manual even after the spectator auto-advance timeout', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers()
     const store = makeStore(undefined, {
       phase: 'winner',
       competitionType: 'LOH',
@@ -375,7 +379,7 @@ describe('MajorityRulesComp', () => {
       finalDuel: null,
       winnerId: 'finn',
       outcomeResolved: false,
-    });
+    })
 
     render(
       <Provider store={store}>
@@ -390,17 +394,17 @@ describe('MajorityRulesComp', () => {
           prizeType="LOH"
           seed={42}
         />
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    await act(async () => {});
-    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument();
+    await act(async () => {})
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument()
 
     act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(store.getState().majorityRules.phase).toBe('winner');
-    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument();
-    vi.useRealTimers();
-  });
-});
+      vi.advanceTimersByTime(3000)
+    })
+    expect(store.getState().majorityRules.phase).toBe('winner')
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeInTheDocument()
+    vi.useRealTimers()
+  })
+})

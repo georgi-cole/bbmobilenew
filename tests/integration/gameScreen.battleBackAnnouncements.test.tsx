@@ -42,9 +42,7 @@ function makeStore() {
   const baseState = gameReducer(undefined, { type: '@@INIT' })
   const candidateIds = baseState.players.slice(1, 4).map((player) => player.id)
   const players = baseState.players.map((player) =>
-    candidateIds.includes(player.id)
-      ? { ...player, status: 'jury' as const }
-      : player,
+    candidateIds.includes(player.id) ? { ...player, status: 'jury' as const } : player
   )
 
   return configureStore({
@@ -91,7 +89,7 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
       <MemoryRouter>
         <GameScreen />
       </MemoryRouter>
-    </Provider>,
+    </Provider>
   )
 }
 

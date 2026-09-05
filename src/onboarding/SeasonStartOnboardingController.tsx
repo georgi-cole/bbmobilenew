@@ -72,9 +72,8 @@ export default function SeasonStartOnboardingController() {
 
   const legacyWelcomeEvent = useMemo(
     () =>
-      tvFeed.find(
-        (event) => isLegacySeasonWelcomeEvent(event) && event.meta?.forceOnTv !== true
-      ) ?? null,
+      tvFeed.find((event) => isLegacySeasonWelcomeEvent(event) && event.meta?.forceOnTv !== true) ??
+      null,
     [tvFeed]
   )
 

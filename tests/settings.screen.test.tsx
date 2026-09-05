@@ -374,7 +374,9 @@ describe('Settings screen', () => {
     expect(screen.getByLabelText(/toggle spectator mode/i)).toBeChecked()
     expect(screen.getByLabelText(/toggle tribunal house/i)).not.toBeChecked()
     expect((screen.getByLabelText(/cast size/i) as HTMLInputElement).value).toBe('16')
-    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe('competition-map')
+    expect((screen.getByLabelText(/selection mode/i) as HTMLSelectElement).value).toBe(
+      'competition-map'
+    )
   })
 
   it('lets QA set a forced secret mission week in debug settings', async () => {

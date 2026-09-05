@@ -76,11 +76,22 @@
   vertical-align: -0.08em;
   border: 1px solid rgba(233, 191, 104, 0.5);
   border-radius: 0.16em;
-  background: linear-gradient(to top, #a9d96d 0 42%, transparent 42% 100%), linear-gradient(to top, #d878b7 0 68%, transparent 68% 100%), linear-gradient(to top, #a98cdb 0 88%, transparent 88% 100%);
-  background-size: 28% 100%, 28% 100%, 28% 100%;
-  background-position: 10% 0, 50% 0, 90% 0;
+  background:
+    linear-gradient(to top, #a9d96d 0 42%, transparent 42% 100%),
+    linear-gradient(to top, #d878b7 0 68%, transparent 68% 100%),
+    linear-gradient(to top, #a98cdb 0 88%, transparent 88% 100%);
+  background-size:
+    28% 100%,
+    28% 100%,
+    28% 100%;
+  background-position:
+    10% 0,
+    50% 0,
+    90% 0;
   background-repeat: no-repeat;
-  box-shadow: inset 0 0 0.18em rgba(255, 255, 255, 0.22), 0 0 0.28em rgba(169, 140, 219, 0.35);
+  box-shadow:
+    inset 0 0 0.18em rgba(255, 255, 255, 0.22),
+    0 0 0.28em rgba(169, 140, 219, 0.35);
 }
 
 .public-meter__title::after {
@@ -109,11 +120,16 @@
   border-radius: 11px;
   background: rgba(110, 102, 119, 0.48);
   color: var(--pm-ink);
-  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.27), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 7px 18px rgba(0, 0, 0, 0.27),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   font: inherit;
   font-size: 1.05rem;
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .public-meter__back-btn:hover {
@@ -156,7 +172,10 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .public-meter__tab--active {
@@ -164,7 +183,9 @@
     radial-gradient(circle at 22% 0%, rgba(255, 255, 255, 0.13), transparent 43%),
     linear-gradient(135deg, rgba(119, 78, 164, 0.8), rgba(64, 40, 93, 0.9));
   color: #fff9ee;
-  box-shadow: 0 5px 15px rgba(15, 5, 27, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 5px 15px rgba(15, 5, 27, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .public-meter__tab-badge {
@@ -243,7 +264,9 @@
 }
 
 @keyframes publicMeterPulse {
-  50% { opacity: 0.5; }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .public-meter__lens-stage {
@@ -622,7 +645,9 @@
   background:
     radial-gradient(circle at 74% 15%, rgba(169, 140, 219, 0.16), transparent 34%),
     linear-gradient(145deg, rgba(28, 22, 39, 0.93), rgba(7, 8, 14, 0.96));
-  box-shadow: 0 9px 18px rgba(0, 0, 0, 0.21), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  box-shadow:
+    0 9px 18px rgba(0, 0, 0, 0.21),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -653,7 +678,9 @@
   background:
     radial-gradient(circle at 76% 16%, rgba(233, 191, 104, 0.16), transparent 35%),
     linear-gradient(145deg, rgba(72, 45, 96, 0.95), rgba(13, 11, 20, 0.98));
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.27), inset 0 2px 0 rgba(233, 191, 104, 0.62);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.27),
+    inset 0 2px 0 rgba(233, 191, 104, 0.62);
 }
 
 .ranking-row--inactive {
@@ -754,7 +781,9 @@
   background:
     radial-gradient(circle at 12% 0%, rgba(146, 102, 192, 0.26), transparent 35%),
     linear-gradient(155deg, #21142f, #0a0910 72%);
-  box-shadow: 0 -12px 44px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 -12px 44px rgba(0, 0, 0, 0.5),
+    inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .audience-dossier__back {
@@ -768,15 +797,26 @@
   border-radius: 11px;
   background: rgba(110, 102, 119, 0.48);
   color: var(--pm-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 7px 18px rgba(0, 0, 0, 0.27);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 7px 18px rgba(0, 0, 0, 0.27);
   font: inherit;
   font-size: 1.05rem;
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
-.audience-dossier__back:hover { transform: translateY(-1px); border-color: rgba(239, 231, 218, 0.5); background: rgba(126, 116, 136, 0.62); }
-.audience-dossier__back span { line-height: 0.7; }
+.audience-dossier__back:hover {
+  transform: translateY(-1px);
+  border-color: rgba(239, 231, 218, 0.5);
+  background: rgba(126, 116, 136, 0.62);
+}
+.audience-dossier__back span {
+  line-height: 0.7;
+}
 
 .audience-dossier__identity {
   display: grid;
@@ -855,7 +895,9 @@
   font-weight: 800;
 }
 
-.audience-metric__heading strong { color: #f4d28c; }
+.audience-metric__heading strong {
+  color: #f4d28c;
+}
 
 .audience-metric__track {
   height: 0.32rem;
@@ -872,9 +914,15 @@
   background: linear-gradient(90deg, #d4ac64, #f4dc9c);
 }
 
-.audience-metric--charisma .audience-metric__track span { background: linear-gradient(90deg, #c078d5, #e9b9e8); }
-.audience-metric--gameplay .audience-metric__track span { background: linear-gradient(90deg, #73acd6, #b6e3f3); }
-.audience-metric--integrity .audience-metric__track span { background: linear-gradient(90deg, #ccb065, #f0dc9b); }
+.audience-metric--charisma .audience-metric__track span {
+  background: linear-gradient(90deg, #c078d5, #e9b9e8);
+}
+.audience-metric--gameplay .audience-metric__track span {
+  background: linear-gradient(90deg, #73acd6, #b6e3f3);
+}
+.audience-metric--integrity .audience-metric__track span {
+  background: linear-gradient(90deg, #ccb065, #f0dc9b);
+}
 
 .audience-metric p {
   margin: 0;
@@ -927,7 +975,11 @@
   background: rgba(112, 75, 44, 0.16);
 }
 
-.audience-dossier__request strong { color: rgba(255, 241, 209, 0.86); font-size: 0.7rem; line-height: 1.35; }
+.audience-dossier__request strong {
+  color: rgba(255, 241, 209, 0.86);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
 
 .feed-list,
 .direction-list,
@@ -946,7 +998,9 @@
   border-left: 2px solid rgba(169, 140, 219, 0.62);
   border-radius: 0 12px 12px 0;
   background: linear-gradient(90deg, rgba(89, 57, 119, 0.19), rgba(7, 8, 14, 0.34));
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .feed-entry:hover {
@@ -1013,7 +1067,9 @@
   background:
     radial-gradient(circle at 92% 12%, rgba(233, 191, 104, 0.11), transparent 26%),
     linear-gradient(135deg, rgba(72, 46, 96, 0.91), rgba(11, 10, 18, 0.95));
-  box-shadow: inset 3px 0 0 rgba(233, 191, 104, 0.76), 0 9px 20px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    inset 3px 0 0 rgba(233, 191, 104, 0.76),
+    0 9px 20px rgba(0, 0, 0, 0.18);
 }
 
 .direction-card--completed {

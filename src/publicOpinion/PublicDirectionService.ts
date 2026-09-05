@@ -5,17 +5,14 @@ import type { PublicDirection, DirectionType } from './types'
 import type { RelationshipsMap } from '../social/types'
 import type { DramaAlliance } from '../social/types'
 import type { RealityAlliance } from '../social/reality/types'
-import {
-  getEligibleDirectionCandidates,
-  type DirectionCandidate,
-} from './publicDirectionContracts'
+import { getEligibleDirectionCandidates, type DirectionCandidate } from './publicDirectionContracts'
 
 function buildDescription(
   type: DirectionType,
   playerName: string,
   relatedName?: string,
   targetName?: string,
-  voxPopuliActive = false,
+  voxPopuliActive = false
 ): string {
   if (voxPopuliActive) {
     switch (type) {
@@ -113,9 +110,8 @@ export function generateDirectionsForCycle(params: {
   const directions: PublicDirection[] = []
 
   const selectedPlayers = seededPickN(rng, activePlayers, Math.min(count, activePlayers.length))
-  const humanPlayer = prioritizeHuman || voxPopuliActive
-    ? activePlayers.find((player) => player.isUser)
-    : undefined
+  const humanPlayer =
+    prioritizeHuman || voxPopuliActive ? activePlayers.find((player) => player.isUser) : undefined
   if (humanPlayer && !selectedPlayers.some((player) => player.id === humanPlayer.id)) {
     if (selectedPlayers.length === 0) selectedPlayers.push(humanPlayer)
     else selectedPlayers[selectedPlayers.length - 1] = humanPlayer

@@ -89,9 +89,33 @@ function getFeedSignal(delta: number): { symbol: string; className: string; labe
 }
 
 const backupGreyLuxFiles = new Set([
-  'Ali', 'Aria', 'Ash', 'Bea', 'Blue', 'Dex', 'Echo', 'Finn', 'Ivy', 'Jax', 'Kai',
-  'Kian', 'Lia', 'Lux', 'Nico', 'Noa', 'Nova', 'Pax', 'Quinn', 'Rae', 'Remy', 'Rey',
-  'Rune', 'Sol', 'Vee', 'Zed', 'mimi',
+  'Ali',
+  'Aria',
+  'Ash',
+  'Bea',
+  'Blue',
+  'Dex',
+  'Echo',
+  'Finn',
+  'Ivy',
+  'Jax',
+  'Kai',
+  'Kian',
+  'Lia',
+  'Lux',
+  'Nico',
+  'Noa',
+  'Nova',
+  'Pax',
+  'Quinn',
+  'Rae',
+  'Remy',
+  'Rey',
+  'Rune',
+  'Sol',
+  'Vee',
+  'Zed',
+  'mimi',
 ])
 
 function getBackupGreyLuxAvatar(player: Player): string | null {
@@ -112,7 +136,7 @@ function pickMomentVariant(seed: string, variants: string[]): string {
 function getAudienceMoment(
   entry: PublicFeedEntry,
   playerName: string,
-  attributedName?: string,
+  attributedName?: string
 ): string {
   const reason = `${entry.reason ?? ''} ${entry.eventType ?? ''}`.toLowerCase()
   const actor = attributedName && attributedName !== playerName ? attributedName : null
@@ -338,7 +362,7 @@ export default function PublicMeter() {
   )
   const publicFeed = useMemo(
     () => feed.filter((entry) => !userPlayer || entry.playerId !== userPlayer.id),
-    [feed, userPlayer],
+    [feed, userPlayer]
   )
   const userActiveDirections = useMemo(
     () =>
@@ -391,8 +415,12 @@ export default function PublicMeter() {
             (direction) => direction.status === group.key && activePlayerIds.has(direction.playerId)
           )
           .sort((left, right) => {
-            const leftIsUser = game.players.find((player) => player.id === left.playerId)?.isUser ? 1 : 0
-            const rightIsUser = game.players.find((player) => player.id === right.playerId)?.isUser ? 1 : 0
+            const leftIsUser = game.players.find((player) => player.id === left.playerId)?.isUser
+              ? 1
+              : 0
+            const rightIsUser = game.players.find((player) => player.id === right.playerId)?.isUser
+              ? 1
+              : 0
             return rightIsUser - leftIsUser || right.createdWeek - left.createdWeek
           }),
       })),
@@ -657,7 +685,11 @@ export default function PublicMeter() {
                     />
                     <div className="feed-entry__body">
                       <span className="feed-entry__text">
-                        {getAudienceMoment(entry, player?.name ?? entry.playerId, attributedPlayer?.name)}
+                        {getAudienceMoment(
+                          entry,
+                          player?.name ?? entry.playerId,
+                          attributedPlayer?.name
+                        )}
                       </span>
                       <span className="feed-entry__meta">Day {entry.week}</span>
                     </div>
@@ -722,7 +754,9 @@ export default function PublicMeter() {
                               )}
                             </p>
                             {direction.status === 'active' && direction.rationale && (
-                              <p className="direction-card__rationale">Why now: {direction.rationale}</p>
+                              <p className="direction-card__rationale">
+                                Why now: {direction.rationale}
+                              </p>
                             )}
                             {direction.status === 'active' && direction.actionHint && (
                               <p className="direction-card__action-hint">
@@ -764,7 +798,11 @@ export default function PublicMeter() {
       )}
 
       {selectedProfile && (
-        <div className="audience-dossier__backdrop" role="presentation" onMouseDown={() => setSelectedPlayerId(null)}>
+        <div
+          className="audience-dossier__backdrop"
+          role="presentation"
+          onMouseDown={() => setSelectedPlayerId(null)}
+        >
           <section
             className="audience-dossier"
             role="dialog"
@@ -788,12 +826,15 @@ export default function PublicMeter() {
               />
               <div>
                 <span className="audience-dossier__eyebrow">Audience dossier</span>
-                <h2 id="audience-dossier-title">{selectedPlayer?.name ?? selectedProfile.playerId}</h2>
-                <span className="audience-dossier__archetype">{getAudienceArchetype(selectedProfile)}</span>
+                <h2 id="audience-dossier-title">
+                  {selectedPlayer?.name ?? selectedProfile.playerId}
+                </h2>
+                <span className="audience-dossier__archetype">
+                  {getAudienceArchetype(selectedProfile)}
+                </span>
               </div>
               <strong className="audience-dossier__overall" aria-label="Overall audience rating">
-                {selectedProfile.approval}%
-                <small>overall</small>
+                {selectedProfile.approval}%<small>overall</small>
               </strong>
             </div>
 
@@ -819,12 +860,25 @@ export default function PublicMeter() {
             {getAudienceBreakdown(selectedProfile).recentChanges[0] && (
               <div className="audience-dossier__trigger">
                 <div className="audience-dossier__trigger-heading">
-                  <span>{getAudienceTriggerLabel(getAudienceBreakdown(selectedProfile).recentChanges[0].reason)}</span>
+                  <span>
+                    {getAudienceTriggerLabel(
+                      getAudienceBreakdown(selectedProfile).recentChanges[0].reason
+                    )}
+                  </span>
                   <strong
-                    className={getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).className}
-                    aria-label={getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).label}
+                    className={
+                      getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta)
+                        .className
+                    }
+                    aria-label={
+                      getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta)
+                        .label
+                    }
                   >
-                    {getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta).symbol}
+                    {
+                      getFeedSignal(getAudienceBreakdown(selectedProfile).recentChanges[0].delta)
+                        .symbol
+                    }
                   </strong>
                 </div>
               </div>
@@ -833,7 +887,14 @@ export default function PublicMeter() {
             {selectedDirections.length > 0 && (
               <div className="audience-dossier__request">
                 <span>Audience ask in play</span>
-                <strong>{getDirectionDescription(selectedDirections[0], game.players, game.lohId, isVoxPopuli)}</strong>
+                <strong>
+                  {getDirectionDescription(
+                    selectedDirections[0],
+                    game.players,
+                    game.lohId,
+                    isVoxPopuli
+                  )}
+                </strong>
               </div>
             )}
           </section>

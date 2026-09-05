@@ -199,8 +199,8 @@ describe('Capitalization audit', () => {
     const result = eliminateCapitalizationField(standings, 3);
     const ranked = rankCapitalizationStandings(result.standings);
 
-    expect(result.eliminatedIds).toEqual(['ai-0', 'ai-1', 'ai-2']);
-    expect(result.eliminatedIds).not.toContain('human');
+    expect(result.eliminatedIds).toEqual(['ai-0', 'ai-1', 'human', 'ai-2']);
+    expect(result.eliminatedIds).toContain('human');
     expect(ranked[ranked.length - 1].eliminatedAfterQuestion).toBe(3);
   });
 

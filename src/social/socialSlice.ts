@@ -383,15 +383,16 @@ const socialSlice = createSlice({
         targetId
       )
     },
-  recordRealityFact(state, action: PayloadAction<RealityFact>) {
+    recordRealityFact(state, action: PayloadAction<RealityFact>) {
       addRealityFact(state.reality as RealityDomainState, action.payload)
     },
-    recordIntelligenceDelivery(
-      state,
-      action: PayloadAction<IntelligenceDelivery>
-    ) {
-      if ((state.intelligenceDeliveries ?? []).some((entry) => entry.id === action.payload.id)) return
-      state.intelligenceDeliveries = [...(state.intelligenceDeliveries ?? []), action.payload].slice(-120)
+    recordIntelligenceDelivery(state, action: PayloadAction<IntelligenceDelivery>) {
+      if ((state.intelligenceDeliveries ?? []).some((entry) => entry.id === action.payload.id))
+        return
+      state.intelligenceDeliveries = [
+        ...(state.intelligenceDeliveries ?? []),
+        action.payload,
+      ].slice(-120)
     },
     learnRealityKnowledge(
       state,

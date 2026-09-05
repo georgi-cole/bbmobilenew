@@ -20,8 +20,10 @@ const fallbackContext: I18nContextValue = {
   language: DEFAULT_APP_LANGUAGE,
   systemLanguage: DEFAULT_APP_LANGUAGE,
   t: fallbackTranslate,
-  formatNumber: (value, options) => new Intl.NumberFormat(DEFAULT_APP_LANGUAGE, options).format(value),
-  formatDate: (value, options) => new Intl.DateTimeFormat(DEFAULT_APP_LANGUAGE, options).format(value),
+  formatNumber: (value, options) =>
+    new Intl.NumberFormat(DEFAULT_APP_LANGUAGE, options).format(value),
+  formatDate: (value, options) =>
+    new Intl.DateTimeFormat(DEFAULT_APP_LANGUAGE, options).format(value),
 }
 
 export function useI18n(): I18nContextValue {

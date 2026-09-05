@@ -31,14 +31,20 @@ export type AudienceArchetype =
   | 'Wildcard'
 
 function clamp(value: number): number {
-  return Math.min(publicOpinionConfig.MAX_APPROVAL, Math.max(publicOpinionConfig.MIN_APPROVAL, value))
+  return Math.min(
+    publicOpinionConfig.MAX_APPROVAL,
+    Math.max(publicOpinionConfig.MIN_APPROVAL, value)
+  )
 }
 
 function round(value: number): number {
   return Math.round(value * 10) / 10
 }
 
-function centeredBreakdown(approval: number, values?: Partial<Record<AudienceMetric, number>>): AudienceBreakdown {
+function centeredBreakdown(
+  approval: number,
+  values?: Partial<Record<AudienceMetric, number>>
+): AudienceBreakdown {
   const requested = METRICS.map((metric) => values?.[metric] ?? approval)
   const requestedAverage = requested.reduce((sum, value) => sum + value, 0) / METRICS.length
   const adjustment = approval - requestedAverage
@@ -53,7 +59,7 @@ function centeredBreakdown(approval: number, values?: Partial<Record<AudienceMet
  */
 export function createAudienceBreakdown(
   approval: number,
-  identity?: { archetype?: string; audienceFocus?: number; competitionDrive?: number },
+  identity?: { archetype?: string; audienceFocus?: number; competitionDrive?: number }
 ): AudienceBreakdown {
   const archetype = identity?.archetype ?? ''
   const focus = identity?.audienceFocus ?? 0.5
@@ -62,11 +68,19 @@ export function createAudienceBreakdown(
   let gameplay = approval
   let integrity = approval
 
-  if (['audience_darling', 'social_butterfly', 'public_pleaser', 'audience_chameleon'].includes(archetype)) {
+  if (
+    ['audience_darling', 'social_butterfly', 'public_pleaser', 'audience_chameleon'].includes(
+      archetype
+    )
+  ) {
     charisma += 6 + focus * 3
     gameplay -= 2
     integrity -= 2
-  } else if (['strategic_operator', 'puppet_master', 'clutch_competitor', 'aggressive_competitor'].includes(archetype)) {
+  } else if (
+    ['strategic_operator', 'puppet_master', 'clutch_competitor', 'aggressive_competitor'].includes(
+      archetype
+    )
+  ) {
     gameplay += 6 + drive * 3
     charisma -= 2
     integrity -= 2
@@ -89,7 +103,7 @@ export function getAudienceBreakdown(profile: PlayerPublicProfile): AudienceBrea
 
 export function getAudienceApproval(breakdown: AudienceBreakdown): number {
   return Math.round(
-    (breakdown.charisma + breakdown.gameplay + breakdown.integrity) / METRICS.length,
+    (breakdown.charisma + breakdown.gameplay + breakdown.integrity) / METRICS.length
   )
 }
 
@@ -105,22 +119,31 @@ function getWeights(reason: string, eventType?: string): Record<AudienceMetric, 
   if (/(rumor|confront|conflict|drama|negative_social|poor_social|apolog|repair)/.test(signal)) {
     return { charisma: 0.65, gameplay: 0.05, integrity: 0.3 }
   }
-  if (/(strategy|influenced|bold_move|nomination_backlash|nominated_target|voted_to_evict)/.test(signal)) {
+  if (
+    /(strategy|influenced|bold_move|nomination_backlash|nominated_target|voted_to_evict)/.test(
+      signal
+    )
+  ) {
     return { charisma: 0.15, gameplay: 0.65, integrity: 0.2 }
   }
-  if (/(social|warmth|interaction|formed_alliance|public_save|pov_save|saved_from_block)/.test(signal)) {
+  if (
+    /(social|warmth|interaction|formed_alliance|public_save|pov_save|saved_from_block)/.test(signal)
+  ) {
     return { charisma: 0.7, gameplay: 0.1, integrity: 0.2 }
   }
   return { charisma: 1 / 3, gameplay: 1 / 3, integrity: 1 / 3 }
 }
 
 function primaryMetric(weights: Record<AudienceMetric, number>): AudienceMetric {
-  return METRICS.reduce((primary, metric) => weights[metric] > weights[primary] ? metric : primary, 'charisma')
+  return METRICS.reduce(
+    (primary, metric) => (weights[metric] > weights[primary] ? metric : primary),
+    'charisma'
+  )
 }
 
 export function applyAudienceApprovalDelta(
   profile: PlayerPublicProfile,
-  input: { delta: number; reason: string; week: number; eventType?: string; timestamp?: number },
+  input: { delta: number; reason: string; week: number; eventType?: string; timestamp?: number }
 ): { breakdown: AudienceBreakdown; approval: number; appliedDelta: number } {
   const current = getAudienceBreakdown(profile)
   const weights = getWeights(input.reason, input.eventType)
@@ -159,7 +182,13 @@ export function getAudienceArchetype(profile: PlayerPublicProfile): AudienceArch
 
 export function getAudienceRead(profile: PlayerPublicProfile): string {
   const breakdown = getAudienceBreakdown(profile)
-  const strongest = METRICS.reduce((best, metric) => breakdown[metric] > breakdown[best] ? metric : best, 'charisma')
-  const weakest = METRICS.reduce((lowest, metric) => breakdown[metric] < breakdown[lowest] ? metric : lowest, 'charisma')
+  const strongest = METRICS.reduce(
+    (best, metric) => (breakdown[metric] > breakdown[best] ? metric : best),
+    'charisma'
+  )
+  const weakest = METRICS.reduce(
+    (lowest, metric) => (breakdown[metric] < breakdown[lowest] ? metric : lowest),
+    'charisma'
+  )
   return `${audienceMetricLabels[strongest]} is carrying the story; ${audienceMetricLabels[weakest].toLowerCase()} is the audience's open question.`
 }

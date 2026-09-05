@@ -127,7 +127,8 @@ function audienceMoodVariance(input: {
     input.delta === 0 ||
     input.reason.startsWith('direction_') ||
     input.reason === 'audience_reconsideration'
-  ) return 0
+  )
+    return 0
   const key = `${input.seed}:${input.playerId}:${input.reason}:${input.week}:${input.updateCount}`
   let hash = 0x811c9dc5
   for (const char of key) {
@@ -189,8 +190,8 @@ function ensureProfiles(
   if (missingPlayerIds.length > 0) {
     store.dispatch(
       initializeProfiles(
-        (game.players ?? []).filter((player) => missingPlayerIds.includes(player.id)),
-      ),
+        (game.players ?? []).filter((player) => missingPlayerIds.includes(player.id))
+      )
     )
     profiles = (store.getState() as StateWithGame).publicOpinion?.profiles ?? {}
   }
@@ -272,7 +273,10 @@ function dispatchMissionProgress(
         week: event.week,
       })
     )
-    if (signal.isComplete && state.game.players.find((player) => player.id === event.actorId)?.isUser) {
+    if (
+      signal.isComplete &&
+      state.game.players.find((player) => player.id === event.actorId)?.isUser
+    ) {
       const direction = directions.find((item) => item.id === signal.directionId)
       store.dispatch(
         addTvEvent({
@@ -292,15 +296,17 @@ function dispatchMissionProgress(
 }
 
 /** Expire requests that the current world has made impossible, without a penalty. */
-function expireInvalidDirections(
-  store: MiddlewareAPI<Dispatch<UnknownAction>>,
-  week: number,
-) {
+function expireInvalidDirections(store: MiddlewareAPI<Dispatch<UnknownAction>>, week: number) {
   const refreshed = store.getState() as StateWithGame
   if (refreshed.game.publicModeEnabled !== true) return
   const cupidPartnersByPlayerId = Object.fromEntries(
-    (refreshed.game.cupidArrow?.status === 'active' ? refreshed.game.cupidArrow.pairs ?? [] : [])
-      .flatMap((pair) => [[pair.memberIds[0], pair.memberIds[1]], [pair.memberIds[1], pair.memberIds[0]]]),
+    (refreshed.game.cupidArrow?.status === 'active'
+      ? (refreshed.game.cupidArrow.pairs ?? [])
+      : []
+    ).flatMap((pair) => [
+      [pair.memberIds[0], pair.memberIds[1]],
+      [pair.memberIds[1], pair.memberIds[0]],
+    ])
   )
   for (const direction of refreshed.publicOpinion?.directions ?? []) {
     if (direction.status !== 'active') continue
@@ -336,11 +342,12 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
     }
   }
   const isApprovalUpdate = originalAction.type === updateApproval.type
-  const profile = isApprovalUpdate && originalAction.payload?.playerId
-    ? prevState.publicOpinion?.profiles?.[originalAction.payload.playerId] as
-      | { audienceBreakdown?: { recentChanges?: unknown[] } }
-      | undefined
-    : undefined
+  const profile =
+    isApprovalUpdate && originalAction.payload?.playerId
+      ? (prevState.publicOpinion?.profiles?.[originalAction.payload.playerId] as
+          | { audienceBreakdown?: { recentChanges?: unknown[] } }
+          | undefined)
+      : undefined
   const shouldAddMood =
     isApprovalUpdate &&
     prevState.game?.publicModeEnabled === true &&
@@ -578,13 +585,20 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       const human = game.players?.find((player) => player.isUser)
       if (human?.id === actorId && entry.source === 'manual') {
         const score = typeof entry.score === 'number' ? entry.score : 0
-        const closerMission = store.getState().publicOpinion?.directions?.find(
-          (direction: { playerId: string; type: string; relatedPlayerId?: string; status: string }) =>
-            direction.playerId === actorId &&
-            direction.type === 'get_closer' &&
-            direction.status === 'active' &&
-            direction.relatedPlayerId === targetId,
-        )
+        const closerMission = store
+          .getState()
+          .publicOpinion?.directions?.find(
+            (direction: {
+              playerId: string
+              type: string
+              relatedPlayerId?: string
+              status: string
+            }) =>
+              direction.playerId === actorId &&
+              direction.type === 'get_closer' &&
+              direction.status === 'active' &&
+              direction.relatedPlayerId === targetId
+          )
         const approvalDelta =
           outcome === 'success' && (closerMission || score >= 0.25 || delta >= 4)
             ? publicOpinionConfig.socialImpact.highQualityInteraction
@@ -606,7 +620,10 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       }
 
       let missionEventType: MissionGameEvent['type'] | null = null
-      if (['apologize', 'repair_bond', 'clear_the_air'].includes(actionId) && outcome === 'success') {
+      if (
+        ['apologize', 'repair_bond', 'clear_the_air'].includes(actionId) &&
+        outcome === 'success'
+      ) {
         missionEventType = 'apologized_to'
       } else if (['break_alliance', 'break_bromance'].includes(actionId) && outcome === 'success') {
         missionEventType = 'broke_alliance'
@@ -616,7 +633,10 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         missionEventType = 'betrayal'
       } else if (['rumor', 'spread_rumor'].includes(actionId) && outcome === 'success') {
         missionEventType = 'spread_rumor'
-      } else if (['confront', 'startFight', 'public_callout'].includes(actionId) && outcome === 'success') {
+      } else if (
+        ['confront', 'startFight', 'public_callout'].includes(actionId) &&
+        outcome === 'success'
+      ) {
         missionEventType = 'confronted_player'
       } else if (['pitch_target', 'ask_loh_target'].includes(actionId) && outcome === 'success') {
         missionEventType = 'influenced_hoh'
@@ -650,10 +670,10 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
   ) {
     ensureProfiles(store, game)
 
-      if (prevPhase !== newPhase) {
-        const week = game.week ?? 1
-        expireInvalidDirections(store, week)
-        applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase)
+    if (prevPhase !== newPhase) {
+      const week = game.week ?? 1
+      expireInvalidDirections(store, week)
+      applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase)
 
       if (prevPhase === 'loh_comp' && newPhase === 'loh_results' && game.lohId) {
         // Mission progress: LOH win
@@ -845,10 +865,12 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             realityAlliances: nextState.social?.reality?.alliances,
             dramaAlliances: nextState.social?.dramaNetwork?.alliances,
             cupidPartnersByPlayerId: Object.fromEntries(
-              (game.cupidArrow?.status === 'active' ? game.cupidArrow.pairs ?? [] : []).flatMap((pair) => [
-                [pair.memberIds[0], pair.memberIds[1]],
-                [pair.memberIds[1], pair.memberIds[0]],
-              ])
+              (game.cupidArrow?.status === 'active' ? (game.cupidArrow.pairs ?? []) : []).flatMap(
+                (pair) => [
+                  [pair.memberIds[0], pair.memberIds[1]],
+                  [pair.memberIds[1], pair.memberIds[0]],
+                ]
+              )
             ),
             voxPopuliActive: game.voxPopuli?.status === 'active',
             prioritizeHuman: true,
@@ -857,8 +879,8 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           for (const direction of newDirections) {
             store.dispatch(addDirection(direction))
           }
-          const humanDirection = newDirections.find(
-            (direction) => game.players.some((player) => player.id === direction.playerId && player.isUser)
+          const humanDirection = newDirections.find((direction) =>
+            game.players.some((player) => player.id === direction.playerId && player.isUser)
           )
           if (humanDirection) {
             store.dispatch(

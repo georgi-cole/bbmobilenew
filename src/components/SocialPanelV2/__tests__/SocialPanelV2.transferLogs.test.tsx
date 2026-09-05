@@ -32,7 +32,9 @@ import type { RootState } from '../../../store/store'
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore() {
-  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer } })
+  const base = configureStore({
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+  })
   const defaultState = base.getState() as RootState
   const store = configureStore({
     reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },

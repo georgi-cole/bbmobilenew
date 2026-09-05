@@ -549,9 +549,10 @@ function applyIncomingChoiceConsequences({
     source === 'player' &&
     (responseType === 'positive' || responseType === 'neutral')
   ) {
-    const senderBelief = state.social.reality.beliefsByOwner[interaction.fromId]?.[
-      `belief:${interaction.fromId}:${intelFact.id}`
-    ]
+    const senderBelief =
+      state.social.reality.beliefsByOwner[interaction.fromId]?.[
+        `belief:${interaction.fromId}:${intelFact.id}`
+      ]
     const authoredConfidence = Number(interaction.payload?.intelConfidence)
     const senderConfidence = Number.isFinite(authoredConfidence)
       ? authoredConfidence
