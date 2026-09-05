@@ -134,6 +134,28 @@ export default function Final3Ceremony() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
+  // ── Build eviction announcement lines ────────────────────────────────────
+
+  const buildAnnounceLines = useCallback(
+    (evictee: Player) => {
+      const lines: ChatLine[] = [
+        {
+          id: 'f3c-evict-decision',
+          role: 'loh',
+          player: lohPlayer ?? undefined,
+          text: `I've made my decision. ${evictee.name}, I'm eliminating you from The Big Eye house. 🗳️`,
+        },
+        {
+          id: 'f3c-evict-host',
+          role: 'host',
+          text: `${evictee.name}, you have been eliminated and will finish in 3rd place. 🥉`,
+        },
+      ]
+      setAnnounceLines(lines)
+    },
+    [lohPlayer]
+  )
+
   // ── Plea overlay complete ─────────────────────────────────────────────────
 
   const handlePleaComplete = useCallback(() => {
@@ -153,27 +175,7 @@ export default function Final3Ceremony() {
       buildAnnounceLines(pick)
       setStage('announcement')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [humanIsLoh, game.seed, nominees])
-
-  // ── Build eviction announcement lines ────────────────────────────────────
-
-  function buildAnnounceLines(evictee: Player) {
-    const lines: ChatLine[] = [
-      {
-        id: 'f3c-evict-decision',
-        role: 'loh',
-        player: lohPlayer ?? undefined,
-        text: `I've made my decision. ${evictee.name}, I'm eliminating you from The Big Eye house. 🗳️`,
-      },
-      {
-        id: 'f3c-evict-host',
-        role: 'host',
-        text: `${evictee.name}, you have been eliminated and will finish in 3rd place. 🥉`,
-      },
-    ]
-    setAnnounceLines(lines)
-  }
+  }, [buildAnnounceLines, game.seed, humanIsLoh, nominees])
 
   // ── Human LOH decision ────────────────────────────────────────────────────
 
@@ -187,9 +189,8 @@ export default function Final3Ceremony() {
       setEvicteeId(chosenEvicteeId)
       buildAnnounceLines(evictee)
       setStage('announcement')
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [game.players]
+    [buildAnnounceLines, game.players]
   )
 
   // ── Announcement complete → eviction cinematic ───────────────────────────
