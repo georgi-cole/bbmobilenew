@@ -39,6 +39,7 @@ import {
   recordRealityCeremony,
   setEnergyBankEntry,
   pushIncomingInteraction,
+  removeRelationshipTags,
   updateRelationship,
   initializeRealitySimulation,
   applyRealityAmbientMood,
@@ -153,6 +154,66 @@ interface StateWithGame {
 
 type MiddlewareAPI = { dispatch: (a: unknown) => unknown; getState: () => unknown }
 
+const CUPID_PAIR_INITIAL_AFFINITY = 55
+
+/**
+ * Cupid is a format-imposed bond, not an ordinary alliance that needs to be
+ * discovered through play. Seed it directly into the social graph whenever
+ * an active Cupid game reaches the store (new season, debug activation, or
+ * an older saved run).  The tag guard keeps this idempotent.
+ */
+function ensureCupidPairSocialLinks(api: MiddlewareAPI): void {
+  const state = api.getState() as StateWithGame
+  if (state.game?.cupidArrow?.status !== 'active') return
+
+  for (const pair of state.game.cupidArrow.pairs ?? []) {
+    const [firstId, secondId] = pair.memberIds
+    const firstRelationship = state.social?.relationships?.[firstId]?.[secondId]
+    const secondRelationship = state.social?.relationships?.[secondId]?.[firstId]
+    const firstIsSeeded = firstRelationship?.tags.includes('cupid_partner') === true
+    const secondIsSeeded = secondRelationship?.tags.includes('cupid_partner') === true
+
+    api.dispatch(
+      updateRelationship({
+        source: firstId,
+        target: secondId,
+        delta: firstIsSeeded ? 0 : CUPID_PAIR_INITIAL_AFFINITY,
+        tags: ['cupid_partner', 'cupid_forced_bond', 'protection'],
+        actionSource: 'system',
+      })
+    )
+    api.dispatch(
+      updateRelationship({
+        source: secondId,
+        target: firstId,
+        delta: secondIsSeeded ? 0 : CUPID_PAIR_INITIAL_AFFINITY,
+        tags: ['cupid_partner', 'cupid_forced_bond', 'protection'],
+        actionSource: 'system',
+      })
+    )
+  }
+}
+
+/** Remove Cupid-only labels when the spell breaks; the affinity remains as history. */
+function clearCupidPairSocialLinks(api: MiddlewareAPI): void {
+  const state = api.getState() as StateWithGame
+  for (const pair of state.game?.cupidArrow?.pairs ?? []) {
+    const [firstId, secondId] = pair.memberIds
+    for (const [source, target] of [
+      [firstId, secondId],
+      [secondId, firstId],
+    ]) {
+      api.dispatch(
+        removeRelationshipTags({
+          source,
+          target,
+          tags: ['cupid_partner', 'cupid_forced_bond', 'protection', 'cupid_ripple'],
+        })
+      )
+    }
+  }
+}
+
 const REALITY_SEEDING_ACTIONS = new Set([
   'game/advance',
   'game/setPhase',
@@ -222,10 +283,7 @@ function runDramaPhase(api: MiddlewareAPI, phase: string): void {
 
 function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
   const state = api.getState() as StateWithGame
-  if (
-    state.game?.voxPopuli?.status !== 'active' ||
-    !VOX_SOCIAL_BEAT_PHASES.has(phase)
-  ) {
+  if (state.game?.voxPopuli?.status !== 'active' || !VOX_SOCIAL_BEAT_PHASES.has(phase)) {
     return
   }
   const priorBeats = (state.game.tvFeed ?? []).filter(
@@ -289,8 +347,7 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
       }
     })
     .sort((left, right) => right.significance - left.significance)
-  const strongest =
-    rankedPairs.find((pair) => !recentPairKeys.has(pair.pairKey)) ?? rankedPairs[0]
+  const strongest = rankedPairs.find((pair) => !recentPairKeys.has(pair.pairKey)) ?? rankedPairs[0]
   const nominees = state.game.nomineeIds
     .map((id) => names[id])
     .filter((name): name is string => Boolean(name))
@@ -316,18 +373,19 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
         `${left} and ${right} disappeared into the pantry to compare notes before the congratulations had even ended.`,
         `${right} saved a seat beside ${left} after the competition, turning a small gesture into a very visible alliance signal.`,
       ],
-      social_1: state.game.week === 1
-        ? [
-            `First impressions are taking shape: ${left} and ${right} keep finding their way back to each other, and the house has started to notice.`,
-            `${left} and ${right} spent breakfast trading stories while everyone else quietly worked out whether the chemistry was personal or strategic.`,
-            `${left} chose ${right} for a long walk around the yard. By lunch, three different housemates had opinions about it.`,
-          ]
-        : [
-            `${left} and ${right} stayed behind at the kitchen island after everyone left, lowering their voices whenever footsteps approached.`,
-            `${left} brought ${right} coffee in bed. A sweet gesture—or careful image management, depending on whom you ask.`,
-            `${left} and ${right} spent an hour in the hammock, laughing loudly enough to make two alliances nervous.`,
-            `${right} helped ${left} rehearse a difficult conversation in the dressing room. Their trust is becoming harder to hide.`,
-          ],
+      social_1:
+        state.game.week === 1
+          ? [
+              `First impressions are taking shape: ${left} and ${right} keep finding their way back to each other, and the house has started to notice.`,
+              `${left} and ${right} spent breakfast trading stories while everyone else quietly worked out whether the chemistry was personal or strategic.`,
+              `${left} chose ${right} for a long walk around the yard. By lunch, three different housemates had opinions about it.`,
+            ]
+          : [
+              `${left} and ${right} stayed behind at the kitchen island after everyone left, lowering their voices whenever footsteps approached.`,
+              `${left} brought ${right} coffee in bed. A sweet gesture—or careful image management, depending on whom you ask.`,
+              `${left} and ${right} spent an hour in the hammock, laughing loudly enough to make two alliances nervous.`,
+              `${right} helped ${left} rehearse a difficult conversation in the dressing room. Their trust is becoming harder to hide.`,
+            ],
       nomination_results: [
         `${left} stayed close to ${right} as the nomination totals landed. Visible loyalty can be both comfort and ammunition.`,
         `${left} squeezed ${right}'s hand under the table when the block was announced. The cameras caught what the room almost missed.`,
@@ -392,8 +450,10 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
       `${right} surprised ${left} with a candlelit snack beside the pool. Even the biggest schemers stopped to watch.`,
       `${left} and ${right} fell asleep holding hands on the lounge sofa. The morning camera found them before the other housemates did.`,
     ] as const
-    const romanceBeat = strongest.romantic && strongest.affinity >= 35 &&
-      ((state.game.seed + state.game.week * 17 + phase.length) % 4 === 0)
+    const romanceBeat =
+      strongest.romantic &&
+      strongest.affinity >= 35 &&
+      (state.game.seed + state.game.week * 17 + phase.length) % 4 === 0
     const phaseChoices = (close ? positive : strained)[phase]
     text = romanceBeat
       ? chooseBeat(romanceOptions, `${strongest.pairKey}:romance`)
@@ -456,7 +516,7 @@ function maybeBroadcastVoxSocialBeat(api: MiddlewareAPI, phase: string): void {
           ? 'vox.social-tearful-apology'
           : text.includes('have made their final appeals')
             ? 'vox.social-final-appeals'
-          : undefined,
+            : undefined,
         broadcastCampaign: 'vox_populi',
         week: state.game.week,
         phase,
@@ -787,9 +847,7 @@ function recordPhaseCeremony(
     const voxPopuliActive = state.game.voxPopuli?.status === 'active'
     recordCeremony(api, 'POWER_WON', {
       actorId: state.game.lohId,
-      reason: voxPopuliActive
-        ? 'Daily immunity was won.'
-        : 'Leader of the House power was won.',
+      reason: voxPopuliActive ? 'Daily immunity was won.' : 'Leader of the House power was won.',
       tags: [voxPopuliActive ? 'immunity' : 'loh'],
     })
   }
@@ -833,7 +891,33 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
 
   if (type === 'game/resetGame') {
     const result = next(action)
+    // resetGame builds the active Cupid state inside the reducer, before a
+    // normal game/advance transition can observe it.
+    ensureCupidPairSocialLinks(api as unknown as MiddlewareAPI)
     ensureRealitySimulationSeed(api as unknown as MiddlewareAPI, true)
+    return result
+  }
+
+  if (type === 'game/hydrateGame') {
+    const result = next(action)
+    // Older saves may predate Cupid's social projection.
+    if ((api.getState() as StateWithGame).game.cupidArrow?.status === 'active') {
+      ensureCupidPairSocialLinks(api as unknown as MiddlewareAPI)
+    } else {
+      clearCupidPairSocialLinks(api as unknown as MiddlewareAPI)
+    }
+    return result
+  }
+
+  if (type === 'game/activateCupidArrowNow') {
+    const result = next(action)
+    ensureCupidPairSocialLinks(api as unknown as MiddlewareAPI)
+    return result
+  }
+
+  if (type === 'game/breakCupidArrowNow') {
+    const result = next(action)
+    clearCupidPairSocialLinks(api as unknown as MiddlewareAPI)
     return result
   }
 
@@ -1027,9 +1111,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       applyReplacementNomineeConsequences(
         api as unknown as MiddlewareAPI,
         replacementIds,
-        prevState.game?.voxPopuli?.status === 'active'
-          ? null
-          : (prevState.game?.lohId ?? null),
+        prevState.game?.voxPopuli?.status === 'active' ? null : (prevState.game?.lohId ?? null),
         prevState.game?.posWinnerId ?? null
       )
     }
@@ -1137,27 +1219,13 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       prevState.game.cupidArrow?.status !== 'active' &&
       afterState.game.cupidArrow?.status === 'active'
     ) {
-      for (const pair of afterState.game.cupidArrow.pairs ?? []) {
-        const [firstId, secondId] = pair.memberIds
-        api.dispatch(
-          updateRelationship({
-            source: firstId,
-            target: secondId,
-            delta: 55,
-            tags: ['cupid_partner', 'alliance', 'protection'],
-            actionSource: 'system',
-          })
-        )
-        api.dispatch(
-          updateRelationship({
-            source: secondId,
-            target: firstId,
-            delta: 55,
-            tags: ['cupid_partner', 'alliance', 'protection'],
-            actionSource: 'system',
-          })
-        )
-      }
+      ensureCupidPairSocialLinks(api as unknown as MiddlewareAPI)
+    }
+    if (
+      prevState.game.cupidArrow?.status === 'active' &&
+      afterState.game.cupidArrow?.status !== 'active'
+    ) {
+      clearCupidPairSocialLinks(api as unknown as MiddlewareAPI)
     }
     recordPhaseCeremony(api as unknown as MiddlewareAPI, prevPhase, newPhase)
 
@@ -1451,7 +1519,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       )
       const exposureSeed = `${evicteeId}:${affected.player.id}:${week ?? 0}`
         .split('')
-        .reduce((total, character) => Math.imul(total ^ character.charCodeAt(0), 16777619), 2166136261)
+        .reduce(
+          (total, character) => Math.imul(total ^ character.charCodeAt(0), 16777619),
+          2166136261
+        )
       if (affected.bondTag && (exposureSeed >>> 0) % 100 < 34) {
         api.dispatch({
           type: 'game/addTvEvent',

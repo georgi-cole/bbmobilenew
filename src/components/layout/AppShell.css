@@ -79,6 +79,12 @@ body:has(.game-screen-shell) .app-shell {
   padding-left: var(--safe-left);
 }
 
+/* The splash owns the whole viewport while the home hub or gameplay assets
+   are loading. Do not leave the underlying legacy navigation visible below it. */
+.app-shell:has(.kq-splash) .nav-bar {
+  display: none !important;
+}
+
 .app-shell__broadcast {
   display: flex;
   flex: 0 0 auto;

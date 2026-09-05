@@ -264,6 +264,11 @@ export default function ShockIntroOverlay({
         window.setTimeout(() => void SoundManager.play('ui:error', { volume: 0.38 }), 4400),
         window.setTimeout(() => void SoundManager.play('ui:navigate', { volume: 0.3 }), 5850)
       )
+    } else {
+      // All standard shock reveals share the original cinematic thunder cue.
+      // Cupid and the Twin Shock cinematic intentionally keep their bespoke
+      // audio treatment above.
+      void SoundManager.play('minigame:cinematic_thunder', { volume: 0.72 })
     }
 
     return () => cueTimers.forEach((timerId) => window.clearTimeout(timerId))

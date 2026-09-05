@@ -23,6 +23,7 @@ import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router'
 import { configureStore } from '@reduxjs/toolkit'
 import gameReducer from '../../../store/gameSlice'
+import settingsReducer from '../../../store/settingsSlice'
 import socialReducer, { openSocialPanel, recordSocialAction } from '../../../social/socialSlice'
 import { initManeuvers } from '../../../social/SocialManeuvers'
 import SocialPanelV2 from '../SocialPanelV2'
@@ -31,13 +32,16 @@ import type { RootState } from '../../../store/store'
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore() {
-  const base = configureStore({ reducer: { game: gameReducer, social: socialReducer } })
+  const base = configureStore({
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+  })
   const defaultState = base.getState() as RootState
   const store = configureStore({
-    reducer: { game: gameReducer, social: socialReducer },
+    reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
     preloadedState: {
       game: { ...defaultState.game, phase: 'social_1' as RootState['game']['phase'] },
       social: defaultState.social,
+      settings: defaultState.settings,
     },
   })
   initManeuvers(store)

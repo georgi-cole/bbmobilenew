@@ -10,7 +10,7 @@ const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
  * never ordinary gameplay-state locks.
  */
 export const TEMPORARY_STORE_UNLOCKS_ENABLED =
-  IS_ADMIN_BUILD || (import.meta.env.DEV && import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true')
+  IS_ADMIN_BUILD || import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'
 
 export interface StoreEntitlements {
   survivalMode: boolean

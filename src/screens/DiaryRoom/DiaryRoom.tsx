@@ -528,8 +528,9 @@ export default function DiaryRoom() {
   const [showSelfEvictConfirm, setShowSelfEvictConfirm] = useState(false)
   const [voteBreakdownUnlock, setVoteBreakdownUnlock] =
     useState<EvictionVoteBreakdownUnlock | null>(() => loadEvictionVoteBreakdownUnlock())
-  const [voxNominationReveal, setVoxNominationReveal] =
-    useState<VoxNominationReveal | null>(() => loadVoxNominationReveal())
+  const [voxNominationReveal, setVoxNominationReveal] = useState<VoxNominationReveal | null>(() =>
+    loadVoxNominationReveal()
+  )
   const [showVoxNominationAdPrompt, setShowVoxNominationAdPrompt] = useState(false)
   const [voxNominationAdPending, setVoxNominationAdPending] = useState(false)
   const [conversationState, setConversationState] =
@@ -549,7 +550,12 @@ export default function DiaryRoom() {
   const [ticTacToeThinking, setTicTacToeThinking] = useState(false)
   const activeVoteBreakdown =
     gameState.voxPopuli?.status !== 'active' &&
-    isEvictionVoteBreakdownActive(voteBreakdownUnlock, currentWeekForMission, phase)
+    isEvictionVoteBreakdownActive(
+      voteBreakdownUnlock,
+      currentWeekForMission,
+      phase,
+      gameState.gameId
+    )
       ? voteBreakdownUnlock
       : null
   const voteBreakdownPlayerNamesById = useMemo(
@@ -565,10 +571,7 @@ export default function DiaryRoom() {
       ? voxNominationReveal
       : null
   const voxNominationRows = activeVoxNominationReveal
-    ? buildVoxNominationRevealRows(
-        activeVoxNominationReveal.ballots,
-        voteBreakdownPlayerNamesById
-      )
+    ? buildVoxNominationRevealRows(activeVoxNominationReveal.ballots, voteBreakdownPlayerNamesById)
     : []
   const vipConfigured = isBigEyeVipConfigured()
   const vipSeasonId = `${gameState.gameId ?? 'local'}:${gameState.season}`
@@ -1283,9 +1286,7 @@ export default function DiaryRoom() {
           onSkip={() => {
             setShowVoxNominationAdPrompt(false)
             setVoxNominationAdPending(false)
-            pushBigEyeMessage(
-              'Very well. Today’s nomination trail will remain behind the curtain.'
-            )
+            pushBigEyeMessage('Very well. Today’s nomination trail will remain behind the curtain.')
           }}
         />
       )}
@@ -1580,9 +1581,7 @@ export default function DiaryRoom() {
                   aria-label="Secret nomination breakdown"
                 >
                   <div className="diary-room__vote-chart-header">
-                    <span className="diary-room__vote-reveal-eyebrow">
-                      Secret Nomination Trail
-                    </span>
+                    <span className="diary-room__vote-reveal-eyebrow">Secret Nomination Trail</span>
                     <strong>Who nominated whom</strong>
                   </div>
                   <div

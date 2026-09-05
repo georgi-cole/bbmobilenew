@@ -175,12 +175,21 @@
 }
 
 .rcd-player__copy strong {
-  overflow: hidden;
   color: #fff7fb;
   font-size: 0.9rem;
   line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
+}
+
+.rcd-player__names {
+  display: grid;
+  gap: 1px;
+}
+
+.rcd-player__names > span {
+  display: block;
 }
 
 .rcd-player__avatar {
@@ -312,20 +321,18 @@
 }
 
 .rcd-auto-nominee__copy strong {
-  overflow: hidden;
   color: #fff4f5;
   font-size: 0.9rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .rcd-auto-nominee__copy em {
-  overflow: hidden;
   color: rgba(254, 226, 226, 0.66);
   font-size: 0.68rem;
   font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .rcd-auto-nominee__pair-dot {
@@ -438,10 +445,10 @@
 }
 
 .rcd-confirm__copy strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 0.86rem;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .rcd-confirm__copy small {

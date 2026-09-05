@@ -109,9 +109,12 @@ export default function DepressionShockController() {
 
   useEffect(() => {
     setDepressionShockVisualPhase(visualPhase)
-    if (visualPhase === 'sunbreak') {
-      setDepressionShockPortraitMode(presentation === 'ending' ? 'sad' : 'normal')
-    }
+    // Portraits are derived from persisted lifecycle state, not from the
+    // thunder cinematic callback. A continued season may restore mid-shock
+    // without replaying that cinematic, and must still show the sad roster.
+    setDepressionShockPortraitMode(
+      visualPhase === 'day1' || visualPhase === 'day2' ? 'sad' : 'normal'
+    )
     const root = document.documentElement
     if (visualPhase === 'inactive') {
       delete root.dataset.depressionShock
@@ -132,11 +135,6 @@ export default function DepressionShockController() {
   useEffect(() => {
     if (presentation !== 'intro' && presentation !== 'day2') return
     const current = loadDepressionShockState(game.gameId)
-    if (presentation === 'intro') {
-      setDepressionShockPortraitMode('normal')
-    } else {
-      setDepressionShockPortraitMode('sad')
-    }
     setRuntime(markDepressionShockPresentationSeen(current, presentation, game.week))
     dispatch({
       type: 'game/addTvEvent',

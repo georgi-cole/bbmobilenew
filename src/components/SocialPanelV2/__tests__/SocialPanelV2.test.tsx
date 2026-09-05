@@ -41,6 +41,7 @@ import socialReducer, {
 import { initManeuvers } from '../../../social/SocialManeuvers'
 import SocialPanelV2 from '../SocialPanelV2'
 import type { RootState } from '../../../store/store'
+import { I18nProvider } from '../../../i18n/I18nProvider'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -116,7 +117,9 @@ function renderPanel(store: ReturnType<typeof makeStore>) {
   return render(
     <MemoryRouter>
       <Provider store={store}>
-        <SocialPanelV2 />
+        <I18nProvider>
+          <SocialPanelV2 />
+        </I18nProvider>
       </Provider>
     </MemoryRouter>
   )

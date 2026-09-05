@@ -7,6 +7,7 @@ import {
   addDirection,
   pruneExpiredDirections,
   updateMissionProgress,
+  resolveDirection,
   resetDailyFeedBudget,
 } from './publicOpinionSlice'
 import { publicOpinionConfig } from './publicOpinionConfig'
@@ -21,6 +22,8 @@ import {
 } from './EventDrivenReactionService'
 import type { PublicDirection } from './types'
 import { computeAudiencePulse } from './AudiencePulseService'
+import { isDirectionStillValid } from './publicDirectionContracts'
+import { addTvEvent } from '../store/gameSlice'
 
 interface GameState {
   phase: string
@@ -30,6 +33,12 @@ interface GameState {
   nomineeIds: string[]
   players: Player[]
   seed: number
+  publicModeEnabled?: boolean
+  dramaSocialMode?: boolean
+  cupidArrow?: {
+    status?: 'inactive' | 'scheduled' | 'active' | 'broken'
+    pairs?: Array<{ memberIds: [string, string] }>
+  }
   /** True when the human LOH has not yet submitted nominations. */
   awaitingNominations?: boolean
   /** Map of voterId → nomineeId set during live_vote. */
@@ -86,6 +95,8 @@ interface StateWithGame {
   }
   social?: {
     relationships?: import('../social/types').RelationshipsMap
+    reality?: import('../social/reality/types').RealityDomainState
+    dramaNetwork?: import('../social/types').DramaSocialNetwork
     sessionLogs?: Array<{
       actorId?: string
       source?: 'manual' | 'system'
@@ -100,6 +111,34 @@ const OPENING_PUBLIC_APPROVAL_MAX = 57
 // Golden-ratio bit mixer keeps the opening approval shuffle deterministic while
 // avoiding obvious patterns from adjacent game seeds.
 const OPENING_PUBLIC_APPROVAL_SEED_MIX = 0x9e3779b9
+
+function audienceMoodVariance(input: {
+  seed: number
+  playerId: string
+  reason: string
+  week: number
+  delta: number
+  updateCount: number
+}): number {
+  // Deterministic per season and event: the audience feels a little mercurial,
+  // while replays and saved games remain stable. It can soften or amplify an
+  // outcome, never reverse its intended direction.
+  if (
+    input.delta === 0 ||
+    input.reason.startsWith('direction_') ||
+    input.reason === 'audience_reconsideration'
+  )
+    return 0
+  const key = `${input.seed}:${input.playerId}:${input.reason}:${input.week}:${input.updateCount}`
+  let hash = 0x811c9dc5
+  for (const char of key) {
+    hash ^= char.charCodeAt(0)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  const normalized = (hash / 0xffffffff) * 2 - 1
+  const range = Math.min(1.5, Math.max(0.35, Math.abs(input.delta) * 0.3))
+  return Math.round(normalized * range * 10) / 10
+}
 
 function isDefaultOpeningProfile(profile: unknown): boolean {
   const candidate = profile as {
@@ -149,7 +188,11 @@ function ensureProfiles(
     .map((player) => player.id)
     .filter((playerId) => !profiles[playerId])
   if (missingPlayerIds.length > 0) {
-    store.dispatch(initializeProfiles(missingPlayerIds))
+    store.dispatch(
+      initializeProfiles(
+        (game.players ?? []).filter((player) => missingPlayerIds.includes(player.id))
+      )
+    )
     profiles = (store.getState() as StateWithGame).publicOpinion?.profiles ?? {}
   }
   return profiles
@@ -211,6 +254,7 @@ function dispatchMissionProgress(
   event: MissionGameEvent
 ) {
   const state = store.getState() as StateWithGame
+  if (state.game.publicModeEnabled !== true) return
   const directions = state.publicOpinion?.directions ?? []
   const activeDirections = directions.filter(
     (d) => d.playerId === event.actorId && d.status === 'active'
@@ -229,14 +273,106 @@ function dispatchMissionProgress(
         week: event.week,
       })
     )
+    if (
+      signal.isComplete &&
+      state.game.players.find((player) => player.id === event.actorId)?.isUser
+    ) {
+      const direction = directions.find((item) => item.id === signal.directionId)
+      store.dispatch(
+        addTvEvent({
+          text: `Audience approval rises: ${direction?.description ?? 'Public request completed'}.`,
+          type: 'social',
+          meta: { major: 'public_request_completed', week: event.week },
+          channels: ['tv', 'mainLog', 'dr'],
+          source: 'system',
+        })
+      )
+    }
+  }
+
+  // Do this after progress so the action that deliberately broke an alliance
+  // can still complete its request.
+  expireInvalidDirections(store, event.week)
+}
+
+/** Expire requests that the current world has made impossible, without a penalty. */
+function expireInvalidDirections(store: MiddlewareAPI<Dispatch<UnknownAction>>, week: number) {
+  const refreshed = store.getState() as StateWithGame
+  if (refreshed.game.publicModeEnabled !== true) return
+  const cupidPartnersByPlayerId = Object.fromEntries(
+    (refreshed.game.cupidArrow?.status === 'active'
+      ? (refreshed.game.cupidArrow.pairs ?? [])
+      : []
+    ).flatMap((pair) => [
+      [pair.memberIds[0], pair.memberIds[1]],
+      [pair.memberIds[1], pair.memberIds[0]],
+    ])
+  )
+  for (const direction of refreshed.publicOpinion?.directions ?? []) {
+    if (direction.status !== 'active') continue
+    if (
+      !isDirectionStillValid(direction, {
+        players: refreshed.game.players,
+        relationships: refreshed.social?.relationships,
+        realityAlliances: refreshed.social?.reality?.alliances,
+        dramaAlliances: refreshed.social?.dramaNetwork?.alliances,
+        cupidPairIds: cupidPartnersByPlayerId[direction.playerId]
+          ? [cupidPartnersByPlayerId[direction.playerId]]
+          : [],
+        voxPopuliActive: refreshed.game.voxPopuli?.status === 'active',
+        dramaMode: refreshed.game.dramaSocialMode === true,
+      })
+    ) {
+      store.dispatch(resolveDirection({ directionId: direction.id, status: 'expired', week }))
+    }
   }
 }
 
 export const publicOpinionMiddleware: Middleware = (store) => (next) => (action) => {
   const prevState = store.getState() as StateWithGame
   const prevPhase = prevState.game?.phase
+  const originalAction = action as {
+    type: string
+    payload?: {
+      playerId?: string
+      delta?: number
+      reason?: string
+      week?: number
+      audienceVariance?: number
+    }
+  }
+  const isApprovalUpdate = originalAction.type === updateApproval.type
+  const profile =
+    isApprovalUpdate && originalAction.payload?.playerId
+      ? (prevState.publicOpinion?.profiles?.[originalAction.payload.playerId] as
+          | { audienceBreakdown?: { recentChanges?: unknown[] } }
+          | undefined)
+      : undefined
+  const shouldAddMood =
+    isApprovalUpdate &&
+    prevState.game?.publicModeEnabled === true &&
+    originalAction.payload?.audienceVariance === undefined &&
+    typeof originalAction.payload?.delta === 'number' &&
+    typeof originalAction.payload?.reason === 'string' &&
+    typeof originalAction.payload?.playerId === 'string'
+  const actionWithMood = shouldAddMood
+    ? {
+        ...originalAction,
+        payload: {
+          ...originalAction.payload,
+          audienceVariance: audienceMoodVariance({
+            seed: prevState.game?.seed ?? 0,
+            playerId: originalAction.payload!.playerId!,
+            reason: originalAction.payload!.reason!,
+            week: originalAction.payload!.week ?? prevState.game?.week ?? 1,
+            delta: originalAction.payload!.delta!,
+            updateCount: profile?.audienceBreakdown?.recentChanges?.length ?? 0,
+          }),
+        },
+      }
+    : action
 
-  const result = next(action)
+  const result = next(actionWithMood)
 
   const nextState = store.getState() as StateWithGame
   const newPhase = nextState.game?.phase
@@ -244,8 +380,8 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
   if (!game) return result
 
-  const actionType = (action as { type: string }).type
-  const actionPayload = (action as { payload?: unknown }).payload
+  const actionType = (actionWithMood as { type: string }).type
+  const actionPayload = (actionWithMood as { payload?: unknown }).payload
   ensureProfiles(store, game)
 
   // ── Game reset ─────────────────────────────────────────────────────────────
@@ -449,8 +585,22 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
       const human = game.players?.find((player) => player.isUser)
       if (human?.id === actorId && entry.source === 'manual') {
         const score = typeof entry.score === 'number' ? entry.score : 0
+        const closerMission = store
+          .getState()
+          .publicOpinion?.directions?.find(
+            (direction: {
+              playerId: string
+              type: string
+              relatedPlayerId?: string
+              status: string
+            }) =>
+              direction.playerId === actorId &&
+              direction.type === 'get_closer' &&
+              direction.status === 'active' &&
+              direction.relatedPlayerId === targetId
+          )
         const approvalDelta =
-          outcome === 'success' && (score >= 0.25 || delta >= 4)
+          outcome === 'success' && (closerMission || score >= 0.25 || delta >= 4)
             ? publicOpinionConfig.socialImpact.highQualityInteraction
             : outcome === 'failure' && (score <= -0.3 || delta < 0)
               ? publicOpinionConfig.socialImpact.poorInteraction
@@ -463,18 +613,35 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
               reason: approvalDelta > 0 ? 'high_quality_social_play' : 'poor_social_play',
               week,
               addToFeed: true,
+              attributedToId: targetId,
             })
           )
         }
       }
 
       let missionEventType: MissionGameEvent['type'] | null = null
-      if (actionId === 'apologize' && outcome === 'success') {
+      if (
+        ['apologize', 'repair_bond', 'clear_the_air'].includes(actionId) &&
+        outcome === 'success'
+      ) {
         missionEventType = 'apologized_to'
+      } else if (['break_alliance', 'break_bromance'].includes(actionId) && outcome === 'success') {
+        missionEventType = 'broke_alliance'
+      } else if (actionId === 'proposeAlliance' && outcome === 'success') {
+        missionEventType = 'formed_alliance'
       } else if (actionId === 'betray' && outcome === 'success') {
         missionEventType = 'betrayal'
+      } else if (['rumor', 'spread_rumor'].includes(actionId) && outcome === 'success') {
+        missionEventType = 'spread_rumor'
+      } else if (
+        ['confront', 'startFight', 'public_callout'].includes(actionId) &&
+        outcome === 'success'
+      ) {
+        missionEventType = 'confronted_player'
+      } else if (['pitch_target', 'ask_loh_target'].includes(actionId) && outcome === 'success') {
+        missionEventType = 'influenced_hoh'
       } else if (actionId === 'ally' || actionId === 'protect') {
-        missionEventType = outcome === 'success' ? 'positive_social' : null
+        missionEventType = outcome === 'success' ? 'showed_loyalty' : null
       } else if (actionId === 'nominate') {
         missionEventType = outcome === 'success' ? 'negative_social' : null
       } else if (delta > 0) {
@@ -505,6 +672,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
 
     if (prevPhase !== newPhase) {
       const week = game.week ?? 1
+      expireInvalidDirections(store, week)
       applyCompetitionResultPublicOpinion(store, game, prevPhase, newPhase)
 
       if (prevPhase === 'loh_comp' && newPhase === 'loh_results' && game.lohId) {
@@ -608,6 +776,14 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           isPublicSave: false,
         })
         dispatchReactionDeltas(store, reactions, week)
+        if (game.posWinnerId) {
+          dispatchMissionProgress(store, {
+            type: 'saved_from_block',
+            actorId: game.posWinnerId,
+            targetId: game.povSavedId,
+            week,
+          })
+        }
         const voxSaveCount = game.voxPopuli?.safetySaveCounts?.[game.povSavedId] ?? 0
         if (game.voxPopuli?.status === 'active' && voxSaveCount >= 2) {
           store.dispatch(
@@ -672,7 +848,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
         }
       }
 
-      if (newPhase === 'week_end') {
+      if (newPhase === 'week_end' && game.publicModeEnabled === true) {
         store.dispatch(pruneExpiredDirections({ week: week + 1 }))
 
         const activePlayers = (game.players ?? []).filter(
@@ -686,10 +862,36 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             seed: game.seed ?? 0,
             count: publicOpinionConfig.directionsPerCycle,
             relationships: nextState.social?.relationships,
+            realityAlliances: nextState.social?.reality?.alliances,
+            dramaAlliances: nextState.social?.dramaNetwork?.alliances,
+            cupidPartnersByPlayerId: Object.fromEntries(
+              (game.cupidArrow?.status === 'active' ? (game.cupidArrow.pairs ?? []) : []).flatMap(
+                (pair) => [
+                  [pair.memberIds[0], pair.memberIds[1]],
+                  [pair.memberIds[1], pair.memberIds[0]],
+                ]
+              )
+            ),
             voxPopuliActive: game.voxPopuli?.status === 'active',
+            prioritizeHuman: true,
+            dramaMode: game.dramaSocialMode === true,
           })
           for (const direction of newDirections) {
             store.dispatch(addDirection(direction))
+          }
+          const humanDirection = newDirections.find((direction) =>
+            game.players.some((player) => player.id === direction.playerId && player.isUser)
+          )
+          if (humanDirection) {
+            store.dispatch(
+              addTvEvent({
+                text: `Audience directive: ${humanDirection.description}.`,
+                type: 'social',
+                meta: { major: 'public_request_issued', week: week + 1 },
+                channels: ['tv', 'mainLog', 'dr'],
+                source: 'system',
+              })
+            )
           }
         }
       }

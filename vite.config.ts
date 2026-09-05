@@ -9,13 +9,13 @@ const { version: appVersion } = JSON.parse(
 // https://vite.dev/config/
 //
 // Base-path strategy
-//   npm run build             →  "/bbmobilenew/"  (GitHub Pages deployment)
+//   npm run build             →  the VITE_BASE_PATH value (GitHub Pages deployment)
 //   npm run build:capacitor   →  "./"             (passed via --base ./ CLI flag,
 //                                                   required for Capacitor/WKWebView)
 const mobileModes = new Set(['capacitor', 'ios', 'android'])
 
 export default defineConfig(({ mode }) => ({
-  base: mobileModes.has(mode) ? './' : '/bbmobilenew/',
+  base: mobileModes.has(mode) ? './' : process.env.VITE_BASE_PATH || '/bbmobilenew/',
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },

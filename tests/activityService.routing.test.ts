@@ -24,6 +24,16 @@ describe('service broadcast routing', () => {
     expect(isVisibleInMainLog(event)).toBe(true)
   })
 
+  it('honors Force to TV for a normally log-only service message', () => {
+    const event = {
+      text: '[Rules] Public mode: OFF',
+      type: 'game',
+      meta: { broadcastTemplateId: 'season.public-mode-rule', forceOnTv: true },
+    }
+
+    expect(isVisibleOnTv(event)).toBe(true)
+  })
+
   it('does not classify other bracketed or system-looking messages out of the TV', () => {
     expect(isVisibleOnTv({ text: '[System] Autosave ready', type: 'game' })).toBe(true)
     expect(isVisibleOnTv({ text: '[Rules] A different authored rule', type: 'game' })).toBe(true)
@@ -67,6 +77,16 @@ describe('season opening replacement routing', () => {
     expect(isLegacySeasonWelcomeEvent(event)).toBe(true)
     expect(isVisibleOnTv(event)).toBe(false)
     expect(isVisibleInMainLog(event)).toBe(false)
+  })
+
+  it('honors Force to TV for an otherwise suppressed legacy welcome', () => {
+    const event = {
+      text: 'Welcome to The Big Eye hub! 🏠 Season 7 is about to begin.',
+      type: 'game',
+      meta: { forceOnTv: true },
+    }
+
+    expect(isVisibleOnTv(event)).toBe(true)
   })
 
   it('suppresses the exact legacy Cupid welcome as well', () => {

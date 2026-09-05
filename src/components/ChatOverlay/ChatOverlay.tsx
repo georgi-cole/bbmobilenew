@@ -15,70 +15,70 @@
  *   />
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Player } from '../../types';
-import { resolveAvatarCandidates, resolveSilhouetteFallback, isEmoji } from '../../utils/avatar';
-import './ChatOverlay.css';
+import { useState, useEffect, useRef, useCallback } from 'react'
+import type { Player } from '../../types'
+import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
+import './ChatOverlay.css'
 
 export interface ChatLine {
-  id: string;
-  role: string;
-  player?: Player;
-  text: string;
+  id: string
+  role: string
+  player?: Player
+  text: string
 }
 
 export interface ChatOverlayProps {
-  lines: ChatLine[];
+  lines: ChatLine[]
   /** Auto-play lines on mount. Default: true */
-  autoPlay?: boolean;
+  autoPlay?: boolean
   /** Typing speed multiplier (higher = faster). Default: 1 */
-  typingSpeed?: number;
+  typingSpeed?: number
   /** Show a Skip button to reveal all lines at once. Default: true */
-  skippable?: boolean;
-  header?: { title?: string; subtitle?: string };
+  skippable?: boolean
+  header?: { title?: string; subtitle?: string }
   /** Custom renderer for player avatars */
-  avatarRenderer?: (p: Player) => React.ReactNode;
+  avatarRenderer?: (p: Player) => React.ReactNode
   /** Show player avatars next to lines. Default: true */
-  showAvatars?: boolean;
+  showAvatars?: boolean
   /** Called each time a new line becomes visible */
-  onLineReveal?: (line: ChatLine, idx: number) => void;
+  onLineReveal?: (line: ChatLine, idx: number) => void
   /**
    * Called when the overlay has fully exited.
    * • Skip  → fires immediately (synchronously).
    * • Continue (after autoPlay) → fires after the exit animation (~340 ms).
    * • Empty lines → fires immediately.
    */
-  onComplete?: () => void;
+  onComplete?: () => void
   /** Accessible label for the dialog */
-  ariaLabel?: string;
+  ariaLabel?: string
   /** Label for the completion button once all lines are revealed. */
-  completeLabel?: string;
+  completeLabel?: string
 }
 
 /** Base delay between lines (ms). Divided by typingSpeed. */
-const BASE_TYPING_MS = 800;
+const BASE_TYPING_MS = 800
 /** How long the typing indicator shows before the next line appears (ms). */
-const TYPING_INDICATOR_MS = 600;
+const TYPING_INDICATOR_MS = 600
 /** Duration of the slide-down exit animation (ms). Must match CSS. */
-export const EXIT_ANIM_MS = 340;
+export const EXIT_ANIM_MS = 340
 
 function ChatAvatar({ player }: { player: Player }) {
-  const avatar = player.avatar ?? '';
-  const [candidates] = useState(() => resolveAvatarCandidates(player));
-  const [candidateIdx, setCandidateIdx] = useState(0);
-  const [allFailed, setAllFailed] = useState(false);
+  const avatar = player.avatar ?? ''
+  const [candidates] = useState(() => resolveAvatarCandidates(player))
+  const [candidateIdx, setCandidateIdx] = useState(0)
+  const [allFailed, setAllFailed] = useState(false)
 
   // Emoji avatars (including the finale host microphone) are intentional
   // artwork, not filenames. Render them directly so the resolver cannot try
   // a speculative `Host_avatar.webp` and show a broken thumbnail first.
-  if (isEmoji(avatar)) {
-    return <span className="chat-overlay__avatar-emoji">{avatar}</span>;
+  if (isEmoji(avatar) && player.id === 'host') {
+    return <span className="chat-overlay__avatar-emoji">{avatar}</span>
   }
 
   // Try image candidates first (includes PNG paths and Dicebear fallback).
   // Only fall back to emoji / initial once all candidates are exhausted.
   if (!allFailed) {
-    const src = candidates[candidateIdx];
+    const src = candidates[candidateIdx]
     if (src) {
       return (
         <img
@@ -87,13 +87,13 @@ function ChatAvatar({ player }: { player: Player }) {
           alt={player.name}
           onError={() => {
             if (candidateIdx === candidates.length - 1) {
-              setAllFailed(true);
+              setAllFailed(true)
             } else {
-              setCandidateIdx((i) => i + 1);
+              setCandidateIdx((i) => i + 1)
             }
           }}
         />
-      );
+      )
     }
   }
 
@@ -101,11 +101,11 @@ function ChatAvatar({ player }: { player: Player }) {
     <span className="chat-overlay__avatar-initial">
       {player.name ? player.name[0].toUpperCase() : '?'}
     </span>
-  );
+  )
 }
 
 function defaultAvatarRenderer(p: Player): React.ReactNode {
-  return <ChatAvatar player={p} />;
+  return <ChatAvatar player={p} />
 }
 
 export default function ChatOverlay({
@@ -121,114 +121,114 @@ export default function ChatOverlay({
   ariaLabel,
   completeLabel = 'Continue →',
 }: ChatOverlayProps) {
-  const [revealedCount, setRevealedCount] = useState(0);
-  const [showTyping, setShowTyping] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [exiting, setExiting] = useState(false);
-  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const feedRef = useRef<HTMLDivElement>(null);
-  const onLineRevealRef = useRef(onLineReveal);
-  const onCompleteRef = useRef(onComplete);
-  const linesRef = useRef(lines);
-  onLineRevealRef.current = onLineReveal;
-  onCompleteRef.current = onComplete;
-  linesRef.current = lines;
+  const [revealedCount, setRevealedCount] = useState(0)
+  const [showTyping, setShowTyping] = useState(false)
+  const [completed, setCompleted] = useState(false)
+  const [exiting, setExiting] = useState(false)
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const feedRef = useRef<HTMLDivElement>(null)
+  const onLineRevealRef = useRef(onLineReveal)
+  const onCompleteRef = useRef(onComplete)
+  const linesRef = useRef(lines)
+  onLineRevealRef.current = onLineReveal
+  onCompleteRef.current = onComplete
+  linesRef.current = lines
 
   const clearTimers = useCallback(() => {
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
-  }, []);
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+  }, [])
 
   const addTimer = useCallback((fn: () => void, ms: number) => {
-    const id = setTimeout(fn, ms);
-    timersRef.current.push(id);
-  }, []);
+    const id = setTimeout(fn, ms)
+    timersRef.current.push(id)
+  }, [])
 
   /** Sets completed flag; onComplete is NOT called here — see handleSkip / handleDismiss. */
   const markComplete = useCallback(() => {
-    setCompleted(true);
-    setShowTyping(false);
-  }, []);
+    setCompleted(true)
+    setShowTyping(false)
+  }, [])
 
   /**
    * Skip: instantly reveals all lines and fires onComplete NOW (synchronously),
    * while playing the exit animation in the background.
    */
   const handleSkip = useCallback(() => {
-    clearTimers();
-    setShowTyping(false);
-    setRevealedCount(lines.length);
-    setCompleted(true);
-    setExiting(true);
-    onCompleteRef.current?.();
-  }, [clearTimers, lines.length]);
+    clearTimers()
+    setShowTyping(false)
+    setRevealedCount(lines.length)
+    setCompleted(true)
+    setExiting(true)
+    onCompleteRef.current?.()
+  }, [clearTimers, lines.length])
 
   /**
    * Continue: starts the slide-down exit animation then fires onComplete after
    * the animation has finished (~EXIT_ANIM_MS).
    */
   const handleDismiss = useCallback(() => {
-    setExiting(true);
+    setExiting(true)
     addTimer(() => {
-      onCompleteRef.current?.();
-    }, EXIT_ANIM_MS);
-  }, [addTimer]);
+      onCompleteRef.current?.()
+    }, EXIT_ANIM_MS)
+  }, [addTimer])
 
   // Auto-scroll the feed to the bottom whenever a new line appears, but only if
   // the user hasn't manually scrolled up (within 100 px of the bottom counts as "at bottom")
   useEffect(() => {
-    const el = feedRef.current;
+    const el = feedRef.current
     if (el) {
-      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-      if (isNearBottom) el.scrollTop = el.scrollHeight;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+      if (isNearBottom) el.scrollTop = el.scrollHeight
     }
-  }, [revealedCount, showTyping]);
+  }, [revealedCount, showTyping])
 
   useEffect(() => {
-    const lines = linesRef.current;
+    const lines = linesRef.current
     if (lines.length === 0) {
       // Nothing to reveal: fire complete immediately (no animation needed)
-      onCompleteRef.current?.();
-      return;
+      onCompleteRef.current?.()
+      return
     }
-    if (!autoPlay) return;
+    if (!autoPlay) return
 
-    let currentIdx = 0;
+    let currentIdx = 0
 
     function revealNext() {
-      const currentLines = linesRef.current;
+      const currentLines = linesRef.current
       if (currentIdx >= currentLines.length) {
-        setShowTyping(false);
-        markComplete();
-        return;
+        setShowTyping(false)
+        markComplete()
+        return
       }
 
-      const delay = BASE_TYPING_MS / typingSpeed;
+      const delay = BASE_TYPING_MS / typingSpeed
 
       // Show typing indicator before the line appears
-      setShowTyping(true);
+      setShowTyping(true)
       addTimer(() => {
-        setShowTyping(false);
-        const idx = currentIdx;
-        setRevealedCount(idx + 1);
-        onLineRevealRef.current?.(linesRef.current[idx], idx);
-        currentIdx++;
+        setShowTyping(false)
+        const idx = currentIdx
+        setRevealedCount(idx + 1)
+        onLineRevealRef.current?.(linesRef.current[idx], idx)
+        currentIdx++
         // Schedule next line
-        addTimer(revealNext, delay / 2);
-      }, TYPING_INDICATOR_MS / typingSpeed);
+        addTimer(revealNext, delay / 2)
+      }, TYPING_INDICATOR_MS / typingSpeed)
     }
 
     // Small initial delay before first line
-    addTimer(revealNext, 200);
+    addTimer(revealNext, 200)
 
-    return clearTimers;
-  }, [autoPlay, lines.length, typingSpeed, addTimer, clearTimers, markComplete]);
+    return clearTimers
+  }, [autoPlay, lines.length, typingSpeed, addTimer, clearTimers, markComplete])
 
   // If lines is empty, render nothing (onComplete was already called in effect)
-  if (lines.length === 0) return null;
+  if (lines.length === 0) return null
 
-  const revealedLines = lines.slice(0, revealedCount);
-  const renderAvatar = avatarRenderer ?? defaultAvatarRenderer;
+  const revealedLines = lines.slice(0, revealedCount)
+  const renderAvatar = avatarRenderer ?? defaultAvatarRenderer
 
   return (
     <div
@@ -240,12 +240,8 @@ export default function ChatOverlay({
       <div className="chat-overlay__panel">
         {(header?.title || header?.subtitle) && (
           <div className="chat-overlay__header">
-            {header.title && (
-              <p className="chat-overlay__header-title">{header.title}</p>
-            )}
-            {header.subtitle && (
-              <p className="chat-overlay__header-subtitle">{header.subtitle}</p>
-            )}
+            {header.title && <p className="chat-overlay__header-title">{header.title}</p>}
+            {header.subtitle && <p className="chat-overlay__header-subtitle">{header.subtitle}</p>}
           </div>
         )}
 
@@ -257,27 +253,12 @@ export default function ChatOverlay({
           aria-relevant="additions"
         >
           {revealedLines.map((line) => (
-            <div
-              key={line.id}
-              className={`chat-overlay__line chat-overlay__line--${line.role}`}
-            >
+            <div key={line.id} className={`chat-overlay__line chat-overlay__line--${line.role}`}>
               {showAvatars && line.player && (
-                <div className="chat-overlay__avatar">
-                  {line.role === 'host' || line.role === 'user' ? (
-                    <img
-                      className="chat-overlay__avatar-img"
-                      src={resolveSilhouetteFallback(line.player)}
-                      alt={line.player.name}
-                    />
-                  ) : (
-                    renderAvatar(line.player)
-                  )}
-                </div>
+                <div className="chat-overlay__avatar">{renderAvatar(line.player)}</div>
               )}
               <div className="chat-overlay__bubble">
-                {line.player && (
-                  <span className="chat-overlay__speaker">{line.player.name}</span>
-                )}
+                {line.player && <span className="chat-overlay__speaker">{line.player.name}</span>}
                 <span className="chat-overlay__text">{line.text}</span>
               </div>
             </div>
@@ -294,24 +275,17 @@ export default function ChatOverlay({
 
         <div className="chat-overlay__footer">
           {skippable && !completed && !exiting && (
-            <button
-              className="chat-overlay__skip"
-              onClick={handleSkip}
-              aria-label="Skip to end"
-            >
+            <button className="chat-overlay__skip" onClick={handleSkip} aria-label="Skip to end">
               Skip
             </button>
           )}
           {completed && !exiting && (
-            <button
-              className="chat-overlay__done"
-              onClick={handleDismiss}
-            >
+            <button className="chat-overlay__done" onClick={handleDismiss}>
               {completeLabel}
             </button>
           )}
         </div>
       </div>
     </div>
-  );
+  )
 }

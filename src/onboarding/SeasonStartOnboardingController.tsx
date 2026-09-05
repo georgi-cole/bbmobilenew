@@ -12,7 +12,9 @@ import './SeasonStartOnboardingController.css'
 import './SeasonOpeningCinematic.css'
 
 const TV_WAKE_MS = 1150
-const WELCOME_DELAY_MS = 1250
+// Materialize the welcome as soon as the game viewport mounts so expansion
+// broadcasts cannot appear before the season-opening sequence.
+const WELCOME_DELAY_MS = 0
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
@@ -69,7 +71,9 @@ export default function SeasonStartOnboardingController() {
   )
 
   const legacyWelcomeEvent = useMemo(
-    () => tvFeed.find((event) => isLegacySeasonWelcomeEvent(event)) ?? null,
+    () =>
+      tvFeed.find((event) => isLegacySeasonWelcomeEvent(event) && event.meta?.forceOnTv !== true) ??
+      null,
     [tvFeed]
   )
 
@@ -133,9 +137,13 @@ export default function SeasonStartOnboardingController() {
       return
     }
 
-    // Public Mode status remains a log/service item. If old Broadcast Manager
-    // state forced it into the TV queue, consume only its queued presentation.
-    if (queuedEvent && isServiceConfigurationEvent(queuedEvent)) {
+    // Public Mode status is normally a log/service item. A deliberate Force to
+    // TV setting is an authoring override, so leave that queued message alone.
+    if (
+      queuedEvent &&
+      isServiceConfigurationEvent(queuedEvent) &&
+      queuedEvent.meta?.forceOnTv !== true
+    ) {
       dispatch(consumeBroadcastEvent(queuedEvent.id))
     }
   }, [dispatch, legacyWelcomeEvent, queuedEvent])
@@ -200,13 +208,21 @@ export default function SeasonStartOnboardingController() {
   }, [dispatch, flavorExists, gameId, mode, phase, week])
 
   useEffect(() => {
-    if (!eligibleSeasonStart || broadcastQueue.length > 0 || welcomeExists) return undefined
+    if (!eligibleSeasonStart || welcomeExists) return undefined
     welcomeTimerRef.current = window.setTimeout(addOpeningWelcome, WELCOME_DELAY_MS)
     return () => {
       if (welcomeTimerRef.current != null) window.clearTimeout(welcomeTimerRef.current)
       welcomeTimerRef.current = null
     }
   }, [addOpeningWelcome, broadcastQueue.length, eligibleSeasonStart, welcomeExists])
+
+  // TvZone owns acknowledgement of the forced welcome. Add the flavor only
+  // after that welcome has actually left the TV queue, so a Play press for an
+  // expansion shock cannot also consume the welcome behind it.
+  useEffect(() => {
+    if (!eligibleSeasonStart || !welcomeExists || flavorExists || broadcastQueue.length > 0) return
+    addOpeningFlavor()
+  }, [addOpeningFlavor, broadcastQueue.length, eligibleSeasonStart, flavorExists, welcomeExists])
 
   useEffect(() => {
     if (eligibleSeasonStart) return
@@ -246,13 +262,6 @@ export default function SeasonStartOnboardingController() {
     if (!eligibleSeasonStart) return undefined
 
     const handlePlay = (event: Event) => {
-      if (queuedEvent?.meta?.seasonOnboardingWelcome === true) {
-        event.preventDefault()
-        dispatch(consumeBroadcastEvent(queuedEvent.id))
-        addOpeningFlavor()
-        return
-      }
-
       if (queuedEvent?.meta?.seasonOnboardingFlavor === true) {
         event.preventDefault()
         dispatch(consumeBroadcastEvent(queuedEvent.id))

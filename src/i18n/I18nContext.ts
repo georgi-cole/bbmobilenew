@@ -15,10 +15,20 @@ export const I18nContext = createContext<I18nContextValue | null>(null)
 
 const fallbackTranslate: Translate = (key, params) => translate(DEFAULT_APP_LANGUAGE, key, params)
 
+const fallbackContext: I18nContextValue = {
+  preference: DEFAULT_APP_LANGUAGE,
+  language: DEFAULT_APP_LANGUAGE,
+  systemLanguage: DEFAULT_APP_LANGUAGE,
+  t: fallbackTranslate,
+  formatNumber: (value, options) =>
+    new Intl.NumberFormat(DEFAULT_APP_LANGUAGE, options).format(value),
+  formatDate: (value, options) =>
+    new Intl.DateTimeFormat(DEFAULT_APP_LANGUAGE, options).format(value),
+}
+
 export function useI18n(): I18nContextValue {
   const context = useContext(I18nContext)
-  if (!context) throw new Error('useI18n must be used within I18nProvider')
-  return context
+  return context ?? fallbackContext
 }
 
 export function useTranslate(): Translate {

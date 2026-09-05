@@ -4,6 +4,7 @@ import type {
   IncomingInteraction,
   IncomingInteractionDecisionLogEntry,
   IncomingInteractionResponseType,
+  IntelligenceDelivery,
   ScheduledIncomingInteraction,
   SocialActionLogEntry,
   SocialCommitment,
@@ -385,6 +386,14 @@ const socialSlice = createSlice({
     recordRealityFact(state, action: PayloadAction<RealityFact>) {
       addRealityFact(state.reality as RealityDomainState, action.payload)
     },
+    recordIntelligenceDelivery(state, action: PayloadAction<IntelligenceDelivery>) {
+      if ((state.intelligenceDeliveries ?? []).some((entry) => entry.id === action.payload.id))
+        return
+      state.intelligenceDeliveries = [
+        ...(state.intelligenceDeliveries ?? []),
+        action.payload,
+      ].slice(-120)
+    },
     learnRealityKnowledge(
       state,
       action: PayloadAction<{
@@ -727,6 +736,16 @@ const socialSlice = createSlice({
         'legacy'
       )
     },
+    /** Remove temporary relationship labels while preserving the history in affinity. */
+    removeRelationshipTags(
+      state,
+      action: PayloadAction<{ source: string; target: string; tags: string[] }>
+    ) {
+      const relationship = state.relationships[action.payload.source]?.[action.payload.target]
+      if (!relationship) return
+      const tagsToRemove = new Set(action.payload.tags)
+      relationship.tags = relationship.tags.filter((tag) => !tagsToRemove.has(tag))
+    },
     /** Apply delta updates to directed social memory entries. */
     updateSocialMemory(
       state,
@@ -857,6 +876,7 @@ export const {
   applyRealityAmbientMood,
   applyRealityAmbientRelationship,
   recordRealityFact,
+  recordIntelligenceDelivery,
   learnRealityKnowledge,
   upsertRealityPromiseRecord,
   upsertRealityDebtRecord,
@@ -882,6 +902,7 @@ export const {
   resolveExpiredIncomingInteractionsForWeek,
   resolveIncomingInteractionsByDeadline,
   updateRelationship,
+  removeRelationshipTags,
   updateSocialMemory,
   decaySocialMemory,
   addSocialCommitment,
@@ -903,6 +924,8 @@ export const selectEnergyBank = (state: { social: SocialState }) => state.social
 export const selectInfluenceBank = (state: { social: SocialState }) => state.social?.influenceBank
 export const selectInfoBank = (state: { social: SocialState }) => state.social?.infoBank
 export const selectRealityDomain = (state: { social: SocialState }) => state.social.reality
+export const selectIntelligenceDeliveries = (state: { social: SocialState }) =>
+  state.social?.intelligenceDeliveries ?? []
 export const selectRealityRelationship = (
   state: { social: SocialState },
   sourceId: string,

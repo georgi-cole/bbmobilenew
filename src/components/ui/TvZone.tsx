@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/preserve-manual-memoization -- this legacy controller intentionally coordinates stable callbacks with external game state. */
 import {
   useState,
   useCallback,
@@ -127,19 +128,6 @@ const MAJOR_KEYS = new Set([
   'cupid_arrow',
   'cupid_arrow_broken',
   'vox_populi',
-  'vox_immunity_comp',
-  'vox_final4_immunity_comp',
-  'vox_nominations',
-  'vox_safety_ceremony',
-  'vox_public_vote',
-  'vox_final3',
-  'vox_final3_interlude',
-  'vox_final3_result',
-  'vox_populi_final_three_vote',
-  'vox_populi_final_two',
-  'vox_populi_final_vote',
-  'vox_populi_finale_ready',
-  'tribunal_phase',
   'twist',
   'loh_comp_announcement',
   'pos_comp_announcement',
@@ -150,7 +138,6 @@ const MAJOR_KEYS = new Set([
   'depression_shock_day_2',
   'depression_shock_chocolates',
   'depression_shock_melancholy',
-  'depression_shock_end',
 ])
 
 /** Maps a major key to its announcement title and subtitle. */
@@ -444,6 +431,12 @@ function extractMajorKey(ev: TvEvent): string | null {
   return MAJOR_KEYS.has(key) ? key : null
 }
 
+function isSeasonStartExpansionActivation(event: TvEvent | null | undefined): boolean {
+  if (!event || event.meta?.phase !== 'season_start' || event.meta?.week !== 1) return false
+  const key = extractMajorKey(event)
+  return key === 'vox_populi' || key === 'cupid_arrow'
+}
+
 /** Build an Announcement object for the given major key and event. */
 function buildAnnouncement(
   key: string,
@@ -604,10 +597,8 @@ const SHOCK_ANNOUNCEMENT_KEYS = new Set([
   'cupid_arrow',
   'cupid_arrow_broken',
   'vox_populi',
-  'tribunal_phase',
   'depression_shock_start',
   'depression_shock_day_2',
-  'depression_shock_end',
   // These keys can be configured as fullscreen shocks by the broadcast
   // manager. They must use the same stinger → Faux TV → spotlight sequence
   // as Double Elimination, rather than falling through to a plain card.
@@ -671,6 +662,8 @@ type TvZoneProps = {
   voteResultsReveal?: TvZoneVoteResultsReveal | null
   democraciaResultsReveal?: TvZoneDemocraciaResultsReveal | null
   mainLogMaxVisible?: number
+  /** Whether the separate House Feed is enabled; weather hides duplicate controls only when false. */
+  houseFeedEnabled?: boolean
   rosterLogLauncher?: boolean
   priorityAnnouncement?: Announcement | null
   onPriorityAnnouncementDismiss?: () => void
@@ -731,11 +724,27 @@ export default function TvZone(props: TvZoneProps) {
   // Filter entries for the main-screen log strip (excludes DR-only events).
   const mainLogFeed = useMemo(() => gameState.tvFeed.filter(isVisibleInMainLog), [gameState.tvFeed])
   const queuedBroadcastEvent = useMemo(() => {
-    const queuedId = gameState.broadcastQueue?.[0]
-    if (!queuedId) return null
-    const event = gameState.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
-    return isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week) ? event : null
+    for (const queuedId of gameState.broadcastQueue ?? []) {
+      const event = gameState.tvFeed.find((candidate) => candidate.id === queuedId) ?? null
+      if (isCurrentPhaseBroadcastEvent(event, gameState.phase, gameState.week)) return event
+    }
+    return null
   }, [gameState.broadcastQueue, gameState.phase, gameState.tvFeed, gameState.week])
+  // Season-start expansion activations must outrank the onboarding welcome in
+  // presentation even when an older/persisted queue was seeded in template
+  // order. They remain normal managed events and are consumed normally after
+  // the player presses Play.
+  const seasonStartExpansionEvent = useMemo(() => {
+    if (gameState.phase !== 'season_start' || gameState.week !== 1) return null
+    return (
+      tvVisibleFeed.find((event) => {
+        const key = extractMajorKey(event)
+        return (
+          (key === 'vox_populi' || key === 'cupid_arrow') && event.meta?.broadcastConsumed !== true
+        )
+      }) ?? null
+    )
+  }, [gameState.phase, gameState.week, tvVisibleFeed])
   const queuedBroadcastLevel = getTvPresentationBroadcastLevel(queuedBroadcastEvent)
   const queuedBroadcastIsCard =
     queuedBroadcastLevel === 'major' || queuedBroadcastLevel === 'critical'
@@ -747,9 +756,18 @@ export default function TvZone(props: TvZoneProps) {
     return event
   }, [gameState.lastPlainBroadcastEventId, gameState.phase, gameState.tvFeed, gameState.week])
   const mainLogMaxVisible = props.mainLogMaxVisible ?? 2
+  const houseFeedEnabled = props.houseFeedEnabled ?? false
   const occupancyChip = props.occupancyChip ?? null
 
   const latestEvent = tvVisibleFeed[0]
+  const latestUnconsumedEvent =
+    tvVisibleFeed.find((event) => event.meta?.broadcastConsumed !== true) ?? null
+  // Fresh explicit major broadcasts are authoritative until consumed, even
+  // when legacy metadata was normalized after the event was inserted.
+  const latestExplicitMajorEvent =
+    latestEvent && extractMajorKey(latestEvent) && latestEvent.meta?.broadcastConsumed !== true
+      ? latestEvent
+      : null
   const announcementPrerollEvent = useMemo(() => {
     const prerollId = latestEvent?.meta?.announcementPrerollEventId
     if (typeof prerollId !== 'string') return null
@@ -898,9 +916,21 @@ export default function TvZone(props: TvZoneProps) {
       tvVisibleFeed.find(
         (event) =>
           isBroadcastRelevant(event) &&
-          event.meta?.phase === gameState.phase &&
-          event.meta?.week === gameState.week &&
-          event.meta?.broadcastManaged !== true &&
+          event.meta?.broadcastConsumed !== true &&
+          ((event.meta?.phase === gameState.phase && event.meta?.week === gameState.week) ||
+            // Legacy critical result events were emitted without phase
+            // metadata. Keep those broadcasts discoverable, but do not apply
+            // this compatibility path to named major warnings that may be
+            // stale after the game has moved on.
+            (event.meta?.broadcastPriority === 'critical' &&
+              event.meta?.major === undefined &&
+              event.meta?.phase === undefined) ||
+            // Preserve older explicit major events that were persisted before
+            // phase/week metadata was added. Ordinary messages stay scoped.
+            (extractMajorKey(event) !== null &&
+              event.meta?.phase === undefined &&
+              event.meta?.week === undefined)) &&
+          (event.meta?.broadcastManaged !== true || event.meta?.forceOnTv === true) &&
           !(event.meta?.broadcastPriority === 'critical' && dismissedPriorityEventIds.has(event.id))
       ) ?? null,
     [dismissedPriorityEventIds, gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
@@ -913,8 +943,12 @@ export default function TvZone(props: TvZoneProps) {
     () =>
       tvVisibleFeed.find(
         (event) =>
-          event.meta?.phase === gameState.phase &&
-          event.meta?.week === gameState.week &&
+          (event.meta?.broadcastConsumed !== true ||
+            getTvPresentationBroadcastLevel(event) !== 'minor') &&
+          ((event.meta?.phase === gameState.phase && event.meta?.week === gameState.week) ||
+            (extractMajorKey(event) !== null &&
+              event.meta?.phase === undefined &&
+              event.meta?.week === undefined)) &&
           isBroadcastRelevant(event)
       ) ?? null,
     [gameState.phase, gameState.week, isBroadcastRelevant, tvVisibleFeed]
@@ -943,8 +977,24 @@ export default function TvZone(props: TvZoneProps) {
     // Results can advance their phase before their final feed item is tagged
     // with that new phase. Preserve that latest visible result in the faux TV
     // instead of presenting an empty viewport during the handoff.
-    latestEvent
-  const dailyTransitionPhase = displayedEvent ? getDailyTransitionPhase(displayedEvent) : null
+    latestUnconsumedEvent
+  // The weather bulletin has its own full-viewport card. Do not briefly mount
+  // the older day-start/day-end transition card underneath it while the
+  // bulletin portal resolves its TV target.
+  const weatherBulletinIsActive = queuedBroadcastEvent?.meta?.weatherBulletin === true
+  // A consumed bulletin remains in history. Only the currently queued one may
+  // own the viewport; otherwise it would incorrectly suppress Day Complete.
+  const weatherBulletinIsQueued = weatherBulletinIsActive
+  // During social_2 the weather controller publishes its dedicated bulletin
+  // immediately after the preceding social beat is consumed. There is one
+  // queue-empty render between those two updates; do not let the generic
+  // latest-event fallback replay an older Day Start/Day End card in that gap.
+  // This guard is scoped to social_2 so the normal daily transition cards keep
+  // their original presentation everywhere else.
+  const dailyTransitionPhase =
+    weatherBulletinIsQueued || gameState.phase === 'social_2' || !displayedEvent
+      ? null
+      : getDailyTransitionPhase(displayedEvent)
   const dailyAtmosphere = dailyTransitionPhase
     ? getDailyAtmosphere(
         gameState.gameId,
@@ -957,6 +1007,13 @@ export default function TvZone(props: TvZoneProps) {
     depressionShockSunnyTv && (!dailyTransitionPhase || dailyTransitionPhase === 'week_start')
       ? 'sunny'
       : dailyAtmosphere
+  // Both the inline daily card and the portal-based weather bulletin cover
+  // the Faux-TV viewport. The controls must be suppressed for either one;
+  // otherwise the older LOG/occupancy controls remain visible behind the
+  // full weather bulletin.
+  const weatherCardActive = Boolean(
+    weatherBulletinIsActive || (dailyTransitionPhase && presentedDailyAtmosphere)
+  )
   const dailyMoonPhase = (['crescent', 'half', 'gibbous', 'full'] as const)[
     Math.max(0, gameState.week - 1) % 4
   ]
@@ -1027,9 +1084,11 @@ export default function TvZone(props: TvZoneProps) {
   // Event-based announcement: only explicit meta.major / ev.major (no text heuristics).
   const eventAnnouncement = useMemo<Announcement | null>(() => {
     const announcementEvent =
+      seasonStartExpansionEvent ??
       (queuedBroadcastIsCard ? queuedBroadcastEvent : null) ??
       announcementPrerollEvent ??
       priorityBroadcastEvent ??
+      latestExplicitMajorEvent ??
       latestRelevantEvent
     if (!announcementEvent) return null
     // A phase card can dismiss its own event id while a newer critical Final 3
@@ -1048,17 +1107,21 @@ export default function TvZone(props: TvZoneProps) {
     return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null
   }, [
     announcementPrerollEvent,
-    queuedBroadcastEvent,
+    seasonStartExpansionEvent,
     queuedBroadcastIsCard,
     priorityBroadcastEvent,
+    latestExplicitMajorEvent,
     latestRelevantEvent,
     dismissedEventId,
     dismissedPriorityEventIds,
+    queuedBroadcastEvent,
   ])
   const eventAnnouncementSource =
+    seasonStartExpansionEvent ??
     (queuedBroadcastIsCard ? queuedBroadcastEvent : null) ??
     announcementPrerollEvent ??
     priorityBroadcastEvent ??
+    latestExplicitMajorEvent ??
     latestRelevantEvent
 
   // Capture shock events that are no longer the latest feed item by the time
@@ -1125,7 +1188,8 @@ export default function TvZone(props: TvZoneProps) {
 
   const queuedShockAnnouncement = shockAnnouncementQueue[0] ?? null
   const managedEventAnnouncement =
-    queuedBroadcastIsCard && eventAnnouncementSource?.id === queuedBroadcastEvent?.id
+    (queuedBroadcastIsCard && eventAnnouncementSource?.id === queuedBroadcastEvent?.id) ||
+    eventAnnouncementSource?.id === seasonStartExpansionEvent?.id
       ? eventAnnouncement
       : null
   const cupidFauxTvAnnouncement = eventAnnouncement?.key === 'cupid_arrow'
@@ -1133,9 +1197,14 @@ export default function TvZone(props: TvZoneProps) {
   const cupidFollowUpAnnouncement: Announcement = {
     key: 'cupid_arrow',
     // Keep an accessible announcement name even though the faux-TV handoff
-    // intentionally hides the visual title.
+    // intentionally hides the visual title. The authored activation text is
+    // the actual faux-TV instruction beat, including the live pair names.
     title: "Cupid's Arrow",
     subtitle:
+      (typeof eventAnnouncementSource?.meta?.announcementSubtitle === 'string'
+        ? eventAnnouncementSource.meta.announcementSubtitle
+        : null) ??
+      eventAnnouncementSource?.text ??
       'Cupid just made his love concoction.\nCheers to the newly formed couples.\nEvery pair now shares one fate.\nPower, danger, votes, and exits belong to two.\nThe Big Eye is watching. 💘',
     isLive: true,
     autoDismissMs: null,
@@ -1143,7 +1212,8 @@ export default function TvZone(props: TvZoneProps) {
   const eventAnnouncementHasShockPriority =
     eventAnnouncement != null &&
     (managedEventAnnouncement
-      ? queuedBroadcastLevel === 'critical'
+      ? isSeasonStartExpansionActivation(eventAnnouncementSource) ||
+        queuedBroadcastLevel === 'critical'
       : SHOCK_ANNOUNCEMENT_KEYS.has(eventAnnouncement.key))
 
   // A shock event must finish its fullscreen → Faux TV → info spotlight sequence
@@ -1166,7 +1236,8 @@ export default function TvZone(props: TvZoneProps) {
   const isShockAnnouncement =
     activeAnnouncement != null &&
     (activeAnnouncement === managedEventAnnouncement
-      ? queuedBroadcastLevel === 'critical'
+      ? isSeasonStartExpansionActivation(eventAnnouncementSource) ||
+        queuedBroadcastLevel === 'critical'
       : SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key))
   const audiencePreviewRevealActive = Boolean(props.audiencePreviewReveal)
   const showInlineAnnouncement =
@@ -1193,6 +1264,7 @@ export default function TvZone(props: TvZoneProps) {
 
   const showOccupancyChip =
     occupancyChip != null &&
+    (!weatherCardActive || houseFeedEnabled) &&
     !cupidFollowUpVisible &&
     (!showInlineAnnouncement || cupidFollowUpVisible) &&
     winnerBroadcast == null
@@ -1202,6 +1274,7 @@ export default function TvZone(props: TvZoneProps) {
     (!displayedEvent ||
       (!!activeAnnouncement && !cupidFollowUpVisible) ||
       winnerBroadcast != null ||
+      weatherBulletinIsActive ||
       publicSaveRevealActive ||
       voteResultsRevealActive ||
       democraciaResultsRevealActive ||
@@ -1307,13 +1380,12 @@ export default function TvZone(props: TvZoneProps) {
     if (queuedShockAnnouncement) {
       setDismissedEventId(queuedShockAnnouncement.eventId)
       setShockAnnouncementQueue((queue) => queue.slice(1))
-    } else if (
-      managedEventAnnouncement &&
-      queuedBroadcastEvent &&
-      currentAnnouncement === managedEventAnnouncement
-    ) {
-      setDismissedEventId(queuedBroadcastEvent.id)
-      dispatch(consumeBroadcastEvent(queuedBroadcastEvent.id))
+    } else if (managedEventAnnouncement && currentAnnouncement === managedEventAnnouncement) {
+      const eventId = eventAnnouncementSource?.id
+      if (eventId) {
+        setDismissedEventId(eventId)
+        dispatch(consumeBroadcastEvent(eventId))
+      }
     } else if (priorityAnnouncement) {
       onPriorityAnnouncementDismiss?.()
     } else if (externalAnnouncement) {
@@ -1341,7 +1413,6 @@ export default function TvZone(props: TvZoneProps) {
     dispatch,
     queuedShockAnnouncement,
     managedEventAnnouncement,
-    queuedBroadcastEvent,
     priorityAnnouncement,
     externalAnnouncement,
     eventAnnouncementHasShockPriority,
@@ -1474,10 +1545,15 @@ export default function TvZone(props: TvZoneProps) {
   const handleShockIntroComplete = useCallback(() => {
     startTransition(() => {
       setShockIntroActive(false)
-      if (activeAnnouncement?.key === 'cupid_arrow') {
-        // Cupid's second stage is the faux-TV handoff, not the info spotlight.
-        // Keeping the spotlight active here created an empty intermediate TV
-        // phase because Cupid intentionally has no info button.
+      if (activeAnnouncement?.key === 'vox_populi') {
+        // The fullscreen Vox proclamation is only beat one. Keep its managed
+        // instruction event alive as beat two on the faux TV; the main Play
+        // control consumes it and reveals the season welcome as beat three.
+        setShockInfoSpotlightActive(false)
+      } else if (activeAnnouncement?.key === 'cupid_arrow') {
+        // Cupid follows the same three-beat structure. Acknowledging the
+        // fullscreen cinematic exposes its live pair message on the faux TV;
+        // only the next Play consumes it and advances to the welcome.
         setShockInfoSpotlightActive(false)
         setCupidIntroAcknowledged(true)
       } else if (activeAnnouncement?.key === 'cupid_arrow_broken') {
@@ -1538,7 +1614,17 @@ export default function TvZone(props: TvZoneProps) {
     const handlePlay = (event: Event) => {
       if (queuedBroadcastEvent && (!activeAnnouncement || managedEventAnnouncement)) {
         if (managedEventAnnouncement) {
-          if ((gameState.broadcastQueue?.length ?? 0) > 1) event.preventDefault()
+          // A season-expansion instruction is always the middle beat of the
+          // opening sequence. Its Play may consume the instruction, but must
+          // never also advance the game before the Big Eye welcome has had a
+          // chance to occupy the faux TV (even if a persisted queue was
+          // missing that welcome id).
+          if (
+            isSeasonStartExpansionActivation(eventAnnouncementSource) ||
+            (gameState.broadcastQueue?.length ?? 0) > 1
+          ) {
+            event.preventDefault()
+          }
           if (activeAnnouncement?.key === 'depression_shock_chocolates') {
             window.dispatchEvent(new Event('depression-shock:chocolate-presented'))
           }
@@ -1596,6 +1682,7 @@ export default function TvZone(props: TvZoneProps) {
     managedEventAnnouncement,
     priorityBroadcastEvent,
     queuedBroadcastEvent,
+    eventAnnouncementSource,
     gameState.broadcastQueue?.length,
     cupidFollowUpVisible,
   ])
@@ -1742,7 +1829,7 @@ export default function TvZone(props: TvZoneProps) {
 
     if (saveStatusTimerRef.current !== null) clearTimeout(saveStatusTimerRef.current)
     saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
-  }, [activeProfileId, canSave, reduxStore])
+  }, [activeProfileId, canSave, reduxStore, setSaveFeedbackIsError, setSaveFeedbackOpen])
 
   return (
     <section
@@ -1995,6 +2082,7 @@ export default function TvZone(props: TvZoneProps) {
                 className={[
                   'tv-zone__now',
                   cupidFollowUpVisible ? 'tv-zone__now--cupid-follow-up' : '',
+                  depressionShockRainyTv ? 'tv-zone__now--depression-shock' : '',
                   !detoxMessageActive && displayedEvent ? 'tv-zone__now--quick-transition' : '',
                   detoxMessageActive ? 'tv-zone__now--detox-stream' : '',
                   hideViewportMessage ? 'tv-zone__now--hidden' : '',
@@ -2132,7 +2220,11 @@ export default function TvZone(props: TvZoneProps) {
         launcherSuppressed={
           Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
         }
-        launcherHidden={gameState.phase === 'week_start' || gameState.phase === 'week_end'}
+        launcherHidden={
+          gameState.phase === 'week_start' ||
+          gameState.phase === 'week_end' ||
+          (weatherCardActive && !houseFeedEnabled)
+        }
         suppressLauncher={Boolean(props.voteResultsReveal)}
       />
 

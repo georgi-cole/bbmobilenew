@@ -34,6 +34,14 @@ export interface PublicDirection {
   approvalDelta: number
   /** 0–100 cumulative progress toward completion (100 = complete). */
   progressPercent?: number
+  /** Concrete Social/Game route that can satisfy this request. */
+  actionHint?: string
+  /** The current game fact that made this request eligible. */
+  rationale?: string
+  /** Short, player-facing completion criterion. */
+  completionLabel?: string
+  /** Set when the world changes and an active request can no longer be completed. */
+  invalidatedReason?: string
 }
 
 export interface PlayerPublicProfile {
@@ -43,6 +51,28 @@ export interface PlayerPublicProfile {
   seasonApprovals: number[]
   completedDirectionCount: number
   cumulativePositiveDelta: number
+  /** The three live ingredients of the audience's overall approval score. */
+  audienceBreakdown?: AudienceBreakdown
+}
+
+export type AudienceMetric = 'charisma' | 'gameplay' | 'integrity'
+
+export interface AudienceMetricChange {
+  id: string
+  metric: AudienceMetric
+  /** The resulting change to the overall approval average. */
+  delta: number
+  reason: string
+  week: number
+  timestamp: number
+}
+
+export interface AudienceBreakdown {
+  charisma: number
+  gameplay: number
+  integrity: number
+  /** Short, newest-first audit trail used by the audience dossier. */
+  recentChanges: AudienceMetricChange[]
 }
 
 export interface PublicFeedEntry {
@@ -52,6 +82,8 @@ export interface PublicFeedEntry {
   delta: number
   week: number
   timestamp: number
+  /** Machine-readable source used to render a richer audience moment in the UI. */
+  reason?: string
   /** True when this entry was generated as a dramatic headline event. */
   isHeadline?: boolean
   /**

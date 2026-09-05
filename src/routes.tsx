@@ -43,6 +43,9 @@ const SeasonRecapPreview = import.meta.env.DEV
 const ReleaseFixesPreview = import.meta.env.DEV
   ? lazy(() => import('./screens/ReleaseFixesPreview/ReleaseFixesPreview'))
   : null
+const PresentationTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/PresentationTestPage/PresentationTestPage'))
+  : null
 
 const load = (element: ReactNode) => (
   <Suspense fallback={<RouteLoadingScreen />}>{element}</Suspense>
@@ -350,6 +353,9 @@ export const router = createHashRouter([
               ),
             },
           ]
+        : []),
+      ...(import.meta.env.DEV && PresentationTestPage != null
+        ? [{ path: 'presentation-test', element: load(<PresentationTestPage />) }]
         : []),
       ...(import.meta.env.DEV && QuickTapSeasons != null
         ? [

@@ -79,19 +79,28 @@ export function useEndgameFlow({
   }, [dispatch])
 
   // ── Final 3 Part 2 Spectator Mode ─────────────────────────────────────────
-  // When the human WON Part 1 they sit out Part 2 (the two Part-1 losers
-  // compete). SpectatorView plays through the cinematic; advance() is deferred
-  // to onDone so the engine picks the Part-2 winner after the overlay finishes.
+  // Part 2 is played by the two Part-1 losers. SpectatorView must take over
+  // whenever the human is not one of those active competitors — including a
+  // human who won Part 1 and sits out, or a human who was already eliminated.
+  // `advance()` is deferred to onDone so the engine picks the Part-2 winner
+  // only after the spectator cinematic finishes.
   const [spectatorF3Part2Active, setSpectatorF3Part2Active] = useState(false)
   const [spectatorF3Part2CompetitorIds, setSpectatorF3Part2CompetitorIds] = useState<string[]>([])
   const spectatorF3Part2AdvancedRef = useRef(false)
 
+  const final3Part2HasActiveHumanCompetitor = game.players.some(
+    (player) =>
+      player.isUser &&
+      player.id !== game.f3Part1WinnerId &&
+      player.status !== 'evicted' &&
+      player.status !== 'jury'
+  )
   const isF3Part2SpectatorPhase =
     game.phase === 'final3_comp2' &&
     !!humanPlayer &&
     (game.voxPopuli?.status !== 'active' ||
       game.voxPopuli.finalThreePacingSeen?.includes('part2_spectator_ready') === true) &&
-    humanPlayer.id === game.f3Part1WinnerId
+    !final3Part2HasActiveHumanCompetitor
 
   useEffect(() => {
     if (

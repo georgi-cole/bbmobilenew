@@ -10,10 +10,6 @@ import gameReducer from '../../src/store/gameSlice'
 import profilesReducer from '../../src/store/profilesSlice'
 import publicOpinionReducer from '../../src/publicOpinion/publicOpinionSlice'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
-import {
-  BATTLE_BACK_ANNOUNCEMENT_SEQUENCE,
-  buildBattleBackFeedMessage,
-} from '../../src/screens/GameScreen/battleBackFlow'
 import settingsReducer from '../../src/store/settingsSlice'
 import socialReducer from '../../src/social/socialSlice'
 import uiReducer from '../../src/store/uiSlice'
@@ -46,9 +42,7 @@ function makeStore() {
   const baseState = gameReducer(undefined, { type: '@@INIT' })
   const candidateIds = baseState.players.slice(1, 4).map((player) => player.id)
   const players = baseState.players.map((player) =>
-    candidateIds.includes(player.id)
-      ? { ...player, status: 'jury' as const }
-      : player,
+    candidateIds.includes(player.id) ? { ...player, status: 'jury' as const } : player
   )
 
   return configureStore({
@@ -95,12 +89,12 @@ function renderGameScreen(store: ReturnType<typeof makeStore>) {
       <MemoryRouter>
         <GameScreen />
       </MemoryRouter>
-    </Provider>,
+    </Provider>
   )
 }
 
-describe('GameScreen Back 2 the Game follow-up announcements', () => {
-  it('keeps staged follow-ups out of external announcements and adds them to the tv feed on play', async () => {
+describe('GameScreen Back 2 the Game announcement', () => {
+  it('keeps the shock out of external announcements until Play opens the competition', async () => {
     const store = makeStore()
     renderGameScreen(store)
 
@@ -108,27 +102,11 @@ describe('GameScreen Back 2 the Game follow-up announcements', () => {
 
     expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
 
-    for (const [index, announcement] of BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.entries()) {
-      const expectedMessage = buildBattleBackFeedMessage(announcement)
-      const existingCount = store
-        .getState()
-        .game
-        .tvFeed.filter((event) => event.text === expectedMessage).length
-
-      act(() => {
-        window.dispatchEvent(new CustomEvent('ui:playPressed'))
-      })
-
-      const insertedEvents = store.getState().game.tvFeed.filter((event) => event.text === expectedMessage)
-      expect(insertedEvents).toHaveLength(existingCount + 1)
-      expect(insertedEvents[0]?.type).toBe('game')
-      expect(insertedEvents[0]?.major).toBeUndefined()
-      expect(store.getState().game.battleBack?.competitionActive).toBe(
-        index === BATTLE_BACK_ANNOUNCEMENT_SEQUENCE.length - 1,
-      )
-      expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
-    }
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed'))
+    })
 
     expect(store.getState().game.battleBack?.competitionActive).toBe(true)
+    expect(screen.queryByTestId('tv-zone-announcement')).toBeNull()
   })
 })

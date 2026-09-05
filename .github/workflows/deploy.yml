@@ -90,6 +90,8 @@ jobs:
       - name: Build
         env:
           VITE_BUILD_ID: ${{ github.sha }}
+          VITE_VIP_DEV_ENTITLEMENT: 'true'
+          VITE_BASE_PATH: '/bbmobilenew-clone/'
         run: npm run build
 
       - name: Setup Pages

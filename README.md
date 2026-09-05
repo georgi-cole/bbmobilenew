@@ -72,6 +72,10 @@ environment. The site is served at
 
 ## Architecture
 
+### Public Mode
+
+The audience/public-request system has a dedicated reference covering its relationship truth model, Classic/Cupid/Vox behavior, action mappings, lifecycle, and verification steps: [PUBLIC_MODE.md](PUBLIC_MODE.md).
+
 ```
 src/
   types/           # TypeScript interfaces (Player, GameState, Phase…)

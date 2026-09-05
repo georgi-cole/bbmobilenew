@@ -57,10 +57,8 @@ const FULLSCREEN_SHOCK_KEYS = new Set([
   'cupid_arrow',
   'cupid_arrow_broken',
   'vox_populi',
-  'tribunal_phase',
   'depression_shock_start',
   'depression_shock_day_2',
-  'depression_shock_end',
   'twist',
   'custom_critical',
 ])

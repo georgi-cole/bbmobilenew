@@ -18,6 +18,7 @@ export const SOCIAL_INITIAL_STATE: SocialState = {
   socialStateVersion: SOCIAL_STATE_VERSION,
   realitySimulation: createInitialRealitySimulationState(),
   reality: createInitialRealityDomainState(),
+  intelligenceDeliveries: [],
   energyBank: {},
   influenceBank: {},
   infoBank: {},

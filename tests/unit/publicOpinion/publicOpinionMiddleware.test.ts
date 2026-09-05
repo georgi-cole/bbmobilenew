@@ -17,6 +17,7 @@ interface TestGameState {
   nomineeIds: string[]
   players: Player[]
   seed: number
+  publicModeEnabled?: boolean
 }
 
 function makePlayer(id: string, name: string, status: Player['status'] = 'active'): Player {
@@ -37,6 +38,7 @@ function makeGameState(overrides: Partial<TestGameState> = {}): TestGameState {
     nomineeIds: [],
     players: [makePlayer('p1', 'Aria'), makePlayer('p2', 'Kian')],
     seed: 42,
+    publicModeEnabled: true,
     ...overrides,
   }
 }
@@ -127,6 +129,23 @@ describe('publicOpinionMiddleware', () => {
     expect(state.publicOpinion.directions.every((direction) => direction.playerId === 'p1')).toBe(
       true
     )
+  })
+
+  it('does not generate or progress public requests when Public Mode is off', () => {
+    const store = configureStore({
+      reducer: { game: gameReducer, publicOpinion: publicOpinionReducer },
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(publicOpinionMiddleware),
+      preloadedState: { game: makeGameState({ publicModeEnabled: false }) },
+    })
+
+    store.dispatch(initializeProfiles(['p1', 'p2']))
+    store.dispatch(addDirection(makeDirection({ id: 'off-dir', progressPercent: 0 })))
+    store.dispatch({ type: 'game/applyMinigameWinner', payload: { winnerId: 'p1' } })
+    store.dispatch({ type: 'game/forcePhase', payload: { phase: 'week_end' } })
+
+    const state = store.getState().publicOpinion
+    expect(state.directions).toHaveLength(1)
+    expect(state.directions[0]?.progressPercent ?? 0).toBe(0)
   })
 
   it('dispatches mission progress for AI nominations on nomination_results', () => {

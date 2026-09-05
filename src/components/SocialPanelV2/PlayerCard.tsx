@@ -23,6 +23,11 @@ interface PlayerCardProps {
    */
   affinityDelta?: number
   relationshipTags?: readonly string[]
+  cupidPartner?: {
+    name: string
+    color: string
+    isYourPartner: boolean
+  }
 }
 
 function formatStatus(status: Player['status']): string {
@@ -56,6 +61,7 @@ export default function PlayerCard({
   affinity,
   affinityDelta,
   relationshipTags = [],
+  cupidPartner,
 }: PlayerCardProps) {
   const { t } = useI18n()
   const classes = ['pc', selected ? 'pc--selected' : '', disabled ? 'pc--disabled' : '']
@@ -113,6 +119,15 @@ export default function PlayerCard({
           <span className={`pc__status pc__status--${player.status.split('+')[0]}`}>
             {formatStatus(player.status)}
           </span>
+          {cupidPartner && (
+            <span
+              className="pc__cupid-pair"
+              style={{ '--cupid-pair-color': cupidPartner.color } as React.CSSProperties}
+              title={`${player.name} is paired with ${cupidPartner.name} for Cupid's Arrow`}
+            >
+              💘 {cupidPartner.isYourPartner ? 'Your pair' : 'Paired'}: {cupidPartner.name}
+            </span>
+          )}
         </span>
       </div>
 

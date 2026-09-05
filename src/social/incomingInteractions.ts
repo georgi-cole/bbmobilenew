@@ -3,6 +3,7 @@ import {
   getIncomingResponseLogCopy,
   getIncomingResponseRelationshipDelta,
 } from './incomingResponseEffects'
+import { resolveIncomingResponse } from './incomingInteractionResolution'
 import type { AppDispatch, RootState } from '../store/store'
 import { socialConfig } from './socialConfig'
 import { logIncomingInteractionDecision } from './incomingInteractionLogging'
@@ -16,6 +17,8 @@ import {
   resolveIncomingInteraction,
   updateRelationship,
   updateSocialMemory,
+  learnRealityKnowledge,
+  recordIntelligenceDelivery,
 } from './socialSlice'
 import { resolvePendingHumanRealityInteraction } from './reality'
 import { isIncomingInteractionOverdue } from './incomingInteractionDeadline'
@@ -25,14 +28,17 @@ import {
 } from './socialCommitments'
 import { isIncomingInteractionInvalidated } from './incomingInteractionValidity'
 import { buildSocialMemoryDeltaForResponse, buildSocialMemoryEvent } from './socialMemory'
+import type { SocialMemoryDelta } from './socialMemory'
 import { ALLIANCE_TAG, MIN_ALLIANCE_AFFINITY } from './socialAlliance'
 import { getInteractionSocialMode } from './socialMode'
 import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig'
+import { getCupidPartnerId } from '../features/twists/cupidArrow'
 import type {
   IncomingInteraction,
   IncomingInteractionResponseType,
   IncomingInteractionType,
 } from './types'
+import { makeIntelMemory } from './intelligenceSystem'
 
 const TYPE_LABELS: Record<IncomingInteractionType, string> = {
   compliment: 'compliment',
@@ -297,7 +303,24 @@ function buildResponseOutcomeText(
     }
   }
 
-  return buildOrdinaryResponseOutcome(interaction, responseType, fromName, responseLabel)
+  // New interactions all carry an authored scenario key and resolve through
+  // the contextual outcome bank. Keep this compatibility fallback for old
+  // saves and externally-created interactions that do not have one yet.
+  return typeof interaction.payload?.scenarioKey === 'string'
+    ? undefined
+    : buildOrdinaryResponseOutcome(interaction, responseType, fromName, responseLabel)
+}
+
+function mergeSocialMemoryDeltas(
+  base: SocialMemoryDelta,
+  contextual: SocialMemoryDelta
+): SocialMemoryDelta {
+  return {
+    gratitude: (base.gratitude ?? 0) + (contextual.gratitude ?? 0),
+    resentment: (base.resentment ?? 0) + (contextual.resentment ?? 0),
+    neglect: (base.neglect ?? 0) + (contextual.neglect ?? 0),
+    trustMomentum: (base.trustMomentum ?? 0) + (contextual.trustMomentum ?? 0),
+  }
 }
 
 function canAwardIntel(interaction: IncomingInteraction): boolean {
@@ -336,14 +359,6 @@ function applyIncomingChoiceConsequences({
   const subjectName = subjectId
     ? state.game.players.find((player) => player.id === subjectId)?.name
     : undefined
-  const outcomeText = buildResponseOutcomeText(
-    interaction,
-    responseType,
-    fromName,
-    subjectName,
-    responseLabel
-  )
-
   if (dramaMode) {
     dispatch(
       applyDramaIncomingResponse({
@@ -380,43 +395,103 @@ function applyIncomingChoiceConsequences({
   const consultationScenario =
     interaction.payload?.scenarioKey === 'safety_holder_consults_loh' ||
     interaction.payload?.scenarioKey === 'loh_consults_safety_holder'
-  const delta =
-    dramaMode && !consultationScenario
-      ? getIncomingResponseRelationshipDelta(interaction.type, responseType, responseTone)
-      : baseDelta
+  const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
+  const contextualResolution = resolveIncomingResponse({
+    interaction,
+    responseType,
+    fromName,
+    phase: state.game.phase,
+    actorAffinity: state.social.relationships[interaction.fromId]?.[humanPlayer.id]?.affinity ?? 0,
+    playerAffinity: state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0,
+    subjectName,
+    responseLabel,
+  })
+  const actorDelta =
+    hasContextualScenario && !consultationScenario
+      ? contextualResolution.actorDelta
+      : dramaMode && !consultationScenario
+        ? getIncomingResponseRelationshipDelta(interaction.type, responseType, responseTone)
+        : baseDelta
+  const playerDelta =
+    hasContextualScenario && !consultationScenario ? contextualResolution.playerDelta : 0
+  const outcomeText =
+    buildResponseOutcomeText(interaction, responseType, fromName, subjectName, responseLabel) ??
+    contextualResolution.outcomeText
   const acceptedAlliance = interaction.type === 'alliance_proposal' && responseType === 'accept'
 
-  if (delta !== 0 && interaction.fromId !== humanPlayer.id) {
+  if (
+    (actorDelta !== 0 || playerDelta !== 0 || acceptedAlliance) &&
+    interaction.fromId !== humanPlayer.id
+  ) {
     const fromAffinity =
       state.social.relationships[interaction.fromId]?.[humanPlayer.id]?.affinity ?? 0
     const humanAffinity =
       state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0
     const fromDelta = acceptedAlliance
-      ? Math.max(delta, MIN_ALLIANCE_AFFINITY - fromAffinity)
-      : delta
+      ? Math.max(actorDelta, MIN_ALLIANCE_AFFINITY - fromAffinity)
+      : actorDelta
     const humanDelta = acceptedAlliance
-      ? Math.max(delta, MIN_ALLIANCE_AFFINITY - humanAffinity)
-      : delta
-    dispatch(
-      updateRelationship({
-        source: interaction.fromId,
-        target: humanPlayer.id,
-        delta: fromDelta,
-        tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
-        actionSource: source === 'player' ? 'manual' : 'system',
-      })
-    )
-    if (acceptedAlliance) {
+      ? Math.max(playerDelta, MIN_ALLIANCE_AFFINITY - humanAffinity)
+      : playerDelta
+    if (fromDelta !== 0 || acceptedAlliance) {
+      dispatch(
+        updateRelationship({
+          source: interaction.fromId,
+          target: humanPlayer.id,
+          delta: fromDelta,
+          tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
+          actionSource: source === 'player' ? 'manual' : 'system',
+        })
+      )
+    }
+    // An incoming conversation changes how both people read the connection.
+    // The contextual resolver deliberately makes this reciprocal effect smaller
+    // and personality-sensitive, rather than pretending every feeling is equal.
+    if (humanDelta !== 0 || acceptedAlliance) {
       dispatch(
         updateRelationship({
           source: humanPlayer.id,
           target: interaction.fromId,
           delta: humanDelta,
-          tags: [ALLIANCE_TAG],
+          tags: acceptedAlliance ? [ALLIANCE_TAG] : undefined,
           actionSource: source === 'player' ? 'manual' : 'system',
         })
       )
     }
+  }
+
+  // Cupid partners are separate players, but an active pair tends to compare
+  // a meaningful conversation. Give the other half of the pair a small,
+  // reciprocal read on the human without making the relationships identical.
+  const cupidPartnerId = getCupidPartnerId(state.game, interaction.fromId)
+  const shouldRippleCupidConversation =
+    cupidPartnerId !== null &&
+    cupidPartnerId !== humanPlayer.id &&
+    interaction.fromId !== humanPlayer.id &&
+    (actorDelta !== 0 || playerDelta !== 0)
+  if (shouldRippleCupidConversation && cupidPartnerId) {
+    const cupidRippleDelta =
+      Math.sign(actorDelta || playerDelta) *
+      Math.max(1, Math.round(Math.max(Math.abs(actorDelta), Math.abs(playerDelta)) * 0.35))
+    dispatch(
+      updateRelationship({
+        source: cupidPartnerId,
+        target: humanPlayer.id,
+        delta: cupidRippleDelta,
+        tags: ['cupid_ripple'],
+        actionSource: source === 'player' ? 'manual' : 'system',
+      })
+    )
+    dispatch(
+      updateRelationship({
+        source: humanPlayer.id,
+        target: cupidPartnerId,
+        delta:
+          Math.sign(cupidRippleDelta) * Math.max(1, Math.round(Math.abs(cupidRippleDelta) * 0.5)),
+        tags: ['cupid_ripple'],
+        actionSource: source === 'player' ? 'manual' : 'system',
+      })
+    )
   }
 
   if (interaction.payload?.scenarioKey === 'safety_holder_consults_loh') {
@@ -438,7 +513,12 @@ function applyIncomingChoiceConsequences({
       updateSocialMemory({
         actorId: interaction.fromId,
         targetId: humanPlayer.id,
-        deltas: buildSocialMemoryDeltaForResponse(responseType),
+        deltas: hasContextualScenario
+          ? mergeSocialMemoryDeltas(
+              buildSocialMemoryDeltaForResponse(responseType),
+              contextualResolution.memoryDelta
+            )
+          : buildSocialMemoryDeltaForResponse(responseType),
         event: buildSocialMemoryEvent(
           interaction,
           responseType,
@@ -459,8 +539,69 @@ function applyIncomingChoiceConsequences({
     dispatch(applyInfoDelta({ playerId: humanPlayer.id, delta: 1 }))
   }
 
+  const intelFactId =
+    typeof interaction.payload?.intelFactId === 'string'
+      ? interaction.payload.intelFactId
+      : undefined
+  const intelFact = intelFactId ? state.social.reality.facts[intelFactId] : undefined
+  if (
+    intelFact &&
+    source === 'player' &&
+    (responseType === 'positive' || responseType === 'neutral')
+  ) {
+    const senderBelief =
+      state.social.reality.beliefsByOwner[interaction.fromId]?.[
+        `belief:${interaction.fromId}:${intelFact.id}`
+      ]
+    const authoredConfidence = Number(interaction.payload?.intelConfidence)
+    const senderConfidence = Number.isFinite(authoredConfidence)
+      ? authoredConfidence
+      : (senderBelief?.confidence ?? 0.52)
+    const confidence = Math.max(
+      0.2,
+      Math.min(0.88, senderConfidence * (responseType === 'positive' ? 0.9 : 0.72))
+    )
+    const authoredChain = Array.isArray(interaction.payload?.intelSourceChain)
+      ? interaction.payload.intelSourceChain.filter(
+          (entry): entry is string => typeof entry === 'string'
+        )
+      : []
+    dispatch(
+      learnRealityKnowledge({
+        ownerId: humanPlayer.id,
+        factId: intelFact.id,
+        confidence,
+        memory: makeIntelMemory({
+          ownerId: humanPlayer.id,
+          fact: intelFact,
+          sourceType: 'HEARSAY',
+          sourceChain: [...authoredChain, interaction.fromId],
+          confidence,
+          day: currentWeek,
+          phase: state.game.phase,
+        }),
+      })
+    )
+    dispatch(
+      recordIntelligenceDelivery({
+        id: `intel-delivery:incoming:${humanPlayer.id}:${intelFact.id}:${currentWeek}`,
+        factId: intelFact.id,
+        channel: 'incoming',
+        day: currentWeek,
+        recipientId: humanPlayer.id,
+      })
+    )
+  }
+
   return {
-    outcomeText,
+    outcomeText: `${outcomeText}${
+      shouldRippleCupidConversation && cupidPartnerId
+        ? ` Their Cupid partner, ${
+            state.game.players.find((player) => player.id === cupidPartnerId)?.name ??
+            'their partner'
+          }, is likely to hear their version of it.`
+        : ''
+    }`,
     logText: buildResponseLogText(interaction, responseType, fromName, dramaMode),
   }
 }

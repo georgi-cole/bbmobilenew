@@ -1,5 +1,6 @@
 import { normalizeAffinity } from './affinityUtils'
 import { getDramaResponseBlueprint } from './incomingResponseBank'
+import { getContextualIncomingChoices } from './incomingInteractionResolution'
 import { socialConfig } from './socialConfig'
 import { getStoryBibleResponseSet } from './socialStoryBible'
 import {
@@ -98,6 +99,7 @@ const RESPONSE_OPTIONS_BY_TYPE: Record<
 type ResponseBlueprint = Array<{
   label: string
   responseType: IncomingInteractionResponseType
+  style?: IncomingInteractionResponseStyle
 }>
 
 // The social engine still receives stable response intents, but the words the
@@ -306,6 +308,12 @@ function getResponseBlueprints(
   const safetyPlan = getSafetyPlanBlueprint(interaction)
   if (safetyPlan) return safetyPlan
 
+  // The scenario bank is the primary source for player choices in both modes.
+  // It keeps a Safety pitch, nomination fallout, or relationship repair from
+  // collapsing into the same four buttons simply because they share a type.
+  const contextualChoices = getContextualIncomingChoices(interaction)
+  if (contextualChoices) return contextualChoices
+
   const scenarioKey = interaction.payload?.scenarioKey
   const configuredResponses = getStoryBibleResponseSet(
     typeof scenarioKey === 'string' ? scenarioKey : undefined
@@ -418,13 +426,58 @@ export function getIncomingInteractionResponseOptions(
   const commitmentKind = interaction ? getCommitmentKindForInteraction(interaction) : null
   return options.map((option) => ({
     ...option,
-    style: 'neutral' as const,
+    style: option.style ?? getResponseStyle(option.responseType),
     ...(commitmentKind
-      ? getCommitmentResponsePresentation(commitmentKind, option.responseType)
+      ? {
+          ...getCommitmentResponsePresentation(commitmentKind, option.responseType),
+          // The promise is explained below the action; keep the authored
+          // conversational label so a vote pitch does not look like the same
+          // button as a Safety request or an LOH plea.
+          label: option.label,
+        }
       : {
           description: getDefaultResponseDescription(option.responseType),
         }),
   }))
+}
+
+function getResponseStyle(
+  responseType: IncomingInteractionResponseType
+): IncomingInteractionResponseStyle {
+  if (responseType === 'positive' || responseType === 'accept') return 'positive'
+  if (responseType === 'negative' || responseType === 'decline') return 'negative'
+  if (responseType === 'dismiss' || responseType === 'ignore') return 'dismiss'
+  return 'neutral'
+}
+
+function responseOrderHash(source: string): number {
+  let hash = 0
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (Math.imul(hash, 31) + source.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash)
+}
+
+/**
+ * The order of player actions is intentionally independent from their social
+ * valence. A card should read like a live conversation, not a multiple-choice
+ * scale where the first action is always kindest and the last is always harsh.
+ */
+export function orderIncomingInteractionResponseOptions(
+  interaction: IncomingInteraction,
+  options: IncomingInteractionResponseOption[]
+): IncomingInteractionResponseOption[] {
+  if (options.length < 2) return options
+  const ordered = [...options].sort(
+    (left, right) =>
+      responseOrderHash(`${interaction.id}:${left.label}`) -
+      responseOrderHash(`${interaction.id}:${right.label}`)
+  )
+  const first = ordered[0]?.responseType
+  const last = ordered[ordered.length - 1]?.responseType
+  const startsWarm = first === 'positive' || first === 'accept'
+  const endsDismissive = last === 'dismiss' || last === 'ignore'
+  return startsWarm && endsDismissive ? [...ordered.slice(1), ordered[0]!] : ordered
 }
 
 function getDefaultResponseDescription(responseType: IncomingInteractionResponseType): string {

@@ -277,6 +277,16 @@ export type IncomingInteractionDecisionStage =
   | 'expiration'
   | 'auto_resolution'
 
+export type IntelligenceChannel = 'faux_tv' | 'incoming' | 'social_action'
+
+export interface IntelligenceDelivery {
+  id: string
+  factId: string
+  channel: IntelligenceChannel
+  day: number
+  recipientId?: string
+}
+
 export interface IncomingInteraction {
   id: string
   fromId: string
@@ -355,6 +365,8 @@ export interface SocialState {
   realitySimulation: RealitySimulationState
   /** Causal Reality Mode v3 world, perception, relationship, and lifecycle state. */
   reality: RealityDomainState
+  /** Bounded delivery ledger used to pace and deduplicate player-facing intelligence. */
+  intelligenceDeliveries?: IntelligenceDelivery[]
   /** Incoming social interactions awaiting the player. */
   incomingInteractions: IncomingInteraction[]
   /** Decision log entries for incoming interaction scheduling/debugging. */

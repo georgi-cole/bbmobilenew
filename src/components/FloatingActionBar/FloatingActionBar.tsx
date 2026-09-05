@@ -7,6 +7,7 @@ import {
   hydrateGame,
   revealSurvivorReplacement,
   setHasSeenConfessionalSpotlight,
+  resetGame,
 } from '../../store/gameSlice'
 import {
   openIncomingInbox,
@@ -31,7 +32,13 @@ import {
   type SocialModuleAvailability,
 } from '../../social/socialModuleAvailability'
 import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice'
-import { clearSavedRun, loadSavedRunProfile } from '../../store/saveStatePersistence'
+import {
+  clearSavedRun,
+  clearSeasonSnapshot,
+  getSavedRunSlot,
+  loadSavedRunProfile,
+  savedStateKeyForProfile,
+} from '../../store/saveStatePersistence'
 import {
   createSurvivorRun,
   getSurvivorCurrentDay,
@@ -80,7 +87,9 @@ export default function FloatingActionBar({
   const activeConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
   const activeProfileId = useAppSelector(selectActiveProfileId)
   const isGuest = useAppSelector(selectIsGuest)
+  const canPersistActiveRun = !isGuest && Boolean(activeProfileId)
   const game = useAppSelector((s) => s.game)
+  const currentRunSlot = getSavedRunSlot(game)
   const players = useAppSelector((s) => s.game.players)
   const energyBank = useAppSelector(selectEnergyBank)
   const directions = useAppSelector(selectAllDirections)
@@ -150,6 +159,7 @@ export default function FloatingActionBar({
     message: string
   } | null>(null)
   const [showSurvivorAdContinue, setShowSurvivorAdContinue] = useState(false)
+  const [homeConfirmOpen, setHomeConfirmOpen] = useState(false)
   const prevEnergyRef = useRef(humanEnergy)
   useEffect(() => {
     if (humanEnergy === null || humanEnergy === prevEnergyRef.current) {
@@ -401,22 +411,36 @@ export default function FloatingActionBar({
       legacyHomeButton.click()
       return
     }
+    setHomeConfirmOpen(true)
+  }, [])
+
+  const leaveSeasonAndReturnHome = useCallback(() => {
+    setHomeConfirmOpen(false)
     dispatch({ type: 'challenge/setPendingChallenge', payload: null })
+    dispatch(resetGame())
     navigate('/')
   }, [dispatch, navigate])
+
+  const abandonSeasonAndReturnHome = useCallback(() => {
+    if (canPersistActiveRun && activeProfileId) {
+      clearSavedRun(activeProfileId, currentRunSlot)
+      clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId))
+    }
+    leaveSeasonAndReturnHome()
+  }, [activeProfileId, canPersistActiveRun, currentRunSlot, leaveSeasonAndReturnHome])
 
   const handleMoreClick = useCallback(
     (destination: 'settings' | 'profile' | 'rules' | 'leaderboard' | 'store') => {
       const routes = {
         settings: '/settings',
         profile: '/profile',
-        rules: '/rules',
+        rules: voxPopuliActive ? '/vox-populi-rules' : '/rules',
         leaderboard: '/leaderboard',
         store: '/store',
       } as const
       navigate(routes[destination])
     },
-    [navigate]
+    [navigate, voxPopuliActive]
   )
 
   // Center the dock in the real rendered space between the content immediately
@@ -495,6 +519,21 @@ export default function FloatingActionBar({
           {blockedAnnouncement.message}
         </div>
       )}
+      <ConfirmExitModal
+        open={homeConfirmOpen}
+        title={canPersistActiveRun ? 'Save and return home?' : 'Leave this season?'}
+        description={
+          canPersistActiveRun
+            ? 'Save & Home keeps this season available from Continue. Abandon Season permanently removes this in-progress run.'
+            : 'Guest seasons cannot be saved. Leaving will discard this run.'
+        }
+        confirmLabel={canPersistActiveRun ? 'Save & Home' : 'Leave Season'}
+        secondaryLabel={canPersistActiveRun ? 'Abandon Season' : undefined}
+        cancelLabel="Cancel"
+        onConfirm={leaveSeasonAndReturnHome}
+        onSecondary={canPersistActiveRun ? abandonSeasonAndReturnHome : undefined}
+        onCancel={() => setHomeConfirmOpen(false)}
+      />
       <ConfirmExitModal
         open={survivorTerminalActive && !showSurvivorAdContinue}
         title="Surveyeval run ended"

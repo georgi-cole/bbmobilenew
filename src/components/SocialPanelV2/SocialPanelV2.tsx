@@ -34,9 +34,13 @@ import { getEffectiveSocialMode } from '../../social/socialMode'
 import { validateSocialExecution } from '../../social/socialExecutionGuard'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { executeHumanRealityAction } from '../../social/reality/humanFlow'
+import { getCupidPartnerId, isCupidArrowActive } from '../../features/twists/cupidArrow'
+import type { PublicDirection } from '../../publicOpinion/types'
+import IntelLeads from './IntelLeads'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
+const EMPTY_PUBLIC_DIRECTIONS: PublicDirection[] = []
 
 function isNomineeStatus(status: Player['status']): boolean {
   return status.includes('nominated')
@@ -107,6 +111,10 @@ export default function SocialPanelV2() {
   const relationships = socialState?.relationships
   const weekStartRelSnapshot = useAppSelector(selectWeekStartRelSnapshot)
   const dramaNetwork = useAppSelector(selectDramaNetwork)
+  // Public Mode is intentionally optional for lightweight social/test stores.
+  const publicDirections = useAppSelector(
+    (state) => state.publicOpinion?.directions ?? EMPTY_PUBLIC_DIRECTIONS
+  )
   const dramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
   const socialActions = useMemo(
     () => buildEffectiveSocialActions(settings?.social?.actionOverrides ?? {}),
@@ -114,6 +122,38 @@ export default function SocialPanelV2() {
   )
 
   const humanPlayer = game.players.find((player) => player.isUser)
+  const activePublicDirection = useMemo(
+    () =>
+      game.publicModeEnabled && humanPlayer
+        ? publicDirections.find(
+            (direction) => direction.playerId === humanPlayer.id && direction.status === 'active'
+          )
+        : undefined,
+    [game.publicModeEnabled, humanPlayer, publicDirections]
+  )
+  const cupidPartners = useMemo(() => {
+    if (!isCupidArrowActive(game) || !humanPlayer) return {}
+    return Object.fromEntries(
+      game.players.flatMap((player) => {
+        const partnerId = getCupidPartnerId(game, player.id)
+        const partner = game.players.find((candidate) => candidate.id === partnerId)
+        const pair = game.cupidArrow?.pairs.find((candidate) =>
+          candidate.memberIds.includes(player.id)
+        )
+        if (!partner || !pair) return []
+        return [
+          [
+            player.id,
+            {
+              name: partner.name,
+              color: pair.color,
+              isYourPartner: partner.id === humanPlayer.id,
+            },
+          ],
+        ]
+      })
+    ) as Record<string, { name: string; color: string; isYourPartner: boolean }>
+  }, [game, humanPlayer])
   const socialModuleAvailability = useMemo(() => getSocialModuleAvailability(game), [game])
   const open = socialModuleAvailability.canOpen && socialPanelOpen
 
@@ -142,6 +182,23 @@ export default function SocialPanelV2() {
   const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isExecutingRef = useRef(false)
+  const focusPublicRequest = useCallback(() => {
+    const targetId = activePublicDirection?.relatedPlayerId
+    if (!targetId || !activePublicDirection) return
+    const actionByType: Partial<Record<typeof activePublicDirection.type, string>> = {
+      align_with: 'proposeAlliance',
+      break_alliance: dramaMode ? 'break_alliance' : 'betray',
+      reinforce_alliance: 'ally',
+      repair_relationship: 'apologize',
+      apologize: 'apologize',
+      get_closer: 'compliment',
+      confront_player: 'confront',
+    }
+    setPrimaryTargetId(targetId)
+    setSelectedTargets(new Set([targetId]))
+    setSelectedActionId(actionByType[activePublicDirection.type] ?? null)
+    setSelectedSubjectId(null)
+  }, [activePublicDirection, dramaMode])
   const safetyConsultationOpen =
     game.voxPopuli?.status !== 'active' &&
     ['pos_results', 'pos_ceremony'].includes(game.phase) &&
@@ -366,13 +423,9 @@ export default function SocialPanelV2() {
       'social_2',
     ].includes(game.phase)
     if (isVoxPopuli) {
-      hidden.add('pitch_target')
-      hidden.add('ask_loh_target')
-      hidden.add('ask_why_nominated')
-      hidden.add('warn_about_danger')
-      hidden.add('ask_hold_safety')
-      hidden.add('suggest_replacement')
-      hidden.add('rally_votes_against')
+      socialActions
+        .filter((action) => action.unavailableInVox)
+        .forEach((action) => hidden.add(action.id))
     } else {
       socialActions.filter((action) => action.voxOnly).forEach((action) => hidden.add(action.id))
     }
@@ -672,14 +725,16 @@ export default function SocialPanelV2() {
   const juryPlayers = allNonUser.filter((player) => player.status === 'jury')
   // Daily immunity in Vox Populi is not a leadership office. Adapt only the
   // Social panel's display copy; the stored role remains untouched for rules.
-  const orderedPlayers = (game.voxPopuli?.status === 'active'
-    ? [...activePlayers, ...juryPlayers].map((player) => {
-        if (player.id !== game.lohId) return player
-        if (player.status === 'loh') return { ...player, status: 'active' as const }
-        if (player.status === 'loh+pos') return { ...player, status: 'pos' as const }
-        return player
-      })
-    : [...activePlayers, ...juryPlayers]) as Player[]
+  const orderedPlayers = (
+    game.voxPopuli?.status === 'active'
+      ? [...activePlayers, ...juryPlayers].map((player) => {
+          if (player.id !== game.lohId) return player
+          if (player.status === 'loh') return { ...player, status: 'active' as const }
+          if (player.status === 'loh+pos') return { ...player, status: 'pos' as const }
+          return player
+        })
+      : [...activePlayers, ...juryPlayers]
+  ) as Player[]
   const disabledPlayerIds = juryPlayers.map((player) => player.id)
 
   const deltasByTargetId = new Map<string, number>()
@@ -749,6 +804,32 @@ export default function SocialPanelV2() {
           </button>
         </header>
 
+        <IntelLeads
+          reality={socialState.reality}
+          humanId={humanPlayer.id}
+          players={game.players}
+          currentDay={game.week}
+        />
+
+        {activePublicDirection && (
+          <section className="sp2-public-request" aria-label="Active public request">
+            <div className="sp2-public-request__eyebrow">Audience directive</div>
+            <strong>{activePublicDirection.description}</strong>
+            {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
+            <div className="sp2-public-request__footer">
+              <span>
+                {activePublicDirection.completionLabel ?? 'Complete the requested move'} · +
+                {activePublicDirection.approvalDelta} approval
+              </span>
+              {activePublicDirection.relatedPlayerId && (
+                <button type="button" onClick={focusPublicRequest}>
+                  Show me how
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {dramaMode && (
           <HousePulse
             network={dramaNetwork}
@@ -801,6 +882,7 @@ export default function SocialPanelV2() {
               multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
               multiSelect={usesMultipleTargets}
+              cupidPartners={cupidPartners}
             />
           </div>
 

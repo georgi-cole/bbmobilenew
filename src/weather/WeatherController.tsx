@@ -113,7 +113,10 @@ export default function WeatherController() {
           phase: 'social_2',
           week,
           broadcastTemplateId: 'weather.daily-bulletin',
-          broadcastOrder: 9500,
+          // Queue this behind the final-pitches beat before that beat is
+          // consumed. This makes the handoff atomic: Play moves directly
+          // from pitches to weather with no empty/fallback TV render.
+          broadcastOrder: 20000,
           broadcastLevel: 'minor',
           forceOnTv: true,
           weatherBulletin: true,
@@ -132,8 +135,9 @@ export default function WeatherController() {
   useEffect(() => {
     if (phase !== 'social_2') return
     if (weatherAlreadyExists || pendingKeyRef.current === `${gameId}:${week}`) return
-    if (broadcastQueue.length > 0 || currentSocialBeatExists) return
-    publishWeatherBulletin()
+    if (currentSocialBeatExists || broadcastQueue.length === 0) {
+      publishWeatherBulletin()
+    }
   }, [
     broadcastQueue.length,
     currentSocialBeatExists,

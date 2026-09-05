@@ -130,6 +130,14 @@
   filter: blur(1.4px);
 }
 
+.weather-tv-card__cloud-sheen {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  filter: blur(0.8px);
+}
+
 .weather-tv-card__cloud-highlight--small {
   opacity: 0.7;
 }
@@ -173,8 +181,9 @@
 
 .weather-tv-card__rainbow {
   fill: none;
-  stroke-width: 3.8;
+  stroke-width: 2.6;
   stroke-linecap: round;
+  opacity: 0.58;
 }
 .weather-tv-card__rainbow path:nth-child(1) {
   stroke: rgba(241, 119, 154, 0.78);
