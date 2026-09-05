@@ -19,12 +19,8 @@ import { useEffect, useState } from 'react'
 import type { Player } from '../../types'
 import type { JurorReveal } from '../../store/finaleSlice'
 import { PUBLIC_JUROR_ID } from '../../store/finaleSlice'
-import {
-  resolveFormalCutout,
-  resolveFullSizeCutoutFallback,
-  resolveInformalCutout,
-  resolveSilhouetteFallback,
-} from '../../utils/avatar'
+import { resolveSilhouetteFallback } from '../../utils/avatar'
+import FullSizeCutoutImage from '../FullSizeCutoutImage/FullSizeCutoutImage'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import {
   PHRASE_TYPING_CHAR_INTERVAL_MS,
@@ -123,7 +119,6 @@ export default function TribunalMemberStage({
   const trimmedCurrentPhrase = currentPhrase.trim()
   const currentAnimationKey = currentJurorId ?? 'pending'
   const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`
-  const [failedCutoutId, setFailedCutoutId] = useState<string | null>(null)
 
   if (!current && !awaitingHumanPlayer) return null
 
@@ -135,19 +130,6 @@ export default function TribunalMemberStage({
   // Sol_formal.png is a black silhouette asset. Use Sol's visible full-body
   // informal cutout for this cinematic instead of presenting an unreadable
   // shadow on the Tribunal stage.
-  const formalSrc =
-    current && !isPublic
-      ? isSol
-        ? (resolveInformalCutout(current.juror) ?? resolveFormalCutout(current.juror))
-        : resolveFormalCutout(current.juror)
-      : null
-  const fallbackSrc = current && !isPublic ? resolveFullSizeCutoutFallback(current.juror) : null
-  const cutoutSrc =
-    current && !isPublic
-      ? failedCutoutId === current.juror.id || !formalSrc
-        ? fallbackSrc
-        : formalSrc
-      : null
   const currentAnnouncement = current
     ? trimmedCurrentPhrase
       ? `${isPublic ? 'The Public' : current.juror.name}. ${trimmedCurrentPhrase}`
@@ -205,19 +187,15 @@ export default function TribunalMemberStage({
         <div className="tms-cutout-wrap" key={`cutout-${currentAnimationKey}`}>
           {isPublic ? (
             <PublicCutoutPlaceholder />
-          ) : cutoutSrc ? (
-            <img
+          ) : (
+            <FullSizeCutoutImage
+              player={current.juror}
+              attire={isSol ? 'informal' : 'formal'}
               className="tms-cutout"
-              src={cutoutSrc}
               alt={current.juror.name}
               draggable={false}
-              onError={() => {
-                if (formalSrc && cutoutSrc !== fallbackSrc) {
-                  setFailedCutoutId(current.juror.id)
-                }
-              }}
             />
-          ) : null}
+          )}
           <div className="tms-cutout-glow" aria-hidden="true" />
         </div>
       )}

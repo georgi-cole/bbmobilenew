@@ -1,8 +1,28 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import FullSizeCutoutImage from '../FullSizeCutoutImage';
 
+const imageIdToDataUrl = vi.hoisted(() => vi.fn());
+vi.mock('../../../utils/imageDb', () => ({ imageIdToDataUrl }));
+
 describe('FullSizeCutoutImage', () => {
+  it('prefers an uploaded profile photo before the full-body fallback chain', async () => {
+    imageIdToDataUrl.mockResolvedValueOnce('data:image/webp;base64,uploaded-photo');
+
+    render(
+      <FullSizeCutoutImage
+        player={{ id: 'user', name: 'You', avatar: 'profile-photo:photo-123' }}
+        alt="You"
+      />,
+    );
+
+    await waitFor(() => {
+      const image = screen.getByAltText('You');
+      expect(image.getAttribute('src')).toBe('data:image/webp;base64,uploaded-photo');
+      expect(image.getAttribute('data-avatar-source')).toBe('uploaded');
+    });
+  });
+
   it('falls back to the matching full-body image when a mapped cutout fails to load', async () => {
     render(
       <FullSizeCutoutImage
