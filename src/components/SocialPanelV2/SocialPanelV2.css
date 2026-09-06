@@ -2031,19 +2031,25 @@
 }
 
 /* The Social overlay is viewport-fixed, so it does not inherit AppShell's
- * safe-area padding. Keep a visible phone status row above the whole module;
- * the hidden-status-bar gameplay state remains edge-to-edge. */
+ * safe-area padding. Every handset gets a protected top band: browser shells
+ * do not consistently expose a CSS inset for their visible status row. */
 @media (max-width: 699px) {
-  :root.is-phone-preview:not(.is-native-status-bar-hidden) .sp2-backdrop,
-  :root.is-capacitor:not(.is-native-status-bar-hidden) .sp2-backdrop {
+  .sp2-backdrop {
     --sp2-top-clearance: max(1.75rem, var(--app-safe-area-top, 0px));
     box-sizing: border-box;
     padding-top: var(--sp2-top-clearance);
   }
 
-  :root.is-phone-preview:not(.is-native-status-bar-hidden) .sp2-modal,
-  :root.is-capacitor:not(.is-native-status-bar-hidden) .sp2-modal {
+  .sp2-modal {
     max-height: calc(94dvh - var(--sp2-top-clearance));
+  }
+
+  :root.is-native-status-bar-hidden .sp2-backdrop {
+    padding-top: 0;
+  }
+
+  :root.is-native-status-bar-hidden .sp2-modal {
+    max-height: 94dvh;
   }
 
   .sp2-header {
