@@ -81,7 +81,16 @@ body:has(.game-screen-shell) .app-shell {
 
 /* The splash owns the whole viewport while the home hub or gameplay assets
    are loading. Do not leave the underlying legacy navigation visible below it. */
-.app-shell:has(.kq-splash) .nav-bar {
+.app-shell:has(.kq-splash) .nav-bar,
+:root.kq-splash-active .app-shell .nav-bar,
+.app-shell:has(.route-loading-screen) .nav-bar,
+:root.route-loading-active .app-shell .nav-bar {
+  display: none !important;
+}
+
+/* The fallback is intentionally a clean handoff between screens. The local
+   debug mascot is useful during play, but should not float over this state. */
+:root.route-loading-active .dbg-fab {
   display: none !important;
 }
 

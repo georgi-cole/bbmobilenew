@@ -58,6 +58,7 @@ import { mulberry32 } from '../../store/rng'
 import { resolveAvatar, getDicebear } from '../../utils/avatar'
 import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
+import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
 import './GlassBridgeComp.css'
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -432,7 +433,7 @@ interface Props {
   participants?: ParticipantProp[]
   prizeType?: 'LOH' | 'POS'
   seed?: number
-  onComplete?: () => void
+  onComplete?: (completion?: ReactMinigameCompletion) => void
 }
 
 type BannerVariant = 'info' | 'success' | 'danger' | 'record' | 'warning'
@@ -459,6 +460,15 @@ export default function GlassBridgeComp({
     if (participantIds.includes('user')) return 'user'
     return null
   }, [participantIds, participants])
+
+  const buildHostedCompletion = useCallback(
+    (): ReactMinigameCompletion => ({
+      authoritativeWinnerId: gb.winnerId ?? gb.placements[0] ?? null,
+      authoritativeLastPlaceId:
+        gb.eliminationOrder[0] ?? gb.placements[gb.placements.length - 1] ?? null,
+    }),
+    [gb.eliminationOrder, gb.placements, gb.winnerId]
+  )
 
   const getName = useCallback(
     (id: string): string => {
@@ -1290,10 +1300,10 @@ export default function GlassBridgeComp({
 
   // ── 9. Resolve outcome when complete ─────────────────────────────────────
   useEffect(() => {
-    if (gb.phase === 'complete' && !gb.outcomeResolved) {
+    if (gb.phase === 'complete' && !onComplete && !gb.outcomeResolved) {
       dispatch(resolveGlassBridgeOutcome())
     }
-  }, [gb.phase, gb.outcomeResolved, dispatch])
+  }, [dispatch, gb.outcomeResolved, gb.phase, onComplete])
 
   // ── 10. Complete — outcome is applied by effect #9; user advances via the
   //        Continue button. No auto-advance timer so the results screen persists
@@ -1519,9 +1529,7 @@ export default function GlassBridgeComp({
   const handleSkipToResult = useCallback(() => {
     setShowSpectatorModal(false)
     dispatch(fastForwardRemainingPlayers())
-    dispatch(resolveGlassBridgeOutcome())
-    onComplete?.()
-  }, [dispatch, onComplete])
+  }, [dispatch])
 
   const handleRequestHelp = useCallback(() => {
     if (!humanId) return
@@ -1964,9 +1972,11 @@ export default function GlassBridgeComp({
         <MinigameCompleteWrapper
           className="gb-complete"
           onContinue={() => {
-            // Ensure outcome is applied before MinigameHost unmounts this component.
-            dispatch(resolveGlassBridgeOutcome())
-            onComplete?.()
+            if (onComplete) {
+              onComplete(buildHostedCompletion())
+            } else {
+              dispatch(resolveGlassBridgeOutcome())
+            }
           }}
           continueLabel="Continue"
           continueButtonClassName="gb-btn-primary"

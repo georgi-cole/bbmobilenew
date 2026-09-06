@@ -1,34 +1,34 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import './KolequantSplash.css';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import './KolequantSplash.css'
 
 interface Props {
   /** Minimum visible time in ms before the splash may exit. */
-  duration?: number;
+  duration?: number
   /** Keeps the splash visible until the caller's preload work is complete. */
-  ready?: boolean;
-  progress?: number;
-  status?: string;
-  messages?: readonly string[];
-  onFinish?: () => void;
+  ready?: boolean
+  progress?: number
+  status?: string
+  messages?: readonly string[]
+  onFinish?: () => void
 }
 
-const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`;
-const SKYLINE_SRC = `${import.meta.env.BASE_URL}assets/splash-city-skyline-photographic.png`;
-const EXIT_MS = 360;
+const LOGO_SRC = `${import.meta.env.BASE_URL}assets/kolequant.png`
+const SKYLINE_SRC = `${import.meta.env.BASE_URL}assets/splash-city-skyline-photographic.png`
+const EXIT_MS = 360
 
 const DEFAULT_MESSAGES = [
   'Starting the Kolequant engine.',
-  'Mapping today\'s strategy board.',
+  "Mapping today's strategy board.",
   'Calibrating the signal.',
   'Warming up the challenge floor.',
   'Stacking the social energy chips.',
   'Calling the camera drone into position.',
   'Preparing the live floor.',
-] as const;
+] as const
 
 function clampProgress(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(value)));
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.min(100, Math.round(value)))
 }
 
 export default function KolequantSplash({
@@ -39,65 +39,75 @@ export default function KolequantSplash({
   messages = DEFAULT_MESSAGES,
   onFinish,
 }: Props) {
-  const [minimumElapsed, setMinimumElapsed] = useState(false);
-  const [exiting, setExiting] = useState(false);
-  const [messageIndex, setMessageIndex] = useState(0);
-  const [loadedArtwork, setLoadedArtwork] = useState(0);
-  const onFinishRef = useRef(onFinish);
-  const clampedProgress = clampProgress(progress);
+  const [minimumElapsed, setMinimumElapsed] = useState(false)
+  const [exiting, setExiting] = useState(false)
+  const [messageIndex, setMessageIndex] = useState(0)
+  const [loadedArtwork, setLoadedArtwork] = useState(0)
+  const onFinishRef = useRef(onFinish)
+  const clampedProgress = clampProgress(progress)
   const activeMessages = useMemo(
     () => (messages.length > 0 ? messages : DEFAULT_MESSAGES),
-    [messages],
-  );
-  const progressLabel = status ?? activeMessages[messageIndex];
-  const artworkReady = loadedArtwork === 7;
+    [messages]
+  )
+  const progressLabel = status ?? activeMessages[messageIndex]
+  const artworkReady = loadedArtwork === 7
 
   function markArtworkSettled(bit: number) {
-    setLoadedArtwork((current) => current | bit);
+    setLoadedArtwork((current) => current | bit)
   }
 
   function markArtworkDecoded(image: HTMLImageElement, bit: number) {
     if (typeof image.decode !== 'function') {
-      markArtworkSettled(bit);
-      return;
+      markArtworkSettled(bit)
+      return
     }
 
-    void image.decode().catch(() => undefined).then(() => markArtworkSettled(bit));
+    void image
+      .decode()
+      .catch(() => undefined)
+      .then(() => markArtworkSettled(bit))
   }
 
   useEffect(() => {
-    onFinishRef.current = onFinish;
-  }, [onFinish]);
+    onFinishRef.current = onFinish
+  }, [onFinish])
 
   useEffect(() => {
-    if (!artworkReady) return;
-    const timer = window.setTimeout(() => setMinimumElapsed(true), duration);
-    return () => window.clearTimeout(timer);
-  }, [artworkReady, duration]);
+    // Keep the persistent app chrome from showing through while this splash
+    // owns the viewport. The class also covers WebViews without :has() support.
+    document.documentElement.classList.add('kq-splash-active')
+    return () => document.documentElement.classList.remove('kq-splash-active')
+  }, [])
 
   useEffect(() => {
-    if (status || activeMessages.length <= 1 || exiting) return;
+    if (!artworkReady) return
+    const timer = window.setTimeout(() => setMinimumElapsed(true), duration)
+    return () => window.clearTimeout(timer)
+  }, [artworkReady, duration])
+
+  useEffect(() => {
+    if (status || activeMessages.length <= 1 || exiting) return
     const timer = window.setInterval(() => {
-      setMessageIndex((current) => (current + 1) % activeMessages.length);
-    }, 1350);
-    return () => window.clearInterval(timer);
-  }, [activeMessages.length, exiting, status]);
+      setMessageIndex((current) => (current + 1) % activeMessages.length)
+    }, 1350)
+    return () => window.clearInterval(timer)
+  }, [activeMessages.length, exiting, status])
 
   useEffect(() => {
-    if (!ready || !artworkReady || !minimumElapsed) return;
-    const exitTimer = window.setTimeout(() => setExiting(true), 0);
-    const finishTimer = window.setTimeout(() => onFinishRef.current?.(), EXIT_MS);
+    if (!ready || !artworkReady || !minimumElapsed) return
+    const exitTimer = window.setTimeout(() => setExiting(true), 0)
+    const finishTimer = window.setTimeout(() => onFinishRef.current?.(), EXIT_MS)
     return () => {
-      window.clearTimeout(exitTimer);
-      window.clearTimeout(finishTimer);
-    };
-  }, [artworkReady, minimumElapsed, ready]);
+      window.clearTimeout(exitTimer)
+      window.clearTimeout(finishTimer)
+    }
+  }, [artworkReady, minimumElapsed, ready])
 
   const splashStyle = {
     '--kq-splash-min-duration': `${duration}ms`,
     '--kq-splash-progress': `${clampedProgress}%`,
-  } as CSSProperties;
-  const className = `kq-splash${artworkReady ? ' kq-splash--artwork-ready' : ''}${exiting ? ' kq-splash--exiting' : ''}`;
+  } as CSSProperties
+  const className = `kq-splash${artworkReady ? ' kq-splash--artwork-ready' : ''}${exiting ? ' kq-splash--exiting' : ''}`
 
   return (
     <div
@@ -153,5 +163,5 @@ export default function KolequantSplash({
         <div className="kq-splash__copyright">© 2026</div>
       </div>
     </div>
-  );
+  )
 }

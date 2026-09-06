@@ -38,6 +38,7 @@ import type { CwgoPrizeType, CwgoState } from '../features/cwgo/cwgoCompetitionS
 import type { CwgoResult } from '../features/cwgo/cwgoHelpers';
 import { difficultyLabel } from '../features/cwgo/cwgoHelpers';
 import { resolveAvatar, getDicebear } from '../utils/avatar';
+import type { ReactMinigameCompletion } from './MinigameHost/MinigameHost';
 import './ClosestWithoutGoingOverComp.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ interface Props {
   participantIds: string[];
   prizeType: CwgoPrizeType;
   seed: number;
-  onComplete?: () => void;
+  onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
 /** Minimal player info carried in game state. */
@@ -222,8 +223,14 @@ export default function ClosestWithoutGoingOverComp({
     if (cwgo.status === 'complete') {
       if (!exitCompletedRef.current) {
         exitCompletedRef.current = true;
-        dispatch(resolveCompetitionOutcome());
-        onComplete?.();
+        if (onComplete) {
+          onComplete({
+            authoritativeWinnerId: cwgo.aliveIds[0] ?? null,
+            authoritativeLastPlaceId: cwgo.eliminationOrder[0] ?? null,
+          });
+        } else {
+          dispatch(resolveCompetitionOutcome());
+        }
       }
       return undefined;
     }
@@ -843,8 +850,14 @@ export default function ClosestWithoutGoingOverComp({
             <button
               className="cwgo-btn cwgo-btn--success cwgo-btn--lg"
               onClick={() => {
-                dispatch(resolveCompetitionOutcome());
-                onComplete?.();
+                if (onComplete) {
+                  onComplete({
+                    authoritativeWinnerId: cwgo.aliveIds[0] ?? null,
+                    authoritativeLastPlaceId: cwgo.eliminationOrder[0] ?? null,
+                  });
+                } else {
+                  dispatch(resolveCompetitionOutcome());
+                }
               }}
             >
               Claim Prize

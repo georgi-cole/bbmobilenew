@@ -454,8 +454,9 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
   }, [cumulativeScores, dispatch, finalPoints, finalists, matchedPairs, participantIds, phase, playComplete, targetPairs]);
 
   useEffect(() => {
-    if (hoc?.status === 'complete') dispatch(resolveHouseOfCardsOutcome());
-  }, [dispatch, hoc?.status]);
+    if (hoc?.status !== 'complete' || onComplete) return;
+    dispatch(resolveHouseOfCardsOutcome());
+  }, [dispatch, hoc?.status, onComplete]);
 
   const finish = useCallback(() => {
     if (finalStandings.length === 0) return;

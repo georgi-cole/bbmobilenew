@@ -421,6 +421,7 @@ export default function BigSpenderReplenishing(props: GenericMinigameProps) {
     setResultCommitted(true)
     props.onFinish?.(ranking.length - winner.rank + 1, 0, {
       authoritativeWinnerId: winner.playerId,
+      authoritativeLastPlaceId: ranking[ranking.length - 1]?.playerId ?? null,
       rawValue: ranking.length - winner.rank + 1,
       rawResults: buildBigSpenderRawResults(state),
     })
