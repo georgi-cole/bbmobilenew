@@ -300,7 +300,7 @@ export default function MinigameHost({
   )
 
   const handleReactComplete = useCallback(
-    (completion?: ReactMinigameCompletion) => {
+    (completion?: ReactMinigameCompletion, fallbackValue = 1, fallbackTiebreakerMs?: number) => {
       const humanId = participants?.find((participant) => participant.isHuman)?.id
       const lastPlaceId = getReportedLastPlaceId(completion)
 
@@ -309,16 +309,29 @@ export default function MinigameHost({
       // the human is last so Reverse Time remains available.
       if (competitionRetryEnabled && humanId && lastPlaceId === humanId && completion) {
         setFinalCompletion(completion)
-        setFinalValue(completion.rawValue ?? completion.rawResults?.[humanId] ?? 0)
-        setFinalTiebreakerMs(completion.tiebreakerMs ?? null)
+        setFinalValue(completion.rawValue ?? completion.rawResults?.[humanId] ?? fallbackValue)
+        setFinalTiebreakerMs(completion.tiebreakerMs ?? fallbackTiebreakerMs ?? null)
         setWasPartial(false)
         setPhase('results')
         return
       }
 
-      reportDoneOnce(completion?.rawValue ?? 1, false, completion, true)
+      reportDoneOnce(completion?.rawValue ?? fallbackValue, false, completion, true)
     },
     [competitionRetryEnabled, getReportedLastPlaceId, participants, reportDoneOnce]
+  )
+
+  const enrichCompletionForRetry = useCallback(
+    (
+      completion: ReactMinigameCompletion,
+      value: number,
+      tiebreakerMs?: number
+    ): ReactMinigameCompletion => ({
+      ...completion,
+      ...(competitionRetryEnabled && completion.rawValue == null ? { rawValue: value } : {}),
+      ...(tiebreakerMs != null && completion.tiebreakerMs == null ? { tiebreakerMs } : {}),
+    }),
+    [competitionRetryEnabled]
   )
 
   const handleContinue = useCallback(() => {
@@ -655,11 +668,11 @@ export default function MinigameHost({
             completion?: ReactMinigameCompletion
           ) => {
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete({
-                ...completion,
-                rawValue: completion.rawValue ?? value,
-                tiebreakerMs: completion.tiebreakerMs ?? tiebreakerMs,
-              })
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
               return
             }
             setFinalValue(value)
@@ -684,11 +697,11 @@ export default function MinigameHost({
             completion?: ReactMinigameCompletion
           ) => {
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete({
-                ...completion,
-                rawValue: completion.rawValue ?? value,
-                tiebreakerMs: completion.tiebreakerMs ?? tiebreakerMs,
-              })
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
               return
             }
             if (game.scoringAdapter === 'authoritative') {
@@ -732,11 +745,11 @@ export default function MinigameHost({
             completion?: ReactMinigameCompletion
           ) => {
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete({
-                ...completion,
-                rawValue: completion.rawValue ?? value,
-                tiebreakerMs: completion.tiebreakerMs ?? tiebreakerMs,
-              })
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
               return
             }
             if (game.scoringAdapter === 'authoritative') {

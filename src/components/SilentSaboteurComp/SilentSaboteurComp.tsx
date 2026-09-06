@@ -795,7 +795,7 @@ export default function SilentSaboteurComp({
   // clicks the final Continue button (see handleFinal2WinnerContinue).
   useEffect(() => {
     if (phase !== 'complete') return;
-    if (!standalone && !onComplete) {
+    if (!standalone) {
       dispatch(resolveSilentSaboteurOutcome());
     }
     if (isFinal2CinematicActiveRef.current) {
