@@ -2029,3 +2029,37 @@
     display: none;
   }
 }
+
+/* The Social overlay is viewport-fixed, so it does not inherit AppShell's
+ * safe-area padding. Keep a visible phone status row above the whole module;
+ * the hidden-status-bar gameplay state remains edge-to-edge. */
+@media (max-width: 699px) {
+  :root.is-phone-preview:not(.is-native-status-bar-hidden) .sp2-backdrop,
+  :root.is-capacitor:not(.is-native-status-bar-hidden) .sp2-backdrop {
+    --sp2-top-clearance: max(1.75rem, var(--app-safe-area-top, 0px));
+    box-sizing: border-box;
+    padding-top: var(--sp2-top-clearance);
+  }
+
+  :root.is-phone-preview:not(.is-native-status-bar-hidden) .sp2-modal,
+  :root.is-capacitor:not(.is-native-status-bar-hidden) .sp2-modal {
+    max-height: calc(94dvh - var(--sp2-top-clearance));
+  }
+
+  .sp2-header {
+    align-items: flex-start;
+  }
+
+  .sp2-header__identity {
+    padding-top: 0.08rem;
+  }
+
+  .sp2-header__resources {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+  }
+
+  .sp2-header__close {
+    flex: 0 0 30px;
+  }
+}
