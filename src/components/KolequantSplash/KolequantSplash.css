@@ -9,15 +9,18 @@
   align-items: center;
   justify-content: center;
   min-height: 100dvh;
-  padding:
-    var(--app-safe-area-top, env(safe-area-inset-top, 0px))
-    28px
+  padding: var(--app-safe-area-top, env(safe-area-inset-top, 0px)) 28px
     max(28px, env(safe-area-inset-bottom, 28px));
   box-sizing: border-box;
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(circle at 50% 44%, rgba(86, 114, 255, 0.24) 0%, rgba(86, 114, 255, 0.08) 28%, transparent 55%),
+    radial-gradient(
+      circle at 50% 44%,
+      rgba(86, 114, 255, 0.24) 0%,
+      rgba(86, 114, 255, 0.08) 28%,
+      transparent 55%
+    ),
     linear-gradient(180deg, #02030a 0%, #060816 54%, #010207 100%);
   pointer-events: none;
 }
@@ -33,18 +36,19 @@
 .kq-splash::before {
   background:
     linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 48%, transparent 52%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.03) 0 1px,
-      transparent 1px 88px
-    );
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 88px);
   opacity: 0.16;
   transform: translateX(-22%);
   animation: kq-scan 5200ms ease-in-out infinite alternate;
 }
 
 .kq-splash::after {
-  background: radial-gradient(circle at center, transparent 34%, rgba(0, 0, 0, 0.36) 74%, rgba(0, 0, 0, 0.7) 100%);
+  background: radial-gradient(
+    circle at center,
+    transparent 34%,
+    rgba(0, 0, 0, 0.36) 74%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
 }
 
 .kq-splash--exiting {
@@ -250,20 +254,30 @@
 }
 
 @keyframes kq-scan {
-  from { transform: translateX(-22%); }
-  to { transform: translateX(22%); }
+  from {
+    transform: translateX(-22%);
+  }
+  to {
+    transform: translateX(22%);
+  }
 }
 
 @keyframes kq-skyline-lights {
   0%,
   22%,
   65%,
-  100% { opacity: 0.28; }
+  100% {
+    opacity: 0.28;
+  }
   23%,
   29%,
-  73% { opacity: 0.76; }
+  73% {
+    opacity: 0.76;
+  }
   30%,
-  72% { opacity: 0.46; }
+  72% {
+    opacity: 0.46;
+  }
 }
 
 @media (max-width: 420px) {

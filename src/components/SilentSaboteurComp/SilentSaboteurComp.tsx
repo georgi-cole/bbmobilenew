@@ -36,7 +36,7 @@ import type {
   SilentSaboteurPrizeType,
   SilentSaboteurRoundHistoryEntry,
 } from '../../features/silentSaboteur/silentSaboteurSlice';
-import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
+import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost';
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar';
 import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar';
 import './SilentSaboteurComp.css';
@@ -188,7 +188,7 @@ interface Props {
   participants?: MinigameParticipant[];
   prizeType: SilentSaboteurPrizeType;
   seed: number;
-  onComplete?: () => void;
+  onComplete?: (completion?: ReactMinigameCompletion) => void;
   standalone?: boolean;
 }
 
@@ -795,7 +795,7 @@ export default function SilentSaboteurComp({
   // clicks the final Continue button (see handleFinal2WinnerContinue).
   useEffect(() => {
     if (phase !== 'complete') return;
-    if (!standalone) {
+    if (!standalone && !onComplete) {
       dispatch(resolveSilentSaboteurOutcome());
     }
     if (isFinal2CinematicActiveRef.current) {
@@ -803,12 +803,15 @@ export default function SilentSaboteurComp({
       // call onComplete() yet; it will be called in handleFinal2WinnerContinue.
       pendingCompletionRef.current = true;
     } else {
-      onComplete?.();
+      onComplete?.({
+        authoritativeWinnerId: winnerId,
+        authoritativeLastPlaceId: eliminatedIds[0] ?? null,
+      });
     }
   // onComplete is intentionally excluded: stable callback ref; adding it would
   // cause double-fires when the host re-renders the component.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, dispatch, standalone]);
+  }, [phase, dispatch, standalone, winnerId, eliminatedIds]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render helpers
@@ -956,11 +959,14 @@ export default function SilentSaboteurComp({
     isFinal2CinematicActiveRef.current = false;
     if (pendingCompletionRef.current) {
       pendingCompletionRef.current = false;
-      onComplete?.();
+      onComplete?.({
+        authoritativeWinnerId: winnerId,
+        authoritativeLastPlaceId: eliminatedIds[0] ?? null,
+      });
     } else {
       dispatch(advanceWinner());
     }
-  }, [dispatch, final2ActionLocked, onComplete]);
+  }, [dispatch, eliminatedIds, final2ActionLocked, onComplete, winnerId]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render (early-exit guard after all hooks)

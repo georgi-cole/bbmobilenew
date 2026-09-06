@@ -102,7 +102,10 @@ interface Props {
   onFinish?: (
     value: number,
     tiebreakerMs?: number,
-    completion?: { authoritativeWinnerId?: string | null },
+    completion?: {
+      authoritativeWinnerId?: string | null;
+      authoritativeLastPlaceId?: string | null;
+    },
   ) => void;
   seed?: number;
   /**
@@ -635,6 +638,7 @@ export default function TimingBar({
       if (onFinish) {
         onFinish(averageScore, undefined, {
           authoritativeWinnerId: winner?.participantId ?? null,
+          authoritativeLastPlaceId: lastPlace?.participantId ?? null,
         });
       }
       return;

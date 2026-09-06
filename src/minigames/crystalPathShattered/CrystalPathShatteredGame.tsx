@@ -31,6 +31,7 @@ import { applyMinigameWinner } from '../../store/gameSlice';
 import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
 import { useGlassBridgeAudio } from '../../hooks/useGlassBridgeAudio';
 import MinigameCompleteWrapper from '../../components/MinigameHost/MinigameCompleteWrapper';
+import type { ReactMinigameCompletion } from '../../components/MinigameHost/MinigameHost';
 import {
   aiPickSide,
   aiShouldTakeMystery,
@@ -80,7 +81,7 @@ interface Props {
   participants?: ParticipantInput[];
   prizeType?: 'LOH' | 'POS';
   seed?: number;
-  onComplete?: () => void;
+  onComplete?: (completion?: ReactMinigameCompletion) => void;
 }
 
 type Phase = 'playing' | 'complete';
@@ -667,6 +668,13 @@ export default function CrystalPathShatteredGame({
         .filter((p) => p.eliminated && p.survivalIndex > 0)
         .sort((a, b) => a.survivalIndex - b.survivalIndex)[0]?.id
         ?? null;
+      if (onComplete) {
+        onComplete({
+          authoritativeWinnerId: summary.winnerId,
+          authoritativeLastPlaceId: firstOut,
+        });
+        return;
+      }
       dispatch(applyMinigameWinner({
         winnerId: summary.winnerId,
         lastPlaceId: firstOut,

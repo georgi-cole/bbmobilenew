@@ -21,7 +21,7 @@ import {
   type MajorityRulesCompetitionType,
 } from '../../features/majorityRules/majorityRulesSlice'
 import { resolveMajorityRulesOutcome } from '../../features/majorityRules/thunks'
-import type { MinigameParticipant } from '../MinigameHost/MinigameHost'
+import type { MinigameParticipant, ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
 import './MajorityRulesComp.css'
 
 const INTRO_DELAY_MS = 5000
@@ -54,7 +54,7 @@ interface Props {
   prizeType: MajorityRulesCompetitionType
   /** Explicit seed for deterministic RNG. When omitted or set to 0, a fresh crypto-random seed is generated on mount. */
   seed?: number
-  onComplete?: () => void
+  onComplete?: (completion?: ReactMinigameCompletion) => void
 }
 
 interface DisplayPlayer {
@@ -534,9 +534,15 @@ export default function MajorityRulesComp({
   useEffect(() => {
     if (game.phase !== 'complete' || completedRef.current) return
     completedRef.current = true
-    dispatch(resolveMajorityRulesOutcome())
-    onComplete?.()
-  }, [dispatch, game.phase, onComplete])
+    if (onComplete) {
+      onComplete({
+        authoritativeWinnerId: game.winnerId,
+        authoritativeLastPlaceId: game.eliminatedIds[0] ?? null,
+      })
+    } else {
+      dispatch(resolveMajorityRulesOutcome())
+    }
+  }, [dispatch, game.eliminatedIds, game.phase, game.winnerId, onComplete])
 
   const activeHumanId =
     game.humanPlayerId && game.activeIds.includes(game.humanPlayerId) ? game.humanPlayerId : null

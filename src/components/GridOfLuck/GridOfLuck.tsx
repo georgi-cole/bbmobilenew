@@ -1899,6 +1899,7 @@ export default function GridOfLuck(props: GenericMinigameProps) {
     setCompleted(true)
     props.onFinish(winner.lp, undefined, {
       authoritativeWinnerId: winner.id,
+      authoritativeLastPlaceId: ranking[ranking.length - 1]?.id ?? null,
       rawValue: winner.lp,
       rawResults: Object.fromEntries(ranking.map((player) => [player.id, player.lp])),
     })
