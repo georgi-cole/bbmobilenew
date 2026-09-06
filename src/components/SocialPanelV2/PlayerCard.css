@@ -263,6 +263,79 @@
   color: #ef4444;
 }
 
+/* A completed social move leaves a brief, directional receipt on the affected
+ * houseguest. It is visual only: the expanded card still owns the durable
+ * relationship detail. */
+.pc--relationship-pulse {
+  position: relative;
+  overflow: hidden;
+}
+
+.pc--relationship-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: pc-relationship-wash 0.85s ease-out both;
+}
+
+.pc--relationship-pulse-up {
+  border-color: rgba(109, 225, 175, 0.72);
+  box-shadow: 0 0 0 1px rgba(82, 215, 157, 0.17), 0 0 1.1rem rgba(52, 211, 153, 0.18);
+}
+
+.pc--relationship-pulse-down {
+  border-color: rgba(251, 136, 126, 0.75);
+  box-shadow: 0 0 0 1px rgba(239, 91, 91, 0.16), 0 0 1.1rem rgba(239, 68, 68, 0.18);
+}
+
+.pc--relationship-pulse-up::after {
+  background: radial-gradient(circle at 25% 25%, rgba(110, 255, 194, 0.28), transparent 52%);
+}
+
+.pc--relationship-pulse-down::after {
+  background: radial-gradient(circle at 25% 25%, rgba(255, 126, 126, 0.26), transparent 52%);
+}
+
+.pc__relationship-shift {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.24rem;
+  margin: 0 0.34rem 0.32rem;
+  padding: 0.16rem 0.28rem;
+  border-radius: 0.32rem;
+  color: rgba(248, 250, 252, 0.92);
+  background: rgba(7, 12, 19, 0.38);
+  font-size: 0.53rem;
+  font-weight: 800;
+  letter-spacing: 0.018em;
+  animation: pc-relationship-receipt 0.85s ease-out both;
+}
+
+.pc--relationship-pulse-up .pc__relationship-shift b {
+  color: #77efb0;
+}
+
+.pc--relationship-pulse-down .pc__relationship-shift b {
+  color: #ff9898;
+}
+
+@keyframes pc-relationship-wash {
+  0% { opacity: 0; transform: translateX(-65%); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(65%); }
+}
+
+@keyframes pc-relationship-receipt {
+  0% { opacity: 0; transform: translateY(0.35rem); }
+  25% { opacity: 1; transform: translateY(0); }
+  74% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-0.16rem); }
+}
+
 /* ── Reduce motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .pc {
@@ -273,6 +346,10 @@
     box-shadow: none;
   }
   .pc__expanded {
+    animation: none;
+  }
+  .pc--relationship-pulse::after,
+  .pc__relationship-shift {
     animation: none;
   }
 }

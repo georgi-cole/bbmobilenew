@@ -16,6 +16,7 @@ import { mulberry32 } from '../../store/rng';
 import { getAllGames } from '../../minigames/registry';
 import type { GameRegistryEntry, GameCategory, ScoringAdapterName } from '../../minigames/registry';
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper';
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton';
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper';
 import MinigameHost from '../../components/MinigameHost/MinigameHost';
 import type { MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
@@ -285,13 +286,7 @@ export default function GameDebug() {
     <div className="gd-screen">
       {/* Header */}
       <header className="gd-header">
-        <button
-          className="gd-header__back"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-        >
-          ←
-        </button>
+        <GameBackButton className="gd-header__back" onClick={() => navigate(-1)} />
         <h1 className="gd-header__title">🎮 Game Debug</h1>
       </header>
 

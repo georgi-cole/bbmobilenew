@@ -21,6 +21,7 @@ import {
   type CSSProperties,
   type FormEvent,
 } from 'react'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import { useBlocker, useNavigate } from 'react-router'
 import { useStore } from 'react-redux'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
@@ -1364,14 +1365,7 @@ export default function DiaryRoom() {
               🔒 Locked
             </span>
           ) : (
-            <button
-              className="diary-room__back"
-              onClick={() => navigate(-1)}
-              type="button"
-              aria-label="Go back"
-            >
-              ‹ Back
-            </button>
+            <GameBackButton className="diary-room__back" onClick={() => navigate(-1)} />
           )}
           <h1 className="diary-room__title">🚪 Confessional</h1>
         </div>

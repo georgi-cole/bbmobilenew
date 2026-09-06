@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { buildViewportMetaContent } from '../../components/layout/viewportMeta'
 import { useNavigate } from 'react-router'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   selectSettings,
@@ -167,9 +168,7 @@ export default function SettingsAdmin() {
   return (
     <div className="settings-screen">
       <header className="settings-screen__header">
-        <button className="settings-screen__back" onClick={() => navigate(-1)} aria-label="Go back">
-          ←
-        </button>
+        <GameBackButton className="settings-screen__back" onClick={() => navigate(-1)} />
         <h1 className="settings-screen__title">⚙️ Settings</h1>
       </header>
 

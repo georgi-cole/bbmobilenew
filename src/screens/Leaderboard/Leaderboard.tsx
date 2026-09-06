@@ -6,6 +6,7 @@ import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
 import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
 import { DEFAULT_WEIGHTS } from '../../scoring/weights';
 import './Leaderboard.css';
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton';
 
 type Tab = 'season' | 'alltime' | 'pastWinners';
 
@@ -73,14 +74,7 @@ export default function Leaderboard() {
     <div className="placeholder-screen leaderboard-screen">
       <div className="leaderboard-screen__title-row">
         <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
-        <button
-          className="leaderboard-screen__back"
-          type="button"
-          aria-label="Go back"
-          onClick={() => navigate(-1)}
-        >
-          <span aria-hidden="true">↩</span>
-        </button>
+        <GameBackButton className="leaderboard-screen__back" onClick={() => navigate(-1)} />
       </div>
 
       <div className="leaderboard-screen__tabs">

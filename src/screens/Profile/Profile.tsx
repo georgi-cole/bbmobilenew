@@ -10,6 +10,7 @@ import { normalizeAffinity } from '../../social/affinityUtils'
 import { buildUnlockedSurvivorAchievementDisplayModels } from '../../modes/survivorAchievements'
 import type { Phase, Player, StatusPillVariant } from '../../types'
 import './Profile.css'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 
 const HOLD_REVEAL_DELAY_MS = 360
 
@@ -672,14 +673,7 @@ export default function Profile() {
     <div className="placeholder-screen profile-screen">
       <div className="profile-screen__title-row">
         <h1 className="profile-screen__page-title">Profile</h1>
-        <button
-          type="button"
-          className="profile-screen__back-btn"
-          onClick={goBack}
-          aria-label="Go back"
-        >
-          ↩
-        </button>
+        <GameBackButton className="profile-screen__back-btn" onClick={goBack} />
       </div>
       <div className="profile-screen__header">
         {photoUrl ? (

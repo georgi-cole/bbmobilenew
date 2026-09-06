@@ -5,6 +5,7 @@ import { buildSocialStoryStream } from '../../social/socialStoryStream'
 import type { DramaSocialNetwork, RelationshipsMap, SocialActionLogEntry } from '../../social/types'
 import type { RealityDomainState } from '../../social/reality'
 import RealityLedger from '../RealityLedger/RealityLedger'
+import GameBackButton from '../ui/GameBackButton/GameBackButton'
 import './HousePulse.css'
 
 type PulseTab = 'stream' | 'stories' | 'intel' | 'ledger'
@@ -135,15 +136,12 @@ export default function HousePulse({
             <h2>My Pulse</h2>
             <p>Your reads, promises and risks, with the live house picture beside them.</p>
           </div>
-          <button
+          <GameBackButton
             className="house-pulse__back"
-            type="button"
+            label="Back to Social"
             onClick={() => setOpen(false)}
-            aria-label="Back to Social"
             title="Back to Social"
-          >
-            ↩
-          </button>
+          />
         </header>
 
         <div className="house-pulse__stats">

@@ -10,6 +10,7 @@ import {
 } from '../../social/socialSlice'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import HousePulse from '../../components/HousePulse/HousePulse'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import RequiredConfessionalDecision from './RequiredConfessionalDecision'
 import {
   getRequiredConfessionalPresentation,
@@ -150,14 +151,11 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
       >
         <header className="diary-room__header required-confessional__header">
           {decisionComplete || decision === null ? (
-            <button
+            <GameBackButton
               className="diary-room__back"
-              type="button"
+              label="Return to the House"
               onClick={handleReturnToGame}
-              aria-label="Return to the House"
-            >
-              ‹ Back
-            </button>
+            />
           ) : (
             <span
               className="diary-room__back diary-room__back--locked"

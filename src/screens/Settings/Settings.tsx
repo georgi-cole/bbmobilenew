@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import { FEATURE_LOCALIZATION_SETTINGS } from '../../config/featureFlags'
 import {
@@ -383,13 +384,7 @@ export default function Settings() {
     <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
         <h1 className="settings-screen__title">⚙️ {t('settings.title')}</h1>
-        <button
-          className="settings-screen__back"
-          onClick={() => navigate(-1)}
-          aria-label={t('common.goBack')}
-        >
-          ↩
-        </button>
+        <GameBackButton className="settings-screen__back" label={t('common.goBack')} onClick={() => navigate(-1)} />
       </header>
 
       <div className="settings-content settings-content--flat">

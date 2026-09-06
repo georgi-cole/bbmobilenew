@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import { VOX_POPULI_RULES } from '../../rules/voxPopuliGuide'
 import './Rules.css'
 
@@ -10,14 +11,7 @@ export default function VoxPopuliRules() {
         <div className="rules-screen__logo">VP</div>
         <div className="rules-screen__title-row">
           <h1 className="rules-screen__title">Vox Populi</h1>
-          <button
-            type="button"
-            className="rules-screen__back"
-            aria-label="Go back"
-            onClick={() => navigate(-1)}
-          >
-            ↩
-          </button>
+          <GameBackButton className="rules-screen__back" onClick={() => navigate(-1)} />
         </div>
         <p className="rules-screen__subtitle">The house nominates · the audience decides</p>
         <p className="rules-screen__lede">

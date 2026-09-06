@@ -20,48 +20,6 @@
   transition: border-color 0.18s, box-shadow 0.18s, transform 0.14s;
 }
 
-/* Gold dust stays behind the portrait and never changes its layout box. */
-.pa::before {
-  content: '';
-  position: absolute;
-  inset: -18%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  transform: scale(.58);
-  background:
-    radial-gradient(circle at 8% 28%, #ffe7a0 0 1.2px, transparent 2.2px),
-    radial-gradient(circle at 18% 74%, #e8ae32 0 1.4px, transparent 2.4px),
-    radial-gradient(circle at 31% 14%, #ffd66b 0 1px, transparent 1.9px),
-    radial-gradient(circle at 43% 87%, #f5c24d 0 1.3px, transparent 2.2px),
-    radial-gradient(circle at 63% 7%, #fff0b9 0 1px, transparent 1.8px),
-    radial-gradient(circle at 76% 31%, #e9ad2d 0 1.5px, transparent 2.5px),
-    radial-gradient(circle at 94% 68%, #ffd86e 0 1.1px, transparent 2px),
-    radial-gradient(ellipse at 50% 50%, rgba(245, 183, 48, .22), transparent 58%);
-  filter: drop-shadow(0 0 4px rgba(255, 197, 64, .95));
-  transition: opacity .18s ease, transform .45s cubic-bezier(.2,.8,.2,1);
-}
-
-.pa:hover::before,
-.pa:focus-visible::before { opacity: 1; transform: scale(1.12); }
-
-.pa::after {
-  content: '';
-  position: absolute;
-  inset: -30%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255, 210, 92, .28), transparent 62%);
-  filter: blur(5px);
-  transform: scale(.68);
-  transition: opacity .2s ease, transform .5s ease;
-}
-
-.pa:hover::after,
-.pa:focus-visible::after { opacity: .9; transform: scale(1.08); }
-
 .pa__img,
 .pa__fallback,
 .pa__ring { position: relative; z-index: 1; }

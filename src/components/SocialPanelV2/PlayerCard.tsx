@@ -22,6 +22,8 @@ interface PlayerCardProps {
    * zero or undefined → hidden.
    */
   affinityDelta?: number
+  /** A short-lived visual receipt for a relationship change just made by the player. */
+  relationshipPulseDelta?: number
   relationshipTags?: readonly string[]
   cupidPartner?: {
     name: string
@@ -60,11 +62,19 @@ export default function PlayerCard({
   onSelect,
   affinity,
   affinityDelta,
+  relationshipPulseDelta,
   relationshipTags = [],
   cupidPartner,
 }: PlayerCardProps) {
   const { t } = useI18n()
-  const classes = ['pc', selected ? 'pc--selected' : '', disabled ? 'pc--disabled' : '']
+  const classes = [
+    'pc',
+    selected ? 'pc--selected' : '',
+    disabled ? 'pc--disabled' : '',
+    relationshipPulseDelta
+      ? `pc--relationship-pulse pc--relationship-pulse-${relationshipPulseDelta > 0 ? 'up' : 'down'}`
+      : '',
+  ]
     .filter(Boolean)
     .join(' ')
 
@@ -130,6 +140,13 @@ export default function PlayerCard({
           )}
         </span>
       </div>
+
+      {relationshipPulseDelta !== undefined && relationshipPulseDelta !== 0 && (
+        <span className="pc__relationship-shift" aria-hidden="true">
+          <span>{relationshipPulseDelta > 0 ? 'Connection strengthened' : 'Tension rising'}</span>
+          <b>{relationshipPulseDelta > 0 ? '↑' : '↓'}</b>
+        </span>
+      )}
 
       {/* ── Expanded detail panel (visible when selected, no repeated info) ── */}
       {selected && (

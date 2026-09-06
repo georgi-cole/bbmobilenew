@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import type { RootState } from '../../store/store';
-import type { PlayerStatus } from '../../types';
-import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar';
-import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar';
-import { cryptoSeed } from '../../features/riskWheel/cryptoSpin';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import type { RootState } from '../../store/store'
+import type { PlayerStatus } from '../../types'
+import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
+import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
+import { cryptoSeed } from '../../features/riskWheel/cryptoSpin'
 import {
   advanceIntro,
   advanceReveal,
@@ -19,18 +19,18 @@ import {
   setHumanAnswer,
   useHint as applyMajorityRulesHint,
   type MajorityRulesCompetitionType,
-} from '../../features/majorityRules/majorityRulesSlice';
-import { resolveMajorityRulesOutcome } from '../../features/majorityRules/thunks';
-import type { MinigameParticipant } from '../MinigameHost/MinigameHost';
-import './MajorityRulesComp.css';
+} from '../../features/majorityRules/majorityRulesSlice'
+import { resolveMajorityRulesOutcome } from '../../features/majorityRules/thunks'
+import type { MinigameParticipant } from '../MinigameHost/MinigameHost'
+import './MajorityRulesComp.css'
 
-const INTRO_DELAY_MS = 5000;
-const AI_LOCK_DELAY_MS = 950;
-const AI_DUEL_DELAY_MS = 1250;
-const SPECTATOR_REVEAL_ADVANCE_DELAY_MS = 3000;
-const FAST_FORWARD_STEP_MS = 25;
+const INTRO_DELAY_MS = 5000
+const AI_LOCK_DELAY_MS = 950
+const AI_DUEL_DELAY_MS = 1250
+const SPECTATOR_REVEAL_ADVANCE_DELAY_MS = 3000
+const FAST_FORWARD_STEP_MS = 25
 
-type SpectatorMode = 'playing' | 'pending' | 'watching' | 'skipping';
+type SpectatorMode = 'playing' | 'pending' | 'watching' | 'skipping'
 
 const PHASE_MOTION = {
   initial: { opacity: 0, y: 18, scale: 0.985 },
@@ -46,42 +46,45 @@ const PHASE_MOTION = {
     scale: 0.985,
     transition: { duration: 0.2, ease: 'easeIn' as const },
   },
-};
+}
 
 interface Props {
-  participantIds: string[];
-  participants?: MinigameParticipant[];
-  prizeType: MajorityRulesCompetitionType;
+  participantIds: string[]
+  participants?: MinigameParticipant[]
+  prizeType: MajorityRulesCompetitionType
   /** Explicit seed for deterministic RNG. When omitted or set to 0, a fresh crypto-random seed is generated on mount. */
-  seed?: number;
-  onComplete?: () => void;
+  seed?: number
+  onComplete?: () => void
 }
 
 interface DisplayPlayer {
-  id: string;
-  name: string;
-  avatar: string;
-  status: PlayerStatus;
-  isHuman: boolean;
+  id: string
+  name: string
+  avatar: string
+  status: PlayerStatus
+  isHuman: boolean
 }
 
 function formatPercent(value: number) {
-  return `${Math.max(0, Math.round(value))}%`;
+  return `${Math.max(0, Math.round(value))}%`
 }
 
 function formatQuotedList(items: string[]) {
-  if (items.length === 0) return '';
-  if (items.length === 1) return `“${items[0]}”`;
-  if (items.length === 2) return `“${items[0]}” and “${items[1]}”`;
-  return `${items.slice(0, -1).map((item) => `“${item}”`).join(', ')}, and “${items[items.length - 1]}”`;
+  if (items.length === 0) return ''
+  if (items.length === 1) return `“${items[0]}”`
+  if (items.length === 2) return `“${items[0]}” and “${items[1]}”`
+  return `${items
+    .slice(0, -1)
+    .map((item) => `“${item}”`)
+    .join(', ')}, and “${items[items.length - 1]}”`
 }
 
 function getInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase() || '?';
+  return name.trim().charAt(0).toUpperCase() || '?'
 }
 
 function areAnimationsDisabled() {
-  return typeof document !== 'undefined' && document.body.classList.contains('no-animations');
+  return typeof document !== 'undefined' && document.body.classList.contains('no-animations')
 }
 
 function getAvatarGridRows(ids: string[], dense = false): string[][] {
@@ -97,7 +100,7 @@ function getAvatarGridRows(ids: string[], dense = false): string[][] {
     10: [4, 3, 3],
     11: [4, 4, 3],
     12: [4, 4, 4],
-  };
+  }
   const exactLayouts: Record<number, number[]> = {
     2: [2],
     3: [1, 2],
@@ -106,42 +109,45 @@ function getAvatarGridRows(ids: string[], dense = false): string[][] {
     8: [4, 4],
     9: [3, 3, 3],
     12: [4, 4, 4],
-  };
+  }
 
-  const layout = (dense ? denseLayouts : exactLayouts)[ids.length];
+  const layout = (dense ? denseLayouts : exactLayouts)[ids.length]
   if (layout) {
-    const rows: string[][] = [];
-    let cursor = 0;
+    const rows: string[][] = []
+    let cursor = 0
     for (const size of layout) {
-      rows.push(ids.slice(cursor, cursor + size));
-      cursor += size;
+      rows.push(ids.slice(cursor, cursor + size))
+      cursor += size
     }
-    return rows;
+    return rows
   }
 
-  const rows: string[][] = [];
-  const perRow = dense ? 4 : 3;
+  const rows: string[][] = []
+  const perRow = dense ? 4 : 3
   for (let idx = 0; idx < ids.length; idx += perRow) {
-    rows.push(ids.slice(idx, idx + perRow));
+    rows.push(ids.slice(idx, idx + perRow))
   }
-  return rows;
+  return rows
 }
 
 function shouldUseRosterRail(ids: string[]) {
-  return ids.length >= 8;
+  return ids.length >= 8
 }
 
 function MajorityRulesPortrait({
   player,
   size = 'md',
 }: {
-  player: DisplayPlayer;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  player: DisplayPlayer
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }) {
   const candidates = useMemo(
-    () => resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).flatMap(resolvePresentationAvatarCandidates),
-    [player.avatar, player.id, player.name],
-  );
+    () =>
+      resolveAvatarCandidates({ id: player.id, name: player.name, avatar: player.avatar }).flatMap(
+        resolvePresentationAvatarCandidates
+      ),
+    [player.avatar, player.id, player.name]
+  )
   return (
     <MajorityRulesPortraitInner
       key={`${player.id}:${player.avatar}:${player.name}`}
@@ -149,7 +155,7 @@ function MajorityRulesPortrait({
       size={size}
       candidates={candidates}
     />
-  );
+  )
 }
 
 function MajorityRulesPortraitInner({
@@ -157,23 +163,26 @@ function MajorityRulesPortraitInner({
   size,
   candidates,
 }: {
-  player: DisplayPlayer;
-  size: 'sm' | 'md' | 'lg' | 'xl';
-  candidates: string[];
+  player: DisplayPlayer
+  size: 'sm' | 'md' | 'lg' | 'xl'
+  candidates: string[]
 }) {
-  const [candidateIdx, setCandidateIdx] = useState(0);
-  const [showFallback, setShowFallback] = useState(false);
+  const [candidateIdx, setCandidateIdx] = useState(0)
+  const [showFallback, setShowFallback] = useState(false)
 
-  const src = candidates[candidateIdx] ?? '';
+  const src = candidates[candidateIdx] ?? ''
 
   if (showFallback || !src) {
     return (
-      <div className={`majority-rules-portrait majority-rules-portrait--${size}`} aria-hidden="true">
+      <div
+        className={`majority-rules-portrait majority-rules-portrait--${size}`}
+        aria-hidden="true"
+      >
         <span className="majority-rules-portrait__fallback">
           {isEmoji(player.avatar) ? player.avatar : getInitial(player.name)}
         </span>
       </div>
-    );
+    )
   }
 
   return (
@@ -185,14 +194,14 @@ function MajorityRulesPortraitInner({
         data-testid={`mr-portrait-${player.id}`}
         onError={() => {
           if (candidateIdx < candidates.length - 1) {
-            setCandidateIdx((idx) => idx + 1);
+            setCandidateIdx((idx) => idx + 1)
           } else {
-            setShowFallback(true);
+            setShowFallback(true)
           }
         }}
       />
     </div>
-  );
+  )
 }
 
 function PlayerRoster({
@@ -207,27 +216,29 @@ function PlayerRoster({
   pulseId,
   variant,
   wrap = false,
+  minimal = false,
 }: {
-  ids: string[];
-  getPlayer: (id: string) => DisplayPlayer;
-  selectedId?: string | null;
-  eliminatedIds?: string[];
-  onSelect?: (id: string) => void;
-  dense?: boolean;
-  compact?: boolean;
-  badgeMode?: 'you' | 'turn';
-  pulseId?: string | null;
+  ids: string[]
+  getPlayer: (id: string) => DisplayPlayer
+  selectedId?: string | null
+  eliminatedIds?: string[]
+  onSelect?: (id: string) => void
+  dense?: boolean
+  compact?: boolean
+  badgeMode?: 'you' | 'turn'
+  pulseId?: string | null
   /**
    * Optional manual override used by call sites that want the rail placement
    * even before the automatic crowded-roster fallback would kick in.
    */
-  variant?: 'cards' | 'rail';
-  wrap?: boolean;
+  variant?: 'cards' | 'rail'
+  wrap?: boolean
+  minimal?: boolean
 }) {
-  const rows = getAvatarGridRows(ids, dense);
-  const eliminatedSet = new Set(eliminatedIds);
-  const motionEnabled = !areAnimationsDisabled();
-  const rosterVariant = variant ?? (shouldUseRosterRail(ids) ? 'rail' : 'cards');
+  const rows = getAvatarGridRows(ids, dense)
+  const eliminatedSet = new Set(eliminatedIds)
+  const motionEnabled = !areAnimationsDisabled()
+  const rosterVariant = variant ?? (shouldUseRosterRail(ids) ? 'rail' : 'cards')
 
   if (rosterVariant === 'rail') {
     return (
@@ -235,18 +246,18 @@ function PlayerRoster({
         className={[
           'majority-rules-avatar-rail',
           wrap ? 'majority-rules-avatar-rail--wrapped' : '',
+          minimal ? 'majority-rules-avatar-rail--minimal' : '',
         ]
           .filter(Boolean)
           .join(' ')}
         data-testid="mr-avatar-rail"
       >
         {ids.map((id, idx) => {
-          const player = getPlayer(id);
-          const isSelected = selectedId === id;
-          const isEliminated = eliminatedSet.has(id);
-          const isHuman = player.isHuman;
-          const badgeText =
-            badgeMode === 'turn' && pulseId === id ? 'ROLL' : isHuman ? 'YOU' : null;
+          const player = getPlayer(id)
+          const isSelected = selectedId === id
+          const isEliminated = eliminatedSet.has(id)
+          const isHuman = player.isHuman
+          const badgeText = badgeMode === 'turn' && pulseId === id ? 'ROLL' : isHuman ? 'YOU' : null
           const className = [
             'majority-rules-avatar-chip',
             isSelected ? 'majority-rules-avatar-chip--selected' : '',
@@ -255,23 +266,25 @@ function PlayerRoster({
             pulseId === id ? 'majority-rules-avatar-chip--pulse' : '',
           ]
             .filter(Boolean)
-            .join(' ');
+            .join(' ')
           const content = (
             <>
               <div className="majority-rules-avatar-chip__portrait">
                 <MajorityRulesPortrait player={player} size="sm" />
-                {badgeText && <span className="majority-rules-avatar-chip__badge">{badgeText}</span>}
+                {badgeText && (
+                  <span className="majority-rules-avatar-chip__badge">{badgeText}</span>
+                )}
               </div>
-              <span className="majority-rules-avatar-chip__name">{player.name}</span>
+              {!minimal && <span className="majority-rules-avatar-chip__name">{player.name}</span>}
             </>
-          );
+          )
 
           const sharedMotion = motionEnabled
             ? {
                 initial: { opacity: 0, y: 8 },
                 animate: { opacity: 1, y: 0, transition: { duration: 0.2, delay: idx * 0.02 } },
               }
-            : {};
+            : {}
 
           return onSelect ? (
             <motion.button
@@ -294,10 +307,10 @@ function PlayerRoster({
             >
               {content}
             </motion.div>
-          );
+          )
         })}
       </div>
-    );
+    )
   }
 
   return (
@@ -305,12 +318,12 @@ function PlayerRoster({
       {rows.map((row, rowIdx) => (
         <div key={`mr-row-${rowIdx}`} className="majority-rules-roster__row">
           {row.map((id, tileIdx) => {
-            const player = getPlayer(id);
-            const isSelected = selectedId === id;
-            const isEliminated = eliminatedSet.has(id);
-            const isHuman = player.isHuman;
+            const player = getPlayer(id)
+            const isSelected = selectedId === id
+            const isEliminated = eliminatedSet.has(id)
+            const isHuman = player.isHuman
             const badgeText =
-              badgeMode === 'turn' && pulseId === id ? 'ROLLING' : isHuman ? 'YOU' : null;
+              badgeMode === 'turn' && pulseId === id ? 'ROLLING' : isHuman ? 'YOU' : null
             const className = [
               'majority-rules-player-card',
               compact ? 'majority-rules-player-card--compact' : '',
@@ -320,7 +333,7 @@ function PlayerRoster({
               pulseId === id ? 'majority-rules-player-card--pulse' : '',
             ]
               .filter(Boolean)
-              .join(' ');
+              .join(' ')
 
             const content = (
               <>
@@ -334,9 +347,11 @@ function PlayerRoster({
                     {isEliminated ? 'Out' : isHuman ? 'You are in' : 'Still alive'}
                   </span>
                 </div>
-                {badgeText && <span className="majority-rules-player-card__badge">{badgeText}</span>}
+                {badgeText && (
+                  <span className="majority-rules-player-card__badge">{badgeText}</span>
+                )}
               </>
-            );
+            )
 
             const sharedMotion = motionEnabled
               ? {
@@ -345,10 +360,10 @@ function PlayerRoster({
                     opacity: 1,
                     y: 0,
                     scale: 1,
-                    transition: { duration: 0.26, delay: (rowIdx * 0.08) + (tileIdx * 0.04) },
+                    transition: { duration: 0.26, delay: rowIdx * 0.08 + tileIdx * 0.04 },
                   },
                 }
-              : {};
+              : {}
 
             return onSelect ? (
               <motion.button
@@ -365,12 +380,12 @@ function PlayerRoster({
               <motion.div key={id} className={className} {...sharedMotion}>
                 {content}
               </motion.div>
-            );
+            )
           })}
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 export default function MajorityRulesComp({
@@ -380,16 +395,16 @@ export default function MajorityRulesComp({
   seed,
   onComplete,
 }: Props) {
-  const dispatch = useAppDispatch();
-  const game = useAppSelector((state: RootState) => state.majorityRules);
-  const gamePlayers = useAppSelector((state: RootState) => state.game.players);
-  const completedRef = useRef(false);
-  const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('playing');
+  const dispatch = useAppDispatch()
+  const game = useAppSelector((state: RootState) => state.majorityRules)
+  const gamePlayers = useAppSelector((state: RootState) => state.game.players)
+  const completedRef = useRef(false)
+  const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('playing')
   const [initialConfig] = useState<{
-    participantIds: string[];
-    competitionType: MajorityRulesCompetitionType;
-    seed: number;
-    humanPlayerId: string | null;
+    participantIds: string[]
+    competitionType: MajorityRulesCompetitionType
+    seed: number
+    humanPlayerId: string | null
   }>(() => ({
     participantIds: [...participantIds],
     competitionType: prizeType,
@@ -398,38 +413,38 @@ export default function MajorityRulesComp({
     // new hosted game session draws questions in a unique, unpredictable order.
     seed: seed !== undefined && seed !== 0 ? seed : cryptoSeed(),
     humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
-  }));
-  const motionEnabled = !areAnimationsDisabled();
+  }))
+  const motionEnabled = !areAnimationsDisabled()
 
   const playerMap = useMemo<Record<string, DisplayPlayer>>(() => {
-    const livePlayers = Object.fromEntries(gamePlayers.map((player) => [player.id, player]));
-    const merged: Record<string, DisplayPlayer> = {};
+    const livePlayers = Object.fromEntries(gamePlayers.map((player) => [player.id, player]))
+    const merged: Record<string, DisplayPlayer> = {}
 
     for (const participant of participants ?? []) {
-      const livePlayer = livePlayers[participant.id];
+      const livePlayer = livePlayers[participant.id]
       merged[participant.id] = {
         id: participant.id,
         name: livePlayer?.name ?? participant.name,
         avatar: livePlayer?.avatar ?? '',
         status: livePlayer?.status ?? 'active',
         isHuman: participant.isHuman || livePlayer?.isUser === true,
-      };
+      }
     }
 
     for (const participantId of participantIds) {
-      if (merged[participantId]) continue;
-      const livePlayer = livePlayers[participantId];
+      if (merged[participantId]) continue
+      const livePlayer = livePlayers[participantId]
       merged[participantId] = {
         id: participantId,
         name: livePlayer?.name ?? participantId,
         avatar: livePlayer?.avatar ?? '',
         status: livePlayer?.status ?? 'active',
         isHuman: livePlayer?.isUser === true,
-      };
+      }
     }
 
-    return merged;
-  }, [gamePlayers, participantIds, participants]);
+    return merged
+  }, [gamePlayers, participantIds, participants])
 
   const getPlayer = (id: string): DisplayPlayer =>
     playerMap[id] ?? {
@@ -438,12 +453,12 @@ export default function MajorityRulesComp({
       avatar: '',
       status: 'active',
       isHuman: false,
-    };
+    }
 
-  const getName = (id: string) => getPlayer(id).name;
+  const getName = (id: string) => getPlayer(id).name
   const humanIsEliminated = Boolean(
-    game.humanPlayerId && game.eliminatedIds.includes(game.humanPlayerId),
-  );
+    game.humanPlayerId && game.eliminatedIds.includes(game.humanPlayerId)
+  )
 
   useEffect(() => {
     if (
@@ -452,326 +467,367 @@ export default function MajorityRulesComp({
       game.phase !== 'winner' &&
       game.phase !== 'complete'
     ) {
-      setSpectatorMode('pending');
+      setSpectatorMode('pending')
     }
-  }, [game.phase, humanIsEliminated, spectatorMode]);
+  }, [game.phase, humanIsEliminated, spectatorMode])
 
   useEffect(() => {
-    dispatch(initMajorityRules(initialConfig));
-  }, [dispatch, initialConfig]);
+    dispatch(initMajorityRules(initialConfig))
+  }, [dispatch, initialConfig])
 
   useEffect(() => {
-    if (game.phase !== 'intro') return undefined;
-    const timeout = window.setTimeout(() => dispatch(advanceIntro()), INTRO_DELAY_MS);
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.phase]);
+    if (game.phase !== 'intro') return undefined
+    const timeout = window.setTimeout(() => dispatch(advanceIntro()), INTRO_DELAY_MS)
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.phase])
 
   useEffect(() => {
-    const humanIsActive =
-      game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
-    if (game.phase !== 'question' || humanIsActive || spectatorMode === 'pending') return undefined;
+    const humanIsActive = game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId)
+    if (game.phase !== 'question' || humanIsActive || spectatorMode === 'pending') return undefined
     const timeout = window.setTimeout(
       () => dispatch(lockRound()),
-      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_LOCK_DELAY_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode]);
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_LOCK_DELAY_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode])
 
   useEffect(() => {
-    if (game.phase !== 'final_duel_roll' || !game.finalDuel || spectatorMode === 'pending') return undefined;
-    if (game.finalDuel.currentRollerId === game.humanPlayerId) return undefined;
+    if (game.phase !== 'final_duel_roll' || !game.finalDuel || spectatorMode === 'pending')
+      return undefined
+    if (game.finalDuel.currentRollerId === game.humanPlayerId) return undefined
     const timeout = window.setTimeout(
       () => dispatch(rollFinalDuel()),
-      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase, spectatorMode]);
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.finalDuel, game.humanPlayerId, game.phase, spectatorMode])
 
   useEffect(() => {
-    if (game.phase !== 'three_way_duel_roll' || !game.threeWayDuel || spectatorMode === 'pending') return undefined;
-    if (game.threeWayDuel.currentRollerId === game.humanPlayerId) return undefined;
+    if (game.phase !== 'three_way_duel_roll' || !game.threeWayDuel || spectatorMode === 'pending')
+      return undefined
+    if (game.threeWayDuel.currentRollerId === game.humanPlayerId) return undefined
     const timeout = window.setTimeout(
       () => dispatch(rollThreeWayDuel()),
-      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.humanPlayerId, game.phase, game.threeWayDuel, spectatorMode]);
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : AI_DUEL_DELAY_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.humanPlayerId, game.phase, game.threeWayDuel, spectatorMode])
 
   useEffect(() => {
     const humanIsStillActive =
-      game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId);
-    if (game.phase !== 'reveal' || humanIsStillActive || spectatorMode === 'pending') return undefined;
+      game.humanPlayerId != null && game.activeIds.includes(game.humanPlayerId)
+    if (game.phase !== 'reveal' || humanIsStillActive || spectatorMode === 'pending')
+      return undefined
     const timeout = window.setTimeout(
       () => dispatch(advanceReveal()),
-      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : SPECTATOR_REVEAL_ADVANCE_DELAY_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode]);
+      spectatorMode === 'skipping' ? FAST_FORWARD_STEP_MS : SPECTATOR_REVEAL_ADVANCE_DELAY_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.activeIds, game.humanPlayerId, game.phase, spectatorMode])
 
   useEffect(() => {
-    if (game.phase !== 'winner' || spectatorMode !== 'skipping') return undefined;
-    const timeout = window.setTimeout(() => dispatch(advanceWinner()), FAST_FORWARD_STEP_MS);
-    return () => window.clearTimeout(timeout);
-  }, [dispatch, game.phase, spectatorMode]);
+    if (game.phase !== 'winner' || spectatorMode !== 'skipping') return undefined
+    const timeout = window.setTimeout(() => dispatch(advanceWinner()), FAST_FORWARD_STEP_MS)
+    return () => window.clearTimeout(timeout)
+  }, [dispatch, game.phase, spectatorMode])
 
   useEffect(() => {
-    if (game.phase !== 'complete' || completedRef.current) return;
-    completedRef.current = true;
-    dispatch(resolveMajorityRulesOutcome());
-    onComplete?.();
-  }, [dispatch, game.phase, onComplete]);
+    if (game.phase !== 'complete' || completedRef.current) return
+    completedRef.current = true
+    dispatch(resolveMajorityRulesOutcome())
+    onComplete?.()
+  }, [dispatch, game.phase, onComplete])
 
   const activeHumanId =
-    game.humanPlayerId && game.activeIds.includes(game.humanPlayerId) ? game.humanPlayerId : null;
-  const humanHintInventory = activeHumanId ? game.hintInventories[activeHumanId] : null;
+    game.humanPlayerId && game.activeIds.includes(game.humanPlayerId) ? game.humanPlayerId : null
+  const humanHintInventory = activeHumanId ? game.hintInventories[activeHumanId] : null
   const remainingHints = humanHintInventory
     ? 3 -
       Number(humanHintInventory.pollHintUsed) -
       Number(humanHintInventory.peekTwoUsed) -
       Number(humanHintInventory.followPlayerUsed)
-    : 0;
-  const threeWayFinalists: string[] = game.threeWayDuel?.finalists ?? [];
-  const finalists: string[] = game.finalDuel?.finalists ?? [];
-  const selectedHumanOption = activeHumanId ? game.draftAnswers[activeHumanId] : null;
-  const useActiveStatusRail = shouldUseRosterRail(game.activeIds);
+    : 0
+  const threeWayFinalists: string[] = game.threeWayDuel?.finalists ?? []
+  const finalists: string[] = game.finalDuel?.finalists ?? []
+  const selectedHumanOption = activeHumanId ? game.draftAnswers[activeHumanId] : null
+  const [dismissedHintKey, setDismissedHintKey] = useState<string | null>(null)
+  const activeHintKey = game.roundHintType ? `${game.roundNumber}:${game.roundHintType}` : null
+  const hintOverlayVisible = Boolean(activeHintKey && dismissedHintKey !== activeHintKey)
+
+  const activateHint = (hintType: 'pollHint' | 'peekTwo' | 'followPlayer') => {
+    if (!activeHumanId) return
+    setDismissedHintKey(null)
+    dispatch(
+      applyMajorityRulesHint({
+        playerId: activeHumanId,
+        hintType,
+        targetId:
+          hintType === 'followPlayer'
+            ? (game.roundHintTargetId ?? game.activeIds.find((id) => id !== activeHumanId) ?? null)
+            : undefined,
+      })
+    )
+  }
 
   const renderQuestion = () => (
-    <motion.div
-      key="question"
-      className="majority-rules-card majority-rules-card--question"
-      {...(motionEnabled ? PHASE_MOTION : {})}
-    >
-      <div className="majority-rules-glow majority-rules-glow--question" aria-hidden="true" />
-        <div className="majority-rules-badge-row">
-          <span className="majority-rules-badge">Round {game.roundNumber}</span>
-          <span className="majority-rules-badge majority-rules-badge--cool">
-            {game.activeIds.length} players left
-          </span>
-          {game.revoteNumber > 0 && (
-            <span className="majority-rules-badge majority-rules-badge--warn">
-              Re-vote {game.revoteNumber}
+    <>
+      <motion.div
+        key="question"
+        className="majority-rules-card majority-rules-card--question"
+        {...(motionEnabled ? PHASE_MOTION : {})}
+      >
+        <div className="majority-rules-glow majority-rules-glow--question" aria-hidden="true" />
+        <div className="majority-rules-livebar">
+          <div className="majority-rules-badge-row">
+            <span className="majority-rules-badge">Round {game.roundNumber}</span>
+            <span className="majority-rules-badge majority-rules-badge--cool">
+              {game.activeIds.length} in
             </span>
-          )}
+            {game.revoteNumber > 0 && (
+              <span className="majority-rules-badge majority-rules-badge--warn">
+                Re-vote {game.revoteNumber}
+              </span>
+            )}
+          </div>
+          <PlayerRoster
+            ids={game.activeIds}
+            getPlayer={getPlayer}
+            variant="rail"
+            wrap={true}
+            minimal={true}
+          />
         </div>
 
-      <div className="majority-rules-header-copy">
-        <span className="majority-rules-kicker">Read the room. Stay with the crowd.</span>
-        <h2 className="majority-rules-question">
-          {game.currentQuestion?.prompt ?? 'Loading question…'}
-        </h2>
-        <p className="majority-rules-copy">
-          Pick what the majority will pick. Drift into the minority and you are gone.
-        </p>
-      </div>
+        <div className="majority-rules-header-copy">
+          <span className="majority-rules-kicker">The house is voting</span>
+          <h2 className="majority-rules-question">
+            {game.currentQuestion?.prompt ?? 'Loading question…'}
+          </h2>
+        </div>
 
-      {!useActiveStatusRail && (
-        <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} compact={true} dense={true} />
-      )}
+        <div className="majority-rules-options">
+          {game.currentQuestion?.options.map((option, idx) => {
+            const selected = activeHumanId ? selectedHumanOption === option.id : false
+            const blocked = !!activeHumanId && game.blockedAnswers[activeHumanId] === option.id
+            return (
+              <motion.button
+                key={option.id}
+                type="button"
+                className={[
+                  'majority-rules-option',
+                  selected ? 'majority-rules-option--selected' : '',
+                  blocked ? 'majority-rules-option--blocked' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() =>
+                  activeHumanId &&
+                  dispatch(setHumanAnswer({ playerId: activeHumanId, optionId: option.id }))
+                }
+                disabled={!activeHumanId || blocked || game.roundHintType === 'followPlayer'}
+                whileTap={motionEnabled ? { scale: 0.985 } : undefined}
+                {...(motionEnabled
+                  ? {
+                      initial: { opacity: 0, x: -16 },
+                      animate: {
+                        opacity: 1,
+                        x: 0,
+                        transition: { duration: 0.22, delay: 0.08 + idx * 0.05 },
+                      },
+                    }
+                  : {})}
+              >
+                <span className="majority-rules-option-label">{option.label}</span>
+                <strong className="majority-rules-option-title">{option.text}</strong>
+              </motion.button>
+            )
+          })}
+        </div>
 
-      <div className="majority-rules-options">
-        {game.currentQuestion?.options.map((option, idx) => {
-          const selected = activeHumanId ? selectedHumanOption === option.id : false;
-          const blocked = !!activeHumanId && game.blockedAnswers[activeHumanId] === option.id;
-          return (
-            <motion.button
-              key={option.id}
-              type="button"
-              className={[
-                'majority-rules-option',
-                selected ? 'majority-rules-option--selected' : '',
-                blocked ? 'majority-rules-option--blocked' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() =>
-                activeHumanId &&
-                dispatch(setHumanAnswer({ playerId: activeHumanId, optionId: option.id }))
-              }
-              disabled={!activeHumanId || blocked || game.roundHintType === 'followPlayer'}
-              whileTap={motionEnabled ? { scale: 0.985 } : undefined}
-              {...(motionEnabled
-                ? {
-                    initial: { opacity: 0, x: -16 },
-                    animate: {
-                      opacity: 1,
-                      x: 0,
-                      transition: { duration: 0.22, delay: 0.08 + (idx * 0.05) },
-                    },
-                  }
-                : {})}
-            >
-              <span className="majority-rules-option-label">{option.label}</span>
-              <strong className="majority-rules-option-title">{option.text}</strong>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {activeHumanId && (
-        <div className="majority-rules-hints">
-          <div className="majority-rules-section-title majority-rules-section-title--hints">
-            <h3>Use one hint this round</h3>
-            <span>{remainingHints}/3 left</span>
-          </div>
-          <div className="majority-rules-hint-actions">
-            <button
-              type="button"
-              className={game.roundHintType === 'pollHint' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
-              disabled={
-                (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
-                !!humanHintInventory?.pollHintUsed
-              }
-              onClick={() =>
-                dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'pollHint' }))
-              }
-            >
-              📊 Poll{humanHintInventory?.pollHintUsed ? ' • Used' : ''}
-            </button>
-            <button
-              type="button"
-              className={game.roundHintType === 'peekTwo' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
-              disabled={
-                (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
-                !!humanHintInventory?.peekTwoUsed
-              }
-              onClick={() =>
-                dispatch(applyMajorityRulesHint({ playerId: activeHumanId, hintType: 'peekTwo' }))
-              }
-            >
-              🕵️ Peek 2{humanHintInventory?.peekTwoUsed ? ' • Used' : ''}
-            </button>
-            <button
-              type="button"
-              className={game.roundHintType === 'followPlayer' ? 'majority-rules-pill majority-rules-pill--active' : 'majority-rules-pill'}
-              disabled={
-                (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
-                !!humanHintInventory?.followPlayerUsed
-              }
-              onClick={() =>
-                dispatch(
-                  applyMajorityRulesHint({
-                    playerId: activeHumanId,
-                    hintType: 'followPlayer',
-                    targetId:
-                      game.roundHintTargetId ??
-                      game.activeIds.find((id) => id !== activeHumanId) ??
-                      null,
-                  }),
-                )
-              }
-            >
-              🪞 Follow{humanHintInventory?.followPlayerUsed ? ' • Used' : ''}
-            </button>
-          </div>
-
-          {game.roundHintPollEstimate && (
-            <div className="majority-rules-hint-panel">
-              <div className="majority-rules-section-title">
-                <h3>Blurred poll read</h3>
-                <span>Approximate crowd energy only.</span>
-              </div>
-              {game.currentQuestion?.options.map((option) => (
-                <div key={option.id} className="majority-rules-poll-row">
-                  <span>{option.text}</span>
-                  <div className="majority-rules-poll-bar">
-                    <div
-                      className="majority-rules-poll-fill"
-                      style={{ width: `${game.roundHintPollEstimate?.[option.id] ?? 0}%` }}
-                    />
-                  </div>
-                  <strong>{formatPercent(game.roundHintPollEstimate?.[option.id] ?? 0)}</strong>
-                </div>
-              ))}
+        {activeHumanId && (
+          <div className="majority-rules-hints">
+            <div className="majority-rules-section-title majority-rules-section-title--hints">
+              <h3>Read the room</h3>
+              <span>{remainingHints}/3 left</span>
             </div>
-          )}
+            <div className="majority-rules-hint-actions">
+              <button
+                type="button"
+                className={
+                  game.roundHintType === 'pollHint'
+                    ? 'majority-rules-pill majority-rules-pill--active'
+                    : 'majority-rules-pill'
+                }
+                disabled={
+                  (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
+                  !!humanHintInventory?.pollHintUsed
+                }
+                onClick={() => activateHint('pollHint')}
+              >
+                📊 Poll
+              </button>
+              <button
+                type="button"
+                className={
+                  game.roundHintType === 'peekTwo'
+                    ? 'majority-rules-pill majority-rules-pill--active'
+                    : 'majority-rules-pill'
+                }
+                disabled={
+                  (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
+                  !!humanHintInventory?.peekTwoUsed
+                }
+                onClick={() => activateHint('peekTwo')}
+              >
+                🕵️ Peek
+              </button>
+              <button
+                type="button"
+                className={
+                  game.roundHintType === 'followPlayer'
+                    ? 'majority-rules-pill majority-rules-pill--active'
+                    : 'majority-rules-pill'
+                }
+                disabled={
+                  (!!game.roundHintUsedBy && game.roundHintUsedBy !== activeHumanId) ||
+                  !!humanHintInventory?.followPlayerUsed
+                }
+                onClick={() => activateHint('followPlayer')}
+              >
+                🪞 Follow
+              </button>
+            </div>
+          </div>
+        )}
 
-          {game.roundHintPeekedAnswers && (
-            <div className="majority-rules-hint-panel">
-              <div className="majority-rules-section-title">
-                <h3>Peeked answers</h3>
-                <span>Two hidden reads before the vote locks.</span>
-              </div>
-              <div className="majority-rules-answer-grid">
-                {Object.entries(game.roundHintPeekedAnswers).map(([playerId, optionId]) => (
-                  <div key={playerId} className="majority-rules-answer-card">
-                    <div className="majority-rules-answer-card__player">
+        <div className="majority-rules-footer">
+          {(selectedHumanOption || game.roundHintType === 'followPlayer') && (
+            <button
+              type="button"
+              className="majority-rules-primary"
+              onClick={() => dispatch(lockRound())}
+            >
+              Lock in answer
+            </button>
+          )}
+        </div>
+      </motion.div>
+
+      {activeHumanId && hintOverlayVisible && game.roundHintType && (
+        <div
+          className={`majority-rules-intel-overlay majority-rules-intel-overlay--${game.roundHintType}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Majority Rules intel"
+        >
+          <div className="majority-rules-intel-lights" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
+          <section className="majority-rules-intel-card">
+            <div className="majority-rules-intel-on-air" aria-hidden="true">
+              <span /> LIVE INTEL
+            </div>
+            <button
+              type="button"
+              className="majority-rules-intel-close"
+              onClick={() => setDismissedHintKey(activeHintKey)}
+            >
+              Back to answer
+            </button>
+            {game.roundHintPollEstimate && (
+              <>
+                <div className="majority-rules-intel-heading">
+                  <span className="majority-rules-kicker">Audience signal</span>
+                  <h3>The crowd is leaning…</h3>
+                </div>
+                <div className="majority-rules-poll-stage">
+                  {game.currentQuestion?.options.map((option, index) => (
+                    <div
+                      key={option.id}
+                      className="majority-rules-poll-row"
+                      style={{ '--poll-order': index } as CSSProperties}
+                    >
+                      <span>{option.label}</span>
+                      <div className="majority-rules-poll-bar">
+                        <div
+                          className="majority-rules-poll-fill"
+                          style={{ width: `${game.roundHintPollEstimate?.[option.id] ?? 0}%` }}
+                        />
+                      </div>
+                      <strong>{formatPercent(game.roundHintPollEstimate?.[option.id] ?? 0)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {game.roundHintPeekedAnswers && (
+              <>
+                <div className="majority-rules-intel-heading">
+                  <span className="majority-rules-kicker">Camera leak</span>
+                  <h3>Two votes caught on camera</h3>
+                </div>
+                <div className="majority-rules-answer-grid">
+                  {Object.entries(game.roundHintPeekedAnswers).map(([playerId, optionId]) => (
+                    <div key={playerId} className="majority-rules-answer-card">
                       <MajorityRulesPortrait player={getPlayer(playerId)} size="sm" />
                       <span>{getName(playerId)}</span>
+                      <strong>
+                        {game.currentQuestion?.options.find((option) => option.id === optionId)
+                          ?.label ?? optionId}
+                      </strong>
                     </div>
-                    <strong>
-                      {game.currentQuestion?.options.find((option) => option.id === optionId)?.text ?? optionId}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {game.roundHintType === 'followPlayer' && (
-            <div className="majority-rules-hint-panel">
-              <div className="majority-rules-section-title">
-                <h3>Choose who to shadow</h3>
-                <span>You will mirror their answer after the reveal.</span>
-              </div>
-              <PlayerRoster
-                ids={game.activeIds.filter((playerId) => playerId !== activeHumanId)}
-                getPlayer={getPlayer}
-                selectedId={game.roundHintTargetId}
-                compact={true}
-                dense={true}
-                onSelect={(playerId) =>
-                  dispatch(
-                    applyMajorityRulesHint({
-                      playerId: activeHumanId,
-                      hintType: 'followPlayer',
-                      targetId: playerId,
-                    }),
-                  )
-                }
-              />
-            </div>
-          )}
+                  ))}
+                </div>
+              </>
+            )}
+            {game.roundHintType === 'followPlayer' && (
+              <>
+                <div className="majority-rules-intel-heading">
+                  <span className="majority-rules-kicker">Shadow play</span>
+                  <h3>Choose whose vote you will mirror</h3>
+                </div>
+                <PlayerRoster
+                  ids={game.activeIds.filter((playerId) => playerId !== activeHumanId)}
+                  getPlayer={getPlayer}
+                  selectedId={game.roundHintTargetId}
+                  variant="rail"
+                  wrap={true}
+                  onSelect={(playerId) => {
+                    dispatch(
+                      applyMajorityRulesHint({
+                        playerId: activeHumanId,
+                        hintType: 'followPlayer',
+                        targetId: playerId,
+                      })
+                    )
+                    setDismissedHintKey(activeHintKey)
+                  }}
+                />
+              </>
+            )}
+          </section>
         </div>
       )}
-
-      <div className="majority-rules-footer">
-        {(selectedHumanOption || game.roundHintType === 'followPlayer') && (
-          <button
-            type="button"
-            className="majority-rules-primary"
-            onClick={() => dispatch(lockRound())}
-          >
-            Continue
-          </button>
-        )}
-      </div>
-      {useActiveStatusRail && (
-        <div className="majority-rules-status-dock">
-          <div className="majority-rules-section-title">
-            <h3>House status</h3>
-            <span>Scroll the avatar rail to track who is still in.</span>
-          </div>
-          <PlayerRoster ids={game.activeIds} getPlayer={getPlayer} variant="rail" wrap={true} />
-        </div>
-      )}
-    </motion.div>
-  );
+    </>
+  )
 
   const renderReveal = () => {
-    const reveal = game.revealState;
-    const eliminated = reveal?.result.eliminatedIds ?? [];
+    const reveal = game.revealState
+    const eliminated = reveal?.result.eliminatedIds ?? []
     const minorityLabel = game.currentQuestion?.options.find(
-      (option) => option.id === reveal?.result.minorityOptionId,
-    )?.text;
+      (option) => option.id === reveal?.result.minorityOptionId
+    )?.text
     const tiedMinorityLabels =
       game.currentQuestion?.options
         .filter((option) => reveal?.result.tiedOptionIds.includes(option.id))
-        .map((option) => option.text) ?? [];
-    const distribution = reveal?.result.distribution ?? {};
-    const totalVotes = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-    const populatedCounts = Object.values(distribution).filter((count) => count > 0);
-    const highestCount = populatedCounts.length > 0 ? Math.max(...populatedCounts) : 0;
-    const lowestCount = populatedCounts.length > 0 ? Math.min(...populatedCounts) : 0;
+        .map((option) => option.text) ?? []
+    const distribution = reveal?.result.distribution ?? {}
+    const totalVotes = Object.values(distribution).reduce((sum, count) => sum + count, 0)
+    const populatedCounts = Object.values(distribution).filter((count) => count > 0)
+    const highestCount = populatedCounts.length > 0 ? Math.max(...populatedCounts) : 0
+    const lowestCount = populatedCounts.length > 0 ? Math.min(...populatedCounts) : 0
 
     return (
       <motion.div
@@ -807,68 +863,75 @@ export default function MajorityRulesComp({
                 : tiedMinorityLabels.length > 0
                   ? `The tied minority answers were ${formatQuotedList(tiedMinorityLabels)}.`
                   : minorityLabel
-                   ? `The minority answer was “${minorityLabel}”.`
-                   : 'The minority has been eliminated.'}
+                    ? `The minority answer was “${minorityLabel}”.`
+                    : 'The minority has been eliminated.'}
           </p>
         </div>
 
         {game.currentQuestion && totalVotes > 0 && (
           <div className="majority-rules-aggregation" aria-label="Vote aggregation">
             {game.currentQuestion.options.map((option) => {
-              const count = distribution[option.id] ?? 0;
-              const percentage = Math.round((count / totalVotes) * 100);
-              const tiedBallot = highestCount === lowestCount;
-              const status = count === 0
-                ? 'No votes'
-                : tiedBallot
-                  ? 'Tied'
-                  : count === highestCount
-                    ? 'Majority'
-                    : count === lowestCount
-                      ? 'Minority'
-                      : 'Middle';
+              const count = distribution[option.id] ?? 0
+              const percentage = Math.round((count / totalVotes) * 100)
+              const tiedBallot = highestCount === lowestCount
+              const status =
+                count === 0
+                  ? 'No votes'
+                  : tiedBallot
+                    ? 'Tied'
+                    : count === highestCount
+                      ? 'Majority'
+                      : count === lowestCount
+                        ? 'Minority'
+                        : 'Middle'
               return (
-                <div key={option.id} className={`majority-rules-aggregation__row is-${status.toLowerCase().replace(' ', '-')}`}>
+                <div
+                  key={option.id}
+                  className={`majority-rules-aggregation__row is-${status.toLowerCase().replace(' ', '-')}`}
+                >
                   <div className="majority-rules-aggregation__label">
-                    <strong>{option.label}. {option.text}</strong>
-                    <span>{status} · {count}/{totalVotes} ({percentage}%)</span>
+                    <strong>
+                      {option.label}. {option.text}
+                    </strong>
+                    <span>
+                      {status} · {count}/{totalVotes} ({percentage}%)
+                    </span>
                   </div>
                   <div className="majority-rules-aggregation__track" aria-hidden="true">
                     <span style={{ width: `${percentage}%` }} />
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
         )}
 
         {eliminated.length > 0 && (
-          <div className="majority-rules-eliminated-grid" aria-label="Eliminated players">
-          {eliminated.map((playerId, idx) => (
-            <motion.div
-              key={playerId}
-              className="majority-rules-eliminated-card"
-              {...(motionEnabled
-                ? {
-                    initial: { opacity: 0, y: 12 },
-                    animate: { opacity: 1, y: 0, transition: { duration: 0.24, delay: idx * 0.05 } },
-                  }
-                : {})}
-            >
-              <MajorityRulesPortrait player={getPlayer(playerId)} size="lg" />
-              <strong>{getName(playerId)}</strong>
-              <span>Eliminated</span>
-            </motion.div>
-          ))}
+          <div className="majority-rules-casualties" aria-label="Eliminated players">
+            <div className="majority-rules-section-title">
+              <h3>Minority out</h3>
+              <span>{eliminated.length} eliminated</span>
+            </div>
+            <PlayerRoster
+              ids={eliminated}
+              getPlayer={getPlayer}
+              variant="rail"
+              wrap={true}
+              minimal={true}
+            />
           </div>
         )}
 
-        <button type="button" className="majority-rules-primary" onClick={() => dispatch(advanceReveal())}>
+        <button
+          type="button"
+          className="majority-rules-primary"
+          onClick={() => dispatch(advanceReveal())}
+        >
           Continue
         </button>
       </motion.div>
-    );
-  };
+    )
+  }
 
   const renderFinalDuel = () => (
     <motion.div
@@ -886,9 +949,12 @@ export default function MajorityRulesComp({
 
       <div className="majority-rules-header-copy">
         <span className="majority-rules-kicker">Different numbers. Shared pressure.</span>
-        <h2 className="majority-rules-question">Pick a number. Land it first. Survive the answer.</h2>
+        <h2 className="majority-rules-question">
+          Pick a number. Land it first. Survive the answer.
+        </h2>
         <p className="majority-rules-copy">
-          Roll your number to put the other player under pressure. If they miss on the next roll, you win.
+          Roll your number to put the other player under pressure. If they miss on the next roll,
+          you win.
         </p>
       </div>
 
@@ -896,7 +962,9 @@ export default function MajorityRulesComp({
         ids={finalists}
         getPlayer={getPlayer}
         compact={false}
-        selectedId={game.phase === 'final_duel_pick' ? activeHumanId : game.finalDuel?.pressureHolderId}
+        selectedId={
+          game.phase === 'final_duel_pick' ? activeHumanId : game.finalDuel?.pressureHolderId
+        }
         pulseId={game.phase === 'final_duel_roll' ? game.finalDuel?.currentRollerId : null}
         badgeMode="turn"
       />
@@ -907,7 +975,9 @@ export default function MajorityRulesComp({
             key={playerId}
             className={[
               'majority-rules-finalist',
-              game.finalDuel?.pressureHolderId === playerId ? 'majority-rules-finalist--pressure' : '',
+              game.finalDuel?.pressureHolderId === playerId
+                ? 'majority-rules-finalist--pressure'
+                : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -922,15 +992,18 @@ export default function MajorityRulesComp({
         <div className="majority-rules-number-picker">
           {[1, 2, 3, 4, 5, 6].map((value) => {
             const takenByOther = finalists.some(
-              (playerId) => playerId !== activeHumanId && game.finalDuel?.chosenNumbers[playerId] === value,
-            );
+              (playerId) =>
+                playerId !== activeHumanId && game.finalDuel?.chosenNumbers[playerId] === value
+            )
             return (
               <button
                 key={value}
                 type="button"
                 className={[
                   'majority-rules-number-button',
-                  game.finalDuel?.chosenNumbers[activeHumanId] === value ? 'majority-rules-number-button--active' : '',
+                  game.finalDuel?.chosenNumbers[activeHumanId] === value
+                    ? 'majority-rules-number-button--active'
+                    : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -939,7 +1012,7 @@ export default function MajorityRulesComp({
               >
                 {value}
               </button>
-            );
+            )
           })}
         </div>
       )}
@@ -984,7 +1057,7 @@ export default function MajorityRulesComp({
         </>
       )}
     </motion.div>
-  );
+  )
 
   const renderThreeWayDuel = () => (
     <motion.div
@@ -994,7 +1067,9 @@ export default function MajorityRulesComp({
     >
       <div className="majority-rules-glow majority-rules-glow--duel" aria-hidden="true" />
       <div className="majority-rules-badge-row">
-        <span className="majority-rules-badge majority-rules-badge--danger">3-Way Dice Tiebreak</span>
+        <span className="majority-rules-badge majority-rules-badge--danger">
+          3-Way Dice Tiebreak
+        </span>
         {game.threeWayDuel?.roundCount ? (
           <span className="majority-rules-badge majority-rules-badge--warn">
             Round {game.threeWayDuel.roundCount + 1}
@@ -1004,9 +1079,12 @@ export default function MajorityRulesComp({
 
       <div className="majority-rules-header-copy">
         <span className="majority-rules-kicker">Three straight draws. Dice decide it.</span>
-        <h2 className="majority-rules-question">Pick a number and hit it. Ties drop the player who misses.</h2>
+        <h2 className="majority-rules-question">
+          Pick a number and hit it. Ties drop the player who misses.
+        </h2>
         <p className="majority-rules-copy">
-          If one player lands their number, they win immediately. If two players land it, the third is eliminated and the last two go to the final duel.
+          If one player lands their number, they win immediately. If two players land it, the third
+          is eliminated and the last two go to the final duel.
         </p>
       </div>
 
@@ -1014,7 +1092,9 @@ export default function MajorityRulesComp({
         ids={threeWayFinalists}
         getPlayer={getPlayer}
         compact={false}
-        selectedId={game.phase === 'three_way_duel_pick' ? activeHumanId : game.threeWayDuel?.currentRollerId}
+        selectedId={
+          game.phase === 'three_way_duel_pick' ? activeHumanId : game.threeWayDuel?.currentRollerId
+        }
         pulseId={game.phase === 'three_way_duel_roll' ? game.threeWayDuel?.currentRollerId : null}
         badgeMode="turn"
       />
@@ -1035,8 +1115,8 @@ export default function MajorityRulesComp({
             {[1, 2, 3, 4, 5, 6].map((value) => {
               const takenByOther = threeWayFinalists.some(
                 (playerId) =>
-                  playerId !== activeHumanId && game.threeWayDuel?.chosenNumbers[playerId] === value,
-              );
+                  playerId !== activeHumanId && game.threeWayDuel?.chosenNumbers[playerId] === value
+              )
               return (
                 <button
                   key={value}
@@ -1054,7 +1134,7 @@ export default function MajorityRulesComp({
                 >
                   {value}
                 </button>
-              );
+              )
             })}
           </div>
         )}
@@ -1069,12 +1149,15 @@ export default function MajorityRulesComp({
               <div className="majority-rules-peek-row">
                 <span>Last roll</span>
                 <strong>
-                  {getName(game.threeWayDuel.lastRoll.playerId)} rolled {game.threeWayDuel.lastRoll.value}
+                  {getName(game.threeWayDuel.lastRoll.playerId)} rolled{' '}
+                  {game.threeWayDuel.lastRoll.value}
                 </strong>
               </div>
               <div className="majority-rules-peek-row">
                 <span>Status</span>
-                <strong>{game.threeWayDuel.lastRoll.hitTarget ? 'Hit their number' : 'Missed'}</strong>
+                <strong>
+                  {game.threeWayDuel.lastRoll.hitTarget ? 'Hit their number' : 'Missed'}
+                </strong>
               </div>
               {game.threeWayDuel.lastRoundResult && (
                 <div className="majority-rules-peek-row">
@@ -1101,10 +1184,10 @@ export default function MajorityRulesComp({
         </>
       )}
     </motion.div>
-  );
+  )
 
   const renderWinner = () => {
-    const winner = getPlayer(game.winnerId ?? '');
+    const winner = getPlayer(game.winnerId ?? '')
     return (
       <motion.div
         key="winner"
@@ -1112,20 +1195,33 @@ export default function MajorityRulesComp({
         {...(motionEnabled ? PHASE_MOTION : {})}
       >
         <div className="majority-rules-glow majority-rules-glow--winner" aria-hidden="true" />
-        <span className="majority-rules-badge majority-rules-badge--danger">Winner</span>
-        <MajorityRulesPortrait player={winner} size="xl" />
+        <div className="majority-rules-winner-eyebrow">
+          <span aria-hidden="true" /> Live result
+        </div>
+        <div className="majority-rules-winner-stage">
+          <div className="majority-rules-winner-ring" aria-hidden="true" />
+          <div className="majority-rules-winner-portrait">
+            <MajorityRulesPortrait player={winner} size="xl" />
+          </div>
+          <div className="majority-rules-winner-floor" aria-hidden="true" />
+        </div>
+        <span className="majority-rules-kicker majority-rules-winner-kicker">The final verdict</span>
         <h2 className="majority-rules-question">
           {winner.name || 'Someone'} is the last player standing.
         </h2>
         <p className="majority-rules-copy">
           They read the room, survived the minority, and held their nerve in the dice duel.
         </p>
-        <button type="button" className="majority-rules-primary" onClick={() => dispatch(advanceWinner())}>
+        <button
+          type="button"
+          className="majority-rules-primary"
+          onClick={() => dispatch(advanceWinner())}
+        >
           Finish
         </button>
       </motion.div>
-    );
-  };
+    )
+  }
 
   return (
     <div className="majority-rules-shell" data-phase={game.phase}>
@@ -1153,6 +1249,7 @@ export default function MajorityRulesComp({
               dense={true}
               variant={shouldUseRosterRail(game.activeIds) ? 'rail' : 'cards'}
               wrap={shouldUseRosterRail(game.activeIds)}
+              minimal={shouldUseRosterRail(game.activeIds)}
             />
           </motion.div>
         )}
@@ -1160,7 +1257,8 @@ export default function MajorityRulesComp({
         {game.phase === 'reveal' && renderReveal()}
         {(game.phase === 'three_way_duel_pick' || game.phase === 'three_way_duel_roll') &&
           renderThreeWayDuel()}
-        {(game.phase === 'final_duel_pick' || game.phase === 'final_duel_roll') && renderFinalDuel()}
+        {(game.phase === 'final_duel_pick' || game.phase === 'final_duel_roll') &&
+          renderFinalDuel()}
         {game.phase === 'winner' && renderWinner()}
         {game.phase === 'complete' && (
           <motion.div
@@ -1173,16 +1271,32 @@ export default function MajorityRulesComp({
         )}
       </AnimatePresence>
       {spectatorMode === 'pending' && (
-        <div className="majority-rules-spectator-overlay" role="dialog" aria-modal="true" aria-labelledby="majority-rules-spectator-title">
+        <div
+          className="majority-rules-spectator-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="majority-rules-spectator-title"
+        >
           <div className="majority-rules-spectator-card">
             <span className="majority-rules-badge majority-rules-badge--danger">Eliminated</span>
             <h2 id="majority-rules-spectator-title">Stay for the rest of the vote?</h2>
-            <p>You can watch at normal speed or fast-forward the same live game directly to its final result.</p>
+            <p>
+              You can watch at normal speed or fast-forward the same live game directly to its final
+              result.
+            </p>
             <div className="majority-rules-spectator-actions">
-              <button type="button" className="majority-rules-primary" onClick={() => setSpectatorMode('watching')}>
+              <button
+                type="button"
+                className="majority-rules-primary"
+                onClick={() => setSpectatorMode('watching')}
+              >
                 Continue watching
               </button>
-              <button type="button" className="majority-rules-secondary" onClick={() => setSpectatorMode('skipping')}>
+              <button
+                type="button"
+                className="majority-rules-secondary"
+                onClick={() => setSpectatorMode('skipping')}
+              >
                 Skip to results
               </button>
             </div>
@@ -1195,6 +1309,5 @@ export default function MajorityRulesComp({
         </div>
       )}
     </div>
-  );
+  )
 }
-

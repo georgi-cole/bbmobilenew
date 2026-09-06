@@ -1,0 +1,84 @@
+.game-back-button {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 2rem !important;
+  place-items: center;
+  width: 2rem !important;
+  min-width: 2rem !important;
+  height: 1.8rem !important;
+  min-height: 1.8rem !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid rgba(222, 190, 255, 0.28) !important;
+  border-radius: 10px !important;
+  background:
+    linear-gradient(145deg, rgba(116, 101, 126, 0.62), rgba(55, 42, 66, 0.94)),
+    rgba(25, 19, 33, 0.95) !important;
+  color: #f5eddf !important;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -7px 18px rgba(8, 5, 14, 0.28),
+    0 8px 22px rgba(5, 3, 12, 0.3) !important;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.game-back-button::before {
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(255, 239, 201, 0.08);
+  border-radius: 8px;
+  content: '';
+  pointer-events: none;
+}
+
+.game-back-button__icon {
+  position: relative;
+  z-index: 1;
+  width: 1.15rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.35;
+  filter: drop-shadow(0 1px 4px rgba(255, 245, 220, 0.18));
+}
+
+.game-back-button:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  border-color: rgba(239, 210, 133, 0.58) !important;
+  background:
+    linear-gradient(145deg, rgba(139, 118, 151, 0.74), rgba(68, 48, 83, 0.98)),
+    rgba(31, 21, 42, 0.98) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 0 20px rgba(168, 116, 255, 0.18),
+    0 10px 24px rgba(5, 3, 12, 0.34) !important;
+}
+
+.game-back-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97) !important;
+}
+
+.game-back-button:focus-visible {
+  outline: 2px solid rgba(244, 216, 143, 0.9) !important;
+  outline-offset: 3px !important;
+}
+
+.game-back-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5 !important;
+}
+
+/* Context classes still provide layout placement, never a competing button skin. */
+.game-back-button.vip-store__back {
+  justify-self: end;
+  margin-right: 0 !important;
+}
