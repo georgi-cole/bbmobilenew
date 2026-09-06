@@ -1142,7 +1142,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 0,
     category: 'logic',
-    retired: true,
+    retired: false,
     vipOnly: true,
   },
 
@@ -1197,7 +1197,7 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
     legacy: false,
     weight: 0,
     category: 'logic',
-    retired: true,
+    retired: false,
     vipOnly: true,
   },
 
@@ -1485,9 +1485,12 @@ export function getPoolByFilter(filter: {
   retired?: boolean
   category?: GameCategory
   excludeKeys?: string[]
+  /** Include VIP-only replacements only when explicitly requested. */
+  vipOnly?: boolean
 }): GameRegistryEntry[] {
   return getAllGames().filter((g) => {
     if (filter.retired !== undefined && g.retired !== filter.retired) return false
+    if (g.vipOnly && filter.vipOnly !== true) return false
     if (filter.category && g.category !== filter.category) return false
     if (filter.excludeKeys?.includes(g.key)) return false
     return true
