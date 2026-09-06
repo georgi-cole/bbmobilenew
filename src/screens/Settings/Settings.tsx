@@ -57,6 +57,7 @@ type ToggleItem = {
   id: string
   label: string
   badge?: string
+  description?: string
   gated?: boolean
   lockedFeature?: LockedFeature
   get: (s: SettingsState) => boolean
@@ -87,6 +88,13 @@ export default function Settings() {
   const isVipActive = useAppSelector(selectIsVipActive)
   const hasDramaMode = useAppSelector(selectHasDramaModeAccess)
   const hasPublicMode = useAppSelector(selectHasPublicModeAccess)
+  const pendingPublicModeEnabled = useAppSelector((state) => state.game.pendingPublicModeEnabled)
+  const activePublicModeEnabled = useAppSelector((state) => state.game.publicModeEnabled === true)
+  const publicModeChangeNeedsNextDay = useAppSelector((state) => {
+    const game = state.game
+    const isSafeBoundary = ['season_start', 'week_start', 'week_end'].includes(game.phase)
+    return game.mode !== 'survival' && game.voxPopuli?.status !== 'active' && !isSafeBoundary
+  })
   const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
   const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const realityAgeEligibility = useAppSelector((state) =>
@@ -95,7 +103,14 @@ export default function Settings() {
   const { systemLanguage, t } = useI18n()
   const hasRealityAccess = hasDramaMode || settings.gameUX.dramaModeAdminOverride
   const showRealitySettings = hasRealityAccess && settings.gameUX.dramaMode
+  const publicModeQueuedMessage =
+    typeof pendingPublicModeEnabled === 'boolean'
+      ? pendingPublicModeEnabled
+        ? 'Queued — Public Mode becomes active at the next Day Start. The current cycle will finish normally.'
+        : 'Queued — Public Mode turns off at the next Day Start. The current cycle will finish normally.'
+      : undefined
   const [lockedFeature, setLockedFeature] = useState<LockedFeature | null>(null)
+  const [publicModeNotice, setPublicModeNotice] = useState<boolean | null>(null)
   const [tutorialEnabled, setTutorialEnabled] = useState(() =>
     isSeasonTutorialEnabled(activeProfileId, isGuest)
   )
@@ -232,6 +247,7 @@ export default function Settings() {
           gated: true,
           lockedFeature: 'publicMode',
           get: (s) => s.sim.publicMode,
+          description: publicModeQueuedMessage,
           onChange: (settingsDispatch, val) =>
             settingsDispatch(
               setSim(
@@ -307,8 +323,8 @@ export default function Settings() {
               ? hasPublicMode || settings.sim.publicModeAdminOverride
               : true
         const checked = item.gated && !hasAccess ? false : item.get(settings)
-        return (
-          <div key={item.id} className="settings-row">
+        const toggleControl = (
+          <>
             <label className="settings-row__label">
               {item.label}
               {item.badge && <span className="settings-row__badge">{item.badge}</span>}
@@ -323,10 +339,30 @@ export default function Settings() {
                   setLockedFeature(item.lockedFeature ?? 'publicMode')
                   return
                 }
-                item.onChange(dispatch, event.target.checked)
+                const nextValue = event.target.checked
+                item.onChange(dispatch, nextValue)
+                if (
+                  item.id === 'publicMode' &&
+                  publicModeChangeNeedsNextDay &&
+                  nextValue !== activePublicModeEnabled
+                ) {
+                  setPublicModeNotice(nextValue)
+                }
               }}
               aria-label={t('common.toggle', { setting: item.label })}
             />
+          </>
+        )
+        return item.description ? (
+          <div key={item.id} className="settings-row settings-row--col">
+            <div className="settings-row settings-row--nested">{toggleControl}</div>
+            <p className="settings-helper-text settings-helper-text--queued" role="status">
+              {item.description}
+            </p>
+          </div>
+        ) : (
+          <div key={item.id} className="settings-row">
+            {toggleControl}
           </div>
         )
       }
@@ -451,6 +487,19 @@ export default function Settings() {
           navigate('/store')
         }}
         onCancel={() => setLockedFeature(null)}
+      />
+      <ConfirmExitModal
+        open={publicModeNotice != null}
+        title="Changes will take effect on the next day"
+        description={
+          publicModeNotice
+            ? 'Public Mode will become active at the next Day Start. Your current nominations, safety ceremony, and vote will finish normally.'
+            : 'Public Mode will turn off at the next Day Start. Your current nominations, safety ceremony, and vote will finish normally.'
+        }
+        confirmLabel="Got it"
+        showCancel={false}
+        onConfirm={() => setPublicModeNotice(null)}
+        onCancel={() => setPublicModeNotice(null)}
       />
     </div>
   )

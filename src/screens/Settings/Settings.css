@@ -501,6 +501,16 @@
   margin-top: 4px;
 }
 
+.settings-helper-text--queued {
+  margin: 0;
+  padding: 0.52rem 0.62rem;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.025));
+  color: rgba(254, 243, 199, 0.9);
+  line-height: 1.35;
+}
+
 /* Theme preset grid */
 .settings-theme-grid {
   display: grid;
