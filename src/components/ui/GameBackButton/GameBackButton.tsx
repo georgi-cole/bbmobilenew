@@ -1,8 +1,10 @@
 import type { ButtonHTMLAttributes } from 'react'
 import './GameBackButton.css'
 
-export interface GameBackButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'aria-label'> {
+export interface GameBackButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'children' | 'aria-label'
+> {
   label?: string
 }
 

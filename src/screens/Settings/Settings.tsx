@@ -384,7 +384,11 @@ export default function Settings() {
     <div className="settings-screen settings-screen--basic">
       <header className="settings-screen__header">
         <h1 className="settings-screen__title">⚙️ {t('settings.title')}</h1>
-        <GameBackButton className="settings-screen__back" label={t('common.goBack')} onClick={() => navigate(-1)} />
+        <GameBackButton
+          className="settings-screen__back"
+          label={t('common.goBack')}
+          onClick={() => navigate(-1)}
+        />
       </header>
 
       <div className="settings-content settings-content--flat">

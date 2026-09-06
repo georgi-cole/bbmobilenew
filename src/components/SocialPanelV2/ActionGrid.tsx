@@ -230,9 +230,9 @@ export default function ActionGrid({
       : [
           ...orderedVisibleActions.slice(0, Math.floor(selectedActionIndex / 2) * 2),
           orderedVisibleActions[selectedActionIndex],
-          ...orderedVisibleActions.filter((_, index) => index !== selectedActionIndex).slice(
-            Math.floor(selectedActionIndex / 2) * 2
-          ),
+          ...orderedVisibleActions
+            .filter((_, index) => index !== selectedActionIndex)
+            .slice(Math.floor(selectedActionIndex / 2) * 2),
         ]
 
   function getAvailabilityReason(costs: {

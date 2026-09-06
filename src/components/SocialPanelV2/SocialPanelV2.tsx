@@ -209,10 +209,9 @@ export default function SocialPanelV2() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
   const [successPulse, setSuccessPulse] = useState(false)
-  const [relationshipPulseDeltas, setRelationshipPulseDeltas] = useState<ReadonlyMap<
-    string,
-    number
-  >>(new Map())
+  const [relationshipPulseDeltas, setRelationshipPulseDeltas] = useState<
+    ReadonlyMap<string, number>
+  >(new Map())
   const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
@@ -820,7 +819,7 @@ export default function SocialPanelV2() {
   // should not erase the context the player just chose.
   const focusedTargetId = primaryTargetId ?? suggestedSafetyTargetId
   const focusedPlayer = focusedTargetId
-    ? game.players.find((player) => player.id === focusedTargetId) ?? null
+    ? (game.players.find((player) => player.id === focusedTargetId) ?? null)
     : null
   const focusedOutward = focusedPlayer
     ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.affinity
@@ -853,9 +852,7 @@ export default function SocialPanelV2() {
       <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ' sp2-modal--normal'}`}>
         <header className="sp2-header">
           <span className="sp2-header__identity">
-            <span className="sp2-header__title">
-              {dramaMode ? 'Reality Mode' : 'Social Phase'}
-            </span>
+            <span className="sp2-header__title">{dramaMode ? 'Reality Mode' : 'Social Phase'}</span>
             <span className="sp2-header__subtitle">House relationships</span>
           </span>
           <div
@@ -897,7 +894,9 @@ export default function SocialPanelV2() {
               <strong>{activePublicDirection.description}</strong>
               {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
               <div className="sp2-public-request__footer">
-                <span>{activePublicDirection.completionLabel ?? 'Complete the requested move'}</span>
+                <span>
+                  {activePublicDirection.completionLabel ?? 'Complete the requested move'}
+                </span>
                 {activePublicDirection.relatedPlayerId && (
                   <button type="button" onClick={focusPublicRequest}>
                     Focus move
@@ -1014,7 +1013,11 @@ export default function SocialPanelV2() {
                       className="sp2-focus__meter"
                       aria-label={`${focusedRelationship?.label ?? 'Relationship'} relationship`}
                     >
-                      <span style={{ width: `${Math.max(6, Math.min(94, (focusedAffinity + 100) / 2))}%` }} />
+                      <span
+                        style={{
+                          width: `${Math.max(6, Math.min(94, (focusedAffinity + 100) / 2))}%`,
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -1038,7 +1041,9 @@ export default function SocialPanelV2() {
                 <span className="sp2-section-heading__title">Set the tone</span>
               </div>
               <span className="sp2-moves__selection">
-                {selectedAction ? getSocialActionPresentation(selectedAction).title : 'Choose a move'}
+                {selectedAction
+                  ? getSocialActionPresentation(selectedAction).title
+                  : 'Choose a move'}
               </span>
             </div>
             <div className="sp2-move-filters" role="tablist" aria-label="Action categories">
@@ -1125,7 +1130,10 @@ export default function SocialPanelV2() {
           </div>
         )}
 
-        <div className={`sp2-recent${historyOpen ? ' sp2-recent--expanded' : ''}`} aria-label="Recent Activity log">
+        <div
+          className={`sp2-recent${historyOpen ? ' sp2-recent--expanded' : ''}`}
+          aria-label="Recent Activity log"
+        >
           <RecentActivity
             players={game.players.filter((player) => !player.isUser)}
             dramaMode={dramaMode}
