@@ -254,7 +254,13 @@ export default function ActionGrid({
   }
 
   return (
-    <div ref={containerRef} className="sp2-action-grid" role="group" onKeyDown={handleKeyDown}>
+    <div
+      ref={containerRef}
+      className="sp2-action-grid"
+      role="group"
+      aria-label="Action grid"
+      onKeyDown={handleKeyDown}
+    >
       {visibleActions.map((action) => {
         const contextualAction = contextualizeAction(action)
         const costs = getActionCosts(action)

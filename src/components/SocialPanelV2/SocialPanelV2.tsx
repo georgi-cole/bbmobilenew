@@ -928,7 +928,7 @@ export default function SocialPanelV2() {
         </div>
 
         <div id="sp2-body" className="sp2-body">
-          <section className="sp2-hubmates" aria-label="Hubmate roster">
+          <section className="sp2-hubmates" aria-label="Player roster">
             <div className="sp2-section-heading">
               <span>
                 <span className="sp2-section-heading__eyebrow">Private lounge</span>
