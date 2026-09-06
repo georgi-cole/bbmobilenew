@@ -1838,6 +1838,14 @@ export default function GameScreen() {
                 if (adPending) return
                 setAdPending(true)
                 const state = storeRef.current.getState()
+                // The browser/dev build has no native rewarded-ad bridge yet.
+                // Keep the retry usable now; the native path below will gate the
+                // same reward behind a completed ad once the bridge is connected.
+                if (!window.GameAds?.showRewarded) {
+                  onReward()
+                  setAdPending(false)
+                  return
+                }
                 const requested = showRewarded(
                   'competition_retry',
                   state,

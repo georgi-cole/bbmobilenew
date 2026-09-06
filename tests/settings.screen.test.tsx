@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import Settings from '../src/screens/Settings/Settings'
 import SettingsAdmin from '../src/screens/SettingsAdmin/SettingsAdmin'
 import { APP_VERSION } from '../src/appVersion'
-import gameReducer from '../src/store/gameSlice'
+import gameReducer, { requestPublicModeChange, setPhase } from '../src/store/gameSlice'
 import settingsReducer, { setGameUX } from '../src/store/settingsSlice'
 import vipReducer, { initializeVip } from '../src/store/vipSlice'
 import { restartApp } from '../src/utils/restartApp'
@@ -228,6 +228,37 @@ describe('Settings screen', () => {
 
     expect(store.getState().settings.sim.publicMode).toBe(true)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('explains when a mid-cycle Public Mode change is queued for the next Day Start', () => {
+    const { store } = renderSettings(['/settings'], false, true)
+    act(() => {
+      // The local test build exposes every purchase, so explicitly return the
+      // active-season snapshot to OFF before queuing the player-visible change.
+      store.dispatch(requestPublicModeChange(false))
+      store.dispatch(setPhase('social_1'))
+      store.dispatch(requestPublicModeChange(true))
+    })
+
+    expect(
+      screen.getByText(/public mode becomes active at the next day start/i)
+    ).toBeInTheDocument()
+  })
+
+  it('acknowledges a queued Public Mode change as soon as the toggle is used', () => {
+    const { store } = renderSettings(['/settings'], false, true)
+    act(() => {
+      store.dispatch(requestPublicModeChange(false))
+      store.dispatch(setPhase('social_1'))
+    })
+
+    fireEvent.click(screen.getByLabelText(/toggle public mode/i))
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      /changes will take effect on the next day/i
+    )
+    expect(screen.getByRole('dialog')).toHaveTextContent(/next day start/i)
+    expect(screen.getByRole('button', { name: /got it/i })).toBeInTheDocument()
   })
 
   it('gates Reality Mode for standard users', () => {

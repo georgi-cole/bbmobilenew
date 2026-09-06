@@ -631,6 +631,7 @@ export function createInitialGameState(options?: {
     prevHohId: null,
     nomineeIds: [],
     publicModeEnabled,
+    pendingPublicModeEnabled: null,
     posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
@@ -1325,6 +1326,22 @@ function activateVoxPopuliForSeason(state: GameState) {
       forceOnTv: true,
     })
   }
+}
+
+function applyPendingPublicModeChange(state: GameState, phase: Phase) {
+  const requested = state.pendingPublicModeEnabled
+  if (typeof requested !== 'boolean') return
+
+  state.publicModeEnabled = requested
+  state.pendingPublicModeEnabled = null
+  pushEvent(
+    state,
+    requested
+      ? '📡 Public Mode is now live. The outside world will shape this cycle.'
+      : '📡 Public Mode is now off. The house will shape this cycle on its own.',
+    'game',
+    { phase }
+  )
 }
 
 function breakCupidArrowSpell(state: GameState) {
@@ -3141,6 +3158,37 @@ const gameSlice = createSlice({
     },
     setDramaSocialMode(state, action: PayloadAction<boolean>) {
       state.dramaSocialMode = action.payload
+    },
+    /**
+     * Changes Public Mode for an in-progress Classic season without mutating
+     * an active weekly cycle. The next Day Start is the normal safe boundary;
+     * opening and day-boundary screens can apply it immediately.
+     */
+    requestPublicModeChange(state, action: PayloadAction<boolean>) {
+      if (state.mode === 'survival' || isVoxPopuliActive(state)) return
+
+      const requested = action.payload
+      if (state.publicModeEnabled === requested) {
+        state.pendingPublicModeEnabled = null
+        return
+      }
+
+      const isSafeBoundary = ['season_start', 'week_start', 'week_end'].includes(state.phase)
+      if (isSafeBoundary) {
+        state.pendingPublicModeEnabled = requested
+        applyPendingPublicModeChange(state, state.phase)
+        return
+      }
+
+      state.pendingPublicModeEnabled = requested
+      pushEvent(
+        state,
+        requested
+          ? '📡 Public Mode will enter at the next Day Start. The current cycle stays intact.'
+          : '📡 Public Mode will leave at the next Day Start. The current cycle stays intact.',
+        'game',
+        { phase: state.phase }
+      )
     },
     setLohSocialPlan(state, action: PayloadAction<NonNullable<GameState['lohSocialPlan']>>) {
       state.lohSocialPlan = action.payload
@@ -7293,6 +7341,7 @@ const gameSlice = createSlice({
         }
         case 'week_start': {
           const enteringDayOne = state.phase === 'season_start'
+          applyPendingPublicModeChange(state, 'week_start')
           activateVoxPopuliForSeason(state)
           // week_end → week_start: increment week and reset week-level fields.
           // Save the outgoing LOH so they can be excluded from this week's LOH comp.
@@ -8972,6 +9021,7 @@ export const {
   reorderPhaseBroadcasts,
   removeCustomBroadcast,
   setDramaSocialMode,
+  requestPublicModeChange,
   setLohSafetyAdvice,
   addSocialSummary,
   setLive,

@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import gameReducer, { replaceBroadcastConfig } from './gameSlice'
+import gameReducer, { replaceBroadcastConfig, requestPublicModeChange } from './gameSlice'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, {
@@ -175,6 +175,7 @@ const runSnapshotAutosave = createRunSnapshotAutosaveController(saveRunSnapshot)
 
 // Persist settings to localStorage whenever they change
 let prevSettings = store.getState().settings
+let prevPublicModeSetting = prevSettings.sim.publicMode
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile
 // Persist profiles state to localStorage whenever it changes
@@ -236,6 +237,10 @@ store.subscribe(() => {
   if (current.settings !== prevSettings) {
     prevSettings = current.settings
     saveSettings(current.settings)
+    if (current.settings.sim.publicMode !== prevPublicModeSetting) {
+      prevPublicModeSetting = current.settings.sim.publicMode
+      store.dispatch(requestPublicModeChange(current.settings.sim.publicMode))
+    }
     // Keep SoundManager category enabled/volume state in sync with Redux audio
     // settings so that mute controls and Settings screen are the canonical source
     // of truth and stale localStorage flags cannot silently disable audio.

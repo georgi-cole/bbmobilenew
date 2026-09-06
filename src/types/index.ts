@@ -737,10 +737,15 @@ export interface GameState {
   nomineeIds: string[]
   /**
    * Feature flag snapshot for the current season. When true, normal weeks use
-   * the public-influence ruleset (3 nominees pre-veto + public save). This is
-   * read from settings at season creation/reset time.
+   * the public-influence ruleset (3 nominees pre-veto + public save).
    */
   publicModeEnabled?: boolean
+  /**
+   * A requested Public Mode change made while a weekly cycle is already in
+   * progress. It is applied at the next safe Day Start so an active block,
+   * safety ceremony, or vote can never be rewritten mid-flow.
+   */
+  pendingPublicModeEnabled?: boolean | null
   /** Player ID of the current Power of Safety holder, or null. */
   posWinnerId: string | null
   /**
