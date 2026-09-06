@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
 import StoreProductModal from '../../components/StoreProductModal/StoreProductModal'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import { initializeVip, purchaseStoreItem, restoreVip, selectVip } from '../../store/vipSlice'
 import { setGameUX } from '../../store/settingsSlice'
@@ -119,9 +120,7 @@ export default function Store() {
       <header className="vip-store__header">
         <h1>BIGEYE MARKETFACE</h1>
         {storeState.isActive && <span className="vip-store__active-badge">VIP Owned</span>}
-        <button type="button" className="vip-store__back" onClick={goBack} aria-label="Go back">
-          ↩
-        </button>
+        <GameBackButton className="vip-store__back" onClick={goBack} />
       </header>
 
       <section className="vip-store__card" aria-labelledby="vip-plan-title">

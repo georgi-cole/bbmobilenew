@@ -19,6 +19,7 @@ import {
   getIncomingInteractionTone,
   orderIncomingInteractionResponseOptions,
 } from '../../social/incomingInteractionPresentation'
+import GameBackButton from '../ui/GameBackButton/GameBackButton'
 import {
   getIncomingSocialModuleAvailability,
   logBlockedSocialModuleOpen,
@@ -481,17 +482,14 @@ export default function IncomingInteractionsInbox() {
               <span className="inbox-header__title-text">Incoming Interactions</span>
               {globalDramaMode && <span className="inbox-header__mode">Reality</span>}
             </div>
-            <button
+            <GameBackButton
               className="inbox-header__close"
-              type="button"
-              aria-label="Close inbox"
+              label="Close inbox"
               onClick={() => {
                 setRecentlyResolvedIds(new Set())
                 dispatch(closeIncomingInbox())
               }}
-            >
-              <span aria-hidden="true">↩</span>
-            </button>
+            />
           </div>
 
           <div className="inbox-header__meta">

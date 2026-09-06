@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { TvEvent } from '../../types'
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
 import { normalizeGameCopy, tease } from '../../utils/tvLogTemplates'
+import GameBackButton from '../ui/GameBackButton/GameBackButton'
 import './TVLog.css'
 
 const MAX_ADAPTIVE_VISIBLE_ROWS = 3
@@ -205,14 +206,11 @@ export default function TVLog({
               <span className="tv-log-modal__eyebrow">Hub history</span>
               <h2 id="tv-log-modal-title">Game log</h2>
             </div>
-            <button
-              type="button"
+            <GameBackButton
               className="tv-log-modal__close"
-              aria-label="Close game log"
+              label="Close game log"
               onClick={() => setLogOpen(false)}
-            >
-              ↩
-            </button>
+            />
           </header>
           {activityContent()}
         </section>

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import './Legal.css'
 
 function externalUrl(value: string | undefined): string | null {
@@ -22,9 +23,7 @@ export default function Legal() {
   return (
     <main className="legal-screen">
       <header className="legal-screen__header">
-        <button type="button" onClick={() => navigate(-1)} aria-label="Go back">
-          &larr;
-        </button>
+        <GameBackButton onClick={() => navigate(-1)} />
         <div>
           <p>THE BIG EYE</p>
           <h1>Privacy, terms &amp; support</h1>

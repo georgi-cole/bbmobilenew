@@ -1,6 +1,7 @@
 ﻿import { useMemo, useRef } from 'react'
 import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
+import type { ActionCategory } from '../../social/socialActions'
 import {
   buildEffectiveSocialActions,
   isActionAllowedForRealityPreset,
@@ -33,6 +34,7 @@ export interface ActionGridProps {
   dramaNetwork?: DramaSocialNetwork
   hiddenActionIds?: ReadonlySet<string>
   energyCostOverrides?: Readonly<Record<string, number>>
+  categoryFilter?: 'all' | 'connect' | 'strategy' | 'drama'
 }
 
 /**
@@ -59,6 +61,7 @@ export default function ActionGrid({
   dramaNetwork,
   hiddenActionIds = new Set(),
   energyCostOverrides,
+  categoryFilter = 'all',
 }: ActionGridProps) {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -198,8 +201,16 @@ export default function ActionGrid({
 
   const isRealityPreview = (action: SocialActionDefinition) => isRelevantRealityPreview(action)
 
-  const visibleActions = actions
+  function matchesCategoryFilter(category: ActionCategory): boolean {
+    if (categoryFilter === 'all') return true
+    if (categoryFilter === 'connect') return category === 'friendly' || category === 'alliance'
+    if (categoryFilter === 'strategy') return category === 'strategic'
+    return category === 'aggressive'
+  }
+
+  const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
+    .filter((action) => matchesCategoryFilter(action.category))
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
       const rightPreview = isRealityPreview(right)
@@ -209,6 +220,20 @@ export default function ActionGrid({
       if (right.id === 'ask_loh_target') return 1
       return 0
     })
+  // Keep a chosen move at the start of its existing grid row. If it was the
+  // right-hand card, its row-mate follows it instead, so the featured card
+  // gets a full row without sending the player back to the top of the list.
+  const selectedActionIndex = orderedVisibleActions.findIndex((action) => action.id === selectedId)
+  const visibleActions =
+    selectedActionIndex === -1
+      ? orderedVisibleActions
+      : [
+          ...orderedVisibleActions.slice(0, Math.floor(selectedActionIndex / 2) * 2),
+          orderedVisibleActions[selectedActionIndex],
+          ...orderedVisibleActions
+            .filter((_, index) => index !== selectedActionIndex)
+            .slice(Math.floor(selectedActionIndex / 2) * 2),
+        ]
 
   function getAvailabilityReason(costs: {
     energy: number
@@ -229,7 +254,13 @@ export default function ActionGrid({
   }
 
   return (
-    <div ref={containerRef} className="sp2-action-grid" role="group" onKeyDown={handleKeyDown}>
+    <div
+      ref={containerRef}
+      className="sp2-action-grid"
+      role="group"
+      aria-label="Action grid"
+      onKeyDown={handleKeyDown}
+    >
       {visibleActions.map((action) => {
         const contextualAction = contextualizeAction(action)
         const costs = getActionCosts(action)

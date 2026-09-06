@@ -16,6 +16,7 @@ import {
 } from '../../publicOpinion'
 import type { Player } from '../../types'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import './PublicMeter.css'
 
 const DICEBEAR_HOST = 'dicebear.com'
@@ -442,14 +443,7 @@ export default function PublicMeter() {
       <div className="public-meter">
         <div className="public-meter__header">
           <h1 className="public-meter__title">📊 Public Meter</h1>
-          <button
-            className="public-meter__back-btn"
-            type="button"
-            onClick={() => navigate('/game')}
-            aria-label="Go back"
-          >
-            ↩
-          </button>
+          <GameBackButton onClick={() => navigate('/game')} />
         </div>
         <div className="public-meter__empty">
           <p>
@@ -469,14 +463,7 @@ export default function PublicMeter() {
           <h1 className="public-meter__title">📊 Public Meter</h1>
           <span className="public-meter__subtitle">The audience is always watching.</span>
         </div>
-        <button
-          className="public-meter__back-btn"
-          type="button"
-          onClick={() => navigate('/game')}
-          aria-label="Go back"
-        >
-          ↩
-        </button>
+        <GameBackButton onClick={() => navigate('/game')} />
       </div>
 
       {isVoxPopuli && (
@@ -810,14 +797,11 @@ export default function PublicMeter() {
             aria-labelledby="audience-dossier-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <button
+            <GameBackButton
               className="audience-dossier__back"
-              type="button"
+              label="Close audience dossier"
               onClick={() => setSelectedPlayerId(null)}
-              aria-label="Close audience dossier"
-            >
-              <span aria-hidden="true">↩</span>
-            </button>
+            />
             <div className="audience-dossier__identity">
               <PublicMeterAvatar
                 player={selectedPlayer}

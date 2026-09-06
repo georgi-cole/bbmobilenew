@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import './Rules.css'
 
 type Tile = {
@@ -254,14 +255,7 @@ export default function Rules() {
         <div className="rules-screen__logo">BE</div>
         <div className="rules-screen__title-row">
           <h1 className="rules-screen__title">How to Play</h1>
-          <button
-            className="rules-screen__back"
-            type="button"
-            aria-label="Go back"
-            onClick={() => navigate(-1)}
-          >
-            ↩
-          </button>
+          <GameBackButton className="rules-screen__back" onClick={() => navigate(-1)} />
         </div>
         <p className="rules-screen__subtitle">The Big Eye - Player Guide</p>
         <p className="rules-screen__lede">

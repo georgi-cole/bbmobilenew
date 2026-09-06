@@ -30,6 +30,8 @@ interface PlayerListProps {
   /** Plain taps add/remove players while a multi-target action is active. */
   multiSelectEnabled?: boolean
   deltasByTargetId?: ReadonlyMap<string, number>
+  /** Fresh relationship shifts caused by the most recently completed action. */
+  relationshipPulseDeltas?: ReadonlyMap<string, number>
   /** Multi-target actions use tap-to-toggle selection on touch devices. */
   multiSelect?: boolean
   /** Active Cupid's Arrow partner information, keyed by roster player ID. */
@@ -57,6 +59,7 @@ export default function PlayerList({
   multiSelectEnabled = false,
   selectedIds: controlledSelectedIds,
   deltasByTargetId,
+  relationshipPulseDeltas,
   multiSelect = false,
   cupidPartners,
 }: PlayerListProps) {
@@ -132,7 +135,7 @@ export default function PlayerList({
   }
 
   return (
-    <div ref={containerRef} onKeyDown={handleContainerKeyDown}>
+    <div ref={containerRef} className="player-list" onKeyDown={handleContainerKeyDown}>
       {players.map((player, index) => {
         const disabled = disabledIds.includes(player.id)
         const isSelected = displaySelectedIds.has(player.id)
@@ -170,6 +173,7 @@ export default function PlayerList({
               }}
               affinity={affinity}
               affinityDelta={deltasByTargetId?.get(player.id)}
+              relationshipPulseDelta={relationshipPulseDeltas?.get(player.id)}
               relationshipTags={relationshipTags}
               cupidPartner={cupidPartners?.[player.id]}
             />

@@ -22,6 +22,7 @@ import {
   logBlockedSocialModuleOpen,
 } from '../../social/socialModuleAvailability'
 import ActionGrid from './ActionGrid'
+import GameBackButton from '../ui/GameBackButton/GameBackButton'
 import PlayerList from './PlayerList'
 import RecentActivity from './RecentActivity'
 import HousePulse from '../HousePulse/HousePulse'
@@ -37,10 +38,30 @@ import { executeHumanRealityAction } from '../../social/reality/humanFlow'
 import { getCupidPartnerId, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import type { PublicDirection } from '../../publicOpinion/types'
 import IntelLeads from './IntelLeads'
+import { getRelationshipLabel } from './relationshipUtils'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
 const EMPTY_PUBLIC_DIRECTIONS: PublicDirection[] = []
+const MOVE_FILTERS = [
+  { id: 'all', label: 'All moves' },
+  { id: 'connect', label: 'Connect' },
+  { id: 'strategy', label: 'Strategy' },
+  { id: 'drama', label: 'Drama' },
+] as const
+const RELATIONSHIP_TAG_LABELS: Record<string, string> = {
+  alliance: 'Alliance',
+  romance: 'Romance',
+  bromance: 'Ride-or-die',
+  cupid_partner: 'Cupid pair',
+  rivalry: 'Rivalry',
+  target: 'Targeted',
+  betrayal: 'Betrayed',
+  broken_promise: 'Broken promise',
+  broken_alliance: 'Broken alliance',
+  ex: 'Exes',
+  broken_romance: 'Broken romance',
+}
 
 function isNomineeStatus(status: Player['status']): boolean {
   return status.includes('nominated')
@@ -50,6 +71,20 @@ function formatPlayerNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? 'the house'
   if (names.length === 2) return `${names[0]} and ${names[1]}`
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+function formatPlayerStatus(status: Player['status']): string {
+  return status
+    .split('+')
+    .map((part) => {
+      if (part === 'loh') return 'LOH'
+      if (part === 'pos') return 'Safety'
+      if (part === 'nominated') return 'Nominated'
+      if (part === 'active') return 'Active'
+      if (part === 'jury') return 'Tribunal'
+      return part[0]?.toUpperCase() + part.slice(1)
+    })
+    .join(' + ')
 }
 
 function getSubjectCandidates(
@@ -174,6 +209,11 @@ export default function SocialPanelV2() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null)
   const [successPulse, setSuccessPulse] = useState(false)
+  const [relationshipPulseDeltas, setRelationshipPulseDeltas] = useState<
+    ReadonlyMap<string, number>
+  >(new Map())
+  const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
   const handleRealityUpgrade = useCallback(() => {
     dispatch(closeSocialPanel())
@@ -466,6 +506,14 @@ export default function SocialPanelV2() {
 
   const handleActionClick = useCallback(
     (actionId: string) => {
+      if (selectedActionId === actionId) {
+        setSelectedActionId(null)
+        setSelectedSubjectId(null)
+        setMultiSelectActive(false)
+        setFeedbackMsg(null)
+        return
+      }
+
       const nextAction = SocialManeuvers.getActionById(actionId)
       const nextMode = nextAction ? resolveActionTargetMode(nextAction, dramaMode) : 'primary'
       const nextBatchCompatible =
@@ -482,7 +530,7 @@ export default function SocialPanelV2() {
       setSelectedSubjectId(null)
       setFeedbackMsg(null)
     },
-    [dramaMode, primaryTargetId]
+    [dramaMode, primaryTargetId, selectedActionId]
   )
 
   const handleSelectionChange = useCallback(
@@ -688,8 +736,17 @@ export default function SocialPanelV2() {
       }
       successPulseTimerRef.current = setTimeout(() => {
         setSuccessPulse(false)
+        setRelationshipPulseDeltas(new Map())
         successPulseTimerRef.current = null
       }, 850)
+
+      const immediateDeltas = new Map<string, number>()
+      for (const result of successfulResults) {
+        for (const [targetId, delta] of Object.entries(result.targetDeltas ?? {})) {
+          if (delta !== 0) immediateDeltas.set(targetId, delta)
+        }
+      }
+      setRelationshipPulseDeltas(immediateDeltas)
     }
 
     if (executeGuardTimerRef.current !== null) {
@@ -757,6 +814,34 @@ export default function SocialPanelV2() {
         )
       : []
 
+  // Keep the player's chosen hubmate in the read panel while they browse
+  // moves. Some moves do not require a target to execute, but selecting one
+  // should not erase the context the player just chose.
+  const focusedTargetId = primaryTargetId ?? suggestedSafetyTargetId
+  const focusedPlayer = focusedTargetId
+    ? (game.players.find((player) => player.id === focusedTargetId) ?? null)
+    : null
+  const focusedOutward = focusedPlayer
+    ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.affinity
+    : undefined
+  const focusedInward = focusedPlayer
+    ? relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.affinity
+    : undefined
+  const focusedAffinity =
+    focusedOutward !== undefined || focusedInward !== undefined
+      ? Math.round(((focusedOutward ?? 0) + (focusedInward ?? 0)) / 2)
+      : undefined
+  const focusedRelationship =
+    focusedAffinity === undefined ? null : getRelationshipLabel(focusedAffinity)
+  const focusedTags = focusedPlayer
+    ? Array.from(
+        new Set([
+          ...(relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.tags ?? []),
+          ...(relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.tags ?? []),
+        ])
+      ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
+    : []
+
   const executeCopy = 'Execute'
 
   return (
@@ -766,8 +851,9 @@ export default function SocialPanelV2() {
       </a>
       <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ' sp2-modal--normal'}`}>
         <header className="sp2-header">
-          <span className="sp2-header__title">
-            {dramaMode ? '🔥 Reality Mode' : '💬 Social Phase'}
+          <span className="sp2-header__identity">
+            <span className="sp2-header__title">{dramaMode ? 'Reality Mode' : 'Social Phase'}</span>
+            <span className="sp2-header__subtitle">House relationships</span>
           </span>
           <div
             className={`sp2-header__resources${dramaMode ? '' : ' sp2-header__resources--normal'}`}
@@ -794,58 +880,60 @@ export default function SocialPanelV2() {
               💡 {info}
             </button>
           </div>
-          <button
+          <GameBackButton
             className="sp2-header__close"
+            label="Close social panel"
             onClick={handleClose}
-            type="button"
-            aria-label="Close social panel"
-          >
-            ↩
-          </button>
+          />
         </header>
 
-        <IntelLeads
-          reality={socialState.reality}
-          humanId={humanPlayer.id}
-          players={game.players}
-          currentDay={game.week}
-        />
+        <div className="sp2-briefing">
+          {activePublicDirection && (
+            <section className="sp2-public-request" aria-label="Active public request">
+              <div className="sp2-public-request__eyebrow">Audience directive</div>
+              <strong>{activePublicDirection.description}</strong>
+              {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
+              <div className="sp2-public-request__footer">
+                <span>
+                  {activePublicDirection.completionLabel ?? 'Complete the requested move'}
+                </span>
+                {activePublicDirection.relatedPlayerId && (
+                  <button type="button" onClick={focusPublicRequest}>
+                    Focus move
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
 
-        {activePublicDirection && (
-          <section className="sp2-public-request" aria-label="Active public request">
-            <div className="sp2-public-request__eyebrow">Audience directive</div>
-            <strong>{activePublicDirection.description}</strong>
-            {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
-            <div className="sp2-public-request__footer">
-              <span>
-                {activePublicDirection.completionLabel ?? 'Complete the requested move'} · +
-                {activePublicDirection.approvalDelta} approval
-              </span>
-              {activePublicDirection.relatedPlayerId && (
-                <button type="button" onClick={focusPublicRequest}>
-                  Show me how
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-        {dramaMode && (
-          <HousePulse
-            network={dramaNetwork}
-            players={game.players}
-            humanId={humanPlayer.id}
-            actionHistory={actionHistory}
-            relationships={relationships ?? {}}
-            weekStartRelSnapshot={weekStartRelSnapshot}
-            currentWeek={game.week}
+          <IntelLeads
             reality={socialState.reality}
+            humanId={humanPlayer.id}
+            players={game.players}
+            currentDay={game.week}
           />
-        )}
+
+          {dramaMode && (
+            <HousePulse
+              network={dramaNetwork}
+              players={game.players}
+              humanId={humanPlayer.id}
+              actionHistory={actionHistory}
+              relationships={relationships ?? {}}
+              weekStartRelSnapshot={weekStartRelSnapshot}
+              currentWeek={game.week}
+              reality={socialState.reality}
+            />
+          )}
+        </div>
 
         <div id="sp2-body" className="sp2-body">
-          <div className="sp2-column sp2-column--players" aria-label="Player roster">
-            <div className="sp2-column__heading">
+          <section className="sp2-hubmates" aria-label="Player roster">
+            <div className="sp2-section-heading">
+              <span>
+                <span className="sp2-section-heading__eyebrow">Private lounge</span>
+                <span className="sp2-section-heading__title">Choose a hubmate</span>
+              </span>
               {!usesMultipleTargets && (
                 <span
                   className="sp2-relationship-legend"
@@ -881,13 +969,101 @@ export default function SocialPanelV2() {
               onSelectionChange={handleSelectionChange}
               multiSelectEnabled={targetMode === 'multi'}
               deltasByTargetId={deltasByTargetId}
+              relationshipPulseDeltas={relationshipPulseDeltas}
               multiSelect={usesMultipleTargets}
               cupidPartners={cupidPartners}
             />
-          </div>
+          </section>
 
-          <div className="sp2-column sp2-column--actions" aria-label="Action grid">
-            <span className="sp2-column__label">Actions</span>
+          <section className={`sp2-focus${focusedPlayer ? ' sp2-focus--active' : ''}`}>
+            {focusedPlayer ? (
+              <>
+                <div className="sp2-focus__portrait">
+                  <PlayerAvatar
+                    player={focusedPlayer}
+                    size="lg"
+                    affinity={focusedAffinity}
+                    relationshipScale="signed"
+                  />
+                </div>
+                <div className="sp2-focus__copy">
+                  <span className="sp2-focus__eyebrow">Your read on</span>
+                  <h2>{focusedPlayer.name}</h2>
+                  <div className="sp2-focus__status-line">
+                    {focusedRelationship && (
+                      <span
+                        className={`sp2-focus__relationship sp2-focus__relationship--${focusedRelationship.key}`}
+                      >
+                        {focusedRelationship.label}
+                      </span>
+                    )}
+                    <span className="sp2-focus__status">
+                      {formatPlayerStatus(focusedPlayer.status)}
+                    </span>
+                  </div>
+                  {focusedTags.length > 0 && (
+                    <div className="sp2-focus__tags">
+                      {focusedTags.slice(0, 3).map((tag) => (
+                        <span key={tag}>{RELATIONSHIP_TAG_LABELS[tag]}</span>
+                      ))}
+                    </div>
+                  )}
+                  {focusedAffinity !== undefined && (
+                    <div
+                      className="sp2-focus__meter"
+                      aria-label={`${focusedRelationship?.label ?? 'Relationship'} relationship`}
+                    >
+                      <span
+                        style={{
+                          width: `${Math.max(6, Math.min(94, (focusedAffinity + 100) / 2))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="sp2-focus__empty-mark" aria-hidden="true" />
+                <div className="sp2-focus__copy">
+                  <span className="sp2-focus__eyebrow">The room is listening</span>
+                  <h2>Who do you want to approach?</h2>
+                  <p>Pick a hubmate to see your relationship and the moves that could shift it.</p>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="sp2-moves" aria-label="Social actions">
+            <div className="sp2-moves__heading">
+              <div>
+                <span className="sp2-section-heading__eyebrow">Your move</span>
+                <span className="sp2-section-heading__title">Set the tone</span>
+              </div>
+              <span className="sp2-moves__selection">
+                {selectedAction
+                  ? getSocialActionPresentation(selectedAction).title
+                  : 'Choose a move'}
+              </span>
+            </div>
+            <div className="sp2-move-filters" role="tablist" aria-label="Action categories">
+              {MOVE_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={moveFilter === filter.id}
+                  className={moveFilter === filter.id ? 'is-active' : ''}
+                  onClick={() => {
+                    setMoveFilter(filter.id)
+                    setSelectedActionId(null)
+                    setSelectedSubjectId(null)
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
             <ActionGrid
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
@@ -914,8 +1090,9 @@ export default function SocialPanelV2() {
                   ? { [selectedActionId]: totalCosts.energy }
                   : undefined
               }
+              categoryFilter={moveFilter}
             />
-          </div>
+          </section>
         </div>
 
         {needsSubject && effectivePrimaryTargetId && (
@@ -953,12 +1130,17 @@ export default function SocialPanelV2() {
           </div>
         )}
 
-        <div className="sp2-recent" aria-label="Recent Activity log">
+        <div
+          className={`sp2-recent${historyOpen ? ' sp2-recent--expanded' : ''}`}
+          aria-label="Recent Activity log"
+        >
           <RecentActivity
             players={game.players.filter((player) => !player.isUser)}
             dramaMode={dramaMode}
             humanId={humanPlayer.id}
             relationships={relationships}
+            compact
+            onExpandedChange={setHistoryOpen}
           />
         </div>
 

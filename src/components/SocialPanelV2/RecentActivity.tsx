@@ -14,6 +14,9 @@ export interface RecentActivityProps {
   dramaMode?: boolean
   humanId?: string
   relationships?: RelationshipsMap
+  /** Shows a single clear receipt with an optional expandable history. */
+  compact?: boolean
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 function getOutcomeIcon(entry: { outcome: 'success' | 'failure' }): string {
@@ -49,11 +52,14 @@ export default function RecentActivity({
   dramaMode = false,
   humanId,
   relationships,
+  compact = false,
+  onExpandedChange,
 }: RecentActivityProps) {
   const sessionLogs = useAppSelector(selectSessionLogs)
   const [clearedBefore, setClearedBefore] = useState(0)
   const listRef = useRef<HTMLUListElement>(null)
   const [highlightedKeys, setHighlightedKeys] = useState<Set<string>>(new Set())
+  const [expanded, setExpanded] = useState(false)
   const prevNewestTimestampRef = useRef(0)
 
   const playerById = useMemo(
@@ -67,6 +73,13 @@ export default function RecentActivity({
         .slice(-maxEntries),
     [sessionLogs, clearedBefore, maxEntries]
   )
+  const displayedLogs = compact && !expanded ? visibleLogs.slice(-1) : visibleLogs
+
+  function toggleHistory() {
+    const next = !expanded
+    setExpanded(next)
+    onExpandedChange?.(next)
+  }
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
@@ -106,14 +119,24 @@ export default function RecentActivity({
     <div className="ra-container" aria-label="Recent Activity">
       {visibleLogs.length > 0 && (
         <div className="ra-header">
-          <button
-            className="ra-clear-btn"
-            type="button"
-            aria-label="Clear recent activity"
-            onClick={() => setClearedBefore(Date.now())}
-          >
-            Clear
-          </button>
+          <span className="ra-title">House wire</span>
+          <span className="ra-header__actions">
+            {compact && visibleLogs.length > 1 && (
+              <button className="ra-history-btn" type="button" onClick={toggleHistory}>
+                {expanded ? 'Latest' : `History · ${visibleLogs.length}`}
+              </button>
+            )}
+            {(!compact || expanded) && (
+              <button
+                className="ra-clear-btn"
+                type="button"
+                aria-label="Clear recent activity"
+                onClick={() => setClearedBefore(Date.now())}
+              >
+                Clear
+              </button>
+            )}
+          </span>
         </div>
       )}
 
@@ -121,7 +144,7 @@ export default function RecentActivity({
         <span className="ra-empty">No recent actions.</span>
       ) : (
         <ul className="ra-list" ref={listRef} aria-label="Recent actions">
-          {visibleLogs.map((entry) => {
+          {displayedLogs.map((entry) => {
             const action = getActionById(entry.actionId)
             const actionTitle = action
               ? getSocialActionPresentation(action).title
@@ -163,6 +186,9 @@ export default function RecentActivity({
                 : dramaMode
                   ? getSocialNarrative(entry.actionId, narrativeContext, entry.timestamp)
                   : `You targeted ${narrativeContext}.`)
+            const displayNarrative = narrative.startsWith('You performed')
+              ? `${actionTitle} with ${audienceName}.`
+              : narrative
             const resourceParts = dramaMode
               ? [
                   entry.yieldsApplied?.influence
@@ -190,7 +216,7 @@ export default function RecentActivity({
                   <span className="ra-entry__action-tag">
                     {actionTitle} · {entry.outcome === 'success' ? 'Succeeded' : 'Failed'}
                   </span>
-                  <span className="ra-entry__narrative">{narrative}</span>
+                  <span className="ra-entry__narrative">{displayNarrative}</span>
                   {deltaText && (
                     <span className={`ra-entry__delta ra-entry__delta--${relationshipClass}`}>
                       Relationship change {deltaText}
