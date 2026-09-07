@@ -58,6 +58,105 @@
   animation: countdown-stage-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.minigame-host-demo {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: var(--minigame-safe-padding-top) var(--minigame-safe-padding-right)
+    var(--minigame-safe-padding-bottom) var(--minigame-safe-padding-left);
+  background:
+    radial-gradient(circle at 50% 34%, rgba(190, 98, 221, 0.3), transparent 34%),
+    radial-gradient(circle at 18% 75%, rgba(92, 47, 174, 0.28), transparent 42%),
+    linear-gradient(155deg, rgba(36, 15, 58, 0.98), rgba(16, 7, 31, 0.98));
+}
+
+.minigame-host-demo__card {
+  width: min(100%, 38rem);
+  max-height: 100%;
+  overflow: auto;
+  padding: clamp(1.25rem, 5vw, 2.75rem) clamp(0.3rem, 2vw, 1rem);
+  text-align: center;
+}
+
+.minigame-host-demo__kicker {
+  margin: 0;
+  color: #e8a8ff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.minigame-host-demo__card h2 {
+  margin: 0.45rem 0 0.8rem;
+  color: #fff4ff;
+  font-size: clamp(1.6rem, 7vw, 2.25rem);
+  text-shadow: 0 0 24px rgba(228, 152, 255, 0.28);
+}
+
+.minigame-host-demo__copy {
+  margin: -0.25rem 0 1.3rem;
+  color: #d7c4e6;
+  font-size: 0.92rem;
+}
+
+.minigame-host-demo .turn-demo {
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.minigame-host-demo .turn-demo__kicker {
+  display: none;
+}
+
+.minigame-host-demo .turn-demo__content {
+  padding: 1.05rem 1.1rem 1.2rem;
+}
+
+.minigame-host-demo .turn-demo--chain,
+.minigame-host-demo .turn-demo--blackjack,
+.minigame-host-demo .turn-demo--color,
+.minigame-host-demo .turn-demo--memory,
+.minigame-host-demo .turn-demo--verdict,
+.minigame-host-demo .turn-demo--twin,
+.minigame-host-demo .turn-demo--crystal,
+.minigame-host-demo .turn-demo--auction,
+.minigame-host-demo .turn-demo--gridluck,
+.minigame-host-demo .turn-demo--mines {
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.3);
+}
+
+.minigame-host-demo__start {
+  width: 240px;
+  max-width: 100%;
+  margin-top: 1.5rem;
+  min-height: 48px;
+  padding: 12px 24px;
+  border: 1px solid rgba(255, 239, 194, 0.52);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #d8b66c, #aa7a2d 62%, #80541d);
+  box-shadow:
+    0 10px 25px rgba(153, 103, 30, 0.3),
+    inset 0 1px 0 rgba(255, 248, 217, 0.38);
+  color: #1a1008;
+  font: 800 1rem inherit;
+  cursor: pointer;
+}
+
+.minigame-host-demo__start:disabled {
+  border-color: rgba(223, 191, 237, 0.22);
+  background: #46334f;
+  box-shadow: none;
+  color: #cabbd0;
+  cursor: default;
+}
+
 .minigame-host-ready::before {
   content: '';
   position: absolute;

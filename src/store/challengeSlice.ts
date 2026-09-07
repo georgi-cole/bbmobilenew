@@ -105,7 +105,7 @@ export interface PendingChallenge {
   game: GameRegistryEntry
   seed: number
   participants: string[]
-  phase: 'rules' | 'countdown' | 'playing' | 'results' | 'done'
+  phase: 'rules' | 'demo' | 'countdown' | 'playing' | 'results' | 'done'
   musicVariant?: MusicMinigameVariant
   /** Pre-simulated deterministic scores for every non-human participant. */
   aiScores: Record<string, number>

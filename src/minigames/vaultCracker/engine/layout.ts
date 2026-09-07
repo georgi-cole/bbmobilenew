@@ -9,7 +9,7 @@ export function createVaultCrackerLayout(width: number, height: number, dpr: num
   const padding = clamp(Math.min(width, height) * 0.05, 16, 28);
   const contentWidth = Math.max(220, width - padding * 2);
   const headerHeight = clamp(height * 0.14, 68, 102);
-  const historyHeight = clamp(height * 0.18, 84, 118);
+  const historyHeight = 0;
   const submitHeight = clamp(height * 0.095, 52, 68);
   const dialHeight = clamp(height * 0.15, 78, 104);
   const dialGap = clamp(contentWidth * 0.03, 10, 16);
@@ -56,7 +56,7 @@ export function createVaultCrackerLayout(width: number, height: number, dpr: num
 
   const historyRect = makeRect(
     padding,
-    height - padding - historyHeight,
+    height - padding,
     width - padding * 2,
     historyHeight,
   );
