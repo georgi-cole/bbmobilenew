@@ -119,6 +119,6 @@ export default function MinigameUtilityDock({
         </button>
       </div>
     </>,
-    document.body,
+    document.body
   )
 }
