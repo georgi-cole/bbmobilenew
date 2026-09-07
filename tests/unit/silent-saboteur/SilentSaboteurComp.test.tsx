@@ -7,6 +7,9 @@ import silentSaboteurReducer, {
   selectVictim,
   submitVote,
   endVotingPhase,
+  initSilentSaboteur,
+  fastForwardSilentSaboteur,
+  advanceWinner,
 } from '../../../src/features/silentSaboteur/silentSaboteurSlice';
 import type { SilentSaboteurState } from '../../../src/features/silentSaboteur/silentSaboteurSlice';
 import SilentSaboteurComp from '../../../src/components/SilentSaboteurComp/SilentSaboteurComp';
@@ -44,6 +47,49 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
   afterEach(() => {
     vi.useRealTimers();
     document.body.classList.remove('no-animations');
+  });
+
+  it('does not report a stale completed run when mounted for a Reverse Time retry', async () => {
+    const store = makeStore();
+    const onComplete = vi.fn();
+
+    // This is the Redux state left by "Skip to finale" immediately before the
+    // host remounts the component for a Reverse Time replay.
+    act(() => {
+      store.dispatch(initSilentSaboteur({
+        participantIds: PARTICIPANTS.map((p) => p.id),
+        prizeType: 'POS',
+        seed: 23,
+        humanPlayerId: 'user',
+      }));
+      store.dispatch(advanceIntro());
+      store.dispatch(fastForwardSilentSaboteur());
+      store.dispatch(advanceWinner());
+    });
+    expect(ss(store).phase).toBe('complete');
+
+    render(
+      <Provider store={store}>
+        <SilentSaboteurComp
+          participantIds={PARTICIPANTS.map((p) => p.id)}
+          participants={PARTICIPANTS}
+          prizeType="POS"
+          seed={23}
+          standalone={true}
+          onComplete={onComplete}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {});
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(ss(store)).toMatchObject({
+      phase: 'intro',
+      prizeType: 'POS',
+      seed: 23,
+      outcomeResolved: false,
+    });
   });
 
   it('shows a dedicated bomb reveal screen before the voting UI appears', async () => {
