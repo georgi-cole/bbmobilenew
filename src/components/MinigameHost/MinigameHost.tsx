@@ -814,16 +814,19 @@ export default function MinigameHost({
       aria-modal="true"
       aria-label={`${launchedGame.title} minigame`}
     >
-      {phase !== 'results' && phase !== 'demo' && utilityView !== 'rules' && utilityView !== 'exit' && (
-        <MinigameUtilityDock
-          phase={phase}
-          menuOpen={utilityView === 'menu'}
-          onToggleMenu={() => setUtilityView((current) => (current === 'menu' ? null : 'menu'))}
-          onCloseMenu={() => setUtilityView(null)}
-          onOpenRules={() => setUtilityView('rules')}
-          onRequestExit={() => setUtilityView('exit')}
-        />
-      )}
+      {phase !== 'results' &&
+        phase !== 'demo' &&
+        utilityView !== 'rules' &&
+        utilityView !== 'exit' && (
+          <MinigameUtilityDock
+            phase={phase}
+            menuOpen={utilityView === 'menu'}
+            onToggleMenu={() => setUtilityView((current) => (current === 'menu' ? null : 'menu'))}
+            onCloseMenu={() => setUtilityView(null)}
+            onOpenRules={() => setUtilityView('rules')}
+            onRequestExit={() => setUtilityView('exit')}
+          />
+        )}
 
       {phase === 'rules' && (
         <MinigameRules
@@ -834,13 +837,28 @@ export default function MinigameHost({
       )}
 
       {phase === 'demo' && (
-        <div className="minigame-host-demo" role="dialog" aria-modal="true" aria-label={`${launchedGame.title} example turn`}>
+        <div
+          className="minigame-host-demo"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${launchedGame.title} example turn`}
+        >
           <div className="minigame-host-demo__card">
             <p className="minigame-host-demo__kicker">Demo</p>
             <h2>Try it yourself</h2>
             <p className="minigame-host-demo__copy">Follow the glow and make one choice.</p>
-            <MinigameTurnDemo gameKey={rulesGame.key} title={rulesGame.title} guided={!demoTried} onInteraction={() => setDemoTried(true)} />
-            <button className="minigame-host-demo__start" onClick={handleDemoConfirm} disabled={!demoTried} autoFocus>
+            <MinigameTurnDemo
+              gameKey={rulesGame.key}
+              title={rulesGame.title}
+              guided={!demoTried}
+              onInteraction={() => setDemoTried(true)}
+            />
+            <button
+              className="minigame-host-demo__start"
+              onClick={handleDemoConfirm}
+              disabled={!demoTried}
+              autoFocus
+            >
               {demoTried ? 'Got it' : 'Try it yourself first'}
             </button>
           </div>
