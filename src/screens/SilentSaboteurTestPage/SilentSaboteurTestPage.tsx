@@ -19,12 +19,15 @@ const ALL_PARTICIPANTS = [
   { id: 'nova', name: 'Nova', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 
+let freshSeedCounter = 0;
+
 function createFreshSeed(): number {
   const entropy = new Uint32Array(1);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(entropy);
   } else {
-    entropy[0] = (Date.now() ^ Math.floor(Math.random() * 0x100000000)) >>> 0;
+    freshSeedCounter = (freshSeedCounter + 1) >>> 0;
+    entropy[0] = (Date.now() ^ freshSeedCounter) >>> 0;
   }
   return entropy[0] || 1;
 }
