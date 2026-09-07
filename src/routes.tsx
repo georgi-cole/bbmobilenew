@@ -15,7 +15,10 @@ import RouteLoadingScreen from './components/RouteLoadingScreen/RouteLoadingScre
 import HomeHub from './screens/HomeHub/HomeHub'
 import NotFound from './screens/NotFound/NotFound'
 import SettingsAdminRoute from './routes/SettingsAdminRoute'
-import { lazy, Suspense, type ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
+import { lazyWithChunkRecovery } from './utils/lazyWithChunkRecovery'
+
+const lazy = lazyWithChunkRecovery
 
 const GameRoute = lazy(() => import('./routes/GameRoute'))
 const ConfessionalRoute = lazy(() => import('./screens/DiaryRoom/ConfessionalRoute'))

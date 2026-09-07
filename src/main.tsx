@@ -15,6 +15,7 @@ import { setAudio } from './store/settingsSlice'
 import { SocialEngine } from './social/SocialEngine'
 import { syncRuntimeAudioSettings } from './services/sound/audioSettingsSync'
 import { installAudioVisualSync } from './services/sound/audioVisualSync'
+import { SoundManager } from './services/sound/SoundManager'
 import { initAdBridge } from './services/ads/adsService'
 import { installE2EStateProbe } from './testSupport/e2eStateProbe'
 import App from './App.tsx'
@@ -24,6 +25,15 @@ import './styles/houseOfCardsBrightTheme.css'
 import './styles/houseOfCardsBrightThemePriority.css'
 
 const BUILD_ID = import.meta.env.VITE_BUILD_ID ?? 'local'
+
+// The lazy-chunk recovery helper adds a one-time query parameter to force a
+// fresh GitHub Pages entry bundle. Remove it once this document has started so
+// it never leaks into copied links or normal route URLs.
+const recoveryUrl = new URL(window.location.href)
+if (recoveryUrl.searchParams.has('bbmobile-recovery')) {
+  recoveryUrl.searchParams.delete('bbmobile-recovery')
+  window.history.replaceState(window.history.state, '', recoveryUrl)
+}
 
 // Layout diagnostics are a development-only facility. Clear both activation
 // paths before React mounts so a stale browser flag or copied debug URL can
@@ -103,6 +113,9 @@ const initAudio = store.getState().settings.audio
 syncRuntimeAudioSettings(initAudio)
 
 window.toggleIntroHubSfx = function () {
+  // The Intro Hub is intentionally exempt from the invisible AudioGate, so
+  // this tap must also count as the mobile user gesture that unlocks audio.
+  SoundManager.unlockFromGesture()
   const nextSfxOn = !store.getState().settings.audio.sfxOn
   try {
     localStorage.setItem(SFX_STORAGE_KEY, String(nextSfxOn))
@@ -116,6 +129,10 @@ window.toggleIntroHubSfx = function () {
 }
 
 window.toggleIntroHubMusic = function () {
+  // Android Chrome/WebView will reject playback until a real tap unlocks it.
+  // The music chip is a real tap, so use it as the unlock gesture before
+  // applying the new preference and syncing the desired track.
+  SoundManager.unlockFromGesture()
   const nextMusicOn = !store.getState().settings.audio.musicOn
   try {
     localStorage.setItem(MUSIC_STORAGE_KEY, String(nextMusicOn))

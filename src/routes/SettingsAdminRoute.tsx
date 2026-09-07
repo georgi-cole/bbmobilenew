@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import NotFound from '../screens/NotFound/NotFound';
 import { canAccessSpecialSettings } from '../utils/debugMode';
+import { lazyWithChunkRecovery } from '../utils/lazyWithChunkRecovery';
 
-const SettingsAdmin = lazy(() => import('../screens/SettingsAdmin/SettingsAdmin'));
+const SettingsAdmin = lazyWithChunkRecovery(() => import('../screens/SettingsAdmin/SettingsAdmin'));
 
 export default function SettingsAdminRoute() {
   return import.meta.env.DEV || canAccessSpecialSettings()

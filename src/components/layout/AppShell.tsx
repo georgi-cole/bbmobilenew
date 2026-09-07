@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
@@ -10,7 +10,10 @@ import { buildViewportMetaContent } from './viewportMeta'
 import PortraitOrientationGuard from './PortraitOrientationGuard'
 import SaveRecoveryNotice from '../SaveRecoveryNotice/SaveRecoveryNotice'
 import PhonePreviewSystemChrome from './PhonePreviewSystemChrome'
+import { lazyWithChunkRecovery } from '../../utils/lazyWithChunkRecovery'
 import './AppShell.css'
+
+const lazy = lazyWithChunkRecovery
 
 const THEME_PRESETS = ['midnight', 'neon', 'sunset', 'ocean', 'surveyeval']
 const DebugPanel = lazy(() => import('../DebugPanel/DebugPanel'))
