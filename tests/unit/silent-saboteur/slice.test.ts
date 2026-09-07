@@ -148,6 +148,8 @@ describe('selectVictim', () => {
     store.dispatch(selectVictim({ victimId: victim }));
     expect(getState(store).phase).toBe('voting');
     expect(getState(store).victimId).toBe(victim);
+    expect(getState(store).roundEvidence[victim]).toBeUndefined();
+    expect(getState(store).roundEvidence[saboteurId!]).toBeDefined();
   });
 
   it('inactive player target is ignored', () => {
@@ -266,15 +268,47 @@ describe('advanceReveal', () => {
     expect(getState(store).phase).toBe('round_transition');
   });
 
-  it('goes to final2_jury when exactly 2 remain after reveal (with eliminated jury)', () => {
-    // Start with 3 players → after 1 elimination → 2 remain
-    const store = reachReveal(PLAYERS_3);
+  it('keeps an all-AI tribunal in final2_jury so the cinematic can reveal its ballots', () => {
+    // Start with 3 players and deliberately miss the saboteur. The eliminated
+    // victim remains eligible to judge the unresolved final case.
+    const store = makeStore();
+    init(store, PLAYERS_3);
+    store.dispatch(advanceIntro());
+    const { saboteurId, activeIds } = getState(store);
+    const victim = activeIds.find((id) => id !== saboteurId)!;
+    const other = activeIds.find((id) => id !== saboteurId && id !== victim)!;
+    store.dispatch(selectVictim({ victimId: victim }));
+    store.dispatch(submitVote({ voterId: saboteurId!, accusedId: other }));
+    store.dispatch(submitVote({ voterId: victim, accusedId: other }));
+    store.dispatch(submitVote({ voterId: other, accusedId: saboteurId! }));
     expect(getState(store).phase).toBe('reveal');
     expect(getState(store).activeIds.length).toBe(2);
     store.dispatch(advanceReveal());
     // 1 eliminated player forms the jury
     const state = getState(store);
-    expect(['final2_jury', 'winner']).toContain(state.phase);
+    expect(state.phase).toBe('final2_jury');
+    expect(state.juryVotes).toEqual({});
+  });
+
+  it('does not let a caught final-three saboteur decide the survivor', () => {
+    const store = makeStore();
+    init(store, PLAYERS_3);
+    store.dispatch(advanceIntro());
+    const { saboteurId, activeIds } = getState(store);
+    const victim = activeIds.find((id) => id !== saboteurId)!;
+    store.dispatch(selectVictim({ victimId: victim }));
+    for (const voterId of activeIds) {
+      const accusedId = voterId === saboteurId
+        ? activeIds.find((id) => id !== voterId && id !== victim)!
+        : saboteurId!;
+      store.dispatch(submitVote({ voterId, accusedId }));
+    }
+    expect(getState(store).revealInfo?.reason).toBe('saboteur_caught');
+    store.dispatch(advanceReveal());
+    expect(getState(store).phase).toBe('winner');
+    expect(getState(store).final2Kind).toBe('survivor_jury');
+    expect(getState(store).activeIds).not.toContain(saboteurId);
+    expect(getState(store).juryIds).toEqual([]);
   });
 
   it('goes to winner when 1 player remains', () => {
@@ -295,6 +329,46 @@ describe('advanceReveal', () => {
 // ─── startNextRound ───────────────────────────────────────────────────────────
 
 describe('startNextRound', () => {
+  it('keeps the same saboteur and Case File after an unresolved round', () => {
+    const store = makeStore();
+    init(store);
+    store.dispatch(advanceIntro());
+    const firstSaboteur = getState(store).saboteurId!;
+    const victim = getState(store).activeIds.find((id) => id !== firstSaboteur)!;
+    store.dispatch(selectVictim({ victimId: victim }));
+    store.dispatch(endVotingPhase());
+    expect(getState(store).revealInfo?.reason).toBe('victim_eliminated');
+    expect(getState(store).roundHistory[0].saboteurId).toBeNull();
+
+    store.dispatch(advanceReveal());
+    store.dispatch(startNextRound());
+    expect(getState(store).phase).toBe('select_victim');
+    expect(getState(store).saboteurId).toBe(firstSaboteur);
+    expect(getState(store).roundEvidence[firstSaboteur]).toBeDefined();
+  });
+
+  it('starts a new case after a successful capture', () => {
+    const store = makeStore();
+    init(store);
+    store.dispatch(advanceIntro());
+    const { saboteurId, activeIds } = getState(store);
+    const victim = activeIds.find((id) => id !== saboteurId)!;
+    store.dispatch(selectVictim({ victimId: victim }));
+
+    for (const voterId of activeIds) {
+      const accusedId = voterId === saboteurId
+        ? activeIds.find((id) => id !== voterId && id !== victim)!
+        : saboteurId!;
+      store.dispatch(submitVote({ voterId, accusedId }));
+    }
+    expect(getState(store).revealInfo?.reason).toBe('saboteur_caught');
+    store.dispatch(advanceReveal());
+    store.dispatch(startNextRound());
+    expect(getState(store).phase).toBe('select_victim');
+    expect(getState(store).saboteurId).not.toBe(saboteurId);
+    expect(getState(store).roundEvidence).toEqual({});
+  });
+
   it('clears ephemeral state and increments round', () => {
     const store = makeStore();
     init(store, PLAYERS_5);

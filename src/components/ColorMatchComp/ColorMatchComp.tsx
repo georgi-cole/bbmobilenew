@@ -102,6 +102,7 @@ interface Props {
     tiebreakerMs?: number,
     completion?: {
       authoritativeWinnerId?: string | null;
+      authoritativeLastPlaceId?: string | null;
       rawValue?: number;
       rawResults?: Record<string, number>;
       tiebreakerMs?: number;
@@ -398,6 +399,7 @@ export default function ColorMatchComp({
         const humanOrWinnerScore = rawResults[humanId ?? ''] ?? rawResults[winner?.participantId ?? ''] ?? 0;
         onFinish(humanOrWinnerScore, tiebreakerMs, {
           authoritativeWinnerId: winner?.participantId ?? null,
+          authoritativeLastPlaceId: ranked[ranked.length - 1]?.participantId ?? null,
           rawValue: humanOrWinnerScore,
           rawResults,
         });

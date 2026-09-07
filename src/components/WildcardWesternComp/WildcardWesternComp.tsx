@@ -329,8 +329,9 @@ export default function WildcardWesternComp({
     if (!state.winnerId) return undefined;
     return {
       authoritativeWinnerId: state.winnerId,
+      authoritativeLastPlaceId: state.eliminatedIds[0] ?? null,
     };
-  }, [state.winnerId]);
+  }, [state.eliminatedIds, state.winnerId]);
   const isHumanEliminated = humanPlayerId ? state.eliminatedIds.includes(humanPlayerId) : false;
   const isSpectating = spectatorMode === 'watching' || spectatorMode === 'skipping';
   const isSkippingToResults = spectatorMode === 'skipping';
@@ -340,7 +341,7 @@ export default function WildcardWesternComp({
   const shouldNotifyHostedCompletion =
     isHostedGameOver
     && !!state.winnerId
-    && state.outcomeResolved
+    && (onComplete ? true : state.outcomeResolved)
     && !completionReportedRef.current;
 
   useEffect(() => {
@@ -565,9 +566,9 @@ export default function WildcardWesternComp({
   }, [dispatch, scheduleTimeout, state.phase]);
 
   useEffect(() => {
-    if (!shouldResolveHostedOutcome) return;
+    if (!shouldResolveHostedOutcome || onComplete) return;
     dispatch(resolveWildcardWesternOutcome());
-  }, [dispatch, shouldResolveHostedOutcome]);
+  }, [dispatch, onComplete, shouldResolveHostedOutcome]);
 
   useEffect(() => {
     if (!shouldNotifyHostedCompletion) return;

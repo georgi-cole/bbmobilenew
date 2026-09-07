@@ -22,6 +22,35 @@ vi.mock('../../../minigames/LegacyMinigameWrapper', () => ({
   ),
 }))
 
+vi.mock('../../ColorMatchComp/ColorMatchComp', () => ({
+  default: ({
+    onFinish,
+  }: {
+    onFinish: (
+      value: number,
+      tiebreakerMs?: number,
+      completion?: {
+        authoritativeWinnerId?: string | null
+        authoritativeLastPlaceId?: string | null
+        rawValue?: number
+      }
+    ) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onFinish(0, undefined, {
+          authoritativeWinnerId: 'ai-1',
+          authoritativeLastPlaceId: 'human',
+          rawValue: 0,
+        })
+      }
+    >
+      Finish Authoritative Test Game
+    </button>
+  ),
+}))
+
 const baseGame = {
   key: 'unit-test-game',
   title: 'Unit Test Game',
@@ -162,6 +191,48 @@ describe('MinigameHost competition retry', () => {
     expect(screen.getByText(/somehow you finished last/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reverse time' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /continue/i })).toBeNull()
+  })
+
+  it('holds an authoritative last-place result behind Reverse Time until the close control is used', () => {
+    const onDone = vi.fn()
+    const authoritativeGame = {
+      ...baseGame,
+      implementation: 'react',
+      reactComponentKey: 'ColorMatch',
+      authoritative: true,
+      scoringAdapter: 'authoritative',
+    } as GameRegistryEntry
+
+    render(
+      <MinigameHost
+        game={authoritativeGame}
+        onDone={onDone}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(0, 50)}
+        competitionRetry={{ enabled: true, onWatch: vi.fn() }}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Authoritative Test Game' }))
+
+    expect(screen.getByRole('button', { name: 'Reverse time' })).toBeInTheDocument()
+    expect(onDone).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }))
+
+    expect(onDone).toHaveBeenCalledWith(
+      0,
+      false,
+      expect.objectContaining({
+        authoritativeWinnerId: 'ai-1',
+        authoritativeLastPlaceId: 'human',
+      })
+    )
   })
 
   it('reports a completed result only once when Continue is activated twice', () => {

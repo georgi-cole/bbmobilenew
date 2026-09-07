@@ -35,6 +35,7 @@ import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp'
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice'
 import SilentSaboteurComp from '../SilentSaboteurComp/SilentSaboteurComp'
 import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/silentSaboteurSlice'
+import { getGame as getCanonicalGame } from '../../minigames/registryBase'
 import MajorityRulesComp from '../MajorityRulesComp/MajorityRulesComp'
 import type { MajorityRulesCompetitionType } from '../../features/majorityRules/majorityRulesSlice'
 import { buildGlassBridgeTimeLimitMs } from '../../features/glassBridge/glassBridgeSlice'
@@ -153,13 +154,11 @@ export default function MinigameHost({
   const [countdown, setCountdown] = useState(3)
   const [finalValue, setFinalValue] = useState<number | null>(null)
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null)
+  const [finalCompletion, setFinalCompletion] = useState<ReactMinigameCompletion | null>(null)
   const [wasPartial, setWasPartial] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const completionReportedRef = useRef(false)
-  const sessionId =
-    typeof gameOptions.sessionId === 'string'
-      ? gameOptions.sessionId
-      : `${game.key}:${typeof gameOptions.seed === 'number' ? gameOptions.seed : 'default'}`
+  const sessionId = typeof gameOptions.sessionId === 'string' ? gameOptions.sessionId : game.key
 
   const reportDoneOnce = useCallback(
     (
@@ -186,7 +185,15 @@ export default function MinigameHost({
       (() => {
         const override =
           store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
-        const resolved = override ? { ...launchedGame, ...override } : launchedGame
+        // Silent Saboteur's rules are stateful and must stay in lockstep with
+        // its resolver. Ignore remote copies for this game so an older saved
+        // briefing cannot describe a different ruleset.
+        const resolved =
+          launchedGame.key === 'silentSaboteur'
+            ? (getCanonicalGame('silentSaboteur') ?? launchedGame)
+            : override
+              ? { ...launchedGame, ...override }
+              : launchedGame
         return resolved.key === 'glass_bridge_brutal'
           ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
           : resolved
@@ -200,6 +207,7 @@ export default function MinigameHost({
     setCountdown(3)
     setFinalValue(null)
     setFinalTiebreakerMs(null)
+    setFinalCompletion(null)
     setWasPartial(false)
     setPhase(skipRules ? 'countdown' : 'rules')
     setAttempt(0)
@@ -291,16 +299,66 @@ export default function MinigameHost({
     setPhase('results')
   }, [])
 
-  const handleReactComplete = useCallback(
+  const getReportedLastPlaceId = useCallback(
     (completion?: ReactMinigameCompletion) => {
-      reportDoneOnce(completion?.rawValue ?? 1, false, completion, true)
+      if (completion?.authoritativeLastPlaceId) return completion.authoritativeLastPlaceId
+      if (!completion?.rawResults || !participants?.length) return null
+
+      const ranked = [...participants]
+        .map((participant) => ({
+          id: participant.id,
+          score: completion.rawResults?.[participant.id] ?? participant.precomputedScore,
+        }))
+        .sort((a, b) =>
+          game.scoringAdapter === 'lowerBetter' ? a.score - b.score : b.score - a.score
+        )
+      return ranked[ranked.length - 1]?.id ?? null
     },
-    [reportDoneOnce]
+    [game.scoringAdapter, participants]
+  )
+
+  const handleReactComplete = useCallback(
+    (completion?: ReactMinigameCompletion, fallbackValue = 1, fallbackTiebreakerMs?: number) => {
+      const humanId = participants?.find((participant) => participant.isHuman)?.id
+      const lastPlaceId = getReportedLastPlaceId(completion)
+
+      // Feature-owned placement games can provide their final standings before
+      // a season result has been applied. Keep the outcome inside the host when
+      // the human is last so Reverse Time remains available.
+      if (competitionRetryEnabled && humanId && lastPlaceId === humanId && completion) {
+        setFinalCompletion(completion)
+        setFinalValue(completion.rawValue ?? completion.rawResults?.[humanId] ?? fallbackValue)
+        setFinalTiebreakerMs(completion.tiebreakerMs ?? fallbackTiebreakerMs ?? null)
+        setWasPartial(false)
+        setPhase('results')
+        return
+      }
+
+      reportDoneOnce(completion?.rawValue ?? fallbackValue, false, completion, true)
+    },
+    [competitionRetryEnabled, getReportedLastPlaceId, participants, reportDoneOnce]
+  )
+
+  const enrichCompletionForRetry = useCallback(
+    (
+      completion: ReactMinigameCompletion,
+      value: number,
+      tiebreakerMs?: number
+    ): ReactMinigameCompletion => ({
+      ...completion,
+      ...(competitionRetryEnabled && completion.rawValue == null ? { rawValue: value } : {}),
+      ...(tiebreakerMs != null && completion.tiebreakerMs == null ? { tiebreakerMs } : {}),
+    }),
+    [competitionRetryEnabled]
   )
 
   const handleContinue = useCallback(() => {
-    const completion: ReactMinigameCompletion | undefined =
-      finalTiebreakerMs != null
+    const completion: ReactMinigameCompletion | undefined = finalCompletion
+      ? {
+          ...finalCompletion,
+          ...(finalTiebreakerMs != null ? { tiebreakerMs: finalTiebreakerMs } : {}),
+        }
+      : finalTiebreakerMs != null
         ? {
             tiebreakerMs: finalTiebreakerMs,
           }
@@ -310,26 +368,42 @@ export default function MinigameHost({
     } else {
       reportDoneOnce(finalValue ?? 0, wasPartial)
     }
-  }, [finalTiebreakerMs, finalValue, reportDoneOnce, wasPartial])
+  }, [finalCompletion, finalTiebreakerMs, finalValue, reportDoneOnce, wasPartial])
 
   const leaderboard = useMemo(() => {
     if (!participants || participants.length === 0) return null
+    const reportedScores = finalCompletion?.rawResults
     const humanScore = finalValue ?? 0
     const lowerBetter = game.scoringAdapter === 'lowerBetter'
     const entries = participants.map((p) => {
-      const score = p.isHuman ? humanScore : p.precomputedScore
+      const score = reportedScores?.[p.id] ?? (p.isHuman ? humanScore : p.precomputedScore)
       const isPR =
         p.previousPR === null || (lowerBetter ? score < p.previousPR : score > p.previousPR)
       return { ...p, score, isPR }
     })
     entries.sort((a, b) => {
+      if (finalCompletion?.authoritativeWinnerId && a.id !== b.id) {
+        if (a.id === finalCompletion.authoritativeWinnerId) return -1
+        if (b.id === finalCompletion.authoritativeWinnerId) return 1
+      }
+      if (finalCompletion?.authoritativeLastPlaceId && a.id !== b.id) {
+        if (a.id === finalCompletion.authoritativeLastPlaceId) return 1
+        if (b.id === finalCompletion.authoritativeLastPlaceId) return -1
+      }
       if (competitionRetryEnabled && wasPartial) {
         if (a.isHuman !== b.isHuman) return a.isHuman ? 1 : -1
       }
       return lowerBetter ? a.score - b.score : b.score - a.score
     })
     return entries
-  }, [competitionRetryEnabled, participants, finalValue, game.scoringAdapter, wasPartial])
+  }, [
+    competitionRetryEnabled,
+    finalCompletion,
+    participants,
+    finalValue,
+    game.scoringAdapter,
+    wasPartial,
+  ])
 
   const humanLastPlaceEntry = leaderboard?.[leaderboard.length - 1] ?? null
   const showCompetitionRetry = competitionRetryEnabled && !!humanLastPlaceEntry?.isHuman
@@ -345,6 +419,7 @@ export default function MinigameHost({
     setUtilityView(null)
     setFinalValue(null)
     setFinalTiebreakerMs(null)
+    setFinalCompletion(null)
     setWasPartial(false)
     setCountdown(3)
     setAttempt((current) => current + 1)
@@ -616,7 +691,11 @@ export default function MinigameHost({
             completion?: ReactMinigameCompletion
           ) => {
             if (completion?.authoritativeWinnerId) {
-              reportDoneOnce(value, false, completion, true)
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
               return
             }
             setFinalValue(value)
@@ -640,7 +719,15 @@ export default function MinigameHost({
             tiebreakerMs?: number,
             completion?: ReactMinigameCompletion
           ) => {
-            if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
+            if (completion?.authoritativeWinnerId) {
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
+              return
+            }
+            if (game.scoringAdapter === 'authoritative') {
               reportDoneOnce(value, false, completion, true)
               return
             }
@@ -680,7 +767,15 @@ export default function MinigameHost({
             tiebreakerMs?: number,
             completion?: ReactMinigameCompletion
           ) => {
-            if (game.scoringAdapter === 'authoritative' || completion?.authoritativeWinnerId) {
+            if (completion?.authoritativeWinnerId) {
+              handleReactComplete(
+                enrichCompletionForRetry(completion, value, tiebreakerMs),
+                value,
+                tiebreakerMs
+              )
+              return
+            }
+            if (game.scoringAdapter === 'authoritative') {
               reportDoneOnce(value, false, completion, true)
               return
             }

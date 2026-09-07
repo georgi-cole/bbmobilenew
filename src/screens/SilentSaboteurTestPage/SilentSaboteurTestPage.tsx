@@ -19,13 +19,33 @@ const ALL_PARTICIPANTS = [
   { id: 'nova', name: 'Nova', isHuman: false, precomputedScore: 0, previousPR: null },
 ];
 
+let freshSeedCounter = 0;
+
+function createFreshSeed(): number {
+  const entropy = new Uint32Array(1);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(entropy);
+  } else {
+    freshSeedCounter = (freshSeedCounter + 1) >>> 0;
+    entropy[0] = (Date.now() ^ freshSeedCounter) >>> 0;
+  }
+  return entropy[0] || 1;
+}
+
 export default function SilentSaboteurTestPage() {
   const [prizeType, setPrizeType] = useState<SilentSaboteurPrizeType>('LOH');
-  const [seed, setSeed] = useState(42);
+  const [seed, setSeed] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === '#/game' ? createFreshSeed() : 42,
+  );
+  const [useFixedSeed, setUseFixedSeed] = useState(false);
   const [playerCount, setPlayerCount] = useState(5);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === '#/game',
+  );
   const [keepOnComplete, setKeepOnComplete] = useState(true);
-  const [gameKey, setGameKey] = useState(0);
+  const [gameKey, setGameKey] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === '#/game' ? 1 : 0,
+  );
 
   const participants = useMemo(
     () => ALL_PARTICIPANTS.slice(0, Math.max(2, Math.min(playerCount, ALL_PARTICIPANTS.length))),
@@ -34,6 +54,9 @@ export default function SilentSaboteurTestPage() {
   const participantIds = participants.map((p) => p.id);
 
   function startGame() {
+    // The test page represents a new game launch, so each press gets an
+    // independent but internally deterministic scenario.
+    if (!useFixedSeed) setSeed(createFreshSeed());
     setGameKey((k) => k + 1);
     setRunning(true);
   }
@@ -63,7 +86,7 @@ export default function SilentSaboteurTestPage() {
             Silent Saboteur — Test Page
           </h1>
           <p style={{ opacity: 0.7, textAlign: 'center', fontSize: '0.92rem', margin: 0 }}>
-            Dev-only · hidden-role elimination · deterministic seeded flow
+            Dev-only · hidden-role elimination · fresh scenario every launch
           </p>
 
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -79,14 +102,26 @@ export default function SilentSaboteurTestPage() {
           </label>
 
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            Seed:
+            Seed (edit to replay):
             <input
               type="number"
               value={seed}
-              onChange={(e) => setSeed(Number(e.target.value))}
+              onChange={(e) => {
+                setSeed(Number(e.target.value));
+                setUseFixedSeed(true);
+              }}
               style={{ padding: '0.3rem 0.6rem', borderRadius: 6, width: 120 }}
             />
           </label>
+          {useFixedSeed && (
+            <button
+              type="button"
+              onClick={() => setUseFixedSeed(false)}
+              style={{ border: 'none', background: 'transparent', color: '#a5b4fc', cursor: 'pointer' }}
+            >
+              Use a fresh seed for the next launch
+            </button>
+          )}
 
           <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             Players:

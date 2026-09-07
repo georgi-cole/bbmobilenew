@@ -14,6 +14,7 @@
 //                tiebreakerMs?: number,
 //                completion?: {
 //                  authoritativeWinnerId?: string | null,
+//                  authoritativeLastPlaceId?: string | null,
 //                  rawValue?: number,
 //                  rawResults?: Record<string, number>,
 //                  tiebreakerMs?: number,
@@ -22,7 +23,8 @@
 //                        — called with the final score; tiebreakerMs is an
 //                          optional secondary sort key (lower = faster = better),
 //                          completion.authoritativeWinnerId preserves a
-//                          minigame-declared winner through MinigameHost, and
+//                          minigame-declared winner and last place preserve the
+//                          shared competition-retry gate through MinigameHost, and
 //                          rawValue/rawResults carry authoritative result data
 //   seed?: number        — competition seed forwarded from gameOptions.seed
 //   autoStart?: boolean  — when true the game begins immediately on mount
@@ -72,6 +74,7 @@ export interface GenericMinigameProps {
     tiebreakerMs?: number,
     completion?: {
       authoritativeWinnerId?: string | null
+      authoritativeLastPlaceId?: string | null
       rawValue?: number
       rawResults?: Record<string, number>
       tiebreakerMs?: number

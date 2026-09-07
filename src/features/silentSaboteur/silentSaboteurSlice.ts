@@ -19,9 +19,10 @@
  *                   └─ advanceWinner ────────────────→ complete
  *
  * Rules summary:
- *   - Each round: RNG picks a hidden saboteur, saboteur picks victim, all vote.
- *   - Strict majority for saboteur → saboteur eliminated.
- *   - Otherwise → victim eliminated.
+ *   - A hidden saboteur persists through failed accusations in one case.
+ *   - Each round: saboteur picks victim, all vote.
+ *   - A unique leading accusation of the saboteur → saboteur eliminated and a new case starts.
+ *   - Otherwise → victim eliminated and the case continues.
  *   - Final-3: 1-1-1 tie triggers Victim Override Rule.
  *   - Final-2: eliminated players (jury) vote; ties make the saboteur win; no jury → seeded fallback.
  *   - Outcome dispatch is idempotent via outcomeResolved guard.
@@ -36,11 +37,16 @@ import {
   buildAiJuryVotes,
   pickVictimForAi,
   pickVoteForAiOrAbstain,
+  buildRoundEvidence,
+  buildAiSurvivorJuryVotes,
+  resolveSurvivorJury,
+  type SilentSaboteurRoundEvidence,
 } from './helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type SilentSaboteurPrizeType = 'LOH' | 'POS';
+export type SilentSaboteurFinal2Kind = 'sabotage' | 'survivor_jury';
 
 export type SilentSaboteurPhase =
   | 'idle'
@@ -70,7 +76,8 @@ export interface RevealInfo {
 export interface SilentSaboteurRoundHistoryEntry {
   round: number;
   victimId: string;
-  saboteurId: string;
+  /** Present only after a successful capture; unresolved cases keep the role secret. */
+  saboteurId: string | null;
   accusedId: string;
   eliminatedId: string;
   reason: EliminationReason;
@@ -89,18 +96,24 @@ export interface SilentSaboteurState {
 
   humanPlayerId: string | null;
 
-  /** Current round's saboteur (reset each round). */
+  /** Current case's saboteur. Persists through every failed accusation. */
   saboteurId: string | null;
   /** Current round's victim (reset each round). */
   victimId: string | null;
   /** votes[voterId] = accusedId */
   votes: Record<string, string>;
+  /** Imperfect, sabotage-derived leads shown in the current round's Case File. */
+  roundEvidence: SilentSaboteurRoundEvidence;
 
   /** Final-2 state */
   final2SaboteurId: string | null;
   final2VictimId: string | null;
+  /** A normal sabotage verdict, or a survivor jury after the last case was solved. */
+  final2Kind: SilentSaboteurFinal2Kind;
   /** juryVotes[jurorId] = finalist they accuse */
   juryVotes: Record<string, string>;
+  /** Eligible final jurors. A caught final-three saboteur cannot choose the survivor. */
+  juryIds: string[];
   /** Legacy field retained for state compatibility; Final-2 ties no longer use a tiebreak. */
   final2TieBreakVote: string | null;
 
@@ -134,10 +147,13 @@ const initialState: SilentSaboteurState = {
   saboteurId: null,
   victimId: null,
   votes: {},
+  roundEvidence: {},
 
   final2SaboteurId: null,
   final2VictimId: null,
+  final2Kind: 'sabotage',
   juryVotes: {},
+  juryIds: [],
   final2TieBreakVote: null,
 
   revealInfo: null,
@@ -200,6 +216,9 @@ const silentSaboteurSlice = createSlice({
       if (!state.activeIds.includes(victimId)) return;
       state.victimId = victimId;
       state.votes = {};
+      state.roundEvidence = state.saboteurId
+        ? buildRoundEvidence(state.seed, state.round, state.activeIds, state.saboteurId, victimId, state.roundEvidence)
+        : {};
       state.phase = 'voting';
     },
 
@@ -261,7 +280,7 @@ const silentSaboteurSlice = createSlice({
       if (state.phase !== 'final2_jury') return;
       const { jurorId, accusedId } = action.payload;
       // Must be a juror
-      if (!state.eliminatedIds.includes(jurorId)) return;
+      if (!state.juryIds.includes(jurorId)) return;
       // Must accuse one of the two finalists
       const finalists = state.activeIds;
       if (!finalists.includes(accusedId)) return;
@@ -274,7 +293,7 @@ const silentSaboteurSlice = createSlice({
       state.juryVotes[jurorId] = accusedId;
 
       // Auto-advance when all jurors have voted
-      if (Object.keys(state.juryVotes).length === state.eliminatedIds.length) {
+      if (Object.keys(state.juryVotes).length === state.juryIds.length) {
         _resolveFinal2Phase(state);
       }
     },
@@ -310,7 +329,7 @@ const silentSaboteurSlice = createSlice({
 
 // ─── Internal helpers (operate on draft state) ────────────────────────────────
 
-/** Assign the saboteur for the current round and advance phase. */
+/** Assign the saboteur for a newly opened case and advance phase. */
 function _assignSaboteur(state: SilentSaboteurState) {
   const saboteur = pickSaboteur(state.seed, state.round, state.activeIds);
   state.saboteurId = saboteur;
@@ -357,7 +376,7 @@ function _resolveVotingPhase(state: SilentSaboteurState) {
   state.roundHistory.push({
     round: state.round + 1,
     victimId,
-    saboteurId,
+    saboteurId: reason === 'saboteur_caught' ? saboteurId : null,
     accusedId,
     eliminatedId,
     reason,
@@ -379,13 +398,22 @@ function _advanceAfterReveal(state: SilentSaboteurState) {
 }
 
 function _startNextRound(state: SilentSaboteurState) {
-  state.saboteurId = null;
+  const caseWasSolved = state.revealInfo?.reason === 'saboteur_caught';
+  if (caseWasSolved) {
+    state.saboteurId = null;
+    state.roundEvidence = {};
+  }
   state.victimId = null;
   state.votes = {};
   state.revealInfo = null;
   state.round += 1;
-  state.phase = 'select_saboteur';
-  _assignSaboteur(state);
+  if (state.saboteurId) {
+    // A failed vote eliminates only the victim. The case remains open.
+    state.phase = 'select_victim';
+  } else {
+    state.phase = 'select_saboteur';
+    _assignSaboteur(state);
+  }
 }
 
 function _fastForwardToWinner(state: SilentSaboteurState) {
@@ -398,6 +426,9 @@ function _fastForwardToWinner(state: SilentSaboteurState) {
       const victimId = pickVictimForAi(state.seed, state.round, state.saboteurId, state.activeIds);
       state.victimId = victimId;
       state.votes = {};
+      state.roundEvidence = state.saboteurId
+        ? buildRoundEvidence(state.seed, state.round, state.activeIds, state.saboteurId, victimId, state.roundEvidence)
+        : {};
       state.phase = 'voting';
     } else if (state.phase === 'voting' && state.victimId) {
       for (const voterId of state.activeIds) {
@@ -407,25 +438,17 @@ function _fastForwardToWinner(state: SilentSaboteurState) {
           voterId,
           state.activeIds,
           state.victimId,
+          state.roundEvidence,
         );
         if (accusedId !== null) state.votes[voterId] = accusedId;
       }
       _resolveVotingPhase(state);
-    } else if (
-      state.phase === 'final2_jury' &&
-      state.final2SaboteurId &&
-      state.final2VictimId
-    ) {
-      const missingJurors = state.eliminatedIds.filter((id) => state.juryVotes[id] === undefined);
-      Object.assign(
-        state.juryVotes,
-        buildAiJuryVotes(
-          state.seed,
-          missingJurors,
-          state.final2SaboteurId,
-          state.final2VictimId,
-        ),
-      );
+    } else if (state.phase === 'final2_jury' && state.final2SaboteurId && state.final2VictimId) {
+      const missingJurors = state.juryIds.filter((id) => state.juryVotes[id] === undefined);
+      const finalists: [string, string] = [state.final2SaboteurId, state.final2VictimId];
+      Object.assign(state.juryVotes, state.final2Kind === 'survivor_jury'
+        ? buildAiSurvivorJuryVotes(state.seed, missingJurors, finalists)
+        : buildAiJuryVotes(state.seed, missingJurors, state.final2SaboteurId, state.final2VictimId));
       _resolveFinal2Phase(state);
     } else {
       break;
@@ -436,16 +459,28 @@ function _fastForwardToWinner(state: SilentSaboteurState) {
 /** Set up the Final-2 Jury Deduction Finale. */
 function _startFinal2(state: SilentSaboteurState) {
   const [finalistA, finalistB] = state.activeIds;
-  // Deterministically assign saboteur/victim roles for final-2
-  const final2Saboteur = pickSaboteur(state.seed, state.round + 1000, state.activeIds);
+  const lastCaseWasSolved = state.revealInfo?.reason === 'saboteur_caught';
+  const unresolvedSaboteur = state.saboteurId && state.activeIds.includes(state.saboteurId)
+    ? state.saboteurId
+    : null;
+  // A capture at final three leaves two innocent finalists. They receive a
+  // survivor jury instead of inventing a role with no case history.
+  const final2Kind: SilentSaboteurFinal2Kind = lastCaseWasSolved || !unresolvedSaboteur
+    ? 'survivor_jury'
+    : 'sabotage';
+  const final2Saboteur = final2Kind === 'sabotage' ? unresolvedSaboteur! : finalistA;
   const final2Victim = final2Saboteur === finalistA ? finalistB : finalistA;
 
   state.final2SaboteurId = final2Saboteur;
   state.final2VictimId = final2Victim;
+  state.final2Kind = final2Kind;
   state.juryVotes = {};
+  state.juryIds = final2Kind === 'survivor_jury'
+    ? state.eliminatedIds.filter((id) => id !== state.revealInfo?.eliminatedId)
+    : [...state.eliminatedIds];
   state.final2TieBreakVote = null;
 
-  if (state.eliminatedIds.length === 0) {
+  if (state.juryIds.length === 0) {
     // No jury — use deterministic fallback immediately
     state.noJuryFallback = true;
     const fallbackWinner = noJuryFallbackWinner(state.seed, final2Saboteur, final2Victim);
@@ -454,21 +489,10 @@ function _startFinal2(state: SilentSaboteurState) {
     return;
   }
 
-  // AI jurors vote immediately (pre-computed)
-  const aiJurors = state.eliminatedIds.filter((id) => id !== state.humanPlayerId);
-  if (aiJurors.length > 0) {
-    const aiVotes = buildAiJuryVotes(state.seed, aiJurors, final2Saboteur, final2Victim);
-    Object.assign(state.juryVotes, aiVotes);
-  }
-
+  // The presentation layer reveals every tribunal vote after the player opens
+  // the tribunal. This gives an all-AI tribunal the same cinematic sequence as
+  // a tribunal with a human juror or finalist.
   state.phase = 'final2_jury';
-
-  // If all jurors are AI (no human juror), auto-resolve now
-  const humanIsJuror =
-    state.humanPlayerId !== null && state.eliminatedIds.includes(state.humanPlayerId);
-  if (!humanIsJuror && Object.keys(state.juryVotes).length === state.eliminatedIds.length) {
-    _resolveFinal2Phase(state);
-  }
 }
 
 /** Resolve the Final-2 phase. */
@@ -483,17 +507,18 @@ function _resolveFinal2Phase(state: SilentSaboteurState) {
 
   const saboteurId = state.final2SaboteurId;
   const victimId = state.final2VictimId;
-  const { juryVotes, eliminatedIds } = state;
+  const { juryVotes, juryIds } = state;
 
   // Guard: do not resolve until all jurors have voted.
-  const jurorCount = eliminatedIds.length;
+  const jurorCount = juryIds.length;
   const votesReceived = Object.keys(juryVotes).length;
   if (votesReceived < jurorCount) {
     return;
   }
 
-  const outcome = resolveFinal2(juryVotes, saboteurId, victimId);
-  state.winnerId = outcome.winnerId;
+  state.winnerId = state.final2Kind === 'survivor_jury'
+    ? resolveSurvivorJury(state.seed, juryVotes, [saboteurId, victimId])
+    : resolveFinal2(juryVotes, saboteurId, victimId).winnerId;
   state.phase = 'winner';
 }
 

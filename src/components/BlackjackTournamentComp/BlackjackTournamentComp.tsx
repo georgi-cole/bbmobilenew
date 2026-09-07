@@ -49,6 +49,7 @@ import { resolveAvatar, getDicebear } from '../../utils/avatar'
 import { resolvePresentationAvatar } from '../../utils/presentationAvatar'
 import HOUSEGUESTS from '../../data/houseguests'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
+import type { ReactMinigameCompletion } from '../MinigameHost/MinigameHost'
 import './BlackjackTournamentComp.css'
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
@@ -141,7 +142,7 @@ interface Props {
   participants?: ParticipantProp[]
   prizeType: BlackjackTournamentCompetitionType
   seed: number
-  onComplete?: () => void
+  onComplete?: (completion?: ReactMinigameCompletion) => void
 }
 
 interface RosterBarProps {
@@ -1148,10 +1149,14 @@ export default function BlackjackTournamentComp({
         <div className="bjt-confetti--reverse" aria-hidden="true" />
         <MinigameCompleteWrapper
           onContinue={() => {
-            if (!bt.outcomeResolved) {
+            if (onComplete) {
+              onComplete({
+                authoritativeWinnerId: bt.winnerId,
+                authoritativeLastPlaceId: bt.eliminatedPlayerIds[0] ?? null,
+              })
+            } else if (!bt.outcomeResolved) {
               dispatch(resolveBlackjackTournamentOutcome())
             }
-            onComplete?.()
           }}
           continueLabel="Continue →"
           continueButtonClassName="bjt-btn bjt-btn--continue"

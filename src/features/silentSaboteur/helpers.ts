@@ -26,6 +26,53 @@ export interface Final2Outcome {
   reason: 'jury_correct' | 'jury_incorrect' | 'jury_tie' | 'no_jury_fallback';
 }
 
+export type SilentSaboteurEvidenceKind = 'opportunity' | 'motive' | 'contradiction' | 'corroboration';
+
+/** A single observation from the active case. It is suggestive, never conclusive. */
+export interface SilentSaboteurObservation {
+  kind: SilentSaboteurEvidenceKind;
+  detail: string;
+  interpretation: string;
+}
+
+export interface SilentSaboteurLead {
+  /** Internal, deliberately imperfect AI suspicion weighting. Never shown as a verdict. */
+  score: number;
+  observations: SilentSaboteurObservation[];
+}
+
+/**
+ * The Case File accumulates a small number of observations while a case is
+ * active. The saboteur is more likely to be connected to a lead, but a decoy
+ * can look stronger and an absence of notes is never an alibi.
+ */
+export type SilentSaboteurRoundEvidence = Record<string, SilentSaboteurLead>;
+
+const EVIDENCE_KINDS: SilentSaboteurEvidenceKind[] = ['opportunity', 'motive', 'contradiction', 'corroboration'];
+
+const CASE_OBSERVATIONS: Record<SilentSaboteurEvidenceKind, Omit<SilentSaboteurObservation, 'kind'>[]> = {
+  opportunity: [
+    { detail: 'was near the hallway just before the room erupted.', interpretation: 'The hallway was busy, but the timing remains awkward.' },
+    { detail: 'returned after everyone else had settled in.', interpretation: 'A brief absence leaves room for questions.' },
+    { detail: 'left the kitchen moments before the disturbance was noticed.', interpretation: 'Bad timing can still be coincidence.' },
+  ],
+  motive: [
+    { detail: 'had a tense exchange with the victim earlier that evening.', interpretation: 'The missing context matters.' },
+    { detail: 'defended the victim a little too quickly when the room turned.', interpretation: 'Loyalty can be sincere, or carefully staged.' },
+    { detail: 'went quiet when the victim’s name came up.', interpretation: 'Pressure affects people in different ways.' },
+  ],
+  contradiction: [
+    { detail: 'gave a different order of events than the others remembered.', interpretation: 'Memory bends under pressure.' },
+    { detail: 'paused before answering a simple question about the evening.', interpretation: 'A pause can hold more than one explanation.' },
+    { detail: 'changed the subject when the timeline became uncomfortable.', interpretation: 'A social instinct—or a useful escape?' },
+  ],
+  corroboration: [
+    { detail: 'was placed near the commotion by two separate accounts.', interpretation: 'Two accounts help, but neither saw the whole picture.' },
+    { detail: 'was remembered leaving the same conversation by more than one person.', interpretation: 'Independent memories can still share the same blind spot.' },
+    { detail: 'was described as unusually calm by two people in the room.', interpretation: 'Composure is not the same thing as concealment.' },
+  ],
+};
+
 // ─── Saboteur selection ───────────────────────────────────────────────────────
 
 /**
@@ -84,6 +131,72 @@ export function getValidSaboteurCandidates(
   return activeIds.filter((id) => id !== currentPlayerId && id !== victimId);
 }
 
+// ─── Case File evidence ──────────────────────────────────────────────────────
+
+export function buildRoundEvidence(
+  seed: number,
+  round: number,
+  activeIds: string[],
+  saboteurId: string,
+  victimId: string,
+  previousEvidence: SilentSaboteurRoundEvidence = {},
+): SilentSaboteurRoundEvidence {
+  const suspects = activeIds.filter((id) => id !== victimId);
+  const evidenceSeed = (
+    seed ^ (round * 0x85ebca6b) ^ fnv1a32(saboteurId) ^ fnv1a32(victimId)
+  ) >>> 0;
+  const rng = mulberry32(evidenceSeed);
+  const decoyCandidates = suspects.filter((id) => id !== saboteurId);
+  // Every round highlights two threads: one is often, but not always, tied to
+  // the saboteur; the other gives the case a credible alternative explanation.
+  const primaryId = decoyCandidates.length > 0 && rng() >= 0.58
+    ? seededPick(rng, decoyCandidates)
+    : saboteurId;
+  const secondaryCandidates = suspects.filter((id) => id !== primaryId);
+  const secondaryId = secondaryCandidates.length === 0
+    ? null
+    : primaryId !== saboteurId && secondaryCandidates.includes(saboteurId) && rng() < 0.16
+      ? saboteurId
+      : seededPick(rng, secondaryCandidates);
+  const firstSignatureIndex = fnv1a32(saboteurId + ':first') % EVIDENCE_KINDS.length;
+  const secondSignatureIndex = (
+    firstSignatureIndex + 1 + (fnv1a32(saboteurId + ':second') % (EVIDENCE_KINDS.length - 1))
+  ) % EVIDENCE_KINDS.length;
+  const saboteurSignature: [SilentSaboteurEvidenceKind, SilentSaboteurEvidenceKind] = [
+    EVIDENCE_KINDS[firstSignatureIndex],
+    EVIDENCE_KINDS[secondSignatureIndex],
+  ];
+
+  return Object.fromEntries(suspects.map((id) => {
+    const previous = previousEvidence[id];
+    const isPrimary = id === primaryId;
+    const isSecondary = id === secondaryId;
+    const hasFreshObservation = isPrimary || isSecondary;
+    const baselineScore = 36 + Math.floor(rng() * 15) + (id === saboteurId ? 7 : 0);
+    const roundScore = Math.min(88, baselineScore + (isPrimary ? 18 : isSecondary ? 12 : 0));
+    const priorObservations = previous?.observations ?? [];
+    const kind = id === saboteurId
+      ? saboteurSignature[priorObservations.length % saboteurSignature.length]
+      : priorObservations[0]?.kind ?? EVIDENCE_KINDS[fnv1a32(id + ':thread') % EVIDENCE_KINDS.length];
+    const observationsForKind = CASE_OBSERVATIONS[kind];
+    const observationOffset = (fnv1a32(id) + round + Math.floor(rng() * observationsForKind.length)) % observationsForKind.length;
+    const candidateObservation: SilentSaboteurObservation = { kind, ...observationsForKind[observationOffset] };
+    const observation = priorObservations.some(({ detail }) => detail === candidateObservation.detail)
+      ? { kind, ...observationsForKind[(observationOffset + 1) % observationsForKind.length] }
+      : candidateObservation;
+    const observations = hasFreshObservation
+      ? [...priorObservations, observation].slice(-2)
+      : priorObservations;
+    const score = previous
+      ? hasFreshObservation
+        ? Math.round((previous.score + roundScore) / 2)
+        : Math.round((previous.score * 4 + baselineScore) / 5)
+      : roundScore;
+
+    return [id, { score, observations }];
+  }));
+}
+
 // ─── AI voting ────────────────────────────────────────────────────────────────
 
 /**
@@ -100,6 +213,7 @@ export function pickVoteForAi(
   voterId: string,
   activeIds: string[],
   victimId?: string | null,
+  evidence?: SilentSaboteurRoundEvidence,
 ): string {
   const candidates = getValidSaboteurCandidates(activeIds, voterId, victimId ?? null);
   if (candidates.length === 0) {
@@ -111,7 +225,20 @@ export function pickVoteForAi(
   const idHash = fnv1a32(voterId);
   const voteSeed = ((seed ^ (round * 0x3c6ef35f) ^ idHash) >>> 0);
   const rng = mulberry32(voteSeed);
-  return seededPick(rng, candidates);
+  if (!evidence || !candidates.some((id) => evidence[id])) {
+    return seededPick(rng, candidates);
+  }
+
+  // Leads affect suspicion, not certainty. Even a concerning lead remains
+  // only one input, and each voter keeps deterministic individual variation.
+  const weights = candidates.map((id) => 1 + (evidence[id]?.score ?? 40) / 18 + rng() * 1.25);
+  const totalWeight = weights.reduce((total, weight) => total + weight, 0);
+  let cursor = rng() * totalWeight;
+  for (let index = 0; index < candidates.length; index++) {
+    cursor -= weights[index];
+    if (cursor <= 0) return candidates[index];
+  }
+  return candidates[candidates.length - 1];
 }
 
 /**
@@ -124,10 +251,11 @@ export function pickVoteForAiOrAbstain(
   voterId: string,
   activeIds: string[],
   victimId?: string | null,
+  evidence?: SilentSaboteurRoundEvidence,
 ): string | null {
   const candidates = getValidSaboteurCandidates(activeIds, voterId, victimId ?? null);
   if (candidates.length === 0) return null;
-  return pickVoteForAi(seed, round, voterId, activeIds, victimId ?? null);
+  return pickVoteForAi(seed, round, voterId, activeIds, victimId ?? null, evidence);
 }
 
 /**
@@ -140,10 +268,11 @@ export function buildAiVotes(
   aiIds: string[],
   activeIds: string[],
   victimId?: string | null,
+  evidence?: SilentSaboteurRoundEvidence,
 ): Record<string, string> {
   const votes: Record<string, string> = {};
   for (const id of aiIds) {
-    const accusedId = pickVoteForAiOrAbstain(seed, round, id, activeIds, victimId ?? null);
+    const accusedId = pickVoteForAiOrAbstain(seed, round, id, activeIds, victimId ?? null, evidence);
     if (accusedId == null) continue;
     votes[id] = accusedId;
   }
@@ -315,6 +444,34 @@ export function buildAiJuryVotes(
     votes[jurorId] = accuseSaboteur ? saboteurId : victimId;
   }
   return votes;
+}
+
+/** Deterministic ballots for a survivor jury, where no saboteur remains. */
+export function buildAiSurvivorJuryVotes(
+  seed: number,
+  jurorIds: string[],
+  finalistIds: [string, string],
+): Record<string, string> {
+  const votes: Record<string, string> = {};
+  for (const jurorId of jurorIds) {
+    const jurySeed = ((seed ^ fnv1a32(jurorId) ^ 0x51a7e) >>> 0);
+    votes[jurorId] = seededPick(mulberry32(jurySeed), finalistIds);
+  }
+  return votes;
+}
+
+/** Resolve a survivor jury. Tied juries use a seeded tiebreak for one winner. */
+export function resolveSurvivorJury(
+  seed: number,
+  juryVotes: Record<string, string>,
+  finalistIds: [string, string],
+): string {
+  const [first, second] = finalistIds;
+  const firstVotes = Object.values(juryVotes).filter((id) => id === first).length;
+  const secondVotes = Object.values(juryVotes).filter((id) => id === second).length;
+  if (firstVotes > secondVotes) return first;
+  if (secondVotes > firstVotes) return second;
+  return seededPick(mulberry32((seed ^ 0x7f4a7c15) >>> 0), finalistIds);
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

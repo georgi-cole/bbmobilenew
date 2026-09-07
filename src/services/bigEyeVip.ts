@@ -66,7 +66,7 @@ function createInstallationId(): string {
   try {
     return crypto.randomUUID()
   } catch {
-    return `install-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+    return `install-${Date.now().toString(36)}`
   }
 }
 
