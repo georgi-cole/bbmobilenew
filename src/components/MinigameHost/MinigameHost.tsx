@@ -158,10 +158,7 @@ export default function MinigameHost({
   const [wasPartial, setWasPartial] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const completionReportedRef = useRef(false)
-  const sessionId =
-    typeof gameOptions.sessionId === 'string'
-      ? gameOptions.sessionId
-      : `${game.key}:${typeof gameOptions.seed === 'number' ? gameOptions.seed : 'default'}`
+  const sessionId = typeof gameOptions.sessionId === 'string' ? gameOptions.sessionId : game.key
 
   const reportDoneOnce = useCallback(
     (
