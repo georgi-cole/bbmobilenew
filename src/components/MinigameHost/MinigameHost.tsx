@@ -16,6 +16,7 @@ import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
 import { store } from '../../store/store'
 import { selectHasPremiumChallengesAccess } from '../../store/vipSlice'
 import MinigameRules from '../MinigameRules/MinigameRules'
+import MinigameTurnDemo, { TURN_DEMO_KEYS } from '../MinigameTurnDemo/MinigameTurnDemo'
 import MinigameUtilityDock from '../MinigameUtilityDock/MinigameUtilityDock'
 import LegacyMinigameWrapper from '../../minigames/LegacyMinigameWrapper'
 import type { LegacyRawResult } from '../../minigames/LegacyMinigameWrapper'
@@ -109,7 +110,7 @@ interface Props {
   }
 }
 
-export type HostPhase = 'rules' | 'countdown' | 'playing' | 'results'
+export type HostPhase = 'rules' | 'demo' | 'countdown' | 'playing' | 'results'
 type UtilityView = 'menu' | 'rules' | 'exit' | null
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -157,6 +158,7 @@ export default function MinigameHost({
   const [finalCompletion, setFinalCompletion] = useState<ReactMinigameCompletion | null>(null)
   const [wasPartial, setWasPartial] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [demoTried, setDemoTried] = useState(false)
   const completionReportedRef = useRef(false)
   const sessionId = typeof gameOptions.sessionId === 'string' ? gameOptions.sessionId : game.key
 
@@ -209,6 +211,7 @@ export default function MinigameHost({
     setFinalTiebreakerMs(null)
     setFinalCompletion(null)
     setWasPartial(false)
+    setDemoTried(false)
     setPhase(skipRules ? 'countdown' : 'rules')
     setAttempt(0)
   }, [sessionId, skipRules])
@@ -250,8 +253,14 @@ export default function MinigameHost({
   const handleRulesConfirm = useCallback(() => {
     setUtilityView(null)
     setCountdown(3)
+    setPhase(TURN_DEMO_KEYS.has(rulesGame.key) ? 'demo' : 'countdown')
+  }, [rulesGame.key])
+
+  const handleDemoConfirm = useCallback(() => {
+    if (!demoTried) return
+    setCountdown(3)
     setPhase('countdown')
-  }, [])
+  }, [demoTried])
 
   const handleConfirmEarlyExit = useCallback(() => {
     setUtilityView(null)
@@ -805,7 +814,7 @@ export default function MinigameHost({
       aria-modal="true"
       aria-label={`${launchedGame.title} minigame`}
     >
-      {phase !== 'results' && utilityView !== 'rules' && utilityView !== 'exit' && (
+      {phase !== 'results' && phase !== 'demo' && utilityView !== 'rules' && utilityView !== 'exit' && (
         <MinigameUtilityDock
           phase={phase}
           menuOpen={utilityView === 'menu'}
@@ -822,6 +831,20 @@ export default function MinigameHost({
           onConfirm={handleRulesConfirm}
           onSkip={skipRules ? handleRulesConfirm : undefined}
         />
+      )}
+
+      {phase === 'demo' && (
+        <div className="minigame-host-demo" role="dialog" aria-modal="true" aria-label={`${launchedGame.title} example turn`}>
+          <div className="minigame-host-demo__card">
+            <p className="minigame-host-demo__kicker">Demo</p>
+            <h2>Try it yourself</h2>
+            <p className="minigame-host-demo__copy">Follow the glow and make one choice.</p>
+            <MinigameTurnDemo gameKey={rulesGame.key} title={rulesGame.title} guided={!demoTried} onInteraction={() => setDemoTried(true)} />
+            <button className="minigame-host-demo__start" onClick={handleDemoConfirm} disabled={!demoTried} autoFocus>
+              {demoTried ? 'Got it' : 'Try it yourself first'}
+            </button>
+          </div>
+        </div>
       )}
 
       {phase === 'countdown' && (

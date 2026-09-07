@@ -131,6 +131,9 @@ const QuickTapExperiment = import.meta.env.DEV
 const QuickTapSeasons = import.meta.env.DEV
   ? lazy(() => import('./screens/QuickTapSeasons/QuickTapSeasons'))
   : null
+const MinigameTurnDemos = import.meta.env.DEV
+  ? lazy(() => import('./screens/MinigameTurnDemos/MinigameTurnDemos'))
+  : null
 
 export const router = createHashRouter([
   {
@@ -371,6 +374,9 @@ export const router = createHashRouter([
               ),
             },
           ]
+        : []),
+      ...(import.meta.env.DEV && MinigameTurnDemos != null
+        ? [{ path: 'minigame-turn-demos', element: load(<MinigameTurnDemos />) }]
         : []),
       {
         path: 'gamedebug',

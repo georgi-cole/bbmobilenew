@@ -53,7 +53,7 @@ const participantFallbacks: Array<
   { id: 'oracle', name: 'Oracle', isHuman: false, precomputedScore: 0, previousPR: null },
 ]
 
-type GamePhase = 'intro' | 'playing' | 'breakdown' | 'scoreboard' | 'final'
+type GamePhase = 'playing' | 'breakdown' | 'scoreboard' | 'final'
 
 type TimedEffectKind =
   | 'freeze_timer'
@@ -280,7 +280,7 @@ export default function HangmanChallengeComp({
   const spawnCheckpointRef = useRef<Set<number>>(new Set())
   const visibleBoxIdRef = useRef(0)
 
-  const [phase, setPhase] = useState<GamePhase>('intro')
+  const [phase, setPhase] = useState<GamePhase>('playing')
   const [roundIndex, setRoundIndex] = useState(0)
   const [roundState, setRoundState] = useState<RoundState>(createEmptyRoundState)
   const [mysteryBoxDialog, setMysteryBoxDialog] = useState<MysteryBoxDialog>(null)
@@ -1032,7 +1032,7 @@ export default function HangmanChallengeComp({
       return
     }
     resetRound()
-    setPhase('intro')
+    setPhase('playing')
     setRoundIndex((prev) => prev + 1)
   }, [resetRound, roundIndex])
 
@@ -1069,27 +1069,6 @@ export default function HangmanChallengeComp({
           <strong>{secondsLabel(elapsedSeconds)}</strong>
         </div>
       </header>
-
-      {phase === 'intro' && (
-        <section className="hangman-challenge__intro">
-          <p className="hangman-challenge__intro-kicker">Pressure cycle engaged</p>
-          <h3>{currentWord.category.toUpperCase()} FILE</h3>
-          <p>
-            {currentWord.difficulty <= 2
-              ? 'Opening phase: common strategic language.'
-              : currentWord.difficulty === 3
-                ? 'Mid-cycle: layered terms and phrases.'
-                : 'Final phase: prestige phrases and heavier ambiguity.'}
-          </p>
-          <button
-            className="hangman-challenge__cta"
-            type="button"
-            onClick={() => setPhase('playing')}
-          >
-            Enter round
-          </button>
-        </section>
-      )}
 
       {phase === 'playing' && (
         <>
