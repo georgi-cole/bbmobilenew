@@ -11,6 +11,7 @@
 // leaving a competition. Individual minigames must not render their own exit UI.
 
 import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry'
 import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
 import { store } from '../../store/store'
@@ -853,7 +854,7 @@ export default function MinigameHost({
         />
       )}
 
-      {utilityView === 'exit' && phase !== 'results' && (
+      {utilityView === 'exit' && phase !== 'results' && createPortal(
         <div
           className="minigame-exit-confirm-overlay"
           role="dialog"
@@ -885,7 +886,8 @@ export default function MinigameHost({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {phase === 'results' && (
