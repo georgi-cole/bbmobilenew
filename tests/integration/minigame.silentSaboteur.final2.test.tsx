@@ -3,11 +3,11 @@
  *
  * Verifies the UI-only Final-2 state machine introduced in SilentSaboteurComp:
  *
- *   FINAL2_INTRO  →(button)→  FINAL2_VOTING  →(timer)→  FINAL2_VERDICT_LOCKED
+ *   FINAL2_INTRO  →(button)→  FINAL2_VOTING  →(jury vote)→  FINAL2_VERDICT_LOCKED
  *   →(button)→  FINAL2_REVEAL  →(delay + button)→  FINAL2_WINNER  →(button)→  onComplete
  *
  * Uses React Testing Library with jsdom and fake timers.
- * `no-animations` body class ensures timer delays collapse to 0 / 50 ms.
+ * `no-animations` makes presentation immediate while preserving gameplay time.
  *
  * Test setup: PARTICIPANTS = [user(human), ava(AI), bex(AI)] with seed=42.
  * With this seed the saboteur in round 1 is `ava`, so `user` (first
@@ -121,6 +121,11 @@ function clickButton(testId: string) {
   act(() => { fireEvent.click(screen.getByTestId(testId)); });
 }
 
+function castHumanJuryVote() {
+  const [choice] = screen.getAllByRole('button', { name: /Cast ballot for/i });
+  act(() => { fireEvent.click(choice); });
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SilentSaboteur Final-2 Cinematic Flow', () => {
@@ -200,6 +205,20 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(screen.queryByRole('button', { name: 'Proceed to Jury Decision' })).not.toBeInTheDocument();
   });
 
+  it('keeps the full tribunal decision window when animations are disabled', async () => {
+    const store = makeStore();
+    renderComp(store);
+
+    await act(async () => { vi.advanceTimersByTime(0); });
+    await act(async () => { advanceToFinal2Jury(store); });
+    clickButton('ss-final2-proceed-btn');
+
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+
+    expect(ss(store).phase).toBe('final2_jury');
+    expect(screen.getAllByRole('button', { name: /Cast ballot for/i })).toHaveLength(2);
+  });
+
   it('transitions to FINAL2_VERDICT_LOCKED after jury votes (no auto-advance to winner screen)', async () => {
     const store = makeStore();
     renderComp(store);
@@ -209,10 +228,9 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
 
     expect(ss(store).phase).toBe('final2_jury');
 
-    // Proceed to voting; the 50ms human juror fallback timer then fires
+    // Cast the human tribunal vote; reduced motion must not shorten this window.
     clickButton('ss-final2-proceed-btn');
-    // Advance past the 50ms human juror timeout (no-animations delay)
-    await act(async () => { vi.advanceTimersByTime(200); });
+    castHumanJuryVote();
 
     expect(ss(store).phase).toBe('winner');
 
@@ -232,7 +250,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(ss(store).phase).toBe('final2_jury');
 
     clickButton('ss-final2-proceed-btn');
-    await act(async () => { vi.advanceTimersByTime(200); });
+    castHumanJuryVote();
 
     expect(ss(store).phase).toBe('winner');
 
@@ -261,7 +279,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(ss(store).phase).toBe('final2_jury');
 
     clickButton('ss-final2-proceed-btn');
-    await act(async () => { vi.advanceTimersByTime(200); });
+    castHumanJuryVote();
 
     expect(ss(store).phase).toBe('winner');
 
@@ -286,7 +304,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     expect(ss(store).phase).toBe('final2_jury');
 
     clickButton('ss-final2-proceed-btn');
-    await act(async () => { vi.advanceTimersByTime(200); });
+    castHumanJuryVote();
 
     expect(ss(store).phase).toBe('winner');
 
@@ -315,7 +333,7 @@ describe('SilentSaboteur Final-2 Cinematic Flow', () => {
     await act(async () => { advanceToFinal2Jury(store); });
 
     clickButton('ss-final2-proceed-btn');
-    await act(async () => { vi.advanceTimersByTime(200); });
+    castHumanJuryVote();
     clickButton('ss-final2-reveal-btn');
     await act(async () => { vi.advanceTimersByTime(50); });
     clickButton('ss-final2-reveal-continue-btn');

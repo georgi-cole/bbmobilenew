@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import silentSaboteurReducer, {
@@ -177,7 +177,7 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
     expect(screen.queryByRole('dialog', { name: 'How would you like to continue?' })).not.toBeInTheDocument();
     if (humanEvicted) {
       expect(screen.getByRole('button', { name: 'Continue game' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Exit game' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Skip to finale' })).toBeInTheDocument();
     }
 
     await act(async () => {
@@ -207,6 +207,74 @@ describe('SilentSaboteurComp — dramatic UI flow', () => {
 
       expect(ss(store).phase).toBe('select_victim');
     }
+  });
+
+  it('stages a human accusation until the player confirms it', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <SilentSaboteurComp
+          participantIds={PARTICIPANTS.map((p) => p.id)}
+          participants={PARTICIPANTS}
+          prizeType="LOH"
+          seed={42}
+          standalone={true}
+        />
+      </Provider>,
+    );
+
+    await act(async () => {
+      store.dispatch(advanceIntro());
+    });
+    const { saboteurId, activeIds } = ss(store);
+    const victimId = activeIds.find((id) => id !== saboteurId)!;
+    await act(async () => {
+      store.dispatch(selectVictim({ victimId }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn'));
+    });
+
+    expect(screen.getByLabelText('How to investigate')).toBeInTheDocument();
+    const [suspect] = screen.getAllByRole('button', { name: /^Accuse /i });
+    await act(async () => {
+      fireEvent.click(suspect);
+    });
+    expect(ss(store).votes.user).toBeUndefined();
+    expect(screen.getByRole('button', { name: 'Confirm accusation' })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm accusation' }));
+    });
+    expect(ss(store).votes.user).toBeDefined();
+  });
+
+  it('locks an accusation immediately from the Social Map', async () => {
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <SilentSaboteurComp
+          participantIds={PARTICIPANTS.map((p) => p.id)}
+          participants={PARTICIPANTS}
+          prizeType="LOH"
+          seed={42}
+          standalone={true}
+        />
+      </Provider>,
+    );
+
+    await act(async () => { store.dispatch(advanceIntro()); });
+    const { saboteurId, activeIds } = ss(store);
+    const victimId = activeIds.find((id) => id !== saboteurId)!;
+    await act(async () => { store.dispatch(selectVictim({ victimId })); });
+    await act(async () => { fireEvent.click(screen.getByTestId('ss-bomb-reveal-continue-btn')); });
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open Social Map' })); });
+    const [accuse] = within(screen.getByRole('dialog', { name: 'Social Map' })).getAllByRole('button', { name: /^Accuse /i });
+    await act(async () => { fireEvent.click(accuse); });
+
+    expect(ss(store).votes.user).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Confirm accusation' })).not.toBeInTheDocument();
   });
 
   it('keeps the non-Final-2 winner screen on screen until Continue is clicked', async () => {

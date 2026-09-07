@@ -21,6 +21,7 @@ import { describe, it, expect } from 'vitest';
 import {
   pickSaboteur,
   pickVictimForAi,
+  buildRoundEvidence,
   pickVoteForAi,
   pickVoteForAiOrAbstain,
   buildAiVotes,
@@ -82,6 +83,38 @@ describe('pickVictimForAi', () => {
   });
 });
 
+// ─── Case File evidence ──────────────────────────────────────────────────────
+
+describe('buildRoundEvidence', () => {
+  it('is deterministic and omits the victim from the suspect file', () => {
+    const saboteur = pickSaboteur(SEED, 0, PLAYERS);
+    const victim = pickVictimForAi(SEED, 0, saboteur, PLAYERS);
+    const a = buildRoundEvidence(SEED, 0, PLAYERS, saboteur, victim);
+    const b = buildRoundEvidence(SEED, 0, PLAYERS, saboteur, victim);
+
+    expect(a).toEqual(b);
+    expect(a[victim]).toBeUndefined();
+    expect(Object.keys(a)).toHaveLength(PLAYERS.length - 1);
+  });
+
+  it('creates observations without publishing a verdict about the actual saboteur', () => {
+    const saboteur = pickSaboteur(SEED, 0, PLAYERS);
+    const victim = pickVictimForAi(SEED, 0, saboteur, PLAYERS);
+    const evidence = buildRoundEvidence(SEED, 0, PLAYERS, saboteur, victim);
+
+    expect(evidence[saboteur].observations).toHaveLength(1);
+    expect(evidence[saboteur].observations[0].detail).toBeTruthy();
+    expect(evidence[saboteur]).not.toHaveProperty('level');
+  });
+
+  it('keeps earlier observations when an unresolved case reaches another round', () => {
+    const first = buildRoundEvidence(SEED, 0, PLAYERS, 'dave', 'eve');
+    const second = buildRoundEvidence(SEED, 1, PLAYERS, 'dave', 'eve', first);
+    const notedId = Object.keys(first).find((id) => first[id].observations.length > 0)!;
+    expect(second[notedId].observations[0]).toEqual(first[notedId].observations[0]);
+  });
+});
+
 // ─── pickVoteForAi ────────────────────────────────────────────────────────────
 
 describe('pickVoteForAi', () => {
@@ -114,6 +147,15 @@ describe('pickVoteForAiOrAbstain', () => {
     const b = pickVoteForAiOrAbstain(SEED, 0, 'alice', PLAYERS, 'eve');
     expect(a).toBe(b);
     expect(a).not.toBeNull();
+    expect(a).not.toBe('alice');
+    expect(a).not.toBe('eve');
+  });
+
+  it('uses Case File leads while retaining valid, deterministic targets', () => {
+    const evidence = buildRoundEvidence(SEED, 0, PLAYERS, 'dave', 'eve');
+    const a = pickVoteForAiOrAbstain(SEED, 0, 'alice', PLAYERS, 'eve', evidence);
+    const b = pickVoteForAiOrAbstain(SEED, 0, 'alice', PLAYERS, 'eve', evidence);
+    expect(a).toBe(b);
     expect(a).not.toBe('alice');
     expect(a).not.toBe('eve');
   });
