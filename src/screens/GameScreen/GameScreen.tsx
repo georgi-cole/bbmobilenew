@@ -1823,6 +1823,10 @@ export default function GameScreen() {
             key={pendingChallenge.id}
             game={pendingChallenge.game}
             gameOptions={{
+              // The host uses this ID as the lifecycle boundary. It must be
+              // distinct even when the configured game key intentionally
+              // repeats for LOH, POS, or a later week.
+              sessionId: pendingChallenge.id,
               seed: pendingChallenge.seed,
               // Use the prize type stored on the pending challenge (set at creation time
               // from game.phase). This is stable even if game.phase changes later.

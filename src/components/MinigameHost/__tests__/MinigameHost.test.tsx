@@ -190,6 +190,43 @@ describe('MinigameHost competition retry', () => {
     expect(onDone).toHaveBeenCalledWith(5, false)
   })
 
+  it('starts a fresh run when a challenge repeats the same minigame key', () => {
+    const onDone = vi.fn()
+    const { rerender } = render(
+      <MinigameHost
+        game={baseGame}
+        gameOptions={{ sessionId: 'loh-run' }}
+        onDone={onDone}
+        skipRules
+        skipCountdown
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Finish Test Game' }))
+    expect(screen.getByRole('button', { name: /Continue/ })).toBeInTheDocument()
+
+    rerender(
+      <MinigameHost
+        game={baseGame}
+        gameOptions={{ sessionId: 'pos-run' }}
+        onDone={onDone}
+        skipRules
+        skipCountdown
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    expect(screen.getByRole('button', { name: 'Finish Test Game' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Continue/ })).toBeNull()
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
   it('lets a player dismiss the utility menu, review rules, and cancel an early exit', () => {
     render(
       <MinigameHost
