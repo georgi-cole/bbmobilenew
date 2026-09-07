@@ -191,11 +191,12 @@ export default function MinigameHost({
         // Silent Saboteur's rules are stateful and must stay in lockstep with
         // its resolver. Ignore remote copies for this game so an older saved
         // briefing cannot describe a different ruleset.
-        const resolved = launchedGame.key === 'silentSaboteur'
-          ? getCanonicalGame('silentSaboteur') ?? launchedGame
-          : override
-            ? { ...launchedGame, ...override }
-            : launchedGame
+        const resolved =
+          launchedGame.key === 'silentSaboteur'
+            ? (getCanonicalGame('silentSaboteur') ?? launchedGame)
+            : override
+              ? { ...launchedGame, ...override }
+              : launchedGame
         return resolved.key === 'glass_bridge_brutal'
           ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
           : resolved

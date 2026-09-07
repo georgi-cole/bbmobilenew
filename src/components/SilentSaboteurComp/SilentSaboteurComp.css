@@ -1031,7 +1031,10 @@ body.no-animations .ss-vote-board__tile--pulse {
   border: 2px solid rgba(232, 199, 120, 0.92);
   border-radius: 14px;
   background: transparent;
-  box-shadow: 0 0 0 100vmax rgba(3, 4, 8, 0.58), 0 0 0 4px rgba(232, 199, 120, 0.15), 0 0 28px rgba(232, 199, 120, 0.56);
+  box-shadow:
+    0 0 0 100vmax rgba(3, 4, 8, 0.58),
+    0 0 0 4px rgba(232, 199, 120, 0.15),
+    0 0 28px rgba(232, 199, 120, 0.56);
   animation: ss-guide-cutout 1.2s ease-in-out infinite alternate;
 }
 
@@ -1043,7 +1046,9 @@ body.no-animations .ss-vote-board__tile--pulse {
   border: 1px solid rgba(216, 177, 89, 0.56);
   border-radius: 16px;
   background: linear-gradient(145deg, rgba(35, 29, 20, 0.98), rgba(10, 11, 17, 0.98));
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.48), 0 0 28px rgba(216, 177, 89, 0.11);
+  box-shadow:
+    0 16px 42px rgba(0, 0, 0, 0.48),
+    0 0 28px rgba(216, 177, 89, 0.11);
   color: #f8f1e2;
 }
 
@@ -1088,7 +1093,9 @@ body.no-animations .ss-vote-board__tile--pulse {
   background: rgba(255, 247, 230, 0.28);
 }
 
-.ss-investigation-spotlight__footer i.is-active { background: var(--ss-gold-soft, #e8c778); }
+.ss-investigation-spotlight__footer i.is-active {
+  background: var(--ss-gold-soft, #e8c778);
+}
 
 .ss-investigation-spotlight__skip {
   border: 0;
@@ -1098,14 +1105,31 @@ body.no-animations .ss-vote-board__tile--pulse {
   font-size: 0.78rem;
 }
 
-@keyframes ss-guide-cutout { to { box-shadow: 0 0 0 100vmax rgba(3, 4, 8, 0.58), 0 0 0 7px rgba(232, 199, 120, 0.2), 0 0 36px rgba(232, 199, 120, 0.72); } }
+@keyframes ss-guide-cutout {
+  to {
+    box-shadow:
+      0 0 0 100vmax rgba(3, 4, 8, 0.58),
+      0 0 0 7px rgba(232, 199, 120, 0.2),
+      0 0 36px rgba(232, 199, 120, 0.72);
+  }
+}
 
 @media (max-height: 700px) {
-  .ss-investigation-spotlight { padding-top: 1rem; }
-  .ss-investigation-spotlight__card { padding: 0.85rem 1rem; }
-  .ss-investigation-spotlight h3 { font-size: 1.18rem; }
-  .ss-investigation-spotlight p { font-size: 0.82rem; }
-  .ss-investigation-spotlight__footer { margin-top: 0.7rem; }
+  .ss-investigation-spotlight {
+    padding-top: 1rem;
+  }
+  .ss-investigation-spotlight__card {
+    padding: 0.85rem 1rem;
+  }
+  .ss-investigation-spotlight h3 {
+    font-size: 1.18rem;
+  }
+  .ss-investigation-spotlight p {
+    font-size: 0.82rem;
+  }
+  .ss-investigation-spotlight__footer {
+    margin-top: 0.7rem;
+  }
 }
 
 .ss-accusation-confirmation {
@@ -2438,7 +2462,9 @@ body.no-animations .ss-final2-finalist--saboteur {
 .ss-victim-avatar,
 .ss-avatar-tile__portrait .ss-victim-avatar {
   border-color: rgba(234, 216, 172, 0.74);
-  box-shadow: 0 0 0 3px rgba(201, 170, 114, 0.09), 0 12px 24px rgba(0, 0, 0, 0.36);
+  box-shadow:
+    0 0 0 3px rgba(201, 170, 114, 0.09),
+    0 12px 24px rgba(0, 0, 0, 0.36);
 }
 
 .ss-avatar-tile,
@@ -2453,7 +2479,9 @@ body.no-animations .ss-final2-finalist--saboteur {
 .ss-avatar-tile--selected,
 .ss-vote-board__tile--focused {
   border-color: var(--ss-gold);
-  box-shadow: 0 0 0 1px rgba(201, 170, 114, 0.28), 0 16px 30px rgba(0, 0, 0, 0.38);
+  box-shadow:
+    0 0 0 1px rgba(201, 170, 114, 0.28),
+    0 16px 30px rgba(0, 0, 0, 0.38);
 }
 
 .ss-avatar-tile--danger {
@@ -2465,7 +2493,9 @@ body.no-animations .ss-final2-finalist--saboteur {
   border-color: rgba(246, 226, 177, 0.36);
   background: linear-gradient(135deg, #9e7a43, #d4b97b 52%, #a57e43);
   color: #17120b;
-  box-shadow: 0 8px 28px rgba(132, 99, 44, 0.35), 0 1px 0 rgba(255, 249, 222, 0.42) inset;
+  box-shadow:
+    0 8px 28px rgba(132, 99, 44, 0.35),
+    0 1px 0 rgba(255, 249, 222, 0.42) inset;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -2473,7 +2503,9 @@ body.no-animations .ss-final2-finalist--saboteur {
 .ss-action-btn--reveal {
   color: #fff6ef;
   background: linear-gradient(135deg, #6c1526, #ba4154 52%, #741727);
-  box-shadow: 0 8px 28px rgba(115, 23, 40, 0.42), 0 1px 0 rgba(255, 206, 210, 0.2) inset;
+  box-shadow:
+    0 8px 28px rgba(115, 23, 40, 0.42),
+    0 1px 0 rgba(255, 206, 210, 0.2) inset;
 }
 
 .ss-btn--social-map,
@@ -2507,13 +2539,26 @@ body.no-animations .ss-final2-finalist--saboteur {
 }
 
 @keyframes ss-tribunal-veil {
-  from { transform: scale(1) translate3d(0, 0, 0); opacity: 0.32; }
-  to { transform: scale(1.06) translate3d(0, -1.5%, 0); opacity: 0.52; }
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+    opacity: 0.32;
+  }
+  to {
+    transform: scale(1.06) translate3d(0, -1.5%, 0);
+    opacity: 0.52;
+  }
 }
 
 @keyframes ss-gold-shimmer {
-  0%, 100% { opacity: 0.45; transform: scaleX(0.82); }
-  50% { opacity: 1; transform: scaleX(1.16); }
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scaleX(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.16);
+  }
 }
 
 body.no-animations .ss-wrap::before,
