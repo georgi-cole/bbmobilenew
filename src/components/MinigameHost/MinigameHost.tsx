@@ -155,7 +155,12 @@ export default function MinigameHost({
   const [finalTiebreakerMs, setFinalTiebreakerMs] = useState<number | null>(null)
   const [finalCompletion, setFinalCompletion] = useState<ReactMinigameCompletion | null>(null)
   const [wasPartial, setWasPartial] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const completionReportedRef = useRef(false)
+  const sessionId =
+    typeof gameOptions.sessionId === 'string'
+      ? gameOptions.sessionId
+      : `${game.key}:${typeof gameOptions.seed === 'number' ? gameOptions.seed : 'default'}`
 
   const reportDoneOnce = useCallback(
     (
@@ -193,7 +198,14 @@ export default function MinigameHost({
   useEffect(() => {
     completionReportedRef.current = false
     setUtilityView(null)
-  }, [game.key])
+    setCountdown(3)
+    setFinalValue(null)
+    setFinalTiebreakerMs(null)
+    setFinalCompletion(null)
+    setWasPartial(false)
+    setPhase(skipRules ? 'countdown' : 'rules')
+    setAttempt(0)
+  }, [sessionId, skipRules])
 
   useEffect(() => {
     onPhaseChange?.(phase)
@@ -394,12 +406,17 @@ export default function MinigameHost({
   const showTimeMachineResults = wasPartial || showOrganicLastPlace
 
   const handleRetryRestart = useCallback(() => {
+    // A retry is a fresh run of the same selected game. Reset both the host's
+    // completion latch and the child identity; a game-key-only reset is not
+    // sufficient when the user deliberately plays one minigame every time.
+    completionReportedRef.current = false
     setUtilityView(null)
     setFinalValue(null)
     setFinalTiebreakerMs(null)
     setFinalCompletion(null)
     setWasPartial(false)
     setCountdown(3)
+    setAttempt((current) => current + 1)
     setPhase(skipCountdown ? 'playing' : 'countdown')
   }, [skipCountdown])
 
@@ -815,7 +832,11 @@ export default function MinigameHost({
         </div>
       )}
 
-      {phase === 'playing' && <div className="minigame-host-playing">{renderActiveGame()}</div>}
+      {phase === 'playing' && (
+        <div className="minigame-host-playing" key={`${sessionId}:${attempt}`}>
+          {renderActiveGame()}
+        </div>
+      )}
 
       {utilityView === 'rules' && phase !== 'results' && (
         <MinigameRules
