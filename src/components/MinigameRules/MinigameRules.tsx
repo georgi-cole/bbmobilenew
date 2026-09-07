@@ -3,7 +3,7 @@
 
 import type { TranslationKey } from '../../i18n/messages'
 import { useI18n } from '../../i18n/I18nContext'
-import type { GameRegistryEntry } from '../../minigames/registry'
+import { getGame as getCanonicalGame, type GameRegistryEntry } from '../../minigames/registryBase'
 import './MinigameRules.css'
 
 interface Props {
@@ -45,14 +45,17 @@ export default function MinigameRules({
   mode = 'intro',
 }: Props) {
   const { t } = useI18n()
-  const localizedGame = game as GameRegistryEntry & LocalizedRegistryMetadata
+  // Silent Saboteur has a persistent hidden role; never render an older
+  // remote briefing that describes a new saboteur every round.
+  const resolvedGame = game.key === 'silentSaboteur' ? getCanonicalGame('silentSaboteur')! : game
+  const localizedGame = resolvedGame as GameRegistryEntry & LocalizedRegistryMetadata
   const description = localizedGame.descriptionKey
     ? t(localizedGame.descriptionKey)
-    : game.description
+    : resolvedGame.description
   const instructions = localizedGame.instructionKeys
     ? localizedGame.instructionKeys.map((key) => t(key))
-    : game.instructions
-  const emoji = CATEGORY_EMOJI[game.category] ?? '🎮'
+    : resolvedGame.instructions
+  const emoji = CATEGORY_EMOJI[resolvedGame.category] ?? '🎮'
   const isReference = mode === 'reference'
   // i18n-ignore: Pre-existing shared rules-modal fallback; Fit Me In supplies translated game copy through catalogue keys.
   const primaryLabel = confirmLabel ?? (isReference ? 'Return to game' : 'Start competition')
@@ -62,7 +65,7 @@ export default function MinigameRules({
       className="minigame-rules-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={`${game.title} rules`}
+      aria-label={`${resolvedGame.title} rules`}
     >
       <div
         className={`minigame-rules-modal ${isReference ? 'minigame-rules-modal--reference' : ''}`}
@@ -71,15 +74,15 @@ export default function MinigameRules({
           {isReference ? 'Quick reference' : 'Competition briefing'}
         </p>
         <h2 className="minigame-rules-title">
-          {emoji} {game.title}
+          {emoji} {resolvedGame.title}
         </h2>
         <p className="minigame-rules-description">{description}</p>
 
         {!isReference && (
           <div className="minigame-rules-meta">
-            {game.key !== 'tetris' && <span>⏱ {formatTime(game.timeLimitMs)}</span>}
-            <span>📊 {game.metricLabel}</span>
-            <span>🏷️ {game.category}</span>
+            {resolvedGame.key !== 'tetris' && <span>⏱ {formatTime(resolvedGame.timeLimitMs)}</span>}
+            <span>📊 {resolvedGame.metricLabel}</span>
+            <span>🏷️ {resolvedGame.category}</span>
           </div>
         )}
 

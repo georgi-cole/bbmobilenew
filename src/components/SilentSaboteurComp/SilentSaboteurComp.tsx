@@ -31,7 +31,7 @@ import {
 } from '../../features/silentSaboteur/silentSaboteurSlice';
 import { resolveSilentSaboteurOutcome } from '../../features/silentSaboteur/thunks';
 import { pickVictimForAi, pickVoteForAi, pickVoteForAiOrAbstain, getValidSaboteurCandidates, fnv1a32 } from '../../features/silentSaboteur/helpers';
-import { mulberry32 } from '../../store/rng';
+import type { SilentSaboteurRoundEvidence } from '../../features/silentSaboteur/helpers';
 import type {
   SilentSaboteurPrizeType,
   SilentSaboteurRoundHistoryEntry,
@@ -97,34 +97,17 @@ type Final2Stage =
 
 // ─── Social Map types ─────────────────────────────────────────────────────────
 
-type RelationshipCategory = 'Hostile' | 'Unfriendly' | 'Neutral' | 'Friendly' | 'Loyal';
-
 interface SuspectCard {
   id: string;
   name: string;
-  relationship: RelationshipCategory;
-  /** 0–4: 0 = most hostile, 4 = most loyal */
-  relationshipStrength: number;
-  traits: [string, string];
-  hint: string;
+  observations: Array<{ kind: string; detail: string; interpretation: string }>;
 }
 
-const PERSONALITY_TRAITS = [
-  'Calculating', 'Impulsive', 'Loyal', 'Deceptive', 'Observant',
-  'Paranoid', 'Strategic', 'Emotional', 'Ruthless', 'Diplomatic',
-  'Overconfident', 'Cautious', 'Charming', 'Secretive', 'Outspoken',
-];
-
-const RELATIONSHIP_LABELS: RelationshipCategory[] = [
-  'Hostile', 'Unfriendly', 'Neutral', 'Friendly', 'Loyal',
-];
-
-const RELATIONSHIP_COLORS: Record<RelationshipCategory, string> = {
-  Hostile: '#ef4444',
-  Unfriendly: '#f97316',
-  Neutral: '#64748b',
-  Friendly: '#22c55e',
-  Loyal: '#3b82f6',
+const CASE_THREAD_LABELS: Record<string, string> = {
+  opportunity: 'Opportunity',
+  motive: 'Motive',
+  contradiction: 'Contradiction',
+  corroboration: 'Corroborated account',
 };
 
 function isDicebearAvatarUrl(src: string): boolean {
@@ -139,36 +122,15 @@ const isNonDicebearAvatar = (src: string) => !isDicebearAvatarUrl(src);
 
 function buildSuspectCards(
   suspects: string[],
-  victimId: string,
-  seed: number,
+  evidence: SilentSaboteurRoundEvidence,
   getName: (id: string) => string,
 ): SuspectCard[] {
-  return suspects.map((id) => {
-    const idHash = fnv1a32(id);
-    const victimHash = fnv1a32(victimId);
-    const cardSeed = ((seed ^ idHash ^ victimHash ^ 0xdecafbad) >>> 0);
-    const rng = mulberry32(cardSeed);
-    const relIdx = Math.floor(rng() * 5);
-    const traitAIdx = Math.floor(rng() * PERSONALITY_TRAITS.length);
-    const traitA = PERSONALITY_TRAITS[traitAIdx];
-    // Ensure traitB is distinct from traitA
-    const remainingTraits = PERSONALITY_TRAITS.filter((_, i) => i !== traitAIdx);
-    const traitB = remainingTraits[Math.floor(rng() * remainingTraits.length)];
-    const relationship = RELATIONSHIP_LABELS[relIdx];
-    const hints: Record<RelationshipCategory, string> = {
-      Hostile:    `${getName(id)} had reason to want ${getName(victimId)} out of the game.`,
-      Unfriendly: `${getName(id)} has had friction with ${getName(victimId)} before.`,
-      Neutral:    `${getName(id)}'s connection to ${getName(victimId)} is unclear.`,
-      Friendly:   `${getName(id)} and ${getName(victimId)} seemed close — could be a cover.`,
-      Loyal:      `${getName(id)} vouched for ${getName(victimId)}. Too close to be suspicious?`,
-    };
+  return suspects.map((id): SuspectCard => {
+    const lead = evidence[id];
     return {
       id,
       name: getName(id),
-      relationship,
-      relationshipStrength: relIdx,
-      traits: [traitA, traitB],
-      hint: hints[relationship],
+      observations: lead?.observations ?? [],
     };
   });
 }
@@ -179,6 +141,19 @@ function formatMmSs(ms: number): string {
   const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
   const ss = String(totalSeconds % 60).padStart(2, '0');
   return `${mm}:${ss}`;
+}
+
+function getFailedAccusationCopy(
+  revealInfo: { votes: Record<string, string>; victimOverride: boolean; victimId: string; accusedId: string },
+  getName: (id: string) => string,
+): string {
+  if (Object.keys(revealInfo.votes).length === 0) {
+    return 'No accusation was submitted. The saboteur stayed hidden.';
+  }
+  if (revealInfo.victimOverride) {
+    return `No suspect won the ballot. ${getName(revealInfo.victimId)}'s override named ${getName(revealInfo.accusedId)}, but the saboteur stayed hidden.`;
+  }
+  return `The house's leading accusation was ${getName(revealInfo.accusedId)}. The real saboteur stayed hidden.`;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -392,8 +367,11 @@ export default function SilentSaboteurComp({
   const [revealedVoteCount, setRevealedVoteCount] = useState(0);
   const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
   const [countdownNow, setCountdownNow] = useState(() => Date.now());
+  const [victimSelectionStartedAt, setVictimSelectionStartedAt] = useState<number | null>(null);
   const [socialMapOpen, setSocialMapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedAccusationId, setSelectedAccusationId] = useState<string | null>(null);
+  const [investigationGuideStep, setInvestigationGuideStep] = useState<number | null>(0);
   const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('active');
   /** Locks manual non-Final-2 CTA clicks until the beat changes. */
   const [majorBeatActionLocked, setMajorBeatActionLocked] = useState(false);
@@ -457,13 +435,16 @@ export default function SilentSaboteurComp({
   const roundHistory = useMemo(() => ss?.roundHistory ?? [], [ss?.roundHistory]);
   const final2SaboteurId = ss?.final2SaboteurId ?? null;
   const final2VictimId = ss?.final2VictimId ?? null;
+  const final2Kind = ss?.final2Kind ?? 'sabotage';
   const winnerId = ss?.winnerId ?? null;
   const round = ss?.round ?? 0;
 
   // Stable references for array/object-typed state to avoid exhaustive-deps warnings
   const activeIds = useMemo(() => ss?.activeIds ?? [], [ss?.activeIds]);
   const votes = useMemo(() => ss?.votes ?? {}, [ss?.votes]);
+  const roundEvidence = useMemo(() => ss?.roundEvidence ?? {}, [ss?.roundEvidence]);
   const juryVotes = useMemo(() => ss?.juryVotes ?? {}, [ss?.juryVotes]);
+  const juryIds = useMemo(() => ss?.juryIds ?? [], [ss?.juryIds]);
   const revealVoteEntries = useMemo<Array<[string, string]>>(
     () => (revealInfo ? Object.entries(revealInfo.votes) : []),
     [revealInfo],
@@ -471,8 +452,9 @@ export default function SilentSaboteurComp({
 
   const isHumanActive = humanPlayerId !== null && activeIds.includes(humanPlayerId);
   const isHumanSaboteur = humanPlayerId !== null && saboteurId === humanPlayerId;
-  const isHumanJuror = humanPlayerId !== null && eliminatedIds.includes(humanPlayerId);
+  const isHumanJuror = humanPlayerId !== null && juryIds.includes(humanPlayerId);
   const final2Mode = phase === 'final2_jury';
+  const isSurvivorJury = final2Kind === 'survivor_jury';
 
   /**
    * ID of the finalist the jury majority accused of planting the bomb.
@@ -508,6 +490,10 @@ export default function SilentSaboteurComp({
     countdownStartedAt == null
       ? countdownDurationMs
       : Math.max(0, countdownDurationMs - (countdownNow - countdownStartedAt));
+  const remainingVictimSelectionMs =
+    victimSelectionStartedAt == null
+      ? SILENT_SABOTEUR_TIMINGS.SELECT_VICTIM_TIMEOUT_MS
+      : Math.max(0, SILENT_SABOTEUR_TIMINGS.SELECT_VICTIM_TIMEOUT_MS - (countdownNow - victimSelectionStartedAt));
 
   // Valid suspect targets for the human voter in normal rounds
   const humanVoteCandidates = useMemo(
@@ -583,6 +569,18 @@ export default function SilentSaboteurComp({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, saboteurId]); // intentional: one timer per phase entry
 
+  // The saboteur's existing fallback is a real game deadline, so show it rather
+  // than allowing the automatic choice to feel arbitrary.
+  useEffect(() => {
+    if (phase !== 'select_victim' || !isHumanSaboteur) {
+      setVictimSelectionStartedAt(null);
+      return;
+    }
+    const now = Date.now();
+    setVictimSelectionStartedAt(now);
+    setCountdownNow(now);
+  }, [phase, isHumanSaboteur]);
+
   // voting: AI voters auto-vote.
   // Human voter may vote voluntarily or abstain (no forced auto-vote fallback).
   // Timer expiry handled in a separate effect below.
@@ -596,7 +594,7 @@ export default function SilentSaboteurComp({
       if (votes[voterId] !== undefined) continue;
       const t = setTimeout(() => {
         // AI vote: valid suspects = activePlayers - self - victim
-        const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId);
+        const accused = pickVoteForAiOrAbstain(seed, round, voterId, activeIds, victimId, roundEvidence);
         if (accused == null) return;
         dispatch(submitVote({ voterId, accusedId: accused }));
       }, fastForwarding ? Math.max(180, delay * 0.06) : delay);
@@ -611,11 +609,7 @@ export default function SilentSaboteurComp({
   // Opening the Social Map does NOT pause or reset this timer.
   useEffect(() => {
     if (phase !== 'voting' || bombRevealVisible) return;
-    const delay = fastForwarding
-      ? 900
-      : animationsDisabled
-      ? 50
-      : SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS;
+    const delay = fastForwarding ? 900 : SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS;
     const t = setTimeout(() => {
       if (votingTimerFiredRef.current) return; // prevent duplicate
       votingTimerFiredRef.current = true;
@@ -627,7 +621,9 @@ export default function SilentSaboteurComp({
 
   // Visible countdown start for voting / jury voting.
   useEffect(() => {
-    const countdownActive = (phase === 'voting' && !bombRevealVisible) || phase === 'final2_jury';
+    const countdownActive =
+      (phase === 'voting' && !bombRevealVisible)
+      || (phase === 'final2_jury' && final2Stage === 'FINAL2_VOTING');
     if (!countdownActive) {
       setCountdownStartedAt(null);
       return;
@@ -635,20 +631,27 @@ export default function SilentSaboteurComp({
     const now = Date.now();
     setCountdownStartedAt(now);
     setCountdownNow(now);
-  }, [phase, bombRevealVisible]);
+  }, [phase, bombRevealVisible, final2Stage]);
 
   // Countdown ticker.
   useEffect(() => {
-    if (countdownStartedAt == null) return;
+    if (countdownStartedAt == null && victimSelectionStartedAt == null) return;
     const i = setInterval(() => setCountdownNow(Date.now()), SILENT_SABOTEUR_TIMINGS.TIMER_TICK_MS);
     return () => clearInterval(i);
-  }, [countdownStartedAt]);
+  }, [countdownStartedAt, victimSelectionStartedAt]);
 
   // Social map: close automatically when voting phase ends
   useEffect(() => {
     if (phase !== 'voting') {
       setSocialMapOpen(false);
+      setSelectedAccusationId(null);
     }
+  }, [phase]);
+
+  // A completed round enters the history immediately in Redux. Close its drawer
+  // before the reveal so the new result cannot be read ahead of the sequence.
+  useEffect(() => {
+    if (phase === 'reveal') setHistoryOpen(false);
   }, [phase]);
 
   // reveal: sequential vote reveal followed by manual accusation and elimination beats.
@@ -700,13 +703,14 @@ export default function SilentSaboteurComp({
     return () => timers.forEach(clearTimeout);
   }, [phase, revealInfo, revealVoteEntries, round, animationsDisabled, fastForwarding]);
 
-  // final2_jury: 120s shared timer; human juror timeout dispatches jury vote.
+  // A full tribunal decision window begins only once voting is visible. Reduced
+  // motion changes the presentation, never the time available to a player.
   useEffect(() => {
-    if (phase !== 'final2_jury') return;
+    if (phase !== 'final2_jury' || final2Stage !== 'FINAL2_VOTING') return;
     if (!isHumanJuror || !final2SaboteurId || !final2VictimId) return;
     if (humanPlayerId && juryVotes[humanPlayerId] !== undefined) return;
 
-    const delay = fastForwarding ? 900 : animationsDisabled ? 50 : SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS;
+    const delay = fastForwarding ? 900 : SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS;
     const t = setTimeout(() => {
       if (!humanPlayerId) return;
       const finalists = [final2SaboteurId, final2VictimId];
@@ -716,7 +720,7 @@ export default function SilentSaboteurComp({
     }, delay);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, juryVotes]); // intentional: one timer per phase/vote-change
+  }, [phase, final2Stage, juryVotes]); // intentional: one timer per phase/vote-change
 
   // ── Final-2 cinematic effects ──────────────────────────────────────────────
 
@@ -744,7 +748,7 @@ export default function SilentSaboteurComp({
     if (final2Stage !== 'FINAL2_VOTING' || phase !== 'final2_jury') return;
     if (!final2SaboteurId || !final2VictimId) return;
 
-    const aiJurors = eliminatedIds.filter(
+    const aiJurors = juryIds.filter(
       (id) => id !== humanPlayerId && juryVotes[id] === undefined,
     );
     if (aiJurors.length === 0) return;
@@ -756,7 +760,7 @@ export default function SilentSaboteurComp({
         const accused = pickVoteForAi(seed, 9999, jurorId, finalists, null);
         const safeAccused = finalists.includes(accused) ? accused : finalists[0];
         dispatch(submitJuryVote({ jurorId, accusedId: safeAccused }));
-      }, fastForwarding ? Math.max(150, delay * 0.05) : animationsDisabled ? 0 : delay);
+      }, fastForwarding ? Math.max(150, delay * 0.05) : delay);
       timers.push(t);
     }
     return () => timers.forEach(clearTimeout);
@@ -821,10 +825,30 @@ export default function SilentSaboteurComp({
     (accusedId: string) => {
       if (!humanPlayerId || votes[humanPlayerId] !== undefined) return;
       // Client-side guard: victim cannot be accused in normal rounds
-      if (accusedId === victimId) return;
-      dispatch(submitVote({ voterId: humanPlayerId, accusedId }));
+      if (accusedId === victimId || !humanVoteCandidates.includes(accusedId)) return;
+      setSelectedAccusationId(accusedId);
     },
-    [dispatch, humanPlayerId, votes, victimId],
+    [humanPlayerId, humanVoteCandidates, votes, victimId],
+  );
+
+  const handleConfirmVote = useCallback(() => {
+    if (!humanPlayerId || !selectedAccusationId || votes[humanPlayerId] !== undefined) return;
+    dispatch(submitVote({ voterId: humanPlayerId, accusedId: selectedAccusationId }));
+    setSelectedAccusationId(null);
+  }, [dispatch, humanPlayerId, selectedAccusationId, votes]);
+
+  const handleChooseAnotherSuspect = useCallback(() => {
+    setSelectedAccusationId(null);
+  }, []);
+
+  const handleSocialMapVote = useCallback(
+    (accusedId: string) => {
+      if (!humanPlayerId || votes[humanPlayerId] !== undefined) return;
+      if (accusedId === victimId || !humanVoteCandidates.includes(accusedId)) return;
+      dispatch(submitVote({ voterId: humanPlayerId, accusedId }));
+      setSelectedAccusationId(null);
+    },
+    [dispatch, humanPlayerId, humanVoteCandidates, votes, victimId],
   );
 
   const handleSelectVictim = useCallback(
@@ -1010,7 +1034,12 @@ export default function SilentSaboteurComp({
                 <p className="ss-phase-eyebrow">Silent decision</p>
                 <p className="ss-phase-label">💣 You are the saboteur.</p>
                 <p className="ss-hint">Choose carefully. Your victim will shape the entire investigation.</p>
-                <div className="ss-alert ss-alert--danger">You are the saboteur. Choose carefully.</div>
+                <CountdownTimer
+                  remainingMs={remainingVictimSelectionMs}
+                  totalMs={SILENT_SABOTEUR_TIMINGS.SELECT_VICTIM_TIMEOUT_MS}
+                  label="Selection window"
+                />
+                <div className="ss-alert ss-alert--danger">If you do not choose, the game will select a target for you.</div>
                 <AvatarTileGrid
                   playerIds={activeIds.filter((id) => id !== saboteurId)}
                   getName={getName}
@@ -1085,7 +1114,9 @@ export default function SilentSaboteurComp({
             <h2 className="ss-phase-label">🗳️ Round {round + 1} — Investigation</h2>
             <p className="ss-hint">
               {isHumanActive && votes[humanPlayerId!] === undefined
-                ? 'Study the room and accuse the saboteur.'
+                ? selectedAccusationId
+                  ? <>You selected <strong>{getName(selectedAccusationId)}</strong>. Confirm when you are ready.</>
+                  : 'Study the room, then select a suspect.'
                 : isHumanActive
                 ? '✅ Vote locked. Waiting for others or timer to expire…'
                 : 'You are watching the investigation unfold.'}
@@ -1097,7 +1128,7 @@ export default function SilentSaboteurComp({
                   getName={getName}
                   ariaLabel="Accuse a saboteur"
                   onSelect={handleVote}
-                  selectedId={humanPlayerId ? votes[humanPlayerId] : undefined}
+                  selectedId={selectedAccusationId ?? undefined}
                   dense={true}
                   variant="vote"
                 />
@@ -1107,6 +1138,20 @@ export default function SilentSaboteurComp({
                   <span className="ss-victim-row__name">{getName(victimId)}</span>
                   <span className="ss-victim-row__tag">Cannot be accused</span>
                 </div>
+                {selectedAccusationId && (
+                  <div className="ss-accusation-confirmation" role="status">
+                    <div>
+                      <span>Selected suspect</span>
+                      <strong>{getName(selectedAccusationId)}</strong>
+                    </div>
+                    <button className="ss-btn ss-btn--secondary" type="button" onClick={handleChooseAnotherSuspect}>
+                      Change
+                    </button>
+                    <button className="ss-btn ss-btn--vote" type="button" onClick={handleConfirmVote}>
+                      Confirm accusation
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <AvatarTileGrid
@@ -1154,12 +1199,19 @@ export default function SilentSaboteurComp({
               <SocialMapOverlay
                 victimId={victimId}
                 suspects={humanVoteCandidates}
-                seed={seed}
+                evidence={roundEvidence}
                 remainingMs={remainingCountdownMs}
                 totalMs={SILENT_SABOTEUR_TIMINGS.VOTING_TIMER_MS}
                 getName={getName}
                 onClose={() => setSocialMapOpen(false)}
-                onVote={isHumanActive && votes[humanPlayerId!] === undefined ? handleVote : null}
+                onVote={isHumanActive && votes[humanPlayerId!] === undefined ? handleSocialMapVote : null}
+              />
+            )}
+            {isHumanActive && votes[humanPlayerId!] === undefined && round === 0 && investigationGuideStep !== null && (
+              <InvestigationSpotlightGuide
+                step={investigationGuideStep}
+                onNext={() => setInvestigationGuideStep((current) => current === null || current >= 2 ? null : current + 1)}
+                onSkip={() => setInvestigationGuideStep(null)}
               />
             )}
           </div>
@@ -1214,14 +1266,16 @@ export default function SilentSaboteurComp({
                   </p>
                 ) : (
                   <p className="ss-reveal-body">
-                    The house accused <strong>{getName(revealInfo.accusedId)}</strong>. The real saboteur stayed hidden.
+                    {getFailedAccusationCopy(revealInfo, getName)}
                   </p>
                 )}
-                <VoteBreakdown
-                  votes={revealInfo.votes}
-                  saboteurId={revealInfo.saboteurId}
-                  getName={getName}
-                />
+                {revealInfo.reason === 'saboteur_caught' && (
+                  <VoteBreakdown
+                    votes={revealInfo.votes}
+                    saboteurId={revealInfo.saboteurId}
+                    getName={getName}
+                  />
+                )}
                 <ActionFooter>
                   <button
                     className="ss-btn ss-action-btn"
@@ -1273,11 +1327,11 @@ export default function SilentSaboteurComp({
                         className="ss-btn ss-btn--secondary ss-exit-game-btn"
                         type="button"
                         onClick={handleExitAfterElimination}
-                        aria-label="Exit game"
+                        aria-label="Skip to finale"
                         data-testid="ss-elimination-exit-btn"
                         disabled={majorBeatActionLocked}
                       >
-                        Exit game
+                        Skip to finale
                       </button>
                     )}
                   </div>
@@ -1293,7 +1347,11 @@ export default function SilentSaboteurComp({
           <div className="ss-phase-card ss-cinematic">
             <p className="ss-phase-eyebrow">Aftermath</p>
             <p className="ss-phase-label">⏳ {activeIds.length} players remain…</p>
-            <p className="ss-hint">The room steadies, but the suspicion never does. Another sabotage is coming.</p>
+            <p className="ss-hint">
+              {revealInfo?.reason === 'saboteur_caught'
+                ? 'That case is closed. A new threat is taking shape.'
+                : 'The case remains open. The same unanswered questions follow the room into another night.'}
+            </p>
             <AvatarTileGrid
               playerIds={activeIds}
               getName={getName}
@@ -1323,7 +1381,7 @@ export default function SilentSaboteurComp({
           <div className="ss-phase-card ss-final2 ss-cinematic">
             <p className="ss-phase-eyebrow">🏁 Final 2</p>
             <h2 className="ss-phase-label">Two finalists remain.</h2>
-            <p className="ss-hint">One of them is the last saboteur.</p>
+            <p className="ss-hint">{isSurvivorJury ? 'The last case is solved. The Tribunal must choose the sole survivor.' : 'One of them is the last saboteur.'}</p>
             <p className="ss-hint hint-small">Preparing the Tribunal finale…</p>
           </div>
         </div>
@@ -1342,7 +1400,7 @@ export default function SilentSaboteurComp({
             <p className="ss-phase-eyebrow">Winner reveal</p>
             <h2 className="ss-winner-name">{getName(winnerId)}</h2>
             <p className="ss-winner-label">wins Silent Saboteur!</p>
-            {humanPlayerId === winnerId && <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>}
+            {humanPlayerId === winnerId && <p className="ss-hint">You outlasted the final decision.</p>}
             <ActionFooter>
               <button
                 className="ss-btn ss-action-btn"
@@ -1364,10 +1422,12 @@ export default function SilentSaboteurComp({
       {final2Stage === 'FINAL2_INTRO' && (
         <div className="ss-stage ss-stage--centered">
           <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-intro">
-            <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Deduction Finale</p>
+            <p className="ss-phase-eyebrow">Final 2 · Midnight Tribunal</p>
             <h2 className="ss-phase-label">The Final Confrontation</h2>
             <p className="ss-hint">
-              Two players remain. One planted the bomb. The eliminated Tribunal will decide.
+              {isSurvivorJury
+                ? 'Two players remain after a solved case. The eliminated Tribunal will choose the sole survivor.'
+                : 'Two players remain. One planted the bomb. The eliminated Tribunal will decide.'}
             </p>
             <Final2FinalistsMuted
               finalistIds={final2FinalistIdsRef.current}
@@ -1382,7 +1442,7 @@ export default function SilentSaboteurComp({
               📜 History
             </button>
             <p className="ss-hint hint-small">
-              {eliminatedIds.length} Tribunal member{eliminatedIds.length === 1 ? '' : 's'} will cast the deciding vote
+              {juryIds.length} sealed tribunal vote{juryIds.length === 1 ? '' : 's'} will decide the winner
             </p>
             <ActionFooter>
               <button
@@ -1403,15 +1463,15 @@ export default function SilentSaboteurComp({
       {final2Stage === 'FINAL2_VOTING' && final2SaboteurId && final2VictimId && (
         <div className="ss-stage ss-stage--centered">
           <div className="ss-phase-card ss-final2 ss-cinematic" data-testid="ss-final2-voting">
-            <p className="ss-phase-eyebrow">🏁 Final 2 — Tribunal Phase</p>
-            <h2 className="ss-phase-label">Who planted the bomb?</h2>
+            <p className="ss-phase-eyebrow">Final 2 · Sealed Ballots</p>
+            <h2 className="ss-phase-label">{isSurvivorJury ? 'Who should be the sole survivor?' : 'Who planted the bomb?'}</h2>
             <CountdownTimer
               remainingMs={remainingCountdownMs}
               totalMs={SILENT_SABOTEUR_TIMINGS.JURY_TIMER_MS}
             />
             <p className="ss-hint">
               {isHumanJuror && juryVotes[humanPlayerId!] === undefined
-                ? 'Cast your vote. Which finalist planted the bomb?'
+                ? isSurvivorJury ? 'Cast your vote. Which finalist should win?' : 'Cast your vote. Which finalist planted the bomb?'
                 : isHumanJuror
                 ? '✅ Vote cast. Waiting for the final Tribunal verdict…'
                 : 'Awaiting the Tribunal verdict…'}
@@ -1438,11 +1498,12 @@ export default function SilentSaboteurComp({
                 onSelect={handleJuryVote}
                 selectedId={humanPlayerId ? juryVotes[humanPlayerId] : undefined}
                 variant="vote"
+                actionLabelPrefix={isSurvivorJury ? 'Choose survivor' : 'Cast ballot for'}
               />
             )}
             <ProgressMeter
               label="Tribunal Votes"
-              participantIds={eliminatedIds}
+              participantIds={juryIds}
               submissions={juryVotes}
               getName={getName}
               noun="tribunal votes"
@@ -1485,7 +1546,9 @@ export default function SilentSaboteurComp({
             {!final2RevealDone ? (
               <>
                 <h2 className="ss-phase-label">
-                  {juryAccusedId ? 'The tribunal accused…' : 'The tribunal could not agree…'}
+                  {juryAccusedId
+                    ? isSurvivorJury ? 'The tribunal chose…' : 'The tribunal accused…'
+                    : 'The tribunal could not agree…'}
                 </h2>
                 <Final2FinalistsReveal
                   finalistIds={final2FinalistIdsRef.current}
@@ -1493,14 +1556,18 @@ export default function SilentSaboteurComp({
                   getName={getName}
                   revealDone={false}
                   saboteurId={null}
+                  winnerId={null}
+                  survivorJury={isSurvivorJury}
                 />
               </>
             ) : (
               <>
                 <h2 className="ss-phase-label">
-                  {juryAccusedId === final2SaboteurId
-                    ? 'The saboteur has been exposed!'
-                    : 'The bomb detonates…'}
+                  {isSurvivorJury
+                    ? 'The sole survivor is chosen.'
+                    : juryAccusedId === final2SaboteurId
+                      ? 'The saboteur has been exposed!'
+                      : 'The bomb detonates…'}
                 </h2>
                 <Final2FinalistsReveal
                   finalistIds={final2FinalistIdsRef.current}
@@ -1508,8 +1575,14 @@ export default function SilentSaboteurComp({
                   getName={getName}
                   revealDone={true}
                   saboteurId={final2SaboteurId}
+                  winnerId={winnerId}
+                  survivorJury={isSurvivorJury}
                 />
-                {juryAccusedId === final2SaboteurId ? (
+                {isSurvivorJury ? (
+                  <p className="ss-hint">
+                    The Tribunal awards survival to <strong>{getName(winnerId ?? '')}</strong>.
+                  </p>
+                ) : juryAccusedId === final2SaboteurId ? (
                   <p className="ss-hint">
                     The tribunal exposed <strong>{getName(final2SaboteurId ?? '')}</strong>.{' '}
                     <strong>{getName(final2VictimId ?? '')}</strong> wins.
@@ -1555,9 +1628,7 @@ export default function SilentSaboteurComp({
           <p className="ss-phase-eyebrow">Winner reveal</p>
           <h2 className="ss-winner-name">{getName(winnerId)}</h2>
           <p className="ss-winner-label">wins Silent Saboteur!</p>
-          {humanPlayerId === winnerId && (
-            <p className="ss-hint">🎉 You survived every round and solved the mystery.</p>
-          )}
+          {humanPlayerId === winnerId && <p className="ss-hint">You outlasted the final decision.</p>}
           <ActionFooter>
             <button
               className="ss-btn ss-action-btn"
@@ -1617,7 +1688,7 @@ function RoundHistoryOverlay({
         <header className="ss-history__header">
           <div>
             <h2 id="ss-history-title">📜 Round History</h2>
-            <p>Victims, accusations, votes and revealed saboteurs.</p>
+            <p>Victims, accusations, votes, and the truth from solved cases.</p>
           </div>
           <button type="button" className="ss-social-map__close" onClick={onClose} aria-label="Close Round History">
             ✕
@@ -1639,7 +1710,11 @@ function RoundHistoryOverlay({
                 <dl className="ss-history__facts">
                   <div><dt>Victim</dt><dd>{getName(entry.victimId)}</dd></div>
                   <div><dt>Accused</dt><dd>{getName(entry.accusedId)}</dd></div>
-                  <div><dt>Saboteur</dt><dd>{getName(entry.saboteurId)}</dd></div>
+                  {entry.saboteurId ? (
+                    <div><dt>Saboteur</dt><dd>{getName(entry.saboteurId)}</dd></div>
+                  ) : (
+                    <div><dt>Case</dt><dd>Unresolved</dd></div>
+                  )}
                   <div><dt>Eliminated</dt><dd>{getName(entry.eliminatedId)}</dd></div>
                 </dl>
                 <details className="ss-history__votes">
@@ -1692,10 +1767,12 @@ function CountdownTimer({
   remainingMs,
   totalMs,
   compact = false,
+  label = 'Time remaining',
 }: {
   remainingMs: number;
   totalMs: number;
   compact?: boolean;
+  label?: string;
 }) {
   const clampedRemaining = Math.max(0, remainingMs);
   const percent = totalMs <= 0 ? 0 : Math.max(0, Math.min(100, (clampedRemaining / totalMs) * 100));
@@ -1704,10 +1781,10 @@ function CountdownTimer({
   return (
     <div
       className={`ss-countdown ${isWarning ? 'ss-countdown--warning' : ''} ${compact ? 'ss-countdown--compact' : ''}`}
-      aria-label={`Time remaining: ${mmss}`}
+      aria-label={`${label}: ${mmss}`}
     >
       <div className="ss-countdown__row">
-        {!compact && <span className="ss-countdown__label">⏱ Time remaining</span>}
+        {!compact && <span className="ss-countdown__label">{label}</span>}
         <strong className={`ss-countdown__value ${isWarning ? 'ss-countdown__value--warning' : ''}`}>{mmss}</strong>
       </div>
       <div className="ss-countdown__track">
@@ -1731,6 +1808,7 @@ function AvatarTileGrid({
   showVoteState = false,
   dense = false,
   variant = 'default',
+  actionLabelPrefix,
 }: {
   playerIds: string[];
   getName: (id: string) => string;
@@ -1745,6 +1823,7 @@ function AvatarTileGrid({
   showVoteState?: boolean;
   dense?: boolean;
   variant?: 'default' | 'vote' | 'danger';
+  actionLabelPrefix?: string;
 }) {
   const rows = getAvatarGridRows(playerIds, dense);
   const votedSet = new Set(votedIds);
@@ -1790,12 +1869,13 @@ function AvatarTileGrid({
               </>
             );
 
-            const ariaPrefix =
+            const ariaPrefix = actionLabelPrefix ?? (
               variant === 'danger'
                 ? 'Plant bomb on'
                 : variant === 'vote'
                   ? 'Accuse'
-                  : 'Select';
+                  : 'Select'
+            );
 
             return onSelect ? (
               <button
@@ -2005,19 +2085,24 @@ function Final2FinalistsReveal({
   getName,
   revealDone,
   saboteurId,
+  winnerId,
+  survivorJury = false,
 }: {
   finalistIds: string[];
   accusedId: string | null;
   getName: (id: string) => string;
   revealDone: boolean;
   saboteurId: string | null;
+  winnerId: string | null;
+  survivorJury?: boolean;
 }) {
   return (
     <ul className="ss-final2-finalists" aria-label="Finalists reveal">
       {finalistIds.map((id) => {
         const isAccused = id === accusedId;
-        const isSaboteur = revealDone && id === saboteurId;
-        const isVictim = revealDone && saboteurId !== null && id !== saboteurId;
+        const isSaboteur = !survivorJury && revealDone && id === saboteurId;
+        const isVictim = !survivorJury && revealDone && saboteurId !== null && id !== saboteurId;
+        const isWinner = survivorJury && revealDone && id === winnerId;
         return (
           <li
             key={id}
@@ -2025,7 +2110,7 @@ function Final2FinalistsReveal({
               'ss-final2-finalist',
               revealDone ? 'ss-final2-finalist--revealed' : '',
               isAccused ? 'ss-final2-finalist--accused' : '',
-              isSaboteur ? 'ss-final2-finalist--saboteur' : '',
+              (isSaboteur || isWinner) ? 'ss-final2-finalist--saboteur' : '',
             ].filter(Boolean).join(' ')}
           >
             <div className="ss-final2-finalist__portrait">
@@ -2033,22 +2118,22 @@ function Final2FinalistsReveal({
               {isAccused && !revealDone && (
                 <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">🫵</span>
               )}
-              {isSaboteur && (
-                <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">💣</span>
+              {(isSaboteur || isWinner) && (
+                <span className="ss-final2-finalist__overlay-icon" aria-hidden="true">{isWinner ? '🏆' : '💣'}</span>
               )}
             </div>
             <span className="ss-final2-finalist__name">{getName(id)}</span>
             {revealDone && (
               <span
                 className={`ss-final2-finalist__role-badge ${
-                  isSaboteur
+                  isSaboteur || isWinner
                     ? 'ss-final2-finalist__role-badge--saboteur'
                     : isVictim
                     ? 'ss-final2-finalist__role-badge--victim'
                     : ''
                 }`}
               >
-                {isSaboteur ? 'Saboteur' : 'Victim'}
+                {survivorJury ? (isWinner ? 'Sole Survivor' : 'Finalist') : isSaboteur ? 'Saboteur' : 'Victim'}
               </span>
             )}
           </li>
@@ -2061,7 +2146,7 @@ function Final2FinalistsReveal({
 function SocialMapOverlay({
   victimId,
   suspects,
-  seed,
+  evidence,
   remainingMs,
   totalMs,
   getName,
@@ -2070,7 +2155,7 @@ function SocialMapOverlay({
 }: {
   victimId: string;
   suspects: string[];
-  seed: number;
+  evidence: SilentSaboteurRoundEvidence;
   remainingMs: number;
   totalMs: number;
   getName: (id: string) => string;
@@ -2078,10 +2163,10 @@ function SocialMapOverlay({
   onVote: ((id: string) => void) | null;
 }) {
   const cards = useMemo(
-    () => buildSuspectCards(suspects, victimId, seed, getName),
-    // getName is stable via useCallback, suspects/victimId/seed are stable per round
+    () => buildSuspectCards(suspects, evidence, getName),
+    // getName is stable via useCallback; evidence is replaced only on a new round.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [suspects, victimId, seed],
+    [suspects, evidence],
   );
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -2100,8 +2185,8 @@ function SocialMapOverlay({
         {/* Header with timer */}
         <div className="ss-social-map__header">
           <div className="ss-social-map__header-left">
-            <span className="ss-social-map__title">🗺️ Social Map</span>
-            <p className="ss-social-map__subtitle">Who had a reason to target {getName(victimId)}?</p>
+            <span className="ss-social-map__title">Case File</span>
+            <p className="ss-social-map__subtitle">A short read of the room around {getName(victimId)}.</p>
           </div>
           <div className="ss-social-map__header-right">
             <CountdownTimer remainingMs={remainingMs} totalMs={totalMs} compact={true} />
@@ -2124,25 +2209,9 @@ function SocialMapOverlay({
           </div>
         </div>
 
-        {/* Mini graph: victim in center, suspects around */}
-        {suspects.length > 0 && (
-          <div className="ss-social-map__graph" aria-hidden="true">
-            <div className="ss-social-map__graph-center">
-              <HouseguestPortrait id={victimId} name={getName(victimId)} sizeClass="ss-victim-avatar--sm" />
-              <span className="ss-social-map__graph-label">{getName(victimId)}</span>
-            </div>
-            {cards.map((card) => (
-              <div key={card.id} className="ss-social-map__graph-node">
-                <div
-                  className="ss-social-map__graph-line"
-                  style={{ borderColor: RELATIONSHIP_COLORS[card.relationship] }}
-                />
-                <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
-                <span className="ss-social-map__graph-label">{card.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <p className="ss-social-map__disclaimer">
+          No clue proves guilt—or innocence.
+        </p>
 
         {/* Suspect cards */}
         <div className="ss-social-map__cards">
@@ -2152,29 +2221,31 @@ function SocialMapOverlay({
                 <HouseguestPortrait id={card.id} name={card.name} sizeClass="ss-victim-avatar--sm" />
                 <div className="ss-social-map__card-identity">
                   <strong className="ss-social-map__card-name">{card.name}</strong>
-                  <span
-                    className="ss-social-map__card-rel"
-                    style={{ color: RELATIONSHIP_COLORS[card.relationship] }}
-                  >
-                    {card.relationship}
+                  <span className="ss-social-map__card-rel">
+                    Tension · {['Low', 'Raised', 'High'][fnv1a32(card.id + ':tension') % 3]}
                   </span>
                 </div>
-                <div className="ss-social-map__card-strength">
-                  {Array.from({ length: 5 }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`ss-social-map__dot ${i <= card.relationshipStrength ? 'ss-social-map__dot--active' : ''}`}
-                      style={i <= card.relationshipStrength ? { background: RELATIONSHIP_COLORS[card.relationship] } : undefined}
-                    />
+                <div className="ss-social-map__tension" aria-label={['Low', 'Raised', 'High'][fnv1a32(card.id + ':tension') % 3] + ' tension'}>
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <span key={index} className={index <= fnv1a32(card.id + ':tension') % 3 ? 'is-active' : ''} />
                   ))}
                 </div>
               </div>
-              <div className="ss-social-map__card-traits">
-                {card.traits.map((t) => (
-                  <span key={t} className="ss-social-map__trait">{t}</span>
+              <div className="ss-social-map__card-observations">
+                {card.observations.length === 0 ? (
+                  <p className="ss-social-map__card-hint">No case note has surfaced yet.</p>
+                ) : card.observations.slice(-1).map((observation, index) => (
+                  <p key={card.id + '-' + index} className="ss-social-map__card-hint">
+                    <span className="ss-social-map__case-thread">{CASE_THREAD_LABELS[observation.kind] ?? 'Case note'}</span>
+                    <strong>{card.name}</strong> {observation.detail} <em>{observation.interpretation}</em>
+                  </p>
                 ))}
+                {card.observations.length > 1 && (
+                  <p className="ss-social-map__earlier-thread">
+                    Earlier thread: {CASE_THREAD_LABELS[card.observations[0].kind] ?? 'Case note'}.
+                  </p>
+                )}
               </div>
-              <p className="ss-social-map__card-hint">{card.hint}</p>
               {onVote && (
                 <button
                   className="ss-btn ss-btn--vote ss-btn--sm"
@@ -2192,6 +2263,82 @@ function SocialMapOverlay({
           Close Social Map
         </button>
       </div>
+    </div>
+  );
+}
+
+function InvestigationSpotlightGuide({
+  step,
+  onNext,
+  onSkip,
+}: {
+  step: number;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
+  const slides = [
+    {
+      eyebrow: 'Case File',
+      title: 'Read the room first',
+      copy: 'Open Social Map for the strongest current lead. Every note leaves room for doubt.',
+    },
+    {
+      eyebrow: 'Ballot History',
+      title: 'Remember who backed whom',
+      copy: 'History keeps the earlier votes in view. Use it to test a story before you commit.',
+    },
+    {
+      eyebrow: 'Your accusation',
+      title: 'Choose, then lock it in',
+      copy: 'Tap a portrait to stage your choice. You can change it until you confirm the accusation.',
+    },
+  ];
+  const slide = slides[step] ?? slides[0];
+  const lastSlide = step >= slides.length - 1;
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    const targetLabels = ['Open Social Map', 'Open Round History', 'Accuse a saboteur'];
+    const measureTarget = () => {
+      const target = document.querySelector('[aria-label="' + targetLabels[step] + '"]');
+      setTargetRect(target instanceof HTMLElement ? target.getBoundingClientRect() : null);
+    };
+    measureTarget();
+    window.addEventListener('resize', measureTarget);
+    window.addEventListener('scroll', measureTarget, true);
+    return () => {
+      window.removeEventListener('resize', measureTarget);
+      window.removeEventListener('scroll', measureTarget, true);
+    };
+  }, [step]);
+
+  const spotlightStyle = targetRect
+    ? {
+        left: Math.max(8, targetRect.left - 10),
+        top: Math.max(8, targetRect.top - 10),
+        width: targetRect.width + 20,
+        height: targetRect.height + 20,
+      }
+    : undefined;
+
+  return (
+    <div className="ss-investigation-spotlight" role="dialog" aria-modal="true" aria-label="How to investigate">
+      <div className="ss-investigation-spotlight__beam" aria-hidden="true" />
+      {spotlightStyle && <div className="ss-investigation-spotlight__cutout" aria-hidden="true" style={spotlightStyle} />}
+      <section className="ss-investigation-spotlight__card">
+        <span className="ss-investigation-spotlight__eyebrow">{slide.eyebrow}</span>
+        <h3>{slide.title}</h3>
+        <p>{slide.copy}</p>
+        <div className="ss-investigation-spotlight__footer">
+          <span aria-label={'Guide step ' + (step + 1) + ' of ' + slides.length}>
+            {slides.map((_, index) => <i key={index} className={index === step ? 'is-active' : ''} />)}
+          </span>
+          <button type="button" className="ss-investigation-spotlight__skip" onClick={onSkip}>Skip guide</button>
+          <button type="button" className="ss-btn ss-btn--vote" onClick={onNext}>
+            {lastSlide ? 'Start investigating' : 'Next'}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

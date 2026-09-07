@@ -35,6 +35,7 @@ import FamousFiguresComp from '../FamousFiguresComp/FamousFiguresComp'
 import type { FamousFiguresPrizeType } from '../../features/famousFigures/famousFiguresSlice'
 import SilentSaboteurComp from '../SilentSaboteurComp/SilentSaboteurComp'
 import type { SilentSaboteurPrizeType } from '../../features/silentSaboteur/silentSaboteurSlice'
+import { getGame as getCanonicalGame } from '../../minigames/registryBase'
 import MajorityRulesComp from '../MajorityRulesComp/MajorityRulesComp'
 import type { MajorityRulesCompetitionType } from '../../features/majorityRules/majorityRulesSlice'
 import { buildGlassBridgeTimeLimitMs } from '../../features/glassBridge/glassBridgeSlice'
@@ -187,7 +188,14 @@ export default function MinigameHost({
       (() => {
         const override =
           store.getState().remoteConfig.config?.rulesManager?.games?.[launchedGame.key]
-        const resolved = override ? { ...launchedGame, ...override } : launchedGame
+        // Silent Saboteur's rules are stateful and must stay in lockstep with
+        // its resolver. Ignore remote copies for this game so an older saved
+        // briefing cannot describe a different ruleset.
+        const resolved = launchedGame.key === 'silentSaboteur'
+          ? getCanonicalGame('silentSaboteur') ?? launchedGame
+          : override
+            ? { ...launchedGame, ...override }
+            : launchedGame
         return resolved.key === 'glass_bridge_brutal'
           ? { ...resolved, timeLimitMs: buildGlassBridgeTimeLimitMs((participants ?? []).length) }
           : resolved
