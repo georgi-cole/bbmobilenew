@@ -373,6 +373,9 @@ export default function SilentSaboteurComp({
   const [selectedAccusationId, setSelectedAccusationId] = useState<string | null>(null);
   const [investigationGuideStep, setInvestigationGuideStep] = useState<number | null>(0);
   const [spectatorMode, setSpectatorMode] = useState<SpectatorMode>('active');
+  // A remounted retry can briefly see the previous run's completed Redux state.
+  // Do not report completion until this instance has initialized its own run.
+  const [sessionReady, setSessionReady] = useState(false);
   /** Locks manual non-Final-2 CTA clicks until the beat changes. */
   const [majorBeatActionLocked, setMajorBeatActionLocked] = useState(false);
 
@@ -514,6 +517,7 @@ export default function SilentSaboteurComp({
         humanPlayerId: humanId,
       }),
     );
+    setSessionReady(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -798,7 +802,7 @@ export default function SilentSaboteurComp({
   // During Final-2 cinematic, defer the parent notification until the user
   // clicks the final Continue button (see handleFinal2WinnerContinue).
   useEffect(() => {
-    if (phase !== 'complete') return;
+    if (!sessionReady || phase !== 'complete') return;
     if (!standalone) {
       dispatch(resolveSilentSaboteurOutcome());
     }
@@ -815,7 +819,7 @@ export default function SilentSaboteurComp({
   // onComplete is intentionally excluded: stable callback ref; adding it would
   // cause double-fires when the host re-renders the component.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, dispatch, standalone, winnerId, eliminatedIds]);
+  }, [sessionReady, phase, dispatch, standalone, winnerId, eliminatedIds]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render helpers
