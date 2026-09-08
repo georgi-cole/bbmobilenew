@@ -38,7 +38,6 @@ import { getFinalNameHintText, getHintText } from '../../games/famous-figures/hi
 import { MAX_VISIBLE_HINTS, VISIBLE_HINT_INDICES } from '../../games/famous-figures/model'
 import MinigameCompleteWrapper from '../MinigameHost/MinigameCompleteWrapper'
 import './FamousFiguresComp.css'
-import InlineKeyboard from '../InlineKeyboard/InlineKeyboard'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -963,8 +962,7 @@ export default function FamousFiguresComp({
             ref={inputRef}
             className={inputFieldClass}
             type="text"
-            inputMode="none"
-            readOnly
+            inputMode="text"
             value={guessInput}
             onChange={(e) => setGuessInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -994,18 +992,6 @@ export default function FamousFiguresComp({
             Submit
           </button>
         </div>
-        <InlineKeyboard
-          value={guessInput}
-          onChange={setGuessInput}
-          onSubmit={handleSubmitGuess}
-          disabled={
-            ff.status !== 'round_active' ||
-            successOverlay !== null ||
-            humanCorrect ||
-            humanId === null ||
-            humanCursor >= ff.totalRounds
-          }
-        />
         <div className={feedbackClass} aria-live="assertive">
           {feedbackMsg}
         </div>

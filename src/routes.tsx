@@ -112,6 +112,9 @@ const GridOfLuckTestPage = import.meta.env.DEV
 const MinigameLab = import.meta.env.DEV
   ? lazy(() => import('./screens/MinigameLab/MinigameLab'))
   : null
+const KeyboardGamesTestPage = import.meta.env.DEV
+  ? lazy(() => import('./screens/KeyboardGamesTestPage/KeyboardGamesTestPage'))
+  : null
 
 // Dev-only, fully isolated Find Your Twin AI experiment. Production behavior is untouched.
 const FindYourTwinExperiment = import.meta.env.DEV
@@ -319,6 +322,18 @@ export const router = createHashRouter([
               element: (
                 <Suspense fallback={null}>
                   <MinigameLab />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+      ...(import.meta.env.DEV && KeyboardGamesTestPage != null
+        ? [
+            {
+              path: 'keyboard-games-test',
+              element: (
+                <Suspense fallback={null}>
+                  <KeyboardGamesTestPage />
                 </Suspense>
               ),
             },
