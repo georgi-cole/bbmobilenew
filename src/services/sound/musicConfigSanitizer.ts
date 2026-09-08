@@ -261,9 +261,19 @@ function sanitiseEventCue(raw: unknown): AudioEventCue | undefined {
   }
   if (soundKey === undefined) return undefined
   const volume = safeUnitInterval(raw.volume)
+  const startAtSec = safeCueSeconds(raw.startAtSec)
+  const durationMs = safeDuration(raw.durationMs)
+  const fadeInMs = safeDuration(raw.fadeInMs)
+  const fadeOutMs = safeDuration(raw.fadeOutMs)
+  const dedupeMs = safeDuration(raw.dedupeMs)
   return {
     soundKey,
     ...(volume !== undefined ? { volume } : {}),
+    ...(startAtSec !== undefined ? { startAtSec } : {}),
+    ...(durationMs !== undefined ? { durationMs } : {}),
+    ...(fadeInMs !== undefined ? { fadeInMs } : {}),
+    ...(fadeOutMs !== undefined ? { fadeOutMs } : {}),
+    ...(dedupeMs !== undefined ? { dedupeMs } : {}),
   }
 }
 
