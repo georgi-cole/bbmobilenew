@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 import './MinigameUtilityDock.css'
 
@@ -52,7 +53,7 @@ export default function MinigameUtilityDock({
 }: Props) {
   const rulesAvailable = phase === 'countdown' || phase === 'playing'
 
-  return (
+  return createPortal(
     <>
       {menuOpen && (
         <button
@@ -117,6 +118,7 @@ export default function MinigameUtilityDock({
           <EyeIcon />
         </button>
       </div>
-    </>
+    </>,
+    document.body
   )
 }
