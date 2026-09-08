@@ -79,14 +79,14 @@ describe('season opening replacement routing', () => {
     expect(isVisibleInMainLog(event)).toBe(false)
   })
 
-  it('keeps a persisted Force to TV override from reviving a legacy welcome', () => {
+  it('honors Force to TV for an otherwise suppressed legacy welcome', () => {
     const event = {
       text: 'Welcome to The Big Eye hub! 🏠 Season 7 is about to begin.',
       type: 'game',
       meta: { forceOnTv: true },
     }
 
-    expect(isVisibleOnTv(event)).toBe(false)
+    expect(isVisibleOnTv(event)).toBe(true)
   })
 
   it('suppresses the exact legacy Cupid welcome as well', () => {

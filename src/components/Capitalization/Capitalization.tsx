@@ -29,6 +29,7 @@ import {
   type CapitalizationStanding,
 } from './capitalizationUtils'
 import './Capitalization.css'
+import InlineKeyboard from '../InlineKeyboard/InlineKeyboard'
 
 const SPIN_DURATION_MS = 2600
 
@@ -120,6 +121,7 @@ export default function Capitalization({
   const [nowMs, setNowMs] = useState(0)
   const [questionStartedAtMs, setQuestionStartedAtMs] = useState(0)
   const [rulesOpen, setRulesOpen] = useState(context === 'battleBack')
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const questionStartedAtRef = useRef(0)
   const completionFiredRef = useRef(false)
   const rulesGame = getGame('capitalization')
@@ -145,6 +147,7 @@ export default function Capitalization({
       setNowMs(questionStartedAtRef.current)
       setPhase('question')
       setFeedback(`Name the capital of ${currentQuestion.name}.`)
+      window.setTimeout(() => inputRef.current?.focus(), 0)
     }, SPIN_DURATION_MS)
 
     return () => window.clearTimeout(timer)
@@ -506,9 +509,11 @@ export default function Capitalization({
                       </label>
                       <div className="capitalization__answer-row">
                         <input
+                          ref={inputRef}
                           id="capitalization-answer"
                           type="text"
-                          inputMode="text"
+                          inputMode="none"
+                          readOnly
                           value={answerInput}
                           disabled={inputDisabled}
                           onChange={(event) => setAnswerInput(event.target.value)}
@@ -528,6 +533,12 @@ export default function Capitalization({
                           {t('capitalization.hintHalf')}
                         </button>
                       </div>
+                      <InlineKeyboard
+                        value={answerInput}
+                        onChange={setAnswerInput}
+                        onSubmit={submitAnswer}
+                        disabled={inputDisabled}
+                      />
                       {hintOptions && (
                         <div
                           className="capitalization__hint-options"

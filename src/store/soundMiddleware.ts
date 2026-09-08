@@ -40,11 +40,17 @@ function isBattleBackReturn(
 function playConfiguredEvent(eventId: AudioEventId, state: RootState): void {
   const cue = resolveAudioEventCue(eventId, selectEffectiveMusicConfig(state))
   if (!cue.soundKey) return
-  if (cue.volume === undefined) {
-    void SoundManager.play(cue.soundKey)
-  } else {
-    void SoundManager.play(cue.soundKey, { volume: cue.volume })
+  const options = {
+    ...(cue.volume !== undefined ? { volume: cue.volume } : {}),
+    ...(cue.startAtSec !== undefined ? { startAtSec: cue.startAtSec } : {}),
+    ...(cue.durationMs !== undefined ? { durationMs: cue.durationMs } : {}),
+    ...(cue.fadeInMs !== undefined ? { fadeInMs: cue.fadeInMs } : {}),
+    ...(cue.fadeOutMs !== undefined ? { fadeOutMs: cue.fadeOutMs } : {}),
+    ...(cue.dedupeMs !== undefined ? { dedupeMs: cue.dedupeMs } : {}),
   }
+  void (Object.keys(options).length > 0
+    ? SoundManager.play(cue.soundKey, options)
+    : SoundManager.play(cue.soundKey))
 }
 
 /** Phase entry owns only the competition-results stinger; mounted visuals own the rest. */

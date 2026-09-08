@@ -39,26 +39,26 @@ const HEAT_EMOJIS: string[][] = [
 
 /** Tap-button fill colors per heat level. */
 const HEAT_BTN_COLORS = [
-  '#7c5cff',
-  '#8b6cff',
-  '#f59e0b',
-  '#fb7185',
-  '#f43f5e',
-  '#e11d48',
+  '#7c3aed',
+  '#7c3aed',
+  '#b44900',
+  '#d43800',
+  '#e62000',
+  '#ff2000',
 ];
 
 /** Canvas background colors per heat level. */
 const HEAT_BG_COLORS = [
-  'rgba(7, 11, 24, 0.96)',
-  'rgba(7, 11, 24, 0.96)',
-  'rgba(27, 19, 12, 0.96)',
-  'rgba(35, 15, 20, 0.96)',
-  'rgba(45, 12, 20, 0.96)',
-  'rgba(58, 10, 20, 0.96)',
+  'rgba(15, 15, 25, 0.98)',
+  'rgba(15, 15, 25, 0.98)',
+  'rgba(10, 0, 0, 0.98)',
+  'rgba(20, 5, 0, 0.98)',
+  'rgba(30, 8, 0, 0.98)',
+  'rgba(40, 10, 0, 0.98)',
 ];
 
 /** Heat-dot active colors indexed 0–5. */
-const HEAT_DOT_COLORS = ['#5eead4', '#67e8f9', '#60a5fa', '#818cf8', '#a78bfa', '#f0abfc'];
+const HEAT_DOT_COLORS = ['#ff8c00', '#ff6400', '#ff4000', '#ff2000', '#ff0000', '#ffffff'];
 
 const PARTICLE_LIFE_MS = 700;
 /** Pixels per millisecond for particle velocity magnitude. */
@@ -69,7 +69,7 @@ const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
 const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
 const BOOSTER_PROMPT_GLOW_BASE_ALPHA = 0.28;
 const BOOSTER_PROMPT_GLOW_PULSE_ALPHA = 0.12;
-const BOOSTER_PROMPT_BASE_COLOR_RGB = '103, 232, 249';
+const BOOSTER_PROMPT_BASE_COLOR_RGB = '96, 165, 250';
 const BOOSTER_PROMPT_SHADOW_BLUR_BASE = 14;
 const BOOSTER_PROMPT_SHADOW_BLUR_SCALE = 10;
 const HIGH_HEAT_THRESHOLD = 4;
@@ -680,7 +680,7 @@ export class QuickTapRaceCanvasEngine {
       + Math.sin((this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * Math.PI * 2)
         * BOOSTER_PROMPT_PULSE_AMPLITUDE;
     const glowAlpha = BOOSTER_PROMPT_GLOW_BASE_ALPHA + pulse * BOOSTER_PROMPT_GLOW_PULSE_ALPHA;
-    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fbbf24' : '#67e8f9';
+    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fb923c' : '#60a5fa';
 
     // Draw rounded rectangle.
     ctx.beginPath();
@@ -746,7 +746,7 @@ export class QuickTapRaceCanvasEngine {
 
     // Outer glow — more intense at high heat or when pressed.
     ctx.save();
-    const glowColor = this.heatLevel >= 4 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(124, 92, 255, 0.48)';
+    const glowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = (16 + this.heatLevel * 8) * (1 - 0.4 * pressFraction);
     ctx.beginPath();
@@ -760,27 +760,6 @@ export class QuickTapRaceCanvasEngine {
     ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
-
-    // A soft highlight and hairline rim give the tap target a glassy face
-    // without changing its size or hit area.
-    if (typeof ctx.createRadialGradient === 'function') {
-      const highlight = ctx.createRadialGradient(
-        cx - displayRadius * 0.34,
-        cy - displayRadius * 0.42,
-        displayRadius * 0.04,
-        cx,
-        cy,
-        displayRadius * 1.05,
-      );
-      highlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-      highlight.addColorStop(0.42, 'rgba(255, 255, 255, 0.06)');
-      highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = highlight;
-      ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 
     // Label.
     const label = this.heatLevel >= 4 ? '💥' : this.heatLevel >= 2 ? '🔥' : 'TAP!';

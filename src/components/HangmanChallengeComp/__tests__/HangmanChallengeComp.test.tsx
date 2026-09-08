@@ -52,7 +52,8 @@ describe('HangmanChallengeComp', () => {
     expect(playfield?.children[1]).toBe(letterBoard)
     expect(screen.queryByLabelText(/mystery box available/i)).toBeNull()
     expect(screen.getByText('Timer').closest('.hangman-challenge__header')).toBeTruthy()
-    expect(screen.queryByLabelText(/letter keyboard/i)).toBeNull()
+    const mobileKeyboard = screen.getByLabelText(/letter keyboard/i)
+    expect(within(mobileKeyboard).getAllByRole('button')).toHaveLength(26)
   })
 
   it('offers a mystery box in a compact dialog and shows its effect in that same dialog', () => {

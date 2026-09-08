@@ -1,43 +1,31 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react';
 
-import MinigameHost, { type MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
-import { getAllGames, type GameRegistryEntry } from '../../minigames/registry'
-import { getRouteFlag, getRouteSearchParams } from '../../utils/routeQuery'
-import './MinigameLab.css'
+import MinigameHost, { type MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
+import { getAllGames, type GameRegistryEntry } from '../../minigames/registry';
+import { getRouteFlag, getRouteSearchParams } from '../../utils/routeQuery';
+import './MinigameLab.css';
 
-const DEFAULT_SEED = 424242
-const DEFAULT_PLAYERS = 4
-const MIN_PLAYERS = 2
-const MAX_PLAYERS = 12
-const MIN_SEED = 0
-const MAX_SEED = Number.MAX_SAFE_INTEGER
-export const KEYBOARD_GAME_KEYS = [
-  'capitalization',
-  'dontGoOver',
-  'estimationGame',
-  'famousFigures',
-  'hangman',
-  'threeDigitsQuiz',
-] as const
-
-interface MinigameLabProps {
-  keyboardGamesOnly?: boolean
-}
+const DEFAULT_SEED = 424242;
+const DEFAULT_PLAYERS = 4;
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 12;
+const MIN_SEED = 0;
+const MAX_SEED = Number.MAX_SAFE_INTEGER;
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, Math.trunc(value)))
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function parseInteger(value: string | null, fallback: number, min: number, max: number): number {
-  if (value == null || value.trim() === '') return fallback
-  const parsed = Number.parseInt(value, 10)
-  if (!Number.isFinite(parsed)) return fallback
-  return clamp(parsed, min, max)
+  if (value == null || value.trim() === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return clamp(parsed, min, max);
 }
 
 function readInitialFlag(name: string, fallback: boolean): boolean {
-  const params = getRouteSearchParams()
-  return params.has(name) ? getRouteFlag(name) : fallback
+  const params = getRouteSearchParams();
+  return params.has(name) ? getRouteFlag(name) : fallback;
 }
 
 function buildParticipants(count: number): MinigameParticipant[] {
@@ -48,101 +36,89 @@ function buildParticipants(count: number): MinigameParticipant[] {
     avatar: undefined,
     precomputedScore: Math.max(0, 100 - index * 9),
     previousPR: index === 0 ? null : Math.max(0, 90 - index * 7),
-  }))
+  }));
 }
 
 function formatGameLabel(game: GameRegistryEntry | null): string {
-  if (!game) return 'Unknown game'
-  return `${game.title}${game.vipOnly ? ' · VIP' : ''} · ${game.category} · ${game.metricLabel}`
+  if (!game) return 'Unknown game';
+  return `${game.title}${game.vipOnly ? ' · VIP' : ''} · ${game.category} · ${game.metricLabel}`;
 }
 
-export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabProps) {
-  const params = useMemo(() => getRouteSearchParams(), [])
+export default function MinigameLab() {
+  const params = useMemo(() => getRouteSearchParams(), []);
   const activeGames = useMemo(
     () =>
-      getAllGames()
-        .filter((game) => !game.retired || game.vipOnly)
-        .filter(
-          (game) =>
-            !keyboardGamesOnly ||
-            KEYBOARD_GAME_KEYS.includes(game.key as (typeof KEYBOARD_GAME_KEYS)[number])
-        )
-        .slice()
-        .sort((left, right) => {
-          const titleDiff = left.title.localeCompare(right.title)
-          return titleDiff !== 0 ? titleDiff : left.key.localeCompare(right.key)
-        }),
-    [keyboardGamesOnly]
-  )
+      getAllGames().filter((game) => !game.retired || game.vipOnly).slice().sort((left, right) => {
+        const titleDiff = left.title.localeCompare(right.title);
+        return titleDiff !== 0 ? titleDiff : left.key.localeCompare(right.key);
+      }),
+    [],
+  );
 
-  const initialGameKey = params.get('game') ?? activeGames[0]?.key ?? ''
-  const [selectedGameKey, setSelectedGameKey] = useState(initialGameKey)
-  const [seed, setSeed] = useState(() =>
-    parseInteger(params.get('seed'), DEFAULT_SEED, MIN_SEED, MAX_SEED)
-  )
+  const initialGameKey = params.get('game') ?? activeGames[0]?.key ?? '';
+  const [selectedGameKey, setSelectedGameKey] = useState(initialGameKey);
+  const [seed, setSeed] = useState(() => parseInteger(params.get('seed'), DEFAULT_SEED, MIN_SEED, MAX_SEED));
   const [playerCount, setPlayerCount] = useState(() =>
-    parseInteger(params.get('players'), DEFAULT_PLAYERS, MIN_PLAYERS, MAX_PLAYERS)
-  )
-  const [skipRules, setSkipRules] = useState(() => readInitialFlag('skipRules', true))
-  const [skipCountdown, setSkipCountdown] = useState(() => readInitialFlag('skipCountdown', true))
-  const [previewNonce, setPreviewNonce] = useState(0)
-  const [lastResult, setLastResult] = useState<string | null>(null)
-  const [completionCount, setCompletionCount] = useState(0)
-  const [isMinimized, setIsMinimized] = useState(false)
+    parseInteger(params.get('players'), DEFAULT_PLAYERS, MIN_PLAYERS, MAX_PLAYERS),
+  );
+  const [skipRules, setSkipRules] = useState(() => readInitialFlag('skipRules', true));
+  const [skipCountdown, setSkipCountdown] = useState(() => readInitialFlag('skipCountdown', true));
+  const [previewNonce, setPreviewNonce] = useState(0);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+  const [completionCount, setCompletionCount] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
 
-  const freezeEnabled = getRouteFlag('freeze')
+  const freezeEnabled = getRouteFlag('freeze');
   const selectedGame =
-    activeGames.find((game) => game.key === selectedGameKey) ?? activeGames[0] ?? null
-  const participants = useMemo(() => buildParticipants(playerCount), [playerCount])
-  const previewKey = `${selectedGame?.key ?? 'unknown'}:${seed}:${playerCount}:${skipRules ? 1 : 0}:${skipCountdown ? 1 : 0}:${previewNonce}`
+    activeGames.find((game) => game.key === selectedGameKey) ?? activeGames[0] ?? null;
+  const participants = useMemo(() => buildParticipants(playerCount), [playerCount]);
+  const previewKey = `${selectedGame?.key ?? 'unknown'}:${seed}:${playerCount}:${skipRules ? 1 : 0}:${skipCountdown ? 1 : 0}:${previewNonce}`;
 
   const clearLastResult = () => {
-    setLastResult(null)
-    setCompletionCount(0)
-  }
+    setLastResult(null);
+    setCompletionCount(0);
+  };
 
   const handleGameChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedGameKey(event.currentTarget.value)
-    setPreviewNonce(0)
-    clearLastResult()
-  }
+    setSelectedGameKey(event.currentTarget.value);
+    setPreviewNonce(0);
+    clearLastResult();
+  };
 
   const handleSeedChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextSeed = event.currentTarget.valueAsNumber
-    setSeed(Number.isFinite(nextSeed) ? clamp(nextSeed, MIN_SEED, MAX_SEED) : DEFAULT_SEED)
-    clearLastResult()
-  }
+    const nextSeed = event.currentTarget.valueAsNumber;
+    setSeed(Number.isFinite(nextSeed) ? clamp(nextSeed, MIN_SEED, MAX_SEED) : DEFAULT_SEED);
+    clearLastResult();
+  };
 
   const handlePlayerChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextPlayers = event.currentTarget.valueAsNumber
-    setPlayerCount(
-      Number.isFinite(nextPlayers) ? clamp(nextPlayers, MIN_PLAYERS, MAX_PLAYERS) : DEFAULT_PLAYERS
-    )
-    clearLastResult()
-  }
+    const nextPlayers = event.currentTarget.valueAsNumber;
+    setPlayerCount(Number.isFinite(nextPlayers) ? clamp(nextPlayers, MIN_PLAYERS, MAX_PLAYERS) : DEFAULT_PLAYERS);
+    clearLastResult();
+  };
 
   const handleSkipRulesChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSkipRules(event.currentTarget.checked)
-    clearLastResult()
-  }
+    setSkipRules(event.currentTarget.checked);
+    clearLastResult();
+  };
 
   const handleSkipCountdownChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSkipCountdown(event.currentTarget.checked)
-    clearLastResult()
-  }
+    setSkipCountdown(event.currentTarget.checked);
+    clearLastResult();
+  };
 
   const handleRestartPreview = () => {
-    setPreviewNonce((current) => current + 1)
-    clearLastResult()
-  }
+    setPreviewNonce((current) => current + 1);
+    clearLastResult();
+  };
 
   const handleCloseLab = () => {
     if (window.history.length > 1) {
-      window.history.back()
+      window.history.back();
     } else {
-      window.location.hash = '#/'
+      window.location.hash = '#/';
     }
-  }
+  };
 
   if (isMinimized) {
     return (
@@ -156,13 +132,13 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
             skipRules={skipRules}
             skipCountdown={skipCountdown}
             onDone={(rawValue, partial, completion) => {
-              setCompletionCount((current) => current + 1)
-              const rounded = Math.round(rawValue)
+              setCompletionCount((current) => current + 1);
+              const rounded = Math.round(rawValue);
               setLastResult(
                 completion?.authoritativeWinnerId
                   ? `${selectedGame.title}: authoritative winner ${completion.authoritativeWinnerId} (${rounded})${partial ? ' [partial]' : ''}`
-                  : `${selectedGame.title}: completed with ${rounded}${partial ? ' [partial]' : ''}`
-              )
+                  : `${selectedGame.title}: completed with ${rounded}${partial ? ' [partial]' : ''}`,
+              );
             }}
           />
         )}
@@ -175,7 +151,7 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
           Open Lab
         </button>
       </main>
-    )
+    );
   }
 
   return (
@@ -183,15 +159,9 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
       <section className="minigame-lab__panel" aria-label="Minigame lab controls">
         <div className="minigame-lab__header">
           <div className="minigame-lab__header-row">
-            <p className="minigame-lab__eyebrow">
-              {keyboardGamesOnly ? 'Native keyboard QA' : 'Minigame lab'}
-            </p>
+            <p className="minigame-lab__eyebrow">Minigame lab</p>
             <div className="minigame-lab__window-actions">
-              <button
-                type="button"
-                onClick={() => setIsMinimized(true)}
-                aria-label="Minimize minigame lab"
-              >
+              <button type="button" onClick={() => setIsMinimized(true)} aria-label="Minimize minigame lab">
                 Minimize
               </button>
               <button type="button" onClick={handleCloseLab} aria-label="Close minigame lab">
@@ -199,13 +169,9 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
               </button>
             </div>
           </div>
-          <h1 className="minigame-lab__title">
-            {keyboardGamesOnly ? 'Keyboard game test page' : 'Registry-backed QA arena'}
-          </h1>
+          <h1 className="minigame-lab__title">Registry-backed QA arena</h1>
           <p className="minigame-lab__lede">
-            {keyboardGamesOnly
-              ? 'Test every game that needs typed input. Each game uses the device keyboard only.'
-              : 'Pick any active mini-game, freeze the frame when needed, and verify the host contract without digging through the full app.'}
+            Pick any active mini-game, freeze the frame when needed, and verify the host contract without digging through the full app.
           </p>
         </div>
 
@@ -213,24 +179,17 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
           <span className="minigame-lab__badge" data-testid="minigame-lab-freeze-indicator">
             {freezeEnabled ? 'Freeze on' : 'Freeze off'}
           </span>
-          <span className="minigame-lab__badge">
-            {activeGames.length} {keyboardGamesOnly ? 'keyboard games' : 'active games'}
-          </span>
+          <span className="minigame-lab__badge">{activeGames.length} active games</span>
           <span className="minigame-lab__badge">{playerCount} players</span>
         </div>
 
         <div className="minigame-lab__controls">
           <label className="minigame-lab__field">
             <span>Game</span>
-            <select
-              value={selectedGame?.key ?? ''}
-              onChange={handleGameChange}
-              aria-label="Selected game"
-            >
+            <select value={selectedGame?.key ?? ''} onChange={handleGameChange} aria-label="Selected game">
               {activeGames.map((game) => (
                 <option key={game.key} value={game.key}>
-                  {game.title}
-                  {game.vipOnly ? ' · VIP' : ''}
+                  {game.title}{game.vipOnly ? ' · VIP' : ''}
                 </option>
               ))}
             </select>
@@ -261,16 +220,28 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
           </label>
 
           <label className="minigame-lab__toggle">
-            <input type="checkbox" checked={skipRules} onChange={handleSkipRulesChange} />
+            <input
+              type="checkbox"
+              checked={skipRules}
+              onChange={handleSkipRulesChange}
+            />
             <span>Skip rules</span>
           </label>
 
           <label className="minigame-lab__toggle">
-            <input type="checkbox" checked={skipCountdown} onChange={handleSkipCountdownChange} />
+            <input
+              type="checkbox"
+              checked={skipCountdown}
+              onChange={handleSkipCountdownChange}
+            />
             <span>Skip countdown</span>
           </label>
 
-          <button type="button" className="minigame-lab__restart" onClick={handleRestartPreview}>
+          <button
+            type="button"
+            className="minigame-lab__restart"
+            onClick={handleRestartPreview}
+          >
             Restart preview
           </button>
         </div>
@@ -280,8 +251,7 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
             {selectedGame?.title ?? 'Unknown game'}
           </h2>
           <p className="minigame-lab__summary-copy">
-            {selectedGame?.description ??
-              'Select a game from the registry to inspect its host flow.'}
+            {selectedGame?.description ?? 'Select a game from the registry to inspect its host flow.'}
           </p>
           <p className="minigame-lab__summary-meta">{formatGameLabel(selectedGame)}</p>
           <span data-testid="minigame-lab-completion-count">{completionCount}</span>
@@ -307,20 +277,18 @@ export default function MinigameLab({ keyboardGamesOnly = false }: MinigameLabPr
           skipRules={skipRules}
           skipCountdown={skipCountdown}
           onDone={(rawValue, partial, completion) => {
-            setCompletionCount((current) => current + 1)
-            const rounded = Math.round(rawValue)
+            setCompletionCount((current) => current + 1);
+            const rounded = Math.round(rawValue);
             if (completion?.authoritativeWinnerId) {
               setLastResult(
-                `${selectedGame.title}: authoritative winner ${completion.authoritativeWinnerId} (${rounded})${partial ? ' [partial]' : ''}`
-              )
-              return
+                `${selectedGame.title}: authoritative winner ${completion.authoritativeWinnerId} (${rounded})${partial ? ' [partial]' : ''}`,
+              );
+              return;
             }
-            setLastResult(
-              `${selectedGame.title}: completed with ${rounded}${partial ? ' [partial]' : ''}`
-            )
+            setLastResult(`${selectedGame.title}: completed with ${rounded}${partial ? ' [partial]' : ''}`);
           }}
         />
       )}
     </main>
-  )
+  );
 }

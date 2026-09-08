@@ -21,7 +21,6 @@ import {
   useRef,
   useCallback,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { completeMinigame } from '../../store/gameSlice';
 import type { CompleteMinigamePayload, MinigameSession, Player } from '../../types';
@@ -386,7 +385,7 @@ export default function QuickTapRaceCanvasGame({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (uiPhase === 'results' && scores.length > 0) {
-    return createPortal((
+    return (
       <div
         className="qtr-canvas"
         role="dialog"
@@ -453,17 +452,12 @@ export default function QuickTapRaceCanvasGame({
           </div>
         </div>
       </div>
-    ), document.body);
+    );
   }
 
-  return createPortal((
+  return (
     <div
-      className={[
-        'qtr-canvas',
-        'qtr-canvas--full-screen',
-        showHud ? 'qtr-canvas--playing' : '',
-        heatClass,
-      ].filter(Boolean).join(' ')}
+      className={['qtr-canvas', heatClass].filter(Boolean).join(' ')}
       role="dialog"
       aria-modal="true"
       aria-label="Quick Tap Race Competition"
@@ -520,34 +514,25 @@ export default function QuickTapRaceCanvasGame({
               />
             </div>
 
-            <div className="qtr-canvas__multiplier-slot">
-              {snapshot.activeMultiplier !== null ? (
-                <div
-                  className={[
-                    'qtr-canvas__multiplier-badge',
-                    snapshot.activeMultiplier > 1
-                      ? 'qtr-canvas__multiplier-badge--good'
-                      : 'qtr-canvas__multiplier-badge--bad',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  role="status"
-                  aria-live="polite"
-                >
-                  {snapshot.activeMultiplier < 0
-                    ? `${snapshot.activeMultiplier}× DRAIN`
-                    : `${snapshot.activeMultiplier}×`}{' '}
-                  active
-                </div>
-              ) : (
-                <div
-                  className="qtr-canvas__multiplier-badge qtr-canvas__multiplier-badge--placeholder"
-                  aria-hidden="true"
-                >
-                  1× active
-                </div>
-              )}
-            </div>
+            {snapshot.activeMultiplier !== null && (
+              <div
+                className={[
+                  'qtr-canvas__multiplier-badge',
+                  snapshot.activeMultiplier > 1
+                    ? 'qtr-canvas__multiplier-badge--good'
+                    : 'qtr-canvas__multiplier-badge--bad',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                role="status"
+                aria-live="polite"
+              >
+                {snapshot.activeMultiplier < 0
+                  ? `${snapshot.activeMultiplier}× DRAIN`
+                  : `${snapshot.activeMultiplier}×`}{' '}
+                active
+              </div>
+            )}
           </>
         )}
 
@@ -582,5 +567,5 @@ export default function QuickTapRaceCanvasGame({
         </div>
       </div>
     </div>
-  ), document.body);
+  );
 }

@@ -73,6 +73,7 @@ export function resolveDesiredMusicCue(
       gamePhase: state.game.phase,
       hash,
       confessionalMusicMode: state.ui.confessionalMusicMode ?? 'normal',
+      config,
     }) ?? baseCue
   )
 }

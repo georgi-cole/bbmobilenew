@@ -1,0 +1,29 @@
+.inline-keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+.inline-keyboard__row {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+}
+.inline-keyboard button {
+  flex: 1;
+  min-height: 2.15rem;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 0.45rem;
+  background: rgba(15, 35, 65, 0.9);
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.82rem;
+  touch-action: manipulation;
+}
+.inline-keyboard button:active {
+  transform: translateY(1px);
+  background: #2563a5;
+}
+.inline-keyboard__row--bottom button:nth-child(2) {
+  flex: 3;
+}

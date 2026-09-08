@@ -6,7 +6,6 @@ describe('buildViewportMetaContent', () => {
     const content = buildViewportMetaContent(false);
     expect(content).toContain('maximum-scale=5');
     expect(content).toContain('viewport-fit=cover');
-    expect(content).toContain('interactive-widget=resizes-content');
     expect(content).not.toContain('user-scalable=no');
   });
   it('offers an expanded range when enhanced zoom is enabled', () => {

@@ -11,7 +11,6 @@
 // leaving a competition. Individual minigames must not render their own exit UI.
 
 import { useState, useEffect, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
-import { createPortal } from 'react-dom'
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry'
 import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
 import { store } from '../../store/store'
@@ -895,43 +894,40 @@ export default function MinigameHost({
         />
       )}
 
-      {utilityView === 'exit' &&
-        phase !== 'results' &&
-        createPortal(
-          <div
-            className="minigame-exit-confirm-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Leave competition confirmation"
-          >
-            <div className="minigame-exit-confirm">
-              <p className="minigame-exit-confirm__eyebrow">Emergency exit</p>
-              <h2 className="minigame-exit-confirm__title">Leave this competition?</h2>
-              <p className="minigame-exit-confirm__copy">
-                Your score will be recorded as 0. The remaining results will be simulated so the
-                season can continue and a winner can still be selected.
-              </p>
-              <div className="minigame-exit-confirm__actions">
-                <button
-                  type="button"
-                  className="minigame-exit-confirm__button minigame-exit-confirm__button--keep"
-                  onClick={() => setUtilityView(null)}
-                  autoFocus
-                >
-                  Keep playing
-                </button>
-                <button
-                  type="button"
-                  className="minigame-exit-confirm__button minigame-exit-confirm__button--exit"
-                  onClick={handleConfirmEarlyExit}
-                >
-                  Exit with 0
-                </button>
-              </div>
+      {utilityView === 'exit' && phase !== 'results' && (
+        <div
+          className="minigame-exit-confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Leave competition confirmation"
+        >
+          <div className="minigame-exit-confirm">
+            <p className="minigame-exit-confirm__eyebrow">Emergency exit</p>
+            <h2 className="minigame-exit-confirm__title">Leave this competition?</h2>
+            <p className="minigame-exit-confirm__copy">
+              Your score will be recorded as 0. The remaining results will be simulated so the
+              season can continue and a winner can still be selected.
+            </p>
+            <div className="minigame-exit-confirm__actions">
+              <button
+                type="button"
+                className="minigame-exit-confirm__button minigame-exit-confirm__button--keep"
+                onClick={() => setUtilityView(null)}
+                autoFocus
+              >
+                Keep playing
+              </button>
+              <button
+                type="button"
+                className="minigame-exit-confirm__button minigame-exit-confirm__button--exit"
+                onClick={handleConfirmEarlyExit}
+              >
+                Exit with 0
+              </button>
             </div>
-          </div>,
-          document.body
-        )}
+          </div>
+        </div>
+      )}
 
       {phase === 'results' && (
         <div

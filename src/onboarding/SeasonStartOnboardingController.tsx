@@ -71,7 +71,9 @@ export default function SeasonStartOnboardingController() {
   )
 
   const legacyWelcomeEvent = useMemo(
-    () => tvFeed.find(isLegacySeasonWelcomeEvent) ?? null,
+    () =>
+      tvFeed.find((event) => isLegacySeasonWelcomeEvent(event) && event.meta?.forceOnTv !== true) ??
+      null,
     [tvFeed]
   )
 
@@ -159,26 +161,6 @@ export default function SeasonStartOnboardingController() {
     }
   }, [eligibleSeasonStart, gameId])
 
-  const addOpeningFlavor = useCallback(() => {
-    if (flavorExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
-    dispatch(
-      addTvEvent({
-        text: pickOpeningFlavor(gameId),
-        type: 'game',
-        source: 'system',
-        channels: ['tv', 'mainLog'],
-        meta: {
-          phase: 'season_start',
-          week: 1,
-          broadcastTemplateId: 'season.onboarding-flavor',
-          broadcastLevel: 'minor',
-          forceOnTv: true,
-          seasonOnboardingFlavor: true,
-        },
-      })
-    )
-  }, [dispatch, flavorExists, gameId, mode, phase, week])
-
   useEffect(() => {
     const welcomeVisible = queuedEvent?.meta?.seasonOnboardingWelcome === true
     document.body.classList.toggle('body--season-opening-welcome', welcomeVisible)
@@ -205,6 +187,26 @@ export default function SeasonStartOnboardingController() {
     )
   }, [dispatch, mode, phase, season, week, welcomeExists])
 
+  const addOpeningFlavor = useCallback(() => {
+    if (flavorExists || phase !== 'season_start' || week !== 1 || mode === 'survival') return
+    dispatch(
+      addTvEvent({
+        text: pickOpeningFlavor(gameId),
+        type: 'game',
+        source: 'system',
+        channels: ['tv', 'mainLog'],
+        meta: {
+          phase: 'season_start',
+          week: 1,
+          broadcastTemplateId: 'season.onboarding-flavor',
+          broadcastLevel: 'minor',
+          forceOnTv: true,
+          seasonOnboardingFlavor: true,
+        },
+      })
+    )
+  }, [dispatch, flavorExists, gameId, mode, phase, week])
+
   useEffect(() => {
     if (!eligibleSeasonStart || welcomeExists) return undefined
     welcomeTimerRef.current = window.setTimeout(addOpeningWelcome, WELCOME_DELAY_MS)
@@ -214,9 +216,9 @@ export default function SeasonStartOnboardingController() {
     }
   }, [addOpeningWelcome, broadcastQueue.length, eligibleSeasonStart, welcomeExists])
 
-  // The rotating hub-settling line is the deliberate bridge between the
-  // polished welcome and the Day 1 card. It is queued only after the welcome
-  // has been acknowledged, never behind an old managed startup item.
+  // TvZone owns acknowledgement of the forced welcome. Add the flavor only
+  // after that welcome has actually left the TV queue, so a Play press for an
+  // expansion shock cannot also consume the welcome behind it.
   useEffect(() => {
     if (!eligibleSeasonStart || !welcomeExists || flavorExists || broadcastQueue.length > 0) return
     addOpeningFlavor()

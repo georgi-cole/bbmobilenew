@@ -45,9 +45,7 @@ jobs:
     needs: changed
     if: needs.changed.outputs.changed == 'true'
     runs-on: ubuntu-latest
-    # The visual audit covers every minigame on three viewport projects sequentially.
-    # Keep full coverage while allowing the suite to complete on hosted runners.
-    timeout-minutes: 75
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:

@@ -52,18 +52,18 @@ test.describe('Minigame Lab smoke @smoke @minigame', () => {
       await assertNoHorizontalDocumentOverflow(page)
       await attachSnapshot(page, testInfo, `${game.key}-${testInfo.project.name}.png`)
 
-      // The shared utility dock is a top-level overlay so it can remain above
-      // full-screen, portalled minigames such as Quick Tap Race.
-      const menuButton = page.getByRole('button', { name: 'Open minigame menu' })
+      const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
       await expect(menuButton).toBeVisible()
       await menuButton.click()
 
-      const leaveButton = page.getByRole('menuitem', { name: /Leave competition/i })
+      const leaveButton = hostDialog.getByRole('menuitem', { name: /Leave competition/i })
       await expect(leaveButton).toBeVisible()
       await leaveButton.click()
 
-      await expect(page.getByRole('heading', { name: 'Leave this competition?' })).toBeVisible()
-      await page.getByRole('button', { name: 'Exit with 0' }).click()
+      await expect(
+        hostDialog.getByRole('heading', { name: 'Leave this competition?' })
+      ).toBeVisible()
+      await hostDialog.getByRole('button', { name: 'Exit with 0' }).click()
 
       await expect(hostDialog.getByRole('heading', { name: 'Exited early' })).toBeVisible()
       await expect(hostDialog.getByText(/You wins|AI \d+ wins/)).toBeVisible()

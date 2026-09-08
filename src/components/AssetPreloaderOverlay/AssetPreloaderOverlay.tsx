@@ -7,7 +7,10 @@ import { preloadImage, preloadImages } from '../../utils/preload'
 import { buildDepressionShockAvatarCandidates } from '../../features/twists/depressionShock'
 import RouteLoadingScreen from '../RouteLoadingScreen/RouteLoadingScreen'
 import GAMEPLAY_BG from '../../assets/bb-gameplay-bg.svg'
-import { beginGameplayAudioExit } from '../../services/sound/audioRouteOwnership'
+import {
+  beginGameplayAudioExit,
+  cancelGameplayAudioExit,
+} from '../../services/sound/audioRouteOwnership'
 
 function getAvatarUrls(): string[] {
   return getPresentationAvatarPreloadUrls(getAll())
@@ -70,6 +73,7 @@ export default function AssetPreloaderOverlay({
     void run()
     return () => {
       cancelled = true
+      if (!doneFiredRef.current) cancelGameplayAudioExit()
     }
   }, [destination, navigate])
 

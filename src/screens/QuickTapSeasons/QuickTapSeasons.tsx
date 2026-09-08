@@ -193,8 +193,6 @@ export default function QuickTapSeasons({
               : '🌸 🐦 🌼'}
       </div>
       <section className="qts__card">
-        {/* i18n-ignore: This experimental minigame UI remains English until the minigame host exposes localized game copy. */}
-        <p className="qts__eyebrow">Experimental spin-off</p>
         {/* i18n-ignore: The minigame title is a fixed product name. */}
         <h1>Quick Tap Race 2: Seasons</h1>
         {phase === 'ready' && (

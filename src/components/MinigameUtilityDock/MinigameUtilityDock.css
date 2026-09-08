@@ -1,5 +1,5 @@
 .minigame-utility-dock__backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 9690;
   padding: 0;
@@ -9,10 +9,7 @@
 }
 
 .minigame-utility-dock {
-  position: fixed;
-  /* The dock is portalled to document.body so it stays above full-screen
-     minigames. Re-establish the host's safe-area token at the root layer. */
-  --minigame-safe-top: var(--safe-top, 0px);
+  position: absolute;
   top: max(10px, calc(var(--minigame-safe-top, 0px) + 10px));
   right: 0;
   z-index: 9700;
