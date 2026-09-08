@@ -980,20 +980,6 @@ export default function HangmanChallengeComp({
     [submitLetterGuess]
   )
 
-  const handleAlphabetPress = useCallback(
-    (letter: string) => {
-      if (
-        roundState.guessedLetters.includes(letter) ||
-        roundState.wrongLetters.includes(letter) ||
-        roundState.disabledLetters.includes(letter)
-      )
-        return
-      guessLetter(letter)
-      setLetterInput('')
-    },
-    [guessLetter, roundState.disabledLetters, roundState.guessedLetters, roundState.wrongLetters]
-  )
-
   useEffect(() => {
     if (phase !== 'breakdown' || !breakdown) return undefined
     const total = breakdown.finalRoundScore
@@ -1135,12 +1121,9 @@ export default function HangmanChallengeComp({
                     autoCapitalize="characters"
                     autoComplete="off"
                     className="hangman-challenge__letter-input"
-                    inputMode="none"
+                    inputMode="text"
                     maxLength={1}
                     onChange={handleLetterInputChange}
-                    onFocus={(event) =>
-                      event.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' })
-                    }
                     pattern="[A-Za-z]"
                     placeholder="A–Z"
                     type="text"
@@ -1155,26 +1138,6 @@ export default function HangmanChallengeComp({
                   Guess
                 </button>
               </form>
-              <div className="hangman-challenge__alphabet" aria-label="Letter keyboard">
-                {ALPHABET.map((letter) => {
-                  const attempted =
-                    roundState.guessedLetters.includes(letter) ||
-                    roundState.wrongLetters.includes(letter)
-                  const disabled = attempted || roundState.disabledLetters.includes(letter)
-                  return (
-                    <button
-                      key={letter}
-                      className={`hangman-challenge__alphabet-key${attempted ? ' is-used' : ''}`}
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => handleAlphabetPress(letter)}
-                      aria-label={`Letter ${letter}`}
-                    >
-                      {letter}
-                    </button>
-                  )
-                })}
-              </div>
               <p className="hangman-challenge__input-hint">
                 {inputIsDisabled
                   ? `${normalizedInput} is jammed by the current signal effect.`
@@ -1182,7 +1145,7 @@ export default function HangmanChallengeComp({
                     ? `${normalizedInput} is already on the board.`
                     : roundState.disabledLetters.length > 0
                       ? `Jammed right now: ${roundState.disabledLetters.join(', ')}`
-                      : 'Tap one letter at a time.'}
+                      : 'Use your device keyboard to enter one letter at a time.'}
               </p>
               <div className="hangman-challenge__attempts" aria-label="Attempted letters">
                 {roundState.attemptedLetters.length > 0 ? (
