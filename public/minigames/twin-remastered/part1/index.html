@@ -147,8 +147,10 @@
       }
       @media (max-width: 620px) {
         .shell {
-          padding: 0 0 10px;
-          justify-content: flex-start;
+          /* Keep the portrait game and its controls centered in the full device viewport. */
+          min-height: 100dvh;
+          padding: 8px;
+          justify-content: center;
           gap: 10px;
         }
         .frame {
@@ -173,8 +175,8 @@
     <style>
       @media (max-width: 620px), (max-height: 760px) {
         .shell {
-          min-height: 100%;
-          place-content: center;
+          min-height: 100dvh;
+          justify-content: center;
           padding: 8px;
         }
         .frame {
