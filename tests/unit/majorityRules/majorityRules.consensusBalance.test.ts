@@ -36,6 +36,20 @@ const identity = (archetype: AiGameIdentity['archetype']): AiGameIdentity => ({
   survivalFocus: 0.35,
 })
 
+function topShare(question: MajorityRulesQuestion, sampleSize = 1200) {
+  const counts = { a: 0, b: 0, c: 0 }
+  for (let seed = 1; seed <= sampleSize; seed += 1) {
+    const answer = chooseAiAnswer({
+      seed,
+      roundNumber: 1,
+      playerId: `shape-${seed}`,
+      question,
+    })
+    counts[answer as keyof typeof counts] += 1
+  }
+  return Math.max(...Object.values(counts)) / sampleSize
+}
+
 describe('Majority Rules realistic population model', () => {
   it('allows a curated question prior to overturn the old first-option-always-wins assumption', () => {
     const counts = { a: 0, b: 0, c: 0 }
@@ -50,6 +64,13 @@ describe('Majority Rules realistic population model', () => {
     }
     expect(counts.b).toBeGreaterThan(counts.a)
     expect(counts.b).toBeGreaterThan(counts.c)
+  })
+
+  it('produces materially different vote shapes for divisive and consensus questions', () => {
+    const divisiveTopShare = topShare(partnerQuestion)
+    const consensusTopShare = topShare(riskQuestion)
+
+    expect(consensusTopShare - divisiveTopShare).toBeGreaterThan(0.08)
   })
 
   it('lets contestant identity change semantic preferences instead of only adding random noise', () => {
