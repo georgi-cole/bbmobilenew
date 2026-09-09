@@ -23,12 +23,15 @@ export function seasonTutorialCompletionStorageKey(
  */
 export function hasHandledSeasonTutorial(
   profileId: string | null,
-  isGuest: boolean,
+  _isGuest: boolean,
   gameId: string
 ): boolean {
   if (typeof window === 'undefined') return false
   try {
-    return window.sessionStorage.getItem(seasonTutorialCompletionStorageKey(profileId, gameId)) === 'done'
+    return (
+      window.sessionStorage.getItem(seasonTutorialCompletionStorageKey(profileId, gameId)) ===
+      'done'
+    )
   } catch {
     return false
   }
@@ -37,7 +40,7 @@ export function hasHandledSeasonTutorial(
 /** Remember completion only for this open season, never as a settings change. */
 export function markSeasonTutorialHandled(
   profileId: string | null,
-  isGuest: boolean,
+  _isGuest: boolean,
   gameId: string
 ): void {
   if (typeof window === 'undefined') return

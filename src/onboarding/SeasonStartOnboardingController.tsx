@@ -71,9 +71,10 @@ export default function SeasonStartOnboardingController() {
   const isGuest = useAppSelector((state) => state.profiles.isGuest)
 
   const [gameScreenMounted, setGameScreenMounted] = useState(false)
-  const [tutorialHandled, setTutorialHandled] = useState(() =>
-    !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
-    hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
+  const [tutorialHandled, setTutorialHandled] = useState(
+    () =>
+      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+      hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
   )
   const [promptOpen, setPromptOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
@@ -268,14 +269,7 @@ export default function SeasonStartOnboardingController() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHandoffToFirstCompetition(false)
     dispatch(advance())
-  }, [
-    dayOneStartBroadcastSeen,
-    dispatch,
-    handoffToFirstCompetition,
-    phase,
-    queuedEvent,
-    week,
-  ])
+  }, [dayOneStartBroadcastSeen, dispatch, handoffToFirstCompetition, phase, queuedEvent, week])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
