@@ -168,6 +168,20 @@ describe('Majority Rules realistic population model', () => {
     expect(result.eliminatedIds).toEqual(activeIds.slice(a + b))
   })
 
+  it('eliminates a distinct three-person minority in a 6-3 split', () => {
+    const activeIds = Array.from({ length: 9 }, (_, index) => `p${index + 1}`)
+    const answers = Object.fromEntries(activeIds.map((id, index) => [id, index < 6 ? 'a' : 'b']))
+    const result = resolveMajorityRulesBallot({
+      activeIds,
+      answers,
+      question: partnerQuestion,
+      eliminationCount: 1,
+    })
+
+    expect(result.kind).toBe('elimination')
+    expect(result.eliminatedIds).toEqual(activeIds.slice(6))
+  })
+
   it('does not eliminate either group in a 4-3-3 tied minority', () => {
     const activeIds = Array.from({ length: 10 }, (_, index) => `p${index + 1}`)
     const answers = Object.fromEntries(
