@@ -4,11 +4,15 @@ import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   selectCurrentProfile,
   updateProfile,
+  deleteProfile,
   type ProfileBio,
 } from '../../store/profilesSlice';
-import { updateUserPlayerIdentity } from '../../store/gameSlice';
+import { resetGame, updateUserPlayerIdentity } from '../../store/gameSlice';
 import { resizeAndCompressImage } from '../../utils/imageUtils';
 import { saveImage, imageIdToDataUrl, deleteImage } from '../../utils/imageDb';
+import { clearSavedRun } from '../../store/saveStatePersistence';
+import { withRunAutosaveSuspended } from '../../store/runAutosaveGate';
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import './EditProfile.css';
 
 const AVATAR_OPTIONS = [
@@ -90,6 +94,7 @@ export default function EditProfile() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [newPhotoBlob, setNewPhotoBlob] = useState<Blob | null>(null);
   const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
 
   // Bio essentials
   const [story, setStory] = useState(profile?.bio?.story ?? '');
@@ -225,6 +230,27 @@ export default function EditProfile() {
     );
 
     navigate('/profile', { replace: true, state: { from: returnTo } });
+  }
+
+  async function handleDeleteProfile() {
+    if (!profile) return;
+
+    if (profile.photoId) {
+      await deleteImage(profile.photoId);
+    }
+
+    // Remove every run slot before changing the active profile. Suspending
+    // autosave prevents the deleted profile's in-memory season being saved
+    // under whichever profile becomes active next.
+    clearSavedRun(profile.id, 'classic');
+    clearSavedRun(profile.id, 'cupidArrow');
+    clearSavedRun(profile.id, 'voxPopuli');
+    clearSavedRun(profile.id, 'survival');
+    withRunAutosaveSuspended(() => {
+      dispatch(deleteProfile(profile.id));
+      dispatch(resetGame([]));
+    });
+    navigate('/profile-picker', { replace: true, state: { from: returnTo } });
   }
 
   if (!profile) return null;
@@ -476,6 +502,22 @@ export default function EditProfile() {
         </div>
       </CollapsibleSection>
 
+      <section className="edit-profile__danger-zone" aria-labelledby="delete-profile-heading">
+        <div>
+          <h2 id="delete-profile-heading" className="edit-profile__danger-title">Delete Profile</h2>
+          <p className="edit-profile__danger-copy">
+            Permanently remove {profile.name} and this profile&apos;s saved games from this device.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="edit-profile__delete-btn"
+          onClick={() => setDeleteConfirmationOpen(true)}
+        >
+          Delete Profile
+        </button>
+      </section>
+
       {/* Save / Cancel */}
       <div className="edit-profile__actions">
         <button
@@ -494,6 +536,16 @@ export default function EditProfile() {
           Save Profile
         </button>
       </div>
+
+      <ConfirmExitModal
+        open={deleteConfirmationOpen}
+        title="Delete Profile?"
+        description={`"${profile.name}" and all of its saved games will be permanently removed from this device.`}
+        confirmLabel="Delete Profile"
+        cancelLabel="Keep Profile"
+        onConfirm={() => void handleDeleteProfile()}
+        onCancel={() => setDeleteConfirmationOpen(false)}
+      />
     </div>
   );
 }

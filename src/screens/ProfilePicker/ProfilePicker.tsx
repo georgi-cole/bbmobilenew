@@ -25,6 +25,7 @@ import { withRunAutosaveSuspended } from '../../store/runAutosaveGate';
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
 import { resizeAndCompressImage } from '../../utils/imageUtils';
 import { imageIdToDataUrl, saveImage, deleteImage } from '../../utils/imageDb';
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton';
 import './ProfilePicker.css';
 
 const AVATAR_OPTIONS = [
@@ -312,13 +313,10 @@ export default function ProfilePicker() {
   return (
     <div className="placeholder-screen profile-picker">
       <div className="profile-picker__topbar">
-        <button
-          type="button"
-          className="profile-picker__back-btn"
+        <GameBackButton
           onClick={handleHome}
-        >
-          {returnTo === '/game' ? '← Back to Game' : '← Back to Home'}
-        </button>
+          label={returnTo === '/game' ? 'Back to game' : 'Back to home'}
+        />
       </div>
       <h1 className="profile-picker__title">👤 Profiles</h1>
       <p className="profile-picker__subtitle">Select a profile to play as</p>
@@ -472,23 +470,27 @@ export default function ProfilePicker() {
         </>
       )}
 
-      <div className="profile-picker__divider">
-        <span className="profile-picker__divider-line" />
-        <span className="profile-picker__divider-label">play without saving</span>
-        <span className="profile-picker__divider-line" />
-      </div>
-      <div className="profile-picker__guest">
-        <button
-          type="button"
-          className="profile-picker__btn--guest"
-          onClick={handleGuestMode}
-        >
-          Continue as Guest
-        </button>
-        <p className="profile-picker__guest-warning">
-          ⚠️ Guest mode — stats and season archives will not be saved.
-        </p>
-      </div>
+      {!showCreateForm && (
+        <>
+          <div className="profile-picker__divider">
+            <span className="profile-picker__divider-line" />
+            <span className="profile-picker__divider-label">play without saving</span>
+            <span className="profile-picker__divider-line" />
+          </div>
+          <div className="profile-picker__guest">
+            <button
+              type="button"
+              className="profile-picker__btn--guest"
+              onClick={handleGuestMode}
+            >
+              Continue as Guest
+            </button>
+            <p className="profile-picker__guest-warning">
+              ⚠️ Guest mode — stats and season archives will not be saved.
+            </p>
+          </div>
+        </>
+      )}
 
       <ConfirmExitModal
         open={Boolean(pendingSwitchId)}

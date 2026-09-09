@@ -94,6 +94,8 @@ type Props = {
   depressionRecovery?: boolean
   /** A restrained live-elimination rim light for the current nominees. */
   liveEvictionNominee?: boolean
+  /** Visual name label visibility, used for the season-opening roster reveal. */
+  showName?: boolean
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -185,6 +187,7 @@ export default function AvatarTile({
   depressionActive = false,
   depressionRecovery = false,
   liveEvictionNominee = false,
+  showName = true,
 }: Props) {
   const depressionShockPortraitMode = React.useSyncExternalStore(
     subscribeDepressionShockPortraitMode,
@@ -488,7 +491,10 @@ export default function AvatarTile({
               : undefined
           }
         >
-          <div className={styles.nameOverlay} aria-hidden="true">
+          <div
+            className={`${styles.nameOverlay}${showName ? ` ${styles.nameRevealed}` : ` ${styles.nameHidden}`}`}
+            aria-hidden="true"
+          >
             {name}
           </div>
           {isPressing && <span className={styles.holdProgress} aria-hidden="true" />}

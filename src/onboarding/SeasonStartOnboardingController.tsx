@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { Phase, TvEvent } from '../types'
 import { addTvEvent, advance, consumeBroadcastEvent, removeTvEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { isCurrentPhaseBroadcastEvent } from '../components/ui/tvZoneBroadcastGuards'
 import {
   isLegacySeasonWelcomeEvent,
   isServiceConfigurationEvent,
 } from '../services/activityService'
 import SeasonTutorialTour from './SeasonTutorialTour'
-import { hasHandledSeasonTutorial, markSeasonTutorialHandled } from './seasonTutorialPreference'
+import {
+  hasHandledSeasonTutorial,
+  isSeasonTutorialEnabled,
+  markSeasonTutorialHandled,
+} from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
 import './SeasonOpeningCinematic.css'
 
@@ -18,12 +24,7 @@ const WELCOME_DELAY_MS = 0
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
-  'The hubmates have settled in. Everyone seems eager to play. 🎮',
-  'The hub is full. First impressions are already taking shape. 👀',
-  'Everyone has settled in. For now, spirits are high. ✨',
-  'The introductions are over. The social game is already beginning. 🤝',
-  'The hubmates are settling in. New friendships are already forming. 💬',
-  'Everyone has found their place in the hub. The mood is upbeat — for now. 😏',
+  'Everyone has settled into the hub. It’s time to get to know the players. ✨',
 ] as const
 
 function hashText(value: string): number {
@@ -37,6 +38,24 @@ function hashText(value: string): number {
 
 function pickOpeningFlavor(gameId: string): string {
   return OPENING_FLAVOR_LINES[hashText(gameId) % OPENING_FLAVOR_LINES.length]
+}
+
+/**
+ * Match Faux TV's queue selection exactly. A persisted off-phase broadcast can
+ * remain at the queue head during a route remount; it must not hide the
+ * current season-opening handoff from the tutorial controller.
+ */
+export function selectCurrentQueuedBroadcast(
+  broadcastQueue: readonly string[],
+  tvFeed: readonly TvEvent[],
+  phase: Phase,
+  week: number
+): TvEvent | null {
+  for (const broadcastId of broadcastQueue) {
+    const event = tvFeed.find((candidate) => candidate.id === broadcastId) ?? null
+    if (isCurrentPhaseBroadcastEvent(event, phase, week)) return event
+  }
+  return null
 }
 
 export default function SeasonStartOnboardingController() {
@@ -53,7 +72,8 @@ export default function SeasonStartOnboardingController() {
 
   const [gameScreenMounted, setGameScreenMounted] = useState(false)
   const [tutorialHandled, setTutorialHandled] = useState(() =>
-    hasHandledSeasonTutorial(activeProfileId, isGuest)
+    !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+    hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
   )
   const [promptOpen, setPromptOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
@@ -63,11 +83,9 @@ export default function SeasonStartOnboardingController() {
   const eligibleSeasonStart =
     gameScreenMounted && phase === 'season_start' && week === 1 && mode !== 'survival'
 
-  const queuedBroadcastId = broadcastQueue[0] ?? null
   const queuedEvent = useMemo(
-    () =>
-      queuedBroadcastId ? (tvFeed.find((event) => event.id === queuedBroadcastId) ?? null) : null,
-    [queuedBroadcastId, tvFeed]
+    () => selectCurrentQueuedBroadcast(broadcastQueue, tvFeed, phase, week),
+    [broadcastQueue, phase, tvFeed, week]
   )
 
   const legacyWelcomeEvent = useMemo(
@@ -119,7 +137,10 @@ export default function SeasonStartOnboardingController() {
   useEffect(() => {
     // These states reset in response to an external profile/game change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTutorialHandled(hasHandledSeasonTutorial(activeProfileId, isGuest))
+    setTutorialHandled(
+      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+        hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
+    )
     setPromptOpen(false)
     setTourOpen(false)
     setHandoffToFirstCompetition(false)
@@ -218,9 +239,9 @@ export default function SeasonStartOnboardingController() {
   // polished welcome and the Day 1 card. It is queued only after the welcome
   // has been acknowledged, never behind an old managed startup item.
   useEffect(() => {
-    if (!eligibleSeasonStart || !welcomeExists || flavorExists || broadcastQueue.length > 0) return
+    if (!eligibleSeasonStart || !welcomeExists || flavorExists || queuedEvent) return
     addOpeningFlavor()
-  }, [addOpeningFlavor, broadcastQueue.length, eligibleSeasonStart, flavorExists, welcomeExists])
+  }, [addOpeningFlavor, eligibleSeasonStart, flavorExists, queuedEvent, welcomeExists])
 
   useEffect(() => {
     if (eligibleSeasonStart) return
@@ -243,16 +264,16 @@ export default function SeasonStartOnboardingController() {
   // advance straight to LOH, making the Day 1 weather card appear suppressed.
   useEffect(() => {
     if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
-    if (!dayOneStartBroadcastSeen || broadcastQueue.length > 0) return
+    if (!dayOneStartBroadcastSeen || queuedEvent) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHandoffToFirstCompetition(false)
     dispatch(advance())
   }, [
-    broadcastQueue.length,
     dayOneStartBroadcastSeen,
     dispatch,
     handoffToFirstCompetition,
     phase,
+    queuedEvent,
     week,
   ])
 
@@ -271,7 +292,12 @@ export default function SeasonStartOnboardingController() {
         return
       }
 
-      if (broadcastQueue.length > 0) return
+      // Every current season-opening card must consume this press. Otherwise
+      // the last plain TV card also advances the game, bypassing the tutorial.
+      if (queuedEvent) {
+        event.preventDefault()
+        return
+      }
 
       if (!welcomeExists) {
         event.preventDefault()
@@ -310,10 +336,10 @@ export default function SeasonStartOnboardingController() {
   ])
 
   const finishOnboarding = useCallback(() => {
-    markSeasonTutorialHandled(activeProfileId, isGuest)
+    markSeasonTutorialHandled(activeProfileId, isGuest, gameId)
     setTutorialHandled(true)
     beginFirstCompetitionHandoff()
-  }, [activeProfileId, beginFirstCompetitionHandoff, isGuest])
+  }, [activeProfileId, beginFirstCompetitionHandoff, gameId, isGuest])
 
   const startTour = useCallback(() => {
     setPromptOpen(false)
