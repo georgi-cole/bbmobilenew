@@ -36,8 +36,26 @@ jobs:
           PY
       - name: Apply realistic Majority Rules model
         run: python .github/scripts/tmp_majority_realism_patch.py
+      - name: Update legacy tied-minority expectation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/unit/majorityRules/majorityRules.logic.test.ts')
+          text = path.read_text()
+          text = text.replace(
+              "it('eliminates every player tied in the minority', () => {",
+              "it('does not mass-eliminate players when multiple answers tie for the minority', () => {",
+          )
+          text = text.replace(
+              "    expect(result.kind).toBe('elimination');\n    expect(result.tiedOptionIds.sort()).toEqual(['b', 'c']);\n    expect(result.eliminatedIds.sort()).toEqual(['p3', 'p4']);",
+              "    expect(result.kind).toBe('split');\n    expect(result.tiedOptionIds.sort()).toEqual(['b', 'c']);\n    expect(result.eliminatedIds).toEqual([]);",
+              1,
+          )
+          path.write_text(text)
+          PY
       - name: Format changed production and test files
-        run: npx prettier --write src/features/majorityRules/helpers.ts src/features/majorityRules/majorityRulesSlice.ts src/components/MajorityRulesComp/MajorityRulesComp.tsx tests/unit/majorityRules/majorityRules.consensusBalance.test.ts
+        run: npx prettier --write src/features/majorityRules/helpers.ts src/features/majorityRules/majorityRulesSlice.ts src/components/MajorityRulesComp/MajorityRulesComp.tsx tests/unit/majorityRules/majorityRules.consensusBalance.test.ts tests/unit/majorityRules/majorityRules.logic.test.ts
       - name: Run Majority Rules regression tests
         run: npx vitest run tests/unit/majorityRules/majorityRules.aiRealism.test.ts tests/unit/majorityRules/majorityRules.consensusBalance.test.ts tests/unit/majorityRules/majorityRules.logic.test.ts tests/integration/minigame.majorityRules.integration.test.ts
       - name: Typecheck
@@ -54,5 +72,6 @@ jobs:
           git add src/features/majorityRules/majorityRulesSlice.ts
           git add src/components/MajorityRulesComp/MajorityRulesComp.tsx
           git add tests/unit/majorityRules/majorityRules.consensusBalance.test.ts
+          git add tests/unit/majorityRules/majorityRules.logic.test.ts
           git commit -m "fix: make Majority Rules outcomes realistic and fair"
           git push origin HEAD:fix/majority-rules-consensus-balance
