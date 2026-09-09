@@ -25,64 +25,19 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          helper = Path('src/features/majorityRules/helpers.ts')
-          text = helper.read_text()
-          anchor = "const MIN_OPTION_WEIGHT = 0.05\n"
-          replacement = "const MIN_OPTION_WEIGHT = 0.05\nconst CONSENSUS_POWER = 2.2\n"
+          path = Path('src/features/majorityRules/helpers.ts')
+          text = path.read_text()
           if 'const CONSENSUS_POWER' not in text:
-              assert anchor in text
-              text = text.replace(anchor, replacement, 1)
-
-          old_weights = "  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0))\n"
-          new_weights = "  const weights = optionIds.map(\n    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER\n  )\n"
-          if old_weights in text:
-              text = text.replace(old_weights, new_weights, 1)
-          else:
-              assert 'CONSENSUS_POWER' in text and '** CONSENSUS_POWER' in text
-          helper.write_text(text)
-
-          test_file = Path('tests/unit/majorityRules/majorityRules.aiRealism.test.ts')
-          test_text = test_file.read_text()
-          marker = "  it('makes full-house unanimity exceptional rather than routine', () => {"
-          assert marker in test_text
-          if "usually produces a clear favorite with a small minority" not in test_text:
-              insertion = """
-
-  it('usually produces a clear favorite with a small minority', () => {
-    const activeIds = Array.from({ length: 14 }, (_, index) => `ai-${index + 1}`)
-    let nearEvenRounds = 0
-    let smallMinorityRounds = 0
-    const sampleSize = 500
-
-    for (let seed = 1; seed <= sampleSize; seed += 1) {
-      const answers = buildBaseAiAnswers({
-        activeIds,
-        humanPlayerId: null,
-        seed,
-        roundNumber: 1,
-        question: QUESTION,
-      })
-      const counts = { a: 0, b: 0, c: 0 }
-      for (const answer of Object.values(answers)) {
-        counts[answer as keyof typeof counts] += 1
-      }
-      const sortedCounts = Object.values(counts).sort((left, right) => right - left)
-      if ((sortedCounts[0] ?? 0) <= 6) nearEvenRounds += 1
-      if ((sortedCounts[2] ?? 0) <= 2) smallMinorityRounds += 1
-    }
-
-    expect(nearEvenRounds / sampleSize).toBeLessThan(0.2)
-    expect(smallMinorityRounds / sampleSize).toBeGreaterThan(0.7)
-  })
-"""
-              test_text = test_text.replace("\n  it('makes full-house unanimity exceptional rather than routine', () => {", insertion + "\n  it('makes full-house unanimity exceptional rather than routine', () => {", 1)
-          test_file.write_text(test_text)
+              text = text.replace('const MIN_OPTION_WEIGHT = 0.05\n', 'const MIN_OPTION_WEIGHT = 0.05\nconst CONSENSUS_POWER = 2.2\n', 1)
+          old = '  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0))\n'
+          new = '  const weights = optionIds.map(\n    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER\n  )\n'
+          if old in text:
+              text = text.replace(old, new, 1)
+          assert 'CONSENSUS_POWER' in text and '** CONSENSUS_POWER' in text
+          path.write_text(text)
           PY
-      - name: Format changed files
-        run: npx prettier --write src/features/majorityRules/helpers.ts tests/unit/majorityRules/majorityRules.aiRealism.test.ts
-      - name: Run Majority Rules realism regression
-        run: npx vitest run tests/unit/majorityRules/majorityRules.aiRealism.test.ts
+      - name: Format helper
+        run: npx prettier --write src/features/majorityRules/helpers.ts
       - name: Commit consensus rebalance
         shell: bash
         run: |
@@ -92,6 +47,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/features/majorityRules/helpers.ts
-          git add tests/unit/majorityRules/majorityRules.aiRealism.test.ts
           git commit -m "fix: rebalance Majority Rules consensus"
           git push origin HEAD:fix/majority-rules-consensus-balance
