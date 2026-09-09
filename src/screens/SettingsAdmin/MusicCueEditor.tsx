@@ -7,6 +7,7 @@ import {
   type MusicTrackAssetOverride,
 } from '../../services/sound/musicCatalog'
 import { MusicCueEngine } from '../../services/sound/MusicCueEngine'
+import { SoundManager } from '../../services/sound/SoundManager'
 import {
   MUSIC_EFFECT_PRESETS,
   MUSIC_RESTART_POLICIES,
@@ -76,7 +77,15 @@ export default function MusicCueEditor({
   const transitionTimerRef = useRef<number | null>(null)
 
   const engine = () => {
-    engineRef.current ??= new MusicCueEngine({ onEnded: () => setPreviewing(false) })
+    engineRef.current ??= new MusicCueEngine({
+      onEnded: () => {
+        const previewElement = engineRef.current?.currentElement
+        if (previewElement) {
+          SoundManager.releaseExternalMusic('manager:cue-preview', previewElement)
+        }
+        setPreviewing(false)
+      },
+    })
     return engineRef.current
   }
 
@@ -115,6 +124,10 @@ export default function MusicCueEditor({
 
   useEffect(
     () => () => {
+      const previewElement = engineRef.current?.currentElement
+      if (previewElement) {
+        SoundManager.releaseExternalMusic('manager:cue-preview', previewElement)
+      }
       engineRef.current?.stop()
       if (transitionTimerRef.current !== null) window.clearTimeout(transitionTimerRef.current)
     },
@@ -203,6 +216,10 @@ export default function MusicCueEditor({
   const stopPreview = () => {
     if (transitionTimerRef.current !== null) window.clearTimeout(transitionTimerRef.current)
     transitionTimerRef.current = null
+    const previewElement = engineRef.current?.currentElement
+    if (previewElement) {
+      SoundManager.releaseExternalMusic('manager:cue-preview', previewElement)
+    }
     engineRef.current?.stop()
     setPreviewing(false)
   }
@@ -220,6 +237,14 @@ export default function MusicCueEditor({
     }
     try {
       await engine().play(asset, draft)
+      const previewElement = engine().currentElement
+      if (previewElement) {
+        SoundManager.claimExternalMusic(
+          'manager:cue-preview',
+          previewElement,
+          previewElement.volume
+        )
+      }
       setPreviewing(true)
     } catch {
       stopPreview()
@@ -243,10 +268,24 @@ export default function MusicCueEditor({
     stopPreview()
     try {
       await engine().play(sourceAsset, { ...sourceCue, loop: true })
+      const sourceElement = engine().currentElement
+      if (sourceElement) {
+        SoundManager.claimExternalMusic('manager:cue-preview', sourceElement, sourceElement.volume)
+      }
       setPreviewing(true)
       transitionTimerRef.current = window.setTimeout(() => {
         void engine()
           .play(targetAsset, draft)
+          .then(() => {
+            const targetElement = engine().currentElement
+            if (targetElement) {
+              SoundManager.claimExternalMusic(
+                'manager:cue-preview',
+                targetElement,
+                targetElement.volume
+              )
+            }
+          })
           .catch(() => {
             stopPreview()
             onMessage('Transition preview failed while switching cues.')

@@ -20,6 +20,7 @@ import { getAllGames, type GameCategory } from '../../minigames/registry'
 import { restartApp } from '../../utils/restartApp'
 import { APP_VERSION } from '../../appVersion'
 import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack'
+import { SoundManager } from '../../services/sound/SoundManager'
 import {
   REALITY_MODE_PRESETS,
   getProfileRealityAgeEligibility,
@@ -754,6 +755,7 @@ export default function SettingsAdmin() {
             <button
               className="settings-about__credits-btn"
               onClick={() => {
+                SoundManager.unlockFromGesture()
                 void startCreditsSoundtrackFromGesture().catch(() => undefined)
                 navigate('/credits')
               }}

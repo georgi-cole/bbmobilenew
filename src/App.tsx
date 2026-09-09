@@ -8,7 +8,7 @@
  *
  * To add global providers (auth, theme, etc.) wrap them here.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { Provider } from 'react-redux'
 import { RouterProvider } from 'react-router/dom'
 import { store } from './store/store'
@@ -16,6 +16,7 @@ import { router } from './routes'
 import { SoundManager } from './services/sound/SoundManager'
 import AudioStateSync from './services/sound/AudioStateSync'
 import RouteLoopAudioSync from './services/sound/RouteLoopAudioSync'
+import { getAudioRouteHash, subscribeToAudioRoute } from './services/sound/audioRouteLocation'
 import AudioGate from './components/AudioGate/AudioGate'
 import { loadRemoteConfig } from './remoteConfig/remoteConfigSlice'
 import { installGameDiagnostics } from './services/diagnostics/gameDiagnostics'
@@ -40,21 +41,15 @@ if (import.meta.env.DEV) {
   )
 }
 
-/** Returns true when a route owns its own full-screen audio/visual experience. */
-function suppressesAudioGate(hash: string): boolean {
-  return hash === '' || hash === '#' || hash === '#/' || hash.startsWith('#/cinematic')
-}
-
 export default function App() {
-  // Track hash so we can hide AudioGate on the Intro/Home route — audio is
-  // unlocked there via the Play gesture in HomeHub instead.
-  const [hash, setHash] = useState(window.location.hash)
-
-  useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash)
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  // The router commits in-app navigation with history.pushState, which does
+  // not fire `hashchange`. Subscribe to the router itself so audio always sees
+  // the same location as the rendered screen.
+  const hash = useSyncExternalStore(
+    (notify) => subscribeToAudioRoute(router, notify),
+    () => getAudioRouteHash(router.state.location),
+    () => '#/'
+  )
 
   useEffect(() => {
     installGameDiagnostics()
@@ -78,10 +73,10 @@ export default function App() {
         <WeatherRosterReveal />
         <SeasonStartOnboardingController />
         <DepressionShockController />
-        <AudioStateSync />
+        <AudioStateSync hash={hash} />
         <RouteLoopAudioSync hash={hash} />
         <VipEntitlementSync />
-        {!suppressesAudioGate(hash) && <AudioGate />}
+        <AudioGate />
         <RouterProvider router={router} />
       </I18nProvider>
     </Provider>

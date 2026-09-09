@@ -146,6 +146,32 @@ function auditEventSounds(config: MusicConfigDocument, issues: MusicConfigAuditI
         path: `${path}.volume`,
       })
     }
+    for (const field of [
+      'startAtSec',
+      'durationMs',
+      'fadeInMs',
+      'fadeOutMs',
+      'dedupeMs',
+    ] as const) {
+      const value = cue[field]
+      if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+        issues.push({
+          code: 'invalid-event-timing',
+          message: `Event ${eventId} ${field} must be a non-negative number.`,
+          path: `${path}.${field}`,
+        })
+      }
+    }
+    if (
+      cue.durationMs !== undefined &&
+      (cue.fadeInMs ?? 0) + (cue.fadeOutMs ?? 0) > cue.durationMs
+    ) {
+      issues.push({
+        code: 'event-fades-exceed-duration',
+        message: `Event ${eventId} fades exceed its playback duration.`,
+        path,
+      })
+    }
   }
 }
 

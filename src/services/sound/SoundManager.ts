@@ -98,6 +98,7 @@ const SILENT_UNLOCK_AUDIO_SRC =
  * for "click" / "tap" style SFX) so genuine rapid-fire plays are unaffected.
  */
 const SFX_DEDUP_WINDOW_MS = 40
+const FAILED_ASSET_RETRY_MS = 10_000
 
 export interface PlayOptions {
   /** Volume override (0–1).  Defaults to entry volume or 1. */
@@ -108,6 +109,11 @@ export interface PlayOptions {
    * than {@link SFX_DEDUP_WINDOW_MS} (e.g. restarting a looping SFX).
    */
   allowDuplicate?: boolean
+  startAtSec?: number
+  durationMs?: number
+  fadeInMs?: number
+  fadeOutMs?: number
+  dedupeMs?: number
 }
 
 export interface UnlockAudioOptions {
@@ -118,6 +124,28 @@ export interface UnlockAudioOptions {
 export interface MusicTrackOverride {
   track: CatalogMusicTrack
   sound: SoundEntry
+}
+
+interface ExternalMusicSession {
+  owner: string
+  element: HTMLAudioElement
+  baseVolume: number
+  shouldPlay: boolean
+  wasPlayingOnHide: boolean
+}
+
+export interface AudioDiagnosticsSnapshot {
+  unlocked: boolean
+  lifecycle: 'visible' | 'hidden'
+  desiredTrack: MusicTrack
+  playingTrack: MusicTrack
+  musicKey: string | null
+  desiredReason: string | null
+  externalOwner: string | null
+  externalPlaying: boolean
+  musicEnabled: boolean
+  musicVolume: number
+  failedKeys: readonly string[]
 }
 
 interface ResolvedMusicCandidate {
@@ -225,6 +253,12 @@ class _SoundManager {
     },
   })
   private _sfxPrimed = false
+  private _externalMusic: ExternalMusicSession | null = null
+  private _musicWasPlayingOnHide = false
+  // User mute is a pause, not a stop. Remember exactly which live cue is
+  // eligible to resume so a phase change while muted never revives old music.
+  private _mutedCueSignature: string | null = null
+  private _mutedMusicKey: string | null = null
 
   // BGM ownership / desired-track tracking (per-owner map with priority fallback)
   private _currentBgmOwner: BgmOwner | null = null
@@ -235,9 +269,11 @@ class _SoundManager {
   private _desiredPerOwner: Partial<Record<BgmOwner, { key: string; opts?: PlayOptions }>> = {}
   // SFX: pool of HTMLAudioElements per key
   private _sfxPools = new Map<string, HTMLAudioElement[]>()
+  private _sfxTimers = new WeakMap<HTMLAudioElement, number[]>()
 
   // Keys that have encountered a load/decode/play error — skip on subsequent calls
   private _failedKeys = new Set<string>()
+  private _failedKeyRetryTimers = new Map<string, number>()
 
   // Dynamically registered entries (from remote config, etc.)
   private _extraRegistry = new Map<string, SoundEntry>()
@@ -298,6 +334,7 @@ class _SoundManager {
   registerDynamic(entry: SoundEntry): void {
     this._extraRegistry.set(entry.key, entry)
     this._failedKeys.delete(entry.key)
+    this._clearFailedKeyRetry(entry.key)
   }
 
   setMusicTrackOverrides(overrides: readonly MusicTrackOverride[]): void {
@@ -314,6 +351,7 @@ class _SoundManager {
     for (const key of this._musicTrackOverrides.values()) {
       this._extraRegistry.delete(key)
       this._failedKeys.delete(key)
+      this._clearFailedKeyRetry(key)
     }
     this._musicTrackOverrides.clear()
 
@@ -331,6 +369,24 @@ class _SoundManager {
 
   private _getEntry(key: string): SoundEntry | undefined {
     return this._extraRegistry.get(key) ?? SOUND_REGISTRY[key]
+  }
+
+  private _clearFailedKeyRetry(key: string): void {
+    const timer = this._failedKeyRetryTimers.get(key)
+    if (timer !== undefined) window.clearTimeout(timer)
+    this._failedKeyRetryTimers.delete(key)
+  }
+
+  private _markKeyFailed(key: string, retry = true): void {
+    this._failedKeys.add(key)
+    this._clearFailedKeyRetry(key)
+    if (!retry || typeof window === 'undefined') return
+    const timer = window.setTimeout(() => {
+      this._failedKeyRetryTimers.delete(key)
+      this._failedKeys.delete(key)
+      void this.syncMusic()
+    }, FAILED_ASSET_RETRY_MS)
+    this._failedKeyRetryTimers.set(key, timer)
   }
 
   // ── Playback ────────────────────────────────────────────────────────────────
@@ -357,11 +413,10 @@ class _SoundManager {
     if (!opts?.allowDuplicate) {
       const now = Date.now()
       const lastAt = this._lastPlayedAt.get(key)
-      if (lastAt != null && now - lastAt < SFX_DEDUP_WINDOW_MS) {
+      const dedupeMs = Math.max(0, opts?.dedupeMs ?? SFX_DEDUP_WINDOW_MS)
+      if (lastAt != null && now - lastAt < dedupeMs) {
         if (_audioDebug) {
-          console.log(
-            `[SoundManager] play("${key}") deduped (${now - lastAt}ms < ${SFX_DEDUP_WINDOW_MS}ms)`
-          )
+          console.log(`[SoundManager] play("${key}") deduped (${now - lastAt}ms < ${dedupeMs}ms)`)
         }
         return
       }
@@ -426,7 +481,7 @@ class _SoundManager {
             `[SoundManager] SFX load error "${key}" (code ${code}):`,
             el!.error?.message ?? entry.src
           )
-          this._failedKeys.add(key)
+          this._markKeyFailed(key)
         }
       })
       pool.push(el)
@@ -443,13 +498,15 @@ class _SoundManager {
       }
       // Fallback: steal the first element if the loop produced no result
       el = stolen ?? pool[0]!
+      this._clearSfxTimers(el)
       el.pause()
       _resetAudioTime(el)
     }
 
-    el!.volume = effectiveVol
+    this._clearSfxTimers(el!)
+    el!.volume = (opts?.fadeInMs ?? 0) > 0 ? 0 : effectiveVol
     el!.muted = false
-    _resetAudioTime(el!)
+    this._seekAudioTime(el!, opts?.startAtSec ?? 0)
 
     if (_audioDebug) {
       console.log(`[SoundManager] play("${key}") vol=${effectiveVol.toFixed(2)} src="${entry.src}"`)
@@ -457,6 +514,7 @@ class _SoundManager {
 
     try {
       await el!.play()
+      this._scheduleSfxEnvelope(el!, effectiveVol, opts)
     } catch (err) {
       if ((err as DOMException).name === 'NotAllowedError') {
         // Autoplay blocked (either before unlock or iOS blocking a non-gesture
@@ -472,10 +530,78 @@ class _SoundManager {
       } else {
         if (!this._failedKeys.has(key)) {
           console.error(`[SoundManager] play("${key}") failed:`, err)
-          this._failedKeys.add(key)
+          this._markKeyFailed(key)
         }
       }
     }
+  }
+
+  private _seekAudioTime(element: HTMLAudioElement, time: number): void {
+    const seek = () => {
+      try {
+        element.currentTime = Math.max(0, time)
+      } catch {
+        // Metadata may not be ready in mobile WebViews; loadedmetadata retries it.
+      }
+    }
+    seek()
+    if (time > 0 && element.readyState < HTMLMediaElement.HAVE_METADATA) {
+      element.addEventListener('loadedmetadata', seek, { once: true })
+    }
+  }
+
+  private _clearSfxTimers(element: HTMLAudioElement): void {
+    for (const timer of this._sfxTimers.get(element) ?? []) {
+      window.clearTimeout(timer)
+      window.clearInterval(timer)
+    }
+    this._sfxTimers.delete(element)
+  }
+
+  private _scheduleSfxEnvelope(
+    element: HTMLAudioElement,
+    targetVolume: number,
+    opts?: PlayOptions
+  ): void {
+    const timers: number[] = []
+    const fadeInMs = Math.max(0, opts?.fadeInMs ?? 0)
+    const fadeOutMs = Math.max(0, opts?.fadeOutMs ?? 0)
+    const durationMs = opts?.durationMs == null ? null : Math.max(0, opts.durationMs)
+
+    if (fadeInMs > 0) {
+      const startedAt = performance.now()
+      const timer = window.setInterval(() => {
+        const progress = Math.min(1, (performance.now() - startedAt) / fadeInMs)
+        element.volume = targetVolume * progress
+        if (progress >= 1) window.clearInterval(timer)
+      }, 40)
+      timers.push(timer)
+    }
+
+    if (durationMs !== null) {
+      const beginFadeAt = Math.max(fadeInMs, durationMs - fadeOutMs)
+      const stop = () => {
+        this._clearSfxTimers(element)
+        element.pause()
+        _resetAudioTime(element)
+      }
+      const fadeTimer = window.setTimeout(() => {
+        if (fadeOutMs <= 0) {
+          stop()
+          return
+        }
+        const startVolume = element.volume
+        const startedAt = performance.now()
+        const timer = window.setInterval(() => {
+          const progress = Math.min(1, (performance.now() - startedAt) / fadeOutMs)
+          element.volume = startVolume * (1 - progress)
+          if (progress >= 1) stop()
+        }, 40)
+        timers.push(timer)
+      }, beginFadeAt)
+      timers.push(fadeTimer)
+    }
+    if (timers.length > 0) this._sfxTimers.set(element, timers)
   }
 
   // ── Music / BGM ─────────────────────────────────────────────────────────────
@@ -544,9 +670,21 @@ class _SoundManager {
 
   async syncMusic(): Promise<void> {
     if (SOUND_MANAGER_DISABLED) return
+    if (this._externalMusic) {
+      this.panicStopAllMusic()
+      this._applyExternalMusicVolume()
+      return
+    }
     const shouldMute = this._musicMuted || !this._getCategory('music').enabled
     const desiredTrack = this._desiredMusicTrack
-    if (shouldMute || desiredTrack === 'none') {
+    if (shouldMute) {
+      // Preserve the paused element and cue definition. State changes while
+      // muted still update the desired cue, and unmute will then select the
+      // current phase rather than this preserved one.
+      return
+    }
+    if (desiredTrack === 'none') {
+      this._clearMutedResumeTarget()
       this.panicStopAllMusic()
       return
     }
@@ -572,8 +710,17 @@ class _SoundManager {
         this._musicKey = this._cueEngine.currentKey
         this._playingMusicTrack = this._cueEngine.currentTrack ?? 'none'
         this._cueEngine.setMasterVolume(this._musicVolume)
+        if (this._mutedCueSignature === signature) {
+          try {
+            await this._cueEngine.resume()
+            this._clearMutedResumeTarget()
+          } catch (error) {
+            if ((error as DOMException).name === 'NotAllowedError') this._ensureUnlockListeners()
+          }
+        }
         return
       }
+      this._clearMutedResumeTarget()
       const playbackToken = ++this._musicPlaybackToken
       await this._doPlayAdvancedMusic(candidate, advancedCue, playbackToken)
       return
@@ -583,10 +730,24 @@ class _SoundManager {
     if (this._isMusicSynced(candidate.key)) {
       this._playingMusicTrack = candidate.track
       this._applyLiveMusicVolume()
+      if (
+        (this._musicWasPlayingOnHide || this._mutedMusicKey === candidate.key) &&
+        this._musicEl?.paused &&
+        !this._musicEl.ended &&
+        (typeof document === 'undefined' || !document.hidden)
+      ) {
+        try {
+          await this._musicEl.play()
+          this._clearMutedResumeTarget()
+        } catch (error) {
+          if ((error as DOMException).name === 'NotAllowedError') this._ensureUnlockListeners()
+        }
+      }
       return
     }
 
     const syncEntry = this._getEntry(candidate.key)
+    this._clearMutedResumeTarget()
     _bgmLog('sync', candidate.track, syncEntry?.src ?? candidate.key)
     const playbackToken = ++this._musicPlaybackToken
     await this._doPlayMusic(candidate, playbackToken)
@@ -629,11 +790,13 @@ class _SoundManager {
     this._desiredPerOwner = {}
 
     if (SOUND_MANAGER_DISABLED) return
+    const fadeToken = ++this._musicPlaybackToken
 
     if (this._cueEngine.currentElement) {
       this._desiredResolvedCue = null
       this._desiredAdvancedCueSignature = null
       await this._cueEngine.fadeOut(durationMs)
+      if (this._musicPlaybackToken !== fadeToken) return
       this._musicEl = null
       this._musicKey = null
       this._playingMusicTrack = 'none'
@@ -654,8 +817,6 @@ class _SoundManager {
 
     // Invalidate any concurrent async playback so a stale _doPlayMusic that
     // resolves after us does not re-set the music element.
-    this._musicPlaybackToken += 1
-
     if (durationMs <= 0) {
       for (const liveEl of _liveMusicElements) {
         liveEl.pause()
@@ -682,6 +843,11 @@ class _SoundManager {
 
     await new Promise<void>((resolve) => {
       const timer = window.setInterval(() => {
+        if (this._musicPlaybackToken !== fadeToken) {
+          window.clearInterval(timer)
+          resolve()
+          return
+        }
         step += 1
         el.volume = Math.max(0, startVolume * (1 - step / steps))
         if (step >= steps) {
@@ -690,6 +856,8 @@ class _SoundManager {
         }
       }, intervalMs)
     })
+
+    if (this._musicPlaybackToken !== fadeToken) return
 
     for (const liveEl of _liveMusicElements) {
       liveEl.pause()
@@ -700,15 +868,28 @@ class _SoundManager {
   }
 
   setMusicMuted(value: boolean): void {
+    const wasMuted = this._musicMuted
     this._musicMuted = value
     const state = this._getCategory('music')
     state.enabled = !value
     this._categories.set('music', state)
     if (value) {
-      this._stopCurrentMusic(this._unlocked)
+      if (!wasMuted) {
+        if (this._externalMusic) this._externalMusic.element.pause()
+        this._mutedCueSignature = this._cueEngine.currentSignature
+        this._mutedMusicKey = this._musicKey
+        this._cueEngine.suspend()
+        this._musicEl?.pause()
+      }
       return
     }
+    void this._syncExternalMusic()
     void this.syncMusic()
+  }
+
+  private _clearMutedResumeTarget(): void {
+    this._mutedCueSignature = null
+    this._mutedMusicKey = null
   }
 
   setMusicVolume(value: number): void {
@@ -718,6 +899,74 @@ class _SoundManager {
     state.volume = this._musicVolume
     this._categories.set('music', state)
     this._applyLiveMusicVolume()
+    this._applyExternalMusicVolume()
+  }
+
+  /**
+   * Gives a cinematic or other full-screen soundtrack exclusive ownership of
+   * the music output. The state-resolved track remains remembered and resumes
+   * only after the same owner releases this element.
+   */
+  claimExternalMusic(owner: string, element: HTMLAudioElement, baseVolume = 1): void {
+    const current = this._externalMusic
+    if (current && (current.owner !== owner || current.element !== element)) {
+      current.element.pause()
+    }
+    this._externalMusic = {
+      owner,
+      element,
+      baseVolume: Math.max(0, Math.min(1, baseVolume)),
+      shouldPlay: true,
+      wasPlayingOnHide: false,
+    }
+    this.panicStopAllMusic()
+    this._applyExternalMusicVolume()
+  }
+
+  releaseExternalMusic(owner: string, element: HTMLAudioElement, restore = true): void {
+    const current = this._externalMusic
+    if (!current || current.owner !== owner || current.element !== element) return
+    current.shouldPlay = false
+    current.element.pause()
+    this._externalMusic = null
+    if (restore) void this.syncMusic()
+  }
+
+  setExternalMusicVolume(owner: string, element: HTMLAudioElement, baseVolume: number): void {
+    const current = this._externalMusic
+    if (!current || current.owner !== owner || current.element !== element) return
+    current.baseVolume = Math.max(0, Math.min(1, baseVolume))
+    this._applyExternalMusicVolume()
+  }
+
+  private _applyExternalMusicVolume(): void {
+    const session = this._externalMusic
+    if (!session) return
+    const enabled = !this._musicMuted && this._getCategory('music').enabled
+    session.element.volume = enabled
+      ? Math.max(0, Math.min(1, session.baseVolume * this._musicVolume))
+      : 0
+  }
+
+  private async _syncExternalMusic(): Promise<void> {
+    const session = this._externalMusic
+    if (!session || !session.shouldPlay) return
+    this._applyExternalMusicVolume()
+    if (
+      this._musicMuted ||
+      !this._getCategory('music').enabled ||
+      !this._unlocked ||
+      (typeof document !== 'undefined' && document.hidden)
+    ) {
+      session.element.pause()
+      return
+    }
+    if (!session.element.paused || session.element.ended) return
+    try {
+      await session.element.play()
+    } catch (error) {
+      if ((error as DOMException).name === 'NotAllowedError') this._ensureUnlockListeners()
+    }
   }
 
   async playSfx(key: string, options?: PlayOptions): Promise<void> {
@@ -798,7 +1047,7 @@ class _SoundManager {
     const entry = this._getEntry(key)
     if (!entry) {
       console.warn(`[SoundManager] Unknown music key: "${key}"`)
-      this._failedKeys.add(key)
+      this._markKeyFailed(key, false)
       void this.syncMusic()
       return
     }
@@ -828,7 +1077,7 @@ class _SoundManager {
             `[SoundManager] music load error "${key}" (code ${code}):`,
             el.error?.message ?? entry.src
           )
-          this._failedKeys.add(key)
+          this._markKeyFailed(key)
         }
         this._recoverFromMusicFailure(key, el)
       },
@@ -871,7 +1120,7 @@ class _SoundManager {
       } else {
         if (!this._failedKeys.has(key)) {
           console.error(`[SoundManager] playMusic("${key}") failed:`, err)
-          this._failedKeys.add(key)
+          this._markKeyFailed(key)
         }
         this._recoverFromMusicFailure(key, el)
       }
@@ -885,7 +1134,7 @@ class _SoundManager {
   ): Promise<void> {
     const entry = this._getEntry(candidate.key)
     if (!entry || this._failedKeys.has(candidate.key)) {
-      if (entry == null) this._failedKeys.add(candidate.key)
+      if (entry == null) this._markKeyFailed(candidate.key, false)
       void this.syncMusic()
       return
     }
@@ -918,7 +1167,8 @@ class _SoundManager {
         playbackToken !== this._musicPlaybackToken ||
         this._desiredAdvancedCueSignature !== musicCueSignature(cue, candidate.key)
       ) {
-        this._cueEngine.stop()
+        // A newer request owns the cue engine now. Calling stop() here would
+        // stop that newer track when this older async request happens to finish.
         return
       }
       this._cueEngine.setMasterVolume(this._musicVolume)
@@ -928,8 +1178,17 @@ class _SoundManager {
       _bgmLog('playing-cue', candidate.track, entry.src)
     } catch (error) {
       if (playbackToken !== this._musicPlaybackToken) return
+      if ((error as DOMException).name === 'NotAllowedError') {
+        // Browser autoplay policy is not an asset failure. Keep the desired
+        // cue and retry it from the next real player gesture.
+        this._musicEl = null
+        this._musicKey = null
+        this._playingMusicTrack = 'none'
+        this._ensureUnlockListeners()
+        return
+      }
       console.error(`[SoundManager] advanced music cue failed "${candidate.key}":`, error)
-      this._failedKeys.add(candidate.key)
+      this._markKeyFailed(candidate.key)
       this._cueEngine.stop()
       this._musicEl = null
       this._musicKey = null
@@ -1099,6 +1358,7 @@ class _SoundManager {
       console.log(`[SoundManager] stop("${key}")`)
     }
     for (const el of pool) {
+      this._clearSfxTimers(el)
       el.pause()
       _resetAudioTime(el)
     }
@@ -1268,15 +1528,45 @@ class _SoundManager {
     this._lifecycleListenersBound = true
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Do NOT reset _unlocked on hide.  Pre-emptively resetting it would cause
-        // all subsequent BGM/SFX calls (e.g. from phase transitions that happen
-        // while the screen is briefly inactive) to be queued rather than applied
-        // immediately.  The play() error handler already re-queues on
-        // NotAllowedError if iOS actually rejects the next play attempt.
+        this._musicWasPlayingOnHide = Boolean(
+          this._musicEl && !this._musicEl.paused && !this._musicEl.ended
+        )
+        if (this._externalMusic) {
+          this._externalMusic.wasPlayingOnHide =
+            !this._externalMusic.element.paused && !this._externalMusic.element.ended
+          this._externalMusic.element.pause()
+        }
+        this._cueEngine.suspend()
+        this._musicEl?.pause()
         return
       }
-      void this.syncMusic()
+      if (this._externalMusic) {
+        if (this._externalMusic.wasPlayingOnHide) void this._syncExternalMusic()
+        this._externalMusic.wasPlayingOnHide = false
+        return
+      }
+      if (this._musicWasPlayingOnHide) void this._cueEngine.resume()
+      void this.syncMusic().finally(() => {
+        this._musicWasPlayingOnHide = false
+      })
     })
+  }
+
+  getDiagnostics(): AudioDiagnosticsSnapshot {
+    const external = this._externalMusic
+    return {
+      unlocked: this._unlocked,
+      lifecycle: typeof document !== 'undefined' && document.hidden ? 'hidden' : 'visible',
+      desiredTrack: this._desiredMusicTrack,
+      playingTrack: this._playingMusicTrack,
+      musicKey: this._musicKey,
+      desiredReason: this._desiredMusicReason,
+      externalOwner: external?.owner ?? null,
+      externalPlaying: Boolean(external && !external.element.paused && !external.element.ended),
+      musicEnabled: !this._musicMuted && this._getCategory('music').enabled,
+      musicVolume: this._musicVolume,
+      failedKeys: [...this._failedKeys],
+    }
   }
 
   private _getOrCreateMusicEl(src: string, volume: number, loop: boolean): HTMLAudioElement {
@@ -1362,7 +1652,7 @@ class _SoundManager {
               `[SoundManager] SFX load error "${key}" (code ${code}):`,
               el.error?.message ?? entry.src
             )
-            this._failedKeys.add(key)
+            this._markKeyFailed(key)
           }
         })
         pool.push(el)

@@ -205,6 +205,7 @@ function HomeHubAssetLayer({
                           ? onOpenHousemates
                           : to === '/credits'
                             ? () => {
+                                SoundManager.unlockFromGesture()
                                 void startCreditsSoundtrackFromGesture().catch(() => {
                                   // The muted video still starts immediately if a browser rejects
                                   // soundtrack playback during route navigation.

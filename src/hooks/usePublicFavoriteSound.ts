@@ -7,11 +7,11 @@
  *   // call when the Public's Favorite voting overlay appears:
  *   playPublicFavorite();
  */
-import { useCallback } from 'react';
-import { SoundManager } from '../services/sound/SoundManager';
+import { useCallback } from 'react'
 
 export default function usePublicFavoriteSound(): () => void {
-  return useCallback(() => {
-    void SoundManager.playMusic('public_voting');
-  }, []);
+  // Public voting is a normal UI music scene. AudioStateSync owns it through
+  // the scene state, so this legacy hook deliberately has no playback side
+  // effect if an older component still calls it.
+  return useCallback(() => {}, [])
 }

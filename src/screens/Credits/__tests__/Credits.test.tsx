@@ -135,6 +135,17 @@ describe('Credits', () => {
     expect(soundtrackMock.start).toHaveBeenCalledWith(2.5)
   })
 
+  it('resumes the soundtrack after temporary video buffering', () => {
+    renderCredits()
+
+    const video = screen.getByTestId('credits-background-video')
+    Object.defineProperty(video, 'currentTime', { configurable: true, value: 1.25 })
+    fireEvent.waiting(video)
+    fireEvent.playing(video)
+
+    expect(soundtrackMock.sync).toHaveBeenLastCalledWith(1.25, true)
+  })
+
   it('fades music and returns home when skipped', () => {
     vi.useFakeTimers()
     renderCredits()
