@@ -232,7 +232,7 @@ function chooseWeightedOption(
 ): string {
   const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
-  if (total <= 0) return optionIds[0];
+  if (total <= 0) return chooseExtremaOption(scores, optionIds);
 
   let roll = rng() * total;
   for (let index = 0; index < optionIds.length; index += 1) {
