@@ -52,6 +52,34 @@ describe('TwinShockRevealOverlay', () => {
     expect(tile.style.visibility).toBe('');
   });
 
+  it('matches player ids literally without interpolating them into a CSS selector', () => {
+    const targetId = 'ali"\\]#target';
+    const tile = document.createElement('div');
+    tile.dataset.playerId = targetId;
+    document.body.appendChild(tile);
+
+    const { unmount } = render(
+      <TwinShockRevealOverlay
+        reveal={{
+          type: 'ali_enters',
+          replacedPlayerId: 'finn',
+          replacedPlayerName: 'Finn',
+          replacedPlayerAvatar: '/finn.webp',
+          incomingPlayerId: targetId,
+          incomingName: 'Ali',
+          incomingAvatar: '/ali.webp',
+        }}
+        getTileRect={() => new DOMRect(10, 20, 80, 80)}
+        onDone={vi.fn()}
+      />,
+    );
+
+    expect(tile.style.opacity).toBe('0');
+    expect(tile.style.visibility).toBe('hidden');
+
+    unmount();
+  });
+
   it('renders exactly one full-frame portrait throughout the swap', () => {
     const { container, unmount } = render(
       <TwinShockRevealOverlay
