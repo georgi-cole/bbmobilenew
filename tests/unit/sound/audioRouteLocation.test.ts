@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createHashRouter } from 'react-router'
 import { JSDOM } from 'jsdom'
-import { getAudioRouteHash, subscribeToAudioRoute } from '../../../src/services/sound/audioRouteLocation'
+import {
+  getAudioRouteHash,
+  subscribeToAudioRoute,
+} from '../../../src/services/sound/audioRouteLocation'
 
 describe('audio route location', () => {
   it('observes a committed hash-router navigation that does not emit hashchange', async () => {
@@ -29,8 +32,8 @@ describe('audio route location', () => {
   })
 
   it('preserves query and nested anchor information used by route-specific cues', () => {
-    expect(
-      getAudioRouteHash({ pathname: '/game', search: '?menu=play', hash: '#round-two' })
-    ).toBe('#/game?menu=play#round-two')
+    expect(getAudioRouteHash({ pathname: '/game', search: '?menu=play', hash: '#round-two' })).toBe(
+      '#/game?menu=play#round-two'
+    )
   })
 })

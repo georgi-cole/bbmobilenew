@@ -45,9 +45,7 @@ import PermissionPrompts from '../../components/PermissionPrompts/PermissionProm
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import SurvivorRulesModal from '../../components/ConfirmExitModal/SurvivorRulesModal'
 import { SoundManager } from '../../services/sound/SoundManager'
-import {
-  beginGameplayAudioExit,
-} from '../../services/sound/audioRouteOwnership'
+import { beginGameplayAudioExit } from '../../services/sound/audioRouteOwnership'
 import { startCreditsSoundtrackFromGesture } from '../../cinematic/audio/creditsSoundtrack'
 import GameButton, { type GameButtonVariant } from '../../components/GameButton/GameButton'
 import HousematesBioCinematic from '../../components/HousematesBioCinematic/HousematesBioCinematic'
