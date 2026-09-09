@@ -104,6 +104,7 @@ const PEEK_HINT_WEIGHT = 0.35
 const PERSONALITY_WEIGHT = 0.2
 const NOISE_WEIGHT = 0.12
 const MIN_OPTION_WEIGHT = 0.05
+const CONSENSUS_POWER = 2.2
 const MAX_SUDDEN_DEATH_ROUNDS = 10
 const MAJORITY_RULES_OPTION_IDS = ['a', 'b', 'c'] as const
 const MAJORITY_RULES_OPTION_LABELS = ['A', 'B', 'C'] as const
@@ -223,7 +224,9 @@ function chooseWeightedOption(
   optionIds: string[],
   rng: () => number
 ): string {
-  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0))
+  const weights = optionIds.map(
+    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER
+  )
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   if (total <= 0) return chooseExtremaOption(scores, optionIds)
 
