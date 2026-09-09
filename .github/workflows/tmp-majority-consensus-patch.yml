@@ -1,4 +1,4 @@
-name: Temporary Majority Rules Consensus Patcher
+name: Temporary Majority Rules Realism Patcher
 
 on:
   push:
@@ -20,25 +20,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Rebalance Majority Rules consensus
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/features/majorityRules/helpers.ts')
-          text = path.read_text()
-          if 'const CONSENSUS_POWER' not in text:
-              text = text.replace('const MIN_OPTION_WEIGHT = 0.05\n', 'const MIN_OPTION_WEIGHT = 0.05\nconst CONSENSUS_POWER = 2.2\n', 1)
-          old = '  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0))\n'
-          new = '  const weights = optionIds.map(\n    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER\n  )\n'
-          if old in text:
-              text = text.replace(old, new, 1)
-          assert 'CONSENSUS_POWER' in text and '** CONSENSUS_POWER' in text
-          path.write_text(text)
-          PY
-      - name: Format helper
-        run: npx prettier --write src/features/majorityRules/helpers.ts
-      - name: Commit consensus rebalance
+      - name: Apply realistic Majority Rules model
+        run: python .github/scripts/tmp_majority_realism_patch.py
+      - name: Format changed production and test files
+        run: npx prettier --write src/features/majorityRules/helpers.ts src/features/majorityRules/majorityRulesSlice.ts src/components/MajorityRulesComp/MajorityRulesComp.tsx tests/unit/majorityRules/majorityRules.consensusBalance.test.ts
+      - name: Run Majority Rules regression tests
+        run: npx vitest run tests/unit/majorityRules/majorityRules.aiRealism.test.ts tests/unit/majorityRules/majorityRules.consensusBalance.test.ts tests/unit/majorityRules/majorityRules.logic.test.ts tests/integration/minigame.majorityRules.integration.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Commit realism changes
         shell: bash
         run: |
           if git diff --quiet; then
@@ -47,5 +37,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/features/majorityRules/helpers.ts
-          git commit -m "fix: rebalance Majority Rules consensus"
+          git add src/features/majorityRules/majorityRulesSlice.ts
+          git add src/components/MajorityRulesComp/MajorityRulesComp.tsx
+          git add tests/unit/majorityRules/majorityRules.consensusBalance.test.ts
+          git commit -m "fix: make Majority Rules outcomes realistic and fair"
           git push origin HEAD:fix/majority-rules-consensus-balance
