@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TvEvent } from '../../types'
-import { selectCurrentQueuedBroadcast } from '../SeasonStartOnboardingController'
+import { selectCurrentQueuedBroadcast } from '../seasonOnboardingQueue'
 
 function event(id: string, phase: string, week: number): TvEvent {
   return {

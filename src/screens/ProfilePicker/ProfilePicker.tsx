@@ -386,11 +386,7 @@ export default function ProfilePicker() {
               <div className="profile-picker__create-photo-section">
                 <div className="profile-picker__create-photo-wrap">
                   {newPhotoPreview ? (
-                    <img
-                      className="profile-picker__create-photo-img"
-                      src={newPhotoPreview}
-                      alt="New profile"
-                    />
+                    <img className="profile-picker__create-photo-img" src={newPhotoPreview} alt="New profile" />
                   ) : (
                     <span className="profile-picker__create-photo-avatar">{newAvatar}</span>
                   )}

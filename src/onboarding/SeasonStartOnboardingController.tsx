@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { Phase, TvEvent } from '../types'
 import { addTvEvent, advance, consumeBroadcastEvent, removeTvEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
-import { isCurrentPhaseBroadcastEvent } from '../components/ui/tvZoneBroadcastGuards'
 import {
   isLegacySeasonWelcomeEvent,
   isServiceConfigurationEvent,
 } from '../services/activityService'
 import SeasonTutorialTour from './SeasonTutorialTour'
+import { selectCurrentQueuedBroadcast } from './seasonOnboardingQueue'
 import {
   hasHandledSeasonTutorial,
   isSeasonTutorialEnabled,
@@ -38,24 +37,6 @@ function hashText(value: string): number {
 
 function pickOpeningFlavor(gameId: string): string {
   return OPENING_FLAVOR_LINES[hashText(gameId) % OPENING_FLAVOR_LINES.length]
-}
-
-/**
- * Match Faux TV's queue selection exactly. A persisted off-phase broadcast can
- * remain at the queue head during a route remount; it must not hide the
- * current season-opening handoff from the tutorial controller.
- */
-export function selectCurrentQueuedBroadcast(
-  broadcastQueue: readonly string[],
-  tvFeed: readonly TvEvent[],
-  phase: Phase,
-  week: number
-): TvEvent | null {
-  for (const broadcastId of broadcastQueue) {
-    const event = tvFeed.find((candidate) => candidate.id === broadcastId) ?? null
-    if (isCurrentPhaseBroadcastEvent(event, phase, week)) return event
-  }
-  return null
 }
 
 export default function SeasonStartOnboardingController() {
