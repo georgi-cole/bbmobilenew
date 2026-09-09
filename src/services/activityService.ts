@@ -94,12 +94,15 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
  * is allowed to hide them.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
-  // Broadcast Manager's "Force to TV" is an explicit authoring instruction.
-  // It must win over compatibility filters that normally keep service and
-  // legacy messages in the log only.
+  // These two superseded startup templates are never presentation content.
+  // Keep this ahead of Force to TV so an old persisted override cannot revive
+  // the duplicate "about to begin" screen.
+  if (isLegacySeasonWelcomeEvent(ev)) return false
+  // Broadcast Manager's "Force to TV" remains an explicit authoring
+  // instruction for all current content. The legacy startup templates above
+  // are the sole retired exception.
   if (ev.meta?.forceOnTv === true) return true
   if (isServiceConfigurationEvent(ev)) return false
-  if (isLegacySeasonWelcomeEvent(ev)) return false
   if (isBattleBackReturnResultEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false
   if (!ev.channels) return true
