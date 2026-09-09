@@ -853,7 +853,10 @@ export function resolveMajorityRulesBallot(params: {
 
   const minorityOptionId = tiedOptionIds[0]
   const eliminatedIds = activeIds.filter((playerId) => answers[playerId] === minorityOptionId)
-  const maxClearMinoritySize = activeIds.length >= 6 ? 2 : 1
+  // With 12 or more players, three votes can still form a distinct minority
+  // without making a close four-person group an automatic mass elimination.
+  // Narrow the cap as the cast gets smaller.
+  const maxClearMinoritySize = activeIds.length >= 12 ? 3 : activeIds.length >= 6 ? 2 : 1
   if (eliminatedIds.length > maxClearMinoritySize) {
     return {
       kind: 'split',
