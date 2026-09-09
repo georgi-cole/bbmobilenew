@@ -61,6 +61,7 @@ import type { MemoryColorsCompetitionType } from '../../features/memoryColors/me
 import TrapAuctionComp from '../TrapAuction/TrapAuction'
 import ColorMatchComp from '../ColorMatchComp/ColorMatchComp'
 import reactComponents from '../../minigames/reactComponents'
+import { resetHostedMinigameState } from '../../minigames/resetHostedMinigameState'
 import './MinigameHost.css'
 
 const COUNTDOWN_TIMER_KEY = 'minigame:all_3_seconds_timer'
@@ -205,6 +206,9 @@ export default function MinigameHost({
   )
 
   useEffect(() => {
+    // A new challenge or retry must never mount a React minigame against the
+    // preceding attempt's completed feature state.
+    resetHostedMinigameState(store.dispatch, launchedGame.reactComponentKey)
     completionReportedRef.current = false
     setUtilityView(null)
     setCountdown(3)
@@ -215,6 +219,9 @@ export default function MinigameHost({
     setDemoTried(false)
     setPhase(skipRules ? 'countdown' : 'rules')
     setAttempt(0)
+    // The game selection is stable for a challenge session. Do not rerun this
+    // boundary when access metadata changes while a game is in progress.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, skipRules])
 
   useEffect(() => {
@@ -425,6 +432,7 @@ export default function MinigameHost({
     // A retry is a fresh run of the same selected game. Reset both the host's
     // completion latch and the child identity; a game-key-only reset is not
     // sufficient when the user deliberately plays one minigame every time.
+    resetHostedMinigameState(store.dispatch, launchedGame.reactComponentKey)
     completionReportedRef.current = false
     setUtilityView(null)
     setFinalValue(null)
@@ -434,7 +442,7 @@ export default function MinigameHost({
     setCountdown(3)
     setAttempt((current) => current + 1)
     setPhase(skipCountdown ? 'playing' : 'countdown')
-  }, [skipCountdown])
+  }, [launchedGame.reactComponentKey, skipCountdown])
 
   const renderActiveGame = () => {
     const participantIds = (participants ?? []).map((p) => p.id)
