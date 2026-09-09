@@ -147,4 +147,54 @@ describe('Majority Rules realistic population model', () => {
     expect(result.kind).toBe('elimination')
     expect(result.eliminatedIds).toEqual(['p13', 'p14'])
   })
+
+  it.each([
+    [7, 4, 3],
+    [6, 4, 3],
+    [5, 4, 3],
+  ])('eliminates a distinct three-person minority in a %i-%i-%i split', (a, b, c) => {
+    const activeIds = Array.from({ length: a + b + c }, (_, index) => `p${index + 1}`)
+    const answers = Object.fromEntries(
+      activeIds.map((id, index) => [id, index < a ? 'a' : index < a + b ? 'b' : 'c'])
+    )
+    const result = resolveMajorityRulesBallot({
+      activeIds,
+      answers,
+      question: partnerQuestion,
+      eliminationCount: 1,
+    })
+
+    expect(result.kind).toBe('elimination')
+    expect(result.eliminatedIds).toEqual(activeIds.slice(a + b))
+  })
+
+  it('eliminates a distinct three-person minority in a 6-3 split', () => {
+    const activeIds = Array.from({ length: 9 }, (_, index) => `p${index + 1}`)
+    const answers = Object.fromEntries(activeIds.map((id, index) => [id, index < 6 ? 'a' : 'b']))
+    const result = resolveMajorityRulesBallot({
+      activeIds,
+      answers,
+      question: partnerQuestion,
+      eliminationCount: 1,
+    })
+
+    expect(result.kind).toBe('elimination')
+    expect(result.eliminatedIds).toEqual(activeIds.slice(6))
+  })
+
+  it('does not eliminate either group in a 4-3-3 tied minority', () => {
+    const activeIds = Array.from({ length: 10 }, (_, index) => `p${index + 1}`)
+    const answers = Object.fromEntries(
+      activeIds.map((id, index) => [id, index < 4 ? 'a' : index < 7 ? 'b' : 'c'])
+    )
+    const result = resolveMajorityRulesBallot({
+      activeIds,
+      answers,
+      question: partnerQuestion,
+      eliminationCount: 1,
+    })
+
+    expect(result.kind).toBe('split')
+    expect(result.eliminatedIds).toEqual([])
+  })
 })
