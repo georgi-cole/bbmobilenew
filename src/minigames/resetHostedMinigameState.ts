@@ -14,6 +14,23 @@ import { resetTiltLabyrinth } from '../features/tiltLabyrinth/tiltLabyrinthSlice
 import { resetHouseOfCards } from '../features/houseOfCards/houseOfCardsSlice'
 import { resetMemoryColors } from '../features/memoryColors/memoryColorsSlice'
 
+const hostedMinigameResetters = {
+  ClosestWithoutGoingOver: resetCwgo,
+  HoldTheWall: resetHoldTheWall,
+  BiographyBlitz: resetBiographyBlitz,
+  FamousFigures: resetFamousFigures,
+  SilentSaboteur: resetSilentSaboteur,
+  MajorityRules: resetMajorityRules,
+  GlassBridge: resetGlassBridge,
+  BlackjackTournament: resetBlackjackTournament,
+  RiskWheel: resetRiskWheel,
+  WildcardWestern: resetWildcardWestern,
+  Tetris: resetTetris,
+  TiltLabyrinth: resetTiltLabyrinth,
+  HouseOfCards: resetHouseOfCards,
+  MemoryColors: resetMemoryColors,
+} as const
+
 /**
  * Clears feature-owned state before MinigameHost mounts a new attempt.
  *
@@ -25,48 +42,15 @@ export function resetHostedMinigameState(
   dispatch: Dispatch<UnknownAction>,
   reactComponentKey?: string
 ) {
-  switch (reactComponentKey) {
-    case 'ClosestWithoutGoingOver':
-      dispatch(resetCwgo())
-      break
-    case 'HoldTheWall':
-      dispatch(resetHoldTheWall())
-      break
-    case 'BiographyBlitz':
-      dispatch(resetBiographyBlitz())
-      break
-    case 'FamousFigures':
-      dispatch(resetFamousFigures())
-      break
-    case 'SilentSaboteur':
-      dispatch(resetSilentSaboteur())
-      break
-    case 'MajorityRules':
-      dispatch(resetMajorityRules())
-      break
-    case 'GlassBridge':
-      dispatch(resetGlassBridge())
-      break
-    case 'BlackjackTournament':
-      dispatch(resetBlackjackTournament())
-      break
-    case 'RiskWheel':
-      dispatch(resetRiskWheel())
-      break
-    case 'WildcardWestern':
-      dispatch(resetWildcardWestern())
-      break
-    case 'Tetris':
-      dispatch(resetTetris())
-      break
-    case 'TiltLabyrinth':
-      dispatch(resetTiltLabyrinth())
-      break
-    case 'HouseOfCards':
-      dispatch(resetHouseOfCards())
-      break
-    case 'MemoryColors':
-      dispatch(resetMemoryColors())
-      break
+  const reset = reactComponentKey
+    ? hostedMinigameResetters[reactComponentKey as keyof typeof hostedMinigameResetters]
+    : undefined
+  if (reset) dispatch(reset())
+}
+
+/** Clears every feature-owned minigame session when a whole season is reset. */
+export function resetAllHostedMinigameState(dispatch: Dispatch<UnknownAction>) {
+  for (const reset of Object.values(hostedMinigameResetters)) {
+    dispatch(reset())
   }
 }

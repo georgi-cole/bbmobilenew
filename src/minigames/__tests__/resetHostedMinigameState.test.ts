@@ -4,7 +4,7 @@ import majorityRulesReducer, {
   initMajorityRules,
 } from '../../features/majorityRules/majorityRulesSlice'
 import type { MajorityRulesState } from '../../features/majorityRules/majorityRulesSlice'
-import { resetHostedMinigameState } from '../resetHostedMinigameState'
+import { resetAllHostedMinigameState, resetHostedMinigameState } from '../resetHostedMinigameState'
 
 describe('resetHostedMinigameState', () => {
   it('clears a completed Majority Rules run before the retry mounts', () => {
@@ -63,5 +63,28 @@ describe('resetHostedMinigameState', () => {
     resetHostedMinigameState(dispatch, gameKey)
 
     expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: actionType }))
+  })
+
+  it('clears every feature-owned minigame session when a season is reset', () => {
+    const dispatch = vi.fn()
+
+    resetAllHostedMinigameState(dispatch)
+
+    expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
+      'cwgo/resetCwgo',
+      'holdTheWall/resetHoldTheWall',
+      'biographyBlitz/resetBiographyBlitz',
+      'famousFigures/resetFamousFigures',
+      'silentSaboteur/resetSilentSaboteur',
+      'majorityRules/resetMajorityRules',
+      'glassBridge/resetGlassBridge',
+      'blackjackTournament/resetBlackjackTournament',
+      'riskWheel/resetRiskWheel',
+      'wildcardWestern/resetWildcardWestern',
+      'tetris/resetTetris',
+      'tiltLabyrinth/resetTiltLabyrinth',
+      'houseOfCards/resetHouseOfCards',
+      'memoryColors/resetMemoryColors',
+    ])
   })
 })

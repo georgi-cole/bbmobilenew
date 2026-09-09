@@ -57,6 +57,7 @@ import { adsMiddleware } from './adsMiddleware'
 import remoteConfigReducer from '../remoteConfig/remoteConfigSlice'
 import { secretMissionMiddleware } from './secretMissionMiddleware'
 import { gameDiagnosticsMiddleware } from '../services/diagnostics/gameDiagnostics'
+import { minigameSessionMiddleware } from './minigameSessionMiddleware'
 import vipReducer, { loadVipState } from './vipSlice'
 import { saveCachedVipEntitlement } from '../vip/vipStorage'
 import {
@@ -115,6 +116,7 @@ export const store = configureStore({
       dramaPublicSaveMiddleware,
       adsMiddleware,
       secretMissionMiddleware,
+      minigameSessionMiddleware,
       gameDiagnosticsMiddleware
     ),
 })
