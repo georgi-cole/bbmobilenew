@@ -20,6 +20,20 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Remove superseded global consensus tuning
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/features/majorityRules/helpers.ts')
+          text = path.read_text()
+          text = text.replace('const CONSENSUS_POWER = 2.2\n', '')
+          text = text.replace(
+              "function chooseWeightedOption(\n  scores: Record<string, number>,\n  optionIds: string[],\n  rng: () => number\n): string {\n  const weights = optionIds.map(\n    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER\n  )\n",
+              "function chooseWeightedOption(\n  scores: Record<string, number>,\n  optionIds: string[],\n  rng: () => number\n): string {\n  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0))\n",
+          )
+          path.write_text(text)
+          PY
       - name: Apply realistic Majority Rules model
         run: python .github/scripts/tmp_majority_realism_patch.py
       - name: Format changed production and test files
