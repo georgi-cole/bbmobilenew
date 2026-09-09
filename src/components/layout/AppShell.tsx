@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import NavBar from './NavBar'
 import { useAppSelector } from '../../store/hooks'
@@ -40,6 +40,7 @@ const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFi
  */
 export default function AppShell() {
   const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   const phase = useAppSelector((s) => s.game.phase)
   const gameMode = useAppSelector((s) => s.game.mode)
   const seasonFinale = useAppSelector((s) => s.game.seasonFinale)
@@ -53,6 +54,21 @@ export default function AppShell() {
   // Gameplay owns the full Android display. Other screens restore the native
   // status bar and continue to use the measured safe-area inset.
   useGameMode(location.pathname === '/game')
+
+  // React Router keeps this persistent scroll container mounted between
+  // screens. Reset it before the next screen paints so a long form (notably
+  // Profile Picker) cannot leave Profile or the fixed gameplay surface panned.
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    if (main) {
+      main.scrollTop = 0
+      main.scrollLeft = 0
+    }
+    document.documentElement.scrollTop = 0
+    document.documentElement.scrollLeft = 0
+    document.body.scrollTop = 0
+    document.body.scrollLeft = 0
+  }, [location.key])
 
   // Apply theme preset and accessibility classes to document.body
   useEffect(() => {
@@ -127,7 +143,7 @@ export default function AppShell() {
           <span>{remoteBroadcast.message}</span>
         </aside>
       )}
-      <main className="app-shell__main">
+      <main ref={mainRef} className="app-shell__main">
         <Outlet />
       </main>
       <NavBar />

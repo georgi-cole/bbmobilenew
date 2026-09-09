@@ -97,6 +97,8 @@ type Props = {
   onReturnAnimationDone?: () => void
   /** Shows the game-log launcher at the right edge of a persistent roster header. */
   showRosterLogLauncher?: boolean
+  /** Holds visual player names until the season-opening reveal has played. */
+  showNames?: boolean
 }
 
 /** Minimum grid height (px) even when available space is very tight */
@@ -140,6 +142,7 @@ export default function HouseguestGrid({
   returningPlayerId = null,
   onReturnAnimationDone,
   showRosterLogLauncher = false,
+  showNames = true,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
   const dispatch = useAppDispatch()
@@ -442,6 +445,7 @@ export default function HouseguestGrid({
                       : (hg.statuses?.split('+') ?? [])
                     ).includes('nominated')
                   }
+                  showName={showNames}
                 />
               </li>
             )

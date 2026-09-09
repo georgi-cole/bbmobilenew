@@ -102,6 +102,7 @@ describe('ProfilePicker', () => {
     render(<ProfilePicker />);
 
     fireEvent.click(screen.getByRole('button', { name: /create new profile/i }));
+    expect(screen.queryByRole('button', { name: /continue as guest/i })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/enter display name/i), {
       target: { value: 'Jordan' },
     });

@@ -108,6 +108,14 @@ body:has(.game-screen-shell) .app-shell {
   background-repeat: no-repeat;
 }
 
+/* Profile, settings, and other document-style screens scroll in AppShell's
+   persistent main region. Gameplay is viewport-bound and owns any deliberate
+   inner roster scrolling, so the outer region must never become pannable. */
+body:has(.game-screen-shell) .app-shell__main {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body:has(.game-screen-shell) {
   background-color: var(--color-bg);
   background-image: url('../../assets/bb-gameplay-bg.svg');

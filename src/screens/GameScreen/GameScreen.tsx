@@ -687,6 +687,11 @@ export default function GameScreen() {
     }
   }
 
+  const rosterNamesRevealed =
+    game.mode === 'survival' ||
+    game.phase !== 'season_start' ||
+    game.tvFeed.some((event) => event.meta?.seasonOnboardingFlavor === true)
+
   const {
     replacementOptions,
     humanIsPosHolder,
@@ -2574,6 +2579,7 @@ export default function GameScreen() {
           showRosterLogLauncher={
             responsiveGameLayout.rosterHeaderMode === 'persistent' && !inlineHouseFeedVisible
           }
+          showNames={rosterNamesRevealed}
         />
         {previewPlayer && (
           <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />

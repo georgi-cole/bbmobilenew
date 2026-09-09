@@ -325,7 +325,7 @@
 
 .profile-screen__survivor-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -361,6 +361,7 @@
 }
 
 .profile-screen__survivor-empty {
+  grid-column: 1 / -1;
   padding: 18px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
@@ -461,13 +462,29 @@
     gap: 8px;
   }
 
-  .profile-screen__survivor-stats,
   .profile-screen__survivor-grid {
     grid-template-columns: 1fr;
   }
 
   .profile-screen__survivor-header {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-screen__survivor-copy {
+    line-height: 1.35;
+  }
+
+  .profile-screen__survivor-count {
+    min-width: max-content;
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+
+  .profile-screen__survivor-stat {
+    padding: 9px 8px 10px;
+  }
+
+  .profile-screen__survivor-empty {
+    padding: 12px;
   }
 }

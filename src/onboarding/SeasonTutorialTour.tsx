@@ -34,6 +34,22 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
     shape: 'panel',
   },
   {
+    id: 'roster',
+    title: 'Your hubmates',
+    body: 'This roster shows every player in the season and updates as the game unfolds.',
+    selector: '[data-houseguest-roster="true"]',
+    padding: 3,
+    shape: 'panel',
+  },
+  {
+    id: 'player-preview',
+    title: 'Press and hold for a preview',
+    body: 'Press and hold a player’s avatar to see a short profile. For their full biography, return to the Home Hub and open Hubmates.',
+    selector: '[data-houseguest-roster="true"] li[data-player-id] [role="button"]',
+    padding: 5,
+    shape: 'rounded',
+  },
+  {
     id: 'log',
     title: 'Game Log',
     body: 'The Log keeps a running record of what happened, including rules and service messages.',
@@ -74,11 +90,27 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
     shape: 'circle',
   },
   {
+    id: 'more',
+    title: 'More options',
+    body: 'The three-dot menu holds useful shortcuts, including Settings, Rules, the leaderboard, store and Profile.',
+    selector: '.dock-hit-area--more, button[aria-label="More"]',
+    padding: 5,
+    shape: 'circle',
+  },
+  {
+    id: 'profile',
+    title: 'Create a Profile',
+    body: 'Choose Profile, then Create Profile, to save your seasons and progress on this device.',
+    selector: '[role="menuitem"][aria-label="Profile"]',
+    padding: 5,
+    shape: 'rounded',
+  },
+  {
     id: 'play',
     title: 'Play',
     body: 'Play moves the game forward when you are ready.',
     selector: '.game-control-dock__play, button[aria-label="Advance to next phase"]',
-    padding: 8,
+    padding: 0,
     shape: 'circle',
   },
 ]
@@ -174,9 +206,16 @@ export default function SeasonTutorialTour({
   useEffect(
     () => () => {
       if (finishTimerRef.current != null) window.clearTimeout(finishTimerRef.current)
+      window.dispatchEvent(new Event('season-tutorial:close-more-menu'))
     },
     []
   )
+
+  useLayoutEffect(() => {
+    if (currentStep.id === 'more' || currentStep.id === 'profile') {
+      window.dispatchEvent(new Event('season-tutorial:open-more-menu'))
+    }
+  }, [currentStep.id])
 
   useLayoutEffect(() => {
     let frame = 0
@@ -323,6 +362,7 @@ export default function SeasonTutorialTour({
       <div className="season-tutorial__input-shield" aria-hidden="true" />
       {targetRect && (
         <div
+          key={`spotlight-${currentStep.id}`}
           className="season-tutorial__spotlight"
           style={spotlightStyle}
           data-shape={currentStep.shape}
