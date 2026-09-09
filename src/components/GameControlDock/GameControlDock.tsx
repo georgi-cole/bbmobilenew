@@ -125,6 +125,17 @@ export default function GameControlDock({
   const publicUnavailableClass = publicMeterDisabled ? ' dock-hit-area--unavailable' : ''
 
   useEffect(() => {
+    const openMoreMenu = () => setMoreOpen(true)
+    const closeMoreMenu = () => setMoreOpen(false)
+    window.addEventListener('season-tutorial:open-more-menu', openMoreMenu)
+    window.addEventListener('season-tutorial:close-more-menu', closeMoreMenu)
+    return () => {
+      window.removeEventListener('season-tutorial:open-more-menu', openMoreMenu)
+      window.removeEventListener('season-tutorial:close-more-menu', closeMoreMenu)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!moreOpen) return undefined
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMoreOpen(false)
@@ -133,6 +144,7 @@ export default function GameControlDock({
       const target = event.target
       if (!(target instanceof Node)) return
       if (moreButtonRef.current?.contains(target) || moreMenuRef.current?.contains(target)) return
+      if (target instanceof Element && target.closest('.season-tutorial')) return
       setMoreOpen(false)
     }
     window.addEventListener('keydown', closeOnEscape)

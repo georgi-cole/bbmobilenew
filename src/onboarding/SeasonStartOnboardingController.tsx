@@ -7,7 +7,12 @@ import {
   isServiceConfigurationEvent,
 } from '../services/activityService'
 import SeasonTutorialTour from './SeasonTutorialTour'
-import { hasHandledSeasonTutorial, markSeasonTutorialHandled } from './seasonTutorialPreference'
+import { selectCurrentQueuedBroadcast } from './seasonOnboardingQueue'
+import {
+  hasHandledSeasonTutorial,
+  isSeasonTutorialEnabled,
+  markSeasonTutorialHandled,
+} from './seasonTutorialPreference'
 import './SeasonStartOnboardingController.css'
 import './SeasonOpeningCinematic.css'
 
@@ -18,12 +23,7 @@ const WELCOME_DELAY_MS = 0
 const DAY_ONE_START_TEMPLATE_ID = 'week.day-start'
 
 const OPENING_FLAVOR_LINES = [
-  'The hubmates have settled in. Everyone seems eager to play. 🎮',
-  'The hub is full. First impressions are already taking shape. 👀',
-  'Everyone has settled in. For now, spirits are high. ✨',
-  'The introductions are over. The social game is already beginning. 🤝',
-  'The hubmates are settling in. New friendships are already forming. 💬',
-  'Everyone has found their place in the hub. The mood is upbeat — for now. 😏',
+  'Everyone has settled into the hub. It’s time to get to know the players. ✨',
 ] as const
 
 function hashText(value: string): number {
@@ -52,8 +52,10 @@ export default function SeasonStartOnboardingController() {
   const isGuest = useAppSelector((state) => state.profiles.isGuest)
 
   const [gameScreenMounted, setGameScreenMounted] = useState(false)
-  const [tutorialHandled, setTutorialHandled] = useState(() =>
-    hasHandledSeasonTutorial(activeProfileId, isGuest)
+  const [tutorialHandled, setTutorialHandled] = useState(
+    () =>
+      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+      hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
   )
   const [promptOpen, setPromptOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
@@ -63,11 +65,9 @@ export default function SeasonStartOnboardingController() {
   const eligibleSeasonStart =
     gameScreenMounted && phase === 'season_start' && week === 1 && mode !== 'survival'
 
-  const queuedBroadcastId = broadcastQueue[0] ?? null
   const queuedEvent = useMemo(
-    () =>
-      queuedBroadcastId ? (tvFeed.find((event) => event.id === queuedBroadcastId) ?? null) : null,
-    [queuedBroadcastId, tvFeed]
+    () => selectCurrentQueuedBroadcast(broadcastQueue, tvFeed, phase, week),
+    [broadcastQueue, phase, tvFeed, week]
   )
 
   const legacyWelcomeEvent = useMemo(
@@ -119,7 +119,10 @@ export default function SeasonStartOnboardingController() {
   useEffect(() => {
     // These states reset in response to an external profile/game change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTutorialHandled(hasHandledSeasonTutorial(activeProfileId, isGuest))
+    setTutorialHandled(
+      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+        hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
+    )
     setPromptOpen(false)
     setTourOpen(false)
     setHandoffToFirstCompetition(false)
@@ -218,9 +221,9 @@ export default function SeasonStartOnboardingController() {
   // polished welcome and the Day 1 card. It is queued only after the welcome
   // has been acknowledged, never behind an old managed startup item.
   useEffect(() => {
-    if (!eligibleSeasonStart || !welcomeExists || flavorExists || broadcastQueue.length > 0) return
+    if (!eligibleSeasonStart || !welcomeExists || flavorExists || queuedEvent) return
     addOpeningFlavor()
-  }, [addOpeningFlavor, broadcastQueue.length, eligibleSeasonStart, flavorExists, welcomeExists])
+  }, [addOpeningFlavor, eligibleSeasonStart, flavorExists, queuedEvent, welcomeExists])
 
   useEffect(() => {
     if (eligibleSeasonStart) return
@@ -243,18 +246,11 @@ export default function SeasonStartOnboardingController() {
   // advance straight to LOH, making the Day 1 weather card appear suppressed.
   useEffect(() => {
     if (!handoffToFirstCompetition || phase !== 'week_start' || week !== 1) return
-    if (!dayOneStartBroadcastSeen || broadcastQueue.length > 0) return
+    if (!dayOneStartBroadcastSeen || queuedEvent) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHandoffToFirstCompetition(false)
     dispatch(advance())
-  }, [
-    broadcastQueue.length,
-    dayOneStartBroadcastSeen,
-    dispatch,
-    handoffToFirstCompetition,
-    phase,
-    week,
-  ])
+  }, [dayOneStartBroadcastSeen, dispatch, handoffToFirstCompetition, phase, queuedEvent, week])
 
   useEffect(() => {
     if (!eligibleSeasonStart) return undefined
@@ -271,7 +267,12 @@ export default function SeasonStartOnboardingController() {
         return
       }
 
-      if (broadcastQueue.length > 0) return
+      // Every current season-opening card must consume this press. Otherwise
+      // the last plain TV card also advances the game, bypassing the tutorial.
+      if (queuedEvent) {
+        event.preventDefault()
+        return
+      }
 
       if (!welcomeExists) {
         event.preventDefault()
@@ -310,10 +311,10 @@ export default function SeasonStartOnboardingController() {
   ])
 
   const finishOnboarding = useCallback(() => {
-    markSeasonTutorialHandled(activeProfileId, isGuest)
+    markSeasonTutorialHandled(activeProfileId, isGuest, gameId)
     setTutorialHandled(true)
     beginFirstCompetitionHandoff()
-  }, [activeProfileId, beginFirstCompetitionHandoff, isGuest])
+  }, [activeProfileId, beginFirstCompetitionHandoff, gameId, isGuest])
 
   const startTour = useCallback(() => {
     setPromptOpen(false)

@@ -40,8 +40,24 @@ async function createProfileFromHome(page: Page, playerName: string): Promise<vo
   await expect(page.getByRole('heading', { name: /Profiles/ })).toBeVisible()
 
   await page.getByRole('button', { name: /Create New Profile/ }).click()
-  await page.getByPlaceholder('Enter display name').fill(playerName)
+  const nameField = page.getByPlaceholder('Enter display name')
+  const fieldMetrics = await nameField.evaluate((element) => ({
+    coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+    fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+  }))
+  if (fieldMetrics.coarsePointer) expect(fieldMetrics.fontSize).toBeGreaterThanOrEqual(16)
+  await nameField.fill(playerName)
+
+  // Reproduce the persistent-container failure: the long picker is scrolled
+  // when profile creation replaces it with the Profile screen.
+  await page.locator('.app-shell__main').evaluate((element) => {
+    element.scrollTop = element.scrollHeight
+  })
   await page.getByRole('button', { name: 'Create Profile', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible()
+  await expect
+    .poll(() => page.locator('.app-shell__main').evaluate((element) => element.scrollTop))
+    .toBe(0)
 
   await expect
     .poll(async () => {

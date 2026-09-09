@@ -116,17 +116,45 @@ body.body--season-tv-wake .tv-zone__viewport {
 
 .season-tutorial__spotlight {
   z-index: 1;
-  border: 1px solid rgba(213, 189, 255, 0.86);
+  border: 1px solid rgba(226, 207, 255, 0.92);
   box-shadow:
     0 0 0 9999px rgba(2, 2, 8, 0.72),
-    0 0 0 3px rgba(150, 104, 242, 0.14),
-    0 0 30px rgba(143, 96, 240, 0.3);
+    0 0 0 3px rgba(177, 132, 255, 0.18),
+    0 0 10px rgba(241, 223, 255, 0.22),
+    0 0 30px rgba(143, 96, 240, 0.34);
+  animation: season-tutorial-outline-glint 720ms cubic-bezier(0.18, 0.84, 0.24, 1) both;
   transition:
     left 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
     top 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
     width 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
     height 300ms cubic-bezier(0.22, 0.78, 0.2, 1),
     border-radius 220ms ease-out;
+}
+
+@keyframes season-tutorial-outline-glint {
+  0% {
+    border-color: rgba(255, 249, 224, 0.45);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0.72),
+      0 0 0 1px rgba(252, 239, 255, 0.06),
+      0 0 8px rgba(232, 205, 255, 0.08);
+  }
+  38% {
+    border-color: rgba(255, 244, 211, 1);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0.72),
+      0 0 0 4px rgba(199, 157, 255, 0.26),
+      0 0 18px rgba(247, 225, 255, 0.42),
+      0 0 38px rgba(151, 102, 244, 0.38);
+  }
+  100% {
+    border-color: rgba(226, 207, 255, 0.92);
+    box-shadow:
+      0 0 0 9999px rgba(2, 2, 8, 0.72),
+      0 0 0 3px rgba(177, 132, 255, 0.18),
+      0 0 10px rgba(241, 223, 255, 0.22),
+      0 0 30px rgba(143, 96, 240, 0.34);
+  }
 }
 
 .season-tutorial__spotlight[data-shape='circle'],
@@ -425,6 +453,7 @@ body.body--season-tv-wake .tv-zone__viewport {
   .season-tutorial-prompt__backdrop,
   .season-tutorial-prompt__card,
   .season-tutorial__tooltip,
+  .season-tutorial__spotlight,
   .season-tutorial__focus-pulse,
   .season-tutorial__completion-flare,
   .season-tutorial--finishing .season-tutorial__spotlight {

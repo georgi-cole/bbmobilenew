@@ -1,29 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { useState, useRef, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router'
+import { useAppSelector, useAppDispatch } from '../../store/hooks'
 import {
   selectCurrentProfile,
   updateProfile,
+  deleteProfile,
   type ProfileBio,
-} from '../../store/profilesSlice';
-import { updateUserPlayerIdentity } from '../../store/gameSlice';
-import { resizeAndCompressImage } from '../../utils/imageUtils';
-import { saveImage, imageIdToDataUrl, deleteImage } from '../../utils/imageDb';
-import './EditProfile.css';
+} from '../../store/profilesSlice'
+import { resetGame, updateUserPlayerIdentity } from '../../store/gameSlice'
+import { resizeAndCompressImage } from '../../utils/imageUtils'
+import { saveImage, imageIdToDataUrl, deleteImage } from '../../utils/imageDb'
+import { clearSavedRun } from '../../store/saveStatePersistence'
+import { withRunAutosaveSuspended } from '../../store/runAutosaveGate'
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
+import './EditProfile.css'
 
-const AVATAR_OPTIONS = [
-  '🧑','👱','👩','🧔','👧','🧓','👩‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','👦','👴',
-];
+const AVATAR_OPTIONS = ['🧑', '👱', '👩', '🧔', '👧', '🧓', '👩‍🦱', '🧑‍🦰', '🧑‍🦳', '🧑‍🦲', '👦', '👴']
 
-const SAFE_PREVIEW_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-]);
+const SAFE_PREVIEW_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 function isSafePreviewFile(file: File | Blob): boolean {
-  return SAFE_PREVIEW_MIME_TYPES.has(file.type);
+  return SAFE_PREVIEW_MIME_TYPES.has(file.type)
 }
 
 function CollapsibleSection({
@@ -31,11 +28,11 @@ function CollapsibleSection({
   children,
   sensitive,
 }: {
-  label: string;
-  children: React.ReactNode;
-  sensitive?: boolean;
+  label: string
+  children: React.ReactNode
+  sensitive?: boolean
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false)
   return (
     <div>
       <button
@@ -62,7 +59,7 @@ function CollapsibleSection({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 /**
@@ -71,124 +68,123 @@ function CollapsibleSection({
  * stored in IndexedDB; a `photoId` reference is kept in the Redux profile.
  */
 export default function EditProfile() {
-  const navigate = useNavigate();
-  const routeLocation = useLocation();
-  const dispatch = useAppDispatch();
-  const profile = useAppSelector(selectCurrentProfile);
-  const returnTo = ((routeLocation.state as { from?: string } | null)?.from === '/'
-    ? '/'
-    : '/game');
+  const navigate = useNavigate()
+  const routeLocation = useLocation()
+  const dispatch = useAppDispatch()
+  const profile = useAppSelector(selectCurrentProfile)
+  const returnTo = (routeLocation.state as { from?: string } | null)?.from === '/' ? '/' : '/game'
 
   // Redirect if no profile is active
   useEffect(() => {
-    if (!profile) navigate('/profile-picker', { replace: true, state: { from: returnTo } });
-  }, [profile, navigate, returnTo]);
+    if (!profile) navigate('/profile-picker', { replace: true, state: { from: returnTo } })
+  }, [profile, navigate, returnTo])
 
   // --- Form state ---
-  const [name, setName] = useState(profile?.name ?? '');
-  const [avatar, setAvatar] = useState(profile?.avatar ?? '🧑');
-  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
-  const [newPhotoBlob, setNewPhotoBlob] = useState<Blob | null>(null);
-  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [name, setName] = useState(profile?.name ?? '')
+  const [avatar, setAvatar] = useState(profile?.avatar ?? '🧑')
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
+  const [newPhotoBlob, setNewPhotoBlob] = useState<Blob | null>(null)
+  const [processingPhoto, setProcessingPhoto] = useState(false)
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false)
 
   // Bio essentials
-  const [story, setStory] = useState(profile?.bio?.story ?? '');
-  const [location, setLocation] = useState(profile?.bio?.location ?? '');
-  const [profession, setProfession] = useState(profile?.bio?.profession ?? '');
-  const [age, setAge] = useState(profile?.bio?.age ?? '');
+  const [story, setStory] = useState(profile?.bio?.story ?? '')
+  const [location, setLocation] = useState(profile?.bio?.location ?? '')
+  const [profession, setProfession] = useState(profile?.bio?.profession ?? '')
+  const [age, setAge] = useState(profile?.bio?.age ?? '')
 
   // Bio flavor
-  const [motto, setMotto] = useState(profile?.bio?.motto ?? '');
-  const [funFact, setFunFact] = useState(profile?.bio?.funFact ?? '');
-  const [zodiac, setZodiac] = useState(profile?.bio?.zodiac ?? '');
+  const [motto, setMotto] = useState(profile?.bio?.motto ?? '')
+  const [funFact, setFunFact] = useState(profile?.bio?.funFact ?? '')
+  const [zodiac, setZodiac] = useState(profile?.bio?.zodiac ?? '')
 
   // Bio extra
-  const [education, setEducation] = useState(profile?.bio?.education ?? '');
-  const [familyStatus, setFamilyStatus] = useState(profile?.bio?.familyStatus ?? '');
-  const [kids, setKids] = useState(profile?.bio?.kids ?? '');
-  const [pets, setPets] = useState(profile?.bio?.pets ?? '');
+  const [education, setEducation] = useState(profile?.bio?.education ?? '')
+  const [familyStatus, setFamilyStatus] = useState(profile?.bio?.familyStatus ?? '')
+  const [kids, setKids] = useState(profile?.bio?.kids ?? '')
+  const [pets, setPets] = useState(profile?.bio?.pets ?? '')
 
   // Bio sensitive
-  const [religion, setReligion] = useState(profile?.bio?.religion ?? '');
-  const [sexuality, setSexuality] = useState(profile?.bio?.sexuality ?? '');
+  const [religion, setReligion] = useState(profile?.bio?.religion ?? '')
+  const [sexuality, setSexuality] = useState(profile?.bio?.sexuality ?? '')
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Track the current preview object URL so we can revoke it to avoid memory leaks.
-  const previewUrlRef = useRef<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null)
 
   // Revoke any outstanding preview URL on unmount.
   useEffect(() => {
     return () => {
       if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-        previewUrlRef.current = null;
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
       }
-    };
-  }, []);
+    }
+  }, [])
 
   // Load existing photo from IndexedDB on mount
   useEffect(() => {
     if (profile?.photoId) {
       imageIdToDataUrl(profile.photoId).then((url) => {
-        if (url) setPhotoDataUrl(url);
-      });
+        if (url) setPhotoDataUrl(url)
+      })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]
+    if (!file) return
 
     // Reset the input so the same file can be re-selected later.
-    e.target.value = '';
+    e.target.value = ''
 
     // Do not allow active formats such as SVG to become a DOM-backed preview.
-    if (!isSafePreviewFile(file)) return;
+    if (!isSafePreviewFile(file)) return
 
-    setProcessingPhoto(true);
+    setProcessingPhoto(true)
     try {
-      const blob = await resizeAndCompressImage(file);
+      const blob = await resizeAndCompressImage(file)
       // Revoke the previous preview URL before creating a new one.
       if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
+        URL.revokeObjectURL(previewUrlRef.current)
       }
-      const url = URL.createObjectURL(blob);
-      previewUrlRef.current = url;
-      setNewPhotoBlob(blob);
-      setPhotoDataUrl(url);
+      const url = URL.createObjectURL(blob)
+      previewUrlRef.current = url
+      setNewPhotoBlob(blob)
+      setPhotoDataUrl(url)
     } catch {
       // Never preview the unprocessed upload directly. If processing fails, keep
       // the previous safe preview/photo instead of exposing attacker-controlled
       // image contents through a blob URL.
     } finally {
-      setProcessingPhoto(false);
+      setProcessingPhoto(false)
     }
   }
 
   async function handleSave() {
-    if (!profile) return;
+    if (!profile) return
 
-    let photoId = profile.photoId;
+    let photoId = profile.photoId
 
     // Persist new photo to IndexedDB; delete the old one to avoid storage growth.
     // Only update photoId if the write actually succeeds — if IndexedDB is unavailable
     // (e.g. private browsing, quota exceeded) we keep the existing photoId so the
     // profile does not reference an image that can never be loaded.
     if (newPhotoBlob) {
-      const id = `photo-${profile.id}-${Date.now()}`;
+      const id = `photo-${profile.id}-${Date.now()}`
       try {
-        await saveImage(id, newPhotoBlob);
+        await saveImage(id, newPhotoBlob)
         // Clean up the previous photo blob now that the new one is persisted.
         if (profile.photoId && profile.photoId !== id) {
-          await deleteImage(profile.photoId);
+          await deleteImage(profile.photoId)
         }
-        photoId = id;
+        photoId = id
       } catch (err) {
         // saveImage failed (e.g. private browsing, quota exceeded).
         // Keep the existing photoId so the profile does not reference a missing image.
-        console.error('Failed to save profile photo to IndexedDB', err);
+        console.error('Failed to save profile photo to IndexedDB', err)
       }
     }
 
@@ -206,7 +202,7 @@ export default function EditProfile() {
       pets: pets.trim() || undefined,
       religion: religion.trim() || undefined,
       sexuality: sexuality.trim() || undefined,
-    };
+    }
 
     dispatch(
       updateProfile({
@@ -214,22 +210,43 @@ export default function EditProfile() {
         avatar,
         photoId,
         bio,
-      }),
-    );
+      })
+    )
     dispatch(
       updateUserPlayerIdentity({
         name: name.trim() || profile.name,
         avatar,
         photoId,
-      }),
-    );
+      })
+    )
 
-    navigate('/profile', { replace: true, state: { from: returnTo } });
+    navigate('/profile', { replace: true, state: { from: returnTo } })
   }
 
-  if (!profile) return null;
+  async function handleDeleteProfile() {
+    if (!profile) return
 
-  const displayPhoto = photoDataUrl;
+    if (profile.photoId) {
+      await deleteImage(profile.photoId)
+    }
+
+    // Remove every run slot before changing the active profile. Suspending
+    // autosave prevents the deleted profile's in-memory season being saved
+    // under whichever profile becomes active next.
+    clearSavedRun(profile.id, 'classic')
+    clearSavedRun(profile.id, 'cupidArrow')
+    clearSavedRun(profile.id, 'voxPopuli')
+    clearSavedRun(profile.id, 'survival')
+    withRunAutosaveSuspended(() => {
+      dispatch(deleteProfile(profile.id))
+      dispatch(resetGame([]))
+    })
+    navigate('/profile-picker', { replace: true, state: { from: returnTo } })
+  }
+
+  if (!profile) return null
+
+  const displayPhoto = photoDataUrl
 
   return (
     <div className="placeholder-screen edit-profile">
@@ -261,12 +278,8 @@ export default function EditProfile() {
         </div>
         <div>
           <div className="edit-profile__photo-label">Profile Photo</div>
-          <div className="edit-profile__photo-hint">
-            Tap the camera to upload from your gallery
-          </div>
-          {processingPhoto && (
-            <div className="edit-profile__processing">Processing image…</div>
-          )}
+          <div className="edit-profile__photo-hint">Tap the camera to upload from your gallery</div>
+          {processingPhoto && <div className="edit-profile__processing">Processing image…</div>}
         </div>
       </div>
 
@@ -322,7 +335,9 @@ export default function EditProfile() {
 
       {/* Location, profession, age */}
       <div className="edit-profile__field">
-        <label className="edit-profile__label" htmlFor="ep-location">Location</label>
+        <label className="edit-profile__label" htmlFor="ep-location">
+          Location
+        </label>
         <input
           id="ep-location"
           className="edit-profile__input"
@@ -334,7 +349,9 @@ export default function EditProfile() {
         />
       </div>
       <div className="edit-profile__field">
-        <label className="edit-profile__label" htmlFor="ep-profession">Profession</label>
+        <label className="edit-profile__label" htmlFor="ep-profession">
+          Profession
+        </label>
         <input
           id="ep-profession"
           className="edit-profile__input"
@@ -346,7 +363,9 @@ export default function EditProfile() {
         />
       </div>
       <div className="edit-profile__field">
-        <label className="edit-profile__label" htmlFor="ep-age">Age</label>
+        <label className="edit-profile__label" htmlFor="ep-age">
+          Age
+        </label>
         <input
           id="ep-age"
           className="edit-profile__input"
@@ -361,7 +380,9 @@ export default function EditProfile() {
       {/* Flavor section */}
       <CollapsibleSection label="Flavor / Personality">
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-motto">Personal Motto</label>
+          <label className="edit-profile__label" htmlFor="ep-motto">
+            Personal Motto
+          </label>
           <input
             id="ep-motto"
             className="edit-profile__input"
@@ -373,7 +394,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-funfact">Fun Fact</label>
+          <label className="edit-profile__label" htmlFor="ep-funfact">
+            Fun Fact
+          </label>
           <input
             id="ep-funfact"
             className="edit-profile__input"
@@ -385,7 +408,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-zodiac">Zodiac Sign</label>
+          <label className="edit-profile__label" htmlFor="ep-zodiac">
+            Zodiac Sign
+          </label>
           <input
             id="ep-zodiac"
             className="edit-profile__input"
@@ -401,7 +426,9 @@ export default function EditProfile() {
       {/* Extra info section */}
       <CollapsibleSection label="Background / Family">
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-education">Education</label>
+          <label className="edit-profile__label" htmlFor="ep-education">
+            Education
+          </label>
           <input
             id="ep-education"
             className="edit-profile__input"
@@ -413,7 +440,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-family">Family Status</label>
+          <label className="edit-profile__label" htmlFor="ep-family">
+            Family Status
+          </label>
           <input
             id="ep-family"
             className="edit-profile__input"
@@ -425,7 +454,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-kids">Kids</label>
+          <label className="edit-profile__label" htmlFor="ep-kids">
+            Kids
+          </label>
           <input
             id="ep-kids"
             className="edit-profile__input"
@@ -437,7 +468,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-pets">Pets</label>
+          <label className="edit-profile__label" htmlFor="ep-pets">
+            Pets
+          </label>
           <input
             id="ep-pets"
             className="edit-profile__input"
@@ -453,7 +486,9 @@ export default function EditProfile() {
       {/* Sensitive section */}
       <CollapsibleSection label="Optional / Personal" sensitive>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-religion">Religion</label>
+          <label className="edit-profile__label" htmlFor="ep-religion">
+            Religion
+          </label>
           <input
             id="ep-religion"
             className="edit-profile__input"
@@ -464,7 +499,9 @@ export default function EditProfile() {
           />
         </div>
         <div className="edit-profile__field">
-          <label className="edit-profile__label" htmlFor="ep-sexuality">Sexuality</label>
+          <label className="edit-profile__label" htmlFor="ep-sexuality">
+            Sexuality
+          </label>
           <input
             id="ep-sexuality"
             className="edit-profile__input"
@@ -475,6 +512,24 @@ export default function EditProfile() {
           />
         </div>
       </CollapsibleSection>
+
+      <section className="edit-profile__danger-zone" aria-labelledby="delete-profile-heading">
+        <div>
+          <h2 id="delete-profile-heading" className="edit-profile__danger-title">
+            Delete Profile
+          </h2>
+          <p className="edit-profile__danger-copy">
+            Permanently remove {profile.name} and this profile&apos;s saved games from this device.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="edit-profile__delete-btn"
+          onClick={() => setDeleteConfirmationOpen(true)}
+        >
+          Delete Profile
+        </button>
+      </section>
 
       {/* Save / Cancel */}
       <div className="edit-profile__actions">
@@ -494,6 +549,16 @@ export default function EditProfile() {
           Save Profile
         </button>
       </div>
+
+      <ConfirmExitModal
+        open={deleteConfirmationOpen}
+        title="Delete Profile?"
+        description={`"${profile.name}" and all of its saved games will be permanently removed from this device.`}
+        confirmLabel="Delete Profile"
+        cancelLabel="Keep Profile"
+        onConfirm={() => void handleDeleteProfile()}
+        onCancel={() => setDeleteConfirmationOpen(false)}
+      />
     </div>
-  );
+  )
 }

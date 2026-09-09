@@ -10,31 +10,34 @@ import {
 
 beforeEach(() => {
   window.localStorage.clear()
+  window.sessionStorage.clear()
 })
 
 describe('season tutorial preference', () => {
   it('never considers a guest tutorial permanently handled', () => {
-    markSeasonTutorialHandled(null, true)
+    markSeasonTutorialHandled(null, true, 'game-1')
 
-    expect(hasHandledSeasonTutorial(null, true)).toBe(false)
+    expect(hasHandledSeasonTutorial(null, true, 'game-1')).toBe(true)
     expect(isSeasonTutorialEnabled(null, true)).toBe(true)
     expect(window.localStorage.getItem(seasonTutorialStorageKey(null))).toBeNull()
   })
 
-  it('remembers completion for a named profile', () => {
-    markSeasonTutorialHandled('profile-1', false)
+  it('remembers completion only for the current season', () => {
+    markSeasonTutorialHandled('profile-1', false, 'game-1')
 
-    expect(hasHandledSeasonTutorial('profile-1', false)).toBe(true)
-    expect(isSeasonTutorialEnabled('profile-1', false)).toBe(false)
+    expect(hasHandledSeasonTutorial('profile-1', false, 'game-1')).toBe(true)
+    expect(hasHandledSeasonTutorial('profile-1', false, 'game-2')).toBe(false)
+    expect(isSeasonTutorialEnabled('profile-1', false)).toBe(true)
   })
 
-  it('can reset a named profile so Settings can offer the tutorial again', () => {
-    markSeasonTutorialHandled('profile-1', false)
-    expect(hasHandledSeasonTutorial('profile-1', false)).toBe(true)
+  it('enables the tutorial for future seasons without changing this season completion', () => {
+    markSeasonTutorialHandled('profile-1', false, 'game-1')
+    setSeasonTutorialEnabled('profile-1', false, false)
+    expect(isSeasonTutorialEnabled('profile-1', false)).toBe(false)
 
     resetSeasonTutorialPreference('profile-1', false)
 
-    expect(hasHandledSeasonTutorial('profile-1', false)).toBe(false)
+    expect(hasHandledSeasonTutorial('profile-1', false, 'game-1')).toBe(true)
     expect(isSeasonTutorialEnabled('profile-1', false)).toBe(true)
   })
 

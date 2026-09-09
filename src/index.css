@@ -111,6 +111,21 @@ body {
   height: 100%;
 }
 
+/* iOS zooms the entire page when a focused text control renders below 16px.
+   In a persistent WebView that zoom/pan can survive route changes and make the
+   fixed game cabinet appear scrollable. Keep every touch text-entry surface at
+   the platform's no-auto-zoom threshold; non-text inputs retain their sizing. */
+@media (pointer: coarse) {
+  input:not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not(
+      [type='image']
+    ):not([type='radio']):not([type='range']):not([type='reset']):not([type='submit']),
+  textarea,
+  select,
+  [contenteditable='true'] {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 /* Never infer an inset from the device user agent. Android reports its actual
    system-bar/cutout inset through Capacitor SystemBars; a fixed Pixel fallback
    creates a visible dead band on non-cutout devices such as Pixel XL. */
