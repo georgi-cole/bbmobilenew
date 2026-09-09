@@ -98,13 +98,12 @@ export interface MajorityRulesThreeWayDiceRollResult {
   advancingIds: [string, string] | null;
 }
 
-const AI_MINORITY_CHANCE = 0.13;
 const AI_HINT_USAGE_CHANCE = 0.18;
 const POLL_HINT_WEIGHT = 0.3;
 const PEEK_HINT_WEIGHT = 0.35;
-const PREVIOUS_TREND_WEIGHT = 0.6;
-const PERSONALITY_WEIGHT = 0.18;
-const NOISE_WEIGHT = 0.16;
+const PERSONALITY_WEIGHT = 0.2;
+const NOISE_WEIGHT = 0.12;
+const MIN_OPTION_WEIGHT = 0.05;
 const MAX_SUDDEN_DEATH_ROUNDS = 10;
 const MAJORITY_RULES_OPTION_IDS = ['a', 'b', 'c'] as const;
 const MAJORITY_RULES_OPTION_LABELS = ['A', 'B', 'C'] as const;
@@ -218,23 +217,29 @@ function getAllowedOptionIds(
   return filtered.length > 0 ? filtered : ids;
 }
 
-function buildPreviousTrend(previousDistribution: Record<string, number> | null | undefined) {
-  const total = Object.values(previousDistribution ?? {}).reduce((sum, count) => sum + count, 0);
-  return (optionId: string) => {
-    if (!previousDistribution || total <= 0) return 0;
-    return (previousDistribution[optionId] ?? 0) / total;
-  };
-}
-
 function chooseExtremaOption(
   scores: Record<string, number>,
   optionIds: string[],
-  pickMinority: boolean,
 ): string {
-  const sorted = [...optionIds].sort((left, right) =>
-    pickMinority ? scores[left] - scores[right] : scores[right] - scores[left],
-  );
+  const sorted = [...optionIds].sort((left, right) => scores[right] - scores[left]);
   return sorted[0] ?? optionIds[0];
+}
+
+function chooseWeightedOption(
+  scores: Record<string, number>,
+  optionIds: string[],
+  rng: () => number,
+): string {
+  const weights = optionIds.map((optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  if (total <= 0) return optionIds[0];
+
+  let roll = rng() * total;
+  for (let index = 0; index < optionIds.length; index += 1) {
+    roll -= weights[index] ?? 0;
+    if (roll <= 0) return optionIds[index] ?? optionIds[0];
+  }
+  return optionIds[optionIds.length - 1] ?? optionIds[0];
 }
 
 function buildPlayerScores(params: {
@@ -245,19 +250,21 @@ function buildPlayerScores(params: {
   previousDistribution?: Record<string, number> | null;
   blockedAnswer?: string | null;
 }) {
-  const { seed, roundNumber, playerId, question, previousDistribution, blockedAnswer } = params;
+  const { seed, roundNumber, playerId, question, blockedAnswer } = params;
   const optionIds = getAllowedOptionIds(question.options, blockedAnswer);
-  const prevTrend = buildPreviousTrend(previousDistribution);
   const rng = seededRng(seed, 'player-choice', roundNumber, playerId, question.id);
   const scores: Record<string, number> = {};
 
   for (const option of question.options) {
     if (!optionIds.includes(option.id)) continue;
+    // Preference is attached to the semantic answer text rather than its shuffled A/B/C slot.
+    // That gives each contestant a stable lean toward concepts while avoiding fake cross-question
+    // memory such as "A won last round, therefore A is likely again".
+    const preferenceKey = `${playerId}:${option.text.trim().toLowerCase()}`;
     const personalBias =
-      (((fnv1a32(`${playerId}:${option.id}`) % 1000) / 1000) - 0.5) * PERSONALITY_WEIGHT;
+      (((fnv1a32(preferenceKey) % 1000) / 1000) - 0.5) * PERSONALITY_WEIGHT;
     const noise = (rng() - 0.5) * NOISE_WEIGHT;
-    scores[option.id] =
-      option.baseBias + (prevTrend(option.id) * PREVIOUS_TREND_WEIGHT) + personalBias + noise;
+    scores[option.id] = Math.max(MIN_OPTION_WEIGHT, option.baseBias + personalBias + noise);
   }
 
   return { optionIds, scores, rng };
@@ -272,8 +279,7 @@ export function chooseAiAnswer(params: {
   blockedAnswer?: string | null;
 }): string {
   const { optionIds, scores, rng } = buildPlayerScores(params);
-  const pickMinority = rng() < AI_MINORITY_CHANCE;
-  return chooseExtremaOption(scores, optionIds, pickMinority);
+  return chooseWeightedOption(scores, optionIds, rng);
 }
 
 export function countAnswerDistribution(
@@ -486,7 +492,7 @@ function applyHintToAnswer(params: {
   }
   if (hint.type === 'peekTwo' && hint.peekedAnswers) {
     const tally: Record<string, number> = {};
-    const { optionIds, scores } = buildPlayerScores({
+    const { optionIds, scores, rng } = buildPlayerScores({
       seed,
       roundNumber,
       playerId,
@@ -500,10 +506,10 @@ function applyHintToAnswer(params: {
     for (const optionId of optionIds) {
       scores[optionId] += (tally[optionId] ?? 0) * PEEK_HINT_WEIGHT;
     }
-    return chooseExtremaOption(scores, optionIds, false);
+    return chooseWeightedOption(scores, optionIds, rng);
   }
   if (hint.type === 'pollHint' && hint.pollEstimate) {
-    const { optionIds, scores } = buildPlayerScores({
+    const { optionIds, scores, rng } = buildPlayerScores({
       seed,
       roundNumber,
       playerId,
@@ -513,7 +519,7 @@ function applyHintToAnswer(params: {
     for (const optionId of optionIds) {
       scores[optionId] += ((hint.pollEstimate[optionId] ?? 0) / 100) * POLL_HINT_WEIGHT;
     }
-    return chooseExtremaOption(scores, optionIds, false);
+    return chooseWeightedOption(scores, optionIds, rng);
   }
   return baseAnswer;
 }
