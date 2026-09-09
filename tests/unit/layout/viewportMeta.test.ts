@@ -1,15 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { buildViewportMetaContent } from '../../../src/components/layout/viewportMeta';
+import { describe, expect, it } from 'vitest'
+import { buildViewportMetaContent } from '../../../src/components/layout/viewportMeta'
 
 describe('buildViewportMetaContent', () => {
   it('keeps native pinch zoom available in the standard range', () => {
-    const content = buildViewportMetaContent(false);
-    expect(content).toContain('maximum-scale=5');
-    expect(content).toContain('viewport-fit=cover');
-    expect(content).toContain('interactive-widget=resizes-content');
-    expect(content).not.toContain('user-scalable=no');
-  });
+    const content = buildViewportMetaContent(false)
+    expect(content).toContain('maximum-scale=5')
+    expect(content).toContain('viewport-fit=cover')
+    expect(content).not.toContain('interactive-widget')
+    expect(content).not.toContain('user-scalable=no')
+  })
   it('offers an expanded range when enhanced zoom is enabled', () => {
-    expect(buildViewportMetaContent(true)).toContain('maximum-scale=10');
-  });
-});
+    expect(buildViewportMetaContent(true)).toContain('maximum-scale=10')
+  })
+})
