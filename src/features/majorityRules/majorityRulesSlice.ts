@@ -1,4 +1,5 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import type { AiGameIdentity } from '../../ai/aiGameIdentity'
 import {
   buildBaseAiAnswers,
   buildPeekPreview,
@@ -18,9 +19,9 @@ import {
   type MajorityRulesHintType,
   type MajorityRulesQuestion,
   type MajorityRulesThreeWayDiceState,
-} from './helpers';
+} from './helpers'
 
-export type MajorityRulesCompetitionType = 'LOH' | 'POS';
+export type MajorityRulesCompetitionType = 'LOH' | 'POS'
 
 export type MajorityRulesPhase =
   | 'idle'
@@ -32,40 +33,41 @@ export type MajorityRulesPhase =
   | 'final_duel_pick'
   | 'final_duel_roll'
   | 'winner'
-  | 'complete';
+  | 'complete'
 
 export interface MajorityRulesRevealState {
-  result: MajorityRulesBallotResolution;
-  revoteNumber: number;
+  result: MajorityRulesBallotResolution
+  revoteNumber: number
 }
 
 export interface MajorityRulesState {
-  phase: MajorityRulesPhase;
-  competitionType: MajorityRulesCompetitionType;
-  seed: number;
-  participantIds: string[];
-  activeIds: string[];
-  eliminatedIds: string[];
-  humanPlayerId: string | null;
-  roundNumber: number;
-  revoteNumber: number;
-  currentQuestion: MajorityRulesQuestion | null;
-  usedQuestionIds: string[];
-  draftAnswers: Record<string, string>;
-  previousDistribution: Record<string, number> | null;
-  blockedAnswers: Record<string, string>;
-  doubleEliminationArmed: boolean;
-  hintInventories: Record<string, MajorityRulesHintInventory>;
-  roundHintUsedBy: string | null;
-  roundHintType: MajorityRulesHintType | null;
-  roundHintTargetId: string | null;
-  roundHintPollEstimate: Record<string, number> | null;
-  roundHintPeekedAnswers: Record<string, string> | null;
-  revealState: MajorityRulesRevealState | null;
-  threeWayDuel: MajorityRulesThreeWayDiceState | null;
-  finalDuel: MajorityRulesDiceDuelState | null;
-  winnerId: string | null;
-  outcomeResolved: boolean;
+  phase: MajorityRulesPhase
+  competitionType: MajorityRulesCompetitionType
+  seed: number
+  participantIds: string[]
+  activeIds: string[]
+  eliminatedIds: string[]
+  humanPlayerId: string | null
+  roundNumber: number
+  revoteNumber: number
+  currentQuestion: MajorityRulesQuestion | null
+  usedQuestionIds: string[]
+  draftAnswers: Record<string, string>
+  previousDistribution: Record<string, number> | null
+  blockedAnswers: Record<string, string>
+  doubleEliminationArmed: boolean
+  hintInventories: Record<string, MajorityRulesHintInventory>
+  roundHintUsedBy: string | null
+  roundHintType: MajorityRulesHintType | null
+  roundHintTargetId: string | null
+  roundHintPollEstimate: Record<string, number> | null
+  roundHintPeekedAnswers: Record<string, string> | null
+  revealState: MajorityRulesRevealState | null
+  threeWayDuel: MajorityRulesThreeWayDiceState | null
+  finalDuel: MajorityRulesDiceDuelState | null
+  winnerId: string | null
+  outcomeResolved: boolean
+  aiIdentities: Record<string, AiGameIdentity | undefined>
 }
 
 const initialState: MajorityRulesState = {
@@ -95,38 +97,39 @@ const initialState: MajorityRulesState = {
   finalDuel: null,
   winnerId: null,
   outcomeResolved: false,
-};
+  aiIdentities: {},
+}
 
 function buildHintInventories(participantIds: string[]) {
   return Object.fromEntries(
     participantIds.map((id) => [
       id,
-        {
-          pollHintUsed: false,
-          peekTwoUsed: false,
-          followPlayerUsed: false,
-        } satisfies MajorityRulesHintInventory,
-    ]),
-  );
+      {
+        pollHintUsed: false,
+        peekTwoUsed: false,
+        followPlayerUsed: false,
+      } satisfies MajorityRulesHintInventory,
+    ])
+  )
 }
 
 function clearRoundHintState(state: MajorityRulesState) {
-  state.roundHintUsedBy = null;
-  state.roundHintType = null;
-  state.roundHintTargetId = null;
-  state.roundHintPollEstimate = null;
-  state.roundHintPeekedAnswers = null;
+  state.roundHintUsedBy = null
+  state.roundHintType = null
+  state.roundHintTargetId = null
+  state.roundHintPollEstimate = null
+  state.roundHintPeekedAnswers = null
 }
 
 function prepareQuestion(state: MajorityRulesState) {
-  const question = pickMajorityRulesQuestion(state.seed, state.roundNumber, state.usedQuestionIds);
-  state.currentQuestion = question;
+  const question = pickMajorityRulesQuestion(state.seed, state.roundNumber, state.usedQuestionIds)
+  state.currentQuestion = question
   if (!state.usedQuestionIds.includes(question.id)) {
-    state.usedQuestionIds.push(question.id);
+    state.usedQuestionIds.push(question.id)
   }
-  state.draftAnswers = {};
-  state.revealState = null;
-  clearRoundHintState(state);
+  state.draftAnswers = {}
+  state.revealState = null
+  clearRoundHintState(state)
 }
 
 function humanNeedsManualAnswer(state: MajorityRulesState) {
@@ -134,86 +137,94 @@ function humanNeedsManualAnswer(state: MajorityRulesState) {
     state.humanPlayerId != null &&
     state.activeIds.includes(state.humanPlayerId) &&
     !(state.roundHintUsedBy === state.humanPlayerId && state.roundHintType === 'followPlayer')
-  );
+  )
 }
 
 function getHumanHintPreview(state: MajorityRulesState): MajorityRulesHintPreview | null {
-  if (state.roundHintUsedBy !== state.humanPlayerId || !state.roundHintType) return null;
+  if (state.roundHintUsedBy !== state.humanPlayerId || !state.roundHintType) return null
   return {
     type: state.roundHintType,
     targetId: state.roundHintTargetId,
     pollEstimate: state.roundHintPollEstimate ?? undefined,
     peekedAnswers: state.roundHintPeekedAnswers ?? undefined,
-  };
+  }
 }
 
 function getFinalists(state: MajorityRulesState): [string, string] | null {
-  if (state.activeIds.length !== 2) return null;
-  return [state.activeIds[0], state.activeIds[1]];
+  if (state.activeIds.length !== 2) return null
+  return [state.activeIds[0], state.activeIds[1]]
 }
 
 function ensureAiFinalDuelPicks(state: MajorityRulesState) {
-  if (!state.finalDuel) return;
+  if (!state.finalDuel) return
   for (const finalistId of state.finalDuel.finalists) {
-    if (finalistId === state.humanPlayerId) continue;
-    if (state.finalDuel.chosenNumbers[finalistId] != null) continue;
+    if (finalistId === state.humanPlayerId) continue
+    if (state.finalDuel.chosenNumbers[finalistId] != null) continue
     const takenNumbers = Object.values(state.finalDuel.chosenNumbers).filter(
-      (value): value is number => value != null,
-    );
-    state.finalDuel.chosenNumbers[finalistId] = pickAiDuelNumber(state.seed, finalistId, takenNumbers);
+      (value): value is number => value != null
+    )
+    state.finalDuel.chosenNumbers[finalistId] = pickAiDuelNumber(
+      state.seed,
+      finalistId,
+      takenNumbers
+    )
   }
   const allPicked = state.finalDuel.finalists.every(
-    (finalistId) => state.finalDuel?.chosenNumbers[finalistId] != null,
-  );
+    (finalistId) => state.finalDuel?.chosenNumbers[finalistId] != null
+  )
   if (allPicked && state.phase === 'final_duel_pick') {
-    state.phase = 'final_duel_roll';
+    state.phase = 'final_duel_roll'
   }
 }
 
 function advanceToFinalDuel(state: MajorityRulesState) {
-  const finalists = getFinalists(state);
-  if (!finalists) return;
-  state.threeWayDuel = null;
-  state.finalDuel = initializeDiceDuel(finalists);
-  state.phase = 'final_duel_pick';
-  ensureAiFinalDuelPicks(state);
+  const finalists = getFinalists(state)
+  if (!finalists) return
+  state.threeWayDuel = null
+  state.finalDuel = initializeDiceDuel(finalists)
+  state.phase = 'final_duel_pick'
+  ensureAiFinalDuelPicks(state)
 }
 
 function ensureAiThreeWayDuelPicks(state: MajorityRulesState) {
-  if (!state.threeWayDuel) return;
+  if (!state.threeWayDuel) return
   for (const finalistId of state.threeWayDuel.finalists) {
-    if (finalistId === state.humanPlayerId) continue;
-    if (state.threeWayDuel.chosenNumbers[finalistId] != null) continue;
+    if (finalistId === state.humanPlayerId) continue
+    if (state.threeWayDuel.chosenNumbers[finalistId] != null) continue
     const takenNumbers = Object.values(state.threeWayDuel.chosenNumbers).filter(
-      (value): value is number => value != null,
-    );
-    state.threeWayDuel.chosenNumbers[finalistId] = pickAiDuelNumber(state.seed, finalistId, takenNumbers);
+      (value): value is number => value != null
+    )
+    state.threeWayDuel.chosenNumbers[finalistId] = pickAiDuelNumber(
+      state.seed,
+      finalistId,
+      takenNumbers
+    )
   }
   const allPicked = state.threeWayDuel.finalists.every(
-    (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null,
-  );
+    (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null
+  )
   if (allPicked && state.phase === 'three_way_duel_pick') {
-    state.phase = 'three_way_duel_roll';
+    state.phase = 'three_way_duel_roll'
   }
 }
 
 function seedOpeningFinalDuel(state: MajorityRulesState) {
-  const finalists = getFinalists(state);
-  if (!finalists) return;
-  state.finalDuel = initializeDiceDuel(finalists);
+  const finalists = getFinalists(state)
+  if (!finalists) return
+  state.finalDuel = initializeDiceDuel(finalists)
 }
 
 function prepareOpeningPhase(state: MajorityRulesState) {
   if (state.activeIds.length === 2) {
-    state.currentQuestion = null;
-    state.draftAnswers = {};
-    state.revealState = null;
-    clearRoundHintState(state);
-    seedOpeningFinalDuel(state);
-    return;
+    state.currentQuestion = null
+    state.draftAnswers = {}
+    state.revealState = null
+    clearRoundHintState(state)
+    seedOpeningFinalDuel(state)
+    return
   }
 
-  prepareQuestion(state);
+  prepareQuestion(state)
 }
 
 const majorityRulesSlice = createSlice({
@@ -223,13 +234,14 @@ const majorityRulesSlice = createSlice({
     initMajorityRules(
       _state,
       action: PayloadAction<{
-        participantIds: string[];
-        competitionType: MajorityRulesCompetitionType;
-        seed: number;
-        humanPlayerId: string | null;
-      }>,
+        participantIds: string[]
+        competitionType: MajorityRulesCompetitionType
+        seed: number
+        humanPlayerId: string | null
+        aiIdentities?: Record<string, AiGameIdentity | undefined>
+      }>
     ): MajorityRulesState {
-      const { participantIds, competitionType, seed, humanPlayerId } = action.payload;
+      const { participantIds, competitionType, seed, humanPlayerId } = action.payload
       const state = {
         ...initialState,
         phase: 'intro' as const,
@@ -249,63 +261,64 @@ const majorityRulesSlice = createSlice({
         finalDuel: null,
         winnerId: null,
         outcomeResolved: false,
-      };
-      prepareOpeningPhase(state);
-      return state;
+        aiIdentities: action.payload.aiIdentities ?? {},
+      }
+      prepareOpeningPhase(state)
+      return state
     },
 
     advanceIntro(state) {
-      if (state.phase !== 'intro') return;
+      if (state.phase !== 'intro') return
       if (state.activeIds.length === 2) {
         if (!state.finalDuel) {
-          seedOpeningFinalDuel(state);
+          seedOpeningFinalDuel(state)
         }
-        state.phase = 'final_duel_pick';
-        ensureAiFinalDuelPicks(state);
-        return;
+        state.phase = 'final_duel_pick'
+        ensureAiFinalDuelPicks(state)
+        return
       }
-      state.phase = 'question';
+      state.phase = 'question'
     },
 
     setHumanAnswer(state, action: PayloadAction<{ playerId: string; optionId: string }>) {
-      if (state.phase !== 'question' || !state.currentQuestion) return;
-      const { playerId, optionId } = action.payload;
-      if (playerId !== state.humanPlayerId || !state.activeIds.includes(playerId)) return;
-      if (state.roundHintUsedBy === playerId && state.roundHintType === 'followPlayer') return;
-      const blockedAnswer = state.blockedAnswers[playerId];
-      if (blockedAnswer && blockedAnswer === optionId) return;
-      if (!state.currentQuestion.options.some((option) => option.id === optionId)) return;
-      state.draftAnswers[playerId] = optionId;
+      if (state.phase !== 'question' || !state.currentQuestion) return
+      const { playerId, optionId } = action.payload
+      if (playerId !== state.humanPlayerId || !state.activeIds.includes(playerId)) return
+      if (state.roundHintUsedBy === playerId && state.roundHintType === 'followPlayer') return
+      const blockedAnswer = state.blockedAnswers[playerId]
+      if (blockedAnswer && blockedAnswer === optionId) return
+      if (!state.currentQuestion.options.some((option) => option.id === optionId)) return
+      state.draftAnswers[playerId] = optionId
     },
 
     useHint(
       state,
       action: PayloadAction<{
-        playerId: string;
-        hintType: MajorityRulesHintType;
-        targetId?: string | null;
-      }>,
+        playerId: string
+        hintType: MajorityRulesHintType
+        targetId?: string | null
+      }>
     ) {
-      if (state.phase !== 'question' || !state.currentQuestion) return;
-      const { playerId, hintType, targetId = null } = action.payload;
-      if (!state.activeIds.includes(playerId)) return;
-      if (state.roundHintUsedBy && state.roundHintUsedBy !== playerId) return;
-      if (state.roundHintUsedBy === playerId && state.roundHintType && state.roundHintType !== hintType) {
-        return;
+      if (state.phase !== 'question' || !state.currentQuestion) return
+      const { playerId, hintType, targetId = null } = action.payload
+      if (!state.activeIds.includes(playerId)) return
+      if (state.roundHintUsedBy && state.roundHintUsedBy !== playerId) return
+      if (
+        state.roundHintUsedBy === playerId &&
+        state.roundHintType &&
+        state.roundHintType !== hintType
+      ) {
+        return
       }
 
-      const inventory = state.hintInventories[playerId];
-      if (!inventory) return;
+      const inventory = state.hintInventories[playerId]
+      if (!inventory) return
       const sameHintAsCurrentRound =
-        state.roundHintUsedBy === playerId && state.roundHintType === hintType;
-      if (hintType === 'pollHint' && inventory.pollHintUsed && !sameHintAsCurrentRound) return;
-      if (hintType === 'peekTwo' && inventory.peekTwoUsed && !sameHintAsCurrentRound) return;
-      if (
-        hintType === 'followPlayer' &&
-        inventory.followPlayerUsed &&
-        !sameHintAsCurrentRound
-      ) {
-        return;
+        state.roundHintUsedBy === playerId && state.roundHintType === hintType
+      if (hintType === 'pollHint' && inventory.pollHintUsed && !sameHintAsCurrentRound) return
+      if (hintType === 'peekTwo' && inventory.peekTwoUsed && !sameHintAsCurrentRound) return
+      if (hintType === 'followPlayer' && inventory.followPlayerUsed && !sameHintAsCurrentRound) {
+        return
       }
 
       const baseAiAnswers = buildBaseAiAnswers({
@@ -316,34 +329,38 @@ const majorityRulesSlice = createSlice({
         question: state.currentQuestion,
         previousDistribution: state.previousDistribution,
         blockedAnswers: state.blockedAnswers,
-      });
+        aiIdentities: state.aiIdentities,
+      })
 
-      if (hintType === 'followPlayer' && (!targetId || !state.activeIds.includes(targetId) || targetId === playerId)) {
-        return;
+      if (
+        hintType === 'followPlayer' &&
+        (!targetId || !state.activeIds.includes(targetId) || targetId === playerId)
+      ) {
+        return
       }
 
-      state.roundHintUsedBy = playerId;
-      state.roundHintType = hintType;
-      state.roundHintTargetId = null;
-      state.roundHintPollEstimate = null;
-      state.roundHintPeekedAnswers = null;
+      state.roundHintUsedBy = playerId
+      state.roundHintType = hintType
+      state.roundHintTargetId = null
+      state.roundHintPollEstimate = null
+      state.roundHintPeekedAnswers = null
 
       if (hintType === 'pollHint') {
         if (state.roundHintType !== 'pollHint' || !inventory.pollHintUsed) {
-          inventory.pollHintUsed = true;
+          inventory.pollHintUsed = true
         }
         state.roundHintPollEstimate = buildPollEstimate(
           countAnswerDistribution(baseAiAnswers, state.currentQuestion.options),
           state.seed,
           state.roundNumber,
-          playerId,
-        );
-        return;
+          playerId
+        )
+        return
       }
 
       if (hintType === 'peekTwo') {
         if (state.roundHintType !== 'peekTwo' || !inventory.peekTwoUsed) {
-          inventory.peekTwoUsed = true;
+          inventory.peekTwoUsed = true
         }
         state.roundHintPeekedAnswers = buildPeekPreview({
           activeIds: state.activeIds,
@@ -353,28 +370,28 @@ const majorityRulesSlice = createSlice({
           question: state.currentQuestion,
           baseAiAnswers,
           blockedAnswers: state.blockedAnswers,
-        });
-        return;
+        })
+        return
       }
 
       if (state.roundHintType !== 'followPlayer' || !inventory.followPlayerUsed) {
-        inventory.followPlayerUsed = true;
+        inventory.followPlayerUsed = true
       }
-      state.roundHintTargetId = targetId;
-      delete state.draftAnswers[playerId];
+      state.roundHintTargetId = targetId
+      delete state.draftAnswers[playerId]
     },
 
     lockRound(state) {
-      if (state.phase !== 'question' || !state.currentQuestion) return;
+      if (state.phase !== 'question' || !state.currentQuestion) return
       if (humanNeedsManualAnswer(state)) {
-        const humanId = state.humanPlayerId;
-        if (!humanId || !state.draftAnswers[humanId]) return;
+        const humanId = state.humanPlayerId
+        if (!humanId || !state.draftAnswers[humanId]) return
       }
-      const humanId = state.humanPlayerId;
+      const humanId = state.humanPlayerId
       const simulation = simulateMajorityRulesBallot({
         activeIds: state.activeIds,
         humanPlayerId: humanId,
-        humanAnswer: humanId ? state.draftAnswers[humanId] ?? null : null,
+        humanAnswer: humanId ? (state.draftAnswers[humanId] ?? null) : null,
         humanHint: getHumanHintPreview(state),
         inventories: state.hintInventories,
         seed: state.seed,
@@ -382,19 +399,20 @@ const majorityRulesSlice = createSlice({
         question: state.currentQuestion,
         previousDistribution: state.previousDistribution,
         blockedAnswers: state.blockedAnswers,
-      });
+        aiIdentities: state.aiIdentities,
+      })
 
       if (!state.roundHintUsedBy && simulation.aiHintDecision) {
-        state.roundHintUsedBy = simulation.aiHintDecision.playerId;
-        state.roundHintType = simulation.aiHintDecision.type;
-        state.roundHintTargetId = simulation.aiHintDecision.targetId ?? null;
-        state.roundHintPollEstimate = simulation.aiHintDecision.pollEstimate ?? null;
-        state.roundHintPeekedAnswers = simulation.aiHintDecision.peekedAnswers ?? null;
-        const inventory = state.hintInventories[simulation.aiHintDecision.playerId];
+        state.roundHintUsedBy = simulation.aiHintDecision.playerId
+        state.roundHintType = simulation.aiHintDecision.type
+        state.roundHintTargetId = simulation.aiHintDecision.targetId ?? null
+        state.roundHintPollEstimate = simulation.aiHintDecision.pollEstimate ?? null
+        state.roundHintPeekedAnswers = simulation.aiHintDecision.peekedAnswers ?? null
+        const inventory = state.hintInventories[simulation.aiHintDecision.playerId]
         if (inventory) {
-          if (simulation.aiHintDecision.type === 'pollHint') inventory.pollHintUsed = true;
-          if (simulation.aiHintDecision.type === 'peekTwo') inventory.peekTwoUsed = true;
-          if (simulation.aiHintDecision.type === 'followPlayer') inventory.followPlayerUsed = true;
+          if (simulation.aiHintDecision.type === 'pollHint') inventory.pollHintUsed = true
+          if (simulation.aiHintDecision.type === 'peekTwo') inventory.peekTwoUsed = true
+          if (simulation.aiHintDecision.type === 'followPlayer') inventory.followPlayerUsed = true
         }
       }
 
@@ -406,167 +424,180 @@ const majorityRulesSlice = createSlice({
           eliminationCount: 1,
         }),
         revoteNumber: state.revoteNumber,
-      };
+      }
 
-      state.phase = 'reveal';
+      state.phase = 'reveal'
     },
 
     advanceReveal(state) {
-      if (state.phase !== 'reveal' || !state.revealState) return;
-      const { result } = state.revealState;
-      state.previousDistribution = result.distribution;
+      if (state.phase !== 'reveal' || !state.revealState) return
+      const { result } = state.revealState
+      state.previousDistribution = result.distribution
 
       if (result.kind === 'revote') {
         // A tied ballot gets exactly one re-vote. If that also ties, discard
         // the question so deterministic AI choices cannot repeat forever.
         if (state.revoteNumber >= 1) {
-          state.roundNumber += 1;
-          state.revoteNumber = 0;
-          state.previousDistribution = null;
-          state.blockedAnswers = {};
-          prepareQuestion(state);
-          state.phase = 'question';
-          return;
+          state.roundNumber += 1
+          state.revoteNumber = 0
+          state.previousDistribution = null
+          state.blockedAnswers = {}
+          prepareQuestion(state)
+          state.phase = 'question'
+          return
         }
-        state.phase = 'question';
-        state.revoteNumber = 1;
-        state.blockedAnswers = { ...result.answers };
-        state.draftAnswers = {};
-        state.revealState = null;
-        state.roundHintPollEstimate = null;
-        state.roundHintPeekedAnswers = null;
-        return;
+        state.phase = 'question'
+        state.revoteNumber = 1
+        state.blockedAnswers = { ...result.answers }
+        state.draftAnswers = {}
+        state.revealState = null
+        state.roundHintPollEstimate = null
+        state.roundHintPeekedAnswers = null
+        return
+      }
+
+      if (result.kind === 'split') {
+        state.doubleEliminationArmed = false
+        state.roundNumber += 1
+        state.revoteNumber = 0
+        state.previousDistribution = null
+        state.blockedAnswers = {}
+        prepareQuestion(state)
+        state.phase = 'question'
+        return
       }
 
       if (result.kind === 'unanimous') {
-        state.doubleEliminationArmed = false;
-        state.roundNumber += 1;
-        state.revoteNumber = 0;
-        state.blockedAnswers = {};
-        prepareQuestion(state);
-        state.phase = 'question';
-        return;
+        state.doubleEliminationArmed = false
+        state.roundNumber += 1
+        state.revoteNumber = 0
+        state.blockedAnswers = {}
+        prepareQuestion(state)
+        state.phase = 'question'
+        return
       }
 
-      state.doubleEliminationArmed = false;
-      state.revoteNumber = 0;
-      state.blockedAnswers = {};
+      state.doubleEliminationArmed = false
+      state.revoteNumber = 0
+      state.blockedAnswers = {}
       for (const eliminatedId of result.eliminatedIds) {
         if (!state.eliminatedIds.includes(eliminatedId)) {
-          state.eliminatedIds.push(eliminatedId);
+          state.eliminatedIds.push(eliminatedId)
         }
       }
-      state.activeIds = state.activeIds.filter((playerId) => !result.eliminatedIds.includes(playerId));
+      state.activeIds = state.activeIds.filter(
+        (playerId) => !result.eliminatedIds.includes(playerId)
+      )
 
       if (state.activeIds.length <= 1) {
-        state.winnerId = state.activeIds[0] ?? null;
-        state.phase = 'winner';
-        return;
+        state.winnerId = state.activeIds[0] ?? null
+        state.phase = 'winner'
+        return
       }
 
       if (state.activeIds.length === 2) {
-        advanceToFinalDuel(state);
-        return;
+        advanceToFinalDuel(state)
+        return
       }
 
-      state.roundNumber += 1;
-      prepareQuestion(state);
-      state.phase = 'question';
+      state.roundNumber += 1
+      prepareQuestion(state)
+      state.phase = 'question'
     },
 
     setFinalDuelPick(
       state,
       action: PayloadAction<{
-        playerId: string;
-        value: number;
-      }>,
+        playerId: string
+        value: number
+      }>
     ) {
       if (
         (state.phase !== 'final_duel_pick' && state.phase !== 'final_duel_roll') ||
         !state.finalDuel
       ) {
-        return;
+        return
       }
-      const { playerId, value } = action.payload;
-      if (!state.finalDuel.finalists.includes(playerId) || value < 1 || value > 6) return;
+      const { playerId, value } = action.payload
+      if (!state.finalDuel.finalists.includes(playerId) || value < 1 || value > 6) return
       const takenByOther = state.finalDuel.finalists.some(
-        (id) => id !== playerId && state.finalDuel?.chosenNumbers[id] === value,
-      );
-      if (takenByOther) return;
-      state.finalDuel.chosenNumbers[playerId] = value;
-      ensureAiFinalDuelPicks(state);
+        (id) => id !== playerId && state.finalDuel?.chosenNumbers[id] === value
+      )
+      if (takenByOther) return
+      state.finalDuel.chosenNumbers[playerId] = value
+      ensureAiFinalDuelPicks(state)
     },
 
     setThreeWayDuelPick(
       state,
       action: PayloadAction<{
-        playerId: string;
-        value: number;
-      }>,
+        playerId: string
+        value: number
+      }>
     ) {
       if (state.phase !== 'three_way_duel_pick' || !state.threeWayDuel) {
-        return;
+        return
       }
-      const { playerId, value } = action.payload;
-      if (!state.threeWayDuel.finalists.includes(playerId) || value < 1 || value > 6) return;
+      const { playerId, value } = action.payload
+      if (!state.threeWayDuel.finalists.includes(playerId) || value < 1 || value > 6) return
       const takenByOther = state.threeWayDuel.finalists.some(
-        (id) => id !== playerId && state.threeWayDuel?.chosenNumbers[id] === value,
-      );
-      if (takenByOther) return;
-      state.threeWayDuel.chosenNumbers[playerId] = value;
-      ensureAiThreeWayDuelPicks(state);
+        (id) => id !== playerId && state.threeWayDuel?.chosenNumbers[id] === value
+      )
+      if (takenByOther) return
+      state.threeWayDuel.chosenNumbers[playerId] = value
+      ensureAiThreeWayDuelPicks(state)
     },
 
     rollFinalDuel(state) {
-      if (state.phase !== 'final_duel_roll' || !state.finalDuel) return;
+      if (state.phase !== 'final_duel_roll' || !state.finalDuel) return
       const allPicked = state.finalDuel.finalists.every(
-        (finalistId) => state.finalDuel?.chosenNumbers[finalistId] != null,
-      );
-      if (!allPicked) return;
-      const result = resolveDiceDuelRoll(state.finalDuel, state.seed);
-      state.finalDuel = result.duel;
+        (finalistId) => state.finalDuel?.chosenNumbers[finalistId] != null
+      )
+      if (!allPicked) return
+      const result = resolveDiceDuelRoll(state.finalDuel, state.seed)
+      state.finalDuel = result.duel
       if (result.winnerId) {
-        state.winnerId = result.winnerId;
-        state.phase = 'winner';
+        state.winnerId = result.winnerId
+        state.phase = 'winner'
       }
     },
 
     rollThreeWayDuel(state) {
-      if (state.phase !== 'three_way_duel_roll' || !state.threeWayDuel) return;
+      if (state.phase !== 'three_way_duel_roll' || !state.threeWayDuel) return
       const allPicked = state.threeWayDuel.finalists.every(
-        (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null,
-      );
-      if (!allPicked) return;
-      const result = resolveThreeWayDiceRoll(state.threeWayDuel, state.seed);
-      state.threeWayDuel = result.duel;
+        (finalistId) => state.threeWayDuel?.chosenNumbers[finalistId] != null
+      )
+      if (!allPicked) return
+      const result = resolveThreeWayDiceRoll(state.threeWayDuel, state.seed)
+      state.threeWayDuel = result.duel
       if (result.winnerId) {
-        state.winnerId = result.winnerId;
-        state.phase = 'winner';
-        return;
+        state.winnerId = result.winnerId
+        state.phase = 'winner'
+        return
       }
       if (result.eliminatedId && result.advancingIds) {
         if (!state.eliminatedIds.includes(result.eliminatedId)) {
-          state.eliminatedIds.push(result.eliminatedId);
+          state.eliminatedIds.push(result.eliminatedId)
         }
-        state.activeIds = state.activeIds.filter((playerId) => playerId !== result.eliminatedId);
-        advanceToFinalDuel(state);
+        state.activeIds = state.activeIds.filter((playerId) => playerId !== result.eliminatedId)
+        advanceToFinalDuel(state)
       }
     },
 
     advanceWinner(state) {
-      if (state.phase !== 'winner') return;
-      state.phase = 'complete';
+      if (state.phase !== 'winner') return
+      state.phase = 'complete'
     },
 
     markMajorityRulesOutcomeResolved(state) {
-      state.outcomeResolved = true;
+      state.outcomeResolved = true
     },
 
     resetMajorityRules() {
-      return initialState;
+      return initialState
     },
   },
-});
+})
 
 export const {
   initMajorityRules,
@@ -582,6 +613,6 @@ export const {
   advanceWinner,
   markMajorityRulesOutcomeResolved,
   resetMajorityRules,
-} = majorityRulesSlice.actions;
+} = majorityRulesSlice.actions
 
-export default majorityRulesSlice.reducer;
+export default majorityRulesSlice.reducer
