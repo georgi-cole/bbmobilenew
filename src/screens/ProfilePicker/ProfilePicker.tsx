@@ -250,21 +250,18 @@ export default function ProfilePicker() {
     setProcessingPhoto(true)
     try {
       const blob = await resizeAndCompressImage(file)
+      if (!isSafePreviewFile(blob)) {
+        clearNewPhoto()
+        return
+      }
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
       const url = URL.createObjectURL(blob)
       previewUrlRef.current = url
       setNewPhotoBlob(blob)
       setNewPhotoPreview(url)
     } catch {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
-      if (!isSafePreviewFile(file)) {
-        clearNewPhoto()
-        return
-      }
-      const url = URL.createObjectURL(file)
-      previewUrlRef.current = url
-      setNewPhotoBlob(file)
-      setNewPhotoPreview(url)
+      clearNewPhoto()
+      return
     } finally {
       setProcessingPhoto(false)
     }
