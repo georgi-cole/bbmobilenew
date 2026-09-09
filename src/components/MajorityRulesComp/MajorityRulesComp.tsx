@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { RootState } from '../../store/store'
+import type { AiGameIdentity } from '../../ai/aiGameIdentity'
 import type { PlayerStatus } from '../../types'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
 import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
@@ -405,6 +406,7 @@ export default function MajorityRulesComp({
     competitionType: MajorityRulesCompetitionType
     seed: number
     humanPlayerId: string | null
+    aiIdentities: Record<string, AiGameIdentity | undefined>
   }>(() => ({
     participantIds: [...participantIds],
     competitionType: prizeType,
@@ -413,6 +415,11 @@ export default function MajorityRulesComp({
     // new hosted game session draws questions in a unique, unpredictable order.
     seed: seed !== undefined && seed !== 0 ? seed : cryptoSeed(),
     humanPlayerId: participants?.find((participant) => participant.isHuman)?.id ?? null,
+    aiIdentities: Object.fromEntries(
+      gamePlayers
+        .filter((player) => participantIds.includes(player.id) && player.aiGameIdentity)
+        .map((player) => [player.id, player.aiGameIdentity])
+    ),
   }))
   const motionEnabled = !areAnimationsDisabled()
 
@@ -849,28 +856,32 @@ export default function MajorityRulesComp({
         <div className="majority-rules-header-copy">
           <span className="majority-rules-kicker">The room speaks.</span>
           <h2 className="majority-rules-question">
-            {reveal?.result.kind === 'revote'
-              ? reveal.revoteNumber >= 1
-                ? 'Still tied. This question is over.'
-                : 'Split house. One re-vote remains.'
-              : reveal?.result.kind === 'unanimous'
-                ? 'A full sweep. Nobody falls this time.'
-                : tiedMinorityLabels.length > 0
-                  ? 'Tie at the bottom. Every minority answer drops.'
-                  : 'Minority found. The trap door opens.'}
+            {reveal?.result.kind === 'split'
+              ? 'No clear minority. Nobody falls.'
+              : reveal?.result.kind === 'revote'
+                ? reveal.revoteNumber >= 1
+                  ? 'Still tied. This question is over.'
+                  : 'Split house. One re-vote remains.'
+                : reveal?.result.kind === 'unanimous'
+                  ? 'A full sweep. Nobody falls this time.'
+                  : tiedMinorityLabels.length > 0
+                    ? 'Tie at the bottom. No one is eliminated.'
+                    : 'Minority found. The trap door opens.'}
           </h2>
           <p className="majority-rules-copy">
-            {reveal?.result.kind === 'revote'
-              ? reveal.revoteNumber >= 1
-                ? 'The re-vote tied again, so a fresh question will replace it.'
-                : 'Every populated answer tied, so the house votes once more.'
-              : reveal?.result.kind === 'unanimous'
-                ? 'No elimination this round. The next question starts fresh.'
-                : tiedMinorityLabels.length > 0
-                  ? `The tied minority answers were ${formatQuotedList(tiedMinorityLabels)}.`
-                  : minorityLabel
-                    ? `The minority answer was “${minorityLabel}”.`
-                    : 'The minority has been eliminated.'}
+            {reveal?.result.kind === 'split'
+              ? 'The vote was too divided for a fair elimination. A fresh question will decide the next minority.'
+              : reveal?.result.kind === 'revote'
+                ? reveal.revoteNumber >= 1
+                  ? 'The re-vote tied again, so a fresh question will replace it.'
+                  : 'Every populated answer tied, so the house votes once more.'
+                : reveal?.result.kind === 'unanimous'
+                  ? 'No elimination this round. The next question starts fresh.'
+                  : tiedMinorityLabels.length > 0
+                    ? `The tied minority answers were ${formatQuotedList(tiedMinorityLabels)}.`
+                    : minorityLabel
+                      ? `The minority answer was “${minorityLabel}”.`
+                      : 'The minority has been eliminated.'}
           </p>
         </div>
 
@@ -1211,7 +1222,9 @@ export default function MajorityRulesComp({
           </div>
           <div className="majority-rules-winner-floor" aria-hidden="true" />
         </div>
-        <span className="majority-rules-kicker majority-rules-winner-kicker">The final verdict</span>
+        <span className="majority-rules-kicker majority-rules-winner-kicker">
+          The final verdict
+        </span>
         <h2 className="majority-rules-question">
           {winner.name || 'Someone'} is the last player standing.
         </h2>

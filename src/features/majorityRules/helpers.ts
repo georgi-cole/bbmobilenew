@@ -1,4 +1,5 @@
 import { mulberry32 } from '../../store/rng'
+import type { AiGameIdentity } from '../../ai/aiGameIdentity'
 import { MAJORITY_RULES_QUESTION_BANK } from './majorityRulesQuestions'
 
 export type MajorityRulesHintType = 'pollHint' | 'peekTwo' | 'followPlayer'
@@ -40,7 +41,7 @@ export interface MajorityRulesRoundSimulation {
 }
 
 export interface MajorityRulesBallotResolution {
-  kind: 'unanimous' | 'revote' | 'elimination'
+  kind: 'unanimous' | 'revote' | 'split' | 'elimination'
   distribution: Record<string, number>
   answers: Record<string, string>
   eliminatedIds: string[]
@@ -104,11 +105,67 @@ const PEEK_HINT_WEIGHT = 0.35
 const PERSONALITY_WEIGHT = 0.2
 const NOISE_WEIGHT = 0.12
 const MIN_OPTION_WEIGHT = 0.05
-const CONSENSUS_POWER = 2.2
 const MAX_SUDDEN_DEATH_ROUNDS = 10
 const MAJORITY_RULES_OPTION_IDS = ['a', 'b', 'c'] as const
 const MAJORITY_RULES_OPTION_LABELS = ['A', 'B', 'C'] as const
-const MAJORITY_RULES_OPTION_BIASES = [0.94, 0.72, 0.46] as const
+const MAJORITY_RULES_OPTION_BIASES = [0.62, 0.5, 0.38] as const
+
+const DIVISIVE_QUESTION_IDS = new Set([
+  'q014',
+  'q045',
+  'q051',
+  'q057',
+  'q079',
+  'q094',
+  'q106',
+  'q116',
+  'q136',
+  'q151',
+  'q152',
+  'q157',
+  'q160',
+  'q162',
+  'q175',
+  'q199',
+  'q200',
+])
+const STRONG_CONSENSUS_QUESTION_IDS = new Set([
+  'q013',
+  'q022',
+  'q055',
+  'q087',
+  'q123',
+  'q132',
+  'q147',
+  'q149',
+  'q161',
+  'q180',
+  'q183',
+  'q193',
+])
+const QUESTION_PRIOR_OVERRIDES: Record<string, Record<string, number>> = {
+  q014: { Attractive: 0.46, Reliable: 0.64, Fun: 0.43 },
+  q024: { 'Fast food': 0.4, 'Healthy food': 0.5, 'Mixed diet': 0.64 },
+  q035: { Food: 0.48, Bills: 0.68, Leisure: 0.36 },
+  q054: { Success: 0.48, Kindness: 0.6, Talent: 0.52 },
+  q072: { 'Avoid it': 0.46, 'Confront it': 0.42, Compromise: 0.64 },
+  q087: { 'Safe option': 0.59, 'Moderate option': 0.7, 'High-risk option': 0.27 },
+  q090: { Wealth: 0.46, Happiness: 0.64, Freedom: 0.55 },
+  q094: { Intelligence: 0.56, Kindness: 0.6, Success: 0.46 },
+  q116: { Passion: 0.45, Stability: 0.58, Trust: 0.67 },
+  q124: { Reliability: 0.68, Chemistry: 0.52, Ambition: 0.37 },
+  q127: { Speed: 0.48, Privacy: 0.57, 'Ease of use': 0.62 },
+  q134: { 'Save it': 0.61, 'Spend it': 0.37, 'Pay debt': 0.58 },
+  q146: { Friendly: 0.61, Confident: 0.56, Polite: 0.48 },
+  q155: { Pay: 0.58, Security: 0.53, 'Work-life balance': 0.62 },
+  q162: { Safety: 0.58, Excitement: 0.41, Understanding: 0.64 },
+  q165: { Decisiveness: 0.45, Empathy: 0.55, Fairness: 0.66 },
+  q170: { Easygoing: 0.65, Organized: 0.49, Funny: 0.53 },
+  q178: { Therapy: 0.47, Books: 0.49, 'Better routines': 0.62 },
+  q185: { 'Low rent': 0.52, 'Good location': 0.65, 'More space': 0.55 },
+  q190: { Patience: 0.65, 'Practical help': 0.58, Affection: 0.52 },
+  q197: { 'Be direct': 0.56, 'Be gentle': 0.59, 'Delay it': 0.34 },
+}
 
 function normalizeMajorityRulesPrompt(prompt: string) {
   const qualifierMatch = prompt.match(/^(.*)\?\s+(.+)\?$/)
@@ -222,10 +279,11 @@ function chooseExtremaOption(scores: Record<string, number>, optionIds: string[]
 function chooseWeightedOption(
   scores: Record<string, number>,
   optionIds: string[],
-  rng: () => number
+  rng: () => number,
+  power = 1
 ): string {
   const weights = optionIds.map(
-    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** CONSENSUS_POWER
+    (optionId) => Math.max(MIN_OPTION_WEIGHT, scores[optionId] ?? 0) ** power
   )
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   if (total <= 0) return chooseExtremaOption(scores, optionIds)
@@ -238,6 +296,107 @@ function chooseWeightedOption(
   return optionIds[optionIds.length - 1] ?? optionIds[0]
 }
 
+function getQuestionConsensusPower(question: MajorityRulesQuestion): number {
+  if (DIVISIVE_QUESTION_IDS.has(question.id)) return 1.15
+  if (STRONG_CONSENSUS_QUESTION_IDS.has(question.id)) return 3
+
+  const prompt = question.prompt.toLowerCase()
+  if (
+    /\b(first|daily|most often|when tired|before bed|checkout|commute|in danger)\b/.test(prompt)
+  ) {
+    return 2.6
+  }
+  if (/\b(prefer|value|want more|rather|admire|fear|regret|envy|known for)\b/.test(prompt)) {
+    return 1.35
+  }
+  return 1.9
+}
+
+function getPopulationPrior(question: MajorityRulesQuestion, option: MajorityRulesQuestionOption) {
+  return QUESTION_PRIOR_OVERRIDES[question.id]?.[option.text] ?? option.baseBias
+}
+
+function getIdentityConformity(identity: AiGameIdentity | undefined): number {
+  if (!identity) return 1
+  let value = 0.94 + identity.competitionDrive * 0.16
+  if (
+    [
+      'public_pleaser',
+      'audience_chameleon',
+      'media_strategist',
+      'active_floater',
+      'strategic_operator',
+    ].includes(identity.archetype)
+  ) {
+    value += 0.12
+  }
+  if (['chaos_agent', 'lone_wolf', 'antihero', 'risk_taker'].includes(identity.archetype)) {
+    value -= 0.18
+  }
+  return Math.max(0.72, Math.min(1.28, value))
+}
+
+function semanticIdentityAffinity(
+  identity: AiGameIdentity | undefined,
+  optionText: string
+): number {
+  if (!identity) return 0
+  const text = optionText.toLowerCase()
+  const keywordSets: Partial<Record<AiGameIdentity['archetype'], string[]>> = {
+    loyal_anchor: [
+      'loyal',
+      'trust',
+      'family',
+      'stability',
+      'reliable',
+      'support',
+      'safety',
+      'security',
+    ],
+    romantic_loyalist: [
+      'affection',
+      'chemistry',
+      'passion',
+      'relationship',
+      'trust',
+      'loyal',
+      'understanding',
+    ],
+    risk_taker: ['risk', 'adventure', 'exciting', 'excitement', 'new', 'travel', 'freedom'],
+    chaos_agent: ['risk', 'adventure', 'go out', 'fun', 'new', 'impulse'],
+    aggressive_competitor: ['success', 'career', 'achievement', 'gym', 'discipline', 'growth'],
+    clutch_competitor: ['success', 'achievement', 'confidence', 'pressure', 'discipline'],
+    social_butterfly: ['friends', 'social', 'party', 'connection', 'talk', 'fun', 'people'],
+    public_pleaser: ['liked', 'friendly', 'kindness', 'praise', 'attention', 'recognition'],
+    audience_darling: ['friendly', 'kindness', 'support', 'people', 'harmony'],
+    media_strategist: ['attention', 'recognition', 'status', 'style', 'looks', 'social media'],
+    audience_chameleon: ['attention', 'recognition', 'liked', 'style', 'social'],
+    underdog_survivor: [
+      'safe',
+      'safety',
+      'security',
+      'saving',
+      'cheap',
+      'low cost',
+      'reliability',
+      'practical',
+    ],
+    strategic_operator: ['planning', 'security', 'money', 'career', 'position', 'control'],
+    puppet_master: ['control', 'influence', 'recognition', 'connections', 'strategy'],
+    puzzle_specialist: ['intelligence', 'knowledge', 'planning', 'focus', 'skill'],
+  }
+  const keywords = keywordSets[identity.archetype] ?? []
+  return keywords.some((keyword) => text.includes(keyword)) ? 0.1 : 0
+}
+
+function getIdentityNoiseWeight(identity: AiGameIdentity | undefined): number {
+  if (!identity) return NOISE_WEIGHT
+  let multiplier = 0.65 + identity.emotionalVolatility * 0.9
+  if (identity.temperament === 'impulsive') multiplier += 0.35
+  if (identity.temperament === 'calm') multiplier -= 0.2
+  return NOISE_WEIGHT * Math.max(0.5, Math.min(1.6, multiplier))
+}
+
 function buildPlayerScores(params: {
   seed: number
   roundNumber: number
@@ -245,11 +404,15 @@ function buildPlayerScores(params: {
   question: MajorityRulesQuestion
   previousDistribution?: Record<string, number> | null
   blockedAnswer?: string | null
+  identity?: AiGameIdentity
 }) {
-  const { seed, roundNumber, playerId, question, blockedAnswer } = params
+  const { seed, roundNumber, playerId, question, blockedAnswer, identity } = params
   const optionIds = getAllowedOptionIds(question.options, blockedAnswer)
   const rng = seededRng(seed, 'player-choice', roundNumber, playerId, question.id)
   const scores: Record<string, number> = {}
+  const conformity = getIdentityConformity(identity)
+  const choicePower = getQuestionConsensusPower(question) * (0.9 + conformity * 0.1)
+  const noiseWeight = getIdentityNoiseWeight(identity)
 
   for (const option of question.options) {
     if (!optionIds.includes(option.id)) continue
@@ -257,12 +420,18 @@ function buildPlayerScores(params: {
     // That gives each contestant a stable lean toward concepts while avoiding fake cross-question
     // memory such as "A won last round, therefore A is likely again".
     const preferenceKey = `${playerId}:${option.text.trim().toLowerCase()}`
-    const personalBias = ((fnv1a32(preferenceKey) % 1000) / 1000 - 0.5) * PERSONALITY_WEIGHT
-    const noise = (rng() - 0.5) * NOISE_WEIGHT
-    scores[option.id] = Math.max(MIN_OPTION_WEIGHT, option.baseBias + personalBias + noise)
+    const personalBias = ((fnv1a32(preferenceKey) % 1000) / 1000 - 0.5) * PERSONALITY_WEIGHT * 0.55
+    const noise = (rng() - 0.5) * noiseWeight
+    const populationPrior = getPopulationPrior(question, option)
+    const centeredPrior = 0.5 + (populationPrior - 0.5) * conformity
+    const semanticBias = semanticIdentityAffinity(identity, option.text)
+    scores[option.id] = Math.max(
+      MIN_OPTION_WEIGHT,
+      centeredPrior + semanticBias + personalBias + noise
+    )
   }
 
-  return { optionIds, scores, rng }
+  return { optionIds, scores, rng, choicePower }
 }
 
 export function chooseAiAnswer(params: {
@@ -272,9 +441,10 @@ export function chooseAiAnswer(params: {
   question: MajorityRulesQuestion
   previousDistribution?: Record<string, number> | null
   blockedAnswer?: string | null
+  identity?: AiGameIdentity
 }): string {
-  const { optionIds, scores, rng } = buildPlayerScores(params)
-  return chooseWeightedOption(scores, optionIds, rng)
+  const { optionIds, scores, rng, choicePower } = buildPlayerScores(params)
+  return chooseWeightedOption(scores, optionIds, rng, choicePower)
 }
 
 export function countAnswerDistribution(
@@ -328,6 +498,7 @@ export function buildBaseAiAnswers(params: {
   question: MajorityRulesQuestion
   previousDistribution?: Record<string, number> | null
   blockedAnswers?: Record<string, string>
+  aiIdentities?: Record<string, AiGameIdentity | undefined>
 }): Record<string, string> {
   const {
     activeIds,
@@ -337,6 +508,7 @@ export function buildBaseAiAnswers(params: {
     question,
     previousDistribution,
     blockedAnswers = {},
+    aiIdentities = {},
   } = params
   const answers: Record<string, string> = {}
   for (const playerId of activeIds) {
@@ -348,6 +520,7 @@ export function buildBaseAiAnswers(params: {
       question,
       previousDistribution,
       blockedAnswer: blockedAnswers[playerId] ?? null,
+      identity: aiIdentities[playerId],
     })
   }
   return answers
@@ -530,6 +703,7 @@ export function simulateMajorityRulesBallot(params: {
   question: MajorityRulesQuestion
   previousDistribution?: Record<string, number> | null
   blockedAnswers?: Record<string, string>
+  aiIdentities?: Record<string, AiGameIdentity | undefined>
 }): MajorityRulesRoundSimulation {
   const {
     activeIds,
@@ -542,6 +716,7 @@ export function simulateMajorityRulesBallot(params: {
     question,
     previousDistribution,
     blockedAnswers = {},
+    aiIdentities = {},
   } = params
 
   const baseAiAnswers = buildBaseAiAnswers({
@@ -552,6 +727,7 @@ export function simulateMajorityRulesBallot(params: {
     question,
     previousDistribution,
     blockedAnswers,
+    aiIdentities,
   })
   const aiHintDecision = chooseAiHintDecision({
     activeIds,
@@ -653,21 +829,19 @@ export function resolveMajorityRulesBallot(params: {
     (optionId) => (distribution[optionId] ?? 0) === minCount
   )
   if (tiedOptionIds.length !== 1) {
-    if (tiedOptionIds.length < populatedOptionIds.length) {
+    if (tiedOptionIds.length === populatedOptionIds.length) {
       return {
-        kind: 'elimination',
+        kind: 'revote',
         distribution,
         answers,
-        eliminatedIds: activeIds.filter((playerId) =>
-          tiedOptionIds.includes(answers[playerId] ?? '')
-        ),
+        eliminatedIds: [],
         minorityOptionId: null,
         tiedOptionIds,
         eliminationCount,
       }
     }
     return {
-      kind: 'revote',
+      kind: 'split',
       distribution,
       answers,
       eliminatedIds: [],
@@ -679,6 +853,18 @@ export function resolveMajorityRulesBallot(params: {
 
   const minorityOptionId = tiedOptionIds[0]
   const eliminatedIds = activeIds.filter((playerId) => answers[playerId] === minorityOptionId)
+  const maxClearMinoritySize = activeIds.length >= 6 ? 2 : 1
+  if (eliminatedIds.length > maxClearMinoritySize) {
+    return {
+      kind: 'split',
+      distribution,
+      answers,
+      eliminatedIds: [],
+      minorityOptionId,
+      tiedOptionIds: [],
+      eliminationCount,
+    }
+  }
 
   return {
     kind: 'elimination',
