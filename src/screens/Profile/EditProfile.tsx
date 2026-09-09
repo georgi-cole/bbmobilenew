@@ -15,6 +15,17 @@ const AVATAR_OPTIONS = [
   '🧑','👱','👩','🧔','👧','🧓','👩‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','👦','👴',
 ];
 
+const SAFE_PREVIEW_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+
+function isSafePreviewFile(file: File | Blob): boolean {
+  return SAFE_PREVIEW_MIME_TYPES.has(file.type);
+}
+
 function CollapsibleSection({
   label,
   children,
@@ -133,6 +144,9 @@ export default function EditProfile() {
     // Reset the input so the same file can be re-selected later.
     e.target.value = '';
 
+    // Do not allow active formats such as SVG to become a DOM-backed preview.
+    if (!isSafePreviewFile(file)) return;
+
     setProcessingPhoto(true);
     try {
       const blob = await resizeAndCompressImage(file);
@@ -145,14 +159,9 @@ export default function EditProfile() {
       setNewPhotoBlob(blob);
       setPhotoDataUrl(url);
     } catch {
-      // If processing fails, fall back to the original file as blob.
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      const url = URL.createObjectURL(file);
-      previewUrlRef.current = url;
-      setNewPhotoBlob(file);
-      setPhotoDataUrl(url);
+      // Never preview the unprocessed upload directly. If processing fails, keep
+      // the previous safe preview/photo instead of exposing attacker-controlled
+      // image contents through a blob URL.
     } finally {
       setProcessingPhoto(false);
     }
@@ -245,7 +254,7 @@ export default function EditProfile() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             style={{ display: 'none' }}
             onChange={handlePhotoChange}
           />

@@ -12,10 +12,8 @@ type TwinShockRevealOverlayProps = {
 type RevealStage = 'intro' | 'transform' | 'settled' | 'done';
 
 function getTileElement(playerId: string): HTMLElement | null {
-  const escapedId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-    ? CSS.escape(playerId)
-    : playerId.replace(/"/g, '\\"');
-  return document.querySelector<HTMLElement>(`[data-player-id="${escapedId}"]`);
+  const tiles = document.querySelectorAll<HTMLElement>('[data-player-id]');
+  return Array.from(tiles).find((tile) => tile.dataset.playerId === playerId) ?? null;
 }
 
 export default function TwinShockRevealOverlay({
