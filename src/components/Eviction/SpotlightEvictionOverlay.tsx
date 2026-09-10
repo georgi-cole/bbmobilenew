@@ -318,10 +318,18 @@ export default function SpotlightEvictionOverlay({
   const labelText = 'ELIMINATED'
   const lowerThirdLabel = getLowerThirdLabel(false, labelText, contextLabel)
   const portraitExpanded = phase === 'expanding' || phase === 'holding' || phase === 'done'
+  const rootClassName = [
+    'seo',
+    `seo--${phase}`,
+    isReturn ? 'seo--return' : '',
+    optimizedForAppleTouch ? 'seo--ios' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div
-      className={`seo seo--${phase}${isReturn ? ' seo--return' : ''}${optimizedForAppleTouch ? ' seo--ios' : ''}`}
+      className={rootClassName}
       role="dialog"
       aria-modal="true"
       aria-label={
