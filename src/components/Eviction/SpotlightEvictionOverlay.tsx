@@ -113,10 +113,11 @@ export default function SpotlightEvictionOverlay({
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-    const playerTile = Array.from(document.querySelectorAll<HTMLElement>('[data-player-id]')).find(
+    const playerTiles = document.querySelectorAll<HTMLElement>('[data-player-id]')
+    const playerTile = Array.from(playerTiles).find(
       (element) => element.dataset.playerId === String(evictee.id)
     )
-    const sourceTile = playerTile?.querySelector<HTMLElement>('[data-ceremony-tile="true"]') ?? null
+    const sourceTile = playerTile?.querySelector<HTMLElement>('[data-ceremony-tile="true"]')
     const rect = sourceTile?.getBoundingClientRect()
     const viewportWidth = Math.max(1, window.innerWidth)
     const viewportHeight = Math.max(1, window.innerHeight)
