@@ -39,6 +39,14 @@ const EVICTION_MARK_SRC = `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')
 // Cinematic filter applied to the portrait during the holding phase
 const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)'
 
+function isAppleTouchDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return (
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
 // Portrait layout transition: camera-push ease-out over 600 ms
 const PORTRAIT_SPRING = {
   duration: 0.48,
@@ -106,6 +114,7 @@ export default function SpotlightEvictionOverlay({
   const [showFallback, setShowFallback] = useState(false)
 
   const isReturn = variant === 'return'
+  const optimizedForAppleTouch = isAppleTouchDevice()
   const [phase, setPhase] = useState<Phase>(isReturn ? 'holding' : 'spotlight')
   const [showLiveBug, setShowLiveBug] = useState(false)
   const [showLowerThird, setShowLowerThird] = useState(false)
@@ -294,13 +303,19 @@ export default function SpotlightEvictionOverlay({
 
   const isDev = import.meta.env.DEV || devSkip
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined
+  const portraitTransition = optimizedForAppleTouch
+    ? { duration: 0.28, ease: 'easeOut' as const }
+    : PORTRAIT_SPRING
+  const cinematicFilter = optimizedForAppleTouch
+    ? 'saturate(0.65) contrast(1.03) brightness(0.9)'
+    : CINEMATIC_FILTER
 
   const labelText = 'ELIMINATED'
   const lowerThirdLabel = getLowerThirdLabel(false, labelText, contextLabel)
 
   return (
     <div
-      className={`seo${isReturn ? ' seo--return' : ''}`}
+      className={`seo${isReturn ? ' seo--return' : ''}${optimizedForAppleTouch ? ' seo--ios' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -349,9 +364,12 @@ export default function SpotlightEvictionOverlay({
       {/* Shared-layout portrait (match-cut hero) */}
       <motion.div
         className={`seo__portrait${phase === 'expanding' || phase === 'holding' || phase === 'done' ? ' seo__portrait--expanded' : ''}`}
-        layoutId={layoutId}
+        // Shared-layout projection forces an expensive layout read on iPhone
+        // during the roster-to-fullscreen match cut. The fixed portrait keeps
+        // the same beat while skipping that projection on mobile WebKit.
+        layoutId={optimizedForAppleTouch ? undefined : layoutId}
         style={{ borderRadius: phase === 'spotlight' ? 'var(--tile-radius, 12px)' : 0 }}
-        transition={prefersReducedMotion ? { duration: 0 } : PORTRAIT_SPRING}
+        transition={noMotion ?? portraitTransition}
       >
         {showFallback ? (
           <motion.span
@@ -361,7 +379,7 @@ export default function SpotlightEvictionOverlay({
               isReturn && desaturated
                 ? {
                     scale: 1,
-                    filter: CINEMATIC_FILTER,
+                    filter: cinematicFilter,
                   }
                 : { scale: 1, filter: 'none' }
             }
@@ -380,10 +398,10 @@ export default function SpotlightEvictionOverlay({
                 ? isReturn
                   ? {
                       scale: 1,
-                      filter: CINEMATIC_FILTER,
+                      filter: cinematicFilter,
                       y: 0,
                     }
-                  : { scale: 1.04, filter: CINEMATIC_FILTER, y: 0 }
+                  : { scale: 1.04, filter: cinematicFilter, y: 0 }
                 : phase === 'expanding'
                   ? {
                       scale: 1.02,
