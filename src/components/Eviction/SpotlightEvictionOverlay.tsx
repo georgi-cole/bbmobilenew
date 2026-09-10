@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useLayoutEffect,
+  type CSSProperties,
+} from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Player } from '../../types'
 import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
@@ -7,37 +14,20 @@ import { useAppDispatch } from '../../store/hooks'
 import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice'
 import './SpotlightEvictionOverlay.css'
 
-// ── Timing constants (ms, relative to component mount) ────────────────────
-//
-// Beat:   0 ms         grid dims + spotlight locks
-//        750 ms        LIVE bug fades in
-//        900 ms        tile expansion begins (600 ms, smooth ease-out)
-//       1800 ms        desaturate + vignette settle
-//       2100 ms        lower-third slides in
-//       3000 ms        expansion done → suspense hold begins
-//       5400 ms        onDone fires → AnimatePresence exits (reverse, 400 ms)
-//       5800 ms        match-cut shrink complete
-//
-const LIVE_BUG_AT = 750 // LIVE bug fades in
-const EXPAND_START = 900 // shared-layout expansion begins
-const DESAT_AT = 1800 // desaturation + vignette settle
-const LOWER_THIRD_AT = 2100 // lower-third slides in
-const HOLD_START = 3000 // expansion done; suspense hold begins
-const DONE_AT = 5400 // onDone fires; AnimatePresence triggers reverse (400 ms)
+const LIVE_BUG_AT = 750
+const EXPAND_START = 900
+const DESAT_AT = 1800
+const LOWER_THIRD_AT = 2100
+const HOLD_START = 3000
+const DONE_AT = 5400
 
-// Return (reverse) sequence: start fully evicted, clear the strike and colour,
-// then rewind the shared-layout portrait into its active roster tile.
 const RETURN_CLEAR_AT = 650
 const RETURN_SPOTLIGHT_AT = 1300
 const RETURN_DONE_AT = 1900
 
-// Reduced-motion: collapse the whole sequence to a short hold
 const REDUCED_DONE_AT = 600
 const ELIMINATED_STAMP_SRC = `${import.meta.env.BASE_URL}assets/eliminated_stamp.svg`
 const EVICTION_MARK_SRC = `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`
-
-// Cinematic filter applied to the portrait during the holding phase
-const CINEMATIC_FILTER = 'saturate(0.15) contrast(1.1) brightness(0.82)'
 
 function isAppleTouchDevice(): boolean {
   if (typeof navigator === 'undefined') return false
@@ -47,56 +37,34 @@ function isAppleTouchDevice(): boolean {
   )
 }
 
-// Portrait layout transition: camera-push ease-out over 600 ms
-const PORTRAIT_SPRING = {
-  duration: 0.48,
-  ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-}
-
 type Phase = 'spotlight' | 'expanding' | 'holding' | 'done'
 type OverlayVariant = 'eviction' | 'return'
+type ManualFlipStyle = CSSProperties & {
+  '--seo-flip-x': string
+  '--seo-flip-y': string
+  '--seo-flip-scale': string
+}
 
 function getLowerThirdLabel(isReturn: boolean, labelText: string, contextLabel?: string): string {
   return isReturn || !contextLabel ? labelText : contextLabel
 }
 
 interface Props {
-  /** Player being evicted. */
   evictee: Player
-  /** Optional contextual kicker shown above the evictee name in the lower-third. */
   contextLabel?: string
-  /**
-   * Framer Motion layoutId matching the AvatarTile's avatarWrap.
-   * When provided, enables the shared-layout match-cut animation.
-   * When omitted, the portrait still animates but without a hero match-cut.
-   */
+  /** Retained as the stable match-cut identity for callers/debugging. */
   layoutId?: string
-  /** Called once the choreography completes (before the reverse animation). */
   onDone: () => void
-  /** When true, renders the Skip button regardless of DEV mode (e.g. CI). */
   devSkip?: boolean
-  /** When set to "return", the animation runs in reverse for Battle Back returns. */
   variant?: OverlayVariant
 }
 
 /**
- * SpotlightEvictionOverlay — cinematic eviction choreography.
+ * Cinematic eviction choreography.
  *
- * Beat sequence:
- *  0–900 ms     spotlight   grid dims, radial spotlight mask animates
- *  750 ms                   LIVE bug appears
- *  900–1500 ms  expanding   shared-layout tile expands fullscreen (600 ms, ease-out)
- *  1800 ms                  image desaturates + vignette settles
- *  2100 ms                  "EVICTED" lower-third + stamp slide in
- *  3000–5400 ms holding     suspense pause
- *  5400 ms      done        onDone() fires; AnimatePresence reverse plays (400 ms)
- *
- * Return mode begins from the fully evicted visual state, removes the red strike,
- * restores colour and proportions, and settles directly into the roster tile.
- * It intentionally renders no second LIVE bug, lower-third, stamp or announcement.
- *
- * Accessibility: prefers-reduced-motion collapses the sequence to a 600 ms hold.
- * Dev-only Skip button appears when import.meta.env.DEV is true.
+ * The roster-to-fullscreen portrait now uses a manually captured FLIP transform:
+ * one layout read before first paint, followed by a CSS transform transition.
+ * This avoids Framer Motion shared-layout projection during the heaviest frame window.
  */
 export default function SpotlightEvictionOverlay({
   evictee,
@@ -120,11 +88,13 @@ export default function SpotlightEvictionOverlay({
   const [showLowerThird, setShowLowerThird] = useState(false)
   const [showReturnStrike, setShowReturnStrike] = useState(isReturn)
   const [desaturated, setDesaturated] = useState(isReturn)
+  const [portraitStyle, setPortraitStyle] = useState<ManualFlipStyle | null>(null)
   const [stampAssetState, setStampAssetState] = useState<'loading' | 'ready' | 'error'>(
     isReturn ? 'error' : 'loading'
   )
 
   const firedRef = useRef(false)
+  const avatarSrc = candidates[candidateIdx] ?? ''
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -137,20 +107,70 @@ export default function SpotlightEvictionOverlay({
     onDone()
   }, [onDone])
 
-  // ── Mount / unmount: register overlay player in store ─────────────────────
-  // Ensures AvatarTile hides itself (isEvicting) for this player while the
-  // overlay is active, preventing a duplicated fullscreen match-cut tile.
-  // The owning component (GameScreen or Final3Ceremony) explicitly clears this
-  // flag in their onDone handlers; this cleanup is a safety net for the case
-  // where the component unmounts unexpectedly (e.g. navigation away mid-cinematic).
-  // clearEvictionOverlay is used (not setEvictionOverlay(null)) so a stale unmount
-  // cannot clear a subsequently-mounted overlay for a different player.
+  // Capture the evictee tile once before first paint. The portrait keeps the
+  // source tile's geometry and expands with a transform only, so there are no
+  // repeated layout measurements during the camera push.
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const playerTile = Array.from(document.querySelectorAll<HTMLElement>('[data-player-id]')).find(
+      (element) => element.dataset.playerId === String(evictee.id)
+    )
+    const sourceTile = playerTile?.querySelector<HTMLElement>('[data-ceremony-tile="true"]') ?? null
+    const rect = sourceTile?.getBoundingClientRect()
+    const viewportWidth = Math.max(1, window.innerWidth)
+    const viewportHeight = Math.max(1, window.innerHeight)
+
+    if (!rect || rect.width <= 0 || rect.height <= 0) {
+      setPortraitStyle({
+        left: 0,
+        top: 0,
+        right: 'auto',
+        bottom: 'auto',
+        width: '100vw',
+        height: '100vh',
+        '--seo-flip-x': '0px',
+        '--seo-flip-y': '0px',
+        '--seo-flip-scale': '1',
+      })
+      return
+    }
+
+    const scale = Math.max(viewportWidth / rect.width, viewportHeight / rect.height)
+    const sourceCenterX = rect.left + rect.width / 2
+    const sourceCenterY = rect.top + rect.height / 2
+
+    setPortraitStyle({
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      right: 'auto',
+      bottom: 'auto',
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      '--seo-flip-x': `${viewportWidth / 2 - sourceCenterX}px`,
+      '--seo-flip-y': `${viewportHeight / 2 - sourceCenterY}px`,
+      '--seo-flip-scale': String(scale),
+    })
+  }, [evictee.id])
+
+  // Start image decode/upload as soon as the overlay mounts, before expansion.
+  // A decode miss should never block the choreography or switch avatar candidates.
+  useEffect(() => {
+    if (!avatarSrc || typeof window === 'undefined') return
+    const image = new window.Image()
+    image.src = avatarSrc
+    if (typeof image.decode === 'function') {
+      void image.decode().catch(() => undefined)
+    }
+  }, [avatarSrc])
+
   useEffect(() => {
     if (import.meta.env.DEV) {
       console.debug('[SpotlightEvictionOverlay] mount', {
         evicteeId: evictee.id,
         layoutId,
         variant,
+        transition: 'manual-flip',
       })
     }
     dispatch(setEvictionOverlay(evictee.id))
@@ -160,7 +180,7 @@ export default function SpotlightEvictionOverlay({
       }
       dispatch(clearEvictionOverlay(evictee.id))
     }
-    // evictee.id, layoutId and variant are stable for the lifetime of this overlay instance
+    // Stable for the lifetime of this overlay instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -224,7 +244,7 @@ export default function SpotlightEvictionOverlay({
       timers.push(
         setTimeout(() => {
           setPhase('spotlight')
-          dbg('return match-cut to roster')
+          dbg('return FLIP to roster')
         }, RETURN_SPOTLIGHT_AT)
       )
       timers.push(
@@ -237,7 +257,6 @@ export default function SpotlightEvictionOverlay({
       return () => timers.forEach(clearTimeout)
     }
 
-    // Full cinematic sequence
     dbg('mount – spotlight phase')
     timers.push(
       setTimeout(() => {
@@ -248,19 +267,13 @@ export default function SpotlightEvictionOverlay({
     timers.push(
       setTimeout(() => {
         setPhase('expanding')
-        dbg('expanding')
-        if (import.meta.env.DEV) {
-          console.debug('[SpotlightEvictionOverlay] shared-layout expansion begins', {
-            evicteeId: evictee.id,
-            layoutId,
-          })
-        }
+        dbg('manual FLIP expanding')
       }, EXPAND_START)
     )
     timers.push(
       setTimeout(() => {
         setDesaturated(true)
-        dbg('desaturate + vignette')
+        dbg('cinematic grade + vignette')
       }, DESAT_AT)
     )
     timers.push(
@@ -284,7 +297,7 @@ export default function SpotlightEvictionOverlay({
     )
 
     return () => timers.forEach(clearTimeout)
-    // fire is stable (guarded by firedRef); prefersReducedMotion/isReturn read once on mount
+    // fire is stable; these presentation preferences are intentionally read once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -296,26 +309,19 @@ export default function SpotlightEvictionOverlay({
     }
   }
 
-  const avatarSrc = candidates[candidateIdx] ?? ''
   const fallbackText = isEmoji(evictee.avatar ?? '')
     ? evictee.avatar
     : evictee.name.charAt(0).toUpperCase()
 
   const isDev = import.meta.env.DEV || devSkip
   const noMotion = prefersReducedMotion ? { duration: 0 } : undefined
-  const portraitTransition = optimizedForAppleTouch
-    ? { duration: 0.28, ease: 'easeOut' as const }
-    : PORTRAIT_SPRING
-  const cinematicFilter = optimizedForAppleTouch
-    ? 'saturate(0.65) contrast(1.03) brightness(0.9)'
-    : CINEMATIC_FILTER
-
   const labelText = 'ELIMINATED'
   const lowerThirdLabel = getLowerThirdLabel(false, labelText, contextLabel)
+  const portraitExpanded = phase === 'expanding' || phase === 'holding' || phase === 'done'
 
   return (
     <div
-      className={`seo${isReturn ? ' seo--return' : ''}${optimizedForAppleTouch ? ' seo--ios' : ''}`}
+      className={`seo seo--${phase}${isReturn ? ' seo--return' : ''}${optimizedForAppleTouch ? ' seo--ios' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -324,7 +330,6 @@ export default function SpotlightEvictionOverlay({
           : `${evictee.name} has been eliminated`
       }
     >
-      {/* Dim overlay — fades in immediately */}
       <motion.div
         className="seo__dim"
         initial={isReturn ? false : { opacity: 0 }}
@@ -333,7 +338,6 @@ export default function SpotlightEvictionOverlay({
         transition={noMotion ?? { duration: 0.2 }}
       />
 
-      {/* Radial spotlight mask — visible only during spotlight phase */}
       <AnimatePresence>
         {phase === 'spotlight' && (
           <motion.div
@@ -346,7 +350,6 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* LIVE bug — eviction only; return mode must not replay an announcement. */}
       <AnimatePresence>
         {!isReturn && showLiveBug && (
           <motion.div
@@ -361,68 +364,33 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* Shared-layout portrait (match-cut hero) */}
-      <motion.div
-        className={`seo__portrait${phase === 'expanding' || phase === 'holding' || phase === 'done' ? ' seo__portrait--expanded' : ''}`}
-        // Shared-layout projection forces an expensive layout read on iPhone
-        // during the roster-to-fullscreen match cut. The fixed portrait keeps
-        // the same beat while skipping that projection on mobile WebKit.
-        layoutId={optimizedForAppleTouch ? undefined : layoutId}
-        style={{ borderRadius: phase === 'spotlight' ? 'var(--tile-radius, 12px)' : 0 }}
-        transition={noMotion ?? portraitTransition}
+      <div
+        className={[
+          'seo__portrait',
+          portraitExpanded ? 'seo__portrait--expanded' : '',
+          desaturated ? 'seo__portrait--desaturated' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        style={{
+          ...(portraitStyle ?? {}),
+          borderRadius: phase === 'spotlight' ? 'var(--tile-radius, 12px)' : 0,
+        }}
+        data-layout-id={layoutId}
       >
         {showFallback ? (
-          <motion.span
-            className="seo__fallback"
-            aria-hidden="true"
-            animate={
-              isReturn && desaturated
-                ? {
-                    scale: 1,
-                    filter: cinematicFilter,
-                  }
-                : { scale: 1, filter: 'none' }
-            }
-            transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
-          >
+          <span className="seo__fallback" aria-hidden="true">
             {fallbackText}
-          </motion.span>
+          </span>
         ) : (
-          <motion.img
+          <img
             className="seo__photo"
             src={avatarSrc}
             alt={evictee.name}
             onError={handleImgError}
-            animate={
-              desaturated
-                ? isReturn
-                  ? {
-                      scale: 1,
-                      filter: cinematicFilter,
-                      y: 0,
-                    }
-                  : { scale: 1.04, filter: cinematicFilter, y: 0 }
-                : phase === 'expanding'
-                  ? {
-                      scale: 1.02,
-                      scaleX: 1,
-                      scaleY: 1,
-                      filter: 'saturate(0.9) contrast(1) brightness(0.95) blur(1.5px)',
-                      y: -6,
-                    }
-                  : {
-                      scale: 1,
-                      scaleX: 1,
-                      scaleY: 1,
-                      filter: 'saturate(1) contrast(1) brightness(1)',
-                      y: 0,
-                    }
-            }
-            transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
           />
         )}
 
-        {/* Return mode begins with the standard red eviction strike, then removes it. */}
         <AnimatePresence>
           {isReturn && showReturnStrike && (
             <motion.img
@@ -446,7 +414,6 @@ export default function SpotlightEvictionOverlay({
           )}
         </AnimatePresence>
 
-        {/* Vignette — settles as image desaturates */}
         <motion.div
           className="seo__vignette"
           initial={isReturn ? false : { opacity: 0 }}
@@ -454,11 +421,9 @@ export default function SpotlightEvictionOverlay({
           transition={noMotion ?? { duration: 0.35 }}
         />
 
-        {/* Film-grain scanlines */}
         <div className="seo__scanlines" aria-hidden="true" />
-      </motion.div>
+      </div>
 
-      {/* Lower-third — eviction only. Return mode is deliberately announcement-free. */}
       <AnimatePresence>
         {!isReturn && showLowerThird && (
           <motion.div
@@ -474,7 +439,6 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* Stamp with impact bounce — eviction only. */}
       <AnimatePresence>
         {!isReturn && showLowerThird && (
           <motion.div
@@ -500,7 +464,6 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
-      {/* Dev-only Skip button */}
       {isDev && (
         <button
           className="seo__skip-btn"
