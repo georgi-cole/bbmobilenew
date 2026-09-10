@@ -29,6 +29,7 @@ import WeatherRosterReveal from './weather/WeatherRosterReveal'
 import SeasonStartOnboardingController from './onboarding/SeasonStartOnboardingController'
 import { I18nProvider } from './i18n'
 import './styles/gameCopyPolish.css'
+import './styles/performanceOverrides.css'
 
 if (import.meta.env.DEV) {
   console.log(
