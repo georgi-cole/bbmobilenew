@@ -99,8 +99,7 @@ body:has(.seo) [class*='liveEvictionNominee']::before {
 }
 
 .seo__portrait--expanded {
-  transform:
-    translate3d(var(--seo-flip-x, 0px), var(--seo-flip-y, 0px), 0)
+  transform: translate3d(var(--seo-flip-x, 0px), var(--seo-flip-y, 0px), 0)
     scale(var(--seo-flip-scale, 1)) !important;
 }
 
