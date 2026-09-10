@@ -95,7 +95,7 @@ function buildCoLohQaState(
   current: GameState,
   stage: 'nominations' | 'replacement' | 'voting' | 'tie'
 ): GameState {
-  const players = current.players.map((player) => ({
+  const players: Player[] = current.players.map((player) => ({
     ...player,
     status: 'active' as const,
     isWinner: false,
@@ -123,6 +123,7 @@ function buildCoLohQaState(
     human = ensurePlayer('qa-user', 'You', '')
     human.isUser = true
   }
+  if (!human) throw new Error('QA fixture could not create its POS player')
   const nomineePlayers = CO_LOH_TEST_NOMINEE_IDS.map((id) =>
     ensurePlayer(
       id,
@@ -190,6 +191,10 @@ function buildCoLohQaState(
     aiReplacementWaiting: false,
     specialVeto: {
       ...(current.specialVeto ?? {}),
+      seasonUsed: false,
+      activatedWeek: null,
+      vipUseStage: 0,
+      coupReplacement1Id: null,
       activeType: null,
       awaitingHolderReplacement: false,
       awaitingCoupReplacement1: false,

@@ -203,7 +203,7 @@ export class MusicCueEngine {
       // SoundManager can reconcile its now-cleared desired cue without marking a
       // perfectly valid asset as failed. A newer competing cue still rejects so
       // the stale SoundManager request cannot stop the newer active deck.
-      if (cancelled && error instanceof MusicCueSupersededError) return
+      if (error instanceof MusicCueSupersededError || cancelled) return
       throw error
     }
 
@@ -227,8 +227,9 @@ export class MusicCueEngine {
     // SoundManager promise can resolve later and its stale-success guard may stop
     // the newer active cue. Explicit stop/fade remains a quiet cancellation.
     if (generation !== this._playGeneration || this._active !== incoming || incoming.stopped) {
-      if (incoming.stopCause === 'cancelled') return
-      throw new MusicCueSupersededError()
+      // A newer request now owns playback. This is expected during fast route
+      // or phase changes and must not be reported as a failed music asset.
+      return
     }
   }
 
@@ -257,6 +258,17 @@ export class MusicCueEngine {
     if (this._standby) this._stopDeck(this._standby, 'cancelled')
     this._active = null
     this._standby = null
+  }
+
+  suspend(): void {
+    this._active?.element.pause()
+    if (this._standby && this._standby !== this._active) this._standby.element.pause()
+  }
+
+  async resume(): Promise<void> {
+    const deck = this._active
+    if (!deck || deck.stopped || deck.element.ended) return
+    await deck.element.play()
   }
 
   private _assertPendingOwnership(deck: CueDeck, generation: number): void {
@@ -418,10 +430,7 @@ export class MusicCueEngine {
     const media = element as HTMLAudioElement & { preservesPitch?: boolean }
     media.playbackRate = preset === 'final_round' ? 1.03 : preset === 'dream' ? 0.96 : 1
     if ('preservesPitch' in media) media.preservesPitch = true
-    // A neutral cue must remain a direct, full-range media element. Creating a
-    // filter graph for it would leave the browser's default low-pass filter in
-    // the signal path and make clear ceremony music sound distant.
-    if (preset === 'none') return
+
     const AudioContextCtor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -434,7 +443,7 @@ export class MusicCueEngine {
       if (context.state !== 'running') return
 
       const graph = this._ensureEffectGraph(element, context)
-      if (!graph) return
+      if (!graph || preset === 'none') return
 
       const filter = graph.filter
       filter.gain.value = 0

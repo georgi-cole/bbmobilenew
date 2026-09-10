@@ -13,7 +13,10 @@ function makePlayer(id: string, name: string, isUser = false): Player {
 
 function coLohFixture(stage: 'replacement' | 'voting' | 'tie'): GameState {
   const state = createInitialGameState({ seed: 7331 })
-  const players = state.players.map((player) => ({ ...player, status: 'active' as const }))
+  const players: Player[] = state.players.map((player) => ({
+    ...player,
+    status: 'active' as const,
+  }))
   const ensure = (id: string, name: string, isUser = false) => {
     const existing = players.find((player) => player.id === id)
     if (existing) return existing
