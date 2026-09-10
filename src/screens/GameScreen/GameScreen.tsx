@@ -40,6 +40,7 @@ import {
 } from '../../store/saveStatePersistence'
 import { selectSocialSummaryOpen } from '../../store/uiSlice'
 import TvZone from '../../components/ui/TvZone'
+import TVLog from '../../components/TVLog/TVLog'
 import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
 import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog'
 import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
@@ -73,7 +74,7 @@ import SpectatorView from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
-import { getProfilePhotoAvatarId, resolveAvatar } from '../../utils/avatar'
+import { getProfilePhotoAvatarId, joinPublicAssetPath, resolveAvatar } from '../../utils/avatar'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player } from '../../types'
 import { isSurvivorRunTerminal } from '../../modes/survivorRun'
@@ -235,6 +236,7 @@ export default function GameScreen() {
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
   const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
+  const [rosterLogOpen, setRosterLogOpen] = useState(false)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
   const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
@@ -659,7 +661,11 @@ export default function GameScreen() {
     return {
       id: p.id,
       name: p.name,
-      avatarUrl: getProfilePhotoAvatarId(p.avatar) ? p.avatar : resolveAvatar(p),
+      avatarUrl: getProfilePhotoAvatarId(p.avatar)
+        ? p.avatar
+        : p.id === 'lia' && /\blia\s*&\s*ali\b/i.test(p.name)
+          ? joinPublicAssetPath('assets/skins/Ali_lia_avatar.webp')
+          : resolveAvatar(p),
       statuses,
       finalRank: (p.finalRank ?? null) as 1 | 2 | 3 | null,
       isEvicted,
@@ -2577,9 +2583,20 @@ export default function GameScreen() {
           returningPlayerId={battleBackReturnId}
           onReturnAnimationDone={handleBattleBackReturnDone}
           showRosterLogLauncher={
-            responsiveGameLayout.rosterHeaderMode === 'persistent' && !inlineHouseFeedVisible
+            responsiveGameLayout.rosterHeaderMode === 'persistent' &&
+            !inlineHouseFeedVisible &&
+            !showVoteResults &&
+            !showPublicSaveReveal &&
+            !showDemocraciaResults
           }
+          onOpenGameLog={() => setRosterLogOpen(true)}
           showNames={rosterNamesRevealed}
+        />
+        <TVLog
+          entries={game.tvFeed}
+          launcherSuppressed
+          forceOpen={rosterLogOpen}
+          onLogOpenChange={setRosterLogOpen}
         />
         {previewPlayer && (
           <HouseguestInfoDialog player={previewPlayer} onClose={() => setPreviewPlayer(null)} />

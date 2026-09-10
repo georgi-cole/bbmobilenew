@@ -315,10 +315,9 @@ const TWIN_SHOCK_LIA_FLIP_AVATAR = resolveSkinAssetPathWithFallback(
   'Lia_flip_avatar.webp',
   'Lia_avatar.webp'
 )
-const TWIN_SHOCK_COMBINED_AVATAR = resolveSkinAssetPathWithFallback(
-  'Ali_lia_avatar.webp',
-  'Ali_avatar.webp'
-)
+// Keep the combined portrait as a stable public path so a live session can
+// pick it up even when the asset was added after the dev server started.
+const TWIN_SHOCK_COMBINED_AVATAR = 'assets/skins/Ali_lia_avatar.webp'
 const TWIN_SHOCK_LIA_POOL_ENTRY = {
   id: TWIN_SHOCK_LIA_ID,
   name: 'Lia',
@@ -446,9 +445,7 @@ export function createInitialGameState(options?: {
   twinShockConsumed?: boolean
   seed?: number
 }): GameState {
-  const twinShockConsumed = options?.twinShockConsumed === true
   const seed = options?.seed ?? 42
-  const freshPlayers = buildInitialPlayers(twinShockConsumed)
   const freshSettings = loadSettings()
   const broadcastConfig = loadBroadcastConfig()
   // Guest mode never persists archives — treat as an empty history so guest
@@ -457,6 +454,11 @@ export function createInitialGameState(options?: {
   const seasonArchives: SeasonArchive[] = isGuest
     ? []
     : (loadSeasonArchives(archiveKeyForActiveProfile()) ?? [])
+  const priorTwinShockConsumed = seasonArchives.some(
+    (archive) => archive.twinShockConsumed === true
+  )
+  const twinShockConsumed = options?.twinShockConsumed === true || priorTwinShockConsumed
+  const freshPlayers = buildInitialPlayers(twinShockConsumed)
   const season = nextSeasonNumber(seasonArchives)
   const expansionDebugAccess = import.meta.env.DEV || canAccessSpecialSettings()
   const forceClassicLocal = import.meta.env.DEV && import.meta.env.VITE_FORCE_CLASSIC === 'true'
@@ -727,6 +729,7 @@ export function createInitialGameState(options?: {
     coLohIds: null,
     awaitingCoLohNomination: false,
     coLohNomineeByCoLohId: null,
+    coLohReplacementOwnerId: null,
     awaitingPosTieBreak: false,
   }
 }
@@ -4013,9 +4016,11 @@ const gameSlice = createSlice({
       // ranking; immunity never grants anyone the power to name a backup.
       if (isVoxPopuliActive(state)) return
       const id = action.payload
+      const coLohOwnerId = state.coLohReplacementOwnerId ?? state.lohId
+      const coLohIds = state.coLohIds ?? []
       // Eligibility guard: reject LOH, POS holder, already-nominated players, or the player saved by the veto
       if (
-        id === state.lohId ||
+        (coLohIds.length > 0 ? coLohIds.includes(id) : id === state.lohId) ||
         id === state.posWinnerId ||
         state.nomineeIds.includes(id) ||
         !isEligibleReplacementNominee(state, id)
@@ -4023,11 +4028,12 @@ const gameSlice = createSlice({
         return
       }
       const player = state.players.find((p) => p.id === id)
-      const lohPlayer = state.players.find((p) => p.id === state.lohId)
+      const lohPlayer = state.players.find((p) => p.id === coLohOwnerId)
       if (!player || !lohPlayer) return
 
       appendNominee(state, id)
       state.replacementNeeded = false
+      state.coLohReplacementOwnerId = null
       state.povSavedId = null
       // VIP: advance stage after first replacement (stage 1 → 2) or second replacement (stage 3 → -1)
       if (state.specialVeto?.activeType === 'vip') {
@@ -4405,6 +4411,39 @@ const gameSlice = createSlice({
 
       // LOH must name a replacement. During Cupid's Arrow, a human coholder
       // represents the whole LOH pair even when their AI partner won the comp.
+      const coLohDay = (state.coLohIds?.length ?? 0) >= 2
+      if (coLohDay) {
+        const ownerId = Object.entries(state.coLohNomineeByCoLohId ?? {}).find(
+          ([, nomineeId]) => nomineeId === saveId
+        )?.[0]
+        const owner = ownerId ? state.players.find((player) => player.id === ownerId) : null
+        const alive = state.players.filter(
+          (player) => player.status !== 'evicted' && player.status !== 'jury'
+        )
+        const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: ownerId })
+        if (owner && eligible.length > 0) {
+          if (owner.isUser) {
+            state.coLohReplacementOwnerId = owner.id
+            state.replacementNeeded = true
+            pushEvent(
+              state,
+              `${owner.name} must name the replacement for their nominee. 🎯`,
+              'game'
+            )
+          } else {
+            const replacement = seededPick(mulberry32(state.seed), eligible)
+            appendNominee(state, replacement.id)
+            state.coLohNomineeByCoLohId ??= {}
+            state.coLohNomineeByCoLohId[owner.id] = replacement.id
+            pushEvent(
+              state,
+              `${owner.name} named ${replacement.name} as their replacement nominee. 🎯`,
+              'game'
+            )
+          }
+        }
+        return
+      }
       const lohDecisionPlayer = getCupidHumanCoholder(state, state.lohId) ?? lohPlayer
       lohPlayer = lohDecisionPlayer
       if (lohDecisionPlayer?.isUser) {
@@ -5163,6 +5202,7 @@ const gameSlice = createSlice({
         weekDecided: action.payload.week,
         candidates: action.payload.candidates,
         winnerId: null,
+        returnAnimationPending: false,
       }
       state.battleBack = bb
       state.twistActive = true
@@ -5223,7 +5263,13 @@ const gameSlice = createSlice({
       bb.active = false
       bb.used = true
       bb.winnerId = winnerId
+      bb.returnAnimationPending = true
       state.twistActive = false
+    },
+
+    /** Consume the persisted return marker after the reverse animation settles. */
+    consumeBattleBackReturn(state) {
+      if (state.battleBack) state.battleBack.returnAnimationPending = false
     },
 
     /**
@@ -5235,6 +5281,7 @@ const gameSlice = createSlice({
       if (state.battleBack) {
         state.battleBack.active = false
         state.battleBack.used = true
+        state.battleBack.returnAnimationPending = false
       }
       state.twistActive = false
     },
@@ -5477,7 +5524,14 @@ const gameSlice = createSlice({
           state,
           'The Big Eye sends chocolates to the house in a small attempt to lift the mood. 🍫',
           'game',
-          { major: 'depression_shock_chocolates' }
+          {
+            major: 'depression_shock_chocolates',
+            broadcastPriority: 'major',
+            broadcastLevel: 'major',
+            broadcastCampaign: 'depression_shock',
+            forceOnTv: true,
+            week: state.week,
+          }
         )
         pushEvent(
           state,
@@ -5576,8 +5630,7 @@ const gameSlice = createSlice({
 
       if (state.specialVeto.awaitingCoupReplacement1) {
         if (id === state.posWinnerId || state.nomineeIds.includes(id)) return
-        if (!isEligibleReplacementNominee(state, id, 2, { allowLoh: true, actorId: povHolder?.id }))
-          return
+        if (!isEligibleReplacementNominee(state, id, 2, { actorId: povHolder?.id })) return
         state.specialVeto.coupReplacement1Id = id
         state.specialVeto.awaitingCoupReplacement1 = false
         state.specialVeto.awaitingCoupReplacement2 = true
@@ -5591,7 +5644,6 @@ const gameSlice = createSlice({
         if (id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return
         if (!alive.some((p) => p.id === id)) return
         const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 2, {
-          allowLoh: true,
           actorId: povHolder?.id,
         }).filter((player) => player.id !== rep1Id)
         if (!availableSecondChoices.some((player) => player.id === id)) return
@@ -6320,7 +6372,9 @@ const gameSlice = createSlice({
       // Derive the next season number from the maximum archived seasonIndex so the
       // result is stable even after the 50-entry archive cap or non-contiguous entries.
       const season = nextSeasonNumber(seasonArchives)
-      const twinShockConsumed = state.twinShockConsumed === true
+      const twinShockConsumed =
+        state.twinShockConsumed === true ||
+        seasonArchives.some((archive) => archive.twinShockConsumed === true)
       // Use the factory to build a fully fresh initial state from the latest
       // persisted settings/profile, then override seed, seasonArchives, and season.
       const fresh = {
@@ -7426,6 +7480,7 @@ const gameSlice = createSlice({
           state.coLohIds = null
           state.awaitingCoLohNomination = false
           state.coLohNomineeByCoLohId = null
+          state.coLohReplacementOwnerId = null
           state.awaitingPosTieBreak = false
           const tribunalPhaseBegins =
             !isVoxPopuliActive(state) &&
@@ -8296,7 +8351,12 @@ const gameSlice = createSlice({
           // as a joint two-vote ballot.
           state.votes = {}
           const voteMap = state.votes
-          const lohIds = new Set(getCupidRoleIds(state, state.lohId))
+          // Democracia co-leaders share the office: neither co-LOH may cast
+          // an eviction ballot. Keep the legacy single-LOH/Cupid behavior for
+          // every other ceremony.
+          const lohIds = new Set(
+            state.coLohIds?.length ? state.coLohIds : getCupidRoleIds(state, state.lohId)
+          )
           const eligibleVoters = alive.filter(
             (p) => !lohIds.has(p.id) && !state.nomineeIds.includes(p.id)
           )
@@ -9072,6 +9132,7 @@ export const {
   completeFinale,
   activateBattleBack,
   completeBattleBack,
+  consumeBattleBackReturn,
   dismissBattleBack,
   openBattleBackCompetition,
   activateDoubleEviction,
@@ -9625,10 +9686,9 @@ function resolveDebugBlockers(
 
   if (game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) {
     const eligible = getReplacementEligiblePlayers(game, alive, 2, {
-      allowLoh: true,
       actorId: game.posWinnerId,
     })
-    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', { preferLoh: true })
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest')
     if (replacement) {
       dispatch(submitCoupReplacement(replacement.id))
     } else {

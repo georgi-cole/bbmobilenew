@@ -353,6 +353,7 @@ export const DEFAULT_PHASE_MUSIC_POLICY: Readonly<Record<Phase, MusicSelection>>
 
 export const DEFAULT_SCENE_MUSIC_POLICY: Readonly<Record<MusicScene, MusicSelection>> = {
   none: INHERIT_MUSIC,
+  house_menu: INHERIT_MUSIC,
   season_recap: musicTrack('season_recap', BUILT_IN_MUSIC_CUE_IDS.seasonRecap),
   tribunal_part1: musicTrack('jury_voting', BUILT_IN_MUSIC_CUE_IDS.tribunal),
   jury_voting: musicTrack('jury_voting', BUILT_IN_MUSIC_CUE_IDS.tribunal),

@@ -36,6 +36,7 @@ export {
 } from './publicOpinionSlice'
 export { computeCycleDeltas } from './PublicOpinionService'
 export { generateDirectionsForCycle } from './PublicDirectionService'
+export { createAudienceRequestStory } from './publicRequestNarratives'
 export { resolvePublicJuryVote } from './PublicFinalVoteService'
 export { generateDailyPublicUpdate } from './PublicHeadlineService'
 export type {

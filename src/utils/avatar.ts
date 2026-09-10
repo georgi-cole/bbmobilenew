@@ -122,7 +122,7 @@ function joinAvatarPath(file: string): string {
   return `assets/skins/${file}`
 }
 
-function joinPublicAssetPath(path: string): string {
+export function joinPublicAssetPath(path: string): string {
   const base = getBase()
   if (base && base !== '/') {
     return `${base}/${path}`
@@ -165,6 +165,12 @@ export function resolveAvatarCandidates(
   player: Pick<Player, 'id' | 'name' | 'avatar'> & Partial<Pick<Player, 'isUser'>>
 ): string[] {
   const candidates: string[] = []
+
+  // Persisted games created before the combined portrait was wired may still
+  // carry Lia's old single portrait. The revealed twin identity is canonical.
+  if (player.id === 'lia' && /\blia\s*&\s*ali\b/i.test(player.name)) {
+    candidates.push(joinPublicAssetPath('assets/skins/Ali_lia_avatar.webp'))
+  }
 
   if (getProfilePhotoAvatarId(player.avatar)) {
     candidates.push(getDicebear(player.name))

@@ -22,8 +22,9 @@ import {
   holdRealityAllianceMeeting,
   signalRealityRomance,
 } from './relationshipForms'
-import { upsertRealityPromise, upsertRealityThread } from './commitments'
+import { upsertRealityPromise, upsertRealitySecret, upsertRealityThread } from './commitments'
 import { createRealityContestantState } from './state'
+import { resolveRelationshipStoryResponse } from './relationshipAutonomy'
 import type {
   RealityContext,
   RealityDirection,
@@ -280,6 +281,26 @@ function applyRealityLifecycle(input: {
           tags: [...event.tags, action.id === 'rumor' ? 'rumour' : 'claim'],
         },
       })
+    }
+  }
+
+  if (action.id === 'expose_secret') {
+    const secret = Object.values(domain.secrets)
+      .filter(
+        (entry) =>
+          entry.status === 'SECRET' &&
+          entry.knowerIds.includes(interaction.actorId) &&
+          domain.facts[entry.truthFactId]?.subjectIds.some((id) => event.targetIds.includes(id))
+      )
+      .sort((left, right) => left.id.localeCompare(right.id))[0]
+    if (secret) {
+      upsertRealitySecret(domain, {
+        ...secret,
+        status: 'EXPOSED',
+        exposure: 1,
+      })
+      event.tags.push('EXPOSED')
+      event.relatedFactIds.push(secret.truthFactId)
     }
   }
 
@@ -785,6 +806,16 @@ export function resolvePendingHumanRealityInteraction(input: {
     action,
     subjectId: input.subjectId,
     responses: [{ targetId: input.humanId, response: humanResponse }],
+  })
+  resolveRelationshipStoryResponse(domain, {
+    ownerId: actorId,
+    targetId: input.humanId,
+    intent: interaction.intentTags
+      .find((tag) => tag.startsWith('RELATIONSHIP_INTENT:'))
+      ?.replace('RELATIONSHIP_INTENT:', ''),
+    responseType: input.responseType,
+    eventId: event.id,
+    at: { day: input.day, phase: input.phase },
   })
   interaction.status = 'RESOLVED'
   interaction.selectedResponseId = humanResponse.kind

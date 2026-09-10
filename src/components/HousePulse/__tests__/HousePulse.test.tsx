@@ -12,7 +12,7 @@ const players = [
 ] as Player[]
 
 describe('HousePulse', () => {
-  it('opens My Game first and labels stream counts as visible shifts', () => {
+  it('opens the visibility-bound Reality stream first and keeps the private read one tap away', () => {
     render(
       <HousePulse
         network={createInitialDramaSocialNetwork()}
@@ -27,9 +27,14 @@ describe('HousePulse', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /my pulse/i }))
-    expect(screen.getByText('Your private game read')).toBeInTheDocument()
-    expect(screen.getByText('visible shifts')).toBeInTheDocument()
+    expect(
+      screen.getByText(/major developments will appear here when you see them/i)
+    ).toBeInTheDocument()
+    expect(screen.getByText('current developments')).toBeInTheDocument()
     expect(screen.queryByText('house stories')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'My Game' }))
+    expect(screen.getByText('Your private game read')).toBeInTheDocument()
   })
 
   it('presents a causal stream, continuing stories and concrete intel known to the player', () => {

@@ -20,6 +20,8 @@ export interface MusicResolverState {
   game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
     mode?: GameMode
     status?: RootState['game']['status']
+    voteResults?: RootState['game']['voteResults']
+    evictionOverlayPlayerId?: RootState['game']['evictionOverlayPlayerId']
     seasonFinale?: Pick<NonNullable<RootState['game']['seasonFinale']>, 'phase'> | null
   }
   challenge: {
@@ -35,6 +37,7 @@ export interface MusicResolverState {
   social: Pick<RootState['social'], 'panelOpen' | 'incomingInboxOpen'>
   ui: {
     musicScene: MusicScene
+    houseMenuOpen?: boolean
     confessionalMusicMode?: ConfessionalMusicMode
   }
 }
@@ -67,7 +70,7 @@ export function resolveDesiredMusicCue(
     config
   )
 
-  return (
+  const cue =
     resolveSpecialMusicCue({
       baseCue,
       gamePhase: state.game.phase,
@@ -75,7 +78,17 @@ export function resolveDesiredMusicCue(
       confessionalMusicMode: state.ui.confessionalMusicMode ?? 'normal',
       config,
     }) ?? baseCue
-  )
+
+  const revealActive = state.game.voteResults != null || state.game.evictionOverlayPlayerId != null
+  const roomEffectActive = state.ui.houseMenuOpen === true || revealActive
+  if (!roomEffectActive || !cue.playbackCue || cue.playbackCue.effectPreset !== 'none') {
+    return cue
+  }
+
+  return {
+    ...cue,
+    playbackCue: { ...cue.playbackCue, effectPreset: 'muffled' },
+  }
 }
 
 export function resolveDesiredMusic(

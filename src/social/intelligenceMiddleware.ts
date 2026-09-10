@@ -15,6 +15,9 @@ import type { SocialActionLogEntry, SocialState } from './types'
 
 const INTEL_ACTIONS = new Set(['observe', 'read_the_room', 'snoop_around', 'eavesdrop'])
 const SAFE_TV_PHASES = new Set(['social_1', 'social_2'])
+// House Whispers remain available to the intelligence system and logs, but
+// are intentionally not promoted to the faux-TV broadcast layer.
+const HOUSE_WHISPERS_ON_FAUX_TV = false
 type IntelligenceApi = { dispatch: Dispatch<UnknownAction> }
 type IntelligenceRootState = {
   game: GameState
@@ -214,6 +217,7 @@ function maybeBroadcastWhisper(
   before: IntelligenceRootState,
   state: IntelligenceRootState
 ) {
+  if (!HOUSE_WHISPERS_ON_FAUX_TV) return
   if (
     !isSocialSeason(state) ||
     state.game.week < 4 ||

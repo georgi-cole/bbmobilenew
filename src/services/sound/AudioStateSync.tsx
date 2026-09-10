@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { shallowEqual, useSelector } from 'react-redux'
 import type { RootState } from '../../store/store'
 import { SoundManager } from './SoundManager'
@@ -16,6 +16,7 @@ import {
   isGameplayAudioHandoffPending,
   subscribeToGameplayAudioHandoff,
 } from './audioRouteOwnership'
+import { HOUSE_MENU_AUDIO_EVENT } from './audioRouteOwnership'
 
 type AudioStateSyncProps = {
   hash: string
@@ -50,6 +51,14 @@ export default function AudioStateSync({ hash }: AudioStateSyncProps) {
     isGameplayAudioHandoffPending,
     isGameplayAudioHandoffPending
   )
+  const [houseMenuOpen, setHouseMenuOpen] = useState(false)
+  useEffect(() => {
+    const onHouseMenuAudio = (event: Event) => {
+      setHouseMenuOpen((event as CustomEvent<{ open?: boolean }>).detail?.open === true)
+    }
+    window.addEventListener(HOUSE_MENU_AUDIO_EVENT, onHouseMenuAudio)
+    return () => window.removeEventListener(HOUSE_MENU_AUDIO_EVENT, onHouseMenuAudio)
+  }, [])
   const musicMix = useSelector((root: RootState) => resolveRuntimeMusicMix(root.game))
   const musicState = useSelector(
     (root: RootState) => ({
@@ -117,10 +126,11 @@ export default function AudioStateSync({ hash }: AudioStateSyncProps) {
       },
       ui: {
         musicScene: musicState.musicScene,
+        houseMenuOpen,
         confessionalMusicMode: musicState.confessionalMusicMode,
       },
     }),
-    [musicState]
+    [houseMenuOpen, musicState]
   )
 
   const desiredCue = useMemo<ResolvedMusicCue>(() => {

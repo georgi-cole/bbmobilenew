@@ -99,8 +99,11 @@ export default function DepressionShockController() {
   }, [dispatch, game, runtime])
 
   const presentation = useMemo(
-    () => getDepressionShockPresentation(runtime, game.week, game.phase),
-    [game.phase, game.week, runtime]
+    () =>
+      game.battleBack?.returnAnimationPending
+        ? null
+        : getDepressionShockPresentation(runtime, game.week, game.phase),
+    [game.battleBack?.returnAnimationPending, game.phase, game.week, runtime]
   )
   const visualPhase = useMemo(
     () => getDepressionShockVisualPhase(runtime, game.week, game.phase),
@@ -161,8 +164,9 @@ export default function DepressionShockController() {
     const alreadyQueuedForShock = game.tvFeed.some(
       (event) =>
         event.meta?.week === game.week &&
-        event.meta?.broadcastTemplateId === broadcast.templateId &&
-        event.meta?.depressionShockQueued === true
+        (event.meta?.broadcastTemplateId === broadcast.templateId ||
+          event.meta?.major === broadcast.major) &&
+        (event.meta?.depressionShockQueued === true || event.meta?.major === broadcast.major)
     )
     if (alreadyQueuedForShock) return
     dispatch({
@@ -199,7 +203,9 @@ export default function DepressionShockController() {
         meta: {
           major: 'depression_shock_end',
           broadcastPriority: 'critical',
+          broadcastLevel: 'critical',
           broadcastCampaign: 'depression_shock',
+          forceOnTv: true,
           week: game.week,
         },
       },

@@ -46,4 +46,58 @@ describe('generateDirectionsForCycle', () => {
     expect(breakRequest?.relatedPlayerId).toBe('nova')
     expect(breakRequest?.actionHint).toContain('nova')
   })
+
+  it('writes AI requests as audience story beats without exposing the action route', () => {
+    const directions = generateDirectionsForCycle({
+      players: [player('lux'), player('dex')],
+      week: 4,
+      seed: 22,
+      count: 2,
+    })
+
+    expect(directions).toHaveLength(2)
+    expect(
+      directions.every((direction) =>
+        /(?:The public|Viewers|The feeds|The audience)/.test(direction.description)
+      )
+    ).toBe(true)
+    expect(directions.every((direction) => direction.actionHint === undefined)).toBe(true)
+    expect(directions.every((direction) => direction.rationale === undefined)).toBe(true)
+  })
+
+  it('keeps relationship stories open long enough to develop', () => {
+    const relationshipRequest = Array.from({ length: 40 }, (_, index) =>
+      generateDirectionsForCycle({
+        players: [player('test', true), player('nova')],
+        week: 4,
+        seed: index + 1,
+        count: 1,
+        prioritizeHuman: true,
+        relationships: {
+          test: { nova: { affinity: 0, tags: [] } },
+          nova: { test: { affinity: 0, tags: [] } },
+        },
+      }).find((direction) => direction.type === 'get_closer')
+    ).find(Boolean)
+
+    expect(relationshipRequest).toBeDefined()
+    expect(relationshipRequest?.expiresAtWeek).toBe(6)
+  })
+
+  it('does not issue a second live request to a player already carrying one', () => {
+    const directions = generateDirectionsForCycle({
+      players: [player('test', true), player('nova')],
+      week: 4,
+      seed: 8,
+      count: 2,
+      prioritizeHuman: true,
+      excludePlayerIds: ['test'],
+      relationships: {
+        test: { nova: { affinity: 0, tags: [] } },
+        nova: { test: { affinity: 0, tags: [] } },
+      },
+    })
+
+    expect(directions.every((direction) => direction.playerId !== 'test')).toBe(true)
+  })
 })

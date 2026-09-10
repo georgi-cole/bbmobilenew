@@ -2,7 +2,6 @@ import type { Middleware, MiddlewareAPI, Dispatch, UnknownAction } from '@reduxj
 import type { Player } from '../types'
 import {
   initializeProfiles,
-  setProfileApprovals,
   updateApproval,
   addDirection,
   pruneExpiredDirections,
@@ -13,7 +12,6 @@ import {
 import { publicOpinionConfig } from './publicOpinionConfig'
 import { generateDirectionsForCycle } from './PublicDirectionService'
 import { resolveEventMissionProgress, type MissionGameEvent } from './MissionActionMapper'
-import { mulberry32 } from '../store/rng'
 import {
   computeNominationReactions,
   computeEvictionReactions,
@@ -106,12 +104,6 @@ interface StateWithGame {
   }
 }
 
-const OPENING_PUBLIC_APPROVAL_MIN = 42
-const OPENING_PUBLIC_APPROVAL_MAX = 57
-// Golden-ratio bit mixer keeps the opening approval shuffle deterministic while
-// avoiding obvious patterns from adjacent game seeds.
-const OPENING_PUBLIC_APPROVAL_SEED_MIX = 0x9e3779b9
-
 function audienceMoodVariance(input: {
   seed: number
   playerId: string
@@ -138,45 +130,6 @@ function audienceMoodVariance(input: {
   const normalized = (hash / 0xffffffff) * 2 - 1
   const range = Math.min(1.5, Math.max(0.35, Math.abs(input.delta) * 0.3))
   return Math.round(normalized * range * 10) / 10
-}
-
-function isDefaultOpeningProfile(profile: unknown): boolean {
-  const candidate = profile as {
-    approval?: number
-    previousApproval?: number
-    seasonApprovals?: number[]
-    completedDirectionCount?: number
-    cumulativePositiveDelta?: number
-  }
-
-  return (
-    candidate?.approval === publicOpinionConfig.DEFAULT_APPROVAL &&
-    candidate?.previousApproval === publicOpinionConfig.DEFAULT_APPROVAL &&
-    Array.isArray(candidate?.seasonApprovals) &&
-    candidate.seasonApprovals.length === 1 &&
-    candidate.seasonApprovals[0] === publicOpinionConfig.DEFAULT_APPROVAL &&
-    (candidate?.completedDirectionCount ?? 0) === 0 &&
-    (candidate?.cumulativePositiveDelta ?? 0) === 0
-  )
-}
-
-function shouldRandomizeOpeningApprovals(
-  profiles: Record<string, unknown>,
-  playerIds: string[]
-): boolean {
-  if (playerIds.length === 0) return false
-  return playerIds.every((playerId) => isDefaultOpeningProfile(profiles[playerId]))
-}
-
-function buildOpeningApprovalMap(players: Player[], seed: number): Record<string, number> {
-  const rng = mulberry32((seed ^ OPENING_PUBLIC_APPROVAL_SEED_MIX) >>> 0)
-  const range = OPENING_PUBLIC_APPROVAL_MAX - OPENING_PUBLIC_APPROVAL_MIN + 1
-
-  return Object.fromEntries(
-    [...players]
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((player) => [player.id, OPENING_PUBLIC_APPROVAL_MIN + Math.floor(rng() * range)])
-  )
 }
 
 function ensureProfiles(
@@ -206,20 +159,10 @@ function applyCompetitionResultPublicOpinion(
 ): void {
   if (!game) return
 
-  const profiles = ensureProfiles(store, game)
+  ensureProfiles(store, game)
   const week = game.week ?? 1
 
   if (prevPhase === 'loh_comp' && newPhase === 'loh_results') {
-    if (
-      week === 1 &&
-      shouldRandomizeOpeningApprovals(
-        profiles,
-        game.players.map((p) => p.id)
-      )
-    ) {
-      store.dispatch(setProfileApprovals(buildOpeningApprovalMap(game.players, game.seed ?? 0)))
-    }
-
     if (game.lohId) {
       const voxPopuliActive = game.voxPopuli?.status === 'active'
       store.dispatch(
@@ -271,6 +214,11 @@ function dispatchMissionProgress(
         directionId: signal.directionId,
         progressPercent: signal.newProgress,
         week: event.week,
+        progressDelta: signal.progressDelta,
+        progressKey: signal.progressKey,
+        eventType: signal.triggeredBy,
+        actionId: signal.actionId,
+        targetId: signal.targetId,
       })
     )
     if (
@@ -655,6 +603,7 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
           type: missionEventType,
           actorId,
           targetId,
+          actionId,
           week,
         })
       }
@@ -875,6 +824,9 @@ export const publicOpinionMiddleware: Middleware = (store) => (next) => (action)
             voxPopuliActive: game.voxPopuli?.status === 'active',
             prioritizeHuman: true,
             dramaMode: game.dramaSocialMode === true,
+            excludePlayerIds: (nextState.publicOpinion?.directions ?? [])
+              .filter((direction) => direction.status === 'active')
+              .map((direction) => direction.playerId),
           })
           for (const direction of newDirections) {
             store.dispatch(addDirection(direction))

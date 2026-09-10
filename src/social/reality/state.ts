@@ -158,6 +158,13 @@ export function createInitialRealityDomainState(
     voteIntents: {},
     publicPerception: {},
     juryEvaluations: [],
+    relationshipAutonomy: {
+      intents: {},
+      boundaries: {},
+      evidence: {},
+      nemeses: {},
+      reservedBeatIds: [],
+    },
   }
 }
 
@@ -207,6 +214,33 @@ export function normalizeRealityDomainState(
     publicPerception:
       input.publicPerception && isRecord(input.publicPerception) ? input.publicPerception : {},
     juryEvaluations: Array.isArray(input.juryEvaluations) ? input.juryEvaluations.slice(-500) : [],
+    relationshipAutonomy: {
+      ...base.relationshipAutonomy,
+      ...(input.relationshipAutonomy && isRecord(input.relationshipAutonomy)
+        ? input.relationshipAutonomy
+        : {}),
+      intents:
+        input.relationshipAutonomy?.intents && isRecord(input.relationshipAutonomy.intents)
+          ? input.relationshipAutonomy.intents
+          : {},
+      boundaries:
+        input.relationshipAutonomy?.boundaries && isRecord(input.relationshipAutonomy.boundaries)
+          ? input.relationshipAutonomy.boundaries
+          : {},
+      evidence:
+        input.relationshipAutonomy?.evidence && isRecord(input.relationshipAutonomy.evidence)
+          ? input.relationshipAutonomy.evidence
+          : {},
+      nemeses:
+        input.relationshipAutonomy?.nemeses && isRecord(input.relationshipAutonomy.nemeses)
+          ? input.relationshipAutonomy.nemeses
+          : {},
+      reservedBeatIds: Array.isArray(input.relationshipAutonomy?.reservedBeatIds)
+        ? input.relationshipAutonomy.reservedBeatIds
+            .slice(-240)
+            .filter((id): id is string => typeof id === 'string')
+        : [],
+    },
   }
 }
 

@@ -159,7 +159,9 @@ function responseSetFor(action: SocialActionDefinition): string {
 }
 
 function visibilityFor(action: SocialActionDefinition): RealityVisibility {
-  if (action.id.includes('public') || action.id === 'startFight') return 'HOUSE_PUBLIC'
+  if (action.id.includes('public') || action.id === 'startFight' || action.id === 'expose_secret') {
+    return 'HOUSE_PUBLIC'
+  }
   if (resolveActionTargetMode(action, true) === 'multi') return 'GROUP_VISIBLE'
   return 'PAIR_ONLY'
 }

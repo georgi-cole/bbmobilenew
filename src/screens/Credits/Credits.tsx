@@ -113,6 +113,20 @@ export default function Credits({ autoPlay = true, onComplete }: CreditsProps) {
     if (autoPlay) startVisualPlayback()
   }, [autoPlay, startVisualPlayback])
 
+  // The background video is muted and may autoplay without a gesture, while
+  // its separate soundtrack can be blocked by browser autoplay policy. Prime
+  // it at mount and retry once on the first real interaction if necessary.
+  useEffect(() => {
+    if (!autoPlay || renderFailed || isCreditsSoundtrackPlaying()) return
+    const tryStartSoundtrack = () => {
+      if (isCreditsSoundtrackPlaying()) return
+      void startCreditsSoundtrackFromGesture(getCreditsSoundtrackTime()).catch(() => undefined)
+    }
+    tryStartSoundtrack()
+    window.addEventListener('pointerdown', tryStartSoundtrack, { once: true, capture: true })
+    return () => window.removeEventListener('pointerdown', tryStartSoundtrack, true)
+  }, [autoPlay, renderFailed])
+
   useEffect(() => {
     if (!isPlaying || renderFailed) return
 

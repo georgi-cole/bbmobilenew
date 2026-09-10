@@ -96,6 +96,10 @@ type Props = {
   liveEvictionNominee?: boolean
   /** Visual name label visibility, used for the season-opening roster reveal. */
   showName?: boolean
+  /** Plays the name entrance only while the opening-day roster is still fresh. */
+  animateNameReveal?: boolean
+  /** Stable per-season key used to play an eviction strike entrance once. */
+  evictionMarkKey?: string
 }
 
 function CupidStatusBadgeIcon({ code }: { code: string }) {
@@ -188,6 +192,8 @@ export default function AvatarTile({
   depressionRecovery = false,
   liveEvictionNominee = false,
   showName = true,
+  animateNameReveal = false,
+  evictionMarkKey,
 }: Props) {
   const depressionShockPortraitMode = React.useSyncExternalStore(
     subscribeDepressionShockPortraitMode,
@@ -203,6 +209,18 @@ export default function AvatarTile({
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null)
   const isHoldActiveRef = React.useRef(false)
   const [statsOpen, setStatsOpen] = React.useState(false)
+  const [animateEvictionMark, setAnimateEvictionMark] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isEvicted || !evictionMarkKey || typeof window === 'undefined') return
+    try {
+      if (window.sessionStorage.getItem(evictionMarkKey)) return
+      window.sessionStorage.setItem(evictionMarkKey, 'shown')
+      setAnimateEvictionMark(true)
+    } catch {
+      // Storage can be unavailable in private browsing; the mark remains visible.
+    }
+  }, [evictionMarkKey, isEvicted])
   const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
   const normalAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
@@ -492,7 +510,7 @@ export default function AvatarTile({
           }
         >
           <div
-            className={`${styles.nameOverlay}${showName ? ` ${styles.nameRevealed}` : ` ${styles.nameHidden}`}`}
+            className={`${styles.nameOverlay}${showName ? (animateNameReveal ? ` ${styles.nameRevealed}` : '') : ` ${styles.nameHidden}`}`}
             aria-hidden="true"
           >
             {name}
@@ -599,7 +617,7 @@ export default function AvatarTile({
                 src={`${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}/evictionmark/evictionmark.png`}
                 alt=""
                 aria-hidden="true"
-                className={`${styles.cross}${isReturning ? ` ${styles.returningCross}` : ''}`}
+                className={`${styles.cross}${animateEvictionMark ? ` ${styles.crossAnimated}` : ''}${isReturning ? ` ${styles.returningCross}` : ''}`}
               />
             ))}
         </motion.div>

@@ -1,11 +1,11 @@
 import { SoundManager } from './SoundManager'
 
-/**
- * Small external store for the one period in which the URL is still Home but
- * gameplay is already being restored or prepared. It has no timer: the
- * handoff ends only when the App observes the actual gameplay route, or when
- * the launch is cancelled.
- */
+export const HOUSE_MENU_AUDIO_EVENT = 'audio:house-menu'
+
+export function setHouseMenuAudioEffect(open: boolean): void {
+  window.dispatchEvent(new CustomEvent(HOUSE_MENU_AUDIO_EVENT, { detail: { open } }))
+}
+
 let gameplayHandoffPending = false
 const listeners = new Set<() => void>()
 
@@ -21,8 +21,6 @@ function setPending(next: boolean): void {
 
 export function beginGameplayAudioExit(): void {
   setPending(true)
-  // This is the sole immediate stop used during an intentional launch. The
-  // controller then owns the silent handoff and the next resolved cue.
   void SoundManager.setDesiredMusic('none', 'route.gameplay-handoff')
 }
 

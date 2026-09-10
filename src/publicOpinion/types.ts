@@ -19,6 +19,16 @@ export type DirectionType =
   | 'repair_relationship'
   | 'create_chaos'
 
+export interface PublicDirectionProgressEvent {
+  /** Stable event/action key used to reduce credit for repeating one move. */
+  key: string
+  eventType: string
+  actionId?: string
+  targetId?: string
+  delta: number
+  week: number
+}
+
 export interface PublicDirection {
   id: string
   type: DirectionType
@@ -34,6 +44,8 @@ export interface PublicDirection {
   approvalDelta: number
   /** 0–100 cumulative progress toward completion (100 = complete). */
   progressPercent?: number
+  /** Small save-compatible ledger of the choices that moved this request. */
+  progressHistory?: PublicDirectionProgressEvent[]
   /** Concrete Social/Game route that can satisfy this request. */
   actionHint?: string
   /** The current game fact that made this request eligible. */
@@ -48,6 +60,10 @@ export interface PlayerPublicProfile {
   playerId: string
   approval: number
   previousApproval: number
+  /** Approval at the start of the current in-game day, for an honest daily trend. */
+  approvalAtDayStart?: number
+  /** The in-game day represented by `approvalAtDayStart`. */
+  approvalDay?: number
   seasonApprovals: number[]
   completedDirectionCount: number
   cumulativePositiveDelta: number
@@ -98,6 +114,8 @@ export interface PublicFeedEntry {
    * Undefined when the change is not attributable to a specific actor.
    */
   attributedToId?: string
+  /** Editorial weight used when the daily feed needs to make room for a bigger event. */
+  priority?: number
 }
 
 export interface PublicOpinionState {
