@@ -117,16 +117,14 @@ describe('MusicCueEngine', () => {
 
     await second
     releaseFirstPlay()
-    // Replacing a cue is ordinary navigation, not a playback failure. The
-    // caller can safely await the older request without touching the new deck.
-    await expect(first).resolves.toBeUndefined()
+    await expect(first).rejects.toMatchObject({ name: 'MusicCueSupersededError' })
 
     expect(engine.currentCue?.id).toBe('second')
     expect(engine.currentElement?.currentTime).toBe(20)
     expect(pauseSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('quietly finishes an older promoted cue that is superseded while its crossfade is running', async () => {
+  it('rejects an older promoted cue that is superseded while its crossfade is running', async () => {
     vi.useFakeTimers()
     const engine = new MusicCueEngine()
     const asset = {
@@ -143,7 +141,9 @@ describe('MusicCueEngine', () => {
       id: 'middle',
       crossfadeMs: 400,
     })
-    const middleCompletion = expect(middle).resolves.toBeUndefined()
+    const middleRejection = expect(middle).rejects.toMatchObject({
+      name: 'MusicCueSupersededError',
+    })
     await Promise.resolve()
     await Promise.resolve()
     expect(engine.currentCue?.id).toBe('middle')
@@ -156,7 +156,7 @@ describe('MusicCueEngine', () => {
     await newest
     await vi.runAllTimersAsync()
 
-    await middleCompletion
+    await middleRejection
     expect(engine.currentCue?.id).toBe('newest')
   })
 

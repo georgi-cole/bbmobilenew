@@ -34,7 +34,7 @@ function makeState(gameKey: string, phase = 'playing'): MusicResolverState {
 
 describe('centralized minigame music configuration', () => {
   it.each(GROUP_GAME_KEYS)(
-    'routes %s to its dedicated Challenge Group 1 music while playing',
+    'routes %s to the Challenge Group 1 music while playing in challenge group 1',
     (gameKey) => {
       expect(resolveDesiredMusic(makeState(gameKey), '#/game')).toBe('challenge_group_1')
     }

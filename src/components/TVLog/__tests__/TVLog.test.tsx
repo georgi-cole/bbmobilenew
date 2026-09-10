@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TVLog from '../TVLog';
 import { tease } from '../../../utils/tvLogTemplates';
@@ -203,6 +203,19 @@ describe('TVLog — refined on-demand module', () => {
     await userEvent.click(screen.getByRole('button', { name: /Open game log from Game event/i }));
     const dialog = screen.getByRole('dialog', { name: 'Game log' });
     expect(within(dialog).getByText('The nominees react to the result')).toBeDefined();
+
+    document.body.classList.remove('experiment-game-chrome-refined');
+  });
+
+  it('keeps the modal open when a separate roster Log control owns the launcher', async () => {
+    document.body.classList.add('experiment-game-chrome-refined');
+    const entries: TvEvent[] = [makeEvent({ id: 'roster', text: 'The house settles in', type: 'game' })];
+    render(<TVLog entries={entries} launcherSuppressed />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    window.dispatchEvent(new CustomEvent('tv:open-game-log'));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Game log' })).toBeDefined());
+    expect(screen.getByText('The hub settles in')).toBeDefined();
 
     document.body.classList.remove('experiment-game-chrome-refined');
   });

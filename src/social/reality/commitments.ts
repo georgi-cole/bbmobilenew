@@ -6,6 +6,7 @@ import type {
   RealitySecret,
   RealityThread,
 } from './types'
+import { recordGroundedScandalFromSecret } from './relationshipAutonomy'
 
 const PHASE_ORDER = [
   'week_start',
@@ -87,6 +88,7 @@ export function upsertRealitySecret(state: RealityDomainState, secret: RealitySe
     knowerIds: [...new Set(secret.knowerIds)],
     suspectedByIds: [...new Set(secret.suspectedByIds)],
   }
+  recordGroundedScandalFromSecret(state, secret.id)
 }
 
 export function upsertRealityThread(state: RealityDomainState, thread: RealityThread): void {

@@ -1,6 +1,5 @@
 import { CINEMATIC_AUDIO, CINEMATIC_CONFIG } from '../config/cinematicConfig'
 import { getTimelineState } from '../timeline/timeline'
-import { SoundManager } from '../../services/sound/SoundManager'
 
 let soundtrack: HTMLAudioElement | null = null
 let volumeAnimationFrame: number | null = null
@@ -42,7 +41,7 @@ const updateSoundtrackVolume = () => {
 
   const elapsed = soundtrack.currentTime - CINEMATIC_AUDIO.sourceStartInSeconds
   const duration = CINEMATIC_CONFIG.durationInFrames / CINEMATIC_CONFIG.fps
-  SoundManager.setExternalMusicVolume('cinematic:credits', soundtrack, getSoundtrackVolume(elapsed))
+  soundtrack.volume = getSoundtrackVolume(elapsed)
 
   if (elapsed >= duration) {
     soundtrack.pause()
@@ -79,7 +78,6 @@ export const startCreditsSoundtrackFromGesture = (elapsedSeconds = 0): Promise<v
   cancelVolumeAnimation()
   audio.pause()
   audio.volume = 0
-  SoundManager.claimExternalMusic('cinematic:credits', audio, CINEMATIC_AUDIO.volume)
 
   if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
     seekToCinematicTime(audio, elapsedSeconds)
@@ -93,18 +91,15 @@ export const startCreditsSoundtrackFromGesture = (elapsedSeconds = 0): Promise<v
     )
   }
 
-  return audio.play().then(
-    () => {
+  const playback = audio.play()
+  void playback
+    .then(() => {
       volumeAnimationFrame = window.requestAnimationFrame(updateSoundtrackVolume)
-    },
-    (error: unknown) => {
-      // A rejected browser play request must not leave a silent Credits element
-      // holding the entire music channel. The next genuine tap can retry it,
-      // while gameplay remains free to resume its state-selected cue.
-      SoundManager.releaseExternalMusic('cinematic:credits', audio)
-      throw error
-    }
-  )
+    })
+    .catch(() => {
+      // The caller handles playback failures; this branch prevents a duplicate unhandled rejection.
+    })
+  return playback
 }
 
 export const isCreditsSoundtrackPlaying = (): boolean =>
@@ -135,11 +130,7 @@ export const syncCreditsSoundtrackToTime = (elapsedSeconds: number, shouldPlay: 
     if (Math.abs(soundtrack.currentTime - desiredTime) > 1) {
       soundtrack.currentTime = desiredTime
     }
-    SoundManager.setExternalMusicVolume(
-      'cinematic:credits',
-      soundtrack,
-      getSoundtrackVolume(elapsedSeconds)
-    )
+    soundtrack.volume = getSoundtrackVolume(elapsedSeconds)
   }
 
   if (shouldPlay && soundtrack.paused) {
@@ -154,14 +145,13 @@ export const fadeOutCreditsSoundtrack = (durationMs: number) => {
 
   cancelVolumeAnimation()
   const audio = soundtrack
-  const initialVolume = getSoundtrackVolume(getCreditsSoundtrackTime())
+  const initialVolume = audio.volume
   const startedAt = performance.now()
   const fade = (now: number) => {
     const progress = clamp01((now - startedAt) / Math.max(1, durationMs))
-    SoundManager.setExternalMusicVolume('cinematic:credits', audio, initialVolume * (1 - progress))
+    audio.volume = initialVolume * (1 - progress)
     if (progress >= 1) {
       audio.pause()
-      SoundManager.releaseExternalMusic('cinematic:credits', audio)
       volumeAnimationFrame = null
       return
     }
@@ -177,7 +167,6 @@ export const stopCreditsSoundtrack = () => {
   }
 
   soundtrack.pause()
-  SoundManager.releaseExternalMusic('cinematic:credits', soundtrack)
   soundtrack.volume = 0
   if (soundtrack.readyState >= HTMLMediaElement.HAVE_METADATA) {
     seekToConfiguredStart(soundtrack)

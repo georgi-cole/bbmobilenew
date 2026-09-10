@@ -17,6 +17,8 @@ import {
 import type { Player } from '../../types'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
 import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
+import { createAudienceRequestStory } from '../../publicOpinion/publicRequestNarratives'
+import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import './PublicMeter.css'
 
 const DICEBEAR_HOST = 'dicebear.com'
@@ -149,10 +151,16 @@ function getAudienceMoment(
       `The challenge moved on without ${playerName}. Outside, viewers are already debating that early exit.`,
     ])
   }
-  if (/(last_place|weak_competition)/.test(reason)) {
+  if (/(last_place)/.test(reason)) {
     return variants([
       `${playerName} landed at the bottom of the board, and the audience has noticed the shaky finish.`,
       `${playerName}'s competition night went sideways. The group chat is wondering where the fight went.`,
+    ])
+  }
+  if (/(weak_competition)/.test(reason)) {
+    return variants([
+      `${playerName} had a quiet competition showing, and viewers are waiting to see a response.`,
+      `${playerName} did not make a mark in the challenge this time. The outside world is watching for the next move.`,
     ])
   }
   if (/(strong_competition|hoh_win|immunity_win|pov_win)/.test(reason)) {
@@ -177,7 +185,7 @@ function getAudienceMoment(
   }
   if (/(high_quality_social|social_warmth|positive_social|apolog|repair)/.test(reason)) {
     return actor
-      ? `${playerName} and ${actor} were seen getting unusually close, and viewers loved the chemistry.`
+      ? `${playerName} and ${actor} made an effort to clear the air, and viewers noticed the change in tone.`
       : `${playerName} worked the room with real charm tonight. Outside, a quiet fan club is starting to form.`
   }
   if (/(nomination_backlash|nominated_target|nominated)/.test(reason)) {
@@ -281,6 +289,21 @@ function getDirectionDescription(
   return target
     ? `Convince ${lohName} to nominate ${target.name}.`
     : `Convince ${lohName} to nominate a specific housemate.`
+}
+
+function getAudienceRequestDescription(
+  direction: PublicDirection,
+  players: readonly Player[]
+): string {
+  const player = players.find((candidate) => candidate.id === direction.playerId)
+  if (player?.isUser) return direction.description
+  return createAudienceRequestStory({
+    type: direction.type,
+    playerName: player?.name ?? direction.playerId,
+    relatedName: players.find((candidate) => candidate.id === direction.relatedPlayerId)?.name,
+    targetName: players.find((candidate) => candidate.id === direction.targetPlayerId)?.name,
+    seed: direction.id,
+  })
 }
 
 function PublicMeterAvatar({
@@ -540,7 +563,10 @@ export default function PublicMeter() {
               </div>
               <div className="approval-bar__info">
                 {(() => {
-                  const trend = getTrend(userProfile.approval, userProfile.previousApproval)
+                  const trend = getTrend(
+                    userProfile.approval,
+                    userProfile.approvalAtDayStart ?? userProfile.previousApproval
+                  )
                   return (
                     <span className={`approval-bar__trend ${trend.className}`}>
                       {trend.symbol}
@@ -617,7 +643,10 @@ export default function PublicMeter() {
               const player = game.players.find((p) => p.id === profile.playerId)
               const isUser = player?.isUser ?? false
               const inactive = isInactivePlayer(player)
-              const trend = getTrend(profile.approval, profile.previousApproval)
+              const trend = getTrend(
+                profile.approval,
+                profile.approvalAtDayStart ?? profile.previousApproval
+              )
               return (
                 <button
                   key={profile.playerId}
@@ -716,6 +745,9 @@ export default function PublicMeter() {
                         const player = game.players.find((p) => p.id === direction.playerId)
                         const directionSignal = getDirectionSignal(direction)
                         const isYourDirection = player?.isUser === true
+                        const progress =
+                          direction.status === 'completed' ? 100 : (direction.progressPercent ?? 0)
+                        const progressStage = getPublicRequestProgressStage(direction)
                         return (
                           <div
                             key={direction.id}
@@ -733,39 +765,38 @@ export default function PublicMeter() {
                               </span>
                             </div>
                             <p className="direction-card__description">
-                              {getDirectionDescription(
-                                direction,
-                                game.players,
-                                game.lohId,
-                                isVoxPopuli
-                              )}
+                              {isYourDirection
+                                ? getDirectionDescription(
+                                    direction,
+                                    game.players,
+                                    game.lohId,
+                                    isVoxPopuli
+                                  )
+                                : getAudienceRequestDescription(direction, game.players)}
                             </p>
-                            {direction.status === 'active' && direction.rationale && (
-                              <p className="direction-card__rationale">
-                                Why now: {direction.rationale}
-                              </p>
-                            )}
-                            {direction.status === 'active' && direction.actionHint && (
-                              <p className="direction-card__action-hint">
-                                <strong>How:</strong> {direction.actionHint}
-                              </p>
-                            )}
-                            {direction.status === 'active' && isYourDirection && (
-                              <div
-                                className="direction-card__progress"
-                                role="progressbar"
-                                aria-label="Public request progress"
-                                aria-valuenow={direction.progressPercent ?? 0}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                              >
-                                <span style={{ width: `${direction.progressPercent ?? 0}%` }} />
-                                <small>
-                                  {direction.completionLabel ?? 'Complete the requested move'} ·{' '}
-                                  {direction.progressPercent ?? 0}%
-                                </small>
-                              </div>
-                            )}
+                            {direction.status === 'active' &&
+                              isYourDirection &&
+                              direction.rationale && (
+                                <p className="direction-card__rationale">
+                                  Why now: {direction.rationale}
+                                </p>
+                              )}
+                            {(direction.status === 'active' || direction.status === 'completed') &&
+                              isYourDirection && (
+                                <div
+                                  className="direction-card__progress"
+                                  role="progressbar"
+                                  aria-label="Public request progress"
+                                  aria-valuenow={progress}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                >
+                                  <span style={{ width: `${progress}%` }} />
+                                  <small>
+                                    {progressStage.label} · {progress}%
+                                  </small>
+                                </div>
+                              )}
                             <div className="direction-card__meta">
                               <span>{getDirectionWindowLabel(direction)}</span>
                               <span className={directionSignal.className}>
@@ -872,12 +903,14 @@ export default function PublicMeter() {
               <div className="audience-dossier__request">
                 <span>Audience ask in play</span>
                 <strong>
-                  {getDirectionDescription(
-                    selectedDirections[0],
-                    game.players,
-                    game.lohId,
-                    isVoxPopuli
-                  )}
+                  {selectedPlayer?.isUser
+                    ? getDirectionDescription(
+                        selectedDirections[0],
+                        game.players,
+                        game.lohId,
+                        isVoxPopuli
+                      )
+                    : getAudienceRequestDescription(selectedDirections[0], game.players)}
                 </strong>
               </div>
             )}

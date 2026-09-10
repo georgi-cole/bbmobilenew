@@ -447,6 +447,15 @@ export function useEvictionFlow({
         addTvEvent({
           text: 'Go to the Confessional before the day is over.',
           type: 'game',
+          // This notice is emitted after the eviction cinematic, when the game
+          // is usually already in week_end. Keep it on the Faux TV even though
+          // it was not part of the phase's managed broadcast queue.
+          channels: ['tv', 'mainLog'],
+          meta: {
+            forceOnTv: true,
+            broadcastLevel: 'major',
+            announcementTitle: 'Confessional Unlocked',
+          },
         })
       )
     }

@@ -335,6 +335,8 @@ export interface BattleBackState {
   candidates: string[]
   /** ID of the winning juror who returns to the house; null before the competition resolves. */
   winnerId: string | null
+  /** Persisted handoff marker so Continue Last can replay the return animation. */
+  returnAnimationPending?: boolean
 }
 
 // ─── Double Eviction twist ────────────────────────────────────────────────────
@@ -960,6 +962,8 @@ export interface GameState {
    * Populated during co-LOH nomination; cleared on week reset.
    */
   coLohNomineeByCoLohId?: Record<string, string> | null
+  /** Co-LOH responsible for the current replacement decision, if any. */
+  coLohReplacementOwnerId?: string | null
   /**
    * On co-LOH Democracia days, if the eviction vote ties, the POS holder breaks
    * the tie instead of the LOH.  When true and the POS holder is human, a

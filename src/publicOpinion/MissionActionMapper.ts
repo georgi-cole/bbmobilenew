@@ -47,6 +47,8 @@ export interface MissionGameEvent {
   actorId: string
   /** Optional: the player who was the target of the action. */
   targetId?: string
+  /** Concrete Social move, used to reward varied interaction instead of repetition. */
+  actionId?: string
   week: number
 }
 
@@ -59,7 +61,7 @@ interface MissionTrigger {
    * for this trigger to fire.  If false (default) any target matches.
    */
   requiresRelatedTarget?: boolean
-  /** 0–100 progress contribution. */
+  /** Signed progress contribution. Harmful choices can move a request backward. */
   weight: number
 }
 
@@ -98,6 +100,8 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: true,
       weight: publicOpinionConfig.missionDirectProgressWeight,
     },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: -20 },
+    { eventType: 'showed_loyalty', requiresRelatedTarget: true, weight: -35 },
   ],
 
   // ── Protect / save a player ─────────────────────────────────────────────
@@ -132,26 +136,33 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: false,
       weight: publicOpinionConfig.missionIndirectProgressWeight,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -60 },
+    { eventType: 'nominated_target', requiresRelatedTarget: true, weight: -45 },
+    { eventType: 'voted_to_evict', requiresRelatedTarget: true, weight: -50 },
   ],
 
   // ── Get closer to a player ──────────────────────────────────────────────
   get_closer: [
-    { eventType: 'positive_social', requiresRelatedTarget: true, weight: 100 },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: 34 },
     {
       eventType: 'formed_alliance',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionDirectProgressWeight,
+      weight: 66,
     },
     {
       eventType: 'showed_loyalty',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 40,
     },
     {
       eventType: 'apologized_to',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 28,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -24 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -50 },
+    { eventType: 'broke_alliance', requiresRelatedTarget: true, weight: -40 },
   ],
 
   // ── Expose a liar / stir distrust ───────────────────────────────────────
@@ -176,6 +187,8 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: true,
       weight: publicOpinionConfig.missionIndirectProgressWeight,
     },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: -20 },
+    { eventType: 'apologized_to', requiresRelatedTarget: true, weight: -30 },
   ],
 
   // ── Repair a relationship / apologize ───────────────────────────────────
@@ -183,28 +196,33 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
     {
       eventType: 'apologized_to',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionDirectProgressWeight,
+      weight: 55,
     },
     {
       eventType: 'positive_social',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 30,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -50 },
   ],
 
   // ── Repair relationship (standalone type alias) ─────────────────────────
   repair_relationship: [
-    { eventType: 'apologized_to', requiresRelatedTarget: true, weight: 100 },
+    { eventType: 'apologized_to', requiresRelatedTarget: true, weight: 55 },
     {
       eventType: 'positive_social',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionDirectProgressWeight,
+      weight: 30,
     },
     {
       eventType: 'formed_alliance',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 30,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -50 },
+    { eventType: 'confronted_player', requiresRelatedTarget: true, weight: -20 },
   ],
 
   // ── Make a bold move ────────────────────────────────────────────────────
@@ -251,23 +269,25 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
     {
       eventType: 'showed_loyalty',
       requiresRelatedTarget: false,
-      weight: publicOpinionConfig.missionDirectProgressWeight,
+      weight: 55,
     },
     {
       eventType: 'positive_social',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 25,
     },
     {
       eventType: 'saved_from_block',
       requiresRelatedTarget: false,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 70,
     },
     {
       eventType: 'voted_to_evict',
       requiresRelatedTarget: false,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 40,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -60 },
   ],
 
   // ── Break up an alliance ────────────────────────────────────────────────
@@ -284,37 +304,44 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: true,
       weight: publicOpinionConfig.missionIndirectProgressWeight,
     },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'showed_loyalty', requiresRelatedTarget: true, weight: -35 },
   ],
 
   // ── Reinforce an alliance ───────────────────────────────────────────────
   reinforce_alliance: [
-    { eventType: 'formed_alliance', requiresRelatedTarget: true, weight: 100 },
-    { eventType: 'showed_loyalty', requiresRelatedTarget: true, weight: 100 },
+    { eventType: 'formed_alliance', requiresRelatedTarget: true, weight: 45 },
+    { eventType: 'showed_loyalty', requiresRelatedTarget: true, weight: 55 },
     {
       eventType: 'positive_social',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 25,
     },
     {
       eventType: 'saved_from_block',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 70,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -60 },
+    { eventType: 'broke_alliance', requiresRelatedTarget: true, weight: -70 },
   ],
 
   // ── Align with a player ─────────────────────────────────────────────────
   align_with: [
-    { eventType: 'formed_alliance', requiresRelatedTarget: true, weight: 100 },
+    { eventType: 'formed_alliance', requiresRelatedTarget: true, weight: 70 },
     {
       eventType: 'positive_social',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 30,
     },
     {
       eventType: 'showed_loyalty',
       requiresRelatedTarget: true,
-      weight: publicOpinionConfig.missionIndirectProgressWeight,
+      weight: 40,
     },
+    { eventType: 'negative_social', requiresRelatedTarget: true, weight: -25 },
+    { eventType: 'betrayal', requiresRelatedTarget: true, weight: -50 },
   ],
 
   // ── Confront a rival ────────────────────────────────────────────────────
@@ -330,6 +357,8 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: true,
       weight: publicOpinionConfig.missionIndirectProgressWeight,
     },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: -20 },
+    { eventType: 'apologized_to', requiresRelatedTarget: true, weight: -25 },
   ],
 
   // ── Influence the LOH ───────────────────────────────────────────────────
@@ -409,6 +438,8 @@ const MISSION_TRIGGER_MAP: Record<DirectionType, MissionTrigger[]> = {
       requiresRelatedTarget: false,
       weight: publicOpinionConfig.missionIndirectProgressWeight,
     },
+    { eventType: 'positive_social', requiresRelatedTarget: true, weight: -15 },
+    { eventType: 'apologized_to', requiresRelatedTarget: true, weight: -25 },
   ],
 
   // ── Create chaos (alias) ────────────────────────────────────────────────
@@ -451,6 +482,12 @@ export interface MissionProgressSignal {
   isComplete: boolean
   /** The triggering event type for logging / UI. */
   triggeredBy: MissionGameEventType
+  /** Signed amount applied by this event after repeat damping. */
+  progressDelta: number
+  /** Stable key persisted on the request to detect repeated moves. */
+  progressKey: string
+  actionId?: string
+  targetId?: string
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -495,7 +532,22 @@ export function resolveEventMissionProgress(
     if (!match) continue
 
     const currentProgress = direction.progressPercent ?? 0
-    const newProgress = Math.min(100, currentProgress + match.weight)
+    const progressKey = `${event.type}:${event.actionId ?? event.type}:${event.targetId ?? 'any'}`
+    const priorUses = (direction.progressHistory ?? []).filter(
+      (entry) => entry.key === progressKey && entry.delta > 0
+    ).length
+    const repeatablePositive = match.weight > 0 && match.weight < threshold
+    const multiplier = !repeatablePositive
+      ? 1
+      : priorUses === 0
+        ? 1
+        : priorUses < publicOpinionConfig.repeatedMissionMoveCreditLimit
+          ? publicOpinionConfig.repeatedMissionMoveMultiplier
+          : 0
+    const requestedDelta = Math.round(match.weight * multiplier)
+    const newProgress = Math.min(100, Math.max(0, currentProgress + requestedDelta))
+    const progressDelta = newProgress - currentProgress
+    if (progressDelta === 0) continue
     const isComplete = newProgress >= threshold
 
     signals.push({
@@ -503,6 +555,10 @@ export function resolveEventMissionProgress(
       newProgress,
       isComplete,
       triggeredBy: event.type,
+      progressDelta,
+      progressKey,
+      actionId: event.actionId,
+      targetId: event.targetId,
     })
   }
 

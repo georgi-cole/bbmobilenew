@@ -322,7 +322,7 @@ export const GENERATED_AUDIO_ASSETS = [
     "relativePath": "music/public_voting.mp3",
     "preload": false,
     "volume": 0.6,
-    "loop": false,
+    "loop": true,
     "trackId": "public_voting",
     "displayName": "Public Voting",
     "fallbackTrack": "jury_voting",

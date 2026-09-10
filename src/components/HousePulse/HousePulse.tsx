@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Player } from '../../types'
-import { buildSocialStoryStream } from '../../social/socialStoryStream'
+import { buildSocialStoryStream, type SocialStoryBeat } from '../../social/socialStoryStream'
 import type { DramaSocialNetwork, RelationshipsMap, SocialActionLogEntry } from '../../social/types'
 import type { RealityDomainState } from '../../social/reality'
 import RealityLedger from '../RealityLedger/RealityLedger'
@@ -71,6 +71,79 @@ function arcStageCopy(stage: string): string {
   }
 }
 
+function titleCase(value: string): string {
+  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+/**
+ * Reality Mode only reports events the player took part in, witnessed, or that
+ * happened openly in the house. It intentionally does not turn hidden AI
+ * actions into a "story" before the player could have learned them.
+ */
+function buildRealityPulseStream(
+  reality: RealityDomainState,
+  humanId: string,
+  currentWeek: number,
+  playerName: (id: string) => string
+): SocialStoryBeat[] {
+  return reality.events
+    .filter(
+      (event) =>
+        event.day === currentWeek &&
+        (event.participantIds.includes(humanId) ||
+          event.witnessIds.includes(humanId) ||
+          event.visibility === 'HOUSE_PUBLIC' ||
+          event.visibility === 'CEREMONY_PUBLIC')
+    )
+    .slice()
+    .sort((left, right) => right.sequence - left.sequence)
+    .slice(0, 5)
+    .map((event) => {
+      const signal = `${event.type} ${event.tags.join(' ')}`.toLowerCase()
+      const targetNames = event.targetIds.filter((id) => id !== humanId).map(playerName)
+      const actor = event.actorId && event.actorId !== humanId ? playerName(event.actorId) : null
+      const kind: SocialStoryBeat['kind'] = /betray|conflict|confront|target|nomination/.test(signal)
+        ? 'conflict'
+        : /repair|apolog|reassure/.test(signal)
+          ? 'repair'
+          : /alliance|deal|promise|vote|strategy/.test(signal)
+            ? 'strategy'
+            : event.visibility === 'HOUSE_PUBLIC' || event.visibility === 'CEREMONY_PUBLIC'
+              ? 'public'
+              : 'bond'
+      const title =
+        event.visibility === 'CEREMONY_PUBLIC'
+          ? 'A public decision landed'
+          : /nomination/.test(signal)
+            ? 'Nominations changed the room'
+            : /safety|pov/.test(signal)
+              ? 'Safety changed the board'
+              : titleCase(event.type)
+      const subject = actor ?? (event.actorId === humanId ? 'You' : 'The house')
+      const detail = targetNames.length ? ` involving ${targetNames.join(' and ')}` : ''
+      return {
+        id: event.id,
+        kind,
+        title,
+        text:
+          event.visibility === 'HOUSE_PUBLIC' || event.visibility === 'CEREMONY_PUBLIC'
+            ? `${subject} made a visible move${detail}. The house has seen it.`
+            : `${subject} was part of a moment${detail} that you experienced firsthand.`,
+        participantIds: event.participantIds,
+        week: event.day,
+        phase: event.phase,
+        severity:
+          event.visibility === 'CEREMONY_PUBLIC' || /nomination|eviction|safety/.test(signal)
+            ? 'major'
+            : event.outcome === 'SYSTEM'
+              ? 'quiet'
+              : 'notable',
+        createdAt: event.sequence,
+        dedupeKey: event.id,
+      }
+    })
+}
+
 export default function HousePulse({
   network,
   players,
@@ -82,8 +155,11 @@ export default function HousePulse({
   reality,
 }: HousePulseProps) {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<PulseTab>(reality ? 'ledger' : 'stream')
-  const playerName = (id: string) => players.find((player) => player.id === id)?.name ?? 'Unknown'
+  const [tab, setTab] = useState<PulseTab>('stream')
+  const playerName = useCallback(
+    (id: string) => players.find((player) => player.id === id)?.name ?? 'Unknown',
+    [players]
+  )
 
   const knownArcs = useMemo(
     () =>
@@ -107,16 +183,28 @@ export default function HousePulse({
   )
   const storyBeats = useMemo(
     () =>
-      buildSocialStoryStream({
-        network,
-        actionHistory,
-        relationships,
-        weekStartRelSnapshot,
-        players,
-        humanId,
-        currentWeek,
-      }),
-    [actionHistory, currentWeek, humanId, network, players, relationships, weekStartRelSnapshot]
+      reality
+        ? buildRealityPulseStream(reality, humanId, currentWeek, playerName)
+        : buildSocialStoryStream({
+            network,
+            actionHistory,
+            relationships,
+            weekStartRelSnapshot,
+            players,
+            humanId,
+            currentWeek,
+          }),
+    [
+      actionHistory,
+      currentWeek,
+      humanId,
+      network,
+      playerName,
+      players,
+      reality,
+      relationships,
+      weekStartRelSnapshot,
+    ]
   )
   const activeStories = knownArcs.filter((arc) => arc.status === 'active').length
   const latest = storyBeats[0]
@@ -146,22 +234,31 @@ export default function HousePulse({
 
         <div className="house-pulse__stats">
           <span>
-            <strong>{activeStories}</strong> storylines
+            <strong>{reality ? storyBeats.length : activeStories}</strong>{' '}
+            {reality ? 'current developments' : 'storylines'}
           </span>
           <span>
-            <strong>{storyBeats.length}</strong> visible shifts
+            <strong>{storyBeats.length}</strong> {reality ? 'known moments' : 'visible shifts'}
           </span>
           <span>
             <strong>
-              {knownRumours.filter((rumour) => rumour.status === 'circulating').length}
+              {reality
+                ? Object.values(reality.facts).filter(
+                    (fact) =>
+                      fact.participantIds.includes(humanId) ||
+                      fact.witnessIds.includes(humanId) ||
+                      fact.visibility === 'HOUSE_PUBLIC' ||
+                      fact.visibility === 'CEREMONY_PUBLIC'
+                  ).length
+                : knownRumours.filter((rumour) => rumour.status === 'circulating').length}
             </strong>{' '}
-            known claims
+            {reality ? 'known facts' : 'known claims'}
           </span>
         </div>
 
         <nav className="house-pulse__tabs" aria-label="My Pulse sections">
           {(reality
-            ? (['ledger', 'stream', 'stories', 'intel'] as PulseTab[])
+            ? (['stream', 'ledger'] as PulseTab[])
             : (['stream', 'stories', 'intel'] as PulseTab[])
           ).map((item) => (
             <button
@@ -195,8 +292,9 @@ export default function HousePulse({
               ))
             ) : (
               <p className="house-pulse__empty">
-                The house is still reading the room. Visible patterns will appear here as actions
-                repeat or consequences land.
+                {reality
+                  ? 'The house is still reading the room. Major developments will appear here when you see them.'
+                  : 'The house is still reading the room. Visible patterns will appear here as actions repeat or consequences land.'}
               </p>
             ))}
 
@@ -301,21 +399,25 @@ export default function HousePulse({
         type="button"
         className="house-pulse__summary"
         onClick={() => {
-          setTab(reality ? 'ledger' : 'stream')
+          setTab('stream')
           setOpen(true)
         }}
       >
         <span className="house-pulse__mark">◉</span>
         <span>
           <strong>My Pulse</strong>
-          <small>My Game · {storyBeats.length} visible shifts</small>
+          <small>
+            {reality
+              ? `Today · ${storyBeats.length} ${storyBeats.length === 1 ? 'development' : 'developments'}`
+              : `My Game · ${storyBeats.length} visible shifts`}
+          </small>
         </span>
         <em>
           {reality
             ? 'Your people reads, commitments and known game facts.'
             : (latest?.text ?? 'The house is still reading the room.')}
         </em>
-        <b>Open My Game</b>
+        <b>{reality ? 'Open My Pulse' : 'Open My Game'}</b>
       </button>
       {modal && createPortal(modal, document.body)}
     </>

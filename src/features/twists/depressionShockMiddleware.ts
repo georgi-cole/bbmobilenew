@@ -5,7 +5,9 @@ import {
   consumeDepressionShockFightRoll,
   invertStrategicRelationshipRow,
   isDepressionShockActive,
+  loadDepressionShockState,
   pickDepressionShockFightPair,
+  saveDepressionShockState,
   shouldDepressionShockTriggerSurpriseDecision,
 } from './depressionShock'
 
@@ -19,6 +21,43 @@ type DepressionShockRootState = {
 type DispatchApi = Pick<MiddlewareAPI, 'dispatch'>
 
 let pendingSurprise: { gameId: string; week: number; kind: 'nomination' | 'safety' } | null = null
+
+/**
+ * Keep the persisted lifecycle record aligned with legacy Redux activation and
+ * restore actions. The controller reads the persisted record first; without
+ * this bridge a Redux activation can be immediately mirrored back to inactive.
+ */
+function syncCanonicalFromLegacy(game: GameState): void {
+  const legacy = game.depressionShock
+  if (!legacy) return
+  const current = loadDepressionShockState(game.gameId)
+
+  if (legacy.activeDay === 1 || legacy.activeDay === 2) {
+    const activatedDay = legacy.activatedWeek ?? game.week - (legacy.activeDay - 1)
+    if (current.status === 'active' && current.activatedDay === activatedDay) return
+    saveDepressionShockState({
+      ...current,
+      status: 'active',
+      rollPassed: true,
+      queuedDay: null,
+      activatedDay,
+      completedDay: null,
+      endingSeen: false,
+      introSeen: legacy.activeDay === 2,
+      day2Seen: false,
+    })
+    return
+  }
+
+  if (legacy.completed && current.status !== 'completed') {
+    saveDepressionShockState({
+      ...current,
+      status: 'completed',
+      completedDay: game.week,
+      endingSeen: true,
+    })
+  }
+}
 
 function activePlayers(game: GameState) {
   return game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
@@ -209,5 +248,9 @@ export const depressionShockMiddleware: Middleware = (api) => (next) => (action)
     return result
   }
 
-  return next(action)
+  const result = next(action)
+  if (type === 'game/activateDepressionShock' || type === 'game/hydrateGame') {
+    syncCanonicalFromLegacy((api.getState() as DepressionShockRootState).game)
+  }
+  return result
 }

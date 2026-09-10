@@ -95,7 +95,8 @@ function buildArchive(
   season: number,
   summaries: PlayerSeasonSummary[],
   cupidArrowActivated: boolean,
-  voxPopuliActivated: boolean
+  voxPopuliActivated: boolean,
+  twinShockConsumed: boolean
 ): SeasonArchive {
   return {
     seasonIndex: season,
@@ -104,6 +105,7 @@ function buildArchive(
     playerSummaries: summaries,
     cupidArrowActivated,
     voxPopuliActivated,
+    twinShockConsumed,
   }
 }
 
@@ -122,6 +124,7 @@ export default function GameOver() {
   const voxPopuliActivated = useAppSelector(
     (s) => s.game.voxPopuli?.activatedSeason === s.game.season
   )
+  const twinShockConsumed = useAppSelector((state) => state.game.twinShockConsumed === true)
   const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? [])
   const favoriteWinnerId = useAppSelector((s) => s.game.favoritePlayer?.winnerId ?? null)
   const social = useAppSelector((s) => s.game.social)
@@ -177,7 +180,7 @@ export default function GameOver() {
     if (!archivedRef.current) {
       archivedRef.current = true
       dispatch(
-        archiveSeason(buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated))
+        archiveSeason(buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated, twinShockConsumed))
       )
     }
   }

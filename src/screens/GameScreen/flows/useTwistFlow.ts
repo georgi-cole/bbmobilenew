@@ -450,6 +450,16 @@ export function useTwistFlow({
   const battleBackRetryOfferWinnerId = battleBackUi.retryOfferWinnerId
 
   const showBattleBack = battleBackActive && battleBackCompetitionActive
+  useEffect(() => {
+    if (
+      !battleBack ||
+      battleBack.active ||
+      !battleBack.returnAnimationPending ||
+      !battleBack.winnerId
+    )
+      return
+    setBattleBackReturnId(battleBack.winnerId)
+  }, [battleBack])
   const battleBackAttemptSeed = useMemo(
     () => (game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0,
     [battleBackAttemptIndex, game.seed]
@@ -624,6 +634,7 @@ export function useTwistFlow({
   const handleBattleBackReturnDone = useCallback(() => {
     const returningPlayer = game.players.find((player) => player.id === battleBackReturnId)
     setBattleBackReturnId(null)
+    dispatch({ type: 'game/consumeBattleBackReturn' })
     if (!returningPlayer) {
       dispatch(advance())
       return

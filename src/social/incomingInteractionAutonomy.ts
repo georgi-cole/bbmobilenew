@@ -11,7 +11,7 @@
 
 import { normalizeAffinity } from './affinityUtils'
 import { socialConfig } from './socialConfig'
-import { scheduleIncomingInteraction } from './socialSlice'
+import { replaceRealityDomain, scheduleIncomingInteraction } from './socialSlice'
 import {
   computeSocialMemoryAffinityBias,
   computeSocialMemoryIntensity,
@@ -38,6 +38,7 @@ import { getEffectiveSocialMode } from './socialMode'
 import { getRemoteScenarioLines, isIncomingInteractionActionable } from './socialRuntimeConfig'
 import { formatIncomingIntel, selectIntelFactForActor } from './intelligenceSystem'
 import type { RealityDomainState } from './reality/types'
+import { planRelationshipStoryBeat, reserveRelationshipBeat } from './reality/relationshipAutonomy'
 import type {
   IncomingInteraction,
   IncomingInteractionDeliveryState,
@@ -83,6 +84,7 @@ export interface AutonomyContext {
   /** Seeded random function (returns value in [0,1)). Defaults to Math.random. */
   random?: () => number
   reality?: RealityDomainState
+  romanceEnabled?: boolean
   intelligenceDeliveries?: IntelligenceDelivery[]
 }
 
@@ -91,7 +93,7 @@ export interface AutonomyStore {
   dispatch: (action: unknown) => unknown
   getState: () => {
     settings?: {
-      gameUX?: { dramaMode?: boolean }
+      gameUX?: { dramaMode?: boolean; romanceStorylines?: boolean }
     }
     vip?: {
       isActive?: boolean
@@ -159,10 +161,18 @@ type InteractionScenarioKey =
   | 'alliance_reassurance'
   | 'generic_gossip'
   | 'generic_check_in'
+  | 'relationship_friendship_check_in'
+  | 'relationship_alliance_follow_up'
+  | 'relationship_romance_check_in'
+  | 'relationship_confidant_check_in'
+  | 'relationship_frustration_follow_up'
+  | 'relationship_repair_follow_up'
 
 interface InteractionPlan {
   type: IncomingInteractionType
   scenarioKey: InteractionScenarioKey
+  relationshipIntent?: string
+  relationshipBeatId?: string
 }
 
 const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
@@ -645,6 +655,37 @@ function resolveIncomingInteractionPlan(
     plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' }
   }
 
+  if (
+    !plan &&
+    context.reality &&
+    ['week_start', 'social_1', 'social_2', 'loh_results'].includes(context.phase)
+  ) {
+    const beat = planRelationshipStoryBeat(context.reality, {
+      ownerId: actorId,
+      targetId: playerId,
+      at: { day: context.week, phase: context.phase },
+      romanceEnabled: context.romanceEnabled,
+    })
+    if (beat) {
+      plan = {
+        type:
+          beat.intent === 'RECRUIT'
+            ? 'alliance_proposal'
+            : beat.storyFamily === 'conflict'
+              ? 'warning'
+              : 'check_in',
+        scenarioKey: beat.scenarioKey,
+        relationshipIntent: beat.intent,
+        relationshipBeatId: `relationship-beat:${actorId}:${playerId}:${beat.intent}:${context.week}`,
+      }
+    }
+  }
+  if (
+    plan?.relationshipBeatId &&
+    context.reality?.relationshipAutonomy.reservedBeatIds.includes(plan.relationshipBeatId)
+  ) {
+    plan = null
+  }
   if (!plan) {
     plan = fallbackInteractionPlan(context.phase, constraints, signals)
   }
@@ -1081,6 +1122,36 @@ const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
     'Just checking in. This week feels different already.',
     'I figured it was worth touching base for a second.',
   ],
+  relationship_friendship_check_in: [
+    'I keep finding myself looking for you when the house gets loud. I wanted to check in.',
+    'We have had a few real conversations lately. I do not want to let that fade into background noise.',
+    'I feel more comfortable with you than I expected. Where is your head at?',
+  ],
+  relationship_alliance_follow_up: [
+    'We have been circling the same ideas for a while. I need to know whether we are actually working together.',
+    'I can protect a real partner, but I need a clearer read on where I stand with you.',
+    'The house is shifting again. If we are serious, this is where we start showing it.',
+  ],
+  relationship_romance_check_in: [
+    'I have been thinking about our conversations more than I probably should. I wanted to be honest about that.',
+    'There is something different when it is just us. Am I reading that wrong?',
+    'I do not want to make this awkward, but I feel a pull toward you that is hard to ignore.',
+  ],
+  relationship_confidant_check_in: [
+    'You have felt like one of the few people I can speak honestly with. Can I trust you with something?',
+    'I have been holding something in. You are the person I keep thinking of telling.',
+    'I value your read more than most people in here. Can I be real with you for a minute?',
+  ],
+  relationship_frustration_follow_up: [
+    'I keep telling myself we are fine, but something between us is not adding up. I need to talk about it.',
+    'I do not want to turn this into a fight, but I still do not understand where I stand with you.',
+    'We left something unresolved. Pretending it did not happen is making it worse for me.',
+  ],
+  relationship_repair_follow_up: [
+    'I do not like where things have landed between us. I would rather try to fix it than let it harden.',
+    'I have had time to think, and I do not want one bad moment to define us if it does not have to.',
+    'I am not asking us to forget it. I am asking whether there is a way back from it.',
+  ],
 }
 
 function buildInteractionTextContext(
@@ -1329,6 +1400,7 @@ export function scheduleIncomingInteractionsForPhase(
           entry.week === week
       ).length,
     reality: contextOverride?.reality ?? socialState.reality,
+    romanceEnabled: state.settings?.gameUX?.romanceStorylines !== false,
     intelligenceDeliveries:
       contextOverride?.intelligenceDeliveries ?? socialState.intelligenceDeliveries ?? [],
     random:
@@ -1505,6 +1577,8 @@ export function scheduleIncomingInteractionsForPhase(
       mode: useVoxDrama ? 'drama' : 'normal',
       payload: {
         scenarioKey: plan.scenarioKey,
+        ...(plan.relationshipIntent ? { relationshipIntent: plan.relationshipIntent } : {}),
+        ...(plan.relationshipBeatId ? { relationshipBeatId: plan.relationshipBeatId } : {}),
         variantFamilyId: textResult.variantFamilyId,
         variantId: textResult.variantId,
         actorStatus: actor.status,
@@ -1621,6 +1695,13 @@ export function scheduleIncomingInteractionsForPhase(
       scheduledForPhase: slot.scheduledForPhase,
       detail: `${slot.deliveryReason ?? 'unknown'};scenario=${plan.scenarioKey}`,
     })
+
+    if (plan.relationshipBeatId && context.reality) {
+      const domain = structuredClone(context.reality)
+      if (!reserveRelationshipBeat(domain, plan.relationshipBeatId)) continue
+      context.reality = domain
+      store.dispatch(replaceRealityDomain(domain))
+    }
 
     store.dispatch(
       scheduleIncomingInteraction({

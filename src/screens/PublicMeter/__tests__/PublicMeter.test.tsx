@@ -9,6 +9,7 @@ import publicOpinionReducer, {
   initializeProfiles,
 } from '../../../publicOpinion/publicOpinionSlice'
 import type { PublicDirection } from '../../../publicOpinion/types'
+import { createAudienceRequestStory } from '../../../publicOpinion/publicRequestNarratives'
 import PublicMeter from '../PublicMeter'
 
 function makeStore() {
@@ -89,5 +90,55 @@ describe('PublicMeter tabs', () => {
     expect(screen.getByText('Charisma')).not.toBeNull()
     expect(screen.getByText('Game')).not.toBeNull()
     expect(screen.getByText('Integrity')).not.toBeNull()
+  })
+
+  it('keeps action instructions out of request cards and presents AI requests as audience stories', () => {
+    const store = makeStore()
+    const players = store.getState().game.players
+    const human = players.find((player) => player.isUser)!
+    const ai = players.find((player) => !player.isUser)!
+    const expectedStory = createAudienceRequestStory({
+      type: 'get_closer',
+      playerName: ai.name,
+      relatedName: human.name,
+      seed: `dir-${ai.id}`,
+    })
+    act(() => {
+      store.dispatch(initializeProfiles(players.map((player) => player.id)))
+      store.dispatch(
+        addDirection(
+          makeDirection(human.id, {
+            actionHint: 'Use Social → Clear the Air.',
+            rationale: 'This remains useful context for your own request.',
+          })
+        )
+      )
+      store.dispatch(
+        addDirection(
+          makeDirection(ai.id, {
+            type: 'get_closer',
+            relatedPlayerId: human.id,
+            description: 'Legacy instruction that should not be shown to viewers.',
+            actionHint: 'Use Social → Share a story.',
+            rationale: 'Legacy internal rationale.',
+          })
+        )
+      )
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/public-meter?tab=requests']}>
+        <Provider store={store}>
+          <Routes>
+            <Route path="/public-meter" element={<PublicMeter />} />
+          </Routes>
+        </Provider>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText(expectedStory)).not.toBeNull()
+    expect(screen.queryByText(/How:/)).toBeNull()
+    expect(screen.queryByText('Why now: Legacy internal rationale.')).toBeNull()
+    expect(screen.getByText('Why now: This remains useful context for your own request.')).not.toBeNull()
   })
 })

@@ -1,4 +1,5 @@
 import { normalizeAffinity } from './affinityUtils'
+import { getIncomingDialogueBeat } from './incomingDialogueOutcomeBank'
 import { getAuthoredIncomingSceneOutcome } from './incomingSceneOutcomeBank'
 import { getSocialPersonality } from './socialPersonalityBank'
 import type { SocialMemoryDelta } from './socialMemory'
@@ -149,6 +150,24 @@ const SCENE_CHOICES: Record<string, readonly ChoiceLabels[]> = {
     ['Be honest', 'Ask them back', 'Keep some distance', 'Wrap it up'],
     ['Let them in', 'Keep it light', 'Set a boundary', 'Leave it there'],
   ],
+  relationship_friendship_check_in: [
+    ['Let them in', 'Ask how they are', 'Keep it friendly', 'Leave it for now'],
+  ],
+  relationship_alliance_follow_up: [
+    ['Work together', 'Ask for time', 'Do not pitch me again', 'End the talk'],
+  ],
+  relationship_romance_check_in: [
+    ['See where this goes', 'Keep it light', 'Keep this platonic', 'Leave it for now'],
+  ],
+  relationship_confidant_check_in: [
+    ['Hear them out', 'Ask for context', 'Do not confide in me', 'Change the subject'],
+  ],
+  relationship_frustration_follow_up: [
+    ['Talk it through', 'Ask for time', 'Do not push this', 'Walk away'],
+  ],
+  relationship_repair_follow_up: [
+    ['Try to repair it', 'Take some space', 'Keep your distance', 'End the talk'],
+  ],
 }
 
 const SCENE_DEFINITIONS: Record<string, SceneDefinition> = {
@@ -212,6 +231,36 @@ const SCENE_DEFINITIONS: Record<string, SceneDefinition> = {
   alliance_reassurance: { topic: 'the state of your alliance', stakes: 'meaningful', kind: 'bond' },
   generic_gossip: { topic: 'a house rumour', stakes: 'meaningful', kind: 'intel' },
   generic_check_in: { topic: 'where things stand', stakes: 'quiet', kind: 'bond' },
+  relationship_friendship_check_in: {
+    topic: 'the connection that has been building between you',
+    stakes: 'meaningful',
+    kind: 'bond',
+  },
+  relationship_alliance_follow_up: {
+    topic: 'whether the two of you are actually working together',
+    stakes: 'meaningful',
+    kind: 'strategy',
+  },
+  relationship_romance_check_in: {
+    topic: 'whether there may be something more between you',
+    stakes: 'meaningful',
+    kind: 'bond',
+  },
+  relationship_confidant_check_in: {
+    topic: 'whether they can trust you with something personal',
+    stakes: 'meaningful',
+    kind: 'bond',
+  },
+  relationship_frustration_follow_up: {
+    topic: 'the unresolved tension between you',
+    stakes: 'high',
+    kind: 'conflict',
+  },
+  relationship_repair_follow_up: {
+    topic: 'repairing what went wrong between you',
+    stakes: 'meaningful',
+    kind: 'bond',
+  },
 }
 
 const FALLBACK_SCENE: SceneDefinition = {
@@ -431,7 +480,16 @@ export function resolveIncomingResponse(
         input.fromName
       )}`
     : consequenceFor(stance, scene.kind, input.fromName, mutualAffinity)
-  const outcomeText = `${phasePressure(input.phase)}you ${action}. ${consequence}`
+  const dialogueBeat = getIncomingDialogueBeat({
+    scenarioKey: typeof scenarioKey === 'string' ? scenarioKey : undefined,
+    responseType: input.responseType,
+    responseLabel: input.responseLabel,
+    fromName: input.fromName,
+    subjectName: input.subjectName,
+    seed,
+  })
+  const dialogue = dialogueBeat ? ` ${input.fromName} says, ${dialogueBeat}` : ''
+  const outcomeText = `${phasePressure(input.phase)}you ${action}.${dialogue} ${consequence}`
 
   return {
     actorDelta,

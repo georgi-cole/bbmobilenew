@@ -82,6 +82,12 @@ export const publicOpinionConfig = {
   missionDirectProgressWeight: 70,
   /** Progress weight awarded for an indirect / social action toward a mission. */
   missionIndirectProgressWeight: 30,
+  /** A repeated copy of the same social move contributes only this fraction once. */
+  repeatedMissionMoveMultiplier: 0.4,
+  /** After this many uses, repeating the same move no longer advances a request. */
+  repeatedMissionMoveCreditLimit: 2,
+  /** Maximum number of progress changes retained on each request. */
+  missionProgressHistoryLimit: 12,
 
   // ── Event-driven update config ─────────────────────────────────────────────
 
@@ -92,19 +98,20 @@ export const publicOpinionConfig = {
    */
   feedBudgetPerDay: 6,
 
+  /** Day one is an introduction: the outside world only spotlights its clearest moments. */
+  feedBudgetOpeningDay: 2,
+
   /**
-   * Advisory priority level for each event type (higher = more important).
-   * This value is advisory and can be used by callers to prefer higher-priority
-   * events when enforcing the daily feed budget; the current budget gate itself
-   * does not reorder or reselect events by priority.
+   * Editorial priority level for each event type (higher = more important).
+   * When a day is full, a larger event can replace a lower-priority feed card.
    */
   eventFeedPriority: {
-    eviction: 3,
-    nomination: 2,
-    public_save: 2,
-    pov_save: 1,
-    hoh_win: 1,
-    pov_win: 1,
+    eviction: 5,
+    nomination: 4,
+    public_save: 4,
+    pov_save: 4,
+    hoh_win: 3,
+    pov_win: 3,
   } as Record<string, number>,
 
   /**

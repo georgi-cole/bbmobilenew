@@ -28,7 +28,10 @@ export interface MusicTransitionPolicy {
   fadeInMs: number
   postGameHoldMs: number
   fadeOutMs: number
-  /** Documents that this minigame uses a managed entry/exit transition. */
+  /**
+   * When true, AudioStateSync retains exclusive ownership through the hold and
+   * fade instead of immediately yielding to the parent phase track.
+   */
   managedLifecycle: boolean
 }
 
@@ -85,14 +88,6 @@ export interface AudioEventCue {
   soundKey: string | null
   /** Optional per-event volume override. The category master still applies. */
   volume?: number
-  /** Optional segment start within the sound file. */
-  startAtSec?: number
-  /** Optional maximum playback time from the event trigger. */
-  durationMs?: number
-  fadeInMs?: number
-  fadeOutMs?: number
-  /** Per-event duplicate suppression window. */
-  dedupeMs?: number
 }
 
 export interface MusicContextPolicy {
@@ -181,128 +176,8 @@ export function musicTrack(track: NonSilentMusicTrack, cueId?: string): MusicSel
 }
 
 const COMPETITION_MUSIC = musicTrack('competition')
-
-export const BUILT_IN_MUSIC_CUE_IDS = {
-  competitionToNominations: 'ceremony:competition-to-nominations',
-  nominations: 'ceremony:nominations-soft-exit',
-  safety: 'ceremony:power-of-safety',
-  elimination: 'ceremony:elimination',
-  confessional: 'confessional:room-loop',
-  confessionalVoteCommit: 'confessional:vote-commit',
-  tribunal: 'finale:tribunal',
-  seasonRecap: 'finale:season-recap',
-  publicVoting: 'finale:public-voting',
-  finalModal: 'finale:final-modal',
-  introHub: 'route:intro-hub',
-} as const
-
-/**
- * Shipped cue contracts. Keeping these in the configuration document makes
- * ceremony seek points and transitions visible and overridable in Music Manager.
- */
-export const DEFAULT_MUSIC_CUES: Readonly<Record<string, MusicCueDefinition>> = {
-  [BUILT_IN_MUSIC_CUE_IDS.competitionToNominations]: {
-    ...createDefaultMusicCue('competition'),
-    id: BUILT_IN_MUSIC_CUE_IDS.competitionToNominations,
-    displayName: 'Competition bed — hold to nominations',
-    fadeOutMs: 650,
-    crossfadeMs: 650,
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.nominations]: {
-    ...createDefaultMusicCue('nominations'),
-    id: BUILT_IN_MUSIC_CUE_IDS.nominations,
-    displayName: 'Nominations ceremony — soft exit',
-    fadeOutMs: 1000,
-    crossfadeMs: 650,
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.safety]: {
-    ...createDefaultMusicCue('move_into_me_instrumental_general'),
-    id: BUILT_IN_MUSIC_CUE_IDS.safety,
-    displayName: 'Power of Safety ceremony — Move Into Me',
-    startAtSec: 1,
-    fadeInMs: 900,
-    fadeOutMs: 1000,
-    crossfadeMs: 900,
-    restartPolicy: 'restart',
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.elimination]: {
-    ...createDefaultMusicCue('move_into_me_instrumental_general'),
-    id: BUILT_IN_MUSIC_CUE_IDS.elimination,
-    displayName: 'Elimination ceremony — Move Into Me',
-    startAtSec: 114,
-    fadeInMs: 900,
-    fadeOutMs: 1500,
-    crossfadeMs: 900,
-    restartPolicy: 'restart',
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.confessional]: {
-    ...createDefaultMusicCue('move_into_me_confessional'),
-    id: BUILT_IN_MUSIC_CUE_IDS.confessional,
-    displayName: 'Confessional room loop',
-    startAtSec: 168,
-    endAtSec: 215,
-    loopStartSec: 168,
-    loopEndSec: 215,
-    fadeInMs: 700,
-    fadeOutMs: 700,
-    crossfadeMs: 500,
-    restartPolicy: 'restart',
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.confessionalVoteCommit]: {
-    ...createDefaultMusicCue('move_into_me_confessional'),
-    id: BUILT_IN_MUSIC_CUE_IDS.confessionalVoteCommit,
-    displayName: 'Confessional vote seal',
-    startAtSec: 146,
-    endAtSec: 215,
-    loopStartSec: 168,
-    loopEndSec: 215,
-    fadeInMs: 250,
-    fadeOutMs: 700,
-    crossfadeMs: 300,
-    restartPolicy: 'restart',
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.tribunal]: {
-    ...createDefaultMusicCue('jury_voting'),
-    id: BUILT_IN_MUSIC_CUE_IDS.tribunal,
-    displayName: 'Tribunal atmosphere',
-    fadeInMs: 400,
-    fadeOutMs: 400,
-    crossfadeMs: 400,
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.seasonRecap]: {
-    ...createDefaultMusicCue('season_recap'),
-    id: BUILT_IN_MUSIC_CUE_IDS.seasonRecap,
-    displayName: 'Season recap',
-    fadeInMs: 400,
-    fadeOutMs: 400,
-    crossfadeMs: 400,
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.publicVoting]: {
-    ...createDefaultMusicCue('public_voting', false),
-    id: BUILT_IN_MUSIC_CUE_IDS.publicVoting,
-    displayName: 'Public voting presentation',
-    fadeInMs: 400,
-    fadeOutMs: 400,
-    crossfadeMs: 400,
-    restartPolicy: 'restart',
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.finalModal]: {
-    ...createDefaultMusicCue('final_modal'),
-    id: BUILT_IN_MUSIC_CUE_IDS.finalModal,
-    displayName: 'Final results',
-    fadeInMs: 500,
-    fadeOutMs: 600,
-    crossfadeMs: 500,
-  },
-  [BUILT_IN_MUSIC_CUE_IDS.introHub]: {
-    ...createDefaultMusicCue('introhub'),
-    id: BUILT_IN_MUSIC_CUE_IDS.introHub,
-    displayName: 'Intro Hub route',
-    fadeInMs: 500,
-    fadeOutMs: 600,
-    crossfadeMs: 600,
-  },
-}
+const NOMINATIONS_MUSIC = musicTrack('nominations')
+const VETO_MUSIC = musicTrack('veto')
 
 /**
  * Exhaustive base policy for the canonical game phase union. Adding a new
@@ -316,27 +191,21 @@ export const DEFAULT_PHASE_MUSIC_POLICY: Readonly<Record<Phase, MusicSelection>>
   loh_results: COMPETITION_MUSIC,
   democracia_vote: SILENT_MUSIC,
   democracia_results: SILENT_MUSIC,
-  social_1: musicTrack('competition', BUILT_IN_MUSIC_CUE_IDS.competitionToNominations),
-  nominations: musicTrack('nominations', BUILT_IN_MUSIC_CUE_IDS.nominations),
-  nomination_results: musicTrack('nominations', BUILT_IN_MUSIC_CUE_IDS.nominations),
-  pre_veto_public_save: musicTrack('nominations', BUILT_IN_MUSIC_CUE_IDS.nominations),
+  social_1: SILENT_MUSIC,
+  nominations: NOMINATIONS_MUSIC,
+  nomination_results: NOMINATIONS_MUSIC,
+  pre_veto_public_save: NOMINATIONS_MUSIC,
   pos_comp_announcement: SILENT_MUSIC,
   pos_comp: COMPETITION_MUSIC,
   pos_results: COMPETITION_MUSIC,
-  pos_ceremony: musicTrack('move_into_me_instrumental_general', BUILT_IN_MUSIC_CUE_IDS.safety),
-  pos_ceremony_results: musicTrack(
-    'move_into_me_instrumental_general',
-    BUILT_IN_MUSIC_CUE_IDS.safety
-  ),
+  pos_ceremony: VETO_MUSIC,
+  pos_ceremony_results: VETO_MUSIC,
   // Keep the Safety Ceremony bed continuous through final pitches, the live
   // vote, the elimination reveal, and the closing message for the day.
-  social_2: musicTrack('move_into_me_instrumental_general', BUILT_IN_MUSIC_CUE_IDS.safety),
-  live_vote: musicTrack('move_into_me_instrumental_general', BUILT_IN_MUSIC_CUE_IDS.elimination),
-  eviction_results: musicTrack(
-    'move_into_me_instrumental_general',
-    BUILT_IN_MUSIC_CUE_IDS.elimination
-  ),
-  week_end: musicTrack('move_into_me_instrumental_general', BUILT_IN_MUSIC_CUE_IDS.elimination),
+  social_2: VETO_MUSIC,
+  live_vote: VETO_MUSIC,
+  eviction_results: VETO_MUSIC,
+  week_end: VETO_MUSIC,
   final4_eviction: SILENT_MUSIC,
   final3: SILENT_MUSIC,
   final3_comp1: SILENT_MUSIC,
@@ -353,10 +222,11 @@ export const DEFAULT_PHASE_MUSIC_POLICY: Readonly<Record<Phase, MusicSelection>>
 
 export const DEFAULT_SCENE_MUSIC_POLICY: Readonly<Record<MusicScene, MusicSelection>> = {
   none: INHERIT_MUSIC,
-  season_recap: musicTrack('season_recap', BUILT_IN_MUSIC_CUE_IDS.seasonRecap),
-  tribunal_part1: musicTrack('jury_voting', BUILT_IN_MUSIC_CUE_IDS.tribunal),
-  jury_voting: musicTrack('jury_voting', BUILT_IN_MUSIC_CUE_IDS.tribunal),
-  public_voting: musicTrack('public_voting', BUILT_IN_MUSIC_CUE_IDS.publicVoting),
+  season_recap: musicTrack('season_recap'),
+  tribunal_part1: musicTrack('jury_voting'),
+  jury_voting: musicTrack('jury_voting'),
+  public_voting: musicTrack('public_voting'),
+  house_menu: INHERIT_MUSIC,
 }
 
 export const CHALLENGE_GROUP_1_GAME_KEYS = [
@@ -464,15 +334,15 @@ export const DEFAULT_MUSIC_CONFIG: MusicConfigDocument = {
   minigameProfiles: DEFAULT_MINIGAME_MUSIC_PROFILES,
   minigameAssignments: EMPTY_MINIGAME_ASSIGNMENTS,
   minigameVariantAssignments: EMPTY_MINIGAME_VARIANT_ASSIGNMENTS,
-  musicCues: DEFAULT_MUSIC_CUES,
+  musicCues: {},
   minigameCategoryMusic: DEFAULT_MINIGAME_CATEGORY_MUSIC,
   eventSounds: DEFAULT_EVENT_SOUND_POLICY,
   contextMusic: {
-    introHub: musicTrack('introhub', BUILT_IN_MUSIC_CUE_IDS.introHub),
+    introHub: musicTrack('introhub'),
     spectator: musicTrack('spectator'),
     social: musicTrack('social'),
-    seasonComplete: musicTrack('final_modal', BUILT_IN_MUSIC_CUE_IDS.finalModal),
-    gameOver: musicTrack('final_modal', BUILT_IN_MUSIC_CUE_IDS.finalModal),
+    seasonComplete: musicTrack('final_modal'),
+    gameOver: musicTrack('final_modal'),
     fallback: SILENT_MUSIC,
   },
 }
@@ -596,10 +466,7 @@ export function createMusicConfig(overrides: MusicConfigOverrides = {}): MusicCo
       classic: overrides.minigameVariantAssignments?.classic ?? {},
       survival: overrides.minigameVariantAssignments?.survival ?? {},
     },
-    musicCues: {
-      ...DEFAULT_MUSIC_CONFIG.musicCues,
-      ...(overrides.musicCues ?? {}),
-    },
+    musicCues: { ...(overrides.musicCues ?? {}) },
     minigameCategoryMusic: {
       ...DEFAULT_MUSIC_CONFIG.minigameCategoryMusic,
       ...(overrides.minigameCategoryMusic ?? {}),
@@ -748,10 +615,6 @@ const INTRO_HUB_ROUTE_PATHS = new Set([
   '/public-meter',
 ])
 
-// These screens are utilities layered over an active season, not a return to
-// the home session. The root route remains an intentional Intro Hub screen.
-const ACTIVE_GAME_DETOUR_ROUTE_PATHS = new Set(['/settings', '/store', '/public-meter'])
-
 function routePath(hash: string): string {
   const path = (hash.startsWith('#') ? hash.slice(1) : hash).split(/[?#]/, 1)[0] || '/'
   return path === '/' ? '/' : path.replace(/\/+$/, '') || '/'
@@ -759,10 +622,7 @@ function routePath(hash: string): string {
 
 function isIntroHubRoute(context: MusicResolverContext): boolean {
   const path = routePath(context.routeHash)
-  return (
-    INTRO_HUB_ROUTE_PATHS.has(path) &&
-    !(context.gameActive === true && ACTIVE_GAME_DETOUR_ROUTE_PATHS.has(path))
-  )
+  return INTRO_HUB_ROUTE_PATHS.has(path) && !(path === '/store' && context.gameActive === true)
 }
 
 function selectionToTrack(selection: MusicSelection): MusicTrack {

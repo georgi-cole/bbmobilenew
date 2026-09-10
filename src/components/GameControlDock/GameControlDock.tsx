@@ -1,5 +1,6 @@
 import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { setHouseMenuAudioEffect } from '../../services/sound/audioRouteOwnership'
 import './GameControlDock.css'
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -136,7 +137,10 @@ export default function GameControlDock({
   }, [])
 
   useEffect(() => {
-    if (!moreOpen) return undefined
+    if (!moreOpen) {
+      setHouseMenuAudioEffect(false)
+      return undefined
+    }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMoreOpen(false)
     }
@@ -152,6 +156,7 @@ export default function GameControlDock({
     return () => {
       window.removeEventListener('keydown', closeOnEscape)
       document.removeEventListener('pointerdown', closeOnOutsidePointer, true)
+      setHouseMenuAudioEffect(false)
     }
   }, [moreOpen])
 
@@ -362,6 +367,7 @@ export default function GameControlDock({
                 role="menuitem"
                 aria-label={label}
                 onClick={() => {
+                  setHouseMenuAudioEffect(true)
                   setMoreOpen(false)
                   onMoreClick?.(destination)
                 }}

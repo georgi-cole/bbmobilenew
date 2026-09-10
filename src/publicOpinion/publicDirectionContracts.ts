@@ -126,6 +126,20 @@ export function getEligibleDirectionCandidates(
         rationale: `You and ${relatedPlayer.name} are currently allied.`,
         completionLabel: `Show loyalty to ${relatedPlayer.name}`,
       })
+      candidates.push({
+        type: 'protect_player',
+        relatedPlayer,
+        actionHint: `Look for a meaningful chance to protect ${relatedPlayer.name}.`,
+        rationale: `${relatedPlayer.name} is part of your current game structure.`,
+        completionLabel: `Protect ${relatedPlayer.name}`,
+      })
+      candidates.push({
+        type: 'show_loyalty',
+        relatedPlayer,
+        actionHint: `Back ${relatedPlayer.name} when it carries some weight.`,
+        rationale: `The audience is watching whether this alliance holds under pressure.`,
+        completionLabel: `Show real loyalty to ${relatedPlayer.name}`,
+      })
       if (!isCupidPair) {
         candidates.push({
           type: 'break_alliance',
@@ -165,6 +179,29 @@ export function getEligibleDirectionCandidates(
         rationale: `${relatedPlayer.name} is a current rival.`,
         completionLabel: `Confront ${relatedPlayer.name}`,
       })
+      candidates.push({
+        type: 'expose_player',
+        relatedPlayer,
+        actionHint: `Build a credible case around ${relatedPlayer.name}'s game.`,
+        rationale: `${relatedPlayer.name} is already part of an active conflict.`,
+        completionLabel: `Expose ${relatedPlayer.name}'s game`,
+      })
+      candidates.push({
+        type: 'target_player',
+        relatedPlayer,
+        actionHint: `Apply pressure to ${relatedPlayer.name} through Social or a game decision.`,
+        rationale: `${relatedPlayer.name} is a current rival.`,
+        completionLabel: `Put ${relatedPlayer.name} under pressure`,
+      })
+      if (context.dramaMode) {
+        candidates.push({
+          type: 'start_drama',
+          relatedPlayer,
+          actionHint: `Escalate the unresolved tension with ${relatedPlayer.name}.`,
+          rationale: `The tension with ${relatedPlayer.name} is visible enough to become a story.`,
+          completionLabel: `Turn the tension with ${relatedPlayer.name} into a public moment`,
+        })
+      }
     } else {
       candidates.push({
         type: 'get_closer',
@@ -186,6 +223,8 @@ export function getEligibleDirectionCandidates(
           'align_with',
           'repair_relationship',
           'reinforce_alliance',
+          'protect_player',
+          'show_loyalty',
         ].includes(candidate.type)
       )
     : candidates
@@ -199,12 +238,17 @@ export function isDirectionStillValid(
   if (!actor || !isActive(actor)) return false
   const relationshipBoundTypes: DirectionType[] = [
     'get_closer',
+    'target_player',
+    'protect_player',
     'align_with',
     'break_alliance',
     'reinforce_alliance',
     'repair_relationship',
     'apologize',
     'confront_player',
+    'expose_player',
+    'show_loyalty',
+    'start_drama',
   ]
   if (!relationshipBoundTypes.includes(direction.type)) return true
   if (!direction.relatedPlayerId) return true

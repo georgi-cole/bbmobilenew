@@ -1,6 +1,7 @@
 import type { DramaAlliance } from '../types'
 import { appendRealityEvent } from './events'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
+import { recordGroundedJealousy } from './relationshipAutonomy'
 import type {
   RealityAlliance,
   RealityClock,
@@ -307,6 +308,16 @@ export function signalRealityRomance(
     })
   }
   state.romances[id] = romance
+  if (input.acceptedByTarget) {
+    recordGroundedJealousy(state, {
+      actorId: input.actorId,
+      targetId: input.targetId,
+      eventId: event.id,
+      at: input.at,
+      witnessIds: event.witnessIds,
+      publicEligible: event.publicEligible,
+    })
+  }
   return romance
 }
 

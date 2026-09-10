@@ -97,6 +97,8 @@ type Props = {
   onReturnAnimationDone?: () => void
   /** Shows the game-log launcher at the right edge of a persistent roster header. */
   showRosterLogLauncher?: boolean
+  /** Opens the log directly when the roster owns the visible launcher. */
+  onOpenGameLog?: () => void
   /** Holds visual player names until the season-opening reveal has played. */
   showNames?: boolean
 }
@@ -142,6 +144,7 @@ export default function HouseguestGrid({
   returningPlayerId = null,
   onReturnAnimationDone,
   showRosterLogLauncher = false,
+  onOpenGameLog,
   showNames = true,
 }: Props) {
   const containerRef = useRef<HTMLElement | null>(null)
@@ -366,7 +369,19 @@ export default function HouseguestGrid({
               type="button"
               className={styles.rosterLogLauncher}
               aria-label="Open game log"
-              onClick={() => window.dispatchEvent(new CustomEvent('tv:open-game-log'))}
+              onClick={() => {
+                if (onOpenGameLog) {
+                  onOpenGameLog()
+                  return
+                }
+                ;(window as Window & { __openTVGameLog?: () => void }).__openTVGameLog?.()
+                const event = new CustomEvent('tv:open-game-log')
+                window.dispatchEvent(event)
+                document.dispatchEvent(new CustomEvent('tv:open-game-log'))
+                window.setTimeout(() => {
+                  document.querySelector<HTMLButtonElement>('.tv-log__launcher')?.click()
+                }, 0)
+              }}
             >
               <span aria-hidden="true">☷</span>
               <span>Log</span>
@@ -446,6 +461,8 @@ export default function HouseguestGrid({
                     ).includes('nominated')
                   }
                   showName={showNames}
+                  animateNameReveal={showNames && game.week === 1}
+                  evictionMarkKey={`bbmobilenew:eviction-mark:${game.gameId}:${hg.id}`}
                 />
               </li>
             )

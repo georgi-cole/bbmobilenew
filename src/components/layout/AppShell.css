@@ -122,7 +122,7 @@ body:has(.game-screen-shell) .app-shell {
    ownership so the embedded app behaves like a handset, not a resized iframe. */
 .phone-preview-chrome {
   position: absolute;
-  z-index: 9500;
+  z-index: 9700;
   top: 0;
   right: 0;
   left: 0;
@@ -195,7 +195,7 @@ body:has(.game-screen-shell) .app-shell {
 
 .phone-preview-chrome__home {
   position: absolute;
-  z-index: 9500;
+  z-index: 9700;
   right: 50%;
   bottom: 7px;
   width: 8.2rem;

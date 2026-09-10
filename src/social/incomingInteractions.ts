@@ -21,6 +21,7 @@ import {
   recordIntelligenceDelivery,
 } from './socialSlice'
 import { resolvePendingHumanRealityInteraction } from './reality'
+import { resolveRelationshipStoryResponse } from './reality'
 import { isIncomingInteractionOverdue } from './incomingInteractionDeadline'
 import {
   createCommitmentFromInteraction,
@@ -77,10 +78,30 @@ function resolveRealityIncomingInteraction(
     typeof interaction.payload?.realityInteractionId === 'string'
       ? interaction.payload.realityInteractionId
       : undefined
-  if (!realityInteractionId) return
   const state = getState()
   const humanId = state.game.players.find((player) => player.isUser)?.id
   if (!humanId) return
+  if (!realityInteractionId) {
+    const relationshipIntent = interaction.payload?.relationshipIntent
+    if (typeof relationshipIntent !== 'string') return
+    // Immediate incoming effects may already have updated the social projection.
+    // Start from the latest domain so recording the storyline never rolls those
+    // relationship changes back.
+    const domain = structuredClone(getState().social.reality)
+    if (
+      resolveRelationshipStoryResponse(domain, {
+        ownerId: interaction.fromId,
+        targetId: humanId,
+        intent: relationshipIntent,
+        responseType,
+        eventId: `incoming:${interaction.id}`,
+        at: { day, phase },
+      })
+    ) {
+      dispatch(replaceRealityDomain(domain))
+    }
+    return
+  }
   const resolved = resolvePendingHumanRealityInteraction({
     domain: baseDomain,
     interactionId: realityInteractionId,

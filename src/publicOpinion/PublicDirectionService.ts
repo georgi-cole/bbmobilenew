@@ -6,6 +6,21 @@ import type { RelationshipsMap } from '../social/types'
 import type { DramaAlliance } from '../social/types'
 import type { RealityAlliance } from '../social/reality/types'
 import { getEligibleDirectionCandidates, type DirectionCandidate } from './publicDirectionContracts'
+import { createAudienceRequestStory } from './publicRequestNarratives'
+
+const DEVELOPING_STORY_TYPES = new Set<DirectionType>([
+  'get_closer',
+  'protect_player',
+  'apologize',
+  'align_with',
+  'show_loyalty',
+  'reinforce_alliance',
+  'repair_relationship',
+])
+
+function requestDuration(type: DirectionType): number {
+  return DEVELOPING_STORY_TYPES.has(type) ? 2 : 1
+}
 
 function buildDescription(
   type: DirectionType,
@@ -87,6 +102,8 @@ export function generateDirectionsForCycle(params: {
   /** Public Mode gives the human a primary request whenever they are still active. */
   prioritizeHuman?: boolean
   dramaMode?: boolean
+  /** Players who already have a live request should not receive a second one */
+  excludePlayerIds?: readonly string[]
 }): PublicDirection[] {
   const {
     players,
@@ -100,9 +117,13 @@ export function generateDirectionsForCycle(params: {
     voxPopuliActive = false,
     prioritizeHuman = false,
     dramaMode = false,
+    excludePlayerIds = [],
   } = params
 
-  const activePlayers = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
+  const excluded = new Set(excludePlayerIds)
+  const activePlayers = players.filter(
+    (p) => p.status !== 'evicted' && p.status !== 'jury' && !excluded.has(p.id)
+  )
 
   if (activePlayers.length === 0) return []
 
@@ -142,16 +163,27 @@ export function generateDirectionsForCycle(params: {
       playerId: player.id,
       relatedPlayerId,
       targetPlayerId,
-      description: buildDescription(dirType, player.name, relatedName, targetName, voxPopuliActive),
+      description: player.isUser
+        ? buildDescription(dirType, player.name, relatedName, targetName, voxPopuliActive)
+        : createAudienceRequestStory({
+            type: dirType,
+            playerName: player.name,
+            relatedName,
+            targetName,
+            seed: `${seed}:${week}:${player.id}`,
+          }),
       status: 'active',
       createdWeek: week,
-      expiresAtWeek: week + 1,
+      expiresAtWeek: week + requestDuration(dirType),
       // approvalDelta reflects the success reward; actual delta applied on resolution
       // is derived from the outcome status via publicOpinionConfig.directionRewards
       approvalDelta: publicOpinionConfig.directionRewards.success,
       progressPercent: 0,
-      actionHint: candidate.actionHint,
-      rationale: candidate.rationale,
+      progressHistory: [],
+      // AI requests are narrative audience beats. Their legal action route
+      // remains in the contract, without spoiling the beat in the UI.
+      actionHint: player.isUser ? candidate.actionHint : undefined,
+      rationale: player.isUser ? candidate.rationale : undefined,
       completionLabel: candidate.completionLabel,
     }
 

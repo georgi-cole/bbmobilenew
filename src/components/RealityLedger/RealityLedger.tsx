@@ -3,6 +3,7 @@ import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
 import {
   canHumanKnowFact,
+  getRelationshipStoryLabel,
   type DirectedRelationship,
   type RealityBelief,
   type RealityDomainState,
@@ -49,11 +50,10 @@ function combinedLiveRelationship(
   otherId: string
 ): { affinity: number; tags: Set<string> } | null {
   const outward = relationships?.[humanId]?.[otherId]
-  const inward = relationships?.[otherId]?.[humanId]
-  if (!outward && !inward) return null
+  if (!outward) return null
   return {
-    affinity: Math.round(((outward?.affinity ?? 0) + (inward?.affinity ?? 0)) / 2),
-    tags: new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])]),
+    affinity: outward.affinity,
+    tags: new Set(outward.tags ?? []),
   }
 }
 
@@ -189,10 +189,36 @@ export default function RealityLedger({
   const threads = useMemo(
     () =>
       Object.values(reality.threads).filter(
-        (thread) => thread.participantIds.includes(humanId) || thread.observerIds.includes(humanId)
+        (thread) =>
+          !thread.type.startsWith('RELATIONSHIP_') &&
+          (thread.participantIds.includes(humanId) || thread.observerIds.includes(humanId)) &&
+          (thread.type !== 'PLAYER_NEMESIS' ||
+            Object.values(reality.relationshipAutonomy.evidence).some(
+              (evidence) =>
+                evidence.ownerId === thread.participantIds[0] &&
+                evidence.targetId === thread.participantIds[1]
+            ))
       ),
-    [humanId, reality.threads]
+    [humanId, reality.relationshipAutonomy.evidence, reality.threads]
   )
+  const knownRelationshipStories = useMemo(() => {
+    const directEvidence = new Set(
+      Object.values(reality.relationshipAutonomy.evidence)
+        .filter((entry) => entry.ownerId === humanId || entry.targetId === humanId)
+        .map((entry) => `${entry.ownerId}:${entry.targetId}`)
+    )
+    return Object.values(reality.relationshipAutonomy.intents)
+      .filter(
+        (intent) =>
+          intent.status !== 'CLOSED' &&
+          (intent.ownerId === humanId || intent.targetId === humanId) &&
+          directEvidence.has(`${intent.ownerId}:${intent.targetId}`)
+      )
+      .sort(
+        (left, right) =>
+          right.lastAdvancedAt.day - left.lastAdvancedAt.day || right.importance - left.importance
+      )
+  }, [humanId, reality.relationshipAutonomy])
   const alliances = useMemo(
     () =>
       Object.values(reality.alliances).filter(
@@ -248,7 +274,7 @@ export default function RealityLedger({
                   <article className="reality-ledger__item" key={fact.id}>
                     <div>
                       <span className="reality-ledger__badge reality-ledger__badge--fact">
-                        Official fact
+                        Known fact
                       </span>
                       <small>Day {fact.day}</small>
                     </div>
@@ -323,7 +349,7 @@ export default function RealityLedger({
         {tab === 'house' && (
           <>
             <h3>Your groups and open stories</h3>
-            {alliances.length === 0 && threads.length === 0 ? (
+            {alliances.length === 0 && threads.length === 0 && knownRelationshipStories.length === 0 ? (
               <p className="reality-ledger__empty">No known group or unresolved story is active.</p>
             ) : (
               <>
@@ -358,6 +384,21 @@ export default function RealityLedger({
                     <p>{thread.participantIds.map(playerName).join(' · ')}</p>
                   </article>
                 ))}
+                {knownRelationshipStories.map((story) => {
+                  const otherId = story.ownerId === humanId ? story.targetId : story.ownerId
+                  return (
+                    <article className="reality-ledger__item" key={story.id}>
+                      <div>
+                        <span className="reality-ledger__badge reality-ledger__badge--thread">
+                          {titleCase(story.stage)}
+                        </span>
+                        <small>Day {story.lastAdvancedAt.day}</small>
+                      </div>
+                      <strong>{getRelationshipStoryLabel(story.kind)}</strong>
+                      <p>With {playerName(otherId)}</p>
+                    </article>
+                  )
+                })}
               </>
             )}
           </>

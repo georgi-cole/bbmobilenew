@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getAllGames } from '../../minigames/registry'
 import type { Phase } from '../../types'
-import type { MusicScene } from '../../store/uiSlice'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   resetMusicConfigOverrides,
@@ -10,13 +9,12 @@ import {
   setMusicConfigOverrides,
   setMusicTrackAssets,
 } from '../../store/settingsSlice'
-import { SoundManager, type AudioDiagnosticsSnapshot } from '../../services/sound/SoundManager'
+import { SoundManager } from '../../services/sound/SoundManager'
 import { SOUND_REGISTRY } from '../../services/sound/sounds'
 import {
   AUDIO_EVENT_IDS,
   AUDIO_EVENT_LABELS,
   DEFAULT_PHASE_MUSIC_POLICY,
-  DEFAULT_SCENE_MUSIC_POLICY,
   getModePhaseSelection,
   resolveAudioEventCue,
   resolveMusicCue,
@@ -24,7 +22,6 @@ import {
   MUSIC_MINIGAME_VARIANTS,
   type MusicConfigMode,
   type MusicConfigOverrides,
-  type MusicContextPolicy,
   type MusicMinigameStage,
   type MusicMinigameVariant,
   type MusicSelection,
@@ -49,15 +46,7 @@ import type { MusicCueDefinition } from '../../services/sound/musicCue'
 import './MusicManagerPanel.css'
 import ManagerPublishBar from '../../components/ManagerPublishBar/ManagerPublishBar'
 
-type ManagerSection =
-  | 'phases'
-  | 'contexts'
-  | 'minigames'
-  | 'events'
-  | 'tracks'
-  | 'cues'
-  | 'diagnostics'
-  | 'data'
+type ManagerSection = 'phases' | 'minigames' | 'events' | 'tracks' | 'cues' | 'data'
 type EditableMode = Exclude<MusicConfigMode, 'any'>
 
 const MINIGAME_STAGES: readonly MusicMinigameStage[] = [
@@ -70,12 +59,10 @@ const MINIGAME_STAGES: readonly MusicMinigameStage[] = [
 
 const SECTION_TABS: ReadonlyArray<{ id: ManagerSection; label: string }> = [
   { id: 'phases', label: 'Phases' },
-  { id: 'contexts', label: 'Scenes & routes' },
   { id: 'minigames', label: 'Minigames' },
   { id: 'events', label: 'Events' },
   { id: 'tracks', label: 'Tracks' },
   { id: 'cues', label: 'Cues' },
-  { id: 'diagnostics', label: 'Now Playing' },
   { id: 'data', label: 'Data' },
 ]
 
@@ -197,9 +184,6 @@ export default function MusicManagerPanel() {
   const previewRef = useRef<HTMLAudioElement | null>(null)
   const previewTimerRef = useRef<number | null>(null)
   const [previewingTrack, setPreviewingTrack] = useState<CatalogMusicTrack | null>(null)
-  const [diagnostics, setDiagnostics] = useState<AudioDiagnosticsSnapshot>(() =>
-    SoundManager.getDiagnostics()
-  )
 
   const localOverrides = settings.audio.musicConfigOverrides
   const localAssets = settings.audio.musicTrackAssets
@@ -249,22 +233,11 @@ export default function MusicManagerPanel() {
 
   useEffect(
     () => () => {
-      if (previewRef.current) {
-        SoundManager.releaseExternalMusic('manager:track-preview', previewRef.current)
-        previewRef.current.pause()
-      }
+      previewRef.current?.pause()
       if (previewTimerRef.current != null) window.clearTimeout(previewTimerRef.current)
     },
     []
   )
-
-  useEffect(() => {
-    if (section !== 'diagnostics') return
-    const refresh = () => setDiagnostics(SoundManager.getDiagnostics())
-    refresh()
-    const timer = window.setInterval(refresh, 500)
-    return () => window.clearInterval(timer)
-  }, [section])
 
   const commitOverrides = (next: MusicConfigOverrides) => {
     dispatch(setMusicConfigOverrides(next))
@@ -281,26 +254,6 @@ export default function MusicManagerPanel() {
       ...(next.modePhaseOverrides ?? {}),
       [mode]: modeOverrides,
     }
-    commitOverrides(next)
-  }
-
-  const updateScene = (scene: MusicScene, value: string) => {
-    const next = cloneOverrides(localOverrides)
-    const scenes = { ...(next.sceneMusic ?? {}) }
-    const selection = selectionFromValue(value, effectiveConfig.musicCues)
-    if (selection) scenes[scene] = selection
-    else delete scenes[scene]
-    next.sceneMusic = scenes
-    commitOverrides(next)
-  }
-
-  const updateContext = (context: keyof MusicContextPolicy, value: string) => {
-    const next = cloneOverrides(localOverrides)
-    const contexts = { ...(next.contextMusic ?? {}) }
-    const selection = selectionFromValue(value, effectiveConfig.musicCues)
-    if (selection) contexts[context] = selection
-    else delete contexts[context]
-    next.contextMusic = contexts
     commitOverrides(next)
   }
 
@@ -345,8 +298,8 @@ export default function MusicManagerPanel() {
     } else {
       const previous = events[eventId]
       events[eventId] = {
-        ...previous,
         soundKey: value,
+        ...(previous?.volume !== undefined ? { volume: previous.volume } : {}),
       }
     }
     next.eventSounds = events
@@ -358,23 +311,7 @@ export default function MusicManagerPanel() {
     const events = { ...(next.eventSounds ?? {}) }
     const effectiveCue = resolveAudioEventCue(eventId, effectiveConfig)
     const current = events[eventId] ?? effectiveCue
-    events[eventId] = { ...current, volume }
-    next.eventSounds = events
-    commitOverrides(next)
-  }
-
-  const updateEventTiming = (
-    eventId: AudioEventId,
-    field: 'startAtSec' | 'durationMs' | 'fadeInMs' | 'fadeOutMs' | 'dedupeMs',
-    value: number | undefined
-  ) => {
-    const next = cloneOverrides(localOverrides)
-    const events = { ...(next.eventSounds ?? {}) }
-    const current = events[eventId] ?? resolveAudioEventCue(eventId, effectiveConfig)
-    const updated = { ...current }
-    if (value === undefined || !Number.isFinite(value)) delete updated[field]
-    else updated[field] = Math.max(0, value)
-    events[eventId] = updated
+    events[eventId] = { soundKey: current.soundKey, volume }
     next.eventSounds = events
     commitOverrides(next)
   }
@@ -385,21 +322,14 @@ export default function MusicManagerPanel() {
       setMessage('This event is configured as silent.')
       return
     }
-    void SoundManager.play(cue.soundKey, {
-      allowDuplicate: true,
-      ...(cue.volume !== undefined ? { volume: cue.volume } : {}),
-      ...(cue.startAtSec !== undefined ? { startAtSec: cue.startAtSec } : {}),
-      ...(cue.durationMs !== undefined ? { durationMs: cue.durationMs } : {}),
-      ...(cue.fadeInMs !== undefined ? { fadeInMs: cue.fadeInMs } : {}),
-      ...(cue.fadeOutMs !== undefined ? { fadeOutMs: cue.fadeOutMs } : {}),
-    })
+    void SoundManager.play(
+      cue.soundKey,
+      cue.volume === undefined ? undefined : { volume: cue.volume, allowDuplicate: true }
+    )
   }
 
   const stopPreview = () => {
-    if (previewRef.current) {
-      SoundManager.releaseExternalMusic('manager:track-preview', previewRef.current)
-      previewRef.current.pause()
-    }
+    previewRef.current?.pause()
     previewRef.current = null
     if (previewTimerRef.current != null) window.clearTimeout(previewTimerRef.current)
     previewTimerRef.current = null
@@ -419,7 +349,6 @@ export default function MusicManagerPanel() {
     audio.volume = Math.max(0, Math.min(1, asset?.volume ?? bundled?.volume ?? 0.5))
     audio.loop = false
     previewRef.current = audio
-    SoundManager.claimExternalMusic('manager:track-preview', audio, audio.volume)
     setPreviewingTrack(track)
     audio.addEventListener('ended', stopPreview, { once: true })
     void audio.play().catch(() => {
@@ -731,74 +660,6 @@ export default function MusicManagerPanel() {
         </div>
       )}
 
-      {section === 'contexts' && (
-        <div className="music-manager__list">
-          <div className="music-manager__section-copy">
-            <h3>Finale scenes and route owners</h3>
-            <p>
-              These assignments outrank ordinary game phases. Confessional uses its named cues from
-              the Cues tab.
-            </p>
-          </div>
-          {(Object.keys(DEFAULT_SCENE_MUSIC_POLICY) as MusicScene[]).map((scene) => {
-            const local = localOverrides.sceneMusic?.[scene]
-            const remote = remoteOverrides?.sceneMusic?.[scene]
-            const effective = effectiveConfig.sceneMusic[scene]
-            return (
-              <article className="music-manager__row" key={`scene-${scene}`}>
-                <div className="music-manager__row-main">
-                  <div>
-                    <strong>{titleFromKey(scene)}</strong>
-                    <code>scene.{scene}</code>
-                  </div>
-                  <SourceBadge source={local ? 'local' : remote ? 'server' : 'default'} />
-                </div>
-                <div className="music-manager__row-controls">
-                  <AssignmentSelect
-                    value={selectionToValue(local)}
-                    onChange={(value) => updateScene(scene, value)}
-                    ariaLabel={`Music for ${scene} scene`}
-                    cues={effectiveConfig.musicCues}
-                  />
-                  <span className="music-manager__resolved">
-                    Effective: {selectionLabel(effective, effectiveConfig.musicCues)}
-                  </span>
-                </div>
-              </article>
-            )
-          })}
-          {(Object.keys(effectiveConfig.contextMusic) as Array<keyof MusicContextPolicy>).map(
-            (context) => {
-              const local = localOverrides.contextMusic?.[context]
-              const remote = remoteOverrides?.contextMusic?.[context]
-              const effective = effectiveConfig.contextMusic[context]
-              return (
-                <article className="music-manager__row" key={`context-${context}`}>
-                  <div className="music-manager__row-main">
-                    <div>
-                      <strong>{titleFromKey(context)}</strong>
-                      <code>context.{context}</code>
-                    </div>
-                    <SourceBadge source={local ? 'local' : remote ? 'server' : 'default'} />
-                  </div>
-                  <div className="music-manager__row-controls">
-                    <AssignmentSelect
-                      value={selectionToValue(local)}
-                      onChange={(value) => updateContext(context, value)}
-                      ariaLabel={`Music for ${context} context`}
-                      cues={effectiveConfig.musicCues}
-                    />
-                    <span className="music-manager__resolved">
-                      Effective: {selectionLabel(effective, effectiveConfig.musicCues)}
-                    </span>
-                  </div>
-                </article>
-              )
-            }
-          )}
-        </div>
-      )}
-
       {section === 'events' && (
         <div className="music-manager__list">
           <div className="music-manager__section-copy">
@@ -857,36 +718,6 @@ export default function MusicManagerPanel() {
                     onChange={(event) => updateEventVolume(eventId, Number(event.target.value))}
                   />
                 </label>
-                <div className="music-manager__event-timing">
-                  {(
-                    [
-                      ['startAtSec', 'Start (seconds)'],
-                      ['durationMs', 'Maximum duration (ms)'],
-                      ['fadeInMs', 'Fade in (ms)'],
-                      ['fadeOutMs', 'Fade out (ms)'],
-                      ['dedupeMs', 'Duplicate guard (ms)'],
-                    ] as const
-                  ).map(([field, label]) => (
-                    <label key={field}>
-                      <span>{label}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={field === 'startAtSec' ? 0.1 : 10}
-                        value={local?.[field] ?? effective[field] ?? ''}
-                        disabled={!effective.soundKey}
-                        placeholder="Default"
-                        onChange={(event) =>
-                          updateEventTiming(
-                            eventId,
-                            field,
-                            event.target.value === '' ? undefined : Number(event.target.value)
-                          )
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
               </article>
             )
           })}
@@ -963,74 +794,6 @@ export default function MusicManagerPanel() {
           onCommit={commitOverrides}
           onMessage={setMessage}
         />
-      )}
-
-      {section === 'diagnostics' && (
-        <div className="music-manager__list">
-          <div className="music-manager__section-copy">
-            <h3>Live audio state</h3>
-            <p>
-              This shows which request won, what is actually playing, and the reason for silence.
-            </p>
-          </div>
-          <div className="music-manager__diagnostics-grid">
-            <article>
-              <span>Requested</span>
-              <strong>{diagnostics.desiredTrack}</strong>
-              <code>{diagnostics.desiredReason ?? 'No active request'}</code>
-            </article>
-            <article>
-              <span>Actually playing</span>
-              <strong>{diagnostics.externalOwner ?? diagnostics.playingTrack}</strong>
-              <code>
-                {diagnostics.externalOwner ?? diagnostics.musicKey ?? 'No allocated file'}
-              </code>
-            </article>
-            <article>
-              <span>Audio permission</span>
-              <strong>{diagnostics.unlocked ? 'Unlocked' : 'Waiting for interaction'}</strong>
-              <code>{diagnostics.lifecycle}</code>
-            </article>
-            <article>
-              <span>Music output</span>
-              <strong>{diagnostics.musicEnabled ? 'Enabled' : 'Muted'}</strong>
-              <code>{Math.round(diagnostics.musicVolume * 100)}% master volume</code>
-            </article>
-          </div>
-          <div className="music-manager__diagnostic-answer" role="status">
-            <strong>
-              Why{' '}
-              {diagnostics.playingTrack === 'none' && !diagnostics.externalPlaying
-                ? 'silent'
-                : 'this is playing'}
-              :
-            </strong>{' '}
-            {!diagnostics.musicEnabled
-              ? 'Music is disabled in settings.'
-              : diagnostics.lifecycle === 'hidden'
-                ? 'The app is hidden, so playback is suspended.'
-                : !diagnostics.unlocked
-                  ? 'The device is waiting for a user interaction before allowing audio.'
-                  : diagnostics.externalOwner
-                    ? `${diagnostics.externalOwner} has exclusive soundtrack ownership.`
-                    : diagnostics.playingTrack !== 'none'
-                      ? (diagnostics.desiredReason ?? 'The current state selected this track.')
-                      : diagnostics.desiredTrack === 'none'
-                        ? (diagnostics.desiredReason ??
-                          'The current state explicitly selected silence.')
-                        : 'The requested file is loading, blocked, or failed.'}
-          </div>
-          {diagnostics.failedKeys.length > 0 && (
-            <div className="music-manager__audit">
-              <strong>Failed assets</strong>
-              <ul>
-                {diagnostics.failedKeys.map((key) => (
-                  <li key={key}>{key}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
       )}
 
       {section === 'data' && (

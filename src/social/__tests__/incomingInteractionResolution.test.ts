@@ -7,6 +7,7 @@ import {
   getAuthoredIncomingSceneOutcome,
   INCOMING_SCENE_OUTCOME_BANK,
 } from '../incomingSceneOutcomeBank'
+import { getIncomingDialogueBeat } from '../incomingDialogueOutcomeBank'
 import { SCENARIO_VARIANT_POOLS } from '../interactionVariantBank'
 import type { IncomingInteraction } from '../types'
 
@@ -67,6 +68,16 @@ describe('incoming interaction contextual resolution', () => {
       expect(outcomeSet?.neutral.length).toBeGreaterThanOrEqual(2)
       expect(outcomeSet?.negative.length).toBeGreaterThanOrEqual(2)
       expect(outcomeSet?.dismiss.length).toBeGreaterThanOrEqual(2)
+      for (const responseType of ['positive', 'neutral', 'negative', 'dismiss'] as const) {
+        expect(
+          getIncomingDialogueBeat({
+            scenarioKey,
+            responseType,
+            fromName: 'Rae',
+            seed: 0,
+          })
+        ).toBeTruthy()
+      }
     }
   })
 
@@ -175,5 +186,51 @@ describe('incoming interaction contextual resolution', () => {
     expect(resolution.outcomeText).toMatch(
       /Mimi knows Safety is still possible|Mimi leaves with a conditional opening/i
     )
+  })
+
+  it('turns an ask-for-source reply into a concrete, qualified exchange before fallout', () => {
+    const resolution = resolveIncomingResponse({
+      interaction: makeInteraction({
+        id: 'ask-the-source',
+        fromId: 'bea',
+        type: 'gossip',
+        text: 'I heard something about Dex.',
+        payload: { scenarioKey: 'generic_gossip', subjectId: 'dex' },
+      }),
+      responseType: 'positive',
+      responseLabel: 'Ask source',
+      fromName: 'Bea',
+      subjectName: 'Dex',
+      phase: 'social_2',
+      actorAffinity: 4,
+      playerAffinity: 3,
+    })
+
+    expect(resolution.outcomeText).toMatch(/You asked Bea for specifics/i)
+    expect(resolution.outcomeText).toMatch(
+      /Bea says, "I heard it in two separate conversations|Bea says, "The first whisper came/i
+    )
+    expect(resolution.outcomeText).toMatch(/Dex/i)
+    expect(resolution.outcomeText).toMatch(/lead, not a fact|pretending I can prove the motive/i)
+  })
+
+  it('gives a campaign reply an actual case instead of only a relationship summary', () => {
+    const resolution = resolveIncomingResponse({
+      interaction: makeInteraction({
+        id: 'hear-the-case',
+        payload: { scenarioKey: 'live_vote_pitch' },
+      }),
+      responseType: 'neutral',
+      responseLabel: 'Ask for their case',
+      fromName: 'Rae',
+      phase: 'live_vote',
+      actorAffinity: 0,
+      playerAffinity: 0,
+    })
+
+    expect(resolution.outcomeText).toMatch(
+      /Rae says, "I cannot give you certainty|Rae says, "I hear that you are not promising/i
+    )
+    expect(resolution.outcomeText).toMatch(/keeps campaigning|cannot put your vote on the board/i)
   })
 })

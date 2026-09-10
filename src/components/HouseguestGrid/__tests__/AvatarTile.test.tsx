@@ -35,4 +35,12 @@ describe('AvatarTile', () => {
       '/assets/skins/Lia_sad_avatar.webp'
     )
   })
+
+  it('keeps a revealed name visible without replaying its entrance animation', () => {
+    const { container } = render(<AvatarTile name="Taylor" showName animateNameReveal={false} />)
+
+    const name = container.querySelector('[class*="nameOverlay"]')
+    expect(name).not.toBeNull()
+    expect(name?.className).not.toContain('nameRevealed')
+  })
 })

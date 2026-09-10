@@ -80,12 +80,14 @@ if (writeVisualAudit) {
         await assertNoHorizontalDocumentOverflow(page)
         await writeScreenshot(page, testInfo.project.name, game.key, 'start')
 
-        const menuButton = hostDialog.getByRole('button', { name: 'Open minigame menu' })
+        // The utility dock and exit confirmation are portalled to document.body,
+        // so they must be queried from the page rather than the host dialog.
+        const menuButton = page.getByRole('button', { name: 'Open minigame menu' })
         await menuButton.evaluate((button) => (button as HTMLButtonElement).click())
-        await hostDialog
+        await page
           .getByRole('menuitem', { name: /Leave competition/i })
           .evaluate((button) => (button as HTMLButtonElement).click())
-        await hostDialog
+        await page
           .getByRole('button', { name: 'Exit with 0' })
           .evaluate((button) => (button as HTMLButtonElement).click())
 

@@ -11,6 +11,7 @@ export interface MusicCueAsset {
 
 interface EffectGraph {
   source: MediaElementAudioSourceNode
+  gain: GainNode
   filter: BiquadFilterNode
 }
 
@@ -102,6 +103,24 @@ export class MusicCueEngine {
     return this._completedSignature
   }
 
+  /** Resume Web Audio while the caller still has a user-gesture activation. */
+  unlock(): void {
+    if (typeof window === 'undefined') return
+
+    const AudioContextCtor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextCtor) return
+
+    try {
+      const context = this._audioContext ?? new AudioContextCtor()
+      this._audioContext = context
+      if (context.state !== 'running') void context.resume().catch(() => undefined)
+    } catch {
+      // HTMLMediaElement playback remains available as the fallback path.
+    }
+  }
+
   clearCompleted(): void {
     this._completedSignature = null
   }
@@ -171,6 +190,10 @@ export class MusicCueEngine {
       await incoming.element.play()
       this._assertPendingOwnership(incoming, generation)
       await this._applyEffect(incoming.element, cue.effectPreset)
+      // _applyEffect may have attached the Web Audio output graph. Re-apply the
+      // current mix after that attachment so the first frame starts at the
+      // correct fade/duck level on iOS as well as desktop browsers.
+      this._applyDeckVolume(incoming)
       this._assertPendingOwnership(incoming, generation)
     } catch (error) {
       if (this._standby === incoming) this._standby = null
@@ -180,7 +203,7 @@ export class MusicCueEngine {
       // SoundManager can reconcile its now-cleared desired cue without marking a
       // perfectly valid asset as failed. A newer competing cue still rejects so
       // the stale SoundManager request cannot stop the newer active deck.
-      if (error instanceof MusicCueSupersededError || cancelled) return
+      if (cancelled && error instanceof MusicCueSupersededError) return
       throw error
     }
 
@@ -204,9 +227,8 @@ export class MusicCueEngine {
     // SoundManager promise can resolve later and its stale-success guard may stop
     // the newer active cue. Explicit stop/fade remains a quiet cancellation.
     if (generation !== this._playGeneration || this._active !== incoming || incoming.stopped) {
-      // A newer request now owns playback. This is expected during fast route
-      // or phase changes and must not be reported as a failed music asset.
-      return
+      if (incoming.stopCause === 'cancelled') return
+      throw new MusicCueSupersededError()
     }
   }
 
@@ -235,17 +257,6 @@ export class MusicCueEngine {
     if (this._standby) this._stopDeck(this._standby, 'cancelled')
     this._active = null
     this._standby = null
-  }
-
-  suspend(): void {
-    this._active?.element.pause()
-    if (this._standby && this._standby !== this._active) this._standby.element.pause()
-  }
-
-  async resume(): Promise<void> {
-    const deck = this._active
-    if (!deck || deck.stopped || deck.element.ended) return
-    await deck.element.play()
   }
 
   private _assertPendingOwnership(deck: CueDeck, generation: number): void {
@@ -351,9 +362,18 @@ export class MusicCueEngine {
 
   private _applyDeckVolume(deck: CueDeck): void {
     if (deck.stopped) return
-    deck.element.volume = clamp01(
+    const outputVolume = clamp01(
       deck.asset.volume * deck.cue.volume * this._masterVolume * deck.mixGain
     )
+    const graph = this._effectGraphs.get(deck.element)
+    if (graph) {
+      // iOS Safari/WebKit does not reliably apply HTMLMediaElement.volume.
+      // Route music through a gain node so fades and ducking work there too.
+      graph.gain.gain.value = outputVolume
+      deck.element.volume = 1
+    } else {
+      deck.element.volume = outputVolume
+    }
   }
 
   private _cancelFade(deck: CueDeck): void {
@@ -398,8 +418,10 @@ export class MusicCueEngine {
     const media = element as HTMLAudioElement & { preservesPitch?: boolean }
     media.playbackRate = preset === 'final_round' ? 1.03 : preset === 'dream' ? 0.96 : 1
     if ('preservesPitch' in media) media.preservesPitch = true
+    // A neutral cue must remain a direct, full-range media element. Creating a
+    // filter graph for it would leave the browser's default low-pass filter in
+    // the signal path and make clear ceremony music sound distant.
     if (preset === 'none') return
-
     const AudioContextCtor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -411,15 +433,8 @@ export class MusicCueEngine {
       if (context.state !== 'running') await context.resume()
       if (context.state !== 'running') return
 
-      let graph = this._effectGraphs.get(element)
-      if (!graph) {
-        const source = context.createMediaElementSource(element)
-        const filter = context.createBiquadFilter()
-        source.connect(filter)
-        filter.connect(context.destination)
-        graph = { source, filter }
-        this._effectGraphs.set(element, graph)
-      }
+      const graph = this._ensureEffectGraph(element, context)
+      if (!graph) return
 
       const filter = graph.filter
       filter.gain.value = 0
@@ -445,6 +460,25 @@ export class MusicCueEngine {
       }
     } catch {
       // DSP is an enhancement. Unsupported or blocked WebAudio falls back cleanly.
+    }
+  }
+
+  private _ensureEffectGraph(element: HTMLAudioElement, context: AudioContext): EffectGraph | null {
+    const existing = this._effectGraphs.get(element)
+    if (existing) return existing
+
+    try {
+      const source = context.createMediaElementSource(element)
+      const gain = context.createGain()
+      const filter = context.createBiquadFilter()
+      source.connect(gain)
+      gain.connect(filter)
+      filter.connect(context.destination)
+      const graph = { source, gain, filter }
+      this._effectGraphs.set(element, graph)
+      return graph
+    } catch {
+      return null
     }
   }
 }

@@ -168,6 +168,16 @@ function projectRealityTags(
   ) {
     tags.push('target')
   }
+  if (
+    Object.values(reality.relationshipAutonomy.nemeses).some(
+      (nemesis) =>
+        nemesis.status === 'ACTIVE' &&
+        nemesis.ownerId === sourceId &&
+        nemesis.targetId === targetId
+    )
+  ) {
+    tags.push('target', 'rivalry')
+  }
   return [...new Set(tags)]
 }
 

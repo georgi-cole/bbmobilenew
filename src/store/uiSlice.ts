@@ -21,6 +21,8 @@ import { createSlice } from '@reduxjs/toolkit'
  *                      tally shown, winner crowned.  Maps to jury_voting track.
  *  'public_voting'   — SeasonFinaleOverlay public-favourite vote flow.
  *                      Maps to the dedicated public-voting track.
+ *  'house_menu'      — Three-dot utility menu; keeps the current track but
+ *                      applies the in-world, another-room listening effect.
  */
 export type MusicScene =
   | 'none'
@@ -28,6 +30,7 @@ export type MusicScene =
   | 'tribunal_part1'
   | 'jury_voting'
   | 'public_voting'
+  | 'house_menu'
 
 export type MusicMix = 'normal' | 'ducked'
 export type ConfessionalMusicMode = 'normal' | 'vote-committed'

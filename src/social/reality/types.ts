@@ -236,6 +236,101 @@ export interface RealityThread {
   status: 'OPEN' | 'DORMANT' | 'RESOLVED' | 'EXPIRED'
 }
 
+/**
+ * A directed social goal. Intents express what one houseguest is trying to do;
+ * they are deliberately separate from relationship labels, which describe what
+ * has actually developed between two people.
+ */
+export type RealityRelationshipIntentKind =
+  | 'CONNECT'
+  | 'DEEPEN_BOND'
+  | 'RECRUIT'
+  | 'MAINTAIN_COMMITMENT'
+  | 'CONFIDE'
+  | 'EXPLORE_ROMANCE'
+  | 'MAINTAIN_ROMANCE'
+  | 'SEEK_REASSURANCE'
+  | 'REPAIR'
+  | 'DISTANCE'
+  | 'CONFRONT'
+  | 'UNDERMINE'
+
+export type RealityRelationshipIntentStatus =
+  | 'ACTIVE'
+  | 'COOLING'
+  | 'RESOLVED'
+  | 'CLOSED'
+
+export type RealityBoundaryCategory =
+  | 'NO_ROMANTIC_PURSUIT'
+  | 'NO_ALLIANCE_PITCHES'
+  | 'NO_GOSSIP'
+  | 'NO_PERSONAL_CONFIDING'
+  | 'NO_CONFLICT_DISCUSSION'
+  | 'MINIMIZE_CONTACT'
+
+export interface RealityRelationshipIntent {
+  id: string
+  ownerId: RealityActorId
+  targetId: RealityActorId
+  kind: RealityRelationshipIntentKind
+  status: RealityRelationshipIntentStatus
+  threadId?: string
+  importance: number
+  continuationPressure: number
+  stage: 'SPARK' | 'DEVELOPING' | 'ESTABLISHED' | 'STRAINED' | 'COOLING'
+  createdAt: RealityClock
+  lastAdvancedAt: RealityClock
+  nextEligibleAt?: RealityClock
+  supportingEventIds: string[]
+  lastBeatId?: string
+}
+
+export interface RealityRelationshipBoundary {
+  id: string
+  ownerId: RealityActorId
+  targetId: RealityActorId
+  category: RealityBoundaryCategory
+  createdAt: RealityClock
+  sourceEventId: string
+  /** Boundaries stay active until the player explicitly reopens the topic. */
+  status: 'ACTIVE' | 'REOPENED'
+}
+
+export interface RealityRelationshipEvidence {
+  id: string
+  ownerId: RealityActorId
+  targetId: RealityActorId
+  family: 'BOND' | 'TRUST' | 'STRATEGY' | 'PROTECTION' | 'ROMANCE' | 'CONFLICT' | 'REPAIR'
+  eventId: string
+  day: number
+  reciprocal: boolean
+  significance: number
+}
+
+/** A deliberately narrow anti-player objective. Contact boundaries can silence
+ * optional approaches, but only a voluntary Safety rescue can reconcile it. */
+export interface RealityNemesisObjective {
+  id: string
+  ownerId: RealityActorId
+  targetId: RealityActorId
+  sourceEventId: string
+  reason: 'COMPETITION_THREAT' | 'SOCIAL_REACH' | 'PERSONAL_FRICTION' | 'JEALOUSY' | 'VOLATILE_READ'
+  createdAt: RealityClock
+  status: 'ACTIVE' | 'RECONCILED'
+  reconciledAt?: RealityClock
+  reconciliationEventId?: string
+}
+
+export interface RealityRelationshipAutonomyState {
+  intents: Record<string, RealityRelationshipIntent>
+  boundaries: Record<string, RealityRelationshipBoundary>
+  evidence: Record<string, RealityRelationshipEvidence>
+  nemeses: Record<string, RealityNemesisObjective>
+  /** Prevents two producers from scheduling the same story beat. */
+  reservedBeatIds: string[]
+}
+
 export type RealityAllianceStatus =
   | 'PROBATIONARY'
   | 'ACTIVE'
@@ -432,4 +527,5 @@ export interface RealityDomainState {
   voteIntents: Record<RealityActorId, RealityVoteIntent>
   publicPerception: Record<RealityActorId, RealityPerception>
   juryEvaluations: RealityJuryEvaluation[]
+  relationshipAutonomy: RealityRelationshipAutonomyState
 }

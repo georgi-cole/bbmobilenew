@@ -37,6 +37,7 @@ import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { executeHumanRealityAction } from '../../social/reality/humanFlow'
 import { getCupidPartnerId, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import type { PublicDirection } from '../../publicOpinion/types'
+import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import IntelLeads from './IntelLeads'
 import { getRelationshipLabel } from './relationshipUtils'
 import './SocialPanelV2.css'
@@ -232,13 +233,25 @@ export default function SocialPanelV2() {
       repair_relationship: 'apologize',
       apologize: 'apologize',
       get_closer: 'compliment',
+      protect_player: 'protect',
+      show_loyalty: 'ally',
+      expose_player: 'rumor',
+      target_player: 'betray',
+      start_drama: 'startFight',
       confront_player: 'confront',
     }
     setPrimaryTargetId(targetId)
     setSelectedTargets(new Set([targetId]))
-    setSelectedActionId(actionByType[activePublicDirection.type] ?? null)
+    setSelectedActionId(
+      (activePublicDirection.progressPercent ?? 0) <= 0
+        ? (actionByType[activePublicDirection.type] ?? null)
+        : null
+    )
     setSelectedSubjectId(null)
   }, [activePublicDirection, dramaMode])
+  const publicRequestProgress = activePublicDirection
+    ? getPublicRequestProgressStage(activePublicDirection)
+    : null
   const safetyConsultationOpen =
     game.voxPopuli?.status !== 'active' &&
     ['pos_results', 'pos_ceremony'].includes(game.phase) &&
@@ -892,14 +905,24 @@ export default function SocialPanelV2() {
             <section className="sp2-public-request" aria-label="Active public request">
               <div className="sp2-public-request__eyebrow">Audience directive</div>
               <strong>{activePublicDirection.description}</strong>
-              {activePublicDirection.rationale && <span>{activePublicDirection.rationale}</span>}
+              {publicRequestProgress && <span>{publicRequestProgress.guidance}</span>}
+              <div
+                className="sp2-public-request__progress"
+                role="progressbar"
+                aria-label="Audience directive progress"
+                aria-valuenow={activePublicDirection.progressPercent ?? 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <i style={{ width: `${activePublicDirection.progressPercent ?? 0}%` }} />
+              </div>
               <div className="sp2-public-request__footer">
-                <span>
-                  {activePublicDirection.completionLabel ?? 'Complete the requested move'}
-                </span>
+                <span>{publicRequestProgress?.label ?? 'Waiting for a first beat'}</span>
                 {activePublicDirection.relatedPlayerId && (
                   <button type="button" onClick={focusPublicRequest}>
-                    Focus move
+                    {(activePublicDirection.progressPercent ?? 0) <= 0
+                      ? 'Focus first move'
+                      : 'Follow thread'}
                   </button>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { TvEvent } from '../../types'
 import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
@@ -41,6 +41,9 @@ export interface TVLogProps {
   launcherHidden?: boolean
   launcherSuppressed?: boolean
   suppressLauncher?: boolean
+  /** Controlled opening for a launcher rendered outside this component. */
+  forceOpen?: boolean
+  onLogOpenChange?: (open: boolean) => void
 }
 
 function formatEventAge(timestamp: number): string {
@@ -60,11 +63,18 @@ export default function TVLog({
   launcherHidden = false,
   launcherSuppressed = false,
   suppressLauncher = false,
+  forceOpen,
+  onLogOpenChange,
 }: TVLogProps) {
   const refined = useRefinedGameChrome()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
-  const [logOpen, setLogOpen] = useState(false)
+  const [uncontrolledLogOpen, setUncontrolledLogOpen] = useState(false)
+  const logOpen = forceOpen ?? uncontrolledLogOpen
+  const setLogOpen = useCallback((open: boolean) => {
+    if (forceOpen === undefined) setUncontrolledLogOpen(open)
+    onLogOpenChange?.(open)
+  }, [forceOpen, onLogOpenChange])
   const effectiveMaxVisible = Math.max(1, maxVisible)
 
   const visible = useMemo(() => {
@@ -87,19 +97,28 @@ export default function TVLog({
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [logOpen])
+  }, [logOpen, setLogOpen])
 
   useEffect(() => {
-    if (!suppressLauncher && !launcherSuppressed) return undefined
+    // `launcherSuppressed` only hides TVLog's floating launcher when another
+    // control (such as the roster Log button) owns opening the modal. It must
+    // not close that modal after the owner dispatches the open event.
+    if (!suppressLauncher) return undefined
     const closeTimer = window.setTimeout(() => setLogOpen(false), 0)
     return () => window.clearTimeout(closeTimer)
-  }, [launcherSuppressed, suppressLauncher])
+  }, [setLogOpen, suppressLauncher])
 
   useEffect(() => {
     const openFromRoster = () => setLogOpen(true)
+    ;(window as Window & { __openTVGameLog?: () => void }).__openTVGameLog = openFromRoster
     window.addEventListener('tv:open-game-log', openFromRoster)
-    return () => window.removeEventListener('tv:open-game-log', openFromRoster)
-  }, [])
+    document.addEventListener('tv:open-game-log', openFromRoster)
+    return () => {
+      delete (window as Window & { __openTVGameLog?: () => void }).__openTVGameLog
+      window.removeEventListener('tv:open-game-log', openFromRoster)
+      document.removeEventListener('tv:open-game-log', openFromRoster)
+    }
+  }, [setLogOpen])
 
   function toggleExpand(id: string) {
     setExpandedIds((previous) => {
@@ -217,8 +236,6 @@ export default function TVLog({
       </div>,
       document.body
     )
-
-  if (suppressLauncher) return null
 
   if (!refined || inlineVisible) {
     return (

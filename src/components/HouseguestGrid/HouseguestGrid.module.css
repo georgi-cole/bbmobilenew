@@ -530,6 +530,8 @@
   animation: none;
   opacity: 1;
   transform: none;
+  /* The persistent header contains the roster Log control. */
+  pointer-events: auto;
 }
 
 .rosterLogLauncher {
@@ -1314,6 +1316,9 @@
   display: block;
   object-fit: contain;
   z-index: 5;
+}
+
+.crossAnimated {
   animation: crossFadeIn 0.35s ease-out forwards;
 }
 

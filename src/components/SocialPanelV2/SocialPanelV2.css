@@ -327,6 +327,22 @@
   font-weight: 750;
 }
 
+.sp2-public-request__progress {
+  height: 0.22rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sp2-public-request__progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9a7be2, #e3c66f);
+  box-shadow: 0 0 8px rgba(227, 198, 111, 0.28);
+  transition: width 220ms ease;
+}
+
 .sp2-public-request button {
   flex: 0 0 auto;
   border: 1px solid rgba(203, 192, 255, 0.6);
@@ -1073,7 +1089,13 @@
 }
 
 .sp2-public-request > span {
-  display: none;
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(224, 219, 244, 0.68);
+  font-size: 0.61rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .sp2-public-request__footer {

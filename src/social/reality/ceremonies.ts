@@ -4,6 +4,7 @@ import { appendRealityEvent } from './events'
 import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
+import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
 import type {
   RealityClock,
   RealityDomainState,
@@ -303,6 +304,14 @@ export function recordRealityCeremonyOutcome(
   })
   rememberOfficialCeremony(state, event, factId)
   applyCeremonyAftermath(state, event, input.kind)
+  if (input.kind === 'SAFETY_USED') {
+    reconcileNemesisWithVoluntarySafety(state, {
+      actorId: input.actorId,
+      savedIds: input.targetIds,
+      eventId: event.id,
+      at: { day: input.day, phase: input.phase },
+    })
+  }
   projectPublicCeremony(state, event, input.kind)
   return event
 }

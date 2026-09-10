@@ -55,6 +55,14 @@ import {
 } from './reality'
 import { getRealityModeAdapter } from './reality'
 import {
+  advanceRelationshipAutonomy,
+  getActiveRealityNemesis,
+  hasRelationshipBoundary,
+  planRelationshipStoryBeat,
+  startAutonomousNemesisIfReady,
+  type RealityRelationshipIntentKind,
+} from './reality'
+import {
   createInitialRealitySimulationState,
   deriveRealitySimulationSeed,
   type RealitySimulationState,
@@ -200,6 +208,17 @@ function executeRealityCandidate(
     _store.dispatch(replaceRealitySimulation(result.simulation))
     return false
   }
+  if (candidate.relationshipIntent && candidate.targetIds[0]) {
+    advanceRelationshipAutonomy(result.domain, {
+      ownerId: player.id,
+      targetId: candidate.targetIds[0],
+      kind: candidate.relationshipIntent,
+      at: { day: result.event.day, phase: result.event.phase },
+      eventId: result.event.id,
+      accepted: result.response?.accepted === true,
+      deferred: result.response?.kind === 'QUESTION' || result.response?.kind === 'COUNTER',
+    })
+  }
   const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
   _store.dispatch(applyEnergyDelta({ playerId: player.id, delta: -costs.energy }))
   if (costs.influence > 0) {
@@ -270,6 +289,7 @@ interface CandidateMove {
   targetIds: string[]
   subjectId?: string
   reason: string
+  relationshipIntent?: RealityRelationshipIntentKind
 }
 
 const MAX_TICKS = () => socialConfig.maxTicksPerPhase
@@ -618,12 +638,75 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
+function relationshipCandidateForPlayer(state: DriverState, player: DriverPlayer): CandidateMove | null {
+  const at = { day: state.game.week ?? 1, phase: state.game.phase ?? 'social_1' }
+  const target = state.game.players
+    .filter(
+      (candidate) =>
+        candidate.id !== player.id &&
+        !candidate.isUser &&
+        candidate.status !== 'evicted' &&
+        candidate.status !== 'jury'
+    )
+    .map((candidate) => ({
+      candidate,
+      beat: planRelationshipStoryBeat(state.social.reality, {
+        ownerId: player.id,
+        targetId: candidate.id,
+        at,
+      }),
+    }))
+    .filter((entry): entry is { candidate: DriverPlayer; beat: NonNullable<typeof entry.beat> } => Boolean(entry.beat))
+    .sort(
+      (left, right) =>
+        (state.social.reality.relationshipAutonomy.intents[
+          `relationship-intent:${player.id}:${right.candidate.id}:${right.beat.intent}`
+        ]?.continuationPressure ?? 0) -
+          (state.social.reality.relationshipAutonomy.intents[
+            `relationship-intent:${player.id}:${left.candidate.id}:${left.beat.intent}`
+          ]?.continuationPressure ?? 0) || left.candidate.id.localeCompare(right.candidate.id)
+    )[0]
+  if (!target) return null
+  const actionId =
+    target.beat.intent === 'RECRUIT' || target.beat.intent === 'MAINTAIN_COMMITMENT'
+      ? 'proposeAlliance'
+      : target.beat.intent === 'EXPLORE_ROMANCE' || target.beat.intent === 'MAINTAIN_ROMANCE'
+        ? 'flirt'
+        : target.beat.intent === 'CONFRONT' || target.beat.intent === 'SEEK_REASSURANCE'
+          ? 'confront'
+          : target.beat.intent === 'REPAIR'
+            ? 'repair_bond'
+            : 'share_personal_story'
+  return {
+    actionId,
+    targetIds: [target.candidate.id],
+    reason: `persistent ${target.beat.storyFamily} storyline`,
+    relationshipIntent: target.beat.intent,
+  }
+}
+
 function candidateForPlayer(
   state: DriverState,
   player: DriverPlayer,
   attempt: number
 ): CandidateMove | null {
   const dramaMode = getEffectiveSocialMode(state) === 'drama'
+  const human = state.game.players.find((candidate) => candidate.isUser)
+  const nemesis = human ? getActiveRealityNemesis(state.social.reality, player.id, human.id) : null
+  const contactBoundary =
+    Boolean(nemesis && human) &&
+    hasRelationshipBoundary(state.social.reality, human!.id, player.id, 'MINIMIZE_CONTACT')
+  const strategicNemesisAction =
+    contactBoundary &&
+    nemesis &&
+    human &&
+    state.game.lohId &&
+    state.game.lohId !== human.id &&
+    state.game.lohId !== player.id
+      ? 'pitch_target'
+      : null
+  if (contactBoundary && nemesis && !strategicNemesisAction) return null
+  const relationshipCandidate = dramaMode && attempt === 0 ? relationshipCandidateForPlayer(state, player) : null
   const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
   const dramaMove =
     dramaMode && attempt === 0
@@ -645,6 +728,8 @@ function candidateForPlayer(
       : null
 
   const policyActionId =
+    strategicNemesisAction ??
+    relationshipCandidate?.actionId ??
     dramaMove?.actionId ??
     chooseActionFor(player.id, {
       players: state.game.players,
@@ -660,6 +745,7 @@ function candidateForPlayer(
     } as Parameters<typeof chooseActionFor>[1])
   const allianceBias = allianceIdentityBias(player.aiGameIdentity)
   const actionId =
+    !relationshipCandidate &&
     !dramaMove &&
     allianceBias >= 20 &&
     policyActionId !== 'proposeAlliance' &&
@@ -678,6 +764,11 @@ function candidateForPlayer(
     targetIds = []
   } else if (mode === 'multi') {
     targetIds = groupTargets(state, player.id, action.maxTargets ?? 3)
+  } else if (strategicNemesisAction && human) {
+    targetIds = [state.game.lohId!]
+    subjectId = human.id
+  } else if (relationshipCandidate) {
+    targetIds = relationshipCandidate.targetIds
   } else if (dramaMove) {
     targetIds = [dramaMove.targetId]
     subjectId = dramaMove.subjectId
@@ -712,7 +803,8 @@ function candidateForPlayer(
     actionId,
     targetIds,
     subjectId,
-    reason: dramaMove?.reason ?? `contextual policy attempt ${attempt + 1}`,
+    reason: relationshipCandidate?.reason ?? dramaMove?.reason ?? `contextual policy attempt ${attempt + 1}`,
+    relationshipIntent: relationshipCandidate?.relationshipIntent,
   }
 }
 
@@ -784,6 +876,20 @@ function tick(): void {
 
   _tickCount += 1
   const state = _store.getState() as DriverState
+  const human = state.game.players.find((player) => player.isUser)
+  if (getEffectiveSocialMode(state) === 'drama' && human) {
+    const domain = structuredClone(state.social.reality)
+    const nemesis = startAutonomousNemesisIfReady(domain, {
+      targetId: human.id,
+      candidateIds: state.game.players
+        .filter((player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury')
+        .map((player) => player.id),
+      seed: state.game.seed ?? 0,
+      at: { day: state.game.week ?? 1, phase: state.game.phase ?? 'social_1' },
+      humanHasPower: state.game.lohId === human.id || state.game.posWinnerId === human.id,
+    })
+    if (nemesis) _store.dispatch(replaceRealityDomain(domain))
+  }
   const aiPlayers = getAIPlayers(state)
   const budgets = state.social?.energyBank ?? {}
 

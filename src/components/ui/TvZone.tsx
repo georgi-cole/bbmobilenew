@@ -531,10 +531,20 @@ const DOUBLE_EVICTION_SPOTLIGHT_MS = 1700
 const LIVE_VOTE_CUTOUT_PADDING = 12
 const LIVE_VOTE_CUTOUT_BOTTOM_PADDING = 0
 const LIVE_VOTE_CUTOUT_RADIUS = 18
-const DETOX_MESSAGE_HOLD_MS = 1500
+const DETOX_MESSAGE_HOLD_MS = 2600
 const VOTE_RESULTS_POST_REVEAL_MS = 1000
 const VOTE_RESULTS_OUTCOME_MS = 3000
 const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
+  // Safety shocks must hand control back to the central Play button after
+  // their fullscreen intro; otherwise the game can remain parked on the
+  // preceding results phase.
+  'coup_detat',
+  'vip_veto',
+  'diamond_pov',
+  'spotlight_veto',
+  'double_eviction',
+  'vox_double_eviction',
+  'democracia',
   'vox_populi',
   'vox_final3',
   'vox_final3_interlude',
@@ -1104,6 +1114,11 @@ export default function TvZone(props: TvZoneProps) {
     )
       return null
     const majorKey = extractMajorKey(announcementEvent)
+    // A completed Back 2 the Game showdown can leave its original shock event
+    // in the historical feed. Once a winner is recorded, never promote that
+    // old event into a new fullscreen/faux-TV announcement after the game
+    // phase changes.
+    if (majorKey === 'battle_back' && gameState.battleBack?.winnerId) return null
     return majorKey ? buildAnnouncement(majorKey, announcementEvent) : null
   }, [
     announcementPrerollEvent,
@@ -1115,6 +1130,7 @@ export default function TvZone(props: TvZoneProps) {
     dismissedEventId,
     dismissedPriorityEventIds,
     queuedBroadcastEvent,
+    gameState.battleBack?.winnerId,
   ])
   const eventAnnouncementSource =
     seasonStartExpansionEvent ??
@@ -1371,6 +1387,10 @@ export default function TvZone(props: TvZoneProps) {
       extractMajorKey(priorityBroadcastEvent) === currentAnnouncement.key
     ) {
       dismissedCriticalBroadcastEventIds.add(priorityBroadcastEvent.id)
+      // A shock can be visible through both the priority and ordinary event
+      // selectors. Mark the source dismissed as well, otherwise Play clears
+      // the fullscreen layer and immediately re-promotes the same shock.
+      setDismissedEventId(priorityBroadcastEvent.id)
       setDismissedPriorityEventIds((current) => {
         const next = new Set(current)
         next.add(priorityBroadcastEvent.id)
@@ -2218,11 +2238,12 @@ export default function TvZone(props: TvZoneProps) {
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
         launcherSuppressed={
-          Boolean(props.rosterLogLauncher) || publicSaveRevealActive || activeAnnouncement != null
+          publicSaveRevealActive || activeAnnouncement != null
         }
         launcherHidden={
           gameState.phase === 'week_start' ||
           gameState.phase === 'week_end' ||
+          Boolean(props.rosterLogLauncher) ||
           (weatherCardActive && !houseFeedEnabled)
         }
         suppressLauncher={Boolean(props.voteResultsReveal)}

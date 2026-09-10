@@ -39,37 +39,42 @@ const HEAT_EMOJIS: string[][] = [
 
 /** Tap-button fill colors per heat level. */
 const HEAT_BTN_COLORS = [
-  '#7c3aed',
-  '#7c3aed',
-  '#b44900',
-  '#d43800',
-  '#e62000',
-  '#ff2000',
+  '#7c5cff',
+  '#8b6cff',
+  '#f59e0b',
+  '#fb7185',
+  '#f43f5e',
+  '#e11d48',
 ];
 
 /** Canvas background colors per heat level. */
 const HEAT_BG_COLORS = [
-  'rgba(15, 15, 25, 0.98)',
-  'rgba(15, 15, 25, 0.98)',
-  'rgba(10, 0, 0, 0.98)',
-  'rgba(20, 5, 0, 0.98)',
-  'rgba(30, 8, 0, 0.98)',
-  'rgba(40, 10, 0, 0.98)',
+  'rgba(7, 11, 24, 0.96)',
+  'rgba(7, 11, 24, 0.96)',
+  'rgba(27, 19, 12, 0.96)',
+  'rgba(35, 15, 20, 0.96)',
+  'rgba(45, 12, 20, 0.96)',
+  'rgba(58, 10, 20, 0.96)',
 ];
 
 /** Heat-dot active colors indexed 0–5. */
-const HEAT_DOT_COLORS = ['#ff8c00', '#ff6400', '#ff4000', '#ff2000', '#ff0000', '#ffffff'];
+const HEAT_DOT_COLORS = ['#5eead4', '#67e8f9', '#60a5fa', '#818cf8', '#a78bfa', '#f0abfc'];
 
 const PARTICLE_LIFE_MS = 700;
 /** Pixels per millisecond for particle velocity magnitude. */
 const PARTICLE_SPEED = 0.16;
-const MAX_PARTICLES = 60;
+// Emoji text rendering is disproportionately expensive in iOS WebViews. Keep
+// the feedback lively, but bounded when a player taps at a very high rate.
+const MAX_PARTICLES = 24;
+const MAX_PARTICLES_PER_TAP = 2;
+const TAP_SOUND_INTERVAL_MS = 45;
+const INPUT_UI_UPDATE_INTERVAL_MS = 60;
 const BOOSTER_PROMPT_PULSE_BASE = 0.88;
 const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
 const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
 const BOOSTER_PROMPT_GLOW_BASE_ALPHA = 0.28;
 const BOOSTER_PROMPT_GLOW_PULSE_ALPHA = 0.12;
-const BOOSTER_PROMPT_BASE_COLOR_RGB = '96, 165, 250';
+const BOOSTER_PROMPT_BASE_COLOR_RGB = '103, 232, 249';
 const BOOSTER_PROMPT_SHADOW_BLUR_BASE = 14;
 const BOOSTER_PROMPT_SHADOW_BLUR_SCALE = 10;
 const HIGH_HEAT_THRESHOLD = 4;
@@ -186,6 +191,8 @@ export class QuickTapRaceCanvasEngine {
 
   private lastLowLatencyUiUpdateMs = 0;
 
+  private lastTapSoundMs = Number.NEGATIVE_INFINITY;
+
   private lastTimerUiUpdateMs = 0;
 
   private readonly acceptedTapTimesMs: number[] = [];
@@ -201,7 +208,7 @@ export class QuickTapRaceCanvasEngine {
   private readonly boosterTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   constructor(canvas: HTMLCanvasElement, options: QTREngineOptions) {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     if (!ctx) {
       throw new Error('QuickTapRace canvas could not acquire a 2D context.');
     }
@@ -349,16 +356,20 @@ export class QuickTapRaceCanvasEngine {
     this.pointerTypeCounts[normalizedPointerType] =
       (this.pointerTypeCounts[normalizedPointerType] ?? 0) + 1;
 
-    if (this.options.lowLatencyInput) {
-      // Keep the hot path light enough that the measurement does not create its
-      // own event backlog. Canvas feedback still renders on the regular RAF.
-      if (this.gameElapsedMs - this.lastLowLatencyUiUpdateMs >= 100) {
-        this.lastLowLatencyUiUpdateMs = this.gameElapsedMs;
-        this.emitTick();
-      }
-    } else {
-      this.spawnParticles(point.x, point.y);
+    this.spawnParticles(point.x, point.y);
+    if (nowMs - this.lastTapSoundMs >= TAP_SOUND_INTERVAL_MS) {
+      this.lastTapSoundMs = nowMs;
       this.options.onTap?.();
+    }
+
+    // React owns the HUD outside the canvas. Do not make every pointer event
+    // synchronously re-render that subtree; the RAF/timer path still keeps the
+    // score and timer visibly current.
+    if (
+      this.gameElapsedMs - this.lastLowLatencyUiUpdateMs >=
+      (this.options.lowLatencyInput ? 100 : INPUT_UI_UPDATE_INTERVAL_MS)
+    ) {
+      this.lastLowLatencyUiUpdateMs = this.gameElapsedMs;
       this.emitTick();
     }
   }
@@ -384,7 +395,7 @@ export class QuickTapRaceCanvasEngine {
 
   private spawnParticles(cx: number, cy: number): void {
     const emojiPool = HEAT_EMOJIS[this.heatLevel];
-    const count = 1 + this.heatLevel;
+    const count = Math.min(MAX_PARTICLES_PER_TAP, 1 + Math.floor(this.heatLevel / 2));
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = PARTICLE_SPEED * (0.5 + Math.random());
@@ -680,7 +691,7 @@ export class QuickTapRaceCanvasEngine {
       + Math.sin((this.gameElapsedMs / BOOSTER_PROMPT_PULSE_PERIOD_MS) * Math.PI * 2)
         * BOOSTER_PROMPT_PULSE_AMPLITUDE;
     const glowAlpha = BOOSTER_PROMPT_GLOW_BASE_ALPHA + pulse * BOOSTER_PROMPT_GLOW_PULSE_ALPHA;
-    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fb923c' : '#60a5fa';
+    const accent = this.heatLevel >= HIGH_HEAT_THRESHOLD ? '#fbbf24' : '#67e8f9';
 
     // Draw rounded rectangle.
     ctx.beginPath();
@@ -746,7 +757,7 @@ export class QuickTapRaceCanvasEngine {
 
     // Outer glow — more intense at high heat or when pressed.
     ctx.save();
-    const glowColor = this.heatLevel >= 4 ? 'rgba(255, 80, 0, 0.5)' : 'rgba(124, 58, 237, 0.45)';
+    const glowColor = this.heatLevel >= 4 ? 'rgba(244, 63, 94, 0.5)' : 'rgba(124, 92, 255, 0.48)';
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = (16 + this.heatLevel * 8) * (1 - 0.4 * pressFraction);
     ctx.beginPath();
@@ -760,6 +771,27 @@ export class QuickTapRaceCanvasEngine {
     ctx.arc(cx, cy, displayRadius, 0, Math.PI * 2);
     ctx.fillStyle = btnColor;
     ctx.fill();
+
+    // A soft highlight and hairline rim give the tap target a glassy face
+    // without changing its size or hit area.
+    if (typeof ctx.createRadialGradient === 'function') {
+      const highlight = ctx.createRadialGradient(
+        cx - displayRadius * 0.34,
+        cy - displayRadius * 0.42,
+        displayRadius * 0.04,
+        cx,
+        cy,
+        displayRadius * 1.05,
+      );
+      highlight.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      highlight.addColorStop(0.42, 'rgba(255, 255, 255, 0.06)');
+      highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = highlight;
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.34)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
     // Label.
     const label = this.heatLevel >= 4 ? '💥' : this.heatLevel >= 2 ? '🔥' : 'TAP!';

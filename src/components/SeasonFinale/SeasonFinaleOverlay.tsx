@@ -189,7 +189,9 @@ export default function SeasonFinaleOverlay() {
 
   useEffect(() => {
     if (finale?.phase !== 'winnerCinematic') return
-    void SoundManager.play('tv:winner_reveal')
+    // The Redux sound middleware owns the one-shot winner reveal cue when the
+    // cinematic phase starts. Keep only the delayed finale stinger here so the
+    // reveal cannot play twice.
     const reactionTimer = window.setTimeout(() => {
       void SoundManager.play('tv:finale_winner_stinger')
     }, 1500)
