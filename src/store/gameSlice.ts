@@ -1037,7 +1037,15 @@ function pushEvent(
     meta?.major === 'cupid_arrow_broken' ||
     meta?.major === 'depression_shock_start' ||
     meta?.major === 'depression_shock_day_2' ||
-    meta?.major === 'depression_shock_end'
+    meta?.major === 'depression_shock_end' ||
+    // Safety shocks are activated at the end of the Safety competition,
+    // before the catalogue's ceremony-phase card would otherwise begin.
+    // Keep their delivery attached to the activation phase so the normal
+    // broadcast queue owns and consumes the announcement exactly once.
+    meta?.major === 'vip_veto' ||
+    meta?.major === 'diamond_pov' ||
+    meta?.major === 'coup_detat' ||
+    meta?.major === 'spotlight_veto'
   const intendedPhase = preserveActivationPhase ? hintedPhase : (template?.phase ?? hintedPhase)
   const broadcastOrder =
     override?.order ??

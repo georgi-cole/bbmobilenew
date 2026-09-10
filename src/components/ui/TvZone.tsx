@@ -1421,7 +1421,14 @@ export default function TvZone(props: TvZoneProps) {
       }
       onExternalAnnouncementDismiss?.()
     } else if (eventAnnouncementHasShockPriority && eventAnnouncementSource) {
+      // Runtime Safety shocks are announced at the end of the competition,
+      // before the ceremony phase begins. Older saves can therefore hold this
+      // event outside the active managed queue. Dismissing it only in local UI
+      // state lets it return after Play advances or the screen remounts. Mark
+      // the source consumed as well so every shock has one complete cinematic
+      // → Faux-TV presentation, regardless of when the save was created.
       setDismissedEventId(eventAnnouncementSource.id)
+      dispatch(consumeBroadcastEvent(eventAnnouncementSource.id))
     } else if (phaseAnnouncement) {
       setDismissedPhase(gameState.phase)
       setPhaseAnnouncement(null)

@@ -27,6 +27,7 @@ import { MemoryRouter } from 'react-router'
 import gameReducer, {
   activateDemocracia,
   activateDoubleEviction,
+  activateSpecialVeto,
   addTvEvent,
   consumeBroadcastEvent,
   setPhase,
@@ -1576,6 +1577,92 @@ describe('TvZone — phase-based announcement triggers', () => {
     })
 
     expect(screen.getByRole('dialog', { name: /Announcement: Double Elimination!/i })).toBeDefined()
+    vi.useRealTimers()
+  })
+
+  it('consumes Double Trouble after its Faux-TV handoff so it cannot replay', () => {
+    vi.useFakeTimers()
+    const store = makeStore()
+    const view = renderTvZone(store)
+
+    // Special Safety is activated while POS results are still on screen. Its
+    // catalogue card belongs to the following ceremony, which previously let
+    // it escape the normal queue and replay after Play.
+    act(() => {
+      store.dispatch(setPhase('pos_results'))
+      store.dispatch(activateSpecialVeto({ type: 'vip', week: store.getState().game.week }))
+    })
+
+    const shock = store.getState().game.tvFeed.find((event) => event.meta?.major === 'vip_veto')
+    expect(shock?.meta?.phase).toBe('pos_results')
+    expect(store.getState().game.broadcastQueue).toContain(shock?.id)
+    expect(screen.getByTestId('shock-intro-overlay')).toBeDefined()
+
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50)
+    })
+    expect(screen.getByRole('dialog', { name: /Announcement: Double Trouble!/i })).toBeDefined()
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('ui:playPressed', { cancelable: true }))
+    })
+
+    expect(
+      store.getState().game.tvFeed.find((event) => event.id === shock?.id)?.meta?.broadcastConsumed
+    ).toBe(true)
+    expect(store.getState().game.broadcastQueue).not.toContain(shock?.id)
+    expect(screen.queryByRole('dialog', { name: /Announcement: Double Trouble!/i })).toBeNull()
+
+    // A return to the game uses fresh component state; the completed shock
+    // must still remain in the log only and never restart its cinematic.
+    view.unmount()
+    renderTvZone(store)
+    expect(screen.queryByRole('dialog', { name: /Announcement: Double Trouble!/i })).toBeNull()
+    expect(screen.queryByTestId('shock-intro-overlay')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('also completes an off-phase Safety shock saved before the queue fix', () => {
+    vi.useFakeTimers()
+    const store = makeStore()
+    renderTvZone(store)
+
+    act(() => {
+      store.dispatch(setPhase('pos_results'))
+      // Older active saves filed the announcement under the next ceremony
+      // phase. Reproduce that stored state to protect existing games too.
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'legacy-double-trouble',
+            text: 'DOUBLE TROUBLE! The Safety power may be used twice this ceremony. 👑',
+            type: 'twist',
+            meta: {
+              phase: 'pos_ceremony',
+              week: store.getState().game.week,
+              major: 'vip_veto',
+              broadcastPriority: 'critical',
+              forceOnTv: true,
+            },
+          })
+        )
+      )
+    })
+
+    const legacyShock = store
+      .getState()
+      .game.tvFeed.find((event) => event.meta?.major === 'vip_veto')
+    expect(store.getState().game.broadcastQueue).not.toContain(legacyShock?.id)
+    act(() => {
+      vi.advanceTimersByTime(SHOCK_INTRO_SETTLE_MS + 50)
+      window.dispatchEvent(new CustomEvent('ui:playPressed', { cancelable: true }))
+    })
+
+    expect(
+      store.getState().game.tvFeed.find((event) => event.id === legacyShock?.id)?.meta
+        ?.broadcastConsumed
+    ).toBe(true)
+    expect(screen.queryByRole('dialog', { name: /Announcement: Double Trouble!/i })).toBeNull()
     vi.useRealTimers()
   })
 
