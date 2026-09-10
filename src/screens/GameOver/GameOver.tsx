@@ -180,7 +180,15 @@ export default function GameOver() {
     if (!archivedRef.current) {
       archivedRef.current = true
       dispatch(
-        archiveSeason(buildArchive(season, summaries, cupidArrowActivated, voxPopuliActivated, twinShockConsumed))
+        archiveSeason(
+          buildArchive(
+            season,
+            summaries,
+            cupidArrowActivated,
+            voxPopuliActivated,
+            twinShockConsumed
+          )
+        )
       )
     }
   }

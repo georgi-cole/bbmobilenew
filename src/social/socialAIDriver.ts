@@ -638,7 +638,10 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
-function relationshipCandidateForPlayer(state: DriverState, player: DriverPlayer): CandidateMove | null {
+function relationshipCandidateForPlayer(
+  state: DriverState,
+  player: DriverPlayer
+): CandidateMove | null {
   const at = { day: state.game.week ?? 1, phase: state.game.phase ?? 'social_1' }
   const target = state.game.players
     .filter(
@@ -656,7 +659,9 @@ function relationshipCandidateForPlayer(state: DriverState, player: DriverPlayer
         at,
       }),
     }))
-    .filter((entry): entry is { candidate: DriverPlayer; beat: NonNullable<typeof entry.beat> } => Boolean(entry.beat))
+    .filter((entry): entry is { candidate: DriverPlayer; beat: NonNullable<typeof entry.beat> } =>
+      Boolean(entry.beat)
+    )
     .sort(
       (left, right) =>
         (state.social.reality.relationshipAutonomy.intents[
@@ -706,7 +711,8 @@ function candidateForPlayer(
       ? 'pitch_target'
       : null
   if (contactBoundary && nemesis && !strategicNemesisAction) return null
-  const relationshipCandidate = dramaMode && attempt === 0 ? relationshipCandidateForPlayer(state, player) : null
+  const relationshipCandidate =
+    dramaMode && attempt === 0 ? relationshipCandidateForPlayer(state, player) : null
   const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
   const dramaMove =
     dramaMode && attempt === 0
@@ -803,7 +809,10 @@ function candidateForPlayer(
     actionId,
     targetIds,
     subjectId,
-    reason: relationshipCandidate?.reason ?? dramaMove?.reason ?? `contextual policy attempt ${attempt + 1}`,
+    reason:
+      relationshipCandidate?.reason ??
+      dramaMove?.reason ??
+      `contextual policy attempt ${attempt + 1}`,
     relationshipIntent: relationshipCandidate?.relationshipIntent,
   }
 }
@@ -882,7 +891,9 @@ function tick(): void {
     const nemesis = startAutonomousNemesisIfReady(domain, {
       targetId: human.id,
       candidateIds: state.game.players
-        .filter((player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury')
+        .filter(
+          (player) => !player.isUser && player.status !== 'evicted' && player.status !== 'jury'
+        )
         .map((player) => player.id),
       seed: state.game.seed ?? 0,
       at: { day: state.game.week ?? 1, phase: state.game.phase ?? 'social_1' },

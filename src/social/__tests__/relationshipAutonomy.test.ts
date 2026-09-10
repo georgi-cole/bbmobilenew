@@ -51,7 +51,13 @@ describe('persistent relationship autonomy', () => {
       },
     }
 
-    expect(planRelationshipStoryBeat(domain, { ownerId: 'rae', targetId: 'player', at: { day: 2, phase: 'social_1' } })?.intent).toBe('EXPLORE_ROMANCE')
+    expect(
+      planRelationshipStoryBeat(domain, {
+        ownerId: 'rae',
+        targetId: 'player',
+        at: { day: 2, phase: 'social_1' },
+      })?.intent
+    ).toBe('EXPLORE_ROMANCE')
     resolveRelationshipStoryResponse(domain, {
       ownerId: 'rae',
       targetId: 'player',
@@ -61,8 +67,16 @@ describe('persistent relationship autonomy', () => {
       at: { day: 2, phase: 'social_1' },
     })
 
-    expect(planRelationshipStoryBeat(domain, { ownerId: 'rae', targetId: 'player', at: { day: 9, phase: 'social_1' } })?.intent).not.toBe('EXPLORE_ROMANCE')
-    expect(Object.values(domain.relationshipAutonomy.boundaries)[0]?.category).toBe('NO_ROMANTIC_PURSUIT')
+    expect(
+      planRelationshipStoryBeat(domain, {
+        ownerId: 'rae',
+        targetId: 'player',
+        at: { day: 9, phase: 'social_1' },
+      })?.intent
+    ).not.toBe('EXPLORE_ROMANCE')
+    expect(Object.values(domain.relationshipAutonomy.boundaries)[0]?.category).toBe(
+      'NO_ROMANTIC_PURSUIT'
+    )
     expect(Object.values(domain.threads)[0]?.type).toBe('RELATIONSHIP_EXPLORE_ROMANCE')
   })
 
@@ -104,12 +118,14 @@ describe('persistent relationship autonomy', () => {
 
     expect(objective?.targetId).toBe('player')
     expect(['rae', 'ivy']).toContain(objective?.ownerId)
-    expect(startAutonomousNemesisIfReady(domain, {
-      targetId: 'player',
-      candidateIds: ['rae', 'ivy'],
-      seed: 17,
-      at: { day: 5, phase: 'social_1' },
-    })).toBeNull()
+    expect(
+      startAutonomousNemesisIfReady(domain, {
+        targetId: 'player',
+        candidateIds: ['rae', 'ivy'],
+        seed: 17,
+        at: { day: 5, phase: 'social_1' },
+      })
+    ).toBeNull()
   })
 
   it('keeps the objective through a contact boundary and reconciles it only when the player saves that Nemesis with Safety', () => {
@@ -128,7 +144,13 @@ describe('persistent relationship autonomy', () => {
       at: { day: 3, phase: 'social_2' },
     })
     expect(getActiveRealityNemesis(domain, 'rae', 'player')).not.toBeNull()
-    expect(planRelationshipStoryBeat(domain, { ownerId: 'rae', targetId: 'player', at: { day: 4, phase: 'social_1' } })).toBeNull()
+    expect(
+      planRelationshipStoryBeat(domain, {
+        ownerId: 'rae',
+        targetId: 'player',
+        at: { day: 4, phase: 'social_1' },
+      })
+    ).toBeNull()
 
     recordRealityCeremonyOutcome(domain, {
       kind: 'SAFETY_USED',

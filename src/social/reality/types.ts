@@ -255,11 +255,7 @@ export type RealityRelationshipIntentKind =
   | 'CONFRONT'
   | 'UNDERMINE'
 
-export type RealityRelationshipIntentStatus =
-  | 'ACTIVE'
-  | 'COOLING'
-  | 'RESOLVED'
-  | 'CLOSED'
+export type RealityRelationshipIntentStatus = 'ACTIVE' | 'COOLING' | 'RESOLVED' | 'CLOSED'
 
 export type RealityBoundaryCategory =
   | 'NO_ROMANTIC_PURSUIT'

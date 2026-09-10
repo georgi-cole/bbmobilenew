@@ -27,7 +27,9 @@ describe('HousePulse', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: /my pulse/i }))
-    expect(screen.getByText(/major developments will appear here when you see them/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/major developments will appear here when you see them/i)
+    ).toBeInTheDocument()
     expect(screen.getByText('current developments')).toBeInTheDocument()
     expect(screen.queryByText('house stories')).toBeNull()
 

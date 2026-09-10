@@ -236,7 +236,9 @@ export function normalizeRealityDomainState(
           ? input.relationshipAutonomy.nemeses
           : {},
       reservedBeatIds: Array.isArray(input.relationshipAutonomy?.reservedBeatIds)
-        ? input.relationshipAutonomy.reservedBeatIds.slice(-240).filter((id): id is string => typeof id === 'string')
+        ? input.relationshipAutonomy.reservedBeatIds
+            .slice(-240)
+            .filter((id): id is string => typeof id === 'string')
         : [],
     },
   }

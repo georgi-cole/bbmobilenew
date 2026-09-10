@@ -64,18 +64,20 @@ function formatResponseLabel(interaction: IncomingInteraction): string {
 function relationshipContextLabel(interaction: IncomingInteraction): string | null {
   const intent = interaction.payload?.relationshipIntent
   if (typeof intent !== 'string') return null
-  return {
-    CONNECT: 'Getting to know you',
-    DEEPEN_BOND: 'Following up',
-    RECRUIT: 'Looking for a real partnership',
-    MAINTAIN_COMMITMENT: 'Checking your commitment',
-    CONFIDE: 'A personal conversation',
-    EXPLORE_ROMANCE: 'A personal conversation',
-    MAINTAIN_ROMANCE: 'A relationship moment',
-    SEEK_REASSURANCE: 'Following up',
-    REPAIR: 'Trying to repair things',
-    CONFRONT: 'An unresolved moment',
-  }[intent] ?? 'Following up'
+  return (
+    {
+      CONNECT: 'Getting to know you',
+      DEEPEN_BOND: 'Following up',
+      RECRUIT: 'Looking for a real partnership',
+      MAINTAIN_COMMITMENT: 'Checking your commitment',
+      CONFIDE: 'A personal conversation',
+      EXPLORE_ROMANCE: 'A personal conversation',
+      MAINTAIN_ROMANCE: 'A relationship moment',
+      SEEK_REASSURANCE: 'Following up',
+      REPAIR: 'Trying to repair things',
+      CONFRONT: 'An unresolved moment',
+    }[intent] ?? 'Following up'
+  )
 }
 
 function getExpiryLabel(

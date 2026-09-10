@@ -2237,9 +2237,7 @@ export default function TvZone(props: TvZoneProps) {
         maxVisible={mainLogMaxVisible}
         mobileTwoLineMode={mainLogMaxVisible <= 2}
         inlineVisible={mainLogMaxVisible > 0}
-        launcherSuppressed={
-          publicSaveRevealActive || activeAnnouncement != null
-        }
+        launcherSuppressed={publicSaveRevealActive || activeAnnouncement != null}
         launcherHidden={
           gameState.phase === 'week_start' ||
           gameState.phase === 'week_end' ||

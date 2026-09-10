@@ -171,9 +171,7 @@ function projectRealityTags(
   if (
     Object.values(reality.relationshipAutonomy.nemeses).some(
       (nemesis) =>
-        nemesis.status === 'ACTIVE' &&
-        nemesis.ownerId === sourceId &&
-        nemesis.targetId === targetId
+        nemesis.status === 'ACTIVE' && nemesis.ownerId === sourceId && nemesis.targetId === targetId
     )
   ) {
     tags.push('target', 'rivalry')

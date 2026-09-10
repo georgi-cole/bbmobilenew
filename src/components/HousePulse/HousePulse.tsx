@@ -72,7 +72,10 @@ function arcStageCopy(stage: string): string {
 }
 
 function titleCase(value: string): string {
-  return value.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
+  return value
+    .replaceAll('_', ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 /**
@@ -102,7 +105,9 @@ function buildRealityPulseStream(
       const signal = `${event.type} ${event.tags.join(' ')}`.toLowerCase()
       const targetNames = event.targetIds.filter((id) => id !== humanId).map(playerName)
       const actor = event.actorId && event.actorId !== humanId ? playerName(event.actorId) : null
-      const kind: SocialStoryBeat['kind'] = /betray|conflict|confront|target|nomination/.test(signal)
+      const kind: SocialStoryBeat['kind'] = /betray|conflict|confront|target|nomination/.test(
+        signal
+      )
         ? 'conflict'
         : /repair|apolog|reassure/.test(signal)
           ? 'repair'

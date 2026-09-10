@@ -810,10 +810,9 @@ export function resolvePendingHumanRealityInteraction(input: {
   resolveRelationshipStoryResponse(domain, {
     ownerId: actorId,
     targetId: input.humanId,
-    intent: interaction.intentTags.find((tag) => tag.startsWith('RELATIONSHIP_INTENT:'))?.replace(
-      'RELATIONSHIP_INTENT:',
-      ''
-    ),
+    intent: interaction.intentTags
+      .find((tag) => tag.startsWith('RELATIONSHIP_INTENT:'))
+      ?.replace('RELATIONSHIP_INTENT:', ''),
     responseType: input.responseType,
     eventId: event.id,
     at: { day: input.day, phase: input.phase },

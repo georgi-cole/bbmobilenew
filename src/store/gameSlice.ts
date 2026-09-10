@@ -454,7 +454,9 @@ export function createInitialGameState(options?: {
   const seasonArchives: SeasonArchive[] = isGuest
     ? []
     : (loadSeasonArchives(archiveKeyForActiveProfile()) ?? [])
-  const priorTwinShockConsumed = seasonArchives.some((archive) => archive.twinShockConsumed === true)
+  const priorTwinShockConsumed = seasonArchives.some(
+    (archive) => archive.twinShockConsumed === true
+  )
   const twinShockConsumed = options?.twinShockConsumed === true || priorTwinShockConsumed
   const freshPlayers = buildInitialPlayers(twinShockConsumed)
   const season = nextSeasonNumber(seasonArchives)
@@ -4415,19 +4417,29 @@ const gameSlice = createSlice({
           ([, nomineeId]) => nomineeId === saveId
         )?.[0]
         const owner = ownerId ? state.players.find((player) => player.id === ownerId) : null
-        const alive = state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+        const alive = state.players.filter(
+          (player) => player.status !== 'evicted' && player.status !== 'jury'
+        )
         const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: ownerId })
         if (owner && eligible.length > 0) {
           if (owner.isUser) {
             state.coLohReplacementOwnerId = owner.id
             state.replacementNeeded = true
-            pushEvent(state, `${owner.name} must name the replacement for their nominee. 🎯`, 'game')
+            pushEvent(
+              state,
+              `${owner.name} must name the replacement for their nominee. 🎯`,
+              'game'
+            )
           } else {
             const replacement = seededPick(mulberry32(state.seed), eligible)
             appendNominee(state, replacement.id)
             state.coLohNomineeByCoLohId ??= {}
             state.coLohNomineeByCoLohId[owner.id] = replacement.id
-            pushEvent(state, `${owner.name} named ${replacement.name} as their replacement nominee. 🎯`, 'game')
+            pushEvent(
+              state,
+              `${owner.name} named ${replacement.name} as their replacement nominee. 🎯`,
+              'game'
+            )
           }
         }
         return
@@ -5618,8 +5630,7 @@ const gameSlice = createSlice({
 
       if (state.specialVeto.awaitingCoupReplacement1) {
         if (id === state.posWinnerId || state.nomineeIds.includes(id)) return
-        if (!isEligibleReplacementNominee(state, id, 2, { actorId: povHolder?.id }))
-          return
+        if (!isEligibleReplacementNominee(state, id, 2, { actorId: povHolder?.id })) return
         state.specialVeto.coupReplacement1Id = id
         state.specialVeto.awaitingCoupReplacement1 = false
         state.specialVeto.awaitingCoupReplacement2 = true

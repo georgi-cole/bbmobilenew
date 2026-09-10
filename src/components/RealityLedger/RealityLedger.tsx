@@ -349,7 +349,9 @@ export default function RealityLedger({
         {tab === 'house' && (
           <>
             <h3>Your groups and open stories</h3>
-            {alliances.length === 0 && threads.length === 0 && knownRelationshipStories.length === 0 ? (
+            {alliances.length === 0 &&
+            threads.length === 0 &&
+            knownRelationshipStories.length === 0 ? (
               <p className="reality-ledger__empty">No known group or unresolved story is active.</p>
             ) : (
               <>

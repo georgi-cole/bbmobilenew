@@ -71,10 +71,13 @@ export default function TVLog({
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
   const [uncontrolledLogOpen, setUncontrolledLogOpen] = useState(false)
   const logOpen = forceOpen ?? uncontrolledLogOpen
-  const setLogOpen = useCallback((open: boolean) => {
-    if (forceOpen === undefined) setUncontrolledLogOpen(open)
-    onLogOpenChange?.(open)
-  }, [forceOpen, onLogOpenChange])
+  const setLogOpen = useCallback(
+    (open: boolean) => {
+      if (forceOpen === undefined) setUncontrolledLogOpen(open)
+      onLogOpenChange?.(open)
+    },
+    [forceOpen, onLogOpenChange]
+  )
   const effectiveMaxVisible = Math.max(1, maxVisible)
 
   const visible = useMemo(() => {

@@ -111,10 +111,14 @@ function deriveIntent(
   const edge = domain.relationships[ownerId]?.[targetId]
   if (!edge) return null
   if (edge.resentment >= 34 || edge.suspicion >= 45) return 'CONFRONT'
-  if (edge.attraction >= 28 && !hasRelationshipBoundary(domain, targetId, ownerId, 'NO_ROMANTIC_PURSUIT')) {
+  if (
+    edge.attraction >= 28 &&
+    !hasRelationshipBoundary(domain, targetId, ownerId, 'NO_ROMANTIC_PURSUIT')
+  ) {
     return 'EXPLORE_ROMANCE'
   }
-  if (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY') return 'MAINTAIN_COMMITMENT'
+  if (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY')
+    return 'MAINTAIN_COMMITMENT'
   if (edge.strategicValue >= 28 && edge.trust >= 5) return 'RECRUIT'
   if (edge.trust >= 28 && edge.warmth >= 25) return 'CONFIDE'
   if (edge.warmth >= 12 || edge.familiarity >= 8) return 'DEEPEN_BOND'
@@ -136,18 +140,43 @@ function storyBeatFor(intent: RealityRelationshipIntent): RelationshipStoryBeat 
             : 'relationship_friendship_check_in',
       }
     case 'RECRUIT':
-      return { intent: intent.kind, storyFamily: 'alliance', stage: intent.stage, scenarioKey: 'relationship_alliance_follow_up' }
+      return {
+        intent: intent.kind,
+        storyFamily: 'alliance',
+        stage: intent.stage,
+        scenarioKey: 'relationship_alliance_follow_up',
+      }
     case 'EXPLORE_ROMANCE':
     case 'MAINTAIN_ROMANCE':
-      return { intent: intent.kind, storyFamily: 'romance', stage: intent.stage, scenarioKey: 'relationship_romance_check_in' }
+      return {
+        intent: intent.kind,
+        storyFamily: 'romance',
+        stage: intent.stage,
+        scenarioKey: 'relationship_romance_check_in',
+      }
     case 'CONFIDE':
-      return { intent: intent.kind, storyFamily: 'confidant', stage: intent.stage, scenarioKey: 'relationship_confidant_check_in' }
+      return {
+        intent: intent.kind,
+        storyFamily: 'confidant',
+        stage: intent.stage,
+        scenarioKey: 'relationship_confidant_check_in',
+      }
     case 'CONFRONT':
     case 'SEEK_REASSURANCE':
     case 'UNDERMINE':
-      return { intent: intent.kind, storyFamily: 'conflict', stage: intent.stage, scenarioKey: 'relationship_frustration_follow_up' }
+      return {
+        intent: intent.kind,
+        storyFamily: 'conflict',
+        stage: intent.stage,
+        scenarioKey: 'relationship_frustration_follow_up',
+      }
     case 'REPAIR':
-      return { intent: intent.kind, storyFamily: 'repair', stage: intent.stage, scenarioKey: 'relationship_repair_follow_up' }
+      return {
+        intent: intent.kind,
+        storyFamily: 'repair',
+        stage: intent.stage,
+        scenarioKey: 'relationship_repair_follow_up',
+      }
     default:
       return null
   }
@@ -158,7 +187,8 @@ export function planRelationshipStoryBeat(
   domain: RealityDomainState,
   input: { ownerId: string; targetId: string; at: RealityClock; romanceEnabled?: boolean }
 ): RelationshipStoryBeat | null {
-  if (hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'MINIMIZE_CONTACT')) return null
+  if (hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'MINIMIZE_CONTACT'))
+    return null
   if (getActiveRealityNemesis(domain, input.ownerId, input.targetId)) {
     return {
       intent: 'UNDERMINE',
@@ -175,7 +205,10 @@ export function planRelationshipStoryBeat(
         intent.status === 'ACTIVE' &&
         clockReached(input.at, intent.nextEligibleAt)
     )
-    .sort((left, right) => right.continuationPressure - left.continuationPressure || left.id.localeCompare(right.id))[0]
+    .sort(
+      (left, right) =>
+        right.continuationPressure - left.continuationPressure || left.id.localeCompare(right.id)
+    )[0]
   const kind = active?.kind ?? deriveIntent(domain, input.ownerId, input.targetId)
   if (!kind) return null
   if (
@@ -188,8 +221,16 @@ export function planRelationshipStoryBeat(
     kind,
     stage: 'SPARK' as const,
   }
-  if (kind === 'RECRUIT' && hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'NO_ALLIANCE_PITCHES')) return null
-  if (kind === 'CONFIDE' && hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'NO_PERSONAL_CONFIDING')) return null
+  if (
+    kind === 'RECRUIT' &&
+    hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'NO_ALLIANCE_PITCHES')
+  )
+    return null
+  if (
+    kind === 'CONFIDE' &&
+    hasRelationshipBoundary(domain, input.targetId, input.ownerId, 'NO_PERSONAL_CONFIDING')
+  )
+    return null
   return storyBeatFor(candidate as RealityRelationshipIntent)
 }
 
@@ -299,10 +340,12 @@ export function startAutonomousNemesisIfReady(
   const humanReach =
     Object.values(domain.alliances).filter(
       (alliance) => alliance.status !== 'DISSOLVED' && alliance.memberIds.includes(input.targetId)
-    ).length * 9 +
+    ).length *
+      9 +
     Object.values(domain.romances).filter(
       (romance) => romance.status === 'ACTIVE' && romance.participantIds.includes(input.targetId)
-    ).length * 8
+    ).length *
+      8
   const candidates = [...new Set(input.candidateIds)]
     .filter((candidateId) => candidateId !== input.targetId)
     .map((candidateId) => {
@@ -317,9 +360,10 @@ export function startAutonomousNemesisIfReady(
         (humanPerception?.strategicRespect ?? 0) * 0.28 +
         (input.humanHasPower ? 12 : 0)
       const jealousy = attraction >= 20 ? 12 + (attraction - 20) * 0.25 : 0
-      const volatility = deterministicUnit(
-        `${input.seed}:nemesis:${input.targetId}:${candidateId}:${input.at.day}`
-      ) * 30
+      const volatility =
+        deterministicUnit(
+          `${input.seed}:nemesis:${input.targetId}:${candidateId}:${input.at.day}`
+        ) * 30
       const score = 14 + personalFriction + performance + humanReach + jealousy + volatility
       const reason: RealityNemesisObjective['reason'] =
         jealousy >= 12
@@ -333,7 +377,9 @@ export function startAutonomousNemesisIfReady(
                 : 'VOLATILE_READ'
       return { candidateId, score, reason }
     })
-    .sort((left, right) => right.score - left.score || left.candidateId.localeCompare(right.candidateId))
+    .sort(
+      (left, right) => right.score - left.score || left.candidateId.localeCompare(right.candidateId)
+    )
   const selected = candidates[0]
   if (!selected || selected.score < 46) return null
   const event = appendRealityEvent(domain, {
@@ -383,9 +429,8 @@ export function reconcileNemesisWithVoluntarySafety(
     nemesis.status = 'RECONCILED'
     nemesis.reconciledAt = input.at
     nemesis.reconciliationEventId = input.eventId
-    const intent = domain.relationshipAutonomy.intents[
-      intentId(nemesis.ownerId, nemesis.targetId, 'UNDERMINE')
-    ]
+    const intent =
+      domain.relationshipAutonomy.intents[intentId(nemesis.ownerId, nemesis.targetId, 'UNDERMINE')]
     if (intent) {
       intent.status = 'RESOLVED'
       intent.continuationPressure = 0
@@ -443,9 +488,13 @@ function upsertFalloutThread(
     importance: Math.max(existing?.importance ?? 0, input.importance),
     urgency: Math.min(1, Math.max(existing?.urgency ?? 0, input.importance)),
     earliest: existing?.earliest ?? input.at,
-    continuationActionIds: [...new Set([...(existing?.continuationActionIds ?? []), 'CONFRONT', 'SEEK_REASSURANCE'])],
+    continuationActionIds: [
+      ...new Set([...(existing?.continuationActionIds ?? []), 'CONFRONT', 'SEEK_REASSURANCE']),
+    ],
     relatedPromiseIds: existing?.relatedPromiseIds ?? [],
-    relatedSecretIds: [...new Set([...(existing?.relatedSecretIds ?? []), ...(input.relatedSecretIds ?? [])])],
+    relatedSecretIds: [
+      ...new Set([...(existing?.relatedSecretIds ?? []), ...(input.relatedSecretIds ?? [])]),
+    ],
     status: 'OPEN',
   }
 }
@@ -538,8 +587,12 @@ export function advanceRelationshipAutonomy(
 ): RealityRelationshipIntent {
   const id = intentId(input.ownerId, input.targetId, input.kind)
   const existing = domain.relationshipAutonomy.intents[id]
-  const threadId = existing?.threadId ?? `relationship-thread:${input.ownerId}:${input.targetId}:${input.kind}`
-  const pressure = clamp((existing?.continuationPressure ?? 0.35) + (input.accepted ? 0.2 : input.deferred ? -0.03 : -0.12))
+  const threadId =
+    existing?.threadId ?? `relationship-thread:${input.ownerId}:${input.targetId}:${input.kind}`
+  const pressure = clamp(
+    (existing?.continuationPressure ?? 0.35) +
+      (input.accepted ? 0.2 : input.deferred ? -0.03 : -0.12)
+  )
   const stage = input.accepted
     ? existing?.stage === 'SPARK'
       ? 'DEVELOPING'
@@ -562,7 +615,9 @@ export function advanceRelationshipAutonomy(
     createdAt: existing?.createdAt ?? input.at,
     lastAdvancedAt: input.at,
     nextEligibleAt: { day: input.at.day + (input.accepted ? 2 : 1), phase: input.at.phase },
-    supportingEventIds: [...new Set([...(existing?.supportingEventIds ?? []), input.eventId])].slice(-12),
+    supportingEventIds: [
+      ...new Set([...(existing?.supportingEventIds ?? []), input.eventId]),
+    ].slice(-12),
     lastBeatId: input.eventId,
   }
   domain.relationshipAutonomy.intents[id] = intent
@@ -595,7 +650,10 @@ export function recordRelationshipEvidence(
 
 export function reserveRelationshipBeat(domain: RealityDomainState, beatId: string): boolean {
   if (domain.relationshipAutonomy.reservedBeatIds.includes(beatId)) return false
-  domain.relationshipAutonomy.reservedBeatIds = [...domain.relationshipAutonomy.reservedBeatIds, beatId].slice(-240)
+  domain.relationshipAutonomy.reservedBeatIds = [
+    ...domain.relationshipAutonomy.reservedBeatIds,
+    beatId,
+  ].slice(-240)
   return true
 }
 
@@ -631,7 +689,9 @@ const INTENT_KINDS = new Set<RealityRelationshipIntentKind>([
   'UNDERMINE',
 ])
 
-function evidenceFamily(kind: RealityRelationshipIntentKind): RealityRelationshipEvidence['family'] {
+function evidenceFamily(
+  kind: RealityRelationshipIntentKind
+): RealityRelationshipEvidence['family'] {
   if (kind === 'RECRUIT' || kind === 'MAINTAIN_COMMITMENT') return 'STRATEGY'
   if (kind === 'EXPLORE_ROMANCE' || kind === 'MAINTAIN_ROMANCE') return 'ROMANCE'
   if (kind === 'CONFRONT' || kind === 'UNDERMINE') return 'CONFLICT'
@@ -653,7 +713,10 @@ export function resolveRelationshipStoryResponse(
     at: RealityClock
   }
 ): boolean {
-  if (typeof input.intent !== 'string' || !INTENT_KINDS.has(input.intent as RealityRelationshipIntentKind)) {
+  if (
+    typeof input.intent !== 'string' ||
+    !INTENT_KINDS.has(input.intent as RealityRelationshipIntentKind)
+  ) {
     return false
   }
   const kind = input.intent as RealityRelationshipIntentKind

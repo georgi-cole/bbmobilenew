@@ -139,6 +139,8 @@ describe('PublicMeter tabs', () => {
     expect(screen.getByText(expectedStory)).not.toBeNull()
     expect(screen.queryByText(/How:/)).toBeNull()
     expect(screen.queryByText('Why now: Legacy internal rationale.')).toBeNull()
-    expect(screen.getByText('Why now: This remains useful context for your own request.')).not.toBeNull()
+    expect(
+      screen.getByText('Why now: This remains useful context for your own request.')
+    ).not.toBeNull()
   })
 })
