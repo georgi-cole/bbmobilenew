@@ -18,10 +18,7 @@ import {
 } from '../../store/saveStatePersistence'
 import { withRunAutosaveSuspended } from '../../store/runAutosaveGate'
 import type { RootState } from '../../store/store'
-import { SoundManager } from '../../services/sound/SoundManager'
 import GameBottomNav, { type NavTab } from '../GameBottomNav/GameBottomNav'
-
-const HOME_MUSIC_FADE_MS = 400
 
 /**
  * NavBar — bottom tab bar.
@@ -112,7 +109,6 @@ export default function NavBar() {
 
   function resetRuntimeAndReturnHome() {
     setConfirmOpen(false)
-    void SoundManager.fadeOutMusic(HOME_MUSIC_FADE_MS)
     withRunAutosaveSuspended(() => dispatch(resetGame()))
     navigate('/')
   }

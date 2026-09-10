@@ -113,6 +113,16 @@ describe('resolveDesiredMusic', () => {
     expect(resolveDesiredMusic(state, '#/store')).toBe('nominations')
   })
 
+  it('keeps phase music authoritative on active-game utility-screen detours', () => {
+    const state = makeState({ game: { status: 'active', phase: 'nominations' } })
+    expect(resolveDesiredMusic(state, '#/settings')).toBe('nominations')
+  })
+
+  it('uses Intro Hub music on Home even when a saved season remains active', () => {
+    const state = makeState({ game: { status: 'active', phase: 'nominations' } })
+    expect(resolveDesiredMusic(state, '#/')).toBe('introhub')
+  })
+
   // ── Finale phase scenes ──────────────────────────────────────────────────────
 
   it('tribunal_part1 scene maps to the jury_voting music track', () => {

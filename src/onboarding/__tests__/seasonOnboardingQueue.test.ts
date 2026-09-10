@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TvEvent } from '../../types'
-import { selectCurrentQueuedBroadcast } from '../SeasonStartOnboardingController'
+import { selectCurrentQueuedBroadcast } from '../seasonOnboardingQueue'
 
 function event(id: string, phase: string, week: number): TvEvent {
   return {
@@ -9,7 +9,7 @@ function event(id: string, phase: string, week: number): TvEvent {
     type: 'game',
     source: 'system',
     timestamp: 0,
-    meta: { phase: phase as TvEvent['meta']['phase'], week },
+    meta: { phase, week },
   }
 }
 
@@ -19,7 +19,12 @@ describe('season onboarding broadcast selection', () => {
     const flavor = event('opening-flavor', 'season_start', 1)
 
     expect(
-      selectCurrentQueuedBroadcast(['old-week', 'opening-flavor'], [stale, flavor], 'season_start', 1)
+      selectCurrentQueuedBroadcast(
+        ['old-week', 'opening-flavor'],
+        [stale, flavor],
+        'season_start',
+        1
+      )
     ).toBe(flavor)
   })
 })

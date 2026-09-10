@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameRegistryEntry } from '../../../minigames/registry'
 import MinigameHost from '../MinigameHost'
 
+const legacyMinigameMock = vi.hoisted(() => ({
+  completionHandlers: [] as Array<(result: { value: number }) => void>,
+}))
+
 vi.mock('../../../services/sound/SoundManager', () => ({
   SoundManager: {
     play: vi.fn(),
@@ -15,11 +19,14 @@ vi.mock('../../../i18n/I18nContext', () => ({
 }))
 
 vi.mock('../../../minigames/LegacyMinigameWrapper', () => ({
-  default: ({ onComplete }: { onComplete: (result: { value: number }) => void }) => (
-    <button onClick={() => onComplete({ value: 5 })} type="button">
-      Finish Test Game
-    </button>
-  ),
+  default: ({ onComplete }: { onComplete: (result: { value: number }) => void }) => {
+    legacyMinigameMock.completionHandlers.push(onComplete)
+    return (
+      <button onClick={() => onComplete({ value: 5 })} type="button">
+        Finish Test Game
+      </button>
+    )
+  },
 }))
 
 vi.mock('../../ColorMatchComp/ColorMatchComp', () => ({
@@ -98,6 +105,7 @@ function exitMinigame() {
 describe('MinigameHost competition retry', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    legacyMinigameMock.completionHandlers.length = 0
   })
 
   afterEach(() => {
@@ -296,6 +304,35 @@ describe('MinigameHost competition retry', () => {
     expect(screen.getByRole('button', { name: 'Finish Test Game' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Continue/ })).toBeNull()
     expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('ignores a completion from an abandoned attempt after Reverse Time starts a new one', () => {
+    render(
+      <MinigameHost
+        game={baseGame}
+        onDone={vi.fn()}
+        skipRules
+        skipCountdown
+        participants={makeParticipants(0, 50)}
+        competitionRetry={{ enabled: true, onWatch: (onReward) => onReward() }}
+      />
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+    const staleCompletion = legacyMinigameMock.completionHandlers[0]
+    expect(staleCompletion).toBeDefined()
+
+    exitMinigame()
+    fireEvent.click(screen.getByRole('button', { name: 'Reverse time' }))
+
+    act(() => {
+      staleCompletion?.({ value: 99 })
+    })
+
+    expect(screen.getByRole('button', { name: 'Finish Test Game' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reverse time' })).toBeNull()
   })
 
   it('lets a player dismiss the utility menu, review rules, and cancel an early exit', () => {

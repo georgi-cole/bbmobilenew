@@ -190,6 +190,9 @@ export default function Credits({ autoPlay = true, onComplete }: CreditsProps) {
   const handlePlay = useCallback(() => {
     setIsPlaying(true)
     const elapsed = videoRef.current?.currentTime ?? 0
+    // The Home button starts the soundtrack inside its click gesture. When the
+    // visual then emits `play`, preserve that valid request instead of pausing
+    // and restarting it from this later, potentially non-gesture event.
     if (isCreditsSoundtrackPlaying()) {
       syncCreditsSoundtrackToTime(elapsed, true)
       return
@@ -204,6 +207,14 @@ export default function Credits({ autoPlay = true, onComplete }: CreditsProps) {
     // Some embedded mobile browsers expose the first decoded frame before
     // they emit canplay. Reveal it as soon as loadeddata arrives too.
     setVideoReady(true)
+  }, [])
+
+  const handleVideoPlaying = useCallback(() => {
+    setIsPlaying(true)
+    // Mobile video commonly emits `waiting` once immediately after starting.
+    // That pauses the soundtrack to keep it aligned. Resume the soundtrack
+    // when the video resumes instead of leaving the rest of Credits silent.
+    syncCreditsSoundtrackToTime(videoRef.current?.currentTime ?? 0, true)
   }, [])
 
   const handleRenderFailure = useCallback(() => {
@@ -241,7 +252,7 @@ export default function Credits({ autoPlay = true, onComplete }: CreditsProps) {
               onCanPlay={handleVideoReady}
               onLoadedMetadata={startVisualPlayback}
               onPlay={handlePlay}
-              onPlaying={() => setIsPlaying(true)}
+              onPlaying={handleVideoPlaying}
               onPause={() => {
                 setIsPlaying(false)
                 syncCreditsSoundtrackToTime(videoRef.current?.currentTime ?? 0, false)

@@ -10,10 +10,7 @@ import {
   getSavedRunSlot,
 } from '../../store/saveStatePersistence';
 import { withRunAutosaveSuspended } from '../../store/runAutosaveGate';
-import { SoundManager } from '../../services/sound/SoundManager';
 import './SelfEvicted.css';
-
-const HOME_MUSIC_FADE_MS = 400;
 
 /**
  * SelfEvicted — shown when the human player voluntarily self-evicts from
@@ -46,7 +43,6 @@ export default function SelfEvicted() {
   }
 
   function resetRuntimeAndReturnHome() {
-    void SoundManager.fadeOutMusic(HOME_MUSIC_FADE_MS);
     withRunAutosaveSuspended(() => dispatch(resetGame()));
     navigate('/');
   }

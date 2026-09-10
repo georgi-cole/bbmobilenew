@@ -61,6 +61,7 @@ import type { MemoryColorsCompetitionType } from '../../features/memoryColors/me
 import TrapAuctionComp from '../TrapAuction/TrapAuction'
 import ColorMatchComp from '../ColorMatchComp/ColorMatchComp'
 import reactComponents from '../../minigames/reactComponents'
+import { resetHostedMinigameState } from '../../minigames/resetHostedMinigameState'
 import './MinigameHost.css'
 
 const COUNTDOWN_TIMER_KEY = 'minigame:all_3_seconds_timer'
@@ -162,6 +163,8 @@ export default function MinigameHost({
   const [demoTried, setDemoTried] = useState(false)
   const completionReportedRef = useRef(false)
   const sessionId = typeof gameOptions.sessionId === 'string' ? gameOptions.sessionId : game.key
+  const attemptToken = `${sessionId}:${attempt}`
+  const activeAttemptTokenRef = useRef(attemptToken)
 
   const reportDoneOnce = useCallback(
     (
@@ -205,6 +208,9 @@ export default function MinigameHost({
   )
 
   useEffect(() => {
+    // A new challenge or retry must never mount a React minigame against the
+    // preceding attempt's completed feature state.
+    resetHostedMinigameState(store.dispatch, launchedGame.reactComponentKey)
     completionReportedRef.current = false
     setUtilityView(null)
     setCountdown(3)
@@ -215,7 +221,15 @@ export default function MinigameHost({
     setDemoTried(false)
     setPhase(skipRules ? 'countdown' : 'rules')
     setAttempt(0)
+    activeAttemptTokenRef.current = `${sessionId}:0`
+    // The game selection is stable for a challenge session. Do not rerun this
+    // boundary when access metadata changes while a game is in progress.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, skipRules])
+
+  useEffect(() => {
+    activeAttemptTokenRef.current = attemptToken
+  }, [attemptToken])
 
   useEffect(() => {
     onPhaseChange?.(phase)
@@ -425,6 +439,7 @@ export default function MinigameHost({
     // A retry is a fresh run of the same selected game. Reset both the host's
     // completion latch and the child identity; a game-key-only reset is not
     // sufficient when the user deliberately plays one minigame every time.
+    resetHostedMinigameState(store.dispatch, launchedGame.reactComponentKey)
     completionReportedRef.current = false
     setUtilityView(null)
     setFinalValue(null)
@@ -432,13 +447,31 @@ export default function MinigameHost({
     setFinalCompletion(null)
     setWasPartial(false)
     setCountdown(3)
+    activeAttemptTokenRef.current = `${sessionId}:${attempt + 1}`
     setAttempt((current) => current + 1)
     setPhase(skipCountdown ? 'playing' : 'countdown')
-  }, [skipCountdown])
+  }, [attempt, launchedGame.reactComponentKey, sessionId, skipCountdown])
 
   const renderActiveGame = () => {
     const participantIds = (participants ?? []).map((p) => p.id)
     const seed = typeof gameOptions?.seed === 'number' ? gameOptions.seed : 0
+    const isActiveAttempt = () => activeAttemptTokenRef.current === attemptToken
+    const handleAttemptReactComplete = (
+      completion?: ReactMinigameCompletion,
+      fallbackValue?: number,
+      fallbackTiebreakerMs?: number
+    ) => {
+      if (!isActiveAttempt()) return
+      handleReactComplete(completion, fallbackValue, fallbackTiebreakerMs)
+    }
+    const handleAttemptComplete = (result: LegacyRawResult) => {
+      if (!isActiveAttempt()) return
+      handleComplete(result)
+    }
+    const handleAttemptQuit = (result: LegacyRawResult) => {
+      if (!isActiveAttempt()) return
+      handleQuit(result)
+    }
 
     if (game.implementation === 'react' && game.reactComponentKey === 'ClosestWithoutGoingOver') {
       return (
@@ -446,7 +479,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           prizeType={gameOptions?.prizeType as CwgoPrizeType}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -458,7 +491,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={gameOptions?.prizeType as HoldTheWallPrizeType}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -470,7 +503,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={gameOptions?.prizeType as BiographyBlitzCompetitionType}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -482,7 +515,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={gameOptions?.prizeType as FamousFiguresPrizeType}
           seed={import.meta.env.PROD ? 0 : seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
           skipWinnerAnimation={true}
         />
       )
@@ -495,7 +528,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={gameOptions?.prizeType as SilentSaboteurPrizeType}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -514,7 +547,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={(gameOptions?.prizeType as MajorityRulesCompetitionType) ?? 'LOH'}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -533,7 +566,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -552,7 +585,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={gameOptions?.prizeType as 'LOH' | 'POS' | undefined}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -564,7 +597,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as BlackjackTournamentCompetitionType) ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -583,7 +616,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={(gameOptions?.prizeType as RiskWheelCompetitionType) ?? 'LOH'}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -595,7 +628,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as 'LOH' | 'POS') ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -607,7 +640,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as CodeBreakerPrizeType) ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -619,7 +652,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as TetrisPrizeType) ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -638,7 +671,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={(gameOptions?.prizeType as HouseOfCardsPrizeType) ?? 'LOH'}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -651,7 +684,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as TiltLabyrinthPrizeType) ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -663,7 +696,7 @@ export default function MinigameHost({
           participants={participants}
           prizeType={(gameOptions?.prizeType as MemoryColorsCompetitionType) ?? 'LOH'}
           seed={seed}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -676,7 +709,7 @@ export default function MinigameHost({
           prizeType={(gameOptions?.prizeType as 'LOH' | 'POS') ?? 'LOH'}
           seed={seed}
           autoStart={true}
-          onComplete={handleReactComplete}
+          onComplete={handleAttemptReactComplete}
         />
       )
     }
@@ -700,8 +733,9 @@ export default function MinigameHost({
             tiebreakerMs?: number,
             completion?: ReactMinigameCompletion
           ) => {
+            if (!isActiveAttempt()) return
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete(
+              handleAttemptReactComplete(
                 enrichCompletionForRetry(completion, value, tiebreakerMs),
                 value,
                 tiebreakerMs
@@ -729,8 +763,9 @@ export default function MinigameHost({
             tiebreakerMs?: number,
             completion?: ReactMinigameCompletion
           ) => {
+            if (!isActiveAttempt()) return
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete(
+              handleAttemptReactComplete(
                 enrichCompletionForRetry(completion, value, tiebreakerMs),
                 value,
                 tiebreakerMs
@@ -777,8 +812,9 @@ export default function MinigameHost({
             tiebreakerMs?: number,
             completion?: ReactMinigameCompletion
           ) => {
+            if (!isActiveAttempt()) return
             if (completion?.authoritativeWinnerId) {
-              handleReactComplete(
+              handleAttemptReactComplete(
                 enrichCompletionForRetry(completion, value, tiebreakerMs),
                 value,
                 tiebreakerMs
@@ -802,8 +838,8 @@ export default function MinigameHost({
       <LegacyMinigameWrapper
         game={game}
         options={gameOptions}
-        onComplete={handleComplete}
-        onQuit={handleQuit}
+        onComplete={handleAttemptComplete}
+        onQuit={handleAttemptQuit}
       />
     )
   }
