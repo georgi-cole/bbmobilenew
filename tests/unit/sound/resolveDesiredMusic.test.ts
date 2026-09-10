@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { RootState } from '../../../src/store/store'
-import { resolveDesiredMusic } from '../../../src/services/sound/resolveDesiredMusic'
+import {
+  resolveDesiredMusic,
+  resolveDesiredMusicCue,
+} from '../../../src/services/sound/resolveDesiredMusic'
 
 function makeState(overrides: Partial<RootState> = {}): RootState {
   const base = {
@@ -116,6 +119,33 @@ describe('resolveDesiredMusic', () => {
   it('keeps phase music authoritative on active-game utility-screen detours', () => {
     const state = makeState({ game: { status: 'active', phase: 'nominations' } })
     expect(resolveDesiredMusic(state, '#/settings')).toBe('nominations')
+  })
+
+  it.each(['nominations', 'social_2'] as const)(
+    'keeps %s music clear during normal game phases',
+    (phase) => {
+      const cue = resolveDesiredMusicCue(
+        makeState({ game: { phase, voteResults: { nova: 3, rae: 1 } } }),
+        '#/game'
+      )
+      expect(cue.playbackCue?.effectPreset).toBe('none')
+    }
+  )
+
+  it('uses the room effect during the live vote tally', () => {
+    const cue = resolveDesiredMusicCue(
+      makeState({ game: { phase: 'live_vote', voteResults: { nova: 3, rae: 1 } } }),
+      '#/game'
+    )
+    expect(cue.playbackCue?.effectPreset).toBe('muffled')
+  })
+
+  it('uses the room effect during the elimination animation only', () => {
+    const cue = resolveDesiredMusicCue(
+      makeState({ game: { phase: 'eviction_results', evictionOverlayPlayerId: 'nova' } }),
+      '#/game'
+    )
+    expect(cue.playbackCue?.effectPreset).toBe('muffled')
   })
 
   it('uses Intro Hub music on Home even when a saved season remains active', () => {

@@ -79,8 +79,15 @@ export function resolveDesiredMusicCue(
       config,
     }) ?? baseCue
 
-  const revealActive = state.game.voteResults != null || state.game.evictionOverlayPlayerId != null
-  const roomEffectActive = state.ui.houseMenuOpen === true || revealActive
+  // The room filter belongs to the active presentation surfaces only. Vote
+  // results can remain in Redux after the reveal, so gate the tally effect by
+  // its ceremony phases instead of treating every non-null result as active.
+  const voteTallyActive =
+    state.game.voteResults != null &&
+    (state.game.phase === 'live_vote' || state.game.phase === 'eviction_results')
+  const eliminationAnimationActive = state.game.evictionOverlayPlayerId != null
+  const roomEffectActive =
+    state.ui.houseMenuOpen === true || voteTallyActive || eliminationAnimationActive
   if (!roomEffectActive || !cue.playbackCue || cue.playbackCue.effectPreset !== 'none') {
     return cue
   }
