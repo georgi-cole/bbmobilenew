@@ -392,12 +392,7 @@ export default function SpotlightEvictionOverlay({
             {fallbackText}
           </span>
         ) : (
-          <img
-            className="seo__photo"
-            src={avatarSrc}
-            alt={evictee.name}
-            onError={handleImgError}
-          />
+          <img className="seo__photo" src={avatarSrc} alt={evictee.name} onError={handleImgError} />
         )}
 
         <AnimatePresence>
