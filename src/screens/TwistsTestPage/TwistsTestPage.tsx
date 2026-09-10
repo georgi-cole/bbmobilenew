@@ -246,7 +246,10 @@ function TwistsTestContent({
   phonePreview: boolean
   requestedPreview: string | null
 }) {
-  const [qaGame, setQaGame] = useState<GameState>(() => createInitialGameState({ seed: 7331 }))
+  const [qaGame, setQaGame] = useState<GameState>(() =>
+    buildCoLohQaState(createInitialGameState({ seed: 7331 }), 'replacement')
+  )
+  const [coLohPlayStep, setCoLohPlayStep] = useState(0)
   const [seed, setSeed] = useState(42)
   const [awardAmount, setAwardAmount] = useState(25000)
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(() =>
@@ -256,7 +259,9 @@ function TwistsTestContent({
     requestedPreview === 'twin-shock-secret' ? 'secretKept' : 'exposed'
   )
   const [lastResult, setLastResult] = useState<string | null>(null)
-  const [coLohQaMessage, setCoLohQaMessage] = useState<string | null>(null)
+  const [coLohQaMessage, setCoLohQaMessage] = useState<string | null>(
+    'Preloaded at the safety checkpoint. Press Play to run the complete co‑LOH flow.'
+  )
   // Seed frozen at the moment the overlay is opened so that changing the
   // seed input while SpectatorView is mounted cannot desync the displayed
   // winner from what useSpectatorSimulation captured on mount.
@@ -338,6 +343,32 @@ function TwistsTestContent({
     )
   }
 
+  function playCoLohScenario() {
+    if (coLohPlayStep === 0) {
+      saveCoLohNominee(0)
+      setCoLohPlayStep(1)
+      return
+    }
+    if (coLohPlayStep === 1) {
+      loadCoLohQaStage('voting')
+      setCoLohPlayStep(2)
+      return
+    }
+    if (coLohPlayStep === 2) {
+      runQaAction(advance())
+      setCoLohQaMessage('Live vote opened. Ivy and Blue are excluded from the voter list.')
+      setCoLohPlayStep(3)
+      return
+    }
+    if (coLohPlayStep === 3) {
+      loadCoLohQaStage('tie')
+      setCoLohPlayStep(4)
+      return
+    }
+    resolveCoLohTie()
+    setCoLohPlayStep(0)
+  }
+
   const coLohIds = qaGame.coLohIds ?? []
   const coLohNames = coLohIds.map(
     (id) => qaGame.players.find((player) => player.id === id)?.name ?? id
@@ -393,6 +424,13 @@ function TwistsTestContent({
           save and uses the same reducers as normal play.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+          <button
+            type="button"
+            onClick={playCoLohScenario}
+            style={{ ...qaButtonStyle, background: 'linear-gradient(135deg, #d4a72c, #8b5cf6)' }}
+          >
+            ▶ Play co‑LOH scenario
+          </button>
           <button
             type="button"
             onClick={() => loadCoLohQaStage('nominations')}
