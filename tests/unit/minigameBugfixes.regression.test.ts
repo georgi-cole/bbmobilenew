@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE,
   PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH,
   getPressurePlankGaugeSafeZoneBounds,
   getPressurePlankStabilityDamagePerSecond,
@@ -9,10 +10,14 @@ import { normalizeTiltDelta } from '../../src/components/TiltLabyrinthComp/tiltL
 describe('minigame bug-fix regressions', () => {
   it('renders the minimum Pressure Plank safe zone on the same scale as its damage bounds', () => {
     const bounds = getPressurePlankGaugeSafeZoneBounds(PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH, 100)
+    const protectedEdge =
+      PRESSURE_PLANK_SAFE_ZONE_MIN_HALF_WIDTH + PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE
+
     expect(bounds.leftPercent).toBe(49)
     expect(bounds.widthPercent).toBe(2)
     expect(getPressurePlankStabilityDamagePerSecond(2, 2, 92)).toBe(0)
-    expect(getPressurePlankStabilityDamagePerSecond(3, 2, 92)).toBeGreaterThan(0)
+    expect(getPressurePlankStabilityDamagePerSecond(protectedEdge, 2, 92)).toBe(0)
+    expect(getPressurePlankStabilityDamagePerSecond(protectedEdge + 0.01, 2, 92)).toBeGreaterThan(0)
   })
 
   it('keeps a neutral orientation reading neutral and applies a dead zone', () => {

@@ -4,11 +4,14 @@ export const PRESSURE_PLANK_SAFE_ZONE_SHRINK_DURATION_SECONDS = 75
 export const PRESSURE_PLANK_STABILITY_MAX = 100
 export const PRESSURE_PLANK_ROUND_SECONDS = 120
 /**
- * The balance marker has visible width, while the physics value represents its
- * centre point. This small tolerance keeps a marker that still visibly touches
- * the minimum safe zone from taking damage because of sub-pixel/RAF precision.
+ * The physics value tracks the needle centre, but the player sees a 6 px-wide
+ * marker rendered on a throttled React update cadence. Near the 4-unit minimum
+ * safe zone, that visual footprint plus render lag can make a marker still look
+ * inside/overlapping the green band after its hidden centre has moved slightly
+ * past the mathematical edge. Keep a small gameplay buffer so visible-safe
+ * positions never drain stability because of that presentation mismatch.
  */
-export const PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE = 0.75
+export const PRESSURE_PLANK_SAFE_ZONE_DAMAGE_GRACE = 3
 
 export interface PressurePlankRankedResult {
   playerId: string
