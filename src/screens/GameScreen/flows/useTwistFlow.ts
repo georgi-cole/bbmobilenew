@@ -450,16 +450,6 @@ export function useTwistFlow({
   const battleBackRetryOfferWinnerId = battleBackUi.retryOfferWinnerId
 
   const showBattleBack = battleBackActive && battleBackCompetitionActive
-  useEffect(() => {
-    if (
-      !battleBack ||
-      battleBack.active ||
-      !battleBack.returnAnimationPending ||
-      !battleBack.winnerId
-    )
-      return
-    setBattleBackReturnId(battleBack.winnerId)
-  }, [battleBack])
   const battleBackAttemptSeed = useMemo(
     () => (game.seed + Math.imul(battleBackAttemptIndex, 0x9e3779b1)) >>> 0,
     [battleBackAttemptIndex, game.seed]
@@ -541,7 +531,12 @@ export function useTwistFlow({
         : null,
     [battleBackRetryOfferWinnerId, game.players]
   )
-  const showBattleBackReturn = battleBackReturnId !== null
+  const battleBackReturnDisplayId =
+    battleBackReturnId ??
+    (battleBack && !battleBack.active && battleBack.returnAnimationPending
+      ? battleBack.winnerId
+      : null)
+  const showBattleBackReturn = battleBackReturnDisplayId !== null
   const battleBackVariant = useMemo((): SpectatorVariant => {
     const variants: SpectatorVariant[] = ['holdwall', 'trivia', 'maze']
     const rng = mulberry32((battleBackAttemptSeed ^ 0xdeadbeef) >>> 0)
@@ -632,7 +627,7 @@ export function useTwistFlow({
   }, [battleBackRetryOfferWinnerId, finalizeBattleBackOutcome, updateBattleBackUi])
 
   const handleBattleBackReturnDone = useCallback(() => {
-    const returningPlayer = game.players.find((player) => player.id === battleBackReturnId)
+    const returningPlayer = game.players.find((player) => player.id === battleBackReturnDisplayId)
     setBattleBackReturnId(null)
     dispatch({ type: 'game/consumeBattleBackReturn' })
     if (!returningPlayer) {
@@ -654,7 +649,7 @@ export function useTwistFlow({
       isLive: true,
       autoDismissMs: null,
     })
-  }, [battleBackReturnId, dispatch, game.players])
+  }, [battleBackReturnDisplayId, dispatch, game.players])
 
   const handleBattleBackReturnAnnouncementDismiss = useCallback(() => {
     setBattleBackReturnAnnouncement(null)
