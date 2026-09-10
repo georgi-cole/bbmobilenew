@@ -63,7 +63,12 @@ const HEAT_DOT_COLORS = ['#5eead4', '#67e8f9', '#60a5fa', '#818cf8', '#a78bfa', 
 const PARTICLE_LIFE_MS = 700;
 /** Pixels per millisecond for particle velocity magnitude. */
 const PARTICLE_SPEED = 0.16;
-const MAX_PARTICLES = 60;
+// Emoji text rendering is disproportionately expensive in iOS WebViews. Keep
+// the feedback lively, but bounded when a player taps at a very high rate.
+const MAX_PARTICLES = 24;
+const MAX_PARTICLES_PER_TAP = 2;
+const TAP_SOUND_INTERVAL_MS = 45;
+const INPUT_UI_UPDATE_INTERVAL_MS = 60;
 const BOOSTER_PROMPT_PULSE_BASE = 0.88;
 const BOOSTER_PROMPT_PULSE_AMPLITUDE = 0.12;
 const BOOSTER_PROMPT_PULSE_PERIOD_MS = 120;
@@ -186,6 +191,8 @@ export class QuickTapRaceCanvasEngine {
 
   private lastLowLatencyUiUpdateMs = 0;
 
+  private lastTapSoundMs = Number.NEGATIVE_INFINITY;
+
   private lastTimerUiUpdateMs = 0;
 
   private readonly acceptedTapTimesMs: number[] = [];
@@ -201,7 +208,7 @@ export class QuickTapRaceCanvasEngine {
   private readonly boosterTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   constructor(canvas: HTMLCanvasElement, options: QTREngineOptions) {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     if (!ctx) {
       throw new Error('QuickTapRace canvas could not acquire a 2D context.');
     }
@@ -349,16 +356,20 @@ export class QuickTapRaceCanvasEngine {
     this.pointerTypeCounts[normalizedPointerType] =
       (this.pointerTypeCounts[normalizedPointerType] ?? 0) + 1;
 
-    if (this.options.lowLatencyInput) {
-      // Keep the hot path light enough that the measurement does not create its
-      // own event backlog. Canvas feedback still renders on the regular RAF.
-      if (this.gameElapsedMs - this.lastLowLatencyUiUpdateMs >= 100) {
-        this.lastLowLatencyUiUpdateMs = this.gameElapsedMs;
-        this.emitTick();
-      }
-    } else {
-      this.spawnParticles(point.x, point.y);
+    this.spawnParticles(point.x, point.y);
+    if (nowMs - this.lastTapSoundMs >= TAP_SOUND_INTERVAL_MS) {
+      this.lastTapSoundMs = nowMs;
       this.options.onTap?.();
+    }
+
+    // React owns the HUD outside the canvas. Do not make every pointer event
+    // synchronously re-render that subtree; the RAF/timer path still keeps the
+    // score and timer visibly current.
+    if (
+      this.gameElapsedMs - this.lastLowLatencyUiUpdateMs >=
+      (this.options.lowLatencyInput ? 100 : INPUT_UI_UPDATE_INTERVAL_MS)
+    ) {
+      this.lastLowLatencyUiUpdateMs = this.gameElapsedMs;
       this.emitTick();
     }
   }
@@ -384,7 +395,7 @@ export class QuickTapRaceCanvasEngine {
 
   private spawnParticles(cx: number, cy: number): void {
     const emojiPool = HEAT_EMOJIS[this.heatLevel];
-    const count = 1 + this.heatLevel;
+    const count = Math.min(MAX_PARTICLES_PER_TAP, 1 + Math.floor(this.heatLevel / 2));
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = PARTICLE_SPEED * (0.5 + Math.random());

@@ -10,6 +10,10 @@ import {
   getIncomingSocialModuleAvailability,
   getSocialModuleAvailability,
 } from '../social/socialModuleAvailability'
+import {
+  isEvictionVoteBreakdownActive,
+  loadEvictionVoteBreakdownUnlock,
+} from '../features/evictionVoteBreakdownStorage'
 
 /**
  * True when the game is blocked on a human decision or a mandatory cinematic:
@@ -167,6 +171,22 @@ export const selectConfessionalAlertCount = (state: RootState): number => {
 
   // Ceremony decisions routed to the confessional add a mandatory alert.
   if (activeConfessionalDecision !== null) count += 1
+
+  // The rewarded vote reveal is session-scoped rather than Redux state. The
+  // unlock is written before the feed event that causes this selector to run,
+  // so the badge appears immediately after the ad finishes.
+  const voteBreakdownUnlock = loadEvictionVoteBreakdownUnlock()
+  if (
+    voteBreakdownUnlock?.status === 'available' &&
+    isEvictionVoteBreakdownActive(
+      voteBreakdownUnlock,
+      state.game.week,
+      state.game.phase,
+      state.game.gameId
+    )
+  ) {
+    count += 1
+  }
 
   return count
 }

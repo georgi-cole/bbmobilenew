@@ -1429,6 +1429,7 @@ class _SoundManager {
       this._clearUnlockListeners()
       this._primeMusicForMobile()
       this._primeSfxForMobile()
+      this._cueEngine.unlock()
       this._playQueue = []
       void this.syncMusic()
       return
@@ -1454,6 +1455,7 @@ class _SoundManager {
     // from the current desired track only.
     this._playQueue = []
     this._primeMusicForMobile()
+    this._cueEngine.unlock()
     void this.syncMusic()
     this._primeSfxForMobile()
   }
