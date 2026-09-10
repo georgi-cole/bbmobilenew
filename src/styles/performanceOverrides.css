@@ -1,0 +1,99 @@
+/* Performance-focused overrides for animation-heavy gameplay surfaces.
+ *
+ * These rules intentionally preserve the layout/choreography while removing
+ * effects that force large areas to be recomposited on every animation frame.
+ * Keep this stylesheet imported after the normal component styles.
+ */
+
+/* ── Quick Tap Race ───────────────────────────────────────────────────────── */
+/* The canvas itself is already redrawn every RAF. A backdrop-filter on the
+ * fullscreen DOM shell makes the browser blur/recompose what is behind that
+ * canvas at the same time, which is pure overhead during active gameplay. */
+.qtr-canvas--playing .qtr-canvas__card,
+.qtr-canvas--playing .qtr-canvas__header {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.qtr-canvas--playing .qtr-canvas__card {
+  background:
+    radial-gradient(circle at 50% -8%, rgba(118, 126, 255, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(21, 28, 57, 0.98), rgba(5, 8, 19, 0.99)) !important;
+}
+
+.qtr-canvas--playing .qtr-canvas__header {
+  background: linear-gradient(135deg, rgba(52, 57, 112, 0.92), rgba(21, 41, 70, 0.86)) !important;
+}
+
+/* The decorative grid is visually subtle but creates another fullscreen layer
+ * above a constantly changing canvas. Remove it only while the game is live. */
+.qtr-canvas--playing::before {
+  display: none !important;
+}
+
+/* Shaking the entire fullscreen card invalidates/composites the whole gameplay
+ * surface. Keep the heat colours and score urgency, but not the viewport shake. */
+.qtr-canvas--playing.qtr-canvas--heat-3 .qtr-canvas__card,
+.qtr-canvas--playing.qtr-canvas--heat-4 .qtr-canvas__card,
+.qtr-canvas--playing.qtr-canvas--heat-5 .qtr-canvas__card {
+  animation: none !important;
+  box-shadow: none !important;
+}
+
+.qtr-canvas--playing .qtr-canvas__progress-fill {
+  box-shadow: none !important;
+}
+
+/* ── Live voting / public verdict ─────────────────────────────────────────── */
+/* Vote values can update faster than the original 550 ms SVG-ring transition.
+ * Short interpolation lets each update settle before the next one and removes
+ * the long queue of overlapping compositor animations. */
+.avrm--tv .avrm__tv-vote-ring-fill {
+  transition:
+    stroke-dashoffset 160ms linear,
+    stroke 140ms ease !important;
+}
+
+/* drop-shadow() on every avatar ring is particularly expensive while the SVG
+ * stroke changes. The avatars/ring colours still provide the same hierarchy. */
+.avrm--tv .avrm__tv-vote-ring-shell {
+  filter: none !important;
+  contain: layout paint;
+}
+
+.avrm--tv .avrm__tally--tv {
+  contain: layout paint;
+}
+
+.avrm--tv .avrm__tally--pulse {
+  animation-duration: 220ms !important;
+}
+
+/* ── Eviction cinematic ──────────────────────────────────────────────────── */
+/* The scanline layer used mix-blend-mode over a fullscreen moving/filtered
+ * portrait. Preserve the texture but use ordinary alpha compositing. */
+.seo__scanlines {
+  mix-blend-mode: normal !important;
+  opacity: 0.42;
+}
+
+/* Framer Motion previously interpolated saturate/contrast/brightness/blur on a
+ * fullscreen image while also moving it. That forces repeated full-image paint.
+ * The vignette, spotlight, lower third and stamp retain the cinematic look, so
+ * keep the portrait transform animation but make image filtering paint-stable. */
+.seo__photo,
+.seo__fallback {
+  filter: none !important;
+}
+
+/* Avoid promoting extra paint-only layers once the portrait already owns the
+ * fullscreen compositor surface. */
+.seo__photo {
+  will-change: transform !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avrm--tv .avrm__tv-vote-ring-fill {
+    transition: none !important;
+  }
+}
