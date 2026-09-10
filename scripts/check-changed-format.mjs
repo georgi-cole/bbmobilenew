@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import prettier from 'prettier'
 
 const cwd = process.cwd()
+const formatDiagnosticTarget = 'src/components/Eviction/SpotlightEvictionOverlay.tsx'
 
 function git(args, options = {}) {
   const result = spawnSync('git', args, {
@@ -77,6 +78,11 @@ for (const file of files) {
   const options = { ...config, filepath: file }
   const currentSource = await readFile(file, 'utf8')
   const currentClean = await isPrettierClean(currentSource, options)
+  if (file === formatDiagnosticTarget && !currentClean) {
+    console.log('---BEGIN PRETTIER EVICTION OUTPUT---')
+    console.log(await prettier.format(currentSource, options))
+    console.log('---END PRETTIER EVICTION OUTPUT---')
+  }
   const baseSource = git(['show', `${mergeBase}:${file}`])
 
   if (baseSource == null) {
