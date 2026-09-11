@@ -1,10 +1,7 @@
 /* ─── SpotlightEvictionOverlay ───────────────────────────────────────────────
  * Cinematic eviction choreography.
- * Beat sequence:
- *   spotlight  (0–300 ms)   : grid dims, radial spotlight locks on tile
- *   expanding  (300–900 ms) : shared-layout hero tile expands to fullscreen (600 ms ease-out)
- *   holding    (1000–1800 ms): lower-third + vignette + desaturate, suspense
- *   done                    : onDone fires → AnimatePresence exits (reverse, 400 ms)
+ * Geometry motion uses a source-sized transform hero; the desaturation/stamp
+ * hold uses a separate native fullscreen portrait.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .seo {
@@ -15,7 +12,6 @@
   pointer-events: auto;
 }
 
-/* ── Dim overlay ─────────────────────────────────────────────────────────── */
 .seo__dim {
   position: absolute;
   inset: 0;
@@ -24,7 +20,6 @@
   pointer-events: none;
 }
 
-/* ── Spotlight radial cut-out (before expansion) ─────────────────────────── */
 .seo__spotlight {
   position: absolute;
   inset: 0;
@@ -38,7 +33,6 @@
   pointer-events: none;
 }
 
-/* ── LIVE bug (top-left) ─────────────────────────────────────────────────── */
 .seo__live-bug {
   --floating-corner-top-base: 1rem;
   --floating-corner-left-base: 1rem;
@@ -58,28 +52,63 @@
   pointer-events: none;
 }
 
-/* ── Shared-layout portrait (match-cut hero tile) ────────────────────────── */
+/* ── Transform-only detach / return hero ───────────────────────────────── */
+.seo__hero {
+  position: fixed;
+  z-index: 4;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1e2229, #13161a);
+  border-radius: var(--tile-radius, 10px);
+  transform-origin: center center;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  transition:
+    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 100ms linear;
+  pointer-events: none;
+}
+
+.seo__hero--expanded {
+  transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
+    scale(var(--seo-hero-scale, 1));
+  border-radius: 0;
+}
+
+.seo__hero--hidden {
+  opacity: 0;
+}
+
+.seo__hero-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  backface-visibility: hidden;
+}
+
+/* ── Native fullscreen holding portrait ─────────────────────────────────── */
 .seo__portrait {
   position: fixed;
   inset: 0;
   z-index: 3;
   overflow: hidden;
   background: linear-gradient(180deg, #1e2229, #13161a);
-  /* borderRadius animated via JS style prop — keeps overflow hidden during transition */
-  border-radius: var(--tile-radius, 10px);
-  transition: border-radius 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  opacity: 1;
+  transition: opacity 120ms linear;
   contain: layout paint;
   backface-visibility: hidden;
   transform: translateZ(0);
-  will-change: transform;
+  pointer-events: none;
 }
 
-/* Once expansion begins, collapse borderRadius to 0 */
-.seo__portrait--expanded {
-  border-radius: 0;
+.seo__portrait--hidden {
+  opacity: 0;
 }
 
-/* Photo fills portrait */
 .seo__photo {
   width: 100%;
   height: 100%;
@@ -91,7 +120,6 @@
   will-change: transform, filter;
 }
 
-/* Fallback text (emoji / initial) */
 .seo__fallback {
   font-size: 10rem;
   line-height: 1;
@@ -102,7 +130,6 @@
   height: 100%;
 }
 
-/* Vignette overlay inside portrait */
 .seo__vignette {
   position: absolute;
   inset: 0;
@@ -115,7 +142,6 @@
   pointer-events: none;
 }
 
-/* Scanlines / film-grain overlay */
 .seo__scanlines {
   position: absolute;
   inset: 0;
@@ -256,7 +282,6 @@
   }
 }
 
-/* ── Dev-only Skip button ────────────────────────────────────────────────── */
 .seo__skip-btn {
   position: fixed;
   bottom: max(1.4rem, env(safe-area-inset-bottom, 1.4rem));
@@ -278,14 +303,15 @@
   background: rgba(0, 0, 0, 0.72);
 }
 
-/* iOS WebKit pays a large compositing cost for a full-screen blend-mode layer
-   over a filtered image. The cinematic remains legible without the film grain. */
+/* iOS WebKit pays a large compositing cost for a fullscreen blend-mode layer.
+   The user-visible desaturation/vignette/stamp treatment remains intact. */
 .seo--ios .seo__scanlines {
   display: none;
 }
 
-/* ── Reduced motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  .seo__hero,
+  .seo__portrait,
   .seo__dim,
   .seo__spotlight,
   .seo__live-bug,
