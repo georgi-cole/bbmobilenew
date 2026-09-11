@@ -276,7 +276,12 @@ function buildResponseOutcomeText(
   subjectName?: string,
   responseLabel?: string
 ): string | undefined {
-  if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
+  const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
+  if (
+    !hasContextualScenario &&
+    interaction.type === 'alliance_proposal' &&
+    responseType === 'accept'
+  ) {
     return `The alliance with ${fromName} is now active. Later votes and nominations will show whether it holds.`
   }
 
@@ -316,7 +321,7 @@ function buildResponseOutcomeText(
     return `You made a promise to ${fromName}. The related game decision will judge whether you keep it.`
   }
 
-  if (interaction.type === 'gossip' || interaction.type === 'warning') {
+  if (!hasContextualScenario && (interaction.type === 'gossip' || interaction.type === 'warning')) {
     if (responseType === 'positive' || responseType === 'neutral') {
       return subjectName
         ? `You now have an unconfirmed lead involving ${subjectName}.`
@@ -327,7 +332,7 @@ function buildResponseOutcomeText(
   // New interactions all carry an authored scenario key and resolve through
   // the contextual outcome bank. Keep this compatibility fallback for old
   // saves and externally-created interactions that do not have one yet.
-  return typeof interaction.payload?.scenarioKey === 'string'
+  return hasContextualScenario
     ? undefined
     : buildOrdinaryResponseOutcome(interaction, responseType, fromName, responseLabel)
 }
@@ -426,6 +431,7 @@ function applyIncomingChoiceConsequences({
     playerAffinity: state.social.relationships[humanPlayer.id]?.[interaction.fromId]?.affinity ?? 0,
     subjectName,
     responseLabel,
+    senderIsNominated: state.game.nomineeIds.includes(interaction.fromId),
   })
   const actorDelta =
     hasContextualScenario && !consultationScenario
