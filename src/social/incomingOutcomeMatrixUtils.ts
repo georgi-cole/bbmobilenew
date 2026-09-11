@@ -33,9 +33,13 @@ export function currentPressure(context: IncomingOutcomeContext): string {
     return `${fromName} says they are worried about the upcoming nominations.`
   }
   if (
-    ['nomination_results', 'pos_comp', 'pos_results', 'pos_ceremony', 'pos_ceremony_results'].includes(
-      phase
-    )
+    [
+      'nomination_results',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+      'pos_ceremony_results',
+    ].includes(phase)
   ) {
     return `${fromName} says they are worried the Safety move could make them the replacement pawn.`
   }
@@ -54,9 +58,13 @@ export function reciprocalCheckInPressure(context: IncomingOutcomeContext): stri
     return `${fromName} says nominations are the main thing on their mind right now.`
   }
   if (
-    ['nomination_results', 'pos_comp', 'pos_results', 'pos_ceremony', 'pos_ceremony_results'].includes(
-      phase
-    )
+    [
+      'nomination_results',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+      'pos_ceremony_results',
+    ].includes(phase)
   ) {
     return `${fromName} says the Safety decision is what worries them most right now.`
   }
