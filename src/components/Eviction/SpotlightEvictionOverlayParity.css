@@ -1,0 +1,60 @@
+/* Sep 9 visual-parity adjustments layered after SpotlightEvictionOverlay.css.
+ *
+ * The old shared-layout target used a ~480 ms geometry projection and the main
+ * game remained perceptible underneath the ceremony. Keep those presentation
+ * qualities while retaining the transform-only performance architecture. */
+
+/* The later continuity pass still combined a 0.68 dimmer with a strong radial
+ * edge mask, which produced an almost-black effective backdrop. Keep the house
+ * clearly dimmed, but still readable around the moving portrait. */
+.seo:not(.seo--return) .seo__dim {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.seo:not(.seo--return) .seo__spotlight {
+  background: radial-gradient(
+    ellipse 120px 160px at 50% 40%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.38) 70%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+}
+
+/* Sep 9's Framer layout projection used a 0.48 s ease. The transform hero now
+ * begins on the next frame, so matching this duration restores the old camera
+ * cadence without running shared-layout measurement on every frame. */
+.seo:not(.seo--return) .seo__hero,
+.seo:not(.seo--return).seo--returning .seo__hero {
+  transition:
+    transform 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    clip-path 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 70ms linear;
+}
+
+/* Normal eviction owns one visible portrait from source to hold to return. The
+ * Battle Back path deliberately keeps the separate native fullscreen layer. */
+.seo:not(.seo--return) .seo__portrait {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.seo:not(.seo--return) .seo__hero,
+.seo:not(.seo--return) .seo__hero--hidden,
+.seo:not(.seo--return).seo--holding .seo__hero,
+.seo:not(.seo--return).seo--returning .seo__hero {
+  opacity: 1;
+}
+
+/* Keep the hero's source crop steady during the geometry projection. The tiny
+ * Sep 9 1.02 / -6px image push belongs to the 900 ms treatment beat, not to the
+ * initial tile-to-screen movement. */
+.seo:not(.seo--return).seo--spotlight .seo__hero-photo {
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo:not(.seo--return) .seo__hero {
+    transition: none !important;
+  }
+}
