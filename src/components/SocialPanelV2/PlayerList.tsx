@@ -39,6 +39,18 @@ interface PlayerListProps {
   cupidPartners?: Record<string, { name: string; color: string; isYourPartner: boolean }>
 }
 
+function selectCurrentSocialInvitation() {
+  const game = store.getState().game
+  return (
+    game.tvFeed.find(
+      (event) =>
+        event.meta?.socialInvitation === true &&
+        event.meta?.week === game.week &&
+        typeof event.meta?.suggestedTargetId === 'string'
+    ) ?? null
+  )
+}
+
 /**
  * PlayerList — scrollable roster of selectable PlayerCard tiles.
  *
@@ -70,17 +82,7 @@ export default function PlayerList({
   const appliedInvitationRef = useRef<string | null>(null)
   const invitation = useSyncExternalStore(
     store.subscribe,
-    () => {
-      const game = store.getState().game
-      return (
-        game.tvFeed.find(
-          (event) =>
-            event.meta?.socialInvitation === true &&
-            event.meta?.week === game.week &&
-            typeof event.meta?.suggestedTargetId === 'string'
-        ) ?? null
-      )
-    },
+    selectCurrentSocialInvitation,
     () => null
   )
 
