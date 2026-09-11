@@ -1,7 +1,14 @@
 /* ─── SpotlightEvictionOverlay ───────────────────────────────────────────────
  * Cinematic eviction choreography.
- * Geometry motion uses a source-sized transform hero; the desaturation/stamp
- * hold uses a separate native fullscreen portrait.
+ *
+ * The visual language intentionally mirrors the pre-performance Sep 10
+ * shared-layout version: a single clean portrait appears to leave the roster,
+ * morph to the screen rectangle, desaturate, receive the ELIMINATED treatment,
+ * then return to its source position.
+ *
+ * Geometry is still compositor-oriented. The hero uses a uniform transform and
+ * an inset clip instead of Framer shared-layout projection, so the portrait is
+ * never non-uniformly stretched during the camera move.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .seo {
@@ -12,13 +19,11 @@
   pointer-events: auto;
 }
 
+/* Match the original Sep 10 ceremony atmosphere. */
 .seo__dim {
   position: absolute;
   inset: 0;
-  /* Keep enough of the roster visible that the hero reads as a tile detaching
-     from the grid rather than a standalone photo appearing over black. The
-     fullscreen portrait still covers this layer during the cinematic hold. */
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, 0.88);
   z-index: 1;
   pointer-events: none;
 }
@@ -29,8 +34,8 @@
   background: radial-gradient(
     ellipse 120px 160px at 50% 40%,
     transparent 0%,
-    rgba(0, 0, 0, 0.46) 70%,
-    rgba(0, 0, 0, 0.7) 100%
+    rgba(0, 0, 0, 0.75) 70%,
+    rgba(0, 0, 0, 0.95) 100%
   );
   z-index: 2;
   pointer-events: none;
@@ -55,104 +60,60 @@
   pointer-events: none;
 }
 
-/* ── Transform-only detach / return hero ───────────────────────────────── */
+/* ── Transform-only match-cut hero ──────────────────────────────────────── */
 .seo__hero {
   position: fixed;
   z-index: 4;
   overflow: hidden;
-  isolation: isolate;
-  box-sizing: border-box;
   background: linear-gradient(180deg, #1e2229, #13161a);
-  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--tile-radius, 10px);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
-    0 7px 22px rgba(0, 0, 0, 0.34);
   transform-origin: center center;
   transform: translate3d(0, 0, 0) scale(1);
+  clip-path: inset(0);
   opacity: 1;
   backface-visibility: hidden;
-  will-change: transform, opacity;
+  will-change: transform, clip-path, opacity;
   transition:
-    transform 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
-    border-radius 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
-    opacity 160ms ease-out;
+    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    clip-path 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 70ms linear;
   pointer-events: none;
 }
 
-/* Lightweight tile chrome. This exists only at the roster-sized ends of the
-   camera move and deliberately disappears while the portrait is large. It
-   makes the moving layer read as the same UI tile without cloning the entire
-   React card or reintroducing shared-layout projection. */
-.seo__hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    transparent 24%,
-    transparent 62%,
-    rgba(5, 8, 14, 0.72) 100%
-  );
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  opacity: 1;
-  transition: opacity 160ms ease-out;
-  pointer-events: none;
-}
-
-/* A restrained lower nameplate cue mirrors the roster-card composition. It is
-   intentionally text-free so it cannot drift out of sync with roster labels. */
-.seo__hero::after {
-  content: '';
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 8%;
-  height: 3px;
-  z-index: 3;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-  opacity: 0.78;
-  transition: opacity 160ms ease-out;
-  pointer-events: none;
-}
-
+/* Uniform scale keeps the portrait itself undistorted. The inset crop below
+   changes only the visible frame toward the viewport aspect ratio, recreating
+   the old shared-layout rectangle morph without scaleX/scaleY distortion. */
 .seo__hero--expanded {
+  --seo-hero-clip-x: max(
+    0%,
+    calc(
+      (100% - (((100vw / var(--seo-hero-scale, 1)) / var(--game-avatar-tile-size, 96px)) * 100%)) /
+        2
+    )
+  );
+  --seo-hero-clip-y: max(
+    0%,
+    calc(
+      (100% - (((100vh / var(--seo-hero-scale, 1)) / var(--game-avatar-tile-height, 96px)) * 100%)) /
+        2
+    )
+  );
   transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
     scale(var(--seo-hero-scale, 1));
+  clip-path: inset(
+    var(--seo-hero-clip-y, 0%) var(--seo-hero-clip-x, 0%) var(--seo-hero-clip-y, 0%)
+      var(--seo-hero-clip-x, 0%)
+  );
   border-radius: 0;
-}
-
-/* As soon as the tile leaves the roster, dissolve the card chrome quickly so
-   the expanding image becomes a clean cinematic portrait rather than a giant UI
-   card. The movement remains transform-only. */
-.seo--expanding .seo__hero::before,
-.seo--expanding .seo__hero::after,
-.seo--holding .seo__hero::before,
-.seo--holding .seo__hero::after {
-  opacity: 0;
-}
-
-/* Re-form the card only near the end of the return. Waiting through most of the
-   600 ms shrink avoids a huge frame/nameplate appearing over the fullscreen face. */
-.seo--returning .seo__hero::before,
-.seo--returning .seo__hero::after {
-  opacity: 1;
-  transition-delay: 380ms;
-  transition-duration: 180ms;
 }
 
 .seo__hero--hidden {
   opacity: 0;
 }
 
-/* During the return handoff the transform hero is prepared while phase is still
-   `holding`. Keep it transparent over the desaturated fullscreen portrait, then
-   fade it in only once the shrink starts. This avoids the abrupt coloured flash. */
+/* The return hero is prepared underneath the fullscreen portrait before it
+   moves. Keep it invisible until the actual reverse match-cut starts. */
 .seo--holding .seo__hero:not(.seo__hero--hidden) {
   opacity: 0;
 }
@@ -160,9 +121,10 @@
 .seo--returning .seo__hero {
   opacity: 1;
   transition:
-    transform 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
-    border-radius 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
-    opacity 280ms ease-out;
+    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    clip-path 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 70ms linear;
 }
 
 .seo__hero-photo {
@@ -172,6 +134,29 @@
   object-fit: cover;
   object-position: center top;
   backface-visibility: hidden;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: transform 500ms ease-out;
+}
+
+/* The Sep 10 portrait had a 6px upward camera nudge. Because this hero starts
+   tile-sized and is later scaled, pre-divide by the hero scale so the visible
+   movement remains 6px in screen space instead of being magnified. */
+.seo--expanding .seo__hero-photo {
+  transform: translate3d(0, calc(-6px / var(--seo-hero-scale, 1)), 0) scale(1.02);
+}
+
+/* Prime a static cinematic grade on the hidden return hero before movement.
+   The filter does not interpolate while the parent is moving; only the parent
+   transform changes. This keeps the returning portrait visually continuous
+   with the desaturated hold instead of fading from grey to colour mid-flight. */
+.seo--holding .seo__hero:not(.seo__hero--hidden) .seo__hero-photo,
+.seo--returning .seo__hero-photo {
+  filter: saturate(0.15) contrast(1.1) brightness(0.82);
+}
+
+.seo--ios.seo--holding .seo__hero:not(.seo__hero--hidden) .seo__hero-photo,
+.seo--ios.seo--returning .seo__hero-photo {
+  filter: saturate(0.65) contrast(1.03) brightness(0.9);
 }
 
 /* ── Native fullscreen holding portrait ─────────────────────────────────── */
@@ -182,7 +167,7 @@
   overflow: hidden;
   background: linear-gradient(180deg, #1e2229, #13161a);
   opacity: 1;
-  transition: opacity 180ms ease-out;
+  transition: opacity 70ms linear;
   contain: layout paint;
   backface-visibility: hidden;
   transform: translateZ(0);
@@ -193,16 +178,16 @@
   opacity: 0;
 }
 
-/* The state machine marks the fullscreen portrait hidden shortly before the
-   return begins. Visually hold it until the transform hero actually moves, then
-   crossfade the two layers. No moving filter is introduced. */
+/* Keep the fullscreen frame in place until the reverse match-cut actually
+   starts, then make the layer handoff almost instantaneous. The long crossfade
+   added in the later polish pass is intentionally removed. */
 .seo--holding .seo__portrait--hidden {
   opacity: 1;
 }
 
 .seo--returning .seo__portrait--hidden {
   opacity: 0;
-  transition: opacity 320ms ease-out;
+  transition: opacity 70ms linear;
 }
 
 .seo__photo {
@@ -216,9 +201,9 @@
   will-change: transform, filter;
 }
 
-/* `prepare return` clears the React filter before geometry moves. Keep the
-   stationary fullscreen layer desaturated through the crossfade so colour
-   returns gradually via the hero instead of popping on before the shrink. */
+/* React clears the grade shortly before the deterministic return is prepared.
+   Hold the old cinematic grade visually until the return layer has taken over,
+   matching the original one-object presentation. */
 .seo--holding .seo__portrait .seo__photo,
 .seo--holding .seo__portrait .seo__fallback,
 .seo--returning .seo__portrait .seo__photo,
@@ -310,7 +295,7 @@
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.8);
 }
 
-/* ── EVICTED stamp ───────────────────────────────────────────────────────── */
+/* ── ELIMINATED stamp ────────────────────────────────────────────────────── */
 .seo__stamp {
   position: fixed;
   top: 50%;
@@ -417,13 +402,14 @@
 }
 
 /* iOS WebKit pays a large compositing cost for a fullscreen blend-mode layer.
-   The user-visible desaturation/vignette/stamp treatment remains intact. */
+   The desaturation/vignette/stamp treatment remains intact without scanlines. */
 .seo--ios .seo__scanlines {
   display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .seo__hero,
+  .seo__hero-photo,
   .seo__portrait,
   .seo__dim,
   .seo__spotlight,
@@ -433,5 +419,155 @@
   .seo__stamp {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* ── Normal eviction continuity pass ───────────────────────────────────────
+ * Keep one visual object from detach through return. React still advances the
+ * old fullscreen-layer state for timing compatibility, but that second portrait
+ * is not painted during a normal eviction, eliminating the crop-to-crop swap. */
+.seo:not(.seo--return) .seo__dim {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.seo:not(.seo--return) .seo__spotlight {
+  background: radial-gradient(
+    ellipse 120px 160px at 50% 40%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.58) 70%,
+    rgba(0, 0, 0, 0.82) 100%
+  );
+}
+
+/* The transform hero remains authoritative even when the legacy timing state
+   adds seo__hero--hidden. This prevents the 1500–1640 ms image handoff. */
+.seo:not(.seo--return) .seo__hero--hidden,
+.seo:not(.seo--return).seo--holding .seo__hero,
+.seo:not(.seo--return).seo--returning .seo__hero {
+  opacity: 1;
+}
+
+/* Do not paint the separate fullscreen crop during a normal eviction. Battle
+   Back return mode still uses it unchanged. */
+.seo:not(.seo--return) .seo__portrait {
+  opacity: 0 !important;
+  visibility: hidden;
+}
+
+/* Recreate the old 1800 ms grade beat on the continuous hero. Expanding begins
+   at 900 ms, so the 900 ms delay lands the grade at the original timestamp. */
+@keyframes seo-hero-cinematic-grade {
+  from {
+    filter: saturate(1) contrast(1) brightness(1);
+  }
+  to {
+    filter: saturate(0.15) contrast(1.1) brightness(0.82);
+  }
+}
+
+.seo:not(.seo--return).seo--expanding .seo__hero-photo {
+  animation: seo-hero-cinematic-grade 500ms ease-out 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding .seo__hero-photo,
+.seo:not(.seo--return).seo--returning .seo__hero-photo {
+  filter: saturate(0.15) contrast(1.1) brightness(0.82);
+}
+
+.seo--ios:not(.seo--return).seo--holding .seo__hero-photo,
+.seo--ios:not(.seo--return).seo--returning .seo__hero-photo {
+  filter: saturate(0.65) contrast(1.03) brightness(0.9);
+}
+
+/* Vignette now belongs to the same moving object instead of a second portrait. */
+.seo:not(.seo--return) .seo__hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    transparent 28%,
+    rgba(0, 0, 0, 0.72) 100%
+  );
+}
+
+@keyframes seo-hero-vignette-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.seo:not(.seo--return).seo--expanding .seo__hero::before {
+  animation: seo-hero-vignette-in 350ms ease 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding .seo__hero::before {
+  opacity: 1;
+}
+
+.seo:not(.seo--return).seo--returning .seo__hero::before {
+  opacity: 0;
+  transition: opacity 180ms linear;
+}
+
+/* Viewport-sized scanlines stay independent of the scaled hero so their pitch
+   does not grow with the roster-to-screen zoom. */
+.seo:not(.seo--return)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.055) 3px,
+    rgba(0, 0, 0, 0.055) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+@keyframes seo-scanlines-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.seo:not(.seo--return).seo--expanding::after {
+  animation: seo-scanlines-in 200ms linear 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding::after {
+  opacity: 1;
+}
+
+.seo:not(.seo--return).seo--returning::after {
+  opacity: 0;
+}
+
+.seo--ios:not(.seo--return)::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo:not(.seo--return) .seo__hero-photo,
+  .seo:not(.seo--return) .seo__hero::before,
+  .seo:not(.seo--return)::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .seo:not(.seo--return).seo--holding .seo__hero-photo {
+    filter: saturate(0.15) contrast(1.1) brightness(0.82);
+  }
+
+  .seo:not(.seo--return).seo--holding .seo__hero::before,
+  .seo:not(.seo--return).seo--holding::after {
+    opacity: 1;
   }
 }
