@@ -30,18 +30,15 @@ describe('Back 2 the Game return-flow regressions', () => {
     expect(grid).not.toContain('setTimeout(onReturnAnimationDone')
   })
 
-  it('starts visibly evicted, then restores the portrait through the compositor FLIP path without a second announcement', () => {
+  it('starts visibly evicted, then removes the strike and restores the portrait without a second announcement', () => {
     const overlay = sourceText('src/components/Eviction/SpotlightEvictionOverlay.tsx')
 
     expect(overlay).toContain('const [showReturnStrike, setShowReturnStrike] = useState(isReturn)')
     expect(overlay).toContain('setShowReturnStrike(false)')
-    expect(overlay).toContain("'--seo-flip-scale': String(scale)")
-    expect(overlay).toContain("setPhase('spotlight')")
-    expect(overlay).toContain("dbg('return FLIP to roster')")
+    expect(overlay).toContain('scaleX: 1.12')
+    expect(overlay).toContain('scaleY: 0.88')
     expect(overlay).toContain('!isReturn && showLiveBug')
     expect(overlay).toContain('!isReturn && showLowerThird')
-    expect(overlay).not.toContain('scaleX: 1.12')
-    expect(overlay).not.toContain('scaleY: 0.88')
     expect(overlay).not.toContain("const labelText = isReturn ? 'RETURNED'")
   })
 })

@@ -23,7 +23,7 @@
  *                         to let this component detect the tie)
  *   onTiebreakerRequired – called with tied nominee IDs when totals are equal
  *   onDone              – called when the modal should close (non-tie path)
- *   revealIntervalMs    – ms between each vote reveal (house default 700; public >=150)
+ *   revealIntervalMs    – ms between each vote reveal (default 700)
  *   postRevealDelayMs   – ms to wait after last vote before announcing outcome (default 1000)
  *   countdownMs         – ms countdown before onDone fires (default 4000)
  */
@@ -71,7 +71,6 @@ const MIN_BAR_PCT = 4;
 const TV_RING_RADIUS = 42;
 const TV_RING_CIRCUMFERENCE = 2 * Math.PI * TV_RING_RADIUS;
 const DEFAULT_PUBLIC_TIEBREAK_DELAY_MS = 3000;
-const MIN_PUBLIC_REVEAL_INTERVAL_MS = 150;
 
 export interface VoteRingAvatarProps {
   player: Player;
@@ -120,9 +119,10 @@ export function VoteRingAvatar({ player, partner, pairColor, progress, tone }: V
 /**
  * Build an interleaved vote-reveal sequence from tallies.
  * Votes are interleaved across nominees so each reveal step toggles between
- * nominees (e.g., A, B, A, B, A for counts 3 vs 2), creating suspense.
+ * nominees (e.g. A, B, A, B, A for counts 3 vs 2), creating suspense.
  */
 function buildVoteSequence(tallies: VoteTally[]): string[] {
+  // Create per-nominee pools of vote tokens.
   const pools = tallies.map((t) =>
     Array<string>(Math.max(0, Math.round(t.voteCount))).fill(t.nominee.id)
   );
@@ -136,7 +136,10 @@ function buildVoteSequence(tallies: VoteTally[]): string[] {
   return seq;
 }
 
-/** Produce a deterministic live poll estimate near the official percentages. */
+/**
+ * Produce a deterministic live poll estimate near the official percentages.
+ * The drift narrows on every update and the final frame is exact.
+ */
 function buildPublicEstimate(
   tallies: VoteTally[],
   step: number,
@@ -181,14 +184,10 @@ export default function AnimatedVoteResultsModal({
   const firedRef = useRef(false);
   const publicResolvedRef = useRef(false);
   const showVoteStage = !publicTiebreakVisible;
-  const requestedRevealIntervalMs =
-    revealIntervalMs ?? (resultMode === 'public' ? MIN_PUBLIC_REVEAL_INTERVAL_MS : 700);
-  const effectiveRevealIntervalMs =
-    resultMode === 'public'
-      ? Math.max(MIN_PUBLIC_REVEAL_INTERVAL_MS, requestedRevealIntervalMs)
-      : requestedRevealIntervalMs;
+  const effectiveRevealIntervalMs = revealIntervalMs ?? (resultMode === 'public' ? 28 : 700);
 
   const totalVotes = useMemo(() => nominees.reduce((s, t) => s + t.voteCount, 0), [nominees]);
+  // Interleaved reveal sequence: [nomineeId, nomineeId, …] — length = totalVotes.
   const voteSequence = useMemo(
     () => resultMode === 'public'
       ? Array.from(
@@ -199,6 +198,7 @@ export default function AnimatedVoteResultsModal({
     [nominees, resultMode]
   );
 
+  // Displayed vote counts at the current reveal step.
   const displayedCounts = useMemo<Record<string, number>>(() => {
     if (resultMode === 'public') {
       return buildPublicEstimate(nominees, revealStep, EVICTION_PUBLIC_ESTIMATE_STEPS);
@@ -212,11 +212,10 @@ export default function AnimatedVoteResultsModal({
     return counts;
   }, [nominees, resultMode, voteSequence, revealStep]);
 
-  // Public estimates already animate their ring continuously; repeated row pulses
-  // only restart another transform animation and add no useful information.
-  const lastRevealedId =
-    resultMode === 'public' ? null : revealStep > 0 ? voteSequence[revealStep - 1] : null;
+  // The nominee that just received the most-recently revealed vote (for pulse).
+  const lastRevealedId = revealStep > 0 ? voteSequence[revealStep - 1] : null;
 
+  // Detect tie from final tallies when evictee prop is null.
   const { resolvedEvictee, tiedIds } = useMemo(() => {
     if (nominees.length === 0) return { resolvedEvictee: null, tiedIds: [] as string[] };
     if (evicteeProp) return { resolvedEvictee: evicteeProp, tiedIds: [] as string[] };
@@ -245,21 +244,23 @@ export default function AnimatedVoteResultsModal({
     const ids = nominees
       .filter((t) => (displayedCounts[t.nominee.id] ?? 0) === maxShownVotes)
       .map((t) => t.nominee.id);
+    // Keep ties neutral so only a single clear leader gets the coral highlight.
     return new Set(ids.length === 1 ? ids : []);
   }, [displayedCounts, maxShownVotes, nominees]);
-
   function fire() {
     if (firedRef.current) return;
     firedRef.current = true;
     onDone();
   }
 
+  // Advance reveal step one vote at a time.
   useEffect(() => {
     if (allRevealed) return;
     const id = setTimeout(() => setRevealStep((s) => s + 1), effectiveRevealIntervalMs);
     return () => clearTimeout(id);
   }, [revealStep, allRevealed, effectiveRevealIntervalMs]);
 
+  // After all votes revealed: wait, then show outcome.
   useEffect(() => {
     if (!allRevealed) return;
     const id = setTimeout(() => {
@@ -271,6 +272,7 @@ export default function AnimatedVoteResultsModal({
         if (onTiebreakerRequired) {
           onTiebreakerRequired(tiedIds);
         }
+        // If tied and no tiebreaker callback is provided, do not proceed to outcome/eviction.
         return;
       }
       setOutcomeVisible(true);
@@ -292,6 +294,7 @@ export default function AnimatedVoteResultsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicTiebreakVisible, publicTiebreak, onPublicTiebreakResolved]);
 
+  // Countdown after outcome is visible.
   useEffect(() => {
     if (!outcomeVisible) return;
     if (countdown <= 0) {
@@ -306,10 +309,8 @@ export default function AnimatedVoteResultsModal({
   return (
     <div
       className={`avrm${variant === 'tv' ? ' avrm--tv' : ''}`}
-      role={variant === 'tv' ? undefined : 'dialog'}
+      role={variant === 'tv' ? 'status' : 'dialog'}
       aria-modal={variant === 'tv' ? undefined : 'true'}
-      aria-live={variant === 'tv' ? (allRevealed ? 'polite' : 'off') : undefined}
-      aria-atomic={variant === 'tv' ? true : undefined}
       aria-label={resultMode === 'public' ? 'Audience vote result' : 'Vote results'}
       onClick={variant === 'tv' ? undefined : outcomeVisible ? fire : undefined}
     >
@@ -335,8 +336,9 @@ export default function AnimatedVoteResultsModal({
                   resolvedEvicteeIds.has(t.nominee.id) ||
                   (t.partner ? resolvedEvicteeIds.has(t.partner.id) : false);
                 const isPulsing = lastRevealedId === t.nominee.id;
-                const hideIntermediatePublicCountFromA11y =
-                  resultMode === 'public' && !allRevealed;
+                // Live audience estimates must not visually disclose the eventual
+                // evictee. Public rings stay neutral until the official outcome;
+                // house-vote reveals can still highlight the current tally leader.
                 const isLeading = outcomeVisible
                   ? isEvictee
                   : resultMode === 'public'
@@ -374,13 +376,10 @@ export default function AnimatedVoteResultsModal({
                       </span>
                       <span
                         className="avrm__tally-count"
-                        aria-hidden={hideIntermediatePublicCountFromA11y ? true : undefined}
                         aria-label={
-                          hideIntermediatePublicCountFromA11y
-                            ? undefined
-                            : resultMode === 'public'
-                              ? `${shownLabel} percent`
-                              : `${shown} vote${shown === 1 ? '' : 's'}`
+                          resultMode === 'public'
+                            ? `${shownLabel} percent`
+                            : `${shown} vote${shown === 1 ? '' : 's'}`
                         }
                       >
                         {shownLabel}

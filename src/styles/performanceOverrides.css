@@ -1,152 +1,35 @@
-/* Performance-focused overrides for animation-heavy gameplay surfaces.
+/* Performance isolation for animation-heavy gameplay surfaces.
  *
- * These rules intentionally preserve the layout/choreography while removing
- * effects that force large areas to be recomposited on every animation frame.
- * Keep this stylesheet imported after the normal component styles.
+ * Keep the foreground presentation at full quality. Reduce competition for the
+ * frame budget by suppressing work that is completely obscured behind the active
+ * minigame / TV / eviction presentation.
  */
 
-/* ── Quick Tap Race ───────────────────────────────────────────────────────── */
-/* The canvas itself is already redrawn every RAF. A backdrop-filter on the
- * fullscreen DOM shell makes the browser blur/recompose what is behind that
- * canvas at the same time, which is pure overhead during active gameplay. */
-.qtr-canvas--playing .qtr-canvas__card,
-.qtr-canvas--playing .qtr-canvas__header {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
+/* Quick Tap Race is portalled to document.body while GameScreen remains mounted
+ * underneath it. The portal is outside .game-screen, so the hidden house UI can
+ * be removed from painting/compositing without touching QuickTap's own glass,
+ * shadows, heat shake, canvas resolution or effects. */
+body:has(.qtr-canvas--playing) .game-screen {
+  visibility: hidden !important;
 }
 
-.qtr-canvas--playing .qtr-canvas__card {
-  background:
-    radial-gradient(circle at 50% -8%, rgba(118, 126, 255, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(21, 28, 57, 0.98), rgba(5, 8, 19, 0.99)) !important;
+/* GameScreen already marks live_vote and eviction_results with this class. Keep
+ * its red eviction atmosphere at the current frame, but stop repainting the full
+ * screen through the infinite evictionSetPulse background-color animation. */
+.game-screen--eviction-atmosphere {
+  animation-play-state: paused !important;
 }
 
-.qtr-canvas--playing .qtr-canvas__header {
-  background: linear-gradient(135deg, rgba(52, 57, 112, 0.92), rgba(21, 41, 70, 0.86)) !important;
-}
-
-/* The decorative grid is visually subtle but creates another fullscreen layer
- * above a constantly changing canvas. Remove it only while the game is live. */
-.qtr-canvas--playing::before {
-  display: none !important;
-}
-
-/* Shaking the entire fullscreen card invalidates/composites the whole gameplay
- * surface. Keep the heat colours and score urgency, but not the viewport shake. */
-.qtr-canvas--playing.qtr-canvas--heat-3 .qtr-canvas__card,
-.qtr-canvas--playing.qtr-canvas--heat-4 .qtr-canvas__card,
-.qtr-canvas--playing.qtr-canvas--heat-5 .qtr-canvas__card {
-  animation: none !important;
-  box-shadow: none !important;
-}
-
-.qtr-canvas--playing .qtr-canvas__progress-fill {
-  box-shadow: none !important;
-}
-
-/* ── Live voting / public verdict ─────────────────────────────────────────── */
-/* Public estimate commits are capped in React. Keep SVG interpolation shorter
- * than that cadence so the stroke settles before the next target arrives. */
-.avrm--tv .avrm__tv-vote-ring-fill {
-  transition:
-    stroke-dashoffset 120ms linear,
-    stroke 120ms ease !important;
-}
-
-/* drop-shadow() on every avatar ring is particularly expensive while the SVG
- * stroke changes. The avatars/ring colours still provide the same hierarchy. */
-.avrm--tv .avrm__tv-vote-ring-shell {
-  filter: none !important;
-  contain: layout paint;
-}
-
-.avrm--tv .avrm__tally--tv {
-  contain: layout paint;
-}
-
-/* The public percentages already communicate motion through the ring. Avoid a
- * second transform animation restarting on every estimate frame. */
-.avrm--tv .avrm__tally--pulse {
-  animation-duration: 220ms !important;
-}
-
-/* Keep the LIVE badge visually lit, but do not repaint its shadow continuously
- * while vote-result percentages are also updating. */
-.tv-zone--live-vote-focus .tv-zone__live-badge {
-  animation: none !important;
-  opacity: 1 !important;
-  box-shadow:
-    0 0 8px rgba(220, 38, 38, 0.72),
-    0 0 16px rgba(127, 29, 29, 0.28) !important;
-}
-
-/* Nominee tiles remain visible underneath the TV/result and eviction layers.
- * Freeze their paint-heavy sweep while those foreground animations own focus. */
-body:has(.tv-zone--live-vote-focus) [class*='liveEvictionNominee']::before,
-body:has(.seo) [class*='liveEvictionNominee']::before {
-  animation: none !important;
-}
-
-/* ── Eviction cinematic ──────────────────────────────────────────────────── */
-/* The portrait now performs its roster-to-fullscreen move with one CSS FLIP
- * transform. CSS interpolation lets the compositor own the expensive camera push
- * instead of Framer Motion's shared-layout measurement/projection path. */
-.seo__portrait {
-  transform-origin: center center !important;
-  transition:
-    transform 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    border-radius 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-}
-
-.seo__portrait--expanded {
-  transform: translate3d(var(--seo-flip-x, 0px), var(--seo-flip-y, 0px), 0)
-    scale(var(--seo-flip-scale, 1)) !important;
-}
-
-/* The scanline layer used mix-blend-mode over a moving portrait. Preserve the
- * texture after the camera push, but remove it from the expensive expansion. */
-.seo__scanlines {
-  mix-blend-mode: normal !important;
-  opacity: 0.42;
-}
-
-.seo--spotlight .seo__scanlines,
-.seo--expanding .seo__scanlines {
-  opacity: 0 !important;
-}
-
-/* Framer no longer interpolates image filters. The photo itself only performs
- * compositor transforms during the camera push; the cinematic grade is applied
- * once after expansion settles, causing one paint instead of one paint per frame. */
-.seo__photo,
-.seo__fallback {
-  filter: none !important;
-  transition: transform 500ms ease-out !important;
-}
-
-.seo__photo {
-  transform: translateZ(0) scale(1) !important;
-  will-change: transform !important;
-}
-
-.seo__portrait--expanded .seo__photo {
-  transform: translateZ(0) scale(1.02) !important;
-}
-
-.seo__portrait--desaturated .seo__photo,
-.seo__portrait--desaturated .seo__fallback {
-  filter: saturate(0.24) contrast(1.08) brightness(0.84) !important;
-}
-
-.seo__portrait--desaturated .seo__photo {
-  transform: translateZ(0) scale(1.04) !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .avrm--tv .avrm__tv-vote-ring-fill,
-  .seo__portrait,
-  .seo__photo,
-  .seo__fallback {
-    transition: none !important;
-  }
+/* Pause only the roster and ambient screen layers underneath the foreground
+ * ceremony. Vote rings, LIVE treatment, Framer eviction motion, scanlines and
+ * image grading are deliberately untouched. */
+.game-screen--eviction-atmosphere [data-player-id],
+.game-screen--eviction-atmosphere [data-player-id] *,
+.game-screen--eviction-atmosphere [data-player-id]::before,
+.game-screen--eviction-atmosphere [data-player-id]::after,
+.game-screen--eviction-atmosphere [data-player-id] *::before,
+.game-screen--eviction-atmosphere [data-player-id] *::after,
+.game-screen--eviction-atmosphere::before,
+.game-screen--eviction-atmosphere::after {
+  animation-play-state: paused !important;
 }
