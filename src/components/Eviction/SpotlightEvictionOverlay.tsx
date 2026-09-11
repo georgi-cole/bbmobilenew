@@ -16,28 +16,36 @@ import './SpotlightEvictionOverlay.css'
 
 // ── Timing constants (ms, relative to component mount) ────────────────────
 //
-// Beat:   0 ms         grid dims + portrait is pinned to the roster tile
+// Beat:   0 ms         hero clone is pinned to the roster tile
 //        750 ms        LIVE bug fades in
-//        900 ms        tile detaches and expands fullscreen (600 ms)
+//        900 ms        tile detaches and zooms (transform-only, 600 ms)
+//       1500 ms        native fullscreen portrait crossfades in
 //       1800 ms        desaturate + vignette settle
 //       2100 ms        lower-third + ELIMINATED stamp land
 //       3000 ms        suspense hold
 //       4650 ms        grade/stamp clear before the return move
-//       4800 ms        portrait returns to the roster tile
+//       4740 ms        transform hero replaces fullscreen portrait
+//       4800 ms        hero returns to the roster tile
 //       5400 ms        return completes, then onDone commits the eviction
 //
 const LIVE_BUG_AT = 750
 const EXPAND_START = 900
+const CAMERA_SETTLED_AT = 1500
+const HERO_HIDE_AT = 1640
 const DESAT_AT = 1800
 const LOWER_THIRD_AT = 2100
 const HOLD_START = 3000
 const PRE_RETURN_AT = 4650
+const HERO_RETURN_PREP_AT = 4710
+const FULLSCREEN_HIDE_AT = 4740
 const RETURN_TO_TILE_AT = 4800
 const DONE_AT = 5400
 
 // Battle Back return sequence: start fullscreen in the evicted treatment, restore
-// colour, then explicitly shrink back into the active roster tile.
+// colour, crossfade to the transform hero, then shrink into the active roster tile.
 const RETURN_CLEAR_AT = 650
+const RETURN_HERO_PREP_AT = 1200
+const RETURN_FULLSCREEN_HIDE_AT = 1260
 const RETURN_SPOTLIGHT_AT = 1300
 const RETURN_DONE_AT = 1900
 
@@ -53,6 +61,11 @@ type PortraitGeometry = {
   source: PortraitRect | null
   viewport: { width: number; height: number }
   ready: boolean
+}
+type HeroStyle = CSSProperties & {
+  '--seo-hero-x'?: string
+  '--seo-hero-y'?: string
+  '--seo-hero-scale'?: string
 }
 
 function isAppleTouchDevice(): boolean {
@@ -96,10 +109,12 @@ interface Props {
 /**
  * SpotlightEvictionOverlay — cinematic eviction choreography.
  *
- * The tile-to-screen and screen-to-tile moves use one geometry measurement before
- * first paint and a dedicated fixed portrait. This avoids Framer shared-layout
- * projection (which could be dropped under WebView load) while preserving the
- * fullscreen, full-resolution portrait used for desaturation and the stamp.
+ * Geometry motion and fullscreen image treatment are deliberately split:
+ * - a source-sized hero clone handles detach/return using only transform + opacity;
+ * - a native fullscreen portrait handles desaturation, vignette and stamp quality.
+ *
+ * This removes Framer shared-layout projection from the camera move and avoids
+ * animating top/left/width/height while preserving the high-quality hold frame.
  */
 export default function SpotlightEvictionOverlay({
   evictee,
@@ -123,6 +138,8 @@ export default function SpotlightEvictionOverlay({
   const [showLowerThird, setShowLowerThird] = useState(false)
   const [showReturnStrike, setShowReturnStrike] = useState(isReturn)
   const [desaturated, setDesaturated] = useState(isReturn)
+  const [showHeroPortrait, setShowHeroPortrait] = useState(!isReturn)
+  const [showFullscreenPortrait, setShowFullscreenPortrait] = useState(isReturn)
   const [geometry, setGeometry] = useState<PortraitGeometry>(() => ({
     source: null,
     viewport: {
@@ -149,9 +166,8 @@ export default function SpotlightEvictionOverlay({
     onDone()
   }, [onDone])
 
-  // Read the source tile exactly once before first paint. Opacity does not affect
-  // its DOM geometry, so this remains reliable even while AvatarTile is hiding the
-  // original image for the cinematic.
+  // Read the source tile once before first paint. Opacity does not affect DOM
+  // geometry, so this remains valid while AvatarTile hides its duplicate image.
   useLayoutEffect(() => {
     if (typeof window === 'undefined') {
       setGeometry((current) => ({ ...current, ready: true }))
@@ -168,7 +184,7 @@ export default function SpotlightEvictionOverlay({
   }, [evictee.id])
 
   // Warm the portrait image before the camera push. Decode failure is harmless;
-  // the rendered image still follows the normal candidate/fallback path.
+  // the normal candidate/fallback path remains authoritative.
   useEffect(() => {
     if (!avatarSrc || typeof window === 'undefined') return
     const image = new window.Image()
@@ -178,14 +194,13 @@ export default function SpotlightEvictionOverlay({
     }
   }, [avatarSrc])
 
-  // Register the overlay player so the roster does not paint a duplicate portrait.
   useEffect(() => {
     if (import.meta.env.DEV) {
       console.debug('[SpotlightEvictionOverlay] mount', {
         evicteeId: evictee.id,
         layoutId,
         variant,
-        transition: 'measured-geometry',
+        transition: 'transform-hero',
       })
     }
     dispatch(setEvictionOverlay(evictee.id))
@@ -229,6 +244,8 @@ export default function SpotlightEvictionOverlay({
 
     if (prefersReducedMotion) {
       setPhase('holding')
+      setShowFullscreenPortrait(true)
+      setShowHeroPortrait(false)
       if (isReturn) {
         setShowReturnStrike(false)
         setDesaturated(false)
@@ -258,8 +275,20 @@ export default function SpotlightEvictionOverlay({
       )
       timers.push(
         setTimeout(() => {
+          setShowHeroPortrait(true)
+          dbg('return hero prepared at fullscreen zoom')
+        }, RETURN_HERO_PREP_AT)
+      )
+      timers.push(
+        setTimeout(() => {
+          setShowFullscreenPortrait(false)
+          dbg('fullscreen portrait handed to hero')
+        }, RETURN_FULLSCREEN_HIDE_AT)
+      )
+      timers.push(
+        setTimeout(() => {
           setPhase('returning')
-          dbg('return portrait to roster')
+          dbg('return hero to roster')
         }, RETURN_SPOTLIGHT_AT)
       )
       timers.push(
@@ -282,8 +311,20 @@ export default function SpotlightEvictionOverlay({
     timers.push(
       setTimeout(() => {
         setPhase('expanding')
-        dbg('portrait detach + fullscreen expansion')
+        dbg('transform hero detach + zoom')
       }, EXPAND_START)
+    )
+    timers.push(
+      setTimeout(() => {
+        setShowFullscreenPortrait(true)
+        dbg('native fullscreen portrait crossfade in')
+      }, CAMERA_SETTLED_AT)
+    )
+    timers.push(
+      setTimeout(() => {
+        setShowHeroPortrait(false)
+        dbg('detach hero parked')
+      }, HERO_HIDE_AT)
     )
     timers.push(
       setTimeout(() => {
@@ -305,7 +346,6 @@ export default function SpotlightEvictionOverlay({
     )
     timers.push(
       setTimeout(() => {
-        // Remove paint-heavy grading before the geometry starts moving back.
         setShowLowerThird(false)
         setShowLiveBug(false)
         setDesaturated(false)
@@ -314,8 +354,20 @@ export default function SpotlightEvictionOverlay({
     )
     timers.push(
       setTimeout(() => {
+        setShowHeroPortrait(true)
+        dbg('return hero restored at fullscreen zoom')
+      }, HERO_RETURN_PREP_AT)
+    )
+    timers.push(
+      setTimeout(() => {
+        setShowFullscreenPortrait(false)
+        dbg('fullscreen portrait handed back to hero')
+      }, FULLSCREEN_HIDE_AT)
+    )
+    timers.push(
+      setTimeout(() => {
         setPhase('returning')
-        dbg('portrait return to roster')
+        dbg('transform hero return to roster')
       }, RETURN_TO_TILE_AT)
     )
     timers.push(
@@ -333,7 +385,7 @@ export default function SpotlightEvictionOverlay({
 
   function handleImgError() {
     if (candidateIdx < candidates.length - 1) {
-      setCandidateIdx((i) => i + 1)
+      setCandidateIdx((index) => index + 1)
     } else {
       setShowFallback(true)
     }
@@ -351,37 +403,28 @@ export default function SpotlightEvictionOverlay({
 
   const labelText = 'ELIMINATED'
   const lowerThirdLabel = getLowerThirdLabel(false, labelText, contextLabel)
-  const collapsedToTile = phase === 'spotlight' || phase === 'returning'
-  const moving = phase === 'expanding' || phase === 'returning'
   const source = geometry.source
-  const portraitStyle: CSSProperties =
-    collapsedToTile && source
-      ? {
-          top: source.top,
-          left: source.left,
-          width: source.width,
-          height: source.height,
-          right: 'auto',
-          bottom: 'auto',
-          borderRadius: 'var(--tile-radius, 12px)',
-          visibility: geometry.ready ? 'visible' : 'hidden',
-        }
-      : {
-          top: 0,
-          left: 0,
-          width: geometry.viewport.width,
-          height: geometry.viewport.height,
-          right: 'auto',
-          bottom: 'auto',
-          borderRadius: 0,
-          visibility: geometry.ready ? 'visible' : 'hidden',
-        }
+  const heroExpanded = phase === 'expanding' || phase === 'holding'
+  const heroStyle: HeroStyle | undefined = source
+    ? {
+        top: source.top,
+        left: source.left,
+        width: source.width,
+        height: source.height,
+        visibility: geometry.ready ? 'visible' : 'hidden',
+        '--seo-hero-x': `${geometry.viewport.width / 2 - (source.left + source.width / 2)}px`,
+        '--seo-hero-y': `${geometry.viewport.height / 2 - (source.top + source.height / 2)}px`,
+        '--seo-hero-scale': String(
+          Math.max(geometry.viewport.width / source.width, geometry.viewport.height / source.height)
+        ),
+      }
+    : undefined
 
   const rootClassName = [
     'seo',
     `seo--${phase}`,
     isReturn ? 'seo--return' : '',
-    optimizedForAppleTouch ? 'seo--ios' : '',
+    optimizedForAppleTouch ? ' seo--ios' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -431,11 +474,31 @@ export default function SpotlightEvictionOverlay({
         )}
       </AnimatePresence>
 
+      {source && (
+        <div
+          className={[
+            'seo__hero',
+            heroExpanded ? 'seo__hero--expanded' : '',
+            showHeroPortrait ? '' : 'seo__hero--hidden',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          style={heroStyle}
+          data-layout-id={layoutId}
+          data-phase={phase}
+          aria-hidden="true"
+        >
+          {showFallback ? (
+            <span className="seo__fallback">{fallbackText}</span>
+          ) : (
+            <img className="seo__hero-photo" src={avatarSrc} alt="" />
+          )}
+        </div>
+      )}
+
       <div
-        className={`seo__portrait${moving ? ' seo__portrait--moving' : ''}`}
-        style={portraitStyle}
-        data-layout-id={layoutId}
-        data-phase={phase}
+        className={`seo__portrait${showFullscreenPortrait ? '' : ' seo__portrait--hidden'}`}
+        aria-hidden={!showFullscreenPortrait}
       >
         {showFallback ? (
           <motion.span
@@ -461,9 +524,7 @@ export default function SpotlightEvictionOverlay({
                 ? isReturn
                   ? { scale: 1, filter: cinematicFilter, y: 0 }
                   : { scale: 1.04, filter: cinematicFilter, y: 0 }
-                : phase === 'expanding'
-                  ? { scale: 1.015, filter: 'none', y: 0 }
-                  : { scale: 1, filter: 'none', y: 0 }
+                : { scale: 1, filter: 'none', y: 0 }
             }
             transition={noMotion ?? { duration: 0.5, ease: 'easeOut' }}
           />
