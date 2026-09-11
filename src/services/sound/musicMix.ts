@@ -16,8 +16,7 @@ export function resolveRuntimeMusicMix(
   // voteResults can persist beyond the visible tally. Only duck while the vote
   // reveal itself can own the presentation; later phases must return to full mix.
   const voteResultsRevealActive =
-    game.voteResults != null &&
-    (game.phase === 'live_vote' || game.phase === 'eviction_results')
+    game.voteResults != null && (game.phase === 'live_vote' || game.phase === 'eviction_results')
   const evictionCinematicActive = evictionOverlayPlayerId != null && !battleBackReturnActive
   const twinShockRevealActive = game.twinShock?.pendingRevealAnimation != null
 
