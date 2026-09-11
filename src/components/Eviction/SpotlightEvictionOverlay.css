@@ -421,3 +421,153 @@
     animation: none !important;
   }
 }
+
+/* ── Normal eviction continuity pass ───────────────────────────────────────
+ * Keep one visual object from detach through return. React still advances the
+ * old fullscreen-layer state for timing compatibility, but that second portrait
+ * is not painted during a normal eviction, eliminating the crop-to-crop swap. */
+.seo:not(.seo--return) .seo__dim {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.seo:not(.seo--return) .seo__spotlight {
+  background: radial-gradient(
+    ellipse 120px 160px at 50% 40%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.58) 70%,
+    rgba(0, 0, 0, 0.82) 100%
+  );
+}
+
+/* The transform hero remains authoritative even when the legacy timing state
+   adds seo__hero--hidden. This prevents the 1500–1640 ms image handoff. */
+.seo:not(.seo--return) .seo__hero--hidden,
+.seo:not(.seo--return).seo--holding .seo__hero,
+.seo:not(.seo--return).seo--returning .seo__hero {
+  opacity: 1;
+}
+
+/* Do not paint the separate fullscreen crop during a normal eviction. Battle
+   Back return mode still uses it unchanged. */
+.seo:not(.seo--return) .seo__portrait {
+  opacity: 0 !important;
+  visibility: hidden;
+}
+
+/* Recreate the old 1800 ms grade beat on the continuous hero. Expanding begins
+   at 900 ms, so the 900 ms delay lands the grade at the original timestamp. */
+@keyframes seo-hero-cinematic-grade {
+  from {
+    filter: saturate(1) contrast(1) brightness(1);
+  }
+  to {
+    filter: saturate(0.15) contrast(1.1) brightness(0.82);
+  }
+}
+
+.seo:not(.seo--return).seo--expanding .seo__hero-photo {
+  animation: seo-hero-cinematic-grade 500ms ease-out 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding .seo__hero-photo,
+.seo:not(.seo--return).seo--returning .seo__hero-photo {
+  filter: saturate(0.15) contrast(1.1) brightness(0.82);
+}
+
+.seo--ios:not(.seo--return).seo--holding .seo__hero-photo,
+.seo--ios:not(.seo--return).seo--returning .seo__hero-photo {
+  filter: saturate(0.65) contrast(1.03) brightness(0.9);
+}
+
+/* Vignette now belongs to the same moving object instead of a second portrait. */
+.seo:not(.seo--return) .seo__hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    transparent 28%,
+    rgba(0, 0, 0, 0.72) 100%
+  );
+}
+
+@keyframes seo-hero-vignette-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.seo:not(.seo--return).seo--expanding .seo__hero::before {
+  animation: seo-hero-vignette-in 350ms ease 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding .seo__hero::before {
+  opacity: 1;
+}
+
+.seo:not(.seo--return).seo--returning .seo__hero::before {
+  opacity: 0;
+  transition: opacity 180ms linear;
+}
+
+/* Viewport-sized scanlines stay independent of the scaled hero so their pitch
+   does not grow with the roster-to-screen zoom. */
+.seo:not(.seo--return)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.055) 3px,
+    rgba(0, 0, 0, 0.055) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+@keyframes seo-scanlines-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.seo:not(.seo--return).seo--expanding::after {
+  animation: seo-scanlines-in 200ms linear 900ms forwards;
+}
+
+.seo:not(.seo--return).seo--holding::after {
+  opacity: 1;
+}
+
+.seo:not(.seo--return).seo--returning::after {
+  opacity: 0;
+}
+
+.seo--ios:not(.seo--return)::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo:not(.seo--return) .seo__hero-photo,
+  .seo:not(.seo--return) .seo__hero::before,
+  .seo:not(.seo--return)::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .seo:not(.seo--return).seo--holding .seo__hero-photo {
+    filter: saturate(0.15) contrast(1.1) brightness(0.82);
+  }
+
+  .seo:not(.seo--return).seo--holding .seo__hero::before,
+  .seo:not(.seo--return).seo--holding::after {
+    opacity: 1;
+  }
+}
