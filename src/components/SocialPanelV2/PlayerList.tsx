@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
-import { useAppSelector } from '../../store/hooks'
+import { store } from '../../store/store'
 import PlayerCard from './PlayerCard'
 
 interface PlayerListProps {
@@ -68,13 +68,20 @@ export default function PlayerList({
   const lastFocusedIndexRef = useRef<number>(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const appliedInvitationRef = useRef<string | null>(null)
-  const invitation = useAppSelector((state) =>
-    state.game.tvFeed.find(
-      (event) =>
-        event.meta?.socialInvitation === true &&
-        event.meta?.week === state.game.week &&
-        typeof event.meta?.suggestedTargetId === 'string'
-    )
+  const invitation = useSyncExternalStore(
+    store.subscribe,
+    () => {
+      const game = store.getState().game
+      return (
+        game.tvFeed.find(
+          (event) =>
+            event.meta?.socialInvitation === true &&
+            event.meta?.week === game.week &&
+            typeof event.meta?.suggestedTargetId === 'string'
+        ) ?? null
+      )
+    },
+    () => null
   )
 
   // When selectedIds prop is provided use it for display; otherwise fall back to internal state.
