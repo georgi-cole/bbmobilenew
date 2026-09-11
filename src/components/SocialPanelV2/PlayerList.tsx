@@ -92,25 +92,19 @@ export default function PlayerList({
     if (!invitation || appliedInvitationRef.current === invitation.id) return
     const targetId = invitation.meta?.suggestedTargetId
     if (typeof targetId !== 'string') return
+    if (!controlledSelectedIds || !onSelectionChange) return
     if (disabledIds.includes(targetId)) return
     if (!players.some((player) => player.id === targetId)) return
 
     // Respect a choice the player already made before this component processed
     // the suggestion. The invitation is a focus aid, never a selection lock.
-    if ((controlledSelectedIds?.size ?? internalSelectedIds.size) > 0) return
+    if (controlledSelectedIds.size > 0) return
 
     appliedInvitationRef.current = invitation.id
-    updateSelection(new Set([targetId]), targetId)
+    onSelectionChange(new Set([targetId]), { primaryTargetId: targetId })
     const index = players.findIndex((player) => player.id === targetId)
     if (index >= 0) lastFocusedIndexRef.current = index
-  }, [
-    controlledSelectedIds,
-    disabledIds,
-    internalSelectedIds.size,
-    invitation,
-    players,
-    updateSelection,
-  ])
+  }, [controlledSelectedIds, disabledIds, invitation, onSelectionChange, players])
 
   function handleSelect(playerId: string, additive: boolean) {
     // Use the authoritative current selection (controlled or internal) for toggle logic.
