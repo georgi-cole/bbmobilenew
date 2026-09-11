@@ -1,17 +1,16 @@
 /* Performance isolation for animation-heavy gameplay surfaces.
  *
  * Keep the foreground presentation at full quality. Reduce competition for the
- * frame budget by pausing continuous animation work that is obscured behind the
- * active minigame / TV / eviction presentation.
+ * frame budget by suppressing work that is completely obscured behind the active
+ * minigame / TV / eviction presentation.
  */
 
 /* Quick Tap Race is portalled to document.body while GameScreen remains mounted
- * underneath it. The portal is outside .game-screen, so pausing the hidden game
- * surface does not touch QuickTap's own glass, shadows, heat shake or canvas. */
-body:has(.qtr-canvas--playing) .game-screen *,
-body:has(.qtr-canvas--playing) .game-screen::before,
-body:has(.qtr-canvas--playing) .game-screen::after {
-  animation-play-state: paused !important;
+ * underneath it. The portal is outside .game-screen, so the hidden house UI can
+ * be removed from painting/compositing without touching QuickTap's own glass,
+ * shadows, heat shake, canvas resolution or effects. */
+body:has(.qtr-canvas--playing) .game-screen {
+  visibility: hidden !important;
 }
 
 /* GameScreen already marks live_vote and eviction_results with this class. Pause
