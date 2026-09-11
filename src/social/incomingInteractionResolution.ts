@@ -1,6 +1,4 @@
 import { normalizeAffinity } from './affinityUtils'
-import { getIncomingDialogueBeat } from './incomingDialogueOutcomeBank'
-import { getAuthoredIncomingSceneOutcome } from './incomingSceneOutcomeBank'
 import { getSocialPersonality } from './socialPersonalityBank'
 import type { SocialMemoryDelta } from './socialMemory'
 import type {
@@ -328,73 +326,122 @@ function baseDelta(kind: SceneDefinition['kind'], stance: OutcomeStance): number
   return values[kind][stance]
 }
 
-function focusFromMessage(interaction: IncomingInteraction, fallback: string): string {
-  const message = interaction.text.toLowerCase()
-  if (/not adding up|direct answer|something between us/.test(message))
-    return 'what was not adding up'
-  if (/wanted to talk.*direct|talk to you directly/.test(message)) return 'what had shifted'
-  if (/where.*stand|in my corner|trust/.test(message)) return 'where the two of you stood'
-  if (/safe|safety|block|nominee/.test(message)) return 'the Safety decision and its fallout'
-  if (/vote|keep me|send me home/.test(message)) return 'how the vote was shaping up'
-  return fallback
-}
-
-function describeResponseAction(
-  label: string | undefined,
-  stance: OutcomeStance,
-  fromName: string,
-  focus: string
-): string {
-  const action = (label ?? '').toLowerCase()
-  if (/make.*explain/.test(action)) return `asked ${fromName} to spell out exactly ${focus}`
-  if (/ask.*why|ask what changed/.test(action)) return `asked ${fromName} to explain ${focus}`
-  if (/ask.*(specific|detail|proof|source|case|plan|need|offer|term)/.test(action))
-    return `asked ${fromName} for specifics before showing your hand`
-  if (/hear|listen/.test(action))
-    return `let ${fromName} make their case without promising anything`
-  if (/share|honest|let.*in|reassure|thank|celebrate|accept|offer safety|promise/.test(action))
-    return `gave ${fromName} a candid answer about ${focus}`
-  if (/keep|guard|measured|light|noncommittal|cool|nod/.test(action))
-    return `kept your answer guarded while addressing ${focus}`
-  if (stance === 'negative') return `drew a line around ${focus}`
-  if (stance === 'dismiss') return `ended the exchange before addressing ${focus}`
-  return `responded carefully to ${fromName}'s concern about ${focus}`
-}
-
-function relationshipQualifier(mutualAffinity: number, fromName: string): string {
-  if (mutualAffinity <= -0.25) {
-    return ` The existing distrust means ${fromName} will test that answer before acting on it.`
-  }
-  if (mutualAffinity >= 0.55) {
-    return ' Your existing rapport makes the answer land as more than polite talk.'
-  }
-  return ''
-}
-
-function consequenceFor(
-  stance: OutcomeStance,
-  kind: SceneDefinition['kind'],
-  fromName: string
-): string {
-  if (stance === 'positive') {
-    return `${fromName} has a clearer reason to work with you and will watch your next move.`
-  }
-  if (stance === 'neutral') {
-    const nextStep =
-      kind === 'pressure' ? 'They will keep another route open.' : 'They know what to watch next.'
-    return `${fromName} got an answer, not a promise. ${nextStep}`
-  }
-  if (stance === 'negative') {
-    return `${fromName} knows not to lean on you here and adjusts their game.`
-  }
-  return `${fromName} leaves without clarity and plans around the silence.`
-}
-
 function compactOutcomeText(text: string, maxLength = 280): string {
   const normalized = text.replace(/\s+/g, ' ').trim()
   if (normalized.length <= maxLength) return normalized
   const clipped = normalized.slice(0, maxLength - 1).replace(/\s+\S*$/, '')
   return `${clipped}…`
+}
+
+type ConcreteResponseIntent =
+  | 'ask_wellbeing'
+  | 'ask_back'
+  | 'ask_source'
+  | 'ask_proof'
+  | 'ask_case'
+  | 'ask_plan'
+  | 'ask_reason'
+  | 'listen'
+  | 'positive'
+  | 'negative'
+  | 'dismiss'
+  | 'neutral'
+
+function responseIntent(label: string | undefined, stance: OutcomeStance): ConcreteResponseIntent {
+  const action = (label ?? '').toLowerCase()
+  if (/ask how they are|ask what they need/.test(action)) return 'ask_wellbeing'
+  if (/ask them back/.test(action)) return 'ask_back'
+  if (/source|who else knows/.test(action)) return 'ask_source'
+  if (/proof|specifics|detail/.test(action)) return 'ask_proof'
+  if (/case|campaign/.test(action)) return 'ask_case'
+  if (/ask.*(plan|offer)|term|what changes/.test(action)) return 'ask_plan'
+  if (/why|what changed|explain|context|what they mean/.test(action)) return 'ask_reason'
+  if (/hear|listen|nod/.test(action)) return 'listen'
+  if (stance === 'positive') return 'positive'
+  if (stance === 'negative') return 'negative'
+  if (stance === 'dismiss') return 'dismiss'
+  return 'neutral'
+}
+
+function checkInPressure(fromName: string, phase: string, senderIsNominated: boolean): string {
+  if (senderIsNominated && ['social_2', 'live_vote'].includes(phase)) {
+    return `${fromName} says they feel the house is against them.`
+  }
+  if (
+    ['nominations', 'nomination_results', 'pos_comp', 'pos_results', 'pos_ceremony'].includes(phase)
+  ) {
+    return `${fromName} says they are worried they could be used as a pawn.`
+  }
+  if (['week_start', 'social_1', 'hoh_comp', 'hoh_results'].includes(phase)) {
+    return `${fromName} says they are worried about the upcoming nominations.`
+  }
+  return `${fromName} says they are watching who they can still trust.`
+}
+
+function scenarioReply(
+  scenarioKey: string | undefined,
+  intent: ConcreteResponseIntent,
+  fromName: string,
+  subjectName: string | undefined,
+  phase: string,
+  senderIsNominated: boolean
+): string {
+  const target = subjectName ?? 'the name involved'
+  if (intent === 'dismiss') return `${fromName} drops the subject, but remembers the brush-off.`
+  if (intent === 'negative') return `${fromName} backs off and adjusts their plans without you.`
+
+  if (intent === 'ask_wellbeing') return checkInPressure(fromName, phase, senderIsNominated)
+  if (intent === 'ask_back')
+    return `${fromName} says they are still trying to read where they stand with you.`
+  if (intent === 'ask_source')
+    return `${fromName} says the story came up twice, but will not name anyone yet.`
+  if (intent === 'ask_proof')
+    return `${fromName} admits they have a pattern, not proof, against ${target}.`
+  if (intent === 'ask_case')
+    return `${fromName} says keeping them gives you a vote that is still open.`
+  if (intent === 'ask_plan') return `${fromName} says they need a clear deal before names are set.`
+  if (intent === 'ask_reason')
+    return `${fromName} says they felt shut out and wanted a direct answer.`
+  if (intent === 'listen')
+    return `${fromName} lays out their position and waits to see what you do with it.`
+
+  const replies: Record<string, string> = {
+    week_start_ally_check_in: `${fromName} says they want to compare notes before the week gets away from them.`,
+    week_start_enemy_gossip: `${fromName} says a new voting group is forming, but the names are still moving.`,
+    week_start_alliance_lock: `${fromName} says they want to test the alliance with one small vote first.`,
+    hoh_congratulations: `${fromName} says the LOH win has put every conversation under a spotlight.`,
+    safety_win_congratulations: `${fromName} says your Safety win changed who has room to take risks.`,
+    player_nominated_support: `${fromName} says the block has made every friendly face harder to trust.`,
+    player_nominated_tension: `${fromName} says the nomination changed how they read your relationship.`,
+    competition_low_finish_support: `${fromName} says the result stung, but they are not giving up ground.`,
+    competition_low_finish_taunt: `${fromName} says the result showed exactly who is under pressure.`,
+    social_momentum_notice: `${fromName} says people have started comparing notes about your social game.`,
+    hoh_safety_request: `${fromName} says a promise of safety would change their whole week.`,
+    nominee_hoh_plea: `${fromName} says putting them up would create a vote you cannot fully control.`,
+    nominee_veto_pitch: `${fromName} says using Safety on them would force a weaker replacement.`,
+    nominee_campaign: `${fromName} says they have two votes leaning their way, but need one more.`,
+    nomination_aftershock: `${fromName} says the nomination made them question who was really with them.`,
+    nominee_understands_loh: `${fromName} says they understand the move, but will remember who approved it.`,
+    nominee_confronts_loh: `${fromName} says the nomination felt personal, whatever the strategy was.`,
+    replacement_nominee_reacts_to_loh: `${fromName} says being the replacement changed the way they see you.`,
+    post_veto_gratitude: `${fromName} says the Safety decision bought them time they will not waste.`,
+    post_veto_campaign: `${fromName} says the new block has reopened every vote in the house.`,
+    live_vote_pitch: `${fromName} says they need one honest answer before the vote locks.`,
+    survivor_gratitude: `${fromName} says surviving the vote showed them who really came through.`,
+    betrayal_warning: `${fromName} says the same name has come up too often to ignore.`,
+    ignored_warning: `${fromName} says the distance between you is starting to affect their choices.`,
+    targeted_snark: `${fromName} says they wanted to see whether the jab would get under your skin.`,
+    alliance_reassurance: `${fromName} says the alliance needs one clear move to prove it still exists.`,
+    generic_gossip: `${fromName} says ${target}'s name is circulating, but the story is incomplete.`,
+    generic_check_in: checkInPressure(fromName, phase, senderIsNominated),
+    relationship_friendship_check_in: checkInPressure(fromName, phase, senderIsNominated),
+    relationship_alliance_follow_up: `${fromName} says they need to know whether the two of you are actually working together.`,
+    relationship_romance_check_in: `${fromName} says they do not want the connection to become a house rumour.`,
+    relationship_confidant_check_in: `${fromName} says they have something personal to share, but are still testing trust.`,
+    relationship_frustration_follow_up: `${fromName} says the tension is affecting how they play around you.`,
+    relationship_repair_follow_up: `${fromName} says repairing this would take more than one good conversation.`,
+  }
+  return replies[scenarioKey ?? ''] ?? `${fromName} gives you a clearer read on where they stand.`
 }
 
 export interface IncomingResponseResolutionInput {
@@ -406,6 +453,7 @@ export interface IncomingResponseResolutionInput {
   playerAffinity: number
   subjectName?: string
   responseLabel?: string
+  senderIsNominated?: boolean
 }
 
 export interface IncomingResponseResolution {
@@ -462,37 +510,20 @@ export function resolveIncomingResponse(
     personality.warmth * 0.2 +
     (scene.kind === 'bond' || scene.kind === 'celebration' ? 0.1 : 0)
   const playerDelta = Math.max(-10, Math.min(10, Math.round(actorDelta * reciprocalWeight)))
-  const focus = input.subjectName ?? focusFromMessage(input.interaction, scene.topic)
-  const action = describeResponseAction(input.responseLabel, stance, input.fromName, focus)
-  const authoredOutcome = getAuthoredIncomingSceneOutcome(
-    typeof scenarioKey === 'string' ? scenarioKey : undefined,
-    stance,
-    seed
-  )
-  const consequence = authoredOutcome
-    ? `${authoredOutcome.replaceAll('{from}', input.fromName).replaceAll('{focus}', focus)}${relationshipQualifier(
-        mutualAffinity,
-        input.fromName
-      )}`
-    : consequenceFor(stance, scene.kind, input.fromName)
-  const dialogueBeat = getIncomingDialogueBeat({
-    scenarioKey: typeof scenarioKey === 'string' ? scenarioKey : undefined,
-    responseType: input.responseType,
-    responseLabel: input.responseLabel,
-    fromName: input.fromName,
-    subjectName: input.subjectName,
-    seed,
-  })
-  const dialogue = dialogueBeat ? ` ${input.fromName} says, ${dialogueBeat}` : ''
-  // Keep the visible result quick to read: the action, the other player's
-  // concrete reply, and one consequence. Phase context is already shown on
-  // the interaction card and repeating it here made every result feel padded.
-  const detailedOutcome = `You ${action}.${dialogue} ${consequence}`
-  // If the in-character reply would make the card a paragraph, keep the
-  // player's action and the concrete fallout. The original message remains
-  // visible above it, so repeating the full dialogue is unnecessary.
+  // The message above this result already contains the opening. Show only the
+  // answer it earned: a short, action-specific reply grounded in the current
+  // phase. This keeps results readable and prevents different choices from
+  // collapsing into the same generic relationship summary.
   const outcomeText = compactOutcomeText(
-    detailedOutcome.length > 280 ? `You ${action}. ${consequence}` : detailedOutcome
+    scenarioReply(
+      typeof scenarioKey === 'string' ? scenarioKey : undefined,
+      responseIntent(input.responseLabel, stance),
+      input.fromName,
+      input.subjectName,
+      input.phase,
+      input.senderIsNominated ?? false
+    ),
+    180
   )
 
   return {
