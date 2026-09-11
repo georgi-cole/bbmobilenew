@@ -16,6 +16,20 @@ import {
 import type { MusicTrack } from './musicTracks'
 import { resolveSpecialMusicCue } from './specialMusicCues'
 
+const HOUSE_MENU_DESTINATION_ROUTES = new Set([
+  'settings',
+  'profile',
+  'rules',
+  'vox-populi-rules',
+  'leaderboard',
+  'store',
+])
+
+function isHouseMenuDestination(hash: string): boolean {
+  const route = hash.replace(/^#/, '').split('?')[0]?.replace(/^\//, '') ?? ''
+  return HOUSE_MENU_DESTINATION_ROUTES.has(route)
+}
+
 export interface MusicResolverState {
   game: Pick<RootState['game'], 'gameId' | 'phase' | 'spectatorActive'> & {
     mode?: GameMode
@@ -79,15 +93,20 @@ export function resolveDesiredMusicCue(
       config,
     }) ?? baseCue
 
-  // The room filter belongs to the active presentation surfaces only. Vote
-  // results can remain in Redux after the reveal, so gate the tally effect by
-  // its ceremony phases instead of treating every non-null result as active.
+  // The room filter belongs to presentation surfaces only. Vote results can
+  // remain in Redux after the reveal, so gate the tally effect by its ceremony
+  // phases instead of treating every non-null result as active. Utility routes
+  // entered from an active game own the room effect for their full route lifetime.
   const voteTallyActive =
     state.game.voteResults != null &&
     (state.game.phase === 'live_vote' || state.game.phase === 'eviction_results')
   const eliminationAnimationActive = state.game.evictionOverlayPlayerId != null
+  const houseMenuDestinationActive = state.game.status === 'active' && isHouseMenuDestination(hash)
   const roomEffectActive =
-    state.ui.houseMenuOpen === true || voteTallyActive || eliminationAnimationActive
+    state.ui.houseMenuOpen === true ||
+    houseMenuDestinationActive ||
+    voteTallyActive ||
+    eliminationAnimationActive
   if (!roomEffectActive || !cue.playbackCue || cue.playbackCue.effectPreset !== 'none') {
     return cue
   }

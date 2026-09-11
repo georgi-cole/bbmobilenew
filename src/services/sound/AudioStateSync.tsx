@@ -66,6 +66,8 @@ export default function AudioStateSync({ hash }: AudioStateSyncProps) {
       gameId: root.game.gameId,
       gameMode: root.game.mode ?? 'classic',
       gameStatus: root.game.status,
+      voteResults: root.game.voteResults,
+      evictionOverlayPlayerId: root.game.evictionOverlayPlayerId ?? null,
       spectatorActive: root.game.spectatorActive,
       seasonFinalePhase: root.game.seasonFinale?.phase ?? null,
       pendingChallengePhase: root.challenge.pending?.phase ?? null,
@@ -103,6 +105,8 @@ export default function AudioStateSync({ hash }: AudioStateSyncProps) {
         gameId: musicState.gameId,
         mode: musicState.gameMode,
         status: musicState.gameStatus,
+        voteResults: musicState.voteResults,
+        evictionOverlayPlayerId: musicState.evictionOverlayPlayerId,
         spectatorActive: musicState.spectatorActive,
         seasonFinale:
           musicState.seasonFinalePhase != null ? { phase: musicState.seasonFinalePhase } : null,

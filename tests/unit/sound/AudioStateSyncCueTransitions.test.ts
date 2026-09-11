@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   hasSameResolvedPlayback,
@@ -38,6 +40,7 @@ describe('managed minigame cue transitions', () => {
 
   it('mutes the gameplay bed while the Twin Shock cinematic owns audio', () => {
     const game = {
+      phase: 'nominations',
       evictionOverlayPlayerId: null,
       battleBack: null,
       voteResults: null,
@@ -45,5 +48,59 @@ describe('managed minigame cue transitions', () => {
     } as unknown as RootState['game']
 
     expect(resolveRuntimeMusicMix(game)).toBe('muted')
+  })
+
+  it.each(['nominations', 'pos_ceremony', 'pos_ceremony_results', 'social_2'] as const)(
+    'restores full music volume in %s even when old vote results remain in Redux',
+    (phase) => {
+      const game = {
+        phase,
+        evictionOverlayPlayerId: null,
+        battleBack: null,
+        voteResults: { nova: 3, rae: 1 },
+        twinShock: null,
+      } as unknown as RootState['game']
+
+      expect(resolveRuntimeMusicMix(game)).toBe('normal')
+    }
+  )
+
+  it.each(['live_vote', 'eviction_results'] as const)(
+    'ducks the gameplay bed while the vote tally is active in %s',
+    (phase) => {
+      const game = {
+        phase,
+        evictionOverlayPlayerId: null,
+        battleBack: null,
+        voteResults: { nova: 3, rae: 1 },
+        twinShock: null,
+      } as unknown as RootState['game']
+
+      expect(resolveRuntimeMusicMix(game)).toBe('ducked')
+    }
+  )
+
+  it('ducks the gameplay bed while the elimination overlay is active', () => {
+    const game = {
+      phase: 'final4_eviction',
+      evictionOverlayPlayerId: 'nova',
+      battleBack: null,
+      voteResults: null,
+      twinShock: null,
+    } as unknown as RootState['game']
+
+    expect(resolveRuntimeMusicMix(game)).toBe('ducked')
+  })
+
+  it('forwards live vote and eviction presentation state into the music resolver', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/services/sound/AudioStateSync.tsx'),
+      'utf8'
+    )
+
+    expect(source).toContain('voteResults: root.game.voteResults')
+    expect(source).toContain('evictionOverlayPlayerId: root.game.evictionOverlayPlayerId ?? null')
+    expect(source).toContain('voteResults: musicState.voteResults')
+    expect(source).toContain('evictionOverlayPlayerId: musicState.evictionOverlayPlayerId')
   })
 })
