@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
+import { useAppSelector } from '../../store/hooks'
 import PlayerCard from './PlayerCard'
 
 interface PlayerListProps {
@@ -66,6 +67,15 @@ export default function PlayerList({
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set())
   const lastFocusedIndexRef = useRef<number>(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+  const appliedInvitationRef = useRef<string | null>(null)
+  const invitation = useAppSelector((state) =>
+    state.game.tvFeed.find(
+      (event) =>
+        event.meta?.socialInvitation === true &&
+        event.meta?.week === state.game.week &&
+        typeof event.meta?.suggestedTargetId === 'string'
+    )
+  )
 
   // When selectedIds prop is provided use it for display; otherwise fall back to internal state.
   const displaySelectedIds = controlledSelectedIds ?? internalSelectedIds
@@ -77,6 +87,30 @@ export default function PlayerList({
     },
     [onSelectionChange]
   )
+
+  useEffect(() => {
+    if (!invitation || appliedInvitationRef.current === invitation.id) return
+    const targetId = invitation.meta?.suggestedTargetId
+    if (typeof targetId !== 'string') return
+    if (disabledIds.includes(targetId)) return
+    if (!players.some((player) => player.id === targetId)) return
+
+    // Respect a choice the player already made before this component processed
+    // the suggestion. The invitation is a focus aid, never a selection lock.
+    if ((controlledSelectedIds?.size ?? internalSelectedIds.size) > 0) return
+
+    appliedInvitationRef.current = invitation.id
+    updateSelection(new Set([targetId]), targetId)
+    const index = players.findIndex((player) => player.id === targetId)
+    if (index >= 0) lastFocusedIndexRef.current = index
+  }, [
+    controlledSelectedIds,
+    disabledIds,
+    internalSelectedIds.size,
+    invitation,
+    players,
+    updateSelection,
+  ])
 
   function handleSelect(playerId: string, additive: boolean) {
     // Use the authoritative current selection (controlled or internal) for toggle logic.
