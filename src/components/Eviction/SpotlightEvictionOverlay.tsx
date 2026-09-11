@@ -130,7 +130,8 @@ interface Props {
  * too expensive on the devices that originally exposed the animation jank, so
  * this version keeps the deterministic transform hero but matches the old visual
  * contract more closely:
- * - capture the exact image URL currently painted inside the roster tile;
+ * - capture the live roster geometry before the tile is hidden;
+ * - use the same grey-backed presentation portrait set as the Sep 9 cinematic;
  * - begin the geometry move immediately, like the old layout projection;
  * - keep one hero image through the normal eviction hold and return;
  * - retain the separate fullscreen portrait only for Battle Back return mode.
@@ -175,7 +176,9 @@ export default function SpotlightEvictionOverlay({
 
   const firedRef = useRef(false)
   const avatarSrc = candidates[candidateIdx] ?? ''
-  const heroAvatarSrc = geometry.sourceImageSrc || avatarSrc
+  // Sep 9 intentionally used the neutral grey-backed presentation WebPs for the
+  // cinematic, even though the roster itself uses the black/gold artwork.
+  const heroAvatarSrc = avatarSrc
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -188,9 +191,9 @@ export default function SpotlightEvictionOverlay({
     onDone()
   }, [onDone])
 
-  // Capture both the live tile rectangle and the exact image resource painted in
-  // it before the Redux overlay flag fades that source tile out. This prevents a
-  // source-variant/crop discontinuity when the transform hero takes over.
+  // Capture the live tile rectangle before the Redux overlay flag fades that
+  // source tile out. The image URL is retained for diagnostics/future fallbacks,
+  // while the hero itself uses the original grey presentation candidate above.
   useLayoutEffect(() => {
     if (typeof window === 'undefined') {
       setGeometry((current) => ({ ...current, ready: true }))
@@ -209,8 +212,7 @@ export default function SpotlightEvictionOverlay({
     })
   }, [evictee.id])
 
-  // Warm the fallback presentation candidate. The live source image, when found,
-  // is already decoded because it is visibly painted in the roster.
+  // Warm the presentation candidate before the camera move.
   useEffect(() => {
     if (!avatarSrc || typeof window === 'undefined') return
     const image = new window.Image()
@@ -508,7 +510,7 @@ export default function SpotlightEvictionOverlay({
           {showFallback ? (
             <span className="seo__fallback">{fallbackText}</span>
           ) : (
-            <img className="seo__hero-photo" src={heroAvatarSrc} alt="" />
+            <img className="seo__hero-photo" src={heroAvatarSrc} alt="" onError={handleImgError} />
           )}
         </div>
       )}
