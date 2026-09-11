@@ -17,6 +17,7 @@ import profilesReducer, {
 import socialReducer from '../social/socialSlice'
 import { socialMiddleware } from '../social/socialMiddleware'
 import { intelligenceMiddleware } from '../social/intelligenceMiddleware'
+import { socialStrategyMiddleware } from '../social/socialStrategyMiddleware'
 import { realityIntegrityMiddleware } from '../social/realityIntegrityMiddleware'
 import { survivorMiddleware } from '../modes/survivorMiddleware'
 import { depressionShockMiddleware } from '../features/twists/depressionShockMiddleware'
@@ -110,6 +111,7 @@ export const store = configureStore({
       realityIntegrityMiddleware,
       depressionShockMiddleware,
       intelligenceMiddleware,
+      socialStrategyMiddleware,
       socialMiddleware,
       soundMiddleware,
       publicOpinionMiddleware,

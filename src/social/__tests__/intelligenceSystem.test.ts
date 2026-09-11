@@ -10,6 +10,7 @@ import {
   getIntelLeadViews,
   makeIntelMemory,
   selectDiscoverableFact,
+  selectIntelFactForActor,
 } from '../intelligenceSystem'
 
 const floater: AiGameIdentity = {
@@ -107,6 +108,63 @@ describe('intelligence system', () => {
     expect(lead.text).toContain('Sol and Lux')
     expect(lead.confidence).toBe('Credible')
     expect(lead.source).toBe('House rumour')
+  })
+
+  it('offers targeted intel only while the source knows something the recipient does not', () => {
+    const domain = createInitialRealityDomainState()
+    const fact = {
+      id: 'fact:intel:targeting-human',
+      propositionType: 'TARGETING',
+      subjectIds: ['lux'],
+      objectId: 'human',
+      value: true,
+      day: 4,
+      phase: 'social_2',
+      visibility: 'PRIVATE' as const,
+      participantIds: ['lux', 'sol'],
+      witnessIds: ['sol'],
+      viewerVisible: false,
+      publicVisible: false,
+      juryVisible: false,
+      sourceEventId: 'strategy:targeting-human',
+    }
+    addRealityFact(domain, fact)
+
+    const sourceMemory = makeIntelMemory({
+      ownerId: 'sol',
+      fact,
+      sourceType: 'WITNESSED',
+      sourceChain: ['sol'],
+      confidence: 0.84,
+      day: 4,
+      phase: 'social_2',
+    })
+    learnRealityFact(domain, {
+      ownerId: 'sol',
+      factId: fact.id,
+      memory: sourceMemory,
+      confidence: 0.84,
+    })
+
+    expect(selectIntelFactForActor(domain, 'sol', 'human', 4)?.fact.id).toBe(fact.id)
+
+    const recipientMemory = makeIntelMemory({
+      ownerId: 'human',
+      fact,
+      sourceType: 'HEARSAY',
+      sourceChain: ['sol'],
+      confidence: 0.84,
+      day: 4,
+      phase: 'social_2',
+    })
+    learnRealityFact(domain, {
+      ownerId: 'human',
+      factId: fact.id,
+      memory: recipientMemory,
+      confidence: 0.84,
+    })
+
+    expect(selectIntelFactForActor(domain, 'sol', 'human', 4)).toBeNull()
   })
 
   it('keeps unwitnessed private facts out of ordinary observation', () => {

@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
+import { store } from '../../store/store'
 import PlayerCard from './PlayerCard'
 
 interface PlayerListProps {
@@ -38,6 +39,18 @@ interface PlayerListProps {
   cupidPartners?: Record<string, { name: string; color: string; isYourPartner: boolean }>
 }
 
+function selectCurrentSocialInvitation() {
+  const game = store.getState().game
+  return (
+    game.tvFeed.find(
+      (event) =>
+        event.meta?.socialInvitation === true &&
+        event.meta?.week === game.week &&
+        typeof event.meta?.suggestedTargetId === 'string'
+    ) ?? null
+  )
+}
+
 /**
  * PlayerList — scrollable roster of selectable PlayerCard tiles.
  *
@@ -66,6 +79,12 @@ export default function PlayerList({
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set())
   const lastFocusedIndexRef = useRef<number>(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+  const appliedInvitationRef = useRef<string | null>(null)
+  const invitation = useSyncExternalStore(
+    store.subscribe,
+    selectCurrentSocialInvitation,
+    () => null
+  )
 
   // When selectedIds prop is provided use it for display; otherwise fall back to internal state.
   const displaySelectedIds = controlledSelectedIds ?? internalSelectedIds
@@ -77,6 +96,24 @@ export default function PlayerList({
     },
     [onSelectionChange]
   )
+
+  useEffect(() => {
+    if (!invitation || appliedInvitationRef.current === invitation.id) return
+    const targetId = invitation.meta?.suggestedTargetId
+    if (typeof targetId !== 'string') return
+    if (!controlledSelectedIds || !onSelectionChange) return
+    if (disabledIds.includes(targetId)) return
+    if (!players.some((player) => player.id === targetId)) return
+
+    // Respect a choice the player already made before this component processed
+    // the suggestion. The invitation is a focus aid, never a selection lock.
+    if (controlledSelectedIds.size > 0) return
+
+    appliedInvitationRef.current = invitation.id
+    onSelectionChange(new Set([targetId]), { primaryTargetId: targetId })
+    const index = players.findIndex((player) => player.id === targetId)
+    if (index >= 0) lastFocusedIndexRef.current = index
+  }, [controlledSelectedIds, disabledIds, invitation, onSelectionChange, players])
 
   function handleSelect(playerId: string, additive: boolean) {
     // Use the authoritative current selection (controlled or internal) for toggle logic.

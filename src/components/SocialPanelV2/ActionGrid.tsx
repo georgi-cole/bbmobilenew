@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
 import type { ActionCategory } from '../../social/socialActions'
@@ -9,10 +9,13 @@ import {
 import { isHumanSocialActionVisible } from '../../social/socialActionCatalog'
 import { normalizeActionCosts } from '../../social/smExecNormalize'
 import { evaluateSocialActionEligibility } from '../../social/socialActionEligibility'
+import { closeSocialPanel } from '../../social/socialSlice'
 import ActionCard from './ActionCard'
+import ConfirmExitModal from '../ConfirmExitModal/ConfirmExitModal'
 import type { Player, PlayerStatus } from '../../types'
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
-import { useAppSelector } from '../../store/hooks'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { selectHasDramaModeAccess } from '../../store/vipSlice'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 
 export interface ActionGridProps {
@@ -64,11 +67,30 @@ export default function ActionGrid({
   categoryFilter = 'all',
 }: ActionGridProps) {
   const { t } = useI18n()
+  const dispatch = useAppDispatch()
   const containerRef = useRef<HTMLDivElement>(null)
+  const appliedInvitationRef = useRef<string | null>(null)
+  const [realityModePromptOpen, setRealityModePromptOpen] = useState(false)
   const game = useAppSelector((state) => state.game)
+  const hasRealityAccess = useAppSelector(selectHasDramaModeAccess)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
   const actions = useMemo(() => buildEffectiveSocialActions(actionOverrides), [actionOverrides])
+  const invitation = game.tvFeed.find(
+    (event) =>
+      event.meta?.socialInvitation === true &&
+      event.meta?.week === game.week &&
+      typeof event.meta?.suggestedActionId === 'string' &&
+      typeof event.meta?.suggestedTargetId === 'string'
+  )
+  const suggestedActionId =
+    typeof invitation?.meta?.suggestedActionId === 'string'
+      ? invitation.meta.suggestedActionId
+      : null
+  const suggestedTargetId =
+    typeof invitation?.meta?.suggestedTargetId === 'string'
+      ? invitation.meta.suggestedTargetId
+      : null
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -208,9 +230,23 @@ export default function ActionGrid({
     return category === 'aggressive'
   }
 
+  function handlePremiumLockedAction(actionId: string) {
+    if (hasRealityAccess) {
+      setRealityModePromptOpen(true)
+      return
+    }
+    onPremiumLockedClick?.(actionId)
+  }
+
+  function openRealitySettings() {
+    setRealityModePromptOpen(false)
+    dispatch(closeSocialPanel())
+    if (typeof window !== 'undefined') window.location.hash = '/settings'
+  }
+
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
-    .filter((action) => matchesCategoryFilter(action.category))
+    .filter((action) => action.id === suggestedActionId || matchesCategoryFilter(action.category))
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
       const rightPreview = isRealityPreview(right)
@@ -235,6 +271,33 @@ export default function ActionGrid({
             .slice(Math.floor(selectedActionIndex / 2) * 2),
         ]
 
+  useEffect(() => {
+    if (!invitation || appliedInvitationRef.current === invitation.id) return
+    if (!suggestedActionId || !suggestedTargetId || !onActionClick) return
+    if (!selectedTargetIds?.has(suggestedTargetId)) return
+
+    // If the player already picked another move, respect that decision instead
+    // of snapping the UI back to the recommendation.
+    if (selectedId && selectedId !== suggestedActionId) {
+      appliedInvitationRef.current = invitation.id
+      return
+    }
+
+    const actionAvailable = orderedVisibleActions.some((action) => action.id === suggestedActionId)
+    if (!actionAvailable) return
+
+    appliedInvitationRef.current = invitation.id
+    if (selectedId !== suggestedActionId) onActionClick(suggestedActionId)
+  }, [
+    invitation,
+    onActionClick,
+    orderedVisibleActions,
+    selectedId,
+    selectedTargetIds,
+    suggestedActionId,
+    suggestedTargetId,
+  ])
+
   function getAvailabilityReason(costs: {
     energy: number
     influence: number
@@ -254,37 +317,48 @@ export default function ActionGrid({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="sp2-action-grid"
-      role="group"
-      aria-label="Action grid"
-      onKeyDown={handleKeyDown}
-    >
-      {visibleActions.map((action) => {
-        const contextualAction = contextualizeAction(action)
-        const costs = getActionCosts(action)
-        const availabilityReason = getAvailabilityReason(costs)
-        const premiumLocked = isRealityPreview(action)
-        const isDisabled = !premiumLocked && disabledIds.has(action.id)
-        const isAvailable = actorEnergy !== undefined && isActionAffordable(costs)
-        return (
-          <ActionCard
-            key={action.id}
-            action={contextualAction}
-            costs={costs}
-            selected={selectedId === action.id}
-            disabled={isDisabled}
-            premiumLocked={premiumLocked}
-            availabilityReason={availabilityReason}
-            available={actorEnergy !== undefined ? isAvailable : undefined}
-            onClick={onActionClick}
-            onPremiumLockedClick={onPremiumLockedClick}
-            onPreview={onPreview}
-            costOverride={costs}
-          />
-        )
-      })}
-    </div>
+    <>
+      <div
+        ref={containerRef}
+        className="sp2-action-grid"
+        role="group"
+        aria-label="Action grid"
+        onKeyDown={handleKeyDown}
+      >
+        {visibleActions.map((action) => {
+          const contextualAction = contextualizeAction(action)
+          const costs = getActionCosts(action)
+          const availabilityReason = getAvailabilityReason(costs)
+          const premiumLocked = isRealityPreview(action)
+          const isDisabled = !premiumLocked && disabledIds.has(action.id)
+          const isAvailable = actorEnergy !== undefined && isActionAffordable(costs)
+          return (
+            <ActionCard
+              key={action.id}
+              action={contextualAction}
+              costs={costs}
+              selected={selectedId === action.id}
+              disabled={isDisabled}
+              premiumLocked={premiumLocked}
+              availabilityReason={availabilityReason}
+              available={actorEnergy !== undefined ? isAvailable : undefined}
+              onClick={onActionClick}
+              onPremiumLockedClick={handlePremiumLockedAction}
+              onPreview={onPreview}
+              costOverride={costs}
+            />
+          )
+        })}
+      </div>
+      <ConfirmExitModal
+        open={realityModePromptOpen}
+        title="Reality Mode is off"
+        description="This action requires Reality Mode. Turn it on in Settings to use Reality actions."
+        confirmLabel="Open Settings"
+        cancelLabel="Not now"
+        onConfirm={openRealitySettings}
+        onCancel={() => setRealityModePromptOpen(false)}
+      />
+    </>
   )
 }
