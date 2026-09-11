@@ -2,6 +2,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MusicCueEngine } from '../../../src/services/sound/MusicCueEngine'
 import { createDefaultMusicCue } from '../../../src/services/sound/musicCue'
 
+function installAudioContextMock() {
+  const source = { connect: vi.fn() }
+  const gain = { gain: { value: 1 }, connect: vi.fn() }
+  // Match the browser BiquadFilter default that caused effectPreset='none' to
+  // sound low-passed before the engine explicitly neutralised the graph.
+  const filter = {
+    type: 'lowpass',
+    frequency: { value: 350 },
+    Q: { value: 1 },
+    gain: { value: 0 },
+    connect: vi.fn(),
+  }
+
+  class FakeAudioContext {
+    state = 'running'
+    destination = {}
+    resume = vi.fn(async () => undefined)
+    createMediaElementSource = vi.fn(() => source)
+    createGain = vi.fn(() => gain)
+    createBiquadFilter = vi.fn(() => filter)
+  }
+
+  vi.stubGlobal('AudioContext', FakeAudioContext)
+  return { filter, gain }
+}
+
 beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
@@ -9,6 +35,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -44,6 +71,37 @@ describe('MusicCueEngine', () => {
     element.currentTime = 18
     element.dispatchEvent(new Event('timeupdate'))
     expect(element.currentTime).toBe(12)
+  })
+
+  it('keeps effectPreset none acoustically transparent while using the Web Audio gain graph', async () => {
+    const { filter, gain } = installAudioContextMock()
+    const engine = new MusicCueEngine()
+
+    await engine.play(
+      { key: 'music:clear', track: 'nominations', src: '/clear.mp3', volume: 0.8, loop: true },
+      { ...createDefaultMusicCue('nominations'), id: 'clear' }
+    )
+
+    expect(filter.type).toBe('allpass')
+    expect(gain.gain.value).toBe(0.8)
+    expect(engine.currentElement?.volume).toBe(1)
+  })
+
+  it('still applies the distant-room low-pass preset when requested', async () => {
+    const { filter } = installAudioContextMock()
+    const engine = new MusicCueEngine()
+
+    await engine.play(
+      { key: 'music:muffled', track: 'nominations', src: '/muffled.mp3', volume: 1, loop: true },
+      {
+        ...createDefaultMusicCue('nominations'),
+        id: 'muffled',
+        effectPreset: 'muffled',
+      }
+    )
+
+    expect(filter.type).toBe('lowpass')
+    expect(filter.frequency.value).toBe(900)
   })
 
   it('uses a second deck for a configured crossfade', async () => {
