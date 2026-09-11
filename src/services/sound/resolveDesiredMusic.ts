@@ -101,8 +101,7 @@ export function resolveDesiredMusicCue(
     state.game.voteResults != null &&
     (state.game.phase === 'live_vote' || state.game.phase === 'eviction_results')
   const eliminationAnimationActive = state.game.evictionOverlayPlayerId != null
-  const houseMenuDestinationActive =
-    state.game.status === 'active' && isHouseMenuDestination(hash)
+  const houseMenuDestinationActive = state.game.status === 'active' && isHouseMenuDestination(hash)
   const roomEffectActive =
     state.ui.houseMenuOpen === true ||
     houseMenuDestinationActive ||
