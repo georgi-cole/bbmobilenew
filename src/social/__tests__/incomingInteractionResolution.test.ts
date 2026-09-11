@@ -3,10 +3,7 @@ import {
   getContextualIncomingChoices,
   resolveIncomingResponse,
 } from '../incomingInteractionResolution'
-import {
-  getAuthoredIncomingSceneOutcome,
-  INCOMING_SCENE_OUTCOME_BANK,
-} from '../incomingSceneOutcomeBank'
+import { INCOMING_SCENE_OUTCOME_BANK } from '../incomingSceneOutcomeBank'
 import { getIncomingDialogueBeat } from '../incomingDialogueOutcomeBank'
 import { SCENARIO_VARIANT_POOLS } from '../interactionVariantBank'
 import type { IncomingInteraction } from '../types'
@@ -95,7 +92,7 @@ describe('incoming interaction contextual resolution', () => {
     ])
   })
 
-  it('resolves the same answer through scene, relationship, phase, and personality context', () => {
+  it('keeps a scene response short and concrete', () => {
     const resolution = resolveIncomingResponse({
       interaction: makeInteraction(),
       responseType: 'positive',
@@ -109,7 +106,10 @@ describe('incoming interaction contextual resolution', () => {
     expect(resolution.actorDelta).toBeGreaterThan(0)
     expect(resolution.playerDelta).toBeGreaterThan(0)
     expect(resolution.playerDelta).toBeLessThan(resolution.actorDelta)
-    expect(resolution.outcomeText).toMatch(/candid answer.*keeping them off the block/i)
+    expect(resolution.outcomeText).toBe(
+      'Rae says putting them up would create a vote you cannot fully control.'
+    )
+    expect(resolution.outcomeText.length).toBeLessThan(120)
     expect(resolution.memoryDelta.gratitude).toBeGreaterThan(0)
   })
 
@@ -130,11 +130,11 @@ describe('incoming interaction contextual resolution', () => {
 
     expect(resolution.actorDelta).toBeLessThan(0)
     expect(resolution.playerDelta).toBeLessThan(0)
-    expect(resolution.outcomeText).toMatch(/drew a line/i)
+    expect(resolution.outcomeText).toBe('Rae backs off and adjusts their plans without you.')
     expect(resolution.memoryDelta.resentment).toBeGreaterThan(0)
   })
 
-  it('turns a direct question and a request to explain into a concrete aftermath', () => {
+  it('gives a request for an explanation a short, specific reply', () => {
     const resolution = resolveIncomingResponse({
       interaction: makeInteraction({
         id: 'mimi-direct-question',
@@ -151,18 +151,10 @@ describe('incoming interaction contextual resolution', () => {
       playerAffinity: -2,
     })
 
-    expect(resolution.outcomeText).toMatch(
-      /asked Mimi to spell out exactly what was not adding up/i
-    )
-    expect(resolution.outcomeText).toMatch(
-      /real answer.*not enough certainty|immediate issue better/i
-    )
-    expect(resolution.outcomeText).not.toMatch(
-      /measured answer|reading between the lines|conversation about/i
-    )
+    expect(resolution.outcomeText).toBe('Mimi says they felt shut out and wanted a direct answer.')
   })
 
-  it('uses the authored fallout branch rather than a generic relationship sentence', () => {
+  it('gives a Safety question a specific concise outcome', () => {
     const interaction = makeInteraction({
       id: 'authored-safety-fallout',
       fromId: 'mimi',
@@ -179,16 +171,10 @@ describe('incoming interaction contextual resolution', () => {
       actorAffinity: 0,
       playerAffinity: 0,
     })
-    const authored = getAuthoredIncomingSceneOutcome('nominee_veto_pitch', 'neutral', 0)
-
-    expect(authored).not.toBeNull()
-    expect(resolution.outcomeText).toMatch(/Safety ceremony shaping the block/i)
-    expect(resolution.outcomeText).toMatch(
-      /Mimi knows Safety is still possible|Mimi leaves with a conditional opening/i
-    )
+    expect(resolution.outcomeText).toBe('Mimi says they need a clear deal before names are set.')
   })
 
-  it('turns an ask-for-source reply into a concrete, qualified exchange before fallout', () => {
+  it('gives an ask-for-source reply a concrete, qualified exchange', () => {
     const resolution = resolveIncomingResponse({
       interaction: makeInteraction({
         id: 'ask-the-source',
@@ -206,12 +192,9 @@ describe('incoming interaction contextual resolution', () => {
       playerAffinity: 3,
     })
 
-    expect(resolution.outcomeText).toMatch(/You asked Bea for specifics/i)
-    expect(resolution.outcomeText).toMatch(
-      /Bea says, "I heard it in two separate conversations|Bea says, "The first whisper came/i
+    expect(resolution.outcomeText).toBe(
+      'Bea says the story came up twice, but will not name anyone yet.'
     )
-    expect(resolution.outcomeText).toMatch(/Dex/i)
-    expect(resolution.outcomeText).toMatch(/lead, not a fact|pretending I can prove the motive/i)
   })
 
   it('gives a campaign reply an actual case instead of only a relationship summary', () => {
@@ -228,9 +211,52 @@ describe('incoming interaction contextual resolution', () => {
       playerAffinity: 0,
     })
 
-    expect(resolution.outcomeText).toMatch(
-      /Rae says, "I cannot give you certainty|Rae says, "I hear that you are not promising/i
+    expect(resolution.outcomeText).toBe(
+      'Rae says keeping them gives you a vote that is still open.'
     )
-    expect(resolution.outcomeText).toMatch(/keeps campaigning|cannot put your vote on the board/i)
+  })
+
+  it('makes check-in answers distinct and phase-aware', () => {
+    const interaction = makeInteraction({
+      id: 'friendly-check-in',
+      type: 'check_in',
+      payload: { scenarioKey: 'relationship_friendship_check_in' },
+    })
+    const askHowTheyAre = resolveIncomingResponse({
+      interaction,
+      responseType: 'neutral',
+      responseLabel: 'Ask how they are',
+      fromName: 'Nico',
+      phase: 'social_1',
+      actorAffinity: 0,
+      playerAffinity: 0,
+    })
+    const askThemBack = resolveIncomingResponse({
+      interaction,
+      responseType: 'neutral',
+      responseLabel: 'Ask them back',
+      fromName: 'Rune',
+      phase: 'social_1',
+      actorAffinity: 0,
+      playerAffinity: 0,
+    })
+    const nomineeCheckIn = resolveIncomingResponse({
+      interaction,
+      responseType: 'neutral',
+      responseLabel: 'Ask how they are',
+      fromName: 'Nico',
+      phase: 'live_vote',
+      senderIsNominated: true,
+      actorAffinity: 0,
+      playerAffinity: 0,
+    })
+
+    expect(askHowTheyAre.outcomeText).toBe(
+      'Nico says they are worried about the upcoming nominations.'
+    )
+    expect(askThemBack.outcomeText).toBe(
+      'Rune says they are still trying to read where they stand with you.'
+    )
+    expect(nomineeCheckIn.outcomeText).toBe('Nico says they feel the house is against them.')
   })
 })
