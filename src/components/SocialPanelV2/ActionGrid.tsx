@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef } from 'react'
+﻿import { useEffect, useMemo, useRef } from 'react'
 import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
 import type { ActionCategory } from '../../social/socialActions'
@@ -65,10 +65,26 @@ export default function ActionGrid({
 }: ActionGridProps) {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
+  const appliedInvitationRef = useRef<string | null>(null)
   const game = useAppSelector((state) => state.game)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
   const actions = useMemo(() => buildEffectiveSocialActions(actionOverrides), [actionOverrides])
+  const invitation = game.tvFeed.find(
+    (event) =>
+      event.meta?.socialInvitation === true &&
+      event.meta?.week === game.week &&
+      typeof event.meta?.suggestedActionId === 'string' &&
+      typeof event.meta?.suggestedTargetId === 'string'
+  )
+  const suggestedActionId =
+    typeof invitation?.meta?.suggestedActionId === 'string'
+      ? invitation.meta.suggestedActionId
+      : null
+  const suggestedTargetId =
+    typeof invitation?.meta?.suggestedTargetId === 'string'
+      ? invitation.meta.suggestedTargetId
+      : null
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -210,7 +226,9 @@ export default function ActionGrid({
 
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
-    .filter((action) => matchesCategoryFilter(action.category))
+    .filter(
+      (action) => action.id === suggestedActionId || matchesCategoryFilter(action.category)
+    )
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
       const rightPreview = isRealityPreview(right)
@@ -234,6 +252,35 @@ export default function ActionGrid({
             .filter((_, index) => index !== selectedActionIndex)
             .slice(Math.floor(selectedActionIndex / 2) * 2),
         ]
+
+  useEffect(() => {
+    if (!invitation || appliedInvitationRef.current === invitation.id) return
+    if (!suggestedActionId || !suggestedTargetId || !onActionClick) return
+    if (!selectedTargetIds?.has(suggestedTargetId)) return
+
+    // If the player already picked another move, respect that decision instead
+    // of snapping the UI back to the recommendation.
+    if (selectedId && selectedId !== suggestedActionId) {
+      appliedInvitationRef.current = invitation.id
+      return
+    }
+
+    const actionAvailable = orderedVisibleActions.some(
+      (action) => action.id === suggestedActionId && !isRealityPreview(action)
+    )
+    if (!actionAvailable) return
+
+    appliedInvitationRef.current = invitation.id
+    if (selectedId !== suggestedActionId) onActionClick(suggestedActionId)
+  }, [
+    invitation,
+    onActionClick,
+    orderedVisibleActions,
+    selectedId,
+    selectedTargetIds,
+    suggestedActionId,
+    suggestedTargetId,
+  ])
 
   function getAvailabilityReason(costs: {
     energy: number
