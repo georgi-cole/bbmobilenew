@@ -2,17 +2,21 @@ import { acts, says } from './incomingOutcomeMatrixUtils'
 import type { ScenarioOutcomeMatrix } from './incomingOutcomeMatrixUtils'
 
 export const EARLY_OUTCOME_MATRIX: ScenarioOutcomeMatrix = {
-week_start_ally_check_in: {
+  week_start_ally_check_in: {
     'share your read': says('they also see two voting groups starting to form.'),
     'ask what changed': says('two people who were close last week have stopped comparing notes.'),
-    'keep your cards close': says('they can tell you are holding something back and will watch your next move.'),
+    'keep your cards close': says(
+      'they can tell you are holding something back and will watch your next move.'
+    ),
     'leave it for later': acts('agrees to revisit it after the next power result.'),
     'reassure them': says('they believe you are still with them for this round.'),
-    'talk through the week': says('their priority is surviving nominations without exposing the pair.'),
+    'talk through the week': says(
+      'their priority is surviving nominations without exposing the pair.'
+    ),
     'set a little distance': says('they will give you room and avoid looking attached.'),
     'change the subject': acts('drops the game talk and leaves the check-in unresolved.'),
   },
-week_start_enemy_gossip: {
+  week_start_enemy_gossip: {
     'compare notes': says('the same two names keep surfacing in separate conversations.'),
     'hear them out': says('a loose voting group is forming, but nobody has locked it in.'),
     'call it fishing': says('they wanted to see what you already knew before naming anyone.'),
@@ -22,9 +26,13 @@ week_start_enemy_gossip: {
     'challenge the angle': says('they are suspicious, but admit they cannot prove the motive.'),
     'end the chat': acts('stops pushing and leaves without trading any names.'),
   },
-week_start_alliance_lock: {
-    'make it official': says('they want the two of you to protect each other through the next vote.'),
-    'ask for their plan': says('they want one shared target and one backup before calling it an alliance.'),
+  week_start_alliance_lock: {
+    'make it official': says(
+      'they want the two of you to protect each other through the next vote.'
+    ),
+    'ask for their plan': says(
+      'they want one shared target and one backup before calling it an alliance.'
+    ),
     'keep it informal': says('they will work with you this week without putting a label on it.'),
     'play it off': acts('reads the dodge and stops treating the alliance as real.'),
     'offer a real pact': says('they are in, but want the partnership kept quiet.'),
@@ -32,7 +40,7 @@ week_start_alliance_lock: {
     'say it is too soon': says('they will wait for one vote before asking again.'),
     'leave it hanging': acts('leaves unsure whether you are protecting them at all.'),
   },
-hoh_congratulations: {
+  hoh_congratulations: {
     'thank them warmly': says('they are genuinely glad you won and hope the week stays simple.'),
     'keep it light': says('they will not push game talk while everyone is watching you.'),
     'question the timing': says('they came early because everyone wants access to the new LOH.'),
@@ -42,7 +50,7 @@ hoh_congratulations: {
     'call it strategy': says('they understand the suspicion and admit timing matters.'),
     'cut it short': acts('backs off before the congratulations become a pitch.'),
   },
-safety_win_congratulations: {
+  safety_win_congratulations: {
     'thank them genuinely': says('they think the win bought you room to play more freely.'),
     'keep it casual': says('they will leave the Safety decision alone unless you bring it up.'),
     'deflect the praise': says('they still think the win changed the week more than you admit.'),
@@ -52,9 +60,11 @@ safety_win_congratulations: {
     'ask what they want': says('they want to know whether the Safety move could expose them.'),
     'change the subject': acts('drops the Safety talk without revealing what they hoped for.'),
   },
-player_nominated_support: {
+  player_nominated_support: {
     'let them in': says('they will stay close and help you count where the votes are.'),
-    'ask what they need': says('they need you calm enough to avoid giving the house an easy target.'),
+    'ask what they need': says(
+      'they need you calm enough to avoid giving the house an easy target.'
+    ),
     'keep your guard up': says('they understand, but cannot help much without knowing your plan.'),
     'end the talk': acts('backs off and leaves you to handle the block alone for now.'),
     'thank them for checking': says('they meant the support and will keep an ear on the house.'),
@@ -62,27 +72,35 @@ player_nominated_support: {
     'say you are fine': says('they do not fully believe you, but stop pressing.'),
     'step away': acts('gives you space and stops asking how you are handling the nomination.'),
   },
-player_nominated_tension: {
+  player_nominated_tension: {
     'ask for honesty': says('some people think your social game became too visible too quickly.'),
-    'keep it controlled': says('they expected a bigger reaction and now cannot read your next move.'),
+    'keep it controlled': says(
+      'they expected a bigger reaction and now cannot read your next move.'
+    ),
     'call out the tension': says('the nomination made old distrust impossible to ignore.'),
     'walk away': acts('lets you leave, but treats the tension as unresolved.'),
-    'try to reset': says('they are willing to stop escalating if you keep the next conversation direct.'),
+    'try to reset': says(
+      'they are willing to stop escalating if you keep the next conversation direct.'
+    ),
     'hear their read': says('the house sees you as more connected than your position suggests.'),
     'draw a boundary': says('they will keep their distance and stop testing you for now.'),
     'leave it there': acts('ends the exchange without softening their read of you.'),
   },
-competition_low_finish_support: {
+  competition_low_finish_support: {
     'accept the support': says('one bad finish does not change who they want to work with.'),
     'laugh it off': says('they are glad you are not spiralling over the result.'),
     'say you do not need it': says('they will stop hovering and let you reset on your own.'),
     'move on': acts('drops the competition talk and leaves you to regroup.'),
-    'be honest about it': says('they would rather hear frustration than watch you pretend it did not sting.'),
+    'be honest about it': says(
+      'they would rather hear frustration than watch you pretend it did not sting.'
+    ),
     'keep it breezy': says('they will treat the result as noise unless the house weaponizes it.'),
-    'question the concern': says('they checked because weak finishes sometimes become easy nomination excuses.'),
+    'question the concern': says(
+      'they checked because weak finishes sometimes become easy nomination excuses.'
+    ),
     'end the chat': acts('lets the subject die without making the result bigger than it is.'),
   },
-competition_low_finish_taunt: {
+  competition_low_finish_taunt: {
     'defuse it': says('the joke did not land hard enough to give them leverage.'),
     'give them nothing': acts('gets no reaction and loses interest in pushing the result.'),
     'fire back': says('they expected resistance and now see the rivalry as open.'),
@@ -92,14 +110,26 @@ competition_low_finish_taunt: {
     'name the cheap shot': says('they admit the comment was meant to provoke you.'),
     'leave them talking': acts('is left performing the taunt without an audience from you.'),
   },
-social_momentum_notice: {
-    'compare what they saw': says('three different conversations made your name look unusually central today.'),
-    'listen carefully': says('people are starting to connect your separate relationships into one picture.'),
-    'reject the read': says('they still think your visibility is becoming part of the house narrative.'),
+  social_momentum_notice: {
+    'compare what they saw': says(
+      'three different conversations made your name look unusually central today.'
+    ),
+    'listen carefully': says(
+      'people are starting to connect your separate relationships into one picture.'
+    ),
+    'reject the read': says(
+      'they still think your visibility is becoming part of the house narrative.'
+    ),
     'keep it private': acts('agrees not to repeat the warning to anyone else.'),
-    'ask for specifics': says('your name came up in both strategy talk and personal check-ins today.'),
-    'play it cool': says('they cannot tell whether the attention is helping you or making you a target.'),
-    'say they are overreaching': says('they may be early, but they are not the only one who noticed.'),
+    'ask for specifics': says(
+      'your name came up in both strategy talk and personal check-ins today.'
+    ),
+    'play it cool': says(
+      'they cannot tell whether the attention is helping you or making you a target.'
+    ),
+    'say they are overreaching': says(
+      'they may be early, but they are not the only one who noticed.'
+    ),
     'end the chat': acts('stops explaining and leaves you with the warning.'),
-  }
+  },
 }
