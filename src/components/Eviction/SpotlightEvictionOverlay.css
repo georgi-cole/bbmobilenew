@@ -1,10 +1,8 @@
 /* ─── SpotlightEvictionOverlay ───────────────────────────────────────────────
  * Cinematic eviction choreography.
- * Beat sequence:
- *   spotlight  (0–300 ms)   : grid dims, radial spotlight locks on tile
- *   expanding  (300–900 ms) : shared-layout hero tile expands to fullscreen (600 ms ease-out)
- *   holding    (1000–1800 ms): lower-third + vignette + desaturate, suspense
- *   done                    : onDone fires → AnimatePresence exits (reverse, 400 ms)
+ * The portrait begins on the roster tile, expands to a true fullscreen layer,
+ * holds for the desaturation/stamp beat, then returns to the measured tile before
+ * the eviction is committed.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .seo {
@@ -58,28 +56,32 @@
   pointer-events: none;
 }
 
-/* ── Shared-layout portrait (match-cut hero tile) ────────────────────────── */
+/* ── Measured portrait camera move ──────────────────────────────────────── */
 .seo__portrait {
   position: fixed;
-  inset: 0;
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
   z-index: 3;
   overflow: hidden;
   background: linear-gradient(180deg, #1e2229, #13161a);
-  /* borderRadius animated via JS style prop — keeps overflow hidden during transition */
   border-radius: var(--tile-radius, 10px);
-  transition: border-radius 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition:
+    top 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    left 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    width 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    height 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   contain: layout paint;
   backface-visibility: hidden;
   transform: translateZ(0);
-  will-change: transform;
+  will-change: top, left, width, height;
 }
 
-/* Once expansion begins, collapse borderRadius to 0 */
-.seo__portrait--expanded {
-  border-radius: 0;
-}
-
-/* Photo fills portrait */
+/* Photo fills portrait at the portrait's real current size, so the fullscreen
+ * holding frame is never a low-resolution scaled-up tile texture. */
 .seo__photo {
   width: 100%;
   height: 100%;
@@ -115,7 +117,8 @@
   pointer-events: none;
 }
 
-/* Scanlines / film-grain overlay */
+/* Scanlines / film-grain overlay. Hide them only while geometry is moving so
+ * blend-mode compositing cannot steal frames from the detach/return animation. */
 .seo__scanlines {
   position: absolute;
   inset: 0;
@@ -129,6 +132,12 @@
   pointer-events: none;
   z-index: 2;
   mix-blend-mode: multiply;
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+.seo__portrait--moving .seo__scanlines {
+  opacity: 0;
 }
 
 /* ── EVICTED lower-third ─────────────────────────────────────────────────── */
@@ -279,13 +288,14 @@
 }
 
 /* iOS WebKit pays a large compositing cost for a full-screen blend-mode layer
-   over a filtered image. The cinematic remains legible without the film grain. */
+   over a filtered image. The final desaturation/vignette/stamp remain intact. */
 .seo--ios .seo__scanlines {
   display: none;
 }
 
 /* ── Reduced motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  .seo__portrait,
   .seo__dim,
   .seo__spotlight,
   .seo__live-bug,
