@@ -20,11 +20,7 @@ const QUIET_STREAK_THRESHOLD = 2
 const STRATEGY_WARNING_COOLDOWN_DAYS = 2
 const MAX_OBSERVERS = 3
 
-function manualActionCountForDay(
-  state: StrategyState,
-  humanId: string,
-  day: number
-): number {
+function manualActionCountForDay(state: StrategyState, humanId: string, day: number): number {
   const history = state.social.actionHistory ?? state.social.sessionLogs ?? []
   return history.filter(
     (entry) =>
@@ -70,11 +66,7 @@ export function deriveBehaviorPressure(input: {
   }
 }
 
-function chooseSuspicionObservers(
-  state: StrategyState,
-  humanId: string,
-  count: number
-) {
+function chooseSuspicionObservers(state: StrategyState, humanId: string, count: number) {
   return activeStrategyPlayers(state)
     .filter((player) => player.id !== humanId && !player.isUser)
     .map((player) => {
@@ -105,10 +97,7 @@ function applyBehaviorPressure(
 ): string[] {
   if (pressure.total <= 0) return []
 
-  const observerCount = Math.min(
-    MAX_OBSERVERS,
-    1 + Math.floor((pressure.total - 1) / 2)
-  )
+  const observerCount = Math.min(MAX_OBSERVERS, 1 + Math.floor((pressure.total - 1) / 2))
   const observers = chooseSuspicionObservers(state, humanId, observerCount)
   for (const observer of observers) {
     const edge = state.social.reality?.relationships?.[observer.id]?.[humanId]
@@ -125,8 +114,7 @@ function applyBehaviorPressure(
           suspicion: 5 + pressure.total * 2,
           perceivedThreat: 1 + pressure.total,
           trust: -Math.min(5, pressure.total + pressure.exitPressure),
-          reliability:
-            pressure.exitPressure > 0 ? -Math.min(6, pressure.exitPressure * 2) : 0,
+          reliability: pressure.exitPressure > 0 ? -Math.min(6, pressure.exitPressure * 2) : 0,
           warmth: pressure.quietPressure > 0 ? -Math.min(3, pressure.quietPressure) : 0,
         },
       })
@@ -156,8 +144,7 @@ function maybeQueueBehaviorWarning(
   const hasRecentWarning = (state.social.incomingInteractions ?? []).some(
     (interaction) =>
       interaction.payload?.source === 'social_strategy_warning' &&
-      interaction.createdWeek >=
-        Math.max(1, state.game.week - STRATEGY_WARNING_COOLDOWN_DAYS + 1)
+      interaction.createdWeek >= Math.max(1, state.game.week - STRATEGY_WARNING_COOLDOWN_DAYS + 1)
   )
   if (hasRecentWarning) return
 

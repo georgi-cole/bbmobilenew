@@ -56,11 +56,7 @@ export function strategyHumanPlayer(state: StrategyState): Player | null {
   return activeStrategyPlayers(state).find((player) => player.isUser) ?? null
 }
 
-export function strategyAffinity(
-  state: StrategyState,
-  sourceId: string,
-  targetId: string
-): number {
+export function strategyAffinity(state: StrategyState, sourceId: string, targetId: string): number {
   return state.social.relationships[sourceId]?.[targetId]?.affinity ?? 0
 }
 
@@ -79,9 +75,7 @@ export function isActiveStrategyNemesis(
 ): boolean {
   return Object.values(state.social.reality?.relationshipAutonomy?.nemeses ?? {}).some(
     (nemesis) =>
-      nemesis.status === 'ACTIVE' &&
-      nemesis.ownerId === ownerId &&
-      nemesis.targetId === targetId
+      nemesis.status === 'ACTIVE' && nemesis.ownerId === ownerId && nemesis.targetId === targetId
   )
 }
 

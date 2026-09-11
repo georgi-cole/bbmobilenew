@@ -16,14 +16,8 @@ interface SocialInvitation {
   text: string
 }
 
-function hasConcreteWhisperIntel(
-  state: StrategyState,
-  sourceId: string,
-  humanId: string
-): boolean {
-  return Boolean(
-    selectIntelFactForActor(state.social.reality, sourceId, humanId, state.game.week)
-  )
+function hasConcreteWhisperIntel(state: StrategyState, sourceId: string, humanId: string): boolean {
+  return Boolean(selectIntelFactForActor(state.social.reality, sourceId, humanId, state.game.week))
 }
 
 function chooseInvitation(

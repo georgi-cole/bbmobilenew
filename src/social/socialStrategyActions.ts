@@ -5,11 +5,7 @@ import {
 } from './socialSlice'
 import { makeIntelMemory, selectIntelFactForActor } from './intelligenceSystem'
 import type { SocialActionLogEntry } from './types'
-import {
-  strategyHumanPlayer,
-  type StrategyApi,
-  type StrategyState,
-} from './socialStrategyShared'
+import { strategyHumanPlayer, type StrategyApi, type StrategyState } from './socialStrategyShared'
 
 const REPAIR_ACTIONS = new Set([
   'compliment',

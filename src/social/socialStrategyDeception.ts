@@ -47,9 +47,7 @@ function chooseListeners(
   count: number
 ): Player[] {
   return activeStrategyPlayers(state)
-    .filter(
-      (player) => player.id !== humanId && player.id !== hostileId && !player.isUser
-    )
+    .filter((player) => player.id !== humanId && player.id !== hostileId && !player.isUser)
     .map((player) => {
       const tags = strategyTags(state, player.id, humanId)
       let score = 20 - strategyAffinity(state, player.id, humanId)
@@ -76,9 +74,7 @@ function chooseFalseTarget(
 ): Player | null {
   return (
     activeStrategyPlayers(state)
-      .filter(
-        (player) => player.id !== humanId && player.id !== hostileId && !player.isUser
-      )
+      .filter((player) => player.id !== humanId && player.id !== hostileId && !player.isUser)
       .map((player) => ({
         player,
         affinity: strategyAffinity(state, player.id, humanId),

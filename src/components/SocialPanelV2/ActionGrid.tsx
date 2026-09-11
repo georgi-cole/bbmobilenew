@@ -226,9 +226,7 @@ export default function ActionGrid({
 
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
-    .filter(
-      (action) => action.id === suggestedActionId || matchesCategoryFilter(action.category)
-    )
+    .filter((action) => action.id === suggestedActionId || matchesCategoryFilter(action.category))
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
       const rightPreview = isRealityPreview(right)
