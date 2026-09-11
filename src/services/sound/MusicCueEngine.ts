@@ -480,6 +480,11 @@ export class MusicCueEngine {
       const source = context.createMediaElementSource(element)
       const gain = context.createGain()
       const filter = context.createBiquadFilter()
+      // The graph is also used for reliable gain control on iOS. A cue with
+      // effectPreset='none' must therefore keep the graph but make its filter
+      // acoustically transparent instead of inheriting BiquadFilter's low-pass
+      // default.
+      filter.type = 'allpass'
       source.connect(gain)
       gain.connect(filter)
       filter.connect(context.destination)
