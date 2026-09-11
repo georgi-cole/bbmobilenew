@@ -36,15 +36,6 @@ import './QuickTapRaceCanvasGame.css';
 
 const GAME_DURATION = 30;
 const MEDALS = ['🥇', '🥈', '🥉'];
-/**
- * A DPR 3 phone renders nine device pixels for every CSS pixel. The QuickTap
- * arena is intentionally animation-heavy, so cap the backing store at 1.5x.
- * This cuts canvas fill work by up to 75% on high-density phones while keeping
- * the UI visually sharp at normal gameplay viewing distance.
- */
-const MAX_CANVAS_DPR = 1.5;
-/** React owns only the HUD; canvas feedback remains full-rate. */
-const SNAPSHOT_COMMIT_INTERVAL_MS = 100;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -130,8 +121,6 @@ export default function QuickTapRaceCanvasGame({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const lastResizeRef = useRef<{ width: number; height: number; dpr: number } | null>(null);
   const completionRef = useRef(false);
-  const latestSnapshotRef = useRef<QTREngineSnapshot>(makeEmptySnapshot());
-  const lastSnapshotCommitAtRef = useRef(0);
 
   const [uiPhase, setUiPhase] = useState<'playing' | 'results' | 'fallback'>('playing');
   const [snapshot, setSnapshot] = useState<QTREngineSnapshot>(() => makeEmptySnapshot());
@@ -301,23 +290,7 @@ export default function QuickTapRaceCanvasGame({
         strictWallClock: Boolean(import.meta.env.DEV && experimental),
         lowLatencyInput: Boolean(import.meta.env.DEV && experimental),
         onTick: (next) => {
-          const now = performance.now();
-          const previous = latestSnapshotRef.current;
-          latestSnapshotRef.current = next;
-          const importantVisualChange =
-            next.phase !== previous.phase ||
-            next.countdown !== previous.countdown ||
-            next.heatLevel !== previous.heatLevel ||
-            next.activeMultiplier !== previous.activeMultiplier ||
-            next.visibleBooster !== previous.visibleBooster;
-
-          if (
-            importantVisualChange ||
-            now - lastSnapshotCommitAtRef.current >= SNAPSHOT_COMMIT_INTERVAL_MS
-          ) {
-            lastSnapshotCommitAtRef.current = now;
-            setSnapshot(next);
-          }
+          setSnapshot(next);
         },
         onFinish: handleEngineFinish,
         onTap: () => {
@@ -336,8 +309,7 @@ export default function QuickTapRaceCanvasGame({
       const measureAndResize = (width?: number, height?: number) => {
         const nextWidth = Math.round(width ?? container.clientWidth);
         const nextHeight = Math.round(height ?? container.clientHeight);
-        const rawDpr = Math.max(1, window.devicePixelRatio || 1);
-        const nextDpr = Math.min(MAX_CANVAS_DPR, rawDpr);
+        const nextDpr = Math.max(1, window.devicePixelRatio || 1);
         if (nextWidth <= 0 || nextHeight <= 0) return;
         if (
           lastResizeRef.current?.width === nextWidth &&

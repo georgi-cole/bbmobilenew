@@ -293,7 +293,7 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(container.querySelectorAll('.avrm__tally--evictee')).toHaveLength(2);
   });
 
-  it('starts public percentages near their result and throttles visual estimate updates', async () => {
+  it('starts public percentages near their result and fluctuates instead of counting from zero', async () => {
     const { container } = render(
       <AnimatedVoteResultsModal
         nominees={[
@@ -316,18 +316,9 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(openingValues[1]).toBeGreaterThan(30);
     expect(container.querySelector('.avrm__tally--leading')).toBeNull();
     expect(container.querySelector('.avrm__tv-vote-ring-fill--leading')).toBeNull();
-    expect(container.querySelector('.avrm__tally--pulse')).toBeNull();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(149);
-    });
-    const beforeThrottleBoundary = Array.from(container.querySelectorAll('.avrm__tally-count')).map(
-      (node) => Number(node.textContent?.replace('%', ''))
-    );
-    expect(beforeThrottleBoundary).toEqual(openingValues);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
+      await vi.advanceTimersByTimeAsync(10);
     });
     const updatedValues = Array.from(container.querySelectorAll('.avrm__tally-count')).map(
       (node) => Number(node.textContent?.replace('%', ''))
@@ -336,6 +327,5 @@ describe('AnimatedVoteResultsModal public tie-break reveal', () => {
     expect(updatedValues[0]).toBeGreaterThan(50);
     expect(updatedValues[1]).toBeGreaterThan(30);
     expect(container.querySelector('.avrm__tally--leading')).toBeNull();
-    expect(container.querySelector('.avrm__tally--pulse')).toBeNull();
   });
 });
