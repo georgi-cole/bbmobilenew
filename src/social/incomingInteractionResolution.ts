@@ -361,14 +361,6 @@ function describeResponseAction(
   return `responded carefully to ${fromName}'s concern about ${focus}`
 }
 
-function phasePressure(phase: string): string {
-  if (phase.includes('pos')) return 'With the Safety ceremony shaping the block, '
-  if (phase.includes('nomination')) return 'With nominations already in play, '
-  if (phase.includes('live_vote')) return 'With the vote approaching, '
-  if (phase.includes('week_start')) return 'At the start of a new week, '
-  return ''
-}
-
 function relationshipQualifier(mutualAffinity: number, fromName: string): string {
   if (mutualAffinity <= -0.25) {
     return ` The existing distrust means ${fromName} will test that answer before acting on it.`
@@ -382,24 +374,27 @@ function relationshipQualifier(mutualAffinity: number, fromName: string): string
 function consequenceFor(
   stance: OutcomeStance,
   kind: SceneDefinition['kind'],
-  fromName: string,
-  mutualAffinity: number
+  fromName: string
 ): string {
-  const relationshipRead = relationshipQualifier(mutualAffinity, fromName)
   if (stance === 'positive') {
-    return `${fromName} left with a clearer reason to work with you, but will measure it against your next move.${relationshipRead}`
+    return `${fromName} has a clearer reason to work with you and will watch your next move.`
   }
   if (stance === 'neutral') {
     const nextStep =
-      kind === 'pressure'
-        ? 'They will keep looking for another route.'
-        : 'They now know which part to watch.'
-    return `${fromName} got an answer, not a promise. ${nextStep}${relationshipRead}`
+      kind === 'pressure' ? 'They will keep another route open.' : 'They know what to watch next.'
+    return `${fromName} got an answer, not a promise. ${nextStep}`
   }
   if (stance === 'negative') {
-    return `${fromName} now knows not to lean on you here and will adjust their game accordingly.${relationshipRead}`
+    return `${fromName} knows not to lean on you here and adjusts their game.`
   }
-  return `${fromName} leaves without the clarity they wanted and has to plan around that silence.${relationshipRead}`
+  return `${fromName} leaves without clarity and plans around the silence.`
+}
+
+function compactOutcomeText(text: string, maxLength = 280): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= maxLength) return normalized
+  const clipped = normalized.slice(0, maxLength - 1).replace(/\s+\S*$/, '')
+  return `${clipped}…`
 }
 
 export interface IncomingResponseResolutionInput {
@@ -479,7 +474,7 @@ export function resolveIncomingResponse(
         mutualAffinity,
         input.fromName
       )}`
-    : consequenceFor(stance, scene.kind, input.fromName, mutualAffinity)
+    : consequenceFor(stance, scene.kind, input.fromName)
   const dialogueBeat = getIncomingDialogueBeat({
     scenarioKey: typeof scenarioKey === 'string' ? scenarioKey : undefined,
     responseType: input.responseType,
@@ -489,7 +484,16 @@ export function resolveIncomingResponse(
     seed,
   })
   const dialogue = dialogueBeat ? ` ${input.fromName} says, ${dialogueBeat}` : ''
-  const outcomeText = `${phasePressure(input.phase)}you ${action}.${dialogue} ${consequence}`
+  // Keep the visible result quick to read: the action, the other player's
+  // concrete reply, and one consequence. Phase context is already shown on
+  // the interaction card and repeating it here made every result feel padded.
+  const detailedOutcome = `You ${action}.${dialogue} ${consequence}`
+  // If the in-character reply would make the card a paragraph, keep the
+  // player's action and the concrete fallout. The original message remains
+  // visible above it, so repeating the full dialogue is unnecessary.
+  const outcomeText = compactOutcomeText(
+    detailedOutcome.length > 280 ? `You ${action}. ${consequence}` : detailedOutcome
+  )
 
   return {
     actorDelta,

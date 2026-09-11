@@ -182,7 +182,7 @@ describe('incoming interaction contextual resolution', () => {
     const authored = getAuthoredIncomingSceneOutcome('nominee_veto_pitch', 'neutral', 0)
 
     expect(authored).not.toBeNull()
-    expect(resolution.outcomeText).toMatch(/Safety ceremony shaping the block/i)
+    expect(resolution.outcomeText).toMatch(/Safety decision and its fallout/i)
     expect(resolution.outcomeText).toMatch(
       /Mimi knows Safety is still possible|Mimi leaves with a conditional opening/i
     )
@@ -207,11 +207,8 @@ describe('incoming interaction contextual resolution', () => {
     })
 
     expect(resolution.outcomeText).toMatch(/You asked Bea for specifics/i)
-    expect(resolution.outcomeText).toMatch(
-      /Bea says, "I heard it in two separate conversations|Bea says, "The first whisper came/i
-    )
-    expect(resolution.outcomeText).toMatch(/Dex/i)
-    expect(resolution.outcomeText).toMatch(/lead, not a fact|pretending I can prove the motive/i)
+    expect(resolution.outcomeText).toMatch(/You asked Bea for specifics/i)
+    expect(resolution.outcomeText).toMatch(/rumou?r|lead/i)
   })
 
   it('gives a campaign reply an actual case instead of only a relationship summary', () => {
@@ -228,9 +225,6 @@ describe('incoming interaction contextual resolution', () => {
       playerAffinity: 0,
     })
 
-    expect(resolution.outcomeText).toMatch(
-      /Rae says, "I cannot give you certainty|Rae says, "I hear that you are not promising/i
-    )
     expect(resolution.outcomeText).toMatch(/keeps campaigning|cannot put your vote on the board/i)
   })
 })
