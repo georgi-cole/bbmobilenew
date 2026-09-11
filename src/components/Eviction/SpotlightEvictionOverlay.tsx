@@ -22,18 +22,18 @@ import './SpotlightEvictionOverlay.css'
 //       1800 ms        desaturate + vignette settle
 //       2100 ms        lower-third + ELIMINATED stamp land
 //       3000 ms        suspense hold
-//       5300 ms        grade/stamp clear before the return move
-//       5450 ms        portrait returns to the roster tile
-//       6100 ms        return completes, then onDone commits the eviction
+//       4650 ms        grade/stamp clear before the return move
+//       4800 ms        portrait returns to the roster tile
+//       5400 ms        return completes, then onDone commits the eviction
 //
 const LIVE_BUG_AT = 750
 const EXPAND_START = 900
 const DESAT_AT = 1800
 const LOWER_THIRD_AT = 2100
 const HOLD_START = 3000
-const PRE_RETURN_AT = 5300
-const RETURN_TO_TILE_AT = 5450
-const DONE_AT = 6100
+const PRE_RETURN_AT = 4650
+const RETURN_TO_TILE_AT = 4800
+const DONE_AT = 5400
 
 // Battle Back return sequence: start fullscreen in the evicted treatment, restore
 // colour, then explicitly shrink back into the active roster tile.
@@ -354,27 +354,28 @@ export default function SpotlightEvictionOverlay({
   const collapsedToTile = phase === 'spotlight' || phase === 'returning'
   const moving = phase === 'expanding' || phase === 'returning'
   const source = geometry.source
-  const portraitStyle: CSSProperties = collapsedToTile && source
-    ? {
-        top: source.top,
-        left: source.left,
-        width: source.width,
-        height: source.height,
-        right: 'auto',
-        bottom: 'auto',
-        borderRadius: 'var(--tile-radius, 12px)',
-        visibility: geometry.ready ? 'visible' : 'hidden',
-      }
-    : {
-        top: 0,
-        left: 0,
-        width: geometry.viewport.width,
-        height: geometry.viewport.height,
-        right: 'auto',
-        bottom: 'auto',
-        borderRadius: 0,
-        visibility: geometry.ready ? 'visible' : 'hidden',
-      }
+  const portraitStyle: CSSProperties =
+    collapsedToTile && source
+      ? {
+          top: source.top,
+          left: source.left,
+          width: source.width,
+          height: source.height,
+          right: 'auto',
+          bottom: 'auto',
+          borderRadius: 'var(--tile-radius, 12px)',
+          visibility: geometry.ready ? 'visible' : 'hidden',
+        }
+      : {
+          top: 0,
+          left: 0,
+          width: geometry.viewport.width,
+          height: geometry.viewport.height,
+          right: 'auto',
+          bottom: 'auto',
+          borderRadius: 0,
+          visibility: geometry.ready ? 'visible' : 'hidden',
+        }
 
   const rootClassName = [
     'seo',
