@@ -45,13 +45,12 @@
 }
 
 /* ── Live voting / public verdict ─────────────────────────────────────────── */
-/* Vote values can update faster than the original 550 ms SVG-ring transition.
- * Short interpolation lets each update settle before the next one and removes
- * the long queue of overlapping compositor animations. */
+/* Public estimate commits are capped in React. Keep SVG interpolation shorter
+ * than that cadence so the stroke settles before the next target arrives. */
 .avrm--tv .avrm__tv-vote-ring-fill {
   transition:
-    stroke-dashoffset 160ms linear,
-    stroke 140ms ease !important;
+    stroke-dashoffset 120ms linear,
+    stroke 120ms ease !important;
 }
 
 /* drop-shadow() on every avatar ring is particularly expensive while the SVG
@@ -65,35 +64,89 @@
   contain: layout paint;
 }
 
+/* The public percentages already communicate motion through the ring. Avoid a
+ * second transform animation restarting on every estimate frame. */
 .avrm--tv .avrm__tally--pulse {
   animation-duration: 220ms !important;
 }
 
+/* Keep the LIVE badge visually lit, but do not repaint its shadow continuously
+ * while vote-result percentages are also updating. */
+.tv-zone--live-vote-focus .tv-zone__live-badge {
+  animation: none !important;
+  opacity: 1 !important;
+  box-shadow:
+    0 0 8px rgba(220, 38, 38, 0.72),
+    0 0 16px rgba(127, 29, 29, 0.28) !important;
+}
+
+/* Nominee tiles remain visible underneath the TV/result and eviction layers.
+ * Freeze their paint-heavy sweep while those foreground animations own focus. */
+body:has(.tv-zone--live-vote-focus) [class*='liveEvictionNominee']::before,
+body:has(.seo) [class*='liveEvictionNominee']::before {
+  animation: none !important;
+}
+
 /* ── Eviction cinematic ──────────────────────────────────────────────────── */
-/* The scanline layer used mix-blend-mode over a fullscreen moving/filtered
- * portrait. Preserve the texture but use ordinary alpha compositing. */
+/* The portrait now performs its roster-to-fullscreen move with one CSS FLIP
+ * transform. CSS interpolation lets the compositor own the expensive camera push
+ * instead of Framer Motion's shared-layout measurement/projection path. */
+.seo__portrait {
+  transform-origin: center center !important;
+  transition:
+    transform 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 480ms cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+.seo__portrait--expanded {
+  transform: translate3d(var(--seo-flip-x, 0px), var(--seo-flip-y, 0px), 0)
+    scale(var(--seo-flip-scale, 1)) !important;
+}
+
+/* The scanline layer used mix-blend-mode over a moving portrait. Preserve the
+ * texture after the camera push, but remove it from the expensive expansion. */
 .seo__scanlines {
   mix-blend-mode: normal !important;
   opacity: 0.42;
 }
 
-/* Framer Motion previously interpolated saturate/contrast/brightness/blur on a
- * fullscreen image while also moving it. That forces repeated full-image paint.
- * The vignette, spotlight, lower third and stamp retain the cinematic look, so
- * keep the portrait transform animation but make image filtering paint-stable. */
+.seo--spotlight .seo__scanlines,
+.seo--expanding .seo__scanlines {
+  opacity: 0 !important;
+}
+
+/* Framer no longer interpolates image filters. The photo itself only performs
+ * compositor transforms during the camera push; the cinematic grade is applied
+ * once after expansion settles, causing one paint instead of one paint per frame. */
 .seo__photo,
 .seo__fallback {
   filter: none !important;
+  transition: transform 500ms ease-out !important;
 }
 
-/* Avoid promoting extra paint-only layers once the portrait already owns the
- * fullscreen compositor surface. */
 .seo__photo {
+  transform: translateZ(0) scale(1) !important;
   will-change: transform !important;
 }
 
+.seo__portrait--expanded .seo__photo {
+  transform: translateZ(0) scale(1.02) !important;
+}
+
+.seo__portrait--desaturated .seo__photo,
+.seo__portrait--desaturated .seo__fallback {
+  filter: saturate(0.24) contrast(1.08) brightness(0.84) !important;
+}
+
+.seo__portrait--desaturated .seo__photo {
+  transform: translateZ(0) scale(1.04) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .avrm--tv .avrm__tv-vote-ring-fill {
+  .avrm--tv .avrm__tv-vote-ring-fill,
+  .seo__portrait,
+  .seo__photo,
+  .seo__fallback {
     transition: none !important;
   }
 }
