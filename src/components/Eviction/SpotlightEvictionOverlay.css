@@ -6,9 +6,9 @@
  * morph to the screen rectangle, desaturate, receive the ELIMINATED treatment,
  * then return to its source position.
  *
- * Geometry is still compositor-only. The hero uses transforms rather than
- * Framer shared-layout projection, so the old look does not bring the old
- * layout/compositing stalls back.
+ * Geometry is still compositor-oriented. The hero uses a uniform transform and
+ * an inset clip instead of Framer shared-layout projection, so the portrait is
+ * never non-uniformly stretched during the camera move.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .seo {
@@ -69,34 +69,43 @@
   border-radius: var(--tile-radius, 10px);
   transform-origin: center center;
   transform: translate3d(0, 0, 0) scale(1);
+  clip-path: inset(0);
   opacity: 1;
   backface-visibility: hidden;
-  will-change: transform, opacity;
+  will-change: transform, clip-path, opacity;
   transition:
     transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    clip-path 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     opacity 70ms linear;
   pointer-events: none;
 }
 
-/* Fallback for engines without typed CSS division: retain the known-good
-   uniform compositor zoom rather than falling back to layout animation. */
+/* Uniform scale keeps the portrait itself undistorted. The inset crop below
+   changes only the visible frame toward the viewport aspect ratio, recreating
+   the old shared-layout rectangle morph without scaleX/scaleY distortion. */
 .seo__hero--expanded {
+  --seo-hero-clip-x: max(
+    0%,
+    calc(
+      (100% - (((100vw / var(--seo-hero-scale, 1)) / var(--game-avatar-tile-size, 96px)) * 100%)) /
+        2
+    )
+  );
+  --seo-hero-clip-y: max(
+    0%,
+    calc(
+      (100% - (((100vh / var(--seo-hero-scale, 1)) / var(--game-avatar-tile-height, 96px)) * 100%)) /
+        2
+    )
+  );
   transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
     scale(var(--seo-hero-scale, 1));
+  clip-path: inset(
+    var(--seo-hero-clip-y, 0%) var(--seo-hero-clip-x, 0%) var(--seo-hero-clip-y, 0%)
+      var(--seo-hero-clip-x, 0%)
+  );
   border-radius: 0;
-}
-
-/* Yesterday's shared-layout animation changed the actual rectangle from the
-   roster tile aspect ratio into the viewport aspect ratio. Recreate that visual
-   morph with compositor-only axis transforms. The responsive layout already
-   exposes the measured tile width/height as inherited CSS pixel variables. */
-@supports (transform: scaleX(calc(100vw / 100px))) {
-  .seo__hero--expanded {
-    transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
-      scaleX(calc(100vw / var(--game-avatar-tile-size, 96px)))
-      scaleY(calc(100vh / var(--game-avatar-tile-height, 96px)));
-  }
 }
 
 .seo__hero--hidden {
@@ -113,6 +122,7 @@
   opacity: 1;
   transition:
     transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    clip-path 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     opacity 70ms linear;
 }
@@ -128,10 +138,11 @@
   transition: transform 500ms ease-out;
 }
 
-/* Preserve the very small camera push from the old animation without restoring
-   its moving blur/filter. This remains a pure child transform. */
+/* The Sep 10 portrait had a 6px upward camera nudge. Because this hero starts
+   tile-sized and is later scaled, pre-divide by the hero scale so the visible
+   movement remains 6px in screen space instead of being magnified. */
 .seo--expanding .seo__hero-photo {
-  transform: translate3d(0, -6px, 0) scale(1.02);
+  transform: translate3d(0, calc(-6px / var(--seo-hero-scale, 1)), 0) scale(1.02);
 }
 
 /* Prime a static cinematic grade on the hidden return hero before movement.
