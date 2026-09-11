@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useI18n } from '../../i18n'
 import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
 import type { ActionCategory } from '../../social/socialActions'
@@ -12,7 +12,9 @@ import { evaluateSocialActionEligibility } from '../../social/socialActionEligib
 import ActionCard from './ActionCard'
 import type { Player, PlayerStatus } from '../../types'
 import type { DramaSocialNetwork, RelationshipsMap } from '../../social/types'
-import { useAppSelector } from '../../store/hooks'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
+import { setGameUX } from '../../store/settingsSlice'
+import { selectHasDramaModeAccess } from '../../store/vipSlice'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 
 export interface ActionGridProps {
@@ -64,9 +66,11 @@ export default function ActionGrid({
   categoryFilter = 'all',
 }: ActionGridProps) {
   const { t } = useI18n()
+  const dispatch = useAppDispatch()
   const containerRef = useRef<HTMLDivElement>(null)
   const appliedInvitationRef = useRef<string | null>(null)
   const game = useAppSelector((state) => state.game)
+  const hasRealityAccess = useAppSelector(selectHasDramaModeAccess)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
   const actions = useMemo(() => buildEffectiveSocialActions(actionOverrides), [actionOverrides])
@@ -224,6 +228,15 @@ export default function ActionGrid({
     return category === 'aggressive'
   }
 
+  function handlePremiumLockedAction(actionId: string) {
+    if (hasRealityAccess) {
+      dispatch(setGameUX({ dramaMode: true }))
+      onActionClick?.(actionId)
+      return
+    }
+    onPremiumLockedClick?.(actionId)
+  }
+
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
     .filter((action) => action.id === suggestedActionId || matchesCategoryFilter(action.category))
@@ -322,7 +335,7 @@ export default function ActionGrid({
             availabilityReason={availabilityReason}
             available={actorEnergy !== undefined ? isAvailable : undefined}
             onClick={onActionClick}
-            onPremiumLockedClick={onPremiumLockedClick}
+            onPremiumLockedClick={handlePremiumLockedAction}
             onPreview={onPreview}
             costOverride={costs}
           />
