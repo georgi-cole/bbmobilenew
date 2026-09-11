@@ -13,10 +13,16 @@ body:has(.qtr-canvas--playing) .game-screen {
   visibility: hidden !important;
 }
 
-/* GameScreen already marks live_vote and eviction_results with this class. Pause
- * only the roster and ambient screen layers underneath the foreground ceremony.
- * Vote rings, LIVE treatment, Framer eviction motion, scanlines and grading are
- * deliberately untouched. */
+/* GameScreen already marks live_vote and eviction_results with this class. Keep
+ * its red eviction atmosphere at the current frame, but stop repainting the full
+ * screen through the infinite evictionSetPulse background-color animation. */
+.game-screen--eviction-atmosphere {
+  animation-play-state: paused !important;
+}
+
+/* Pause only the roster and ambient screen layers underneath the foreground
+ * ceremony. Vote rings, LIVE treatment, Framer eviction motion, scanlines and
+ * image grading are deliberately untouched. */
 .game-screen--eviction-atmosphere [data-player-id],
 .game-screen--eviction-atmosphere [data-player-id] *,
 .game-screen--eviction-atmosphere [data-player-id]::before,
