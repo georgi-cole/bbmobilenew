@@ -1,8 +1,7 @@
 /* ─── SpotlightEvictionOverlay ───────────────────────────────────────────────
  * Cinematic eviction choreography.
- * The portrait begins on the roster tile, expands to a true fullscreen layer,
- * holds for the desaturation/stamp beat, then returns to the measured tile before
- * the eviction is committed.
+ * Geometry motion uses a source-sized transform hero; the desaturation/stamp
+ * hold uses a separate native fullscreen portrait.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 .seo {
@@ -13,7 +12,6 @@
   pointer-events: auto;
 }
 
-/* ── Dim overlay ─────────────────────────────────────────────────────────── */
 .seo__dim {
   position: absolute;
   inset: 0;
@@ -22,7 +20,6 @@
   pointer-events: none;
 }
 
-/* ── Spotlight radial cut-out (before expansion) ─────────────────────────── */
 .seo__spotlight {
   position: absolute;
   inset: 0;
@@ -36,7 +33,6 @@
   pointer-events: none;
 }
 
-/* ── LIVE bug (top-left) ─────────────────────────────────────────────────── */
 .seo__live-bug {
   --floating-corner-top-base: 1rem;
   --floating-corner-left-base: 1rem;
@@ -56,32 +52,63 @@
   pointer-events: none;
 }
 
-/* ── Measured portrait camera move ──────────────────────────────────────── */
-.seo__portrait {
+/* ── Transform-only detach / return hero ───────────────────────────────── */
+.seo__hero {
   position: fixed;
-  inset: auto;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100dvh;
-  z-index: 3;
+  z-index: 4;
   overflow: hidden;
   background: linear-gradient(180deg, #1e2229, #13161a);
   border-radius: var(--tile-radius, 10px);
+  transform-origin: center center;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
   transition:
-    top 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    left 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    width 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    height 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 100ms linear;
+  pointer-events: none;
+}
+
+.seo__hero--expanded {
+  transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
+    scale(var(--seo-hero-scale, 1));
+  border-radius: 0;
+}
+
+.seo__hero--hidden {
+  opacity: 0;
+}
+
+.seo__hero-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  backface-visibility: hidden;
+}
+
+/* ── Native fullscreen holding portrait ─────────────────────────────────── */
+.seo__portrait {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1e2229, #13161a);
+  opacity: 1;
+  transition: opacity 120ms linear;
   contain: layout paint;
   backface-visibility: hidden;
   transform: translateZ(0);
-  will-change: top, left, width, height;
+  pointer-events: none;
 }
 
-/* Photo fills portrait at the portrait's real current size, so the fullscreen
- * holding frame is never a low-resolution scaled-up tile texture. */
+.seo__portrait--hidden {
+  opacity: 0;
+}
+
 .seo__photo {
   width: 100%;
   height: 100%;
@@ -93,7 +120,6 @@
   will-change: transform, filter;
 }
 
-/* Fallback text (emoji / initial) */
 .seo__fallback {
   font-size: 10rem;
   line-height: 1;
@@ -104,7 +130,6 @@
   height: 100%;
 }
 
-/* Vignette overlay inside portrait */
 .seo__vignette {
   position: absolute;
   inset: 0;
@@ -117,8 +142,6 @@
   pointer-events: none;
 }
 
-/* Scanlines / film-grain overlay. Hide them only while geometry is moving so
- * blend-mode compositing cannot steal frames from the detach/return animation. */
 .seo__scanlines {
   position: absolute;
   inset: 0;
@@ -132,12 +155,6 @@
   pointer-events: none;
   z-index: 2;
   mix-blend-mode: multiply;
-  opacity: 1;
-  transition: opacity 120ms ease;
-}
-
-.seo__portrait--moving .seo__scanlines {
-  opacity: 0;
 }
 
 /* ── EVICTED lower-third ─────────────────────────────────────────────────── */
@@ -265,7 +282,6 @@
   }
 }
 
-/* ── Dev-only Skip button ────────────────────────────────────────────────── */
 .seo__skip-btn {
   position: fixed;
   bottom: max(1.4rem, env(safe-area-inset-bottom, 1.4rem));
@@ -287,14 +303,14 @@
   background: rgba(0, 0, 0, 0.72);
 }
 
-/* iOS WebKit pays a large compositing cost for a full-screen blend-mode layer
-   over a filtered image. The final desaturation/vignette/stamp remain intact. */
+/* iOS WebKit pays a large compositing cost for a fullscreen blend-mode layer.
+   The user-visible desaturation/vignette/stamp treatment remains intact. */
 .seo--ios .seo__scanlines {
   display: none;
 }
 
-/* ── Reduced motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  .seo__hero,
   .seo__portrait,
   .seo__dim,
   .seo__spotlight,
