@@ -15,10 +15,10 @@
 .seo__dim {
   position: absolute;
   inset: 0;
-  /* Keep the house/set readable around the moving hero. The fullscreen holding
-     portrait still covers this layer, so the desaturated cinematic beat keeps
-     the same depth without turning detach/return into a near-black frame. */
-  background: rgba(0, 0, 0, 0.68);
+  /* Keep enough of the roster visible that the hero reads as a tile detaching
+     from the grid rather than a standalone photo appearing over black. The
+     fullscreen portrait still covers this layer during the cinematic hold. */
+  background: rgba(0, 0, 0, 0.42);
   z-index: 1;
   pointer-events: none;
 }
@@ -29,8 +29,8 @@
   background: radial-gradient(
     ellipse 120px 160px at 50% 40%,
     transparent 0%,
-    rgba(0, 0, 0, 0.58) 70%,
-    rgba(0, 0, 0, 0.82) 100%
+    rgba(0, 0, 0, 0.46) 70%,
+    rgba(0, 0, 0, 0.7) 100%
   );
   z-index: 2;
   pointer-events: none;
@@ -60,17 +60,64 @@
   position: fixed;
   z-index: 4;
   overflow: hidden;
+  isolation: isolate;
+  box-sizing: border-box;
   background: linear-gradient(180deg, #1e2229, #13161a);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--tile-radius, 10px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 7px 22px rgba(0, 0, 0, 0.34);
   transform-origin: center center;
   transform: translate3d(0, 0, 0) scale(1);
   opacity: 1;
   backface-visibility: hidden;
   will-change: transform, opacity;
   transition:
-    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    opacity 100ms linear;
+    transform 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
+    border-radius 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
+    opacity 160ms ease-out;
+  pointer-events: none;
+}
+
+/* Lightweight tile chrome. This exists only at the roster-sized ends of the
+   camera move and deliberately disappears while the portrait is large. It
+   makes the moving layer read as the same UI tile without cloning the entire
+   React card or reintroducing shared-layout projection. */
+.seo__hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    transparent 24%,
+    transparent 62%,
+    rgba(5, 8, 14, 0.72) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  opacity: 1;
+  transition: opacity 160ms ease-out;
+  pointer-events: none;
+}
+
+/* A restrained lower nameplate cue mirrors the roster-card composition. It is
+   intentionally text-free so it cannot drift out of sync with roster labels. */
+.seo__hero::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 8%;
+  height: 3px;
+  z-index: 3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  opacity: 0.78;
+  transition: opacity 160ms ease-out;
   pointer-events: none;
 }
 
@@ -78,6 +125,25 @@
   transform: translate3d(var(--seo-hero-x, 0px), var(--seo-hero-y, 0px), 0)
     scale(var(--seo-hero-scale, 1));
   border-radius: 0;
+}
+
+/* As soon as the tile leaves the roster, dissolve the card chrome quickly so
+   the expanding image becomes a clean cinematic portrait rather than a giant UI
+   card. The movement remains transform-only. */
+.seo--expanding .seo__hero::before,
+.seo--expanding .seo__hero::after,
+.seo--holding .seo__hero::before,
+.seo--holding .seo__hero::after {
+  opacity: 0;
+}
+
+/* Re-form the card only near the end of the return. Waiting through most of the
+   600 ms shrink avoids a huge frame/nameplate appearing over the fullscreen face. */
+.seo--returning .seo__hero::before,
+.seo--returning .seo__hero::after {
+  opacity: 1;
+  transition-delay: 380ms;
+  transition-duration: 180ms;
 }
 
 .seo__hero--hidden {
@@ -94,8 +160,8 @@
 .seo--returning .seo__hero {
   opacity: 1;
   transition:
-    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    border-radius 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
+    border-radius 600ms cubic-bezier(0.22, 0.74, 0.22, 1),
     opacity 280ms ease-out;
 }
 
@@ -116,7 +182,7 @@
   overflow: hidden;
   background: linear-gradient(180deg, #1e2229, #13161a);
   opacity: 1;
-  transition: opacity 120ms linear;
+  transition: opacity 180ms ease-out;
   contain: layout paint;
   backface-visibility: hidden;
   transform: translateZ(0);
@@ -136,7 +202,7 @@
 
 .seo--returning .seo__portrait--hidden {
   opacity: 0;
-  transition: opacity 280ms ease-out;
+  transition: opacity 320ms ease-out;
 }
 
 .seo__photo {
