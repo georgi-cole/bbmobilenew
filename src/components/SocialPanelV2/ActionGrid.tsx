@@ -263,9 +263,7 @@ export default function ActionGrid({
       return
     }
 
-    const actionAvailable = orderedVisibleActions.some(
-      (action) => action.id === suggestedActionId && !isRealityPreview(action)
-    )
+    const actionAvailable = orderedVisibleActions.some((action) => action.id === suggestedActionId)
     if (!actionAvailable) return
 
     appliedInvitationRef.current = invitation.id
