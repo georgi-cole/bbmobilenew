@@ -1,43 +1,30 @@
 /* Performance isolation for animation-heavy gameplay surfaces.
  *
- * Do not degrade the foreground animation the player is watching. Instead,
- * pause continuous animation work on obscured/background game elements while
- * a fullscreen minigame, live-vote presentation, or eviction cinematic owns
- * the frame budget.
+ * Keep the foreground presentation at full quality. Reduce competition for the
+ * frame budget by pausing continuous animation work that is obscured behind the
+ * active minigame / TV / eviction presentation.
  */
 
-/* Quick Tap Race is portalled to document.body, while GameScreen remains mounted
- * underneath it. Stop the hidden game surface from consuming animation frames.
- * The QuickTap portal is outside .game-screen, so its own effects stay untouched. */
+/* Quick Tap Race is portalled to document.body while GameScreen remains mounted
+ * underneath it. The portal is outside .game-screen, so pausing the hidden game
+ * surface does not touch QuickTap's own glass, shadows, heat shake or canvas. */
 body:has(.qtr-canvas--playing) .game-screen *,
 body:has(.qtr-canvas--playing) .game-screen::before,
 body:has(.qtr-canvas--playing) .game-screen::after {
   animation-play-state: paused !important;
 }
 
-/* Live voting remains inside the faux TV. Pause the roster animations behind it,
- * but leave the TV, vote rings, LIVE treatment, shadows and filters at full quality. */
-body:has(.tv-zone--live-vote-focus) [data-player-id],
-body:has(.tv-zone--live-vote-focus) [data-player-id] *,
-body:has(.tv-zone--live-vote-focus) [data-player-id]::before,
-body:has(.tv-zone--live-vote-focus) [data-player-id]::after,
-body:has(.tv-zone--live-vote-focus) [data-player-id] *::before,
-body:has(.tv-zone--live-vote-focus) [data-player-id] *::after,
-body:has(.tv-zone--live-vote-focus) .game-screen::before,
-body:has(.tv-zone--live-vote-focus) .game-screen::after {
-  animation-play-state: paused !important;
-}
-
-/* The eviction overlay is a foreground sibling of the roster tiles. Freeze only
- * those obscured tiles and ambient GameScreen layers; the cinematic itself keeps
- * its original Framer motion, scanlines, vignette and image grading. */
-body:has(.seo) [data-player-id],
-body:has(.seo) [data-player-id] *,
-body:has(.seo) [data-player-id]::before,
-body:has(.seo) [data-player-id]::after,
-body:has(.seo) [data-player-id] *::before,
-body:has(.seo) [data-player-id] *::after,
-body:has(.seo) .game-screen::before,
-body:has(.seo) .game-screen::after {
+/* GameScreen already marks live_vote and eviction_results with this class. Pause
+ * only the roster and ambient screen layers underneath the foreground ceremony.
+ * Vote rings, LIVE treatment, Framer eviction motion, scanlines and grading are
+ * deliberately untouched. */
+.game-screen--eviction-atmosphere [data-player-id],
+.game-screen--eviction-atmosphere [data-player-id] *,
+.game-screen--eviction-atmosphere [data-player-id]::before,
+.game-screen--eviction-atmosphere [data-player-id]::after,
+.game-screen--eviction-atmosphere [data-player-id] *::before,
+.game-screen--eviction-atmosphere [data-player-id] *::after,
+.game-screen--eviction-atmosphere::before,
+.game-screen--eviction-atmosphere::after {
   animation-play-state: paused !important;
 }
