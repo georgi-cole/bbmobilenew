@@ -1,0 +1,29 @@
+name: Temporary Faux TV Cadence Validation
+
+on:
+  push:
+    branches:
+      - codex/faux-tv-phase9-consolidation
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/faux-tv-phase9-consolidation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run Faux TV cadence and programming tests
+        run: >-
+          npx vitest run
+          tests/seasonDesk.test.ts
+          tests/programmingDesk.test.ts
+          tests/fauxTvProgrammingController.test.tsx
+          tests/weatherEditorial.test.ts
