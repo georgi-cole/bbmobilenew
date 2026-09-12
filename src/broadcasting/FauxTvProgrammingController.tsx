@@ -2,7 +2,10 @@ import { useEffect, useMemo } from 'react'
 import { addTvEvent } from '../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import type { TvEvent } from '../types'
-import { evaluateBroadcastEditorialPolicy } from './broadcastEditorialPolicy'
+import {
+  evaluateBroadcastEditorialPolicy,
+  getBroadcastEditorialMetadata,
+} from './broadcastEditorialPolicy'
 import {
   buildByTheNumbersCandidate,
   hasByTheNumbersStoryForWeek,
@@ -68,7 +71,7 @@ export default function FauxTvProgrammingController() {
 
     const sameDayStrongOptional = game.tvFeed.filter((event) => {
       if (event.meta?.week !== game.week) return false
-      const category = event.meta?.editorial?.category
+      const category = getBroadcastEditorialMetadata(event)?.category
       return (
         category === 'by_the_numbers' ||
         category === 'programming_resume_recap' ||
