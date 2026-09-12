@@ -1,4 +1,5 @@
 import type { GameState, Player, TvEvent } from '../types'
+import { getBroadcastEditorialMetadata } from './broadcastEditorialPolicy'
 
 export const BY_THE_NUMBERS_CATEGORY = 'by_the_numbers'
 
@@ -19,7 +20,7 @@ function isActivePlayer(player: Player): boolean {
 }
 
 function hasStory(history: readonly TvEvent[], storyKey: string): boolean {
-  return history.some((event) => event.meta?.editorial?.storyKey === storyKey)
+  return history.some((event) => getBroadcastEditorialMetadata(event)?.storyKey === storyKey)
 }
 
 function ordinal(value: number): string {
@@ -209,6 +210,7 @@ export function buildByTheNumbersCandidate(
 export function hasByTheNumbersStoryForWeek(history: readonly TvEvent[], week: number): boolean {
   return history.some(
     (event) =>
-      event.meta?.week === week && event.meta?.editorial?.category === BY_THE_NUMBERS_CATEGORY
+      event.meta?.week === week &&
+      getBroadcastEditorialMetadata(event)?.category === BY_THE_NUMBERS_CATEGORY
   )
 }
