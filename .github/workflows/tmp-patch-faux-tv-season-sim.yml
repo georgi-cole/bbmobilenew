@@ -1,0 +1,53 @@
+name: Temporary Faux TV Season Simulation Patch
+
+on:
+  push:
+    branches:
+      - codex/faux-tv-phase9-consolidation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/faux-tv-phase9-consolidation
+      - name: Resolve competitions in the AI season simulation
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('tests/fauxTvProgrammingController.test.tsx')
+          text = path.read_text()
+          old_import = "import gameReducer, { addTvEvent, advance, createInitialGameState } from '../src/store/gameSlice'"
+          new_import = "import gameReducer, {\n  addTvEvent,\n  advance,\n  completeMinigame,\n  createInitialGameState,\n} from '../src/store/gameSlice'"
+          old_loop = """      await act(async () => {\n        store.dispatch(advance())\n        await Promise.resolve()\n      })"""
+          new_loop = """      await act(async () => {\n        store.dispatch(advance())\n        if (store.getState().game.pendingMinigame) {\n          store.dispatch(completeMinigame({ humanScore: 0 }))\n        }\n        await Promise.resolve()\n      })"""
+          changed = False
+          if old_import in text:
+              text = text.replace(old_import, new_import, 1)
+              changed = True
+          if old_loop in text:
+              text = text.replace(old_loop, new_loop, 1)
+              changed = True
+          if changed:
+              path.write_text(text)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write tests/fauxTvProgrammingController.test.tsx
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/fauxTvProgrammingController.test.tsx
+          git commit -m "Drive AI competitions in Faux TV season simulation"
+          git push origin HEAD:codex/faux-tv-phase9-consolidation
