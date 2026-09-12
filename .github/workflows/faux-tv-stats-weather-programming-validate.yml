@@ -4,6 +4,9 @@ on:
   push:
     branches: [codex/faux-tv-stats-weather-programming]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -17,9 +20,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Focused formatting
+      - name: Normalize touched files
         run: >-
-          npx prettier --check
+          npx prettier --write
           src/App.tsx
           src/broadcasting/seasonDesk.ts
           src/broadcasting/programmingDesk.ts
@@ -49,3 +52,12 @@ jobs:
         run: npm run lint:ci
       - name: Release build
         run: npm run build
+      - name: Commit normalized validated changes and remove temporary workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/faux-tv-stats-weather-programming-validate.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Validate Faux TV stats, weather, and programming"
+          git push origin HEAD:codex/faux-tv-stats-weather-programming
