@@ -24,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Print expected Faux TV characterization formatting
+        run: npx prettier tests/fauxTv.phase0.characterization.test.tsx
       - name: Check formatting for files changed from main
         run: npm run format:check
       - name: Reject focused or disabled tests
