@@ -177,8 +177,8 @@ function programmingRecentlyShown(history: readonly TvEvent[], week: number): bo
 }
 
 /**
- * Sparse callback for a quiet Day Start after a genuinely significant public
- * shock. It does not invent a teaser and does not run on ordinary days.
+ * Sparse continuity beat after a genuinely significant public shock. This is
+ * not a generic recap and never invents private strategy or Pulse/Intel facts.
  */
 export function buildProgrammingCallbackCandidate(
   state: Pick<GameState, 'phase' | 'week' | 'tvFeed'>
@@ -190,19 +190,19 @@ export function buildProgrammingCallbackCandidate(
   if (!previousShock || previousShock.meta?.week !== state.week - 1) return null
 
   const compact = previousShock.text.replace(/\s+/g, ' ').trim()
-  const callback = compact.length <= 100 ? compact : `${compact.slice(0, 97).trimEnd()}…`
+  const callback = compact.length <= 96 ? compact : `${compact.slice(0, 93).trimEnd()}…`
   const storyKey = `programming:callback:${previousShock.id}`
   if (state.tvFeed.some((event) => getBroadcastEditorialMetadata(event)?.storyKey === storyKey)) {
     return null
   }
 
   return {
-    text: `THE BIG EYE CONTINUES · Previously: ${callback}`,
+    text: `THE AFTERSHOCK · Yesterday changed the game. ${callback} Today, everyone has to play in its shadow.`,
     storyKey,
     cooldownKey: 'programming:callback',
     subjectIds: [],
     category: BIG_EYE_PROGRAMMING_CATEGORY,
-    significance: 42,
+    significance: 74,
   }
 }
 
