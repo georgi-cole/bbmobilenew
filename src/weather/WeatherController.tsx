@@ -126,7 +126,6 @@ export default function WeatherController() {
         meta: {
           phase: 'social_2',
           week,
-          broadcastTemplateId: 'weather.daily-bulletin',
           broadcastOrder: 20000,
           broadcastLevel: 'minor',
           ...(editorial.forceOnTv ? { forceOnTv: true } : {}),
