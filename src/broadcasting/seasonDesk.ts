@@ -210,16 +210,16 @@ export function buildByTheNumbersCandidate(
 }
 
 /**
- * Quiet-day fallback for the existing programming desk. It deliberately waits
- * until week_end so competitions, nominations, twists and Big Eye callbacks get
- * the first opportunity to occupy the day's editorial slot. This is a public
- * ledger, not a milestone: milestone copy remains reserved for the thresholds
- * above and always outranks this candidate.
+ * Quiet-day fallback for the existing programming desk. It runs at social_1,
+ * after the LOH cycle has produced fresh public facts and before nominations
+ * take over the day. This keeps the editorial beat visible and spatially
+ * separated from the later social_2 weather bulletin instead of burying it
+ * under the Day Complete transition at week_end.
  */
 export function buildDailyNumbersCandidate(
   state: Pick<GameState, 'phase' | 'week' | 'players' | 'tvFeed'>
 ): FauxTvEditorialCandidate | null {
-  if (state.phase !== 'week_end' || state.week < DAILY_NUMBERS_MIN_DAY) return null
+  if (state.phase !== 'social_1' || state.week < DAILY_NUMBERS_MIN_DAY) return null
   if (hasByTheNumbersStoryForWeek(state.tvFeed, state.week)) return null
 
   const active = state.players.filter(isActivePlayer)
@@ -251,9 +251,9 @@ export function buildDailyNumbersCandidate(
 
   if (variant === 0) {
     const totalPowerWins = totals.lohWins + totals.posWins
-    text = `BY THE NUMBERS · Day ${state.week} closes with ${active.length} players still in the game and ${totalPowerWins} ${plural(totalPowerWins, 'power win')} on the season ledger.`
+    text = `BY THE NUMBERS · Day ${state.week} check-in: ${active.length} players remain and the season ledger shows ${totalPowerWins} ${plural(totalPowerWins, 'power win')}.`
   } else if (variant === 1 || rankedActive.length === 0) {
-    text = `BY THE NUMBERS · The season has now produced ${totals.nominations} ${plural(totals.nominations, 'nomination appearance')} across ${active.length} remaining players.`
+    text = `BY THE NUMBERS · Day ${state.week} check-in: the season has produced ${totals.nominations} ${plural(totals.nominations, 'nomination appearance')} across ${active.length} remaining players.`
   } else {
     const spotlightPool = rankedActive.slice(0, 3)
     const spotlight =
@@ -262,7 +262,7 @@ export function buildDailyNumbersCandidate(
     const posWins = spotlight.stats?.posWins ?? 0
     const nominations = spotlight.stats?.timesNominated ?? 0
     subjectIds = [spotlight.id]
-    text = `BY THE NUMBERS · ${spotlight.name}'s public ledger: ${lohWins} ${plural(lohWins, 'LOH win')}, ${posWins} ${plural(posWins, 'Power of Safety win')}, and ${nominations} ${plural(nominations, 'trip', 'trips')} to the block as Day ${state.week} closes.`
+    text = `BY THE NUMBERS · Day ${state.week} check-in on ${spotlight.name}: ${lohWins} ${plural(lohWins, 'LOH win')}, ${posWins} ${plural(posWins, 'Power of Safety win')}, and ${nominations} ${plural(nominations, 'trip', 'trips')} to the block.`
   }
 
   return {
