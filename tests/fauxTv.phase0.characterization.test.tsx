@@ -129,13 +129,14 @@ describe('Faux TV Phase 0 characterization', () => {
   })
 
   it('preserves an explicit Force-to-TV authoring instruction', () => {
-    const forced = {
-      text: 'Manager-forced event',
-      type: 'game',
-      channels: ['mainLog'] as const,
-      meta: { forceOnTv: true },
-    }
-    expect(isVisibleOnTv(forced)).toBe(true)
+    expect(
+      isVisibleOnTv({
+        text: 'Manager-forced event',
+        type: 'game',
+        channels: ['mainLog'],
+        meta: { forceOnTv: true },
+      })
+    ).toBe(true)
   })
 
   it('queues exactly one weather bulletin behind an existing social_2 foreground beat', async () => {
