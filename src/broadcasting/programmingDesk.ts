@@ -1,5 +1,6 @@
 import type { GameState, TvEvent } from '../types'
 import type { SavedSeasonSnapshot } from '../store/saveStatePersistence'
+import { getBroadcastEditorialMetadata } from './broadcastEditorialPolicy'
 import type { FauxTvEditorialCandidate } from './seasonDesk'
 
 export const RESUME_RECAP_CATEGORY = 'programming_resume_recap'
@@ -51,19 +52,21 @@ function latestEvictee(state: Pick<GameState, 'players' | 'week'>): string | nul
 function latestPublicTwist(history: readonly TvEvent[], week: number): TvEvent | null {
   return (
     history
-      .filter(
-        (candidate) =>
+      .filter((candidate) => {
+        const editorial = getBroadcastEditorialMetadata(candidate)
+        return (
           candidate.type === 'twist' &&
           typeof candidate.text === 'string' &&
           candidate.text.trim().length > 0 &&
           candidate.meta?.week != null &&
           candidate.meta.week >= Math.max(1, week - 2) &&
-          candidate.meta?.editorial?.sensitivity !== 'sensitive' &&
-          candidate.meta?.editorial?.presentationMode !== 'log_only' &&
+          editorial?.sensitivity !== 'sensitive' &&
+          editorial?.presentationMode !== 'log_only' &&
           (candidate.meta?.major != null ||
             candidate.major != null ||
             candidate.meta?.broadcastLevel === 'critical')
-      )
+        )
+      })
       .slice()
       .sort((a, b) => b.timestamp - a.timestamp || a.id.localeCompare(b.id, 'en'))[0] ?? null
   )
@@ -80,7 +83,7 @@ function recapAlreadyShown(game: Pick<GameState, 'tvFeed'>, resumeKey: string): 
   return game.tvFeed.some(
     (event) =>
       event.meta?.resumeRecapKey === resumeKey ||
-      event.meta?.editorial?.storyKey === `resume:${resumeKey}`
+      getBroadcastEditorialMetadata(event)?.storyKey === `resume:${resumeKey}`
   )
 }
 
@@ -165,7 +168,7 @@ export function buildResumeRecapCandidate(
 function programmingRecentlyShown(history: readonly TvEvent[], week: number): boolean {
   return history.some(
     (event) =>
-      event.meta?.editorial?.category === BIG_EYE_PROGRAMMING_CATEGORY &&
+      getBroadcastEditorialMetadata(event)?.category === BIG_EYE_PROGRAMMING_CATEGORY &&
       typeof event.meta?.week === 'number' &&
       event.meta.week >= Math.max(1, week - 2)
   )
@@ -187,7 +190,13 @@ export function buildProgrammingCallbackCandidate(
   const compact = previousShock.text.replace(/\s+/g, ' ').trim()
   const callback = compact.length <= 100 ? compact : `${compact.slice(0, 97).trimEnd()}…`
   const storyKey = `programming:callback:${previousShock.id}`
-  if (state.tvFeed.some((event) => event.meta?.editorial?.storyKey === storyKey)) return null
+  if (
+    state.tvFeed.some(
+      (event) => getBroadcastEditorialMetadata(event)?.storyKey === storyKey
+    )
+  ) {
+    return null
+  }
 
   return {
     text: `THE BIG EYE CONTINUES · Previously: ${callback}`,
@@ -202,7 +211,7 @@ export function buildProgrammingCallbackCandidate(
 export function hasStrongOptionalStoryForWeek(history: readonly TvEvent[], week: number): boolean {
   return history.some((event) => {
     if (event.meta?.week !== week) return false
-    const category = event.meta?.editorial?.category
+    const category = getBroadcastEditorialMetadata(event)?.category
     return (
       category === RESUME_RECAP_CATEGORY ||
       category === BIG_EYE_PROGRAMMING_CATEGORY ||
