@@ -30,14 +30,17 @@ jobs:
           text = text.replace(
               "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\n",
               "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\nimport type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'\n",
+              1,
           )
           text = text.replace(
               "  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
               "  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */\n  editorial?: BroadcastEditorialMetadata\n  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
+              1,
           )
           text = text.replace(
               "  forceOnTv = true,\n  campaign?: BroadcastCampaign\n): BroadcastTemplate => ({",
               "  forceOnTv = true,\n  campaign?: BroadcastCampaign,\n  editorial?: BroadcastEditorialMetadata\n): BroadcastTemplate => ({",
+              1,
           )
           text = text.replace(
               "  forceOnTv,\n  campaign,\n  note,\n})",
@@ -54,7 +57,7 @@ jobs:
           }
           for old, new in replacements.items():
               if old not in text:
-                  raise SystemExit(f'missing catalog target: {old[:80]}')
+                  raise SystemExit(f'missing catalog target: {old[:100]}')
               text = text.replace(old, new, 1)
           catalog.write_text(text)
 
@@ -67,8 +70,18 @@ jobs:
           game.write_text(text.replace(old, new, 1))
           PY
       - run: npm ci
-      - name: Format scoped files
-        run: npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/store/gameSlice.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
+      - name: Format scoped P0 files
+        run: >-
+          npx prettier --write
+          src/broadcasting/broadcastTemplateCatalog.ts
+          src/broadcasting/broadcastEditorialPolicy.ts
+          src/services/activityService.ts
+          src/store/gameSlice.ts
+          tests/activityService.routing.test.ts
+          tests/broadcastEditorialPolicy.test.ts
+          tests/broadcastTemplateCatalog.test.ts
+          tests/fauxTv.p0.mechanicalCleanup.test.ts
+          tests/fauxTv.phase0.characterization.test.tsx
       - name: Focused Faux TV regressions
         run: >-
           npx vitest run
@@ -83,11 +96,11 @@ jobs:
           tests/activityService.routing.test.ts
       - run: npm run typecheck
       - run: npm run lint:ci
-      - name: Commit only if validation passed
+      - name: Commit validated P0 implementation and remove temporary workflow
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git rm .github/workflows/faux-tv-p0-apply.yml
-          git add src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/store/gameSlice.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
-          git commit -m "feat: implement Faux TV P0 editorial contract"
+          git add src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/services/activityService.ts src/store/gameSlice.ts tests/activityService.routing.test.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
+          git commit -m "feat: complete Faux TV P0 editorial contract"
           git push origin HEAD:codex/faux-tv-p0-editorial-contract
