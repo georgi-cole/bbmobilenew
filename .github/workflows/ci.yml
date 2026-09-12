@@ -60,12 +60,12 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
-    matrix:
-      include:
-        - label: Web production build
-          script: build
-        - label: Capacitor mobile-mode build
-          script: build:mobile
+      matrix:
+        include:
+          - label: Web production build
+            script: build
+          - label: Capacitor mobile-mode build
+            script: build:mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
