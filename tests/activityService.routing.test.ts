@@ -34,6 +34,33 @@ describe('service broadcast routing', () => {
     expect(isVisibleOnTv(event)).toBe(true)
   })
 
+  it('routes editorial log-only content to history/Game Log but not the TV viewport', () => {
+    const event = {
+      text: 'Mechanical ceremony setup',
+      type: 'game',
+      meta: {
+        editorial: { importance: 'required' as const, presentationMode: 'log_only' as const },
+      },
+    }
+
+    expect(isVisibleOnTv(event)).toBe(false)
+    expect(isVisibleInMainLog(event)).toBe(true)
+  })
+
+  it('lets Force to TV explicitly promote editorial log-only content', () => {
+    const event = {
+      text: 'Mechanical ceremony setup',
+      type: 'game',
+      meta: {
+        forceOnTv: true,
+        editorial: { importance: 'required' as const, presentationMode: 'log_only' as const },
+      },
+    }
+
+    expect(isVisibleOnTv(event)).toBe(true)
+    expect(isVisibleInMainLog(event)).toBe(true)
+  })
+
   it('does not classify other bracketed or system-looking messages out of the TV', () => {
     expect(isVisibleOnTv({ text: '[System] Autosave ready', type: 'game' })).toBe(true)
     expect(isVisibleOnTv({ text: '[Rules] A different authored rule', type: 'game' })).toBe(true)
