@@ -8,7 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  finish-p0:
+  isolate-presentation-regression:
+    if: ${{ !contains(github.event.head_commit.message, '[p0-report]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,43 +25,45 @@ jobs:
       - name: Format changed implementation files
         run: npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
       - run: npm ci
-      - name: Focused materialization and Force-to-TV regressions
-        run: npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
-      - name: Faux TV P0 characterization and policy suite
-        run: npx vitest run tests/fauxTv.p0.characterization.test.ts tests/fauxTv.p0.policy.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
-      - name: Relevant Faux TV presentation regressions
+      - name: Confirm focused P0 tests remain green
+        run: |
+          npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
+          npx vitest run tests/fauxTv.p0.characterization.test.ts tests/fauxTv.p0.policy.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
+      - name: Isolate first failing presentation regression
         shell: bash
         run: |
-          files=$(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' | sort -u | tr '\n' ' ')
-          echo "$files"
-          test -n "$files"
-          npx vitest run $files --reporter=verbose
-      - name: Full automated test suite
-        run: npx vitest run
-      - name: Test guard
-        run: npm run test:guard
-      - name: Formatting check
-        run: npm run format:check
-      - name: Lint without warnings
-        run: npm run lint:ci
-      - name: Type check
-        run: npm run typecheck
-      - name: Web production build
-        run: npm run build
-      - name: Capacitor mobile-mode build
-        run: npm run build:mobile
-      - name: Verify P0 scope and normal CI
-        shell: bash
-        run: |
-          git diff --exit-code origin/main -- .github/workflows/ci.yml
-          if grep -R "P0 TRACE" -n src tests; then exit 1; fi
-          git diff -- src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
-      - name: Commit validated P0 and remove temporary infrastructure
-        shell: bash
-        run: |
-          git rm .github/workflows/faux-tv-p0-apply.yml .github/scripts/faux_tv_p0_finish.py
-          git add src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+          set +e
+          mapfile -t files < <(
+            find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) |
+              grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' |
+              sort -u
+          )
+          test "${#files[@]}" -gt 0 || exit 2
+          rm -f .github/p0-presentation-report.json .github/p0-presentation-failure.txt
+          failed_file=''
+          for file in "${files[@]}"; do
+            echo "Testing $file"
+            npx vitest run "$file" --reporter=json --outputFile=.github/p0-presentation-report.json
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              failed_file="$file"
+              printf '%s\n' "$file" > .github/p0-presentation-failure.txt
+              break
+            fi
+          done
+          if [ -z "$failed_file" ]; then
+            joined=$(printf '%q ' "${files[@]}")
+            eval "npx vitest run $joined --reporter=json --outputFile=.github/p0-presentation-report.json"
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              printf '%s\n' 'BATCH_ONLY_FAILURE' > .github/p0-presentation-failure.txt
+            else
+              printf '%s\n' 'NO_FAILURE_REPRODUCED' > .github/p0-presentation-failure.txt
+            fi
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Finish Faux TV P0 presentation materialization"
+          git add .github/p0-presentation-report.json .github/p0-presentation-failure.txt
+          git commit -m "chore: capture P0 presentation failure [p0-report]"
           git push origin HEAD:codex/faux-tv-p0-editorial-contract
+          exit 0
