@@ -92,17 +92,20 @@
       filter: saturate(1) contrast(1) brightness(1);
       animation-timing-function: ease-out;
     }
+
     23.81% {
       transform: translate3d(0, calc(-6px / var(--seo-hero-scale, 1)), 0)
         scale(calc(1.02 / var(--seo-hero-scale, 1)));
       filter: saturate(0.9) contrast(1) brightness(0.95);
     }
+
     42.86% {
       transform: translate3d(0, calc(-6px / var(--seo-hero-scale, 1)), 0)
         scale(calc(1.02 / var(--seo-hero-scale, 1)));
       filter: saturate(0.9) contrast(1) brightness(0.95);
       animation-timing-function: ease-out;
     }
+
     66.67%,
     100% {
       transform: translate3d(0, 0, 0) scale(calc(1.04 / var(--seo-hero-scale, 1)));
@@ -134,15 +137,18 @@
       filter: saturate(1) contrast(1) brightness(1);
       animation-timing-function: ease-out;
     }
+
     23.81% {
       transform: translate3d(0, -6px, 0) scale(1.02);
       filter: saturate(0.9) contrast(1) brightness(0.95);
     }
+
     42.86% {
       transform: translate3d(0, -6px, 0) scale(1.02);
       filter: saturate(0.9) contrast(1) brightness(0.95);
       animation-timing-function: ease-out;
     }
+
     66.67%,
     100% {
       transform: translate3d(0, 0, 0) scale(1.04);
