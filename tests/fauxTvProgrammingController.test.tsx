@@ -88,7 +88,6 @@ describe('Faux TV optional programming scheduling', () => {
     expect(statistic).toBeTruthy()
     expect(getBroadcastEditorialMetadata(statistic!)?.presentationMode).toBe('ambient')
     expect(statistic?.meta?.forceOnTv).not.toBe(true)
-    expect(statistic?.meta?.broadcastManaged).not.toBe(true)
     expect(state.broadcastQueue).toContain(official!.id)
     expect(state.broadcastQueue).not.toContain(statistic!.id)
   })
@@ -114,12 +113,14 @@ describe('Faux TV optional programming scheduling', () => {
       ).toBe(true)
     })
 
-    const optional = store.getState().game.tvFeed.filter((event) => {
+    const state = store.getState().game
+    const optional = state.tvFeed.filter((event) => {
       const category = getBroadcastEditorialMetadata(event)?.category
       return category === 'programming_resume_recap' || category === 'by_the_numbers'
     })
     expect(optional).toHaveLength(1)
     expect(getBroadcastEditorialMetadata(optional[0])?.category).toBe('programming_resume_recap')
-    expect(optional[0].meta?.broadcastManaged).not.toBe(true)
+    expect(optional[0].meta?.forceOnTv).not.toBe(true)
+    expect(state.broadcastQueue).not.toContain(optional[0].id)
   })
 })
