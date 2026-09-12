@@ -182,11 +182,7 @@
 /* Stronger Sep 9-style cinematic focus. This is a static radial gradient whose
  * opacity is animated once; it does not add blur or per-frame layout/JS work. */
 .seo:not(.seo--return) .seo__hero::before {
-  background: radial-gradient(
-    ellipse at 50% 55%,
-    transparent 23%,
-    rgba(0, 0, 0, 0.84) 100%
-  );
+  background: radial-gradient(ellipse at 50% 55%, transparent 23%, rgba(0, 0, 0, 0.84) 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {
