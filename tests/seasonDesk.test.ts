@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameState, Player, TvEvent } from '../src/types'
 import {
   buildByTheNumbersCandidate,
+  buildDailyNumbersCandidate,
   hasByTheNumbersStoryForWeek,
 } from '../src/broadcasting/seasonDesk'
 
@@ -35,11 +36,15 @@ function storyEvent(storyKey: string, week = 4): TvEvent {
 
 function state(
   overrides: Partial<
-    Pick<GameState, 'phase' | 'players' | 'tvFeed' | 'lohId' | 'posWinnerId' | 'nomineeIds'>
+    Pick<
+      GameState,
+      'phase' | 'week' | 'players' | 'tvFeed' | 'lohId' | 'posWinnerId' | 'nomineeIds'
+    >
   > = {}
 ) {
   return {
     phase: 'loh_results' as const,
+    week: 4,
     players: [
       player('leo', 'Leo', { lohWins: 2, posWins: 0, timesNominated: 0 }),
       player('mia', 'Mia', { lohWins: 0, posWins: 0, timesNominated: 0 }),
@@ -158,6 +163,62 @@ describe('By the Numbers season desk', () => {
     expect(candidate?.text.toLowerCase()).not.toContain('villain')
     expect(candidate?.text.toLowerCase()).not.toContain('target')
     expect(candidate?.text.toLowerCase()).not.toContain('alliance')
+  })
+
+  it('waits until the end of Day 2 before offering the ordinary daily ledger', () => {
+    const ordinaryPlayers = [
+      player('leo', 'Leo', { lohWins: 1, posWins: 0, timesNominated: 1 }),
+      player('mia', 'Mia', { lohWins: 0, posWins: 1, timesNominated: 1 }),
+    ]
+
+    expect(
+      buildDailyNumbersCandidate(
+        state({ phase: 'week_end', week: 1, players: ordinaryPlayers, lohId: null })
+      )
+    ).toBeNull()
+    expect(
+      buildDailyNumbersCandidate(
+        state({ phase: 'social_2', week: 2, players: ordinaryPlayers, lohId: null })
+      )
+    ).toBeNull()
+
+    const candidate = buildDailyNumbersCandidate(
+      state({ phase: 'week_end', week: 2, players: ordinaryPlayers, lohId: null })
+    )
+    expect(candidate?.storyKey).toBe('stats:daily:2')
+    expect(candidate?.category).toBe('by_the_numbers')
+    expect(candidate?.text).toContain('Day 2')
+  })
+
+  it('uses public season state for a deterministic quiet-day fallback', () => {
+    const candidate = buildDailyNumbersCandidate(
+      state({
+        phase: 'week_end',
+        week: 4,
+        lohId: null,
+        players: [
+          player('leo', 'Leo', { lohWins: 1, posWins: 0, timesNominated: 2 }),
+          player('mia', 'Mia', { lohWins: 0, posWins: 1, timesNominated: 1 }),
+          player('zoe', 'Zoe', { lohWins: 0, posWins: 0, timesNominated: 1 }),
+        ],
+      })
+    )
+
+    expect(candidate?.storyKey).toBe('stats:daily:4')
+    expect(candidate?.text).toContain('nomination appearances')
+    expect(candidate?.text).toContain('3 remaining players')
+  })
+
+  it('does not add routine statistics after any By the Numbers story already aired that day', () => {
+    const candidate = buildDailyNumbersCandidate(
+      state({
+        phase: 'week_end',
+        week: 4,
+        tvFeed: [storyEvent('stats:loh:leo:2', 4)],
+      })
+    )
+
+    expect(candidate).toBeNull()
   })
 
   it('tracks the per-day statistical airtime marker from persisted tvFeed', () => {
