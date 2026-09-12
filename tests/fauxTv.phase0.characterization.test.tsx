@@ -91,7 +91,7 @@ describe('Faux TV Phase 0 characterization', () => {
     expect(state.broadcastQueue?.slice(0, 2)).toEqual([critical!.id, ordinary!.id])
   })
 
-  it('retains the final consumed minor only for its current phase', () => {
+  it('retains a consumed minor id while its event remains scoped to the original phase', () => {
     const store = makeStore()
     clearManagedQueue(store)
     const { phase, week } = store.getState().game
@@ -116,7 +116,10 @@ describe('Faux TV Phase 0 characterization', () => {
     expect(store.getState().game.lastPlainBroadcastEventId).toBe(event!.id)
 
     store.dispatch(setPhase('week_start'))
-    expect(store.getState().game.lastPlainBroadcastEventId).toBeNull()
+    const nextState = store.getState().game
+    expect(nextState.lastPlainBroadcastEventId).toBe(event!.id)
+    expect(event!.meta?.phase).toBe('season_start')
+    expect(event!.meta?.phase).not.toBe(nextState.phase)
   })
 
   it('preserves legacy saved-event visibility when editorial metadata is absent', () => {
