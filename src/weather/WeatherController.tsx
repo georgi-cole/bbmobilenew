@@ -6,6 +6,7 @@ import { resolveWeatherDay } from './weatherEngine'
 import { getDepressionShockWeatherCondition } from './depressionShockWeather'
 import { getWeatherRuntime, loadWeatherRuntime, type WeatherConditionId } from './weatherRuntime'
 import { formatSystemWeatherTemperature } from './weatherTemperatureUnit'
+import { classifyWeatherEditorial } from './weatherEditorial'
 import './WeatherEnhancements.css'
 
 const WEATHER_REFRESH_MS = 5 * 60 * 1000
@@ -39,10 +40,10 @@ const PRE_ELIMINATION_WEATHER_COPY: Record<WeatherConditionId, string> = {
 }
 
 /**
- * Loads remotely managed weather data and adds exactly one compact weather
- * bulletin during the existing late-day social_2 beat. Weather never steals
- * the viewport from the social message that introduces the beat: when one is
- * present, the player's next Play press deliberately reveals weather first.
+ * Loads remotely managed weather data and adds exactly one compact bulletin
+ * during social_2. Ordinary weather waits for the existing foreground beat to
+ * clear, then becomes ambient viewport copy without stealing another Play.
+ * Exceptional/campaign weather keeps the existing managed foreground handoff.
  */
 export default function WeatherController() {
   const dispatch = useAppDispatch()
@@ -82,6 +83,22 @@ export default function WeatherController() {
     [tvFeed, week]
   )
 
+  const weatherSnapshot = useMemo(() => {
+    const weatherDay = resolveWeatherDay(gameId, week)
+    const lifecycle = getDepressionShockLifecycleForGame(gameId, week)
+    const shockCondition = getDepressionShockWeatherCondition(gameId, week)
+    const displayedCondition = shockCondition ?? weatherDay.condition
+    const recoveryRainbow = lifecycle === 'recovery'
+    const editorial = classifyWeatherEditorial({
+      condition: displayedCondition,
+      temperatureC: weatherDay.temperatureC,
+      recoveryRainbow,
+      shockCondition,
+      phenomenon: weatherDay.phenomenon,
+    })
+    return { weatherDay, shockCondition, displayedCondition, recoveryRainbow, editorial }
+  }, [gameId, week])
+
   const publishWeatherBulletin = useCallback(() => {
     if (phase !== 'social_2' || weatherAlreadyExists) return
 
@@ -91,11 +108,8 @@ export default function WeatherController() {
 
     void loadWeatherRuntime()
 
-    const weatherDay = resolveWeatherDay(gameId, week)
-    const lifecycle = getDepressionShockLifecycleForGame(gameId, week)
-    const shockCondition = getDepressionShockWeatherCondition(gameId, week)
-    const displayedCondition = shockCondition ?? weatherDay.condition
-    const recoveryRainbow = lifecycle === 'recovery'
+    const { weatherDay, shockCondition, displayedCondition, recoveryRainbow, editorial } =
+      weatherSnapshot
     const configuredUnit = getWeatherRuntime()?.config.temperature.unit ?? 'auto'
     const temperature = formatSystemWeatherTemperature(weatherDay.temperatureC, configuredUnit)
     const narrative = recoveryRainbow
@@ -112,17 +126,22 @@ export default function WeatherController() {
         meta: {
           phase: 'social_2',
           week,
-          broadcastTemplateId: 'weather.daily-bulletin',
-          // Queue this behind the final-pitches beat before that beat is
-          // consumed. This makes the handoff atomic: Play moves directly
-          // from pitches to weather with no empty/fallback TV render.
           broadcastOrder: 20000,
           broadcastLevel: 'minor',
-          forceOnTv: true,
+          ...(editorial.forceOnTv ? { forceOnTv: true } : {}),
+          editorial: {
+            importance: 'optional',
+            presentationMode: editorial.presentationMode,
+            category: 'hub_conditions',
+            sensitivity: 'public',
+            storyKey: `weather:${gameId}:${week}`,
+            cooldownKey: `weather:day:${week}`,
+          },
           weatherBulletin: true,
           weatherBulletinDay: week,
           weatherCondition: displayedCondition,
           weatherTemperatureC: weatherDay.temperatureC,
+          weatherEditorialReason: editorial.reason,
           ...(recoveryRainbow || (!shockCondition && weatherDay.phenomenon === 'rainbow')
             ? { weatherPhenomenon: 'rainbow' }
             : {}),
@@ -130,12 +149,21 @@ export default function WeatherController() {
       })
     )
     pendingKeyRef.current = null
-  }, [dispatch, gameId, phase, weatherAlreadyExists, week])
+  }, [dispatch, gameId, phase, weatherAlreadyExists, weatherSnapshot, week])
 
   useEffect(() => {
     if (phase !== 'social_2') return
     if (weatherAlreadyExists || pendingKeyRef.current === `${gameId}:${week}`) return
-    if (currentSocialBeatExists || broadcastQueue.length === 0) {
+
+    if (weatherSnapshot.editorial.noteworthy) {
+      if (currentSocialBeatExists || broadcastQueue.length === 0) publishWeatherBulletin()
+      return
+    }
+
+    // Normal weather is deliberately nonblocking. Wait until the current
+    // foreground beat and queue are clear, then let the bulletin become the
+    // ambient TV fallback without intercepting the player's Play action.
+    if (!currentSocialBeatExists && broadcastQueue.length === 0) {
       publishWeatherBulletin()
     }
   }, [
@@ -145,27 +173,8 @@ export default function WeatherController() {
     phase,
     publishWeatherBulletin,
     weatherAlreadyExists,
+    weatherSnapshot.editorial.noteworthy,
     week,
-  ])
-
-  useEffect(() => {
-    if (phase !== 'social_2') return undefined
-    if (weatherAlreadyExists || !currentSocialBeatExists) return undefined
-
-    const handlePlay = (event: Event) => {
-      if (broadcastQueue.length > 0 || event.defaultPrevented) return
-      event.preventDefault()
-      publishWeatherBulletin()
-    }
-
-    window.addEventListener('ui:playPressed', handlePlay, { capture: true })
-    return () => window.removeEventListener('ui:playPressed', handlePlay, { capture: true })
-  }, [
-    broadcastQueue.length,
-    currentSocialBeatExists,
-    phase,
-    publishWeatherBulletin,
-    weatherAlreadyExists,
   ])
 
   return null

@@ -5,7 +5,9 @@ import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import gameReducer, { addTvEvent, consumeBroadcastEvent, setPhase } from '../src/store/gameSlice'
 import { isVisibleInMainLog, isVisibleOnTv } from '../src/services/activityService'
+import { getBroadcastEditorialMetadata } from '../src/broadcasting/broadcastEditorialPolicy'
 import WeatherController from '../src/weather/WeatherController'
+import { resolveWeatherDay } from '../src/weather/weatherEngine'
 
 vi.mock('../src/weather/weatherRuntime', () => ({
   loadWeatherRuntime: vi.fn(() => Promise.resolve()),
@@ -40,6 +42,24 @@ function clearManagedQueue(store: ReturnType<typeof makeStore>) {
   for (const id of store.getState().game.broadcastQueue ?? []) {
     store.dispatch(consumeBroadcastEvent(id))
   }
+}
+
+function addFinalPitches(store: ReturnType<typeof makeStore>, week: number) {
+  store.dispatch(
+    addTvEvent({
+      text: 'The nominees make their final pitches before the vote.',
+      type: 'social',
+      source: 'system',
+      channels: ['tv', 'mainLog'],
+      meta: {
+        phase: 'social_2',
+        week,
+        forceOnTv: true,
+        broadcastLevel: 'minor',
+        broadcastOrder: 100,
+      },
+    })
+  )
 }
 
 describe('Faux TV Phase 0 characterization', () => {
@@ -142,7 +162,7 @@ describe('Faux TV Phase 0 characterization', () => {
     ).toBe(true)
   })
 
-  it('queues exactly one weather bulletin behind an existing social_2 foreground beat', async () => {
+  it('waits for the foreground social beat, then emits ordinary weather as ambient nonblocking copy', async () => {
     const store = makeStore()
     clearManagedQueue(store)
     act(() => {
@@ -150,23 +170,56 @@ describe('Faux TV Phase 0 characterization', () => {
     })
     const { week } = store.getState().game
 
-    act(() => {
-      store.dispatch(
-        addTvEvent({
-          text: 'The nominees make their final pitches before the vote.',
-          type: 'social',
-          source: 'system',
-          channels: ['tv', 'mainLog'],
-          meta: {
-            phase: 'social_2',
-            week,
-            forceOnTv: true,
-            broadcastLevel: 'minor',
-            broadcastOrder: 100,
-          },
-        })
+    act(() => addFinalPitches(store, week))
+
+    render(
+      <Provider store={store}>
+        <WeatherController />
+      </Provider>
+    )
+
+    expect(
+      store.getState().game.tvFeed.filter((event) => event.meta?.weatherBulletin)
+    ).toHaveLength(0)
+
+    const pitch = store
+      .getState()
+      .game.tvFeed.find(
+        (event) => event.text === 'The nominees make their final pitches before the vote.'
       )
+    expect(pitch).toBeTruthy()
+
+    act(() => {
+      store.dispatch(consumeBroadcastEvent(pitch!.id))
     })
+
+    await waitFor(() => {
+      expect(
+        store.getState().game.tvFeed.filter((event) => event.meta?.weatherBulletin === true)
+      ).toHaveLength(1)
+    })
+
+    const state = store.getState().game
+    const weather = state.tvFeed.find((event) => event.meta?.weatherBulletin === true)
+    expect(weather).toBeTruthy()
+    expect(weather?.meta?.forceOnTv).not.toBe(true)
+    expect(getBroadcastEditorialMetadata(weather!)?.presentationMode).toBe('ambient')
+    expect(state.broadcastQueue).not.toContain(weather!.id)
+  })
+
+  it('keeps noteworthy storm weather eligible for the existing foreground handoff', async () => {
+    vi.mocked(resolveWeatherDay).mockReturnValueOnce({
+      condition: 'stormy',
+      temperatureC: 20,
+      phenomenon: null,
+    })
+    const store = makeStore()
+    clearManagedQueue(store)
+    act(() => {
+      store.dispatch(setPhase('social_2'))
+    })
+    const { week } = store.getState().game
+    act(() => addFinalPitches(store, week))
 
     render(
       <Provider store={store}>
@@ -175,10 +228,9 @@ describe('Faux TV Phase 0 characterization', () => {
     )
 
     await waitFor(() => {
-      const weather = store
-        .getState()
-        .game.tvFeed.filter((event) => event.meta?.weatherBulletin === true)
-      expect(weather).toHaveLength(1)
+      expect(
+        store.getState().game.tvFeed.filter((event) => event.meta?.weatherBulletin === true)
+      ).toHaveLength(1)
     })
 
     const state = store.getState().game
@@ -187,8 +239,8 @@ describe('Faux TV Phase 0 characterization', () => {
     )
     const weather = state.tvFeed.find((event) => event.meta?.weatherBulletin === true)
     expect(pitch).toBeTruthy()
-    expect(weather).toBeTruthy()
-    expect(weather?.meta?.broadcastOrder).toBe(20000)
+    expect(weather?.meta?.forceOnTv).toBe(true)
+    expect(getBroadcastEditorialMetadata(weather!)?.presentationMode).toBe('foreground')
     expect(state.broadcastQueue).toEqual([pitch!.id, weather!.id])
   })
 })

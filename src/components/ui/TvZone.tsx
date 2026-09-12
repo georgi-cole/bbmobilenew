@@ -53,6 +53,12 @@ import {
   isCurrentPhaseBroadcastEvent,
 } from './tvZoneBroadcastGuards'
 import { getPhaseCardTemplate } from '../../broadcasting/broadcastTemplateCatalog'
+import {
+  getBroadcastAnnouncementPresentation,
+  isBroadcastPlayThroughAnnouncementKey,
+  isBroadcastShockAnnouncementKey,
+  isRecognizedBroadcastMajorKey,
+} from '../../broadcasting/broadcastPresentationRegistry'
 import { getDailyAtmosphere, getDailyTransitionTitle } from '../../broadcasting/dailyMoodSystem'
 import {
   formatCycleAriaLabel,
@@ -101,316 +107,6 @@ const normalizeAnnouncementCopy = (announcement: Announcement | null): Announcem
     : null
 const dismissedCriticalBroadcastEventIds = new Set<string>()
 
-// ─── Announcement configuration ──────────────────────────────────────────────
-
-/**
- * Recognised major-key identifiers that can trigger an inline TV announcement
- * via an explicit event.meta.major or ev.major field.
- * Note: week_start is intentionally excluded — that phase shows normal text only
- * (no overlay).
- */
-const MAJOR_KEYS = new Set([
-  'nomination_ceremony',
-  'veto_ceremony',
-  'live_eviction',
-  'final4',
-  'final3_announcement',
-  'final_hoh',
-  'jury',
-  'battle_back',
-  'double_eviction',
-  'vox_double_eviction',
-  'vip_veto',
-  'diamond_pov',
-  'coup_detat',
-  'spotlight_veto',
-  'democracia',
-  'cupid_arrow',
-  'cupid_arrow_broken',
-  'vox_populi',
-  'twist',
-  'loh_comp_announcement',
-  'pos_comp_announcement',
-  'custom_broadcast',
-  'custom_major',
-  'custom_critical',
-  'depression_shock_start',
-  'depression_shock_day_2',
-  'depression_shock_chocolates',
-  'depression_shock_melancholy',
-])
-
-/** Maps a major key to its announcement title and subtitle. */
-const ANNOUNCEMENT_META: Record<
-  string,
-  { title: string; subtitle: string; isLive: boolean; autoDismissMs: number | null }
-> = {
-  custom_broadcast: {
-    // i18n-ignore: Canonical in-world broadcast branding
-    title: 'BIG EYE BROADCAST',
-    subtitle: '',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  custom_major: {
-    // i18n-ignore: Canonical in-world broadcast branding
-    title: 'BIG EYE BROADCAST',
-    subtitle: '',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  custom_critical: {
-    // i18n-ignore: Canonical in-world broadcast branding
-    title: 'SHOCK ANNOUNCEMENT',
-    subtitle: '',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  depression_shock_start: {
-    title: 'Depression Shock',
-    subtitle:
-      'A storm has settled over the hub. The rain will not let up, and a deep melancholy is changing how the players think, speak, and play.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  depression_shock_day_2: {
-    title: 'The colour drains away',
-    subtitle:
-      'The storm has deepened. Today the hub loses most of its colour. Every familiar room feels colder, flatter, and farther away.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  depression_shock_chocolates: {
-    title: 'A small comfort',
-    subtitle:
-      'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  depression_shock_melancholy: {
-    title: 'Under the weather',
-    subtitle: 'The storm continues to press against every room and every conversation.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  depression_shock_end: {
-    title: 'The sun returns',
-    subtitle:
-      'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  nomination_ceremony: {
-    title: 'Nomination Ceremony',
-    subtitle: 'Two players are nominated for elimination.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  veto_ceremony: {
-    title: 'Safety Ceremony',
-    subtitle: 'Will the Power of Safety be used?',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  live_eviction: {
-    title: 'Live Elimination',
-    subtitle: 'The hub has spoken. One player’s journey ends tonight.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  final4: {
-    title: 'Final 4 — Safety Ceremony',
-    subtitle: 'Only four players remain.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  final3_announcement: {
-    title: 'The Finale',
-    subtitle: 'Three players remain — the three-part Final LOH begins.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  final_hoh: {
-    title: 'Final LOH Decision',
-    subtitle: 'The most powerful decision of the game.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  jury: {
-    title: 'Tribunal Votes',
-    subtitle: 'The Tribunal decides the winner.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  battle_back: {
-    title: 'Back 2 the Game',
-    subtitle:
-      'Tribunal members will face off. Only one can win the right to return to the hub. Press Play to begin the showdown.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  double_eviction: {
-    title: 'Double Elimination!',
-    subtitle: 'Tonight the LOH nominates three. Two will be eliminated.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_double_eviction: {
-    title: 'Double Elimination!',
-    subtitle: 'At least three nominees face the public. The audience will eliminate two players.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  cupid_arrow: {
-    title: "Cupid's Arrow",
-    subtitle: 'The hub is bound into eight pairs. Every triumph, vote, danger, and fall is shared.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  cupid_arrow_broken: {
-    title: "Cupid's Spell Is Broken",
-    subtitle: 'Four pairs have fallen. Cupid leaves the hub, and every survivor now plays alone.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_populi: {
-    title: 'VOX POPULI',
-    subtitle:
-      'Players nominate in secret. The audience decides who leaves; Public Mode reveals the pulse.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_immunity_comp: {
-    title: 'Immunity Competition',
-    subtitle: 'The winner is safe today. The last-place finisher goes straight onto the block.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_final4_immunity_comp: {
-    title: 'Final 4 Competition',
-    subtitle:
-      'No immunity is awarded today. Last place begins on the block; the other three each cast one secret vote.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_nominations: {
-    title: 'Secret Nominations',
-    subtitle: 'Every player privately names two people. Cutoff ties expand the block.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_safety_ceremony: {
-    title: 'Power of Safety',
-    subtitle:
-      'The holder may save a nominee. The original secret-ballot ranking decides whether a backup is needed.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_public_vote: {
-    title: 'The Public Decides',
-    subtitle: 'The audience is voting to eliminate. The players do not vote.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_final3: {
-    title: 'Final 3',
-    subtitle: 'One player will win immunity. The audience will decide third place.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_populi_final_three_vote: {
-    title: 'The Final Three Verdict',
-    subtitle: 'One finalist is immune. The audience is about to end one of the other two journeys.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_populi_final_two: {
-    title: 'The Final Two',
-    subtitle: 'Two journeys remain. The audience will choose the champion.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_populi_final_vote: {
-    title: 'The Final Audience Vote',
-    subtitle: 'The last vote of the season is live. One of these finalists will win The Big Eye.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_final3_interlude: {
-    title: 'The Final Three',
-    subtitle:
-      'The hub falls quiet. Every bond, promise, and rivalry now carries final-night weight.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_final3_result: {
-    title: 'Final Three Result',
-    subtitle: 'The final immunity journey takes another turn.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vox_populi_finale_ready: {
-    title: 'Ready for the Finale?',
-    subtitle: 'The final two have made their case. Press Play to open the final audience vote.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  vip_veto: {
-    title: 'Double Trouble!',
-    subtitle: 'The holder may use the power twice this ceremony. 👑',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  diamond_pov: {
-    title: 'Halo Exchange!',
-    subtitle: 'The holder may name the backup nominee. 😇',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  coup_detat: {
-    title: 'Detox!',
-    subtitle: 'Both nominees cleared. Holder names two backup nominees. ⚡',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  spotlight_veto: {
-    title: 'Force Majeure!',
-    subtitle: 'The holder is forced to use the power this ceremony. ✨',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  democracia: {
-    title: 'DEMOCRACIA!',
-    subtitle: 'The hub will elect its new leader by secret vote.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  tribunal_phase: {
-    title: 'Welcome to the Tribunal',
-    subtitle: 'The game is over for you, but your final vote will decide who deserves the crown.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  twist: {
-    title: 'Shock Alert!',
-    subtitle: 'The Big Eye has a surprise.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  loh_comp_announcement: {
-    title: 'LOH Competition',
-    subtitle: 'Control is up for winning — who will become Leader of the Hub?',
-    isLive: true,
-    autoDismissMs: null,
-  },
-  pos_comp_announcement: {
-    title: 'Power of Safety',
-    subtitle: 'The winner can protect a nominee and force the block to change.',
-    isLive: true,
-    autoDismissMs: null,
-  },
-}
-
 // i18n-ignore: Canonical in-world winner announcement copy
 const AUDIENCE_WINNER_SUBTITLE = 'The audience has spoken. The season champion is official.'
 // i18n-ignore: Canonical in-world winner announcement copy
@@ -428,7 +124,7 @@ function extractMajorKey(ev: TvEvent): string | null {
   // Legacy Battle Back events may still be tagged as a generic twist (or missing a major).
   if ((key === 'twist' || !key) && hasBattleBackCopy) return 'battle_back'
   if (!key) return null
-  return MAJOR_KEYS.has(key) ? key : null
+  return isRecognizedBroadcastMajorKey(key) ? key : null
 }
 
 function isSeasonStartExpansionActivation(event: TvEvent | null | undefined): boolean {
@@ -444,7 +140,7 @@ function buildAnnouncement(
   phase?: Phase,
   overrides?: Record<string, BroadcastOverride>
 ): Announcement {
-  const meta = ANNOUNCEMENT_META[key] ?? {
+  const meta = getBroadcastAnnouncementPresentation(key) ?? {
     title: key.replace(/_/g, ' ').toUpperCase(),
     subtitle: ev.text,
     isLive: false,
@@ -534,25 +230,6 @@ const LIVE_VOTE_CUTOUT_RADIUS = 18
 const DETOX_MESSAGE_HOLD_MS = 2600
 const VOTE_RESULTS_POST_REVEAL_MS = 1000
 const VOTE_RESULTS_OUTCOME_MS = 3000
-const PLAY_THROUGH_ANNOUNCEMENT_KEYS = new Set([
-  // Safety shocks must hand control back to the central Play button after
-  // their fullscreen intro; otherwise the game can remain parked on the
-  // preceding results phase.
-  'coup_detat',
-  'vip_veto',
-  'diamond_pov',
-  'spotlight_veto',
-  'double_eviction',
-  'vox_double_eviction',
-  'democracia',
-  'vox_populi',
-  'vox_final3',
-  'vox_final3_interlude',
-  'vox_final3_result',
-  'vox_populi_final_three_vote',
-  'vox_populi_final_two',
-])
-
 const LEGACY_DAY_END_EVENT = /^Day \d+ has come to an end\. A new day begins soon…(?: ✨)?$/
 const LEGACY_DAY_START_EVENT =
   /^Day \d+ (?:has begun\. Get ready\.|begins! 🏠 It's time for the LOH competition\.)$/
@@ -585,36 +262,6 @@ function compactPhaseLabel(phase: Phase): string {
   }
   return labels[phase] ?? formatPhaseLabel(phase)
 }
-
-/**
- * Announcement keys that receive the cinematic fullscreen shock sequence:
- *   1. Fullscreen stinger (ShockIntroOverlay)
- *   2. Faux-TV announcement card
- *   3. Info-button spotlight
- */
-const SHOCK_ANNOUNCEMENT_KEYS = new Set([
-  'double_eviction',
-  'vox_double_eviction',
-  'vip_veto',
-  'diamond_pov',
-  'coup_detat',
-  'spotlight_veto',
-  'battle_back',
-  'battle_back_shock',
-  'battle_back_rules',
-  'battle_back_challenge',
-  'democracia',
-  'cupid_arrow',
-  'cupid_arrow_broken',
-  'vox_populi',
-  'depression_shock_start',
-  'depression_shock_day_2',
-  // These keys can be configured as fullscreen shocks by the broadcast
-  // manager. They must use the same stinger → Faux TV → spotlight sequence
-  // as Double Elimination, rather than falling through to a plain card.
-  'twist',
-  'custom_critical',
-])
 
 type QueuedShockAnnouncement = {
   announcement: Announcement
@@ -1151,7 +798,7 @@ export default function TvZone(props: TvZoneProps) {
     if (previousLatestId === null || latestVisibleId === previousLatestId) {
       if (previousLatestId === null && latestVisibleId) {
         const initialKey = extractMajorKey(tvVisibleFeed[0])
-        if (initialKey && SHOCK_ANNOUNCEMENT_KEYS.has(initialKey)) {
+        if (initialKey && isBroadcastShockAnnouncementKey(initialKey)) {
           seenShockEventIdsRef.current.add(latestVisibleId)
         }
       }
@@ -1164,7 +811,7 @@ export default function TvZone(props: TvZoneProps) {
     const queued = [...newEvents].reverse().flatMap((event) => {
       if (event.meta?.broadcastManaged === true && event.meta?.forceOnTv !== true) return []
       const key = extractMajorKey(event)
-      if (!key || !SHOCK_ANNOUNCEMENT_KEYS.has(key)) return []
+      if (!key || !isBroadcastShockAnnouncementKey(key)) return []
       // Phase-card branches used to emit a second legacy major event beside
       // the card. The manager-controlled card is now the sole presentation
       // source, so do not also enqueue that legacy event as another shock.
@@ -1230,7 +877,7 @@ export default function TvZone(props: TvZoneProps) {
     (managedEventAnnouncement
       ? isSeasonStartExpansionActivation(eventAnnouncementSource) ||
         queuedBroadcastLevel === 'critical'
-      : SHOCK_ANNOUNCEMENT_KEYS.has(eventAnnouncement.key))
+      : isBroadcastShockAnnouncementKey(eventAnnouncement.key))
 
   // A shock event must finish its fullscreen → Faux TV → info spotlight sequence
   // before a simultaneous phase card (for example the first LOH competition)
@@ -1254,7 +901,7 @@ export default function TvZone(props: TvZoneProps) {
     (activeAnnouncement === managedEventAnnouncement
       ? isSeasonStartExpansionActivation(eventAnnouncementSource) ||
         queuedBroadcastLevel === 'critical'
-      : SHOCK_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key))
+      : isBroadcastShockAnnouncementKey(activeAnnouncement.key))
   const audiencePreviewRevealActive = Boolean(props.audiencePreviewReveal)
   const showInlineAnnouncement =
     winnerBroadcast == null &&
@@ -1531,7 +1178,7 @@ export default function TvZone(props: TvZoneProps) {
   // - Non-shock  → clear both phases (handles dismissal mid-sequence).
   useEffect(() => {
     const key = activeAnnouncement?.key ?? null
-    const isShock = key !== null && SHOCK_ANNOUNCEMENT_KEYS.has(key)
+    const isShock = key !== null && isBroadcastShockAnnouncementKey(key)
     startTransition(() => {
       if (isShock) {
         setShockIntroActive(true)
@@ -1681,7 +1328,7 @@ export default function TvZone(props: TvZoneProps) {
           }, 2200)
           return
         }
-        if (!PLAY_THROUGH_ANNOUNCEMENT_KEYS.has(activeAnnouncement.key)) {
+        if (!isBroadcastPlayThroughAnnouncementKey(activeAnnouncement.key)) {
           event.preventDefault()
         }
         if (activeAnnouncement.key === 'depression_shock_chocolates') {

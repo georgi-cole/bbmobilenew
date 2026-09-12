@@ -27,6 +27,7 @@ import WeatherController from './weather/WeatherController'
 import WeatherBulletinOverlay from './weather/WeatherBulletinOverlay'
 import WeatherRosterReveal from './weather/WeatherRosterReveal'
 import SeasonStartOnboardingController from './onboarding/SeasonStartOnboardingController'
+import FauxTvProgrammingController from './broadcasting/FauxTvProgrammingController'
 import { I18nProvider } from './i18n'
 import './styles/gameCopyPolish.css'
 import './styles/performanceOverrides.css'
@@ -69,6 +70,7 @@ export default function App() {
     <Provider store={store}>
       <I18nProvider>
         <LiveOpsController />
+        <FauxTvProgrammingController />
         <WeatherController />
         <WeatherBulletinOverlay />
         <WeatherRosterReveal />
