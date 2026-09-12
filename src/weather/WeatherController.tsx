@@ -97,7 +97,7 @@ export default function WeatherController() {
       phenomenon: weatherDay.phenomenon,
     })
     return { weatherDay, shockCondition, displayedCondition, recoveryRainbow, editorial }
-  }, [gameId, phase, week])
+  }, [gameId, week])
 
   const publishWeatherBulletin = useCallback(() => {
     if (phase !== 'social_2' || weatherAlreadyExists) return
