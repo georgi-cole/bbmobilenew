@@ -256,7 +256,8 @@ export function buildDailyNumbersCandidate(
     text = `BY THE NUMBERS · The season has now produced ${totals.nominations} ${plural(totals.nominations, 'nomination appearance')} across ${active.length} remaining players.`
   } else {
     const spotlightPool = rankedActive.slice(0, 3)
-    const spotlight = spotlightPool[(state.week - DAILY_NUMBERS_MIN_DAY) % spotlightPool.length].player
+    const spotlight =
+      spotlightPool[(state.week - DAILY_NUMBERS_MIN_DAY) % spotlightPool.length].player
     const lohWins = spotlight.stats?.lohWins ?? 0
     const posWins = spotlight.stats?.posWins ?? 0
     const nominations = spotlight.stats?.timesNominated ?? 0

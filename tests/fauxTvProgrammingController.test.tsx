@@ -3,11 +3,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { act, render, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import gameReducer, {
-  addTvEvent,
-  advance,
-  createInitialGameState,
-} from '../src/store/gameSlice'
+import gameReducer, { addTvEvent, advance, createInitialGameState } from '../src/store/gameSlice'
 import FauxTvProgrammingController from '../src/broadcasting/FauxTvProgrammingController'
 import { getBroadcastEditorialMetadata } from '../src/broadcasting/broadcastEditorialPolicy'
 import {
@@ -183,7 +179,9 @@ describe('Faux TV optional programming scheduling', () => {
 
     const optional = store
       .getState()
-      .game.tvFeed.filter((event) => getBroadcastEditorialMetadata(event)?.importance === 'optional')
+      .game.tvFeed.filter(
+        (event) => getBroadcastEditorialMetadata(event)?.importance === 'optional'
+      )
     expect(optional).toHaveLength(1)
     expect(getBroadcastEditorialMetadata(optional[0])?.presentationMode).toBe('ambient')
   })
