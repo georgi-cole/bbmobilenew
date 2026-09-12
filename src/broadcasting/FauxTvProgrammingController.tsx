@@ -9,7 +9,9 @@ import {
 } from './seasonDesk'
 import {
   buildProgrammingCallbackCandidate,
+  buildResumeRecapFromGame,
   hasStrongOptionalStoryForWeek,
+  RESUME_RECAP_CATEGORY,
 } from './programmingDesk'
 
 /**
@@ -23,6 +25,10 @@ export default function FauxTvProgrammingController() {
 
   const candidate = useMemo(() => {
     if (game.mode === 'survival') return null
+
+    const resume = buildResumeRecapFromGame(game, game.lastPlayedAt)
+    if (resume) return resume
+
     if (hasStrongOptionalStoryForWeek(game.tvFeed, game.week)) return null
 
     const stats = hasByTheNumbersStoryForWeek(game.tvFeed, game.week)
@@ -37,6 +43,7 @@ export default function FauxTvProgrammingController() {
     if (!candidate) return
 
     const now = Date.now()
+    const isResumeRecap = candidate.category === RESUME_RECAP_CATEGORY
     const preview: TvEvent = {
       id: `editorial-preview:${candidate.storyKey}`,
       text: candidate.text,
@@ -72,7 +79,9 @@ export default function FauxTvProgrammingController() {
       preview,
       sameDayStrongOptional,
       {
-        maxOptionalStories: 1,
+        // Resume recaps are a special reorientation context and may run even
+        // if an older optional story already aired earlier in the same game day.
+        maxOptionalStories: isResumeRecap ? undefined : 1,
         categoryBudgets: {
           by_the_numbers: 1,
           programming_resume_recap: 1,
@@ -83,6 +92,7 @@ export default function FauxTvProgrammingController() {
     )
     if (!decision.eligible) return
 
+    const resumeKey = 'resumeKey' in candidate ? candidate.resumeKey : undefined
     dispatch(
       addTvEvent({
         text: candidate.text,
@@ -93,6 +103,7 @@ export default function FauxTvProgrammingController() {
           phase: game.phase,
           week: game.week,
           broadcastLevel: 'minor',
+          ...(resumeKey ? { resumeRecapKey: resumeKey } : {}),
           editorial: {
             importance: 'optional',
             presentationMode: 'ambient',
