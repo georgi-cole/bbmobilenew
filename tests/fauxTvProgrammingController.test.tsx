@@ -3,7 +3,12 @@ import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { act, render, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import gameReducer, { addTvEvent, advance, createInitialGameState } from '../src/store/gameSlice'
+import gameReducer, {
+  addTvEvent,
+  advance,
+  completeMinigame,
+  createInitialGameState,
+} from '../src/store/gameSlice'
 import FauxTvProgrammingController from '../src/broadcasting/FauxTvProgrammingController'
 import { getBroadcastEditorialMetadata } from '../src/broadcasting/broadcastEditorialPolicy'
 import {
@@ -301,6 +306,9 @@ describe('Faux TV optional programming scheduling', () => {
     for (let step = 0; step < 250; step += 1) {
       await act(async () => {
         store.dispatch(advance())
+        if (store.getState().game.pendingMinigame) {
+          store.dispatch(completeMinigame({ humanScore: 0 }))
+        }
         await Promise.resolve()
       })
 
