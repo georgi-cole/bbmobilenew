@@ -187,7 +187,7 @@ describe('Faux TV optional programming scheduling', () => {
 
   it('uses a meaningful resume recap without forcing additional filler', async () => {
     const oldTimestamp = Date.now() - RESUME_RECAP_MIN_ABSENCE_MS - 60_000
-    const store = makeStore({ lastPlayedAt: oldTimestamp, lohId: null, phase: 'social_2' as const })
+    const store = makeStore({ lastPlayedAt: oldTimestamp, phase: 'social_1' as const })
 
     render(
       <Provider store={store}>
