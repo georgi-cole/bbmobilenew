@@ -118,7 +118,9 @@ describe('Faux TV optional programming scheduling', () => {
 
     const statistic = store
       .getState()
-      .game.tvFeed.find((event) => getBroadcastEditorialMetadata(event)?.category === 'by_the_numbers')
+      .game.tvFeed.find(
+        (event) => getBroadcastEditorialMetadata(event)?.category === 'by_the_numbers'
+      )
     expect(getBroadcastEditorialMetadata(statistic!)?.presentationMode).toBe('ambient')
     expect(store.getState().game.broadcastQueue).toContain(official!.id)
     expect(store.getState().game.broadcastQueue).not.toContain(statistic!.id)
@@ -185,7 +187,7 @@ describe('Faux TV optional programming scheduling', () => {
 
   it('uses a meaningful resume recap without forcing additional filler', async () => {
     const oldTimestamp = Date.now() - RESUME_RECAP_MIN_ABSENCE_MS - 60_000
-    const store = makeStore({ lastPlayedAt: oldTimestamp, lohId: null, phase: 'social_1' as const })
+    const store = makeStore({ lastPlayedAt: oldTimestamp, lohId: null, phase: 'social_2' as const })
 
     render(
       <Provider store={store}>
