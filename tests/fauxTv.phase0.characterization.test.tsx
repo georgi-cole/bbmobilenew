@@ -109,9 +109,7 @@ describe('Faux TV Phase 0 characterization', () => {
         },
       })
     )
-    const event = store
-      .getState()
-      .game.tvFeed.find((item) => item.text === 'Retained plain beat')
+    const event = store.getState().game.tvFeed.find((item) => item.text === 'Retained plain beat')
     expect(event).toBeTruthy()
 
     store.dispatch(consumeBroadcastEvent(event!.id))
