@@ -48,7 +48,10 @@ function twistEvent(
 
 function game(
   overrides: Partial<
-    Pick<GameState, 'phase' | 'week' | 'players' | 'tvFeed' | 'nomineeIds' | 'lohId' | 'posWinnerId'>
+    Pick<
+      GameState,
+      'phase' | 'week' | 'players' | 'tvFeed' | 'nomineeIds' | 'lohId' | 'posWinnerId'
+    >
   > = {}
 ) {
   return {

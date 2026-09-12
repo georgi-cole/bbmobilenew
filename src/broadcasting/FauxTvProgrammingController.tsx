@@ -6,10 +6,7 @@ import {
   evaluateBroadcastEditorialPolicy,
   getBroadcastEditorialMetadata,
 } from './broadcastEditorialPolicy'
-import {
-  buildByTheNumbersCandidate,
-  hasByTheNumbersStoryForWeek,
-} from './seasonDesk'
+import { buildByTheNumbersCandidate, hasByTheNumbersStoryForWeek } from './seasonDesk'
 import {
   buildProgrammingCallbackCandidate,
   buildResumeRecapFromGame,

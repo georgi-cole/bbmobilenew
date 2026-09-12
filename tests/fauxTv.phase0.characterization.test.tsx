@@ -178,11 +178,15 @@ describe('Faux TV Phase 0 characterization', () => {
       </Provider>
     )
 
-    expect(store.getState().game.tvFeed.filter((event) => event.meta?.weatherBulletin)).toHaveLength(0)
+    expect(
+      store.getState().game.tvFeed.filter((event) => event.meta?.weatherBulletin)
+    ).toHaveLength(0)
 
     const pitch = store
       .getState()
-      .game.tvFeed.find((event) => event.text === 'The nominees make their final pitches before the vote.')
+      .game.tvFeed.find(
+        (event) => event.text === 'The nominees make their final pitches before the vote.'
+      )
     expect(pitch).toBeTruthy()
 
     act(() => {

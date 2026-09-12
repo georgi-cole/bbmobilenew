@@ -111,9 +111,7 @@ describe('By the Numbers season desk', () => {
   })
 
   it('suppresses an exact milestone that already aired', () => {
-    const candidate = buildByTheNumbersCandidate(
-      state({ tvFeed: [storyEvent('stats:loh:leo:2')] })
-    )
+    const candidate = buildByTheNumbersCandidate(state({ tvFeed: [storyEvent('stats:loh:leo:2')] }))
 
     expect(candidate).toBeNull()
   })
@@ -143,9 +141,7 @@ describe('By the Numbers season desk', () => {
       state({
         phase: 'week_end',
         lohId: null,
-        players: [
-          player('leo', 'Leo', { lohWins: 0, posWins: 0, timesNominated: 3 }, 'evicted'),
-        ],
+        players: [player('leo', 'Leo', { lohWins: 0, posWins: 0, timesNominated: 3 }, 'evicted')],
       })
     )
 

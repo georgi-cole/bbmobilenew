@@ -169,10 +169,7 @@ function pickBest(candidates: FauxTvEditorialCandidate[]): FauxTvEditorialCandid
  * relationship, intelligence, targeting, personality or other hidden AI state.
  */
 export function buildByTheNumbersCandidate(
-  state: Pick<
-    GameState,
-    'phase' | 'players' | 'tvFeed' | 'lohId' | 'posWinnerId' | 'nomineeIds'
-  >
+  state: Pick<GameState, 'phase' | 'players' | 'tvFeed' | 'lohId' | 'posWinnerId' | 'nomineeIds'>
 ): FauxTvEditorialCandidate | null {
   const candidates: FauxTvEditorialCandidate[] = []
 

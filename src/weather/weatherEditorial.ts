@@ -13,12 +13,7 @@ export interface WeatherEditorialDecision {
   noteworthy: boolean
   presentationMode: BroadcastPresentationMode
   forceOnTv: boolean
-  reason:
-    | 'ambient'
-    | 'campaign_weather'
-    | 'rainbow'
-    | 'severe_condition'
-    | 'temperature_extreme'
+  reason: 'ambient' | 'campaign_weather' | 'rainbow' | 'severe_condition' | 'temperature_extreme'
 }
 
 const SEVERE_CONDITIONS = new Set<WeatherConditionId>([

@@ -33,7 +33,10 @@ function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
 }
 
-function getName(state: Pick<GameState, 'players'>, playerId: string | null | undefined): string | null {
+function getName(
+  state: Pick<GameState, 'players'>,
+  playerId: string | null | undefined
+): string | null {
   if (!playerId) return null
   return state.players.find((player) => player.id === playerId)?.name ?? null
 }
@@ -43,8 +46,7 @@ function latestEvictee(state: Pick<GameState, 'players' | 'week'>): string | nul
     .filter((player) => player.evictedAtWeek != null && player.evictedAtWeek <= state.week)
     .slice()
     .sort(
-      (a, b) =>
-        (b.evictedAtWeek ?? -1) - (a.evictedAtWeek ?? -1) || a.id.localeCompare(b.id, 'en')
+      (a, b) => (b.evictedAtWeek ?? -1) - (a.evictedAtWeek ?? -1) || a.id.localeCompare(b.id, 'en')
     )[0]
   return latest?.name ?? null
 }
@@ -190,11 +192,7 @@ export function buildProgrammingCallbackCandidate(
   const compact = previousShock.text.replace(/\s+/g, ' ').trim()
   const callback = compact.length <= 100 ? compact : `${compact.slice(0, 97).trimEnd()}…`
   const storyKey = `programming:callback:${previousShock.id}`
-  if (
-    state.tvFeed.some(
-      (event) => getBroadcastEditorialMetadata(event)?.storyKey === storyKey
-    )
-  ) {
+  if (state.tvFeed.some((event) => getBroadcastEditorialMetadata(event)?.storyKey === storyKey)) {
     return null
   }
 

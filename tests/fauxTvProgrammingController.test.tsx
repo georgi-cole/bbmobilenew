@@ -107,8 +107,7 @@ describe('Faux TV optional programming scheduling', () => {
         store
           .getState()
           .game.tvFeed.some(
-            (event) =>
-              getBroadcastEditorialMetadata(event)?.category === 'programming_resume_recap'
+            (event) => getBroadcastEditorialMetadata(event)?.category === 'programming_resume_recap'
           )
       ).toBe(true)
     })
