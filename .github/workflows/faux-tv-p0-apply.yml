@@ -8,8 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  finish-p0:
-    if: ${{ !contains(github.event.head_commit.message, '[p0-final]') }}
+  isolate-final-presentation-failure:
+    if: ${{ !contains(github.event.head_commit.message, '[p0-report-3]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,97 +21,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-
-      - name: Apply narrow P0 candidate and remove temporary artifacts
-        shell: bash
+      - name: Apply exact narrow P0 candidate
         run: |
           python .github/scripts/faux_tv_p0_finish.py
           python .github/scripts/faux_tv_p0_add_test.py
           npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
-          git rm -f .github/workflows/faux-tv-p0-apply.yml .github/scripts/faux_tv_p0_finish.py .github/scripts/faux_tv_p0_add_test.py
-          rm -f .github/p0-presentation-report.json .github/p0-presentation-failure.txt .github/p0-tvzone-comparison.txt .github/p0-second-presentation-failure.txt .github/p0-second-presentation-report.json .github/p0-broadcast-manager-comparison.txt
-          git add -u .github
-
-      - name: Focused materialization and Force-to-TV tests
-        run: npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
-
-      - name: Faux TV P0 characterization and policy
-        run: npx vitest run tests/fauxTv.p0.characterization.test.ts tests/fauxTv.p0.policy.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
-
-      - name: Baseline parity for known pre-existing presentation failures
+      - name: Isolate failure
         shell: bash
         run: |
           set +e
-          npx vitest run src/components/ui/__tests__/TvZone.announcement.test.tsx --reporter=json --outputFile=/tmp/tvzone-p0.json
-          npx vitest run tests/broadcastManager.reducer.test.ts --reporter=json --outputFile=/tmp/bm-p0.json
-          git worktree add --detach /tmp/p0-main origin/main
-          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/p0-main/node_modules
-          cd /tmp/p0-main
-          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run src/components/ui/__tests__/TvZone.announcement.test.tsx --reporter=json --outputFile=/tmp/tvzone-main.json
-          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/broadcastManager.reducer.test.ts --reporter=json --outputFile=/tmp/bm-main.json
-          cd "$GITHUB_WORKSPACE"
-          set -e
-          python -c "import json; from pathlib import Path; f=lambda p:(lambda d:(d.get('numTotalTests'),[a.get('fullName',a.get('title','')) for s in d.get('testResults',[]) for a in s.get('assertionResults',[]) if a.get('status')=='failed']))(json.loads(Path(p).read_text())); pairs=[('TvZone','/tmp/tvzone-main.json','/tmp/tvzone-p0.json',13),('BroadcastManager','/tmp/bm-main.json','/tmp/bm-p0.json',3)]; [(print(n,'main/p0',len(f(m)[1]),len(f(p)[1])), (_ for _ in ()).throw(AssertionError(n+' failure set differs from main')) if f(m)!=f(p) else None, (_ for _ in ()).throw(AssertionError(n+' baseline count changed')) if len(f(m)[1])!=c else None) for n,m,p,c in pairs]"
-
-      - name: Broader presentation regressions excluding verified baseline files
-        shell: bash
-        run: |
+          rm -f .github/p0-third-presentation-failure.txt .github/p0-third-presentation-report.json
           mapfile -t files < <(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' | grep -v '^src/components/ui/__tests__/TvZone\.announcement\.test\.tsx$' | grep -v '^tests/broadcastManager\.reducer\.test\.ts$' | sort -u)
-          test "${#files[@]}" -gt 0
-          npx vitest run "${files[@]}" --reporter=verbose
-
-      - name: Required focused flow regressions
-        shell: bash
-        run: |
-          npx vitest run tests/broadcastQueue.presentation.test.tsx tests/activityService.test.ts --reporter=verbose
-          npx vitest run tests/gameSlice.secretImmunity.test.ts tests/gameSlice.ffmHalo.test.ts tests/gameSlice.coupdEtat.test.ts --reporter=verbose
-          npx vitest run tests/weekEnd.onboarding.test.ts --reporter=verbose
-          mapfile -t eviction_files < <(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei 'eviction' | sort -u)
-          if [ "${#eviction_files[@]}" -gt 0 ]; then npx vitest run "${eviction_files[@]}" --reporter=verbose; fi
-          mapfile -t weather_files < <(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei 'weather' | sort -u)
-          if [ "${#weather_files[@]}" -gt 0 ]; then npx vitest run "${weather_files[@]}" --reporter=verbose; fi
-
-      - name: Broad repository test validation excluding verified baseline files
-        run: npx vitest run --exclude src/components/ui/__tests__/TvZone.announcement.test.tsx --exclude tests/broadcastManager.reducer.test.ts
-
-      - name: Static quality gates
-        run: |
-          npm run test:guard
-          npm run format:check
-          npm run lint:ci
-          npm run typecheck
-
-      - name: Standard CI lifecycle and dependency gates
-        run: |
-          npx vitest run src/modes/seasonRulesets.test.ts src/screens/ProfilePicker/ProfilePicker.test.tsx src/screens/HomeHub/__tests__/HomeHub.test.tsx
-          npm audit --omit=dev --audit-level=high
-
-      - name: Production builds
-        run: |
-          npm run build
-          npm run build:mobile
-
-      - name: Final scope and cleanup audit
-        shell: bash
-        run: |
-          test ! -e .github/workflows/faux-tv-p0-apply.yml
-          test ! -e .github/scripts/faux_tv_p0_finish.py
-          test ! -e .github/scripts/faux_tv_p0_add_test.py
-          test ! -e .github/p0-presentation-report.json
-          test ! -e .github/p0-presentation-failure.txt
-          test ! -e .github/p0-tvzone-comparison.txt
-          test ! -e .github/p0-second-presentation-failure.txt
-          test ! -e .github/p0-second-presentation-report.json
-          test ! -e .github/p0-broadcast-manager-comparison.txt
-          git diff --exit-code origin/main -- .github/workflows/ci.yml
-          if grep -R "P0 TRACE\|p0-presentation\|p0-tvzone-comparison\|p0-broadcast-manager-comparison" -n src tests .github 2>/dev/null; then exit 1; fi
-          git status --short
-
-      - name: Commit validated P0
-        shell: bash
-        run: |
-          git add -A
+          failed=''
+          for file in "${files[@]}"; do
+            npx vitest run "$file" --reporter=json --outputFile=.github/p0-third-presentation-report.json
+            rc=$?
+            if [ "$rc" -ne 0 ]; then failed="$file"; printf '%s\n' "$file" > .github/p0-third-presentation-failure.txt; break; fi
+          done
+          if [ -z "$failed" ]; then
+            joined=$(printf '%q ' "${files[@]}")
+            eval "npx vitest run $joined --reporter=json --outputFile=.github/p0-third-presentation-report.json"
+            rc=$?
+            if [ "$rc" -ne 0 ]; then printf '%s\n' 'BATCH_ONLY_FAILURE' > .github/p0-third-presentation-failure.txt; else printf '%s\n' 'NO_FAILURE_REPRODUCED' > .github/p0-third-presentation-failure.txt; fi
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Finish Faux TV P0 presentation materialization [p0-final]"
+          git add .github/p0-third-presentation-failure.txt .github/p0-third-presentation-report.json
+          git commit -m "chore: capture final P0 presentation failure [p0-report-3]"
           git push origin HEAD:codex/faux-tv-p0-editorial-contract
+          exit 0
