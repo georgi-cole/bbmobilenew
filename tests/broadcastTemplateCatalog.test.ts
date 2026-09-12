@@ -6,6 +6,14 @@ import {
   renderBroadcastTemplate,
 } from '../src/broadcasting/broadcastTemplateCatalog'
 
+const LOG_ONLY_MECHANICAL_IDS = new Set([
+  'loh.competition-start',
+  'pos.competition-start',
+  'nominations.preparing',
+  'safety.holder',
+  'safety.replacement-selecting',
+])
+
 describe('broadcast template catalog', () => {
   it('has at least one visible source template for every manager phase', () => {
     for (const phase of ALL_BROADCAST_PHASES) {
@@ -24,10 +32,19 @@ describe('broadcast template catalog', () => {
     ).toBe('The house congratulates Rune.')
   })
 
-  it('routes every built-in feed message onto the faux TV by default', () => {
+  it('keeps only the approved P0 mechanical feeds log-only by default', () => {
     const feeds = BROADCAST_TEMPLATE_CATALOG.filter((template) => template.kind === 'feed')
     expect(feeds.length).toBeGreaterThan(0)
-    expect(feeds.every((template) => template.forceOnTv === true)).toBe(true)
+
+    for (const template of feeds) {
+      if (LOG_ONLY_MECHANICAL_IDS.has(template.id)) {
+        expect(template.forceOnTv).toBe(false)
+        expect(template.editorial).toMatchObject({
+          importance: 'required',
+          presentationMode: 'log_only',
+        })
+      }
+    }
   })
 
   it('captures variables when a runtime event supplies an explicit template id', () => {

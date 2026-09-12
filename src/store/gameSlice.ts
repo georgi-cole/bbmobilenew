@@ -1072,6 +1072,7 @@ function pushEvent(
     broadcastOrder,
     broadcastLevel: finalLevel,
     broadcastManaged: true,
+    ...(template?.editorial && meta?.editorial == null ? { editorial: template.editorial } : {}),
     ...(forceOnTv ? { forceOnTv: true } : {}),
     ...(finalLevel !== 'minor' && override?.title ? { announcementTitle: override.title } : {}),
     ...(finalLevel !== 'minor' ? { announcementSubtitle: finalText } : {}),
