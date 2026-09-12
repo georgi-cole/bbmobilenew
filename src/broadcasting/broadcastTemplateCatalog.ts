@@ -1,4 +1,5 @@
 import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'
+import type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'
 
 export type BroadcastTemplateKind = 'feed' | 'phase_card'
 
@@ -13,6 +14,8 @@ export interface BroadcastTemplate {
   major?: string
   /** Default faux-TV routing for a plain feed message. Cards are always routed. */
   forceOnTv?: boolean
+  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */
+  editorial?: BroadcastEditorialMetadata
   /** Undefined templates are shared across all campaigns. */
   campaign?: BroadcastCampaign
   note?: string
@@ -48,7 +51,8 @@ const feed = (
   major?: string,
   note?: string,
   forceOnTv = true,
-  campaign?: BroadcastCampaign
+  campaign?: BroadcastCampaign,
+  editorial?: BroadcastEditorialMetadata
 ): BroadcastTemplate => ({
   id,
   phase,
@@ -59,6 +63,7 @@ const feed = (
   major,
   forceOnTv,
   campaign,
+  editorial,
   note,
 })
 
@@ -248,7 +253,14 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'loh.competition-start',
     'loh_comp',
-    'The Leader of the House competition has begun! 🏆 Who will win power today?'
+    'The Leader of the House competition has begun! 🏆 Who will win power today?',
+    'game',
+    'minor',
+    undefined,
+    'Mechanical process narration · log only',
+    false,
+    undefined,
+    { importance: 'required', presentationMode: 'log_only' }
   ),
   feed(
     'loh.democracia-vote-start',
@@ -470,7 +482,18 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'major',
     'vox_populi'
   ),
-  feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),
+  feed(
+    'nominations.preparing',
+    'nominations',
+    '{leader} is preparing the nomination ceremony. 🎯',
+    'game',
+    'minor',
+    undefined,
+    'Mechanical process narration · log only',
+    false,
+    undefined,
+    { importance: 'required', presentationMode: 'log_only' }
+  ),
   feed(
     'nominations.vox-confessional',
     'nominations',
@@ -565,7 +588,18 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     "It's time for the Power of Safety competition!",
     'pos_comp_announcement'
   ),
-  feed('pos.competition-start', 'pos_comp', 'The Power of Safety competition is underway! 🎭'),
+  feed(
+    'pos.competition-start',
+    'pos_comp',
+    'The Power of Safety competition is underway! 🎭',
+    'game',
+    'minor',
+    undefined,
+    'Mechanical process narration · log only',
+    false,
+    undefined,
+    { importance: 'required', presentationMode: 'log_only' }
+  ),
   feed('pos.winner', 'pos_results', '{winner} has won the Power of Safety! 🎭'),
   card(
     'card.safety',
@@ -592,7 +626,18 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'major',
     'vox_populi'
   ),
-  feed('safety.holder', 'pos_ceremony', '{holder} is holding the Safety Ceremony. ⚡'),
+  feed(
+    'safety.holder',
+    'pos_ceremony',
+    '{holder} is holding the Safety Ceremony. ⚡',
+    'game',
+    'minor',
+    undefined,
+    'Mechanical process narration · log only',
+    false,
+    undefined,
+    { importance: 'required', presentationMode: 'log_only' }
+  ),
   feed(
     'safety.secret-immunity',
     'pos_ceremony_results',
@@ -676,7 +721,14 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'safety.replacement-selecting',
     'pos_ceremony_results',
-    '{leader} is selecting a backup nominee...'
+    '{leader} is selecting a backup nominee...',
+    'game',
+    'minor',
+    undefined,
+    'Mechanical process narration · log only',
+    false,
+    undefined,
+    { importance: 'required', presentationMode: 'log_only' }
   ),
   feed(
     'safety.replacement',

@@ -51,9 +51,9 @@ describe('broadcast editorial policy', () => {
     })
 
     for (const candidate of [required, critical, interrupt, forced]) {
-      expect(evaluateBroadcastEditorialPolicy(candidate, saturatedHistory, config, 200).eligible).toBe(
-        true
-      )
+      expect(
+        evaluateBroadcastEditorialPolicy(candidate, saturatedHistory, config, 200).eligible
+      ).toBe(true)
     }
   })
 
