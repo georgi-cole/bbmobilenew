@@ -2,7 +2,6 @@ import type { GameState, Player, TvEvent } from '../types'
 import { getBroadcastEditorialMetadata } from './broadcastEditorialPolicy'
 
 export const BY_THE_NUMBERS_CATEGORY = 'by_the_numbers'
-export const DAILY_NUMBERS_MIN_DAY = 2
 
 export interface FauxTvEditorialCandidate {
   text: string
@@ -13,8 +12,10 @@ export interface FauxTvEditorialCandidate {
   significance: number
 }
 
-const POWER_MILESTONES = new Set([2, 3, 5])
-const NOMINATION_MILESTONES = new Set([3, 5, 7])
+// By the Numbers is intentionally rare. Routine season arithmetic belongs in
+// player/stat surfaces, not Faux TV.
+const POWER_MILESTONES = new Set([3, 5])
+const NOMINATION_MILESTONES = new Set([5, 7])
 
 function isActivePlayer(player: Player): boolean {
   return player.status !== 'evicted' && player.status !== 'jury'
@@ -37,10 +38,6 @@ function ordinal(value: number): string {
     default:
       return `${value}th`
   }
-}
-
-function plural(value: number, singular: string, pluralForm = `${singular}s`): string {
-  return value === 1 ? singular : pluralForm
 }
 
 function firstToThreshold(
@@ -70,8 +67,8 @@ function powerCandidate(
 
   const first = firstToThreshold(state, player.id, stat, count)
   const text = first
-    ? `BY THE NUMBERS · ${player.name} is the first player this season to reach ${count} ${label} wins.`
-    : `BY THE NUMBERS · ${player.name} has now won ${label} ${count} times this season.`
+    ? `BY THE NUMBERS · ${player.name} becomes the first player this season to reach ${count} ${label} wins.`
+    : `BY THE NUMBERS · ${player.name} joins rare company with ${count} ${label} wins this season.`
 
   return {
     text,
@@ -79,7 +76,7 @@ function powerCandidate(
     cooldownKey: `stats:power:${player.id}`,
     subjectIds: [player.id],
     category: BY_THE_NUMBERS_CATEGORY,
-    significance: first ? 96 : 88 + count,
+    significance: first ? 99 : 94 + count,
   }
 }
 
@@ -87,26 +84,31 @@ function dualPowerCandidate(
   state: Pick<GameState, 'players' | 'tvFeed'>,
   player: Player
 ): FauxTvEditorialCandidate | null {
-  if ((player.stats?.lohWins ?? 0) < 1 || (player.stats?.posWins ?? 0) < 1) return null
+  const lohWins = player.stats?.lohWins ?? 0
+  const posWins = player.stats?.posWins ?? 0
+  // Winning both powers once is common enough to be trivia. Require at least
+  // three total power wins before treating versatility as a season storyline.
+  if (lohWins < 1 || posWins < 1 || lohWins + posWins < 3) return null
+
   const storyKey = `stats:dual-power:${player.id}`
   if (hasStory(state.tvFeed, storyKey)) return null
 
-  const anyoneElseHasBoth = state.players.some(
-    (candidate) =>
-      candidate.id !== player.id &&
-      (candidate.stats?.lohWins ?? 0) > 0 &&
-      (candidate.stats?.posWins ?? 0) > 0
-  )
+  const anyoneElseHasBothAtThisLevel = state.players.some((candidate) => {
+    if (candidate.id === player.id) return false
+    const otherLoh = candidate.stats?.lohWins ?? 0
+    const otherPos = candidate.stats?.posWins ?? 0
+    return otherLoh >= 1 && otherPos >= 1 && otherLoh + otherPos >= 3
+  })
 
   return {
-    text: anyoneElseHasBoth
-      ? `BY THE NUMBERS · ${player.name} has now won both LOH and the Power of Safety this season.`
-      : `BY THE NUMBERS · ${player.name} is the first player this season to win both LOH and the Power of Safety.`,
+    text: anyoneElseHasBothAtThisLevel
+      ? `BY THE NUMBERS · ${player.name} now has ${lohWins + posWins} power wins split across LOH and the Power of Safety.`
+      : `BY THE NUMBERS · ${player.name} is the first player this season to turn wins in both powers into a three-win résumé.`,
     storyKey,
     cooldownKey: `stats:power:${player.id}`,
     subjectIds: [player.id],
     category: BY_THE_NUMBERS_CATEGORY,
-    significance: anyoneElseHasBoth ? 92 : 99,
+    significance: anyoneElseHasBothAtThisLevel ? 95 : 99,
   }
 }
 
@@ -123,12 +125,12 @@ function nominationCandidates(
 
     return [
       {
-        text: `BY THE NUMBERS · ${player.name} is on the block for the ${ordinal(count)} time this season.`,
+        text: `BY THE NUMBERS · ${player.name} has reached the block for the ${ordinal(count)} time - one of the season's defining survival stories.`,
         storyKey,
         cooldownKey: `stats:nominations:${player.id}`,
         subjectIds: [player.id],
         category: BY_THE_NUMBERS_CATEGORY,
-        significance: 82 + count,
+        significance: 94 + count,
       },
     ]
   })
@@ -146,12 +148,12 @@ function survivalCandidates(
 
     return [
       {
-        text: `BY THE NUMBERS · ${player.name} has survived the block ${count} times this season.`,
+        text: `BY THE NUMBERS · ${player.name} has now survived the block ${count} times and is still in the game.`,
         storyKey,
         cooldownKey: `stats:nominations:${player.id}`,
         subjectIds: [player.id],
         category: BY_THE_NUMBERS_CATEGORY,
-        significance: 86 + count,
+        significance: 96 + count,
       },
     ]
   })
@@ -170,8 +172,8 @@ function pickBest(candidates: FauxTvEditorialCandidate[]): FauxTvEditorialCandid
 }
 
 /**
- * Produces only public, factual season milestones. It intentionally reads no
- * relationship, intelligence, targeting, personality or other hidden AI state.
+ * Produces only rare, public, factual season milestones. It intentionally reads
+ * no relationship, intelligence, targeting, personality or hidden AI state.
  */
 export function buildByTheNumbersCandidate(
   state: Pick<GameState, 'phase' | 'players' | 'tvFeed' | 'lohId' | 'posWinnerId' | 'nomineeIds'>
@@ -207,72 +209,6 @@ export function buildByTheNumbersCandidate(
   }
 
   return pickBest(candidates)
-}
-
-/**
- * Quiet-day fallback for the existing programming desk. It runs at social_1,
- * after the LOH cycle has produced fresh public facts and before nominations
- * take over the day. This keeps the editorial beat visible and spatially
- * separated from the later social_2 weather bulletin instead of burying it
- * under the Day Complete transition at week_end.
- */
-export function buildDailyNumbersCandidate(
-  state: Pick<GameState, 'phase' | 'week' | 'players' | 'tvFeed'>
-): FauxTvEditorialCandidate | null {
-  if (state.phase !== 'social_1' || state.week < DAILY_NUMBERS_MIN_DAY) return null
-  if (hasByTheNumbersStoryForWeek(state.tvFeed, state.week)) return null
-
-  const active = state.players.filter(isActivePlayer)
-  if (active.length === 0) return null
-
-  const totals = state.players.reduce(
-    (result, player) => ({
-      lohWins: result.lohWins + (player.stats?.lohWins ?? 0),
-      posWins: result.posWins + (player.stats?.posWins ?? 0),
-      nominations: result.nominations + (player.stats?.timesNominated ?? 0),
-    }),
-    { lohWins: 0, posWins: 0, nominations: 0 }
-  )
-
-  const rankedActive = active
-    .map((player) => ({
-      player,
-      score:
-        (player.stats?.lohWins ?? 0) * 4 +
-        (player.stats?.posWins ?? 0) * 3 +
-        (player.stats?.timesNominated ?? 0) * 2,
-    }))
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score || a.player.id.localeCompare(b.player.id, 'en'))
-
-  const variant = state.week % 3
-  let text: string
-  let subjectIds: string[] = []
-
-  if (variant === 0) {
-    const totalPowerWins = totals.lohWins + totals.posWins
-    text = `BY THE NUMBERS · Day ${state.week} check-in: ${active.length} players remain and the season ledger shows ${totalPowerWins} ${plural(totalPowerWins, 'power win')}.`
-  } else if (variant === 1 || rankedActive.length === 0) {
-    text = `BY THE NUMBERS · Day ${state.week} check-in: the season has produced ${totals.nominations} ${plural(totals.nominations, 'nomination appearance')} across ${active.length} remaining players.`
-  } else {
-    const spotlightPool = rankedActive.slice(0, 3)
-    const spotlight =
-      spotlightPool[(state.week - DAILY_NUMBERS_MIN_DAY) % spotlightPool.length].player
-    const lohWins = spotlight.stats?.lohWins ?? 0
-    const posWins = spotlight.stats?.posWins ?? 0
-    const nominations = spotlight.stats?.timesNominated ?? 0
-    subjectIds = [spotlight.id]
-    text = `BY THE NUMBERS · Day ${state.week} check-in on ${spotlight.name}: ${lohWins} ${plural(lohWins, 'LOH win')}, ${posWins} ${plural(posWins, 'Power of Safety win')}, and ${nominations} ${plural(nominations, 'trip', 'trips')} to the block.`
-  }
-
-  return {
-    text,
-    storyKey: `stats:daily:${state.week}`,
-    cooldownKey: `stats:daily:${state.week}`,
-    subjectIds,
-    category: BY_THE_NUMBERS_CATEGORY,
-    significance: 28,
-  }
 }
 
 export function hasByTheNumbersStoryForWeek(history: readonly TvEvent[], week: number): boolean {
