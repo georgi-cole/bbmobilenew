@@ -67,7 +67,6 @@ jobs:
               raise SystemExit('missing pushEvent finalMeta target')
           text = text.replace(old, new, 1)
 
-          # Runner-only tracing. This is never committed to production.
           force_old = "  const forceOnTv =\n    meta?.forceOnTv === true ||\n    (override?.forceOnTv ?? (isDeclaredSource ? (template?.forceOnTv ?? true) : false))"
           force_new = force_old + "\n  console.log('[P0 TRACE force]', JSON.stringify({ text, templateId, source: meta?.broadcastTemplateId, incomingForce: meta?.forceOnTv, overrideForce: override?.forceOnTv, templateForce: template?.forceOnTv, forceOnTv, feedCount: state.tvFeed.length }))"
           if force_old not in text:
@@ -87,3 +86,5 @@ jobs:
           npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts
           -t "explicit Broadcast Manager Force-to-TV promotes a normally log-only source"
           --reporter=verbose
+
+# trigger-only synchronization; this workflow is deleted by the final P0 commit
