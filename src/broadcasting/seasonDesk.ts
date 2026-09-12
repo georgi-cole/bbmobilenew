@@ -22,8 +22,19 @@ function hasStory(history: readonly TvEvent[], storyKey: string): boolean {
   return history.some((event) => event.meta?.editorial?.storyKey === storyKey)
 }
 
-function playerName(state: Pick<GameState, 'players'>, playerId: string): string {
-  return state.players.find((player) => player.id === playerId)?.name ?? playerId
+function ordinal(value: number): string {
+  const mod100 = value % 100
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`
+  switch (value % 10) {
+    case 1:
+      return `${value}st`
+    case 2:
+      return `${value}nd`
+    case 3:
+      return `${value}rd`
+    default:
+      return `${value}th`
+  }
 }
 
 function firstToThreshold(
@@ -106,7 +117,7 @@ function nominationCandidates(
 
     return [
       {
-        text: `BY THE NUMBERS · ${player.name} is on the block for the ${count}th time this season.`,
+        text: `BY THE NUMBERS · ${player.name} is on the block for the ${ordinal(count)} time this season.`,
         storyKey,
         cooldownKey: `stats:nominations:${player.id}`,
         subjectIds: [player.id],
@@ -200,11 +211,4 @@ export function hasByTheNumbersStoryForWeek(history: readonly TvEvent[], week: n
     (event) =>
       event.meta?.week === week && event.meta?.editorial?.category === BY_THE_NUMBERS_CATEGORY
   )
-}
-
-export function describePublicPlayer(
-  state: Pick<GameState, 'players'>,
-  playerId: string | null | undefined
-): string | null {
-  return playerId ? playerName(state, playerId) : null
 }
