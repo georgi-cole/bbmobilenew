@@ -3,15 +3,8 @@ import { act, render, waitFor } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import gameReducer, {
-  addTvEvent,
-  consumeBroadcastEvent,
-  setPhase,
-} from '../src/store/gameSlice'
-import {
-  isVisibleInMainLog,
-  isVisibleOnTv,
-} from '../src/services/activityService'
+import gameReducer, { addTvEvent, consumeBroadcastEvent, setPhase } from '../src/store/gameSlice'
+import { isVisibleInMainLog, isVisibleOnTv } from '../src/services/activityService'
 import WeatherController from '../src/weather/WeatherController'
 
 vi.mock('../src/weather/weatherRuntime', () => ({
@@ -116,7 +109,9 @@ describe('Faux TV Phase 0 characterization', () => {
         },
       })
     )
-    const event = store.getState().game.tvFeed.find((item) => item.text === 'Retained plain beat')
+    const event = store
+      .getState()
+      .game.tvFeed.find((item) => item.text === 'Retained plain beat')
     expect(event).toBeTruthy()
 
     store.dispatch(consumeBroadcastEvent(event!.id))
