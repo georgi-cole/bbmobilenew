@@ -5,10 +5,11 @@ on:
     branches: [codex/faux-tv-p0-editorial-contract]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose-p0-presentation:
+  finish-p0:
+    if: ${{ !contains(github.event.head_commit.message, '[p0-final]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,15 +20,110 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
       - run: npm ci
 
-      - name: Apply approved P0 candidate in runner only
+      - name: Apply final narrow P0 candidate and clean temporary artifacts
+        shell: bash
         run: |
           python .github/scripts/faux_tv_p0_finish.py
           python .github/scripts/faux_tv_p0_add_test.py
           npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+          git checkout origin/main -- .github/workflows/ci.yml
+          git rm -f .github/workflows/faux-tv-p0-apply.yml .github/scripts/faux_tv_p0_finish.py .github/scripts/faux_tv_p0_add_test.py
+          rm -f .github/p0-*.txt .github/p0-*.json
+          git add -u .github
 
-      - name: Capture exact broader presentation regression against main
+      - name: Faux TV P0 focused validation
+        run: >-
+          npx vitest run
+          tests/fauxTv.phase0.characterization.test.tsx
+          tests/broadcastEditorialPolicy.test.ts
+          tests/broadcastTemplateCatalog.test.ts
+          tests/fauxTv.p0.mechanicalCleanup.test.ts
+          tests/activityService.routing.test.ts
+          --reporter=verbose
+
+      - name: Prove all known presentation failures are unchanged from main
+        shell: bash
+        run: |
+          set +e
+          npx vitest run src/components/ui/__tests__/TvZone.announcement.test.tsx --reporter=json --outputFile=/tmp/p0-tvzone.json
+          npx vitest run tests/broadcastManager.reducer.test.ts --reporter=json --outputFile=/tmp/p0-bm.json
+          npx vitest run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/p0-queue.json
+          git worktree add --detach /tmp/p0-main origin/main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/p0-main/node_modules
+          cd /tmp/p0-main
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run src/components/ui/__tests__/TvZone.announcement.test.tsx --reporter=json --outputFile=/tmp/main-tvzone.json
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/broadcastManager.reducer.test.ts --reporter=json --outputFile=/tmp/main-bm.json
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/main-queue.json
+          cd "$GITHUB_WORKSPACE"
+          set -e
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def summary(path):
+              data = json.loads(Path(path).read_text())
+              failed = [
+                  a.get('fullName', a.get('title', ''))
+                  for suite in data.get('testResults', [])
+                  for a in suite.get('assertionResults', [])
+                  if a.get('status') == 'failed'
+              ]
+              return data.get('numTotalTests'), failed
+
+          pairs = [
+              ('TvZone', '/tmp/main-tvzone.json', '/tmp/p0-tvzone.json', 13),
+              ('Broadcast Manager', '/tmp/main-bm.json', '/tmp/p0-bm.json', 3),
+              ('Broadcast Queue', '/tmp/main-queue.json', '/tmp/p0-queue.json', 1),
+          ]
+          for label, main_path, p0_path, expected_failures in pairs:
+              main = summary(main_path)
+              p0 = summary(p0_path)
+              print(label, 'main=', main, 'p0=', p0)
+              assert main == p0, f'{label} failure set differs from main baseline'
+              assert len(main[1]) == expected_failures, (
+                  f'{label}: expected verified {expected_failures} baseline failures, got {len(main[1])}'
+              )
+          PY
+
+      - name: Recheck exact broader baseline blockers first
+        shell: bash
+        run: |
+          pattern='sets weekActive=true, increments usedCount, twistActivatedThisWeek=true, and pushes a TV event|submitCoupReplacement allows the outgoing LOH to be nominated|offers a Battle Back replay prompt before the return animation when the human loses|caps the Battle Back replay offer at three retries'
+          set +e
+          npx vitest run tests/doubleEviction.flow.test.ts tests/specialVeto.flow.test.ts tests/integration/eviction.cinematic.test.tsx -t "$pattern" --reporter=json --outputFile=/tmp/p0-broader-exact.json
+          cd /tmp/p0-main
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/doubleEviction.flow.test.ts tests/specialVeto.flow.test.ts tests/integration/eviction.cinematic.test.tsx -t "$pattern" --reporter=json --outputFile=/tmp/main-broader-exact.json
+          cd "$GITHUB_WORKSPACE"
+          set -e
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def failures(path):
+              data = json.loads(Path(path).read_text())
+              return sorted(
+                  a.get('fullName', a.get('title', ''))
+                  for suite in data.get('testResults', [])
+                  for a in suite.get('assertionResults', [])
+                  if a.get('status') == 'failed'
+              )
+
+          candidate = failures('/tmp/p0-broader-exact.json')
+          main = failures('/tmp/main-broader-exact.json')
+          print('exact broader candidate failures:', candidate)
+          print('exact broader main failures:', main)
+          assert candidate == main, 'Exact broader failure set differs from main baseline'
+          assert len(candidate) == 4, f'Expected four verified baseline assertions, got {len(candidate)}'
+          PY
+
+      - name: Broader relevant presentation and flow regressions
         shell: bash
         run: |
           mapfile -t files < <(
@@ -38,18 +134,13 @@ jobs:
               grep -v '^tests/broadcastQueue\.presentation\.test\.tsx$' |
               sort -u
           )
-          printf '%s\n' "${files[@]}" > /tmp/p0-broader-files.txt
+          printf '%s\n' "${files[@]}"
           test "${#files[@]}" -gt 0
-
           set +e
-          npx vitest run "${files[@]}" --reporter=json --outputFile=/tmp/p0-broader-candidate.json
+          npx vitest run "${files[@]}" --reporter=json --outputFile=/tmp/p0-broader.json
           candidate_rc=$?
-          set -e
-
-          git worktree add --detach /tmp/p0-main origin/main
-          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/p0-main/node_modules
+          cd /tmp/p0-main
           mapfile -t main_files < <(
-            cd /tmp/p0-main
             find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) |
               grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' |
               grep -v '^src/components/ui/__tests__/TvZone\.announcement\.test\.tsx$' |
@@ -57,13 +148,10 @@ jobs:
               grep -v '^tests/broadcastQueue\.presentation\.test\.tsx$' |
               sort -u
           )
-          set +e
-          cd /tmp/p0-main
-          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run "${main_files[@]}" --reporter=json --outputFile=/tmp/p0-broader-main.json
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run "${main_files[@]}" --reporter=json --outputFile=/tmp/main-broader.json
           main_rc=$?
           cd "$GITHUB_WORKSPACE"
           set -e
-
           CANDIDATE_RC="$candidate_rc" MAIN_RC="$main_rc" python - <<'PY'
           import json
           import os
@@ -71,42 +159,132 @@ jobs:
 
           def failures(path):
               data = json.loads(Path(path).read_text())
-              out = []
-              for suite in data.get('testResults', []):
-                  for assertion in suite.get('assertionResults', []):
-                      if assertion.get('status') != 'failed':
-                          continue
-                      out.append({
-                          'file': suite.get('name'),
-                          'fullName': assertion.get('fullName', assertion.get('title', '')),
-                          'title': assertion.get('title'),
-                          'ancestorTitles': assertion.get('ancestorTitles', []),
-                          'failureMessages': assertion.get('failureMessages', []),
-                      })
               return {
-                  'numTotalTests': data.get('numTotalTests'),
-                  'numFailedTests': data.get('numFailedTests'),
-                  'failures': out,
+                  a.get('fullName', a.get('title', ''))
+                  for suite in data.get('testResults', [])
+                  for a in suite.get('assertionResults', [])
+                  if a.get('status') == 'failed'
               }
 
-          report = {
-              'candidateRc': int(os.environ['CANDIDATE_RC']),
-              'mainRc': int(os.environ['MAIN_RC']),
-              'files': Path('/tmp/p0-broader-files.txt').read_text().splitlines(),
-              'candidate': failures('/tmp/p0-broader-candidate.json'),
-              'main': failures('/tmp/p0-broader-main.json'),
-          }
-          Path('/tmp/p0-broader-summary.json').write_text(json.dumps(report, indent=2))
-          print(json.dumps(report, indent=2))
+          candidate = failures('/tmp/p0-broader.json')
+          main = failures('/tmp/main-broader.json')
+          print('candidate broader failures:', sorted(candidate))
+          print('main broader failures:', sorted(main))
+          new_failures = candidate - main
+          assert not new_failures, f'New P0 broader failures: {sorted(new_failures)}'
+          assert int(os.environ['MAIN_RC']) != 0, 'Expected verified main baseline failures in broader batch'
           PY
 
-      - name: Upload exact P0 broader regression evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: p0-broader-regression-evidence
-          path: |
-            /tmp/p0-broader-summary.json
-            /tmp/p0-broader-candidate.json
-            /tmp/p0-broader-main.json
-            /tmp/p0-broader-files.txt
-          if-no-files-found: error
+      - name: Broad repository test validation with differential baseline fallback
+        shell: bash
+        run: |
+          set +e
+          npx vitest run \
+            --exclude src/components/ui/__tests__/TvZone.announcement.test.tsx \
+            --exclude tests/broadcastManager.reducer.test.ts \
+            --exclude tests/broadcastQueue.presentation.test.tsx \
+            --reporter=json --outputFile=/tmp/p0-all.json
+          candidate_rc=$?
+          set -e
+          if [ "$candidate_rc" -ne 0 ]; then
+            set +e
+            cd /tmp/p0-main
+            "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run \
+              --exclude src/components/ui/__tests__/TvZone.announcement.test.tsx \
+              --exclude tests/broadcastManager.reducer.test.ts \
+              --exclude tests/broadcastQueue.presentation.test.tsx \
+              --reporter=json --outputFile=/tmp/main-all.json
+            main_rc=$?
+            cd "$GITHUB_WORKSPACE"
+            set -e
+            MAIN_RC="$main_rc" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def failures(path):
+              data = json.loads(Path(path).read_text())
+              return {
+                  a.get('fullName', a.get('title', ''))
+                  for suite in data.get('testResults', [])
+                  for a in suite.get('assertionResults', [])
+                  if a.get('status') == 'failed'
+              }
+
+          candidate = failures('/tmp/p0-all.json')
+          main = failures('/tmp/main-all.json')
+          print('candidate failures:', sorted(candidate))
+          print('main failures:', sorted(main))
+          new_failures = candidate - main
+          assert not new_failures, f'Broad-suite P0 introduced failures: {sorted(new_failures)}'
+          assert int(os.environ['MAIN_RC']) != 0, 'Candidate failed but main baseline did not'
+          PY
+          fi
+
+      - name: Static quality and normal CI lifecycle gates
+        run: |
+          npm run test:guard
+          npm run format:check
+          npm run lint:ci
+          npm run typecheck
+          npx vitest run src/modes/seasonRulesets.test.ts src/screens/ProfilePicker/ProfilePicker.test.tsx src/screens/HomeHub/__tests__/HomeHub.test.tsx
+          npm audit --omit=dev --audit-level=high
+
+      - name: Production web and mobile builds
+        run: |
+          npm run build
+          npm run build:mobile
+
+      - name: Android native validation
+        run: |
+          npm run sync:android
+          cd android
+          ./gradlew lintDebug assembleDebug
+
+      - name: Final P0 scope and cleanup audit
+        shell: bash
+        run: |
+          test ! -e .github/workflows/faux-tv-p0-apply.yml
+          test ! -e .github/scripts/faux_tv_p0_finish.py
+          test ! -e .github/scripts/faux_tv_p0_add_test.py
+          if find .github -maxdepth 2 -type f -name 'p0-*' -print | grep -q .; then
+            echo 'Temporary P0 diagnostic artifacts remain'
+            find .github -maxdepth 2 -type f -name 'p0-*' -print
+            exit 1
+          fi
+          git diff --exit-code origin/main -- .github/workflows/ci.yml
+          if grep -R "P0 TRACE\|p0-presentation\|p0-tvzone-comparison\|p0-broadcast-manager-comparison\|p0-broadcast-queue-comparison" -n src tests .github 2>/dev/null; then
+            exit 1
+          fi
+          python - <<'PY'
+          import subprocess
+
+          allowed = {
+              'src/broadcasting/broadcastEditorialPolicy.ts',
+              'src/broadcasting/broadcastTemplateCatalog.ts',
+              'src/services/activityService.ts',
+              'src/store/gameSlice.ts',
+              'tests/activityService.routing.test.ts',
+              'tests/broadcastEditorialPolicy.test.ts',
+              'tests/broadcastTemplateCatalog.test.ts',
+              'tests/fauxTv.p0.mechanicalCleanup.test.ts',
+              'tests/fauxTv.phase0.characterization.test.tsx',
+          }
+          changed = set(
+              subprocess.check_output(['git', 'diff', '--name-only', 'origin/main']).decode().splitlines()
+          )
+          print('Final changed files:', sorted(changed))
+          unexpected = changed - allowed
+          assert not unexpected, f'Unexpected/non-P0 files remain: {sorted(unexpected)}'
+          PY
+          git status --short
+          git diff --check origin/main
+
+      - name: Commit validated P0
+        shell: bash
+        run: |
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Finish Faux TV P0 editorial materialization [p0-final]"
+          git push origin HEAD:codex/faux-tv-p0-editorial-contract
