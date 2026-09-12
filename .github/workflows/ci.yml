@@ -24,14 +24,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Check formatting for files changed from main
-        run: npm run format:check
-      - name: Reject focused or disabled tests
-        run: npm run test:guard
-      - name: Lint without warnings
-        run: npm run lint:ci
-      - name: Type check
-        run: npm run typecheck
       - name: Characterize Faux TV baseline
         run: npx vitest run tests/fauxTv.phase0.characterization.test.tsx
       - name: Characterize managed broadcast queue
@@ -44,6 +36,14 @@ jobs:
         run: npx vitest run tests/broadcastManager.reducer.test.ts
       - name: Characterize activity routing
         run: npx vitest run tests/activityService.routing.test.ts
+      - name: Check formatting for files changed from main
+        run: npm run format:check
+      - name: Reject focused or disabled tests
+        run: npm run test:guard
+      - name: Lint without warnings
+        run: npm run lint:ci
+      - name: Type check
+        run: npm run typecheck
       - name: Run season/profile lifecycle regressions
         run: >-
           npx vitest run
@@ -60,12 +60,12 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - label: Web production build
-            script: build
-          - label: Capacitor mobile-mode build
-            script: build:mobile
+    matrix:
+      include:
+        - label: Web production build
+          script: build
+        - label: Capacitor mobile-mode build
+          script: build:mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
