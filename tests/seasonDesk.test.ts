@@ -165,7 +165,7 @@ describe('By the Numbers season desk', () => {
     expect(candidate?.text.toLowerCase()).not.toContain('alliance')
   })
 
-  it('waits until the end of Day 2 before offering the ordinary daily ledger', () => {
+  it('waits until the Day 2 social check-in before offering the ordinary daily ledger', () => {
     const ordinaryPlayers = [
       player('leo', 'Leo', { lohWins: 1, posWins: 0, timesNominated: 1 }),
       player('mia', 'Mia', { lohWins: 0, posWins: 1, timesNominated: 1 }),
@@ -173,17 +173,17 @@ describe('By the Numbers season desk', () => {
 
     expect(
       buildDailyNumbersCandidate(
-        state({ phase: 'week_end', week: 1, players: ordinaryPlayers, lohId: null })
+        state({ phase: 'social_1', week: 1, players: ordinaryPlayers, lohId: null })
       )
     ).toBeNull()
     expect(
       buildDailyNumbersCandidate(
-        state({ phase: 'social_2', week: 2, players: ordinaryPlayers, lohId: null })
+        state({ phase: 'loh_results', week: 2, players: ordinaryPlayers, lohId: null })
       )
     ).toBeNull()
 
     const candidate = buildDailyNumbersCandidate(
-      state({ phase: 'week_end', week: 2, players: ordinaryPlayers, lohId: null })
+      state({ phase: 'social_1', week: 2, players: ordinaryPlayers, lohId: null })
     )
     expect(candidate?.storyKey).toBe('stats:daily:2')
     expect(candidate?.category).toBe('by_the_numbers')
@@ -193,7 +193,7 @@ describe('By the Numbers season desk', () => {
   it('uses public season state for a deterministic quiet-day fallback', () => {
     const candidate = buildDailyNumbersCandidate(
       state({
-        phase: 'week_end',
+        phase: 'social_1',
         week: 4,
         lohId: null,
         players: [
@@ -212,7 +212,7 @@ describe('By the Numbers season desk', () => {
   it('does not add routine statistics after any By the Numbers story already aired that day', () => {
     const candidate = buildDailyNumbersCandidate(
       state({
-        phase: 'week_end',
+        phase: 'social_1',
         week: 4,
         tvFeed: [storyEvent('stats:loh:leo:2', 4)],
       })
