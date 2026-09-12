@@ -217,7 +217,7 @@ describe('Big Eye programming desk', () => {
       tvFeed: [twistEvent('shock', 'Double Elimination changed the game.', 6)],
     })
 
-    expect(candidate?.text).toMatch(/^THE BIG EYE CONTINUES/)
+    expect(candidate?.text).toMatch(/^THE AFTERSHOCK/)
     expect(candidate?.storyKey).toBe('programming:callback:shock')
   })
 
