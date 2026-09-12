@@ -5,11 +5,10 @@ on:
     branches: [codex/faux-tv-p0-editorial-contract]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply:
-    if: github.actor != 'github-actions[bot]'
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +19,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Apply scoped P0 source changes
+      - name: Apply pending P0 integration in runner only
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,7 +46,6 @@ jobs:
               "  forceOnTv,\n  campaign,\n  editorial,\n  note,\n})",
               1,
           )
-
           replacements = {
               "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?'\n  ),": "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
               "  feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),": "  feed(\n    'nominations.preparing',\n    'nominations',\n    '{leader} is preparing the nomination ceremony. 🎯',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
@@ -67,40 +65,25 @@ jobs:
           new = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(template?.editorial && meta?.editorial == null ? { editorial: template.editorial } : {}),\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
           if old not in text:
               raise SystemExit('missing pushEvent finalMeta target')
-          game.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+
+          # Runner-only tracing. This is never committed to production.
+          force_old = "  const forceOnTv =\n    meta?.forceOnTv === true ||\n    (override?.forceOnTv ?? (isDeclaredSource ? (template?.forceOnTv ?? true) : false))"
+          force_new = force_old + "\n  console.log('[P0 TRACE force]', JSON.stringify({ text, templateId, source: meta?.broadcastTemplateId, incomingForce: meta?.forceOnTv, overrideForce: override?.forceOnTv, templateForce: template?.forceOnTv, forceOnTv, feedCount: state.tvFeed.length }))"
+          if force_old not in text:
+              raise SystemExit('missing forceOnTv trace target')
+          text = text.replace(force_old, force_new, 1)
+
+          dup_old = "  const duplicate = findDuplicateDayBroadcast(state, finalText)\n  if (duplicate) {"
+          dup_new = "  const duplicate = findDuplicateDayBroadcast(state, finalText)\n  console.log('[P0 TRACE duplicate]', JSON.stringify({ finalText, duplicateId: duplicate?.id ?? null, feedCount: state.tvFeed.length }))\n  if (duplicate) {"
+          if dup_old not in text:
+              raise SystemExit('missing duplicate trace target')
+          text = text.replace(dup_old, dup_new, 1)
+          game.write_text(text)
           PY
       - run: npm ci
-      - name: Format scoped P0 files
+      - name: Reproduce only Force-to-TV regression
         run: >-
-          npx prettier --write
-          src/broadcasting/broadcastTemplateCatalog.ts
-          src/broadcasting/broadcastEditorialPolicy.ts
-          src/services/activityService.ts
-          src/store/gameSlice.ts
-          tests/activityService.routing.test.ts
-          tests/broadcastEditorialPolicy.test.ts
-          tests/broadcastTemplateCatalog.test.ts
-          tests/fauxTv.p0.mechanicalCleanup.test.ts
-          tests/fauxTv.phase0.characterization.test.tsx
-      - name: Focused Faux TV regressions
-        run: >-
-          npx vitest run
-          tests/fauxTv.phase0.characterization.test.tsx
-          tests/broadcastEditorialPolicy.test.ts
-          tests/fauxTv.p0.mechanicalCleanup.test.ts
-          tests/broadcastTemplateCatalog.test.ts
-          tests/broadcastQueue.presentation.test.tsx
-          src/components/ui/__tests__/TvZone.announcement.test.tsx
-          tests/specialVeto.flow.test.ts
-          tests/broadcastManager.reducer.test.ts
-          tests/activityService.routing.test.ts
-      - run: npm run typecheck
-      - run: npm run lint:ci
-      - name: Commit validated P0 implementation and remove temporary workflow
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git rm .github/workflows/faux-tv-p0-apply.yml
-          git add src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/services/activityService.ts src/store/gameSlice.ts tests/activityService.routing.test.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
-          git commit -m "feat: complete Faux TV P0 editorial contract"
-          git push origin HEAD:codex/faux-tv-p0-editorial-contract
+          npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts
+          -t "explicit Broadcast Manager Force-to-TV promotes a normally log-only source"
+          --reporter=verbose
