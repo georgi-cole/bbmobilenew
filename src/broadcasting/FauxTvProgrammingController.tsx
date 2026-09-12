@@ -32,7 +32,7 @@ function isRoutineDailyNumbersStory(storyKey: string): boolean {
  * - Day 1 otherwise remains clean;
  * - factual milestones are protected from being lost behind an earlier callback;
  * - Big Eye callbacks get the first ordinary editorial slot when available;
- * - a low-significance statistical close fills an otherwise quiet Day 2+ only at week_end.
+ * - a low-significance statistical check-in fills an otherwise quiet Day 2+ at social_1.
  */
 export default function FauxTvProgrammingController() {
   const dispatch = useAppDispatch()
