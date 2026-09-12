@@ -6,11 +6,7 @@ import {
   evaluateBroadcastEditorialPolicy,
   getBroadcastEditorialMetadata,
 } from './broadcastEditorialPolicy'
-import {
-  buildByTheNumbersCandidate,
-  buildDailyNumbersCandidate,
-  hasByTheNumbersStoryForWeek,
-} from './seasonDesk'
+import { buildByTheNumbersCandidate, hasByTheNumbersStoryForWeek } from './seasonDesk'
 import {
   buildProgrammingCallbackCandidate,
   buildResumeRecapFromGame,
@@ -18,21 +14,17 @@ import {
   RESUME_RECAP_CATEGORY,
 } from './programmingDesk'
 
-function isRoutineDailyNumbersStory(storyKey: string): boolean {
-  return storyKey.startsWith('stats:daily:')
-}
-
 /**
- * One lightweight editorial producer for factual optional programming.
+ * Lightweight editorial producer for genuinely useful optional programming.
  * It intentionally does not own presentation sequencing: managed/official TV
  * content continues to outrank these ambient stories in TvZone.
  *
- * Cadence is deliberately staged rather than random:
- * - resume recap first when the player genuinely needs reorientation;
- * - Day 1 otherwise remains clean;
- * - factual milestones are protected from being lost behind an earlier callback;
- * - Big Eye callbacks get the first ordinary editorial slot when available;
- * - a low-significance statistical check-in fills an otherwise quiet Day 2+ at social_1.
+ * Faux TV is not a quota system. Quiet days are allowed to stay quiet:
+ * - resume recaps appear only after a meaningful absence;
+ * - Day 1 remains clean;
+ * - rare public milestones may earn a By the Numbers beat;
+ * - Big Eye callbacks run only when a prior public storyline deserves continuity;
+ * - no routine statistical filler is manufactured simply to occupy airtime.
  */
 export default function FauxTvProgrammingController() {
   const dispatch = useAppDispatch()
@@ -49,17 +41,13 @@ export default function FauxTvProgrammingController() {
     const byTheNumbersAlreadyAired = hasByTheNumbersStoryForWeek(game.tvFeed, game.week)
     const milestone = byTheNumbersAlreadyAired ? null : buildByTheNumbersCandidate(game)
 
-    // A genuine milestone may become the second ambient editorial beat on a
-    // callback/resume day. This keeps rare achievements from disappearing just
-    // because an earlier piece of programming already used the ordinary slot.
+    // A genuinely rare milestone may become a second ambient editorial beat on
+    // a callback/resume day. Ordinary days never receive filler to hit a quota.
     if (milestone) return milestone
 
     if (hasStrongOptionalStoryForWeek(game.tvFeed, game.week)) return null
 
-    const callback = buildProgrammingCallbackCandidate(game)
-    if (callback) return callback
-
-    return byTheNumbersAlreadyAired ? null : buildDailyNumbersCandidate(game)
+    return buildProgrammingCallbackCandidate(game)
   }, [game])
 
   useEffect(() => {
@@ -67,8 +55,7 @@ export default function FauxTvProgrammingController() {
 
     const now = Date.now()
     const isResumeRecap = candidate.category === RESUME_RECAP_CATEGORY
-    const isByTheNumbers = candidate.category === 'by_the_numbers'
-    const isMilestone = isByTheNumbers && !isRoutineDailyNumbersStory(candidate.storyKey)
+    const isMilestone = candidate.category === 'by_the_numbers'
     const preview: TvEvent = {
       id: `editorial-preview:${candidate.storyKey}`,
       text: candidate.text,
@@ -104,9 +91,8 @@ export default function FauxTvProgrammingController() {
       preview,
       sameDayStrongOptional,
       {
-        // Resume recaps are a special reorientation context. A genuine season
-        // milestone may also be the second ambient programming beat of the day;
-        // routine fallbacks and callbacks remain capped at one.
+        // Resume recaps are a special reorientation context. A rare season
+        // milestone may also be the second ambient beat; callbacks remain one.
         maxOptionalStories: isResumeRecap ? undefined : isMilestone ? 2 : 1,
         categoryBudgets: {
           by_the_numbers: 1,
