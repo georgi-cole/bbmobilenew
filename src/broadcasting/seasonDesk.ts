@@ -2,6 +2,7 @@ import type { GameState, Player, TvEvent } from '../types'
 import { getBroadcastEditorialMetadata } from './broadcastEditorialPolicy'
 
 export const BY_THE_NUMBERS_CATEGORY = 'by_the_numbers'
+export const DAILY_NUMBERS_MIN_DAY = 2
 
 export interface FauxTvEditorialCandidate {
   text: string
@@ -36,6 +37,10 @@ function ordinal(value: number): string {
     default:
       return `${value}th`
   }
+}
+
+function plural(value: number, singular: string, pluralForm = `${singular}s`): string {
+  return value === 1 ? singular : pluralForm
 }
 
 function firstToThreshold(
@@ -202,6 +207,71 @@ export function buildByTheNumbersCandidate(
   }
 
   return pickBest(candidates)
+}
+
+/**
+ * Quiet-day fallback for the existing programming desk. It deliberately waits
+ * until week_end so competitions, nominations, twists and Big Eye callbacks get
+ * the first opportunity to occupy the day's editorial slot. This is a public
+ * ledger, not a milestone: milestone copy remains reserved for the thresholds
+ * above and always outranks this candidate.
+ */
+export function buildDailyNumbersCandidate(
+  state: Pick<GameState, 'phase' | 'week' | 'players' | 'tvFeed'>
+): FauxTvEditorialCandidate | null {
+  if (state.phase !== 'week_end' || state.week < DAILY_NUMBERS_MIN_DAY) return null
+  if (hasByTheNumbersStoryForWeek(state.tvFeed, state.week)) return null
+
+  const active = state.players.filter(isActivePlayer)
+  if (active.length === 0) return null
+
+  const totals = state.players.reduce(
+    (result, player) => ({
+      lohWins: result.lohWins + (player.stats?.lohWins ?? 0),
+      posWins: result.posWins + (player.stats?.posWins ?? 0),
+      nominations: result.nominations + (player.stats?.timesNominated ?? 0),
+    }),
+    { lohWins: 0, posWins: 0, nominations: 0 }
+  )
+
+  const rankedActive = active
+    .map((player) => ({
+      player,
+      score:
+        (player.stats?.lohWins ?? 0) * 4 +
+        (player.stats?.posWins ?? 0) * 3 +
+        (player.stats?.timesNominated ?? 0) * 2,
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.player.id.localeCompare(b.player.id, 'en'))
+
+  const variant = state.week % 3
+  let text: string
+  let subjectIds: string[] = []
+
+  if (variant === 0) {
+    const totalPowerWins = totals.lohWins + totals.posWins
+    text = `BY THE NUMBERS · Day ${state.week} closes with ${active.length} players still in the game and ${totalPowerWins} ${plural(totalPowerWins, 'power win')} on the season ledger.`
+  } else if (variant === 1 || rankedActive.length === 0) {
+    text = `BY THE NUMBERS · The season has now produced ${totals.nominations} ${plural(totals.nominations, 'nomination appearance')} across ${active.length} remaining players.`
+  } else {
+    const spotlightPool = rankedActive.slice(0, 3)
+    const spotlight = spotlightPool[(state.week - DAILY_NUMBERS_MIN_DAY) % spotlightPool.length].player
+    const lohWins = spotlight.stats?.lohWins ?? 0
+    const posWins = spotlight.stats?.posWins ?? 0
+    const nominations = spotlight.stats?.timesNominated ?? 0
+    subjectIds = [spotlight.id]
+    text = `BY THE NUMBERS · ${spotlight.name}'s public ledger: ${lohWins} ${plural(lohWins, 'LOH win')}, ${posWins} ${plural(posWins, 'Power of Safety win')}, and ${nominations} ${plural(nominations, 'trip', 'trips')} to the block as Day ${state.week} closes.`
+  }
+
+  return {
+    text,
+    storyKey: `stats:daily:${state.week}`,
+    cooldownKey: `stats:daily:${state.week}`,
+    subjectIds,
+    category: BY_THE_NUMBERS_CATEGORY,
+    significance: 28,
+  }
 }
 
 export function hasByTheNumbersStoryForWeek(history: readonly TvEvent[], week: number): boolean {
