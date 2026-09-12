@@ -24,8 +24,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Print expected Faux TV characterization formatting
-        run: npx prettier tests/fauxTv.phase0.characterization.test.tsx
       - name: Check formatting for files changed from main
         run: npm run format:check
       - name: Reject focused or disabled tests
@@ -34,6 +32,15 @@ jobs:
         run: npm run lint:ci
       - name: Type check
         run: npm run typecheck
+      - name: Run Faux TV characterization regressions
+        run: >-
+          npx vitest run
+          tests/fauxTv.phase0.characterization.test.tsx
+          tests/broadcastQueue.presentation.test.tsx
+          src/components/ui/__tests__/TvZone.announcement.test.tsx
+          tests/specialVeto.flow.test.ts
+          tests/broadcastManager.reducer.test.ts
+          tests/activityService.routing.test.ts
       - name: Run season/profile lifecycle regressions
         run: >-
           npx vitest run
