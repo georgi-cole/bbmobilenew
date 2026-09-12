@@ -1,0 +1,51 @@
+name: Faux TV stats weather programming validation
+
+on:
+  push:
+    branches: [codex/faux-tv-stats-weather-programming]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/faux-tv-stats-weather-programming
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Focused formatting
+        run: >-
+          npx prettier --check
+          src/App.tsx
+          src/broadcasting/seasonDesk.ts
+          src/broadcasting/programmingDesk.ts
+          src/broadcasting/FauxTvProgrammingController.tsx
+          src/weather/weatherEditorial.ts
+          src/weather/WeatherController.tsx
+          tests/seasonDesk.test.ts
+          tests/programmingDesk.test.ts
+          tests/weatherEditorial.test.ts
+          tests/fauxTvProgrammingController.test.tsx
+          tests/fauxTv.phase0.characterization.test.tsx
+      - name: Focused Faux TV validation
+        run: >-
+          npx vitest run
+          tests/seasonDesk.test.ts
+          tests/programmingDesk.test.ts
+          tests/weatherEditorial.test.ts
+          tests/fauxTvProgrammingController.test.tsx
+          tests/fauxTv.phase0.characterization.test.tsx
+          tests/broadcastEditorialPolicy.test.ts
+          tests/activityService.routing.test.ts
+          tests/broadcastQueue.presentation.test.tsx
+          --reporter=verbose
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint:ci
+      - name: Release build
+        run: npm run build
