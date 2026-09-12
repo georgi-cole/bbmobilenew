@@ -5,10 +5,10 @@ on:
     branches: [codex/faux-tv-p0-editorial-contract]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  finish-p0:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,33 +19,52 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Apply pending P0 integration in runner only
+
+      - name: Apply narrow catalog-to-event materialization fix
         run: |
           python - <<'PY'
           from pathlib import Path
 
           catalog = Path('src/broadcasting/broadcastTemplateCatalog.ts')
           text = catalog.read_text()
-          text = text.replace(
-              "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\n",
-              "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\nimport type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'\n",
-              1,
+
+          old = "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\n"
+          new = old + "import type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'\n"
+          if new not in text:
+              if old not in text:
+                  raise SystemExit('missing catalog import target')
+              text = text.replace(old, new, 1)
+
+          old = "  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n"
+          new = (
+              "  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */\n"
+              "  editorial?: BroadcastEditorialMetadata\n"
+              + old
           )
-          text = text.replace(
-              "  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
-              "  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */\n  editorial?: BroadcastEditorialMetadata\n  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
-              1,
+          if "editorial?: BroadcastEditorialMetadata" not in text:
+              if old not in text:
+                  raise SystemExit('missing catalog interface target')
+              text = text.replace(old, new, 1)
+
+          old = "  forceOnTv = true,\n  campaign?: BroadcastCampaign\n): BroadcastTemplate => ({"
+          new = (
+              "  forceOnTv = true,\n"
+              "  campaign?: BroadcastCampaign,\n"
+              "  editorial?: BroadcastEditorialMetadata\n"
+              "): BroadcastTemplate => ({"
           )
-          text = text.replace(
-              "  forceOnTv = true,\n  campaign?: BroadcastCampaign\n): BroadcastTemplate => ({",
-              "  forceOnTv = true,\n  campaign?: BroadcastCampaign,\n  editorial?: BroadcastEditorialMetadata\n): BroadcastTemplate => ({",
-              1,
-          )
-          text = text.replace(
-              "  forceOnTv,\n  campaign,\n  note,\n})",
-              "  forceOnTv,\n  campaign,\n  editorial,\n  note,\n})",
-              1,
-          )
+          if "campaign?: BroadcastCampaign,\n  editorial?: BroadcastEditorialMetadata" not in text:
+              if old not in text:
+                  raise SystemExit('missing feed signature target')
+              text = text.replace(old, new, 1)
+
+          old = "  forceOnTv,\n  campaign,\n  note,\n})"
+          new = "  forceOnTv,\n  campaign,\n  editorial,\n  note,\n})"
+          if "  campaign,\n  editorial,\n  note," not in text:
+              if old not in text:
+                  raise SystemExit('missing feed return target')
+              text = text.replace(old, new, 1)
+
           replacements = {
               "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?'\n  ),": "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
               "  feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),": "  feed(\n    'nominations.preparing',\n    'nominations',\n    '{leader} is preparing the nomination ceremony. 🎯',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
@@ -62,29 +81,218 @@ jobs:
           game = Path('src/store/gameSlice.ts')
           text = game.read_text()
           old = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
-          new = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(template?.editorial && meta?.editorial == null ? { editorial: template.editorial } : {}),\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
+          new = (
+              "    broadcastLevel: finalLevel,\n"
+              "    broadcastManaged: true,\n"
+              "    ...(template?.editorial && meta?.editorial == null\n"
+              "      ? { editorial: template.editorial }\n"
+              "      : {}),\n"
+              "    ...(forceOnTv ? { forceOnTv: true } : {}),"
+          )
           if old not in text:
               raise SystemExit('missing pushEvent finalMeta target')
           text = text.replace(old, new, 1)
-
-          force_old = "  const forceOnTv =\n    meta?.forceOnTv === true ||\n    (override?.forceOnTv ?? (isDeclaredSource ? (template?.forceOnTv ?? true) : false))"
-          force_new = force_old + "\n  console.log('[P0 TRACE force]', JSON.stringify({ text, templateId, source: meta?.broadcastTemplateId, incomingForce: meta?.forceOnTv, overrideForce: override?.forceOnTv, templateForce: template?.forceOnTv, forceOnTv, feedCount: state.tvFeed.length }))"
-          if force_old not in text:
-              raise SystemExit('missing forceOnTv trace target')
-          text = text.replace(force_old, force_new, 1)
-
-          dup_old = "  const duplicate = findDuplicateDayBroadcast(state, finalText)\n  if (duplicate) {"
-          dup_new = "  const duplicate = findDuplicateDayBroadcast(state, finalText)\n  console.log('[P0 TRACE duplicate]', JSON.stringify({ finalText, duplicateId: duplicate?.id ?? null, feedCount: state.tvFeed.length }))\n  if (duplicate) {"
-          if dup_old not in text:
-              raise SystemExit('missing duplicate trace target')
-          text = text.replace(dup_old, dup_new, 1)
           game.write_text(text)
+
+          test = Path('tests/fauxTv.p0.mechanicalCleanup.test.ts')
+          test.write_text("""import { describe, expect, it } from 'vitest'
+import gameReducer, { addTvEvent, setBroadcastOverride } from '../src/store/gameSlice'
+import { isVisibleInMainLog, isVisibleOnTv } from '../src/services/activityService'
+
+const CASES = [
+  [
+    'loh.competition-start',
+    'loh_comp',
+    'The Leader of the House competition has begun! 🏆 Who will win power today?',
+  ],
+  ['pos.competition-start', 'pos_comp', 'The Power of Safety competition is underway! 🎭'],
+  ['nominations.preparing', 'nominations', 'Alex is preparing the nomination ceremony. 🎯'],
+  ['safety.holder', 'pos_ceremony', 'Alex is holding the Safety Ceremony. ⚡'],
+  [
+    'safety.replacement-selecting',
+    'pos_ceremony_results',
+    'Alex is selecting a backup nominee...',
+  ],
+] as const
+
+describe('Faux TV P0 mechanical cleanup', () => {
+  for (const [templateId, phase, text] of CASES) {
+    it(`${templateId} remains in history but is not foreground TV by default`, () => {
+      let state = gameReducer(undefined, { type: 'init' })
+      state = { ...state, phase, tvFeed: [], broadcastQueue: [] }
+      state = gameReducer(
+        state,
+        addTvEvent({ text, type: 'game', meta: { phase, broadcastTemplateId: templateId } })
+      )
+
+      const emitted = state.tvFeed.find(
+        (candidate) => candidate.meta?.broadcastTemplateId === templateId
+      )
+      expect(emitted).toBeDefined()
+      expect(emitted?.meta?.forceOnTv).toBeUndefined()
+      expect(emitted?.meta?.editorial).toMatchObject({
+        importance: 'required',
+        presentationMode: 'log_only',
+      })
+      expect(state.broadcastQueue).not.toContain(emitted?.id)
+      expect(isVisibleOnTv(emitted!)).toBe(false)
+      expect(isVisibleInMainLog(emitted!)).toBe(true)
+    })
+  }
+
+  it('explicit producer Force-to-TV promotes a freshly emitted log-only source', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    state = { ...state, phase: 'loh_comp', tvFeed: [], broadcastQueue: [] }
+    state = gameReducer(
+      state,
+      addTvEvent({
+        text: 'The Leader of the House competition has begun! 🏆 Who will win power today?',
+        type: 'game',
+        meta: {
+          phase: 'loh_comp',
+          broadcastTemplateId: 'loh.competition-start',
+          forceOnTv: true,
+        },
+      })
+    )
+
+    const emitted = state.tvFeed.find(
+      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.competition-start'
+    )
+    expect(emitted).toBeDefined()
+    expect(emitted?.meta?.editorial).toMatchObject({
+      importance: 'required',
+      presentationMode: 'log_only',
+    })
+    expect(emitted?.meta?.forceOnTv).toBe(true)
+    expect(state.broadcastQueue).toContain(emitted?.id)
+    expect(isVisibleOnTv(emitted!)).toBe(true)
+    expect(isVisibleInMainLog(emitted!)).toBe(true)
+  })
+
+  it('explicit Broadcast Manager Force-to-TV promotes a freshly emitted log-only source', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    state = { ...state, phase: 'loh_comp', tvFeed: [], broadcastQueue: [] }
+    state = gameReducer(
+      state,
+      setBroadcastOverride({ id: 'loh.competition-start', changes: { forceOnTv: true } })
+    )
+    state = gameReducer(
+      state,
+      addTvEvent({
+        text: 'The Leader of the House competition has begun! 🏆 Who will win power today?',
+        type: 'game',
+        meta: { phase: 'loh_comp', broadcastTemplateId: 'loh.competition-start' },
+      })
+    )
+
+    const emitted = state.tvFeed.find(
+      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.competition-start'
+    )
+    expect(emitted).toBeDefined()
+    expect(emitted?.meta?.editorial).toMatchObject({
+      importance: 'required',
+      presentationMode: 'log_only',
+    })
+    expect(emitted?.meta?.forceOnTv).toBe(true)
+    expect(state.broadcastQueue).toContain(emitted?.id)
+    expect(isVisibleOnTv(emitted!)).toBe(true)
+    expect(isVisibleInMainLog(emitted!)).toBe(true)
+  })
+
+  it('keeps a template without editorial metadata on the legacy foreground path', () => {
+    let state = gameReducer(undefined, { type: 'init' })
+    state = { ...state, phase: 'loh_results', tvFeed: [], broadcastQueue: [] }
+    state = gameReducer(
+      state,
+      addTvEvent({
+        text: 'Alex has won Leader of the House! 👑',
+        type: 'game',
+        meta: { phase: 'loh_results', broadcastTemplateId: 'loh.winner' },
+      })
+    )
+
+    const emitted = state.tvFeed.find(
+      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.winner'
+    )
+    expect(emitted).toBeDefined()
+    expect(emitted?.meta?.editorial).toBeUndefined()
+    expect(emitted?.meta?.forceOnTv).toBe(true)
+    expect(state.broadcastQueue).toContain(emitted?.id)
+    expect(isVisibleOnTv(emitted!)).toBe(true)
+    expect(isVisibleInMainLog(emitted!)).toBe(true)
+  })
+})
+""")
           PY
-      - run: npm ci
-      - name: Reproduce only Force-to-TV regression
+
+      - name: Format changed implementation files
         run: >-
-          npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts
-          -t "explicit Broadcast Manager Force-to-TV promotes a normally log-only source"
+          npx prettier --write
+          src/broadcasting/broadcastTemplateCatalog.ts
+          src/store/gameSlice.ts
+          tests/fauxTv.p0.mechanicalCleanup.test.ts
+
+      - run: npm ci
+
+      - name: Focused materialization and Force-to-TV regressions
+        run: npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
+
+      - name: Faux TV P0 characterization and policy suite
+        run: >-
+          npx vitest run
+          tests/fauxTv.p0.characterization.test.ts
+          tests/fauxTv.p0.policy.test.ts
+          tests/fauxTv.p0.mechanicalCleanup.test.ts
           --reporter=verbose
 
-# trigger-only synchronization; this workflow is deleted by the final P0 commit
+      - name: Relevant Faux TV presentation regressions
+        shell: bash
+        run: |
+          mapfile -t files < <(
+            find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) |
+              grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' |
+              sort -u
+          )
+          printf 'Running %s relevant regression files:\n' "${#files[@]}"
+          printf '%s\n' "${files[@]}"
+          test "${#files[@]}" -gt 0
+          npx vitest run "${files[@]}" --reporter=verbose
+
+      - name: Full automated test suite
+        run: npx vitest run
+
+      - name: Test guard
+        run: npm run test:guard
+
+      - name: Formatting check
+        run: npm run format:check
+
+      - name: Lint without warnings
+        run: npm run lint:ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Web production build
+        run: npm run build
+
+      - name: Capacitor mobile-mode build
+        run: npm run build:mobile
+
+      - name: Verify scope and normal CI before commit
+        shell: bash
+        run: |
+          git diff --exit-code origin/main -- .github/workflows/ci.yml
+          ! grep -R "P0 TRACE" -n src tests
+          git diff -- src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+
+      - name: Commit validated P0 and remove temporary workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/faux-tv-p0-apply.yml
+          git add src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Finish Faux TV P0 presentation materialization"
+          git push origin HEAD:codex/faux-tv-p0-editorial-contract
