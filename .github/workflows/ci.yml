@@ -32,15 +32,18 @@ jobs:
         run: npm run lint:ci
       - name: Type check
         run: npm run typecheck
-      - name: Run Faux TV characterization regressions
-        run: >-
-          npx vitest run
-          tests/fauxTv.phase0.characterization.test.tsx
-          tests/broadcastQueue.presentation.test.tsx
-          src/components/ui/__tests__/TvZone.announcement.test.tsx
-          tests/specialVeto.flow.test.ts
-          tests/broadcastManager.reducer.test.ts
-          tests/activityService.routing.test.ts
+      - name: Characterize Faux TV baseline
+        run: npx vitest run tests/fauxTv.phase0.characterization.test.tsx
+      - name: Characterize managed broadcast queue
+        run: npx vitest run tests/broadcastQueue.presentation.test.tsx
+      - name: Characterize TvZone critical announcements
+        run: npx vitest run src/components/ui/__tests__/TvZone.announcement.test.tsx
+      - name: Characterize special Safety powers
+        run: npx vitest run tests/specialVeto.flow.test.ts
+      - name: Characterize Broadcast Manager
+        run: npx vitest run tests/broadcastManager.reducer.test.ts
+      - name: Characterize activity routing
+        run: npx vitest run tests/activityService.routing.test.ts
       - name: Run season/profile lifecycle regressions
         run: >-
           npx vitest run
