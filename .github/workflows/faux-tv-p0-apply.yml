@@ -8,8 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  isolate-final-presentation-failure:
-    if: ${{ !contains(github.event.head_commit.message, '[p0-report-3]') }}
+  compare-broadcast-queue:
+    if: ${{ !contains(github.event.head_commit.message, '[p0-queue-report]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,32 +21,24 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Apply exact narrow P0 candidate
-        run: |
-          python .github/scripts/faux_tv_p0_finish.py
-          python .github/scripts/faux_tv_p0_add_test.py
-          npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
-      - name: Isolate failure
+      - name: Compare exact test file before, main, after
         shell: bash
         run: |
           set +e
-          rm -f .github/p0-third-presentation-failure.txt .github/p0-third-presentation-report.json
-          mapfile -t files < <(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' | grep -v '^src/components/ui/__tests__/TvZone\.announcement\.test\.tsx$' | grep -v '^tests/broadcastManager\.reducer\.test\.ts$' | sort -u)
-          failed=''
-          for file in "${files[@]}"; do
-            npx vitest run "$file" --reporter=json --outputFile=.github/p0-third-presentation-report.json
-            rc=$?
-            if [ "$rc" -ne 0 ]; then failed="$file"; printf '%s\n' "$file" > .github/p0-third-presentation-failure.txt; break; fi
-          done
-          if [ -z "$failed" ]; then
-            joined=$(printf '%q ' "${files[@]}")
-            eval "npx vitest run $joined --reporter=json --outputFile=.github/p0-third-presentation-report.json"
-            rc=$?
-            if [ "$rc" -ne 0 ]; then printf '%s\n' 'BATCH_ONLY_FAILURE' > .github/p0-third-presentation-failure.txt; else printf '%s\n' 'NO_FAILURE_REPRODUCED' > .github/p0-third-presentation-failure.txt; fi
-          fi
+          npx vitest run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/q-before.json
+          git worktree add --detach /tmp/p0-main origin/main
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/p0-main/node_modules
+          cd /tmp/p0-main
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/q-main.json
+          cd "$GITHUB_WORKSPACE"
+          python .github/scripts/faux_tv_p0_finish.py
+          python .github/scripts/faux_tv_p0_add_test.py
+          npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+          npx vitest run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/q-after.json
+          set -e
+          python -c "import json; from pathlib import Path; f=lambda p:(lambda d:(d.get('numTotalTests'),[(a.get('fullName',a.get('title','')),(a.get('failureMessages') or [''])[0].splitlines()[0] if (a.get('failureMessages') or []) else '') for s in d.get('testResults',[]) for a in s.get('assertionResults',[]) if a.get('status')=='failed']))(json.loads(Path(p).read_text())); rows=[]; [(rows.extend(['## '+n+' total='+str(f(p)[0])+' failed='+str(len(f(p)[1]))]+['- '+a+' :: '+m for a,m in f(p)[1]])) for n,p in [('main','/tmp/q-main.json'),('branch-before-materialization','/tmp/q-before.json'),('branch-after-materialization','/tmp/q-after.json')]]; Path('.github/p0-broadcast-queue-comparison.txt').write_text('\\n'.join(rows)+'\\n')"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/p0-third-presentation-failure.txt .github/p0-third-presentation-report.json
-          git commit -m "chore: capture final P0 presentation failure [p0-report-3]"
+          git add .github/p0-broadcast-queue-comparison.txt
+          git commit -m "chore: capture broadcast queue P0 comparison [p0-queue-report]"
           git push origin HEAD:codex/faux-tv-p0-editorial-contract
-          exit 0
