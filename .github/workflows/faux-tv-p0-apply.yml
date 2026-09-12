@@ -19,278 +19,46 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - name: Apply narrow catalog-to-event materialization fix
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          catalog = Path('src/broadcasting/broadcastTemplateCatalog.ts')
-          text = catalog.read_text()
-
-          old = "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\n"
-          new = old + "import type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'\n"
-          if new not in text:
-              if old not in text:
-                  raise SystemExit('missing catalog import target')
-              text = text.replace(old, new, 1)
-
-          old = "  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n"
-          new = (
-              "  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */\n"
-              "  editorial?: BroadcastEditorialMetadata\n"
-              + old
-          )
-          if "editorial?: BroadcastEditorialMetadata" not in text:
-              if old not in text:
-                  raise SystemExit('missing catalog interface target')
-              text = text.replace(old, new, 1)
-
-          old = "  forceOnTv = true,\n  campaign?: BroadcastCampaign\n): BroadcastTemplate => ({"
-          new = (
-              "  forceOnTv = true,\n"
-              "  campaign?: BroadcastCampaign,\n"
-              "  editorial?: BroadcastEditorialMetadata\n"
-              "): BroadcastTemplate => ({"
-          )
-          if "campaign?: BroadcastCampaign,\n  editorial?: BroadcastEditorialMetadata" not in text:
-              if old not in text:
-                  raise SystemExit('missing feed signature target')
-              text = text.replace(old, new, 1)
-
-          old = "  forceOnTv,\n  campaign,\n  note,\n})"
-          new = "  forceOnTv,\n  campaign,\n  editorial,\n  note,\n})"
-          if "  campaign,\n  editorial,\n  note," not in text:
-              if old not in text:
-                  raise SystemExit('missing feed return target')
-              text = text.replace(old, new, 1)
-
-          replacements = {
-              "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?'\n  ),": "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
-              "  feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),": "  feed(\n    'nominations.preparing',\n    'nominations',\n    '{leader} is preparing the nomination ceremony. 🎯',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
-              "  feed('pos.competition-start', 'pos_comp', 'The Power of Safety competition is underway! 🎭'),": "  feed(\n    'pos.competition-start',\n    'pos_comp',\n    'The Power of Safety competition is underway! 🎭',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
-              "  feed('safety.holder', 'pos_ceremony', '{holder} is holding the Safety Ceremony. ⚡'),": "  feed(\n    'safety.holder',\n    'pos_ceremony',\n    '{holder} is holding the Safety Ceremony. ⚡',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
-              "  feed(\n    'safety.replacement-selecting',\n    'pos_ceremony_results',\n    '{leader} is selecting a backup nominee...'\n  ),": "  feed(\n    'safety.replacement-selecting',\n    'pos_ceremony_results',\n    '{leader} is selecting a backup nominee...',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f'missing catalog target: {old[:100]}')
-              text = text.replace(old, new, 1)
-          catalog.write_text(text)
-
-          game = Path('src/store/gameSlice.ts')
-          text = game.read_text()
-          old = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
-          new = (
-              "    broadcastLevel: finalLevel,\n"
-              "    broadcastManaged: true,\n"
-              "    ...(template?.editorial && meta?.editorial == null\n"
-              "      ? { editorial: template.editorial }\n"
-              "      : {}),\n"
-              "    ...(forceOnTv ? { forceOnTv: true } : {}),"
-          )
-          if old not in text:
-              raise SystemExit('missing pushEvent finalMeta target')
-          text = text.replace(old, new, 1)
-          game.write_text(text)
-
-          test = Path('tests/fauxTv.p0.mechanicalCleanup.test.ts')
-          test.write_text("""import { describe, expect, it } from 'vitest'
-import gameReducer, { addTvEvent, setBroadcastOverride } from '../src/store/gameSlice'
-import { isVisibleInMainLog, isVisibleOnTv } from '../src/services/activityService'
-
-const CASES = [
-  [
-    'loh.competition-start',
-    'loh_comp',
-    'The Leader of the House competition has begun! 🏆 Who will win power today?',
-  ],
-  ['pos.competition-start', 'pos_comp', 'The Power of Safety competition is underway! 🎭'],
-  ['nominations.preparing', 'nominations', 'Alex is preparing the nomination ceremony. 🎯'],
-  ['safety.holder', 'pos_ceremony', 'Alex is holding the Safety Ceremony. ⚡'],
-  [
-    'safety.replacement-selecting',
-    'pos_ceremony_results',
-    'Alex is selecting a backup nominee...',
-  ],
-] as const
-
-describe('Faux TV P0 mechanical cleanup', () => {
-  for (const [templateId, phase, text] of CASES) {
-    it(`${templateId} remains in history but is not foreground TV by default`, () => {
-      let state = gameReducer(undefined, { type: 'init' })
-      state = { ...state, phase, tvFeed: [], broadcastQueue: [] }
-      state = gameReducer(
-        state,
-        addTvEvent({ text, type: 'game', meta: { phase, broadcastTemplateId: templateId } })
-      )
-
-      const emitted = state.tvFeed.find(
-        (candidate) => candidate.meta?.broadcastTemplateId === templateId
-      )
-      expect(emitted).toBeDefined()
-      expect(emitted?.meta?.forceOnTv).toBeUndefined()
-      expect(emitted?.meta?.editorial).toMatchObject({
-        importance: 'required',
-        presentationMode: 'log_only',
-      })
-      expect(state.broadcastQueue).not.toContain(emitted?.id)
-      expect(isVisibleOnTv(emitted!)).toBe(false)
-      expect(isVisibleInMainLog(emitted!)).toBe(true)
-    })
-  }
-
-  it('explicit producer Force-to-TV promotes a freshly emitted log-only source', () => {
-    let state = gameReducer(undefined, { type: 'init' })
-    state = { ...state, phase: 'loh_comp', tvFeed: [], broadcastQueue: [] }
-    state = gameReducer(
-      state,
-      addTvEvent({
-        text: 'The Leader of the House competition has begun! 🏆 Who will win power today?',
-        type: 'game',
-        meta: {
-          phase: 'loh_comp',
-          broadcastTemplateId: 'loh.competition-start',
-          forceOnTv: true,
-        },
-      })
-    )
-
-    const emitted = state.tvFeed.find(
-      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.competition-start'
-    )
-    expect(emitted).toBeDefined()
-    expect(emitted?.meta?.editorial).toMatchObject({
-      importance: 'required',
-      presentationMode: 'log_only',
-    })
-    expect(emitted?.meta?.forceOnTv).toBe(true)
-    expect(state.broadcastQueue).toContain(emitted?.id)
-    expect(isVisibleOnTv(emitted!)).toBe(true)
-    expect(isVisibleInMainLog(emitted!)).toBe(true)
-  })
-
-  it('explicit Broadcast Manager Force-to-TV promotes a freshly emitted log-only source', () => {
-    let state = gameReducer(undefined, { type: 'init' })
-    state = { ...state, phase: 'loh_comp', tvFeed: [], broadcastQueue: [] }
-    state = gameReducer(
-      state,
-      setBroadcastOverride({ id: 'loh.competition-start', changes: { forceOnTv: true } })
-    )
-    state = gameReducer(
-      state,
-      addTvEvent({
-        text: 'The Leader of the House competition has begun! 🏆 Who will win power today?',
-        type: 'game',
-        meta: { phase: 'loh_comp', broadcastTemplateId: 'loh.competition-start' },
-      })
-    )
-
-    const emitted = state.tvFeed.find(
-      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.competition-start'
-    )
-    expect(emitted).toBeDefined()
-    expect(emitted?.meta?.editorial).toMatchObject({
-      importance: 'required',
-      presentationMode: 'log_only',
-    })
-    expect(emitted?.meta?.forceOnTv).toBe(true)
-    expect(state.broadcastQueue).toContain(emitted?.id)
-    expect(isVisibleOnTv(emitted!)).toBe(true)
-    expect(isVisibleInMainLog(emitted!)).toBe(true)
-  })
-
-  it('keeps a template without editorial metadata on the legacy foreground path', () => {
-    let state = gameReducer(undefined, { type: 'init' })
-    state = { ...state, phase: 'loh_results', tvFeed: [], broadcastQueue: [] }
-    state = gameReducer(
-      state,
-      addTvEvent({
-        text: 'Alex has won Leader of the House! 👑',
-        type: 'game',
-        meta: { phase: 'loh_results', broadcastTemplateId: 'loh.winner' },
-      })
-    )
-
-    const emitted = state.tvFeed.find(
-      (candidate) => candidate.meta?.broadcastTemplateId === 'loh.winner'
-    )
-    expect(emitted).toBeDefined()
-    expect(emitted?.meta?.editorial).toBeUndefined()
-    expect(emitted?.meta?.forceOnTv).toBe(true)
-    expect(state.broadcastQueue).toContain(emitted?.id)
-    expect(isVisibleOnTv(emitted!)).toBe(true)
-    expect(isVisibleInMainLog(emitted!)).toBe(true)
-  })
-})
-""")
-          PY
-
+      - name: Apply narrow P0 integration
+        run: python .github/scripts/faux_tv_p0_finish.py
       - name: Format changed implementation files
-        run: >-
-          npx prettier --write
-          src/broadcasting/broadcastTemplateCatalog.ts
-          src/store/gameSlice.ts
-          tests/fauxTv.p0.mechanicalCleanup.test.ts
-
+        run: npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
       - run: npm ci
-
       - name: Focused materialization and Force-to-TV regressions
         run: npx vitest run tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
-
       - name: Faux TV P0 characterization and policy suite
-        run: >-
-          npx vitest run
-          tests/fauxTv.p0.characterization.test.ts
-          tests/fauxTv.p0.policy.test.ts
-          tests/fauxTv.p0.mechanicalCleanup.test.ts
-          --reporter=verbose
-
+        run: npx vitest run tests/fauxTv.p0.characterization.test.ts tests/fauxTv.p0.policy.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts --reporter=verbose
       - name: Relevant Faux TV presentation regressions
         shell: bash
         run: |
-          mapfile -t files < <(
-            find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) |
-              grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' |
-              sort -u
-          )
-          printf 'Running %s relevant regression files:\n' "${#files[@]}"
-          printf '%s\n' "${files[@]}"
-          test "${#files[@]}" -gt 0
-          npx vitest run "${files[@]}" --reporter=verbose
-
+          files=$(find tests src -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -Ei '(broadcast|activityService|TvZone|safety|veto|onboarding|weather|eviction)' | sort -u | tr '\n' ' ')
+          echo "$files"
+          test -n "$files"
+          npx vitest run $files --reporter=verbose
       - name: Full automated test suite
         run: npx vitest run
-
       - name: Test guard
         run: npm run test:guard
-
       - name: Formatting check
         run: npm run format:check
-
       - name: Lint without warnings
         run: npm run lint:ci
-
       - name: Type check
         run: npm run typecheck
-
       - name: Web production build
         run: npm run build
-
       - name: Capacitor mobile-mode build
         run: npm run build:mobile
-
-      - name: Verify scope and normal CI before commit
+      - name: Verify P0 scope and normal CI
         shell: bash
         run: |
           git diff --exit-code origin/main -- .github/workflows/ci.yml
-          ! grep -R "P0 TRACE" -n src tests
+          if grep -R "P0 TRACE" -n src tests; then exit 1; fi
           git diff -- src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
-
-      - name: Commit validated P0 and remove temporary workflow
+      - name: Commit validated P0 and remove temporary infrastructure
         shell: bash
         run: |
-          git rm .github/workflows/faux-tv-p0-apply.yml
+          git rm .github/workflows/faux-tv-p0-apply.yml .github/scripts/faux_tv_p0_finish.py
           git add src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
