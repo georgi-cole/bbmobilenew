@@ -1,0 +1,6 @@
+## main total=9 failed=1
+- manager-driven faux-TV queue plays forced minor, major, and critical messages in manager order before phase advance :: Error: [2mexpect([22m[31melement[39m[2m).toHaveTextContent()[22m
+## branch-before-materialization total=9 failed=1
+- manager-driven faux-TV queue plays forced minor, major, and critical messages in manager order before phase advance :: Error: [2mexpect([22m[31melement[39m[2m).toHaveTextContent()[22m
+## branch-after-materialization total=9 failed=1
+- manager-driven faux-TV queue plays forced minor, major, and critical messages in manager order before phase advance :: Error: [2mexpect([22m[31melement[39m[2m).toHaveTextContent()[22m
