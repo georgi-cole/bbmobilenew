@@ -32,7 +32,7 @@ jobs:
         run: |
           python .github/scripts/faux_tv_p0_finish.py
           python .github/scripts/faux_tv_p0_add_test.py
-          npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts
+          npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/store/gameSlice.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/broadcastEditorialPolicy.test.ts
           git checkout origin/main -- .github/workflows/ci.yml
           git rm -f .github/workflows/faux-tv-p0-apply.yml .github/scripts/faux_tv_p0_finish.py .github/scripts/faux_tv_p0_add_test.py
           rm -f .github/p0-*.txt .github/p0-*.json
