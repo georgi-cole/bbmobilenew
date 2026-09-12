@@ -1,0 +1,93 @@
+name: Faux TV P0 apply
+
+on:
+  push:
+    branches: [codex/faux-tv-p0-editorial-contract]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/faux-tv-p0-editorial-contract
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply scoped P0 source changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          catalog = Path('src/broadcasting/broadcastTemplateCatalog.ts')
+          text = catalog.read_text()
+          text = text.replace(
+              "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\n",
+              "import type { BroadcastCampaign, BroadcastLevel, Phase, TvEvent } from '../types'\nimport type { BroadcastEditorialMetadata } from './broadcastEditorialPolicy'\n",
+          )
+          text = text.replace(
+              "  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
+              "  /** Optional P0 editorial/presentation contract. Missing metadata remains legacy/protected. */\n  editorial?: BroadcastEditorialMetadata\n  /** Undefined templates are shared across all campaigns. */\n  campaign?: BroadcastCampaign\n",
+          )
+          text = text.replace(
+              "  forceOnTv = true,\n  campaign?: BroadcastCampaign\n): BroadcastTemplate => ({",
+              "  forceOnTv = true,\n  campaign?: BroadcastCampaign,\n  editorial?: BroadcastEditorialMetadata\n): BroadcastTemplate => ({",
+          )
+          text = text.replace(
+              "  forceOnTv,\n  campaign,\n  note,\n})",
+              "  forceOnTv,\n  campaign,\n  editorial,\n  note,\n})",
+              1,
+          )
+
+          replacements = {
+              "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?'\n  ),": "  feed(\n    'loh.competition-start',\n    'loh_comp',\n    'The Leader of the House competition has begun! 🏆 Who will win power today?',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
+              "  feed('nominations.preparing', 'nominations', '{leader} is preparing the nomination ceremony. 🎯'),": "  feed(\n    'nominations.preparing',\n    'nominations',\n    '{leader} is preparing the nomination ceremony. 🎯',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
+              "  feed('pos.competition-start', 'pos_comp', 'The Power of Safety competition is underway! 🎭'),": "  feed(\n    'pos.competition-start',\n    'pos_comp',\n    'The Power of Safety competition is underway! 🎭',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
+              "  feed('safety.holder', 'pos_ceremony', '{holder} is holding the Safety Ceremony. ⚡'),": "  feed(\n    'safety.holder',\n    'pos_ceremony',\n    '{holder} is holding the Safety Ceremony. ⚡',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
+              "  feed(\n    'safety.replacement-selecting',\n    'pos_ceremony_results',\n    '{leader} is selecting a backup nominee...'\n  ),": "  feed(\n    'safety.replacement-selecting',\n    'pos_ceremony_results',\n    '{leader} is selecting a backup nominee...',\n    'game',\n    'minor',\n    undefined,\n    'Mechanical process narration · log only',\n    false,\n    undefined,\n    { importance: 'required', presentationMode: 'log_only' }\n  ),",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing catalog target: {old[:80]}')
+              text = text.replace(old, new, 1)
+          catalog.write_text(text)
+
+          game = Path('src/store/gameSlice.ts')
+          text = game.read_text()
+          old = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
+          new = "    broadcastLevel: finalLevel,\n    broadcastManaged: true,\n    ...(template?.editorial && meta?.editorial == null ? { editorial: template.editorial } : {}),\n    ...(forceOnTv ? { forceOnTv: true } : {}),"
+          if old not in text:
+              raise SystemExit('missing pushEvent finalMeta target')
+          game.write_text(text.replace(old, new, 1))
+          PY
+      - run: npm ci
+      - name: Format scoped files
+        run: npx prettier --write src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/store/gameSlice.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
+      - name: Focused Faux TV regressions
+        run: >-
+          npx vitest run
+          tests/fauxTv.phase0.characterization.test.tsx
+          tests/broadcastEditorialPolicy.test.ts
+          tests/fauxTv.p0.mechanicalCleanup.test.ts
+          tests/broadcastTemplateCatalog.test.ts
+          tests/broadcastQueue.presentation.test.tsx
+          src/components/ui/__tests__/TvZone.announcement.test.tsx
+          tests/specialVeto.flow.test.ts
+          tests/broadcastManager.reducer.test.ts
+          tests/activityService.routing.test.ts
+      - run: npm run typecheck
+      - run: npm run lint:ci
+      - name: Commit only if validation passed
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/faux-tv-p0-apply.yml
+          git add src/broadcasting/broadcastTemplateCatalog.ts src/broadcasting/broadcastEditorialPolicy.ts src/store/gameSlice.ts tests/broadcastEditorialPolicy.test.ts tests/broadcastTemplateCatalog.test.ts tests/fauxTv.p0.mechanicalCleanup.test.ts tests/fauxTv.phase0.characterization.test.tsx
+          git commit -m "feat: implement Faux TV P0 editorial contract"
+          git push origin HEAD:codex/faux-tv-p0-editorial-contract
