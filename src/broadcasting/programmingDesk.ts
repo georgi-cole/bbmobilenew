@@ -18,6 +18,14 @@ const NOMINATION_RECAP_PHASES = new Set([
   'live_vote',
 ])
 
+const SAFETY_RECAP_PHASES = new Set([
+  'pos_results',
+  'pos_ceremony',
+  'pos_ceremony_results',
+  'social_2',
+  'live_vote',
+])
+
 function joinNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? ''
   if (names.length === 2) return `${names[0]} and ${names[1]}`
@@ -40,52 +48,53 @@ function latestEvictee(state: Pick<GameState, 'players' | 'week'>): string | nul
   return latest?.name ?? null
 }
 
-function concisePublicTwist(history: readonly TvEvent[], week: number): string | null {
-  const event = history.find(
-    (candidate) =>
-      candidate.type === 'twist' &&
-      typeof candidate.text === 'string' &&
-      candidate.text.trim().length > 0 &&
-      candidate.meta?.week != null &&
-      candidate.meta.week >= Math.max(1, week - 2) &&
-      candidate.meta?.editorial?.sensitivity !== 'sensitive' &&
-      candidate.meta?.editorial?.presentationMode !== 'log_only' &&
-      (candidate.meta?.major != null ||
-        candidate.major != null ||
-        candidate.meta?.broadcastLevel === 'critical')
+function latestPublicTwist(history: readonly TvEvent[], week: number): TvEvent | null {
+  return (
+    history
+      .filter(
+        (candidate) =>
+          candidate.type === 'twist' &&
+          typeof candidate.text === 'string' &&
+          candidate.text.trim().length > 0 &&
+          candidate.meta?.week != null &&
+          candidate.meta.week >= Math.max(1, week - 2) &&
+          candidate.meta?.editorial?.sensitivity !== 'sensitive' &&
+          candidate.meta?.editorial?.presentationMode !== 'log_only' &&
+          (candidate.meta?.major != null ||
+            candidate.major != null ||
+            candidate.meta?.broadcastLevel === 'critical')
+      )
+      .slice()
+      .sort((a, b) => b.timestamp - a.timestamp || a.id.localeCompare(b.id, 'en'))[0] ?? null
   )
+}
+
+function concisePublicTwist(history: readonly TvEvent[], week: number): string | null {
+  const event = latestPublicTwist(history, week)
   if (!event) return null
   const compact = event.text.replace(/\s+/g, ' ').trim()
   return compact.length <= 105 ? compact : `${compact.slice(0, 102).trimEnd()}…`
 }
 
-function recapAlreadyShown(snapshot: SavedSeasonSnapshot): boolean {
-  return snapshot.game.tvFeed.some(
+function recapAlreadyShown(game: Pick<GameState, 'tvFeed'>, resumeKey: string): boolean {
+  return game.tvFeed.some(
     (event) =>
-      event.meta?.resumeRecapSavedAt === snapshot.savedAt ||
-      event.meta?.editorial?.storyKey === `resume:${snapshot.savedAt}`
+      event.meta?.resumeRecapKey === resumeKey ||
+      event.meta?.editorial?.storyKey === `resume:${resumeKey}`
   )
 }
 
 export interface ResumeRecapCandidate extends FauxTvEditorialCandidate {
-  savedAt: string
+  resumeKey: string
   facts: string[]
 }
 
-/**
- * Builds a factual resume recap only from durable public game state/history.
- * Relationship, targeting, intelligence and hidden competition-intent data are
- * deliberately outside the accepted input surface.
- */
-export function buildResumeRecapCandidate(
-  snapshot: SavedSeasonSnapshot,
-  now = Date.now()
-): ResumeRecapCandidate | null {
-  const savedAtMs = Date.parse(snapshot.savedAt)
-  if (!Number.isFinite(savedAtMs) || now - savedAtMs < RESUME_RECAP_MIN_ABSENCE_MS) return null
-  if (recapAlreadyShown(snapshot)) return null
-
-  const game = snapshot.game
+function buildResumeFacts(
+  game: Pick<
+    GameState,
+    'phase' | 'week' | 'players' | 'tvFeed' | 'nomineeIds' | 'lohId' | 'posWinnerId'
+  >
+): string[] {
   const facts: string[] = []
 
   if (NOMINATION_RECAP_PHASES.has(game.phase) && game.nomineeIds.length > 0) {
@@ -99,16 +108,7 @@ export function buildResumeRecapCandidate(
   if (lohName) facts.push(`${lohName} holds LOH.`)
 
   const posName = getName(game, game.posWinnerId)
-  if (
-    posName &&
-    new Set([
-      'pos_results',
-      'pos_ceremony',
-      'pos_ceremony_results',
-      'social_2',
-      'live_vote',
-    ]).has(game.phase)
-  ) {
+  if (posName && SAFETY_RECAP_PHASES.has(game.phase)) {
     facts.push(`${posName} won the Power of Safety.`)
   }
 
@@ -118,19 +118,48 @@ export function buildResumeRecapCandidate(
   const twist = concisePublicTwist(game.tvFeed, game.week)
   if (twist && facts.length < 3) facts.push(`Recent shock: ${twist}`)
 
-  const selectedFacts = facts.slice(0, 3)
-  if (selectedFacts.length === 0) return null
+  return facts.slice(0, 3)
+}
+
+/**
+ * Builds a factual resume recap only from durable public game state/history.
+ * Relationship, targeting, intelligence and hidden competition-intent data are
+ * deliberately outside the accepted input surface.
+ */
+export function buildResumeRecapFromGame(
+  game: Pick<
+    GameState,
+    'phase' | 'week' | 'players' | 'tvFeed' | 'nomineeIds' | 'lohId' | 'posWinnerId'
+  >,
+  lastPlayedAt: number | undefined,
+  now = Date.now(),
+  resumeKey = String(lastPlayedAt ?? '')
+): ResumeRecapCandidate | null {
+  if (!Number.isFinite(lastPlayedAt)) return null
+  if (now - (lastPlayedAt as number) < RESUME_RECAP_MIN_ABSENCE_MS) return null
+  if (!resumeKey || recapAlreadyShown(game, resumeKey)) return null
+
+  const facts = buildResumeFacts(game)
+  if (facts.length === 0) return null
 
   return {
-    text: `PREVIOUSLY ON THE BIG EYE · ${selectedFacts.join(' ')}`,
-    storyKey: `resume:${snapshot.savedAt}`,
+    text: `PREVIOUSLY ON THE BIG EYE · ${facts.join(' ')}`,
+    storyKey: `resume:${resumeKey}`,
     cooldownKey: 'programming:resume-recap',
     subjectIds: [],
     category: RESUME_RECAP_CATEGORY,
     significance: 94,
-    savedAt: snapshot.savedAt,
-    facts: selectedFacts,
+    resumeKey,
+    facts,
   }
+}
+
+export function buildResumeRecapCandidate(
+  snapshot: SavedSeasonSnapshot,
+  now = Date.now()
+): ResumeRecapCandidate | null {
+  const savedAtMs = Date.parse(snapshot.savedAt)
+  return buildResumeRecapFromGame(snapshot.game, savedAtMs, now, snapshot.savedAt)
 }
 
 function programmingRecentlyShown(history: readonly TvEvent[], week: number): boolean {
@@ -152,15 +181,8 @@ export function buildProgrammingCallbackCandidate(
   if (state.phase !== 'week_start' || state.week < 2) return null
   if (programmingRecentlyShown(state.tvFeed, state.week)) return null
 
-  const previousShock = state.tvFeed.find(
-    (event) =>
-      event.type === 'twist' &&
-      event.meta?.week === state.week - 1 &&
-      event.meta?.editorial?.sensitivity !== 'sensitive' &&
-      event.meta?.editorial?.presentationMode !== 'log_only' &&
-      (event.meta?.major != null || event.major != null || event.meta?.broadcastLevel === 'critical')
-  )
-  if (!previousShock) return null
+  const previousShock = latestPublicTwist(state.tvFeed, state.week)
+  if (!previousShock || previousShock.meta?.week !== state.week - 1) return null
 
   const compact = previousShock.text.replace(/\s+/g, ' ').trim()
   const callback = compact.length <= 100 ? compact : `${compact.slice(0, 97).trimEnd()}…`
