@@ -44,8 +44,41 @@ jobs:
           tests/fauxTv.phase0.characterization.test.tsx
           tests/broadcastEditorialPolicy.test.ts
           tests/activityService.routing.test.ts
-          tests/broadcastQueue.presentation.test.tsx
           --reporter=verbose
+      - name: Broadcast queue parity with P0 baseline
+        shell: bash
+        run: |
+          set +e
+          npx vitest run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/candidate-queue.json
+          candidate_rc=$?
+          git worktree add --detach /tmp/p0-base origin/codex/faux-tv-p0-editorial-contract
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/p0-base/node_modules
+          cd /tmp/p0-base
+          "$GITHUB_WORKSPACE/node_modules/.bin/vitest" run tests/broadcastQueue.presentation.test.tsx --reporter=json --outputFile=/tmp/p0-queue.json
+          p0_rc=$?
+          cd "$GITHUB_WORKSPACE"
+          set -e
+          CANDIDATE_RC="$candidate_rc" P0_RC="$p0_rc" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def failures(path):
+              data = json.loads(Path(path).read_text())
+              return sorted(
+                  assertion.get('fullName', assertion.get('title', ''))
+                  for suite in data.get('testResults', [])
+                  for assertion in suite.get('assertionResults', [])
+                  if assertion.get('status') == 'failed'
+              )
+
+          candidate = failures('/tmp/candidate-queue.json')
+          baseline = failures('/tmp/p0-queue.json')
+          print('candidate queue failures:', candidate)
+          print('P0 queue failures:', baseline)
+          assert candidate == baseline, 'Queue failure set differs from P0 baseline'
+          assert int(os.environ['CANDIDATE_RC']) == int(os.environ['P0_RC'])
+          PY
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
