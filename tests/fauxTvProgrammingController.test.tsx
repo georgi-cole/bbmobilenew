@@ -1,9 +1,13 @@
 import React from 'react'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
-import { render, waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import gameReducer, { addTvEvent } from '../src/store/gameSlice'
+import gameReducer, {
+  addTvEvent,
+  advance,
+  createInitialGameState,
+} from '../src/store/gameSlice'
 import FauxTvProgrammingController from '../src/broadcasting/FauxTvProgrammingController'
 import { getBroadcastEditorialMetadata } from '../src/broadcasting/broadcastEditorialPolicy'
 import {
@@ -42,6 +46,16 @@ function makeStore(overrides: Record<string, unknown> = {}) {
   })
 }
 
+function makeAIAutoStore() {
+  const game = createInitialGameState()
+  game.players = game.players.map((player) => ({ ...player, isUser: false }))
+  game.lastPlayedAt = Date.now()
+  return configureStore({
+    reducer: { game: gameReducer },
+    preloadedState: { game },
+  })
+}
+
 function optionalStory(category: string, storyKey: string, week = 4): TvEvent {
   return {
     id: `existing:${storyKey}`,
@@ -63,6 +77,15 @@ function optionalStory(category: string, storyKey: string, week = 4): TvEvent {
       },
     },
   }
+}
+
+function isStrongProgrammingStory(event: TvEvent): boolean {
+  const category = getBroadcastEditorialMetadata(event)?.category
+  return (
+    category === 'by_the_numbers' ||
+    category === BIG_EYE_PROGRAMMING_CATEGORY ||
+    category === 'programming_resume_recap'
+  )
 }
 
 describe('Faux TV optional programming scheduling', () => {
@@ -185,10 +208,7 @@ describe('Faux TV optional programming scheduling', () => {
     )
 
     await waitFor(() => {
-      const strong = store.getState().game.tvFeed.filter((event) => {
-        const category = getBroadcastEditorialMetadata(event)?.category
-        return category === BIG_EYE_PROGRAMMING_CATEGORY || category === 'by_the_numbers'
-      })
+      const strong = store.getState().game.tvFeed.filter(isStrongProgrammingStory)
       expect(strong).toHaveLength(1)
     })
   })
@@ -208,16 +228,16 @@ describe('Faux TV optional programming scheduling', () => {
     )
 
     await waitFor(() => {
-      const strong = store.getState().game.tvFeed.filter((event) => {
-        const category = getBroadcastEditorialMetadata(event)?.category
-        return category === BIG_EYE_PROGRAMMING_CATEGORY || category === 'by_the_numbers'
-      })
+      const strong = store.getState().game.tvFeed.filter(isStrongProgrammingStory)
       expect(strong).toHaveLength(2)
     })
 
+    const lohId = store.getState().game.lohId
     const milestone = store
       .getState()
-      .game.tvFeed.find((event) => getBroadcastEditorialMetadata(event)?.storyKey === 'stats:loh:' + store.getState().game.lohId + ':2')
+      .game.tvFeed.find(
+        (event) => getBroadcastEditorialMetadata(event)?.storyKey === `stats:loh:${lohId}:2`
+      )
     expect(milestone).toBeTruthy()
     expect(getBroadcastEditorialMetadata(milestone!)?.presentationMode).toBe('ambient')
   })
@@ -256,9 +276,70 @@ describe('Faux TV optional programming scheduling', () => {
       const category = getBroadcastEditorialMetadata(event)?.category
       return category === 'programming_resume_recap' || category === 'by_the_numbers'
     })
-    expect(optional.some((event) => getBroadcastEditorialMetadata(event)?.category === 'programming_resume_recap')).toBe(true)
-    expect(optional.every((event) => getBroadcastEditorialMetadata(event)?.presentationMode === 'ambient')).toBe(true)
+    expect(
+      optional.some(
+        (event) => getBroadcastEditorialMetadata(event)?.category === 'programming_resume_recap'
+      )
+    ).toBe(true)
+    expect(
+      optional.every(
+        (event) => getBroadcastEditorialMetadata(event)?.presentationMode === 'ambient'
+      )
+    ).toBe(true)
     expect(optional.every((event) => event.meta?.forceOnTv !== true)).toBe(true)
     expect(optional.every((event) => !state.broadcastQueue.includes(event.id))).toBe(true)
+  })
+
+  it('keeps a normal simulated AI season at one or two programming beats per completed Day 2+', async () => {
+    const store = makeAIAutoStore()
+    const completedDays = new Set<number>()
+
+    render(
+      <Provider store={store}>
+        <FauxTvProgrammingController />
+      </Provider>
+    )
+
+    for (let step = 0; step < 250; step += 1) {
+      await act(async () => {
+        store.dispatch(advance())
+        await Promise.resolve()
+      })
+
+      const game = store.getState().game
+      if (game.phase === 'week_end') completedDays.add(game.week)
+    }
+
+    const game = store.getState().game
+    const programming = game.tvFeed.filter(isStrongProgrammingStory)
+    const resumeRecaps = programming.filter(
+      (event) => getBroadcastEditorialMetadata(event)?.category === 'programming_resume_recap'
+    )
+    expect(resumeRecaps).toHaveLength(0)
+
+    const byDay = new Map<number, TvEvent[]>()
+    for (const event of programming) {
+      const day = event.meta?.week
+      if (typeof day !== 'number') continue
+      byDay.set(day, [...(byDay.get(day) ?? []), event])
+    }
+
+    for (const [day, stories] of byDay) {
+      if (day === 1) expect(stories).toHaveLength(0)
+      else expect(stories.length).toBeLessThanOrEqual(2)
+    }
+
+    const calibratedDays = [...completedDays].filter((day) => day >= 2)
+    expect(calibratedDays.length).toBeGreaterThan(0)
+    for (const day of calibratedDays) {
+      const stories = byDay.get(day) ?? []
+      expect(stories.length).toBeGreaterThanOrEqual(1)
+      expect(stories.length).toBeLessThanOrEqual(2)
+      expect(
+        stories.every(
+          (event) => getBroadcastEditorialMetadata(event)?.presentationMode === 'ambient'
+        )
+      ).toBe(true)
+    }
   })
 })
