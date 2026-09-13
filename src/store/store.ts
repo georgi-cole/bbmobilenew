@@ -195,6 +195,7 @@ let prevCustomBroadcasts = store.getState().game.customBroadcasts
 let prevRemoteBroadcastManager = store.getState().remoteConfig.config?.broadcastManager
 let prevRemoteSocialManager = store.getState().remoteConfig.config?.socialManager
 let prevFinale = store.getState().finale
+let prevFinalePhase = prevFinale.seasonFinale?.phase
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
 let prevChallenge = store.getState().challenge
@@ -283,8 +284,10 @@ store.subscribe(() => {
     current.publicOpinion !== prevPublicOpinion ||
     current.challenge !== prevChallenge
   if (resumableStateChanged) {
+    const finalePhaseChanged = current.finale.seasonFinale?.phase !== prevFinalePhase
     prevGame = current.game
     prevFinale = current.finale
+    prevFinalePhase = current.finale.seasonFinale?.phase
     prevSocial = current.social
     prevPublicOpinion = current.publicOpinion
     prevChallenge = current.challenge
@@ -299,6 +302,10 @@ store.subscribe(() => {
         activeProfileId,
         createSavedSeasonSnapshot(activeProfileId, current)
       )
+      // Finale transitions are user-visible checkpoints. Flush these immediately
+      // so a reload between the transition and the trailing autosave cannot lose
+      // awards or restore an earlier finale phase.
+      if (finalePhaseChanged) runSnapshotAutosave.flush()
     }
   }
   if (current.game.seasonArchives !== prevSeasonArchives) {
