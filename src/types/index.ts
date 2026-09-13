@@ -96,6 +96,20 @@ export interface MinigameResult {
   competitionIntents?: Record<string, import('../social/intelligenceSystem').CompetitionIntent>
 }
 
+/** Canonical terminal record retained for mission/audit consumers. */
+export interface CompetitionResolution {
+  runId: string
+  gameKey: string
+  week: number
+  participants: string[]
+  status: 'completed' | 'quit' | 'skipped' | 'interrupted'
+  humanId?: string
+  humanScore?: number
+  winnerId?: string
+  lastPlaceId?: string | null
+  placements?: string[]
+}
+
 /**
  * Payload for the `completeMinigame` action.
  * Replaces the legacy single-number payload to enable canonical outcome data.
@@ -894,6 +908,8 @@ export interface GameState {
    * determine the LOH/POS winner instead of a random pick. Cleared after use.
    */
   minigameResult?: MinigameResult | null
+  /** Last terminal competition record; retained for mission/audit consumers. */
+  lastCompetitionResolution?: CompetitionResolution | null
   /**
    * Winner of Final 3 Part 1 — advances directly to Part 3 (skips Part 2).
    * Set during `final3_comp1` advance.
