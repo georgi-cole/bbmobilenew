@@ -31,6 +31,7 @@ import FauxTvProgrammingController from './broadcasting/FauxTvProgrammingControl
 import { I18nProvider } from './i18n'
 import './styles/gameCopyPolish.css'
 import './styles/performanceOverrides.css'
+import './styles/majorityRulesFinalDuel.css'
 
 if (import.meta.env.DEV) {
   console.log(
