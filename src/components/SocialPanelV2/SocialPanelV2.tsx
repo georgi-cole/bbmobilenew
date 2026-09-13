@@ -260,9 +260,7 @@ export default function SocialPanelV2() {
     setPrimaryTargetId(publicFocus.primaryTargetId)
     setSelectedTargets(new Set([publicFocus.primaryTargetId]))
     setSelectedActionId(
-      (activePublicDirection?.progressPercent ?? 0) <= 0
-        ? publicFocus.actionId
-        : null
+      (activePublicDirection?.progressPercent ?? 0) <= 0 ? publicFocus.actionId : null
     )
     setSelectedSubjectId(publicFocus.subjectId)
   }, [activePublicDirection, publicFocus])

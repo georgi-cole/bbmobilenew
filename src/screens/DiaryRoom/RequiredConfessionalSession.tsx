@@ -212,25 +212,36 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
                   <span className="diary-room__bubble-text">{displayPresentation.prompt}</span>
 
                   {decisionComplete ? (
-                    <section className="required-confessional__decision-reveal" aria-label="Confirmed decision">
-                      <span className="required-confessional__decision-reveal-label">✓ Locked in</span>
+                    <section
+                      className="required-confessional__decision-reveal"
+                      aria-label="Confirmed decision"
+                    >
+                      <span className="required-confessional__decision-reveal-label">
+                        ✓ Locked in
+                      </span>
                       <p className="required-confessional__decision-complete required-confessional__decision-complete--summary">
                         {completedSummary ?? 'Your choice has been recorded.'}
                       </p>
                       {confirmedPlayers.length > 0 && (
-                        <div className="required-confessional__confirmed-players" aria-label="Confirmed selection">
-                        {confirmedPlayers.map((player) => {
-                          return (
-                            <div key={player.id} className="required-confessional__confirmed-player">
-                              <PlayerAvatar
-                                player={player}
-                                size="sm"
-                                showRelationshipOutline={false}
-                              />
-                              <span>{player.name}</span>
-                            </div>
-                          )
-                        })}
+                        <div
+                          className="required-confessional__confirmed-players"
+                          aria-label="Confirmed selection"
+                        >
+                          {confirmedPlayers.map((player) => {
+                            return (
+                              <div
+                                key={player.id}
+                                className="required-confessional__confirmed-player"
+                              >
+                                <PlayerAvatar
+                                  player={player}
+                                  size="sm"
+                                  showRelationshipOutline={false}
+                                />
+                                <span>{player.name}</span>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                       <p className="required-confessional__decision-complete required-confessional__decision-complete--return">
