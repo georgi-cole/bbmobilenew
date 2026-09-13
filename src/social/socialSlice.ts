@@ -41,7 +41,7 @@ import {
   type SocialStateWithHistory,
 } from './socialHistory'
 import { clampSocialResource, migrateSocialState } from './socialStateMigration'
-import { getIncomingInteractionResponsePolicy } from './socialRuntimeConfig'
+import { getIncomingInteractionResponsePolicy, getSocialRuntimeConfig } from './socialRuntimeConfig'
 import {
   appendRealitySimulationTrace,
   createInitialRealitySimulationState,
@@ -283,6 +283,10 @@ const socialSlice = createSlice({
      */
     recordSocialAction(state, action: PayloadAction<{ entry: SocialActionLogEntry }>) {
       state.sessionLogs.push(action.payload.entry)
+      const sessionLimit = getSocialRuntimeConfig().history.maxActionHistory
+      if (state.sessionLogs.length > sessionLimit) {
+        state.sessionLogs = state.sessionLogs.slice(-sessionLimit)
+      }
       appendPersistentSocialHistory(
         state as unknown as SocialStateWithHistory,
         action.payload.entry
@@ -302,6 +306,54 @@ const socialSlice = createSlice({
     replaceRealityDomain(state, action: PayloadAction<RealityDomainState>) {
       state.reality = normalizeRealityDomainState(action.payload, state.relationships)
       projectRealityRelationshipsIntoLegacy(state.reality, state.relationships)
+    },
+    /**
+     * Commit one autonomous Reality outcome in a single reducer pass. The
+     * social event is dispatched separately so existing intelligence, drama,
+     * and audience middleware continue to observe `recordSocialAction`.
+     *
+     * Keeping the Reality domain authoritative here also prevents those
+     * middleware side-effects from being overwritten by a later whole-domain
+     * replacement.
+     */
+    commitRealityOutcome(
+      state,
+      action: PayloadAction<{
+        domain: RealityDomainState
+        simulation: RealitySimulationState
+        actorId: string
+        energyDelta: number
+        influenceDelta?: number
+        infoDelta?: number
+      }>
+    ) {
+      const {
+        domain,
+        simulation,
+        actorId,
+        energyDelta,
+        influenceDelta = 0,
+        infoDelta = 0,
+      } = action.payload
+      state.reality = normalizeRealityDomainState(domain, state.relationships)
+      projectRealityRelationshipsIntoLegacy(state.reality, state.relationships)
+      state.realitySimulation = normalizeRealitySimulationState(simulation)
+      state.energyBank[actorId] = clampSocialResource(
+        (state.energyBank[actorId] ?? 0) + energyDelta,
+        'energy'
+      )
+      if (influenceDelta !== 0) {
+        state.influenceBank[actorId] = clampSocialResource(
+          (state.influenceBank[actorId] ?? 0) + influenceDelta,
+          'influence'
+        )
+      }
+      if (infoDelta !== 0) {
+        state.infoBank[actorId] = clampSocialResource(
+          (state.infoBank[actorId] ?? 0) + infoDelta,
+          'info'
+        )
+      }
     },
     ensureRealityDomainActors(state, action: PayloadAction<{ actorIds: string[] }>) {
       ensureRealityActors(state.reality as RealityDomainState, action.payload.actorIds)
@@ -879,6 +931,7 @@ export const {
   initializeRealitySimulation,
   replaceRealitySimulation,
   replaceRealityDomain,
+  commitRealityOutcome,
   ensureRealityDomainActors,
   applyRealityRelationshipDelta,
   applyRealityAmbientMood,

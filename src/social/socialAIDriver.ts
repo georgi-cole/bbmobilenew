@@ -17,11 +17,11 @@ import {
   applyEnergyDelta,
   applyInfoDelta,
   applyInfluenceDelta,
+  commitRealityOutcome,
   recordSocialAction,
   replaceRealityDomain,
   replaceRealitySimulation,
   scheduleIncomingInteraction,
-  updateRelationship,
 } from './socialSlice'
 import {
   assignDeliverySlot,
@@ -204,7 +204,10 @@ function executeRealityCandidate(
     },
   })
   if (!result.event) {
-    _store.dispatch(replaceRealityDomain(result.domain))
+    // A blocked opportunity only advances the bounded simulation trace. Do
+    // not replace the full Reality domain unless a pending interaction was
+    // actually created.
+    if (result.interaction) _store.dispatch(replaceRealityDomain(result.domain))
     _store.dispatch(replaceRealitySimulation(result.simulation))
     return false
   }
@@ -220,13 +223,6 @@ function executeRealityCandidate(
     })
   }
   const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
-  _store.dispatch(applyEnergyDelta({ playerId: player.id, delta: -costs.energy }))
-  if (costs.influence > 0) {
-    _store.dispatch(applyInfluenceDelta({ playerId: player.id, delta: -costs.influence }))
-  }
-  if (costs.info > 0) {
-    _store.dispatch(applyInfoDelta({ playerId: player.id, delta: -costs.info }))
-  }
   const compatibilityDeltas = Object.fromEntries(
     candidate.targetIds.map((targetId) => [
       targetId,
@@ -234,20 +230,20 @@ function executeRealityCandidate(
         (beforeAffinities[targetId] ?? 0),
     ])
   )
-  for (const [targetId, compatibilityDelta] of Object.entries(compatibilityDeltas)) {
-    _store.dispatch(
-      updateRelationship({
-        source: player.id,
-        target: targetId,
-        delta: compatibilityDelta,
-        actionSource: 'system',
-      })
-    )
-  }
   const deltas = Object.values(compatibilityDeltas)
   const compatibilityDelta =
     deltas.reduce((sum, delta) => sum + delta, 0) / Math.max(1, deltas.length)
   const primaryTargetId = candidate.targetIds[0] ?? player.id
+  _store.dispatch(
+    commitRealityOutcome({
+      domain: result.domain,
+      simulation: result.simulation,
+      actorId: player.id,
+      energyDelta: -costs.energy,
+      influenceDelta: costs.influence > 0 ? -costs.influence : 0,
+      infoDelta: costs.info > 0 ? -costs.info : 0,
+    })
+  )
   const latestState = _store.getState() as DriverState
   _store.dispatch(
     recordSocialAction({
@@ -269,16 +265,13 @@ function executeRealityCandidate(
         },
         timestamp: (state.game.week ?? 1) * 1_000_000 + result.event.sequence,
         week: state.game.week,
+        phase: state.game.phase,
         source: 'system',
         score: result.score?.total,
         label: result.response?.kind ?? 'Resolved',
       },
     })
   )
-  // Replace after compatibility dispatches so the v3 causal outcome remains
-  // authoritative instead of receiving a second legacy projection.
-  _store.dispatch(replaceRealityDomain(result.domain))
-  _store.dispatch(replaceRealitySimulation(result.simulation))
   return true
 }
 
@@ -300,6 +293,32 @@ let _running = false
 let _tickCount = 0
 let _actionsExecuted = 0
 
+const CANDIDATE_ATTEMPTS_PER_TICK = 4
+
+function executedSystemActionsThisPhase(state: DriverState, playerId: string): number {
+  const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
+  return history.filter(
+    (entry) =>
+      entry.source === 'system' &&
+      entry.outcome === 'success' &&
+      entry.actorId === playerId &&
+      entry.week === state.game.week &&
+      entry.phase === state.game.phase
+  ).length
+}
+
+function hasAvailableAiWork(
+  state: DriverState,
+  aiPlayers: readonly DriverPlayer[],
+  budgets: Record<string, number>
+): boolean {
+  return aiPlayers.some(
+    (player) =>
+      (budgets[player.id] ?? 0) > 0 &&
+      executedSystemActionsThisPhase(state, player.id) < socialConfig.maxActionsPerPlayer
+  )
+}
+
 export function setStore(store: StoreAPI): void {
   _store = store
 }
@@ -310,7 +329,7 @@ export function start(): void {
   const state = _store.getState() as DriverState
   const aiPlayers = getAIPlayers(state)
   const budgets = state.social?.energyBank ?? {}
-  if (!aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)) return
+  if (!hasAvailableAiWork(state, aiPlayers, budgets)) return
 
   _running = true
   _tickCount = 0
@@ -908,16 +927,19 @@ function tick(): void {
     stop()
     return
   }
-  if (!socialConfig.allowOverspend && !aiPlayers.some((player) => (budgets[player.id] ?? 0) > 0)) {
+  if (!hasAvailableAiWork(state, aiPlayers, budgets)) {
     stop()
     return
   }
 
   for (const player of aiPlayers) {
     if ((budgets[player.id] ?? 0) <= 0) continue
+    const playerState = _store.getState() as DriverState
+    if (executedSystemActionsThisPhase(playerState, player.id) >= socialConfig.maxActionsPerPlayer)
+      continue
 
     let executed = false
-    for (let attempt = 0; attempt < 4 && !executed; attempt += 1) {
+    for (let attempt = 0; attempt < CANDIDATE_ATTEMPTS_PER_TICK && !executed; attempt += 1) {
       const freshState = _store.getState() as DriverState
       const candidate = candidateForPlayer(freshState, player, attempt)
       if (!candidate) continue
@@ -928,7 +950,8 @@ function tick(): void {
 
   if (!socialConfig.allowOverspend) {
     const updatedBudgets = (_store.getState() as DriverState).social?.energyBank ?? {}
-    if (!aiPlayers.some((player) => (updatedBudgets[player.id] ?? 0) > 0)) stop()
+    const updatedState = _store.getState() as DriverState
+    if (!hasAvailableAiWork(updatedState, aiPlayers, updatedBudgets)) stop()
   }
 }
 

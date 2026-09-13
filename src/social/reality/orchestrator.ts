@@ -361,7 +361,9 @@ export function runRealityOpportunity(input: {
   simulation: RealitySimulationState
   opportunity: RealityOpportunity
 }): RealityOrchestrationResult {
-  const domain = cloneDomain(input.domain)
+  // Candidate evaluation and scoring are read-only. Delay the expensive full
+  // domain clone until a candidate is actually eligible and selected.
+  const sourceDomain = input.domain
   let simulation = input.simulation
   const rng = simulation.rng
   if (!rng) throw new Error('Reality simulation must be initialized before orchestration')
@@ -374,7 +376,7 @@ export function runRealityOpportunity(input: {
       targetIds: candidate.targetIds,
       actors: input.opportunity.actors,
       context: input.opportunity.context,
-      reality: domain,
+      reality: sourceDomain,
       direction: input.opportunity.direction,
     })
     const score = evaluation.eligible
@@ -383,7 +385,7 @@ export function runRealityOpportunity(input: {
           actor,
           targetIds: candidate.targetIds,
           context: input.opportunity.context,
-          reality: domain,
+          reality: sourceDomain,
         })
       : undefined
     return {
@@ -413,7 +415,7 @@ export function runRealityOpportunity(input: {
       rngCursor: rng.cursor,
     })
     return {
-      domain,
+      domain: sourceDomain,
       simulation,
       interaction: null,
       event: null,
@@ -425,6 +427,7 @@ export function runRealityOpportunity(input: {
   simulation = { ...simulation, rng: selectionDraw.next }
   const selected = selectWeighted(viable, selectionDraw.value)
   if (!selected) throw new Error('Eligible Reality candidates had no selectable weight')
+  const domain = cloneDomain(sourceDomain)
   simulation = appendRealitySimulationTrace(simulation, {
     day: input.opportunity.context.day,
     phase: input.opportunity.context.phase,
