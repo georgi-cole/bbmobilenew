@@ -143,19 +143,40 @@ function namesForPair(fact: RealityFact, players: readonly Pick<Player, 'id' | '
 function leadText(fact: RealityFact, players: readonly Pick<Player, 'id' | 'name'>[]): string {
   const subject = playerName(players, fact.subjectIds[0])
   const [first, second] = namesForPair(fact, players)
+  const variation = (lines: readonly string[]) => lines[hash(fact.id) % lines.length] ?? lines[0]
   switch (fact.propositionType) {
     case 'COMPETITION_THROW_SUSPICION':
-      return `${subject} may be deliberately hiding their competition strength.`
+      return variation([
+        `${subject} may be deliberately hiding their competition strength.`,
+        `${subject}'s recent performance looks quieter than their ability suggests.`,
+        `People are questioning whether ${subject} is saving their real competition game for later.`,
+      ])
     case 'SECRET_MEETING':
-      return `${first} and ${second} were seen having a private conversation.`
+      return variation([
+        `${first} and ${second} were seen having a private conversation.`,
+        `${first} and ${second} slipped away from the group for a quiet talk.`,
+        `${first} and ${second} have been finding reasons to compare notes in private.`,
+      ])
     case 'ROMANTIC_MOMENT':
-      return `${first} and ${second} shared a moment that looked more than strategic.`
+      return variation([
+        `${first} and ${second} shared a moment that looked more than strategic.`,
+        `The chemistry between ${first} and ${second} is starting to draw attention.`,
+        `${first} and ${second} had a private moment the house may not be able to ignore.`,
+      ])
     case 'SECRET_ALLIANCE':
-      return `${first} and ${second} may have made a private agreement.`
+      return variation([
+        `${first} and ${second} may have made a private agreement.`,
+        `${first} and ${second} appear to be quietly building something together.`,
+        `A pattern suggests ${first} and ${second} are coordinating more closely than they admit.`,
+      ])
     case 'TARGETING':
       return `${subject} may be targeting ${playerName(players, fact.objectId)}.`
     case 'ALLIANCE_FRACTURE':
-      return `${first} and ${second}'s working relationship may be breaking down.`
+      return variation([
+        `${first} and ${second}'s working relationship may be breaking down.`,
+        `${first} and ${second} no longer seem to be reading from the same playbook.`,
+        `Something has put strain on the trust between ${first} and ${second}.`,
+      ])
     default:
       return 'A new lead is circulating in the hub.'
   }

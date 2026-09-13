@@ -82,8 +82,24 @@ function computePlacement(
   participants: string[],
   scores: Record<string, number> | undefined,
   humanId: string,
+  authoritative?: { winnerId?: string; lastPlaceId?: string | null },
 ): { placement: number; participantCount: number } | null {
   if (!participants.includes(humanId) || participants.length === 0) return null;
+  const participantCount = participants.length;
+  // Some authoritative minigames report only the winner and last finisher.
+  // Treating their missing scores as zero previously sorted the player by ID,
+  // which could leave an earned "avoid last" objective stuck at 1/2.
+  if (!scores || participants.some((id) => !Number.isFinite(scores[id]))) {
+    if (authoritative?.winnerId === humanId) return { placement: 1, participantCount };
+    if (authoritative?.lastPlaceId === humanId) return { placement: participantCount, participantCount };
+    if (
+      authoritative?.lastPlaceId != null &&
+      participants.includes(authoritative.lastPlaceId)
+    ) {
+      return { placement: Math.min(2, participantCount - 1), participantCount };
+    }
+    return null;
+  }
   const ranked = normalizeScoreEntries(participants, scores)
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
   const index = ranked.findIndex((entry) => entry.id === humanId);
@@ -353,12 +369,20 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
         ((payload as {
           participants?: string[];
           scores?: Record<string, number>;
+          winnerId?: string;
+          lastPlaceId?: string | null;
         } | undefined) ?? {}).participants ?? [],
         ((payload as {
           participants?: string[];
           scores?: Record<string, number>;
+          winnerId?: string;
+          lastPlaceId?: string | null;
         } | undefined) ?? {}).scores,
         humanId,
+        {
+          winnerId: (payload as { winnerId?: string } | undefined)?.winnerId,
+          lastPlaceId: (payload as { lastPlaceId?: string | null } | undefined)?.lastPlaceId,
+        },
       );
     if (!placement) return result;
 

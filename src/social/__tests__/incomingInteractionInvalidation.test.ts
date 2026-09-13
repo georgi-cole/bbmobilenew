@@ -64,6 +64,54 @@ function buildSocialState(interactions: IncomingInteraction[] = []): SocialState
 }
 
 describe('incoming interaction invalidation', () => {
+  it('rejects a replacement-nominee reaction from an original nominee', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'pos_ceremony_results'
+    game.lohId = human.id
+    human.status = 'loh'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+    game.replacementNomineeIds = []
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: nominee.id,
+          payload: {
+            scenarioKey: 'replacement_nominee_reacts_to_loh',
+            phase: 'pos_ceremony_results',
+          },
+        }),
+        game
+      )
+    ).toBe(true)
+  })
+
+  it('keeps a replacement-nominee reaction when the sender was actually added after Safety', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'pos_ceremony_results'
+    game.lohId = human.id
+    human.status = 'loh'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+    game.replacementNomineeIds = [nominee.id]
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: nominee.id,
+          payload: {
+            scenarioKey: 'replacement_nominee_reacts_to_loh',
+            phase: 'pos_ceremony_results',
+          },
+        }),
+        game
+      )
+    ).toBe(false)
+  })
+
   it('blocks a nominee from asking a competing nominee for a saving vote', () => {
     const { game, human, nominee } = buildGameState()
     game.phase = 'live_vote'

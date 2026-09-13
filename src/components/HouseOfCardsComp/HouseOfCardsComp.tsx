@@ -27,6 +27,10 @@ import {
 } from './houseOfCardsUtils';
 import './HouseOfCardsComp.css';
 
+// A mismatch needs to remain readable after the flip animation has settled,
+// especially on slower phones. 760ms could be mostly consumed by rendering.
+const MISMATCH_REVEAL_MS = 1_400;
+
 interface ParticipantProp {
   id: string;
   name: string;
@@ -382,7 +386,7 @@ export default function HouseOfCardsComp({ participantIds, participants, prizeTy
         setFinalTurnId((turn) => finalists.find((id) => id !== turn) ?? turn);
       }
       setLocked(false);
-    }, 760);
+    }, MISMATCH_REVEAL_MS);
   }, [board, finalTurnId, finalists, phase, playMatch, playMismatch]);
 
   const handleCardClick = useCallback((cardIndex: number) => {

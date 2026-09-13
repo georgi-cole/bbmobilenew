@@ -71,6 +71,7 @@ export interface AutonomyContext {
   nomineeIds?: string[]
   posWinnerId?: string | null
   povSavedId?: string | null
+  replacementNomineeIds?: string[]
   prevHohId?: string | null
   votes?: Record<string, string>
   recentEvicteeId?: string | null
@@ -119,6 +120,7 @@ export interface AutonomyStore {
       nomineeIds?: string[]
       posWinnerId?: string | null
       povSavedId?: string | null
+      replacementNomineeIds?: string[]
       prevHohId?: string | null
       votes?: Record<string, string>
       pendingEviction?: { evicteeId: string } | null
@@ -217,6 +219,7 @@ interface ActorConstraints {
   playerCanVote: boolean
   playerFinishedLastLohComp: boolean
   actorWasSaved: boolean
+  actorWasReplacementNominee: boolean
   actorIsPendingEvictee: boolean
   actorSurvivedCurrentVote: boolean
 }
@@ -391,6 +394,7 @@ function buildActorConstraints(
   const playerCanVote = !context.voxPopuliActive && !playerIsNominee && !playerIsHoh
   const playerFinishedLastLohComp = context.lastHohCompFinisherId === playerId
   const actorWasSaved = context.povSavedId === actor.id
+  const actorWasReplacementNominee = (context.replacementNomineeIds ?? []).includes(actor.id)
   const actorIsPendingEvictee = context.pendingEvictionId === actor.id
   const actorSurvivedCurrentVote =
     context.phase === 'eviction_results' && actorIsNominee && !actorIsPendingEvictee
@@ -408,6 +412,7 @@ function buildActorConstraints(
     playerCanVote,
     playerFinishedLastLohComp,
     actorWasSaved,
+    actorWasReplacementNominee,
     actorIsPendingEvictee,
     actorSurvivedCurrentVote,
   }
@@ -624,7 +629,7 @@ function resolveIncomingInteractionPlan(
   } else if (
     !context.voxPopuliActive &&
     context.phase === 'pos_ceremony_results' &&
-    constraints.actorIsNominee
+    constraints.actorWasReplacementNominee
   ) {
     if (context.dramaMode && constraints.playerIsHoh) {
       plan = {
@@ -1378,6 +1383,8 @@ export function scheduleIncomingInteractionsForPhase(
     nomineeIds: contextOverride?.nomineeIds ?? gameState?.nomineeIds ?? [],
     posWinnerId: contextOverride?.posWinnerId ?? gameState?.posWinnerId ?? null,
     povSavedId: contextOverride?.povSavedId ?? gameState?.povSavedId ?? null,
+    replacementNomineeIds:
+      contextOverride?.replacementNomineeIds ?? gameState?.replacementNomineeIds ?? [],
     prevHohId: contextOverride?.prevHohId ?? gameState?.prevHohId ?? null,
     votes: contextOverride?.votes ?? gameState?.votes ?? {},
     recentEvicteeId:

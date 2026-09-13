@@ -12,6 +12,7 @@ export interface InteractionValidityGameState {
   lohId?: string | null
   posWinnerId?: string | null
   nomineeIds?: string[]
+  replacementNomineeIds?: string[]
   awaitingPovDecision?: boolean
   awaitingPovSaveTarget?: boolean
   povProtectedIds?: string[]
@@ -76,6 +77,13 @@ function violatesDeclarativeRule(
   if (
     rule.senderMustBeNominee !== undefined &&
     isNominee(game, interaction.fromId) !== rule.senderMustBeNominee
+  ) {
+    return true
+  }
+  if (
+    rule.senderMustBeReplacementNominee !== undefined &&
+    (game.replacementNomineeIds ?? []).includes(interaction.fromId) !==
+      rule.senderMustBeReplacementNominee
   ) {
     return true
   }
