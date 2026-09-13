@@ -21,23 +21,23 @@ jobs:
         include:
           - label: Formatting
             command: npm run format:check
-            needs_full_history: true
+            fetch_depth: 0
           - label: Test hygiene
             command: npm run test:guard
-            needs_full_history: false
+            fetch_depth: 1
           - label: ESLint
             command: npm run lint:ci
-            needs_full_history: false
+            fetch_depth: 1
           - label: TypeScript
             command: npm run typecheck
-            needs_full_history: false
+            fetch_depth: 1
           - label: Core regressions
             command: npm run test:pr-core
-            needs_full_history: false
+            fetch_depth: 1
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: ${{ matrix.needs_full_history && 0 || 1 }}
+          fetch-depth: ${{ matrix.fetch_depth }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
