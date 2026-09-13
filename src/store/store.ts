@@ -195,7 +195,7 @@ let prevCustomBroadcasts = store.getState().game.customBroadcasts
 let prevRemoteBroadcastManager = store.getState().remoteConfig.config?.broadcastManager
 let prevRemoteSocialManager = store.getState().remoteConfig.config?.socialManager
 let prevFinale = store.getState().finale
-let prevFinalePhase = prevFinale.seasonFinale?.phase
+let prevFinalePhase = prevGame.seasonFinale?.phase
 let prevSocial = store.getState().social
 let prevPublicOpinion = store.getState().publicOpinion
 let prevChallenge = store.getState().challenge
@@ -284,10 +284,10 @@ store.subscribe(() => {
     current.publicOpinion !== prevPublicOpinion ||
     current.challenge !== prevChallenge
   if (resumableStateChanged) {
-    const finalePhaseChanged = current.finale.seasonFinale?.phase !== prevFinalePhase
+    const finalePhaseChanged = current.game.seasonFinale?.phase !== prevFinalePhase
     prevGame = current.game
     prevFinale = current.finale
-    prevFinalePhase = current.finale.seasonFinale?.phase
+    prevFinalePhase = current.game.seasonFinale?.phase
     prevSocial = current.social
     prevPublicOpinion = current.publicOpinion
     prevChallenge = current.challenge
