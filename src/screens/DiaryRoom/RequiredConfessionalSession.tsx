@@ -201,22 +201,28 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
                   </strong>
                   <span className="diary-room__bubble-text">{displayPresentation.prompt}</span>
 
-                  <RequiredConfessionalDecision
-                    key={displayPresentation.key}
-                    decision={displayDecision}
-                    presentation={displayPresentation}
-                    onDecisionCommitted={() => {
-                      setLastReturnCue(displayPresentation.returnCue)
-                      setLastDecisionType(displayDecision.type)
-                      setCompletedDecision({
-                        decision: displayDecision,
-                        presentation: displayPresentation,
-                      })
-                      if (VOTE_DECISION_TYPES.has(displayDecision.type)) {
-                        dispatch(setConfessionalMusicMode('vote-committed'))
-                      }
-                    }}
-                  />
+                  {decisionComplete ? (
+                    <p className="required-confessional__decision-complete">
+                      Decision confirmed. Return to the House to continue the ceremony.
+                    </p>
+                  ) : (
+                    <RequiredConfessionalDecision
+                      key={displayPresentation.key}
+                      decision={displayDecision}
+                      presentation={displayPresentation}
+                      onDecisionCommitted={() => {
+                        setLastReturnCue(displayPresentation.returnCue)
+                        setLastDecisionType(displayDecision.type)
+                        setCompletedDecision({
+                          decision: displayDecision,
+                          presentation: displayPresentation,
+                        })
+                        if (VOTE_DECISION_TYPES.has(displayDecision.type)) {
+                          dispatch(setConfessionalMusicMode('vote-committed'))
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="diary-room__bubble diary-room__bubble--bb">

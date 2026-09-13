@@ -2,6 +2,13 @@
   opacity: 0.76;
 }
 
+.required-confessional__decision-complete {
+  margin: 1rem 0 0;
+  color: rgba(235, 240, 255, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .required-confessional__decision-bubble--complete .rcd-confirm__button {
   font-size: 0;
 }

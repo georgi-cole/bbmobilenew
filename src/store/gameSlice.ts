@@ -3100,7 +3100,18 @@ export function chooseAiEvictionVote(
     if (tags.has('target')) score += 25
     if (tags.has('betrayal')) score += 35
     if (tags.has('protection') || tags.has('shield')) score -= 20
-    if (tags.has('alliance')) {
+    const hasRomanticBond = tags.has('romance') || tags.has('bromance')
+    if (hasRomanticBond) {
+      // Romance is a stronger public commitment than a standard alliance. It
+      // should usually surface at the vote, while still leaving a narrow path
+      // for an ambitious or betrayed player to cut the bond late in the game.
+      const backstabChance = Math.max(
+        0,
+        Math.min(0.1, 0.01 + threat * 0.006 + betrayalChanceModifier(voterIdentity) * 0.35)
+      )
+      if (rng() < backstabChance) score += 115
+      else score -= 135 + allianceIdentityBias(voterIdentity)
+    } else if (tags.has('alliance')) {
       const backstabChance = Math.max(
         0,
         Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity))

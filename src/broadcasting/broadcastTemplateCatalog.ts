@@ -255,8 +255,10 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
     'loh_comp',
     "🗳️ Today's Leader of the House will be chosen by popular vote! Cast your votes now.",
     'game',
-    'major',
-    'democracia'
+    // card.democracia is the one full-screen announcement for this branch.
+    // Keep the vote-start line in the feed so moving into the ballot cannot
+    // replay the Democracia shock on the same day.
+    'minor'
   ),
   feed('loh.winner', 'loh_results', '{winner} has won Leader of the House! 👑'),
   feed(

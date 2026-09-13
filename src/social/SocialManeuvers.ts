@@ -70,6 +70,10 @@ interface ManeuverPlayer {
   name: string
   status: string
   isUser?: boolean
+  aiGameIdentity?: {
+    archetype?: string
+    temperament?: string
+  }
 }
 
 interface ManeuverGameState {
@@ -767,7 +771,12 @@ export function executeAction(
       phase?: string
       lohId?: string | null
       posWinnerId?: string | null
-      players?: Array<{ id: string; name?: string; status: string }>
+      players?: Array<{
+        id: string
+        name?: string
+        status: string
+        aiGameIdentity?: { archetype?: string; temperament?: string }
+      }>
       nomineeIds?: string[]
       nominationContext?: { autoNomineeId: string | null } | null
       lohSocialPlan?: {
@@ -789,15 +798,20 @@ export function executeAction(
     savedLohPlan && savedLohPlan.week === rootState.game?.week && savedLohPlan.lohId === targetId
       ? savedLohPlan
       : null
+  // A persisted plan carries disclosure history, not a permanent target. Safety
+  // can replace a nominee between two conversations, so always reconcile the
+  // current and backup targets with the live block before answering again.
   const lohPlanState = freshLohTargetPlan
-    ? (existingLohPlan ?? {
-        week: rootState.game?.week ?? 0,
-        lohId: targetId,
+    ? {
+        ...(existingLohPlan ?? {
+          week: rootState.game?.week ?? 0,
+          lohId: targetId,
+          askCountsByPlayerId: {},
+          disclosedTargetByPlayerId: {},
+        }),
         currentTargetId: freshLohTargetPlan.currentTargetId,
         backupTargetId: freshLohTargetPlan.backupTargetId,
-        askCountsByPlayerId: {},
-        disclosedTargetByPlayerId: {},
-      })
+      }
     : null
   const priorLohAsks = lohPlanState?.askCountsByPlayerId[actorId] ?? 0
   const finalBlockLocked = ['pos_ceremony_results', 'social_2', 'live_vote'].includes(
@@ -814,11 +828,20 @@ export function executeAction(
   const lohDisclosurePlayer = rootState.game?.players?.find(
     (player) => player.id === lohDisclosureId
   )
+  const lohIdentity = rootState.game?.players?.find(
+    (player) => player.id === targetId
+  )?.aiGameIdentity
+  const rareDirectAdmission =
+    lohDisclosureId === actorId &&
+    priorLohAsks === 1 &&
+    recipientTrust <= 10 &&
+    ['aggressive_competitor', 'chaos_agent', 'lone_wolf'].includes(lohIdentity?.archetype ?? '')
   // The LOH may share another name as misdirection, but should not casually tell
-  // a player that *they* are the current or backup target.
+  // a player that *they* are the current or backup target. A small subset of
+  // blunt personalities can do so only after being pressed again.
   const lohWillDisclose =
     !!lohDisclosureId &&
-    (!dramaMode || lohDisclosureId !== actorId) &&
+    (lohDisclosureId !== actorId || rareDirectAdmission) &&
     recipientTrust >= 0 &&
     priorLohAsks < 2
   const lohTargetPlan =
