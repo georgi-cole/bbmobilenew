@@ -1,4 +1,4 @@
-import { chmod, mkdir, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -16,14 +16,16 @@ npm run check:pr
 `
 
 try {
-  await mkdir(hooksDir, { recursive: true })
-  await writeFile(hookPath, hook, 'utf8')
-  await chmod(hookPath, 0o755)
-  console.log('Installed .git/hooks/pre-push -> npm run check:pr')
+  await stat(gitDir)
 } catch (error) {
   if (error?.code === 'ENOENT') {
     console.log('Git metadata is unavailable; skipping local pre-push hook installation.')
-  } else {
-    throw error
+    process.exit(0)
   }
+  throw error
 }
+
+await mkdir(hooksDir, { recursive: true })
+await writeFile(hookPath, hook, 'utf8')
+await chmod(hookPath, 0o755)
+console.log('Installed .git/hooks/pre-push -> npm run check:pr')
