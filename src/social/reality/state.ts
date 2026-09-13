@@ -172,6 +172,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value))
 }
 
+/** Keep active conversations intact while bounding resolved interaction history. */
+export const REALITY_RESOLVED_INTERACTION_LIMIT = 240
+
+function retainRealityInteractions(
+  value: unknown
+): Record<string, RealityDomainState['interactions'][string]> {
+  if (!isRecord(value)) return {}
+  const rawKeys = Object.keys(value)
+  if (rawKeys.length <= REALITY_RESOLVED_INTERACTION_LIMIT) {
+    return value as Record<string, RealityDomainState['interactions'][string]>
+  }
+  const entries = Object.entries(value).filter(([, interaction]) => isRecord(interaction)) as Array<
+    [string, RealityDomainState['interactions'][string]]
+  >
+  const active = entries.filter(
+    ([, interaction]) => interaction.status === 'PENDING' || interaction.status === 'AWAITING_HUMAN'
+  )
+  const resolved = entries
+    .filter(
+      ([, interaction]) =>
+        interaction.status !== 'PENDING' && interaction.status !== 'AWAITING_HUMAN'
+    )
+    .sort(
+      ([leftId, left], [rightId, right]) =>
+        left.createdSequence - right.createdSequence || leftId.localeCompare(rightId)
+    )
+    .slice(-REALITY_RESOLVED_INTERACTION_LIMIT)
+  return Object.fromEntries([...active, ...resolved])
+}
+
 export function normalizeRealityDomainState(
   value: unknown,
   legacyRelationships: RelationshipsMap = {}
@@ -207,7 +237,7 @@ export function normalizeRealityDomainState(
     alliances: input.alliances && isRecord(input.alliances) ? input.alliances : {},
     romances: input.romances && isRecord(input.romances) ? input.romances : {},
     contestants: input.contestants && isRecord(input.contestants) ? input.contestants : {},
-    interactions: input.interactions && isRecord(input.interactions) ? input.interactions : {},
+    interactions: retainRealityInteractions(input.interactions),
     events: Array.isArray(input.events) ? input.events.slice(-500) : [],
     cooldowns: input.cooldowns && isRecord(input.cooldowns) ? input.cooldowns : {},
     voteIntents: input.voteIntents && isRecord(input.voteIntents) ? input.voteIntents : {},

@@ -5,7 +5,8 @@ import {
   type SavedSeasonSnapshot,
 } from './saveStatePersistence'
 
-export const RUN_SNAPSHOT_AUTOSAVE_DELAY_MS = 0
+/** Trailing save window for autonomous simulation churn. Lifecycle boundaries flush immediately. */
+export const RUN_SNAPSHOT_AUTOSAVE_DELAY_MS = 1500
 
 type SaveRunSnapshot = (profileId: string, snapshot: SavedSeasonSnapshot) => boolean
 
