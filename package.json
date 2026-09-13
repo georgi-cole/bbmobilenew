@@ -7,6 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.mjs",
     "bootstrap": "npm ci && cd server && npm ci",
     "bootstrap:root": "npm ci",
     "bootstrap:server": "cd server && npm ci",
