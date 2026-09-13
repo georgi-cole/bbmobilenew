@@ -110,6 +110,42 @@ describe('intelligence system', () => {
     expect(lead.source).toBe('House rumour')
   })
 
+  it('varies repeated private-meeting lead copy while retaining the concrete names', () => {
+    const domain = createInitialRealityDomainState()
+    for (const id of ['a', 'c']) {
+      const fact = {
+        id,
+        propositionType: 'SECRET_MEETING' as const,
+        subjectIds: ['sol', 'lux'],
+        value: true,
+        day: 4,
+        phase: 'social_1',
+        visibility: 'PAIR_ONLY' as const,
+        participantIds: ['sol', 'lux'],
+        witnessIds: ['human'],
+        viewerVisible: false,
+        publicVisible: false,
+        juryVisible: false,
+        sourceEventId: `social:${id}`,
+      }
+      addRealityFact(domain, fact)
+      const memory = makeIntelMemory({
+        ownerId: 'human',
+        fact,
+        sourceType: 'WITNESSED',
+        sourceChain: ['human'],
+        confidence: 0.7,
+        day: 4,
+        phase: 'social_1',
+      })
+      learnRealityFact(domain, { ownerId: 'human', factId: fact.id, memory, confidence: 0.7 })
+    }
+
+    const leads = getIntelLeadViews(domain, 'human', players, 4)
+    expect(new Set(leads.map((lead) => lead.text)).size).toBeGreaterThan(1)
+    expect(leads.every((lead) => lead.text.includes('Sol and Lux'))).toBe(true)
+  })
+
   it('offers targeted intel only while the source knows something the recipient does not', () => {
     const domain = createInitialRealityDomainState()
     const fact = {

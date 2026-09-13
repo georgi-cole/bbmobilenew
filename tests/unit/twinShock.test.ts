@@ -140,6 +140,20 @@ describe('Twin Shock reducer flow', () => {
     expect(state.twinShock?.promptStage).toBe('day5_final');
   });
 
+  it('accepts a direct give-up answer on the final Big Eye prompt', () => {
+    let state = reduce(makeTwinShockState({ week: 1 }), queueForcedShock('twinShock'));
+    state = reduce(state, advance());
+    state = reduce(state, submitTwinShockAnswer('No idea'));
+    state = { ...state, week: 2, phase: 'eviction_results' };
+    state = reduce(state, advance());
+
+    expect(state.twinShock?.promptStage).toBe('day5_final');
+    state = reduce(state, submitTwinShockAnswer('I give up'));
+
+    expect(state.twinShockResolution).toBe('mission_success');
+    expect(state.twinShock?.promptStage).toBeNull();
+  });
+
   it('secretly flips Lia to the hint avatar after the first failed confessional', () => {
     let state = reduce(makeTwinShockState({ week: 1 }), queueForcedShock('twinShock'));
     state = reduce(state, advance());

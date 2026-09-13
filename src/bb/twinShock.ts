@@ -246,6 +246,26 @@ export function resolveTwinShockTurn(
   }
 
   if (stage === 'day5_final') {
+    // The final prompt is already the Big Eye's last invitation to solve the
+    // mystery. A player who gives up here should not have to repeat themselves
+    // after being told to use exactly those words.
+    if (intent === 'give_up_confirmation' || intent === 'unknown_lia_suspicion') {
+      return {
+        intent,
+        messages: [
+          'All right. I am not going to torture you anymore.',
+          'Here is the secret.',
+          'All along, Lia has been secretly switching places with her twin sister, Ali.',
+          'Their secret mission was successful.',
+          'Ali will now take over the first empty place in the House as a full contestant.',
+          'You are free to return and inform the others.',
+        ],
+        status: 'resolved_mission_success',
+        promptStage: null,
+        retryCount: 0,
+        resolution: 'resolved_mission_success',
+      };
+    }
     if (intent === 'unclear' && state.retryCount < 1) {
       return {
         intent,

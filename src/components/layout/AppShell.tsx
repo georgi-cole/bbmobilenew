@@ -21,6 +21,12 @@ const QaManagerShortcuts = lazy(() => import('../DebugPanel/QaManagerShortcuts')
 const FinalFaceoff = lazy(() => import('../FinalFaceoff/FinalFaceoff'))
 const SeasonFinaleOverlay = lazy(() => import('../SeasonFinale/SeasonFinaleOverlay'))
 const VoxPopuliFinaleOverlay = lazy(() => import('../VoxPopuliFinale/VoxPopuliFinaleOverlay'))
+const LANDSCAPE_FRIENDLY_MINIGAMES = new Set([
+  'castleRescue',
+  'castleRescueRemastered',
+  'castleRescue2',
+  'castleRescue2Remastered',
+])
 
 /**
  * AppShell — persistent wrapper around every screen.
@@ -50,6 +56,11 @@ export default function AppShell() {
   const { display } = settings
   const remoteConfig = useAppSelector(selectRemoteConfig)
   const remoteBroadcast = useAppSelector(selectRemoteBroadcast)
+  const pendingMinigameKey = useAppSelector((s) => s.game.pendingMinigame?.key)
+  const pendingChallengeKey = useAppSelector((s) => s.challenge.pending?.game.key)
+  const allowsLandscape =
+    (pendingMinigameKey != null && LANDSCAPE_FRIENDLY_MINIGAMES.has(pendingMinigameKey)) ||
+    (pendingChallengeKey != null && LANDSCAPE_FRIENDLY_MINIGAMES.has(pendingChallengeKey))
 
   // Gameplay owns the full Android display. Other screens restore the native
   // status bar and continue to use the measured safe-area inset.
@@ -171,7 +182,7 @@ export default function AppShell() {
           <VoxPopuliFinaleOverlay />
         </Suspense>
       )}
-      <PortraitOrientationGuard />
+      {!allowsLandscape && <PortraitOrientationGuard />}
       <SaveRecoveryNotice />
       <PhonePreviewSystemChrome />
     </div>

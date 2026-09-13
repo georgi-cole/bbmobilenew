@@ -635,7 +635,9 @@
 
 @media (max-width: 640px) {
   .hangman-challenge__letter-form {
-    display: none;
+    /* Verdict Board is played on phones first. Hiding the only entry control
+       made a live round impossible to play on the narrow mobile viewport. */
+    display: grid;
   }
   .hangman-challenge__alphabet {
     grid-template-columns: repeat(7, minmax(0, 1fr));

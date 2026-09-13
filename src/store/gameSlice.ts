@@ -637,6 +637,7 @@ export function createInitialGameState(options?: {
     posWinnerId: null,
     replacementNeeded: false,
     povSavedId: null,
+    replacementNomineeIds: [],
     povProtectedIds: [],
     awaitingNominations: false,
     pendingNominee1Id: null,
@@ -1951,6 +1952,9 @@ function ensureMinimumNominees(
 
     const replacement = seededPick(rng, eligible)
     appendNominee(state, replacement.id)
+    state.replacementNomineeIds = [
+      ...new Set([...(state.replacementNomineeIds ?? []), replacement.id]),
+    ]
     pushEvent(
       state,
       `${lohPlayer?.name ?? 'The LOH'} named ${replacement.name} as the replacement nominee. 🎯`,
@@ -2084,6 +2088,7 @@ function resetVoxFinalThreeRound(state: GameState): void {
   state.posWinnerId = null
   state.replacementNeeded = false
   state.povSavedId = null
+  state.replacementNomineeIds = []
   state.povProtectedIds = []
   state.lastHohCompFinisherId = null
   state.lastHohCompFinisherType = null
@@ -4040,6 +4045,7 @@ const gameSlice = createSlice({
       if (!player || !lohPlayer) return
 
       appendNominee(state, id)
+      state.replacementNomineeIds = [...new Set([...(state.replacementNomineeIds ?? []), id])]
       state.replacementNeeded = false
       state.coLohReplacementOwnerId = null
       state.povSavedId = null
@@ -5528,19 +5534,9 @@ const gameSlice = createSlice({
           'twist',
           { major: 'depression_shock_day_two' }
         )
-        pushEvent(
-          state,
-          'The Big Eye sends chocolates to the house in a small attempt to lift the mood. 🍫',
-          'game',
-          {
-            major: 'depression_shock_chocolates',
-            broadcastPriority: 'major',
-            broadcastLevel: 'major',
-            broadcastCampaign: 'depression_shock',
-            forceOnTv: true,
-            week: state.week,
-          }
-        )
+        // DepressionShockController owns the day-two chocolate broadcast.
+        // Keeping a second legacy event here caused the same live card to be
+        // queued twice on its way into social_1.
         pushEvent(
           state,
           'A harmless kitchen comment turns into another unexpected fight. Nobody seems to know why. ⚡',
@@ -7420,6 +7416,7 @@ const gameSlice = createSlice({
           state.posWinnerId = null
           state.replacementNeeded = false
           state.povSavedId = null
+          state.replacementNomineeIds = []
           state.povProtectedIds = []
           state.awaitingNominations = false
           state.pendingNominee1Id = null

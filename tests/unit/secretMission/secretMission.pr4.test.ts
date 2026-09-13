@@ -12,6 +12,7 @@ import gameReducer, {
   syncMissionTask,
   triggerSecretMission,
   hydrateGame,
+  applyMinigameWinner,
 } from '../../../src/store/gameSlice';
 import settingsReducer from '../../../src/store/settingsSlice';
 import socialReducer from '../../../src/social/socialSlice';
@@ -46,6 +47,29 @@ function setupAcceptedMission() {
 }
 
 describe('secret mission v2 follow-up', () => {
+  it('counts an authoritative non-last result even when a minigame reports no score table', () => {
+    const store = setupAcceptedMission();
+    const task = store.getState().game.secretMission!.tasks[0];
+    store.dispatch(syncMissionTask({
+      taskId: task.id,
+      updates: { type: 'avoid_last_place', current: 1, target: 2, completed: false },
+    }));
+    const game = store.getState().game;
+    const humanId = game.players.find((player) => player.isUser)?.id;
+    const otherIds = game.players.filter((player) => player.id !== humanId).map((player) => player.id);
+    if (!humanId || otherIds.length < 2) throw new Error('Expected a playable competition roster');
+
+    store.dispatch(applyMinigameWinner({
+      winnerId: otherIds[0],
+      participants: [humanId, otherIds[0], otherIds[1]],
+      lastPlaceId: otherIds[1],
+    }));
+
+    const updatedTask = store.getState().game.secretMission!.tasks.find((entry) => entry.id === task.id)!;
+    expect(updatedTask.current).toBe(2);
+    expect(updatedTask.completed).toBe(true);
+  });
+
   it('removes an incomplete mission when its final day ends', () => {
     const store = setupAcceptedMission();
     const mission = store.getState().game.secretMission!;

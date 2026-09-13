@@ -1,5 +1,6 @@
 export interface IncomingInteractionValidityRule {
   senderMustBeNominee?: boolean
+  senderMustBeReplacementNominee?: boolean
   senderMustBeHoh?: boolean
   senderMustHoldSafety?: boolean
   humanMustBeHoh?: boolean
@@ -73,6 +74,7 @@ export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteract
   },
   replacement_nominee_reacts_to_loh: {
     senderMustBeNominee: true,
+    senderMustBeReplacementNominee: true,
     humanMustBeHoh: true,
     invalidPhases: ['live_vote', 'eviction_results', 'week_end', 'week_start'],
   },

@@ -762,6 +762,10 @@ export interface GameState {
    * Cleared after the replacement nominee is confirmed.
    */
   povSavedId?: string | null
+  /** Nominees actually added after the Safety ceremony this week. This is
+   * distinct from the original nomination block and powers truthful social
+   * follow-ups about replacement nominations. */
+  replacementNomineeIds?: string[]
   /**
    * All players protected by a veto/safety effect for the current cycle.
    * Used to keep previously saved nominees ineligible for re-nomination later
