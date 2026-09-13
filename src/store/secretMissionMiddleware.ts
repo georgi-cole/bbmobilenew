@@ -241,7 +241,11 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
 
       if (task.type === 'social_energy_empty_streak') {
         const energy = nextState.social?.energyBank?.[humanId] ?? 0;
-        const success = energy === 0;
+        // Zero must come from actual play. A missing grant, an unavailable
+        // Social module, or an unrelated resource reset must not manufacture
+        // a successful mission day.
+        const spentEnergy = (task.activityDays ?? []).includes(String(completedDay));
+        const success = energy === 0 && spentEnergy;
         const currentStreak = success ? (task.currentStreak ?? 0) + 1 : 0;
         const maxStreak = Math.max(task.maxStreak ?? 0, currentStreak);
         const uniqueDays = success
@@ -254,7 +258,7 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
           uniqueDays,
           lastProgressDay: completedDay,
           firstSatisfiedDay: maxStreak >= task.target ? completedDay : task.firstSatisfiedDay,
-          auditLog: appendAudit(task, success ? `Spent all social energy on Day ${completedDay}` : `Missed energy streak on Day ${completedDay}`),
+          auditLog: appendAudit(task, success ? `Spent all social energy on Day ${completedDay}` : energy === 0 ? `Energy was 0 on Day ${completedDay}, but no successful social move was recorded` : `Missed energy streak on Day ${completedDay}: ${energy} energy remained`),
           completed: maxStreak >= task.target,
         });
       }
@@ -265,7 +269,9 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
         );
         const success = dayInteractions.length > 0
           && dayInteractions.every(
-            (interaction) => interaction.resolved && interaction.resolvedWith !== 'ignore',
+            (interaction) => interaction.resolved
+              && interaction.resolvedWith !== 'ignore'
+              && interaction.resolvedWith !== 'dismiss',
           );
         const currentStreak = success ? (task.currentStreak ?? 0) + 1 : 0;
         const maxStreak = Math.max(task.maxStreak ?? 0, currentStreak);
@@ -279,7 +285,7 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
           uniqueDays,
           lastProgressDay: completedDay,
           firstSatisfiedDay: maxStreak >= task.target ? completedDay : task.firstSatisfiedDay,
-          auditLog: appendAudit(task, success ? `Answered all requests on Day ${completedDay}` : `Missed a request on Day ${completedDay}`),
+          auditLog: appendAudit(task, success ? `Answered all ${dayInteractions.length} requests on Day ${completedDay}` : dayInteractions.length === 0 ? `No response-required incoming request was delivered on Day ${completedDay}` : `Missed, ignored, or auto-dismissed a request on Day ${completedDay}`),
           completed: maxStreak >= task.target,
         });
       }
@@ -331,6 +337,14 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
       entry?: { actorId?: string; actionId?: string; targetId?: string };
     } | undefined)?.entry;
     if (!entry || entry.actorId !== humanId) return result;
+    for (const task of tasks) {
+      if (task.type !== 'social_energy_empty_streak') continue;
+      const activityDays = Array.from(new Set([...(task.activityDays ?? []), String(game.week)]));
+      updateTaskProgress(store.dispatch, task, {
+        activityDays,
+        auditLog: appendAudit(task, `Successful social action recorded on Day ${game.week}`),
+      });
+    }
     for (const task of tasks) {
       if (task.type !== 'social_action_count') continue;
       if (task.requiredActionIds?.length && !task.requiredActionIds.includes(entry.actionId ?? '')) continue;

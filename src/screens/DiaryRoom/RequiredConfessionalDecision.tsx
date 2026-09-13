@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   activateDoubleVoteReward,
   activateMissionImmunityReward,
@@ -367,6 +367,14 @@ function SingleUnitDecision({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [committing, setCommitting] = useState(false)
   const selectedUnit = units.find((unit) => unit.id === selectedId) ?? null
+
+  // Detox uses this component for both replacement picks. The Redux update
+  // changes the presentation in place, so reset the previous submit lock when
+  // the decision stage advances to the next prompt.
+  useEffect(() => {
+    setSelectedId(null)
+    setCommitting(false)
+  }, [presentation.title])
 
   function confirm() {
     if (!selectedUnit || committing) return

@@ -10,6 +10,7 @@ import {
 } from '../../social/socialSlice'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import HousePulse from '../../components/HousePulse/HousePulse'
+import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
 import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import RequiredConfessionalDecision from './RequiredConfessionalDecision'
 import {
@@ -63,6 +64,7 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
     ActiveConfessionalDecision['type'] | null
   >(decision?.type ?? null)
   const [completedDecision, setCompletedDecision] = useState<CompletedDecisionState | null>(null)
+  const [completedSummary, setCompletedSummary] = useState<string | null>(null)
   const navigationBlocker = useBlocker(decision !== null)
   const presentation = useMemo(
     () => (decision ? getRequiredConfessionalPresentation(decision, game) : null),
@@ -71,6 +73,14 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
   const displayDecision = decision ?? completedDecision?.decision ?? null
   const displayPresentation = presentation ?? completedDecision?.presentation ?? null
   const decisionComplete = decision === null && completedDecision !== null
+  const confirmedPlayers = useMemo(() => {
+    if (!completedSummary) return []
+    return game.players.filter((player) =>
+      new RegExp(`\\b${player.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i').test(
+        completedSummary
+      )
+    )
+  }, [completedSummary, game.players])
 
   const entryDuration = survival ? SURVIVAL_ENTRY_MS : CLASSIC_ENTRY_MS
 
@@ -202,17 +212,40 @@ export default function RequiredConfessionalSession({ decision, onReturnToGame }
                   <span className="diary-room__bubble-text">{displayPresentation.prompt}</span>
 
                   {decisionComplete ? (
-                    <p className="required-confessional__decision-complete">
-                      Decision confirmed. Return to the House to continue the ceremony.
-                    </p>
+                    <section className="required-confessional__decision-reveal" aria-label="Confirmed decision">
+                      <span className="required-confessional__decision-reveal-label">✓ Locked in</span>
+                      <p className="required-confessional__decision-complete required-confessional__decision-complete--summary">
+                        {completedSummary ?? 'Your choice has been recorded.'}
+                      </p>
+                      {confirmedPlayers.length > 0 && (
+                        <div className="required-confessional__confirmed-players" aria-label="Confirmed selection">
+                        {confirmedPlayers.map((player) => {
+                          return (
+                            <div key={player.id} className="required-confessional__confirmed-player">
+                              <PlayerAvatar
+                                player={player}
+                                size="sm"
+                                showRelationshipOutline={false}
+                              />
+                              <span>{player.name}</span>
+                            </div>
+                          )
+                        })}
+                        </div>
+                      )}
+                      <p className="required-confessional__decision-complete required-confessional__decision-complete--return">
+                        Return to the House to continue the ceremony.
+                      </p>
+                    </section>
                   ) : (
                     <RequiredConfessionalDecision
                       key={displayPresentation.key}
                       decision={displayDecision}
                       presentation={displayPresentation}
-                      onDecisionCommitted={() => {
+                      onDecisionCommitted={(summary) => {
                         setLastReturnCue(displayPresentation.returnCue)
                         setLastDecisionType(displayDecision.type)
+                        setCompletedSummary(summary)
                         setCompletedDecision({
                           decision: displayDecision,
                           presentation: displayPresentation,
