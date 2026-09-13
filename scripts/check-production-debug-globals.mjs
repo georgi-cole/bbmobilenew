@@ -9,6 +9,7 @@ const forbiddenPatterns = [
   { label: 'deterministic E2E new-season fixture', pattern: /__bbE2ENewSeason/ },
   { label: 'read-only E2E state probe', pattern: /__bbE2EState/ },
   { label: 'development Redux global', pattern: /window\.store\s*=/ },
+  { label: 'AI decision debug global', pattern: /window\.__aiDebug/ },
 ]
 
 async function collectFiles(directory) {

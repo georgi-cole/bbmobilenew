@@ -8,8 +8,9 @@ import {
 } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Player } from '../../types'
-import { resolveAvatarCandidates, isEmoji } from '../../utils/avatar'
+import { getProfilePhotoAvatarId, isEmoji } from '../../utils/avatar'
 import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc'
 import { useAppDispatch } from '../../store/hooks'
 import { setEvictionOverlay, clearEvictionOverlay } from '../../store/gameSlice'
 import './SpotlightEvictionOverlay.css'
@@ -145,11 +146,11 @@ export default function SpotlightEvictionOverlay({
   variant = 'eviction',
 }: Props) {
   const dispatch = useAppDispatch()
-  const [candidates] = useState(() =>
-    resolveAvatarCandidates(evictee).flatMap(resolvePresentationAvatarCandidates)
-  )
+  const { candidates: resolvedAvatarCandidates } = useResolvedAvatarSrc(evictee)
+  const candidates = resolvedAvatarCandidates.flatMap(resolvePresentationAvatarCandidates)
   const [candidateIdx, setCandidateIdx] = useState(0)
   const [showFallback, setShowFallback] = useState(false)
+  const [sourcePhotoFailed, setSourcePhotoFailed] = useState(false)
 
   const isReturn = variant === 'return'
   const optimizedForAppleTouch = isAppleTouchDevice()
@@ -176,9 +177,13 @@ export default function SpotlightEvictionOverlay({
 
   const firedRef = useRef(false)
   const avatarSrc = candidates[candidateIdx] ?? ''
-  // Sep 9 intentionally used the neutral grey-backed presentation WebPs for the
-  // cinematic, even though the roster itself uses the black/gold artwork.
-  const heroAvatarSrc = avatarSrc
+  // Sep 9 intentionally used neutral grey-backed portraits for built-in cast
+  // artwork. Uploaded profile photos have no presentation variant, so preserve
+  // the source-tile image when available instead of falling through to Dicebear.
+  const usesSourceProfilePhoto = Boolean(
+    getProfilePhotoAvatarId(evictee.avatar) && geometry.sourceImageSrc && !sourcePhotoFailed
+  )
+  const heroAvatarSrc = usesSourceProfilePhoto ? geometry.sourceImageSrc! : avatarSrc
 
   const prefersReducedMotion =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -403,6 +408,10 @@ export default function SpotlightEvictionOverlay({
   }, [])
 
   function handleImgError() {
+    if (usesSourceProfilePhoto) {
+      setSourcePhotoFailed(true)
+      return
+    }
     if (candidateIdx < candidates.length - 1) {
       setCandidateIdx((index) => index + 1)
     } else {

@@ -112,6 +112,26 @@ describe('relationship-aware AI eviction decisions', () => {
     expect(votesAgainstAlly).toBeLessThanOrEqual(22);
   });
 
+  it('makes romance and bromance substantially more protective at eviction', () => {
+    const state = {
+      week: 4,
+      lohId: 'loh',
+      players: [player('voter'), player('romance'), player('other')],
+      strategicRelationships: {
+        voter: {
+          romance: { affinity: 75, tags: ['alliance', 'romance'] },
+          other: { affinity: 0, tags: [] },
+        },
+      },
+    } as GameState;
+
+    const votesAgainstRomance = Array.from({ length: 100 }, (_, seed) =>
+      chooseAiEvictionVote(state, 'voter', ['romance', 'other'], seed),
+    ).filter((vote) => vote === 'romance').length;
+
+    expect(votesAgainstRomance).toBeLessThanOrEqual(10);
+  });
+
   it('protects the stronger relationship when neither nominee is tagged as an ally', () => {
     const state = {
       week: 4,

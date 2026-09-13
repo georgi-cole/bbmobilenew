@@ -163,6 +163,40 @@ describe('SpotlightEvictionOverlay – cinematic timing', () => {
     expect(screen.getByRole('dialog', { name: /Alice has been eliminated/i })).toBeTruthy()
   })
 
+  it('keeps an uploaded profile photo for the cinematic hero', async () => {
+    const onDone = vi.fn()
+    const sourcePhoto = 'data:image/png;base64,uploaded-profile-photo'
+    const roster = document.createElement('div')
+    roster.dataset.playerId = 'p2'
+    roster.innerHTML = '<div data-ceremony-tile="true"><img /></div>'
+    const tile = roster.querySelector<HTMLElement>('[data-ceremony-tile="true"]')!
+    const portrait = roster.querySelector('img')!
+    portrait.src = sourcePhoto
+    tile.getBoundingClientRect = () => ({ top: 8, left: 8, width: 96, height: 96 }) as DOMRect
+    document.body.appendChild(roster)
+
+    try {
+      const evictee: Player = {
+        id: 'p2',
+        name: 'Alice',
+        avatar: 'profile-photo:uploaded-profile-id',
+        status: 'active',
+        isUser: true,
+      }
+      const view = renderOverlay(
+        <SpotlightEvictionOverlay evictee={evictee} layoutId="avatar-tile-p2" onDone={onDone} />
+      )
+
+      await act(async () => {})
+
+      expect(view.container.querySelector<HTMLImageElement>('.seo__hero-photo')?.src).toBe(
+        sourcePhoto
+      )
+    } finally {
+      roster.remove()
+    }
+  })
+
   it('renders the return aria-label when variant is return', () => {
     const onDone = vi.fn()
     const evictee: Player = {

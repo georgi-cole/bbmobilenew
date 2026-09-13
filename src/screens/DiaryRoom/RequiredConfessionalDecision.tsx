@@ -349,6 +349,7 @@ interface SingleUnitDecisionProps {
   units: ConfessionalDecisionUnit[]
   presentation: RequiredConfessionalPresentation
   reviewPrefix: string
+  emptyReview?: string
   danger?: boolean
   tagForUnit?: (unit: ConfessionalDecisionUnit) => string | undefined
   onCommit: (unit: ConfessionalDecisionUnit) => void
@@ -358,6 +359,7 @@ function SingleUnitDecision({
   units,
   presentation,
   reviewPrefix,
+  emptyReview = 'Select a housemate',
   danger = false,
   tagForUnit,
   onCommit,
@@ -388,7 +390,7 @@ function SingleUnitDecision({
         ))}
       </div>
       <ConfirmTray
-        review={selectedUnit ? `${reviewPrefix} ${selectedUnit.label}` : 'Select a pair'}
+        review={selectedUnit ? `${reviewPrefix} ${selectedUnit.label}` : emptyReview}
         consequence={presentation.consequence}
         confirmLabel={presentation.confirmLabel}
         disabled={!selectedUnit}
@@ -478,6 +480,7 @@ function EvictionVoteDecision({ presentation, onDecisionCommitted }: Omit<Props,
       units={units}
       presentation={presentation}
       reviewPrefix="Vote to eliminate"
+      emptyReview={isCupidArrowActive(game) ? 'Select a pair' : 'Select a nominee'}
       danger
       onCommit={(unit) => {
         dispatch(submitHumanVote(unit.id))
@@ -588,6 +591,7 @@ function SaveTargetDecision({ presentation, onDecisionCommitted }: Omit<Props, '
       units={units}
       presentation={presentation}
       reviewPrefix="Save"
+      emptyReview="Select a nominee"
       onCommit={(unit) => {
         dispatch(secondSave ? submitVipSecondSaveTarget(unit.id) : submitPovSaveTarget(unit.id))
         onDecisionCommitted(`Saved ${unit.label}.`)
@@ -632,6 +636,7 @@ function ReplacementDecision({ presentation, onDecisionCommitted }: Omit<Props, 
       units={units}
       presentation={presentation}
       reviewPrefix="Name as replacement:"
+      emptyReview="Select a housemate"
       danger
       tagForUnit={(unit) =>
         unit.memberIds.some((id) => protectedIds.has(id))

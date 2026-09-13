@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ALL_BROADCAST_PHASES,
   BROADCAST_TEMPLATE_CATALOG,
+  getBroadcastTemplate,
   matchBroadcastTemplate,
   renderBroadcastTemplate,
 } from '../src/broadcasting/broadcastTemplateCatalog'
@@ -15,6 +16,19 @@ const LOG_ONLY_MECHANICAL_IDS = new Set([
 ])
 
 describe('broadcast template catalog', () => {
+  it('keeps Democracia as a single full-screen announcement', () => {
+    expect(getBroadcastTemplate('card.democracia')).toMatchObject({
+      kind: 'phase_card',
+      level: 'critical',
+      major: 'democracia',
+    })
+    expect(getBroadcastTemplate('loh.democracia-vote-start')).toMatchObject({
+      kind: 'feed',
+      level: 'minor',
+      major: undefined,
+    })
+  })
+
   it('has at least one visible source template for every manager phase', () => {
     for (const phase of ALL_BROADCAST_PHASES) {
       expect(BROADCAST_TEMPLATE_CATALOG.some((template) => template.phase === phase)).toBe(true)

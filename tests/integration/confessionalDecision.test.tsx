@@ -33,6 +33,7 @@ import { selectConfessionalAlertCount } from '../../src/store/selectors'
 import GameScreen from '../../src/screens/GameScreen/GameScreen'
 import DiaryRoom from '../../src/screens/DiaryRoom/DiaryRoom'
 import ConfessionalDecisionPanel from '../../src/screens/DiaryRoom/ConfessionalDecisionPanel'
+import ConfessionalRoute from '../../src/screens/DiaryRoom/ConfessionalRoute'
 import type { SecretMissionState } from '../../src/bb/secretMission'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -158,6 +159,25 @@ function renderDiaryRoom(store: ReturnType<typeof makeStore>) {
           [
             { path: '/game', element: <div data-testid="game-screen" /> },
             { path: '/diary-room', element: <DiaryRoom /> },
+          ],
+          {
+            initialEntries: ['/game', '/diary-room'],
+            initialIndex: 1,
+          }
+        )}
+      />
+    </Provider>
+  )
+}
+
+function renderRequiredConfessional(store: ReturnType<typeof makeStore>) {
+  return render(
+    <Provider store={store}>
+      <RouterProvider
+        router={createMemoryRouter(
+          [
+            { path: '/game', element: <div data-testid="game-screen" /> },
+            { path: '/diary-room', element: <ConfessionalRoute /> },
           ],
           {
             initialEntries: ['/game', '/diary-room'],
@@ -516,6 +536,24 @@ describe('DiaryRoom — confessional decision panel', () => {
     })
     renderDiaryRoom(store)
     expect(screen.getByText(/Do you want to use Power of Safety/i)).toBeTruthy()
+  })
+
+  it('closes a completed Safety picker instead of rebinding it to the replacement nominee', () => {
+    const store = makeStore({
+      phase: 'pos_ceremony_results',
+      posWinnerId: 'p1',
+      awaitingPovSaveTarget: true,
+      nomineeIds: ['p2', 'p3'],
+    })
+    renderRequiredConfessional(store)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Player 2' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm save target' }))
+
+    expect(store.getState().game.awaitingPovSaveTarget).toBe(false)
+    expect(screen.getByText(/Decision confirmed\. Return to the House/i)).toBeTruthy()
+    expect(screen.queryByTestId('required-confessional-decision')).toBeNull()
+    expect(screen.queryByText('Select a pair')).toBeNull()
   })
 
   it('shows the double vote offer prompt inside the chat for double_vote_offer', () => {
