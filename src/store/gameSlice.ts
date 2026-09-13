@@ -135,6 +135,11 @@ import {
   decideCompetitionIntent,
   type CompetitionIntent,
 } from '../social/intelligenceSystem'
+import {
+  traceAiDecision,
+  type AiDecisionCandidate,
+  type AiDecisionFactor,
+} from '../utils/aiDecisionDebug'
 
 // ─── Canonical phase order ────────────────────────────────────────────────────
 const PHASE_ORDER: Phase[] = [
@@ -1596,31 +1601,159 @@ function getVoxNominationMomentumScore(state: GameState, candidate: Player): num
   return score
 }
 
-function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
+function getSafetyRelationshipBreakdown(
+  state: GameState,
+  holderId: string,
+  nominee: Player
+): { total: number; factors: Record<string, AiDecisionFactor> } {
   const relationship = getStrategicRelationship(state, holderId, nominee.id)
-  if (!relationship) return -getAiThreatScore(state, nominee) * 3
+  const threat = getAiThreatScore(state, nominee)
+  if (!relationship) {
+    const total = -threat * 3
+    return {
+      total,
+      factors: { threatContribution: -threat * 3, relationship: 'none' },
+    }
+  }
   const holder = state.players.find((player) => player.id === holderId)
-  let score = relationship.affinity - getAiThreatScore(state, nominee) * 3
-  score +=
+  const factors: Record<string, AiDecisionFactor> = {
+    affinity: relationship.affinity,
+    threatPenalty: -threat * 3,
+    tags: relationship.tags.join(', ') || 'none',
+  }
+  let score = relationship.affinity - threat * 3
+  const identityContribution =
     allianceIdentityBias(holder?.aiGameIdentity) *
     (relationship.tags.includes('alliance') ? 1 : 0.18)
+  score += identityContribution
+  factors.identityContribution = identityContribution
   if (!state.dramaSocialMode) {
-    if (relationship.tags.includes('alliance')) score += 55
-    if (relationship.tags.includes('protection') || relationship.tags.includes('shield'))
+    if (relationship.tags.includes('alliance')) {
+      score += 55
+      factors.alliance = 55
+    }
+    if (relationship.tags.includes('protection') || relationship.tags.includes('shield')) {
       score += 25
-    if (relationship.tags.includes('betrayal')) score -= 35
-    return score
+      factors.protection = 25
+    }
+    if (relationship.tags.includes('betrayal')) {
+      score -= 35
+      factors.betrayal = -35
+    }
+    factors.total = score
+    return { total: score, factors }
   }
   const tags = new Set(relationship.tags)
-  if (tags.has('betrayal')) score -= 140
-  else {
-    if (tags.has('alliance')) score += 65
-    if (tags.has('romance') || tags.has('bromance')) score += 45
-    if (tags.has('protection') || tags.has('shield')) score += 35
-    if (tags.has('safety_promise')) score += 100
+  if (tags.has('betrayal')) {
+    score -= 140
+    factors.betrayal = -140
   }
-  if (tags.has('target') || tags.has('rivalry')) score -= 45
-  return score
+  else {
+    if (tags.has('alliance')) {
+      score += 65
+      factors.alliance = 65
+    }
+    if (tags.has('romance') || tags.has('bromance')) {
+      score += 45
+      factors.romance = 45
+    }
+    if (tags.has('protection') || tags.has('shield')) {
+      score += 35
+      factors.protection = 35
+    }
+    if (tags.has('safety_promise')) {
+      score += 100
+      factors.safetyPromise = 100
+    }
+  }
+  if (tags.has('target') || tags.has('rivalry')) {
+    score -= 45
+    factors.targetOrRivalry = -45
+  }
+  factors.total = score
+  return { total: score, factors }
+}
+
+function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
+  return getSafetyRelationshipBreakdown(state, holderId, nominee).total
+}
+
+function getNominationTargetBreakdown(
+  state: GameState,
+  lohId: string,
+  candidate: Player
+): { total: number; factors: Record<string, AiDecisionFactor> } {
+  const relationship = getStrategicRelationship(state, lohId, candidate.id)
+  const tags = new Set(relationship?.tags ?? [])
+  const affinity = relationship?.affinity ?? 0
+  const threat = getAiThreatScore(state, candidate)
+  const grace = getEarlyHumanGrace(state, candidate, affinity, tags)
+  const factors: Record<string, AiDecisionFactor> = {
+    threatContribution: threat * 4,
+    affinityPenalty: -affinity,
+    earlyHumanGrace: -grace,
+    tags: [...tags].join(', ') || 'none',
+  }
+  let score = threat * 4 - affinity - grace
+  if (tags.has('betrayal')) {
+    score += 125
+    factors.betrayal = 125
+  }
+  else {
+    if (tags.has('alliance')) {
+      score -= 110
+      factors.alliance = -110
+    }
+    if (tags.has('romance') || tags.has('bromance')) {
+      score -= 80
+      factors.romance = -80
+    }
+    if (tags.has('protection') || tags.has('shield')) {
+      score -= 45
+      factors.protection = -45
+    }
+  }
+  if (tags.has('target')) {
+    score += 55
+    factors.target = 55
+  }
+  if (tags.has('rivalry')) {
+    score += 45
+    factors.rivalry = 45
+  }
+  if (tags.has('suspicious') || tags.has('unreliable')) {
+    score += 18
+    factors.suspicion = 18
+  }
+  const voxMomentum = getVoxNominationMomentumScore(state, candidate)
+  score += voxMomentum
+  factors.voxMomentum = voxMomentum
+  const loh = state.players.find((player) => player.id === lohId)
+  const identityMode = getAiIdentityMode(state)
+  const identityBias = nominationIdentityBias(loh?.aiGameIdentity, identityMode)
+  score += identityBias
+  factors.identityBias = identityBias
+  if (identityMode === 'vox_populi' && loh?.aiGameIdentity) {
+    // Vox players who care about their public image prefer a house-consensus
+    // nomination over a conspicuous personal feud. Media strategists still
+    // retain enough threat focus to make opportunistic moves when protected.
+    const audienceMomentum = voxMomentum * (0.4 + loh.aiGameIdentity.audienceFocus)
+    score += audienceMomentum
+    factors.audienceMomentum = audienceMomentum
+    if (loh.aiGameIdentity.archetype === 'media_strategist') {
+      const mediaThreat = threat * 1.5
+      score += mediaThreat
+      factors.mediaStrategistThreat = mediaThreat
+    }
+  }
+  const priorNominations = state.lastWeekNominationRecord
+  if (priorNominations?.lohId === candidate.id && priorNominations.nomineeIds.includes(lohId)) {
+    // Revenge matters, but alliances and stronger strategic reasons can still outweigh it.
+    score += 32
+    factors.revenge = 32
+  }
+  factors.total = score
+  return { total: score, factors }
 }
 
 export function getNominationTargetScore(
@@ -1628,41 +1761,7 @@ export function getNominationTargetScore(
   lohId: string,
   candidate: Player
 ): number {
-  const relationship = getStrategicRelationship(state, lohId, candidate.id)
-  const tags = new Set(relationship?.tags ?? [])
-  const affinity = relationship?.affinity ?? 0
-  let score =
-    getAiThreatScore(state, candidate) * 4 -
-    affinity -
-    getEarlyHumanGrace(state, candidate, affinity, tags)
-  if (tags.has('betrayal')) score += 125
-  else {
-    if (tags.has('alliance')) score -= 110
-    if (tags.has('romance') || tags.has('bromance')) score -= 80
-    if (tags.has('protection') || tags.has('shield')) score -= 45
-  }
-  if (tags.has('target')) score += 55
-  if (tags.has('rivalry')) score += 45
-  if (tags.has('suspicious') || tags.has('unreliable')) score += 18
-  const voxMomentum = getVoxNominationMomentumScore(state, candidate)
-  score += voxMomentum
-  const loh = state.players.find((player) => player.id === lohId)
-  const identityMode = getAiIdentityMode(state)
-  score += nominationIdentityBias(loh?.aiGameIdentity, identityMode)
-  if (identityMode === 'vox_populi' && loh?.aiGameIdentity) {
-    // Vox players who care about their public image prefer a house-consensus
-    // nomination over a conspicuous personal feud. Media strategists still
-    // retain enough threat focus to make opportunistic moves when protected.
-    score += voxMomentum * (0.4 + loh.aiGameIdentity.audienceFocus)
-    if (loh.aiGameIdentity.archetype === 'media_strategist')
-      score += getAiThreatScore(state, candidate) * 1.5
-  }
-  const priorNominations = state.lastWeekNominationRecord
-  if (priorNominations?.lohId === candidate.id && priorNominations.nomineeIds.includes(lohId)) {
-    // Revenge matters, but alliances and stronger strategic reasons can still outweigh it.
-    score += 32
-  }
-  return score
+  return getNominationTargetBreakdown(state, lohId, candidate).total
 }
 
 function rememberOriginalNominations(state: GameState): void {
@@ -1682,14 +1781,37 @@ function pickStrategicNominationTargets(
   count: number,
   rng: () => number
 ): Player[] {
-  return candidates
-    .map((player) => ({
+  const scored = candidates.map((player) => {
+    const breakdown = getNominationTargetBreakdown(state, lohId, player)
+    const randomDraw = rng()
+    return {
       player,
-      score: getNominationTargetScore(state, lohId, player) + rng() * 8,
-    }))
+      score: breakdown.total + randomDraw * 8,
+      factors: { ...breakdown.factors, randomDraw, randomContribution: randomDraw * 8 },
+    }
+  })
+  const selected = scored
     .sort((a, b) => b.score - a.score)
     .slice(0, count)
     .map((entry) => entry.player)
+  traceAiDecision({
+    kind: getAiIdentityMode(state) === 'vox_populi' ? 'vox_nomination' : 'loh_nomination',
+    actorId: lohId,
+    actorName: state.players.find((player) => player.id === lohId)?.name,
+    chosenIds: selected.map((player) => player.id),
+    week: state.week,
+    phase: state.phase,
+    seed: state.seed,
+    reason: 'highest strategic nomination score',
+    context: { requestedCount: count, candidateCount: candidates.length },
+    candidates: scored.map<AiDecisionCandidate>((entry) => ({
+      id: entry.player.id,
+      label: entry.player.name,
+      total: entry.score,
+      factors: entry.factors,
+    })),
+  })
+  return selected
 }
 
 function isVoxFinalFour(state: GameState): boolean {
@@ -1824,7 +1946,15 @@ function pickStrategicAiPlayer(
   candidates: Player[],
   rng: () => number,
   mode: 'highest' | 'lowest',
-  options: { preferLoh?: boolean } = {}
+  options: {
+    preferLoh?: boolean
+    debug?: {
+      actorId?: string
+      kind: 'replacement_nominee'
+      reason?: string
+      context?: Record<string, AiDecisionFactor | string[]>
+    }
+  } = {}
 ): Player | null {
   if (candidates.length === 0) return null
   const scored = candidates.map((player) => ({
@@ -1836,7 +1966,27 @@ function pickStrategicAiPlayer(
       ? Math.max(...scored.map((entry) => entry.score))
       : Math.min(...scored.map((entry) => entry.score))
   const tied = scored.filter((entry) => entry.score === targetScore).map((entry) => entry.player)
-  return seededPick(rng, tied)
+  const chosen = seededPick(rng, tied)
+  if (options.debug) {
+    traceAiDecision({
+      kind: options.debug.kind,
+      actorId: options.debug.actorId,
+      actorName: state.players.find((player) => player.id === options.debug?.actorId)?.name,
+      chosenId: chosen?.id ?? null,
+      week: state.week,
+      phase: state.phase,
+      seed: state.seed,
+      reason: options.debug.reason ?? `${mode} strategic threat score`,
+      context: { mode, tiedBestCount: tied.length, ...(options.debug.context ?? {}) },
+      candidates: scored.map<AiDecisionCandidate>((entry) => ({
+        id: entry.player.id,
+        label: entry.player.name,
+        total: entry.score,
+        factors: { threatScore: entry.score, selected: entry.player.id === chosen?.id },
+      })),
+    })
+  }
+  return chosen
 }
 
 function pickStrategicAiPlayers(
@@ -1844,7 +1994,7 @@ function pickStrategicAiPlayers(
   candidates: Player[],
   count: number,
   rng: () => number,
-  options: { preferLoh?: boolean } = {}
+  options: Parameters<typeof pickStrategicAiPlayer>[4] = {}
 ): Player[] {
   const remaining = [...candidates]
   const picks: Player[] = []
@@ -1915,7 +2065,43 @@ function shouldAiUseTargetedSafetyPower(
       )) >>>
       0
   )
-  return rng() < useChance
+  const randomDraw = rng()
+  const usePower = randomDraw < useChance
+  traceAiDecision({
+    kind: 'safety_use',
+    actorId: holderId,
+    actorName: state.players.find((player) => player.id === holderId)?.name,
+    chosenId: usePower ? holderId : null,
+    week: state.week,
+    phase: state.phase,
+    seed: state.seed,
+    reason: usePower ? 'seeded safety-use roll passed' : 'seeded safety-use roll failed',
+    context: {
+      replacementCount,
+      bestRelationship,
+      currentValue,
+      replacementValue,
+      strategicUpgrade,
+      useChance,
+      randomDraw,
+      lohAdvice: lohAdvice?.advice ?? null,
+    },
+    candidates: [
+      ...currentNominees.map((nominee) => ({
+        id: nominee.id,
+        label: nominee.name,
+        total: getSafetyRelationshipScore(state, holderId, nominee),
+        factors: { role: 'current nominee' },
+      })),
+      ...eligibleReplacements.map((candidate) => ({
+        id: candidate.id,
+        label: candidate.name,
+        total: getAiThreatScore(state, candidate, options),
+        factors: { role: 'eligible replacement' },
+      })),
+    ],
+  })
+  return usePower
 }
 
 function ensureMinimumNominees(
@@ -2495,17 +2681,55 @@ function pickSafetySaveTarget(
   rng: () => number
 ): Player | null {
   const twin = getTwinNomineeToSave(state, holderId, nominees)
-  if (twin) return twin
+  if (twin) {
+    traceAiDecision({
+      kind: 'safety_save',
+      actorId: holderId ?? undefined,
+      actorName: state.players.find((player) => player.id === holderId)?.name,
+      chosenId: twin.id,
+      week: state.week,
+      phase: state.phase,
+      seed: state.seed,
+      reason: 'twin shock requires saving the paired nominee',
+      context: { forcedByTwinShock: true },
+      candidates: nominees.map((nominee) => ({
+        id: nominee.id,
+        label: nominee.name,
+        eligible: true,
+        total: nominee.id === twin.id ? 1 : 0,
+        factors: { twinPartner: nominee.id === twin.id },
+      })),
+    })
+    return twin
+  }
   if (!holderId || nominees.length === 0) return null
-  const scored = nominees.map((nominee) => ({
-    nominee,
-    score: getSafetyRelationshipScore(state, holderId, nominee),
-  }))
+  const scored = nominees.map((nominee) => {
+    const breakdown = getSafetyRelationshipBreakdown(state, holderId, nominee)
+    return { nominee, score: breakdown.total, factors: breakdown.factors }
+  })
   const bestScore = Math.max(...scored.map((entry) => entry.score))
-  return seededPick(
+  const chosen = seededPick(
     rng,
     scored.filter((entry) => entry.score === bestScore).map((entry) => entry.nominee)
   )
+  traceAiDecision({
+    kind: 'safety_save',
+    actorId: holderId,
+    actorName: state.players.find((player) => player.id === holderId)?.name,
+    chosenId: chosen?.id ?? null,
+    week: state.week,
+    phase: state.phase,
+    seed: state.seed,
+    reason: 'highest safety relationship score',
+    context: { tiedBestCount: scored.filter((entry) => entry.score === bestScore).length },
+    candidates: scored.map<AiDecisionCandidate>((entry) => ({
+      id: entry.nominee.id,
+      label: entry.nominee.name,
+      total: entry.score,
+      factors: entry.factors,
+    })),
+  })
+  return chosen
 }
 
 function shouldUseSafetyForTwin(
@@ -3094,39 +3318,102 @@ export function chooseAiEvictionVote(
     const rng = mulberry32(
       (gameSeed ^ hashString(`vote:${state.week}:${voterId}:${nomineeId}`)) >>> 0
     )
+    const randomDraw = rng()
 
-    let score =
-      threat * 8 - affinity + rng() * 4 - getEarlyHumanGrace(state, nominee, affinity, tags) * 1.35
-    if (tags.has('target')) score += 25
-    if (tags.has('betrayal')) score += 35
-    if (tags.has('protection') || tags.has('shield')) score -= 20
+    const grace = getEarlyHumanGrace(state, nominee, affinity, tags)
+    const factors: Record<string, AiDecisionFactor> = {
+      threatContribution: threat * 8,
+      affinityPenalty: -affinity,
+      randomContribution: randomDraw * 4,
+      earlyHumanGrace: -grace * 1.35,
+      tags: [...tags].join(', ') || 'none',
+    }
+    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35
+    if (tags.has('target')) {
+      score += 25
+      factors.target = 25
+    }
+    if (tags.has('betrayal')) {
+      score += 35
+      factors.betrayal = 35
+    }
+    if (tags.has('protection') || tags.has('shield')) {
+      score -= 20
+      factors.protection = -20
+    }
     const hasRomanticBond = tags.has('romance') || tags.has('bromance')
+    let backstabRoll: number | null = null
+    let backstabChance: number | null = null
     if (hasRomanticBond) {
       // Romance is a stronger public commitment than a standard alliance. It
       // should usually surface at the vote, while still leaving a narrow path
       // for an ambitious or betrayed player to cut the bond late in the game.
-      const backstabChance = Math.max(
+      backstabChance = Math.max(
         0,
         Math.min(0.1, 0.01 + threat * 0.006 + betrayalChanceModifier(voterIdentity) * 0.35)
       )
-      if (rng() < backstabChance) score += 115
-      else score -= 135 + allianceIdentityBias(voterIdentity)
+      backstabRoll = rng()
+      factors.backstabChance = backstabChance
+      factors.backstabRoll = backstabRoll
+      if (backstabRoll < backstabChance) {
+        score += 115
+        factors.romanceBackstab = 115
+      } else {
+        const romanceProtection = -(135 + allianceIdentityBias(voterIdentity))
+        score += romanceProtection
+        factors.romanceProtection = romanceProtection
+      }
     } else if (tags.has('alliance')) {
-      const backstabChance = Math.max(
+      backstabChance = Math.max(
         0,
         Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity))
       )
-      if (rng() < backstabChance) score += 95
-      else score -= 90 + allianceIdentityBias(voterIdentity)
+      backstabRoll = rng()
+      factors.backstabChance = backstabChance
+      factors.backstabRoll = backstabRoll
+      if (backstabRoll < backstabChance) {
+        score += 95
+        factors.allianceBackstab = 95
+      } else {
+        const allianceProtection = -(90 + allianceIdentityBias(voterIdentity))
+        score += allianceProtection
+        factors.allianceProtection = allianceProtection
+      }
     }
 
-    if (voterIdentity?.archetype === 'chaos_agent') score += rng() * 12
-    if (voterIdentity?.archetype === 'active_floater') score -= Math.max(0, 7 - threat) * 2
+    if (voterIdentity?.archetype === 'chaos_agent') {
+      const chaosDraw = rng()
+      score += chaosDraw * 12
+      factors.chaosDraw = chaosDraw
+      factors.chaosContribution = chaosDraw * 12
+    }
+    if (voterIdentity?.archetype === 'active_floater') {
+      const floaterContribution = -Math.max(0, 7 - threat) * 2
+      score += floaterContribution
+      factors.floaterContribution = floaterContribution
+    }
 
-    return { nomineeId, score }
+    return { nomineeId, score, factors, backstabRoll, backstabChance }
   })
 
   scored.sort((a, b) => b.score - a.score || a.nomineeId.localeCompare(b.nomineeId))
+  traceAiDecision({
+    kind: 'eviction_vote',
+    actorId: voterId,
+    actorName: voter?.name,
+    chosenId: scored[0].nomineeId,
+    week: state.week,
+    phase: state.phase,
+    seed: gameSeed,
+    reason: 'highest relationship-aware eviction score',
+    context: { nomineeIds: nomineeIds.join(', ') },
+    candidates: scored.map<AiDecisionCandidate>((entry) => ({
+      id: entry.nomineeId,
+      label: state.players.find((player) => player.id === entry.nomineeId)?.name,
+      total: entry.score,
+      factors: entry.factors,
+    })),
+  })
   return scored[0].nomineeId
 }
 
@@ -7107,7 +7394,16 @@ const gameSlice = createSlice({
               : null
           const replacement =
             eligible.find((player) => player.id === disclosedBackupId) ??
-            pickStrategicAiPlayer(state, eligible, rng, 'highest')
+            pickStrategicAiPlayer(state, eligible, rng, 'highest', {
+              debug: {
+                kind: 'replacement_nominee',
+                actorId: state.lohId ?? undefined,
+                reason: disclosedBackupId
+                  ? 'disclosed backup was unavailable; selected highest threat replacement'
+                  : 'selected highest threat replacement',
+                context: { disclosedBackupId: disclosedBackupId ?? null },
+              },
+            })
           if (replacement) appendNominee(state, replacement.id)
           pushEvent(
             state,
@@ -7928,7 +8224,13 @@ const gameSlice = createSlice({
               } else {
                 const eligible = getReplacementEligiblePlayers(state, alive)
                 if (eligible.length > 0) {
-                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest')
+                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest', {
+                    debug: {
+                      kind: 'replacement_nominee',
+                      actorId: lohPlayer?.id ?? state.lohId ?? undefined,
+                      reason: 'selected highest threat replacement after Safety save',
+                    },
+                  })
                   if (replacement) {
                     appendNominee(state, replacement.id)
                     pushEvent(
@@ -8000,7 +8302,13 @@ const gameSlice = createSlice({
                   actorId: posWinner.id,
                 })
                 if (eligible.length > 0) {
-                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest')
+                  const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest', {
+                    debug: {
+                      kind: 'replacement_nominee',
+                      actorId: posWinner.id,
+                      reason: 'selected highest threat Halo Exchange backup',
+                    },
+                  })
                   if (replacement) {
                     appendNominee(state, replacement.id)
                     pushEvent(
@@ -8037,7 +8345,13 @@ const gameSlice = createSlice({
                     'game'
                   )
                   if (eligible.length > 0) {
-                    const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest')
+                    const replacement = pickStrategicAiPlayer(state, eligible, rng, 'highest', {
+                      debug: {
+                        kind: 'replacement_nominee',
+                        actorId: posWinner?.id ?? state.lohId ?? undefined,
+                        reason: 'selected highest threat Halo Exchange backup',
+                      },
+                    })
                     if (replacement) {
                       appendNominee(state, replacement.id)
                       pushEvent(
@@ -9691,7 +10005,13 @@ function resolveDebugBlockers(
 
   if (game.specialVeto?.awaitingHolderReplacement) {
     const eligible = getReplacementEligiblePlayers(game, alive, 1, { actorId: game.posWinnerId })
-    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest')
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', {
+      debug: {
+        kind: 'replacement_nominee',
+        actorId: game.posWinnerId ?? undefined,
+        reason: 'selected highest threat Halo Exchange backup',
+      },
+    })
     if (replacement) {
       dispatch(submitDiamondReplacement(replacement.id))
     } else {
@@ -9704,7 +10024,13 @@ function resolveDebugBlockers(
     const eligible = getReplacementEligiblePlayers(game, alive, 2, {
       actorId: game.posWinnerId,
     })
-    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest')
+    const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', {
+      debug: {
+        kind: 'replacement_nominee',
+        actorId: game.posWinnerId ?? undefined,
+        reason: 'selected highest threat Detox backup',
+      },
+    })
     if (replacement) {
       dispatch(submitCoupReplacement(replacement.id))
     } else {
