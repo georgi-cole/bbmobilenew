@@ -216,16 +216,22 @@ export default function SocialPanelV2() {
   const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
-  const handleRealityUpgrade = useCallback(() => {
-    dispatch(closeSocialPanel())
-    navigate('/store')
-  }, [dispatch, navigate])
-  const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isExecutingRef = useRef(false)
-  const focusPublicRequest = useCallback(() => {
-    const targetId = activePublicDirection?.relatedPlayerId
-    if (!targetId || !activePublicDirection) return
+  const publicFocus = useMemo(() => {
+    if (!activePublicDirection || !humanPlayer) return null
+    const relatedId = activePublicDirection.relatedPlayerId
+    if (!relatedId) return null
+
+    // A "target this player" directive is not fulfilled by talking to the
+    // target. Before nominations, the actionable social route is to pitch that
+    // target to the current LOH. If the human is LOH, the real next action is
+    // the ceremony itself, so deliberately offer no misleading Social shortcut.
+    if (activePublicDirection.type === 'target_player') {
+      if (!game.lohId || game.lohId === humanPlayer.id) return null
+      if (!['loh_results', 'social_1', 'nominations'].includes(game.phase)) return null
+      if (!socialActions.some((action) => action.id === 'pitch_target')) return null
+      return { actionId: 'pitch_target', primaryTargetId: game.lohId, subjectId: relatedId }
+    }
+
     const actionByType: Partial<Record<typeof activePublicDirection.type, string>> = {
       align_with: 'proposeAlliance',
       break_alliance: dramaMode ? 'break_alliance' : 'betray',
@@ -236,19 +242,28 @@ export default function SocialPanelV2() {
       protect_player: 'protect',
       show_loyalty: 'ally',
       expose_player: 'rumor',
-      target_player: 'betray',
       start_drama: 'startFight',
       confront_player: 'confront',
     }
-    setPrimaryTargetId(targetId)
-    setSelectedTargets(new Set([targetId]))
+    const actionId = actionByType[activePublicDirection.type]
+    return actionId ? { actionId, primaryTargetId: relatedId, subjectId: null } : null
+  }, [activePublicDirection, dramaMode, game.lohId, game.phase, humanPlayer, socialActions])
+  const handleRealityUpgrade = useCallback(() => {
+    dispatch(closeSocialPanel())
+    navigate('/store')
+  }, [dispatch, navigate])
+  const successPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const executeGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isExecutingRef = useRef(false)
+  const focusPublicRequest = useCallback(() => {
+    if (!publicFocus) return
+    setPrimaryTargetId(publicFocus.primaryTargetId)
+    setSelectedTargets(new Set([publicFocus.primaryTargetId]))
     setSelectedActionId(
-      (activePublicDirection.progressPercent ?? 0) <= 0
-        ? (actionByType[activePublicDirection.type] ?? null)
-        : null
+      (activePublicDirection?.progressPercent ?? 0) <= 0 ? publicFocus.actionId : null
     )
-    setSelectedSubjectId(null)
-  }, [activePublicDirection, dramaMode])
+    setSelectedSubjectId(publicFocus.subjectId)
+  }, [activePublicDirection, publicFocus])
   const publicRequestProgress = activePublicDirection
     ? getPublicRequestProgressStage(activePublicDirection)
     : null
@@ -918,7 +933,7 @@ export default function SocialPanelV2() {
               </div>
               <div className="sp2-public-request__footer">
                 <span>{publicRequestProgress?.label ?? 'Waiting for a first beat'}</span>
-                {activePublicDirection.relatedPlayerId && (
+                {publicFocus && (
                   <button type="button" onClick={focusPublicRequest}>
                     {(activePublicDirection.progressPercent ?? 0) <= 0
                       ? 'Focus first move'

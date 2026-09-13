@@ -508,6 +508,33 @@ describe('Diamond POS — Human POS holder names replacement', () => {
 // ── Detox ─────────────────────────────────────────────────────────────────────
 
 describe('Detox — Human POS holder names two replacements', () => {
+  it('routes a nominated human POS holder through the Confessional before Detox resolves', () => {
+    const players = makePlayers(8, 1);
+    players[1].status = 'nominated+pos';
+    players[3].status = 'nominated';
+    const store = makeStore({
+      phase: 'pos_ceremony',
+      lohId: 'p0',
+      posWinnerId: 'p1',
+      nomineeIds: ['p1', 'p3'],
+      players,
+      specialVeto: {
+        ...INITIAL_SPECIAL_VETO,
+        seasonUsed: true,
+        activeType: 'coup',
+        activatedWeek: 3,
+      },
+    });
+
+    store.dispatch(advance()); // pos_ceremony → pos_ceremony_results
+    store.dispatch(advance()); // prompt the human holder; must not resolve Detox
+
+    const state = store.getState().game;
+    expect(state.awaitingPovDecision).toBe(true);
+    expect(state.nomineeIds).toEqual(['p1', 'p3']);
+    expect(state.tvFeed.some((event) => event.text.includes('decided to use Detox'))).toBe(false);
+  });
+
   it('submitPovDecision(true) queues Detox decision and block-clear beats before replacement picks', () => {
     const players = makePlayers(8, 1);
     players[2].status = 'nominated';

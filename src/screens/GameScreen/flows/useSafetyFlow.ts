@@ -488,7 +488,6 @@ export function useSafetyFlow({
   const holderReplacementOptions = replacementOptions
   const coupBaseOptions = alivePlayers.filter(
     (p) =>
-      p.id !== game.lohId &&
       p.id !== game.posWinnerId &&
       !game.nomineeIds.includes(p.id) &&
       p.id !== game.specialVeto?.coupReplacement1Id

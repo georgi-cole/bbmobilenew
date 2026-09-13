@@ -477,6 +477,7 @@ function EvictionVoteDecision({ presentation, onDecisionCommitted }: Omit<Props,
 
   return (
     <SingleUnitDecision
+      key={presentation.key}
       units={units}
       presentation={presentation}
       reviewPrefix="Vote to eliminate"

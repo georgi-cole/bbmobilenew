@@ -5931,7 +5931,13 @@ const gameSlice = createSlice({
 
       if (state.specialVeto.awaitingCoupReplacement1) {
         if (id === state.posWinnerId || state.nomineeIds.includes(id)) return
-        if (!isEligibleReplacementNominee(state, id, 2, { actorId: povHolder?.id })) return
+        if (
+          !isEligibleReplacementNominee(state, id, 2, {
+            allowLoh: true,
+            actorId: povHolder?.id,
+          })
+        )
+          return
         state.specialVeto.coupReplacement1Id = id
         state.specialVeto.awaitingCoupReplacement1 = false
         state.specialVeto.awaitingCoupReplacement2 = true
@@ -5945,6 +5951,7 @@ const gameSlice = createSlice({
         if (id === state.posWinnerId || id === rep1Id || state.nomineeIds.includes(id)) return
         if (!alive.some((p) => p.id === id)) return
         const availableSecondChoices = getReplacementEligiblePlayers(state, alive, 2, {
+          allowLoh: true,
           actorId: povHolder?.id,
         }).filter((player) => player.id !== rep1Id)
         if (!availableSecondChoices.some((player) => player.id === id)) return
@@ -8374,7 +8381,10 @@ const gameSlice = createSlice({
 
           // ── Detox: removes both nominees, holder names both replacements ────────
           if (svType === 'coup') {
-            if (isNominee && posWinner !== null) {
+            // Detox is optional even when the POS holder is on the block. The
+            // human holder must be routed through the Confessional before the
+            // block is cleared; only an AI nominee may resolve it inline.
+            if (isNominee && posWinner !== null && !posDecisionPlayer?.isUser) {
               const oldNominees = state.players.filter((p) => state.nomineeIds.includes(p.id))
               oldNominees.forEach((n) => {
                 if (n.id === posWinner.id) {
@@ -10021,6 +10031,7 @@ function resolveDebugBlockers(
 
   if (game.specialVeto?.awaitingCoupReplacement1 || game.specialVeto?.awaitingCoupReplacement2) {
     const eligible = getReplacementEligiblePlayers(game, alive, 2, {
+      allowLoh: true,
       actorId: game.posWinnerId,
     })
     const replacement = pickStrategicAiPlayer(game, eligible, rng, 'highest', {

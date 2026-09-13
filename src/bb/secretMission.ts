@@ -48,6 +48,8 @@ export interface MissionTask {
   targetDay?: number
   /** Distinct-day gating for legacy and streak requirements. */
   uniqueDays?: string[]
+  /** Days on which the player successfully performed a manual social move. */
+  activityDays?: string[]
   /** Manual social actions that count for this task. */
   requiredActionIds?: string[]
   /** When true, each required action only counts once toward the task. */
