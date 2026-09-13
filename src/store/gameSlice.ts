@@ -1647,8 +1647,7 @@ function getSafetyRelationshipBreakdown(
   if (tags.has('betrayal')) {
     score -= 140
     factors.betrayal = -140
-  }
-  else {
+  } else {
     if (tags.has('alliance')) {
       score += 65
       factors.alliance = 65
@@ -1698,8 +1697,7 @@ function getNominationTargetBreakdown(
   if (tags.has('betrayal')) {
     score += 125
     factors.betrayal = 125
-  }
-  else {
+  } else {
     if (tags.has('alliance')) {
       score -= 110
       factors.alliance = -110

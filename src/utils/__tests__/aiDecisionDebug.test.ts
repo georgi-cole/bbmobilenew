@@ -24,12 +24,14 @@ describe('AI decision debug trace', () => {
       ],
     })
 
-    const api = (window as unknown as {
-      __aiDebug?: {
-        last: () => { chosenId?: string | null } | null
-        filter: (query: { kind: 'eviction_vote' }) => unknown[]
+    const api = (
+      window as unknown as {
+        __aiDebug?: {
+          last: () => { chosenId?: string | null } | null
+          filter: (query: { kind: 'eviction_vote' }) => unknown[]
+        }
       }
-    }).__aiDebug
+    ).__aiDebug
     expect(api?.last()?.chosenId).toBe('nominee-2')
     expect(api?.filter({ kind: 'eviction_vote' })).toHaveLength(1)
   })
@@ -51,4 +53,3 @@ describe('AI decision debug trace', () => {
     expect(info).toHaveLength(0)
   })
 })
-

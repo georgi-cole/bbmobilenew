@@ -82,13 +82,15 @@ function installDebugApi(): void {
     last: () => traces.at(-1) ?? null,
     list: () => traces.map((entry) => ({ ...entry, candidates: [...entry.candidates] })),
     filter: (query = {}) =>
-      api.list().filter(
-        (entry) =>
-          (query.week === undefined || entry.week === query.week) &&
-          (query.phase === undefined || entry.phase === query.phase) &&
-          (query.kind === undefined || entry.kind === query.kind) &&
-          (query.actorId === undefined || entry.actorId === query.actorId)
-      ),
+      api
+        .list()
+        .filter(
+          (entry) =>
+            (query.week === undefined || entry.week === query.week) &&
+            (query.phase === undefined || entry.phase === query.phase) &&
+            (query.kind === undefined || entry.kind === query.kind) &&
+            (query.actorId === undefined || entry.actorId === query.actorId)
+        ),
     export: () => JSON.stringify(traces, null, 2),
   }
 
