@@ -1,0 +1,40 @@
+/* Majority Rules final-two viewport guard.
+ *
+ * The generic Majority Rules stage intentionally clips vertical overflow so the
+ * normal question/reveal phases stay assembled inside the minigame viewport.
+ * The final-two duel is taller, especially once a last-roll panel is present,
+ * so it needs an explicit scroll escape hatch instead of clipping the Roll die
+ * action below the viewport.
+ */
+
+.majority-rules-shell[data-phase='final_duel_pick'],
+.majority-rules-shell[data-phase='final_duel_roll'] {
+  align-content: start;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.majority-rules-shell[data-phase='final_duel_pick'] .majority-rules-card--duel,
+.majority-rules-shell[data-phase='final_duel_roll'] .majority-rules-card--duel {
+  height: auto;
+  min-height: 100%;
+  max-height: none;
+  align-content: start;
+  overflow-y: visible;
+}
+
+/* In the final two, both players are self-evidently still in the game. The
+ * normal roster subline ("You are in" / "Still alive") adds noise and height. */
+.majority-rules-shell[data-phase='final_duel_pick'] .majority-rules-player-card__subline,
+.majority-rules-shell[data-phase='final_duel_roll'] .majority-rules-player-card__subline {
+  display: none;
+}
+
+/* The final-duel copy already communicates who is rolling and who is under
+ * pressure. The extra Status / Still alive row is redundant and was consuming
+ * scarce vertical space immediately above the roll action. */
+.majority-rules-shell[data-phase='final_duel_roll']
+  .majority-rules-hint-panel
+  .majority-rules-peek-row:last-child {
+  display: none;
+}
