@@ -11,7 +11,45 @@ concurrency:
 
 jobs:
   static-quality:
-    name: Format, lint, types, and dependencies
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Formatting
+            command: npm run format:check
+            needs_full_history: true
+          - label: Test hygiene
+            command: npm run test:guard
+            needs_full_history: false
+          - label: ESLint
+            command: npm run lint:ci
+            needs_full_history: false
+          - label: TypeScript
+            command: npm run typecheck
+            needs_full_history: false
+          - label: Core regressions
+            command: npm run test:pr-core
+            needs_full_history: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ matrix.needs_full_history && 0 || 1 }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run ${{ matrix.label }}
+        env:
+          FORMAT_BASE_REF: ${{ github.event_name == 'push' && 'HEAD^' || '' }}
+        run: ${{ matrix.command }}
+
+  dependency-security:
+    name: Dependency security
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,26 +57,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Detect dependency changes
+        id: dependency_changes
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base="$(git merge-base HEAD "origin/${GITHUB_BASE_REF}")"
+          else
+            base="HEAD^"
+          fi
+
+          if git diff --name-only "$base" HEAD -- package.json package-lock.json | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Dependency manifests changed; production audit is required."
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No dependency manifest changes; PR dependency audit is skipped."
+          fi
       - uses: actions/setup-node@v4
+        if: steps.dependency_changes.outputs.changed == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Check formatting for files changed from main
-        run: npm run format:check
-      - name: Reject focused or disabled tests
-        run: npm run test:guard
-      - name: Lint without warnings
-        run: npm run lint:ci
-      - name: Type check
-        run: npm run typecheck
-      - name: Run season/profile lifecycle regressions
-        run: >-
-          npx vitest run
-          src/modes/seasonRulesets.test.ts
-          src/screens/ProfilePicker/ProfilePicker.test.tsx
-          src/screens/HomeHub/__tests__/HomeHub.test.tsx
+        if: steps.dependency_changes.outputs.changed == 'true'
       - name: Audit production dependencies
+        if: steps.dependency_changes.outputs.changed == 'true'
         run: npm audit --omit=dev --audit-level=high
 
   production-builds:
