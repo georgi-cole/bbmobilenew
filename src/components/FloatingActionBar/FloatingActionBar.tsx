@@ -252,12 +252,13 @@ export default function FloatingActionBar({
   useEffect(() => {
     if (secretMissionRewardPendingKey === null) {
       previousSecretMissionRewardPendingKeyRef.current = null
-      setShowSecretMissionRewardSpotlight(false)
-      return
+      const hideTimer = window.setTimeout(() => setShowSecretMissionRewardSpotlight(false), 0)
+      return () => window.clearTimeout(hideTimer)
     }
     if (previousSecretMissionRewardPendingKeyRef.current === secretMissionRewardPendingKey) return
     previousSecretMissionRewardPendingKeyRef.current = secretMissionRewardPendingKey
-    setShowSecretMissionRewardSpotlight(true)
+    const showTimer = window.setTimeout(() => setShowSecretMissionRewardSpotlight(true), 0)
+    return () => window.clearTimeout(showTimer)
   }, [secretMissionRewardPendingKey])
 
   const completeConfessionalSpotlight = useCallback(() => {

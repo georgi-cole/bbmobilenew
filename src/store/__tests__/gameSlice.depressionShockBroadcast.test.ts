@@ -40,6 +40,8 @@ describe('Depression Shock broadcast recovery', () => {
 
     expect(state.broadcastQueue).not.toContain(existing!.id)
     expect(state.tvFeed.filter((event) => event.text === text)).toHaveLength(1)
-    expect(state.tvFeed.find((event) => event.id === existing!.id)?.meta?.broadcastConsumed).toBe(true)
+    expect(state.tvFeed.find((event) => event.id === existing!.id)?.meta?.broadcastConsumed).toBe(
+      true
+    )
   })
 })

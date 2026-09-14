@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { LayoutGroup, AnimatePresence } from 'framer-motion';
-import { useStore } from 'react-redux';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { LayoutGroup, AnimatePresence } from 'framer-motion'
+import { useStore } from 'react-redux'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   addTvEvent,
   advance,
@@ -21,128 +21,128 @@ import {
   revealVoxTemporaryAudienceVote,
   startVoxFinalVote,
   resetGame,
-} from '../../store/gameSlice';
+} from '../../store/gameSlice'
 import {
   completeChallenge,
   setPendingMusicVariant,
   setPendingPhase,
   type PendingChallenge,
-} from '../../store/challengeSlice';
-import { selectLastSocialReport } from '../../social/socialSlice';
-import { setEnergyBankEntry } from '../../social/socialSlice';
-import { useNavigate, useSearchParams } from 'react-router';
-import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice';
+} from '../../store/challengeSlice'
+import { selectLastSocialReport } from '../../social/socialSlice'
+import { setEnergyBankEntry } from '../../social/socialSlice'
+import { useNavigate, useSearchParams } from 'react-router'
+import { selectActiveProfileId, selectIsGuest } from '../../store/profilesSlice'
 import {
   clearSavedRun,
   getSavedRunSlot,
   clearSeasonSnapshot,
   savedStateKeyForProfile,
-} from '../../store/saveStatePersistence';
-import { selectSocialSummaryOpen } from '../../store/uiSlice';
-import TvZone from '../../components/ui/TvZone';
-import TVLog from '../../components/TVLog/TVLog';
-import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid';
-import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog';
-import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal';
-import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal';
-import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal';
-import QuickTapRace from '../../components/QuickTapRace/QuickTapRace';
-import LaneRacersCanvasGame from '../../minigames/laneRacers/LaneRacersCanvasGame';
-import PressurePlank from '../../components/PressurePlank/PressurePlank';
-import { rankPressurePlankResults } from '../../components/PressurePlank/pressurePlankLogic';
-import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz';
-import TravelingDots from '../../components/TravelingDots/TravelingDots';
-import MinigameHost from '../../components/MinigameHost/MinigameHost';
-import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost';
-import type { MusicMinigameVariant } from '../../services/sound/musicConfig';
-import { computeScores } from '../../minigames/scoring';
-import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar';
-import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay';
-import SurveyevalTileEvictionEffect from '../../components/Eviction/SurveyevalTileEvictionEffect';
-import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup';
-import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay';
-import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation';
-import ChatOverlay from '../../components/ChatOverlay/ChatOverlay';
-import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar';
-import SocialPanel from '../../components/SocialPanel/SocialPanel';
-import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2';
-import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox';
-import SurvivorAchievementCelebration from '../../components/SurvivorAchievementCelebration';
-import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags';
-import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup';
-import SpectatorView from '../../components/ui/SpectatorView';
-import Capitalization from '../../components/Capitalization/Capitalization';
-import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal';
-import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony';
-import { getProfilePhotoAvatarId, joinPublicAssetPath, resolveAvatar } from '../../utils/avatar';
-import { statusBadgeImageSrc } from '../../utils/statusBadges';
-import type { Player } from '../../types';
-import { isSurvivorRunTerminal } from '../../modes/survivorRun';
-import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay';
-import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay';
-import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay';
-import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/TwinShockIntroCinematic';
-import { updateApproval } from '../../publicOpinion/publicOpinionSlice';
-import type { PlayerPublicProfile } from '../../publicOpinion/types';
-import { selectSettings } from '../../store/settingsSlice';
-import { selectHasPublicModeAccess } from '../../store/vipSlice';
-import type { RootState } from '../../store/store';
-import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice';
-import AdPrompt from '../../components/AdPrompt/AdPrompt';
-import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay';
+} from '../../store/saveStatePersistence'
+import { selectSocialSummaryOpen } from '../../store/uiSlice'
+import TvZone from '../../components/ui/TvZone'
+import TVLog from '../../components/TVLog/TVLog'
+import HouseguestGrid from '../../components/HouseguestGrid/HouseguestGrid'
+import HouseguestInfoDialog from '../../components/HouseguestGrid/HouseguestInfoDialog'
+import TvDecisionModal from '../../components/TvDecisionModal/TvDecisionModal'
+import TvMultiSelectModal from '../../components/TvDecisionModal/TvMultiSelectModal'
+import TvBinaryDecisionModal from '../../components/TvBinaryDecisionModal/TvBinaryDecisionModal'
+import QuickTapRace from '../../components/QuickTapRace/QuickTapRace'
+import LaneRacersCanvasGame from '../../minigames/laneRacers/LaneRacersCanvasGame'
+import PressurePlank from '../../components/PressurePlank/PressurePlank'
+import { rankPressurePlankResults } from '../../components/PressurePlank/pressurePlankLogic'
+import BullseyeBlitz from '../../components/BullseyeBlitz/BullseyeBlitz'
+import TravelingDots from '../../components/TravelingDots/TravelingDots'
+import MinigameHost from '../../components/MinigameHost/MinigameHost'
+import type { HostPhase, MinigameParticipant } from '../../components/MinigameHost/MinigameHost'
+import type { MusicMinigameVariant } from '../../services/sound/musicConfig'
+import { computeScores } from '../../minigames/scoring'
+import FloatingActionBar from '../../components/FloatingActionBar/FloatingActionBar'
+import SpotlightEvictionOverlay from '../../components/Eviction/SpotlightEvictionOverlay'
+import SurveyevalTileEvictionEffect from '../../components/Eviction/SurveyevalTileEvictionEffect'
+import DayStartShockPopup from '../../components/DayStartShockPopup/DayStartShockPopup'
+import CeremonyOverlay from '../../components/CeremonyOverlay/CeremonyOverlay'
+import WinnerTileLiftAnimation from '../../components/WinnerTileLiftAnimation/WinnerTileLiftAnimation'
+import ChatOverlay from '../../components/ChatOverlay/ChatOverlay'
+import PlayerAvatar from '../../components/PlayerAvatar/PlayerAvatar'
+import SocialPanel from '../../components/SocialPanel/SocialPanel'
+import SocialPanelV2 from '../../components/SocialPanelV2/SocialPanelV2'
+import IncomingInteractionsInbox from '../../components/IncomingInteractionsInbox/IncomingInteractionsInbox'
+import SurvivorAchievementCelebration from '../../components/SurvivorAchievementCelebration'
+import { FEATURE_SOCIAL_V2, FEATURE_SPECTATOR_REACT } from '../../config/featureFlags'
+import SocialSummaryPopup from '../../components/SocialSummary/SocialSummaryPopup'
+import SpectatorView from '../../components/ui/SpectatorView'
+import Capitalization from '../../components/Capitalization/Capitalization'
+import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
+import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
+import { getProfilePhotoAvatarId, joinPublicAssetPath, resolveAvatar } from '../../utils/avatar'
+import { statusBadgeImageSrc } from '../../utils/statusBadges'
+import type { Player } from '../../types'
+import { isSurvivorRunTerminal } from '../../modes/survivorRun'
+import PublicFavoriteOverlay from '../../components/PublicFavoriteOverlay/PublicFavoriteOverlay'
+import JuryPhaseRevealOverlay from '../../components/JuryPhaseRevealOverlay/JuryPhaseRevealOverlay'
+import TwinShockRevealOverlay from '../../components/TwinShockRevealOverlay/TwinShockRevealOverlay'
+import TwinShockIntroCinematic from '../../components/TwinShockIntroCinematic/TwinShockIntroCinematic'
+import { updateApproval } from '../../publicOpinion/publicOpinionSlice'
+import type { PlayerPublicProfile } from '../../publicOpinion/types'
+import { selectSettings } from '../../store/settingsSlice'
+import { selectHasPublicModeAccess } from '../../store/vipSlice'
+import type { RootState } from '../../store/store'
+import { selectAdsState, clearLastCompLastPlace, recordAdShown } from '../../store/adsSlice'
+import AdPrompt from '../../components/AdPrompt/AdPrompt'
+import type { Announcement } from '../../components/ui/TvAnnouncementOverlay/TvAnnouncementOverlay'
 import {
   getBlockedSocialModuleAnnouncementMessage,
   type SocialModuleAvailability,
-} from '../../social/socialModuleAvailability';
-import { isPublicModeEnabled, isSocialModeEnabled } from '../../modes/gameModes';
+} from '../../social/socialModuleAvailability'
+import { isPublicModeEnabled, isSocialModeEnabled } from '../../modes/gameModes'
 import {
   showInterstitial,
   showRewarded,
   canShowAd,
   type AdPlacement,
-} from '../../services/ads/adsService';
+} from '../../services/ads/adsService'
 import {
   DISLIKED_BOOST_PROMPT_DESCRIPTION,
   DISLIKED_MAX_APPROVAL,
   shouldShowDislikedBoostPrompt,
-} from './dislikedBoostPrompt';
-import { usePersistedPromptDate } from './gameScreenPersistence';
-import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest';
-import { useResponsiveGameLayout } from './useResponsiveGameLayout';
-import { getCeremonyTileElement, getCeremonyTileRect } from './ceremonyTileMeasurement';
-import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome';
+} from './dislikedBoostPrompt'
+import { usePersistedPromptDate } from './gameScreenPersistence'
+import { requestFavoriteAudienceSurge } from './favoriteAudienceSurgeRequest'
+import { useResponsiveGameLayout } from './useResponsiveGameLayout'
+import { getCeremonyTileElement, getCeremonyTileRect } from './ceremonyTileMeasurement'
+import { useRefinedGameChrome } from '../../hooks/useRefinedGameChrome'
 import {
   hasSeenVoxNominationRevealIntro,
   loadVoxNominationReveal,
   markVoxNominationRevealIntroSeen,
   saveVoxNominationReveal,
-} from '../../features/voxNominationRevealStorage';
+} from '../../features/voxNominationRevealStorage'
 
-import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors';
-import { useCompetitionFlow } from './flows/useCompetitionFlow';
-import { coordinateGameFlows } from './flows/gameFlowCoordinator';
-import { useEndgameFlow } from './flows/useEndgameFlow';
-import { useEvictionFlow } from './flows/useEvictionFlow';
-import { useLohFlow } from './flows/useLohFlow';
-import { useSafetyFlow } from './flows/useSafetyFlow';
-import { BATTLE_BACK_RETRY_LIMIT, useTwistFlow } from './flows/useTwistFlow';
+import { selectActiveConfessionalDecision } from '../../store/confessionalDecisionSelectors'
+import { useCompetitionFlow } from './flows/useCompetitionFlow'
+import { coordinateGameFlows } from './flows/gameFlowCoordinator'
+import { useEndgameFlow } from './flows/useEndgameFlow'
+import { useEvictionFlow } from './flows/useEvictionFlow'
+import { useLohFlow } from './flows/useLohFlow'
+import { useSafetyFlow } from './flows/useSafetyFlow'
+import { BATTLE_BACK_RETRY_LIMIT, useTwistFlow } from './flows/useTwistFlow'
 import {
   expandCupidIds,
   getCupidPartnerId,
   isCupidArrowActive,
-} from '../../features/twists/cupidArrow';
+} from '../../features/twists/cupidArrow'
 export {
   POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS,
   POST_VOTE_ANNOUNCEMENT_MS,
-} from './flows/useEvictionFlow';
-import './GameScreen.css';
+} from './flows/useEvictionFlow'
+import './GameScreen.css'
 
-const LOH_BADGE_SRC = statusBadgeImageSrc('loh');
-const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated');
-const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {};
+const LOH_BADGE_SRC = statusBadgeImageSrc('loh')
+const NOMINATION_BADGE_SRC = statusBadgeImageSrc('nominated')
+const EMPTY_PUBLIC_PROFILES: Record<string, PlayerPublicProfile> = {}
 const CONFESSIONAL_TV_PROMPT_MESSAGE =
-  'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.';
-const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000;
+  'The Big Eye requires your decision. Head to the Confessional to complete your action before the game can continue.'
+const SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS = 3000
 
 // Exported only as a pure regression-test seam; it does not participate in Fast Refresh state.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -150,22 +150,22 @@ export function buildTieBreakPitch(relationship: number, playerId: string, week:
   const alternate =
     Math.abs(`${playerId}:${week}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) %
       2 ===
-    0;
+    0
   if (relationship >= 45)
     return alternate
       ? 'We have protected each other before. Keep me, and I will return it.'
-      : 'Our relationship is real. Do not let one tied vote end it.';
+      : 'Our relationship is real. Do not let one tied vote end it.'
   if (relationship >= 15)
     return alternate
       ? 'I can still be a number for you after tonight. Give me that chance.'
-      : 'Keep me and you keep an option in this house?not another enemy.';
+      : 'Keep me and you keep an option in this house?not another enemy.'
   if (relationship <= -20)
     return alternate
       ? 'We are not close, but eliminating me only finishes someone else?s move.'
-      : 'You do not have to trust me to see I am useful as a shield.';
+      : 'You do not have to trust me to see I am useful as a shield.'
   return alternate
     ? 'Give me one more day and judge me by what I do with it.'
-    : 'This decision is yours. I am asking you not to make me the easy answer.';
+    : 'This decision is yours. I am asking you not to make me the easy answer.'
 }
 
 function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
@@ -173,7 +173,7 @@ function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
     playerId: id,
     rawValue: challenge.aiScores[id] ?? 0,
     ...(challenge.aiTiebreakers?.[id] != null ? { tiebreaker: challenge.aiTiebreakers[id] } : {}),
-  }));
+  }))
 }
 
 /**
@@ -195,62 +195,62 @@ function buildAiOnlyChallengeRawResults(challenge: PendingChallenge) {
  * or add action buttons by dispatching events via useAppDispatch().
  */
 export default function GameScreen() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const handleMinigameHostPhaseChange = useCallback(
     (hostPhase: HostPhase) => dispatch(setPendingPhase(hostPhase)),
     [dispatch]
-  );
+  )
   const handleMinigameMusicVariantChange = useCallback(
     (variant: MusicMinigameVariant) => dispatch(setPendingMusicVariant(variant)),
     [dispatch]
-  );
-  const store = useStore<RootState>();
-  const gameScreenRef = useRef<HTMLDivElement | null>(null);
-  const refinedGameChrome = useRefinedGameChrome();
-  const storeRef = useRef(store);
-  const isMountedRef = useRef(true);
+  )
+  const store = useStore<RootState>()
+  const gameScreenRef = useRef<HTMLDivElement | null>(null)
+  const refinedGameChrome = useRefinedGameChrome()
+  const storeRef = useRef(store)
+  const isMountedRef = useRef(true)
   useEffect(() => {
-    storeRef.current = store;
-  }, [store]);
-  const alivePlayers = useAppSelector(selectAlivePlayers);
-  const game = useAppSelector((s) => s.game);
-  const activeProfileId = useAppSelector(selectActiveProfileId);
-  const isGuest = useAppSelector(selectIsGuest);
-  const settings = useAppSelector(selectSettings);
-  const hasPublicModeAccess = useAppSelector(selectHasPublicModeAccess);
+    storeRef.current = store
+  }, [store])
+  const alivePlayers = useAppSelector(selectAlivePlayers)
+  const game = useAppSelector((s) => s.game)
+  const activeProfileId = useAppSelector(selectActiveProfileId)
+  const isGuest = useAppSelector(selectIsGuest)
+  const settings = useAppSelector(selectSettings)
+  const hasPublicModeAccess = useAppSelector(selectHasPublicModeAccess)
   // ── Confessional ceremony decision routing ─────────────────────────────────
   // When non-null, a required player ceremony decision is pending that must be
   // resolved inside the Confessional.  The in-game decision modals are hidden
   // and a main-TV guidance banner is shown instead.
-  const selectedConfessionalDecision = useAppSelector(selectActiveConfessionalDecision);
-  const activeConfessionalDecision = game.mode === 'survival' ? null : selectedConfessionalDecision;
+  const selectedConfessionalDecision = useAppSelector(selectActiveConfessionalDecision)
+  const activeConfessionalDecision = game.mode === 'survival' ? null : selectedConfessionalDecision
   const publicOpinionProfiles = useAppSelector(
     (s: RootState): Record<string, PlayerPublicProfile> =>
       s.publicOpinion?.profiles ?? EMPTY_PUBLIC_PROFILES
-  );
-  const lastSocialReport = useAppSelector(selectLastSocialReport);
-  const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen);
-  const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId);
-  const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId);
-  const adsState = useAppSelector(selectAdsState);
-  const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null);
-  const [rosterLogOpen, setRosterLogOpen] = useState(false);
+  )
+  const lastSocialReport = useAppSelector(selectLastSocialReport)
+  const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
+  const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
+  const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
+  const adsState = useAppSelector(selectAdsState)
+  const [previewPlayer, setPreviewPlayer] = useState<Player | null>(null)
+  const [rosterLogOpen, setRosterLogOpen] = useState(false)
 
   // ── Ad prompt visibility state ─────────────────────────────────────────
-  const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false);
-  const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false);
-  const [showVoxNominationRevealPrompt, setShowVoxNominationRevealPrompt] = useState(false);
-  const [showVoxAudiencePreviewPrompt, setShowVoxAudiencePreviewPrompt] = useState(false);
-  const [showVoxAudiencePreviewReveal, setShowVoxAudiencePreviewReveal] = useState(false);
-  const [voxAudienceChipSpotlight, setVoxAudienceChipSpotlight] = useState(false);
-  const audienceChipSeenWeeksRef = useRef(new Set<number>());
+  const [showEnergyRechargePrompt, setShowEnergyRechargePrompt] = useState(false)
+  const [showDislikedBoostPrompt, setShowDislikedBoostPrompt] = useState(false)
+  const [showVoxNominationRevealPrompt, setShowVoxNominationRevealPrompt] = useState(false)
+  const [showVoxAudiencePreviewPrompt, setShowVoxAudiencePreviewPrompt] = useState(false)
+  const [showVoxAudiencePreviewReveal, setShowVoxAudiencePreviewReveal] = useState(false)
+  const [voxAudienceChipSpotlight, setVoxAudienceChipSpotlight] = useState(false)
+  const audienceChipSeenWeeksRef = useRef(new Set<number>())
   // Tracks whether a rewarded ad request has been sent (prevents double-tap).
-  const [adPending, setAdPending] = useState(false);
-  const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null);
+  const [adPending, setAdPending] = useState(false)
+  const [preAdAnnouncement, setPreAdAnnouncement] = useState<Announcement | null>(null)
   const [socialModuleUnavailableAnnouncement, setSocialModuleUnavailableAnnouncement] =
-    useState<Announcement | null>(null);
+    useState<Announcement | null>(null)
   useEffect(() => {
     if (
       !game.voxPopuli?.awaitingPublicVote ||
@@ -258,12 +258,12 @@ export default function GameScreen() {
       showVoxAudiencePreviewPrompt ||
       adPending
     ) {
-      return;
+      return
     }
     const audienceCountTimer = window.setTimeout(() => {
-      dispatch(resolvePendingVoxAudienceVote());
-    }, 5_000);
-    return () => window.clearTimeout(audienceCountTimer);
+      dispatch(resolvePendingVoxAudienceVote())
+    }, 5_000)
+    return () => window.clearTimeout(audienceCountTimer)
   }, [
     adPending,
     dispatch,
@@ -271,76 +271,76 @@ export default function GameScreen() {
     game.voxPopuli?.publicVoteContext,
     game.week,
     showVoxAudiencePreviewPrompt,
-  ]);
+  ])
 
   useEffect(() => {
-    if (!game.voxPopuli?.awaitingPublicVote) return;
+    if (!game.voxPopuli?.awaitingPublicVote) return
     const handlePlay = (event: Event) => {
-      if (event.defaultPrevented) return;
-      dispatch(resolvePendingVoxAudienceVote());
-    };
-    window.addEventListener('ui:playPressed', handlePlay);
-    return () => window.removeEventListener('ui:playPressed', handlePlay);
-  }, [dispatch, game.voxPopuli?.awaitingPublicVote]);
+      if (event.defaultPrevented) return
+      dispatch(resolvePendingVoxAudienceVote())
+    }
+    window.addEventListener('ui:playPressed', handlePlay)
+    return () => window.removeEventListener('ui:playPressed', handlePlay)
+  }, [dispatch, game.voxPopuli?.awaitingPublicVote])
 
   useEffect(() => {
-    if (game.voxPopuli?.finaleStage !== 'ready') return;
+    if (game.voxPopuli?.finaleStage !== 'ready') return
     const handlePlay = (event: Event) => {
-      if (event.defaultPrevented) return;
-      dispatch(startVoxFinalVote());
-    };
-    window.addEventListener('ui:playPressed', handlePlay);
-    return () => window.removeEventListener('ui:playPressed', handlePlay);
-  }, [dispatch, game.voxPopuli?.finaleStage]);
-  const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null);
+      if (event.defaultPrevented) return
+      dispatch(startVoxFinalVote())
+    }
+    window.addEventListener('ui:playPressed', handlePlay)
+    return () => window.removeEventListener('ui:playPressed', handlePlay)
+  }, [dispatch, game.voxPopuli?.finaleStage])
+  const pendingPreAdPlacementRef = useRef<AdPlacement | null>(null)
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
-    : null;
+    : null
   const [storedConfessionalPrompt, setStoredConfessionalPrompt] = useState<{
-    decisionKey: string | null;
-    triggered: boolean;
-    visible: boolean;
-  }>(() => ({ decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false }));
+    decisionKey: string | null
+    triggered: boolean
+    visible: boolean
+  }>(() => ({ decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false }))
   const confessionalPrompt =
     storedConfessionalPrompt.decisionKey === activeConfessionalDecisionKey
       ? storedConfessionalPrompt
-      : { decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false };
+      : { decisionKey: activeConfessionalDecisionKey, triggered: false, visible: false }
   const dismissConfessionalTvPrompt = useCallback(() => {
     setStoredConfessionalPrompt((current) => ({
       decisionKey: activeConfessionalDecisionKey,
       triggered: current.decisionKey === activeConfessionalDecisionKey ? current.triggered : false,
       visible: false,
-    }));
-  }, [activeConfessionalDecisionKey]);
+    }))
+  }, [activeConfessionalDecisionKey])
 
   useEffect(() => {
     return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
-    if (!activeConfessionalDecisionKey) return;
+    if (!activeConfessionalDecisionKey) return
 
     const handlePlayPressed = () => {
       setStoredConfessionalPrompt({
         decisionKey: activeConfessionalDecisionKey,
         triggered: true,
         visible: true,
-      });
-    };
+      })
+    }
 
-    window.addEventListener('ui:playPressed', handlePlayPressed);
-    return () => window.removeEventListener('ui:playPressed', handlePlayPressed);
-  }, [activeConfessionalDecisionKey]);
+    window.addEventListener('ui:playPressed', handlePlayPressed)
+    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
+  }, [activeConfessionalDecisionKey])
 
-  const humanPlayer = game.players.find((p) => p.isUser);
-  const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false);
-  const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury';
+  const humanPlayer = game.players.find((p) => p.isUser)
+  const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false)
+  const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
   const preJuryGameOver =
-    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination;
-  const isVoxPopuli = game.voxPopuli?.status === 'active';
-  const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4;
+    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination
+  const isVoxPopuli = game.voxPopuli?.status === 'active'
+  const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
   const voxAudiencePreviewWindow =
     isVoxPopuli &&
     game.nomineeIds.length >= 2 &&
@@ -353,54 +353,54 @@ export default function GameScreen() {
       'social_2',
       'live_vote',
     ].includes(game.phase) &&
-    game.voteResults == null;
-  const voxAudiencePreviewUsed = game.voxPopuli?.audiencePreviewWeek === game.week;
+    game.voteResults == null
+  const voxAudiencePreviewUsed = game.voxPopuli?.audiencePreviewWeek === game.week
 
   useEffect(() => {
-    if (!voxAudiencePreviewWindow || voxAudiencePreviewUsed) return;
-    if (audienceChipSeenWeeksRef.current.has(game.week)) return;
-    audienceChipSeenWeeksRef.current.add(game.week);
-    const startTimer = window.setTimeout(() => setVoxAudienceChipSpotlight(true), 0);
-    const endTimer = window.setTimeout(() => setVoxAudienceChipSpotlight(false), 2_350);
+    if (!voxAudiencePreviewWindow || voxAudiencePreviewUsed) return
+    if (audienceChipSeenWeeksRef.current.has(game.week)) return
+    audienceChipSeenWeeksRef.current.add(game.week)
+    const startTimer = window.setTimeout(() => setVoxAudienceChipSpotlight(true), 0)
+    const endTimer = window.setTimeout(() => setVoxAudienceChipSpotlight(false), 2_350)
     return () => {
-      window.clearTimeout(startTimer);
-      window.clearTimeout(endTimer);
-    };
-  }, [game.week, voxAudiencePreviewUsed, voxAudiencePreviewWindow]);
+      window.clearTimeout(startTimer)
+      window.clearTimeout(endTimer)
+    }
+  }, [game.week, voxAudiencePreviewUsed, voxAudiencePreviewWindow])
 
   const voxAudiencePreviewAction = voxAudiencePreviewWindow
     ? {
         disabled: voxAudiencePreviewUsed,
         spotlight: voxAudienceChipSpotlight,
         onClick: () => {
-          if (!voxAudiencePreviewUsed) setShowVoxAudiencePreviewPrompt(true);
+          if (!voxAudiencePreviewUsed) setShowVoxAudiencePreviewPrompt(true)
         },
       }
-    : null;
+    : null
 
   const voxAudiencePreviewReveal = useMemo(() => {
-    if (!showVoxAudiencePreviewReveal) return null;
-    const nomineeIds = game.voxPopuli?.audiencePreviewNomineeIds ?? [];
-    const percentages = game.voxPopuli?.audiencePreviewPercentages ?? {};
+    if (!showVoxAudiencePreviewReveal) return null
+    const nomineeIds = game.voxPopuli?.audiencePreviewNomineeIds ?? []
+    const percentages = game.voxPopuli?.audiencePreviewPercentages ?? {}
     const players = nomineeIds.flatMap((id) => {
-      const player = game.players.find((candidate) => candidate.id === id);
-      return player ? [player] : [];
-    });
-    if (players.length < 2) return null;
-    return { players, percentages };
-  }, [game.players, game.voxPopuli, showVoxAudiencePreviewReveal]);
+      const player = game.players.find((candidate) => candidate.id === id)
+      return player ? [player] : []
+    })
+    if (players.length < 2) return null
+    return { players, percentages }
+  }, [game.players, game.voxPopuli, showVoxAudiencePreviewReveal])
 
   const handleVoxAudiencePreviewComplete = useCallback(
     (reason: 'auto' | 'play') => {
-      setShowVoxAudiencePreviewReveal(false);
-      if (reason === 'auto') dispatch(advance());
+      setShowVoxAudiencePreviewReveal(false)
+      if (reason === 'auto') dispatch(advance())
     },
     [dispatch]
-  );
+  )
 
-  const voxBallotCount = Object.keys(game.voxPopuli?.nominationBallots ?? {}).length;
+  const voxBallotCount = Object.keys(game.voxPopuli?.nominationBallots ?? {}).length
   const unlockVoxNominationReveal = useCallback(() => {
-    const current = loadVoxNominationReveal();
+    const current = loadVoxNominationReveal()
     saveVoxNominationReveal(
       current?.week === game.week
         ? { ...current, status: 'revealed' }
@@ -409,19 +409,19 @@ export default function GameScreen() {
             ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
             status: 'revealed',
           }
-    );
-    setShowVoxNominationRevealPrompt(false);
-    setAdPending(false);
+    )
+    setShowVoxNominationRevealPrompt(false)
+    setAdPending(false)
     dispatch(
       addTvEvent({
         text: 'The Big Eye has unsealed today’s secret ballots. Visit the Confessional before the day ends to see the full nomination trail.',
         type: 'diary',
         meta: { major: 'vox_nomination_reveal_unlocked' },
       })
-    );
-  }, [dispatch, game.voxPopuli?.nominationBallots, game.week]);
+    )
+  }, [dispatch, game.voxPopuli?.nominationBallots, game.week])
   const declineVoxNominationReveal = useCallback(() => {
-    const current = loadVoxNominationReveal();
+    const current = loadVoxNominationReveal()
     saveVoxNominationReveal(
       current?.week === game.week
         ? { ...current, status: 'declined' }
@@ -430,32 +430,32 @@ export default function GameScreen() {
             ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
             status: 'declined',
           }
-    );
-    setShowVoxNominationRevealPrompt(false);
-    setAdPending(false);
-  }, [game.voxPopuli?.nominationBallots, game.week]);
+    )
+    setShowVoxNominationRevealPrompt(false)
+    setAdPending(false)
+  }, [game.voxPopuli?.nominationBallots, game.week])
   const unlockVoxAudiencePreview = useCallback(() => {
-    dispatch(revealVoxTemporaryAudienceVote());
-    setShowVoxAudiencePreviewReveal(true);
-    setShowVoxAudiencePreviewPrompt(false);
-    setAdPending(false);
-  }, [dispatch]);
+    dispatch(revealVoxTemporaryAudienceVote())
+    setShowVoxAudiencePreviewReveal(true)
+    setShowVoxAudiencePreviewPrompt(false)
+    setAdPending(false)
+  }, [dispatch])
   const clearEliminatedRun = useCallback(() => {
-    if (isGuest || !activeProfileId) return;
-    clearSavedRun(activeProfileId, getSavedRunSlot(game));
-    clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId));
-  }, [activeProfileId, game, isGuest]);
+    if (isGuest || !activeProfileId) return
+    clearSavedRun(activeProfileId, getSavedRunSlot(game))
+    clearSeasonSnapshot(savedStateKeyForProfile(activeProfileId))
+  }, [activeProfileId, game, isGuest])
   const handleStartNewSeason = useCallback(() => {
-    clearEliminatedRun();
-    dispatch(resetGame());
-    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
-    navigate('/', { replace: true, state: { autoStartGame: true } });
-  }, [clearEliminatedRun, dispatch, navigate]);
+    clearEliminatedRun()
+    dispatch(resetGame())
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null })
+    navigate('/', { replace: true, state: { autoStartGame: true } })
+  }, [clearEliminatedRun, dispatch, navigate])
   const handlePreJuryReturnHome = useCallback(() => {
-    clearEliminatedRun();
-    dispatch({ type: 'challenge/setPendingChallenge', payload: null });
-    navigate('/', { replace: true });
-  }, [clearEliminatedRun, dispatch, navigate]);
+    clearEliminatedRun()
+    dispatch({ type: 'challenge/setPendingChallenge', payload: null })
+    navigate('/', { replace: true })
+  }, [clearEliminatedRun, dispatch, navigate])
   const confessionalTvAnnouncement =
     confessionalPrompt.triggered && confessionalPrompt.visible
       ? {
@@ -465,22 +465,19 @@ export default function GameScreen() {
           isLive: false,
           autoDismissMs: 3500,
         }
-      : null;
-  const juryPlayers = useMemo(
-    () => game.players.filter((p) => p.status === 'jury'),
-    [game.players]
-  );
+      : null
+  const juryPlayers = useMemo(() => game.players.filter((p) => p.status === 'jury'), [game.players])
 
   // Combine compile-time flag with runtime cfg override.
   // game.cfg?.enableSpectatorReact defaults to true when omitted.
-  const spectatorReactEnabled = FEATURE_SPECTATOR_REACT && game.cfg?.enableSpectatorReact !== false;
+  const spectatorReactEnabled = FEATURE_SPECTATOR_REACT && game.cfg?.enableSpectatorReact !== false
 
   // ── Tile position lookup for CeremonyOverlay ──────────────────────────────
   // Queries the houseguest grid's data-player-id items and centers only scroll
   // roster targets before measurement, keeping normal/compact rosters fixed.
   const getTileRect = useCallback((playerId: string): DOMRect | null => {
-    return getCeremonyTileRect(playerId);
-  }, []);
+    return getCeremonyTileRect(playerId)
+  }, [])
   const {
     humanIsHoH,
     aliveIds,
@@ -519,7 +516,7 @@ export default function GameScreen() {
     activeConfessionalDecision,
     searchParams,
     dispatch,
-  });
+  })
 
   const voxNominationRevealReady =
     isVoxPopuli &&
@@ -528,32 +525,32 @@ export default function GameScreen() {
     !showNomAnim &&
     !humanPlayerEliminated &&
     voxBallotCount > 0 &&
-    game.nomineeIds.length > 0;
+    game.nomineeIds.length > 0
 
   // Preserve every completed ballot as soon as the nomination ceremony has
   // finished. The first season introduces the reward on the main screen; all
   // later days wait for the player to ask The Big Eye in the Confessional.
   useEffect(() => {
-    if (!voxNominationRevealReady) return;
-    const existing = loadVoxNominationReveal();
-    if (existing?.week === game.week) return;
+    if (!voxNominationRevealReady) return
+    const existing = loadVoxNominationReveal()
+    if (existing?.week === game.week) return
     saveVoxNominationReveal({
       week: game.week,
       ballots: { ...(game.voxPopuli?.nominationBallots ?? {}) },
       status: 'ready',
-    });
-  }, [game.voxPopuli?.nominationBallots, game.week, voxNominationRevealReady]);
+    })
+  }, [game.voxPopuli?.nominationBallots, game.week, voxNominationRevealReady])
 
   useEffect(() => {
-    if (!voxNominationRevealReady || hasSeenVoxNominationRevealIntro()) return;
+    if (!voxNominationRevealReady || hasSeenVoxNominationRevealIntro()) return
     const handlePlayPressed = () => {
-      if (hasSeenVoxNominationRevealIntro()) return;
-      markVoxNominationRevealIntroSeen();
-      setShowVoxNominationRevealPrompt(true);
-    };
-    window.addEventListener('ui:playPressed', handlePlayPressed);
-    return () => window.removeEventListener('ui:playPressed', handlePlayPressed);
-  }, [voxNominationRevealReady]);
+      if (hasSeenVoxNominationRevealIntro()) return
+      markVoxNominationRevealIntroSeen()
+      setShowVoxNominationRevealPrompt(true)
+    }
+    window.addEventListener('ui:playPressed', handlePlayPressed)
+    return () => window.removeEventListener('ui:playPressed', handlePlayPressed)
+  }, [voxNominationRevealReady])
 
   const {
     pendingChallenge,
@@ -572,59 +569,59 @@ export default function GameScreen() {
     spectatorReactEnabled,
     spectatorMode: settings.gameUX.spectatorMode,
     dispatch,
-  });
-  const showAdvanceHohCeremony = advanceHohCeremonyEligible && pendingWinnerCeremony == null;
+  })
+  const showAdvanceHohCeremony = advanceHohCeremonyEligible && pendingWinnerCeremony == null
 
   // ── Track last report ID so re-renders don't trigger duplicate effects ────
   // Social summaries are posted exclusively to the Diary Room via
   // SocialSummaryBridge.dispatchSocialSummary → game/addSocialSummary (type 'diary').
   // We do NOT post a TV feed event here; social summaries remain DR-only.
-  const prevReportIdRef = useRef<string | null>(lastSocialReport?.id ?? null);
+  const prevReportIdRef = useRef<string | null>(lastSocialReport?.id ?? null)
   useEffect(() => {
     if (lastSocialReport && lastSocialReport.id !== prevReportIdRef.current) {
-      prevReportIdRef.current = lastSocialReport.id;
+      prevReportIdRef.current = lastSocialReport.id
     }
-  }, [lastSocialReport]);
+  }, [lastSocialReport])
 
   function handleAvatarSelect(player: Player) {
-    setPreviewPlayer(null);
+    setPreviewPlayer(null)
     // Demo: log selection to TV feed when you tap your own avatar
     if (player.isUser) {
       dispatch(
         addTvEvent({ text: `${player.name} checks their alliance status 🤫`, type: 'diary' })
-      );
+      )
     }
   }
 
   function playerToHouseguest(p: Player) {
-    const isEvicted = p.status === 'evicted' || p.status === 'jury';
-    const parts: string[] = [];
-    const povProtectedIds = new Set(game.povProtectedIds ?? []);
+    const isEvicted = p.status === 'evicted' || p.status === 'jury'
+    const parts: string[] = []
+    const povProtectedIds = new Set(game.povProtectedIds ?? [])
     if ((game.lohId === p.id || p.status.includes('loh')) && !isVoxFinalFour) {
-      parts.push(isVoxPopuli ? 'immune' : 'loh');
+      parts.push(isVoxPopuli ? 'immune' : 'loh')
     }
-    if (game.posWinnerId === p.id || p.status.includes('pos')) parts.push('pos');
-    if (povProtectedIds.has(p.id)) parts.push('veto_safe');
+    if (game.posWinnerId === p.id || p.status.includes('pos')) parts.push('pos')
+    if (povProtectedIds.has(p.id)) parts.push('veto_safe')
     // Suppress permanent nomination badge while the nomination animation is
     // playing — otherwise AI-LOH nominees (already in game.nomineeIds) would
     // show the permanent ❓ badge before the animated badge lands.
-    const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id);
+    const isAnimatingNominee = showNomAnim && nomAnimPlayers.some((n) => n.id === p.id)
     const isAnimatingSaveTarget = pendingSaveCeremony
       ? expandCupidIds(game, [pendingSaveCeremony.savedId]).includes(p.id)
-      : false;
+      : false
     const isPublicSaveWinner = pendingPublicSaveResult
       ? expandCupidIds(game, [pendingPublicSaveResult.savedId]).includes(p.id)
-      : false;
+      : false
     const isAnimatingReplacementNominee = activeReplacementAnimationTargetIds.some(
       (replacementId) => expandCupidIds(game, [replacementId]).includes(p.id)
-    );
+    )
     const isAnimatingAwardWinner =
       (pendingWinnerCeremony
         ? expandCupidIds(game, [pendingWinnerCeremony.winnerId]).includes(p.id)
         : false) ||
       (showAdvanceHohCeremony && game.lohId
         ? expandCupidIds(game, [game.lohId]).includes(p.id)
-        : false);
+        : false)
     if (
       Array.isArray(game.nomineeIds) &&
       game.nomineeIds.includes(p.id) &&
@@ -633,9 +630,9 @@ export default function GameScreen() {
       !isPublicSaveWinner &&
       !isAnimatingReplacementNominee
     ) {
-      parts.push('nominated');
+      parts.push('nominated')
     }
-    if (p.status === 'jury') parts.push('jury');
+    if (p.status === 'jury') parts.push('jury')
     // When suppressing the nominated badge, also guard the p.status fallback so
     // that players whose p.status is already 'nominated' (AI-committed nominees)
     // don't have that status leak through when parts is empty.
@@ -643,7 +640,7 @@ export default function GameScreen() {
       isAnimatingNominee ||
       isAnimatingSaveTarget ||
       isPublicSaveWinner ||
-      isAnimatingReplacementNominee;
+      isAnimatingReplacementNominee
     const statuses =
       parts.length > 0
         ? parts.join('+')
@@ -651,8 +648,8 @@ export default function GameScreen() {
           ? 'active'
           : isVoxFinalFour && (p.id === game.lohId || p.status.includes('loh'))
             ? 'active'
-            : (p.status ?? 'active');
-    const isReturning = battleBackReturnId === p.id;
+            : (p.status ?? 'active')
+    const isReturning = battleBackReturnId === p.id
     const nominationCeremonyState: 'loh' | 'danger' | 'locked' | undefined =
       !isEvicted && showNominationDangerSignals
         ? game.lohId === p.id
@@ -660,7 +657,7 @@ export default function GameScreen() {
           : nominationDangerLockedIds.includes(p.id)
             ? 'locked'
             : 'danger'
-        : undefined;
+        : undefined
     return {
       id: p.id,
       name: p.name,
@@ -693,13 +690,13 @@ export default function GameScreen() {
       onHoldPreviewStart: () => setPreviewPlayer(p),
       onHoldPreviewEnd: () =>
         setPreviewPlayer((current) => (current?.id === p.id ? null : current)),
-    };
+    }
   }
 
   const rosterNamesRevealed =
     game.mode === 'survival' ||
     game.phase !== 'season_start' ||
-    game.tvFeed.some((event) => event.meta?.seasonOnboardingFlavor === true);
+    game.tvFeed.some((event) => event.meta?.seasonOnboardingFlavor === true)
 
   const {
     replacementOptions,
@@ -733,7 +730,7 @@ export default function GameScreen() {
     activeConfessionalDecision,
     getTileRect,
     dispatch,
-  });
+  })
   const {
     spectatorF3Active,
     spectatorF3CompetitorIds,
@@ -763,7 +760,7 @@ export default function GameScreen() {
     spectatorReactEnabled,
     spectatorMode: settings.gameUX.spectatorMode,
     dispatch,
-  });
+  })
 
   const {
     twinShockReveal,
@@ -819,7 +816,7 @@ export default function GameScreen() {
     humanPlayer,
     publicOpinionProfiles,
     dispatch,
-  });
+  })
 
   const {
     showVoteBreakdownPrompt,
@@ -859,7 +856,7 @@ export default function GameScreen() {
     isMountedRef,
     setAdPending,
     dispatch,
-  });
+  })
 
   // Flow-specific orchestration is owned by the dedicated controllers above.
 
@@ -872,24 +869,24 @@ export default function GameScreen() {
         getState: () => storeRef.current.getState(),
         isMounted: () => isMountedRef.current,
         setAdPending,
-      });
+      })
     },
     [adPending, dispatch]
-  );
+  )
   // Shown when a LOH or POS competition is in progress and the human player
   // is a participant. The Continue button is hidden while the overlay is active.
-  const pendingMinigame = game.pendingMinigame;
+  const pendingMinigame = game.pendingMinigame
   const humanIsParticipant =
-    !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id);
+    !!pendingMinigame && !!humanPlayer && pendingMinigame.participants.includes(humanPlayer.id)
   // MinigameHost takes priority over native LOH minigame overlays when a challenge
   // is pending and the human player is a participant in that challenge.
   const humanIsChallengeParticipant =
-    !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id);
-  const showMinigameHost = humanIsChallengeParticipant;
-  const aiOnlyChallengeResolvedRef = useRef<string | null>(null);
+    !!pendingChallenge && !!humanPlayer && pendingChallenge.participants.includes(humanPlayer.id)
+  const showMinigameHost = humanIsChallengeParticipant
+  const aiOnlyChallengeResolvedRef = useRef<string | null>(null)
   useEffect(() => {
     const isClassicCompetitionPhase =
-      game.mode !== 'survival' && (game.phase === 'loh_comp' || game.phase === 'pos_comp');
+      game.mode !== 'survival' && (game.phase === 'loh_comp' || game.phase === 'pos_comp')
     if (
       !isClassicCompetitionPhase ||
       !pendingChallenge ||
@@ -897,16 +894,16 @@ export default function GameScreen() {
       pendingChallenge.participants.length === 0 ||
       aiOnlyChallengeResolvedRef.current === pendingChallenge.id
     ) {
-      return;
+      return
     }
 
-    aiOnlyChallengeResolvedRef.current = pendingChallenge.id;
-    const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge);
+    aiOnlyChallengeResolvedRef.current = pendingChallenge.id
+    const rawResults = buildAiOnlyChallengeRawResults(pendingChallenge)
     const scoreWinnerId = dispatch(
       completeChallenge(rawResults, { authoritativeWinnerId: pendingChallenge.forcedWinnerId })
-    ) as string | null;
+    ) as string | null
     const finalWinnerId =
-      pendingChallenge.forcedWinnerId ?? scoreWinnerId ?? pendingChallenge.participants[0];
+      pendingChallenge.forcedWinnerId ?? scoreWinnerId ?? pendingChallenge.participants[0]
     const ranked =
       pendingChallenge.game.key === 'pressurePlank'
         ? rankPressurePlankResults(
@@ -918,8 +915,8 @@ export default function GameScreen() {
             pendingChallenge.game.scoringAdapter,
             rawResults,
             pendingChallenge.game.scoringParams ?? {}
-          );
-    const lastNonWinner = [...ranked].reverse().find((result) => result.playerId !== finalWinnerId);
+          )
+    const lastNonWinner = [...ranked].reverse().find((result) => result.playerId !== finalWinnerId)
 
     dispatch(
       applyMinigameWinner({
@@ -937,15 +934,15 @@ export default function GameScreen() {
         runId: pendingChallenge.id,
         gameKey: pendingChallenge.game.key,
       })
-    );
-  }, [dispatch, game.mode, game.phase, humanIsChallengeParticipant, pendingChallenge]);
+    )
+  }, [dispatch, game.mode, game.phase, humanIsChallengeParticipant, pendingChallenge])
   /** True whenever a native React LOH/POS minigame overlay should be displayed. */
-  const showLohMinigame = !showMinigameHost && humanIsParticipant;
-  const showPressurePlank = showLohMinigame && pendingMinigame?.key === 'pressurePlank';
-  const showBullseyeBlitz = showLohMinigame && pendingMinigame?.key === 'targetPractice';
+  const showLohMinigame = !showMinigameHost && humanIsParticipant
+  const showPressurePlank = showLohMinigame && pendingMinigame?.key === 'pressurePlank'
+  const showBullseyeBlitz = showLohMinigame && pendingMinigame?.key === 'targetPractice'
   // TravelingDots is key-gated to its specific overlay component.
-  const showTravelingDots = showLohMinigame && pendingMinigame?.key === 'travelingDots';
-  const showLaneRacers = showLohMinigame && pendingMinigame?.key === 'laneRacers';
+  const showTravelingDots = showLohMinigame && pendingMinigame?.key === 'travelingDots'
+  const showLaneRacers = showLohMinigame && pendingMinigame?.key === 'laneRacers'
   // QuickTapRace handles the 'quickTap' key AND acts as a safe fallback for any
   // unrecognised pendingMinigame key so the human is never left with no UI.
   const showQuickTapRace =
@@ -953,63 +950,63 @@ export default function GameScreen() {
     !showPressurePlank &&
     !showBullseyeBlitz &&
     !showTravelingDots &&
-    !showLaneRacers;
+    !showLaneRacers
 
   // ── Ad hook: competition_retry ─────────────────────────────────────────────
   // Retry now lives in the MinigameHost results UI itself, so GameScreen only
   // consumes the legacy last-place marker and never shows a separate popup.
-  const isFinal3Week = alivePlayers.length <= 3;
+  const isFinal3Week = alivePlayers.length <= 3
   const competitionRetryInResultsEnabled = useMemo(() => {
-    if (!pendingChallenge) return false;
-    const prizeType = pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH');
-    if (prizeType !== 'LOH' && prizeType !== 'POS') return false;
-    const state = store.getState();
-    return canShowAd('competition_retry', state, { isFinal3Week });
-  }, [pendingChallenge, game.phase, isFinal3Week, store]);
+    if (!pendingChallenge) return false
+    const prizeType = pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH')
+    if (prizeType !== 'LOH' && prizeType !== 'POS') return false
+    const state = store.getState()
+    return canShowAd('competition_retry', state, { isFinal3Week })
+  }, [pendingChallenge, game.phase, isFinal3Week, store])
   const [lastDislikedPromptDate, setLastDislikedPromptDate] = usePersistedPromptDate(
     'public_meter_disliked_boost'
-  );
+  )
   useEffect(() => {
-    if (!adsState?.lastCompLastPlaceType) return;
+    if (!adsState?.lastCompLastPlaceType) return
     if (import.meta.env.DEV) {
       console.log(
         '[ads] competition_retry standalone prompt removed; relying on minigame results UI',
         { lastCompLastPlaceType: adsState.lastCompLastPlaceType, phase: game.phase, isFinal3Week }
-      );
+      )
     }
-    dispatch(clearLastCompLastPlace());
-  }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch]);
+    dispatch(clearLastCompLastPlace())
+  }, [adsState?.lastCompLastPlaceType, game.phase, isFinal3Week, dispatch])
 
   // ── Ad hook: automatic interstitials (phase-based) ────────────────────────
   // Each useEffect fires once per phase transition to the relevant phase.
-  const prevPhaseRef = useRef<string>('');
+  const prevPhaseRef = useRef<string>('')
   const queuePreAdAnnouncement = useCallback((placement: AdPlacement, subtitle: string) => {
-    pendingPreAdPlacementRef.current = placement;
+    pendingPreAdPlacementRef.current = placement
     setPreAdAnnouncement({
       key: `ad_break_${placement}`,
       title: 'SHORT BREAK',
       subtitle,
       isLive: true,
       autoDismissMs: 3200,
-    });
-  }, []);
+    })
+  }, [])
   const handlePreAdAnnouncementDismiss = useCallback(() => {
-    const placement = pendingPreAdPlacementRef.current;
-    pendingPreAdPlacementRef.current = null;
-    setPreAdAnnouncement(null);
-    if (!placement) return;
-    const state = storeRef.current.getState();
-    showInterstitial(placement, state, dispatch);
-  }, [dispatch]);
+    const placement = pendingPreAdPlacementRef.current
+    pendingPreAdPlacementRef.current = null
+    setPreAdAnnouncement(null)
+    if (!placement) return
+    const state = storeRef.current.getState()
+    showInterstitial(placement, state, dispatch)
+  }, [dispatch])
 
   /* eslint-disable react-hooks/set-state-in-effect -- Preserve established synchronous ad-prompt timing during the orchestration extraction. */
   useEffect(() => {
-    const prevPhase = prevPhaseRef.current;
-    const currentPhase = game.phase;
-    if (currentPhase === prevPhase) return;
-    prevPhaseRef.current = currentPhase;
+    const prevPhase = prevPhaseRef.current
+    const currentPhase = game.phase
+    if (currentPhase === prevPhase) return
+    prevPhaseRef.current = currentPhase
 
-    const state = storeRef.current.getState();
+    const state = storeRef.current.getState()
 
     // pos_decision_auto — every other week just before POS holder announces
     // week is 1-indexed; even weeks = weeks 2, 4, 6, ...
@@ -1021,12 +1018,12 @@ export default function GameScreen() {
     ) {
       const posHolderName =
         game.players.find((player) => player.id === game.posWinnerId)?.name ??
-        'the Power of Safety holder';
+        'the Power of Safety holder'
       queuePreAdAnnouncement(
         'pos_decision_auto',
         `Is ${posHolderName} going to use the Power of safety to change the course of the game? Find out right after this short break!`
-      );
-      return;
+      )
+      return
     }
 
     // final_safety_decision_auto — before the final safety (F4 POS) holder announces
@@ -1038,8 +1035,8 @@ export default function GameScreen() {
       queuePreAdAnnouncement(
         'final_safety_decision_auto',
         'The final safety winner now has the deciding vote to evict. Find out who is going to be eliminated just a step before the finale. Stay with us.'
-      );
-      return;
+      )
+      return
     }
 
     // final_loh_decision_auto — before the final LOH (F3 Part 3 winner) announces
@@ -1051,24 +1048,24 @@ export default function GameScreen() {
       queuePreAdAnnouncement(
         'final_loh_decision_auto',
         'The final leader of the house has to make a very important decision that might cost them the victory. Who will they choose? Find out right after the break.'
-      );
-      return;
+      )
+      return
     }
-  }, [game.phase, game.week, game.players, game.posWinnerId, dispatch, queuePreAdAnnouncement]);
+  }, [game.phase, game.week, game.players, game.posWinnerId, dispatch, queuePreAdAnnouncement])
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
   // Show a rewarded prompt when the user's social energy hits 0 (once per day).
   // Guards: week is not 1, not final-3 week, phase is social_1 or social_2.
   const userEnergy = useAppSelector((s: RootState) =>
     humanPlayer ? (s.social?.energyBank?.[humanPlayer.id] ?? 0) : 0
-  );
+  )
   useEffect(() => {
     if (!humanPlayer || game.mode === 'survival' || !isSocialModeEnabled(game.mode)) {
-      setShowEnergyRechargePrompt(false);
-      return;
+      setShowEnergyRechargePrompt(false)
+      return
     }
-    const energyIsZero = userEnergy === 0;
-    const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2';
+    const energyIsZero = userEnergy === 0
+    const inSocialPhase = game.phase === 'social_1' || game.phase === 'social_2'
     if (
       !humanPlayerEliminated &&
       energyIsZero &&
@@ -1076,7 +1073,7 @@ export default function GameScreen() {
       !isFinal3Week &&
       inSocialPhase
     ) {
-      const state = storeRef.current.getState();
+      const state = storeRef.current.getState()
       if (canShowAd('social_energy_recharge', state)) {
         if (import.meta.env.DEV) {
           console.log(
@@ -1084,9 +1081,9 @@ export default function GameScreen() {
             game.week,
             '| phase:',
             game.phase
-          );
+          )
         }
-        setShowEnergyRechargePrompt(true);
+        setShowEnergyRechargePrompt(true)
       }
     } else {
       if (import.meta.env.DEV && energyIsZero) {
@@ -1099,9 +1096,9 @@ export default function GameScreen() {
           isFinal3Week,
           '| inSocialPhase:',
           inSocialPhase
-        );
+        )
       }
-      setShowEnergyRechargePrompt(false);
+      setShowEnergyRechargePrompt(false)
     }
   }, [
     userEnergy,
@@ -1111,35 +1108,35 @@ export default function GameScreen() {
     game.week,
     game.phase,
     isFinal3Week,
-  ]);
+  ])
 
   // ── Ad hook: public_meter_disliked_boost ──────────────────────────────────
   // Show a rewarded prompt when the user's approval drops below 40%
   // (disliked or worse), at most once per day.
   const userApproval = useAppSelector((s: RootState) =>
     humanPlayer ? (s.publicOpinion?.profiles?.[humanPlayer.id]?.approval ?? 100) : 100
-  );
+  )
   useEffect(() => {
     if (!humanPlayer || game.mode === 'survival' || game.publicModeEnabled !== true) {
-      setShowDislikedBoostPrompt(false);
-      return;
+      setShowDislikedBoostPrompt(false)
+      return
     }
-    const todayIsoDate = new Date().toISOString().slice(0, 10);
+    const todayIsoDate = new Date().toISOString().slice(0, 10)
     if (
       !humanPlayerEliminated &&
       shouldShowDislikedBoostPrompt(userApproval, lastDislikedPromptDate, todayIsoDate)
     ) {
-      const state = storeRef.current.getState();
+      const state = storeRef.current.getState()
       if (canShowAd('public_meter_disliked_boost', state)) {
-        setLastDislikedPromptDate(todayIsoDate);
-        setShowDislikedBoostPrompt(true);
+        setLastDislikedPromptDate(todayIsoDate)
+        setShowDislikedBoostPrompt(true)
       }
     }
     // Auto-dismiss if approval recovered above disliked threshold.
     // Keep the last shown date so the prompt does not reappear again the same day
     // if approval dips back into the disliked band.
     if (userApproval > DISLIKED_MAX_APPROVAL) {
-      setShowDislikedBoostPrompt(false);
+      setShowDislikedBoostPrompt(false)
     }
   }, [
     adsState?.dailyUsage?.public_meter_disliked_boost,
@@ -1150,7 +1147,7 @@ export default function GameScreen() {
     lastDislikedPromptDate,
     setLastDislikedPromptDate,
     userApproval,
-  ]);
+  ])
 
   /* eslint-enable react-hooks/set-state-in-effect */
   // ── Social phase panel ────────────────────────────────────────────────────
@@ -1170,28 +1167,28 @@ export default function GameScreen() {
     'pos_ceremony',
     'pos_ceremony_results',
     'social_2',
-  ]);
+  ])
   // Vox Populi relies heavily on the social game before the endgame, but the
   // Final Three is a closed ceremony. Do not surface fresh social actions or
   // inbox requests once only three housemates remain.
   const isSocialPhase =
     (isVoxPopuli && alivePlayers.length > 3) ||
-    (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase));
-  const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode);
+    (!isVoxPopuli && SOCIAL_INTERACTION_PHASES.has(game.phase))
+  const showSocialPanel = isSocialPhase && !!humanPlayer && isSocialModeEnabled(game.mode)
 
   // The individual controllers publish presentation signals; this coordinator
   // provides one canonical answer for dock visibility and active flow priority.
-  const showWinnerCeremony = pendingWinnerCeremony !== null;
-  const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim;
-  const showSaveCeremony = pendingSaveCeremony !== null;
+  const showWinnerCeremony = pendingWinnerCeremony !== null
+  const showReplacementCeremony = pendingReplacementCeremony !== null || showAiReplacementAnim
+  const showSaveCeremony = pendingSaveCeremony !== null
   const showFinal3Ceremony =
     !isVoxPopuli &&
     game.awaitingFinal3Plea === true &&
     game.phase === 'final3_decision' &&
-    !!game.lohId;
-  const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game);
+    !!game.lohId
+  const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const favoriteAnnouncementPending =
-    game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true;
+    game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
 
   // Condition-driven prompts (approval, energy, unlocked reveals, etc.) must
   // never cover a ceremony or cinematic that is already active or queued by
@@ -1225,7 +1222,7 @@ export default function GameScreen() {
     showLaneRacers ||
     showPressurePlank ||
     showBullseyeBlitz ||
-    showTravelingDots;
+    showTravelingDots
 
   const flowCoordination = coordinateGameFlows({
     hasStartedGame: game.status === 'active',
@@ -1311,8 +1308,8 @@ export default function GameScreen() {
         ],
       },
     },
-  });
-  const { showGameControlDock, awaitingHumanDecision } = flowCoordination;
+  })
+  const { showGameControlDock, awaitingHumanDecision } = flowCoordination
 
   function handlePublicMeterBlocked() {
     if (hasPublicModeAccess || settings.sim.publicModeAdminOverride) {
@@ -1322,15 +1319,15 @@ export default function GameScreen() {
         subtitle: 'To activate Public Mode, open Settings and switch it on.',
         isLive: false,
         autoDismissMs: SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS,
-      });
-      return;
+      })
+      return
     }
-    navigate('/store', { state: { returnTo: '/game' } });
+    navigate('/store', { state: { returnTo: '/game' } })
   }
 
   function handleSocialModuleBlocked(availability: SocialModuleAvailability) {
-    const message = getBlockedSocialModuleAnnouncementMessage(availability);
-    if (!message) return;
+    const message = getBlockedSocialModuleAnnouncementMessage(availability)
+    if (!message) return
 
     setSocialModuleUnavailableAnnouncement({
       key: 'social_module_unavailable',
@@ -1338,7 +1335,7 @@ export default function GameScreen() {
       subtitle: '',
       isLive: false,
       autoDismissMs: SOCIAL_MODULE_UNAVAILABLE_ANNOUNCEMENT_MS,
-    });
+    })
   }
 
   const responsiveGameLayout = useResponsiveGameLayout(gameScreenRef, {
@@ -1348,25 +1345,25 @@ export default function GameScreen() {
     userCompactRoster: settings.gameUX.compactRoster,
     inlineLogVisible: !refinedGameChrome || game.mode === 'survival' || settings.gameUX.houseFeed,
     freezeLayout: flowCoordination.activeFlow !== null,
-  });
-  const gameTvLogRows = responsiveGameLayout.tvLogRows;
+  })
+  const gameTvLogRows = responsiveGameLayout.tvLogRows
   // An inline log beneath the Faux TV is the House Feed presentation. It owns
   // the activity affordance and the occupancy count, so the roster must not
   // render a duplicate row beside its title.
-  const inlineHouseFeedVisible = gameTvLogRows > 0;
-  const housemateOccupancyLabel = `${alivePlayers.length}/${game.mode === 'survival' ? 8 + (game.modeSpecific?.kind === 'survival' ? (game.modeSpecific.totalRoboContestantsEvicted ?? 0) : 0) : game.players.length}`;
+  const inlineHouseFeedVisible = gameTvLogRows > 0
+  const housemateOccupancyLabel = `${alivePlayers.length}/${game.mode === 'survival' ? 8 + (game.modeSpecific?.kind === 'survival' ? (game.modeSpecific.totalRoboContestantsEvicted ?? 0) : 0) : game.players.length}`
   const showSurveyevalVoteModal =
-    game.mode === 'survival' && game.phase === 'live_vote' && game.awaitingHumanVote;
+    game.mode === 'survival' && game.phase === 'live_vote' && game.awaitingHumanVote
   const surveyevalVoteOptions = game.nomineeIds
     .map((id) => game.players.find((player) => player.id === id))
-    .filter((player): player is Player => Boolean(player));
+    .filter((player): player is Player => Boolean(player))
   const rosterOccupancyChip =
     inlineHouseFeedVisible || responsiveGameLayout.rosterHeaderMode === 'tv-chip'
       ? {
           label: housemateOccupancyLabel,
           ariaLabel: `Housemates ${alivePlayers.length} of ${game.players.length}`,
         }
-      : null;
+      : null
 
   return (
     <LayoutGroup id="game-layout">
@@ -1587,8 +1584,8 @@ export default function GameScreen() {
             tiles={[]}
             layoutSignal={responsiveGameLayout.revision}
             resolveTiles={() => {
-              const sourceId = isVoxPopuli ? null : lohCeremonyTileId;
-              const sourceRect = sourceId ? getTileRect(sourceId) : null;
+              const sourceId = isVoxPopuli ? null : lohCeremonyTileId
+              const sourceRect = sourceId ? getTileRect(sourceId) : null
               return [
                 ...(sourceRect
                   ? [
@@ -1601,7 +1598,7 @@ export default function GameScreen() {
                 ...nomAnimPlayers.map((p) => {
                   const isAutoNominee =
                     nominationLabels[p.id] === 'Last in LOH Comp' ||
-                    nominationLabels[p.id] === 'Automatic — Last Place';
+                    nominationLabels[p.id] === 'Automatic — Last Place'
                   return {
                     rect: getTileRect(p.id),
                     badge: '❓',
@@ -1613,9 +1610,9 @@ export default function GameScreen() {
                         ? ('center' as const)
                         : sourceRect,
                     badgeLabel: `${p.name} nominated`,
-                  };
+                  }
                 }),
-              ];
+              ]
             }}
             caption={
               nomAnimPlayers.length === 1
@@ -1863,16 +1860,16 @@ export default function GameScreen() {
               enabled: competitionRetryInResultsEnabled,
               pending: adPending,
               onWatch: (onReward) => {
-                if (adPending) return;
-                setAdPending(true);
-                const state = storeRef.current.getState();
+                if (adPending) return
+                setAdPending(true)
+                const state = storeRef.current.getState()
                 // The browser/dev build has no native rewarded-ad bridge yet.
                 // Keep the retry usable now; the native path below will gate the
                 // same reward behind a completed ad once the bridge is connected.
                 if (!window.GameAds?.showRewarded) {
-                  onReward();
-                  setAdPending(false);
-                  return;
+                  onReward()
+                  setAdPending(false)
+                  return
                 }
                 const requested = showRewarded(
                   'competition_retry',
@@ -1880,21 +1877,21 @@ export default function GameScreen() {
                   dispatch,
                   () => {
                     if (import.meta.env.DEV) {
-                      console.log('[ads] competition_retry reward granted in minigame results');
+                      console.log('[ads] competition_retry reward granted in minigame results')
                     }
-                    onReward();
-                    setAdPending(false);
+                    onReward()
+                    setAdPending(false)
                   },
                   { isFinal3Week }
-                );
+                )
                 if (!requested) {
-                  setAdPending(false);
+                  setAdPending(false)
                 }
               },
             }}
             participants={pendingChallenge.participants.map((id): MinigameParticipant => {
-              const player = game.players.find((p) => p.id === id);
-              const aiScore = pendingChallenge.aiScores[id] ?? 0;
+              const player = game.players.find((p) => p.id === id)
+              const aiScore = pendingChallenge.aiScores[id] ?? 0
               return {
                 id,
                 name: player?.name ?? id,
@@ -1902,7 +1899,7 @@ export default function GameScreen() {
                 avatar: player?.avatar,
                 precomputedScore: aiScore,
                 previousPR: player?.stats?.gamePRs?.[pendingChallenge.game.key] ?? null,
-              };
+              }
             })}
             onDone={handleChallengeDone}
           />
@@ -1950,9 +1947,9 @@ export default function GameScreen() {
             tiles={[]}
             layoutSignal={responsiveGameLayout.revision}
             resolveTiles={() => {
-              const winnerId = game.lohId!;
+              const winnerId = game.lohId!
               return expandCupidIds(game, [winnerId]).map((roleWinnerId) => {
-                const winnerPlayer = game.players.find((p) => p.id === roleWinnerId);
+                const winnerPlayer = game.players.find((p) => p.id === roleWinnerId)
                 return {
                   rect: getTileRect(roleWinnerId),
                   badge: isVoxFinalFour ? '🏆' : isVoxPopuli ? '🛡️' : '👑',
@@ -1967,8 +1964,8 @@ export default function GameScreen() {
                         ? 'immunity'
                         : 'Leader of the House'
                   }`,
-                };
-              });
+                }
+              })
             }}
             caption={`${expandCupidIds(game, [game.lohId])
               .map((id) => game.players.find((player) => player.id === id)?.name)
@@ -2015,18 +2012,18 @@ export default function GameScreen() {
             tiles={[]}
             layoutSignal={responsiveGameLayout.revision}
             resolveTiles={() => {
-              const replacementId = activeReplacementAnimationTargetIds[0];
+              const replacementId = activeReplacementAnimationTargetIds[0]
               const sourceId = isVoxPopuli
                 ? null
                 : game.specialVeto?.activeType === 'diamond'
                   ? game.posWinnerId
-                  : game.lohId;
-              const sourceRect = sourceId ? getTileRect(sourceId) : null;
+                  : game.lohId
+              const sourceRect = sourceId ? getTileRect(sourceId) : null
               const replacementIds = isVoxPopuli
                 ? activeReplacementAnimationTargetIds
-                : expandCupidIds(game, [replacementId]);
+                : expandCupidIds(game, [replacementId])
               const sourceIsDistinct =
-                sourceRect != null && sourceId != null && sourceId !== replacementId;
+                sourceRect != null && sourceId != null && sourceId !== replacementId
               return [
                 ...(sourceIsDistinct
                   ? [
@@ -2046,15 +2043,15 @@ export default function GameScreen() {
                     : `${game.players.find((player) => player.id === id)?.name ?? id} named backup nominee`,
                   glowTone: 'danger' as const,
                 })),
-              ];
+              ]
             }}
             caption={
               isVoxPopuli
                 ? `${activeReplacementAnimationTargetIds
                     .map((id) => {
-                      const name = game.players.find((player) => player.id === id)?.name ?? id;
-                      const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0;
-                      return `${name} (${votes} vote${votes === 1 ? '' : 's'})`;
+                      const name = game.players.find((player) => player.id === id)?.name ?? id
+                      const votes = game.voxPopuli?.nominationVoteCounts[id] ?? 0
+                      return `${name} (${votes} vote${votes === 1 ? '' : 's'})`
                     })
                     .join(' & ')} ${
                     activeReplacementAnimationTargetIds.length === 1 ? 'joins' : 'join'
@@ -2213,7 +2210,7 @@ export default function GameScreen() {
               participants={battleBackCapitalizationParticipants}
               seed={battleBackAttemptSeed}
               onFinish={(_value, _tiebreakerMs, completion) => {
-                handleBattleBackComplete(completion?.authoritativeWinnerId ?? null);
+                handleBattleBackComplete(completion?.authoritativeWinnerId ?? null)
               }}
             />
           </div>
@@ -2287,19 +2284,19 @@ export default function GameScreen() {
             watchLabel="Watch Ad to Unlock Vote Reveal"
             skipLabel="Continue"
             onWatch={() => {
-              if (adPending) return;
-              setAdPending(true);
-              const state = storeRef.current.getState();
+              if (adPending) return
+              setAdPending(true)
+              const state = storeRef.current.getState()
               if (!window.GameAds?.showRewarded) {
-                dispatch(recordAdShown('eviction_vote_breakdown'));
-                unlockVoteBreakdown();
-                return;
+                dispatch(recordAdShown('eviction_vote_breakdown'))
+                unlockVoteBreakdown()
+                return
               }
               const requested = showRewarded('eviction_vote_breakdown', state, dispatch, () =>
                 unlockVoteBreakdown()
-              );
+              )
               if (!requested) {
-                unlockVoteBreakdown();
+                unlockVoteBreakdown()
               }
             }}
             onSkip={handleVoteBreakdownSkip}
@@ -2315,21 +2312,21 @@ export default function GameScreen() {
             watchLabel="Watch Ad to Reveal Nominations"
             skipLabel="Keep the Ballots Secret"
             onWatch={() => {
-              if (adPending) return;
-              setAdPending(true);
-              const state = storeRef.current.getState();
+              if (adPending) return
+              setAdPending(true)
+              const state = storeRef.current.getState()
               if (!window.GameAds?.showRewarded) {
-                dispatch(recordAdShown('vox_nomination_breakdown'));
-                unlockVoxNominationReveal();
-                return;
+                dispatch(recordAdShown('vox_nomination_breakdown'))
+                unlockVoxNominationReveal()
+                return
               }
               const requested = showRewarded(
                 'vox_nomination_breakdown',
                 state,
                 dispatch,
                 unlockVoxNominationReveal
-              );
-              if (!requested) unlockVoxNominationReveal();
+              )
+              if (!requested) unlockVoxNominationReveal()
             }}
             onSkip={declineVoxNominationReveal}
             pending={adPending}
@@ -2346,25 +2343,25 @@ export default function GameScreen() {
               watchLabel="Show Me the Vote"
               skipLabel="Not Yet"
               onWatch={() => {
-                if (adPending) return;
-                setAdPending(true);
-                const state = storeRef.current.getState();
+                if (adPending) return
+                setAdPending(true)
+                const state = storeRef.current.getState()
                 if (!window.GameAds?.showRewarded) {
-                  dispatch(recordAdShown('vox_audience_preview'));
-                  unlockVoxAudiencePreview();
-                  return;
+                  dispatch(recordAdShown('vox_audience_preview'))
+                  unlockVoxAudiencePreview()
+                  return
                 }
                 const requested = showRewarded(
                   'vox_audience_preview',
                   state,
                   dispatch,
                   unlockVoxAudiencePreview
-                );
-                if (!requested) unlockVoxAudiencePreview();
+                )
+                if (!requested) unlockVoxAudiencePreview()
               }}
               onSkip={() => {
-                setShowVoxAudiencePreviewPrompt(false);
-                setAdPending(false);
+                setShowVoxAudiencePreviewPrompt(false)
+                setAdPending(false)
               }}
               pending={adPending}
             />
@@ -2425,17 +2422,17 @@ export default function GameScreen() {
             description="Watch a short ad to recharge +3 social energy and keep playing."
             watchLabel="Watch Ad for +3 Energy"
             onWatch={() => {
-              if (adPending) return;
-              setAdPending(true);
-              const state = storeRef.current.getState();
+              if (adPending) return
+              setAdPending(true)
+              const state = storeRef.current.getState()
               const requested = showRewarded('social_energy_recharge', state, dispatch, () => {
                 // Reward: +3 social energy
-                dispatch(setEnergyBankEntry({ playerId: humanPlayer.id, value: 3 }));
-                setShowEnergyRechargePrompt(false);
-                setAdPending(false);
-              });
+                dispatch(setEnergyBankEntry({ playerId: humanPlayer.id, value: 3 }))
+                setShowEnergyRechargePrompt(false)
+                setAdPending(false)
+              })
               if (!requested) {
-                setAdPending(false);
+                setAdPending(false)
               }
             }}
             onSkip={() => setShowEnergyRechargePrompt(false)}
@@ -2451,9 +2448,9 @@ export default function GameScreen() {
             description={DISLIKED_BOOST_PROMPT_DESCRIPTION}
             watchLabel="Watch Ad for Approval Boost"
             onWatch={() => {
-              if (adPending) return;
-              setAdPending(true);
-              const state = storeRef.current.getState();
+              if (adPending) return
+              setAdPending(true)
+              const state = storeRef.current.getState()
               const requested = showRewarded(
                 'public_meter_disliked_boost',
                 state,
@@ -2463,7 +2460,7 @@ export default function GameScreen() {
                   const boostPct =
                     typeof payload?.percent === 'number'
                       ? Math.round(payload.percent)
-                      : 4 + Math.floor(Math.random() * 7); // 4–10
+                      : 4 + Math.floor(Math.random() * 7) // 4–10
                   dispatch(
                     updateApproval({
                       playerId: humanPlayer.id,
@@ -2472,13 +2469,13 @@ export default function GameScreen() {
                       week: game.week,
                       eventType: 'ad_boost',
                     })
-                  );
-                  setShowDislikedBoostPrompt(false);
-                  setAdPending(false);
+                  )
+                  setShowDislikedBoostPrompt(false)
+                  setAdPending(false)
                 }
-              );
+              )
               if (!requested) {
-                setAdPending(false);
+                setAdPending(false)
               }
             }}
             onSkip={() => setShowDislikedBoostPrompt(false)}
@@ -2494,17 +2491,17 @@ export default function GameScreen() {
             watchLabel="Watch Ad to Replay Back 2 the Game"
             skipLabel="Continue"
             onWatch={() => {
-              if (adPending) return;
-              setAdPending(true);
+              if (adPending) return
+              setAdPending(true)
               const restartBattleBack = () => {
-                handleBattleBackRetryGranted();
-                setAdPending(false);
-              };
-              const state = storeRef.current.getState();
+                handleBattleBackRetryGranted()
+                setAdPending(false)
+              }
+              const state = storeRef.current.getState()
               if (!window.GameAds?.showRewarded) {
-                dispatch(recordAdShown('competition_retry'));
-                restartBattleBack();
-                return;
+                dispatch(recordAdShown('competition_retry'))
+                restartBattleBack()
+                return
               }
               const requested = showRewarded(
                 'competition_retry',
@@ -2512,9 +2509,9 @@ export default function GameScreen() {
                 dispatch,
                 () => restartBattleBack(),
                 { isFinal3Week }
-              );
+              )
               if (!requested) {
-                setAdPending(false);
+                setAdPending(false)
               }
             }}
             onSkip={handleBattleBackRetryDeclined}
@@ -2616,5 +2613,5 @@ export default function GameScreen() {
         )}
       </div>
     </LayoutGroup>
-  );
+  )
 }
