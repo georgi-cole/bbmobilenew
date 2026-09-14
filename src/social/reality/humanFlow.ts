@@ -218,7 +218,11 @@ function buildLohConsultationSummary(
 
   // Respect genuine refusal/repetition outcomes. Canonical strategy should fix
   // contradictory names, not turn a failed intel action into free information.
-  if (/shut the conversation down|already answered|kept (?:their|the) plan deliberately vague/i.test(fallback)) {
+  if (
+    /shut the conversation down|already answered|kept (?:their|the) plan deliberately vague/i.test(
+      fallback
+    )
+  ) {
     return fallback
   }
 

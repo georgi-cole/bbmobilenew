@@ -136,9 +136,7 @@ function competitionStrength(player: Player): number {
   const profile = player.competitionProfile
   const base =
     profile?.overall ??
-    (profile
-      ? (profile.physical + profile.mental + profile.precision + profile.nerve) / 4
-      : 50)
+    (profile ? (profile.physical + profile.mental + profile.precision + profile.nerve) / 4 : 50)
   const wins = (player.stats?.lohWins ?? 0) + (player.stats?.posWins ?? 0)
   return clamp(base + Math.min(24, wins * 6), 0, 100)
 }
@@ -167,14 +165,18 @@ function coldStartVulnerability(state: GameState, lohId: string, candidate: Play
   return (100 - comp) * 0.68 + (100 - shield) * 0.32 - retaliationRisk - earlyHumanGrace
 }
 
-function hasStrategicEvidence(state: GameState, lohId: string, candidates: readonly Player[]): boolean {
+function hasStrategicEvidence(
+  state: GameState,
+  lohId: string,
+  candidates: readonly Player[]
+): boolean {
   if (state.week > 1 && state.lastWeekNominationRecord) return true
   return candidates.some((candidate) => {
     const entry = state.strategicRelationships?.[lohId]?.[candidate.id]
     const wins = (candidate.stats?.lohWins ?? 0) + (candidate.stats?.posWins ?? 0)
     return Boolean(
       wins > 0 ||
-        (entry && (Math.abs(entry.affinity) >= 12 || hasAnyTag(entry.tags, STRATEGIC_TAGS)))
+      (entry && (Math.abs(entry.affinity) >= 12 || hasAnyTag(entry.tags, STRATEGIC_TAGS)))
     )
   })
 }
@@ -263,7 +265,9 @@ export function buildLohNominationPlan(
   const loh = state.players.find((player) => player.id === state.lohId)
   if (!loh || loh.isUser) return null
 
-  const candidates = alivePlayers(state).filter((candidate) => canPlanAgainst(state, loh.id, candidate))
+  const candidates = alivePlayers(state).filter((candidate) =>
+    canPlanAgainst(state, loh.id, candidate)
+  )
   if (candidates.length < 2) return null
 
   const strategic = hasStrategicEvidence(state, loh.id, candidates)
@@ -272,7 +276,8 @@ export function buildLohNominationPlan(
       const strategicScore = scoreFn(state, loh.id, candidate)
       const fallbackScore = coldStartVulnerability(state, loh.id, candidate)
       const jitter =
-        seededUnit(`${state.gameId}:${state.week}:${state.seed}:${loh.id}:${candidate.id}:target`) * 3
+        seededUnit(`${state.gameId}:${state.week}:${state.seed}:${loh.id}:${candidate.id}:target`) *
+        3
       return {
         candidate,
         strategicScore,
@@ -295,14 +300,7 @@ export function buildLohNominationPlan(
     Math.max(1, candidates.length - (strategy === 'backdoor' ? 1 : 0))
   )
   const pawnCount = strategy === 'backdoor' ? nomineeCount : Math.max(0, nomineeCount - 1)
-  const pawns = choosePawns(
-    state,
-    loh.id,
-    candidates,
-    new Set([target.id]),
-    pawnCount,
-    scoreFn
-  )
+  const pawns = choosePawns(state, loh.id, candidates, new Set([target.id]), pawnCount, scoreFn)
 
   if (strategy === 'backdoor' && pawns.length < nomineeCount) return null
   if (strategy === 'direct' && pawns.length < pawnCount) return null
@@ -330,8 +328,8 @@ export function buildLohNominationPlan(
 function planMatchesCurrentLoh(state: GameState): boolean {
   return Boolean(
     state.lohNominationPlan &&
-      state.lohNominationPlan.week === state.week &&
-      state.lohNominationPlan.lohId === state.lohId
+    state.lohNominationPlan.week === state.week &&
+    state.lohNominationPlan.lohId === state.lohId
   )
 }
 
@@ -436,7 +434,9 @@ function replaceNominationEventCopy(state: GameState, nomineeIds: readonly strin
     .filter((name): name is string => Boolean(name))
   if (names.length === 0) return
   const text = `${formatNameList(names)} have been nominated for elimination. 🎯`
-  const index = state.tvFeed.findIndex((event) => /have been nominated for elimination/i.test(event.text))
+  const index = state.tvFeed.findIndex((event) =>
+    /have been nominated for elimination/i.test(event.text)
+  )
   if (index >= 0) state.tvFeed[index] = { ...state.tvFeed[index], text }
 }
 
@@ -491,7 +491,9 @@ function replaceReplacementEventCopy(state: GameState, replacementId: string): v
   const loh = state.players.find((player) => player.id === state.lohId)
   const replacement = state.players.find((player) => player.id === replacementId)
   if (!replacement) return
-  const index = state.tvFeed.findIndex((event) => /named .+ as the backup nominee/i.test(event.text))
+  const index = state.tvFeed.findIndex((event) =>
+    /named .+ as the backup nominee/i.test(event.text)
+  )
   if (index >= 0) {
     state.tvFeed[index] = {
       ...state.tvFeed[index],
@@ -502,7 +504,12 @@ function replaceReplacementEventCopy(state: GameState, replacementId: string): v
 
 function reconcileBackdoorReplacement(previous: GameState, state: GameState): GameState {
   const plan = state.lohNominationPlan
-  if (!plan || plan.strategy !== 'backdoor' || plan.week !== state.week || plan.lohId !== state.lohId) {
+  if (
+    !plan ||
+    plan.strategy !== 'backdoor' ||
+    plan.week !== state.week ||
+    plan.lohId !== state.lohId
+  ) {
     return state
   }
   if (plan.status === 'executed' || plan.status === 'failed' || plan.status === 'compromised') {
@@ -520,7 +527,10 @@ function reconcileBackdoorReplacement(previous: GameState, state: GameState): Ga
 
   const baseReplacementId = added[0]
   const blockWithoutBase = state.nomineeIds.filter((id) => id !== baseReplacementId)
-  const targetEligible = isReplacementEligible({ ...state, nomineeIds: blockWithoutBase }, plan.targetId)
+  const targetEligible = isReplacementEligible(
+    { ...state, nomineeIds: blockWithoutBase },
+    plan.targetId
+  )
   const backupEligible =
     plan.backupTargetId != null &&
     isReplacementEligible({ ...state, nomineeIds: blockWithoutBase }, plan.backupTargetId)
@@ -558,7 +568,10 @@ function reconcileBackdoorReplacement(previous: GameState, state: GameState): Ga
       revealPending: true,
     }
     cloned.lohSocialPlan = canonicalSocialPlan(cloned, cloned.lohNominationPlan)
-  } else if (state.posWinnerId === plan.targetId || (state.povProtectedIds ?? []).includes(plan.targetId)) {
+  } else if (
+    state.posWinnerId === plan.targetId ||
+    (state.povProtectedIds ?? []).includes(plan.targetId)
+  ) {
     // The hidden target earned protection. The LOH must pivot, so the backdoor
     // was genuinely foiled rather than silently rewritten into a success.
     cloned.lohNominationPlan = { ...plan, status: 'compromised', revealPending: false }

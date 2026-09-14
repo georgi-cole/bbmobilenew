@@ -144,8 +144,7 @@ function playBackdoorFauxTvEffect(): void {
                   '0 0 0 1px rgba(125, 211, 252, 0.66), 0 0 32px rgba(217, 70, 239, 0.48), 0 0 56px rgba(250, 204, 21, 0.22)',
               },
               {
-                boxShadow:
-                  '0 10px 34px rgba(0, 0, 0, 0.46), 0 0 24px rgba(105, 82, 190, 0.075)',
+                boxShadow: '0 10px 34px rgba(0, 0, 0, 0.46), 0 0 24px rgba(105, 82, 190, 0.075)',
               },
             ]
           : [
@@ -186,8 +185,7 @@ function playBackdoorFauxTvEffect(): void {
               },
               {
                 transform: 'translate3d(0, 0, 0) scale(1)',
-                boxShadow:
-                  '0 10px 34px rgba(0, 0, 0, 0.46), 0 0 24px rgba(105, 82, 190, 0.075)',
+                boxShadow: '0 10px 34px rgba(0, 0, 0, 0.46), 0 0 24px rgba(105, 82, 190, 0.075)',
               },
             ],
         { duration: BACKDOOR_EFFECT_MS, easing: 'cubic-bezier(0.22, 0.72, 0.2, 1)', fill: 'both' }
