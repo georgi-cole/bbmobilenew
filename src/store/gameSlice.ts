@@ -3309,6 +3309,13 @@ export function chooseAiEvictionVote(
 
   const voter = state.players.find((player) => player.id === voterId)
   const voterIdentity = voter?.aiGameIdentity
+  const executedBackdoorTargetId =
+    state.lohNominationPlan?.week === state.week &&
+    state.lohNominationPlan.lohId === state.lohId &&
+    state.lohNominationPlan.strategy === 'backdoor' &&
+    state.lohNominationPlan.status === 'executed'
+      ? state.lohNominationPlan.targetId
+      : null
   const scored = nomineeIds.map((nomineeId) => {
     const nominee = state.players.find((player) => player.id === nomineeId)
     const relationship = getStrategicRelationship(state, voterId, nomineeId)
@@ -3321,6 +3328,11 @@ export function chooseAiEvictionVote(
     const randomDraw = rng()
 
     const grace = getEarlyHumanGrace(state, nominee, affinity, tags)
+    // An executed backdoor carries the LOH's strategic intent into the vote.
+    // It is meaningful pressure, not an automatic eviction: alliance/romance
+    // protection and their existing backstab rules are applied afterward and
+    // can still outweigh it.
+    const backdoorTargetContribution = nomineeId === executedBackdoorTargetId ? 30 : 0
     const factors: Record<string, AiDecisionFactor> = {
       threatContribution: threat * 8,
       affinityPenalty: -affinity,
@@ -3328,7 +3340,10 @@ export function chooseAiEvictionVote(
       earlyHumanGrace: -grace * 1.35,
       tags: [...tags].join(', ') || 'none',
     }
-    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35
+    if (backdoorTargetContribution > 0) {
+      factors.backdoorTargetContribution = backdoorTargetContribution
+    }
+    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35 + backdoorTargetContribution
     if (tags.has('target')) {
       score += 25
       factors.target = 25
@@ -3405,8 +3420,13 @@ export function chooseAiEvictionVote(
     week: state.week,
     phase: state.phase,
     seed: gameSeed,
-    reason: 'highest relationship-aware eviction score',
-    context: { nomineeIds: nomineeIds.join(', ') },
+    reason: executedBackdoorTargetId
+      ? 'highest relationship-aware eviction score with executed backdoor target pressure'
+      : 'highest relationship-aware eviction score',
+    context: {
+      nomineeIds: nomineeIds.join(', '),
+      ...(executedBackdoorTargetId ? { backdoorTargetId: executedBackdoorTargetId } : {}),
+    },
     candidates: scored.map<AiDecisionCandidate>((entry) => ({
       id: entry.nomineeId,
       label: state.players.find((player) => player.id === entry.nomineeId)?.name,
