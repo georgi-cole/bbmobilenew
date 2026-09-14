@@ -22,6 +22,7 @@ import type {
   CustomBroadcastMessage,
 } from '../types'
 import type { IncomingInteraction, SocialActionLogEntry } from '../social/types'
+import type { LohNominationPlan } from './lohNominationPlanning'
 import { mulberry32, seededPick, seededPickN } from './rng'
 import {
   getCompetitionSeasonState,
@@ -6308,6 +6309,110 @@ const gameSlice = createSlice({
         pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game')
       }
     },
+    /**
+     * Load a deterministic, debug-only LOH backdoor scenario.
+     *
+     * This intentionally starts immediately before the Safety Ceremony so QA
+     * can inspect the real user flow (save a pawn, let the AI LOH name the
+     * replacement, then consume the Ambush reveal) without changing normal
+     * nomination probabilities or persisted campaign state.
+     */
+    prepareLohBackdoorTest(state) {
+      const human = state.players.find((player) => player.isUser)
+      const alive = state.players.filter(
+        (player) => player.status !== 'evicted' && player.status !== 'jury' && !player.isUser
+      )
+      const loh = alive[0]
+      const pawns = alive.slice(1, 3)
+      const target = alive[3]
+      if (!human || !loh || pawns.length < 2 || !target) return
+
+      state.week = Math.max(2, state.week)
+      state.phase = 'pos_ceremony'
+      state.publicModeEnabled = false
+      state.pendingPublicModeEnabled = null
+      state.doubleEviction = {
+        usedCount: state.doubleEviction?.usedCount ?? 0,
+        weekActive: false,
+        pendingSecondEviction: null,
+      }
+      state.democracia = null
+      state.depressionShock = null
+      state.cupidArrow = null
+      state.voxPopuli = null
+      state.coLohIds = []
+      state.coLohNomineeByCoLohId = {}
+      state.lohId = loh.id
+      state.posWinnerId = human.id
+      state.nomineeIds = pawns.map((player) => player.id)
+      state.replacementNeeded = false
+      state.povSavedId = null
+      state.replacementNomineeIds = []
+      state.povProtectedIds = []
+      state.awaitingPovDecision = false
+      state.awaitingPovSaveTarget = false
+      state.aiReplacementStep = 0
+      state.aiReplacementWaiting = false
+      state.specialVeto = {
+        seasonUsed: false,
+        activeType: null,
+        activatedWeek: null,
+        vipUseStage: 0,
+        awaitingHolderReplacement: false,
+        awaitingCoupReplacement1: false,
+        awaitingCoupReplacement2: false,
+        coupReplacement1Id: null,
+        coupReplacement2Id: null,
+        awaitingVipSecondUseDecision: false,
+        awaitingVipSecondSaveTarget: false,
+      }
+
+      state.players.forEach((player) => {
+        if (player.status === 'evicted' || player.status === 'jury') return
+        player.status = 'active'
+      })
+      human.status = 'pos'
+      loh.status = 'loh'
+      pawns.forEach((player) => {
+        player.status = 'nominated'
+      })
+
+      state.currentWeekNominationRecord = {
+        week: state.week,
+        lohId: loh.id,
+        nomineeIds: pawns.map((player) => player.id),
+      }
+      const plan: LohNominationPlan = {
+        week: state.week,
+        lohId: loh.id,
+        targetId: target.id,
+        backupTargetId: null,
+        pawnIds: pawns.map((player) => player.id),
+        initialNomineeIds: pawns.map((player) => player.id),
+        strategy: 'backdoor',
+        status: 'planned',
+        selectionBasis: 'strategy',
+        targetScore: 90,
+        backdoorChance: 1,
+        safetyParticipantIds: state.players
+          .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+          .map((player) => player.id),
+      }
+      state.lohNominationPlan = plan
+      state.lohSocialPlan = {
+        week: state.week,
+        lohId: loh.id,
+        currentTargetId: pawns[0].id,
+        backupTargetId: target.id,
+        askCountsByPlayerId: {},
+        disclosedTargetByPlayerId: {},
+      }
+      pushEvent(
+        state,
+        `[DEBUG] LOH Ambush scenario loaded. Save a pawn, then advance to inspect the hidden-target reveal.`,
+        'game'
+      )
+    },
     /** Force a player's house status without leaving stale competition roles (debug only). */
     forcePlayerStatus(
       state,
@@ -9508,6 +9613,7 @@ export const {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  prepareLohBackdoorTest,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
   prepareClassicFinalThreeTest,
