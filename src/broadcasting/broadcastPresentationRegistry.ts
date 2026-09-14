@@ -96,6 +96,14 @@ export const BROADCAST_PRESENTATION_REGISTRY: Readonly<Record<string, BroadcastP
       eventMajor: true,
       announcement: liveCard('Safety Ceremony', 'Will the Power of Safety be used?'),
     },
+    backdoor: {
+      eventMajor: true,
+      playThrough: true,
+      announcement: liveCard(
+        'AMBUSH',
+        'The opening block was camouflage. The LOH is revealing the real target after Safety.'
+      ),
+    },
     live_eviction: {
       eventMajor: true,
       announcement: liveCard(

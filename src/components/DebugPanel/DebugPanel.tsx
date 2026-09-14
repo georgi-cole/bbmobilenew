@@ -7,6 +7,7 @@ import {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  prepareLohBackdoorTest,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
   prepareClassicFinalThreeTest,
@@ -328,6 +329,11 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
     dispatch(queueForcedShock(selectedForcedShock))
   }
 
+  function handlePrepareLohBackdoorTest() {
+    dispatch(prepareLohBackdoorTest())
+    setIsOpen(false)
+  }
+
   function handleActivateDepressionShock() {
     activateDepressionShockForDebug(game.gameId, game.week)
     dispatch(
@@ -594,6 +600,17 @@ function DebugPanelContent({ searchParams }: { searchParams: URLSearchParams }) 
                   }}
                 >
                   Set
+                </button>
+              </div>
+
+              <div className="dbg-row dbg-row--col">
+                <label className="dbg-label">Feature scenario</label>
+                <p className="dbg-help">
+                  Loads a deterministic AI-LOH Ambush just before the Safety Ceremony. Save one
+                  pawn, advance, and inspect the replacement plus faux-TV reveal.
+                </p>
+                <button className="dbg-btn dbg-btn--wide" onClick={handlePrepareLohBackdoorTest}>
+                  Load LOH Ambush scenario
                 </button>
               </div>
 

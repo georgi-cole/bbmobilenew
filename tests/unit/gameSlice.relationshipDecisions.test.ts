@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest'
 import gameReducer, {
   advance,
   chooseAiEvictionVote,
   setDramaSocialMode,
-} from '../../src/store/gameSlice';
-import type { GameState, Player } from '../../src/types';
+} from '../../src/store/gameSlice'
+import type { GameState, Player } from '../../src/types'
 
 function player(id: string): Player {
   return {
@@ -13,22 +13,22 @@ function player(id: string): Player {
     isUser: false,
     status: 'active',
     stats: { lohWins: 0, posWins: 0, timesNominated: 1 },
-  } as Player;
+  } as Player
 }
 
 function userPlayer(id: string): Player {
-  return { ...player(id), isUser: true };
+  return { ...player(id), isUser: true }
 }
 
 describe('relationship-aware AI eviction decisions', () => {
   it('persists the Drama Mode gameplay switch', () => {
-    const initial = gameReducer(undefined, { type: 'test/init' });
-    expect(gameReducer(initial, setDramaSocialMode(true)).dramaSocialMode).toBe(true);
-  });
+    const initial = gameReducer(undefined, { type: 'test/init' })
+    expect(gameReducer(initial, setDramaSocialMode(true)).dramaSocialMode).toBe(true)
+  })
 
   it('uses bonds, betrayals, rivalries, and suspicion for Drama Mode nominations', () => {
-    const initial = gameReducer(undefined, { type: 'test/init' });
-    const loh = { ...player('loh'), status: 'loh' as const };
+    const initial = gameReducer(undefined, { type: 'test/init' })
+    const loh = { ...player('loh'), status: 'loh' as const }
     const candidates = [
       player('betrayer'),
       player('ally'),
@@ -36,7 +36,7 @@ describe('relationship-aware AI eviction decisions', () => {
       player('protected'),
       player('target'),
       player('suspicious'),
-    ];
+    ]
     const state = {
       ...initial,
       phase: 'nominations' as const,
@@ -54,43 +54,100 @@ describe('relationship-aware AI eviction decisions', () => {
           suspicious: { affinity: 0, tags: ['suspicious', 'unreliable'] },
         },
       },
-    };
+    }
 
-    const result = gameReducer(state, advance());
-    expect(result.nomineeIds).toContain('betrayer');
-    expect(result.nomineeIds).toContain('target');
-    expect(result.nomineeIds).not.toContain('ally');
-  });
+    const result = gameReducer(state, advance())
+    expect(result.nomineeIds).toContain('betrayer')
+    expect(result.nomineeIds).toContain('target')
+    expect(result.nomineeIds).not.toContain('ally')
+  })
 
   it('does not treat the human as an automatic eviction threat', () => {
-    const voters = Array.from({ length: 12 }, (_, index) => player(`voter-${index}`));
+    const voters = Array.from({ length: 12 }, (_, index) => player(`voter-${index}`))
     const state = {
       week: 4,
       lohId: 'loh',
       players: [...voters, userPlayer('user'), player('ai')],
       strategicRelationships: {},
-    } as GameState;
+    } as GameState
 
-    const votes = voters.map((voter) =>
-      chooseAiEvictionVote(state, voter.id, ['user', 'ai'], 42),
-    );
+    const votes = voters.map((voter) => chooseAiEvictionVote(state, voter.id, ['user', 'ai'], 42))
 
-    expect(new Set(votes)).toEqual(new Set(['user', 'ai']));
-  });
+    expect(new Set(votes)).toEqual(new Set(['user', 'ai']))
+  })
 
   it('uses accomplishments rather than player type to identify a threat', () => {
-    const provenThreat = player('proven-threat');
-    provenThreat.stats = { lohWins: 2, posWins: 1, timesNominated: 1 };
+    const provenThreat = player('proven-threat')
+    provenThreat.stats = { lohWins: 2, posWins: 1, timesNominated: 1 }
     const state = {
       week: 4,
       lohId: 'loh',
       players: [player('voter'), userPlayer('user'), provenThreat],
       strategicRelationships: {},
-    } as GameState;
+    } as GameState
 
-    expect(chooseAiEvictionVote(state, 'voter', ['user', 'proven-threat'], 42))
-      .toBe('proven-threat');
-  });
+    expect(chooseAiEvictionVote(state, 'voter', ['user', 'proven-threat'], 42)).toBe(
+      'proven-threat'
+    )
+  })
+
+  it('carries an executed backdoor target into eviction voting', () => {
+    const state = {
+      week: 4,
+      lohId: 'loh',
+      players: [player('voter'), player('hidden-target'), player('pawn')],
+      nomineeIds: ['hidden-target', 'pawn'],
+      lohNominationPlan: {
+        week: 4,
+        lohId: 'loh',
+        targetId: 'hidden-target',
+        backupTargetId: null,
+        pawnIds: ['pawn'],
+        initialNomineeIds: ['pawn'],
+        strategy: 'backdoor' as const,
+        status: 'executed' as const,
+        selectionBasis: 'strategy' as const,
+        targetScore: 80,
+        backdoorChance: 0.5,
+      },
+      strategicRelationships: {},
+    } as GameState
+
+    expect(chooseAiEvictionVote(state, 'voter', ['hidden-target', 'pawn'], 42)).toBe(
+      'hidden-target'
+    )
+  })
+
+  it('still lets a strong alliance protect the backdoor target', () => {
+    const state = {
+      week: 4,
+      lohId: 'loh',
+      players: [player('voter'), player('hidden-target'), player('pawn')],
+      nomineeIds: ['hidden-target', 'pawn'],
+      lohNominationPlan: {
+        week: 4,
+        lohId: 'loh',
+        targetId: 'hidden-target',
+        backupTargetId: null,
+        pawnIds: ['pawn'],
+        initialNomineeIds: ['pawn'],
+        strategy: 'backdoor' as const,
+        status: 'executed' as const,
+        selectionBasis: 'strategy' as const,
+        targetScore: 80,
+        backdoorChance: 0.5,
+      },
+      strategicRelationships: {
+        voter: {
+          'hidden-target': { affinity: 75, tags: ['alliance'] },
+          pawn: { affinity: 0, tags: [] },
+        },
+      },
+    } as GameState
+
+    expect(chooseAiEvictionVote(state, 'voter', ['hidden-target', 'pawn'], 42)).toBe('pawn')
+  })
+
   it('normally protects an ally instead of voting randomly', () => {
     const state = {
       week: 4,
@@ -102,15 +159,15 @@ describe('relationship-aware AI eviction decisions', () => {
           other: { affinity: 0, tags: [] },
         },
       },
-    } as GameState;
+    } as GameState
 
     const votesAgainstAlly = Array.from({ length: 100 }, (_, seed) =>
-      chooseAiEvictionVote(state, 'voter', ['ally', 'other'], seed),
-    ).filter((vote) => vote === 'ally').length;
+      chooseAiEvictionVote(state, 'voter', ['ally', 'other'], seed)
+    ).filter((vote) => vote === 'ally').length
 
-    expect(votesAgainstAlly).toBeGreaterThan(0);
-    expect(votesAgainstAlly).toBeLessThanOrEqual(22);
-  });
+    expect(votesAgainstAlly).toBeGreaterThan(0)
+    expect(votesAgainstAlly).toBeLessThanOrEqual(22)
+  })
 
   it('makes romance and bromance substantially more protective at eviction', () => {
     const state = {
@@ -123,14 +180,14 @@ describe('relationship-aware AI eviction decisions', () => {
           other: { affinity: 0, tags: [] },
         },
       },
-    } as GameState;
+    } as GameState
 
     const votesAgainstRomance = Array.from({ length: 100 }, (_, seed) =>
-      chooseAiEvictionVote(state, 'voter', ['romance', 'other'], seed),
-    ).filter((vote) => vote === 'romance').length;
+      chooseAiEvictionVote(state, 'voter', ['romance', 'other'], seed)
+    ).filter((vote) => vote === 'romance').length
 
-    expect(votesAgainstRomance).toBeLessThanOrEqual(10);
-  });
+    expect(votesAgainstRomance).toBeLessThanOrEqual(10)
+  })
 
   it('protects the stronger relationship when neither nominee is tagged as an ally', () => {
     const state = {
@@ -143,8 +200,8 @@ describe('relationship-aware AI eviction decisions', () => {
           distant: { affinity: 5, tags: [] },
         },
       },
-    } as GameState;
+    } as GameState
 
-    expect(chooseAiEvictionVote(state, 'voter', ['close', 'distant'], 42)).toBe('distant');
-  });
-});
+    expect(chooseAiEvictionVote(state, 'voter', ['close', 'distant'], 42)).toBe('distant')
+  })
+})

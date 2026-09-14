@@ -22,6 +22,7 @@ import type {
   CustomBroadcastMessage,
 } from '../types'
 import type { IncomingInteraction, SocialActionLogEntry } from '../social/types'
+import type { LohNominationPlan } from './lohNominationPlanning'
 import { mulberry32, seededPick, seededPickN } from './rng'
 import {
   getCompetitionSeasonState,
@@ -2048,13 +2049,30 @@ function shouldAiUseTargetedSafetyPower(
   else if (bestRelationship >= 45) useChance += 0.35
   else if (bestRelationship >= 20) useChance += 0.18
   const lohAdvice = state.lohSafetyAdvice
+  let appliedLohAdviceInfluence = 0
+  let appliedLohAdviceSource: 'human_loh' | 'ai_ambush_pitch' | null = null
   if (
     lohAdvice?.week === state.week &&
     lohAdvice.lohId === state.lohId &&
     lohAdvice.holderId === holderId
   ) {
-    if (lohAdvice.advice === 'use') useChance += 0.38
-    if (lohAdvice.advice === 'hold') useChance -= 0.38
+    const isAiAmbushPitch = lohAdvice.source === 'ai_ambush_pitch'
+    const holderViewOfLoh = getStrategicRelationship(state, holderId, lohAdvice.lohId)
+    const holderTags = new Set(holderViewOfLoh?.tags ?? [])
+    // A human LOH's explicit advice is powerful. An AI LOH's Ambush pitch is
+    // intentionally softer and varies with whether the holder trusts them.
+    const holderAffinity = holderViewOfLoh?.affinity ?? 0
+    const adviceInfluence = isAiAmbushPitch
+      ? holderAffinity >= 45
+        ? 0.3
+        : 0.12 +
+          (holderAffinity >= 20 ? 0.08 : 0) +
+          (holderTags.has('alliance') || holderTags.has('protection') ? 0.05 : 0)
+      : 0.38
+    appliedLohAdviceInfluence = adviceInfluence
+    appliedLohAdviceSource = lohAdvice.source ?? null
+    if (lohAdvice.advice === 'use') useChance += adviceInfluence
+    if (lohAdvice.advice === 'hold') useChance -= adviceInfluence
   }
   useChance = Math.max(0.03, Math.min(0.92, useChance))
   const rng = mulberry32(
@@ -2084,6 +2102,8 @@ function shouldAiUseTargetedSafetyPower(
       useChance,
       randomDraw,
       lohAdvice: lohAdvice?.advice ?? null,
+      lohAdviceSource: appliedLohAdviceSource,
+      lohAdviceInfluence: appliedLohAdviceInfluence,
     },
     candidates: [
       ...currentNominees.map((nominee) => ({
@@ -3308,6 +3328,13 @@ export function chooseAiEvictionVote(
 
   const voter = state.players.find((player) => player.id === voterId)
   const voterIdentity = voter?.aiGameIdentity
+  const executedBackdoorTargetId =
+    state.lohNominationPlan?.week === state.week &&
+    state.lohNominationPlan.lohId === state.lohId &&
+    state.lohNominationPlan.strategy === 'backdoor' &&
+    state.lohNominationPlan.status === 'executed'
+      ? state.lohNominationPlan.targetId
+      : null
   const scored = nomineeIds.map((nomineeId) => {
     const nominee = state.players.find((player) => player.id === nomineeId)
     const relationship = getStrategicRelationship(state, voterId, nomineeId)
@@ -3320,6 +3347,11 @@ export function chooseAiEvictionVote(
     const randomDraw = rng()
 
     const grace = getEarlyHumanGrace(state, nominee, affinity, tags)
+    // An executed backdoor carries the LOH's strategic intent into the vote.
+    // It is meaningful pressure, not an automatic eviction: alliance/romance
+    // protection and their existing backstab rules are applied afterward and
+    // can still outweigh it.
+    const backdoorTargetContribution = nomineeId === executedBackdoorTargetId ? 30 : 0
     const factors: Record<string, AiDecisionFactor> = {
       threatContribution: threat * 8,
       affinityPenalty: -affinity,
@@ -3327,7 +3359,10 @@ export function chooseAiEvictionVote(
       earlyHumanGrace: -grace * 1.35,
       tags: [...tags].join(', ') || 'none',
     }
-    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35
+    if (backdoorTargetContribution > 0) {
+      factors.backdoorTargetContribution = backdoorTargetContribution
+    }
+    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35 + backdoorTargetContribution
     if (tags.has('target')) {
       score += 25
       factors.target = 25
@@ -3404,8 +3439,13 @@ export function chooseAiEvictionVote(
     week: state.week,
     phase: state.phase,
     seed: gameSeed,
-    reason: 'highest relationship-aware eviction score',
-    context: { nomineeIds: nomineeIds.join(', ') },
+    reason: executedBackdoorTargetId
+      ? 'highest relationship-aware eviction score with executed backdoor target pressure'
+      : 'highest relationship-aware eviction score',
+    context: {
+      nomineeIds: nomineeIds.join(', '),
+      ...(executedBackdoorTargetId ? { backdoorTargetId: executedBackdoorTargetId } : {}),
+    },
     candidates: scored.map<AiDecisionCandidate>((entry) => ({
       id: entry.nomineeId,
       label: state.players.find((player) => player.id === entry.nomineeId)?.name,
@@ -6333,6 +6373,109 @@ const gameSlice = createSlice({
         syncCupidRoleStatuses(state)
         pushEvent(state, `[DEBUG] ${player.name} forced as POS winner. 🎭`, 'game')
       }
+    },
+    /**
+     * Load a deterministic, debug-only LOH backdoor scenario.
+     *
+     * This intentionally starts immediately before the Safety Ceremony so QA
+     * can inspect the real user flow (save a pawn, let the AI LOH name the
+     * replacement, then consume the Ambush reveal) without changing normal
+     * nomination probabilities or persisted campaign state.
+     */
+    prepareLohBackdoorTest(state) {
+      const human = state.players.find((player) => player.isUser)
+      const alive = state.players.filter(
+        (player) => player.status !== 'evicted' && player.status !== 'jury' && !player.isUser
+      )
+      const loh = alive[0]
+      const pawns = alive.slice(1, 3)
+      const target = alive[3]
+      if (!human || !loh || pawns.length < 2 || !target) return
+
+      state.week = Math.max(2, state.week)
+      state.phase = 'pos_ceremony'
+      state.publicModeEnabled = false
+      state.pendingPublicModeEnabled = null
+      state.doubleEviction = {
+        usedCount: state.doubleEviction?.usedCount ?? 0,
+        weekActive: false,
+        pendingSecondEviction: null,
+      }
+      state.democracia = undefined
+      state.depressionShock = undefined
+      state.cupidArrow = undefined
+      state.voxPopuli = undefined
+      state.coLohIds = []
+      state.coLohNomineeByCoLohId = {}
+      state.lohId = loh.id
+      state.posWinnerId = human.id
+      state.nomineeIds = pawns.map((player) => player.id)
+      state.replacementNeeded = false
+      state.povSavedId = null
+      state.replacementNomineeIds = []
+      state.povProtectedIds = []
+      state.awaitingPovDecision = false
+      state.awaitingPovSaveTarget = false
+      state.aiReplacementStep = 0
+      state.aiReplacementWaiting = false
+      state.specialVeto = {
+        seasonUsed: false,
+        activeType: null,
+        activatedWeek: null,
+        vipUseStage: 0,
+        awaitingHolderReplacement: false,
+        awaitingCoupReplacement1: false,
+        awaitingCoupReplacement2: false,
+        coupReplacement1Id: null,
+        awaitingVipSecondUseDecision: false,
+        awaitingVipSecondSaveTarget: false,
+      }
+
+      state.players.forEach((player) => {
+        if (player.status === 'evicted' || player.status === 'jury') return
+        player.status = 'active'
+      })
+      human.status = 'pos'
+      loh.status = 'loh'
+      pawns.forEach((player) => {
+        player.status = 'nominated'
+      })
+
+      state.currentWeekNominationRecord = {
+        week: state.week,
+        lohId: loh.id,
+        nomineeIds: pawns.map((player) => player.id),
+      }
+      const plan: LohNominationPlan = {
+        week: state.week,
+        lohId: loh.id,
+        targetId: target.id,
+        backupTargetId: null,
+        pawnIds: pawns.map((player) => player.id),
+        initialNomineeIds: pawns.map((player) => player.id),
+        strategy: 'backdoor',
+        status: 'planned',
+        selectionBasis: 'strategy',
+        targetScore: 90,
+        backdoorChance: 1,
+        safetyParticipantIds: state.players
+          .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+          .map((player) => player.id),
+      }
+      state.lohNominationPlan = plan
+      state.lohSocialPlan = {
+        week: state.week,
+        lohId: loh.id,
+        currentTargetId: pawns[0].id,
+        backupTargetId: target.id,
+        askCountsByPlayerId: {},
+        disclosedTargetByPlayerId: {},
+      }
+      pushEvent(
+        state,
+        `[DEBUG] LOH Ambush scenario loaded. Save a pawn, then advance to inspect the hidden-target reveal.`,
+        'game'
+      )
     },
     /** Force a player's house status without leaving stale competition roles (debug only). */
     forcePlayerStatus(
@@ -9541,6 +9684,7 @@ export const {
   forceHoH,
   forceNominees,
   forcePovWinner,
+  prepareLohBackdoorTest,
   forcePlayerStatus,
   prepareVoxFinalThreeTest,
   prepareClassicFinalThreeTest,
