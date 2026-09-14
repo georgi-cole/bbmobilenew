@@ -1,5 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit'
-import gameReducer, { replaceBroadcastConfig, requestPublicModeChange } from './gameSlice'
+import gameReducer, {
+  getNominationTargetScore,
+  replaceBroadcastConfig,
+  requestPublicModeChange,
+} from './gameSlice'
+import { withLohNominationPlanning } from './lohNominationPlanning'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, {
@@ -66,11 +71,14 @@ import {
   loadBroadcastConfig,
   saveBroadcastConfig,
 } from '../broadcasting/broadcastConfigPersistence'
+import { backdoorPresentationMiddleware } from '../broadcasting/backdoorPresentationMiddleware'
 import { setRuntimeSocialActionOverrides } from '../social/socialActionManager'
+
+const strategicGameReducer = withLohNominationPlanning(gameReducer, getNominationTargetScore)
 
 export const store = configureStore({
   reducer: {
-    game: gameReducer,
+    game: strategicGameReducer,
     finale: finaleReducer,
     challenge: challengeReducer,
     settings: settingsReducer,
@@ -110,6 +118,7 @@ export const store = configureStore({
       tribunalEligibilityMiddleware,
       realityIntegrityMiddleware,
       depressionShockMiddleware,
+      backdoorPresentationMiddleware,
       intelligenceMiddleware,
       socialStrategyMiddleware,
       socialMiddleware,
@@ -184,7 +193,7 @@ let prevPublicModeSetting = prevSettings.sim.publicMode
 let prevUserProfile = store.getState().userProfile
 // Persist profiles state to localStorage whenever it changes
 let prevProfiles = store.getState().profiles
-// Persist ads state to localStorage whenever they change
+// Persist ads state whenever they change
 let prevAds = store.getState().ads
 // Persist permanent purchase entitlements whenever they change.
 let prevVip = store.getState().vip
