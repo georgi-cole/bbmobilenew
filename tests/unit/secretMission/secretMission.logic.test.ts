@@ -27,6 +27,7 @@ import {
   type SecretMissionTriggerContext,
   type MissionTemplate,
 } from '../../../src/bb/secretMission';
+import { SOCIAL_ACTIONS } from '../../../src/social/socialActions';
 
 function makeStore() {
   return configureStore({
@@ -371,10 +372,11 @@ describe('tryActivateSecretMission', () => {
     const current = store.getState().game;
     store.dispatch(hydrateGame({
       ...current,
-      week: 6,
+      week: 10,
       phase: 'week_start',
       secretMissionCount: 1,
       secretMissionSecondChanceResolved: false,
+      secretMissionLastResolvedDay: 6,
       secretMission: {
         ...current.secretMission!,
         status: 'expired',
@@ -403,6 +405,85 @@ describe('tryActivateSecretMission', () => {
     expect(store.dispatch(tryActivateSecretMission())).toBe(false);
     expect(store.getState().game.secretMissionCount).toBe(1);
     expect(store.getState().game.secretMissionSecondChanceResolved).toBe(true);
+  });
+
+  it('only generates social requirements the human player can use in every mode', () => {
+    const template: MissionTemplate = {
+      id: 'social-achievability',
+      title: 'Social Achievability',
+      description: 'Exercises each deterministic social-set variant.',
+      daySpan: 3,
+      requirementWeights: {
+        competition_placement: 0,
+        avoid_last_place: 0,
+        public_approval_gain: 0,
+        social_energy_empty_streak: 0,
+        social_action_count: 10,
+        easter_egg_discovery: 0,
+        incoming_response_streak: 0,
+        target_nominated: 0,
+      },
+    };
+
+    for (let missionNumber = 1; missionNumber <= 20; missionNumber += 1) {
+      const socialTask = buildMissionTasks(template, 6, { missionNumber }).find(
+        (task) => task.type === 'social_action_count',
+      );
+      expect(socialTask).toBeDefined();
+      for (const actionId of socialTask?.requiredActionIds ?? []) {
+        const action = SOCIAL_ACTIONS.find((candidate) => candidate.id === actionId);
+        expect(action).toBeDefined();
+        expect(action?.aiOnly).not.toBe(true);
+        expect(action?.realityExclusive).not.toBe(true);
+        expect(action?.dramaOnly).not.toBe(true);
+        expect(action?.voxOnly).not.toBe(true);
+        expect(action?.unavailableInVox).not.toBe(true);
+        expect(action?.allowedPhases).toBeUndefined();
+        expect(action?.requiredActorStatus).toBeUndefined();
+        expect(action?.requiredTargetStatus).toBeUndefined();
+      }
+    }
+  });
+
+  it('keeps the second-mission roll available but blocks it during the three-day cooldown', () => {
+    const store = makeStore();
+    setWeek(store, 7, 9);
+    const current = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...current,
+      secretMissionCount: 1,
+      secretMissionSecondChanceResolved: false,
+      secretMissionLastResolvedDay: 5,
+      secretMission: {
+        ...createSecretMissionState(3),
+        status: 'expired',
+      },
+    }));
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(false);
+    expect(store.getState().game.secretMissionCount).toBe(1);
+    expect(store.getState().game.secretMissionSecondChanceResolved).toBe(false);
+  });
+
+  it('allows a second mission exactly three days before Final 5 once its cooldown passed', () => {
+    const store = makeStore();
+    setWeek(store, 9, 8);
+    const current = store.getState().game;
+    store.dispatch(hydrateGame({
+      ...current,
+      secretMissionCount: 1,
+      secretMissionSecondChanceResolved: false,
+      secretMissionLastResolvedDay: 5,
+      secretMission: {
+        ...createSecretMissionState(3),
+        status: 'expired',
+      },
+    }));
+    store.dispatch(setSim({ secretMissionTriggerOverride: 100 }));
+
+    expect(store.dispatch(tryActivateSecretMission())).toBe(true);
+    expect(store.getState().game.secretMission?.missionNumber).toBe(2);
   });
 
   it('blocks activation once the game reaches final 5', () => {

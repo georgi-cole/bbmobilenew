@@ -195,10 +195,16 @@ export default function FloatingActionBar({
     string | null
   >(null)
   const [showConfessionalSpotlight, setShowConfessionalSpotlight] = useState(false)
+  const [showSecretMissionRewardSpotlight, setShowSecretMissionRewardSpotlight] = useState(false)
   const confessionalIconRef = useRef<HTMLImageElement | null>(null)
   const dockRef = useRef<HTMLDivElement | null>(null)
   const prevConfessionalCountRef = useRef(confessionalAlertCount)
   const hasPendingConfessionalDecision = !isSurvivorMode && activeConfessionalDecision !== null
+  const secretMissionRewardPendingKey =
+    !isSurvivorMode && game.secretMission?.status === 'rewardPending'
+      ? `${game.secretMission.templateId}:${game.secretMission.triggeredDay}:${game.secretMission.missionNumber ?? ''}`
+      : null
+  const previousSecretMissionRewardPendingKeyRef = useRef<string | null>(null)
   const hasSeenConfessionalSpotlight = game.hasSeenConfessionalSpotlight === true
   const activeConfessionalDecisionKey = activeConfessionalDecision
     ? `${activeConfessionalDecision.type}:${activeConfessionalDecision.week}:${activeConfessionalDecision.phase}`
@@ -242,6 +248,17 @@ export default function FloatingActionBar({
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated
   const confessionalSpotlightEligible =
     hasPendingConfessionalDecision && confessionalPromptActivated && !hasSeenConfessionalSpotlight
+
+  useEffect(() => {
+    if (secretMissionRewardPendingKey === null) {
+      previousSecretMissionRewardPendingKeyRef.current = null
+      setShowSecretMissionRewardSpotlight(false)
+      return
+    }
+    if (previousSecretMissionRewardPendingKeyRef.current === secretMissionRewardPendingKey) return
+    previousSecretMissionRewardPendingKeyRef.current = secretMissionRewardPendingKey
+    setShowSecretMissionRewardSpotlight(true)
+  }, [secretMissionRewardPendingKey])
 
   const completeConfessionalSpotlight = useCallback(() => {
     setShowConfessionalSpotlight(false)
@@ -376,6 +393,7 @@ export default function FloatingActionBar({
     if (confessionalSpotlightEligible) {
       completeConfessionalSpotlight()
     }
+    setShowSecretMissionRewardSpotlight(false)
     setTriggeredConfessionalDecisionKey(null)
     navigate('/diary-room')
   }, [
@@ -599,9 +617,15 @@ export default function FloatingActionBar({
         confessionalIconRef={confessionalIconRef}
       />
       <ConfessionalSpotlightOverlay
-        active={showConfessionalSpotlight && confessionalSpotlightEligible}
+        active={
+          (showConfessionalSpotlight && confessionalSpotlightEligible) ||
+          showSecretMissionRewardSpotlight
+        }
         targetRef={confessionalIconRef}
-        onComplete={completeConfessionalSpotlight}
+        onComplete={() => {
+          setShowSecretMissionRewardSpotlight(false)
+          if (showConfessionalSpotlight) completeConfessionalSpotlight()
+        }}
       />
     </>
   )

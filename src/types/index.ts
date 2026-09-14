@@ -1135,6 +1135,8 @@ export interface GameState {
   secretMission?: import('../bb/secretMission').SecretMissionState
   /** Number of secret missions started this season (capped at 2). */
   secretMissionCount?: number
+  /** Day the most recently offered mission was declined, expired, or claimed. */
+  secretMissionLastResolvedDay?: number | null
   /** Task-set signatures already generated this season; prevents repeat checklists. */
   secretMissionTaskSetHistory?: string[]
   /** Latest social graph snapshot used by synchronous POS and eviction AI decisions. */

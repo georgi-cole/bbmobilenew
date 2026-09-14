@@ -14,11 +14,11 @@ export type SecretMissionStatus =
   | 'declined'
   | 'rewardPending'
   | 'rewardClaimed'
-  | 'expired'
+  | 'expired';
 
 // ── Task / requirement types ─────────────────────────────────────────────────
 
-export type LegacyMissionTaskType = 'confessional_visits' | 'conversation_turns'
+export type LegacyMissionTaskType = 'confessional_visits' | 'conversation_turns';
 
 export type SecretMissionRequirementType =
   | 'survive_days'
@@ -29,51 +29,53 @@ export type SecretMissionRequirementType =
   | 'social_action_count'
   | 'easter_egg_discovery'
   | 'incoming_response_streak'
-  | 'target_nominated'
+  | 'target_nominated';
 
-export type MissionTaskType = LegacyMissionTaskType | SecretMissionRequirementType
+export type MissionTaskType = LegacyMissionTaskType | SecretMissionRequirementType;
 
 export interface MissionTask {
   /** Unique within a mission instance. */
-  id: string
-  type: MissionTaskType
-  description: string
-  current: number
-  target: number
-  completed: boolean
+  id: string;
+  type: MissionTaskType;
+  description: string;
+  current: number;
+  target: number;
+  completed: boolean;
   /** Inclusive mission window start / end day. */
-  startDay?: number
-  endDay?: number
+  startDay?: number;
+  endDay?: number;
   /** Inclusive deadline day for target-style requirements. */
-  targetDay?: number
+  targetDay?: number;
   /** Distinct-day gating for legacy and streak requirements. */
-  uniqueDays?: string[]
+  uniqueDays?: string[];
   /** Days on which the player successfully performed a manual social move. */
-  activityDays?: string[]
+  activityDays?: string[];
   /** Manual social actions that count for this task. */
-  requiredActionIds?: string[]
+  requiredActionIds?: string[];
   /** When true, each required action only counts once toward the task. */
-  requireDistinctActionIds?: boolean
+  requireDistinctActionIds?: boolean;
   /** Distinct social actions already credited for this task. */
-  completedActionIds?: string[]
+  completedActionIds?: string[];
+  /** Competition runs already credited to this task. Keeps result delivery idempotent. */
+  creditedCompetitionRunIds?: string[];
   /** Target player for nomination requirements. */
-  targetPlayerId?: string
+  targetPlayerId?: string;
   /** Max placement that counts as success (1 = win, 2 = top 2, etc.). */
-  placementThreshold?: number
+  placementThreshold?: number;
   /** Starting approval captured when the mission is accepted. */
-  baselineApproval?: number
+  baselineApproval?: number;
   /** Minimum approval increase needed relative to baseline. */
-  requiredDelta?: number
+  requiredDelta?: number;
   /** Easter eggs discovered so far for this requirement. */
-  discoveredEggIds?: string[]
+  discoveredEggIds?: string[];
   /** Current / best consecutive streak counts. */
-  currentStreak?: number
-  maxStreak?: number
+  currentStreak?: number;
+  maxStreak?: number;
   /** Human-readable audit breadcrumbs. */
-  auditLog?: string[]
-  firstSatisfiedDay?: number
-  lastProgressDay?: number
-  optional?: boolean
+  auditLog?: string[];
+  firstSatisfiedDay?: number;
+  lastProgressDay?: number;
+  optional?: boolean;
 }
 
 // ── Reward types ──────────────────────────────────────────────────────────────
@@ -82,54 +84,54 @@ export type LegacyMissionRewardType =
   | 'plus1000Influence'
   | 'doubleVote'
   | 'voteDeduction'
-  | 'emptyBox'
+  | 'emptyBox';
 
-export type MissionRewardType = LegacyMissionRewardType | 'immunity'
-export type MissionRewardDuration = 1 | 2 | 3
-export type SecretMissionBoxRewardType = Exclude<MissionRewardType, 'emptyBox'>
+export type MissionRewardType = LegacyMissionRewardType | 'immunity';
+export type MissionRewardDuration = 1 | 2 | 3;
+export type SecretMissionBoxRewardType = Exclude<MissionRewardType, 'emptyBox'>;
 
 export const MYSTERY_BOX_POOL: readonly LegacyMissionRewardType[] = [
   'plus1000Influence',
   'doubleVote',
   'voteDeduction',
   'emptyBox',
-] as const
+] as const;
 
 export const SECRET_MISSION_BOX_REWARDS: readonly SecretMissionBoxRewardType[] = [
   'plus1000Influence',
   'doubleVote',
   'voteDeduction',
   'immunity',
-] as const
+] as const;
 
 export function getSecretMissionBoxRewards(
   mission: Pick<SecretMissionState, 'triggeredDay' | 'templateId' | 'missionNumber'>
 ): SecretMissionBoxRewardType[] {
-  const rewards = [...SECRET_MISSION_BOX_REWARDS]
+  const rewards = [...SECRET_MISSION_BOX_REWARDS];
   const rng = createSeededRng(
     hashString(
       `${mission.templateId}:${mission.triggeredDay}:${mission.missionNumber ?? 1}:reward-boxes`
     )
-  )
+  );
 
   for (let i = rewards.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1))
-    ;[rewards[i], rewards[j]] = [rewards[j], rewards[i]]
+    const j = Math.floor(rng() * (i + 1));
+    [rewards[i], rewards[j]] = [rewards[j], rewards[i]];
   }
 
-  return rewards
+  return rewards;
 }
 
 export interface SecretMissionReward {
-  type: MissionRewardType
-  consumed: boolean
-  expired: boolean
-  eligible: boolean
+  type: MissionRewardType;
+  consumed: boolean;
+  expired: boolean;
+  eligible: boolean;
   /** Immunity-only fields. */
-  durationDays?: MissionRewardDuration
-  claimDay?: number
-  activeUntilDay?: number
-  usedDay?: number | null
+  durationDays?: MissionRewardDuration;
+  claimDay?: number;
+  activeUntilDay?: number;
+  usedDay?: number | null;
 }
 
 export function createMissionReward(type: LegacyMissionRewardType): SecretMissionReward {
@@ -138,7 +140,7 @@ export function createMissionReward(type: LegacyMissionRewardType): SecretMissio
     consumed: false,
     expired: false,
     eligible: type !== 'emptyBox',
-  }
+  };
 }
 
 export function createImmunityReward(
@@ -154,50 +156,50 @@ export function createImmunityReward(
     claimDay,
     activeUntilDay: claimDay + durationDays - 1,
     usedDay: null,
-  }
+  };
 }
 
 // ── Mission state ─────────────────────────────────────────────────────────────
 
 export interface SecretMissionState {
-  triggeredDay: number
-  missionNumber?: number
-  startDay: number
-  endDay: number
-  survivalWindowEndDay: number
-  targetDeadlineDay: number
-  status: SecretMissionStatus
-  offeredDay: number | null
-  offerCount: number
-  declinedDay: number | null
-  tasks: MissionTask[]
-  templateId: string
-  reward?: SecretMissionReward
-  discoveredEasterEggIds?: string[]
+  triggeredDay: number;
+  missionNumber?: number;
+  startDay: number;
+  endDay: number;
+  survivalWindowEndDay: number;
+  targetDeadlineDay: number;
+  status: SecretMissionStatus;
+  offeredDay: number | null;
+  offerCount: number;
+  declinedDay: number | null;
+  tasks: MissionTask[];
+  templateId: string;
+  reward?: SecretMissionReward;
+  discoveredEasterEggIds?: string[];
 }
 
 // ── Mission templates ────────────────────────────────────────────────────────
 
-type WeightedRequirementType = Exclude<SecretMissionRequirementType, 'survive_days'>
+type WeightedRequirementType = Exclude<SecretMissionRequirementType, 'survive_days'>;
 
 export interface MissionCapabilities {
   /** Public Meter objectives require Public Mode to be active for this season. */
-  publicModeEnabled: boolean
+  publicModeEnabled: boolean;
 }
 
 export interface MissionBuildContext {
-  triggeredDay: number
-  templateId: string
-  targetCandidateIds?: string[]
-  variant?: number
+  triggeredDay: number;
+  templateId: string;
+  targetCandidateIds?: string[];
+  variant?: number;
 }
 
 export interface MissionTemplate {
-  id: string
-  title: string
-  description: string
-  daySpan: number
-  requirementWeights: Record<WeightedRequirementType, number>
+  id: string;
+  title: string;
+  description: string;
+  daySpan: number;
+  requirementWeights: Record<WeightedRequirementType, number>;
 }
 
 const EXTRA_REQUIREMENT_TYPES: WeightedRequirementType[] = [
@@ -209,34 +211,34 @@ const EXTRA_REQUIREMENT_TYPES: WeightedRequirementType[] = [
   'easter_egg_discovery',
   'incoming_response_streak',
   'target_nominated',
-]
+];
 
 function getEligibleRequirementTypes(
   capabilities?: MissionCapabilities
 ): WeightedRequirementType[] {
   return EXTRA_REQUIREMENT_TYPES.filter((type) => {
     if (type === 'public_approval_gain') {
-      return capabilities?.publicModeEnabled !== false
+      return capabilities?.publicModeEnabled !== false;
     }
-    return true
-  })
+    return true;
+  });
 }
 
 function hashString(value: string): number {
-  let hash = 2166136261
+  let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 16777619)
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-  return hash >>> 0
+  return hash >>> 0;
 }
 
 function createSeededRng(seed: number): () => number {
-  let state = seed >>> 0 || 1
+  let state = seed >>> 0 || 1;
   return () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
-    return state / 0x100000000
-  }
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
 }
 
 function weightedPickDistinct(
@@ -245,62 +247,48 @@ function weightedPickDistinct(
   rng: () => number,
   eligibleTypes: readonly WeightedRequirementType[] = EXTRA_REQUIREMENT_TYPES
 ): WeightedRequirementType[] {
-  const selected: WeightedRequirementType[] = []
-  const remaining = [...eligibleTypes]
+  const selected: WeightedRequirementType[] = [];
+  const remaining = [...eligibleTypes];
 
   while (selected.length < count && remaining.length > 0) {
-    const total = remaining.reduce((sum, key) => sum + Math.max(0, weights[key] ?? 0), 0)
+    const total = remaining.reduce((sum, key) => sum + Math.max(0, weights[key] ?? 0), 0);
     if (total <= 0) {
-      selected.push(remaining.shift()!)
-      continue
+      selected.push(remaining.shift()!);
+      continue;
     }
-    let roll = rng() * total
-    let picked: WeightedRequirementType | null = null
+    let roll = rng() * total;
+    let picked: WeightedRequirementType | null = null;
     for (const key of remaining) {
-      roll -= Math.max(0, weights[key] ?? 0)
+      roll -= Math.max(0, weights[key] ?? 0);
       if (roll <= 0) {
-        picked = key
-        break
+        picked = key;
+        break;
       }
     }
-    const chosen = picked ?? remaining[remaining.length - 1]
-    selected.push(chosen)
-    remaining.splice(remaining.indexOf(chosen), 1)
+    const chosen = picked ?? remaining[remaining.length - 1];
+    selected.push(chosen);
+    remaining.splice(remaining.indexOf(chosen), 1);
   }
 
-  return selected
+  return selected;
 }
 
 function pickTargetCandidate(context: MissionBuildContext, rng: () => number): string {
   const candidates = context.targetCandidateIds?.length
     ? context.targetCandidateIds
-    : ['target-a', 'target-b', 'target-c']
-  return candidates[Math.floor(rng() * candidates.length)] ?? candidates[0]
+    : ['target-a', 'target-b', 'target-c'];
+  return candidates[Math.floor(rng() * candidates.length)] ?? candidates[0];
 }
 
 interface SocialActionTaskBlueprint {
-  description: (params: { endDay: number; targetLabel?: string }) => string
-  target: number
-  requiredActionIds: string[]
-  requireDistinctActionIds?: boolean
-  needsTarget?: boolean
+  description: (params: { endDay: number; targetLabel?: string }) => string;
+  target: number;
+  requiredActionIds: string[];
+  requireDistinctActionIds?: boolean;
+  needsTarget?: boolean;
 }
 
 const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
-  {
-    description: ({ endDay, targetLabel = 'your marked target' }) =>
-      `Form an alliance with ${targetLabel} before Day ${endDay}`,
-    target: 1,
-    requiredActionIds: ['ally', 'proposeAlliance'],
-    needsTarget: true,
-  },
-  {
-    description: ({ endDay, targetLabel = 'your marked target' }) =>
-      `Start a fight with ${targetLabel} before Day ${endDay}`,
-    target: 1,
-    requiredActionIds: ['startFight'],
-    needsTarget: true,
-  },
   {
     description: ({ endDay }) =>
       `Complete this social set before Day ${endDay}: compliment, whisper, and group chat`,
@@ -310,12 +298,55 @@ const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
   },
   {
     description: ({ endDay }) =>
-      `Complete this social set before Day ${endDay}: rumor, vote rally, and favour request`,
+      `Complete this social set before Day ${endDay}: reassure, clear the air, and confront`,
     target: 3,
-    requiredActionIds: ['rumor', 'vote_rally', 'favor_request'],
+    requiredActionIds: ['reassure', 'apologize', 'confront'],
     requireDistinctActionIds: true,
   },
-] as const
+] as const;
+
+/**
+ * Repair the one historical social set that included the AI-only `vote_rally`
+ * action. Keep all three required actions and substitute the player-facing
+ * `rally_votes_against` equivalent. The middleware can then reconcile an
+ * already-recorded human rally from the persistent social-action history.
+ */
+export function repairLegacyMissionTasks(tasks: readonly MissionTask[]): MissionTask[] {
+  return tasks.map((task) => {
+    const wasPreviouslyWaived = task.auditLog?.includes(
+      'Waived unavailable AI-only Vote Rally requirement'
+    );
+    if (
+      task.type !== 'social_action_count' ||
+      (!task.requiredActionIds?.includes('vote_rally') && !wasPreviouslyWaived)
+    ) {
+      return task;
+    }
+
+    const requiredActionIds = ['rumor', 'rally_votes_against', 'favor_request'];
+    const completedActionIds = (task.completedActionIds ?? []).filter((actionId) =>
+      requiredActionIds.includes(actionId)
+    );
+    const target = 3;
+    const current = Math.min(target, completedActionIds.length);
+
+    return {
+      ...task,
+      description: `Complete this social set before Day ${task.endDay ?? task.targetDay}: rumor, rally votes against, and favour request`,
+      requiredActionIds,
+      completedActionIds,
+      target,
+      current,
+      completed: current >= target,
+      auditLog: [
+        ...(task.auditLog ?? []).filter(
+          (entry) => entry !== 'Waived unavailable AI-only Vote Rally requirement'
+        ),
+        'Replaced unavailable AI-only Vote Rally with Rally Votes Against',
+      ].slice(-12),
+    };
+  });
+}
 
 function buildRequirementTask(
   type: SecretMissionRequirementType,
@@ -323,7 +354,7 @@ function buildRequirementTask(
   endDay: number,
   rng: () => number
 ): Omit<MissionTask, 'completed' | 'current'> {
-  const startDay = context.triggeredDay
+  const startDay = context.triggeredDay;
   switch (type) {
     case 'survive_days':
       return {
@@ -334,9 +365,9 @@ function buildRequirementTask(
         startDay,
         endDay,
         targetDay: endDay,
-      }
+      };
     case 'competition_placement': {
-      const placementThreshold = rng() < 0.5 ? 2 : 3
+      const placementThreshold = rng() < 0.5 ? 2 : 3;
       return {
         id: `competition_placement_${context.templateId}`,
         type,
@@ -346,7 +377,7 @@ function buildRequirementTask(
         endDay,
         targetDay: endDay,
         placementThreshold,
-      }
+      };
     }
     case 'avoid_last_place':
       return {
@@ -357,9 +388,9 @@ function buildRequirementTask(
         startDay,
         endDay,
         targetDay: endDay,
-      }
+      };
     case 'public_approval_gain': {
-      const requiredDelta = rng() < 0.5 ? 5 : 7
+      const requiredDelta = rng() < 0.5 ? 5 : 7;
       return {
         id: `public_approval_gain_${context.templateId}`,
         type,
@@ -369,10 +400,10 @@ function buildRequirementTask(
         endDay,
         targetDay: endDay,
         requiredDelta,
-      }
+      };
     }
     case 'social_energy_empty_streak': {
-      const streak = rng() < 0.5 ? 2 : 3
+      const streak = rng() < 0.5 ? 2 : 3;
       return {
         id: `social_energy_empty_streak_${context.templateId}`,
         type,
@@ -384,12 +415,12 @@ function buildRequirementTask(
         currentStreak: 0,
         maxStreak: 0,
         uniqueDays: [],
-      }
+      };
     }
     case 'social_action_count': {
       const blueprint =
-        SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)]
-      const targetPlayerId = blueprint.needsTarget ? pickTargetCandidate(context, rng) : undefined
+        SOCIAL_ACTION_TASK_BLUEPRINTS[Math.floor(rng() * SOCIAL_ACTION_TASK_BLUEPRINTS.length)];
+      const targetPlayerId = blueprint.needsTarget ? pickTargetCandidate(context, rng) : undefined;
       return {
         id: `social_action_count_${context.templateId}`,
         type,
@@ -405,7 +436,7 @@ function buildRequirementTask(
         requireDistinctActionIds: blueprint.requireDistinctActionIds,
         completedActionIds: [],
         targetPlayerId,
-      }
+      };
     }
     case 'easter_egg_discovery':
       return {
@@ -418,9 +449,9 @@ function buildRequirementTask(
         targetDay: endDay,
         discoveredEggIds: [],
         optional: true,
-      }
+      };
     case 'incoming_response_streak': {
-      const streak = rng() < 0.5 ? 2 : 3
+      const streak = rng() < 0.5 ? 2 : 3;
       return {
         id: `incoming_response_streak_${context.templateId}`,
         type,
@@ -432,10 +463,10 @@ function buildRequirementTask(
         currentStreak: 0,
         maxStreak: 0,
         uniqueDays: [],
-      }
+      };
     }
     case 'target_nominated': {
-      const targetPlayerId = pickTargetCandidate(context, rng)
+      const targetPlayerId = pickTargetCandidate(context, rng);
       return {
         id: `target_nominated_${context.templateId}`,
         type,
@@ -445,7 +476,7 @@ function buildRequirementTask(
         endDay,
         targetDay: endDay,
         targetPlayerId,
-      }
+      };
     }
     default:
       return {
@@ -456,7 +487,7 @@ function buildRequirementTask(
         startDay,
         endDay,
         targetDay: endDay,
-      }
+      };
   }
 }
 
@@ -466,21 +497,21 @@ function buildWeightedTaskStack(
   weights: Record<WeightedRequirementType, number>,
   capabilities?: MissionCapabilities
 ): Omit<MissionTask, 'completed' | 'current'>[] {
-  const endDay = context.triggeredDay + daySpan
+  const endDay = context.triggeredDay + daySpan;
   const rng = createSeededRng(
     hashString(`${context.templateId}:${context.triggeredDay}:${endDay}:${context.variant ?? 0}`)
-  )
-  const eligibleTypes = getEligibleRequirementTypes(capabilities)
+  );
+  const eligibleTypes = getEligibleRequirementTypes(capabilities);
   if (eligibleTypes.length < 4) {
     throw new Error(
       `Secret mission requires 4 eligible objectives, but only ${eligibleTypes.length} are available`
-    )
+    );
   }
-  const chosenTypes = weightedPickDistinct(weights, 4, rng, eligibleTypes)
+  const chosenTypes = weightedPickDistinct(weights, 4, rng, eligibleTypes);
   return [
     buildRequirementTask('survive_days', context, endDay, rng),
     ...chosenTypes.map((type) => buildRequirementTask(type, context, endDay, rng)),
-  ]
+  ];
 }
 
 export const MISSION_TEMPLATES: MissionTemplate[] = [
@@ -566,20 +597,20 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
       target_nominated: 4,
     },
   },
-]
+];
 
 export function buildMissionTasks(
   template: MissionTemplate,
   triggeredDay: number,
   options?: {
-    targetCandidateIds?: string[]
-    missionNumber?: number
-    excludedTaskSetSignatures?: string[]
-    capabilities?: MissionCapabilities
+    targetCandidateIds?: string[];
+    missionNumber?: number;
+    excludedTaskSetSignatures?: string[];
+    capabilities?: MissionCapabilities;
   }
 ): MissionTask[] {
-  const excluded = new Set(options?.excludedTaskSetSignatures ?? [])
-  let candidate: MissionTask[] = []
+  const excluded = new Set(options?.excludedTaskSetSignatures ?? []);
+  let candidate: MissionTask[] = [];
 
   for (let attempt = 0; attempt < 32; attempt += 1) {
     const context: MissionBuildContext = {
@@ -587,24 +618,24 @@ export function buildMissionTasks(
       templateId: template.id,
       targetCandidateIds: options?.targetCandidateIds,
       variant: (options?.missionNumber ?? 1) * 101 + attempt,
-    }
+    };
     candidate = buildWeightedTaskStack(
       context,
       template.daySpan,
       template.requirementWeights,
       options?.capabilities
-    ).map((task) => ({ ...task, current: 0, completed: false }))
-    if (!excluded.has(getMissionTaskSetSignature(candidate))) return candidate
+    ).map((task) => ({ ...task, current: 0, completed: false }));
+    if (!excluded.has(getMissionTaskSetSignature(candidate))) return candidate;
   }
 
-  return candidate
+  return candidate;
 }
 
 export function getMissionTaskSetSignature(tasks: readonly Pick<MissionTask, 'type'>[]): string {
   return tasks
     .map((task) => task.type)
     .sort()
-    .join('|')
+    .join('|');
 }
 
 const ORDINAL_TASK_REFERENCES: Readonly<Record<string, number>> = {
@@ -613,64 +644,64 @@ const ORDINAL_TASK_REFERENCES: Readonly<Record<string, number>> = {
   third: 3,
   fourth: 4,
   fifth: 5,
-}
+};
 
 export function findSecretMissionTaskReference(
   input: string,
   tasks: readonly MissionTask[]
 ): { task: MissionTask; taskNumber: number } | null {
-  const normalized = input.toLowerCase()
+  const normalized = input.toLowerCase();
   const numeric =
-    normalized.match(/(?:task|mission|number|#)\s*(\d+)/i) ?? normalized.match(/\b(\d+)\b/)
-  let taskNumber = numeric ? Number(numeric[1]) : 0
+    normalized.match(/(?:task|mission|number|#)\s*(\d+)/i) ?? normalized.match(/\b(\d+)\b/);
+  let taskNumber = numeric ? Number(numeric[1]) : 0;
   if (!taskNumber) {
     const ordinal = Object.entries(ORDINAL_TASK_REFERENCES).find(([word]) =>
       normalized.includes(word)
-    )
-    taskNumber = ordinal?.[1] ?? 0
+    );
+    taskNumber = ordinal?.[1] ?? 0;
   }
-  const task = tasks[taskNumber - 1]
-  return task ? { task, taskNumber } : null
+  const task = tasks[taskNumber - 1];
+  return task ? { task, taskNumber } : null;
 }
 
 export function getSecretMissionTaskHint(task: MissionTask, taskNumber: number): string {
-  const prefix = `To complete task ${taskNumber}`
+  const prefix = `To complete task ${taskNumber}`;
   switch (task.type) {
     case 'social_energy_empty_streak':
-      return `${prefix}, use the Social module until your Social Energy badge (⚡) reaches 0 on each required day. The checklist updates when that day ends.`
+      return `${prefix}, use the Social module until your Social Energy badge (⚡) reaches 0 on each required day. The checklist updates when that day ends.`;
     case 'social_action_count':
       return task.requiredActionIds?.length
         ? `${prefix}, open the Social module and perform each listed interaction once: ${task.requiredActionIds.join(', ')}. Repeating the same listed action does not replace a missing one.`
-        : `${prefix}, use the Social module for the requested number of successful interactions before the deadline.`
+        : `${prefix}, use the Social module for the requested number of successful interactions before the deadline.`;
     case 'incoming_response_streak':
-      return `${prefix}, open Incoming Requests and answer every request on each required day. Ignoring even one request breaks that day's streak.`
+      return `${prefix}, open Incoming Requests and answer every request on each required day. Ignoring even one request breaks that day's streak.`;
     case 'competition_placement':
-      return `${prefix}, finish ${task.placementThreshold === 1 ? 'first' : `in the top ${task.placementThreshold}`} in any competition before the deadline.`
+      return `${prefix}, finish ${task.placementThreshold === 1 ? 'first' : `in the top ${task.placementThreshold}`} in any competition before the deadline.`;
     case 'avoid_last_place':
-      return `${prefix}, complete the required number of competitions without finishing last. Each qualifying competition adds one.`
+      return `${prefix}, complete the required number of competitions without finishing last. Each qualifying competition adds one.`;
     case 'public_approval_gain':
-      return `${prefix}, raise your Public Meter approval by ${task.requiredDelta ?? task.target} percentage points above the rating you had when you accepted the mission.`
+      return `${prefix}, raise your Public Meter approval by ${task.requiredDelta ?? task.target} percentage points above the rating you had when you accepted the mission.`;
     case 'target_nominated':
-      return `${prefix}, use social strategy such as Pitch Target or Vote Rally to help put your marked player on the block before the deadline.`
+      return `${prefix}, use social strategy such as Pitch Target or Vote Rally to help put your marked player on the block before the deadline.`;
     case 'easter_egg_discovery':
-      return `${prefix}, talk naturally with the Big Eye and explore unusual topics or phrases. Hidden discoveries count automatically when you uncover them.`
+      return `${prefix}, talk naturally with the Big Eye and explore unusual topics or phrases. Hidden discoveries count automatically when you uncover them.`;
     case 'survive_days':
-      return `${prefix}, remain in the house through Day ${task.endDay ?? task.target}. It updates automatically as the game advances.`
+      return `${prefix}, remain in the house through Day ${task.endDay ?? task.target}. It updates automatically as the game advances.`;
     default:
-      return `${prefix}, follow this checklist requirement before its deadline: ${task.description}`
+      return `${prefix}, follow this checklist requirement before its deadline: ${task.description}`;
   }
 }
 
 export function isSecretMissionSuccessful(tasks: readonly MissionTask[]): boolean {
-  if (tasks.length === 0) return false
-  const incompleteRequiredTasks = tasks.filter((task) => !task.completed && !task.optional)
-  if (incompleteRequiredTasks.length === 0) return true
+  if (tasks.length === 0) return false;
+  const incompleteRequiredTasks = tasks.filter((task) => !task.completed && !task.optional);
+  if (incompleteRequiredTasks.length === 0) return true;
 
   const hasCompletedOptionalEasterEggTask = tasks.some(
     (task) => task.type === 'easter_egg_discovery' && task.optional && task.completed
-  )
+  );
 
-  return hasCompletedOptionalEasterEggTask && incompleteRequiredTasks.length === 1
+  return hasCompletedOptionalEasterEggTask && incompleteRequiredTasks.length === 1;
 }
 
 // ── Trigger odds ──────────────────────────────────────────────────────────────
@@ -686,15 +717,15 @@ export const DEFAULT_TRIGGER_CHANCES: Readonly<Record<number, number>> = {
   10: 0.46,
   11: 0.5,
   12: 0.54,
-} as const
-export const SECOND_SECRET_MISSION_CHANCE = 0.5
+} as const;
+export const SECOND_SECRET_MISSION_CHANCE = 0.5;
 
 export interface SecretMissionTriggerContext {
-  day: number
-  aliveCount?: number | null
-  override?: number | null
-  seasonMissionCount?: number
-  secondMissionRollResolved?: boolean
+  day: number;
+  aliveCount?: number | null;
+  override?: number | null;
+  seasonMissionCount?: number;
+  secondMissionRollResolved?: boolean;
 }
 
 export function getSecretMissionTriggerChance({
@@ -704,48 +735,48 @@ export function getSecretMissionTriggerChance({
   seasonMissionCount = 0,
   secondMissionRollResolved = false,
 }: SecretMissionTriggerContext): number {
-  if (day < 3) return 0
-  if (aliveCount !== null && aliveCount <= 5) return 0
+  if (day < 3) return 0;
+  if (aliveCount !== null && aliveCount <= 5) return 0;
   if (override !== null && override !== undefined) {
-    return Math.max(0, Math.min(100, override)) / 100
+    return Math.max(0, Math.min(100, override)) / 100;
   }
-  if (seasonMissionCount === 0) return 1
-  if (seasonMissionCount >= 2 || secondMissionRollResolved) return 0
-  return SECOND_SECRET_MISSION_CHANCE
+  if (seasonMissionCount === 0) return 1;
+  if (seasonMissionCount >= 2 || secondMissionRollResolved) return 0;
+  return SECOND_SECRET_MISSION_CHANCE;
 }
 
 export function checkSecretMissionTrigger(
   context: SecretMissionTriggerContext,
   rng: () => number
 ): boolean {
-  const chance = getSecretMissionTriggerChance(context)
-  if (chance <= 0) return false
-  if (chance >= 1) return true
-  return rng() < chance
+  const chance = getSecretMissionTriggerChance(context);
+  if (chance <= 0) return false;
+  if (chance >= 1) return true;
+  return rng() < chance;
 }
 
 export function pickMissionTemplate(day: number, maxDaySpan?: number): MissionTemplate {
   const eligibleTemplates =
     typeof maxDaySpan === 'number'
       ? MISSION_TEMPLATES.filter((template) => template.daySpan <= maxDaySpan)
-      : MISSION_TEMPLATES
+      : MISSION_TEMPLATES;
   if (eligibleTemplates.length === 0) {
-    const minRequiredDaySpan = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan))
+    const minRequiredDaySpan = Math.min(...MISSION_TEMPLATES.map((template) => template.daySpan));
     throw new Error(
       `No secret mission template fits within ${maxDaySpan} days (minimum required: ${minRequiredDaySpan})`
-    )
+    );
   }
-  const pool = eligibleTemplates
-  const idx = (day * 3) % pool.length
-  return pool[idx]
+  const pool = eligibleTemplates;
+  const idx = (day * 3) % pool.length;
+  return pool[idx];
 }
 
 export function createSecretMissionState(
   day: number,
   options?: { maxDaySpan?: number; missionNumber?: number }
 ): SecretMissionState {
-  const template = pickMissionTemplate(day, options?.maxDaySpan)
-  const endDay = day + template.daySpan
+  const template = pickMissionTemplate(day, options?.maxDaySpan);
+  const endDay = day + template.daySpan;
   return {
     triggeredDay: day,
     missionNumber: options?.missionNumber,
@@ -760,15 +791,15 @@ export function createSecretMissionState(
     tasks: [],
     templateId: template.id,
     discoveredEasterEggIds: [],
-  }
+  };
 }
 
 export function pickMissionImmunityDuration(
   triggeredDay: number,
   templateId: string
 ): MissionRewardDuration {
-  const duration = (hashString(`${templateId}:${triggeredDay}:reward`) % 3) + 1
-  return duration as MissionRewardDuration
+  const duration = (hashString(`${templateId}:${triggeredDay}:reward`) % 3) + 1;
+  return duration as MissionRewardDuration;
 }
 
 export function doubleVoteTimingMessage(currentPhase: string): string {
@@ -776,29 +807,29 @@ export function doubleVoteTimingMessage(currentPhase: string): string {
     return (
       'Your Double Vote is active right now — return to the game immediately ' +
       'to use it before the vote closes. ⏳🗳️🗳️'
-    )
+    );
   }
   return (
     'This power cannot interrupt a vote already in motion. ' +
     'Your Double Vote will be offered automatically at the next live elimination — ' +
     'the moment the house is asked to cast their votes. ' +
     'Stay in the game and it will activate itself at exactly the right time. 🗳️🗳️'
-  )
+  );
 }
 
 // ── Activation guards ─────────────────────────────────────────────────────────
 
 export interface ActivationCheckState {
-  phase: string
-  week?: number
-  secretMission?: SecretMissionState
-  nomineeIds: readonly string[]
-  lohId?: string | null
-  posWinnerId?: string | null
-  players: ReadonlyArray<{ id: string; isUser?: boolean; status: string }>
-  doubleEviction?: { weekActive?: boolean } | null
-  voteResults?: Record<string, number> | null
-  awaitingTieBreak?: boolean
+  phase: string;
+  week?: number;
+  secretMission?: SecretMissionState;
+  nomineeIds: readonly string[];
+  lohId?: string | null;
+  posWinnerId?: string | null;
+  players: ReadonlyArray<{ id: string; isUser?: boolean; status: string }>;
+  doubleEviction?: { weekActive?: boolean } | null;
+  voteResults?: Record<string, number> | null;
+  awaitingTieBreak?: boolean;
 }
 
 const FINAL4_OR_LATER_PHASES = new Set([
@@ -814,82 +845,82 @@ const FINAL4_OR_LATER_PHASES = new Set([
   'jury_announcement',
   'jury_cinematic',
   'jury',
-])
+]);
 
 export function isFinal4OrLater(phase: string): boolean {
-  return FINAL4_OR_LATER_PHASES.has(phase)
+  return FINAL4_OR_LATER_PHASES.has(phase);
 }
 
 export function hasDoubleVoteConflict(state: ActivationCheckState): boolean {
-  return state.doubleEviction?.weekActive === true
+  return state.doubleEviction?.weekActive === true;
 }
 
 export function hasVoteDeductionConflict(state: ActivationCheckState): boolean {
-  return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true
+  return state.doubleEviction?.weekActive === true || state.awaitingTieBreak === true;
 }
 
 function getAlivePlayerCount(players: ActivationCheckState['players']): number {
-  return players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length
+  return players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
 }
 
 export function canUseDoubleVote(state: ActivationCheckState): boolean {
-  const reward = state.secretMission?.reward
-  if (!reward || reward.type !== 'doubleVote' || !reward.eligible) return false
-  if (state.phase !== 'live_vote') return false
-  if (isFinal4OrLater(state.phase)) return false
-  if (hasDoubleVoteConflict(state)) return false
-  if (getAlivePlayerCount(state.players) <= 4) return false
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'doubleVote' || !reward.eligible) return false;
+  if (state.phase !== 'live_vote') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (hasDoubleVoteConflict(state)) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
-  const humanPlayer = state.players.find((player) => player.isUser)
+  const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury')
-    return false
-  if (humanPlayer.id === state.lohId) return false
-  if (state.nomineeIds.includes(humanPlayer.id)) return false
-  return true
+    return false;
+  if (humanPlayer.id === state.lohId) return false;
+  if (state.nomineeIds.includes(humanPlayer.id)) return false;
+  return true;
 }
 
 export function canUseVoteDeduction(state: ActivationCheckState): boolean {
-  const reward = state.secretMission?.reward
-  if (!reward || reward.type !== 'voteDeduction' || !reward.eligible) return false
-  if (state.phase !== 'eviction_results') return false
-  if (isFinal4OrLater(state.phase)) return false
-  if (hasVoteDeductionConflict(state)) return false
-  if (!state.voteResults) return false
-  if (getAlivePlayerCount(state.players) <= 4) return false
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'voteDeduction' || !reward.eligible) return false;
+  if (state.phase !== 'eviction_results') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (hasVoteDeductionConflict(state)) return false;
+  if (!state.voteResults) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
 
-  const humanPlayer = state.players.find((player) => player.isUser)
-  if (!humanPlayer) return false
-  if (!state.nomineeIds.includes(humanPlayer.id)) return false
+  const humanPlayer = state.players.find((player) => player.isUser);
+  if (!humanPlayer) return false;
+  if (!state.nomineeIds.includes(humanPlayer.id)) return false;
 
-  const humanVoteCount = state.voteResults[humanPlayer.id] ?? 0
-  if (humanVoteCount <= 0) return false
+  const humanVoteCount = state.voteResults[humanPlayer.id] ?? 0;
+  if (humanVoteCount <= 0) return false;
 
-  const afterDeduction = humanVoteCount - 1
+  const afterDeduction = humanVoteCount - 1;
   const otherCounts = state.nomineeIds
     .filter((id) => id !== humanPlayer.id)
-    .map((id) => state.voteResults?.[id] ?? 0)
-  if (otherCounts.some((count) => count === afterDeduction)) return false
+    .map((id) => state.voteResults?.[id] ?? 0);
+  if (otherCounts.some((count) => count === afterDeduction)) return false;
 
-  return true
+  return true;
 }
 
 export function canOfferMissionImmunity(state: ActivationCheckState): boolean {
-  const reward = state.secretMission?.reward
-  if (!reward || reward.type !== 'immunity' || !reward.eligible) return false
-  if (state.phase !== 'pos_ceremony_results') return false
-  if (isFinal4OrLater(state.phase)) return false
-  if (getAlivePlayerCount(state.players) <= 4) return false
+  const reward = state.secretMission?.reward;
+  if (!reward || reward.type !== 'immunity' || !reward.eligible) return false;
+  if (state.phase !== 'pos_ceremony_results') return false;
+  if (isFinal4OrLater(state.phase)) return false;
+  if (getAlivePlayerCount(state.players) <= 4) return false;
   if (
     typeof state.week === 'number' &&
     reward.activeUntilDay !== undefined &&
     state.week > reward.activeUntilDay
   ) {
-    return false
+    return false;
   }
 
-  const humanPlayer = state.players.find((player) => player.isUser)
+  const humanPlayer = state.players.find((player) => player.isUser);
   if (!humanPlayer || humanPlayer.status === 'evicted' || humanPlayer.status === 'jury')
-    return false
-  if (state.posWinnerId && humanPlayer.id === state.posWinnerId) return false
-  return state.nomineeIds.includes(humanPlayer.id)
+    return false;
+  if (state.posWinnerId && humanPlayer.id === state.posWinnerId) return false;
+  return state.nomineeIds.includes(humanPlayer.id);
 }
