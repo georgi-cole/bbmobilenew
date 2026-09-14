@@ -651,6 +651,71 @@ function recordSafetyField(previous: GameState, state: GameState): GameState {
   }
 }
 
+/**
+ * An AI LOH with a live Ambush does not control the Safety holder, but will
+ * actively make the case for opening the block. The advice is consumed by the
+ * normal Safety decision model, where trust and the holder's own interests can
+ * still outweigh it.
+ */
+function deliverBackdoorSafetyPitch(previous: GameState, state: GameState): GameState {
+  const plan = state.lohNominationPlan
+  if (
+    previous.phase === state.phase ||
+    state.phase !== 'pos_results' ||
+    plan?.strategy !== 'backdoor' ||
+    !plan ||
+    plan.week !== state.week ||
+    plan.lohId !== state.lohId ||
+    plan.status !== 'initial_block_set' ||
+    state.specialVeto?.activeType
+  ) {
+    return state
+  }
+
+  const loh = state.players.find((player) => player.id === plan.lohId)
+  const holder = state.players.find((player) => player.id === state.posWinnerId)
+  if (!loh || loh.isUser || !holder || holder.status === 'evicted' || holder.status === 'jury') {
+    return state
+  }
+  // A nominated holder must save themselves; there is nothing to lobby for.
+  if (state.nomineeIds.includes(holder.id)) return state
+  // Do not sell a move that cannot legally put the concealed target on the block.
+  if (!isReplacementEligible(state, plan.targetId)) return state
+
+  const alreadyPitched =
+    state.lohSafetyAdvice?.week === state.week &&
+    state.lohSafetyAdvice.lohId === loh.id &&
+    state.lohSafetyAdvice.holderId === holder.id &&
+    state.lohSafetyAdvice.source === 'ai_ambush_pitch'
+  if (alreadyPitched) return state
+
+  const cloned = cloneForPlayerMutation(state)
+  cloned.lohSafetyAdvice = {
+    week: state.week,
+    lohId: loh.id,
+    holderId: holder.id,
+    advice: 'use',
+    source: 'ai_ambush_pitch',
+  }
+  cloned.tvFeed = [
+    {
+      id: `safety-pitch:${state.gameId}:${state.week}:${loh.id}:${holder.id}`,
+      text: `${loh.name} pulled ${holder.name} aside before the Safety Ceremony, urging them to use Safety and promising a bigger move.`,
+      type: 'game',
+      timestamp: Date.now(),
+      meta: {
+        week: state.week,
+        phase: state.phase,
+        lohId: loh.id,
+        safetyHolderId: holder.id,
+        privateSafetyPitch: true,
+      },
+    },
+    ...state.tvFeed,
+  ]
+  return cloned
+}
+
 /** The Big Eye ruleset lets every active player participate in Power of Safety. */
 export function selectSafetyCompetitionParticipants(state: GameState): string[] {
   return alivePlayers(state).map((player) => player.id)
@@ -710,6 +775,7 @@ export function withLohNominationPlanning(
     next = establishPlan(next, scoreFn)
     next = reconcileInitialAiNominations(previous, next)
     next = recordSafetyField(previous, next)
+    next = deliverBackdoorSafetyPitch(previous, next)
     next = reconcileBackdoorReplacement(previous, next)
     next = maybePublishBackdoorReveal(previous, next, action)
 

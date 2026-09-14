@@ -2049,13 +2049,30 @@ function shouldAiUseTargetedSafetyPower(
   else if (bestRelationship >= 45) useChance += 0.35
   else if (bestRelationship >= 20) useChance += 0.18
   const lohAdvice = state.lohSafetyAdvice
+  let appliedLohAdviceInfluence = 0
+  let appliedLohAdviceSource: 'human_loh' | 'ai_ambush_pitch' | null = null
   if (
     lohAdvice?.week === state.week &&
     lohAdvice.lohId === state.lohId &&
     lohAdvice.holderId === holderId
   ) {
-    if (lohAdvice.advice === 'use') useChance += 0.38
-    if (lohAdvice.advice === 'hold') useChance -= 0.38
+    const isAiAmbushPitch = lohAdvice.source === 'ai_ambush_pitch'
+    const holderViewOfLoh = getStrategicRelationship(state, holderId, lohAdvice.lohId)
+    const holderTags = new Set(holderViewOfLoh?.tags ?? [])
+    // A human LOH's explicit advice is powerful. An AI LOH's Ambush pitch is
+    // intentionally softer and varies with whether the holder trusts them.
+    const holderAffinity = holderViewOfLoh?.affinity ?? 0
+    const adviceInfluence = isAiAmbushPitch
+      ? holderAffinity >= 45
+        ? 0.3
+        : 0.12 +
+          (holderAffinity >= 20 ? 0.08 : 0) +
+          (holderTags.has('alliance') || holderTags.has('protection') ? 0.05 : 0)
+      : 0.38
+    appliedLohAdviceInfluence = adviceInfluence
+    appliedLohAdviceSource = lohAdvice.source ?? null
+    if (lohAdvice.advice === 'use') useChance += adviceInfluence
+    if (lohAdvice.advice === 'hold') useChance -= adviceInfluence
   }
   useChance = Math.max(0.03, Math.min(0.92, useChance))
   const rng = mulberry32(
@@ -2085,6 +2102,8 @@ function shouldAiUseTargetedSafetyPower(
       useChance,
       randomDraw,
       lohAdvice: lohAdvice?.advice ?? null,
+      lohAdviceSource: appliedLohAdviceSource,
+      lohAdviceInfluence: appliedLohAdviceInfluence,
     },
     candidates: [
       ...currentNominees.map((nominee) => ({

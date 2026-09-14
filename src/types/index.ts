@@ -722,12 +722,16 @@ export interface GameState {
     lohId: string
     nomineeIds: string[]
   } | null
-  /** Advice a human LOH gave the current AI Safety holder before the ceremony. */
+  /**
+   * Advice delivered to the current Safety holder before the ceremony. A human
+   * LOH can set this through social play; an AI LOH can pitch an active Ambush.
+   */
   lohSafetyAdvice?: {
     week: number
     lohId: string
     holderId: string
     advice: 'use' | 'hold' | 'free'
+    source?: 'human_loh' | 'ai_ambush_pitch'
   } | null
   /**
    * Player ID of the outgoing (previous week's) Leader of the House.
