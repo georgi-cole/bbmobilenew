@@ -30,6 +30,32 @@ async function openDebugPanel(page: Page) {
   await expect(panel).toBeVisible({ timeout: 5000 })
 }
 
+/** Reduce the debug roster to a valid Final 4 before exercising endgame logic. */
+async function reduceToFinalFour(page: Page): Promise<void> {
+  const game = (await readAppState(page)).game
+  const alive = game.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury'
+  )
+  if (alive.length <= 4) return
+
+  const statusSelect = page.getByRole('combobox', { name: 'Player House Status' })
+  const setTribunal = page.getByRole('button', { name: 'Set Tribunal' })
+
+  for (const player of alive.slice(4)) {
+    await statusSelect.selectOption(player.id)
+    await setTribunal.click()
+  }
+
+  await expect
+    .poll(async () => {
+      const current = (await readAppState(page)).game
+      return current.players.filter(
+        (player) => player.status !== 'evicted' && player.status !== 'jury'
+      ).length
+    })
+    .toBe(4)
+}
+
 /**
  * Force two nominees via the "Force Nominees" row in the DebugPanel.
  * `idx1` and `idx2` are the option indices to pick (0 is the blank placeholder).
@@ -74,6 +100,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
   test('AI POS holder — plea messages appear and game advances to final3', async ({ page }) => {
     await gotoDebug(page)
     await openDebugPanel(page)
+    await reduceToFinalFour(page)
 
     // Set up nominees (indices 2 & 3 — both AI players; human is always at index 1)
     // POS holder (index 4) must NOT overlap with nominees (indices 2 and 3)
@@ -121,6 +148,7 @@ test.describe.serial('Final 4 POS messaging & sequencing @release', () => {
   }) => {
     await gotoDebug(page)
     await openDebugPanel(page)
+    await reduceToFinalFour(page)
 
     // Set up nominees first — use indices 2 & 3 (non-human players; human is at index 1)
     await forceNominees(page, 2, 3)
