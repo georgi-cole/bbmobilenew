@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import gameReducer, { addTvEvent, consumeBroadcastEvent } from '../gameSlice'
 
 describe('Depression Shock broadcast recovery', () => {
-  it('promotes an existing consumed log entry back into the Faux TV queue exactly once', () => {
+  it('does not replay an existing consumed comfort-card broadcast', () => {
     const text = 'The Big Eye has left chocolates for everyone.'
     let state = gameReducer(undefined, { type: '@@INIT' })
 
@@ -33,19 +33,15 @@ describe('Depression Shock broadcast recovery', () => {
           broadcastLevel: 'major',
           major: 'depression_shock_chocolates',
           forceOnTv: true,
-          requeueDuplicateBroadcast: true,
           depressionShockQueued: true,
         },
       })
     )
 
-    expect(state.broadcastQueue).toContain(existing!.id)
+    expect(state.broadcastQueue).not.toContain(existing!.id)
     expect(state.tvFeed.filter((event) => event.text === text)).toHaveLength(1)
-    expect(state.tvFeed.find((event) => event.id === existing!.id)?.meta).toMatchObject({
-      broadcastConsumed: false,
-      depressionShockQueued: true,
-      forceOnTv: true,
-      major: 'depression_shock_chocolates',
-    })
+    expect(state.tvFeed.find((event) => event.id === existing!.id)?.meta?.broadcastConsumed).toBe(
+      true
+    )
   })
 })

@@ -923,6 +923,16 @@ export default function GameScreen() {
         winnerId: finalWinnerId,
         lastPlaceId: lastNonWinner?.playerId ?? null,
         skipSeasonUpdate: true,
+        participants: pendingChallenge.participants,
+        scores: Object.fromEntries(
+          ranked.map((result) => [
+            result.playerId,
+            'score' in result ? result.score : result.survivalSeconds,
+          ])
+        ),
+        placements: ranked.map((result) => result.playerId),
+        runId: pendingChallenge.id,
+        gameKey: pendingChallenge.game.key,
       })
     )
   }, [dispatch, game.mode, game.phase, humanIsChallengeParticipant, pendingChallenge])

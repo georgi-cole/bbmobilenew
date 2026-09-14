@@ -181,7 +181,6 @@ export default function DepressionShockController() {
           broadcastCampaign: 'depression_shock',
           broadcastLevel: broadcast.major ? 'major' : 'minor',
           forceOnTv: true,
-          requeueDuplicateBroadcast: true,
           depressionShockQueued: true,
           ...(broadcast.major ? { major: broadcast.major } : {}),
           week: game.week,

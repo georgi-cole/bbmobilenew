@@ -23,6 +23,16 @@ describe('Famous Figures replacement data bank', () => {
     }
   });
 
+  it('contains no redacted placeholder clues', () => {
+    const malformedHints = FAMOUS_FIGURES.flatMap((figure) =>
+      figure.hints
+        .filter((hint) => /this figure/i.test(hint))
+        .map((hint) => ({ figure: figure.canonicalName, hint })),
+    );
+
+    expect(malformedHints).toEqual([]);
+  });
+
   it('assigns every figure to one of five internal recognizability bands', () => {
     const allowed = new Set(['very_easy', 'easy', 'medium', 'hard', 'very_hard']);
     for (const figure of FAMOUS_FIGURES) {

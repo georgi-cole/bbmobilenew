@@ -371,6 +371,31 @@ export function useCompetitionFlow({
           ? featureAppliedWinner
           : (scoreWinnerId ?? capturedParticipants[0]))
 
+      const missionRanked =
+        pressurePlankRanking ??
+        computeScores(
+          pendingChallenge.game.scoringAdapter,
+          rawResults,
+          pendingChallenge.game.scoringParams ?? {}
+        )
+      const missionScores = Object.fromEntries(
+        missionRanked.map((result) => [
+          result.playerId,
+          'score' in result ? result.score : result.survivalSeconds,
+        ])
+      )
+      const missionPlacements = missionRanked.map((result) => result.playerId)
+      // The host has the only complete result table for this flow. Preserve it
+      // through the ceremony handoff so mission tracking reads the displayed
+      // outcome rather than reconstructing it from a winner-only payload.
+      const missionReceipt = {
+        participants: capturedParticipants,
+        scores: missionScores,
+        placements: missionPlacements,
+        runId: pendingChallenge.id,
+        gameKey: capturedGameKey,
+      }
+
       if (import.meta.env.DEV) {
         console.log('[LOH_CROWN] winner resolution in GameScreen', {
           capturedGameKey,
@@ -407,14 +432,11 @@ export function useCompetitionFlow({
           return humanPlayer.id
         }
         if (explicitLastPlaceId) return explicitLastPlaceId
-        const ranked = computeScores(
-          pendingChallenge.game.scoringAdapter,
-          rawResults,
-          pendingChallenge.game.scoringParams ?? {}
-        )
         // ranked is sorted best → worst (highest canonical score first).
         // Reverse to find the last non-winner (worst finisher).
-        const lastNonWinner = [...ranked].reverse().find((r) => r.playerId !== finalWinnerId)
+        const lastNonWinner = [...missionRanked]
+          .reverse()
+          .find((result) => result.playerId !== finalWinnerId)
         return lastNonWinner?.playerId ?? null
       })()
 
@@ -424,6 +446,7 @@ export function useCompetitionFlow({
             winnerId: finalWinnerId,
             lastPlaceId: compLastPlaceId,
             skipSeasonUpdate: true,
+            ...missionReceipt,
           })
         )
         return
@@ -440,6 +463,7 @@ export function useCompetitionFlow({
             winnerId: finalWinnerId,
             lastPlaceId: compLastPlaceId,
             skipSeasonUpdate: true,
+            ...missionReceipt,
           })
         )
         return
@@ -482,6 +506,7 @@ export function useCompetitionFlow({
             winnerId: finalWinnerId,
             lastPlaceId: compLastPlaceId,
             skipSeasonUpdate: true,
+            ...missionReceipt,
           })
         )
       setPendingWinnerCeremony({

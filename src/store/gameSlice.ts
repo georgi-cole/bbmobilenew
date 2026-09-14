@@ -75,6 +75,7 @@ import {
   isSecretMissionSuccessful,
   getMissionTaskSetSignature,
   pickMissionImmunityDuration,
+  repairLegacyMissionTasks,
   type MissionTask,
   type LegacyMissionRewardType,
 } from '../bb/secretMission'
@@ -660,6 +661,7 @@ export function createInitialGameState(options?: {
     tiedNomineeIds: null,
     awaitingMissionImmunityOffer: false,
     secretMissionCount: 0,
+    secretMissionLastResolvedDay: null,
     secretMissionTaskSetHistory: [],
     secretMissionSecondChanceResolved: false,
     awaitingFinal3Eviction: false,
@@ -1154,6 +1156,11 @@ function getSeasonSecretMissionCount(
   if (typeof game.secretMission?.missionNumber === 'number') return game.secretMission.missionNumber
   return game.secretMission ? 1 : 0
 }
+
+/** Three complete game days must pass before a replacement mission can appear. */
+const SECOND_SECRET_MISSION_COOLDOWN_FULL_DAYS = 3
+/** A second mission must begin no later than three evictions before Final 5. */
+const MIN_DAYS_BEFORE_FINAL_FIVE_FOR_SECOND_MISSION = 3
 
 function formatNameList(names: string[]): string {
   if (names.length <= 2) return names.join(' and ')
@@ -2590,6 +2597,12 @@ type ApplyMinigameWinnerPayload = {
   winnerId: string
   participants?: string[]
   scores?: Record<string, number>
+  /** Canonical placement order supplied by the competition host (best → worst). */
+  placements?: string[]
+  /** Stable host run ID. Used to ensure mission progress is applied once. */
+  runId?: string
+  /** Host game key for audits and result history. */
+  gameKey?: string
   includePlacementBonuses?: boolean
   skipSeasonUpdate?: boolean
   /**
@@ -4109,7 +4122,11 @@ const gameSlice = createSlice({
         skipSeasonUpdate,
         lastPlaceId,
         lastPlaceType,
+        placements,
+        runId,
+        gameKey,
       } = action.payload
+      const competitionPhase = state.phase
       const alive = getAlivePlayers(state)
       const resolvedParticipants = participants ?? resolveCompetitionParticipants(state)
       const hasScores = scores !== undefined
@@ -4205,6 +4222,38 @@ const gameSlice = createSlice({
           winnerId,
           includePlacementBonuses: usePlacementBonuses,
         })
+      }
+
+      // This path is used by MinigameHost and feature-owned competitions.  Keep
+      // the same canonical terminal receipt as completeMinigame so downstream
+      // consumers never need to guess a placement from a sparse action payload.
+      if (winnerWasApplied) {
+        const resolvedPlacementOrder =
+          placements?.filter(
+            (id, index, ids) => resolvedParticipants.includes(id) && ids.indexOf(id) === index
+          ) ??
+          (hasScores
+            ? [...resolvedParticipants].sort(
+                (left, right) =>
+                  (resolvedScores[right] ?? 0) - (resolvedScores[left] ?? 0) ||
+                  left.localeCompare(right)
+              )
+            : undefined)
+        const humanId = state.players.find((player) => player.isUser)?.id
+        state.lastCompetitionResolution = {
+          runId:
+            runId ??
+            `${state.week}:${competitionPhase}:${gameKey ?? 'competition'}:${winnerId}:${resolvedParticipants.join(',')}`,
+          gameKey: gameKey ?? 'competition',
+          week: state.week,
+          participants: [...resolvedParticipants],
+          status: 'completed',
+          humanId,
+          humanScore: humanId ? resolvedScores[humanId] : undefined,
+          winnerId,
+          lastPlaceId: lastPlaceId ?? resolvedPlacementOrder?.at(-1) ?? null,
+          ...(resolvedPlacementOrder ? { placements: resolvedPlacementOrder } : {}),
+        }
       }
     },
 
@@ -4768,7 +4817,9 @@ const gameSlice = createSlice({
         } else {
           // AI holder names replacement
           const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-          const eligible = getReplacementEligiblePlayers(state, alive, 1, { actorId: posWinner.id })
+          const eligible = getReplacementEligiblePlayers(state, alive, 1, {
+            actorId: posWinner.id,
+          })
           if (eligible.length > 0) {
             const rng = mulberry32(state.seed)
             const replacement = seededPick(rng, eligible)
@@ -6957,6 +7008,12 @@ const gameSlice = createSlice({
         liaForcedUntilTwinShockResolved:
           action.payload.liaForcedUntilTwinShockResolved ??
           !(action.payload.twinShockConsumed ?? false),
+      }
+      if (hydrated.secretMission) {
+        hydrated.secretMission = {
+          ...hydrated.secretMission,
+          tasks: repairLegacyMissionTasks(hydrated.secretMission.tasks),
+        }
       }
       if (import.meta.env.DEV && import.meta.env.VITE_FORCE_CLASSIC === 'true') {
         hydrated.expansionMode = null
@@ -9219,6 +9276,7 @@ const gameSlice = createSlice({
       if (!sm || sm.status !== 'offered') return
       sm.status = 'declined'
       sm.declinedDay = action.payload
+      state.secretMissionLastResolvedDay = action.payload
     },
 
     /**
@@ -9322,7 +9380,30 @@ const gameSlice = createSlice({
       const task = sm.tasks.find((candidate) => candidate.id === action.payload.taskId)
       if (!task) return
       task.baselineApproval = action.payload.approval
+      // A public-rating task should never ask for points beyond the 100% cap.
+      // Progress may still fall later if approval falls; reaching the ceiling is
+      // simply a valid completion of the remaining achievable increase.
+      const achievableDelta = Math.max(0, 100 - action.payload.approval)
+      if (task.target > achievableDelta) {
+        task.target = achievableDelta
+        task.requiredDelta = achievableDelta
+        task.description =
+          achievableDelta === 0
+            ? 'Your public rating is already at its maximum'
+            : `Improve your public rating by ${achievableDelta} percentage point${
+                achievableDelta === 1 ? '' : 's'
+              } before Day ${task.endDay ?? state.week}`
+        task.completed = achievableDelta === 0
+        if (task.completed) task.firstSatisfiedDay = state.week
+        refreshSecretMissionCompletion(sm)
+      }
     },
+
+    /**
+     * A no-op lifecycle receipt dispatched after social deadline processing.
+     * The secret-mission middleware uses it to settle daily streaks exactly once.
+     */
+    settleSecretMissionDay(_state, _action: PayloadAction<{ day: number }>) {},
 
     recordSecretMissionEasterEgg(state, action: PayloadAction<{ eggId: string; day: number }>) {
       const sm = state.secretMission
@@ -9354,6 +9435,7 @@ const gameSlice = createSlice({
       if (sm.status === 'rewardClaimed') return
       if (sm.status === 'expired') return
       sm.status = 'expired'
+      state.secretMissionLastResolvedDay = state.week
     },
 
     /**
@@ -9377,6 +9459,8 @@ const gameSlice = createSlice({
         sm.reward = createImmunityReward(duration, action.payload.claimDay)
       }
       sm.status = 'rewardClaimed'
+      state.secretMissionLastResolvedDay =
+        typeof action.payload === 'string' ? state.week : action.payload.claimDay
     },
 
     /**
@@ -9708,6 +9792,7 @@ export const {
   updateMissionTaskProgress,
   syncMissionTask,
   setMissionTaskBaselineApproval,
+  settleSecretMissionDay,
   addUniqueDayToTask,
   recordSecretMissionEasterEgg,
   completeMission,
@@ -10605,9 +10690,31 @@ export const tryActivateSecretMission =
 
     const maxDaySpan = aliveCount - 5
     const isSecondMissionAttempt = seasonMissionCount === 1
-    if (isSecondMissionAttempt && maxDaySpan < MIN_SECRET_MISSION_DAY_SPAN) {
-      dispatch(markSecondSecretMissionChanceResolved())
-      return false
+    if (isSecondMissionAttempt) {
+      // Do not start a mission that cannot fit before Final 5. This is an
+      // explicit seasonal cutoff, independent of template lengths.
+      if (maxDaySpan < MIN_DAYS_BEFORE_FINAL_FIVE_FOR_SECOND_MISSION) {
+        dispatch(markSecondSecretMissionChanceResolved())
+        return false
+      }
+
+      // A replacement is intentionally paced: three entire days must pass
+      // after the prior mission resolves. For old saves without the new
+      // timestamp, an expired mission's deadline is the conservative fallback.
+      const lastResolvedDay =
+        game.secretMissionLastResolvedDay ??
+        (game.secretMission?.status === 'expired' ? game.secretMission.endDay : undefined)
+      if (
+        typeof lastResolvedDay !== 'number' ||
+        game.week - lastResolvedDay <= SECOND_SECRET_MISSION_COOLDOWN_FULL_DAYS
+      ) {
+        return false
+      }
+
+      if (maxDaySpan < MIN_SECRET_MISSION_DAY_SPAN) {
+        dispatch(markSecondSecretMissionChanceResolved())
+        return false
+      }
     }
 
     const forcedWeek = settings.sim.secretMissionTriggerWeekOverride

@@ -25,6 +25,7 @@
  */
 
 import type { Middleware } from '@reduxjs/toolkit'
+import { settleSecretMissionDay } from '../store/gameSlice'
 import { SocialEngine } from './SocialEngine'
 import {
   snapshotWeekRelationships,
@@ -981,8 +982,8 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     }
 
     const result = next(action)
+    const day = (api.getState() as StateWithGame).game?.week ?? 1
     if (prevPhase !== nextPhase) {
-      const day = (api.getState() as StateWithGame).game?.week ?? 1
       api.dispatch(autoResolveExpiredIncomingInteractionsForClock(day, nextPhase) as never)
       recordPhaseCeremony(api as unknown as MiddlewareAPI, prevPhase, nextPhase)
     }
@@ -1000,6 +1001,9 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       handleAutonomyPhase(api as unknown as AutonomyStore, nextPhase)
     }
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
+    if (nextPhase === 'week_end' && prevPhase !== nextPhase) {
+      api.dispatch(settleSecretMissionDay({ day: day }) as never)
+    }
     if (prevPhase !== nextPhase) {
       runDramaPhase(api as unknown as MiddlewareAPI, nextPhase)
       maybeBroadcastVoxSocialBeat(api as unknown as MiddlewareAPI, nextPhase)
@@ -1341,6 +1345,9 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
     }
 
     syncInvalidIncomingInteractions(api as unknown as MiddlewareAPI)
+    if (newPhase === 'week_end' && prevPhase !== newPhase) {
+      api.dispatch(settleSecretMissionDay({ day: afterState.game?.week ?? 1 }) as never)
+    }
 
     return result
   }

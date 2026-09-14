@@ -56,6 +56,8 @@ export interface MissionTask {
   requireDistinctActionIds?: boolean
   /** Distinct social actions already credited for this task. */
   completedActionIds?: string[]
+  /** Competition runs already credited to this task. Keeps result delivery idempotent. */
+  creditedCompetitionRunIds?: string[]
   /** Target player for nomination requirements. */
   targetPlayerId?: string
   /** Max placement that counts as success (1 = win, 2 = top 2, etc.). */
@@ -288,20 +290,6 @@ interface SocialActionTaskBlueprint {
 
 const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
   {
-    description: ({ endDay, targetLabel = 'your marked target' }) =>
-      `Form an alliance with ${targetLabel} before Day ${endDay}`,
-    target: 1,
-    requiredActionIds: ['ally', 'proposeAlliance'],
-    needsTarget: true,
-  },
-  {
-    description: ({ endDay, targetLabel = 'your marked target' }) =>
-      `Start a fight with ${targetLabel} before Day ${endDay}`,
-    target: 1,
-    requiredActionIds: ['startFight'],
-    needsTarget: true,
-  },
-  {
     description: ({ endDay }) =>
       `Complete this social set before Day ${endDay}: compliment, whisper, and group chat`,
     target: 3,
@@ -310,12 +298,55 @@ const SOCIAL_ACTION_TASK_BLUEPRINTS: readonly SocialActionTaskBlueprint[] = [
   },
   {
     description: ({ endDay }) =>
-      `Complete this social set before Day ${endDay}: rumor, vote rally, and favour request`,
+      `Complete this social set before Day ${endDay}: reassure, clear the air, and confront`,
     target: 3,
-    requiredActionIds: ['rumor', 'vote_rally', 'favor_request'],
+    requiredActionIds: ['reassure', 'apologize', 'confront'],
     requireDistinctActionIds: true,
   },
 ] as const
+
+/**
+ * Repair the one historical social set that included the AI-only `vote_rally`
+ * action. Keep all three required actions and substitute the player-facing
+ * `rally_votes_against` equivalent. The middleware can then reconcile an
+ * already-recorded human rally from the persistent social-action history.
+ */
+export function repairLegacyMissionTasks(tasks: readonly MissionTask[]): MissionTask[] {
+  return tasks.map((task) => {
+    const wasPreviouslyWaived = task.auditLog?.includes(
+      'Waived unavailable AI-only Vote Rally requirement'
+    )
+    if (
+      task.type !== 'social_action_count' ||
+      (!task.requiredActionIds?.includes('vote_rally') && !wasPreviouslyWaived)
+    ) {
+      return task
+    }
+
+    const requiredActionIds = ['rumor', 'rally_votes_against', 'favor_request']
+    const completedActionIds = (task.completedActionIds ?? []).filter((actionId) =>
+      requiredActionIds.includes(actionId)
+    )
+    const target = 3
+    const current = Math.min(target, completedActionIds.length)
+
+    return {
+      ...task,
+      description: `Complete this social set before Day ${task.endDay ?? task.targetDay}: rumor, rally votes against, and favour request`,
+      requiredActionIds,
+      completedActionIds,
+      target,
+      current,
+      completed: current >= target,
+      auditLog: [
+        ...(task.auditLog ?? []).filter(
+          (entry) => entry !== 'Waived unavailable AI-only Vote Rally requirement'
+        ),
+        'Replaced unavailable AI-only Vote Rally with Rally Votes Against',
+      ].slice(-12),
+    }
+  })
+}
 
 function buildRequirementTask(
   type: SecretMissionRequirementType,
