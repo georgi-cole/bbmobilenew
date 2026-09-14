@@ -255,7 +255,7 @@ function buildLohConsultationSummary(
 
     if (backupId) {
       const saveId = nominees.find((id) => id !== currentTargetId) ?? nominees[0]
-      return `Use it on ${playerName(state, saveId)}. Let's open the seat and backdoor ${playerName(
+      return `Use it on ${playerName(state, saveId)}. Let's open the seat and spring an ambush on ${playerName(
         state,
         backupId
       )}.`
