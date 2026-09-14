@@ -3972,6 +3972,22 @@ const gameSlice = createSlice({
         winnerId,
       })
 
+      const placements = [...session.participants].sort(
+        (left, right) => (scores[right] ?? 0) - (scores[left] ?? 0) || left.localeCompare(right)
+      )
+      state.lastCompetitionResolution = {
+        runId: `${session.key}:${session.seed}`,
+        gameKey: session.key,
+        week: state.week,
+        participants: [...session.participants],
+        status: 'completed',
+        humanId: humanPlayer?.id,
+        humanScore: humanPlayer ? (scores[humanPlayer.id] ?? 0) : undefined,
+        winnerId,
+        lastPlaceId: payload.lastPlaceId ?? placements.at(-1) ?? null,
+        placements,
+      }
+
       state.pendingMinigame = null
 
       // ── Auto-advance phase based on context ──────────────────────────────
@@ -4021,6 +4037,16 @@ const gameSlice = createSlice({
      * Useful for debug bypasses; a subsequent advance() will pick randomly.
      */
     skipMinigame(state) {
+      const session = state.pendingMinigame
+      if (session) {
+        state.lastCompetitionResolution = {
+          runId: `${session.key}:${session.seed}`,
+          gameKey: session.key,
+          week: state.week,
+          participants: [...session.participants],
+          status: 'skipped',
+        }
+      }
       state.pendingMinigame = null
       pushEvent(state, `[DEBUG] Minigame skipped — winner will be picked randomly. 🔧`, 'game')
     },
@@ -6912,6 +6938,13 @@ const gameSlice = createSlice({
       // This prevents fastForwardToEviction / debug advance from racing past an
       // open TapRace overlay and leaving it stuck on screen.
       if (state.pendingMinigame) {
+        state.lastCompetitionResolution = {
+          runId: `${state.pendingMinigame.key}:${state.pendingMinigame.seed}`,
+          gameKey: state.pendingMinigame.key,
+          week: state.week,
+          participants: [...state.pendingMinigame.participants],
+          status: 'interrupted',
+        }
         state.pendingMinigame = null // Auto-dismiss; winner falls back to random pick below.
       }
 

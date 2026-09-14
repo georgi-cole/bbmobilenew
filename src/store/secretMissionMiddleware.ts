@@ -25,6 +25,11 @@ interface RootLike {
       aiScores: Record<string, number>;
       hybridResolveOnComplete?: boolean;
     } | null;
+    lastCompetitionResolution?: {
+      runId: string;
+      status: 'completed' | 'quit' | 'skipped' | 'interrupted';
+      gameKey: string;
+    } | null;
     secretMission?: {
       status: string;
       endDay: number;
@@ -186,8 +191,24 @@ export const secretMissionMiddleware: Middleware = (store) => (next) => (action)
   const payload = typeof action === 'object' && action !== null && 'payload' in action
     ? (action as { payload?: unknown }).payload
     : undefined;
+  const resolution = game.lastCompetitionResolution;
 
   if (!game.secretMission) return result;
+
+  if (
+    (actionType === 'game/skipMinigame' || actionType === 'game/advance') &&
+    (resolution?.status === 'skipped' || resolution?.status === 'interrupted')
+  ) {
+    for (const task of tasks) {
+      if (task.type !== 'avoid_last_place') continue;
+      updateTaskProgress(store.dispatch, task, {
+        auditLog: appendAudit(
+          task,
+          `${resolution.status} ${resolution.gameKey}; no mission credit awarded`
+        ),
+      });
+    }
+  }
 
   const aliveCount = game.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury').length;
   if (
