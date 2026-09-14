@@ -6375,10 +6375,10 @@ const gameSlice = createSlice({
         weekActive: false,
         pendingSecondEviction: null,
       }
-      state.democracia = null
-      state.depressionShock = null
-      state.cupidArrow = null
-      state.voxPopuli = null
+      state.democracia = undefined
+      state.depressionShock = undefined
+      state.cupidArrow = undefined
+      state.voxPopuli = undefined
       state.coLohIds = []
       state.coLohNomineeByCoLohId = {}
       state.lohId = loh.id
@@ -6401,7 +6401,6 @@ const gameSlice = createSlice({
         awaitingCoupReplacement1: false,
         awaitingCoupReplacement2: false,
         coupReplacement1Id: null,
-        coupReplacement2Id: null,
         awaitingVipSecondUseDecision: false,
         awaitingVipSecondSaveTarget: false,
       }
