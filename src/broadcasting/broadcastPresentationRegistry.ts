@@ -100,7 +100,7 @@ export const BROADCAST_PRESENTATION_REGISTRY: Readonly<Record<string, BroadcastP
       eventMajor: true,
       playThrough: true,
       announcement: liveCard(
-        'BACKDOOR',
+        'AMBUSH',
         'The opening block was camouflage. The LOH is revealing the real target after Safety.'
       ),
     },
