@@ -1,3 +1,5 @@
+import type { BroadcastEditorialMetadata } from '../broadcasting/broadcastEditorialPolicy'
+
 /**
  * activityService — channel-based activity routing for bbmobilenew.
  *
@@ -11,9 +13,9 @@
  *   mainLog        — Main-screen TVLog strip below the TV viewport.
  *
  * Backward-compatibility rule: TvEvent entries that carry NO channels field
- * are treated as legacy events and remain visible everywhere (mainLog + tv),
- * except for the one explicit Public Mode status message that belongs only in
- * the log.
+ * and no new editorial presentation metadata are treated as legacy events and
+ * remain visible everywhere (mainLog + tv), except for the explicit retired or
+ * service-message compatibility cases below.
  */
 
 /** Destination channels an activity event can be routed to. */
@@ -28,7 +30,11 @@ type ActivityVisibilityEvent = {
   channels?: ActivityChannel[]
   type?: string
   text?: string
-  meta?: { suppressTv?: boolean; [key: string]: unknown }
+  meta?: {
+    suppressTv?: boolean
+    editorial?: BroadcastEditorialMetadata
+    [key: string]: unknown
+  }
 }
 
 const PUBLIC_MODE_STATUS_TEMPLATE_ID = 'season.public-mode-rule'
@@ -36,7 +42,7 @@ const PUBLIC_MODE_STATUS_TEXT = /^\s*\[Rules\]\s*Public mode:\s*(?:ON|OFF)\s*$/i
 
 /**
  * The season-start Public Mode ON/OFF status is configuration information,
- * not an in-world TV beat. This is intentionally the only new service-message
+ * not an in-world TV beat. This is intentionally the only legacy service-message
  * exclusion: do not infer or suppress any other rule/system/social copy.
  */
 export function isServiceConfigurationEvent(ev: ActivityVisibilityEvent): boolean {
@@ -79,6 +85,8 @@ export function isBattleBackReturnResultEvent(ev: ActivityVisibilityEvent): bool
  *  - Replaced legacy welcome defaults: false; the staged welcome supersedes them.
  *  - No channels (legacy event): visible everywhere → true.
  *  - Has channels: visible only if 'mainLog' or 'tv' is included.
+ *
+ * Editorial presentation does not suppress history/Game Log visibility.
  */
 export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
   if (isLegacySeasonWelcomeEvent(ev)) return false
@@ -89,9 +97,9 @@ export function isVisibleInMainLog(ev: ActivityVisibilityEvent): boolean {
 /**
  * Returns true when the event should appear in the TV-zone viewport.
  *
- * The only new log-only exception is the exact Public Mode status. Normal game
- * and social events retain their authored routing; no prefix/wording classifier
- * is allowed to hide them.
+ * Explicit Force-to-TV remains authoritative. After that override, the P0
+ * editorial contract may explicitly classify an event as log-only. Events
+ * without editorial metadata stay on the legacy routing path.
  */
 export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   // These two superseded startup templates are never presentation content.
@@ -102,6 +110,7 @@ export function isVisibleOnTv(ev: ActivityVisibilityEvent): boolean {
   // instruction for all current content. The legacy startup templates above
   // are the sole retired exception.
   if (ev.meta?.forceOnTv === true) return true
+  if (ev.meta?.editorial?.presentationMode === 'log_only') return false
   if (isServiceConfigurationEvent(ev)) return false
   if (isBattleBackReturnResultEvent(ev)) return false
   if (ev.meta?.suppressTv === true) return false

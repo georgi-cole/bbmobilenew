@@ -1001,6 +1001,7 @@ export function executeAction(
         lohId: actorId,
         holderId: targetId,
         advice: 'hold',
+        source: 'human_loh',
       },
     })
   }

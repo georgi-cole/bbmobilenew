@@ -198,9 +198,9 @@ function applyCupidPartnerRipple(
 }
 
 /**
- * The generic narrative used to keep describing a hypothetical Safety change
- * after the ceremony had already locked. Build the reply from the authoritative
- * block and persisted LOH plan instead.
+ * Keep LOH-target dialogue tied to the persisted canonical nomination plan.
+ * The legacy social action can still decide whether the LOH discloses anything,
+ * but it no longer gets to invent a different target from affinity alone.
  */
 function buildLohConsultationSummary(
   state: RootState,
@@ -214,6 +214,18 @@ function buildLohConsultationSummary(
     state.game.lohSocialPlan.lohId === state.game.lohId
       ? state.game.lohSocialPlan
       : null
+  if (!plan) return fallback
+
+  // Respect genuine refusal/repetition outcomes. Canonical strategy should fix
+  // contradictory names, not turn a failed intel action into free information.
+  if (
+    /shut the conversation down|already answered|kept (?:their|the) plan deliberately vague/i.test(
+      fallback
+    )
+  ) {
+    return fallback
+  }
+
   const nominees = state.game.nomineeIds.filter((id) =>
     state.game.players.some(
       (player) => player.id === id && player.status !== 'evicted' && player.status !== 'jury'
@@ -230,7 +242,7 @@ function buildLohConsultationSummary(
 
   if (finalBlockLocked && nominees.length > 0) {
     const lockedTargetId =
-      (plan?.currentTargetId && nominees.includes(plan.currentTargetId)
+      (plan.currentTargetId && nominees.includes(plan.currentTargetId)
         ? plan.currentTargetId
         : null) ?? nominees[0]
     const lockedTarget = playerName(state, lockedTargetId)
@@ -239,15 +251,15 @@ function buildLohConsultationSummary(
 
   if (safetyDecisionOpen && nominees.length > 0) {
     const currentTargetId =
-      (plan?.currentTargetId && nominees.includes(plan.currentTargetId)
+      (plan.currentTargetId && nominees.includes(plan.currentTargetId)
         ? plan.currentTargetId
         : null) ?? nominees[0]
     const backupId =
-      plan?.backupTargetId && !nominees.includes(plan.backupTargetId) ? plan.backupTargetId : null
+      plan.backupTargetId && !nominees.includes(plan.backupTargetId) ? plan.backupTargetId : null
 
     if (backupId) {
       const saveId = nominees.find((id) => id !== currentTargetId) ?? nominees[0]
-      return `Use it on ${playerName(state, saveId)}. Let's open the seat and backdoor ${playerName(
+      return `Use it on ${playerName(state, saveId)}. Let's open the seat and spring an ambush on ${playerName(
         state,
         backupId
       )}.`
@@ -258,7 +270,18 @@ function buildLohConsultationSummary(
     )} as the target.`
   }
 
-  return fallback
+  const disclosedTargetId =
+    plan.disclosedTargetByPlayerId?.[input.actorId] ?? plan.backupTargetId ?? plan.currentTargetId
+  if (!disclosedTargetId) return fallback
+
+  const disclosedName = playerName(state, disclosedTargetId)
+  if (nominees.includes(disclosedTargetId)) {
+    return `${disclosedName} is my current target. That is who I want the pressure on.`
+  }
+  if (plan.backupTargetId === disclosedTargetId && disclosedTargetId !== plan.currentTargetId) {
+    return `${disclosedName} is my backup plan if Safety opens the block.`
+  }
+  return `Right now, ${disclosedName} is the person I am watching most closely.`
 }
 
 export function executeHumanRealityAction(input: HumanRealityActionInput) {
@@ -336,7 +359,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
             result(false, '', energy)
           )
       }
-      return executeAction(
+      const classicResult = executeAction(
         input.actorId,
         mode === 'none' ? input.actorId : input.targetId,
         input.actionId,
@@ -346,6 +369,10 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           costOverride: input.costOverride,
         }
       )
+      return {
+        ...classicResult,
+        summary: buildLohConsultationSummary(getState(), input, classicResult.summary),
+      }
     }
 
     const contract = getRealityActionContract(input.actionId)
@@ -509,9 +536,10 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
             } appreciated the warning and kept your source private.`
         : compatibility.summary
+    const latestState = getState()
     return {
       ...compatibility,
-      summary: `${buildLohConsultationSummary(state, input, baseSummary)}${
+      summary: `${buildLohConsultationSummary(latestState, input, baseSummary)}${
         cupidRipplePartnerNames
           ? ` The exchange is likely to travel through the Cupid bond to ${cupidRipplePartnerNames}.`
           : ''

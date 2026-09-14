@@ -7,6 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.mjs",
     "bootstrap": "npm ci && cd server && npm ci",
     "bootstrap:root": "npm ci",
     "bootstrap:server": "cd server && npm ci",
@@ -53,6 +54,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:guard": "node scripts/check-disabled-tests.mjs",
+    "test:pr-core": "vitest run src/modes/seasonRulesets.test.ts src/screens/ProfilePicker/ProfilePicker.test.tsx src/screens/HomeHub/__tests__/HomeHub.test.tsx",
+    "check:pr": "npm run format:check && npm run test:guard && npm run lint:ci && npm run typecheck && npm run test:pr-core",
     "test:coverage": "vitest run --coverage --maxWorkers=2 --testTimeout=60000 --coverage.reporter=text --coverage.reporter=json-summary",
     "coverage:check": "node scripts/check-risk-coverage.mjs",
     "check:production-debug-globals": "node scripts/check-production-debug-globals.mjs",

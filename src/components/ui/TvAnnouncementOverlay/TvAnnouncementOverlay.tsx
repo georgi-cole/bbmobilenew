@@ -10,6 +10,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslate } from '../../../i18n'
 import type { CupidArrowPair, Player } from '../../../types'
+import { isBroadcastShockAnnouncementKey } from '../../../broadcasting/broadcastPresentationRegistry'
 import './TvAnnouncementOverlay.css'
 import './TvAnnouncementShockPrelude.css'
 
@@ -42,26 +43,6 @@ export interface TvAnnouncementOverlayProps {
 }
 
 const SHOCK_PRELUDE_DURATION_MS = 2320
-const FULLSCREEN_SHOCK_KEYS = new Set([
-  'battle_back',
-  'battle_back_shock',
-  'battle_back_rules',
-  'battle_back_challenge',
-  'double_eviction',
-  'vox_double_eviction',
-  'vip_veto',
-  'diamond_pov',
-  'coup_detat',
-  'spotlight_veto',
-  'democracia',
-  'cupid_arrow',
-  'cupid_arrow_broken',
-  'vox_populi',
-  'depression_shock_start',
-  'depression_shock_day_2',
-  'twist',
-  'custom_critical',
-])
 
 function getAnnouncementThemeClass(key: string): string {
   const isBattleBackAnnouncement = key === 'battle_back' || key.startsWith('battle_back_')
@@ -148,7 +129,8 @@ export default function TvAnnouncementOverlay({
 }: TvAnnouncementOverlayProps) {
   const t = useTranslate()
   const { title, subtitle, isLive, autoDismissMs } = announcement
-  const shouldPlayShockPrelude = playShockPrelude ?? FULLSCREEN_SHOCK_KEYS.has(announcement.key)
+  const shouldPlayShockPrelude =
+    playShockPrelude ?? isBroadcastShockAnnouncementKey(announcement.key)
   const [shockPreludeKey, setShockPreludeKey] = useState<string | null>(() =>
     shouldPlayShockPrelude ? announcement.key : null
   )
