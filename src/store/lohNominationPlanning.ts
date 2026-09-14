@@ -578,7 +578,7 @@ function buildBackdoorRevealEvent(state: GameState, plan: LohNominationPlan): Tv
   if (state.tvFeed.some((event) => event.id === id)) return null
   return {
     id,
-    text: `${loh?.name ?? 'The LOH'} kept ${target.name} off the opening block. Safety is decided, and the real target is finally revealed.`,
+    text: `${loh?.name ?? 'The LOH'} kept ${target.name} off the opening block. Safety is decided, and the ambush is sprung.`,
     type: 'game',
     timestamp: Date.now(),
     meta: {
@@ -587,8 +587,8 @@ function buildBackdoorRevealEvent(state: GameState, plan: LohNominationPlan): Tv
       phase: state.phase,
       broadcastPriority: 'major',
       forceOnTv: true,
-      announcementTitle: 'BACKDOOR',
-      announcementSubtitle: `${target.name} was the target all along. The opening nominations were camouflage.`,
+      announcementTitle: 'AMBUSH',
+      announcementSubtitle: `${target.name} was the real target all along. The opening nominations were camouflage.`,
       backdoorTargetId: target.id,
       lohId: plan.lohId,
     },
