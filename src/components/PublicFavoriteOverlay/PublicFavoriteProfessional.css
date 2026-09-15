@@ -326,3 +326,159 @@
     animation: none !important;
   }
 }
+
+/* Forecast uses the whole broadcast as a short, deliberate pre-show. */
+.pf-overlay--forecast .pf-overlay__announcement-slot {
+  flex-basis: auto;
+  height: auto;
+  min-height: 0;
+  padding-right: 0;
+}
+
+.pf-overlay--forecast .pf-overlay__header {
+  min-height: 0;
+}
+
+.pf-overlay--forecast .pf-overlay__broadcast {
+  display: flex;
+  grid-template-columns: none;
+  overflow: hidden;
+}
+
+.pf-overlay--forecast .pf-overlay__board-shell--forecast {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+.pf-overlay--forecast .pf-overlay__board-shell--forecast .pf-overlay__your-call {
+  display: flex;
+  width: min(100%, 42rem);
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 auto;
+  flex-direction: column;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  gap: 0;
+}
+
+.pf-overlay--forecast .pf-overlay__your-call-copy,
+.pf-overlay--forecast .pf-overlay__forecast-feature,
+.pf-overlay--forecast .pf-overlay__forecast-cast,
+.pf-overlay--forecast .pf-overlay__your-call-cta,
+.pf-overlay--forecast .pf-overlay__forecast-reward {
+  grid-column: auto;
+}
+
+.pf-overlay--forecast .pf-overlay__your-call-cta {
+  flex: 0 0 auto;
+}
+
+.pf-overlay--forecast .pf-overlay__forecast-feature {
+  min-height: 7.1rem;
+  margin: 0.55rem auto 0.35rem;
+  padding: 0.45rem 0.75rem;
+  grid-template-columns: 5.8rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.pf-overlay--forecast .pf-overlay__forecast-feature-portrait {
+  width: 5.4rem;
+  height: 5.4rem;
+}
+
+.pf-overlay--forecast .pf-overlay__board-shell--forecast .pf-overlay__your-call-title {
+  font-size: clamp(1.25rem, 5vw, 2.2rem);
+  line-height: 1;
+}
+
+.pf-overlay--forecast .pf-overlay__board-shell--forecast .pf-overlay__your-call-description {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+}
+
+.pf-overlay--forecast .pf-overlay__board-shell--forecast .pf-overlay__your-call-cta {
+  min-height: 2.7rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.7rem;
+}
+
+.pf-overlay__forecast-burst {
+  position: fixed;
+  z-index: 12;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 12rem;
+  height: 12rem;
+  place-items: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.pf-overlay__forecast-burst-avatar,
+.pf-overlay__forecast-burst-avatar .pf-overlay__portrait {
+  width: 5.9rem;
+  height: 5.9rem;
+}
+
+.pf-overlay__forecast-burst-avatar {
+  position: relative;
+  z-index: 2;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px rgba(249, 207, 119, 0.16),
+    0 0 44px rgba(249, 207, 119, 0.46);
+}
+
+.pf-overlay__forecast-burst-avatar .pf-overlay__portrait {
+  overflow: hidden;
+  border: 2px solid #f4cf7f;
+  border-radius: 50%;
+}
+
+.pf-overlay__forecast-burst-shards {
+  position: absolute;
+  inset: 0;
+}
+
+.pf-overlay__forecast-burst-shard {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.15rem;
+  height: 0.7rem;
+  clip-path: polygon(50% 0, 100% 42%, 67% 100%, 8% 72%, 0 24%);
+  background:
+    linear-gradient(
+      128deg,
+      rgba(255, 255, 255, 0.95),
+      rgba(197, 231, 255, 0.62) 40%,
+      rgba(183, 125, 255, 0.2) 72%,
+      transparent
+    ),
+    rgba(174, 216, 255, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.48),
+    0 0 16px rgba(176, 216, 255, 0.8);
+}
+
+.pf-overlay__forecast-burst p {
+  position: absolute;
+  bottom: -0.25rem;
+  width: max-content;
+  margin: 0;
+  color: #fff4d6;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px #000;
+}
+
+@media (min-width: 720px) {
+  .pf-overlay--forecast .pf-overlay__stage {
+    width: min(100%, 54rem);
+  }
+}

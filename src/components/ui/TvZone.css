@@ -373,6 +373,49 @@
   background: rgba(255, 255, 255, 0.065);
 }
 
+.tv-zone__final3-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  min-height: 2rem;
+  padding: 0.22rem 0.38rem;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #d9a441) 48%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #101522 88%, var(--accent-color, #d9a441));
+  color: var(--text-muted, #aeb8ca);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.tv-zone__final3-progress-label {
+  padding: 0 0.22rem;
+  color: var(--accent-color, #f0c35c);
+  font-weight: 800;
+}
+
+.tv-zone__final3-step {
+  display: inline-grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+  border-radius: 50%;
+  font-weight: 800;
+}
+
+.tv-zone__final3-step.is-current {
+  border-color: var(--accent-color, #f0c35c);
+  color: var(--accent-color, #f0c35c);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color, #f0c35c) 18%, transparent);
+}
+
+.tv-zone__final3-step.is-complete {
+  border-color: #68d6a0;
+  background: color-mix(in srgb, #68d6a0 18%, transparent);
+  color: #8ce5b8;
+}
+
 .tv-zone__viewport--day-start-misty,
 .tv-zone__viewport--day-end-misty {
   --daily-tv-background:

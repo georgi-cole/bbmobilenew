@@ -3,7 +3,7 @@
  *
  * Shows each competitor's point tally growing as scores increase.
  * During simulation a live "current question" panel cycles through
- * BB-themed questions. When the authoritative winner is revealed,
+ * Big Eye–themed questions. When the authoritative winner is revealed,
  * their score surges to 100.
  */
 
@@ -19,10 +19,10 @@ interface TriviaVariantProps {
 
 // ── Big Eye–themed trivia questions shown during simulation ───────────────
 
-const BB_QUESTIONS = [
+const BIG_EYE_QUESTIONS = [
   {
     q: 'What competition decides weekly nominations?',
-    answers: ['Safety', 'LOH', 'Back 2 the Game', 'Have-Not'],
+    answers: ['Safety', 'Power Battle', 'Back 2 the Game', 'Have-Not'],
     ai: 1,
   },
   {
@@ -63,12 +63,12 @@ export default function TriviaVariant({
 
   // Cycle questions based on simPct; each question spans ~20% of sim time
   const qIdx = Math.min(
-    BB_QUESTIONS.length - 1,
-    Math.floor(simPct / (100 / BB_QUESTIONS.length)),
+    BIG_EYE_QUESTIONS.length - 1,
+    Math.floor(simPct / (100 / BIG_EYE_QUESTIONS.length)),
   );
-  const currentQ = BB_QUESTIONS[qIdx];
+  const currentQ = BIG_EYE_QUESTIONS[qIdx];
   // Progress within this question slot (0–100)
-  const slotSize = 100 / BB_QUESTIONS.length;
+  const slotSize = 100 / BIG_EYE_QUESTIONS.length;
   const slotPct = ((simPct % slotSize) / slotSize) * 100;
 
   return (
@@ -78,7 +78,7 @@ export default function TriviaVariant({
         <div className="sv-trivia__question-panel">
           <div className="sv-trivia__qmeta">
             <span className="sv-trivia__qnum">
-              Question {qIdx + 1}/{BB_QUESTIONS.length}
+              Question {qIdx + 1}/{BIG_EYE_QUESTIONS.length}
             </span>
             {/* Per-question countdown bar */}
             <div className="sv-trivia__qtimer-bg">

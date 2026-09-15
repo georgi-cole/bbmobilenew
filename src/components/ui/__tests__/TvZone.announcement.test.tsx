@@ -978,6 +978,56 @@ describe('TvZone — announcement overlay', () => {
     expect(screen.queryByRole('dialog', { name: /Announcement:/i })).toBeNull()
   })
 
+  it('does not replay a prior season finale announcement on a fresh season start', () => {
+    const store = makeStore()
+    renderTvZone(store)
+
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'old-final-three-result',
+            text: 'The Final Three result has been decided.',
+            major: 'vox_final3_result',
+            meta: { phase: 'final3_comp3', week: 1 },
+          })
+        )
+      )
+    })
+    act(() => {
+      store.dispatch(
+        addTvEvent(
+          makeEvent({
+            id: 'fresh-season-welcome',
+            text: `Welcome to The Big Eye. Season ${store.getState().game.season} begins now.`,
+            meta: {
+              phase: 'season_start',
+              week: 1,
+              broadcastTemplateId: 'season.onboarding-welcome',
+              broadcastLevel: 'minor',
+              forceOnTv: true,
+              seasonOnboardingWelcome: true,
+            },
+          })
+        )
+      )
+    })
+
+    expect(screen.queryByRole('dialog', { name: /Announcement: Final Three Result/i })).toBeNull()
+    const welcome = store
+      .getState()
+      .game.tvFeed.find((event) => event.meta?.seasonOnboardingWelcome === true)
+    expect(welcome?.major).toBeUndefined()
+    expect(welcome?.meta?.phase).toBe('season_start')
+    expect(store.getState().game.broadcastQueue).toContain(welcome?.id)
+
+    act(() => {
+      window.dispatchEvent(new Event('ui:playPressed', { cancelable: true }))
+    })
+
+    expect(store.getState().game.broadcastQueue).not.toContain(welcome?.id)
+  })
+
   it('opens the modal when the info button is clicked', async () => {
     const store = makeStore()
     renderTvZone(store)

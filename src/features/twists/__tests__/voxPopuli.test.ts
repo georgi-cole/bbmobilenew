@@ -12,6 +12,7 @@ import gameReducer, {
   finalizePendingEviction,
   prepareVoxFinalThreeTest,
   resolveVoxSeasonWinner,
+  selectVoxFinalThreeAppeal,
   startVoxFinalVote,
   submitPovDecision,
 } from '../../../store/gameSlice'
@@ -285,12 +286,8 @@ describe('Vox Populi rules', () => {
     expect(state.players.find((player) => player.id === finalists[0].id)?.status).toBe('active')
     expect(state.voxPopuli?.autoNomineeId).toBe(finalists[3].id)
     expect(state.lastHohCompFinisherId).toBe(finalists[3].id)
-    expect(
-      state.tvFeed.some((event) => event.text.includes('there is no immunity'))
-    ).toBe(true)
-    expect(
-      state.tvFeed.some((event) => event.text.includes('is now on the block'))
-    ).toBe(true)
+    expect(state.tvFeed.some((event) => event.text.includes('there is no immunity'))).toBe(true)
+    expect(state.tvFeed.some((event) => event.text.includes('is now on the block'))).toBe(true)
     const resultBroadcast = state.tvFeed.find((event) =>
       event.text.includes('wins the Final 4 competition')
     )
@@ -366,9 +363,9 @@ describe('Vox Populi rules', () => {
     expect(resultBroadcast?.meta?.broadcastLevel).toBe('minor')
     expect(resultBroadcast?.meta?.broadcastPriority).toBeUndefined()
     expect(resultBroadcast?.meta?.broadcastCampaign).toBe('vox_populi')
-    expect(state.tvFeed.find((event) => event.id === ballotPrompt?.id)?.meta?.broadcastConsumed).toBe(
-      true
-    )
+    expect(
+      state.tvFeed.find((event) => event.id === ballotPrompt?.id)?.meta?.broadcastConsumed
+    ).toBe(true)
     expect(state.broadcastQueue).not.toContain(ballotPrompt?.id)
     expect(state.broadcastQueue).toContain(resultBroadcast?.id)
   })
@@ -431,6 +428,9 @@ describe('Vox Populi rules', () => {
     expect(state.pendingEviction?.evicteeId).toBe(nominees[0].id)
     expect(state.pendingExitContext?.leaderIds).toEqual([])
     expect(state.pendingExitContext?.votesByVoterId).toEqual({})
+    nominees.forEach((nominee) => {
+      expect(state.voxPopuli?.audienceVoteDaysByPlayerId?.[nominee.id]).toEqual([state.week])
+    })
   })
 
   it('never schedules two Double Elimination exits from only two nominees', () => {
@@ -613,7 +613,9 @@ describe('Vox Populi rules', () => {
 
     state = gameReducer(state, prepareVoxFinalThreeTest())
 
-    const alive = state.players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    const alive = state.players.filter(
+      (player) => player.status !== 'evicted' && player.status !== 'jury'
+    )
     expect(alive).toHaveLength(3)
     expect(state.phase).toBe('final3')
     expect(state.lohId).toBeNull()
@@ -622,5 +624,29 @@ describe('Vox Populi rules', () => {
     expect(state.voteResults).toBeNull()
     expect(state.tvFeed).toHaveLength(1)
     expect(state.tvFeed[0].meta?.major).toBe('vox_final3')
+  })
+
+  it('allows a nominated human one final audience appeal and locks it afterward', () => {
+    let state = createInitialGameState({ seed: 710 })
+    state.voxPopuli = {
+      ...createInitialVoxPopuliState(state.season),
+      status: 'active',
+      activatedSeason: state.season,
+      awaitingPublicVote: true,
+      publicVoteContext: 'final3',
+    }
+    const human = state.players.find((player) => player.isUser)
+    if (!human) throw new Error('Expected a human player')
+    const opponent = state.players.find((player) => !player.isUser)
+    if (!opponent) throw new Error('Expected an opponent')
+    state.phase = 'final3_decision'
+    state.nomineeIds = [human.id, opponent.id]
+
+    state = gameReducer(state, selectVoxFinalThreeAppeal('underdog'))
+    expect(state.voxPopuli?.finalThreeAppeal).toBe('underdog')
+    expect(state.voxPopuli?.finalThreeAppealUsed).toBe(true)
+
+    state = gameReducer(state, selectVoxFinalThreeAppeal('resume'))
+    expect(state.voxPopuli?.finalThreeAppeal).toBe('underdog')
   })
 })

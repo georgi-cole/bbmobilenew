@@ -115,16 +115,19 @@ export const BROADCAST_PRESENTATION_REGISTRY: Readonly<Record<string, BroadcastP
       eventMajor: true,
       announcement: liveCard('Final 4 — Safety Ceremony', 'Only four players remain.'),
     },
-    final3_announcement: {
+    final3_part1_result: {
       eventMajor: true,
-      announcement: liveCard(
-        'The Finale',
-        'Three players remain — the three-part Final LOH begins.'
-      ),
+      playThrough: true,
+      announcement: liveCard('Part 1 · Advancement', ''),
+    },
+    final3_part2_result: {
+      eventMajor: true,
+      playThrough: true,
+      announcement: liveCard('Part 2 · Final qualifier', ''),
     },
     final_hoh: {
       eventMajor: true,
-      announcement: liveCard('Final LOH Decision', 'The most powerful decision of the game.'),
+      announcement: liveCard('Final Power Decision', 'The most powerful decision of the game.'),
     },
     jury: {
       eventMajor: true,
@@ -249,6 +252,7 @@ export const BROADCAST_PRESENTATION_REGISTRY: Readonly<Record<string, BroadcastP
       ),
     },
     vox_final3_result: {
+      eventMajor: true,
       playThrough: true,
       announcement: liveCard(
         'Final Three Result',

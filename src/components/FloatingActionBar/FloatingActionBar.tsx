@@ -59,6 +59,11 @@ type FloatingActionBarProps = {
   onPublicMeterBlocked?: () => void
   /** Called when the player activates a blocked social module. */
   onSocialModuleBlocked?: (availability: SocialModuleAvailability) => void
+  /** Keep the shared Play control above a finale scene and route only that control. */
+  finaleOverlayActive?: boolean
+  finalePlayAvailable?: boolean
+  /** Show the shared dock above spectator broadcasts that wait for Play input. */
+  finaleDockOnTop?: boolean
 }
 
 /**
@@ -75,6 +80,9 @@ type FloatingActionBarProps = {
 export default function FloatingActionBar({
   onPublicMeterBlocked,
   onSocialModuleBlocked,
+  finaleOverlayActive = false,
+  finalePlayAvailable = false,
+  finaleDockOnTop = false,
 }: FloatingActionBarProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -232,19 +240,22 @@ export default function FloatingActionBar({
   const confessionalPromptActivated =
     activeConfessionalDecisionKey !== null &&
     triggeredConfessionalDecisionKey === activeConfessionalDecisionKey
-  const primaryDisabled =
-    survivorTerminalActive ||
-    survivorReplacementTransitionActive ||
-    (survivorReplacementPending
+  const primaryDisabled = finaleOverlayActive
+    ? !finalePlayAvailable
+    : survivorTerminalActive ||
+      survivorReplacementTransitionActive ||
+      (survivorReplacementPending
+        ? false
+        : hasPendingConfessionalDecision
+          ? confessionalPromptActivated
+          : isWaiting)
+  const primaryPulse = finaleOverlayActive
+    ? finalePlayAvailable
+    : survivorTerminalActive
       ? false
       : hasPendingConfessionalDecision
-        ? confessionalPromptActivated
-        : isWaiting)
-  const primaryPulse = survivorTerminalActive
-    ? false
-    : hasPendingConfessionalDecision
-      ? !confessionalPromptActivated
-      : survivorReplacementPending || (canAdvance && !isWaiting)
+        ? !confessionalPromptActivated
+        : survivorReplacementPending || (canAdvance && !isWaiting)
   const confessionalPersistentFlash = hasPendingConfessionalDecision && confessionalPromptActivated
   const confessionalSpotlightEligible =
     hasPendingConfessionalDecision && confessionalPromptActivated && !hasSeenConfessionalSpotlight
@@ -336,6 +347,10 @@ export default function FloatingActionBar({
       dispatch(revealSurvivorReplacement())
       return
     }
+    if (finaleOverlayActive) {
+      dispatchPlayPressedEvent()
+      return
+    }
     if (hasPendingConfessionalDecision) {
       setTriggeredConfessionalDecisionKey(activeConfessionalDecisionKey)
       setConfessionalFlashTick((tick) => tick + 1)
@@ -376,6 +391,7 @@ export default function FloatingActionBar({
     battleBackAnnouncementActive,
     dispatch,
     dispatchPlayPressedEvent,
+    finaleOverlayActive,
     hasPendingConfessionalDecision,
     hasSeenConfessionalSpotlight,
     survivorReplacementPending,
@@ -594,8 +610,10 @@ export default function FloatingActionBar({
         onToolClick={handleToolClick}
         onHomeClick={handleReturnHome}
         onMoreClick={handleMoreClick}
-        disabled={survivorTerminalActive}
+        disabled={survivorTerminalActive || finaleOverlayActive}
         primaryDisabled={primaryDisabled}
+        elevatedDuringOverlay={finaleDockOnTop}
+        primaryLabel={finaleOverlayActive ? 'Play finale scene' : 'Advance to next phase'}
         socialDisabled={socialModulesUnavailable}
         incomingRequestsDisabled={incomingSocialModuleUnavailable}
         publicMeterDisabled={game.publicModeEnabled !== true}

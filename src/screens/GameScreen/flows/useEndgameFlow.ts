@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { advance, finalizePendingEviction } from '../../../store/gameSlice'
+import {
+  advance,
+  completeFinalThreeBlockReveal,
+  completeFinalThreeOpening,
+  completeSpectatorFinalPowerReveal,
+  finalizePendingEviction,
+} from '../../../store/gameSlice'
 import type { AppDispatch, RootState } from '../../../store/store'
 import type { ChatLine } from '../../../components/ChatOverlay/ChatOverlay'
 import type { Player } from '../../../types'
@@ -32,6 +38,107 @@ export function useEndgameFlow({
   spectatorMode,
   dispatch,
 }: UseEndgameFlowOptions) {
+  const finalThreePart1WinnerId = game.finalThree?.part1?.winnerId ?? game.f3Part1WinnerId
+  const finalThreePart2WinnerId = game.finalThree?.part2?.winnerId ?? game.f3Part2WinnerId
+
+  // The opening and block setup are presentation gates only. Their completion
+  // is persisted before advance() so a reload resumes the next real game beat.
+  const finalPowerBattleIntroActive =
+    game.phase === 'final3' && game.finalThree?.openingSeen !== true
+
+  const [spectatorF3Part1Active, setSpectatorF3Part1Active] = useState(false)
+  const [spectatorF3Part1CompetitorIds, setSpectatorF3Part1CompetitorIds] = useState<string[]>([])
+
+  const handleFinalPowerBattleIntroDone = useCallback(() => {
+    dispatch(completeFinalThreeOpening())
+    const canSpectatePart1 =
+      Boolean(humanPlayer && (humanPlayer.status === 'jury' || humanPlayer.status === 'evicted')) &&
+      spectatorReactEnabled &&
+      spectatorMode &&
+      alivePlayers.length > 0
+    if (canSpectatePart1) {
+      setSpectatorF3Part1CompetitorIds(alivePlayers.map((player) => player.id))
+      setSpectatorF3Part1Active(true)
+      return
+    }
+    dispatch(advance())
+    // Classic uses final3_comp1 as an internal result-routing state. Advance
+    // through it immediately so Play opens the actual Part 1 competition.
+    if (game.voxPopuli?.status !== 'active') dispatch(advance())
+  }, [
+    alivePlayers,
+    dispatch,
+    game.voxPopuli?.status,
+    humanPlayer,
+    spectatorMode,
+    spectatorReactEnabled,
+  ])
+
+  const handleSpectatorF3Part1Done = useCallback(() => {
+    setSpectatorF3Part1Active(false)
+    dispatch(advance())
+    // Classic reaches a deterministic Part 1 phase after the opening. Resolve
+    // that result now so the next Play begins Part 2 instead of silently
+    // spending a press on a phase with no visible presentation. Vox resolves
+    // Part 1 directly from its opening phase, so it needs only one advance.
+    if (game.voxPopuli?.status !== 'active') dispatch(advance())
+  }, [dispatch, game.voxPopuli?.status])
+
+  // Resume the Part 1 spectator broadcast after a reload that occurs once the
+  // opening has been acknowledged but before its result advances the phase.
+  useEffect(() => {
+    const tribunalSpectator = humanPlayer?.status === 'jury' || humanPlayer?.status === 'evicted'
+    if (
+      game.phase !== 'final3' ||
+      game.finalThree?.openingSeen !== true ||
+      !tribunalSpectator ||
+      !spectatorReactEnabled ||
+      !spectatorMode ||
+      spectatorF3Part1Active ||
+      alivePlayers.length === 0
+    ) {
+      return
+    }
+    setSpectatorF3Part1CompetitorIds(alivePlayers.map((player) => player.id))
+    setSpectatorF3Part1Active(true)
+  }, [
+    alivePlayers,
+    game.finalThree?.openingSeen,
+    game.phase,
+    humanPlayer?.status,
+    spectatorF3Part1Active,
+    spectatorMode,
+    spectatorReactEnabled,
+  ])
+
+  const finalThreeBlockPlayer = game.players.find(
+    (player) =>
+      game.phase === 'final3_comp3' &&
+      game.nomineeIds.includes(player.id) &&
+      player.status !== 'evicted' &&
+      player.status !== 'jury'
+  )
+  const finalThreeBlockCompetitors = [finalThreePart1WinnerId, finalThreePart2WinnerId]
+    .map((id) => game.players.find((player) => player.id === id))
+    .filter((player): player is Player => Boolean(player))
+  const finalThreeBlockRevealActive =
+    game.voxPopuli?.status !== 'active' &&
+    game.phase === 'final3_comp3' &&
+    game.finalThree?.blockRevealSeen !== true &&
+    Boolean(finalThreeBlockPlayer) &&
+    finalThreeBlockCompetitors.length === 2
+  const humanIsPart3Spectator = Boolean(
+    humanPlayer &&
+    spectatorReactEnabled &&
+    spectatorMode &&
+    humanPlayer.id !== finalThreePart1WinnerId &&
+    humanPlayer.id !== finalThreePart2WinnerId
+  )
+  const handleFinalThreeBlockRevealDone = useCallback(() => {
+    dispatch(completeFinalThreeBlockReveal())
+    if (!humanIsPart3Spectator) dispatch(advance())
+  }, [dispatch, humanIsPart3Spectator])
+
   // ── Final 3 Part 3 Spectator Mode ─────────────────────────────────────────
   // When the human is NOT the Part-1 or Part-2 finalist, they watch the final
   // battle as a spectator. SpectatorView mounts and plays through the cinematic
@@ -44,10 +151,9 @@ export function useEndgameFlow({
   const isF3Part3SpectatorPhase =
     game.phase === 'final3_comp3' &&
     !!humanPlayer &&
-    (game.voxPopuli?.status !== 'active' ||
-      game.voxPopuli.finalThreePacingSeen?.includes('part3_spectator_ready') === true) &&
-    humanPlayer.id !== game.f3Part1WinnerId &&
-    humanPlayer.id !== game.f3Part2WinnerId
+    (game.voxPopuli?.status === 'active' || game.finalThree?.blockRevealSeen === true) &&
+    humanPlayer.id !== finalThreePart1WinnerId &&
+    humanPlayer.id !== finalThreePart2WinnerId
 
   // Enter spectator mode on phase arrival. The ref is checked FIRST to prevent
   // a race where a rapid re-render could activate the overlay a second time.
@@ -60,7 +166,9 @@ export function useEndgameFlow({
       spectatorMode
     ) {
       spectatorF3AdvancedRef.current = true
-      const finalists = [game.f3Part1WinnerId, game.f3Part2WinnerId].filter(Boolean) as string[]
+      const finalists = [finalThreePart1WinnerId, finalThreePart2WinnerId].filter(
+        Boolean
+      ) as string[]
       setSpectatorF3CompetitorIds(finalists)
       setSpectatorF3Active(true)
       // DO NOT call advance() here; SpectatorView will call onDone which dispatches advance()
@@ -75,8 +183,9 @@ export function useEndgameFlow({
   const handleSpectatorF3Done = useCallback(() => {
     setSpectatorF3Active(false)
     spectatorF3AdvancedRef.current = false
+    if (game.voxPopuli?.status !== 'active') dispatch(completeSpectatorFinalPowerReveal())
     dispatch(advance())
-  }, [dispatch])
+  }, [dispatch, game.voxPopuli?.status])
 
   // ── Final 3 Part 2 Spectator Mode ─────────────────────────────────────────
   // Part 2 is played by the two Part-1 losers. SpectatorView must take over
@@ -91,16 +200,12 @@ export function useEndgameFlow({
   const final3Part2HasActiveHumanCompetitor = game.players.some(
     (player) =>
       player.isUser &&
-      player.id !== game.f3Part1WinnerId &&
+      player.id !== finalThreePart1WinnerId &&
       player.status !== 'evicted' &&
       player.status !== 'jury'
   )
   const isF3Part2SpectatorPhase =
-    game.phase === 'final3_comp2' &&
-    !!humanPlayer &&
-    (game.voxPopuli?.status !== 'active' ||
-      game.voxPopuli.finalThreePacingSeen?.includes('part2_spectator_ready') === true) &&
-    !final3Part2HasActiveHumanCompetitor
+    game.phase === 'final3_comp2' && !!humanPlayer && !final3Part2HasActiveHumanCompetitor
 
   useEffect(() => {
     if (
@@ -111,12 +216,12 @@ export function useEndgameFlow({
     ) {
       spectatorF3Part2AdvancedRef.current = true
       const alive = game.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-      const losers = alive.filter((p) => p.id !== game.f3Part1WinnerId).map((p) => p.id)
+      const losers = alive.filter((p) => p.id !== finalThreePart1WinnerId).map((p) => p.id)
       setSpectatorF3Part2CompetitorIds(losers)
       setSpectatorF3Part2Active(true)
     }
     // `spectatorF3Part2AdvancedRef` is a ref used for deduplication — not reactive.
-    // `game.players` and `game.f3Part1WinnerId` are guaranteed stable at the moment
+    // `game.players` and `finalThreePart1WinnerId` are guaranteed stable at the moment
     // `isF3Part2SpectatorPhase` becomes true (they're the values that caused it to
     // flip). The dedup ref ensures the body only runs once per phase entry, so
     // there is no staleness risk. `spectatorReactEnabled` and
@@ -374,6 +479,15 @@ export function useEndgameFlow({
   }, [])
 
   return {
+    finalPowerBattleIntroActive,
+    handleFinalPowerBattleIntroDone,
+    spectatorF3Part1Active,
+    spectatorF3Part1CompetitorIds,
+    handleSpectatorF3Part1Done,
+    finalThreeBlockRevealActive,
+    finalThreeBlockPlayer,
+    finalThreeBlockCompetitors,
+    handleFinalThreeBlockRevealDone,
     spectatorF3Active,
     spectatorF3CompetitorIds,
     handleSpectatorF3Done,

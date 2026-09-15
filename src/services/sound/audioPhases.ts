@@ -121,7 +121,7 @@
  *    game/submitHumanVote          → ui:navigate
  *    game/activateBattleBack       → tv:battleback
  *    finale/castVote               → ui:jury_vote
- *    game/startWinnerCinematic     → tv:winner_reveal
+ *    game/startWinnerCinematic     → (no cue; the finale overlay owns its stinger)
  *    loh_comp / pos_comp (start)   → minigame:start
  */
 

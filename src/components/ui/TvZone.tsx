@@ -127,6 +127,12 @@ function extractMajorKey(ev: TvEvent): string | null {
   return isRecognizedBroadcastMajorKey(key) ? key : null
 }
 
+function isFinalThreeResultAnnouncement(event: TvEvent): boolean {
+  return ['final3_part1_result', 'final3_part2_result', 'vox_final3_result'].includes(
+    extractMajorKey(event) ?? ''
+  )
+}
+
 function isSeasonStartExpansionActivation(event: TvEvent | null | undefined): boolean {
   if (!event || event.meta?.phase !== 'season_start' || event.meta?.week !== 1) return false
   const key = extractMajorKey(event)
@@ -215,7 +221,9 @@ function getPhaseAnnouncementKey(
     return doubleEvictionActive ? 'double_eviction' : 'nomination_ceremony'
   if (phase === 'live_vote') return voxPopuliActive ? 'vox_public_vote' : 'live_eviction'
   if (phase === 'final3')
-    return aliveCount === 3 ? (voxPopuliActive ? 'vox_final3' : 'final3_announcement') : null
+    // Classic has a dedicated, Play-paced guide overlay for the final week.
+    // Replaying the same information as a Faux TV card behind it was redundant.
+    return aliveCount === 3 && voxPopuliActive ? 'vox_final3' : null
   if (phase === 'final3_decision') return voxPopuliActive ? null : 'final_hoh'
   if (phase === 'jury') return 'jury'
   return null
@@ -418,11 +426,18 @@ export default function TvZone(props: TvZoneProps) {
 
   const latestEvent = tvVisibleFeed[0]
   const latestUnconsumedEvent =
-    tvVisibleFeed.find((event) => event.meta?.broadcastConsumed !== true) ?? null
-  // Fresh explicit major broadcasts are authoritative until consumed, even
-  // when legacy metadata was normalized after the event was inserted.
+    tvVisibleFeed.find(
+      (event) =>
+        event.meta?.broadcastConsumed !== true &&
+        !(gameState.phase === 'season_start' && isFinalThreeResultAnnouncement(event))
+    ) ?? null
+  // Final Three result cards stay in history but cannot own the Faux TV once a
+  // fresh season starts, where they otherwise overshadow the season welcome.
   const latestExplicitMajorEvent =
-    latestEvent && extractMajorKey(latestEvent) && latestEvent.meta?.broadcastConsumed !== true
+    latestEvent &&
+    extractMajorKey(latestEvent) &&
+    latestEvent.meta?.broadcastConsumed !== true &&
+    !(gameState.phase === 'season_start' && isFinalThreeResultAnnouncement(latestEvent))
       ? latestEvent
       : null
   const announcementPrerollEvent = useMemo(() => {
@@ -481,6 +496,7 @@ export default function TvZone(props: TvZoneProps) {
   const [dismissedPriorityEventIds, setDismissedPriorityEventIds] = useState<Set<string>>(
     () => new Set(dismissedCriticalBroadcastEventIds)
   )
+
   // A single reducer action can append the shock activation and its practical
   // consequence (for example a Force Majeure replacement) at once. Keep the
   // shock broadcast in a small FIFO so the consequence never hides its stinger.
@@ -554,6 +570,12 @@ export default function TvZone(props: TvZoneProps) {
   const activeDetoxEvent = detoxMessageQueue[detoxMessageIndex]
   const isBroadcastRelevant = useCallback(
     (event: TvEvent) => {
+      // A new season must not replay a result card from the previous Final
+      // Three. This is intentionally scoped to those cards; legacy broadcasts
+      // elsewhere still use the existing compatibility behavior.
+      if (gameState.phase === 'season_start' && isFinalThreeResultAnnouncement(event)) {
+        return false
+      }
       const transitionPhase = getDailyTransitionPhase(event)
       return (
         (transitionPhase === null || transitionPhase === gameState.phase) &&
@@ -1286,6 +1308,12 @@ export default function TvZone(props: TvZoneProps) {
   // card so the next Safety/shock announcement can take the screen.
   useEffect(() => {
     const handlePlay = (event: Event) => {
+      // A final appeal is a modal decision.  The global Play button must not
+      // dismiss a TV card or advance the season underneath it.
+      if (document.querySelector('[aria-label="Final appeal to the audience"]')) {
+        event.preventDefault()
+        return
+      }
       if (queuedBroadcastEvent && (!activeAnnouncement || managedEventAnnouncement)) {
         if (managedEventAnnouncement) {
           // A season-expansion instruction is always the middle beat of the
@@ -1806,7 +1834,7 @@ export default function TvZone(props: TvZoneProps) {
                 Other announcements keep their established title-card overlay. */}
             {showInlineAnnouncement && activeAnnouncement && !cupidFollowUpVisible && (
               <TvAnnouncementOverlay
-                key={activeAnnouncement.key}
+                key={`${gameState.gameId}-${activeAnnouncementSequenceId || `${activeAnnouncement.key}-${activeAnnouncement.title}`}`}
                 announcement={
                   cupidFollowUpVisible ? cupidFollowUpAnnouncement : displayedAnnouncement!
                 }

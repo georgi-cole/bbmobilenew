@@ -6,11 +6,13 @@
  * Once complete: "Continue" to dismiss.
  */
 interface Props {
-  phase: 'clues' | 'recap' | 'revealVotes';
-  allRevealed: boolean;
-  isComplete: boolean;
-  onSkipAll: () => void;
-  onDismiss: () => void;
+  phase: 'clues' | 'recap' | 'revealVotes'
+  allRevealed: boolean
+  isComplete: boolean
+  onSkipAll: () => void
+  onDismiss: () => void
+  opening?: boolean
+  onPlay?: () => void
 }
 
 export default function FinaleControls({
@@ -19,6 +21,8 @@ export default function FinaleControls({
   isComplete,
   onSkipAll,
   onDismiss,
+  opening = false,
+  onPlay,
 }: Props) {
   if (isComplete) {
     return (
@@ -27,11 +31,21 @@ export default function FinaleControls({
           Continue 🎉
         </button>
       </div>
-    );
+    )
   }
 
   // During recap the controls are not rendered (recap has its own Skip button)
-  if (phase === 'recap') return null;
+  if (phase === 'recap') return null
+
+  if (opening) {
+    return (
+      <div className="fo-controls">
+        <button className="fo-btn" onClick={onPlay}>
+          Begin Tribunal ▶
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="fo-controls">
@@ -43,5 +57,5 @@ export default function FinaleControls({
         {phase === 'clues' && allRevealed ? 'Starting recap…' : 'Skip All ▶▶'}
       </button>
     </div>
-  );
+  )
 }

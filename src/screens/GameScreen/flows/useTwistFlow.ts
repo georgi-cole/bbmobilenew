@@ -49,6 +49,7 @@ import {
 } from '../../../features/twists/cupidArrow'
 import { isBattleBackReplayEligible, shouldUseBattleBackMinigame } from '../battleBackFlow'
 import { usePersistedGameScreenKey } from '../gameScreenPersistence'
+import { awardPublicFavoriteForecast } from '../../../store/profilesSlice'
 
 const PUBLIC_SAVE_RESULT_DELAY_MS = 5000
 const EMPTY_PLAYER_IDS: string[] = []
@@ -675,6 +676,11 @@ export function useTwistFlow({
     [dispatch]
   )
 
+  const handleForecastAward = useCallback(
+    (eventId: string) => dispatch(awardPublicFavoriteForecast({ eventId })),
+    [dispatch]
+  )
+
   return {
     twinShockReveal,
     twinShockSequenceKey,
@@ -723,5 +729,6 @@ export function useTwistFlow({
     favoritePlayer,
     showFavoriteVoting,
     handleFavoriteComplete,
+    handleForecastAward,
   }
 }

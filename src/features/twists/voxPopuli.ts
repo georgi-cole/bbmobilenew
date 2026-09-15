@@ -20,6 +20,7 @@ export function createInitialVoxPopuliState(scheduledSeason: number | null): Vox
     nominationBallots: {},
     nominationVoteCounts: {},
     nominationDaysByPlayerId: {},
+    audienceVoteDaysByPlayerId: {},
     safetySaveCounts: {},
     lastReplacementNomineeIds: [],
     immunityWinnerId: null,
@@ -34,6 +35,8 @@ export function createInitialVoxPopuliState(scheduledSeason: number | null): Vox
     finalistIds: [],
     winnerId: null,
     finalThreePacingSeen: [],
+    finalThreeAppeal: null,
+    finalThreeAppealUsed: false,
   }
 }
 
@@ -184,7 +187,9 @@ export interface VoxAudienceVoteResult {
   rankedIds: string[]
 }
 
-function roundedPercentages(entries: Array<{ id: string; weight: number }>): Record<string, number> {
+function roundedPercentages(
+  entries: Array<{ id: string; weight: number }>
+): Record<string, number> {
   const total = entries.reduce((sum, entry) => sum + Math.max(0.001, entry.weight), 0)
   const percentages: Record<string, number> = {}
   let assigned = 0
@@ -212,9 +217,7 @@ export function resolveVoxAudiencePreview(options: {
 }): Record<string, number> {
   const { finalPercentages, nomineeIds, seed, week } = options
   if (nomineeIds.length === 0) return {}
-  const rng = mulberry32(
-    (seed ^ Math.imul(week, 0x85ebca6b) ^ VOX_POPULI_PREVIEW_SALT) >>> 0
-  )
+  const rng = mulberry32((seed ^ Math.imul(week, 0x85ebca6b) ^ VOX_POPULI_PREVIEW_SALT) >>> 0)
 
   if (nomineeIds.length === 2) {
     const [leftId, rightId] = nomineeIds
@@ -267,9 +270,7 @@ export function reconcileVoxAudienceResultWithPreview(options: {
   if (nomineeIds.length === 2) {
     const [leftId, rightId] = nomineeIds
     const previewLeaderId =
-      (previewPercentages[leftId] ?? 0) >= (previewPercentages[rightId] ?? 0)
-        ? leftId
-        : rightId
+      (previewPercentages[leftId] ?? 0) >= (previewPercentages[rightId] ?? 0) ? leftId : rightId
     const otherId = previewLeaderId === leftId ? rightId : leftId
     const previewLead = Math.abs(
       (previewPercentages[previewLeaderId] ?? 50) - (previewPercentages[otherId] ?? 50)
@@ -319,13 +320,11 @@ export function resolveVoxAudienceEviction(options: {
     const downwardMomentum = Math.max(0, previousApproval - approval)
     const seasonApprovals = profile?.seasonApprovals ?? [approval]
     const seasonAverage =
-      seasonApprovals.reduce((sum, value) => sum + value, 0) /
-      Math.max(1, seasonApprovals.length)
+      seasonApprovals.reduce((sum, value) => sum + value, 0) / Math.max(1, seasonApprovals.length)
     // The meter is a broad approval read, not a literal live ballot. Episode
     // edits, concentrated fan campaigns and last-minute reactions add a
     // bounded broadcast-night swing while keeping large sentiment gaps safe.
-    const broadcastNightSwing =
-      (rng() - 0.5) * (14 + Math.min(6, Math.max(0, week - 2) * 0.55))
+    const broadcastNightSwing = (rng() - 0.5) * (14 + Math.min(6, Math.max(0, week - 2) * 0.55))
     return {
       id,
       evidenceDays: Math.max(week, seasonApprovals.length),

@@ -31,6 +31,17 @@ describe('GameControlDock', () => {
     expect(container.querySelector('.fab-more-glyph')).not.toBeNull()
   })
 
+  it('portals the existing dock above the finale overlay without duplicating Play', () => {
+    const { container } = render(
+      <GameControlDock elevatedDuringOverlay primaryLabel="Play finale scene" />
+    )
+
+    expect(container.querySelector('.game-control-dock')).toBeNull()
+    const dock = document.body.querySelector('.game-control-dock')
+    expect(dock?.classList.contains('game-control-dock--finale-overlay')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Play finale scene' })).toBeEnabled()
+  })
+
   it('preserves dock hit areas, badges, and disabled behavior', () => {
     const onChatClick = vi.fn()
     const onRequestsClick = vi.fn()

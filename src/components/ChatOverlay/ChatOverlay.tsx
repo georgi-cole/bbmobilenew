@@ -53,6 +53,8 @@ export interface ChatOverlayProps {
   ariaLabel?: string
   /** Label for the completion button once all lines are revealed. */
   completeLabel?: string
+  /** Let the shared Play control reveal the text and dismiss this story beat. */
+  advanceOnPlay?: boolean
 }
 
 /** Base delay between lines (ms). Divided by typingSpeed. */
@@ -120,6 +122,7 @@ export default function ChatOverlay({
   onComplete,
   ariaLabel,
   completeLabel = 'Continue →',
+  advanceOnPlay = false,
 }: ChatOverlayProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [showTyping, setShowTyping] = useState(false)
@@ -173,6 +176,24 @@ export default function ChatOverlay({
       onCompleteRef.current?.()
     }, EXIT_ANIM_MS)
   }, [addTimer])
+
+  useEffect(() => {
+    if (!advanceOnPlay) return undefined
+    const handlePlay = (event: Event) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      if (!completed) {
+        clearTimers()
+        setShowTyping(false)
+        setRevealedCount(lines.length)
+        setCompleted(true)
+        return
+      }
+      handleDismiss()
+    }
+    window.addEventListener('ui:playPressed', handlePlay)
+    return () => window.removeEventListener('ui:playPressed', handlePlay)
+  }, [advanceOnPlay, clearTimers, completed, handleDismiss, lines.length])
 
   // Auto-scroll the feed to the bottom whenever a new line appears, but only if
   // the user hasn't manually scrolled up (within 100 px of the bottom counts as "at bottom")
@@ -232,7 +253,7 @@ export default function ChatOverlay({
 
   return (
     <div
-      className={`chat-overlay${exiting ? ' chat-overlay--exiting' : ''}`}
+      className={`chat-overlay${advanceOnPlay ? ' chat-overlay--play-paced' : ''}${exiting ? ' chat-overlay--exiting' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel ?? header?.title ?? 'Chat'}
@@ -274,12 +295,19 @@ export default function ChatOverlay({
         </div>
 
         <div className="chat-overlay__footer">
-          {skippable && !completed && !exiting && (
+          {advanceOnPlay && !exiting ? (
+            <p className="chat-overlay__play-hint">
+              {completed
+                ? 'Press Play when you are ready to continue.'
+                : 'Press Play to reveal the remaining lines.'}
+            </p>
+          ) : null}
+          {!advanceOnPlay && skippable && !completed && !exiting && (
             <button className="chat-overlay__skip" onClick={handleSkip} aria-label="Skip to end">
               Skip
             </button>
           )}
-          {completed && !exiting && (
+          {!advanceOnPlay && completed && !exiting && (
             <button className="chat-overlay__done" onClick={handleDismiss}>
               {completeLabel}
             </button>

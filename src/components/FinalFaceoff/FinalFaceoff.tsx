@@ -26,7 +26,7 @@ import {
 import { finalizeGame, startWinnerCinematic } from '../../store/gameSlice'
 import { selectSettings } from '../../store/settingsSlice'
 import { setMusicScene } from '../../store/uiSlice'
-import { tallyVotes, aiJurorVote } from '../../utils/juryUtils'
+import { tallyVotes } from '../../utils/juryUtils'
 import {
   resolveAvatarCandidates,
   resolveFormalCutout,
@@ -36,12 +36,7 @@ import {
 import { preloadImages } from '../../utils/preload'
 import { resolveSkinAssetPath } from '../../utils/skinAssets'
 import { selectPublicOpinion } from '../../publicOpinion'
-import { showInterstitial } from '../../services/ads/adsService'
-import type { RootState } from '../../store/store'
 import { SOCIAL_INITIAL_STATE } from '../../social/constants'
-import { useStore } from 'react-redux'
-import JurorBubble from './JurorBubble'
-import FinalTallyPanel from './FinalTallyPanel'
 import FinaleControls from './FinaleControls'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
 import SeasonRecapCinematic from '../SeasonRecapCinematic/SeasonRecapCinematic'
@@ -59,7 +54,6 @@ import './FinalFaceoff.css'
 
 export default function FinalFaceoff() {
   const dispatch = useAppDispatch()
-  const store = useStore<RootState>()
   const game = useAppSelector((s) => s.game)
   const finale = useAppSelector(selectFinale)
   const revealed = useAppSelector(selectRevealedJurors)
@@ -67,8 +61,6 @@ export default function FinalFaceoff() {
   const publicOpinion = useAppSelector(selectPublicOpinion)
   const socialReality = useAppSelector((s) => s.social?.reality ?? SOCIAL_INITIAL_STATE.reality)
   const { play } = useSound()
-
-  const jurorListRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const sources = game.players.flatMap((player) => [
@@ -90,6 +82,7 @@ export default function FinalFaceoff() {
   // 'revealVotes' → vote chips + tally animate in
   type Phase = 'clues' | 'recap' | 'revealVotes'
   const [phase, setPhase] = useState<Phase>('clues')
+  const [tribunalOpeningReady, setTribunalOpeningReady] = useState(false)
   const previousPhaseRef = useRef<Phase>('clues')
   const winnerPersistedRef = useRef(false)
 
@@ -137,13 +130,10 @@ export default function FinalFaceoff() {
   const voteTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const flashTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const handleRecapComplete = useCallback(() => {
-    // finale_recap_auto interstitial — shown after the season recap completes.
-    const state = store.getState()
-    showInterstitial('finale_recap_auto', state, dispatch)
     setVoteVisible({})
     setFlashingJurorId(null)
     setPhase('revealVotes')
-  }, [store, dispatch])
+  }, [])
 
   useEffect(
     () => () => {
@@ -261,8 +251,21 @@ export default function FinalFaceoff() {
   // Transitions to 'recap' once all jurors are revealed.
   const humanIds = game.players.filter((p) => p.isUser).map((p) => p.id)
   useEffect(() => {
+    if (phase !== 'clues' || finale.revealedCount !== 0 || tribunalOpeningReady) return
+
+    const beginDeliberation = (event: Event) => {
+      event.preventDefault()
+      setTribunalOpeningReady(true)
+    }
+
+    window.addEventListener('ui:playPressed', beginDeliberation, { capture: true })
+    return () => window.removeEventListener('ui:playPressed', beginDeliberation, { capture: true })
+  }, [finale.revealedCount, phase, tribunalOpeningReady])
+
+  useEffect(() => {
     if (phase !== 'clues') return
     if (!finale.isActive) return
+    if (finale.revealedCount === 0 && !tribunalOpeningReady) return
 
     // All clues revealed → move to recap cinematic
     if (finale.revealOrder.length > 0 && finale.revealedCount >= finale.revealOrder.length) {
@@ -296,6 +299,7 @@ export default function FinalFaceoff() {
     revealed,
     dispatch,
     humanIds,
+    tribunalOpeningReady,
   ])
 
   const visibleVotesMap: Record<string, string> = {}
@@ -359,67 +363,6 @@ export default function FinalFaceoff() {
     persistWinnerToSeasonFinale,
   ])
 
-  // ── Auto-timeout: if human juror hasn't voted, fall back to AI ────────
-  useEffect(() => {
-    const awaitingId = finale.awaitingHumanJurorId
-    if (!awaitingId || finale.isComplete) return
-    const timeoutMs = game.cfg?.tVoteReveal ?? 30_000
-    const timer = setTimeout(() => {
-      const aiVote = aiJurorVote(
-        awaitingId,
-        finale.finalistIds,
-        game.seed,
-        socialReality,
-        finale.juryScorecards[awaitingId]
-      )
-      dispatch(castVote({ jurorId: awaitingId, finalistId: aiVote }))
-    }, timeoutMs)
-    return () => clearTimeout(timer)
-  }, [
-    dispatch,
-    finale.awaitingHumanJurorId,
-    finale.isComplete,
-    finale.finalistIds,
-    finale.juryScorecards,
-    game.cfg?.tVoteReveal,
-    game.seed,
-    socialReality,
-  ])
-
-  // ── Keep the currently revealed voter in view ──────────────────────────
-  useEffect(() => {
-    const list = jurorListRef.current
-    if (!list || revealed.length === 0) return
-
-    // The flashing juror is the vote currently being attributed. During the
-    // brief state transition before the flash is set, the newest reveal is
-    // the correct fallback target.
-    const activeJurorId = flashingJurorId ?? revealed[revealed.length - 1]?.jurorId
-    if (!activeJurorId) return
-
-    const activeBubble = Array.from(list.querySelectorAll<HTMLElement>('[data-juror-id]')).find(
-      (element) => element.dataset.jurorId === activeJurorId
-    )
-    if (!activeBubble) return
-
-    const padding = 8
-    const targetTop = activeBubble.offsetTop
-    const targetBottom = targetTop + activeBubble.offsetHeight
-    const visibleTop = list.scrollTop
-    const visibleBottom = visibleTop + list.clientHeight
-    let nextScrollTop = visibleTop
-
-    if (targetTop < visibleTop) {
-      nextScrollTop = Math.max(0, targetTop - padding)
-    } else if (targetBottom > visibleBottom) {
-      nextScrollTop = targetBottom - list.clientHeight + padding
-    }
-
-    if (nextScrollTop !== visibleTop) {
-      list.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
-    }
-  }, [flashingJurorId, revealed])
-
   if (!finale.isActive) return null
 
   // ── ACT 2: Season recap cinematic ────────────────────────────────────
@@ -451,6 +394,29 @@ export default function FinalFaceoff() {
         )
       : {}
 
+  // Keep each newly attributed vote in a fixed focus panel. The complete
+  // history stays stationary and remains available for manual scrolling.
+  const focusedReveal =
+    phase === 'revealVotes'
+      ? (revealed.find(
+          (entry) => entry.jurorId === flashingJurorId && voteVisible[entry.jurorId]
+        ) ??
+        [...revealed].reverse().find((entry) => voteVisible[entry.jurorId]) ??
+        null)
+      : null
+  const focusedJuror = focusedReveal
+    ? focusedReveal.jurorId === PUBLIC_JUROR_ID
+      ? { name: 'The Public' }
+      : game.players.find((player) => player.id === focusedReveal.jurorId)
+    : null
+  const focusedVoter =
+    focusedReveal && focusedReveal.jurorId !== PUBLIC_JUROR_ID
+      ? game.players.find((player) => player.id === focusedReveal.jurorId)
+      : null
+  const focusedFinalist = focusedReveal
+    ? game.players.find((player) => player.id === focusedReveal.finalistId)
+    : null
+
   const winner = game.players.find((p) => p.id === finale.winnerId)
   const allRevealed =
     finale.revealOrder.length === 0 || finale.revealedCount >= finale.revealOrder.length
@@ -461,26 +427,9 @@ export default function FinalFaceoff() {
 
   function handleSkipAll() {
     if (phase === 'clues') {
-      // In clue phase: only reveal all jurors, then let the recap play normally.
-      // Do NOT call finalizeFinale here – that happens in revealVotes.
+      // Reveal every AI juror until a human ballot is due. Skipping the
+      // presentation must never manufacture a human Tribunal vote.
       const finaleState = finale
-      // Pre-fill AI votes for unvoted human jurors
-      for (const jurorId of finaleState.revealOrder) {
-        if (humanIds.includes(jurorId) && !finaleState.votes[jurorId]) {
-          dispatch(
-            castVote({
-              jurorId,
-              finalistId: aiJurorVote(
-                jurorId,
-                finaleState.finalistIds,
-                game.seed,
-                socialReality,
-                finaleState.juryScorecards[jurorId]
-              ),
-            })
-          )
-        }
-      }
       const remaining = finaleState.revealOrder.length - finaleState.revealedCount
       for (let i = 0; i < remaining; i++) {
         dispatch(revealNextJuror({ humanPlayerIds: humanIds }))
@@ -490,6 +439,11 @@ export default function FinalFaceoff() {
       dispatch(setMusicScene('none'))
       dispatch(skipAllJurorsThunk(humanIds, game.seed))
     }
+  }
+
+  function handleBeginTribunal() {
+    if (phase !== 'clues' || finale.revealedCount !== 0) return
+    setTribunalOpeningReady(true)
   }
 
   function handleCastVote(finalistId: string) {
@@ -554,6 +508,7 @@ export default function FinalFaceoff() {
       {/* Phase 1 (clues): cinematic full-body cutout stage ──────────────── */}
       {isCluesPhase ? (
         <TribunalMemberStage
+          tribunalMembers={game.players.filter((player) => player.status === 'jury')}
           revealedJurors={revealed
             .map((r) => {
               const publicJuror =
@@ -572,6 +527,7 @@ export default function FinalFaceoff() {
           awaitingHumanPlayer={!finale.isComplete ? (awaitingHumanPlayer ?? null) : null}
           finalists={finalists}
           onCastVote={handleCastVote}
+          waitingForOpeningCue={!tribunalOpeningReady && finale.revealedCount === 0}
         />
       ) : (
         <>
@@ -604,45 +560,56 @@ export default function FinalFaceoff() {
             ))}
           </div>
 
-          {/* Phase 2: vote reveal list — "X cast a vote for Y" ─────────── */}
-          <div className="fo-jurors" ref={jurorListRef}>
-            {revealed.map((r) => {
-              const chipVisible = voteVisible[r.jurorId] ?? false
-              if (r.jurorId === PUBLIC_JUROR_ID) {
-                const publicJuror = {
-                  id: PUBLIC_JUROR_ID,
-                  name: 'The Public 🌐',
-                  avatar: '🌐',
-                  status: 'jury' as const,
-                }
-                return (
-                  <JurorBubble
-                    key={PUBLIC_JUROR_ID}
-                    juror={publicJuror}
-                    finalist={game.players.find((p) => p.id === r.finalistId)}
-                    reveal={r}
-                    voteVisible={chipVisible}
-                    isFlashing={flashingJurorId === PUBLIC_JUROR_ID}
+          {/* Phase 2: the current voter owns the Tribunal stage. */}
+          {focusedReveal && focusedJuror && focusedFinalist && (
+            <section
+              className="fo-current-vote"
+              aria-label="Current Tribunal vote"
+              aria-live="polite"
+            >
+              <div className="fo-current-vote__flow">
+                <div className="fo-current-vote__side fo-current-vote__juror">
+                  {focusedReveal.jurorId === PUBLIC_JUROR_ID ? (
+                    <span className="fo-current-vote__public" aria-hidden="true">
+                      🌐
+                    </span>
+                  ) : focusedVoter ? (
+                    <PlayerAvatar
+                      player={focusedVoter}
+                      className="fo-current-vote__avatar fo-current-vote__avatar--juror"
+                      size="lg"
+                      showEvictedStyle={false}
+                    />
+                  ) : null}
+                  <span className="fo-current-vote__label">
+                    <small>CASTING THE VOTE</small>
+                    <strong>{focusedJuror.name}</strong>
+                  </span>
+                </div>
+                <span className="fo-current-vote__arrow" aria-hidden="true">
+                  <small>VOTES FOR</small>
+                  <span>→</span>
+                </span>
+                <div className="fo-current-vote__side fo-current-vote__choice">
+                  <PlayerAvatar
+                    player={focusedFinalist}
+                    className="fo-current-vote__avatar fo-current-vote__avatar--choice"
+                    size="lg"
+                    showEvictedStyle={false}
                   />
-                )
-              }
-              const juror = game.players.find((p) => p.id === r.jurorId)
-              if (!juror) return null
-              return (
-                <JurorBubble
-                  key={r.jurorId}
-                  juror={juror}
-                  finalist={game.players.find((p) => p.id === r.finalistId)}
-                  reveal={r}
-                  voteVisible={chipVisible}
-                  isFlashing={flashingJurorId === r.jurorId}
-                />
-              )
-            })}
-          </div>
-
-          {/* Tally panel */}
-          <FinalTallyPanel finalists={finalists} tally={tally} />
+                  <span className="fo-current-vote__label">
+                    <small>FINALIST</small>
+                    <strong>{focusedFinalist.name}</strong>
+                  </span>
+                </div>
+              </div>
+              {focusedReveal.phrase && (
+                <blockquote className="fo-current-vote__record">
+                  “{focusedReveal.phrase}”
+                </blockquote>
+              )}
+            </section>
+          )}
         </>
       )}
 
@@ -653,6 +620,8 @@ export default function FinalFaceoff() {
         isComplete={finale.isComplete}
         onSkipAll={handleSkipAll}
         onDismiss={handleDismiss}
+        opening={isCluesPhase && !tribunalOpeningReady && finale.revealedCount === 0}
+        onPlay={handleBeginTribunal}
       />
     </div>
   )

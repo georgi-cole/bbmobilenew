@@ -168,6 +168,38 @@ export interface MinigameContext {
   seed: number
 }
 
+/** Persisted lifecycle for the three-part Final Three competition. */
+export type FinalThreeStage = 'part1' | 'part2' | 'part3' | 'decision' | 'ceremony' | 'complete'
+
+export interface FinalThreePartOutcome {
+  participantIds: string[]
+  winnerId: string | null
+  seed: number | null
+}
+
+/**
+ * Durable Final Three record. It is the authoritative resume point for each
+ * competition result and the final eviction, while legacy fields remain for
+ * existing UI and saved-season compatibility.
+ */
+export interface FinalThreeState {
+  mode: 'classic' | 'vox_populi'
+  stage: FinalThreeStage
+  /** The narrated Final Power Battle introduction has been acknowledged. */
+  openingSeen: boolean
+  /** The Part 3 block setup has been shown after Part 2 is resolved. */
+  blockRevealSeen: boolean
+  /** The Part 3 spectator broadcast already showed its full-screen power-holder reveal. */
+  spectatorFinalPowerRevealSeen?: boolean
+  participantIds: string[]
+  part1: FinalThreePartOutcome | null
+  part2: FinalThreePartOutcome | null
+  part3: FinalThreePartOutcome | null
+  finalPowerHolderId: string | null
+  nomineeIds: string[]
+  evicteeId: string | null
+}
+
 // Canonical weekly-game phase list (in execution order)
 export type Phase =
   /** One-time opening phase before Day 1 begins. */
@@ -457,6 +489,8 @@ export interface VoxPopuliState {
   nominationVoteCounts: Record<string, number>
   /** Days on which each housemate faced the block, used for short-lived nomination momentum. */
   nominationDaysByPlayerId?: Record<string, number[]>
+  /** Days on which each housemate remained on the final public ballot. */
+  audienceVoteDaysByPlayerId?: Record<string, number[]>
   /** Number of Safety saves received during this Vox season. */
   safetySaveCounts?: Record<string, number>
   /** Backup nominees actually added after the latest Safety save. Empty means no replacement occurred. */
@@ -479,6 +513,10 @@ export interface VoxPopuliState {
   winnerId: string | null
   /** Finale interludes already shown; stored so repeated taps cannot skip their pacing beats. */
   finalThreePacingSeen?: string[]
+  /** The active user's one final message to the audience before the Final Three vote. */
+  finalThreeAppeal?: 'underdog' | 'loyalty' | 'resume' | null
+  /** Prevents a Final Three nominee from submitting more than one final appeal. */
+  finalThreeAppealUsed?: boolean
 }
 
 export interface SpecialVetoState {
@@ -924,6 +962,8 @@ export interface GameState {
    * Set during `final3_comp2` advance.
    */
   f3Part2WinnerId?: string | null
+  /** Persisted Final Three controller; absent in saves created before Phase 2. */
+  finalThree?: FinalThreeState | null
   /**
    * Active Final 3 competition minigame context.
    * Set when the human player is competing in a Final 3 part (final3_comp*_minigame phases).

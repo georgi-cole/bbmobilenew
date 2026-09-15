@@ -10,8 +10,12 @@
 }
 
 @keyframes pfFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .pf-overlay__dim {
@@ -35,9 +39,7 @@
   flex-direction: column;
   gap: 0.85rem;
   box-sizing: border-box;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 0.9rem)
-    0.9rem
+  padding: calc(env(safe-area-inset-top, 0px) + 0.9rem) 0.9rem
     calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
@@ -108,6 +110,8 @@
 .pf-overlay__announcement-slot {
   flex-shrink: 0;
   display: grid;
+  flex-basis: 7.5rem;
+  height: 7.5rem;
   min-height: 7.5rem;
 }
 
@@ -166,8 +170,15 @@
 }
 
 @keyframes pfPulse {
-  0%, 100% { opacity: 0.65; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.12); }
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
 }
 
 .pf-overlay__subtitle,
@@ -231,8 +242,7 @@
   padding: 0.95rem;
   border-radius: 1.5rem;
   background:
-    linear-gradient(180deg, rgba(18, 21, 35, 0.98), rgba(10, 11, 20, 0.98)),
-    rgba(10, 11, 20, 0.98);
+    linear-gradient(180deg, rgba(18, 21, 35, 0.98), rgba(10, 11, 20, 0.98)), rgba(10, 11, 20, 0.98);
   overflow: hidden;
 }
 
@@ -337,15 +347,25 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.08) 50%, transparent 80%);
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 80%
+  );
   transform: translateX(-130%);
   animation: pfSweep 4.6s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes pfSweep {
-  0%, 65% { transform: translateX(-130%); }
-  100% { transform: translateX(130%); }
+  0%,
+  65% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
 }
 
 .pf-overlay__leader--surge {
@@ -506,7 +526,12 @@
   width: 5.75rem;
   height: 5.75rem;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(251, 191, 36, 0.32), rgba(168, 85, 247, 0.05) 65%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgba(251, 191, 36, 0.32),
+    rgba(168, 85, 247, 0.05) 65%,
+    transparent 72%
+  );
   filter: blur(6px);
 }
 
@@ -755,6 +780,7 @@
   color: #ffe7e7;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.55rem;
   flex-wrap: wrap;
 }
@@ -834,8 +860,14 @@
 }
 
 @keyframes pfFinalCountdownPulse {
-  from { opacity: 0.76; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0.76;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .pf-overlay__winner-stage {
@@ -944,8 +976,12 @@
 }
 
 @keyframes pf-studio-breathe {
-  from { transform: scale(1.01); }
-  to { transform: scale(1.055); }
+  from {
+    transform: scale(1.01);
+  }
+  to {
+    transform: scale(1.055);
+  }
 }
 
 .pf-overlay__scanlines {
@@ -961,14 +997,14 @@
 .pf-overlay__stage {
   width: min(100%, 62rem);
   gap: 0.55rem;
-  padding:
-    max(12px, calc(env(safe-area-inset-top, 0px) + 8px))
-    10px
+  padding: max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) 10px
     max(12px, calc(env(safe-area-inset-bottom, 0px) + 8px));
 }
 
 .pf-overlay__announcement-slot {
-  min-height: 5.9rem;
+  flex-basis: 7.5rem;
+  height: 7.5rem;
+  min-height: 7.5rem;
 }
 
 .pf-overlay__header {
@@ -1015,8 +1051,7 @@
   border-color: rgba(255, 255, 255, 0.14);
   border-radius: 1.25rem;
   background:
-    linear-gradient(145deg, rgba(8, 6, 18, 0.78), rgba(5, 4, 12, 0.9)),
-    rgba(5, 4, 12, 0.82);
+    linear-gradient(145deg, rgba(8, 6, 18, 0.78), rgba(5, 4, 12, 0.9)), rgba(5, 4, 12, 0.82);
   box-shadow: 0 28px 64px rgba(0, 0, 0, 0.46);
   backdrop-filter: blur(20px);
 }
@@ -1074,7 +1109,9 @@
   border: 2px solid rgba(121, 231, 255, 0.54);
   border-radius: 50%;
   background: #111725;
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.52), 0 0 30px rgba(121, 231, 255, 0.2);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.52),
+    0 0 30px rgba(121, 231, 255, 0.2);
 }
 
 .pf-overlay__leader-avatar--portrait .pf-overlay__avatar-img {
@@ -1084,7 +1121,12 @@
 .pf-overlay__leader-glow {
   width: 7rem;
   height: 7rem;
-  background: radial-gradient(circle, rgba(121, 231, 255, 0.32), rgba(191, 120, 255, 0.12) 54%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgba(121, 231, 255, 0.32),
+    rgba(191, 120, 255, 0.12) 54%,
+    transparent 72%
+  );
 }
 
 .pf-overlay__board {
@@ -1133,7 +1175,9 @@
   min-height: 46px;
   padding: 0.7rem 1rem;
   background: linear-gradient(90deg, var(--pf-cyan), #d9a7ff 48%, var(--pf-gold));
-  box-shadow: 0 12px 30px rgba(121, 231, 255, 0.18), 0 0 24px rgba(191, 120, 255, 0.16);
+  box-shadow:
+    0 12px 30px rgba(121, 231, 255, 0.18),
+    0 0 24px rgba(191, 120, 255, 0.16);
 }
 
 .pf-overlay__intro {
@@ -1163,7 +1207,12 @@
 .pf-overlay__winner-glow {
   width: 118%;
   height: 118%;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.34), rgba(139, 92, 246, 0.18) 55%, transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgba(96, 165, 250, 0.34),
+    rgba(139, 92, 246, 0.18) 55%,
+    transparent 72%
+  );
 }
 
 .pf-overlay__winner-avatar--portrait {
@@ -1173,7 +1222,9 @@
   border: 2px solid rgba(165, 180, 252, 0.66);
   border-radius: 50%;
   background: #141b26;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46), 0 0 34px rgba(99, 102, 241, 0.25);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.46),
+    0 0 34px rgba(99, 102, 241, 0.25);
 }
 
 .pf-overlay__winner-avatar--portrait .pf-overlay__avatar-img {
@@ -1236,6 +1287,556 @@
   .pf-overlay__winner-avatar-wrap {
     width: min(34vw, 9rem);
     height: min(34vw, 9rem);
+  }
+}
+
+/* Forecast is a single pre-show moment: one featured call, then the audience count. */
+.pf-overlay--forecast .pf-overlay__announcement-slot {
+  flex-basis: auto;
+  height: auto;
+  min-height: 0;
+}
+
+.pf-overlay--forecast .pf-overlay__header {
+  gap: 0.4rem;
+  padding: 0.82rem 0.95rem 0.88rem;
+  border-color: rgba(249, 207, 119, 0.2);
+  background:
+    linear-gradient(105deg, rgba(18, 11, 31, 0.96), rgba(15, 13, 31, 0.94)), rgba(10, 8, 20, 0.95);
+}
+
+.pf-overlay--forecast .pf-overlay__header-copy {
+  align-items: end;
+}
+
+.pf-overlay--forecast .pf-overlay__title {
+  max-width: 12rem;
+  color: #fff;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.9rem, 8vw, 3.2rem);
+  font-weight: 500;
+  line-height: 0.79;
+  letter-spacing: -0.055em;
+  text-transform: none;
+}
+
+.pf-overlay--forecast .pf-overlay__status {
+  max-width: 12rem;
+  color: rgba(255, 244, 214, 0.72);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.pf-overlay__board-shell--forecast {
+  justify-content: center;
+  padding: clamp(0.8rem, 3vw, 1.3rem);
+  border-color: rgba(249, 207, 119, 0.26);
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(247, 190, 89, 0.14), transparent 30%),
+    radial-gradient(ellipse at 50% 100%, rgba(128, 88, 225, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(17, 11, 30, 0.98), rgba(5, 5, 14, 0.99));
+}
+
+.pf-overlay__board-shell--forecast::before {
+  background:
+    linear-gradient(112deg, transparent 0 31%, rgba(255, 241, 196, 0.055) 37%, transparent 43%),
+    linear-gradient(68deg, transparent 0 58%, rgba(194, 145, 255, 0.075) 65%, transparent 72%);
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call {
+  z-index: 1;
+  width: min(100%, 42rem);
+  margin: auto;
+  padding: clamp(0.8rem, 3vw, 1.35rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call::after {
+  display: none;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call-copy {
+  text-align: center;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call-kicker {
+  color: #f4cf7f;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call-title {
+  margin-top: 0.22rem;
+  font-size: clamp(1.9rem, 7.2vw, 3.5rem);
+  line-height: 0.92;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call-description {
+  max-width: 25rem;
+  margin: 0.5rem auto 0;
+  font-size: 0.82rem;
+}
+
+.pf-overlay__forecast-feature {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 9.5rem;
+  margin: clamp(1rem, 4vw, 1.75rem) auto 1rem;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+  border-top: 1px solid rgba(249, 207, 119, 0.28);
+  border-bottom: 1px solid rgba(249, 207, 119, 0.28);
+  background: linear-gradient(90deg, transparent, rgba(249, 207, 119, 0.07), transparent);
+}
+
+.pf-overlay__forecast-feature-glow {
+  position: absolute;
+  left: -1rem;
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(249, 207, 119, 0.28), transparent 66%);
+  pointer-events: none;
+}
+
+.pf-overlay__forecast-feature-portrait {
+  position: relative;
+  z-index: 1;
+  width: 7.4rem;
+  height: 7.4rem;
+  border: 2px solid rgba(249, 207, 119, 0.9);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 6px rgba(249, 207, 119, 0.08),
+    0 20px 36px rgba(0, 0, 0, 0.44);
+}
+
+.pf-overlay__forecast-feature > div:last-child {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.pf-overlay__forecast-feature > div:last-child span,
+.pf-overlay__forecast-feature > div:last-child strong {
+  display: block;
+}
+
+.pf-overlay__forecast-feature > div:last-child span {
+  color: #f4cf7f;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__forecast-feature > div:last-child strong {
+  overflow: hidden;
+  margin-top: 0.28rem;
+  color: #fff;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.25rem, 10vw, 4rem);
+  font-weight: 500;
+  line-height: 0.82;
+  letter-spacing: -0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-overlay__forecast-cast {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: center;
+  gap: clamp(0.3rem, 1.5vw, 0.65rem);
+  min-height: 0;
+  margin: 0.2rem 0 0.45rem;
+  padding: 0.35rem 0.3rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.pf-overlay__forecast-cast-player {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 4.55rem;
+  flex-direction: column;
+  justify-items: center;
+  justify-content: center;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.3rem 0.2rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0.9rem;
+  color: rgba(255, 255, 255, 0.58);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  font-size: 0.68rem;
+  font-weight: 800;
+  transition:
+    border-color 220ms ease,
+    background 220ms ease,
+    transform 220ms ease;
+}
+
+.pf-overlay__forecast-cast-player::before {
+  content: '';
+  position: absolute;
+  inset: -50% 16%;
+  opacity: 0;
+  background: linear-gradient(180deg, transparent, rgba(249, 207, 119, 0.2), transparent);
+  transform: rotate(26deg);
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+
+.pf-overlay__forecast-cast-portrait {
+  position: relative;
+  z-index: 1;
+  width: 2.7rem;
+  height: 2.7rem;
+  border-color: rgba(255, 255, 255, 0.2);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.pf-overlay__forecast-cast-player.is-selected {
+  border-color: rgba(249, 207, 119, 0.72);
+  color: #fff;
+  background: linear-gradient(145deg, rgba(249, 207, 119, 0.16), rgba(153, 103, 232, 0.12));
+  transform: translateY(-3px);
+}
+
+.pf-overlay__forecast-cast-player.is-selected::before {
+  opacity: 1;
+}
+
+.pf-overlay__forecast-cast-player.is-selected .pf-overlay__forecast-cast-portrait {
+  transform: translateY(-4px) scale(1.06);
+  border-color: rgba(249, 207, 119, 0.92);
+  box-shadow:
+    0 0 0 3px rgba(249, 207, 119, 0.11),
+    0 0 23px rgba(249, 207, 119, 0.24);
+}
+
+.pf-overlay__forecast-cast-player > span {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-overlay__forecast-cast-player:focus-visible {
+  outline: 2px solid #f4cf7f;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+.pf-overlay__board-shell--forecast .pf-overlay__your-call-cta {
+  min-height: 3.5rem;
+  margin-top: 0.15rem;
+  border-radius: 999px;
+  color: #160f21;
+  background: linear-gradient(90deg, #f4cf7f, #fff0ba 45%, #d2a0ff);
+  font-size: 0.78rem;
+  letter-spacing: 0.11em;
+}
+
+.pf-overlay__forecast-reward {
+  margin: 0.58rem 0 0;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.63rem;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .pf-overlay__forecast-feature {
+    grid-template-columns: 6.15rem minmax(0, 1fr);
+    min-height: 7.8rem;
+    gap: 0.65rem;
+    padding: 0.55rem 0.45rem;
+  }
+
+  .pf-overlay__forecast-feature-portrait {
+    width: 5.85rem;
+    height: 5.85rem;
+  }
+
+  .pf-overlay__forecast-cast {
+    gap: 0.42rem;
+    margin-top: 0.35rem;
+    padding-block: 0.35rem;
+  }
+
+  .pf-overlay__forecast-cast-player {
+    min-height: 4.8rem;
+    font-size: 0.6rem;
+  }
+
+  .pf-overlay__forecast-cast-portrait {
+    width: 2.85rem;
+    height: 2.85rem;
+  }
+}
+
+/* Public Favorite keeps the live drama on the leading three faces and compares
+   their relative shares, instead of shrinking the whole cast into a roster. */
+.pf-overlay__top-three {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.15rem 0.15rem 0.25rem;
+}
+
+.pf-overlay__top-three-candidates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.pf-overlay__top-three-player {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.26rem;
+  padding: 0.45rem 0.25rem 0.5rem;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  background: transparent;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.pf-overlay__top-three-player:last-child {
+  border-right: 0;
+}
+.pf-overlay__top-three-player:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+.pf-overlay__top-three-player:focus-visible {
+  outline: 2px solid rgba(249, 207, 119, 0.84);
+  outline-offset: 1px;
+  border-radius: 0.8rem;
+}
+
+.pf-overlay__top-three-rank {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.pf-overlay__top-three-portrait {
+  width: clamp(3.1rem, 15vw, 4.65rem);
+  height: clamp(3.1rem, 15vw, 4.65rem);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+.pf-overlay__top-three-player--1 .pf-overlay__top-three-portrait {
+  border-color: rgba(249, 207, 119, 0.76);
+  box-shadow:
+    0 0 0 3px rgba(249, 207, 119, 0.09),
+    0 9px 25px rgba(0, 0, 0, 0.4);
+}
+
+.pf-overlay__top-three-player.is-selected .pf-overlay__top-three-portrait {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 3px rgba(191, 120, 255, 0.25),
+    0 0 24px rgba(191, 120, 255, 0.22);
+}
+
+.pf-overlay__top-three-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(0.69rem, 2.5vw, 0.86rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-overlay__top-three-percent {
+  color: #fff4d6;
+  font-size: clamp(1.15rem, 4.8vw, 1.65rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(249, 207, 119, 0.2);
+}
+
+.pf-overlay__top-three-player.is-spotlighted {
+  background: radial-gradient(ellipse at center, rgba(191, 120, 255, 0.12), transparent 72%);
+}
+
+.pf-overlay__share-track {
+  display: flex;
+  width: 100%;
+  height: 0.9rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.32);
+}
+
+.pf-overlay__share-segment {
+  display: block;
+  flex: 0 0 auto;
+  height: 100%;
+}
+.pf-overlay__share-segment--1 {
+  background: linear-gradient(90deg, #e8c46c, #fff0ad);
+}
+.pf-overlay__share-segment--2 {
+  background: linear-gradient(90deg, #9178ee, #c7a4ff);
+}
+.pf-overlay__share-segment--3 {
+  background: linear-gradient(90deg, #45bdbc, #91e1d7);
+}
+
+.pf-overlay__top-three-candidates--final-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 24rem);
+  margin-inline: auto;
+}
+
+.pf-overlay__top-three-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.47);
+  font-size: 0.64rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.pf-overlay__audience-rail {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 4.85rem;
+  padding: 0.4rem 0.15rem 0;
+}
+
+.pf-overlay__audience-rail-title {
+  margin: 0 0 0.4rem;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.59rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pf-overlay__audience-rail-track {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 0.1rem 0.05rem 0.55rem;
+  scrollbar-width: thin;
+}
+
+.pf-overlay__audience-rail-player {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: center;
+  gap: 0.24rem;
+  width: 3.7rem;
+  padding: 0;
+  border: 0;
+  color: rgba(255, 255, 255, 0.68);
+  background: transparent;
+  font-size: 0.61rem;
+  font-weight: 750;
+}
+
+.pf-overlay__audience-rail-portrait {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-color: rgba(255, 255, 255, 0.16);
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.pf-overlay__audience-rail-player.is-selected .pf-overlay__audience-rail-portrait {
+  transform: translateY(-2px);
+  border-color: rgba(191, 120, 255, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(191, 120, 255, 0.18),
+    0 0 20px rgba(191, 120, 255, 0.2);
+}
+
+.pf-overlay__audience-rail-player.is-forecast .pf-overlay__audience-rail-portrait {
+  border-color: rgba(249, 207, 119, 0.82);
+  box-shadow: 0 0 0 2px rgba(249, 207, 119, 0.1);
+}
+
+.pf-overlay__audience-rail-player.is-forecast > span:last-child::after {
+  content: 'YOUR CALL';
+  display: block;
+  margin-top: 0.08rem;
+  color: #f4cf7f;
+  font-size: 0.45rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.pf-overlay__audience-rail-player.is-spotlighted .pf-overlay__audience-rail-portrait {
+  border-color: rgba(249, 207, 119, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(249, 207, 119, 0.16),
+    0 0 22px rgba(249, 207, 119, 0.28);
+}
+
+.pf-overlay__audience-rail-player:focus-visible {
+  outline: 2px solid rgba(249, 207, 119, 0.84);
+  outline-offset: 3px;
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 420px) {
+  .pf-overlay__top-three {
+    gap: 0.38rem;
+  }
+  .pf-overlay__top-three-player {
+    padding: 0.32rem 0.15rem 0.38rem;
+  }
+  .pf-overlay__top-three-note {
+    font-size: 0.6rem;
+  }
+  .pf-overlay__share-track {
+    height: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-overlay__top-three-player,
+  .pf-overlay__top-three-portrait {
+    transition: none;
   }
 }
 
@@ -1356,7 +1957,12 @@
 .pf-overlay__leader-glow {
   width: 132%;
   height: 132%;
-  background: radial-gradient(circle, rgba(249, 207, 119, 0.32), rgba(130, 87, 217, 0.16) 52%, transparent 74%);
+  background: radial-gradient(
+    circle,
+    rgba(249, 207, 119, 0.32),
+    rgba(130, 87, 217, 0.16) 52%,
+    transparent 74%
+  );
 }
 
 .pf-overlay__leader-avatar--portrait {
@@ -1368,7 +1974,9 @@
   border-radius: 47% 47% 18% 18% / 37% 37% 16% 16%;
   object-fit: cover;
   object-position: center 17%;
-  box-shadow: 0 24px 38px rgba(0, 0, 0, 0.48), 0 0 42px rgba(249, 207, 119, 0.2);
+  box-shadow:
+    0 24px 38px rgba(0, 0, 0, 0.48),
+    0 0 42px rgba(249, 207, 119, 0.2);
 }
 
 .pf-overlay__board-header {
@@ -1437,7 +2045,12 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(112deg, transparent 22%, rgba(255, 255, 255, 0.06) 50%, transparent 78%);
+  background: linear-gradient(
+    112deg,
+    transparent 22%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 78%
+  );
   transform: translateX(-130%);
   animation: pfSweep 5.4s ease-in-out infinite;
   pointer-events: none;

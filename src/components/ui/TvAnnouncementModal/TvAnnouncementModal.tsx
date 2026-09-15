@@ -64,13 +64,13 @@ const PHASE_COPY: Record<string, PhaseCopy> = {
     icon: '3️⃣',
     label: 'THE FINALE',
     category: 'Endgame',
-    body: 'The Finale has arrived. Three players remain, and they now compete in the legendary three-part Leader of the House competition. Part 1 is an endurance battle. Part 2 tests skill and memory. The winners of Parts 1 and 2 face off in Part 3, and the winner becomes the Final Leader of the House.',
+    body: 'The Finale has arrived. Three players remain. In the three-part Final Power Battle, the Part 1 winner advances directly, the other two compete for the second place in Part 3, and the final winner earns the power to decide the Final Two.',
   },
   final_hoh: {
     icon: '👑',
-    label: 'FINAL LOH',
+    label: 'FINAL POWER BATTLE',
     category: 'Endgame',
-    body: 'The Final Leader of the House holds the most consequential power in the game. They alone decide who sits beside them in the Final 2 — and who is sent to the Tribunal just one step from the prize. This single choice often defines legacies.',
+    body: 'The Final Power holder makes the season’s last choice: who joins them in the Final Two, and who leaves in third place to join the Tribunal.',
   },
   vox_populi: {
     icon: '🗣️',

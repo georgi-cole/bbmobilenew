@@ -670,6 +670,7 @@ export function createInitialGameState(options?: {
     aiReplacementWaiting: false,
     f3Part1WinnerId: null,
     f3Part2WinnerId: null,
+    finalThree: null,
     voteResults: null,
     voteResultsMode: 'house',
     evictionSplashId: null,
@@ -1324,6 +1325,7 @@ function activateVoxPopuliForSeason(state: GameState) {
   state.voxPopuli.nominationBallots = {}
   state.voxPopuli.nominationVoteCounts = {}
   state.voxPopuli.nominationDaysByPlayerId = {}
+  state.voxPopuli.audienceVoteDaysByPlayerId = {}
   state.voxPopuli.safetySaveCounts = {}
   state.voxPopuli.finalThreePacingSeen = []
   state.voxPopuli.lastReplacementNomineeIds = []
@@ -2287,6 +2289,144 @@ function holdVoxFinalThreePrelude(
   return true
 }
 
+function getFinalThreeActiveIds(state: GameState): string[] {
+  return state.players
+    .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+    .map((player) => player.id)
+}
+
+function isFinalThreePhase(phase: Phase): boolean {
+  return phase.startsWith('final3')
+}
+
+function beginFinalThreeController(state: GameState): void {
+  state.finalThree = {
+    mode: isVoxPopuliActive(state) ? 'vox_populi' : 'classic',
+    stage: 'part1',
+    openingSeen: false,
+    blockRevealSeen: false,
+    spectatorFinalPowerRevealSeen: false,
+    participantIds: getFinalThreeActiveIds(state),
+    part1: null,
+    part2: null,
+    part3: null,
+    finalPowerHolderId: null,
+    nomineeIds: [],
+    evicteeId: null,
+  }
+}
+
+/** Restore the durable controller for saves created before it existed. */
+function ensureFinalThreeController(state: GameState): void {
+  if (state.finalThree) return
+  if (!isFinalThreePhase(state.phase) && !state.f3Part1WinnerId && !state.f3Part2WinnerId) return
+
+  const participantIds = getFinalThreeActiveIds(state)
+  const part1WinnerId = state.f3Part1WinnerId ?? null
+  const part2WinnerId = state.f3Part2WinnerId ?? null
+  const stage =
+    state.phase === 'final3_decision'
+      ? state.awaitingFinal3Plea
+        ? 'ceremony'
+        : 'decision'
+      : state.phase === 'final3_comp3' || state.phase === 'final3_comp3_minigame'
+        ? 'part3'
+        : state.phase === 'final3_comp2' || state.phase === 'final3_comp2_minigame'
+          ? 'part2'
+          : 'part1'
+  state.finalThree = {
+    mode: isVoxPopuliActive(state) ? 'vox_populi' : 'classic',
+    stage,
+    // A legacy save should only replay an introduction or block reveal when it
+    // genuinely resumes at that exact presentation point.
+    openingSeen: state.phase !== 'final3',
+    blockRevealSeen: isVoxPopuliActive(state) || state.phase !== 'final3_comp3',
+    spectatorFinalPowerRevealSeen: false,
+    participantIds,
+    part1: part1WinnerId
+      ? { participantIds: [...participantIds], winnerId: part1WinnerId, seed: null }
+      : null,
+    part2: part2WinnerId
+      ? {
+          participantIds: participantIds.filter((id) => id !== part1WinnerId),
+          winnerId: part2WinnerId,
+          seed: null,
+        }
+      : null,
+    part3:
+      state.lohId && (state.phase === 'final3_decision' || state.awaitingFinal3Plea)
+        ? {
+            participantIds: [part1WinnerId, part2WinnerId].filter((id): id is string =>
+              Boolean(id)
+            ),
+            winnerId: state.lohId,
+            seed: null,
+          }
+        : null,
+    finalPowerHolderId: state.lohId ?? null,
+    nomineeIds: [...state.nomineeIds],
+    evicteeId: null,
+  }
+}
+
+function prepareFinalThreePart3Block(state: GameState): void {
+  // Vox Populi has no block at this point. Part 3 winner takes immunity and
+  // the audience chooses the remaining Final Two player after the appeal.
+  if (isVoxPopuliActive(state)) {
+    ensureFinalThreeController(state)
+    if (state.finalThree) state.finalThree.blockRevealSeen = true
+    return
+  }
+
+  const active = state.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury'
+  )
+  const blockPlayer = active.find(
+    (player) => player.id !== state.f3Part1WinnerId && player.id !== state.f3Part2WinnerId
+  )
+  if (!blockPlayer) return
+
+  state.nomineeIds = [blockPlayer.id]
+  if (blockPlayer.status !== 'nominated') blockPlayer.status = 'nominated'
+  ensureFinalThreeController(state)
+  if (state.finalThree) {
+    state.finalThree.nomineeIds = [blockPlayer.id]
+    state.finalThree.blockRevealSeen = false
+  }
+}
+
+function recordFinalThreePartOutcome(
+  state: GameState,
+  part: 1 | 2 | 3,
+  winnerId: string,
+  participantIds: string[],
+  seed: number | null
+): void {
+  ensureFinalThreeController(state)
+  if (!state.finalThree) beginFinalThreeController(state)
+  const outcome = { participantIds: [...participantIds], winnerId, seed }
+  state.finalThree![part === 1 ? 'part1' : part === 2 ? 'part2' : 'part3'] = outcome
+  state.finalThree!.stage = part === 1 ? 'part2' : part === 2 ? 'part3' : 'decision'
+  if (part === 1) state.f3Part1WinnerId = winnerId
+  if (part === 2) state.f3Part2WinnerId = winnerId
+}
+
+function recordFinalThreePower(state: GameState, winnerId: string, nomineeIds: string[]): void {
+  ensureFinalThreeController(state)
+  if (!state.finalThree) beginFinalThreeController(state)
+  state.finalThree!.finalPowerHolderId = winnerId
+  state.finalThree!.nomineeIds = [...nomineeIds]
+  state.finalThree!.stage = isVoxPopuliActive(state) ? 'decision' : 'ceremony'
+}
+
+function completeFinalThreeController(state: GameState, evicteeId: string): void {
+  ensureFinalThreeController(state)
+  if (!state.finalThree) return
+  state.finalThree.evicteeId = evicteeId
+  state.finalThree.nomineeIds = state.finalThree.nomineeIds.filter((id) => id !== evicteeId)
+  state.finalThree.stage = 'complete'
+}
+
 /**
  * Final Three is a self-contained Vox Populi ceremony.  Never allow a
  * lingering Final Four nomination, safety, or competition result to leak into
@@ -2324,6 +2464,7 @@ function resetVoxFinalThreeRound(state: GameState): void {
   state.minigameContext = null
   state.f3Part1WinnerId = null
   state.f3Part2WinnerId = null
+  state.finalThree = null
   state.players.forEach((player) => {
     if (['loh', 'nominated', 'pos', 'loh+pos', 'nominated+pos'].includes(player.status)) {
       player.status = 'active'
@@ -2337,14 +2478,60 @@ function resetVoxFinalThreeRound(state: GameState): void {
     state.voxPopuli.publicVoteContext = null
     state.voxPopuli.publicVotePercentages = null
     state.voxPopuli.finalThreePacingSeen = []
+    state.voxPopuli.finalThreeAppeal = null
+    state.voxPopuli.finalThreeAppealUsed = false
   }
 }
 
-function pushVoxFinalThreeResult(state: GameState, title: string, subtitle: string): void {
+function pushVoxFinalThreeResult(
+  state: GameState,
+  phase: Phase,
+  title: string,
+  subtitle: string
+): void {
   pushEvent(state, subtitle, 'game', {
     major: 'vox_final3_result',
+    phase,
     broadcastPriority: 'critical',
+    forceOnTv: true,
     announcementTitle: title,
+    announcementSubtitle: subtitle,
+  })
+}
+
+function pushClassicFinalThreePart1Result(
+  state: GameState,
+  winner: Player | undefined,
+  winnerId: string
+): void {
+  const winnerName = winner?.name ?? winnerId
+  const subtitle = `${winnerName} advances directly to Part 3. The other two finalists now compete for the last place in the Final Power Battle.`
+  pushEvent(state, subtitle, 'game', {
+    major: 'final3_part1_result',
+    phase: 'final3_comp2',
+    broadcastPriority: 'critical',
+    forceOnTv: true,
+    announcementTitle: 'Part 1 · Advancement',
+    announcementSubtitle: subtitle,
+  })
+}
+
+function pushClassicFinalThreePart2Result(
+  state: GameState,
+  winner: Player | undefined,
+  winnerId: string
+): void {
+  const winnerName = winner?.name ?? winnerId
+  const partOneWinnerName = state.players.find(
+    (player) => player.id === state.f3Part1WinnerId
+  )?.name
+  const subtitle = `${winnerName} takes the final place in Part 3, joining ${partOneWinnerName ?? 'the Part 1 winner'} in the Final Power Battle.`
+  pushEvent(state, subtitle, 'game', {
+    major: 'final3_part2_result',
+    phase: 'final3_comp3',
+    broadcastPriority: 'critical',
+    forceOnTv: true,
+    announcementTitle: 'Part 2 · Final qualifier',
     announcementSubtitle: subtitle,
   })
 }
@@ -4265,6 +4452,26 @@ const gameSlice = createSlice({
       applyCompetitionSeasonUpdateToState(state, action.payload)
     },
 
+    /** Acknowledges the narrated opening without allowing a reload to replay it. */
+    completeFinalThreeOpening(state) {
+      if (state.phase !== 'final3') return
+      ensureFinalThreeController(state)
+      if (state.finalThree) state.finalThree.openingSeen = true
+    },
+
+    /** Acknowledges the Part 3 block setup before the final competition launches. */
+    completeFinalThreeBlockReveal(state) {
+      if (state.phase !== 'final3_comp3') return
+      ensureFinalThreeController(state)
+      if (state.finalThree) state.finalThree.blockRevealSeen = true
+    },
+
+    /** Prevent a second Final Power reveal after the Part 3 spectator already showed it. */
+    completeSpectatorFinalPowerReveal(state) {
+      ensureFinalThreeController(state)
+      if (state.finalThree) state.finalThree.spectatorFinalPowerRevealSeen = true
+    },
+
     /**
      * Apply the result of a Final 3 part minigame.
      *
@@ -4278,43 +4485,57 @@ const gameSlice = createSlice({
       const winner = state.players.find((p) => p.id === winnerId)
 
       if (state.phase === 'final3_comp1_minigame') {
-        state.f3Part1WinnerId = winnerId
+        recordFinalThreePartOutcome(
+          state,
+          1,
+          winnerId,
+          state.minigameContext?.participants ?? getFinalThreeActiveIds(state),
+          state.minigameContext?.seed ?? null
+        )
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_comp2',
             `PART 1: ${(winner?.name ?? winnerId).toUpperCase()} ADVANCES`,
             `${winner?.name ?? winnerId} advances to Part 3. The other two finalists now fight for the remaining place.`
           )
         } else {
-          pushEvent(
-            state,
-            `Final 3 Part 1 result: ${winner?.name ?? winnerId} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆`,
-            'game'
-          )
+          pushClassicFinalThreePart1Result(state, winner, winnerId)
         }
         state.minigameContext = null
         state.phase = 'final3_comp2'
       } else if (state.phase === 'final3_comp2_minigame') {
-        state.f3Part2WinnerId = winnerId
+        recordFinalThreePartOutcome(
+          state,
+          2,
+          winnerId,
+          state.minigameContext?.participants ?? getFinalThreeActiveIds(state),
+          state.minigameContext?.seed ?? null
+        )
         const partOneWinnerName = state.players.find(
           (player) => player.id === state.f3Part1WinnerId
         )?.name
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_comp3',
             `PART 2: ${(winner?.name ?? winnerId).toUpperCase()} ADVANCES`,
-            `${winner?.name ?? winnerId} joins ${partOneWinnerName ?? 'the Part 1 winner'} in Part 3. The Part 2 loser now waits on the block.`
+            `${winner?.name ?? winnerId} joins ${partOneWinnerName ?? 'the Part 1 winner'} in Part 3. After the immunity battle, the other two finalists will face the audience vote.`
           )
         } else {
-          pushEvent(
-            state,
-            `Final 3 Part 2 result: ${winner?.name ?? winnerId} wins and advances to face the Part 1 winner in Part 3! 🏆`,
-            'game'
-          )
+          pushClassicFinalThreePart2Result(state, winner, winnerId)
         }
+        prepareFinalThreePart3Block(state)
         state.minigameContext = null
         state.phase = 'final3_comp3'
       } else if (state.phase === 'final3_comp3_minigame') {
+        recordFinalThreePartOutcome(
+          state,
+          3,
+          winnerId,
+          state.minigameContext?.participants ?? getFinalThreeActiveIds(state),
+          state.minigameContext?.seed ?? null
+        )
         // Crown the Final LOH (mirrors the deterministic path in advance() for final3_comp3).
         const alive = state.players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
         if (import.meta.env.DEV) {
@@ -4339,17 +4560,19 @@ const gameSlice = createSlice({
           const np = state.players.find((x) => x.id === p.id)
           if (np && np.status !== 'nominated') np.status = 'nominated'
         })
+        recordFinalThreePower(state, winnerId, state.nomineeIds)
 
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_decision',
             `FINAL IMMUNITY: ${(winner?.name ?? winnerId).toUpperCase()}`,
             `${winner?.name ?? winnerId} has won immunity. The other two finalists now face the audience for the final place in the Final 2.`
           )
         } else {
           pushEvent(
             state,
-            `Final 3 Part 3: ${winner?.name ?? winnerId} wins and is crowned the Final Leader of the House! 👑`,
+            `Final Power Battle: ${winner?.name ?? winnerId} wins and takes the final power! 👑`,
             'game'
           )
         }
@@ -4367,39 +4590,12 @@ const gameSlice = createSlice({
           return
         }
 
-        if (lohPlayer?.isUser) {
-          state.awaitingFinal3Eviction = true
-          const nomineeNames = state.nomineeIds
-            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
-            .join(' and ')
-          pushEvent(
-            state,
-            `${winner?.name ?? winnerId}, you must now eliminate either ${nomineeNames} to set the Final 2. 🎯`,
-            'game'
-          )
-          state.phase = 'final3_decision'
-        } else {
-          // AI Final LOH: deterministically evict (same as advance() AI path).
-          const aiRng = mulberry32(state.seed + 1)
-          const evictee = seededPick(aiRng, nominees)
-          const evicteePlayer = state.players.find((p) => p.id === evictee.id)
-          if (evicteePlayer) {
-            assignSeasonPlacementOnExit(state, evictee.id)
-            evicteePlayer.status = evictedStatus(state)
-            state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id)
-          }
-          pushEvent(
-            state,
-            `${winner?.name ?? winnerId} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
-            'game'
-          )
-          pushEvent(
-            state,
-            `The Final 2 is set! The Tribunal will now vote for the winner of The Big Eye. 🏆`,
-            'game'
-          )
-          state.phase = 'week_end'
-        }
+        // Every Classic Part-3 result enters the same ceremony.  In particular,
+        // a human who loses an interactive Part 3 must still see the Final LOH
+        // coronation, pleas, decision, and eviction cinematic.
+        state.awaitingFinal3Eviction = false
+        state.awaitingFinal3Plea = true
+        state.phase = 'final3_decision'
       }
     },
 
@@ -5190,6 +5386,29 @@ const gameSlice = createSlice({
       // handler finalizes the eviction and advances to week_end.
     },
 
+    /** Record the active user's one Final Three message to the Vox audience. */
+    selectVoxFinalThreeAppeal(state, action: PayloadAction<'underdog' | 'loyalty' | 'resume'>) {
+      if (
+        !isVoxPopuliActive(state) ||
+        !state.voxPopuli ||
+        state.voxPopuli.finalThreeAppealUsed ||
+        state.phase !== 'final3_decision' ||
+        !state.voxPopuli.awaitingPublicVote
+      ) {
+        return
+      }
+      const human = state.players.find((player) => player.isUser)
+      if (!human || !state.nomineeIds.includes(human.id)) return
+      state.voxPopuli.finalThreeAppeal = action.payload
+      state.voxPopuli.finalThreeAppealUsed = true
+      pushEvent(
+        state,
+        `${human.name} makes one final appeal to the audience before the vote closes.`,
+        'social',
+        { major: 'vox_final_three_appeal', broadcastPriority: 'critical' }
+      )
+    },
+
     /**
      * Dismiss the vote results popup after the player has viewed it.
      * Clears `voteResults`; the eviction cinematic is driven separately
@@ -5212,6 +5431,16 @@ const gameSlice = createSlice({
       }
       const rankedIds = action.payload.rankedIds.filter((id) => state.nomineeIds.includes(id))
       if (rankedIds.length === 0) return
+
+      // Count only players who remain on the final public ballot. Initial
+      // nominations can be cancelled by Safety, so they are not a reliable
+      // source for finale claims about surviving audience votes.
+      state.voxPopuli.audienceVoteDaysByPlayerId ??= {}
+      rankedIds.forEach((id) => {
+        const days = state.voxPopuli!.audienceVoteDaysByPlayerId![id] ?? []
+        if (!days.includes(state.week)) days.push(state.week)
+        state.voxPopuli!.audienceVoteDaysByPlayerId![id] = days
+      })
 
       state.voxPopuli.awaitingPublicVote = false
       // Vox does not use the classic Final-LOH ceremony. A stale classic flag
@@ -5416,6 +5645,7 @@ const gameSlice = createSlice({
           breakCupidArrowSpell(state)
         }
       } else if (isVoxFinal3 && state.voxPopuli) {
+        completeFinalThreeController(state, evicteeId)
         state.voxPopuli.publicVoteContext = null
         state.voxPopuli.finalistIds = getAlivePlayers(state).map((player) => player.id)
         state.phase = 'week_end'
@@ -5597,6 +5827,7 @@ const gameSlice = createSlice({
       evictee.status = evictedStatus(state)
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId)
       state.awaitingFinal3Eviction = false
+      completeFinalThreeController(state, evicteeId)
       pushEvent(
         state,
         `${finalHoh.name} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
@@ -6350,6 +6581,7 @@ const gameSlice = createSlice({
       assignSeasonPlacementOnExit(state, evicteeId)
       evictee.status = evictedStatus(state)
       state.nomineeIds = state.nomineeIds.filter((id) => id !== evicteeId)
+      completeFinalThreeController(state, evicteeId)
 
       pushEvent(
         state,
@@ -7009,6 +7241,7 @@ const gameSlice = createSlice({
           action.payload.liaForcedUntilTwinShockResolved ??
           !(action.payload.twinShockConsumed ?? false),
       }
+      ensureFinalThreeController(hydrated)
       if (hydrated.secretMission) {
         hydrated.secretMission = {
           ...hydrated.secretMission,
@@ -7221,6 +7454,7 @@ const gameSlice = createSlice({
         // a long safety or eviction presentation has just finished.
         state.week += 1
         resetVoxFinalThreeRound(state)
+        beginFinalThreeController(state)
         if (isVoxPopuliActive(state)) {
           const seedRng = mulberry32(state.seed)
           state.seed = (seedRng() * 0x100000000) >>> 0
@@ -7237,9 +7471,16 @@ const gameSlice = createSlice({
             return
           }
           const winner = seededPick(rng, alive)
-          state.f3Part1WinnerId = winner.id
+          recordFinalThreePartOutcome(
+            state,
+            1,
+            winner.id,
+            alive.map((player) => player.id),
+            state.seed
+          )
           pushVoxFinalThreeResult(
             state,
+            'final3_comp2',
             `PART 1: ${winner.name.toUpperCase()} ADVANCES`,
             `${winner.name} advances to Part 3. The other two finalists now fight for the remaining place.`
           )
@@ -7270,7 +7511,7 @@ const gameSlice = createSlice({
         if (!isVoxPopuliActive(state)) {
           pushEvent(
             state,
-            `Final 3 Part 1 is underway! All three players compete for the first leg of the Final LOH. 🏁`,
+            `Part 1 begins now. All three finalists compete for a direct place in the Final Power Battle. 🏁`,
             'game'
           )
         }
@@ -7288,20 +7529,23 @@ const gameSlice = createSlice({
         }
 
         const winner = seededPick(rng, alive)
-        state.f3Part1WinnerId = winner.id
+        recordFinalThreePartOutcome(
+          state,
+          1,
+          winner.id,
+          alive.map((player) => player.id),
+          state.seed
+        )
 
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_comp2',
             `PART 1: ${winner.name.toUpperCase()} ADVANCES`,
             `${winner.name} advances to Part 3. The other two finalists now fight for the remaining place.`
           )
         } else {
-          pushEvent(
-            state,
-            `Final 3 Part 1 result: ${winner.name} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆`,
-            'game'
-          )
+          pushClassicFinalThreePart1Result(state, winner, winner.id)
         }
         state.phase = 'final3_comp2'
         return
@@ -7309,15 +7553,6 @@ const gameSlice = createSlice({
 
       if (state.phase === 'final3_comp2') {
         const partOneWinnerName = state.players.find((p) => p.id === state.f3Part1WinnerId)?.name
-        if (
-          holdVoxFinalThreePrelude(
-            state,
-            'part2',
-            'THE ROAD BACK',
-            `${partOneWinnerName ?? 'The Part 1 winner'} waits for Part 3 while the other two finalists fight for the remaining place. Only one will join the final immunity showdown.`
-          )
-        )
-          return
         // Part 2: the 2 Part-1 losers compete; winner advances to Part 3
         const seedRng = mulberry32(state.seed)
         state.seed = (seedRng() * 0x100000000) >>> 0
@@ -7338,7 +7573,7 @@ const gameSlice = createSlice({
         if (!isVoxPopuliActive(state)) {
           pushEvent(
             state,
-            `Final 3 Part 2 is underway! The remaining two players battle to join the Part 1 winner in Part 3. 🏁`,
+            `Part 2 begins now. The remaining two finalists battle for the last place in the Final Power Battle. 🏁`,
             'game'
           )
         }
@@ -7356,38 +7591,30 @@ const gameSlice = createSlice({
         }
 
         const winner = seededPick(rng, losers)
-        state.f3Part2WinnerId = winner.id
+        recordFinalThreePartOutcome(
+          state,
+          2,
+          winner.id,
+          losers.map((player) => player.id),
+          state.seed
+        )
 
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_comp3',
             `PART 2: ${winner.name.toUpperCase()} ADVANCES`,
-            `${winner.name} joins ${partOneWinnerName ?? 'the Part 1 winner'} in Part 3. The Part 2 loser now waits on the block.`
+            `${winner.name} joins ${partOneWinnerName ?? 'the Part 1 winner'} in Part 3. After the immunity battle, the other two finalists will face the audience vote.`
           )
         } else {
-          pushEvent(
-            state,
-            `Final 3 Part 2 result: ${winner.name} wins and advances to face the Part 1 winner in Part 3! 🏆`,
-            'game'
-          )
+          pushClassicFinalThreePart2Result(state, winner, winner.id)
         }
+        prepareFinalThreePart3Block(state)
         state.phase = 'final3_comp3'
         return
       }
 
       if (state.phase === 'final3_comp3') {
-        const immunityFinalists = [state.f3Part1WinnerId, state.f3Part2WinnerId]
-          .map((id) => state.players.find((p) => p.id === id)?.name)
-          .filter((name): name is string => Boolean(name))
-        if (
-          holdVoxFinalThreePrelude(
-            state,
-            'part3',
-            'THE LAST SHOWDOWN',
-            `${formatNameList(immunityFinalists)} meet in Part 3 for final immunity. The Part 2 loser is already on the block; the Part 3 loser will join them for the audience vote.`
-          )
-        )
-          return
         // Part 3: Part-1 winner vs Part-2 winner → Final LOH crowned
         const seedRng = mulberry32(state.seed)
         state.seed = (seedRng() * 0x100000000) >>> 0
@@ -7413,7 +7640,7 @@ const gameSlice = createSlice({
         if (!isVoxPopuliActive(state) && f3Part1Name && f3Part2Name) {
           pushEvent(
             state,
-            `Final 3 Part 3 is underway! ${f3Part1Name} (Part 1 winner) vs ${f3Part2Name} (Part 2 winner) — the winner becomes the Final Leader of the House! 🏁`,
+            `The Final Power Battle begins now. ${f3Part1Name} faces ${f3Part2Name}; the winner controls the Final Two. 🏁`,
             'game'
           )
         }
@@ -7431,6 +7658,13 @@ const gameSlice = createSlice({
         }
 
         const finalHoh = seededPick(rng, pool)
+        recordFinalThreePartOutcome(
+          state,
+          3,
+          finalHoh.id,
+          pool.map((player) => player.id),
+          state.seed
+        )
 
         // Crown the Final LOH
         if (import.meta.env.DEV) {
@@ -7456,17 +7690,19 @@ const gameSlice = createSlice({
           const np = state.players.find((x) => x.id === p.id)
           if (np && np.status !== 'nominated') np.status = 'nominated'
         })
+        recordFinalThreePower(state, finalHoh.id, state.nomineeIds)
 
         if (isVoxPopuliActive(state)) {
           pushVoxFinalThreeResult(
             state,
+            'final3_decision',
             `FINAL IMMUNITY: ${finalHoh.name.toUpperCase()}`,
             `${finalHoh.name} has won immunity. The other two finalists now face the audience for the final place in the Final 2.`
           )
         } else {
           pushEvent(
             state,
-            `Final 3 Part 3: ${finalHoh.name} wins and is crowned the Final Leader of the House! 👑`,
+            `Final Power Battle: ${finalHoh.name} wins and takes the final power! 👑`,
             'game'
           )
         }
@@ -7482,29 +7718,14 @@ const gameSlice = createSlice({
           return
         }
 
-        // Check if Final LOH is the human player
-        if (lohPlayer?.isUser) {
-          state.awaitingFinal3Eviction = true
-          const nomineeNames = state.nomineeIds
-            .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
-            .join(' and ')
-          pushEvent(
-            state,
-            `${finalHoh.name}, you must now eliminate either ${nomineeNames} to set the Final 2. 🎯`,
-            'game'
-          )
-        } else {
-          // AI Final LOH: trigger the Final-3 ceremony overlay so the user sees
-          // the coronation, plea, and eviction cinematic before the game ends.
-          // finalizeFinal3Decision (dispatched by Final3Ceremony on completion)
-          // performs the actual eviction and clears this flag.
-          state.awaitingFinal3Plea = true
-          if (import.meta.env.DEV) {
-            console.log(
-              '[gameSlice] advance() final3_comp3: AI LOH crowned, awaitingFinal3Plea set',
-              { lohId: finalHoh.id }
-            )
-          }
+        // Every Classic route enters the same final ceremony. This keeps a
+        // human Final LOH's choice and a human Part-3 loss equally complete.
+        state.awaitingFinal3Eviction = false
+        state.awaitingFinal3Plea = true
+        if (import.meta.env.DEV) {
+          console.log('[gameSlice] advance() final3_comp3: awaitingFinal3Plea set', {
+            lohId: finalHoh.id,
+          })
         }
 
         state.phase = 'final3_decision'
@@ -7553,9 +7774,10 @@ const gameSlice = createSlice({
           evictee.status = evictedStatus(state)
           state.nomineeIds = state.nomineeIds.filter((id) => id !== evictee.id)
           state.awaitingFinal3Eviction = false
+          completeFinalThreeController(state, evictee.id)
           pushEvent(
             state,
-            `${finalHoh?.name ?? 'The Final LOH'} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
+            `${finalHoh?.name ?? 'The Final Power holder'} has chosen to eliminate ${evictee.name}. ${evictee.name} finishes in 3rd place. 🥉`,
             'game'
           )
           pushEvent(
@@ -9702,6 +9924,7 @@ export const {
   submitHumanVote,
   submitTieBreak,
   submitDoubleEvictionTieBreak,
+  selectVoxFinalThreeAppeal,
   commitVoxAudienceVote,
   commitVoxAudiencePreview,
   dismissVoteResults,
@@ -9763,6 +9986,9 @@ export const {
   awardFavoritePrize,
   openSpectator,
   closeSpectator,
+  completeFinalThreeOpening,
+  completeFinalThreeBlockReveal,
+  completeSpectatorFinalPowerReveal,
   setAwaitingFinal3Plea,
   finalizeFinal3Decision,
   forceHoH,
@@ -9855,6 +10081,57 @@ export const resolvePendingVoxAudienceVote =
     )
   }
 
+/** Submit the active player's last Vox appeal before the Final Three audience vote. */
+export const submitVoxFinalThreeAppeal =
+  (appeal: 'underdog' | 'loyalty' | 'resume') =>
+  (dispatch: AppDispatch, getState: () => RootState) => {
+    const before = getState().game
+    const vox = before.voxPopuli
+    const human = before.players.find((player) => player.isUser)
+    if (
+      !human ||
+      !isVoxPopuliActive(before) ||
+      !vox ||
+      vox.finalThreeAppealUsed ||
+      before.phase !== 'final3_decision' ||
+      !vox.awaitingPublicVote ||
+      !before.nomineeIds.includes(human.id)
+    ) {
+      return
+    }
+
+    const wins = (human.stats?.lohWins ?? 0) + (human.stats?.posWins ?? 0)
+    const nominations = human.stats?.timesNominated ?? 0
+    const delta =
+      appeal === 'underdog'
+        ? nominations >= 2
+          ? 4
+          : 2
+        : appeal === 'resume'
+          ? wins >= 2
+            ? 4
+            : 2
+          : 3
+    const headlineText =
+      appeal === 'underdog'
+        ? `${human.name} asks the audience to reward the fight it took to survive.`
+        : appeal === 'resume'
+          ? `${human.name} makes one final case from the season they played.`
+          : `${human.name} reminds the audience of every relationship built along the way.`
+
+    dispatch(selectVoxFinalThreeAppeal(appeal))
+    dispatch(
+      updateApproval({
+        playerId: human.id,
+        delta,
+        reason: `vox_final_three_appeal_${appeal}`,
+        week: before.week,
+        isHeadline: true,
+        headlineText,
+      })
+    )
+  }
+
 /** Reveal the once-per-day, rewarded Vox audience snapshot on the Faux TV. */
 export const revealVoxTemporaryAudienceVote =
   () => (dispatch: AppDispatch, getState: () => RootState) => {
@@ -9910,9 +10187,11 @@ export const selectEvictedPlayers = createSelector(selectPlayers, (players) =>
  * finalists, or a human finalist is present — the minigame path takes over).
  */
 export const selectF3Part3PredictedWinnerId = (state: RootState): string | null => {
-  const { phase, seed, f3Part1WinnerId, f3Part2WinnerId, players } = state.game
-  if (phase !== 'final3_comp3' || !f3Part1WinnerId || !f3Part2WinnerId) return null
-  const finalists = players.filter((p) => p.id === f3Part1WinnerId || p.id === f3Part2WinnerId)
+  const { phase, seed, f3Part1WinnerId, f3Part2WinnerId, finalThree, players } = state.game
+  const part1WinnerId = finalThree?.part1?.winnerId ?? f3Part1WinnerId
+  const part2WinnerId = finalThree?.part2?.winnerId ?? f3Part2WinnerId
+  if (phase !== 'final3_comp3' || !part1WinnerId || !part2WinnerId) return null
+  const finalists = players.filter((p) => p.id === part1WinnerId || p.id === part2WinnerId)
   if (finalists.length < 2) return null
   // Bail out for the human-participant path (minigame handles that case).
   if (finalists.some((p) => p.isUser)) return null
@@ -9936,11 +10215,22 @@ export const selectF3Part3PredictedWinnerId = (state: RootState): string | null 
  * single-competitor edge case (corrupted state) still yields a deterministic
  * result consistent with what `advance()` would pick.
  */
+export const selectF3Part1PredictedWinnerId = (state: RootState): string | null => {
+  const { phase, seed, players } = state.game
+  if (phase !== 'final3') return null
+  const alive = players.filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+  if (alive.length === 0 || alive.some((player) => player.isUser)) return null
+  const seedRng = mulberry32(seed)
+  const newSeed = (seedRng() * 0x100000000) >>> 0
+  return seededPick(mulberry32(newSeed), alive).id
+}
+
 export const selectF3Part2PredictedWinnerId = (state: RootState): string | null => {
-  const { phase, seed, f3Part1WinnerId, players } = state.game
-  if (phase !== 'final3_comp2' || !f3Part1WinnerId) return null
+  const { phase, seed, f3Part1WinnerId, finalThree, players } = state.game
+  const part1WinnerId = finalThree?.part1?.winnerId ?? f3Part1WinnerId
+  if (phase !== 'final3_comp2' || !part1WinnerId) return null
   const alive = players.filter((p) => p.status !== 'evicted' && p.status !== 'jury')
-  const losers = alive.filter((p) => p.id !== f3Part1WinnerId)
+  const losers = alive.filter((p) => p.id !== part1WinnerId)
   if (losers.length === 0) return null
   // Bail out for the human-participant path (minigame handles that case).
   if (losers.some((p) => p.isUser)) return null

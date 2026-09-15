@@ -31,13 +31,21 @@
 }
 
 @keyframes overlaySlideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes overlaySlideDown {
-  from { transform: translateY(0); }
-  to   { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
@@ -76,9 +84,16 @@
 }
 
 /* Scrollbar */
-.chat-overlay__feed::-webkit-scrollbar { width: 4px; }
-.chat-overlay__feed::-webkit-scrollbar-track { background: transparent; }
-.chat-overlay__feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+.chat-overlay__feed::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-overlay__feed::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-overlay__feed::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
 
 /* ── Message line ───────────────────────────────────────────────────────────── */
 .chat-overlay__line {
@@ -89,8 +104,14 @@
 }
 
 @keyframes chatLineIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Host lines: centered italic annotation */
@@ -190,12 +211,24 @@
   animation: typingDot 1.1s infinite ease-in-out;
 }
 
-.chat-overlay__typing span:nth-child(2) { animation-delay: 0.18s; }
-.chat-overlay__typing span:nth-child(3) { animation-delay: 0.36s; }
+.chat-overlay__typing span:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.chat-overlay__typing span:nth-child(3) {
+  animation-delay: 0.36s;
+}
 
 @keyframes typingDot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
-  30%            { transform: translateY(-5px); opacity: 1; }
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
 }
 
 /* ── POV holder lines (prompts + thanks) ────────────────────────────────────── */
@@ -222,8 +255,13 @@
 }
 
 @keyframes thinkingPulse {
-  0%, 100% { opacity: 0.3; }
-  50%       { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ── Footer bar ─────────────────────────────────────────────────────────────── */
@@ -237,6 +275,33 @@
   background: #0d111a;
 }
 
+.chat-overlay--play-paced .chat-overlay__footer {
+  box-sizing: border-box;
+  min-height: calc(
+    var(--game-action-dock-height, 82px) + env(safe-area-inset-bottom, 0px) + 3.25rem
+  );
+  justify-content: center;
+  align-items: flex-start;
+  padding: 14px 20px
+    calc(var(--game-action-dock-height, 82px) + env(safe-area-inset-bottom, 0px) + 14px);
+}
+
+.chat-overlay__play-hint {
+  width: 100%;
+  margin: 0;
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.chat-overlay__play-hint {
+  width: 100%;
+  margin: 0;
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
 /* ── Skip button ────────────────────────────────────────────────────────────── */
 .chat-overlay__skip {
   padding: 8px 22px;
@@ -247,7 +312,10 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 20px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .chat-overlay__skip:hover {
@@ -267,7 +335,9 @@
   border-radius: 24px;
   cursor: pointer;
   letter-spacing: 0.03em;
-  transition: background 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    transform 0.1s;
   animation: chatLineIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

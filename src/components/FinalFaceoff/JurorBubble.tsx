@@ -47,6 +47,7 @@ export default function JurorBubble({
         .filter(Boolean)
         .join(' ')}
       data-juror-id={juror.id}
+      aria-current={isFlashing ? 'step' : undefined}
     >
       {isFlashing && <div className="jb-flash-ring" aria-hidden="true" />}
       <PlayerAvatar

@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
       // Git worktrees live inside this checkout and contain full copies of the
       // app. Watching them causes a reload storm that can prevent the real app
       // entry module from ever being served during local development.
-      ignored: ['**/.worktrees/**'],
+      ignored: ['**/.worktrees/**', '**/.codex-worktrees/**'],
     },
     proxy: {
       '/api': {

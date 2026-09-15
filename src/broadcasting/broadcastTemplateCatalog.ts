@@ -1052,13 +1052,6 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed('final4.pleas-start', 'final4_eviction', '{holder} asks nominees for their pleas. 🎤'),
   feed('final4.plea', 'final4_eviction', '{nominee}: "{plea}"'),
   card(
-    'card.final3',
-    'final3',
-    'The Finale',
-    'Three players remain — the three-part Final LOH begins.',
-    'final3_announcement'
-  ),
-  card(
     'card.vox-final3',
     'final3',
     'Final 3',
@@ -1082,12 +1075,16 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'final3.part1-start',
     'final3_comp1',
-    'Final 3 Part 1 is underway! All three players compete for the first leg of the Final LOH. 🏁'
+    'Final 3 Part 1 is underway! All three players compete for the first leg of the Final Power Battle. 🏁'
   ),
   feed(
     'final3.part1-result',
-    'final3_comp1',
-    'Final 3 Part 1 result: {winner} wins and advances directly to Part 3! The other two players will compete in Part 2. 🏆'
+    'final3_comp2',
+    '{winner} advances directly to Part 3. The other two finalists now compete for the last place in the Final Power Battle.',
+    'game',
+    'critical',
+    'final3_part1_result',
+    'Classic Part 1 result; announce the Part 2 setup as a major live event.'
   ),
   feed(
     'final3.part1-minigame',
@@ -1105,8 +1102,45 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   ),
   feed(
     'final3.part2-result',
+    'final3_comp3',
+    '{winner} takes the final place in Part 3, joining {partOneWinner} in the Final Power Battle.',
+    'game',
+    'critical',
+    'final3_part2_result',
+    'Classic Part 2 result; announce the Part 3 faceoff as a major live event.'
+  ),
+  feed(
+    'vox.final3-result-part1',
     'final3_comp2',
-    'Final 3 Part 2 result: {winner} wins and advances to face the Part 1 winner in Part 3! 🏆'
+    '{result}',
+    'game',
+    'critical',
+    'vox_final3_result',
+    'Vox Populi Part 1 result announcement.',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'vox.final3-result-part2',
+    'final3_comp3',
+    '{result}',
+    'game',
+    'critical',
+    'vox_final3_result',
+    'Vox Populi Part 2 result announcement.',
+    true,
+    'vox_populi'
+  ),
+  feed(
+    'vox.final3-result-part3',
+    'final3_decision',
+    '{result}',
+    'game',
+    'critical',
+    'vox_final3_result',
+    'Vox Populi final immunity result announcement.',
+    true,
+    'vox_populi'
   ),
   feed(
     'final3.part2-minigame',
@@ -1120,12 +1154,12 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   feed(
     'final3.part3-start',
     'final3_comp3',
-    'Final 3 Part 3 is underway! {first} (Part 1 winner) vs {second} (Part 2 winner) — the winner becomes the Final Leader of the House! 🏁'
+    'The Final Power Battle is underway! {first} (Part 1 winner) vs {second} (Part 2 winner) — one player takes ultimate power. 🏁'
   ),
   feed(
     'final3.part3-result',
     'final3_comp3',
-    'Final 3 Part 3: {winner} wins and is crowned the Final Leader of the House! 👑'
+    'Final Power Battle: {winner} wins and is crowned the Final Power Holder! 👑'
   ),
   feed(
     'final3.part3-human-decision',
@@ -1144,7 +1178,7 @@ export const BROADCAST_TEMPLATE_CATALOG: readonly BroadcastTemplate[] = [
   card(
     'card.final-decision',
     'final3_decision',
-    'Final LOH Decision',
+    'Final Power Decision',
     'One finalist will be eliminated.',
     'final_hoh'
   ),
@@ -1221,9 +1255,19 @@ export function matchBroadcastTemplate(
       const match = text.match(compileTemplate(explicit.text))
       return { template: explicit, variables: match?.slice(1) ?? [] }
     }
+    // An explicit source ID is authoritative even when it belongs to a
+    // producer-owned event outside the built-in catalog (for example, the
+    // season onboarding welcome). Do not fall through to generic `{result}`
+    // templates, which can misclassify that authored copy as an old finale.
+    return null
   }
   const candidates = BROADCAST_TEMPLATE_CATALOG.filter(
-    (template) => template.kind === 'feed' && (!phase || template.phase === phase)
+    (template) =>
+      template.kind === 'feed' &&
+      (!phase || template.phase === phase) &&
+      // Result templates such as `{result}` are unbounded catch-alls. They
+      // belong to explicit source IDs/major keys, never heuristic matching.
+      template.text.replace(/\{[^}]+\}/g, '').trim().length > 0
   )
   for (const template of candidates) {
     const match = text.match(compileTemplate(template.text))

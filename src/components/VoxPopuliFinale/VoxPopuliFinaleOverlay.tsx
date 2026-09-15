@@ -32,7 +32,7 @@ export default function VoxPopuliFinaleOverlay() {
 
   if (vox.finaleStage === 'showcase') {
     const finalistCases: VoxFinalistCase[] = finalists.map((player) => {
-      const nominationDays = vox.nominationDaysByPlayerId?.[player.id]?.length ?? player.stats?.timesNominated ?? 0
+      const audienceVoteDays = vox.audienceVoteDaysByPlayerId?.[player.id]?.length ?? 0
       const competitionWins = (player.stats?.lohWins ?? 0) + (player.stats?.posWins ?? 0)
       const safetySaves = vox.safetySaveCounts?.[player.id] ?? 0
       const realityAlliance = Object.values(social.reality.alliances).find(
@@ -42,9 +42,9 @@ export default function VoxPopuliFinaleOverlay() {
         (alliance) => alliance.participantIds.includes(player.id) && alliance.status === 'active'
       )
       const powerMoves = [
-        nominationDays === 0
+        audienceVoteDays === 0
           ? 'Reached the final without ever facing the audience vote'
-          : `Survived ${nominationDays} audience-vote ${nominationDays === 1 ? 'night' : 'nights'}`,
+          : `Survived ${audienceVoteDays} audience-vote ${audienceVoteDays === 1 ? 'night' : 'nights'}`,
         competitionWins > 0
           ? `Won ${competitionWins} ${competitionWins === 1 ? 'competition' : 'competitions'} when safety mattered most`
           : null,
@@ -56,12 +56,16 @@ export default function VoxPopuliFinaleOverlay() {
           : dramaAlliance
             ? 'Built a trusted partnership that survived the pressure'
             : null,
-      ].filter((move): move is string => Boolean(move)).slice(0, 3)
+      ]
+        .filter((move): move is string => Boolean(move))
+        .slice(0, 3)
       const profileBio = player.isUser ? activeProfile?.bio : undefined
       const profileIdentity = [
         profileBio?.profession ? `a ${profileBio.profession}` : null,
         profileBio?.location ? `from ${profileBio.location}` : null,
-      ].filter((detail): detail is string => Boolean(detail)).join(' ')
+      ]
+        .filter((detail): detail is string => Boolean(detail))
+        .join(' ')
       const numericAge = profileBio?.age?.trim().match(/^\d{1,3}$/)?.[0]
       const introduction = player.isUser
         ? profileBio?.story?.trim() ||
@@ -90,9 +94,7 @@ export default function VoxPopuliFinaleOverlay() {
         players={game.players}
         history={game.history}
         publicOpinion={publicOpinion}
-        onComplete={() =>
-          dispatch(vox.winnerId ? completeVoxSeasonRecap() : startVoxFinalVote())
-        }
+        onComplete={() => dispatch(vox.winnerId ? completeVoxSeasonRecap() : startVoxFinalVote())}
       />
     )
   }

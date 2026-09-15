@@ -9,6 +9,7 @@ import {
   finalizeFinal4Eviction,
   finalizeFinal3Eviction,
   selectAlivePlayers,
+  selectF3Part1PredictedWinnerId,
   selectF3Part3PredictedWinnerId,
   selectF3Part2PredictedWinnerId,
   submitPovDecision,
@@ -19,6 +20,7 @@ import {
   submitHumanVote,
   resolvePendingVoxAudienceVote,
   revealVoxTemporaryAudienceVote,
+  submitVoxFinalThreeAppeal,
   startVoxFinalVote,
   resetGame,
 } from '../../store/gameSlice'
@@ -74,6 +76,9 @@ import SpectatorView from '../../components/ui/SpectatorView'
 import Capitalization from '../../components/Capitalization/Capitalization'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import Final3Ceremony from '../../components/Final3Ceremony/Final3Ceremony'
+import FinalPowerBattleIntro from '../../components/FinalPowerBattle/FinalPowerBattleIntro'
+import FinalThreeBlockReveal from '../../components/FinalPowerBattle/FinalThreeBlockReveal'
+import VoxFinalThreeAppeal from '../../components/VoxFinalThreeAppeal/VoxFinalThreeAppeal'
 import { getProfilePhotoAvatarId, joinPublicAssetPath, resolveAvatar } from '../../utils/avatar'
 import { statusBadgeImageSrc } from '../../utils/statusBadges'
 import type { Player } from '../../types'
@@ -232,6 +237,7 @@ export default function GameScreen() {
   )
   const lastSocialReport = useAppSelector(selectLastSocialReport)
   const socialSummaryOpen = useAppSelector(selectSocialSummaryOpen)
+  const f3Part1PredictedWinnerId = useAppSelector(selectF3Part1PredictedWinnerId)
   const f3Part3PredictedWinnerId = useAppSelector(selectF3Part3PredictedWinnerId)
   const f3Part2PredictedWinnerId = useAppSelector(selectF3Part2PredictedWinnerId)
   const adsState = useAppSelector(selectAdsState)
@@ -276,7 +282,13 @@ export default function GameScreen() {
   useEffect(() => {
     if (!game.voxPopuli?.awaitingPublicVote) return
     const handlePlay = (event: Event) => {
-      if (event.defaultPrevented) return
+      if (
+        event.defaultPrevented ||
+        document.querySelector('[aria-label="Final appeal to the audience"]')
+      ) {
+        event.preventDefault()
+        return
+      }
       dispatch(resolvePendingVoxAudienceVote())
     }
     window.addEventListener('ui:playPressed', handlePlay)
@@ -286,7 +298,13 @@ export default function GameScreen() {
   useEffect(() => {
     if (game.voxPopuli?.finaleStage !== 'ready') return
     const handlePlay = (event: Event) => {
-      if (event.defaultPrevented) return
+      if (
+        event.defaultPrevented ||
+        document.querySelector('[aria-label="Final appeal to the audience"]')
+      ) {
+        event.preventDefault()
+        return
+      }
       dispatch(startVoxFinalVote())
     }
     window.addEventListener('ui:playPressed', handlePlay)
@@ -336,10 +354,27 @@ export default function GameScreen() {
 
   const humanPlayer = game.players.find((p) => p.isUser)
   const [spectatingAfterElimination, setSpectatingAfterElimination] = useState(false)
+  const [finalThreeCeremonyPlayAvailable, setFinalThreeCeremonyPlayAvailable] = useState(false)
+  const [finaleSpectatorPlayAvailable, setFinaleSpectatorPlayAvailable] = useState(true)
+  const handleFinalThreeCeremonyPlayAvailability = useCallback(
+    (available: boolean) => setFinalThreeCeremonyPlayAvailable(available),
+    []
+  )
   const humanPlayerEliminated = humanPlayer?.status === 'evicted' || humanPlayer?.status === 'jury'
-  const preJuryGameOver =
-    game.mode !== 'survival' && humanPlayer?.status === 'evicted' && !spectatingAfterElimination
   const isVoxPopuli = game.voxPopuli?.status === 'active'
+  const showVoxFinalThreeAppeal =
+    isVoxPopuli &&
+    game.phase === 'final3_decision' &&
+    game.voxPopuli?.awaitingPublicVote === true &&
+    game.voxPopuli.publicVoteContext === 'final3' &&
+    game.voxPopuli.finalThreeAppealUsed !== true &&
+    Boolean(humanPlayer && game.nomineeIds.includes(humanPlayer.id))
+  const isVoxThirdPlace = isVoxPopuli && humanPlayer?.seasonPlacement === 3
+  const preJuryGameOver =
+    game.mode !== 'survival' &&
+    humanPlayer?.status === 'evicted' &&
+    !isVoxThirdPlace &&
+    !spectatingAfterElimination
   const isVoxFinalFour = isVoxPopuli && alivePlayers.length === 4
   const voxAudiencePreviewWindow =
     isVoxPopuli &&
@@ -732,6 +767,15 @@ export default function GameScreen() {
     dispatch,
   })
   const {
+    finalPowerBattleIntroActive,
+    handleFinalPowerBattleIntroDone,
+    spectatorF3Part1Active,
+    spectatorF3Part1CompetitorIds,
+    handleSpectatorF3Part1Done,
+    finalThreeBlockRevealActive,
+    finalThreeBlockPlayer,
+    finalThreeBlockCompetitors,
+    handleFinalThreeBlockRevealDone,
     spectatorF3Active,
     spectatorF3CompetitorIds,
     handleSpectatorF3Done,
@@ -810,6 +854,7 @@ export default function GameScreen() {
     favoritePlayer,
     showFavoriteVoting,
     handleFavoriteComplete,
+    handleForecastAward,
   } = useTwistFlow({
     game,
     alivePlayers,
@@ -1026,31 +1071,9 @@ export default function GameScreen() {
       return
     }
 
-    // final_safety_decision_auto — before the final safety (F4 POS) holder announces
-    if (
-      currentPhase === 'final4_eviction' &&
-      canShowAd('final_safety_decision_auto', state) &&
-      window.GameAds?.showInterstitial
-    ) {
-      queuePreAdAnnouncement(
-        'final_safety_decision_auto',
-        'The final safety winner now has the deciding vote to evict. Find out who is going to be eliminated just a step before the finale. Stay with us.'
-      )
-      return
-    }
-
-    // final_loh_decision_auto — before the final LOH (F3 Part 3 winner) announces
-    if (
-      currentPhase === 'final3_decision' &&
-      canShowAd('final_loh_decision_auto', state) &&
-      window.GameAds?.showInterstitial
-    ) {
-      queuePreAdAnnouncement(
-        'final_loh_decision_auto',
-        'The final leader of the house has to make a very important decision that might cost them the victory. Who will they choose? Find out right after the break.'
-      )
-      return
-    }
+    // The decisive sequence is uninterrupted.  Ads can still appear at the
+    // ordinary eviction/POS placements, but never between Final Three results,
+    // the final safety decision, or the final LOH decision.
   }, [game.phase, game.week, game.players, game.posWinnerId, dispatch, queuePreAdAnnouncement])
 
   // ── Ad hook: social_energy_recharge ──────────────────────────────────────
@@ -1183,9 +1206,22 @@ export default function GameScreen() {
   const showSaveCeremony = pendingSaveCeremony !== null
   const showFinal3Ceremony =
     !isVoxPopuli &&
-    game.awaitingFinal3Plea === true &&
+    (game.awaitingFinal3Plea === true || game.awaitingFinal3Eviction === true) &&
     game.phase === 'final3_decision' &&
     !!game.lohId
+  const finaleOverlayActive =
+    finalPowerBattleIntroActive ||
+    finalThreeBlockRevealActive ||
+    spectatorF3Part1Active ||
+    spectatorF3Active ||
+    spectatorF3Part2Active ||
+    showFinal3Ceremony
+  const finalePlayAvailable =
+    finalPowerBattleIntroActive ||
+    finalThreeBlockRevealActive ||
+    ((spectatorF3Part1Active || spectatorF3Active || spectatorF3Part2Active) &&
+      finaleSpectatorPlayAvailable) ||
+    (showFinal3Ceremony && finalThreeCeremonyPlayAvailable)
   const survivorTerminalActive = game.mode === 'survival' && isSurvivorRunTerminal(game)
   const favoriteAnnouncementPending =
     game.favoritePlayer?.active === true && game.favoritePlayer?.votingStarted !== true
@@ -1287,6 +1323,9 @@ export default function GameScreen() {
       },
       endgame: {
         awaitingDecision: [
+          finalPowerBattleIntroActive,
+          finalThreeBlockRevealActive,
+          spectatorF3Part1Active,
           showFinal4Chat,
           showFinal4Modal,
           showFinal4AnnounceChat,
@@ -1380,6 +1419,7 @@ export default function GameScreen() {
       >
         {showPublicSaveReveal && publicSaveWinnerId ? (
           <TvZone
+            key={game.gameId}
             publicSaveReveal={{
               nominees: publicSaveNominees,
               approvals: publicSaveApprovals,
@@ -1408,6 +1448,7 @@ export default function GameScreen() {
           />
         ) : showDemocraciaResults && democraciaResultDisplay ? (
           <TvZone
+            key={game.gameId}
             democraciaResultsReveal={{
               mode: democraciaResultDisplay.mode,
               title: democraciaResultDisplay.title,
@@ -1436,6 +1477,7 @@ export default function GameScreen() {
           />
         ) : showVoteResults ? (
           <TvZone
+            key={game.gameId}
             voteResultsReveal={{
               nominees: voteResultsTallies,
               resultMode: game.voteResultsMode,
@@ -1467,6 +1509,7 @@ export default function GameScreen() {
           />
         ) : (
           <TvZone
+            key={game.gameId}
             viewportMessageOverride={
               showBattleBackOverlay
                 ? 'Back 2 the Game is in progress. The return showdown is underway.'
@@ -1777,6 +1820,24 @@ export default function GameScreen() {
         )}
 
         {/* ── Final 4 plea chat overlay (all players) ─────────────────────── */}
+        {finalPowerBattleIntroActive && (
+          <FinalPowerBattleIntro
+            finalists={alivePlayers}
+            mode={isVoxPopuli ? 'vox_populi' : 'classic'}
+            onComplete={handleFinalPowerBattleIntroDone}
+          />
+        )}
+
+        {finalThreeBlockRevealActive && finalThreeBlockPlayer && (
+          <FinalThreeBlockReveal
+            blockPlayer={finalThreeBlockPlayer}
+            competitors={finalThreeBlockCompetitors}
+            mode={isVoxPopuli ? 'vox_populi' : 'classic'}
+            onComplete={handleFinalThreeBlockRevealDone}
+          />
+        )}
+
+        {/* ── Final 4 plea chat overlay (all players) ─────────────────────── */}
         {showFinal4Chat && (
           <ChatOverlay
             lines={final4PleaLines}
@@ -1816,11 +1877,11 @@ export default function GameScreen() {
           />
         )}
 
-        {/* ── Final 3 eviction (human Final LOH evicts directly) ──────────── */}
-        {showFinal3Modal && (
+        {/* ── Final 3 eviction fallback (human Final Power holder) ────────── */}
+        {showFinal3Modal && !showFinal3Ceremony && (
           <TvDecisionModal
-            title="Final LOH — Eliminate a Player"
-            subtitle={`${humanPlayer?.name}, as Final LOH you must directly eliminate one of the remaining players.`}
+            title="Final Power Decision"
+            subtitle={`${humanPlayer?.name}, you hold the power to set the Final Two.`}
             options={final3Options}
             onSelect={(id) => dispatch(finalizeFinal3Eviction(id))}
             danger
@@ -1829,7 +1890,16 @@ export default function GameScreen() {
         )}
 
         {/* ── Final 3 Ceremony (AI LOH: coronation → pleas → eviction) ────── */}
-        {showFinal3Ceremony && <Final3Ceremony />}
+        {showFinal3Ceremony && (
+          <Final3Ceremony onPlayAvailabilityChange={handleFinalThreeCeremonyPlayAvailability} />
+        )}
+
+        {showVoxFinalThreeAppeal && humanPlayer && (
+          <VoxFinalThreeAppeal
+            player={humanPlayer}
+            onSelect={(appeal) => dispatch(submitVoxFinalThreeAppeal(appeal))}
+          />
+        )}
 
         {/* ── Jury phase reveal: cinematic full-screen overlay ──────────────── */}
         <JuryPhaseRevealOverlay
@@ -2254,6 +2324,7 @@ export default function GameScreen() {
             awardAmount={favoritePlayer.awardAmount}
             onComplete={handleFavoriteComplete}
             onAudienceSurgeRequest={handleFavoriteAudienceSurgeRequest}
+            onForecastAward={handleForecastAward}
           />
         )}
 
@@ -2519,15 +2590,31 @@ export default function GameScreen() {
           />
         )}
 
+        {/* ── SpectatorView — Final 3 Part 1 (Tribunal member watches the opening battle) ── */}
+        {spectatorF3Part1Active && spectatorReactEnabled && (
+          <SpectatorView
+            key={spectatorF3Part1CompetitorIds.join('-') + '-p1'}
+            competitorIds={spectatorF3Part1CompetitorIds}
+            variant="maze"
+            expectedWinnerId={f3Part1PredictedWinnerId ?? undefined}
+            roundLabel="Part 1 · The Advancement"
+            presentation="final-three-part1"
+            onPlayAvailabilityChange={setFinaleSpectatorPlayAvailable}
+            onDone={handleSpectatorF3Part1Done}
+          />
+        )}
+
         {/* ── SpectatorView — Final 3 Part 2 (human won Part 1, sits out Part 2) ── */}
         {/* expectedWinnerId pre-computes the AI pick so the reveal matches advance(). */}
         {spectatorF3Part2Active && spectatorReactEnabled && (
           <SpectatorView
             key={spectatorF3Part2CompetitorIds.join('-') + '-p2'}
             competitorIds={spectatorF3Part2CompetitorIds}
-            variant="holdwall"
+            variant="trivia"
             expectedWinnerId={f3Part2PredictedWinnerId ?? undefined}
-            roundLabel="Final 3 · Part 2"
+            roundLabel="Part 2 · The Qualifier"
+            presentation="final-three-part2"
+            onPlayAvailabilityChange={setFinaleSpectatorPlayAvailable}
             onDone={handleSpectatorF3Part2Done}
           />
         )}
@@ -2540,7 +2627,9 @@ export default function GameScreen() {
             competitorIds={spectatorF3CompetitorIds}
             variant="holdwall"
             expectedWinnerId={f3Part3PredictedWinnerId ?? undefined}
-            roundLabel="Final 3 · Part 3"
+            roundLabel="The Final Power Battle"
+            presentation="final-three-part3"
+            onPlayAvailabilityChange={setFinaleSpectatorPlayAvailable}
             onDone={handleSpectatorF3Done}
           />
         )}
@@ -2576,6 +2665,9 @@ export default function GameScreen() {
           <FloatingActionBar
             onPublicMeterBlocked={handlePublicMeterBlocked}
             onSocialModuleBlocked={handleSocialModuleBlocked}
+            finaleOverlayActive={finaleOverlayActive}
+            finalePlayAvailable={finalePlayAvailable}
+            finaleDockOnTop={finaleOverlayActive && finalePlayAvailable}
           />
         )}
 
