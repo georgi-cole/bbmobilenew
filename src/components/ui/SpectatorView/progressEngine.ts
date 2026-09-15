@@ -44,6 +44,9 @@ export interface UseSpectatorSimulationOptions {
   /** If provided the simulation resolves immediately to this winner. */
   initialWinnerId?: string | null;
   onReconciled?: (winnerId: string) => void;
+  /** Start immediately for ordinary spectator scenes; finale scenes wait for Play. */
+  startOnMount?: boolean;
+  simulationDurationMs?: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -75,9 +78,13 @@ export function useSpectatorSimulation({
   competitorIds,
   initialWinnerId,
   onReconciled,
+  startOnMount = true,
+  simulationDurationMs = SIM_DURATION_MS,
 }: UseSpectatorSimulationOptions): {
   state: SpectatorSimulationState;
   setAuthoritativeWinner: (winnerId: string) => void;
+  start: () => void;
+  hasStarted: boolean;
   /** Skip to reveal immediately (available from the first render). */
   skip: () => void;
 } {
@@ -95,6 +102,8 @@ export function useSpectatorSimulation({
   const pendingWinnerRef = useRef<string | null>(initialWinnerId ?? null);
   // Mirrors state.sequenceComplete for use inside callbacks without a re-render dep.
   const sequenceCompleteRef = useRef(false);
+  const hasStartedRef = useRef(startOnMount);
+  const [hasStarted, setHasStarted] = useState(startOnMount);
   // Unix timestamp recorded when the mount effect runs (used for sim timing).
   const mountTimeRef = useRef<number>(0);
 
@@ -204,6 +213,12 @@ export function useSpectatorSimulation({
     doReconcile(winner);
   }, [doReconcile]);
 
+  const start = useCallback(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    setHasStarted(true);
+  }, []);
+
   // Capture initial values in refs so the effect runs exactly once on mount
   // while still having access to the initial configuration.
   //
@@ -216,6 +231,7 @@ export function useSpectatorSimulation({
 
   // Start simulation tick — runs once on mount; values captured via refs above.
   useEffect(() => {
+    if (!hasStarted) return undefined;
     // Record mount time for MIN_FLOOR_MS enforcement.
     mountTimeRef.current = Date.now();
     // Initialise RNG here (Date.now() is impure, cannot be called during render).
@@ -236,7 +252,7 @@ export function useSpectatorSimulation({
 
     tickRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const progress = clamp(elapsed / SIM_DURATION_MS, 0, 1);
+      const progress = clamp(elapsed / simulationDurationMs, 0, 1);
       const simPct = Math.min(99, Math.round(progress * 100));
 
       setState((prev) => {
@@ -251,7 +267,7 @@ export function useSpectatorSimulation({
         return { ...prev, competitors: updated, simPct };
       });
 
-      if (elapsed >= SIM_DURATION_MS) {
+      if (elapsed >= simulationDurationMs) {
         // Simulation time expired — sequence is now complete.
         if (tickRef.current) {
           clearInterval(tickRef.current);
@@ -278,8 +294,10 @@ export function useSpectatorSimulation({
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; values captured via refs
-  }, []);
+  // The participant snapshot remains mount-scoped; only the explicit start
+  // gate and per-presentation duration can change this effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasStarted, simulationDurationMs]);
 
   // Cleanup on unmount.
   useEffect(
@@ -290,6 +308,6 @@ export function useSpectatorSimulation({
     [],
   );
 
-  return { state, setAuthoritativeWinner, skip };
+  return { state, setAuthoritativeWinner, start, hasStarted, skip };
 }
 

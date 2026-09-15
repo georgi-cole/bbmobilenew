@@ -24,6 +24,19 @@
   user-select: none;
 }
 
+.game-control-dock--finale-overlay {
+  /* The spectator scene is portalled to <body>, while the dock lives inside
+     the clipped game cabinet. Take the existing dock out of that clipping
+     context so its single shared Play control stays visible above the scene. */
+  position: fixed;
+  z-index: 10001;
+}
+
+.game-control-dock--finale-overlay .game-control-dock__play {
+  opacity: 1;
+  filter: drop-shadow(0 0 12px rgba(245, 206, 117, 0.72));
+}
+
 .game-control-dock::before {
   display: none;
 }

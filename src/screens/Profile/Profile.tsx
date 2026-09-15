@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAppSelector } from '../../store/hooks'
-import { selectCurrentProfile, selectIsGuest } from '../../store/profilesSlice'
+import {
+  PUBLIC_FAVORITE_FORECAST_ACHIEVEMENT,
+  selectCurrentProfile,
+  selectIsGuest,
+} from '../../store/profilesSlice'
 import { findArchiveUserSummary } from '../../store/achievementSummary'
 import { loadSavedRunProfile } from '../../store/saveStatePersistence'
 import { imageIdToDataUrl } from '../../utils/imageDb'
@@ -42,7 +46,7 @@ const PHASE_SHORT_LABELS: Partial<Record<Phase, string>> = {
   final3_comp2_minigame: 'F3 P2',
   final3_comp3: 'F3 P3',
   final3_comp3_minigame: 'F3 P3',
-  final3_decision: 'Final LOH',
+  final3_decision: 'Final Power Decision',
   jury_announcement: 'Tribunal',
   jury_cinematic: 'Tribunal',
   jury: 'Tribunal',
@@ -808,6 +812,26 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {profile &&
+        ((profile.lifetimeXp ?? 0) > 0 ||
+          profile.achievements?.includes(PUBLIC_FAVORITE_FORECAST_ACHIEVEMENT)) && (
+          <div className="profile-screen__stats-card">
+            <p className="profile-screen__section-title">Player Progress</p>
+            <div className="profile-screen__stats-grid">
+              <div className="profile-screen__stat">
+                <span className="profile-screen__stat-val">{profile.lifetimeXp ?? 0}</span>
+                <span className="profile-screen__stat-key">All-time XP</span>
+              </div>
+              {profile.achievements?.includes(PUBLIC_FAVORITE_FORECAST_ACHIEVEMENT) && (
+                <div className="profile-screen__stat profile-screen__stat--achievement">
+                  <span className="profile-screen__stat-val">🔮</span>
+                  <span className="profile-screen__stat-key">Audience Oracle</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       <div className="profile-screen__survivor-card">
         <div className="profile-screen__survivor-header">

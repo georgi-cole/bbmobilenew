@@ -164,11 +164,5 @@ export const soundMiddleware: Middleware = (api) => (next) => (action) => {
     return result
   }
 
-  if (type === 'game/startWinnerCinematic') {
-    const result = next(action)
-    playConfiguredEvent('finale.winner', api.getState() as RootState)
-    return result
-  }
-
   return next(action)
 }

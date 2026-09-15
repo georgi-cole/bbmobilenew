@@ -228,7 +228,7 @@ function eventCount(state: Awaited<ReturnType<typeof readAppState>>, eventType: 
 }
 
 test.describe('Finale / Jury flow @release', () => {
-  test.setTimeout(120_000)
+  test.setTimeout(300_000)
 
   test('completes a valid finale, reward, recap, and archive exactly once @core-journey @persistence @economy', async ({
     page,
@@ -270,6 +270,13 @@ test.describe('Finale / Jury flow @release', () => {
 
     const tribunal = page.getByRole('dialog', { name: 'Tribunal Finale' })
     await expect(tribunal).toBeVisible({ timeout: 10_000 })
+    const beginTribunal = tribunal.getByRole('button', { name: 'Begin Tribunal ▶' })
+    await expect(beginTribunal).toBeEnabled()
+    await beginTribunal.click()
+    await expect(beginTribunal).toBeHidden()
+    await expect
+      .poll(async () => (await readAppState(page)).finale.revealedCount, { timeout: 30_000 })
+      .toBeGreaterThan(0)
     await expect
       .poll(async () => {
         const state = await readAppState(page)
@@ -359,6 +366,7 @@ test.describe('Finale / Jury flow @release', () => {
       name: "Public's Favorite Player overlay",
     })
     await expect(favoriteVote).toBeVisible({ timeout: 15_000 })
+    await favoriteVote.getByRole('button', { name: /Lock/ }).click()
     const favoriteFastForward = favoriteVote.getByRole('button', {
       name: 'Fast forward public favorite vote',
     })

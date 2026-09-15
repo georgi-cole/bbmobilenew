@@ -439,7 +439,7 @@ export const DEFAULT_EVENT_SOUND_POLICY: Readonly<Record<AudioEventId, AudioEven
   'twist.battle-back': { soundKey: 'tv:battleback' },
   'eviction.reveal': { soundKey: 'player:evicted' },
   'tribunal.vote': { soundKey: 'ui:jury_vote' },
-  'finale.winner': { soundKey: 'tv:winner_reveal' },
+  'finale.winner': { soundKey: null },
 }
 
 const EMPTY_MINIGAME_ASSIGNMENTS: ModeMinigameAssignments = {

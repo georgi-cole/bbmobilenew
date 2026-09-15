@@ -1,33 +1,33 @@
-import { useState, useCallback } from 'react';
-import type { Player } from '../../types';
-import PlayerAvatar from '../PlayerAvatar/PlayerAvatar';
-import TvStingerOverlay from '../TvStingerOverlay/TvStingerOverlay';
-import './TvDecisionModal.css';
+import { useState, useCallback } from 'react'
+import type { Player } from '../../types'
+import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import TvStingerOverlay from '../TvStingerOverlay/TvStingerOverlay'
+import './TvDecisionModal.css'
 
 interface Props {
-  title: string;
-  subtitle?: string;
-  options: Player[];
+  title: string
+  subtitle?: string
+  options: Player[]
   /** Optional contextual pitch shown beneath each player's name. */
-  optionDescriptions?: Record<string, string>;
-  onSelect: (playerId: string) => void;
-  danger?: boolean;
+  optionDescriptions?: Record<string, string>
+  onSelect: (playerId: string) => void
+  danger?: boolean
   /** Label shown on the confirm button. Default: "Confirm" */
-  confirmLabel?: string;
+  confirmLabel?: string
   /** Label shown on the back/change button. Default: "Change" */
-  cancelLabel?: string;
+  cancelLabel?: string
   /**
    * Message shown in the stinger overlay after the player confirms.
    * Tailor this to the decision context — e.g. "Vote locked in!" for
    * eviction votes or "Nominee recorded!" for nomination ceremonies.
    * Default: "Decision locked in!"
    */
-  stingerMessage?: string;
+  stingerMessage?: string
 }
 
 /** Avatar tile for use inside decision option rows. Uses md size to show photo clearly. */
 function OptionAvatar({ player, selected }: { player: Player; selected: boolean }) {
-  return <PlayerAvatar player={player} selected={selected} size="md" />;
+  return <PlayerAvatar player={player} selected={selected} size="md" />
 }
 
 /**
@@ -55,37 +55,44 @@ export default function TvDecisionModal({
   cancelLabel = 'Change',
   stingerMessage = 'Decision locked in!',
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showStinger, setShowStinger] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showStinger, setShowStinger] = useState(false)
 
   // Derive the selected player from the current options list.
   // If options change (e.g. game state updates) and the previously-selected
   // player is no longer available, selectedPlayer becomes undefined and the
   // footer is hidden automatically — no stale selection can be committed.
-  const selectedPlayer = options.find((p) => p.id === selectedId);
+  const selectedPlayer = options.find((p) => p.id === selectedId)
 
   function handleOptionClick(playerId: string) {
-    setSelectedId(playerId);
+    setSelectedId(playerId)
   }
 
   function handleConfirm() {
     if (selectedPlayer) {
-      setShowStinger(true);
+      setShowStinger(true)
     }
   }
 
   const handleStingerDone = useCallback(() => {
     if (selectedPlayer) {
-      onSelect(selectedPlayer.id);
+      onSelect(selectedPlayer.id)
     }
-  }, [selectedPlayer, onSelect]);
+  }, [selectedPlayer, onSelect])
 
   return (
     <>
-      <div className="tv-decision-modal" role="dialog" aria-modal="true" aria-labelledby="tvdm-title">
+      <div
+        className="tv-decision-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tvdm-title"
+      >
         <div className="tv-decision-modal__card">
           <header className="tv-decision-modal__header">
-            <h2 className="tv-decision-modal__title" id="tvdm-title">{title}</h2>
+            <h2 className="tv-decision-modal__title" id="tvdm-title">
+              {title}
+            </h2>
             {subtitle && <p className="tv-decision-modal__subtitle">{subtitle}</p>}
           </header>
 
@@ -96,7 +103,7 @@ export default function TvDecisionModal({
               </p>
             ) : (
               options.map((player) => {
-                const isSelected = player.id === selectedId;
+                const isSelected = player.id === selectedId
                 return (
                   <button
                     key={player.id}
@@ -104,7 +111,9 @@ export default function TvDecisionModal({
                       'tv-decision-modal__option',
                       danger ? 'tv-decision-modal__option--danger' : '',
                       isSelected ? 'tv-decision-modal__option--selected' : '',
-                    ].filter(Boolean).join(' ')}
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                     onClick={() => handleOptionClick(player.id)}
                     aria-pressed={isSelected}
                     type="button"
@@ -113,12 +122,14 @@ export default function TvDecisionModal({
                     <span className="tv-decision-modal__option-copy">
                       <span className="tv-decision-modal__option-name">{player.name}</span>
                       {optionDescriptions?.[player.id] && (
-                        <span className="tv-decision-modal__option-description">?{optionDescriptions[player.id]}?</span>
+                        <span className="tv-decision-modal__option-description">
+                          {optionDescriptions[player.id]}
+                        </span>
                       )}
                     </span>
                     <span className="tv-decision-modal__option-tag">{player.status}</span>
                   </button>
-                );
+                )
               })
             )}
           </div>
@@ -136,20 +147,21 @@ export default function TvDecisionModal({
                 className={[
                   'tv-decision-modal__btn-confirm',
                   danger ? 'tv-decision-modal__btn-confirm--danger' : '',
-                ].filter(Boolean).join(' ')}
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 onClick={handleConfirm}
                 type="button"
               >
-                {confirmLabel}: <span className="tv-decision-modal__btn-confirm-name">{selectedPlayer.name}</span>
+                {confirmLabel}:{' '}
+                <span className="tv-decision-modal__btn-confirm-name">{selectedPlayer.name}</span>
               </button>
             </footer>
           )}
         </div>
       </div>
 
-      {showStinger && (
-        <TvStingerOverlay message={stingerMessage} onDone={handleStingerDone} />
-      )}
+      {showStinger && <TvStingerOverlay message={stingerMessage} onDone={handleStingerDone} />}
     </>
-  );
+  )
 }

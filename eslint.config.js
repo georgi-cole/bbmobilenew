@@ -9,6 +9,7 @@ export default defineConfig([
   globalIgnores([
     '**/.cupid-pr*/**',
     '**/.worktrees/**',
+    '**/.codex-worktrees/**',
     '**/coverage/**',
     '**/dist/**',
     '**/dist-ssr/**',

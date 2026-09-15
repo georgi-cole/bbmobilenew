@@ -1,5 +1,6 @@
 import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { setHouseMenuAudioEffect } from '../../services/sound/audioRouteOwnership'
 import './GameControlDock.css'
 
@@ -72,6 +73,8 @@ export interface GameControlDockProps {
   /** Ref to the visible Confessional icon for guided overlays/tutorials */
   confessionalIconRef?: Ref<HTMLImageElement>
   confessionalDisabled?: boolean
+  elevatedDuringOverlay?: boolean
+  primaryLabel?: string
 }
 
 export default function GameControlDock({
@@ -99,6 +102,8 @@ export default function GameControlDock({
   confessionalPersistentFlash = false,
   confessionalIconRef,
   confessionalDisabled = false,
+  elevatedDuringOverlay = false,
+  primaryLabel = 'Advance to next phase',
 }: GameControlDockProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const [socialLedActive, acknowledgeSocialLed] = useNotificationLed(chatBadgeCount, {
@@ -160,11 +165,11 @@ export default function GameControlDock({
     }
   }, [moreOpen])
 
-  return (
+  const navigation = (
     <nav className="game-control-dock-navigation" aria-label="Main navigation">
       <div
         ref={dockRef}
-        className="game-control-dock fab-clean"
+        className={`game-control-dock fab-clean${elevatedDuringOverlay ? ' game-control-dock--finale-overlay' : ''}`}
         role="toolbar"
         aria-label="Game actions"
       >
@@ -284,7 +289,7 @@ export default function GameControlDock({
         <button
           className={`dock-hit-area hit-play dock-hit-area--play${primaryPulse ? ' dock-hit-area--pulse dock-node--pulse' : ''}`}
           type="button"
-          aria-label="Advance to next phase"
+          aria-label={primaryLabel}
           disabled={primaryDisabled}
           onClick={primaryDisabled ? undefined : onPrimaryActionClick}
         />
@@ -380,4 +385,9 @@ export default function GameControlDock({
       </div>
     </nav>
   )
+
+  // Finale scenes render in a body portal above the app shell. Portal the same
+  // shared dock alongside them so its existing Play target stays on top and
+  // cannot be clipped by the app shell's viewport container.
+  return elevatedDuringOverlay ? createPortal(navigation, document.body) : navigation
 }

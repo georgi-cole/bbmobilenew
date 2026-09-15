@@ -15,6 +15,7 @@ import type { PlayerPublicProfile } from '../publicOpinion/types'
 import type { RealityDomainState } from '../social/reality'
 import {
   aiJurorVote,
+  determineWinner,
   tallyVotes,
   resolvePublicVoteParity,
   juryReturnCandidate,
@@ -78,6 +79,8 @@ export interface FinaleState {
   publicVoteWeight: 1 | 2
   /** Compact, history-derived scores used to keep jury rerolls grounded in the season. */
   juryScorecards: Record<string, Record<string, number>>
+  /** Whether a deterministic recovery tiebreak was needed. */
+  tieBreakUsed: boolean
 }
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -99,6 +102,7 @@ const initialState: FinaleState = {
   publicVotedFor: null,
   publicVoteWeight: 1,
   juryScorecards: {},
+  tieBreakUsed: false,
 }
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
@@ -148,7 +152,7 @@ const finaleSlice = createSlice({
       // ── Resolve public ballot before composing the Tribunal ──────────────
       let publicJurorEnabled = false
       let publicVotedFor: string | null = null
-      if (publicApprovalProfiles) {
+      if (cfg?.americasVoteEnabled && publicApprovalProfiles) {
         const publicVoteResult = resolvePublicJuryVote({
           finalistIds,
           profiles: publicApprovalProfiles,
@@ -214,6 +218,7 @@ const finaleSlice = createSlice({
       state.publicVotedFor = publicVotedFor
       state.publicVoteWeight = publicVoteWeight
       state.juryScorecards = juryScorecards
+      state.tieBreakUsed = false
     },
 
     /**
@@ -252,7 +257,7 @@ const finaleSlice = createSlice({
      * Updates revealedCount to maximum (reveals any still-hidden jurors).
      * No-op if winner already declared.
      */
-    finalizeFinale(state, _action: PayloadAction<{ seed: number }>) {
+    finalizeFinale(state, action: PayloadAction<{ seed: number }>) {
       if (state.isComplete) return
 
       // Reveal any outstanding jurors
@@ -267,19 +272,23 @@ const finaleSlice = createSlice({
       const aVotes = a ? (tally[a] ?? 0) : 0
       const bVotes = b ? (tally[b] ?? 0) : 0
 
-      // An odd persisted vote weight makes a tie impossible. Do not silently
-      // select a winner if a malformed/legacy snapshot violates that invariant.
-      if (!a || !b || aVotes === bVotes) {
+      if (!a || !b) {
         state.isComplete = false
         return
       }
 
-      const winnerId = aVotes > bVotes ? a : b
+      const tied = aVotes === bVotes
+      const winnerId = tied
+        ? determineWinner(tally, state.finalistIds, action.payload.seed)
+        : aVotes > bVotes
+          ? a
+          : b
       const runnerUpId = state.finalistIds.find((id) => id !== winnerId) ?? null
 
       state.winnerId = winnerId
       state.runnerUpId = runnerUpId
       state.isComplete = true
+      state.tieBreakUsed = tied
     },
 
     /**
@@ -328,6 +337,7 @@ const finaleSlice = createSlice({
       state.winnerId = null
       state.runnerUpId = null
       state.isComplete = false
+      state.tieBreakUsed = false
     },
 
     /** Close / hide the overlay (after winner is confirmed). */
@@ -352,6 +362,7 @@ const finaleSlice = createSlice({
         ...action.payload,
         publicVoteWeight: action.payload.publicVoteWeight ?? 1,
         juryScorecards: action.payload.juryScorecards ?? {},
+        tieBreakUsed: action.payload.tieBreakUsed ?? false,
       }
     },
   },
@@ -412,11 +423,8 @@ export const revealNextJurorThunk =
   }
 
 /**
- * Skip-all: reveal every remaining juror at once, auto-casting AI fallback
- * votes for any human jurors that haven't voted yet, then finalize.
- *
- * This avoids race conditions from a synchronous loop of revealNextJurorThunk
- * calls, and correctly handles human jurors by pre-filling AI votes.
+ * Skip-all: reveal AI jurors until a human ballot is due, then pause for that
+ * ballot. Presentation controls must never cast a vote for a human juror.
  */
 export const skipAllJurorsThunk =
   (humanPlayerIds: string[], seed: number) =>
@@ -428,29 +436,15 @@ export const skipAllJurorsThunk =
       return
     }
 
-    // Pre-fill AI fallback votes for any unvoted human jurors
-    for (const jurorId of state.revealOrder) {
-      if (humanPlayerIds.includes(jurorId) && !state.votes[jurorId]) {
-        dispatch(
-          castVote({
-            jurorId,
-            finalistId: aiJurorVote(
-              jurorId,
-              state.finalistIds,
-              seed,
-              getState().social.reality,
-              state.juryScorecards[jurorId]
-            ),
-          })
-        )
-      }
-    }
-
-    // Now all jurors have votes — reveal them all synchronously
+    // Reveal until the next human ballot. Once revealNextJuror encounters an
+    // uncast human juror it leaves revealedCount unchanged, so break instead
+    // of spinning through the rest of the loop.
     let current = getState().finale
     const remaining = current.revealOrder.length - current.revealedCount
     for (let i = 0; i < remaining; i++) {
       dispatch(revealNextJuror({ humanPlayerIds }))
+      current = getState().finale
+      if (current.awaitingHumanJurorId) return
     }
 
     current = getState().finale

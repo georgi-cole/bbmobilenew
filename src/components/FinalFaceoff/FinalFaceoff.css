@@ -28,8 +28,12 @@
 }
 
 @keyframes fo-fadein {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
@@ -82,7 +86,9 @@
   border-radius: 14px;
   padding: 0.85rem 0.5rem;
   position: relative;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
 }
 .fo-finalist__avatar {
   font-size: 2.6rem;
@@ -100,6 +106,153 @@
   color: var(--color-accent);
 }
 
+.fo-current-vote {
+  flex: 1;
+  min-height: clamp(250px, 32dvh, 390px);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin: 0.35rem 1rem 0.6rem;
+  padding: clamp(0.7rem, 2.2vh, 1.35rem) clamp(0.65rem, 3vw, 1.4rem);
+  border: 1px solid rgba(232, 191, 118, 0.38);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(185, 166, 255, 0.12), transparent 52%),
+    linear-gradient(110deg, rgba(232, 191, 118, 0.1), rgba(185, 166, 255, 0.08)),
+    rgba(8, 9, 16, 0.92);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.05);
+  animation: fo-fadein 0.4s ease;
+}
+
+.fo-current-vote__flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.45rem, 2.6vw, 1.6rem);
+  width: min(100%, 46rem);
+  margin: 0 auto;
+}
+
+.fo-current-vote__side {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(0.5rem, 1.8vh, 0.9rem);
+  min-width: 0;
+  text-align: center;
+}
+
+.fo-current-vote__avatar.pa {
+  display: block;
+  width: clamp(4.5rem, 15vw, 7.25rem);
+  height: auto;
+  aspect-ratio: 1;
+  border: 2px solid rgba(232, 191, 118, 0.72);
+  border-radius: 50%;
+  background: #161725;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.38),
+    0 0 26px rgba(232, 191, 118, 0.13);
+}
+
+.fo-current-vote__avatar--choice.pa {
+  border-color: rgba(185, 166, 255, 0.78);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.38),
+    0 0 26px rgba(185, 166, 255, 0.16);
+}
+
+.fo-current-vote__label {
+  display: grid;
+  justify-items: center;
+  gap: 0.18rem;
+  max-width: 100%;
+}
+
+.fo-current-vote__arrow {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  color: #f5ce75;
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  font-weight: 900;
+  text-shadow: 0 0 22px rgba(245, 206, 117, 0.35);
+}
+
+.fo-current-vote__arrow small {
+  color: rgba(255, 231, 173, 0.58);
+  font-size: 0.46rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.fo-current-vote__record {
+  display: grid;
+  align-items: center;
+  max-width: 36rem;
+  width: 100%;
+  min-height: 3.2rem;
+  margin: 0.15rem auto 0;
+  padding: 0.7rem 0.9rem 0.15rem;
+  border-top: 1px solid rgba(232, 191, 118, 0.2);
+  color: rgba(255, 246, 222, 0.78);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(0.86rem, 2.4vw, 1.15rem);
+  line-height: 1.35;
+  text-align: center;
+}
+
+.fo-current-vote small {
+  color: rgba(255, 231, 173, 0.62);
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+.fo-current-vote strong {
+  overflow: hidden;
+  color: #fff8e8;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.1rem, 4vw, 1.55rem);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fo-current-vote__public {
+  display: grid;
+  width: clamp(4.5rem, 15vw, 7.25rem);
+  height: auto;
+  aspect-ratio: 1;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid rgba(232, 191, 118, 0.72);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 191, 118, 0.16), rgba(8, 9, 16, 0.84));
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.38),
+    0 0 26px rgba(232, 191, 118, 0.13);
+  font-size: clamp(2rem, 8vw, 3.5rem);
+}
+
+@media (max-width: 520px) {
+  .fo-current-vote {
+    margin-inline: 0.6rem;
+    padding: 0.6rem 0.45rem;
+  }
+  .fo-current-vote__flow {
+    gap: 0.3rem;
+  }
+  .fo-current-vote strong {
+    font-size: clamp(1rem, 4.2vw, 1.25rem);
+  }
+  .fo-current-vote__record {
+    min-height: 2.8rem;
+    padding-inline: 0.25rem;
+  }
+}
+
 /* ── Winner banner ──────────────────────────────────────────────────────── */
 .fo-finalist--winner {
   border-color: rgba(255, 215, 0, 0.6);
@@ -110,8 +263,17 @@
   text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
 }
 @keyframes fo-winner-glow {
-  0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.2), 0 0 60px rgba(255, 215, 0, 0.1); }
-  50%       { box-shadow: 0 0 50px rgba(255, 215, 0, 0.35), 0 0 80px rgba(255, 215, 0, 0.18); }
+  0%,
+  100% {
+    box-shadow:
+      0 0 30px rgba(255, 215, 0, 0.2),
+      0 0 60px rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 50px rgba(255, 215, 0, 0.35),
+      0 0 80px rgba(255, 215, 0, 0.18);
+  }
 }
 .fo-winner-badge {
   position: absolute;
@@ -131,8 +293,14 @@
   animation: fo-badge-bounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes fo-badge-bounce {
-  from { transform: translateX(-50%) scale(0.5); opacity: 0; }
-  to   { transform: translateX(-50%) scale(1);   opacity: 1; }
+  from {
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
 }
 
 /* ── Jury bubbles list ───────────────────────────────────────────────────── */
@@ -202,7 +370,9 @@
   font-size: 0.92rem;
   font-weight: 800;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.35);
 }
 .fo-btn:hover:not(:disabled) {
@@ -264,7 +434,11 @@
   background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
   color: var(--color-text);
-  transition: border-color 0.18s, background 0.18s, transform 0.14s, box-shadow 0.18s;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    transform 0.14s,
+    box-shadow 0.18s;
 }
 .fo-human-vote__choice:hover {
   border-color: rgba(99, 102, 241, 0.6);
@@ -313,8 +487,14 @@
   overflow: hidden;
 }
 @keyframes jb-slidein {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Public vote bubble — gold/global theme */
@@ -327,6 +507,11 @@
 /* Flash ring animation when vote is attributed */
 .jb-bubble--flash {
   animation: jb-flash 0.6s ease 0.3s;
+  border-color: rgba(249, 207, 119, 0.72);
+  box-shadow:
+    0 0 0 2px rgba(249, 207, 119, 0.12),
+    0 0 28px rgba(249, 207, 119, 0.18);
+  z-index: 2;
 }
 .jb-flash-ring {
   position: absolute;
@@ -337,19 +522,36 @@
   animation: jb-ring-expand 0.6s ease forwards;
 }
 @keyframes jb-ring-expand {
-  0%   { opacity: 1; inset: 0; }
-  100% { opacity: 0; inset: -8px; border-radius: 20px; }
+  0% {
+    opacity: 1;
+    inset: 0;
+  }
+  100% {
+    opacity: 0;
+    inset: -8px;
+    border-radius: 20px;
+  }
 }
 @keyframes jb-flash {
-  0%, 100% { background: linear-gradient(135deg, rgba(20, 24, 44, 0.9) 0%, rgba(14, 17, 32, 0.9) 100%); }
-  30%       { background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%); }
+  0%,
+  100% {
+    background: linear-gradient(135deg, rgba(20, 24, 44, 0.9) 0%, rgba(14, 17, 32, 0.9) 100%);
+  }
+  30% {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%);
+  }
 }
 .jb-bubble--public.jb-bubble--flash {
   animation: jb-flash-public 0.6s ease 0.3s;
 }
 @keyframes jb-flash-public {
-  0%, 100% { box-shadow: 0 0 24px rgba(212, 175, 55, 0.12); }
-  30%       { box-shadow: 0 0 50px rgba(212, 175, 55, 0.55); }
+  0%,
+  100% {
+    box-shadow: 0 0 24px rgba(212, 175, 55, 0.12);
+  }
+  30% {
+    box-shadow: 0 0 50px rgba(212, 175, 55, 0.55);
+  }
 }
 
 .jb-avatar {
@@ -427,8 +629,14 @@
   color: #d4af37;
 }
 @keyframes jb-vote-reveal {
-  from { opacity: 0; transform: scale(0.7) translateX(-8px); }
-  to   { opacity: 1; transform: scale(1) translateX(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
 }
 .jb-vote-pending {
   font-size: 0.9rem;
@@ -437,8 +645,13 @@
   animation: jb-pending-pulse 1.2s ease-in-out infinite;
 }
 @keyframes jb-pending-pulse {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.9; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
 
 /* ─── Cinematic Tribunal redesign ──────────────────────────────────────────
@@ -479,7 +692,13 @@
 .fo-chamber__light {
   z-index: -2;
   background:
-    linear-gradient(90deg, rgba(232, 170, 80, 0.08), transparent 35%, transparent 65%, rgba(162, 137, 255, 0.1)),
+    linear-gradient(
+      90deg,
+      rgba(232, 170, 80, 0.08),
+      transparent 35%,
+      transparent 65%,
+      rgba(162, 137, 255, 0.1)
+    ),
     radial-gradient(ellipse at 50% 88%, rgba(245, 226, 192, 0.13), transparent 38%);
   mix-blend-mode: screen;
 }
@@ -487,13 +706,21 @@
 .fo-chamber__grain {
   z-index: 30;
   opacity: 0.09;
-  background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.12) 3px 4px);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    rgba(255, 255, 255, 0.12) 3px 4px
+  );
   mix-blend-mode: soft-light;
 }
 
 @keyframes fo-chamber-breathe {
-  from { transform: scale(1.02); }
-  to { transform: scale(1.07); }
+  from {
+    transform: scale(1.02);
+  }
+  to {
+    transform: scale(1.07);
+  }
 }
 
 .fo-header {
@@ -501,10 +728,7 @@
   display: grid;
   justify-items: center;
   flex: 0 0 auto;
-  padding:
-    max(12px, calc(env(safe-area-inset-top, 0px) + 8px))
-    58px
-    10px;
+  padding: max(12px, calc(env(safe-area-inset-top, 0px) + 8px)) 58px 10px;
   border: 0;
   background: linear-gradient(180deg, rgba(2, 3, 6, 0.9), rgba(2, 3, 6, 0.42) 72%, transparent);
   pointer-events: none;
@@ -607,7 +831,9 @@
   border-radius: 999px;
   background: linear-gradient(115deg, #c69244, #f0cf8c 46%, #a98fff);
   color: #090806;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34), 0 0 24px rgba(232, 191, 118, 0.16);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(232, 191, 118, 0.16);
   font-size: 0.78rem;
   font-weight: 950;
   letter-spacing: 0.13em;
@@ -639,8 +865,7 @@
   border-color: rgba(255, 255, 255, 0.14);
   border-radius: 20px 20px 8px 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(5, 6, 10, 0.82)),
-    rgba(7, 8, 13, 0.55);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(5, 6, 10, 0.82)), rgba(7, 8, 13, 0.55);
   box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(12px);
 }
@@ -673,27 +898,41 @@
   border: 2px solid rgba(232, 191, 118, 0.64);
   border-radius: 50%;
   background: #111725;
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(232, 191, 118, 0.18);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.52),
+    0 0 34px rgba(232, 191, 118, 0.18);
   filter: none;
   animation: fo-finalist-arrive 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .fo-finalist:nth-child(2) .fo-finalist__portrait.pa {
   border-color: rgba(185, 166, 255, 0.68);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 34px rgba(185, 166, 255, 0.2);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.52),
+    0 0 34px rgba(185, 166, 255, 0.2);
   animation-delay: 90ms;
 }
 
 .fo-finalist--winner .fo-finalist__portrait.pa {
   border-color: rgba(255, 239, 185, 0.92);
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.52), 0 0 42px rgba(247, 211, 132, 0.34);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.52),
+    0 0 42px rgba(247, 211, 132, 0.34);
 }
 
-.fo-finalist__portrait .pa__img { object-position: center 18%; }
+.fo-finalist__portrait .pa__img {
+  object-position: center 18%;
+}
 
 @keyframes fo-finalist-arrive {
-  from { opacity: 0; transform: translateY(24px) scale(0.94); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .fo-finalist__meta {
@@ -750,7 +989,9 @@
 
 .fo-finalist--winner {
   border-color: rgba(247, 211, 132, 0.85);
-  box-shadow: 0 0 0 1px rgba(247, 211, 132, 0.24), 0 0 50px rgba(247, 211, 132, 0.26);
+  box-shadow:
+    0 0 0 1px rgba(247, 211, 132, 0.24),
+    0 0 50px rgba(247, 211, 132, 0.26);
 }
 
 .fo-winner-badge {

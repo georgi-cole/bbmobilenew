@@ -34,12 +34,16 @@ interface JurorEntry {
 }
 
 interface Props {
+  /** The complete Tribunal, shown once as a formal group portrait. */
+  tribunalMembers: Player[]
   /** All jurors that have been revealed so far (in reveal order). */
   revealedJurors: JurorEntry[]
   /** Finalists the human can vote for (null when it is not a human's turn). */
   awaitingHumanPlayer: Player | null
   finalists: Player[]
   onCastVote: (finalistId: string) => void
+  /** The full Tribunal portrait remains until the viewer starts deliberation. */
+  waitingForOpeningCue?: boolean
 }
 
 /** Constructs a URL for a Public Vote virtual juror. */
@@ -105,14 +109,29 @@ function PhraseTyper({ phrase }: { phrase: string }) {
   return <p className="tms-phrase">{phrase.slice(0, visibleChars)}</p>
 }
 
+function tribunalPortraitAttire(player: Player): 'formal' | 'informal' {
+  const identity = `${player.id} ${player.name}`.trim().toLowerCase()
+  return /(^|\s)(bea|dex|sol)(\s|$)/.test(identity) ? 'informal' : 'formal'
+}
+
 export default function TribunalMemberStage({
+  tribunalMembers,
   revealedJurors,
   awaitingHumanPlayer,
   finalists,
   onCastVote,
+  waitingForOpeningCue = false,
 }: Props) {
   const current = revealedJurors.at(-1) ?? null
-  const previous = revealedJurors.slice(0, -1)
+  const [portraitIndex, setPortraitIndex] = useState(0)
+
+  useEffect(() => {
+    if (!waitingForOpeningCue || tribunalMembers.length < 2) return
+    const id = window.setInterval(() => {
+      setPortraitIndex((index) => (index + 1) % tribunalMembers.length)
+    }, 2400)
+    return () => window.clearInterval(id)
+  }, [tribunalMembers.length, waitingForOpeningCue])
 
   const currentJurorId = current?.juror.id ?? null
   const currentPhrase = current?.reveal.phrase ?? ''
@@ -120,7 +139,48 @@ export default function TribunalMemberStage({
   const currentAnimationKey = currentJurorId ?? 'pending'
   const phraseAnimationKey = `${currentAnimationKey}-${currentPhrase}`
 
-  if (!current && !awaitingHumanPlayer) return null
+  if (!current && !awaitingHumanPlayer) {
+    const featuredJuror = tribunalMembers[portraitIndex % Math.max(tribunalMembers.length, 1)]
+    return (
+      <div className="tms-portrait" role="region" aria-label="The Tribunal">
+        <div className="tms-bg-vignette" aria-hidden="true" />
+        <div className="tms-portrait__light" aria-hidden="true" />
+        <p className="tms-portrait__eyebrow">THE FINAL DECISION</p>
+        <h3>The Tribunal</h3>
+        <p className="tms-portrait__copy">The people who lived the season now decide its winner.</p>
+        {featuredJuror && (
+          <div className="tms-portrait__carousel" aria-live="polite">
+            <div className="tms-portrait__carousel-light" aria-hidden="true" />
+            <FullSizeCutoutImage
+              key={featuredJuror.id}
+              player={featuredJuror}
+              attire={tribunalPortraitAttire(featuredJuror)}
+              className="tms-portrait__carousel-cutout"
+              alt={featuredJuror.name}
+              draggable={false}
+            />
+            <div className="tms-portrait__carousel-caption">
+              <span>Tribunal member</span>
+              <strong>{featuredJuror.name}</strong>
+            </div>
+          </div>
+        )}
+        <div
+          className="tms-portrait__carousel-dots"
+          aria-label={`${tribunalMembers.length} Tribunal members`}
+        >
+          {tribunalMembers.map((juror, index) => (
+            <span key={juror.id} className={index === portraitIndex ? 'is-active' : undefined} />
+          ))}
+        </div>
+        {waitingForOpeningCue && (
+          <p className="tms-portrait__play-cue">
+            Press Play when you are ready to hear the Tribunal.
+          </p>
+        )}
+      </div>
+    )
+  }
 
   const isPublic = current?.juror.id === PUBLIC_JUROR_ID
   const isSol =
@@ -151,23 +211,6 @@ export default function TribunalMemberStage({
       <div className="tms-bg-vignette" aria-hidden="true" />
       <div className="tms-spotlight" aria-hidden="true" />
 
-      {/* ── Previous juror chips ─────────────────────────────────────── */}
-      {previous.length > 0 && (
-        <div className="tms-previous" aria-label="Previous tribunal members">
-          {previous.map(({ juror }) => (
-            <span key={juror.id} className="tms-prev-chip" title={juror.name}>
-              <PlayerAvatar
-                player={juror}
-                size="sm"
-                showRelationshipOutline={false}
-                showEvictedStyle={false}
-              />
-              <span className="tms-prev-name">{juror.name}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* ── Name plate ──────────────────────────────────────────────── */}
       {current && (
         <div className="tms-nameplate" key={`name-${currentAnimationKey}`}>
@@ -190,7 +233,7 @@ export default function TribunalMemberStage({
           ) : (
             <FullSizeCutoutImage
               player={current.juror}
-              attire={isSol ? 'informal' : 'formal'}
+              attire={isSol ? 'informal' : tribunalPortraitAttire(current.juror)}
               className="tms-cutout"
               alt={current.juror.name}
               draggable={false}

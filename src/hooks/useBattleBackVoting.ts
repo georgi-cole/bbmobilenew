@@ -23,12 +23,16 @@ interface Options {
   candidates: string[]
   seed: number
   eliminationIntervalMs?: number
+  /** Extra time to hold the final two before revealing the winner. */
+  finalTwoHoldMs?: number
   tickIntervalMs?: number
   driftAmount?: number
   /** Optional display targets; values are normalized and need not sum to 100. */
   targetPercentages?: Record<string, number>
   /** Optional generic momentum bias. Public Favorite keeps this unset. */
   surgeTargetId?: string | null
+  /** Keeps the opening tableau still until the presentation explicitly begins. */
+  paused?: boolean
 }
 
 function mulberry32(seed: number): () => number {
@@ -223,10 +227,12 @@ export function useBattleBackVoting({
   candidates,
   seed,
   eliminationIntervalMs = 3500,
+  finalTwoHoldMs = 0,
   tickIntervalMs = 400,
   driftAmount = 5,
   targetPercentages,
   surgeTargetId = null,
+  paused = false,
 }: Options): BattleBackVoteState {
   const candidatesSignature = JSON.stringify(candidates)
   const targetsSignature = targetPercentages
@@ -305,7 +311,7 @@ export function useBattleBackVoting({
   }, [seed, candidatesSignature, targetsSignature])
 
   useEffect(() => {
-    if (state.isComplete) return
+    if (state.isComplete || paused) return
     const id = window.setInterval(() => {
       const active = activeRef.current
       const targetValues = normalizedTargets(active, targetPercentagesRef.current)
@@ -322,7 +328,7 @@ export function useBattleBackVoting({
       dispatch({ type: 'drift', pcts: next })
     }, tickIntervalMs)
     return () => window.clearInterval(id)
-  }, [state.isComplete, tickIntervalMs, driftAmount])
+  }, [paused, state.isComplete, tickIntervalMs, driftAmount])
 
   const eliminateLowest = useCallback(() => {
     const currentCandidates = activeRef.current
@@ -366,10 +372,21 @@ export function useBattleBackVoting({
   }, [])
 
   useEffect(() => {
-    if (state.isComplete) return
-    const id = window.setInterval(eliminateLowest, resolvedEliminationIntervalMs)
+    if (state.isComplete || paused) return
+    const eliminationDelayMs =
+      state.active.length === 2
+        ? resolvedEliminationIntervalMs + Math.max(0, finalTwoHoldMs)
+        : resolvedEliminationIntervalMs
+    const id = window.setInterval(eliminateLowest, eliminationDelayMs)
     return () => window.clearInterval(id)
-  }, [state.isComplete, resolvedEliminationIntervalMs, eliminateLowest])
+  }, [
+    state.active.length,
+    state.isComplete,
+    paused,
+    resolvedEliminationIntervalMs,
+    finalTwoHoldMs,
+    eliminateLowest,
+  ])
 
   const votes: Record<string, number> = {}
   state.active.forEach((id, index) => {
