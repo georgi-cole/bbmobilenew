@@ -3,9 +3,9 @@ import { resolveBuildTarget } from './buildTarget'
 
 describe('resolveBuildTarget', () => {
   it('selects mobile-dev only when explicitly requested', () => {
-    expect(
-      resolveBuildTarget({ explicitTarget: 'mobile-dev', mode: 'ios', isDev: false })
-    ).toBe('mobile-dev')
+    expect(resolveBuildTarget({ explicitTarget: 'mobile-dev', mode: 'ios', isDev: false })).toBe(
+      'mobile-dev'
+    )
   })
 
   it('keeps the normal iOS build on the release target', () => {
