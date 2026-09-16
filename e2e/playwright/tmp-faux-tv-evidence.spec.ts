@@ -9,7 +9,14 @@ import {
 
 async function startClassicGame(page: Page): Promise<void> {
   await page.goto('./')
+  await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeVisible({ timeout: 30_000 })
   await closeDebugPanelIfOpen(page)
+
+  // The location prompt can mount shortly after the Home UI. Give it a small
+  // window to appear before using the normal dismissal helper so it cannot
+  // intercept the Play button in CI.
+  const permissionPrompt = page.getByRole('dialog', { name: 'Allow location' })
+  await permissionPrompt.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => undefined)
   await dismissPermissionPromptIfPresent(page)
 
   await page
@@ -49,6 +56,7 @@ async function setDebugValue(
 }
 
 test('captures Faux TV presentation evidence @core-journey', async ({ page }, testInfo) => {
+  test.setTimeout(60_000)
   await startClassicGame(page)
 
   const initial = await readAppState(page)
