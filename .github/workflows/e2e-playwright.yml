@@ -49,11 +49,12 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  # Temporary evidence capture for the current Faux TV presentation review.
+  # Every other core journey still runs on every PR, but it is advisory until
+  # its first-run reliability is high enough to earn blocking status.
   extended-core-journeys:
     name: Extended core journeys (mobile-chromium, advisory)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     continue-on-error: true
     permissions:
       contents: read
@@ -66,9 +67,10 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Capture Faux TV evidence
+      - name: Run non-blocking extended core journeys
         run: >-
-          npx playwright test e2e/playwright/tmp-faux-tv-evidence.spec.ts
+          npx playwright test --grep @core-journey
+          --grep-invert "fresh player creates a profile and launches a usable campaign|saved progress survives a browser reload and resumes at the exact phase|completes a valid finale, reward, recap, and archive exactly once"
           --project=mobile-chromium --workers=1 --retries=0
       - name: Upload advisory browser evidence
         if: always()
