@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest'
 import {
   EMPTY_SEQUENCE_TILE,
   FINAL_PUSH_STAKES,
+  SEQUENCE_STAGE_TIME_MS,
   applyFinalPush,
   buildPowerPuzzle,
   buildSequenceBoards,
   buildSignalBoard,
   buildSignalRounds,
+  buildWardenBoard,
   isPowerPuzzleSolved,
   isSequenceSolved,
   isWardenBoardSolvable,
+  moveWardenOneStep,
+  moveWardenTowardPlayer,
   rankCircuitResults,
   scoreRiskAttempt,
   scoreSequenceBoard,
@@ -17,13 +21,14 @@ import {
   slideSequenceTile,
   splitAiCircuitScore,
   type CircuitStageScores,
+  type WardenBoard,
 } from '../../../src/components/FinalThreeCircuit/finalThreeCircuitLogic'
 
 describe('Final Three Circuit scoring', () => {
   it('scores risk tiers against their configured ceilings', () => {
-    expect(scoreRiskAttempt('safe', 1)).toBe(16)
-    expect(scoreRiskAttempt('standard', 1)).toBe(22)
-    expect(scoreRiskAttempt('risky', 1)).toBe(28)
+    expect(scoreRiskAttempt('safe', 1)).toBe(32)
+    expect(scoreRiskAttempt('standard', 1)).toBe(40)
+    expect(scoreRiskAttempt('risky', 1)).toBe(48)
     expect(scoreRiskAttempt('risky', 0)).toBe(0)
   })
 
@@ -60,10 +65,17 @@ describe('Signal Hunt', () => {
 })
 
 describe('Sequence Builder sliding puzzles', () => {
-  it('builds deterministic, solvable-by-construction boards worth exactly 100 points', () => {
+  it('uses only the easiest and hardest boards on one five-minute clock', () => {
     const first = buildSequenceBoards(4242)
     expect(buildSequenceBoards(4242)).toEqual(first)
-    expect(first.map((board) => board.maxPoints)).toEqual([30, 33, 37])
+    expect(first).toHaveLength(2)
+    expect(first.map((board) => [board.rows, board.columns])).toEqual([
+      [2, 3],
+      [3, 3],
+    ])
+    expect(first.map((board) => board.maxPoints)).toEqual([40, 60])
+    expect(first.every((board) => board.timeLimitMs === SEQUENCE_STAGE_TIME_MS)).toBe(true)
+    expect(SEQUENCE_STAGE_TIME_MS).toBe(300_000)
     expect(first.reduce((sum, board) => sum + board.maxPoints, 0)).toBe(100)
     expect(first.every((board) => board.initial.includes(EMPTY_SEQUENCE_TILE))).toBe(true)
     expect(first.every((board) => !isSequenceSolved(board.initial, board.target))).toBe(true)
@@ -83,17 +95,48 @@ describe('Sequence Builder sliding puzzles', () => {
 
   it('rewards a solved board more than an expired partial board', () => {
     const board = buildSequenceBoards(13)[0]
-    const solved = scoreSequenceBoard(board, board.target, board.scrambleMoves, 5000, true)
+    const solved = scoreSequenceBoard(board, board.target, board.scrambleMoves, 250_000, true)
     const partial = scoreSequenceBoard(board, board.initial, board.scrambleMoves, 0, false)
     expect(solved).toBeGreaterThan(partial)
   })
 })
 
-describe('Risk Run challenge safety', () => {
-  it.each(['safe', 'standard', 'risky'] as const)('keeps the %s Warden Escape board solvable', (tier) => {
+describe('Warden Escape rules', () => {
+  it.each(['safe', 'standard', 'risky'] as const)('keeps the %s prison board solvable', (tier) => {
+    const board = buildWardenBoard(tier)
+    expect(board.guardSteps).toBe(2)
     expect(isWardenBoardSolvable(tier)).toBe(true)
   })
 
+  it('moves horizontally toward the player before considering vertical movement', () => {
+    const board: WardenBoard = {
+      size: 5,
+      start: 24,
+      exit: 0,
+      wardenStart: 12,
+      walls: new Set(),
+      guardSteps: 2,
+      moveBudget: 20,
+    }
+    expect(moveWardenOneStep(board, 12, 24)).toBe(13)
+    expect(moveWardenTowardPlayer(board, 12, 24)).toBe(14)
+  })
+
+  it('falls back to vertical pursuit when a wall blocks the preferred horizontal step', () => {
+    const board: WardenBoard = {
+      size: 5,
+      start: 24,
+      exit: 0,
+      wardenStart: 12,
+      walls: new Set([13]),
+      guardSteps: 2,
+      moveBudget: 20,
+    }
+    expect(moveWardenOneStep(board, 12, 24)).toBe(17)
+  })
+})
+
+describe('Risk Run challenge safety', () => {
   it.each(['safe', 'standard', 'risky'] as const)('builds a valid %s Power Balance puzzle', (tier) => {
     const puzzle = buildPowerPuzzle(101, tier)
     expect(puzzle.values.length).toBeGreaterThanOrEqual(5)
