@@ -19,12 +19,12 @@ const FINAL_THREE_CIRCUIT_GAME: GameRegistryEntry = {
   key: 'finalThreeCircuit',
   title: 'Final Three Circuit',
   description:
-    'Three finalists face Precision Lock, Sequence Builder, and Risk Run. Every finalist completes every stage; the highest 300-point total advances directly to Final HOH Part 3.',
+    'Three finalists face Signal Hunt, a constrained Sequence Builder, and a multi-discipline Risk Run. Every finalist completes every stage; the highest 300-point total advances directly to Final HOH Part 3.',
   instructions: [
     'All three finalists complete all three stages. Nobody is eliminated during the Circuit.',
-    'Precision Lock: make five increasingly difficult locks for up to 100 points.',
-    'Sequence Builder: rebuild three visible target arrangements using as few swaps as possible for up to 100 points.',
-    'Risk Run: choose Safe, Standard, or Risky difficulty for three skill challenges, then decide how much of your stage bank to put on the Final Push.',
+    'Signal Hunt: find changing target nodes against a reshuffling board before the clock expires. Wrong taps cost time and points.',
+    'Sequence Builder: rebuild three visible target arrangements as sliding puzzles. Only tiles touching the empty slot can move.',
+    'Risk Run: choose Safe, Standard, or Risky difficulty for Laser Run, Warden Escape, and Power Balance, then choose a stake for the five-call Final Override.',
     'Scores carry across all three stages. The highest total out of 300 wins Part 1 and advances directly to Part 3.',
   ],
   metricKind: 'points',
