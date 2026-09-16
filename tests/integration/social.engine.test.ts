@@ -6,11 +6,12 @@
 //  2. Dispatching setPhase to a non-social phase afterwards triggers endPhase,
 //     dispatching social/setLastReport and populating state.social.lastReport.
 //  3. The advance action also triggers start/end correctly.
+//  4. Normal mode carries unused energy into the next social_1 refill.
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
-import socialReducer from '../../src/social/socialSlice';
+import socialReducer, { setEnergyBankEntry } from '../../src/social/socialSlice';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
 import { SocialEngine } from '../../src/social/SocialEngine';
 
@@ -42,6 +43,21 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     for (const value of Object.values(energyBank)) {
       expect(value).toBeGreaterThan(0);
     }
+  });
+
+  it('carries unused normal-mode human energy and adds the next 5-point batch', () => {
+    const store = makeStore();
+    SocialEngine.init(store);
+
+    const human = store.getState().game.players.find((player) => player.isUser);
+    expect(human).toBeDefined();
+    store.dispatch(setEnergyBankEntry({ playerId: human!.id, value: 7 }));
+
+    store.dispatch(setPhase('social_1'));
+
+    // Normal mode now behaves as true carryover: 7 retained + 5 new = 12,
+    // with the normal bank capped at 15 rather than reset to the old allowance of 5.
+    expect(store.getState().social.energyBank[human!.id]).toBe(12);
   });
 
   it('populates state.social.energyBank when entering social_2', () => {
