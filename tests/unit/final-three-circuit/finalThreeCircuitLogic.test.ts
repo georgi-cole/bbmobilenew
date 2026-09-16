@@ -1,23 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EMPTY_SEQUENCE_TILE,
   FINAL_PUSH_STAKES,
   applyFinalPush,
+  buildPowerPuzzle,
   buildSequenceBoards,
-  minimumSwapCount,
+  buildSignalBoard,
+  buildSignalRounds,
+  isPowerPuzzleSolved,
+  isSequenceSolved,
+  isWardenBoardSolvable,
   rankCircuitResults,
-  scorePrecisionAttempt,
   scoreRiskAttempt,
   scoreSequenceBoard,
+  scoreSignalRound,
+  slideSequenceTile,
   splitAiCircuitScore,
   type CircuitStageScores,
 } from '../../../src/components/FinalThreeCircuit/finalThreeCircuitLogic'
 
 describe('Final Three Circuit scoring', () => {
-  it('rewards a centred precision lock and penalizes a clear miss', () => {
-    expect(scorePrecisionAttempt(0.5, 0.5, 0.08)).toBe(20)
-    expect(scorePrecisionAttempt(0.95, 0.5, 0.08)).toBe(0)
-  })
-
   it('scores risk tiers against their configured ceilings', () => {
     expect(scoreRiskAttempt('safe', 1)).toBe(16)
     expect(scoreRiskAttempt('standard', 1)).toBe(22)
@@ -32,28 +34,71 @@ describe('Final Three Circuit scoring', () => {
   })
 })
 
-describe('Sequence Builder', () => {
-  it('finds the minimum number of arbitrary swaps', () => {
-    expect(minimumSwapCount(['B', 'A', 'C'], ['A', 'B', 'C'])).toBe(1)
-    expect(minimumSwapCount(['C', 'A', 'B'], ['A', 'B', 'C'])).toBe(2)
+describe('Signal Hunt', () => {
+  it('builds deterministic rounds worth exactly 100 points', () => {
+    const first = buildSignalRounds(4242)
+    expect(buildSignalRounds(4242)).toEqual(first)
+    expect(first.map((round) => round.maxPoints)).toEqual([30, 33, 37])
+    expect(first.reduce((sum, round) => sum + round.maxPoints, 0)).toBe(100)
   })
 
-  it('builds deterministic progressively harder boards worth exactly 100 points', () => {
-    const first = buildSequenceBoards(4242)
-    const second = buildSequenceBoards(4242)
+  it('reshuffles the board between successful targets', () => {
+    const round = buildSignalRounds(99)[2]
+    const first = buildSignalBoard(99, 2, 0, round.cellCount)
+    const second = buildSignalBoard(99, 2, 1, round.cellCount)
+    expect(first).not.toEqual(second)
+    expect(new Set(first).size).toBe(round.cellCount)
+  })
 
-    expect(second).toEqual(first)
+  it('rewards completion and penalizes wrong taps', () => {
+    const clean = scoreSignalRound(8, 8, 5000, 12000, 33, 0)
+    const messy = scoreSignalRound(8, 8, 5000, 12000, 33, 3)
+    const partial = scoreSignalRound(4, 8, 0, 12000, 33, 0)
+    expect(clean).toBeGreaterThan(messy)
+    expect(clean).toBeGreaterThan(partial)
+  })
+})
+
+describe('Sequence Builder sliding puzzles', () => {
+  it('builds deterministic, solvable-by-construction boards worth exactly 100 points', () => {
+    const first = buildSequenceBoards(4242)
+    expect(buildSequenceBoards(4242)).toEqual(first)
     expect(first.map((board) => board.maxPoints)).toEqual([30, 33, 37])
     expect(first.reduce((sum, board) => sum + board.maxPoints, 0)).toBe(100)
-    expect(first[0].optimalSwaps).toBeGreaterThanOrEqual(2)
-    expect(first[1].optimalSwaps).toBeGreaterThanOrEqual(3)
-    expect(first[2].optimalSwaps).toBeGreaterThanOrEqual(4)
+    expect(first.every((board) => board.initial.includes(EMPTY_SEQUENCE_TILE))).toBe(true)
+    expect(first.every((board) => !isSequenceSolved(board.initial, board.target))).toBe(true)
   })
 
-  it('gives the full board score for an optimal solve and less for wasted moves', () => {
-    expect(scoreSequenceBoard(3, 3, 33)).toBe(33)
-    expect(scoreSequenceBoard(5, 3, 33)).toBeLessThan(33)
-    expect(scoreSequenceBoard(20, 3, 33)).toBeGreaterThan(0)
+  it('only allows a tile touching the empty slot to move', () => {
+    const board = buildSequenceBoards(7)[0]
+    const blank = board.initial.indexOf(EMPTY_SEQUENCE_TILE)
+    const illegal = board.initial.findIndex((_, index) => {
+      if (index === blank) return false
+      const rowDelta = Math.abs(Math.floor(index / board.columns) - Math.floor(blank / board.columns))
+      const colDelta = Math.abs((index % board.columns) - (blank % board.columns))
+      return rowDelta + colDelta > 1
+    })
+    expect(slideSequenceTile(board.initial, illegal, board.rows, board.columns)).toBeNull()
+  })
+
+  it('rewards a solved board more than an expired partial board', () => {
+    const board = buildSequenceBoards(13)[0]
+    const solved = scoreSequenceBoard(board, board.target, board.scrambleMoves, 5000, true)
+    const partial = scoreSequenceBoard(board, board.initial, board.scrambleMoves, 0, false)
+    expect(solved).toBeGreaterThan(partial)
+  })
+})
+
+describe('Risk Run challenge safety', () => {
+  it.each(['safe', 'standard', 'risky'] as const)('keeps the %s Warden Escape board solvable', (tier) => {
+    expect(isWardenBoardSolvable(tier)).toBe(true)
+  })
+
+  it.each(['safe', 'standard', 'risky'] as const)('builds a valid %s Power Balance puzzle', (tier) => {
+    const puzzle = buildPowerPuzzle(101, tier)
+    expect(puzzle.values.length).toBeGreaterThanOrEqual(5)
+    expect(puzzle.maxToggles).toBe(3)
+    expect(isPowerPuzzleSolved(puzzle.target, puzzle)).toBe(true)
   })
 })
 
