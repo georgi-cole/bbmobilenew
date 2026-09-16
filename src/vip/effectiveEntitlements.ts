@@ -13,9 +13,7 @@ export interface VipEntitlementStateLike {
  * override so it cannot be used by an App Store / Play Store build by accident.
  */
 export const TEMPORARY_STORE_UNLOCKS_ENABLED =
-  IS_ADMIN_BUILD ||
-  IS_MOBILE_DEV_BUILD ||
-  import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'
+  IS_ADMIN_BUILD || IS_MOBILE_DEV_BUILD || import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'
 
 export function isEffectiveVipActive(
   vip: VipEntitlementStateLike | undefined,
@@ -30,7 +28,6 @@ export function hasEffectiveStoreEntitlement(
   temporaryUnlocksEnabled = TEMPORARY_STORE_UNLOCKS_ENABLED
 ): boolean {
   return (
-    isEffectiveVipActive(vip, temporaryUnlocksEnabled) ||
-    vip?.entitlements?.[entitlement] === true
+    isEffectiveVipActive(vip, temporaryUnlocksEnabled) || vip?.entitlements?.[entitlement] === true
   )
 }
