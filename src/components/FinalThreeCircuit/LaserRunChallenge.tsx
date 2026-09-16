@@ -78,11 +78,14 @@ export default function LaserRunChallenge({ seed, tier, onFinish }: LaserRunChal
 
   useEffect(() => {
     if (!finished) return
-    const accuracy = Math.max(0.15, 1 - strikes / Math.max(1, pattern.length) * 2.4)
+    const accuracy = Math.max(0.15, 1 - (strikes / Math.max(1, pattern.length)) * 2.4)
     onFinish(accuracy)
   }, [finished, onFinish, pattern.length, strikes])
 
-  const visibleGates = Array.from({ length: 4 }, (_unused, offset) => pattern[gateIndex + offset])
+  const visibleGates = Array.from(
+    { length: 4 },
+    (_unused, offset) => pattern[gateIndex + offset]
+  ).reverse()
 
   return (
     <div className="f3-circuit__risk-game f3-circuit__laser-run">
