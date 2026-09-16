@@ -15,7 +15,8 @@ import { initManeuvers } from './SocialManeuvers'
 import { socialAIDriver } from './socialAIDriver'
 import { dispatchSocialSummary } from './SocialSummaryBridge'
 import { getEffectiveSocialMode } from './socialMode'
-import { getSocialModeConfig } from './socialRuntimeConfig'
+import { SOCIAL_RESOURCE_CALIBRATION } from './socialResourceCalibration'
+import { DEFAULT_SOCIAL_RUNTIME_CONFIG, getSocialModeConfig } from './socialRuntimeConfig'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -44,6 +45,12 @@ const _budgets = new Map<string, number>()
 let _activePhase: string | null = null
 let _lastReport: SocialPhaseReport | null = null
 
+function addCarryoverBatch(carried: number, batch: number, cap: number): number {
+  // The cap limits how much the scheduled refill can accumulate; it must never
+  // confiscate energy legitimately earned from LOH/POS/nomination bonuses.
+  return Math.max(carried, Math.min(cap, carried + batch))
+}
+
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
   socialAIDriver.stop()
@@ -65,6 +72,14 @@ function startPhase(phaseName: string): void {
   const players = state.game?.players ?? []
   const mode = getEffectiveSocialMode(state)
   const modeConfig = getSocialModeConfig(mode)
+  const calibratedDailyEnergy = SOCIAL_RESOURCE_CALIBRATION[mode].dailyEnergy
+  // Normal mode now deliberately carries energy between days. A stale remote
+  // config may still advertise the former cap of 5, so never let it collapse
+  // the bank below the bundled carryover floor. Remote config may still raise it.
+  const energyCap =
+    mode === 'normal'
+      ? Math.max(modeConfig.energyCap, DEFAULT_SOCIAL_RUNTIME_CONFIG.economy.normal.energyCap)
+      : modeConfig.energyCap
   const seed = state.game?.seed ?? 0
   const carriedEnergy = state.social?.energyBank ?? {}
   const grantsWeeklyBatch = phaseName === 'social_1'
@@ -86,13 +101,13 @@ function startPhase(phaseName: string): void {
       (rng / 0xffffffff) * (targetSpendPctRange[1] - targetSpendPctRange[0])
     const actions =
       minActionsPerPlayer + Math.round(pct * (maxActionsPerPlayer - minActionsPerPlayer))
-    const phaseBudget = Math.round(modeConfig.weeklyEnergy * pct + actions)
+    const phaseBudget = Math.round(calibratedDailyEnergy * pct + actions)
     const carried = Math.max(0, carriedEnergy[player.id] ?? 0)
     const next = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(modeConfig.energyCap, carried + phaseBudget)
-        : Math.min(modeConfig.energyCap, phaseBudget)
+        ? addCarryoverBatch(carried, phaseBudget, energyCap)
+        : Math.min(energyCap, phaseBudget)
     _budgets.set(player.id, next)
   }
 
@@ -109,8 +124,8 @@ function startPhase(phaseName: string): void {
     const humanBudget = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(modeConfig.energyCap, carried + modeConfig.weeklyEnergy)
-        : Math.max(carried, modeConfig.weeklyEnergy)
+        ? addCarryoverBatch(carried, calibratedDailyEnergy, energyCap)
+        : Math.max(carried, calibratedDailyEnergy)
     _budgets.set(humanPlayer.id, humanBudget)
     budgets[humanPlayer.id] = humanBudget
   }

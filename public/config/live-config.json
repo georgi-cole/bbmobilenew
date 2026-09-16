@@ -329,15 +329,15 @@
   },
   "social": {
     "schemaVersion": 1,
-    "revision": "remote-1",
+    "revision": "resource-calibration-1",
     "economy": {
       "normal": {
         "weeklyEnergy": 5,
-        "energyCap": 5,
-        "carryOver": false
+        "energyCap": 20,
+        "carryOver": true
       },
       "drama": {
-        "weeklyEnergy": 10,
+        "weeklyEnergy": 7,
         "energyCap": 30,
         "carryOver": true
       },

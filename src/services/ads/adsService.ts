@@ -14,6 +14,9 @@ import type { AppDispatch, RootState } from '../../store/store'
 import { recordAdShown } from '../../store/adsSlice'
 import { hasEffectiveStoreEntitlement } from '../../vip/effectiveEntitlements'
 import { IS_MOBILE_DEV_BUILD } from '../../config/buildTarget'
+import { setEnergyBankEntry } from '../../social/socialSlice'
+
+export const SOCIAL_ENERGY_RECHARGE_REWARD = 6
 
 export type AdPlacement =
   | 'competition_retry'
@@ -167,6 +170,22 @@ export function showRewarded(
     return false
   }
 
+  const socialRechargePlayerId =
+    placement === 'social_energy_recharge'
+      ? state.game.players.find((player) => player.isUser)?.id
+      : undefined
+  const rewardHandler: RewardHandler = (payload) => {
+    onReward(payload)
+    if (placement === 'social_energy_recharge' && socialRechargePlayerId) {
+      dispatch(
+        setEnergyBankEntry({
+          playerId: socialRechargePlayerId,
+          value: SOCIAL_ENERGY_RECHARGE_REWARD,
+        })
+      )
+    }
+  }
+
   if (!window.GameAds?.showRewarded) {
     if (!IS_MOBILE_DEV_BUILD) {
       if (import.meta.env.DEV) {
@@ -175,7 +194,7 @@ export function showRewarded(
       return false
     }
 
-    rewardHandlers.set(placement, onReward)
+    rewardHandlers.set(placement, rewardHandler)
     dispatch(recordAdShown(placement))
     window.setTimeout(() => {
       window.onAdRewardGranted?.(placement, { source: 'mobile-dev-simulator' })
@@ -186,7 +205,7 @@ export function showRewarded(
   if (import.meta.env.DEV) {
     console.log(`[ads] requesting rewarded: ${placement}`)
   }
-  rewardHandlers.set(placement, onReward)
+  rewardHandlers.set(placement, rewardHandler)
   try {
     window.GameAds.showRewarded(placement)
   } catch (error) {

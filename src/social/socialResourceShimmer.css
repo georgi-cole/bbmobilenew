@@ -1,0 +1,70 @@
+.sp2-energy-chip,
+.sp2-resource-chip {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.sp2-energy-chip.sp2-resource-gain-shimmer,
+.sp2-resource-chip.sp2-resource-gain-shimmer {
+  animation: sp2-resource-gain-lift 680ms ease-out both;
+}
+
+.sp2-energy-chip.sp2-resource-gain-shimmer::after,
+.sp2-resource-chip.sp2-resource-gain-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: -35% -70%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.08) 43%,
+    rgba(255, 255, 255, 0.34) 50%,
+    rgba(255, 255, 255, 0.08) 57%,
+    transparent 66%
+  );
+  transform: translateX(-55%);
+  animation: sp2-resource-gain-sweep 680ms ease-out both;
+}
+
+@keyframes sp2-resource-gain-lift {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: translateY(0);
+  }
+  38% {
+    filter: brightness(1.14);
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes sp2-resource-gain-sweep {
+  from {
+    opacity: 0;
+    transform: translateX(-55%);
+  }
+  18% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(55%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp2-energy-chip.sp2-resource-gain-shimmer,
+  .sp2-resource-chip.sp2-resource-gain-shimmer,
+  .sp2-energy-chip.sp2-resource-gain-shimmer::after,
+  .sp2-resource-chip.sp2-resource-gain-shimmer::after {
+    animation: none;
+  }
+
+  .sp2-energy-chip.sp2-resource-gain-shimmer::after,
+  .sp2-resource-chip.sp2-resource-gain-shimmer::after {
+    display: none;
+  }
+}

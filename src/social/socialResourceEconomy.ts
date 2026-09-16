@@ -25,13 +25,16 @@ const BY_KIND: Record<SocialActionKind, Record<SocialResourceOutcome, SocialReso
     failure: { influence: -3, info: 0 },
     backfire: { influence: -6, info: 0 },
   },
+  // The strategic effect is the reward for political/aggressive actions. Do not
+  // automatically refund the Influence they were meant to spend or award social
+  // capital merely for escalating conflict.
   political_spend: {
-    success: { influence: 4, info: 0 },
+    success: { influence: 0, info: 0 },
     failure: { influence: -3, info: 0 },
     backfire: { influence: -6, info: 0 },
   },
   aggressive: {
-    success: { influence: 4, info: 0 },
+    success: { influence: 0, info: 0 },
     failure: { influence: -4, info: 0 },
     backfire: { influence: -8, info: 0 },
   },
@@ -39,7 +42,9 @@ const BY_KIND: Record<SocialActionKind, Record<SocialResourceOutcome, SocialReso
 
 const OVERRIDES: Record<string, Partial<Record<SocialResourceOutcome, SocialResourceEffect>>> = {
   proposeAlliance: {
-    success: { influence: 8, info: 0 },
+    // The actual alliance transition awards the canonical +20 Influence. Keeping
+    // the action itself neutral prevents a double payout.
+    success: { influence: 0, info: 0 },
     failure: { influence: -4, info: 0 },
     backfire: { influence: -8, info: 0 },
   },
@@ -49,9 +54,19 @@ const OVERRIDES: Record<string, Partial<Record<SocialResourceOutcome, SocialReso
     backfire: { influence: -3, info: 0 },
   },
   betray: {
-    success: { influence: 6, info: 0 },
+    success: { influence: -25, info: 0 },
     failure: { influence: -6, info: 0 },
-    backfire: { influence: -10, info: 0 },
+    backfire: { influence: -15, info: 0 },
+  },
+  break_alliance: {
+    success: { influence: -25, info: 0 },
+    failure: { influence: 0, info: 0 },
+    backfire: { influence: -25, info: 0 },
+  },
+  break_bromance: {
+    success: { influence: -20, info: 0 },
+    failure: { influence: 0, info: 0 },
+    backfire: { influence: -20, info: 0 },
   },
   snoop_around: {
     success: { influence: 0, info: 200 },

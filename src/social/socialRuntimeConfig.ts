@@ -26,7 +26,7 @@ export interface SocialRuntimeConfig {
   economy: {
     normal: {
       weeklyEnergy: number
-      carryOver: false
+      carryOver: true
       energyCap: number
     }
     drama: {
@@ -107,8 +107,8 @@ export const DEFAULT_SOCIAL_RUNTIME_CONFIG: SocialRuntimeConfig = {
   schemaVersion: 1,
   revision: 'bundled-1',
   economy: {
-    normal: { weeklyEnergy: 5, carryOver: false, energyCap: 5 },
-    drama: { weeklyEnergy: 10, carryOver: true, energyCap: 30 },
+    normal: { weeklyEnergy: 5, carryOver: true, energyCap: 20 },
+    drama: { weeklyEnergy: 7, carryOver: true, energyCap: 30 },
     influenceCap: 10_000,
     infoCap: 10_000,
   },
@@ -322,8 +322,7 @@ export function sanitiseSocialRuntimeOverride(raw: unknown): SocialRuntimeOverri
       const energyCap = safeInteger(raw.economy[mode].energyCap, 1, 100)
       if (weeklyEnergy !== undefined) modeConfig.weeklyEnergy = weeklyEnergy
       if (energyCap !== undefined) modeConfig.energyCap = Math.max(weeklyEnergy ?? 1, energyCap)
-      if (mode === 'normal') modeConfig.carryOver = false
-      if (mode === 'drama') modeConfig.carryOver = true
+      modeConfig.carryOver = true
       if (Object.keys(modeConfig).length > 0) economy[mode] = modeConfig
     }
     const influenceCap = safeInteger(raw.economy.influenceCap, 100, 100_000)
@@ -417,7 +416,7 @@ function mergeRuntimeConfig(override: SocialRuntimeOverride | null): SocialRunti
       normal: {
         ...DEFAULT_SOCIAL_RUNTIME_CONFIG.economy.normal,
         ...override.economy?.normal,
-        carryOver: false,
+        carryOver: true,
       },
       drama: {
         ...DEFAULT_SOCIAL_RUNTIME_CONFIG.economy.drama,
