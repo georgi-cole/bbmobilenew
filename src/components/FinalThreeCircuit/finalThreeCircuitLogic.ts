@@ -32,6 +32,12 @@ export interface WardenBoard {
   moveBudget: number
 }
 
+export interface WardenTurnResult {
+  nextWarden: number
+  escaped: boolean
+  caught: boolean
+}
+
 export interface PowerPuzzle {
   values: number[]
   target: number
@@ -40,12 +46,16 @@ export interface PowerPuzzle {
   timeLimitMs: number
 }
 
+// Risk Run has two pre-wager challenges. Keep their combined perfect bank at 70
+// so even a successful 40% Final Push is awarded in full (70 + 28 = 98) rather
+// than being silently truncated by the 100-point stage ceiling.
 export const RISK_TIER_MAX_POINTS: Record<RiskTier, number> = {
-  safe: 32,
-  standard: 40,
-  risky: 48,
+  safe: 24,
+  standard: 30,
+  risky: 35,
 }
 
+export const RISK_RUN_MAX_PRE_PUSH = RISK_TIER_MAX_POINTS.risky * 2
 export const FINAL_PUSH_STAKES = [0.1, 0.25, 0.4] as const
 export const EMPTY_SEQUENCE_TILE = '__empty__'
 export const SEQUENCE_STAGE_TIME_MS = 300_000
@@ -232,7 +242,10 @@ export function scoreSequenceBoard(
 
 export function scoreRiskAttempt(tier: RiskTier, accuracy: number): number {
   const normalizedAccuracy = Math.max(0, Math.min(1, accuracy))
-  return clampCircuitScore(RISK_TIER_MAX_POINTS[tier] * normalizedAccuracy, 48)
+  return clampCircuitScore(
+    RISK_TIER_MAX_POINTS[tier] * normalizedAccuracy,
+    RISK_TIER_MAX_POINTS[tier]
+  )
 }
 
 export function applyFinalPush(
@@ -240,7 +253,7 @@ export function applyFinalPush(
   stakeFraction: (typeof FINAL_PUSH_STAKES)[number],
   success: boolean
 ): number {
-  const safeBank = Math.max(0, bank)
+  const safeBank = Math.max(0, Math.min(RISK_RUN_MAX_PRE_PUSH, Math.round(bank)))
   const stake = Math.max(1, Math.round(safeBank * stakeFraction))
   return clampCircuitScore(success ? safeBank + stake : safeBank - stake)
 }
@@ -338,6 +351,28 @@ export function moveWardenTowardPlayer(
   return nextWarden
 }
 
+/**
+ * Resolve the guard response to one legal player move.
+ * Reaching EXIT is terminal: once the player steps onto the exit, the escape is
+ * complete and the guard does not receive another pursuit turn.
+ */
+export function resolveWardenTurn(
+  board: WardenBoard,
+  wardenCell: number,
+  nextPlayer: number
+): WardenTurnResult {
+  if (nextPlayer === board.exit) {
+    return { nextWarden: wardenCell, escaped: true, caught: false }
+  }
+
+  const nextWarden = moveWardenTowardPlayer(board, wardenCell, nextPlayer)
+  return {
+    nextWarden,
+    escaped: false,
+    caught: nextWarden === nextPlayer,
+  }
+}
+
 export function isWardenBoardSolvable(tier: RiskTier): boolean {
   const board = buildWardenBoard(tier)
   type State = { player: number; warden: number; moves: number }
@@ -354,10 +389,10 @@ export function isWardenBoardSolvable(tier: RiskTier): boolean {
 
     for (const nextPlayer of getGridNeighbors(state.player, board.size, board.walls)) {
       if (nextPlayer === state.warden) continue
-      const nextWarden = moveWardenTowardPlayer(board, state.warden, nextPlayer)
-      if (nextWarden === nextPlayer) continue
-      if (nextPlayer === board.exit) return true
-      queue.push({ player: nextPlayer, warden: nextWarden, moves: state.moves + 1 })
+      const turn = resolveWardenTurn(board, state.warden, nextPlayer)
+      if (turn.escaped) return true
+      if (turn.caught) continue
+      queue.push({ player: nextPlayer, warden: turn.nextWarden, moves: state.moves + 1 })
     }
   }
 
