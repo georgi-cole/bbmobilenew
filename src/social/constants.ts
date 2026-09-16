@@ -5,13 +5,14 @@ import { createInitialDramaSocialNetwork } from './dramaModeEngine'
 import { SOCIAL_STATE_VERSION } from './socialHistory'
 import { createInitialRealitySimulationState } from './realitySimulation'
 import { createInitialRealityDomainState } from './reality/state'
+import { SOCIAL_RESOURCE_CALIBRATION } from './socialResourceCalibration'
 
-/** Normal Mode weekly Energy allowance. */
-export const DEFAULT_ENERGY = 5
-/** Drama Mode weekly Energy allowance. */
-export const HUMAN_SOCIAL_ALLOWANCE = 10
-/** Drama Mode carry-over cap. */
-export const MAX_HUMAN_SOCIAL_ENERGY = 30
+/** Normal Mode Energy allowance. Kept as a compatibility alias. */
+export const DEFAULT_ENERGY = SOCIAL_RESOURCE_CALIBRATION.normal.dailyEnergy
+/** Reality/Drama Mode Energy allowance. Kept as a compatibility alias. */
+export const HUMAN_SOCIAL_ALLOWANCE = SOCIAL_RESOURCE_CALIBRATION.drama.dailyEnergy
+/** Reality/Drama Mode carry-over cap. */
+export const MAX_HUMAN_SOCIAL_ENERGY = SOCIAL_RESOURCE_CALIBRATION.drama.energyCap
 
 /** Initial value for the Redux social state subtree. */
 export const SOCIAL_INITIAL_STATE: SocialState = {
