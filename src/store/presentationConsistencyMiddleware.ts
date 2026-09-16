@@ -1,4 +1,4 @@
-import type { Middleware } from '@reduxjs/toolkit'
+import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit'
 import { expandCupidIds } from '../features/twists/cupidArrow'
 import type { GameState, TvEvent } from '../types'
 import { consumeBroadcastEvent, updateTvEvent } from './gameSlice'
@@ -12,15 +12,17 @@ function currentTemplateEvent(
   templateId: string,
   options: { includeConsumed?: boolean } = {}
 ): TvEvent | undefined {
-  return game.tvFeed.find(
-    (event) =>
+  return [...game.tvFeed].reverse().find((event) => {
+    const eventWeek = event.meta?.week
+    return (
       event.meta?.broadcastTemplateId === templateId &&
-      event.meta?.week === game.week &&
+      (eventWeek == null || eventWeek === game.week) &&
       (options.includeConsumed === true || event.meta?.broadcastConsumed !== true)
-  )
+    )
+  })
 }
 
-function decorateOutgoingLohBroadcast(api: Parameters<Middleware>[0]): void {
+function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
   const { game } = api.getState() as PresentationState
   if (game.phase !== 'loh_comp' || !game.prevHohId || game.voxPopuli?.status === 'active') return
 
@@ -50,7 +52,7 @@ function decorateOutgoingLohBroadcast(api: Parameters<Middleware>[0]): void {
   )
 }
 
-function consumeResolvedReplacementPrompt(api: Parameters<Middleware>[0]): void {
+function consumeResolvedReplacementPrompt(api: MiddlewareAPI): void {
   const { game } = api.getState() as PresentationState
   const stalePrompt = currentTemplateEvent(game, 'safety.replacement-needed')
   if (stalePrompt) api.dispatch(consumeBroadcastEvent(stalePrompt.id))
