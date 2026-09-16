@@ -15,6 +15,11 @@ interface OverrideRound {
   correct: string
 }
 
+interface OverrideResult {
+  success: boolean
+  correct: number
+}
+
 function hash(value: string): number {
   let result = 2166136261
   for (let index = 0; index < value.length; index += 1) {
@@ -65,18 +70,21 @@ export default function FinalOverrideChallenge({ seed, stake, onFinish }: FinalO
   const [remainingMs, setRemainingMs] = useState(roundTimeMs)
   const [locked, setLocked] = useState(false)
   const [feedback, setFeedback] = useState<'good' | 'bad' | null>(null)
+  const [result, setResult] = useState<OverrideResult | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const round = rounds[roundIndex]
 
   const advance = useCallback(
     (wasCorrect: boolean) => {
-      if (locked) return
+      if (locked || result) return
       setLocked(true)
       setFeedback(wasCorrect ? 'good' : 'bad')
       const nextCorrect = correct + (wasCorrect ? 1 : 0)
       setCorrect(nextCorrect)
+
       window.setTimeout(() => {
         if (roundIndex >= rounds.length - 1) {
-          onFinish(nextCorrect >= required)
+          setResult({ success: nextCorrect >= required, correct: nextCorrect })
           return
         }
         setRoundIndex((current) => current + 1)
@@ -85,21 +93,56 @@ export default function FinalOverrideChallenge({ seed, stake, onFinish }: FinalO
         setFeedback(null)
       }, 260)
     },
-    [correct, locked, onFinish, required, roundIndex, roundTimeMs, rounds.length]
+    [correct, locked, required, result, roundIndex, roundTimeMs, rounds.length]
   )
 
   useEffect(() => {
-    if (locked) return
+    if (locked || result) return
     const timer = window.setInterval(() => {
       setRemainingMs((current) => Math.max(0, current - 100))
     }, 100)
     return () => window.clearInterval(timer)
-  }, [locked, roundIndex])
+  }, [locked, result, roundIndex])
 
   useEffect(() => {
-    if (remainingMs > 0 || locked) return
+    if (remainingMs > 0 || locked || result) return
     advance(false)
-  }, [advance, locked, remainingMs])
+  }, [advance, locked, remainingMs, result])
+
+  if (result) {
+    return (
+      <div className={`f3-circuit__risk-game f3-circuit__override ${result.success ? 'is-good' : 'is-bad'}`}>
+        <div className="f3-circuit__challenge-meter">
+          <span>Override 5 / 5</span>
+          <span>{result.correct} correct</span>
+          <span>Need {required}</span>
+        </div>
+
+        <div className="f3-circuit__override-result">
+          <span>{result.success ? 'Override accepted' : 'Override rejected'}</span>
+          <strong>{result.correct} / 5</strong>
+          <p>
+            {result.success
+              ? 'Your stake is added to the Risk Run bank.'
+              : 'Your stake is deducted from the Risk Run bank.'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="f3-circuit__primary"
+          disabled={submitted}
+          onClick={() => {
+            if (submitted) return
+            setSubmitted(true)
+            onFinish(result.success)
+          }}
+        >
+          {submitted ? 'Locking result…' : 'Lock in result'}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className={`f3-circuit__risk-game f3-circuit__override ${feedback ? `is-${feedback}` : ''}`}>
