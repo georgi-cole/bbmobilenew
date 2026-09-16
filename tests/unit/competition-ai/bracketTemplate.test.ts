@@ -110,24 +110,15 @@ describe('classic campaign map registry integrity', () => {
     })
   })
 
-  it('fills the Final 3 with sustained endurance, precision, and multi-round score games', () => {
-    const final3Games = new Set(
-      DEFAULT_BRACKET_TEMPLATE.filter(
-        (band) => band.minPlayers === 3 && band.maxPlayers === 3
-      ).flatMap((band) => band.loh)
+  it('reserves Final Three Circuit for the exact-three Part 1 qualifier', () => {
+    const part1Band = DEFAULT_BRACKET_TEMPLATE.find((band) =>
+      band.phases?.includes('final3_comp1_minigame')
     )
+    const game = getGame('finalThreeCircuit')
 
-    expect([...final3Games]).toEqual(
-      expect.arrayContaining([
-        'holdWall',
-        'pressurePlank',
-        'memoryMatch',
-        'timingBar',
-        'threeDigitsQuiz',
-        'capitalization',
-        'batteryLow',
-      ])
-    )
+    expect(part1Band?.loh).toEqual(['finalThreeCircuit'])
+    expect(game?.minPlayers).toBe(3)
+    expect(game?.maxPlayers).toBe(3)
   })
 })
 
@@ -139,7 +130,7 @@ describe('getBracketPoolForContext compatibility resolver', () => {
     [9, 'POS', 'tetris'],
     [5, 'POS', 'quickTap'],
     [4, 'LOH', 'batteryLow'],
-    [3, 'LOH', 'capitalization'],
+    [3, 'LOH', 'finalThreeCircuit'],
   ] as const)('maps %i players / %s to %s', (playerCount, compType, expectedKey) => {
     expect(getBracketPoolForContext(playerCount, compType)).toContain(expectedKey)
   })
@@ -264,7 +255,7 @@ describe('getClassicCampaignPoolForContext', () => {
     expect(afterPartOne).toContain('castleRescue2')
   })
 
-  it('uses a disjoint, escalating pool for each Final 3 part', () => {
+  it('uses a disjoint, phase-owned pool for each Final 3 part', () => {
     const resolve = (
       phase: 'final3_comp1_minigame' | 'final3_comp2_minigame' | 'final3_comp3_minigame'
     ) => getClassicCampaignPoolForContext({ day: 14, playerCount: 3, compType: 'LOH', phase })
@@ -272,7 +263,7 @@ describe('getClassicCampaignPoolForContext', () => {
     const part2 = resolve('final3_comp2_minigame')
     const part3 = resolve('final3_comp3_minigame')
 
-    expect(part1).toContain('holdWall')
+    expect(part1).toEqual(['finalThreeCircuit'])
     expect(part2).toContain('memoryMatch')
     expect(part3).toContain('capitalization')
     expect(new Set([...part1, ...part2, ...part3]).size).toBe(
