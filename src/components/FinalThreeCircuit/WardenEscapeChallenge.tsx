@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  buildWardenBoard,
   getGridNeighbors,
   moveWardenTowardPlayer,
   type RiskTier,
 } from './finalThreeCircuitLogic'
+import { buildVariedWardenBoard } from './wardenBoardVariations'
 
 interface WardenEscapeChallengeProps {
+  seed: number
   tier: RiskTier
   onFinish: (accuracy: number) => void
 }
@@ -24,8 +25,8 @@ function formatTime(milliseconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeChallengeProps) {
-  const board = useMemo(() => buildWardenBoard(tier), [tier])
+export default function WardenEscapeChallenge({ seed, tier, onFinish }: WardenEscapeChallengeProps) {
+  const board = useMemo(() => buildVariedWardenBoard(tier, seed), [seed, tier])
   const timeLimitMs = TIME_LIMITS[tier]
   const [player, setPlayer] = useState(board.start)
   const [warden, setWarden] = useState(board.wardenStart)
@@ -90,23 +91,23 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
       <div className="f3-circuit__warden-rule-strip" aria-label="Movement rule">
         <div className="is-player-rule">
           <span className="f3-circuit__mini-person" aria-hidden="true"><i /><b /></span>
-          <div><small>You move</small><strong>1 tile</strong></div>
+          <div><small>You</small><strong>1 tile</strong></div>
         </div>
         <span className="f3-circuit__versus">VS</span>
         <div className="is-warden-rule">
           <span className="f3-circuit__mini-warden" aria-hidden="true"><i /></span>
-          <div><small>Guard moves</small><strong>2 tiles</strong></div>
+          <div><small>Guard</small><strong>2 tiles</strong></div>
         </div>
       </div>
 
       <div className="f3-circuit__challenge-meter">
-        <span>{Math.max(0, board.moveBudget - moves)} moves left</span>
+        <span>{Math.max(0, board.moveBudget - moves)} moves</span>
         <span>{formatTime(remainingMs)}</span>
-        <span>{board.size}×{board.size} block</span>
+        <span>{board.size}×{board.size}</span>
       </div>
 
       <p className="f3-circuit__copy f3-circuit__warden-copy">
-        <strong>Outsmart the guard, don’t outrun him.</strong> He closes the horizontal gap first, then the vertical gap. Lead him into a wall pocket, break away, and reach the illuminated exit.
+        Trap the guard against walls, then reach the illuminated exit.
       </p>
 
       <div className="f3-circuit__prison-frame">
@@ -172,16 +173,8 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
 
         {status !== 'playing' && (
           <div className={`f3-circuit__warden-status is-${status}`} role="status">
-            <strong>
-              {status === 'escaped' ? 'ESCAPED' : status === 'caught' ? 'CAUGHT' : 'LOCKDOWN'}
-            </strong>
-            <span>
-              {status === 'escaped'
-                ? 'Route cleared'
-                : status === 'caught'
-                  ? 'The guard closed the route'
-                  : 'Time expired'}
-            </span>
+            <strong>{status === 'escaped' ? 'ESCAPED' : status === 'caught' ? 'CAUGHT' : 'LOCKDOWN'}</strong>
+            <span>{status === 'escaped' ? 'Route cleared' : status === 'caught' ? 'The guard closed the route' : 'Time expired'}</span>
           </div>
         )}
       </div>
@@ -192,10 +185,6 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
         <span><i className="is-exit" />Exit</span>
         <span><i className="is-move" />Legal move</span>
       </div>
-
-      <p className="f3-circuit__hint">
-        The guard follows a predictable rule rather than finding the smartest route. The walls are your weapon: manipulate his horizontal-first pursuit until he traps himself.
-      </p>
     </div>
   )
 }
