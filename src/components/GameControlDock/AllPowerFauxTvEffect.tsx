@@ -9,6 +9,15 @@ function seenStorageKey(gameId: string | null | undefined, week: number, winnerI
   return `big-eye:all-power:${gameId ?? 'game'}:${week}:${winnerId}`
 }
 
+function hasSeenEffect(key: string | null): boolean {
+  if (!key || typeof sessionStorage === 'undefined') return false
+  try {
+    return sessionStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+
 /**
  * A presentation-only beat for the rare case where one player owns both LOH
  * and Power of Safety. It never writes gameplay state or adds another broadcast
@@ -23,27 +32,30 @@ export default function AllPowerFauxTvEffect() {
   const winnerName = useAppSelector((state) =>
     posWinnerId ? state.game.players.find((player) => player.id === posWinnerId)?.name : undefined
   )
-  const [active, setActive] = useState(false)
-  const [viewport, setViewport] = useState<HTMLElement | null>(null)
+  const [completedKey, setCompletedKey] = useState<string | null>(null)
 
   const triggerKey = useMemo(() => {
     if (phase !== 'pos_results' || !posWinnerId || posWinnerId !== lohId || !winnerName) return null
     return seenStorageKey(gameId, week, posWinnerId)
   }, [gameId, lohId, phase, posWinnerId, week, winnerName])
 
+  const shouldRender = Boolean(
+    triggerKey && completedKey !== triggerKey && !hasSeenEffect(triggerKey)
+  )
+  const viewport =
+    shouldRender && typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('.tv-zone .tv-zone__viewport')
+      : null
+
   useEffect(() => {
-    if (!triggerKey || typeof document === 'undefined') return undefined
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(triggerKey) === '1') {
-      return undefined
-    }
+    if (!triggerKey || completedKey === triggerKey || hasSeenEffect(triggerKey)) return undefined
+    if (typeof document === 'undefined' || typeof window === 'undefined') return undefined
 
     const zone = document.querySelector<HTMLElement>('.tv-zone')
     const target = zone?.querySelector<HTMLElement>('.tv-zone__viewport') ?? null
     if (!zone || !target) return undefined
 
     zone.classList.add('tv-zone--all-power')
-    setViewport(target)
-    setActive(true)
 
     const timer = window.setTimeout(() => {
       try {
@@ -54,19 +66,16 @@ export default function AllPowerFauxTvEffect() {
         // Presentation is still safe if storage is unavailable.
       }
       zone.classList.remove('tv-zone--all-power')
-      setActive(false)
-      setViewport(null)
+      setCompletedKey(triggerKey)
     }, EFFECT_MS)
 
     return () => {
       window.clearTimeout(timer)
       zone.classList.remove('tv-zone--all-power')
-      setActive(false)
-      setViewport(null)
     }
-  }, [triggerKey])
+  }, [completedKey, triggerKey])
 
-  if (!active || !viewport || !winnerName) return null
+  if (!shouldRender || !viewport || !winnerName) return null
 
   return createPortal(
     <div className="all-power-faux-tv" role="status" aria-live="assertive">
