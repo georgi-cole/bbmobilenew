@@ -2,6 +2,8 @@ import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { setHouseMenuAudioEffect } from '../../services/sound/audioRouteOwnership'
+import { useAppSelector } from '../../store/hooks'
+import AllPowerFauxTvEffect from './AllPowerFauxTvEffect'
 import './GameControlDock.css'
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -106,6 +108,11 @@ export default function GameControlDock({
   primaryLabel = 'Advance to next phase',
 }: GameControlDockProps) {
   const [moreOpen, setMoreOpen] = useState(false)
+  const votePresentationLocked = useAppSelector(
+    (state) => Boolean(state.game.voteResults) || Boolean(state.game.evictionOverlayPlayerId)
+  )
+  const dockDisabled = disabled || votePresentationLocked
+  const effectivePrimaryDisabled = primaryDisabled || votePresentationLocked
   const [socialLedActive, acknowledgeSocialLed] = useNotificationLed(chatBadgeCount, {
     notifyOnAnyChange: true,
   })
@@ -140,6 +147,12 @@ export default function GameControlDock({
       window.removeEventListener('season-tutorial:close-more-menu', closeMoreMenu)
     }
   }, [])
+
+  useEffect(() => {
+    if (!votePresentationLocked) return undefined
+    const close = window.setTimeout(() => setMoreOpen(false), 0)
+    return () => window.clearTimeout(close)
+  }, [votePresentationLocked])
 
   useEffect(() => {
     if (!moreOpen) {
@@ -188,7 +201,7 @@ export default function GameControlDock({
           draggable={false}
         />
         <img
-          className={`game-control-dock__play fab-play${primaryPulse ? ' game-control-dock__play--pulse' : ''}${primaryDisabled ? ' game-control-dock__play--disabled' : ''}`}
+          className={`game-control-dock__play fab-play${primaryPulse ? ' game-control-dock__play--pulse' : ''}${effectivePrimaryDisabled ? ' game-control-dock__play--disabled' : ''}`}
           src={playSrc}
           alt=""
           aria-hidden="true"
@@ -233,17 +246,17 @@ export default function GameControlDock({
           className="dock-hit-area hit-home dock-hit-area--home"
           type="button"
           aria-label="Home"
-          disabled={disabled}
-          onClick={disabled ? undefined : onHomeClick}
+          disabled={dockDisabled}
+          onClick={dockDisabled ? undefined : onHomeClick}
         />
         <button
           className={`dock-hit-area hit-social dock-hit-area--social${chatFlash ? ' dock-hit-area--flash dock-node--flash' : ''}${socialUnavailableClass}`}
           type="button"
           aria-label={`Social${chatBadgeCount ? ` (${chatBadgeCount})` : ''}`}
-          aria-disabled={socialDisabled || disabled}
-          disabled={disabled}
+          aria-disabled={socialDisabled || dockDisabled}
+          disabled={dockDisabled}
           onClick={
-            disabled
+            dockDisabled
               ? undefined
               : () => {
                   if (!socialDisabled) acknowledgeSocialLed()
@@ -264,10 +277,10 @@ export default function GameControlDock({
           className={`dock-hit-area hit-requests dock-hit-area--requests${requestsUnavailableClass}`}
           type="button"
           aria-label={`Incoming requests${incomingRequestsBadgeCount ? ` (${incomingRequestsBadgeCount})` : ''}`}
-          aria-disabled={incomingRequestsDisabled || disabled}
-          disabled={disabled}
+          aria-disabled={incomingRequestsDisabled || dockDisabled}
+          disabled={dockDisabled}
           onClick={
-            disabled
+            dockDisabled
               ? undefined
               : () => {
                   if (!incomingRequestsDisabled) acknowledgeRequestsLed()
@@ -290,17 +303,17 @@ export default function GameControlDock({
           className={`dock-hit-area hit-play dock-hit-area--play${primaryPulse ? ' dock-hit-area--pulse dock-node--pulse' : ''}`}
           type="button"
           aria-label={primaryLabel}
-          disabled={primaryDisabled}
-          onClick={primaryDisabled ? undefined : onPrimaryActionClick}
+          disabled={effectivePrimaryDisabled}
+          onClick={effectivePrimaryDisabled ? undefined : onPrimaryActionClick}
         />
         <button
           className={`dock-hit-area hit-stats dock-hit-area--stats${publicUnavailableClass}`}
           type="button"
           aria-label={`Public meter${publicMeterBadgeCount ? ` (${publicMeterBadgeCount})` : ''}`}
-          aria-disabled={publicMeterDisabled || disabled}
-          disabled={disabled}
+          aria-disabled={publicMeterDisabled || dockDisabled}
+          disabled={dockDisabled}
           onClick={
-            disabled
+            dockDisabled
               ? undefined
               : () => {
                   if (!publicMeterDisabled) acknowledgePublicLed()
@@ -321,10 +334,10 @@ export default function GameControlDock({
           className={`dock-hit-area hit-confessional dock-hit-area--confessional${confessionalFlash ? ` dock-hit-area--confessional-flash dock-hit-area--confessional-flash-${confessionalFlashTick % 2}` : ''}${confessionalPersistentFlash ? ' dock-hit-area--confessional-persistent' : ''}`}
           type="button"
           aria-label={`Confessional${confessionalBadgeCount ? ` (${confessionalBadgeCount})` : ''}`}
-          disabled={disabled}
-          aria-disabled={confessionalDisabled || disabled}
+          disabled={dockDisabled}
+          aria-disabled={confessionalDisabled || dockDisabled}
           onClick={
-            disabled
+            dockDisabled
               ? undefined
               : () => {
                   if (!confessionalDisabled) acknowledgeConfessionalLed()
@@ -346,11 +359,11 @@ export default function GameControlDock({
           className={`dock-hit-area hit-more dock-hit-area--more${moreOpen ? ' dock-hit-area--active' : ''}`}
           type="button"
           aria-label="More"
-          aria-expanded={moreOpen}
-          disabled={disabled}
-          onClick={() => setMoreOpen((open) => !open)}
+          aria-expanded={moreOpen && !dockDisabled}
+          disabled={dockDisabled}
+          onClick={dockDisabled ? undefined : () => setMoreOpen((open) => !open)}
         />
-        {moreOpen && (
+        {moreOpen && !dockDisabled && (
           <div
             ref={moreMenuRef}
             className="game-control-dock__more-menu"
@@ -386,8 +399,10 @@ export default function GameControlDock({
     </nav>
   )
 
-  // Finale scenes render in a body portal above the app shell. Portal the same
-  // shared dock alongside them so its existing Play target stays on top and
-  // cannot be clipped by the app shell's viewport container.
-  return elevatedDuringOverlay ? createPortal(navigation, document.body) : navigation
+  return (
+    <>
+      <AllPowerFauxTvEffect />
+      {elevatedDuringOverlay ? createPortal(navigation, document.body) : navigation}
+    </>
+  )
 }

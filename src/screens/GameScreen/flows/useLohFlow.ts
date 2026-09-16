@@ -86,12 +86,11 @@ export function useLohFlow({
         getCupidPartnerId(game, game.prevHohId) === humanPlayer.id)
     )
 
-  // Warning modal state: shown once per week when the human is the outgoing LOH.
-  // Tracks which week the warning was dismissed so it resets automatically each week.
-  const [outgoingHohWarningDismissedWeek, setOutgoingHohWarningDismissedWeek] = useState<
-    number | null
-  >(null)
-  const showOutgoingHohWarning = humanIsOutgoingHoh && outgoingHohWarningDismissedWeek !== game.week
+  // Eligibility is now folded into the already-present LOH competition Faux TV
+  // message by presentationConsistencyMiddleware. Keep the setter for the legacy
+  // GameScreen seam, but never block the phase with a second modal.
+  const [, setOutgoingHohWarningDismissedWeek] = useState<number | null>(null)
+  const showOutgoingHohWarning = false
 
   const [pendingNominees, setPendingNominees] = useState<string[]>([])
   const pendingNomineesRef = useRef<string[]>([])

@@ -110,7 +110,7 @@ function startPhase(phaseName: string): void {
       ? carried
       : modeConfig.carryOver
         ? Math.min(modeConfig.energyCap, carried + modeConfig.weeklyEnergy)
-        : modeConfig.weeklyEnergy
+        : Math.max(carried, modeConfig.weeklyEnergy)
     _budgets.set(humanPlayer.id, humanBudget)
     budgets[humanPlayer.id] = humanBudget
   }

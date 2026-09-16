@@ -1,0 +1,195 @@
+/*
+ * Shared phone viewport safety rules for hosted minigames.
+ *
+ * MinigameHost intentionally clips its own full-screen canvas. Individual games
+ * therefore must fit inside that canvas or make their inner content scrollable;
+ * vertically centering an over-tall game can otherwise push headings above the
+ * visible viewport. Keep fixes here so phone regressions have one explicit
+ * safety layer instead of device-specific patches scattered across games.
+ */
+
+.minigame-host > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.minigame-host h1,
+.minigame-host h2,
+.minigame-host h3,
+.minigame-host [role='heading'] {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Color Match: an over-tall card used to stay vertically centred, which moved
+   its title above the clipped MinigameHost viewport on iPhone-sized screens. */
+.minigame-host .cm {
+  align-items: flex-start;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-top: max(12px, var(--minigame-safe-padding-top, 12px));
+  padding-right: max(8px, var(--minigame-safe-padding-right, 8px));
+  padding-bottom: max(20px, var(--minigame-safe-padding-bottom, 20px));
+  padding-left: max(8px, var(--minigame-safe-padding-left, 8px));
+}
+
+.minigame-host .cm__card {
+  flex: 0 0 auto;
+  min-height: min-content;
+}
+
+/* Hold the Wall: the mobile rule previously forced a 33rem minimum wall inside
+   an already-full viewport. Let the arena flex into the actual remaining space
+   instead, and compact the HUD/roster enough that the full wall stays visible. */
+@media (max-width: 540px), (max-height: 900px) {
+  .minigame-host .htw-root {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    gap: clamp(0.3rem, 0.8vh, 0.5rem);
+    padding: 0.4rem 0.5rem max(0.45rem, var(--minigame-safe-bottom, 0px));
+    overflow: hidden;
+  }
+
+  .minigame-host .htw-hud {
+    flex: 0 0 auto;
+    width: min(100%, 28rem);
+    max-width: 28rem;
+    gap: 1rem;
+    padding: 0.32rem 0.72rem;
+  }
+
+  .minigame-host .htw-hud-stat {
+    gap: 0;
+  }
+
+  .minigame-host .htw-hud-stat .htw-hourglass {
+    margin: -8px auto -10px;
+    transform: scale(0.7);
+    transform-origin: center;
+  }
+
+  .minigame-host .htw-hud-label {
+    font-size: 0.58rem;
+    line-height: 1.1;
+  }
+
+  .minigame-host .htw-hud-value {
+    font-size: 1rem;
+    line-height: 1.1;
+  }
+
+  .minigame-host .htw-participants {
+    flex: 0 0 auto;
+    gap: 0.2rem 0.42rem;
+    max-width: 100%;
+  }
+
+  .minigame-host .htw-participant {
+    gap: 1px;
+  }
+
+  .minigame-host .htw-participant-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .minigame-host .htw-participant-name {
+    max-width: 46px;
+    font-size: 0.58rem;
+    line-height: 1.1;
+  }
+
+  .minigame-host .htw-narrative {
+    flex: 0 0 auto;
+    min-height: 0;
+    max-width: 100%;
+    padding: 0.38rem 0.55rem;
+    font-size: 0.76rem;
+    line-height: 1.28;
+  }
+
+  .minigame-host .htw-wall--expanded {
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0.9rem 0.75rem 0.45rem 0.45rem;
+  }
+
+  .minigame-host .htw-wall__pressure {
+    top: 0.72rem;
+    width: min(84%, 22rem);
+    padding: 0.4rem 0.55rem 0.48rem;
+  }
+
+  .minigame-host .htw-wall__grip-field {
+    inset: 5.6rem 0 4.7rem;
+  }
+
+  .minigame-host .htw-wall__hold-zone {
+    bottom: 0.65rem;
+    width: min(84%, 19rem);
+    padding: 0.62rem 0.8rem;
+  }
+}
+
+@media (max-width: 520px), (max-height: 850px) {
+  .minigame-host .cm__card {
+    gap: 10px;
+  }
+
+  .minigame-host .cm__header {
+    padding: 6px 10px;
+  }
+
+  .minigame-host .cm__color-name {
+    font-size: 1.24rem;
+    line-height: 1.2;
+  }
+
+  .minigame-host .cm__swatches {
+    gap: 10px;
+  }
+
+  .minigame-host .cm__swatch {
+    width: clamp(78px, 24vw, 92px);
+    height: clamp(78px, 24vw, 92px);
+  }
+
+  .minigame-host .cm__sliders {
+    gap: 8px;
+  }
+
+  .minigame-host .cm__btn {
+    padding-block: 11px;
+  }
+}
+
+@media (max-height: 720px) {
+  .minigame-host .htw-root {
+    gap: 0.24rem;
+    padding-top: 0.3rem;
+  }
+
+  .minigame-host .htw-hud {
+    padding-block: 0.2rem;
+  }
+
+  .minigame-host .htw-participant-avatar {
+    width: 26px;
+    height: 26px;
+  }
+
+  .minigame-host .htw-narrative {
+    padding-block: 0.28rem;
+    font-size: 0.7rem;
+  }
+}
