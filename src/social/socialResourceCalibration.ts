@@ -9,13 +9,13 @@ export type CalibratedSocialMode = 'normal' | 'drama'
  */
 export const SOCIAL_RESOURCE_CALIBRATION = {
   normal: {
-    dailyEnergy: 6,
+    dailyEnergy: 5,
     activeSecondWind: 3,
     secondWindSpendThreshold: 4,
     energyCap: 20,
   },
   drama: {
-    dailyEnergy: 10,
+    dailyEnergy: 7,
     activeSecondWind: 4,
     secondWindSpendThreshold: 4,
     energyCap: 30,
