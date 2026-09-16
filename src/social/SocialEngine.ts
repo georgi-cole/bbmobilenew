@@ -44,6 +44,12 @@ const _budgets = new Map<string, number>()
 let _activePhase: string | null = null
 let _lastReport: SocialPhaseReport | null = null
 
+function addCarryoverBatch(carried: number, batch: number, cap: number): number {
+  // The cap limits how much the scheduled refill can accumulate; it must never
+  // confiscate energy legitimately earned from LOH/POS/nomination bonuses.
+  return Math.max(carried, Math.min(cap, carried + batch))
+}
+
 /** Provide the Redux store API so the engine can dispatch actions and read state. */
 function init(store: StoreAPI): void {
   socialAIDriver.stop()
@@ -98,7 +104,7 @@ function startPhase(phaseName: string): void {
     const next = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(energyCap, carried + phaseBudget)
+        ? addCarryoverBatch(carried, phaseBudget, energyCap)
         : Math.min(energyCap, phaseBudget)
     _budgets.set(player.id, next)
   }
@@ -116,7 +122,7 @@ function startPhase(phaseName: string): void {
     const humanBudget = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(energyCap, carried + modeConfig.weeklyEnergy)
+        ? addCarryoverBatch(carried, modeConfig.weeklyEnergy, energyCap)
         : Math.max(carried, modeConfig.weeklyEnergy)
     _budgets.set(humanPlayer.id, humanBudget)
     budgets[humanPlayer.id] = humanBudget
