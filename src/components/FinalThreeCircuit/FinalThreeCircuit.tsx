@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { rankCircuitResults, splitAiCircuitScore, type CircuitStageScores } from './finalThreeCircuitLogic'
 import SignalHuntStage from './SignalHuntStage'
 import SequenceStage from './SequenceStage'
@@ -79,7 +79,7 @@ function StageBars({ scores, completed }: { scores: CircuitStageScores; complete
         <span
           key={index}
           className={index < completed ? 'is-complete' : ''}
-          style={index < completed ? { '--stage-fill': `${Math.max(8, score)}%` } as React.CSSProperties : undefined}
+          style={index < completed ? ({ '--stage-fill': `${Math.max(8, score)}%` } as CSSProperties) : undefined}
         >
           <i />
         </span>
@@ -207,8 +207,7 @@ export default function FinalThreeCircuit({
   const humanFinalRank = finalResult ? finalResult.ranking.indexOf(human.id) + 1 : 0
   const otherPartTwoPlayer = finalResult
     ? roster.find(
-        (player) =>
-          player.id !== human.id && player.id !== finalResult.ranking[0]
+        (player) => player.id !== human.id && player.id !== finalResult.ranking[0]
       )
     : null
 
