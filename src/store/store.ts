@@ -27,6 +27,8 @@ import { realityIntegrityMiddleware } from '../social/realityIntegrityMiddleware
 import { survivorMiddleware } from '../modes/survivorMiddleware'
 import { depressionShockMiddleware } from '../features/twists/depressionShockMiddleware'
 import { tribunalEligibilityMiddleware } from './tribunalEligibilityMiddleware'
+import { eliminatedSeasonResolutionMiddleware } from './eliminatedSeasonResolutionMiddleware'
+import { presentationConsistencyMiddleware } from './presentationConsistencyMiddleware'
 import { soundMiddleware } from './soundMiddleware'
 import uiReducer from './uiSlice'
 import { saveSeasonArchives, DEFAULT_ARCHIVE_KEY } from './archivePersistence'
@@ -115,10 +117,12 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       survivorMiddleware,
+      eliminatedSeasonResolutionMiddleware,
       tribunalEligibilityMiddleware,
       realityIntegrityMiddleware,
       depressionShockMiddleware,
       backdoorPresentationMiddleware,
+      presentationConsistencyMiddleware,
       intelligenceMiddleware,
       socialStrategyMiddleware,
       socialMiddleware,
@@ -191,7 +195,7 @@ let prevSettings = store.getState().settings
 let prevPublicModeSetting = prevSettings.sim.publicMode
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile
-// Persist profiles state to localStorage whenever it changes
+// Persist profiles state to localStorage whenever they change
 let prevProfiles = store.getState().profiles
 // Persist ads state whenever they change
 let prevAds = store.getState().ads
