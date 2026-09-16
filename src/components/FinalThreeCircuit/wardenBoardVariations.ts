@@ -27,6 +27,8 @@ const TRANSFORMS: Transform[] = [
   'antiTranspose',
 ]
 
+const variationCache = new Map<RiskTier, WardenBoard[]>()
+
 function hash(value: string): number {
   let result = 2166136261
   for (let index = 0; index < value.length; index += 1) {
@@ -115,6 +117,9 @@ export function isWardenBoardStateSolvable(board: WardenBoard): boolean {
 }
 
 export function getSolvableWardenVariations(tier: RiskTier): WardenBoard[] {
+  const cached = variationCache.get(tier)
+  if (cached) return cached
+
   const base = buildWardenBoard(tier)
   const unique = new Map<string, WardenBoard>()
 
@@ -125,7 +130,9 @@ export function getSolvableWardenVariations(tier: RiskTier): WardenBoard[] {
     unique.set(signature, board)
   })
 
-  return [...unique.values()]
+  const variations = [...unique.values()]
+  variationCache.set(tier, variations)
+  return variations
 }
 
 export function getWardenVariationIndex(seed: number, tier: RiskTier): number {
