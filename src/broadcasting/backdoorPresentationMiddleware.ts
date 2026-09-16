@@ -24,7 +24,9 @@ type BackdoorPresentationState = {
 }
 
 const BACKDOOR_EFFECT_MS = 1800
+const CEREMONY_CLEAR_SETTLE_MS = 180
 let activeCleanup: (() => void) | null = null
+let pendingCeremonyCleanup: (() => void) | null = null
 
 function canonicalizeLohTargetLog(action: unknown, state: BackdoorPresentationState): unknown {
   if (typeof action !== 'object' || action === null || !('type' in action)) return action
@@ -213,6 +215,63 @@ function playBackdoorFauxTvEffect(): void {
 }
 
 /**
+ * The replacement nominee ceremony owns the screen first. A backdoor can be
+ * revealed by Redux before React has finished mounting/unmounting that overlay,
+ * so wait through the next paint and any active ceremony before starting the
+ * Faux TV shake. The short settle delay also lets the dim layer fully disappear.
+ */
+function scheduleBackdoorFauxTvEffect(): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+
+  pendingCeremonyCleanup?.()
+
+  let observer: MutationObserver | null = null
+  let settleTimer: number | null = null
+  let cancelled = false
+
+  const cleanup = () => {
+    cancelled = true
+    observer?.disconnect()
+    observer = null
+    if (settleTimer !== null) window.clearTimeout(settleTimer)
+    settleTimer = null
+    if (pendingCeremonyCleanup === cleanup) pendingCeremonyCleanup = null
+  }
+
+  const watchForCeremonyClear = () => {
+    if (cancelled) return
+    if (!document.querySelector('.ceremony-overlay')) {
+      observer?.disconnect()
+      observer = null
+      if (settleTimer !== null) window.clearTimeout(settleTimer)
+      settleTimer = window.setTimeout(() => {
+        if (cancelled) return
+        if (document.querySelector('.ceremony-overlay')) {
+          watchForCeremonyClear()
+          return
+        }
+        pendingCeremonyCleanup = null
+        playBackdoorFauxTvEffect()
+      }, CEREMONY_CLEAR_SETTLE_MS)
+      return
+    }
+    observer?.disconnect()
+    observer = new MutationObserver(() => {
+      if (!document.querySelector('.ceremony-overlay')) watchForCeremonyClear()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+  }
+
+  pendingCeremonyCleanup = cleanup
+
+  // Two frames ensure a ceremony triggered by the same Redux update has had a
+  // chance to mount before we decide that there is nothing to wait for.
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(watchForCeremonyClear)
+  })
+}
+
+/**
  * Presentation-only bridge for an executed LOH backdoor. The actual reveal is
  * still authored by the game reducer and rendered by Faux TV; this middleware
  * also canonicalizes ask-LOH-target activity before other social middleware sees it.
@@ -235,13 +294,7 @@ export const backdoorPresentationMiddleware: Middleware = (api) => (next) => (ac
     before?.week === after.week &&
     before?.targetId === after.targetId
 
-  if (newlyRevealed && typeof window !== 'undefined') {
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(playBackdoorFauxTvEffect)
-    } else {
-      window.setTimeout(playBackdoorFauxTvEffect, 0)
-    }
-  }
+  if (newlyRevealed) scheduleBackdoorFauxTvEffect()
 
   return result
 }
