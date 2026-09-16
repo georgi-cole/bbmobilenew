@@ -17,9 +17,10 @@ describe('Final Three Circuit registry contract', () => {
     expect(getAllGames().some((entry) => entry.key === 'finalThreeCircuit')).toBe(true)
   })
 
-  it('requires exactly three competitors', () => {
+  it('supports the exact Final 3 Part 1 and Part 2 field sizes only', () => {
     const game = getGame('finalThreeCircuit')!
-    expect(supportsPlayerCount(game, 2)).toBe(false)
+    expect(supportsPlayerCount(game, 1)).toBe(false)
+    expect(supportsPlayerCount(game, 2)).toBe(true)
     expect(supportsPlayerCount(game, 3)).toBe(true)
     expect(supportsPlayerCount(game, 4)).toBe(false)
   })
