@@ -109,8 +109,8 @@ export function getApprovedCompetitionGameKeys(
  * - Elimination ladders, turn-order spectacles, and social-deduction formats
  *   stay in the large-cast portion of the season. They lose their tension when
  *   only a few housemates remain.
- * - Final 3 Part 1 uses the purpose-built Final Three Circuit so all three
- *   finalists complete the full qualifier without internal elimination.
+ * - Final 3 Parts 1 and 2 use the finale-only Final Three Circuit. Part 1 runs
+ *   with all three finalists; Part 2 runs with the two Part 1 non-winners.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
@@ -436,11 +436,11 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     pos: [],
   },
   {
-    label: 'Final 3 - Part 2 precision and memory',
+    label: 'Final 3 - Part 2 Circuit qualifier',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp2', 'final3_comp2_minigame'],
-    loh: ['memoryMatch', 'famousFigures', 'timingBar', 'estimationGame'],
+    loh: ['finalThreeCircuit'],
     pos: [],
   },
   {
