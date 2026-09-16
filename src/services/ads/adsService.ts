@@ -18,6 +18,9 @@
 
 import type { AppDispatch, RootState } from '../../store/store'
 import { recordAdShown } from '../../store/adsSlice'
+import { setEnergyBankEntry } from '../../social/socialSlice'
+
+export const SOCIAL_ENERGY_RECHARGE_REWARD = 6
 
 // ── Placement definitions ─────────────────────────────────────────────────
 
@@ -34,7 +37,7 @@ export type AdPlacement =
   | 'final_loh_decision_auto'
   /** Automatic interstitial: shown after the finale season recap. */
   | 'finale_recap_auto'
-  /** Rewarded: prompt when the user's social energy hits 0; reward = +3 energy (once/day). */
+  /** Rewarded: prompt when the user's social energy hits 0; reward = +6 energy (once/day). */
   | 'social_energy_recharge'
   /** Rewarded: prompt when the user's public meter drops to Disliked; reward = +4–10% approval (once/day). */
   | 'public_meter_disliked_boost'
@@ -250,7 +253,24 @@ export function showRewarded(
   if (import.meta.env.DEV) {
     console.log(`[ads] requesting rewarded: ${placement}`)
   }
-  rewardHandlers.set(placement, onReward)
+  const socialRechargePlayerId =
+    placement === 'social_energy_recharge'
+      ? state.game.players.find((player) => player.isUser)?.id
+      : undefined
+  rewardHandlers.set(placement, (payload) => {
+    onReward(payload)
+    // The placement owns the canonical reward value. Keep this final write here
+    // so older UI callbacks that still set the former +3 amount cannot underpay
+    // the player while native wrappers and saved builds migrate to +6.
+    if (placement === 'social_energy_recharge' && socialRechargePlayerId) {
+      dispatch(
+        setEnergyBankEntry({
+          playerId: socialRechargePlayerId,
+          value: SOCIAL_ENERGY_RECHARGE_REWARD,
+        })
+      )
+    }
+  })
   try {
     window.GameAds.showRewarded(placement)
   } catch (error) {
