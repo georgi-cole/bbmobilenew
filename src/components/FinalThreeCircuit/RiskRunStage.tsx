@@ -20,16 +20,8 @@ type RiskView = 'tutorial' | 'choice' | 'playing' | 'result' | 'stake' | 'overri
 type FinalStake = (typeof FINAL_PUSH_STAKES)[number]
 
 const TASKS = [
-  {
-    title: 'Warden Escape',
-    copy: 'Bait a two-step prison guard into the walls, then break for the exit before he closes the route.',
-    tutorial: 'warden' as const,
-  },
-  {
-    title: 'Power Balance',
-    copy: 'Commit power cells to hit the target load before your choices or time run out.',
-    tutorial: 'power' as const,
-  },
+  { title: 'Warden Escape', tutorial: 'warden' as const },
+  { title: 'Power Balance', tutorial: 'power' as const },
 ] as const
 
 const LABELS: Record<RiskTier, string> = {
@@ -39,9 +31,9 @@ const LABELS: Record<RiskTier, string> = {
 }
 
 const COPY: Record<RiskTier, string> = {
-  safe: 'Smaller prison / wider power tolerance · lower ceiling',
-  standard: 'Larger puzzle / tighter tolerance · balanced reward',
-  risky: 'Maximum-security puzzle / exact power target · highest ceiling',
+  safe: 'More margin · lower ceiling',
+  standard: 'Balanced difficulty and reward',
+  risky: 'Tightest rules · highest ceiling',
 }
 
 export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
@@ -91,15 +83,11 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
       <section className="f3-circuit__arena-card f3-circuit__arena-card--risk">
         <div className="f3-circuit__section-heading">
           <div>
-            <p className="f3-circuit__eyebrow">Stage 3 · Risk Run</p>
+            <p className="f3-circuit__eyebrow">Risk Run</p>
             <h2>{TASKS[task].title}</h2>
           </div>
           <span>Bank {bank}</span>
         </div>
-        <p className="f3-circuit__copy">{TASKS[task].copy}</p>
-        <p className="f3-circuit__copy">
-          You have already practiced the interaction. Now choose your difficulty before seeing the real board. Higher risk means a harder version and more available points.
-        </p>
 
         <div className="f3-circuit__risk-tiers">
           {(Object.keys(LABELS) as RiskTier[]).map((item) => (
@@ -124,7 +112,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
           </div>
           <span>Max {RISK_TIER_MAX_POINTS[tier]}</span>
         </div>
-        {task === 0 && <WardenEscapeChallenge tier={tier} onFinish={finishChallenge} />}
+        {task === 0 && <WardenEscapeChallenge seed={seed} tier={tier} onFinish={finishChallenge} />}
         {task === 1 && <PowerBalanceChallenge seed={seed} tier={tier} onFinish={finishChallenge} />}
       </section>
     )
@@ -136,9 +124,9 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
         <p className="f3-circuit__eyebrow">Challenge complete</p>
         <h2>{TASKS[task].title}</h2>
         <div className="f3-circuit__big-score">+{lastScore}</div>
-        <p className="f3-circuit__copy">Risk Run bank: {bank}</p>
+        <p className="f3-circuit__copy">Bank: {bank}</p>
         <button type="button" className="f3-circuit__primary" onClick={continueFromResult}>
-          {task < TASKS.length - 1 ? `Learn ${TASKS[task + 1].title}` : 'Final Push'}
+          {task < TASKS.length - 1 ? `Next: ${TASKS[task + 1].title}` : 'Final Push'}
         </button>
       </section>
     )
@@ -147,11 +135,8 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
   if (view === 'stake') {
     return (
       <section className="f3-circuit__arena-card f3-circuit__arena-card--stake">
-        <p className="f3-circuit__eyebrow">Risk Run · Final Push</p>
-        <h2>How much do you put on the line?</h2>
-        <p className="f3-circuit__copy">
-          You have {bank} points banked. Your stake is added if you clear the Final Override and deducted if you fail. After choosing, you get one untimed practice question before the real five-question run.
-        </p>
+        <p className="f3-circuit__eyebrow">Final Push</p>
+        <h2>Choose your stake</h2>
         <div className="f3-circuit__stake-options">
           {FINAL_PUSH_STAKES.map((item) => {
             const points = Math.max(1, Math.round(bank * item))
@@ -186,7 +171,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
     <section className="f3-circuit__arena-card f3-circuit__arena-card--final">
       <div className="f3-circuit__section-heading">
         <div>
-          <p className="f3-circuit__eyebrow">Risk Run · Final Push</p>
+          <p className="f3-circuit__eyebrow">Final Push</p>
           <h2>Final Override</h2>
         </div>
         <span>{Math.round(stake * 100)}% stake</span>
