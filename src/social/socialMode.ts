@@ -1,5 +1,6 @@
 import type { IncomingInteraction } from './types'
 import type { SocialMode } from './socialRuntimeConfig'
+import { hasEffectiveStoreEntitlement } from '../vip/effectiveEntitlements'
 
 interface SocialModeState {
   game?: {
@@ -37,8 +38,7 @@ export function getEffectiveSocialMode(state: SocialModeState): SocialMode {
     return selected ? 'drama' : 'normal'
   }
 
-  const entitled = state.vip.isActive === true || state.vip.entitlements?.dramaMode === true
-  if (!entitled) return 'normal'
+  if (!hasEffectiveStoreEntitlement(state.vip, 'dramaMode')) return 'normal'
 
   // The current toggle is authoritative for presentation and future interactions.
   // A purchase enables the toggle immediately; turning it off must also take effect immediately.
