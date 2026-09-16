@@ -70,15 +70,14 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'chainOfGreed',
   'batteryLow',
   'houseOfDarkness',
+  'finalThreeCircuit',
 ] as const
 
 /** Per-game story prerequisites that apply in addition to the roster map. */
 export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
   Record<(typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number], number>
 > = {
-  // Social reads only feel earned after several days with the housemates.
   silentSaboteur: 4,
-  // Part 2 belongs after the original has had a chance to appear.
   castleRescue2: 9,
 }
 
@@ -96,22 +95,10 @@ export function getApprovedCompetitionGameKeys(
 }
 
 /**
- * Design rules represented below:
- *
- * - Each regular season day has its own pool, targeting the expected house
- *   count with a one-player tolerance for twists and double evictions.
- * - Day 1 is a fixed two-game premiere: Majority Rules for LOH and Quick Tap
- *   Race for POS.
- * - With many housemates, LOH uses fixed-round or simultaneous games and POS
- *   stays short. Sequential/turn-heavy formats remain in the large-cast days.
- * - LOH becomes longer and more technical as the season progresses.
- * - POS increasingly permits shorter, simpler, and chance-driven formats.
- * - Final 4 only uses games that make sense with four players.
- * - Elimination ladders, turn-order spectacles, and social-deduction formats
- *   stay in the large-cast portion of the season. They lose their tension when
- *   only a few housemates remain.
- * - Final 3 uses sustained individual challenges: endurance, precision, and
- *   multi-round score formats that do not collapse after one elimination.
+ * Regular-season pools scale with cast size. Final 3 is phase-specific because
+ * the number of people alive is not the number of people competing in every
+ * part. Part 1 is a purpose-built exact-three qualifier; Parts 2 and 3 retain
+ * their existing pools until their redesigns are finalized.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
@@ -429,11 +416,11 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
   },
   {
-    label: 'Final 3 - Part 1 endurance',
+    label: 'Final 3 - Part 1 · Final Three Circuit',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp1', 'final3_comp1_minigame'],
-    loh: ['holdWall', 'pressurePlank', 'houseOfDarkness'],
+    loh: ['finalThreeCircuit'],
     pos: [],
   },
   {
@@ -458,6 +445,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     minPlayers: 3,
     maxPlayers: 3,
     loh: [
+      'finalThreeCircuit',
       'holdWall',
       'pressurePlank',
       'houseOfDarkness',
@@ -550,8 +538,6 @@ export function getClassicCampaignPoolForContext(
     return applyGameStoryPrerequisites(pool, context.day, context.playedGameKeys)
   }
 
-  // A twist can put the roster outside a day's +/- 1 guide. Use the closest
-  // safe day row rather than abandoning the curated campaign map altogether.
   const fallback = getRosterFallbackBand(context.playerCount, template)
   if (fallback) {
     const pool = context.compType === 'POS' ? fallback.pos : fallback.loh
