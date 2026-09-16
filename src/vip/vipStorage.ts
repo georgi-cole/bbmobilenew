@@ -1,9 +1,6 @@
 import type { StoreEntitlementKey } from './vipConfig'
 import { getSeasonLaunchIntent } from '../modes/seasonLaunchIntent'
-import {
-  hasEffectiveStoreEntitlement,
-  isEffectiveVipActive,
-} from './effectiveEntitlements'
+import { hasEffectiveStoreEntitlement, isEffectiveVipActive } from './effectiveEntitlements'
 
 const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
 
