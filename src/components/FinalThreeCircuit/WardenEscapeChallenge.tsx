@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   getGridNeighbors,
-  moveWardenTowardPlayer,
+  resolveWardenTurn,
   type RiskTier,
 } from './finalThreeCircuitLogic'
 import { buildVariedWardenBoard } from './wardenBoardVariations'
@@ -58,25 +58,27 @@ export default function WardenEscapeChallenge({ seed, tier, onFinish }: WardenEs
     if (status !== 'playing' || !validMoves.has(nextPlayer) || nextPlayer === warden) return
 
     const nextMoves = moves + 1
-    const nextWarden = moveWardenTowardPlayer(board, warden, nextPlayer)
+    const turn = resolveWardenTurn(board, warden, nextPlayer)
 
     setPlayer(nextPlayer)
     setMoves(nextMoves)
-    setWarden(nextWarden)
+    setWarden(turn.nextWarden)
 
-    if (nextWarden === nextPlayer) {
-      setStatus('caught')
-      const accuracy = Math.max(0.06, Math.min(0.22, nextMoves / board.moveBudget * 0.22))
-      window.setTimeout(() => onFinish(accuracy), 620)
-      return
-    }
-
-    if (nextPlayer === board.exit) {
+    // EXIT is terminal. Once the player steps onto it, the escape has already
+    // happened and the guard does not get another two-step pursuit response.
+    if (turn.escaped) {
       const moveRatio = Math.max(0, 1 - nextMoves / Math.max(1, board.moveBudget))
       const timeRatio = Math.max(0, Math.min(1, remainingMs / timeLimitMs))
       setStatus('escaped')
       const accuracy = Math.min(1, 0.78 + moveRatio * 0.14 + timeRatio * 0.08)
       window.setTimeout(() => onFinish(accuracy), 700)
+      return
+    }
+
+    if (turn.caught) {
+      setStatus('caught')
+      const accuracy = Math.max(0.06, Math.min(0.22, nextMoves / board.moveBudget * 0.22))
+      window.setTimeout(() => onFinish(accuracy), 620)
       return
     }
 
