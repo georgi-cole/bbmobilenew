@@ -1,10 +1,31 @@
-import { buildWardenBoard, type RiskTier, type WardenBoard } from './finalThreeCircuitLogic'
+import {
+  buildWardenBoard,
+  getGridNeighbors,
+  moveWardenTowardPlayer,
+  type RiskTier,
+  type WardenBoard,
+} from './finalThreeCircuitLogic'
 
-export const WARDEN_VARIATION_COUNT = 4
+type Transform =
+  | 'identity'
+  | 'flipX'
+  | 'flipY'
+  | 'flipXY'
+  | 'rotate90'
+  | 'rotate270'
+  | 'transpose'
+  | 'antiTranspose'
 
-type Transform = 'identity' | 'flipX' | 'flipY' | 'flipXY'
-
-const TRANSFORMS: Transform[] = ['identity', 'flipX', 'flipY', 'flipXY']
+const TRANSFORMS: Transform[] = [
+  'identity',
+  'flipX',
+  'flipY',
+  'flipXY',
+  'rotate90',
+  'rotate270',
+  'transpose',
+  'antiTranspose',
+]
 
 function hash(value: string): number {
   let result = 2166136261
@@ -18,20 +39,46 @@ function hash(value: string): number {
 function transformCell(cell: number, size: number, transform: Transform): number {
   const row = Math.floor(cell / size)
   const column = cell % size
-  const nextRow = transform === 'flipY' || transform === 'flipXY' ? size - 1 - row : row
-  const nextColumn = transform === 'flipX' || transform === 'flipXY' ? size - 1 - column : column
+  let nextRow = row
+  let nextColumn = column
+
+  switch (transform) {
+    case 'flipX':
+      nextColumn = size - 1 - column
+      break
+    case 'flipY':
+      nextRow = size - 1 - row
+      break
+    case 'flipXY':
+      nextRow = size - 1 - row
+      nextColumn = size - 1 - column
+      break
+    case 'rotate90':
+      nextRow = column
+      nextColumn = size - 1 - row
+      break
+    case 'rotate270':
+      nextRow = size - 1 - column
+      nextColumn = row
+      break
+    case 'transpose':
+      nextRow = column
+      nextColumn = row
+      break
+    case 'antiTranspose':
+      nextRow = size - 1 - column
+      nextColumn = size - 1 - row
+      break
+    case 'identity':
+    default:
+      break
+  }
+
   return nextRow * size + nextColumn
 }
 
-export function getWardenVariationIndex(seed: number, tier: RiskTier): number {
-  return ((seed ^ hash(`warden-layout:${tier}`)) >>> 0) % WARDEN_VARIATION_COUNT
-}
-
-export function buildVariedWardenBoard(tier: RiskTier, seed: number): WardenBoard {
-  const base = buildWardenBoard(tier)
-  const transform = TRANSFORMS[getWardenVariationIndex(seed, tier)]
+function transformBoard(base: WardenBoard, transform: Transform): WardenBoard {
   if (transform === 'identity') return base
-
   return {
     ...base,
     start: transformCell(base.start, base.size, transform),
@@ -39,4 +86,55 @@ export function buildVariedWardenBoard(tier: RiskTier, seed: number): WardenBoar
     wardenStart: transformCell(base.wardenStart, base.size, transform),
     walls: new Set([...base.walls].map((cell) => transformCell(cell, base.size, transform))),
   }
+}
+
+export function isWardenBoardStateSolvable(board: WardenBoard): boolean {
+  type State = { player: number; warden: number; moves: number }
+  const queue: State[] = [{ player: board.start, warden: board.wardenStart, moves: 0 }]
+  const seen = new Set<string>()
+
+  while (queue.length > 0) {
+    const state = queue.shift()!
+    const key = `${state.player}:${state.warden}:${state.moves}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    if (state.player === board.exit) return true
+    if (state.moves >= board.moveBudget) continue
+
+    for (const nextPlayer of getGridNeighbors(state.player, board.size, board.walls)) {
+      if (nextPlayer === state.warden) continue
+      const nextWarden = moveWardenTowardPlayer(board, state.warden, nextPlayer)
+      if (nextWarden === nextPlayer) continue
+      if (nextPlayer === board.exit) return true
+      queue.push({ player: nextPlayer, warden: nextWarden, moves: state.moves + 1 })
+    }
+  }
+
+  return false
+}
+
+export function getSolvableWardenVariations(tier: RiskTier): WardenBoard[] {
+  const base = buildWardenBoard(tier)
+  const unique = new Map<string, WardenBoard>()
+
+  TRANSFORMS.forEach((transform) => {
+    const board = transformBoard(base, transform)
+    if (!isWardenBoardStateSolvable(board)) return
+    const signature = `${board.start}|${board.exit}|${board.wardenStart}|${[...board.walls].sort((a, b) => a - b).join(',')}`
+    unique.set(signature, board)
+  })
+
+  return [...unique.values()]
+}
+
+export function getWardenVariationIndex(seed: number, tier: RiskTier): number {
+  const count = Math.max(1, getSolvableWardenVariations(tier).length)
+  return ((seed ^ hash(`warden-layout:${tier}:v3`)) >>> 0) % count
+}
+
+export function buildVariedWardenBoard(tier: RiskTier, seed: number): WardenBoard {
+  const variations = getSolvableWardenVariations(tier)
+  if (variations.length === 0) return buildWardenBoard(tier)
+  return variations[getWardenVariationIndex(seed, tier)]
 }
