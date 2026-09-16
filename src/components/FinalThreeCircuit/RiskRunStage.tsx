@@ -6,6 +6,7 @@ import {
   scoreRiskAttempt,
   type RiskTier,
 } from './finalThreeCircuitLogic'
+import CircuitTutorial from './CircuitTutorial'
 import FinalOverrideChallenge from './FinalOverrideChallenge'
 import PowerBalanceChallenge from './PowerBalanceChallenge'
 import WardenEscapeChallenge from './WardenEscapeChallenge'
@@ -15,17 +16,19 @@ interface RiskRunStageProps {
   onComplete: (score: number) => void
 }
 
-type RiskView = 'choice' | 'playing' | 'result' | 'stake' | 'final'
+type RiskView = 'tutorial' | 'choice' | 'playing' | 'result' | 'stake' | 'overrideTutorial' | 'final'
 type FinalStake = (typeof FINAL_PUSH_STAKES)[number]
 
 const TASKS = [
   {
     title: 'Warden Escape',
     copy: 'Bait a two-step prison guard into the walls, then break for the exit before he closes the route.',
+    tutorial: 'warden' as const,
   },
   {
     title: 'Power Balance',
     copy: 'Commit power cells to hit the target load before your choices or time run out.',
+    tutorial: 'power' as const,
   },
 ] as const
 
@@ -42,7 +45,7 @@ const COPY: Record<RiskTier, string> = {
 }
 
 export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
-  const [view, setView] = useState<RiskView>('choice')
+  const [view, setView] = useState<RiskView>('tutorial')
   const [task, setTask] = useState(0)
   const [tier, setTier] = useState<RiskTier | null>(null)
   const [bank, setBank] = useState(0)
@@ -66,11 +69,21 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
     if (task < TASKS.length - 1) {
       setTask((current) => current + 1)
       setTier(null)
-      setView('choice')
+      setView('tutorial')
       return
     }
     setTier(null)
     setView('stake')
+  }
+
+  if (view === 'tutorial') {
+    return (
+      <CircuitTutorial
+        key={`risk-tutorial-${task}`}
+        kind={TASKS[task].tutorial}
+        onComplete={() => setView('choice')}
+      />
+    )
   }
 
   if (view === 'choice') {
@@ -85,7 +98,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
         </div>
         <p className="f3-circuit__copy">{TASKS[task].copy}</p>
         <p className="f3-circuit__copy">
-          Choose the difficulty before you see the board. Higher risk means a harder version and more available points.
+          You have already practiced the interaction. Now choose your difficulty before seeing the real board. Higher risk means a harder version and more available points.
         </p>
 
         <div className="f3-circuit__risk-tiers">
@@ -125,7 +138,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
         <div className="f3-circuit__big-score">+{lastScore}</div>
         <p className="f3-circuit__copy">Risk Run bank: {bank}</p>
         <button type="button" className="f3-circuit__primary" onClick={continueFromResult}>
-          {task < TASKS.length - 1 ? `Next: ${TASKS[task + 1].title}` : 'Final Push'}
+          {task < TASKS.length - 1 ? `Learn ${TASKS[task + 1].title}` : 'Final Push'}
         </button>
       </section>
     )
@@ -137,7 +150,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
         <p className="f3-circuit__eyebrow">Risk Run · Final Push</p>
         <h2>How much do you put on the line?</h2>
         <p className="f3-circuit__copy">
-          You have {bank} points banked. The Final Override is five rapid logic calls. Higher stakes demand more correct answers.
+          You have {bank} points banked. Your stake is added if you clear the Final Override and deducted if you fail. After choosing, you get one untimed practice question before the real five-question run.
         </p>
         <div className="f3-circuit__stake-options">
           {FINAL_PUSH_STAKES.map((item) => {
@@ -149,7 +162,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
                 key={item}
                 onClick={() => {
                   setStake(item)
-                  setView('final')
+                  setView('overrideTutorial')
                 }}
               >
                 <strong>{Math.round(item * 100)}%</strong>
@@ -161,6 +174,10 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
         </div>
       </section>
     )
+  }
+
+  if (view === 'overrideTutorial') {
+    return <CircuitTutorial kind="override" onComplete={() => setView('final')} />
   }
 
   if (stake == null) return null
