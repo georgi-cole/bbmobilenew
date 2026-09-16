@@ -6,7 +6,7 @@
 //  2. Dispatching setPhase to a non-social phase afterwards triggers endPhase,
 //     dispatching social/setLastReport and populating state.social.lastReport.
 //  3. The advance action also triggers start/end correctly.
-//  4. Normal mode carries unused energy into the calibrated +6 social_1 refill.
+//  4. Normal mode carries unused energy into the calibrated +5 social_1 refill.
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
@@ -41,7 +41,7 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     }
   });
 
-  it('carries unused normal-mode human energy and adds the calibrated 6-point batch', () => {
+  it('carries unused normal-mode human energy and adds the calibrated 5-point batch', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
@@ -51,9 +51,9 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
 
     store.dispatch(setPhase('social_1'));
 
-    // 7 retained + 6 new = 13. The calibrated cap limits future accumulation
+    // 7 retained + 5 new = 12. The calibrated cap limits future accumulation
     // without ever destructively shrinking a legitimately larger carried bank.
-    expect(store.getState().social.energyBank[human!.id]).toBe(13);
+    expect(store.getState().social.energyBank[human!.id]).toBe(12);
   });
 
   it('populates state.social.energyBank when entering social_2', () => {
