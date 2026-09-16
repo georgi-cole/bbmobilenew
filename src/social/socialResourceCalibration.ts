@@ -4,7 +4,7 @@ export type CalibratedSocialMode = 'normal' | 'drama'
  * Canonical social-resource tuning.
  *
  * Energy keeps the Social module playable, Influence represents political
- * leverage, and Info represents actionable intelligence.  Event rewards live
+ * leverage, and Info represents actionable intelligence. Event rewards live
  * here so twists and ceremony middleware do not invent their own scales.
  */
 export const SOCIAL_RESOURCE_CALIBRATION = {
@@ -16,7 +16,7 @@ export const SOCIAL_RESOURCE_CALIBRATION = {
   },
   drama: {
     dailyEnergy: 7,
-    activeSecondWind: 4,
+    activeSecondWind: 3,
     secondWindSpendThreshold: 4,
     energyCap: 30,
   },
