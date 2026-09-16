@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 import { rankCircuitResults, type CircuitStageScores } from './finalThreeCircuitLogic'
 import { simulateAiCircuitScores } from './finalThreeCircuitAi'
 import CircuitTutorial from './CircuitTutorial'
@@ -78,22 +78,6 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
-}
-
-function StageBars({ scores, completed }: { scores: CircuitStageScores; completed: number }) {
-  return (
-    <div className="f3-circuit__stage-bars" aria-label={`${completed} of 3 stages complete`}>
-      {scores.map((score, index) => (
-        <span
-          key={index}
-          className={index < completed ? 'is-complete' : ''}
-          style={index < completed ? ({ '--stage-fill': `${Math.max(8, score)}%` } as CSSProperties) : undefined}
-        >
-          <i />
-        </span>
-      ))}
-    </div>
-  )
 }
 
 export default function FinalThreeCircuit({
@@ -208,7 +192,6 @@ export default function FinalThreeCircuit({
   }
 
   const summary = view === 'summary1' || view === 'summary2'
-  const showStandingsRail = summary || view === 'final'
   const summaryIndex = view === 'summary1' ? 0 : 1
   const stageName = summaryIndex === 0 ? 'Signal Hunt' : 'Sequence Builder'
   const winner = finalResult
@@ -240,33 +223,6 @@ export default function FinalThreeCircuit({
             ))}
           </div>
         </header>
-
-        {showStandingsRail && (
-          <section className="f3-circuit__finalist-rail" aria-label="Circuit standings">
-            {standings.map((player, index) => (
-              <div
-                className={[
-                  'f3-circuit__finalist',
-                  player.id === human.id ? 'is-human' : '',
-                  index === 0 && completedStages > 0 ? 'is-leading' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                key={player.id}
-              >
-                <div className="f3-circuit__finalist-rank">#{index + 1}</div>
-                <div className="f3-circuit__avatar" aria-hidden="true">
-                  {player.avatar ? <img src={player.avatar} alt="" /> : initials(player.name)}
-                </div>
-                <div className="f3-circuit__finalist-copy">
-                  <strong>{player.name}</strong>
-                  <span>{completedStages === 0 ? 'Ready' : `${totals[player.id] ?? 0} pts`}</span>
-                  <StageBars scores={displayStages[player.id]} completed={completedStages} />
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
 
         <main className="f3-circuit__main">
           {view === 'tutorialSignal' && (
