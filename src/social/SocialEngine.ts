@@ -15,7 +15,7 @@ import { initManeuvers } from './SocialManeuvers'
 import { socialAIDriver } from './socialAIDriver'
 import { dispatchSocialSummary } from './SocialSummaryBridge'
 import { getEffectiveSocialMode } from './socialMode'
-import { getSocialModeConfig } from './socialRuntimeConfig'
+import { DEFAULT_SOCIAL_RUNTIME_CONFIG, getSocialModeConfig } from './socialRuntimeConfig'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -65,6 +65,13 @@ function startPhase(phaseName: string): void {
   const players = state.game?.players ?? []
   const mode = getEffectiveSocialMode(state)
   const modeConfig = getSocialModeConfig(mode)
+  // Normal mode now deliberately carries energy between days. A stale remote
+  // config may still advertise the former cap of 5, so never let it collapse
+  // the bank below the bundled carryover floor. Remote config may still raise it.
+  const energyCap =
+    mode === 'normal'
+      ? Math.max(modeConfig.energyCap, DEFAULT_SOCIAL_RUNTIME_CONFIG.economy.normal.energyCap)
+      : modeConfig.energyCap
   const seed = state.game?.seed ?? 0
   const carriedEnergy = state.social?.energyBank ?? {}
   const grantsWeeklyBatch = phaseName === 'social_1'
@@ -91,8 +98,8 @@ function startPhase(phaseName: string): void {
     const next = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(modeConfig.energyCap, carried + phaseBudget)
-        : Math.min(modeConfig.energyCap, phaseBudget)
+        ? Math.min(energyCap, carried + phaseBudget)
+        : Math.min(energyCap, phaseBudget)
     _budgets.set(player.id, next)
   }
 
@@ -109,7 +116,7 @@ function startPhase(phaseName: string): void {
     const humanBudget = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? Math.min(modeConfig.energyCap, carried + modeConfig.weeklyEnergy)
+        ? Math.min(energyCap, carried + modeConfig.weeklyEnergy)
         : Math.max(carried, modeConfig.weeklyEnergy)
     _budgets.set(humanPlayer.id, humanBudget)
     budgets[humanPlayer.id] = humanBudget
