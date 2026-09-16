@@ -77,6 +77,11 @@ export default function AllPowerFauxTvEffect() {
 
   if (!shouldRender || !viewport || !winnerName) return null
 
+  const winnerCopy =
+    winnerName.trim().toLowerCase() === 'you'
+      ? 'You now control both LOH and Safety.'
+      : `${winnerName} now controls both LOH and Safety.`
+
   return createPortal(
     <div className="all-power-faux-tv" role="status" aria-live="assertive">
       <span className="all-power-faux-tv__sweep" aria-hidden="true" />
@@ -86,9 +91,7 @@ export default function AllPowerFauxTvEffect() {
           POWER SHIFT
         </span>
         <strong className="all-power-faux-tv__title">ALL THE POWER</strong>
-        <span className="all-power-faux-tv__subtitle">
-          {winnerName} now controls both LOH and Safety.
-        </span>
+        <span className="all-power-faux-tv__subtitle">{winnerCopy}</span>
       </div>
     </div>,
     viewport
