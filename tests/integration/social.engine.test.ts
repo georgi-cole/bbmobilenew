@@ -6,16 +6,15 @@
 //  2. Dispatching setPhase to a non-social phase afterwards triggers endPhase,
 //     dispatching social/setLastReport and populating state.social.lastReport.
 //  3. The advance action also triggers start/end correctly.
-//  4. Normal mode carries unused energy into the next social_1 refill.
+//  4. Normal mode carries unused energy into the calibrated +6 social_1 refill.
 
 import { describe, it, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import gameReducer, { setPhase } from '../../src/store/gameSlice';
 import socialReducer, { setEnergyBankEntry } from '../../src/social/socialSlice';
+import { relationshipResourcePolicyMiddleware } from '../../src/social/relationshipResourcePolicyMiddleware';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
 import { SocialEngine } from '../../src/social/SocialEngine';
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore() {
   return configureStore({
@@ -23,11 +22,10 @@ function makeStore() {
       game: gameReducer,
       social: socialReducer,
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(relationshipResourcePolicyMiddleware, socialMiddleware),
   });
 }
-
-// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('SocialEngine – phase lifecycle via middleware', () => {
   it('populates state.social.energyBank when entering social_1', () => {
@@ -37,15 +35,13 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     store.dispatch(setPhase('social_1'));
 
     const { energyBank } = store.getState().social;
-    // Initial game state has 11 AI players; at least one budget entry is expected
     expect(Object.keys(energyBank).length).toBeGreaterThan(0);
-    // Each budget value should be a positive number
     for (const value of Object.values(energyBank)) {
       expect(value).toBeGreaterThan(0);
     }
   });
 
-  it('carries unused normal-mode human energy and adds the next 5-point batch', () => {
+  it('carries unused normal-mode human energy and adds the calibrated 6-point batch', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
@@ -55,9 +51,9 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
 
     store.dispatch(setPhase('social_1'));
 
-    // Normal mode now behaves as true carryover: 7 retained + 5 new = 12,
-    // with the normal bank capped at 15 rather than reset to the old allowance of 5.
-    expect(store.getState().social.energyBank[human!.id]).toBe(12);
+    // 7 retained + 6 new = 13. The calibrated cap limits future accumulation
+    // without ever destructively shrinking a legitimately larger carried bank.
+    expect(store.getState().social.energyBank[human!.id]).toBe(13);
   });
 
   it('populates state.social.energyBank when entering social_2', () => {
@@ -75,7 +71,6 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     SocialEngine.init(store);
 
     store.dispatch(setPhase('social_1'));
-    // Transition out of the social phase
     store.dispatch(setPhase('nominations'));
 
     const { lastReport } = store.getState().social;
@@ -95,8 +90,6 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
 
     store.dispatch(setPhase('nominations'));
 
-    // Redux energyBank retains the last computed budgets; the engine's internal
-    // Map is cleared (getBudgets() returns {}) but state is not reset.
     expect(Object.keys(store.getState().social.energyBank).sort()).toEqual(
       Object.keys(budgetsAfterStart).sort(),
     );
@@ -107,7 +100,6 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     const store = makeStore();
     SocialEngine.init(store);
 
-    // Transition between two non-social phases – should not throw or set lastReport
     store.dispatch(setPhase('loh_comp'));
     store.dispatch(setPhase('loh_results'));
 
@@ -122,7 +114,6 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
 
     const budgets = SocialEngine.getBudgets();
     const { energyBank } = store.getState().social;
-    // Both should agree on player IDs
     expect(Object.keys(budgets).sort()).toEqual(Object.keys(energyBank).sort());
   });
 
@@ -158,14 +149,11 @@ describe('SocialEngine – phase lifecycle via middleware', () => {
     expect(SocialEngine.isPhaseActive()).toBe(true);
     expect(store.getState().social.lastReport).toBeNull();
 
-    // Jump directly to the next social phase (e.g. via DebugPanel forcePhase).
     store.dispatch(setPhase('social_2'));
 
-    // social_1 should have been ended (lastReport populated) and social_2 started.
     expect(store.getState().social.lastReport).not.toBeNull();
     expect(store.getState().social.lastReport?.id).toMatch(/^social_1_/);
     expect(SocialEngine.isPhaseActive()).toBe(true);
-    // New budgets should be computed for social_2.
     expect(Object.keys(SocialEngine.getBudgets()).length).toBeGreaterThan(0);
   });
 });
