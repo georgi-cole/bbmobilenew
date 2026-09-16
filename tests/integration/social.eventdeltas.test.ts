@@ -2,10 +2,10 @@
 //
 // Validates:
 //  1. LOH win → +5 energy to winner
-//  2. POS win → +3 energy to winner
+//  2. POS win → +6 energy to winner
 //  3. Survived nomination → +4 energy when entering live_vote
 //  4. New alliance formed → +2 energy + influence +200 to both parties
-//  5. Broke alliance (betrayal) → -3 energy to actor
+//  5. Betrayal/alliance-break relationship tags do not implicitly spend Social Energy
 //  6. Competition skipped → -3 energy to all alive players
 
 import { describe, it, expect } from 'vitest'
@@ -27,6 +27,7 @@ import socialReducer, {
   selectInfluenceBank,
   engineReady,
 } from '../../src/social/socialSlice'
+import { relationshipResourcePolicyMiddleware } from '../../src/social/relationshipResourcePolicyMiddleware'
 import { socialMiddleware } from '../../src/social/socialMiddleware'
 import { SocialEngine } from '../../src/social/SocialEngine'
 
@@ -35,7 +36,8 @@ import { SocialEngine } from '../../src/social/SocialEngine'
 function makeStore() {
   return configureStore({
     reducer: { game: gameReducer, social: socialReducer },
-    middleware: (getDefault) => getDefault().concat(socialMiddleware),
+    middleware: (getDefault) =>
+      getDefault().concat(relationshipResourcePolicyMiddleware, socialMiddleware),
   })
 }
 
@@ -178,10 +180,10 @@ describe('event delta – new alliance formed (+2 energy, +200 influence)', () =
   })
 })
 
-// ── Betrayal energy penalty ───────────────────────────────────────────────
+// ── Betrayal relationship tags do not own the resource economy ────────────
 
-describe('event delta – broke alliance (-3 energy)', () => {
-  it('deducts 3 energy from the actor on betrayal tag', () => {
+describe('event delta – betrayal tag has no implicit energy cost', () => {
+  it('preserves the actor energy when a betrayal relationship tag is applied', () => {
     const store = makeStore()
     SocialEngine.init(store)
 
@@ -191,7 +193,7 @@ describe('event delta – broke alliance (-3 energy)', () => {
       updateRelationship({ source: 'p1', target: 'p2', delta: -5, tags: ['betrayal'] })
     )
 
-    expect(selectEnergyBank(store.getState())['p1']).toBe(2) // 5 - 3
+    expect(selectEnergyBank(store.getState())['p1']).toBe(5)
   })
 
   it('does not affect the target on betrayal tag', () => {
@@ -204,7 +206,6 @@ describe('event delta – broke alliance (-3 energy)', () => {
       updateRelationship({ source: 'p1', target: 'p2', delta: -5, tags: ['betrayal'] })
     )
 
-    // p2 energy unchanged (only p1 is penalised)
     expect(selectEnergyBank(store.getState())['p2']).toBe(5)
   })
 })
