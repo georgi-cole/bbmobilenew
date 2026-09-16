@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   EMPTY_SEQUENCE_TILE,
   FINAL_PUSH_STAKES,
+  RISK_RUN_MAX_PRE_PUSH,
   SEQUENCE_STAGE_TIME_MS,
   applyFinalPush,
   buildPowerPuzzle,
@@ -15,6 +16,7 @@ import {
   moveWardenOneStep,
   moveWardenTowardPlayer,
   rankCircuitResults,
+  resolveWardenTurn,
   scoreRiskAttempt,
   scoreSequenceBoard,
   scoreSignalRound,
@@ -26,16 +28,22 @@ import {
 
 describe('Final Three Circuit scoring', () => {
   it('scores risk tiers against their configured ceilings', () => {
-    expect(scoreRiskAttempt('safe', 1)).toBe(32)
-    expect(scoreRiskAttempt('standard', 1)).toBe(40)
-    expect(scoreRiskAttempt('risky', 1)).toBe(48)
+    expect(scoreRiskAttempt('safe', 1)).toBe(24)
+    expect(scoreRiskAttempt('standard', 1)).toBe(30)
+    expect(scoreRiskAttempt('risky', 1)).toBe(35)
     expect(scoreRiskAttempt('risky', 0)).toBe(0)
   })
 
-  it('applies the final push as a real gain or loss without exceeding the stage cap', () => {
+  it('awards or deducts the selected Final Push percentage in full', () => {
     expect(applyFinalPush(60, FINAL_PUSH_STAKES[1], true)).toBe(75)
     expect(applyFinalPush(60, FINAL_PUSH_STAKES[1], false)).toBe(45)
-    expect(applyFinalPush(90, FINAL_PUSH_STAKES[2], true)).toBe(100)
+
+    const perfectPrePushBank = RISK_RUN_MAX_PRE_PUSH
+    const fortyPercent = Math.round(perfectPrePushBank * FINAL_PUSH_STAKES[2])
+    expect(perfectPrePushBank).toBe(70)
+    expect(fortyPercent).toBe(28)
+    expect(applyFinalPush(perfectPrePushBank, FINAL_PUSH_STAKES[2], true)).toBe(98)
+    expect(applyFinalPush(perfectPrePushBank, FINAL_PUSH_STAKES[2], false)).toBe(42)
   })
 })
 
@@ -133,6 +141,25 @@ describe('Warden Escape rules', () => {
       moveBudget: 20,
     }
     expect(moveWardenOneStep(board, 12, 24)).toBe(17)
+  })
+
+  it('ends immediately when the player reaches EXIT before the guard can catch them', () => {
+    const board: WardenBoard = {
+      size: 3,
+      start: 0,
+      exit: 1,
+      wardenStart: 2,
+      walls: new Set(),
+      guardSteps: 2,
+      moveBudget: 10,
+    }
+
+    // If the guard were allowed to move after the player entered cell 1, it
+    // would step left from cell 2 and catch them. EXIT must resolve first.
+    const turn = resolveWardenTurn(board, board.wardenStart, board.exit)
+    expect(turn.escaped).toBe(true)
+    expect(turn.caught).toBe(false)
+    expect(turn.nextWarden).toBe(board.wardenStart)
   })
 })
 
