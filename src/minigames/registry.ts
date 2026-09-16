@@ -19,14 +19,14 @@ const FINAL_THREE_CIRCUIT_GAME: GameRegistryEntry = {
   key: 'finalThreeCircuit',
   title: 'Final Three Circuit',
   description:
-    'Three finalists face Signal Hunt, a two-board Sequence Builder, and a strategic Risk Run. Every finalist completes every stage; the highest 300-point total advances directly to Final HOH Part 3.',
+    'A finale-only multi-stage qualifier used for Final HOH Parts 1 and 2. Every competitor completes Signal Hunt, Sequence Builder and Risk Run; the highest 300-point total advances.',
   instructions: [
-    'All three finalists complete all three stages. Nobody is eliminated during the Circuit.',
+    'Every competitor completes all three stages. Nobody is removed during the Circuit.',
     'Signal Hunt: find changing target nodes against a reshuffling board before the clock expires. Wrong taps cost time and points.',
-    'Sequence Builder: solve two sliding puzzles - an easy warm-up and a hard 3 x 3 board - using a shared five-minute clock. Only tiles touching the empty slot can move.',
+    'Sequence Builder: solve two sliding puzzles using one shared five-minute clock. Only tiles touching the empty slot can move.',
     'Risk Run: choose Safe, Standard, or Risky difficulty for Warden Escape and Power Balance, then choose a stake for the five-call Final Override.',
     'Warden Escape uses a two-step guard: after each move you make, the guard moves up to two tiles toward you, prioritising horizontal pursuit. Use walls to trap him and reach the exit.',
-    'Scores carry across all three stages. The highest total out of 300 wins Part 1 and advances directly to Part 3.',
+    'Scores carry across all three stages. The highest total out of 300 wins the active Final HOH qualifier.',
   ],
   metricKind: 'points',
   metricLabel: 'Circuit points',
@@ -37,12 +37,12 @@ const FINAL_THREE_CIRCUIT_GAME: GameRegistryEntry = {
   implementation: 'react',
   reactComponentKey: 'FinalThreeCircuit',
   legacy: false,
-  // Special-purpose finale game. It is selected explicitly by the Final 3 map,
-  // not by ordinary weighted competition rotation.
+  // Finale-only: visible to Lab / Game Manager and selected explicitly by the
+  // Final 3 Part 1/2 map, but never added to ordinary weighted random pools.
   weight: 0,
   category: 'logic',
   retired: false,
-  minPlayers: 3,
+  minPlayers: 2,
   maxPlayers: 3,
 }
 
@@ -101,7 +101,7 @@ export function getPoolByFilter(filter: {
 }): GameRegistryEntry[] {
   // Final Three Circuit is deliberately excluded from ordinary random pools.
   // It remains visible to Minigame Lab / Remote Manager through getAllGames(),
-  // addressable by key through getGame(), and scheduled by the Final 3 map.
+  // addressable by key through getGame(), and scheduled only by the Final 3 map.
   return getBasePoolByFilter(filter).map((game) => applyRegistryOverrides(game)!)
 }
 
