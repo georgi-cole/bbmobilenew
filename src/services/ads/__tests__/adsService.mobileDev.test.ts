@@ -47,9 +47,7 @@ describe('adsService mobile-dev simulator', () => {
     const dispatch = vi.fn()
     const onReward = vi.fn()
 
-    expect(
-      showRewarded('eviction_vote_breakdown', makeState(), dispatch, onReward)
-    ).toBe(true)
+    expect(showRewarded('eviction_vote_breakdown', makeState(), dispatch, onReward)).toBe(true)
 
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({
