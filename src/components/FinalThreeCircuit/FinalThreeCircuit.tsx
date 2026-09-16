@@ -1,9 +1,12 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { rankCircuitResults, splitAiCircuitScore, type CircuitStageScores } from './finalThreeCircuitLogic'
+import { rankCircuitResults, type CircuitStageScores } from './finalThreeCircuitLogic'
+import { simulateAiCircuitScores } from './finalThreeCircuitAi'
+import CircuitTutorial from './CircuitTutorial'
 import SignalHuntStage from './SignalHuntStage'
 import SequenceStage from './SequenceStage'
 import RiskRunStage from './RiskRunStage'
 import './FinalThreeCircuit.css'
+import './FinalThreeCircuitPolish.css'
 
 interface CircuitParticipant {
   id: string
@@ -31,7 +34,15 @@ interface FinalThreeCircuitProps {
   participants?: CircuitParticipant[]
 }
 
-type View = 'signal' | 'summary1' | 'sequence' | 'summary2' | 'risk' | 'final'
+type View =
+  | 'tutorialSignal'
+  | 'signal'
+  | 'summary1'
+  | 'tutorialSequence'
+  | 'sequence'
+  | 'summary2'
+  | 'risk'
+  | 'final'
 
 interface FinalResult {
   humanTotal: number
@@ -51,7 +62,7 @@ function fallbackParticipants(
     id,
     name: index === 0 ? 'You' : `Finalist ${index + 1}`,
     isHuman: index === 0,
-    precomputedScore: index === 1 ? 232 : index === 2 ? 216 : 0,
+    precomputedScore: index === 1 ? 78 : index === 2 ? 68 : 0,
     previousPR: null,
   }))
 }
@@ -63,13 +74,6 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
-}
-
-function normalizeCircuitAiTotal(score: number): number {
-  // Minigame Lab supplies generic 0-100 preview scores. Hosted Final 3 runs use
-  // the Circuit's native 0-300 score economy, so lift only preview-scale values.
-  if (score >= 0 && score <= 100) return Math.round(150 + score * 1.2)
-  return score
 }
 
 function StageBars({ scores, completed }: { scores: CircuitStageScores; completed: number }) {
@@ -99,7 +103,7 @@ export default function FinalThreeCircuit({
     [participantIds, participants]
   )
   const human = roster.find((player) => player.isHuman) ?? roster[0]
-  const [view, setView] = useState<View>('signal')
+  const [view, setView] = useState<View>('tutorialSignal')
   const [humanStages, setHumanStages] = useState<CircuitStageScores>([0, 0, 0])
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -110,15 +114,15 @@ export default function FinalThreeCircuit({
       result[player.id] =
         player.id === human.id
           ? humanStages
-          : splitAiCircuitScore(normalizeCircuitAiTotal(player.precomputedScore), seed, player.id)
+          : simulateAiCircuitScores(player.precomputedScore, seed, player.id)
     })
     return result
   }, [human.id, humanStages, roster, seed])
 
   const completedStages =
-    view === 'signal'
+    view === 'tutorialSignal' || view === 'signal'
       ? 0
-      : view === 'summary1' || view === 'sequence'
+      : view === 'summary1' || view === 'tutorialSequence' || view === 'sequence'
         ? 1
         : view === 'summary2' || view === 'risk'
           ? 2
@@ -149,9 +153,9 @@ export default function FinalThreeCircuit({
   }, [finalResult, roster, totals])
 
   const currentStage =
-    view === 'signal' || view === 'summary1'
+    view === 'tutorialSignal' || view === 'signal' || view === 'summary1'
       ? 1
-      : view === 'sequence' || view === 'summary2'
+      : view === 'tutorialSequence' || view === 'sequence' || view === 'summary2'
         ? 2
         : 3
 
@@ -216,6 +220,9 @@ export default function FinalThreeCircuit({
       <div className="f3-circuit__grain" aria-hidden="true" />
       <div className="f3-circuit__ambient f3-circuit__ambient--one" />
       <div className="f3-circuit__ambient f3-circuit__ambient--two" />
+      <div className="f3-circuit__spectacle" aria-hidden="true">
+        <span /><span /><span /><span /><span />
+      </div>
       <div className="f3-circuit__shell">
         <header className="f3-circuit__hero">
           <div className="f3-circuit__hero-copy">
@@ -255,7 +262,13 @@ export default function FinalThreeCircuit({
         </section>
 
         <main className="f3-circuit__main">
+          {view === 'tutorialSignal' && (
+            <CircuitTutorial kind="signal" onComplete={() => setView('signal')} />
+          )}
           {view === 'signal' && <SignalHuntStage seed={seed} onComplete={completeSignal} />}
+          {view === 'tutorialSequence' && (
+            <CircuitTutorial kind="sequence" onComplete={() => setView('sequence')} />
+          )}
           {view === 'sequence' && <SequenceStage seed={seed} onComplete={completeSequence} />}
           {view === 'risk' && <RiskRunStage seed={seed} onComplete={completeRisk} />}
 
@@ -279,9 +292,9 @@ export default function FinalThreeCircuit({
               <button
                 type="button"
                 className="f3-circuit__primary"
-                onClick={() => setView(summaryIndex === 0 ? 'sequence' : 'risk')}
+                onClick={() => setView(summaryIndex === 0 ? 'tutorialSequence' : 'risk')}
               >
-                {summaryIndex === 0 ? 'Enter Sequence Builder' : 'Enter Risk Run'}
+                {summaryIndex === 0 ? 'Learn Sequence Builder' : 'Enter Risk Run'}
               </button>
             </section>
           )}
