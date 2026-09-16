@@ -28,8 +28,7 @@ export interface WardenBoard {
   exit: number
   wardenStart: number
   walls: Set<number>
-  moveEvery: number
-  freezeTokens: number
+  guardSteps: number
   moveBudget: number
 }
 
@@ -42,13 +41,14 @@ export interface PowerPuzzle {
 }
 
 export const RISK_TIER_MAX_POINTS: Record<RiskTier, number> = {
-  safe: 16,
-  standard: 22,
-  risky: 28,
+  safe: 32,
+  standard: 40,
+  risky: 48,
 }
 
 export const FINAL_PUSH_STAKES = [0.1, 0.25, 0.4] as const
 export const EMPTY_SEQUENCE_TILE = '__empty__'
+export const SEQUENCE_STAGE_TIME_MS = 300_000
 
 export function clampCircuitScore(value: number, max = 100): number {
   if (!Number.isFinite(value)) return 0
@@ -164,9 +164,8 @@ export function isSequenceSolved(order: readonly string[], target: readonly stri
 
 export function buildSequenceBoards(seed: number): SequenceBoard[] {
   const configs = [
-    { rows: 2, columns: 3, scrambleMoves: 7, timeLimitMs: 22_000, maxPoints: 30 },
-    { rows: 2, columns: 4, scrambleMoves: 11, timeLimitMs: 30_000, maxPoints: 33 },
-    { rows: 3, columns: 3, scrambleMoves: 16, timeLimitMs: 42_000, maxPoints: 37 },
+    { rows: 2, columns: 3, scrambleMoves: 8, timeLimitMs: SEQUENCE_STAGE_TIME_MS, maxPoints: 40 },
+    { rows: 3, columns: 3, scrambleMoves: 22, timeLimitMs: SEQUENCE_STAGE_TIME_MS, maxPoints: 60 },
   ]
 
   return configs.map((config, boardIndex) => {
@@ -215,10 +214,10 @@ export function scoreSequenceBoard(
 ): number {
   if (solved) {
     const extraMoves = Math.max(0, moves - board.scrambleMoves)
-    const efficiency = Math.max(0, 1 - extraMoves / Math.max(4, board.scrambleMoves))
-    const timeRatio = Math.max(0, Math.min(1, remainingMs / Math.max(1, board.timeLimitMs)))
+    const efficiency = Math.max(0, 1 - extraMoves / Math.max(5, board.scrambleMoves))
+    const timeRatio = Math.max(0, Math.min(1, remainingMs / SEQUENCE_STAGE_TIME_MS))
     return clampCircuitScore(
-      board.maxPoints * (0.75 + efficiency * 0.15 + timeRatio * 0.1),
+      board.maxPoints * (0.82 + efficiency * 0.14 + timeRatio * 0.04),
       board.maxPoints
     )
   }
@@ -228,12 +227,12 @@ export function scoreSequenceBoard(
     0
   )
   const possible = Math.max(1, board.target.length - 1)
-  return clampCircuitScore(board.maxPoints * 0.4 * (correctTiles / possible), board.maxPoints)
+  return clampCircuitScore(board.maxPoints * 0.35 * (correctTiles / possible), board.maxPoints)
 }
 
 export function scoreRiskAttempt(tier: RiskTier, accuracy: number): number {
   const normalizedAccuracy = Math.max(0, Math.min(1, accuracy))
-  return clampCircuitScore(RISK_TIER_MAX_POINTS[tier] * normalizedAccuracy, 28)
+  return clampCircuitScore(RISK_TIER_MAX_POINTS[tier] * normalizedAccuracy, 48)
 }
 
 export function applyFinalPush(
@@ -249,33 +248,30 @@ export function applyFinalPush(
 const WARDEN_CONFIG: Record<RiskTier, Omit<WardenBoard, 'walls'> & { walls: number[] }> = {
   safe: {
     size: 5,
-    start: 20,
-    exit: 4,
-    wardenStart: 2,
-    walls: [6, 8, 11, 13, 16, 18],
-    moveEvery: 2,
-    freezeTokens: 1,
-    moveBudget: 14,
+    start: 16,
+    exit: 6,
+    wardenStart: 5,
+    walls: [0, 3, 12, 18, 24],
+    guardSteps: 2,
+    moveBudget: 18,
   },
   standard: {
     size: 6,
-    start: 30,
-    exit: 5,
-    wardenStart: 12,
-    walls: [7, 8, 10, 13, 16, 19, 21, 22, 25, 28],
-    moveEvery: 1,
-    freezeTokens: 1,
-    moveBudget: 16,
+    start: 34,
+    exit: 10,
+    wardenStart: 2,
+    walls: [1, 4, 15, 16, 18, 21, 25, 28],
+    guardSteps: 2,
+    moveBudget: 26,
   },
   risky: {
-    size: 6,
-    start: 30,
-    exit: 5,
-    wardenStart: 35,
-    walls: [7, 8, 10, 13, 16, 19, 21, 22, 25, 28],
-    moveEvery: 1,
-    freezeTokens: 0,
-    moveBudget: 14,
+    size: 8,
+    start: 57,
+    exit: 6,
+    wardenStart: 4,
+    walls: [0, 2, 7, 8, 11, 12, 16, 22, 23, 26, 27, 34, 43, 46, 50, 61],
+    guardSteps: 2,
+    moveBudget: 44,
   },
 }
 
@@ -302,45 +298,55 @@ export function getGridNeighbors(cell: number, size: number, walls: ReadonlySet<
   return result
 }
 
-export function moveWardenTowardPlayer(
+export function moveWardenOneStep(
   board: WardenBoard,
   wardenCell: number,
   playerCell: number
 ): number {
   if (wardenCell === playerCell) return wardenCell
-  const queue = [wardenCell]
-  const previous = new Map<number, number | null>([[wardenCell, null]])
 
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    for (const next of getGridNeighbors(current, board.size, board.walls)) {
-      if (previous.has(next)) continue
-      previous.set(next, current)
-      if (next === playerCell) {
-        let cursor = next
-        while (previous.get(cursor) !== wardenCell && previous.get(cursor) != null) {
-          cursor = previous.get(cursor)!
-        }
-        return cursor
-      }
-      queue.push(next)
-    }
+  const wardenRow = Math.floor(wardenCell / board.size)
+  const wardenColumn = wardenCell % board.size
+  const playerRow = Math.floor(playerCell / board.size)
+  const playerColumn = playerCell % board.size
+
+  if (playerColumn !== wardenColumn) {
+    const nextColumn = wardenColumn + (playerColumn > wardenColumn ? 1 : -1)
+    const horizontalCell = wardenRow * board.size + nextColumn
+    if (!board.walls.has(horizontalCell)) return horizontalCell
+  }
+
+  if (playerRow !== wardenRow) {
+    const nextRow = wardenRow + (playerRow > wardenRow ? 1 : -1)
+    const verticalCell = nextRow * board.size + wardenColumn
+    if (!board.walls.has(verticalCell)) return verticalCell
   }
 
   return wardenCell
 }
 
+export function moveWardenTowardPlayer(
+  board: WardenBoard,
+  wardenCell: number,
+  playerCell: number
+): number {
+  let nextWarden = wardenCell
+  for (let step = 0; step < board.guardSteps; step += 1) {
+    nextWarden = moveWardenOneStep(board, nextWarden, playerCell)
+    if (nextWarden === playerCell) break
+  }
+  return nextWarden
+}
+
 export function isWardenBoardSolvable(tier: RiskTier): boolean {
   const board = buildWardenBoard(tier)
-  type State = { player: number; warden: number; cadence: number; freezes: number; moves: number }
-  const queue: State[] = [
-    { player: board.start, warden: board.wardenStart, cadence: 0, freezes: board.freezeTokens, moves: 0 },
-  ]
+  type State = { player: number; warden: number; moves: number }
+  const queue: State[] = [{ player: board.start, warden: board.wardenStart, moves: 0 }]
   const seen = new Set<string>()
 
   while (queue.length > 0) {
     const state = queue.shift()!
-    const key = `${state.player}:${state.warden}:${state.cadence}:${state.freezes}:${state.moves}`
+    const key = `${state.player}:${state.warden}`
     if (seen.has(key)) continue
     seen.add(key)
     if (state.player === board.exit) return true
@@ -348,27 +354,10 @@ export function isWardenBoardSolvable(tier: RiskTier): boolean {
 
     for (const nextPlayer of getGridNeighbors(state.player, board.size, board.walls)) {
       if (nextPlayer === state.warden) continue
-      const freezeChoices = state.freezes > 0 ? [false, true] : [false]
-      for (const useFreeze of freezeChoices) {
-        let nextWarden = state.warden
-        let nextCadence = state.cadence + 1
-        const nextFreezes = state.freezes - (useFreeze ? 1 : 0)
-
-        if (useFreeze) {
-          nextCadence = 0
-        } else if (nextCadence >= board.moveEvery) {
-          nextWarden = moveWardenTowardPlayer(board, state.warden, nextPlayer)
-          nextCadence = 0
-        }
-        if (nextWarden === nextPlayer) continue
-        queue.push({
-          player: nextPlayer,
-          warden: nextWarden,
-          cadence: nextCadence,
-          freezes: nextFreezes,
-          moves: state.moves + 1,
-        })
-      }
+      const nextWarden = moveWardenTowardPlayer(board, state.warden, nextPlayer)
+      if (nextWarden === nextPlayer) continue
+      if (nextPlayer === board.exit) return true
+      queue.push({ player: nextPlayer, warden: nextWarden, moves: state.moves + 1 })
     }
   }
 
