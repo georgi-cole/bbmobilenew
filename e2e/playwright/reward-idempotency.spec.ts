@@ -232,7 +232,7 @@ async function createWeekTwoEnergyFixture(page: Page): Promise<{ humanId: string
 test.describe('Rewarded social-energy economy journey', () => {
   test.setTimeout(90_000)
 
-  test('rapid requests and duplicate native callbacks grant +3 exactly once and persist @core-journey @economy @reward @mobile @release', async ({
+  test('rapid requests and duplicate native callbacks grant +6 exactly once and persist @core-journey @economy @reward @mobile @release', async ({
     page,
   }) => {
     await installRewardFixtureAndBridge(page)
@@ -254,7 +254,7 @@ test.describe('Rewarded social-energy economy journey', () => {
 
     const rewardPrompt = page.getByRole('dialog', { name: 'Out of Energy!' })
     await expect(rewardPrompt).toBeVisible()
-    const watchButton = rewardPrompt.getByRole('button', { name: 'Watch Ad for +3 Energy' })
+    const watchButton = rewardPrompt.getByRole('button', { name: 'Watch Ad for +6 Energy' })
     await expect(watchButton).toBeEnabled()
 
     // Two clicks occur in the same browser task. The mock native bridge invokes
@@ -273,7 +273,7 @@ test.describe('Rewarded social-energy economy journey', () => {
 
     await expect(rewardPrompt).toBeHidden()
     const rewardedState = await readAppState(page)
-    expect(rewardedState.social.energyBank[fixture.humanId]).toBe(3)
+    expect(rewardedState.social.energyBank[fixture.humanId]).toBe(6)
     expect(Object.keys(rewardedState.ads.dailyUsage)).toEqual(['social_energy_recharge'])
     const today = await page.evaluate(() => new Date().toISOString().slice(0, 10))
     expect(rewardedState.ads.dailyUsage.social_energy_recharge).toBe(today)
@@ -294,7 +294,7 @@ test.describe('Rewarded social-energy economy journey', () => {
     await closePhaseInformationIfPresent(page)
 
     const resumedState = await readAppState(page)
-    expect(resumedState.social.energyBank[fixture.humanId]).toBe(3)
+    expect(resumedState.social.energyBank[fixture.humanId]).toBe(6)
     expect(resumedState.ads.dailyUsage.social_energy_recharge).toBe(today)
     await expect(page.getByRole('dialog', { name: 'Out of Energy!' })).toBeHidden()
 
@@ -323,7 +323,7 @@ test.describe('Rewarded social-energy economy journey', () => {
 
     const rewardPrompt = page.getByRole('dialog', { name: 'Out of Energy!' })
     await expect(rewardPrompt).toBeVisible()
-    const watchButton = rewardPrompt.getByRole('button', { name: 'Watch Ad for +3 Energy' })
+    const watchButton = rewardPrompt.getByRole('button', { name: 'Watch Ad for +6 Energy' })
     await watchButton.click()
 
     await expect(rewardPrompt).toBeVisible()
