@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   EMPTY_SEQUENCE_TILE,
+  SEQUENCE_STAGE_TIME_MS,
   buildSequenceBoards,
   clampCircuitScore,
   isSequenceSolved,
@@ -13,12 +14,19 @@ interface SequenceStageProps {
   onComplete: (score: number) => void
 }
 
+function formatTime(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 export default function SequenceStage({ seed, onComplete }: SequenceStageProps) {
   const boards = useMemo(() => buildSequenceBoards(seed), [seed])
   const [boardIndex, setBoardIndex] = useState(0)
   const [order, setOrder] = useState<string[]>(boards[0].initial)
   const [moves, setMoves] = useState(0)
-  const [remainingMs, setRemainingMs] = useState(boards[0].timeLimitMs)
+  const [remainingMs, setRemainingMs] = useState(SEQUENCE_STAGE_TIME_MS)
   const [bank, setBank] = useState(0)
   const [boardScore, setBoardScore] = useState<number | null>(null)
   const [resetCount, setResetCount] = useState(0)
@@ -51,26 +59,25 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
 
   const resetBoard = () => {
     if (boardScore != null) return
-    setOrder(board.initial)
+    setOrder([...board.initial])
     setMoves((current) => current + 3)
     setResetCount((current) => current + 1)
-    setRemainingMs((current) => Math.max(0, current - 2_000))
+    setRemainingMs((current) => Math.max(0, current - 5_000))
   }
 
   const next = () => {
     if (boardScore == null) return
     const adjustedScore = Math.max(0, boardScore - resetCount * 2)
     const nextBank = bank + adjustedScore
-    if (boardIndex >= boards.length - 1) {
+    if (boardIndex >= boards.length - 1 || remainingMs <= 0) {
       onComplete(clampCircuitScore(nextBank))
       return
     }
     const nextIndex = boardIndex + 1
     setBank(nextBank)
     setBoardIndex(nextIndex)
-    setOrder(boards[nextIndex].initial)
+    setOrder([...boards[nextIndex].initial])
     setMoves(0)
-    setRemainingMs(boards[nextIndex].timeLimitMs)
     setResetCount(0)
     setBoardScore(null)
   }
@@ -82,11 +89,17 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
           <p className="f3-circuit__eyebrow">Stage 2 · Sequence Builder</p>
           <h2>Slide the circuit into place</h2>
         </div>
-        <span>Board {boardIndex + 1} / 3</span>
+        <span>Board {boardIndex + 1} / {boards.length}</span>
+      </div>
+
+      <div className="f3-circuit__challenge-meter">
+        <span>{formatTime(remainingMs)} total time</span>
+        <span>{bank} pts banked</span>
+        <span>{board.maxPoints} pts available</span>
       </div>
 
       <p className="f3-circuit__copy">
-        The target stays visible, but only tiles touching the empty slot can move. Plan ahead - bad moves cost time and distance.
+        You have five minutes for both boards. The target stays visible, but only tiles touching the empty slot can move. The first board is a warm-up; the second is the full 3 × 3 challenge.
       </p>
 
       <div className="f3-circuit__sequence-layout">
@@ -108,7 +121,7 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
         <div>
           <div className="f3-circuit__sequence-label">
             Your board
-            <strong>{moves} moves · {Math.ceil(remainingMs / 100) / 10}s</strong>
+            <strong>{moves} moves</strong>
           </div>
           <div
             className="f3-circuit__slide-grid"
@@ -134,7 +147,9 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
       <div className="f3-circuit__micro-stats">
         <span>Scramble depth {board.scrambleMoves}</span>
         <span>{resetCount} resets</span>
-        <button type="button" onClick={resetBoard} disabled={boardScore != null}>Reset -3 moves / -2s</button>
+        <button type="button" onClick={resetBoard} disabled={boardScore != null}>
+          Reset -3 moves / -5s
+        </button>
       </div>
 
       {boardScore != null && (
@@ -142,7 +157,7 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
           <span>{isSequenceSolved(order, board.target) ? 'Solved' : 'Time expired'}</span>
           <strong>+{Math.max(0, boardScore - resetCount * 2)}</strong>
           <button type="button" onClick={next}>
-            {boardIndex < 2 ? 'Next board' : 'See standings'}
+            {boardIndex < boards.length - 1 && remainingMs > 0 ? 'Hard board' : 'See standings'}
           </button>
         </div>
       )}
