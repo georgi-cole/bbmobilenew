@@ -95,10 +95,22 @@ export function getApprovedCompetitionGameKeys(
 }
 
 /**
- * Regular-season pools scale with cast size. Final 3 is phase-specific because
- * the number of people alive is not the number of people competing in every
- * part. Part 1 is a purpose-built exact-three qualifier; Parts 2 and 3 retain
- * their existing pools until their redesigns are finalized.
+ * Design rules represented below:
+ *
+ * - Each regular season day has its own pool, targeting the expected house
+ *   count with a one-player tolerance for twists and double evictions.
+ * - Day 1 is a fixed two-game premiere: Majority Rules for LOH and Quick Tap
+ *   Race for POS.
+ * - With many housemates, LOH uses fixed-round or simultaneous games and POS
+ *   stays short. Sequential/turn-heavy formats remain in the large-cast days.
+ * - LOH becomes longer and more technical as the season progresses.
+ * - POS increasingly permits shorter, simpler, and chance-driven formats.
+ * - Final 4 only uses games that make sense with four players.
+ * - Elimination ladders, turn-order spectacles, and social-deduction formats
+ *   stay in the large-cast portion of the season. They lose their tension when
+ *   only a few housemates remain.
+ * - Final 3 Part 1 uses the purpose-built Final Three Circuit so all three
+ *   finalists complete the full qualifier without internal elimination.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
@@ -416,7 +428,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
   },
   {
-    label: 'Final 3 - Part 1 · Final Three Circuit',
+    label: 'Final 3 - Part 1 Circuit qualifier',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp1', 'final3_comp1_minigame'],
@@ -440,15 +452,12 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     pos: [],
   },
   {
-    // Phase-less compatibility pool for tools that only know the player count.
+    // Phase-less compatibility pool for tools that only know player count.
     label: '3 players (Final Trilogy)',
     minPlayers: 3,
     maxPlayers: 3,
     loh: [
       'finalThreeCircuit',
-      'holdWall',
-      'pressurePlank',
-      'houseOfDarkness',
       'memoryMatch',
       'famousFigures',
       'timingBar',
@@ -547,11 +556,6 @@ export function getClassicCampaignPoolForContext(
   return []
 }
 
-/**
- * Backwards-compatible count-only resolver used by admin tools and existing
- * callers. It finds the closest roster-safe day-guide row when a caller does
- * not know the current season day.
- */
 export function getBracketPoolForContext(
   playerCount: number,
   compType: 'LOH' | 'POS',
