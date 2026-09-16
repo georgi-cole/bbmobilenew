@@ -101,16 +101,7 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
-  for (const file of violations) {
-    console.error(`  ${file}`)
-    const config = (await prettier.resolveConfig(file)) ?? {}
-    const options = { ...config, filepath: file }
-    const currentSource = await readFile(file, 'utf8')
-    const formatted = await prettier.format(currentSource, options)
-    console.error(`--- PRETTIER:${file}:BEGIN ---`)
-    console.error(formatted)
-    console.error(`--- PRETTIER:${file}:END ---`)
-  }
+  for (const file of violations) console.error(`  ${file}`)
   process.exit(1)
 }
 
