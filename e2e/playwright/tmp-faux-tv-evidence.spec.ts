@@ -69,12 +69,14 @@ test('captures Faux TV presentation evidence @core-journey', async ({ page }, te
   await setDebugValue(page, 'Set Phase', 'pos_results')
 
   await page.getByRole('button', { name: 'Close Debug Panel' }).click()
-  await expect(page.locator('.all-power-faux-tv')).toBeVisible({ timeout: 5_000 })
+  const allPower = page.locator('.all-power-faux-tv')
+  await expect(allPower).toBeVisible({ timeout: 5_000 })
+  await expect(allPower).toContainText('You now control both LOH and Safety.')
   await page.waitForTimeout(400)
   await page.locator('.tv-zone').screenshot({ path: testInfo.outputPath('all-the-power-faux-tv.png') })
 
   // Let the one-shot effect complete before setting up the next week.
-  await expect(page.locator('.all-power-faux-tv')).toBeHidden({ timeout: 5_000 })
+  await expect(allPower).toBeHidden({ timeout: 5_000 })
 
   // 2) Make the human the outgoing LOH, then advance into the following day.
   await setDebugValue(page, 'Force LOH', human!.id)
@@ -105,8 +107,9 @@ test('captures Faux TV presentation evidence @core-journey', async ({ page }, te
   await page.getByRole('button', { name: 'Close Debug Panel' }).click()
 
   const tvZone = page.locator('.tv-zone')
-  await expect(tvZone).toContainText(/As outgoing LOH, .* is sitting this competition out\./, {
-    timeout: 5_000,
-  })
+  await expect(tvZone).toContainText(
+    'As outgoing LOH, You are sitting this competition out. Control is up for winning — who takes power next?',
+    { timeout: 5_000 }
+  )
   await tvZone.screenshot({ path: testInfo.outputPath('outgoing-loh-faux-tv.png') })
 })
