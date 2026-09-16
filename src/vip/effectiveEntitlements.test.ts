@@ -30,7 +30,7 @@ describe('effective entitlements', () => {
       hasEffectiveStoreEntitlement(
         {
           ...EMPTY_VIP,
-          entitlements: { ...EMPTY_VIP.entitlements, dramaMode: true },
+          entitlements: { ...EMPTY_VIP.entitlements!, dramaMode: true },
         },
         'dramaMode',
         false
