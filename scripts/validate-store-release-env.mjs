@@ -52,6 +52,10 @@ if (values.VITE_VIP_DEV_ENTITLEMENT === 'true') {
   issues.push('VITE_VIP_DEV_ENTITLEMENT must not be true in a store build.')
 }
 
+if (values.VITE_BUILD_TARGET === 'mobile-dev') {
+  issues.push('VITE_BUILD_TARGET=mobile-dev must not be used in a store build.')
+}
+
 for (const key of ['VITE_BIG_EYE_VIP_API_URL', 'VITE_REMOTE_CONFIG_URL']) {
   if (values[key] && !isProductionHttpsUrl(values[key])) {
     issues.push(`${key} must use a real production HTTPS URL when configured.`)
