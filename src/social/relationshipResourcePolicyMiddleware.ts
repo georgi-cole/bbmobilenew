@@ -2,11 +2,7 @@ import type { Middleware } from '@reduxjs/toolkit'
 import { getDepressionShockLifecycleForGame } from '../features/twists/depressionShockLifecycle'
 import { hasAllianceBetween } from './socialAlliance'
 import { getEffectiveSocialMode } from './socialMode'
-import {
-  setEnergyBankEntry,
-  setInfluenceBankEntry,
-  setInfoBankEntry,
-} from './socialSlice'
+import { setEnergyBankEntry, setInfluenceBankEntry, setInfoBankEntry } from './socialSlice'
 import {
   SOCIAL_RESOURCE_CALIBRATION as CAL,
   addEarnedEnergy,
@@ -254,11 +250,7 @@ function rewardNewPower(
           winnerId,
           addEarnedEnergy(bankValue(before, winnerId, 'energy'), reward.energy, mode)
         )
-        setInfluence(
-          api,
-          winnerId,
-          bankValue(before, winnerId, 'influence') + reward.influence
-        )
+        setInfluence(api, winnerId, bankValue(before, winnerId, 'influence') + reward.influence)
       }
     } else {
       const vox = after.game?.voxPopuli?.status === 'active'
@@ -272,11 +264,7 @@ function rewardNewPower(
       setEnergy(
         api,
         newLoh,
-        addEarnedEnergy(
-          bankValue(before, newLoh, 'energy'),
-          CAL.competition.winnerEnergy,
-          mode
-        )
+        addEarnedEnergy(bankValue(before, newLoh, 'energy'), CAL.competition.winnerEnergy, mode)
       )
       setInfluence(api, newLoh, bankValue(before, newLoh, 'influence') + influence)
     }
@@ -286,18 +274,11 @@ function rewardNewPower(
     setEnergy(
       api,
       newPos,
-      addEarnedEnergy(
-        bankValue(before, newPos, 'energy'),
-        CAL.competition.winnerEnergy,
-        mode
-      )
+      addEarnedEnergy(bankValue(before, newPos, 'energy'), CAL.competition.winnerEnergy, mode)
     )
-    setInfluence(
-      api,
-      newPos,
-      bankValue(before, newPos, 'influence') + CAL.competition.posInfluence
-    )
-    if (after.game?.lohId === newPos) addInfluence(api, newPos, CAL.competition.allPowerExtraInfluence)
+    setInfluence(api, newPos, bankValue(before, newPos, 'influence') + CAL.competition.posInfluence)
+    if (after.game?.lohId === newPos)
+      addInfluence(api, newPos, CAL.competition.allPowerExtraInfluence)
   }
 }
 
@@ -368,7 +349,8 @@ function calibrateSafetyUse(
         modeFor(after)
       )
     )
-    if (holderId && holderId !== savedId) addInfluence(api, holderId, CAL.nomination.safetyFavorInfluence)
+    if (holderId && holderId !== savedId)
+      addInfluence(api, holderId, CAL.nomination.safetyFavorInfluence)
   }
 }
 
@@ -509,7 +491,8 @@ function rewardEvictionSurvivors(
       if (scored.length > 0) {
         const safest = Math.min(...scored.map((entry) => entry.value))
         for (const entry of scored) {
-          if (entry.value === safest) addInfluence(api, entry.id, CAL.survival.voxPublicDarlingInfluence)
+          if (entry.value === safest)
+            addInfluence(api, entry.id, CAL.survival.voxPublicDarlingInfluence)
         }
       }
     }
@@ -574,7 +557,8 @@ function rewardAmbientBroadcast(
   action: GenericAction,
   after: CalibrationState
 ): void {
-  if (action.type !== 'game/addTvEvent' || !action.payload || typeof action.payload !== 'object') return
+  if (action.type !== 'game/addTvEvent' || !action.payload || typeof action.payload !== 'object')
+    return
   const meta = (action.payload as { meta?: Record<string, unknown> }).meta ?? {}
   const userId = humanId(after)
   if (!userId) return
@@ -595,8 +579,10 @@ function rewardAmbientBroadcast(
       addEnergy(api, userId, CAL.ambient.depressionRecoveryEnergy, modeFor(after))
       return
     }
-    if (meta.weatherCondition === 'sunny') addEnergy(api, userId, CAL.ambient.sunnyEnergy, modeFor(after))
-    if (meta.weatherPhenomenon === 'rainbow') addEnergy(api, userId, CAL.ambient.rainbowEnergy, modeFor(after))
+    if (meta.weatherCondition === 'sunny')
+      addEnergy(api, userId, CAL.ambient.sunnyEnergy, modeFor(after))
+    if (meta.weatherPhenomenon === 'rainbow')
+      addEnergy(api, userId, CAL.ambient.rainbowEnergy, modeFor(after))
   }
 }
 
