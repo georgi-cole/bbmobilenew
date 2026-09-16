@@ -107,8 +107,8 @@ export const DEFAULT_SOCIAL_RUNTIME_CONFIG: SocialRuntimeConfig = {
   schemaVersion: 1,
   revision: 'bundled-1',
   economy: {
-    normal: { weeklyEnergy: 5, carryOver: true, energyCap: 15 },
-    drama: { weeklyEnergy: 10, carryOver: true, energyCap: 30 },
+    normal: { weeklyEnergy: 5, carryOver: true, energyCap: 20 },
+    drama: { weeklyEnergy: 7, carryOver: true, energyCap: 30 },
     influenceCap: 10_000,
     infoCap: 10_000,
   },
