@@ -10,6 +10,7 @@
  * ad request and reward logic.
  */
 import type { ReactNode } from 'react';
+import { SOCIAL_ENERGY_RECHARGE_REWARD } from '../../services/ads/adsService';
 import './AdPrompt.css';
 
 interface AdPromptProps {
@@ -41,12 +42,22 @@ export default function AdPrompt({
   onSkip,
   pending = false,
 }: AdPromptProps) {
+  // Keep the reward copy aligned with the canonical placement value even while
+  // older GameScreen call sites still contain the former +3 literal.
+  const isSocialEnergyRecharge = title === 'Out of Energy!' && /social energy/i.test(description);
+  const resolvedDescription = isSocialEnergyRecharge
+    ? description.replace(/\+3(?=\s+social energy)/i, `+${SOCIAL_ENERGY_RECHARGE_REWARD}`)
+    : description;
+  const resolvedWatchLabel = isSocialEnergyRecharge
+    ? watchLabel.replace(/\+3(?=\s+Energy)/i, `+${SOCIAL_ENERGY_RECHARGE_REWARD}`)
+    : watchLabel;
+
   return (
     <div className="ad-prompt__backdrop" role="dialog" aria-modal="true" aria-label={title}>
       <div className="ad-prompt__card">
         {icon && <div className="ad-prompt__icon" aria-hidden="true">{icon}</div>}
         <h2 className="ad-prompt__title">{title}</h2>
-        <p className="ad-prompt__description">{description}</p>
+        <p className="ad-prompt__description">{resolvedDescription}</p>
         <div className="ad-prompt__actions">
           <button
             type="button"
@@ -54,7 +65,7 @@ export default function AdPrompt({
             onClick={onWatch}
             disabled={pending}
           >
-            {watchLabel}
+            {resolvedWatchLabel}
           </button>
           <button
             type="button"
