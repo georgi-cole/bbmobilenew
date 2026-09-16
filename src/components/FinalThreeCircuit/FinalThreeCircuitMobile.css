@@ -1,0 +1,311 @@
+.f3-circuit {
+  /* Match the plum/violet gameplay set instead of the earlier blue-black lab look. */
+  background:
+    radial-gradient(circle at 50% 58%, rgba(155, 100, 155, 0.18), transparent 46%),
+    radial-gradient(circle at 82% 82%, rgba(105, 85, 132, 0.08), transparent 40%),
+    linear-gradient(180deg, #09060f 0%, #12081d 42%, #1a0b28 74%, #08040e 100%);
+}
+
+@media (max-width: 430px) {
+  .f3-circuit {
+    padding:
+      var(--minigame-stage-top-padding, max(48px, calc(var(--minigame-safe-top, 0px) + 6px)))
+      max(8px, calc(var(--minigame-safe-right, 0px) + 8px))
+      max(10px, calc(var(--minigame-safe-bottom, 0px) + 10px))
+      max(8px, calc(var(--minigame-safe-left, 0px) + 8px));
+  }
+
+  .f3-circuit__shell {
+    width: 100%;
+    gap: 0.48rem;
+  }
+
+  .f3-circuit__hero {
+    min-height: 34px;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.18rem 0.16rem;
+  }
+
+  .f3-circuit__hero-copy p,
+  .f3-circuit__eyebrow {
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+  }
+
+  .f3-circuit__hero-copy h1 {
+    margin-top: 0.08rem;
+    font-size: 1.08rem;
+    line-height: 1.05;
+  }
+
+  .f3-circuit__progress {
+    gap: 0.24rem;
+    padding: 0;
+  }
+
+  .f3-circuit__progress span {
+    width: 1.05rem;
+    height: 0.22rem;
+  }
+
+  .f3-circuit__arena-card {
+    gap: 0.62rem;
+    padding: 0.78rem;
+    border-radius: 20px;
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .f3-circuit__section-heading {
+    gap: 0.45rem;
+  }
+
+  .f3-circuit__section-heading h2,
+  .f3-circuit__arena-card > h2 {
+    font-size: clamp(1.05rem, 5.5vw, 1.28rem);
+    line-height: 1.05;
+  }
+
+  .f3-circuit__section-heading > span {
+    padding: 0.35rem 0.52rem;
+    font-size: 0.62rem;
+  }
+
+  /* The tutorial already teaches these mechanics. Do not repeat the same prose
+     inside the live timed board on a phone-sized viewport. */
+  .f3-circuit__arena-card--signal > .f3-circuit__copy,
+  .f3-circuit__arena-card--sequence > .f3-circuit__copy,
+  .f3-circuit__warden-copy,
+  .f3-circuit__warden-game > .f3-circuit__hint,
+  .f3-circuit__power-game > .f3-circuit__copy,
+  .f3-circuit__tutorial-rules {
+    display: none;
+  }
+
+  .f3-circuit__tutorial-intro {
+    font-size: 0.76rem;
+    line-height: 1.38;
+  }
+
+  .f3-circuit__practice {
+    gap: 0.48rem;
+    padding: 0.58rem;
+    border-radius: 16px;
+  }
+
+  .f3-circuit__practice p {
+    font-size: 0.7rem;
+    line-height: 1.32;
+  }
+
+  .f3-circuit__challenge-meter,
+  .f3-circuit__micro-stats {
+    gap: 0.3rem;
+    font-size: 0.62rem;
+  }
+
+  .f3-circuit__challenge-meter span,
+  .f3-circuit__micro-stats > span,
+  .f3-circuit__micro-stats > button {
+    min-height: 28px;
+    padding: 0.32rem 0.42rem;
+  }
+
+  .f3-circuit__signal-command {
+    padding: 0.55rem 0.7rem;
+  }
+
+  .f3-circuit__signal-command strong {
+    font-size: 1.75rem;
+  }
+
+  .f3-circuit__signal-grid {
+    gap: 0.3rem;
+    padding: 0.42rem;
+    border-radius: 16px;
+  }
+
+  .f3-circuit__signal-grid button {
+    min-height: 42px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+  }
+
+  .f3-circuit__sequence-layout {
+    gap: 0.55rem;
+  }
+
+  .f3-circuit__sequence-layout > div:first-child .f3-circuit__slide-grid {
+    width: min(42vw, 154px);
+    margin-inline: auto;
+  }
+
+  .f3-circuit__sequence-layout > div:last-child .f3-circuit__slide-grid {
+    width: min(62vw, 230px);
+    margin-inline: auto;
+  }
+
+  .f3-circuit__slide-grid {
+    gap: 0.28rem;
+    padding: 0.4rem;
+  }
+
+  .f3-circuit__slide-grid button,
+  .f3-circuit__slide-grid span {
+    border-radius: 10px;
+  }
+
+  .f3-circuit__risk-tiers,
+  .f3-circuit__stake-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.38rem;
+  }
+
+  .f3-circuit__risk-tiers button,
+  .f3-circuit__stake-options button {
+    min-height: 4.35rem;
+    padding: 0.52rem;
+    border-radius: 13px;
+  }
+
+  .f3-circuit__risk-tiers span,
+  .f3-circuit__stake-options strong {
+    font-size: 0.76rem;
+  }
+
+  .f3-circuit__risk-tiers strong,
+  .f3-circuit__stake-options span {
+    font-size: 0.66rem;
+  }
+
+  .f3-circuit__risk-tiers small,
+  .f3-circuit__stake-options small {
+    font-size: 0.56rem;
+    line-height: 1.2;
+  }
+
+  .f3-circuit__warden-rule-strip {
+    margin: 0;
+    padding: 0.45rem 0.58rem;
+  }
+
+  .f3-circuit__prison-frame {
+    width: 100%;
+    padding: 0.38rem;
+    border-radius: 17px;
+  }
+
+  .f3-circuit__warden-grid {
+    width: min(100%, 356px);
+    gap: 0.18rem;
+    padding: 0.32rem;
+    border-radius: 15px;
+  }
+
+  .f3-circuit__warden-grid button {
+    border-radius: 7px;
+  }
+
+  .f3-circuit__warden-legend {
+    gap: 0.48rem;
+    font-size: 0.6rem;
+  }
+
+  .f3-circuit__power-readout {
+    gap: 0.34rem;
+  }
+
+  .f3-circuit__power-readout > div {
+    padding: 0.48rem;
+    border-radius: 12px;
+  }
+
+  .f3-circuit__power-readout span {
+    font-size: 0.58rem;
+  }
+
+  .f3-circuit__power-readout strong {
+    font-size: 0.86rem;
+  }
+
+  .f3-circuit__power-cells {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.38rem;
+  }
+
+  .f3-circuit__power-cells button {
+    min-height: 4rem;
+    border-radius: 12px;
+  }
+
+  .f3-circuit__override-prompt {
+    min-height: 5.4rem;
+    padding: 0.65rem;
+    border-radius: 16px;
+  }
+
+  .f3-circuit__override-prompt strong {
+    font-size: 1.05rem;
+  }
+
+  .f3-circuit__override-options {
+    gap: 0.45rem;
+  }
+
+  .f3-circuit__override-options button {
+    min-height: 3.45rem;
+    border-radius: 13px;
+    font-size: 0.9rem;
+  }
+
+  .f3-circuit__finalist-rail {
+    gap: 0.38rem;
+  }
+
+  .f3-circuit__finalist {
+    padding: 0.5rem 0.36rem;
+    border-radius: 14px;
+  }
+
+  .f3-circuit__avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .f3-circuit__stage-results > div {
+    padding: 0.58rem 0.65rem;
+  }
+
+  .f3-circuit__final-score-row {
+    gap: 0.38rem;
+    padding: 0.58rem 0.5rem;
+  }
+
+  .f3-circuit__score-breakdown {
+    gap: 0.26rem;
+  }
+
+  .f3-circuit__score-breakdown span {
+    min-width: 2rem;
+  }
+
+  .f3-circuit__qualification-callout,
+  .f3-circuit__next-step {
+    padding: 0.7rem;
+    border-radius: 15px;
+  }
+}
+
+@media (max-width: 375px) {
+  .f3-circuit__power-cells {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .f3-circuit__risk-tiers small {
+    display: none;
+  }
+
+  .f3-circuit__score-breakdown small {
+    display: none;
+  }
+}
