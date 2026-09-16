@@ -42,9 +42,12 @@ function outgoingLohEligibilityCopy(game: GameState): string | null {
     .filter((name): name is string => Boolean(name))
   const displayNames = outgoingNames.length > 0 ? outgoingNames.join(' & ') : human.name
 
-  return outgoingIds.length > 1
-    ? `As the outgoing LOH pair, ${displayNames} are sitting this competition out.`
-    : `As outgoing LOH, ${displayNames} is sitting this competition out.`
+  if (outgoingIds.length > 1) {
+    return `As the outgoing LOH pair, ${displayNames} are sitting this competition out.`
+  }
+
+  const verb = displayNames.trim().toLowerCase() === 'you' ? 'are' : 'is'
+  return `As outgoing LOH, ${displayNames} ${verb} sitting this competition out.`
 }
 
 function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
@@ -59,6 +62,7 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
         updateTvEvent({
           id: card.id,
           text: `${eligibilityCopy} Control is up for winning — who takes power next?`,
+          type: card.type,
         })
       )
     }
@@ -73,6 +77,7 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
     updateTvEvent({
       id: event.id,
       text: `${event.text.trim()} ${eligibilityCopy}`,
+      type: event.type,
     })
   )
 }
@@ -104,9 +109,9 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
   const type = (action as GenericAction | null)?.type
   return Boolean(
     type === 'game/advance' &&
-      state.phase === 'pos_ceremony_results' &&
-      state.lohNominationPlan?.revealPending === true &&
-      state.lohNominationPlan.revealed !== true
+    state.phase === 'pos_ceremony_results' &&
+    state.lohNominationPlan?.revealPending === true &&
+    state.lohNominationPlan.revealed !== true
   )
 }
 

@@ -9,9 +9,9 @@ import {
 import {
   createEmptyStoreEntitlements,
   loadCachedVipEntitlement,
-  TEMPORARY_STORE_UNLOCKS_ENABLED,
   type StoreEntitlements,
 } from '../vip/vipStorage'
+import { hasEffectiveStoreEntitlement, isEffectiveVipActive } from '../vip/effectiveEntitlements'
 import type { StoreEntitlementKey, StoreProductKey } from '../vip/vipConfig'
 
 export type VipStatus = 'idle' | 'loading' | 'ready' | 'purchasing' | 'restoring' | 'error'
@@ -130,13 +130,11 @@ const vipSlice = createSlice({
 })
 
 function selectHasEntitlement(state: RootState, entitlement: StoreEntitlementKey): boolean {
-  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
-  return (state.vip?.isActive ?? false) || (state.vip?.entitlements?.[entitlement] ?? false)
+  return hasEffectiveStoreEntitlement(state.vip, entitlement)
 }
 
 export const selectVip = (state: RootState) => state.vip
-export const selectIsVipActive = (state: RootState) =>
-  TEMPORARY_STORE_UNLOCKS_ENABLED || (state.vip?.isActive ?? false)
+export const selectIsVipActive = (state: RootState) => isEffectiveVipActive(state.vip)
 export const selectHasPublicModeAccess = (state: RootState) =>
   selectHasEntitlement(state, 'publicMode')
 export const selectHasSurvivalModeAccess = (state: RootState) =>

@@ -48,7 +48,8 @@ function baseSummary(player: Player, week: number): PlayerSeasonSummary {
 function buildResolvedArchive(game: GameState): SeasonArchive | null {
   const human = game.players.find((player) => player.isUser)
   if (game.mode === 'survival' || human?.status !== 'evicted') return null
-  if ((game.seasonArchives ?? []).some((archive) => archive.seasonIndex === game.season)) return null
+  if ((game.seasonArchives ?? []).some((archive) => archive.seasonIndex === game.season))
+    return null
 
   const stillInGame = game.players.filter(
     (player) => player.status !== 'evicted' && player.status !== 'jury'

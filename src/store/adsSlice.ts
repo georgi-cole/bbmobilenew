@@ -2,52 +2,53 @@
  * adsSlice — Redux state for ad-gate logic.
  *
  * Persisted to localStorage so daily limits and No Ads Pack ownership survive
- * page reloads.  Uses the same simple load/save pattern as settingsSlice.
+ * page reloads. Uses the same simple load/save pattern as settingsSlice.
  */
 
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { RootState } from './store';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import type { RootState } from './store'
+import { hasEffectiveStoreEntitlement } from '../vip/effectiveEntitlements'
 
-const STORAGE_KEY = 'bbmobilenew_ads_v1';
+const STORAGE_KEY = 'bbmobilenew_ads_v1'
 
 export interface AdsState {
   /** True when the user has purchased the No Ads Pack in-game store. */
-  hasNoAdsPack: boolean;
+  hasNoAdsPack: boolean
   /**
    * Map of placement → ISO date-string (YYYY-MM-DD) of the last time that
-   * placement was shown.  Used to enforce once-per-day limits.
+   * placement was shown. Used to enforce once-per-day limits.
    */
-  dailyUsage: Record<string, string>;
+  dailyUsage: Record<string, string>
   /**
    * Tracks the last competition where the user finished in last place.
    * Set by the adsMiddleware as a transient marker. Retry UI now lives in the
    * competition scoreboard/results flow, and GameScreen clears this legacy flag.
    */
-  lastCompLastPlaceType: 'loh' | 'pos' | null;
+  lastCompLastPlaceType: 'loh' | 'pos' | null
 }
 
 const DEFAULT_ADS_STATE: AdsState = {
   hasNoAdsPack: false,
   dailyUsage: {},
   lastCompLastPlaceType: null,
-};
+}
 
 // ── Persistence helpers ───────────────────────────────────────────────────
 
 export function loadAdsState(): AdsState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_ADS_STATE;
-    const parsed = JSON.parse(raw) as Partial<AdsState>;
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return DEFAULT_ADS_STATE
+    const parsed = JSON.parse(raw) as Partial<AdsState>
     return {
       hasNoAdsPack: typeof parsed.hasNoAdsPack === 'boolean' ? parsed.hasNoAdsPack : false,
       dailyUsage:
         parsed.dailyUsage && typeof parsed.dailyUsage === 'object' ? parsed.dailyUsage : {},
       // lastCompLastPlaceType is transient — never persist across page reloads.
       lastCompLastPlaceType: null,
-    };
+    }
   } catch {
-    return DEFAULT_ADS_STATE;
+    return DEFAULT_ADS_STATE
   }
 }
 
@@ -56,8 +57,8 @@ export function saveAdsState(state: AdsState): void {
     const persistedState: Pick<AdsState, 'hasNoAdsPack' | 'dailyUsage'> = {
       hasNoAdsPack: state.hasNoAdsPack,
       dailyUsage: state.dailyUsage,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState))
   } catch {
     // ignore (e.g. private browsing quota)
   }
@@ -75,7 +76,7 @@ const adsSlice = createSlice({
      * Optional rewarded ads remain available regardless.
      */
     setNoAdsPack(state, action: PayloadAction<boolean>) {
-      state.hasNoAdsPack = action.payload;
+      state.hasNoAdsPack = action.payload
     },
 
     /**
@@ -83,40 +84,37 @@ const adsSlice = createSlice({
      * Stores today's ISO date string (YYYY-MM-DD) for the given placement key.
      */
     recordAdShown(state, action: PayloadAction<string>) {
-      const today = new Date().toISOString().slice(0, 10);
-      state.dailyUsage[action.payload] = today;
+      const today = new Date().toISOString().slice(0, 10)
+      state.dailyUsage[action.payload] = today
     },
 
-    /**
-     * Clear all daily usage records (e.g. at day boundary or for testing).
-     */
+    /** Clear all daily usage records (e.g. at day boundary or for testing). */
     resetDailyUsage(state) {
-      state.dailyUsage = {};
+      state.dailyUsage = {}
     },
 
-    /**
-     * Record that the user finished last in a competition (LOH or POS).
-     * Used by the adsMiddleware to mark retry eligibility for the current result.
-     */
+    /** Record that the user finished last in a competition (LOH or POS). */
     recordLastCompLastPlace(state, action: PayloadAction<'loh' | 'pos'>) {
-      state.lastCompLastPlaceType = action.payload;
+      state.lastCompLastPlaceType = action.payload
     },
 
-    /**
-     * Clear the transient last-competition last-place record.
-     */
+    /** Clear the transient last-competition last-place record. */
     clearLastCompLastPlace(state) {
-      state.lastCompLastPlaceType = null;
+      state.lastCompLastPlaceType = null
     },
   },
-});
+})
 
-export const { setNoAdsPack, recordAdShown, resetDailyUsage, recordLastCompLastPlace, clearLastCompLastPlace } = adsSlice.actions;
+export const {
+  setNoAdsPack,
+  recordAdShown,
+  resetDailyUsage,
+  recordLastCompLastPlace,
+  clearLastCompLastPlace,
+} = adsSlice.actions
 
-export const selectAdsState = (state: RootState) => state.ads;
+export const selectAdsState = (state: RootState) => state.ads
 export const selectHasNoAdsPack = (state: RootState) =>
-  (state.ads?.hasNoAdsPack ?? false)
-  || (state.vip?.isActive ?? false)
-  || (state.vip?.entitlements?.noAds ?? false);
+  (state.ads?.hasNoAdsPack ?? false) || hasEffectiveStoreEntitlement(state.vip, 'noAds')
 
-export default adsSlice.reducer;
+export default adsSlice.reducer

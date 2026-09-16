@@ -149,7 +149,9 @@ export default function GameControlDock({
   }, [])
 
   useEffect(() => {
-    if (votePresentationLocked) setMoreOpen(false)
+    if (!votePresentationLocked) return undefined
+    const close = window.setTimeout(() => setMoreOpen(false), 0)
+    return () => window.clearTimeout(close)
   }, [votePresentationLocked])
 
   useEffect(() => {

@@ -13,6 +13,11 @@ import {
   getStoreProductDefinition,
   type StoreProductKey,
 } from '../../vip/vipConfig'
+import {
+  hasEffectiveStoreEntitlement,
+  isEffectiveVipActive,
+  TEMPORARY_STORE_UNLOCKS_ENABLED,
+} from '../../vip/effectiveEntitlements'
 import './Store.css'
 import './StoreProductList.css'
 
@@ -39,6 +44,8 @@ export default function Store() {
     storeState.status === 'restoring'
   const vipProduct = storeState.products.vip
   const vipDefinition = getStoreProductDefinition('vip')
+  const effectiveVipActive = isEffectiveVipActive(storeState)
+  const developerAccess = TEMPORARY_STORE_UNLOCKS_ENABLED
   const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo
   const hasReturnDestination = typeof returnTo === 'string' && returnTo.startsWith('/')
 
@@ -56,8 +63,8 @@ export default function Store() {
 
   function ownsProduct(productKey: StoreProductKey): boolean {
     return productKey === 'vip'
-      ? storeState.isActive
-      : storeState.isActive || storeState.entitlements[productKey]
+      ? effectiveVipActive
+      : hasEffectiveStoreEntitlement(storeState, productKey)
   }
 
   function selectProduct(productKey: StoreProductKey) {
@@ -88,7 +95,7 @@ export default function Store() {
   }
 
   async function handleRestore() {
-    if (busy) return
+    if (busy || developerAccess) return
     setNotice(null)
     setModalError(null)
     const result = await dispatch(restoreVip())
@@ -110,6 +117,7 @@ export default function Store() {
     selectedProductKey == null ? null : getStoreProductDefinition(selectedProductKey)
   const selectedOwned = selectedProductKey == null ? false : ownsProduct(selectedProductKey)
   const selectedIncludedWithVip =
+    !developerAccess &&
     selectedProductKey != null &&
     selectedProductKey !== 'vip' &&
     storeState.isActive &&
@@ -119,9 +127,22 @@ export default function Store() {
     <main className="vip-store">
       <header className="vip-store__header">
         <h1>BIGEYE MARKETFACE</h1>
-        {storeState.isActive && <span className="vip-store__active-badge">VIP Owned</span>}
+        {developerAccess ? (
+          <span className="vip-store__active-badge">VIP Dev Access</span>
+        ) : (
+          storeState.isActive && <span className="vip-store__active-badge">VIP Owned</span>
+        )}
         <GameBackButton className="vip-store__back" onClick={goBack} />
       </header>
+
+      {developerAccess && (
+        <section className="vip-store__restore-panel" role="status">
+          <p className="vip-store__availability">
+            Developer monetisation mode is active. Paid features and rewarded-ad rewards are
+            available without contacting the App Store.
+          </p>
+        </section>
+      )}
 
       <section className="vip-store__card" aria-labelledby="vip-plan-title">
         <div className="vip-store__glow" aria-hidden="true" />
@@ -150,12 +171,14 @@ export default function Store() {
         <div className="vip-store__bundle-purchase">
           <div className="vip-store__price" aria-label={vipProduct?.price || 'Price unavailable'}>
             <strong className={vipProduct ? undefined : 'vip-store__price-unavailable'}>
-              {vipProduct?.price ||
-                (storeState.billingAvailable
-                  ? 'Product unavailable'
-                  : 'Available on iOS and Android')}
+              {developerAccess
+                ? 'Developer access'
+                : vipProduct?.price ||
+                  (storeState.billingAvailable
+                    ? 'Product unavailable'
+                    : 'Available on iOS and Android')}
             </strong>
-            {vipProduct && <span>one time</span>}
+            {vipProduct && !developerAccess && <span>one time</span>}
           </div>
 
           <button
@@ -164,7 +187,7 @@ export default function Store() {
             onClick={() => selectProduct('vip')}
             disabled={busy}
           >
-            {storeState.isActive ? 'View owned VIP' : 'Explore VIP'}
+            {effectiveVipActive ? 'View VIP access' : 'Explore VIP'}
           </button>
         </div>
       </section>
@@ -181,7 +204,8 @@ export default function Store() {
             const definition = getStoreProductDefinition(productKey)
             const product = storeState.products[productKey]
             const owned = ownsProduct(productKey)
-            const includedWithVip = storeState.isActive && !storeState.entitlements[productKey]
+            const includedWithVip =
+              !developerAccess && storeState.isActive && !storeState.entitlements[productKey]
             return (
               <button
                 type="button"
@@ -203,11 +227,13 @@ export default function Store() {
                 </span>
                 <span className="vip-store__product-footer">
                   <strong>
-                    {includedWithVip
-                      ? 'Included with VIP'
-                      : owned
-                        ? 'Owned'
-                        : product?.price || 'Price unavailable'}
+                    {developerAccess
+                      ? 'Developer access'
+                      : includedWithVip
+                        ? 'Included with VIP'
+                        : owned
+                          ? 'Owned'
+                          : product?.price || 'Price unavailable'}
                   </strong>
                 </span>
               </button>
@@ -228,7 +254,8 @@ export default function Store() {
             const definition = getStoreProductDefinition(productKey)
             const product = storeState.products[productKey]
             const owned = ownsProduct(productKey)
-            const includedWithVip = storeState.isActive && !storeState.entitlements[productKey]
+            const includedWithVip =
+              !developerAccess && storeState.isActive && !storeState.entitlements[productKey]
             return (
               <button
                 type="button"
@@ -248,11 +275,13 @@ export default function Store() {
                 </span>
                 <span className="vip-store__product-footer">
                   <strong>
-                    {includedWithVip
-                      ? 'Included with VIP'
-                      : owned
-                        ? 'Owned'
-                        : product?.price || 'Price unavailable'}
+                    {developerAccess
+                      ? 'Developer access'
+                      : includedWithVip
+                        ? 'Included with VIP'
+                        : owned
+                          ? 'Owned'
+                          : product?.price || 'Price unavailable'}
                   </strong>
                 </span>
               </button>
@@ -266,12 +295,12 @@ export default function Store() {
           type="button"
           className="vip-store__restore"
           onClick={() => void handleRestore()}
-          disabled={busy || !storeState.billingAvailable}
+          disabled={busy || !storeState.billingAvailable || developerAccess}
         >
           {storeState.status === 'restoring' ? 'Restoring...' : 'Restore Purchases'}
         </button>
 
-        {!storeState.billingAvailable && storeState.status !== 'loading' && (
+        {!developerAccess && !storeState.billingAvailable && storeState.status !== 'loading' && (
           <p className="vip-store__availability">
             Purchases appear here when the app is installed from Apple App Store or Google Play.
           </p>
@@ -303,7 +332,7 @@ export default function Store() {
           product={storeState.products[selectedProductKey]}
           owned={selectedOwned}
           includedWithVip={selectedIncludedWithVip}
-          billingAvailable={storeState.billingAvailable}
+          billingAvailable={developerAccess ? false : storeState.billingAvailable}
           purchasing={
             storeState.status === 'purchasing' &&
             storeState.activePurchaseKey === selectedProductKey
