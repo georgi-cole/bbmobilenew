@@ -15,6 +15,36 @@ interface LocalizedRegistryMetadata {
   instructionKeys?: TranslationKey[]
 }
 
+const FINAL_THREE_CIRCUIT_GAME: GameRegistryEntry = {
+  key: 'finalThreeCircuit',
+  title: 'Final Three Circuit',
+  description:
+    'Three finalists face Precision Lock, Sequence Builder, and Risk Run. Every finalist completes every stage; the highest 300-point total advances directly to Final HOH Part 3.',
+  instructions: [
+    'All three finalists complete all three stages. Nobody is eliminated during the Circuit.',
+    'Precision Lock: make five increasingly difficult locks for up to 100 points.',
+    'Sequence Builder: rebuild three visible target arrangements using as few swaps as possible for up to 100 points.',
+    'Risk Run: choose Safe, Standard, or Risky difficulty for three skill challenges, then decide how much of your stage bank to put on the Final Push.',
+    'Scores carry across all three stages. The highest total out of 300 wins Part 1 and advances directly to Part 3.',
+  ],
+  metricKind: 'points',
+  metricLabel: 'Circuit points',
+  timeLimitMs: 0,
+  authoritative: true,
+  scoringAdapter: 'raw',
+  scoringParams: { minRaw: 150, maxRaw: 285 },
+  implementation: 'react',
+  reactComponentKey: 'FinalThreeCircuit',
+  legacy: false,
+  // Special-purpose finale game. It is selected explicitly by the Final 3 map,
+  // not by ordinary weighted competition rotation.
+  weight: 0,
+  category: 'logic',
+  retired: false,
+  minPlayers: 3,
+  maxPlayers: 3,
+}
+
 const FIT_ME_IN_INSTRUCTION_KEYS: TranslationKey[] = [
   'fitMeIn.rules.freshBoard',
   'fitMeIn.rules.fivePlus',
@@ -55,10 +85,11 @@ function applyRegistryOverrides(
 }
 
 export function getAllGames(): GameRegistryEntry[] {
-  return getAllBaseGames().map((game) => applyRegistryOverrides(game)!)
+  return [...getAllBaseGames().map((game) => applyRegistryOverrides(game)!), FINAL_THREE_CIRCUIT_GAME]
 }
 
 export function getGame(key: string): GameRegistryEntry | undefined {
+  if (key === FINAL_THREE_CIRCUIT_GAME.key) return FINAL_THREE_CIRCUIT_GAME
   return applyRegistryOverrides(getBaseGame(key))
 }
 
@@ -67,6 +98,9 @@ export function getPoolByFilter(filter: {
   category?: GameCategory
   excludeKeys?: string[]
 }): GameRegistryEntry[] {
+  // Final Three Circuit is deliberately excluded from ordinary random pools.
+  // It remains visible to Minigame Lab / Remote Manager through getAllGames(),
+  // addressable by key through getGame(), and scheduled by the Final 3 map.
   return getBasePoolByFilter(filter).map((game) => applyRegistryOverrides(game)!)
 }
 
