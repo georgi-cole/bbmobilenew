@@ -24,7 +24,7 @@ function transformCell(cell: number, size: number, transform: Transform): number
 }
 
 export function getWardenVariationIndex(seed: number, tier: RiskTier): number {
-  return (seed ^ hash(`warden-layout:${tier}`)) >>> 0 % WARDEN_VARIATION_COUNT
+  return ((seed ^ hash(`warden-layout:${tier}`)) >>> 0) % WARDEN_VARIATION_COUNT
 }
 
 export function buildVariedWardenBoard(tier: RiskTier, seed: number): WardenBoard {
