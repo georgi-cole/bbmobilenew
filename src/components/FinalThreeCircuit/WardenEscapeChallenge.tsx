@@ -90,12 +90,9 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
         <span>Guard moves 2 tiles</span>
       </div>
 
-      <div className="f3-circuit__warden-rules">
-        <strong>Outsmart the guard, don’t outrun him.</strong>
-        <span>
-          Every time you move one tile, the guard moves up to two. He always tries to close the horizontal gap first, then the vertical gap. Use the walls to bait and trap him before you head for the exit.
-        </span>
-      </div>
+      <p className="f3-circuit__copy">
+        <strong>Outsmart the guard, don’t outrun him.</strong> Every time you move one tile, the guard moves up to two. He always tries to close the horizontal gap first, then the vertical gap. Use the walls to bait and trap him before you head for the exit.
+      </p>
 
       <div
         className="f3-circuit__warden-grid"
