@@ -1,7 +1,7 @@
 import {
   buildWardenBoard,
   getGridNeighbors,
-  moveWardenTowardPlayer,
+  resolveWardenTurn,
   type RiskTier,
   type WardenBoard,
 } from './finalThreeCircuitLogic'
@@ -106,10 +106,10 @@ export function isWardenBoardStateSolvable(board: WardenBoard): boolean {
 
     for (const nextPlayer of getGridNeighbors(state.player, board.size, board.walls)) {
       if (nextPlayer === state.warden) continue
-      const nextWarden = moveWardenTowardPlayer(board, state.warden, nextPlayer)
-      if (nextWarden === nextPlayer) continue
-      if (nextPlayer === board.exit) return true
-      queue.push({ player: nextPlayer, warden: nextWarden, moves: state.moves + 1 })
+      const turn = resolveWardenTurn(board, state.warden, nextPlayer)
+      if (turn.escaped) return true
+      if (turn.caught) continue
+      queue.push({ player: nextPlayer, warden: turn.nextWarden, moves: state.moves + 1 })
     }
   }
 
