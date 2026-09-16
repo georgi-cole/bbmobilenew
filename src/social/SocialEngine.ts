@@ -15,6 +15,7 @@ import { initManeuvers } from './SocialManeuvers'
 import { socialAIDriver } from './socialAIDriver'
 import { dispatchSocialSummary } from './SocialSummaryBridge'
 import { getEffectiveSocialMode } from './socialMode'
+import { SOCIAL_RESOURCE_CALIBRATION } from './socialResourceCalibration'
 import { DEFAULT_SOCIAL_RUNTIME_CONFIG, getSocialModeConfig } from './socialRuntimeConfig'
 
 interface StoreAPI {
@@ -71,6 +72,7 @@ function startPhase(phaseName: string): void {
   const players = state.game?.players ?? []
   const mode = getEffectiveSocialMode(state)
   const modeConfig = getSocialModeConfig(mode)
+  const calibratedDailyEnergy = SOCIAL_RESOURCE_CALIBRATION[mode].dailyEnergy
   // Normal mode now deliberately carries energy between days. A stale remote
   // config may still advertise the former cap of 5, so never let it collapse
   // the bank below the bundled carryover floor. Remote config may still raise it.
@@ -99,7 +101,7 @@ function startPhase(phaseName: string): void {
       (rng / 0xffffffff) * (targetSpendPctRange[1] - targetSpendPctRange[0])
     const actions =
       minActionsPerPlayer + Math.round(pct * (maxActionsPerPlayer - minActionsPerPlayer))
-    const phaseBudget = Math.round(modeConfig.weeklyEnergy * pct + actions)
+    const phaseBudget = Math.round(calibratedDailyEnergy * pct + actions)
     const carried = Math.max(0, carriedEnergy[player.id] ?? 0)
     const next = !grantsWeeklyBatch
       ? carried
@@ -122,8 +124,8 @@ function startPhase(phaseName: string): void {
     const humanBudget = !grantsWeeklyBatch
       ? carried
       : modeConfig.carryOver
-        ? addCarryoverBatch(carried, modeConfig.weeklyEnergy, energyCap)
-        : Math.max(carried, modeConfig.weeklyEnergy)
+        ? addCarryoverBatch(carried, calibratedDailyEnergy, energyCap)
+        : Math.max(carried, calibratedDailyEnergy)
     _budgets.set(humanPlayer.id, humanBudget)
     budgets[humanPlayer.id] = humanBudget
   }
