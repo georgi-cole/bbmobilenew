@@ -53,6 +53,16 @@ const OVERRIDES: Record<string, Partial<Record<SocialResourceOutcome, SocialReso
     failure: { influence: -6, info: 0 },
     backfire: { influence: -10, info: 0 },
   },
+  break_alliance: {
+    success: { influence: -200, info: 0 },
+    failure: { influence: 0, info: 0 },
+    backfire: { influence: -200, info: 0 },
+  },
+  break_bromance: {
+    success: { influence: -200, info: 0 },
+    failure: { influence: 0, info: 0 },
+    backfire: { influence: -200, info: 0 },
+  },
   snoop_around: {
     success: { influence: 0, info: 200 },
     failure: { influence: -2, info: 40 },
