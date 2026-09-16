@@ -59,6 +59,7 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
         updateTvEvent({
           id: card.id,
           text: `${eligibilityCopy} Control is up for winning — who takes power next?`,
+          type: card.type,
         })
       )
     }
@@ -73,6 +74,7 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
     updateTvEvent({
       id: event.id,
       text: `${event.text.trim()} ${eligibilityCopy}`,
+      type: event.type,
     })
   )
 }
