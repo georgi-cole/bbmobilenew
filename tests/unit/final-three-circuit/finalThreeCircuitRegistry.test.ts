@@ -13,6 +13,7 @@ describe('Final Three Circuit registry contract', () => {
     expect(game?.implementation).toBe('react')
     expect(game?.reactComponentKey).toBe('FinalThreeCircuit')
     expect(game?.authoritative).toBe(true)
+    expect(game?.instructions.join(' ')).toContain('Warden Escape')
     expect(getAllGames().some((entry) => entry.key === 'finalThreeCircuit')).toBe(true)
   })
 
