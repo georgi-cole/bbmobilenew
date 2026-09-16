@@ -44,7 +44,8 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
   useEffect(() => {
     if (remainingMs > 0 || status !== 'playing') return
     setStatus('timeout')
-    onFinish(0.08)
+    const timer = window.setTimeout(() => onFinish(0.08), 520)
+    return () => window.clearTimeout(timer)
   }, [onFinish, remainingMs, status])
 
   const validMoves = useMemo(
@@ -64,7 +65,8 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
 
     if (nextWarden === nextPlayer) {
       setStatus('caught')
-      onFinish(Math.max(0.06, Math.min(0.22, nextMoves / board.moveBudget * 0.22)))
+      const accuracy = Math.max(0.06, Math.min(0.22, nextMoves / board.moveBudget * 0.22))
+      window.setTimeout(() => onFinish(accuracy), 620)
       return
     }
 
@@ -72,80 +74,127 @@ export default function WardenEscapeChallenge({ tier, onFinish }: WardenEscapeCh
       const moveRatio = Math.max(0, 1 - nextMoves / Math.max(1, board.moveBudget))
       const timeRatio = Math.max(0, Math.min(1, remainingMs / timeLimitMs))
       setStatus('escaped')
-      onFinish(Math.min(1, 0.78 + moveRatio * 0.14 + timeRatio * 0.08))
+      const accuracy = Math.min(1, 0.78 + moveRatio * 0.14 + timeRatio * 0.08)
+      window.setTimeout(() => onFinish(accuracy), 700)
       return
     }
 
     if (nextMoves >= board.moveBudget) {
       setStatus('caught')
-      onFinish(0.1)
+      window.setTimeout(() => onFinish(0.1), 620)
     }
   }
 
   return (
-    <div className="f3-circuit__risk-game f3-circuit__warden-game">
+    <div className={`f3-circuit__risk-game f3-circuit__warden-game is-${status}`}>
+      <div className="f3-circuit__warden-rule-strip" aria-label="Movement rule">
+        <div className="is-player-rule">
+          <span className="f3-circuit__mini-person" aria-hidden="true"><i /><b /></span>
+          <div><small>You move</small><strong>1 tile</strong></div>
+        </div>
+        <span className="f3-circuit__versus">VS</span>
+        <div className="is-warden-rule">
+          <span className="f3-circuit__mini-warden" aria-hidden="true"><i /></span>
+          <div><small>Guard moves</small><strong>2 tiles</strong></div>
+        </div>
+      </div>
+
       <div className="f3-circuit__challenge-meter">
         <span>{Math.max(0, board.moveBudget - moves)} moves left</span>
         <span>{formatTime(remainingMs)}</span>
-        <span>Guard moves 2 tiles</span>
+        <span>{board.size}×{board.size} block</span>
       </div>
 
-      <p className="f3-circuit__copy">
-        <strong>Outsmart the guard, don’t outrun him.</strong> Every time you move one tile, the guard moves up to two. He always tries to close the horizontal gap first, then the vertical gap. Use the walls to bait and trap him before you head for the exit.
+      <p className="f3-circuit__copy f3-circuit__warden-copy">
+        <strong>Outsmart the guard, don’t outrun him.</strong> He closes the horizontal gap first, then the vertical gap. Lead him into a wall pocket, break away, and reach the illuminated exit.
       </p>
 
-      <div
-        className="f3-circuit__warden-grid"
-        style={{ gridTemplateColumns: `repeat(${board.size}, minmax(0, 1fr))` }}
-        aria-label="Warden Escape board"
-      >
-        {Array.from({ length: board.size * board.size }, (_unused, cell) => {
-          const wall = board.walls.has(cell)
-          const isPlayer = cell === player
-          const isWarden = cell === warden
-          const isExit = cell === board.exit
-          const canMove = validMoves.has(cell) && !wall && !isWarden
-          const classNames = [
-            wall ? 'is-wall' : '',
-            isPlayer ? 'is-player' : '',
-            isWarden ? 'is-warden' : '',
-            isExit ? 'is-exit' : '',
-            canMove ? 'is-valid-move' : '',
-          ].filter(Boolean).join(' ')
+      <div className="f3-circuit__prison-frame">
+        <div className="f3-circuit__prison-lights" aria-hidden="true"><span /><span /><span /></div>
+        <div
+          className="f3-circuit__warden-grid"
+          style={{ gridTemplateColumns: `repeat(${board.size}, minmax(0, 1fr))` }}
+          aria-label="Warden Escape board"
+        >
+          {Array.from({ length: board.size * board.size }, (_unused, cell) => {
+            const wall = board.walls.has(cell)
+            const isPlayer = cell === player
+            const isWarden = cell === warden
+            const isExit = cell === board.exit
+            const canMove = validMoves.has(cell) && !wall && !isWarden
+            const classNames = [
+              wall ? 'is-wall' : '',
+              isPlayer ? 'is-player' : '',
+              isWarden ? 'is-warden' : '',
+              isExit ? 'is-exit' : '',
+              canMove ? 'is-valid-move' : '',
+            ].filter(Boolean).join(' ')
 
-          return (
-            <button
-              type="button"
-              key={cell}
-              className={classNames}
-              disabled={!canMove || status !== 'playing'}
-              onClick={() => chooseCell(cell)}
-              aria-label={
-                isPlayer
-                  ? 'Your position'
-                  : isWarden
-                    ? 'Warden'
-                    : isExit
-                      ? 'Exit'
-                      : wall
-                        ? 'Wall'
-                        : `Cell ${cell + 1}`
-              }
-            >
-              {isPlayer ? '●' : isWarden ? '◆' : isExit ? '◎' : ''}
-            </button>
-          )
-        })}
+            return (
+              <button
+                type="button"
+                key={cell}
+                className={classNames}
+                disabled={!canMove || status !== 'playing'}
+                onClick={() => chooseCell(cell)}
+                aria-label={
+                  isPlayer
+                    ? 'Your position'
+                    : isWarden
+                      ? 'Warden'
+                      : isExit
+                        ? 'Exit'
+                        : wall
+                          ? 'Wall'
+                          : `Cell ${cell + 1}`
+                }
+              >
+                {isPlayer && (
+                  <span className="f3-circuit__player-token" key={`player-${player}-${moves}`} aria-hidden="true">
+                    <i className="f3-circuit__player-head" />
+                    <i className="f3-circuit__player-body" />
+                  </span>
+                )}
+                {isWarden && (
+                  <span className="f3-circuit__warden-token" key={`warden-${warden}-${moves}`} aria-hidden="true">
+                    <i className="f3-circuit__warden-cap" />
+                    <i className="f3-circuit__warden-visor" />
+                    <i className="f3-circuit__warden-body" />
+                  </span>
+                )}
+                {isExit && !isPlayer && (
+                  <span className="f3-circuit__exit-token" aria-hidden="true"><i />EXIT</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {status !== 'playing' && (
+          <div className={`f3-circuit__warden-status is-${status}`} role="status">
+            <strong>
+              {status === 'escaped' ? 'ESCAPED' : status === 'caught' ? 'CAUGHT' : 'LOCKDOWN'}
+            </strong>
+            <span>
+              {status === 'escaped'
+                ? 'Route cleared'
+                : status === 'caught'
+                  ? 'The guard closed the route'
+                  : 'Time expired'}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="f3-circuit__warden-legend">
         <span><i className="is-player" />You</span>
         <span><i className="is-warden" />Guard</span>
         <span><i className="is-exit" />Exit</span>
+        <span><i className="is-move" />Legal move</span>
       </div>
 
       <p className="f3-circuit__hint">
-        The guard does not intelligently route around the maze: horizontal pursuit has priority. Getting him stuck on the wrong side of a wall is the key to escaping.
+        The guard follows a predictable rule rather than finding the smartest route. The walls are your weapon: manipulate his horizontal-first pursuit until he traps himself.
       </p>
     </div>
   )
