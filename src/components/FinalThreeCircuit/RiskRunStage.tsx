@@ -7,7 +7,6 @@ import {
   type RiskTier,
 } from './finalThreeCircuitLogic'
 import FinalOverrideChallenge from './FinalOverrideChallenge'
-import LaserRunChallenge from './LaserRunChallenge'
 import PowerBalanceChallenge from './PowerBalanceChallenge'
 import WardenEscapeChallenge from './WardenEscapeChallenge'
 
@@ -21,12 +20,8 @@ type FinalStake = (typeof FINAL_PUSH_STAKES)[number]
 
 const TASKS = [
   {
-    title: 'Laser Run',
-    copy: 'Read the corridor ahead and switch lanes before each laser gate reaches you.',
-  },
-  {
     title: 'Warden Escape',
-    copy: 'Cross the maze while the warden actively calculates the shortest route toward you.',
+    copy: 'Bait a two-step prison guard into the walls, then break for the exit before he closes the route.',
   },
   {
     title: 'Power Balance',
@@ -41,9 +36,9 @@ const LABELS: Record<RiskTier, string> = {
 }
 
 const COPY: Record<RiskTier, string> = {
-  safe: 'More time and breathing room · lower ceiling',
-  standard: 'Tighter rules · balanced reward',
-  risky: 'Fast, unforgiving, exact · highest ceiling',
+  safe: 'Smaller prison / wider power tolerance · lower ceiling',
+  standard: 'Larger puzzle / tighter tolerance · balanced reward',
+  risky: 'Maximum-security puzzle / exact power target · highest ceiling',
 }
 
 export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
@@ -116,9 +111,8 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
           </div>
           <span>Max {RISK_TIER_MAX_POINTS[tier]}</span>
         </div>
-        {task === 0 && <LaserRunChallenge seed={seed} tier={tier} onFinish={finishChallenge} />}
-        {task === 1 && <WardenEscapeChallenge tier={tier} onFinish={finishChallenge} />}
-        {task === 2 && <PowerBalanceChallenge seed={seed} tier={tier} onFinish={finishChallenge} />}
+        {task === 0 && <WardenEscapeChallenge tier={tier} onFinish={finishChallenge} />}
+        {task === 1 && <PowerBalanceChallenge seed={seed} tier={tier} onFinish={finishChallenge} />}
       </section>
     )
   }
@@ -126,7 +120,7 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
   if (view === 'result') {
     return (
       <section className="f3-circuit__arena-card f3-circuit__arena-card--result">
-        <p className="f3-circuit__eyebrow">Challenge clear</p>
+        <p className="f3-circuit__eyebrow">Challenge complete</p>
         <h2>{TASKS[task].title}</h2>
         <div className="f3-circuit__big-score">+{lastScore}</div>
         <p className="f3-circuit__copy">Risk Run bank: {bank}</p>
