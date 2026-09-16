@@ -11,10 +11,7 @@ import {
   loadCachedVipEntitlement,
   type StoreEntitlements,
 } from '../vip/vipStorage'
-import {
-  hasEffectiveStoreEntitlement,
-  isEffectiveVipActive,
-} from '../vip/effectiveEntitlements'
+import { hasEffectiveStoreEntitlement, isEffectiveVipActive } from '../vip/effectiveEntitlements'
 import type { StoreEntitlementKey, StoreProductKey } from '../vip/vipConfig'
 
 export type VipStatus = 'idle' | 'loading' | 'ready' | 'purchasing' | 'restoring' | 'error'
