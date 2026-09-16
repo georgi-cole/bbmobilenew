@@ -135,7 +135,7 @@ describe('Social premium hardening', () => {
       schemaVersion: 1,
       revision: 'test-remote',
       economy: {
-        normal: { weeklyEnergy: 7, energyCap: 8, carryOver: true },
+        normal: { weeklyEnergy: 7, energyCap: 8, carryOver: false },
         drama: { weeklyEnergy: 12, energyCap: 36, carryOver: false },
       },
       content: {
@@ -150,7 +150,7 @@ describe('Social premium hardening', () => {
 
     expect(runtime.revision).toBe('test-remote')
     expect(runtime.economy.normal.weeklyEnergy).toBe(7)
-    expect(runtime.economy.normal.carryOver).toBe(false)
+    expect(runtime.economy.normal.carryOver).toBe(true)
     expect(runtime.economy.drama.weeklyEnergy).toBe(12)
     expect(runtime.economy.drama.carryOver).toBe(true)
     expect(runtime.content.scenarioLines.generic_check_in).toEqual([
