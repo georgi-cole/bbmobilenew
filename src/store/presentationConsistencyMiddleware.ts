@@ -127,7 +127,7 @@ function deferBackdoorAdvance(api: MiddlewareAPI, action: unknown): boolean {
     observer = null
     if (mountCheckTimer !== null) window.clearTimeout(mountCheckTimer)
     mountCheckTimer = null
-    window.requestAnimationFrame(() => api.dispatch(action))
+    window.requestAnimationFrame(() => api.dispatch(action as { type: string }))
   }
 
   const watchForCompletion = () => {
