@@ -364,6 +364,15 @@ export function useSafetyFlow({
     replacementId: string
   } | null>(null)
   const pendingReplacementDispatchRef = useRef<(() => void) | null>(null)
+  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = usePersistedGameScreenKey(
+    'ai-replacement-ceremony',
+    game.gameId ?? `season-${game.season}`
+  )
+  const getReplacementCeremonyKey = useCallback(
+    (replacementId: string) =>
+      `w${game.week}-repl-${activeSpecialVeto ?? 'standard'}-${replacementId}`,
+    [activeSpecialVeto, game.week]
+  )
 
   const handleReplacementCeremonyDone = useCallback(() => {
     pendingReplacementDispatchRef.current?.()
@@ -449,6 +458,10 @@ export function useSafetyFlow({
       }
 
       const replacementNames = replacementPlayers.map((player) => player.name).join(' & ')
+      // Pre-consume the store-driven recovery key. Once this animation commits,
+      // the reducer will look identical to a Confessional commit; without this
+      // marker the same spotlight would immediately replay a second time.
+      setAiReplacementConsumedKey(getReplacementCeremonyKey(id))
       pendingReplacementDispatchRef.current = onCommit
       setPendingReplacementCeremony({
         tiles,
@@ -458,7 +471,13 @@ export function useSafetyFlow({
         replacementId: id,
       })
     },
-    [game, getTileRect, activeSpecialVeto]
+    [
+      activeSpecialVeto,
+      game,
+      getReplacementCeremonyKey,
+      getTileRect,
+      setAiReplacementConsumedKey,
+    ]
   )
 
   const handleReplacementNominee = useCallback(
@@ -499,38 +518,32 @@ export function useSafetyFlow({
     return nonProtected.length >= neededCount ? nonProtected : coupBaseOptions
   })()
 
-  // ── AI replacement nominee animation ───────────────────────────────────
-  // When an AI LOH picks a replacement nominee, the store already has the
-  // replacement committed. We detect this and show an animation.
-  const [aiReplacementConsumedKey, setAiReplacementConsumedKey] = usePersistedGameScreenKey(
-    'ai-replacement-ceremony',
-    game.gameId ?? `season-${game.season}`
-  )
-
+  // ── Store-driven replacement nominee animation ───────────────────────────
+  // AI replacements and Confessional human-LOH replacements are already committed
+  // before GameScreen can animate them. Use one persisted key for both paths.
   const aiReplacementKey = (() => {
-    // Only trigger on pos_ceremony_results phase when nominees just changed (replacement happened)
-    // and no human decision is pending.
     if (game.phase !== 'pos_ceremony_results') return ''
-    if (game.replacementNeeded) return '' // human LOH hasn't picked yet
+    if (game.replacementNeeded) return ''
     if (game.awaitingPovDecision || game.awaitingPovSaveTarget) return ''
-    // Gate on the veto actually being used: if no player was saved, skip animation.
     if (!game.povSavedId) return ''
-    // Wait until the staged replacement flow is complete (step 0 = replacement committed).
     if (game.aiReplacementStep) return ''
     if (game.voxPopuli?.status === 'active') {
       const replacementIds = game.voxPopuli.lastReplacementNomineeIds ?? []
       if (replacementIds.length === 0) return ''
       return `w${game.week}-vox-repl-${[...replacementIds].sort().join(',')}`
     }
-    // If the AI LOH handled it, nomineeIds was updated in the same advance() call
-    // and no awaiting flags are set. Use a key based on week + nomineeIds.
-    const lohPlayer = game.players.find((p) => p.id === game.lohId)
-    if (lohPlayer?.isUser) return '' // human LOH handles this differently
-    return `w${game.week}-repl-${[...game.nomineeIds].sort().join(',')}`
+    const replacementId = game.nomineeIds[game.nomineeIds.length - 1]
+    return replacementId ? getReplacementCeremonyKey(replacementId) : ''
   })()
 
+  const currentSaveCeremonyKey = game.povSavedId ? getSaveCeremonyKey(game.povSavedId) : ''
+  const saveCeremonyStillNeedsPresentation =
+    currentSaveCeremonyKey !== '' && consumedSaveCeremonyKey !== currentSaveCeremonyKey
   const showAiReplacementAnim =
-    aiReplacementKey !== '' && aiReplacementKey !== aiReplacementConsumedKey
+    aiReplacementKey !== '' &&
+    aiReplacementKey !== aiReplacementConsumedKey &&
+    !pendingSaveCeremony &&
+    !saveCeremonyStillNeedsPresentation
   const activeReplacementAnimationTargetIds = showAiReplacementAnim
     ? game.voxPopuli?.status === 'active'
       ? (game.voxPopuli.lastReplacementNomineeIds ?? [])
