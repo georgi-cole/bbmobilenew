@@ -44,7 +44,7 @@ function fallbackParticipants(
     id,
     name: index === 0 ? 'You' : `Finalist ${index + 1}`,
     isHuman: index === 0,
-    precomputedScore: index === 1 ? 216 : index === 2 ? 204 : 0,
+    precomputedScore: index === 1 ? 232 : index === 2 ? 216 : 0,
     previousPR: null,
   }))
 }
@@ -56,6 +56,13 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
+}
+
+function normalizeCircuitAiTotal(score: number): number {
+  // Minigame Lab supplies generic 0-100 preview scores. Hosted Final 3 runs use
+  // the Circuit's native 0-300 score economy, so lift only preview-scale values.
+  if (score >= 0 && score <= 100) return Math.round(150 + score * 1.2)
+  return score
 }
 
 export default function FinalThreeCircuit({
@@ -78,7 +85,7 @@ export default function FinalThreeCircuit({
       result[player.id] =
         player.id === human.id
           ? humanStages
-          : splitAiCircuitScore(player.precomputedScore, seed, player.id)
+          : splitAiCircuitScore(normalizeCircuitAiTotal(player.precomputedScore), seed, player.id)
     })
     return result
   }, [human.id, humanStages, roster, seed])
@@ -102,7 +109,12 @@ export default function FinalThreeCircuit({
     [roster, totals]
   )
 
-  const currentStage = view === 'signal' || view === 'summary1' ? 1 : view === 'sequence' || view === 'summary2' ? 2 : 3
+  const currentStage =
+    view === 'signal' || view === 'summary1'
+      ? 1
+      : view === 'sequence' || view === 'summary2'
+        ? 2
+        : 3
 
   const completeSignal = (score: number) => {
     setHumanStages((current) => [score, current[1], current[2]])
