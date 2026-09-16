@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAppSelector } from '../../store/hooks'
 import './AllPowerFauxTvEffect.css'
 
-const EFFECT_MS = 2400
+const EFFECT_MS = 2300
 
 function seenStorageKey(gameId: string | null | undefined, week: number, winnerId: string): string {
   return `big-eye:all-power:${gameId ?? 'game'}:${week}:${winnerId}`
@@ -41,16 +41,18 @@ export default function AllPowerFauxTvEffect() {
     const target = zone?.querySelector<HTMLElement>('.tv-zone__viewport') ?? null
     if (!zone || !target) return undefined
 
-    try {
-      sessionStorage.setItem(triggerKey, '1')
-    } catch {
-      // Presentation is still safe if storage is unavailable (private/embedded contexts).
-    }
-
     zone.classList.add('tv-zone--all-power')
     setViewport(target)
     setActive(true)
+
     const timer = window.setTimeout(() => {
+      try {
+        // Mark the beat only after it has actually completed. This keeps React
+        // StrictMode's development mount/cleanup cycle from consuming it unseen.
+        sessionStorage.setItem(triggerKey, '1')
+      } catch {
+        // Presentation is still safe if storage is unavailable.
+      }
       zone.classList.remove('tv-zone--all-power')
       setActive(false)
       setViewport(null)
@@ -59,6 +61,8 @@ export default function AllPowerFauxTvEffect() {
     return () => {
       window.clearTimeout(timer)
       zone.classList.remove('tv-zone--all-power')
+      setActive(false)
+      setViewport(null)
     }
   }, [triggerKey])
 
@@ -66,9 +70,16 @@ export default function AllPowerFauxTvEffect() {
 
   return createPortal(
     <div className="all-power-faux-tv" role="status" aria-live="assertive">
-      <span className="all-power-faux-tv__flare" aria-hidden="true" />
-      <div className="all-power-faux-tv__message">
-        <strong>{winnerName}</strong> now has <em>ALL</em> the power
+      <span className="all-power-faux-tv__sweep" aria-hidden="true" />
+      <div className="all-power-faux-tv__content">
+        <span className="all-power-faux-tv__eyebrow">
+          <span className="all-power-faux-tv__dot" aria-hidden="true" />
+          POWER SHIFT
+        </span>
+        <strong className="all-power-faux-tv__title">ALL THE POWER</strong>
+        <span className="all-power-faux-tv__subtitle">
+          {winnerName} now controls both LOH and Safety.
+        </span>
       </div>
     </div>,
     viewport
