@@ -1,0 +1,39 @@
+name: Temporary PR 1495 Formatter
+
+on:
+  push:
+    branches:
+      - feat/social-resource-recalibration
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/social-resource-recalibration
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format PR 1495 files
+        run: >-
+          npx prettier --write
+          src/social/dramaModeConfig.ts
+          src/social/relationshipResourcePolicyMiddleware.ts
+      - name: Commit formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/social/dramaModeConfig.ts
+          git add src/social/relationshipResourcePolicyMiddleware.ts
+          git commit -m "Format PR 1495 changed files"
+          git push origin HEAD:feat/social-resource-recalibration
