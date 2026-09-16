@@ -1,16 +1,8 @@
 import type { StoreEntitlementKey } from './vipConfig'
 import { getSeasonLaunchIntent } from '../modes/seasonLaunchIntent'
-import { IS_ADMIN_BUILD } from '../config/buildTarget'
+import { hasEffectiveStoreEntitlement, isEffectiveVipActive } from './effectiveEntitlements'
 
 const VIP_STORAGE_KEY = 'bbmobilenew:vip:v2'
-
-/**
- * Temporary public testing switch. Set to false before the release build that
- * connects store purchases or rewarded ads. It affects store entitlements only,
- * never ordinary gameplay-state locks.
- */
-export const TEMPORARY_STORE_UNLOCKS_ENABLED =
-  IS_ADMIN_BUILD || import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true'
 
 export interface StoreEntitlements {
   survivalMode: boolean
@@ -93,18 +85,14 @@ export function saveCachedVipEntitlement(value: PersistedVipEntitlement): void {
 }
 
 export function hasCachedVipAccess(): boolean {
-  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
-  return loadCachedVipEntitlement().isActive
+  return isEffectiveVipActive(loadCachedVipEntitlement())
 }
 
 export function hasCachedStoreAccess(entitlement: StoreEntitlementKey): boolean {
-  if (TEMPORARY_STORE_UNLOCKS_ENABLED) return true
-
   // Valentine's Day and Season 14 are built-in Classic Cupid events rather than
   // paid-expansion launches. During Classic construction, let the scheduler
   // evaluate those two automatic rules even when Cupid's menu entitlement is absent.
   if (entitlement === 'cupidArrow' && getSeasonLaunchIntent() === 'classic') return true
 
-  const cached = loadCachedVipEntitlement()
-  return cached.isActive || cached.entitlements[entitlement]
+  return hasEffectiveStoreEntitlement(loadCachedVipEntitlement(), entitlement)
 }

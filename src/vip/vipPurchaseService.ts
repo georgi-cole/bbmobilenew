@@ -13,7 +13,8 @@ import {
   type StoreProductKey,
 } from './vipConfig'
 import { createEmptyStoreEntitlements, type StoreEntitlements } from './vipStorage'
-import { IS_ADMIN_BUILD } from '../config/buildTarget'
+import { TEMPORARY_STORE_UNLOCKS_ENABLED } from './effectiveEntitlements'
+import { IS_MOBILE_DEV_BUILD } from '../config/buildTarget'
 
 export interface StoreProduct {
   key: StoreProductKey
@@ -131,10 +132,24 @@ export async function loadVipStoreSnapshot(options?: {
   restore?: boolean
 }): Promise<VipStoreSnapshot> {
   const verifiedAt = new Date().toISOString()
+
+  // A locally installed mobile-dev build deliberately does not contact StoreKit
+  // or Google Play. Raw ownership stays false; the effective entitlement layer
+  // supplies developer access without pretending a purchase occurred.
+  if (IS_MOBILE_DEV_BUILD) {
+    return {
+      billingAvailable: false,
+      isActive: false,
+      entitlements: createEmptyStoreEntitlements(),
+      products: {},
+      verifiedAt,
+    }
+  }
+
   if (!isNativeBillingPlatform()) {
     return {
       billingAvailable: false,
-      isActive: IS_ADMIN_BUILD || import.meta.env.VITE_VIP_DEV_ENTITLEMENT === 'true',
+      isActive: TEMPORARY_STORE_UNLOCKS_ENABLED,
       entitlements: createEmptyStoreEntitlements(),
       products: {},
       verifiedAt,
@@ -164,6 +179,9 @@ export async function loadVipStoreSnapshot(options?: {
 }
 
 export async function purchaseStoreProduct(productKey: StoreProductKey): Promise<VipStoreSnapshot> {
+  if (IS_MOBILE_DEV_BUILD) {
+    throw new Error('Purchases are disabled in the mobile developer build.')
+  }
   if (!isNativeBillingPlatform()) {
     throw new Error('Purchases are only available in the iOS and Android app.')
   }
