@@ -174,7 +174,9 @@ export default function Store() {
               {developerAccess
                 ? 'Developer access'
                 : vipProduct?.price ||
-                  (storeState.billingAvailable ? 'Product unavailable' : 'Available on iOS and Android')}
+                  (storeState.billingAvailable
+                    ? 'Product unavailable'
+                    : 'Available on iOS and Android')}
             </strong>
             {vipProduct && !developerAccess && <span>one time</span>}
           </div>
