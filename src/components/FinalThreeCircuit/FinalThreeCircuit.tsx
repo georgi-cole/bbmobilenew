@@ -7,6 +7,7 @@ import SequenceStage from './SequenceStage'
 import RiskRunStage from './RiskRunStage'
 import './FinalThreeCircuit.css'
 import './FinalThreeCircuitPolish.css'
+import './FinalThreeCircuitMobile.css'
 
 interface CircuitParticipant {
   id: string
@@ -55,10 +56,13 @@ function fallbackParticipants(
   participants?: CircuitParticipant[],
   participantIds?: string[]
 ): CircuitParticipant[] {
-  if (participants && participants.length >= 3) return participants.slice(0, 3)
-  const ids = [...(participantIds ?? [])]
-  while (ids.length < 3) ids.push(`circuit-demo-${ids.length + 1}`)
-  return ids.slice(0, 3).map((id, index) => ({
+  if (participants && participants.length >= 2) return participants.slice(0, 3)
+
+  const ids = [...(participantIds ?? [])].slice(0, 3)
+  const desiredCount = ids.length === 2 ? 2 : 3
+  while (ids.length < desiredCount) ids.push(`circuit-demo-${ids.length + 1}`)
+
+  return ids.map((id, index) => ({
     id,
     name: index === 0 ? 'You' : `Finalist ${index + 1}`,
     isHuman: index === 0,
@@ -102,6 +106,7 @@ export default function FinalThreeCircuit({
     () => fallbackParticipants(participants, participantIds),
     [participantIds, participants]
   )
+  const finalPart = roster.length === 2 ? 2 : 1
   const human = roster.find((player) => player.isHuman) ?? roster[0]
   const [view, setView] = useState<View>('tutorialSignal')
   const [humanStages, setHumanStages] = useState<CircuitStageScores>([0, 0, 0])
@@ -203,20 +208,20 @@ export default function FinalThreeCircuit({
   }
 
   const summary = view === 'summary1' || view === 'summary2'
+  const showStandingsRail = summary || view === 'final'
   const summaryIndex = view === 'summary1' ? 0 : 1
   const stageName = summaryIndex === 0 ? 'Signal Hunt' : 'Sequence Builder'
   const winner = finalResult
     ? roster.find((player) => player.id === finalResult.ranking[0]) ?? roster[0]
     : null
   const humanFinalRank = finalResult ? finalResult.ranking.indexOf(human.id) + 1 : 0
-  const otherPartTwoPlayer = finalResult
-    ? roster.find(
-        (player) => player.id !== human.id && player.id !== finalResult.ranking[0]
-      )
-    : null
+  const otherPartTwoPlayer =
+    finalPart === 1 && finalResult
+      ? roster.find((player) => player.id !== human.id && player.id !== finalResult.ranking[0])
+      : null
 
   return (
-    <div className="f3-circuit" data-stage={currentStage} data-view={view}>
+    <div className="f3-circuit" data-stage={currentStage} data-view={view} data-final-part={finalPart}>
       <div className="f3-circuit__grain" aria-hidden="true" />
       <div className="f3-circuit__ambient f3-circuit__ambient--one" />
       <div className="f3-circuit__ambient f3-circuit__ambient--two" />
@@ -226,8 +231,8 @@ export default function FinalThreeCircuit({
       <div className="f3-circuit__shell">
         <header className="f3-circuit__hero">
           <div className="f3-circuit__hero-copy">
-            <p>Final HOH · Part 1</p>
-            <h1>Final Three Circuit</h1>
+            <p>Final HOH · Part {finalPart}</p>
+            {view === 'tutorialSignal' && <h1>Final Three Circuit</h1>}
           </div>
           <div className="f3-circuit__progress" aria-label={`Stage ${currentStage} of 3`}>
             {[1, 2, 3].map((stage) => (
@@ -236,30 +241,32 @@ export default function FinalThreeCircuit({
           </div>
         </header>
 
-        <section className="f3-circuit__finalist-rail" aria-label="Final Three standings">
-          {standings.map((player, index) => (
-            <div
-              className={[
-                'f3-circuit__finalist',
-                player.id === human.id ? 'is-human' : '',
-                index === 0 && completedStages > 0 ? 'is-leading' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              key={player.id}
-            >
-              <div className="f3-circuit__finalist-rank">#{index + 1}</div>
-              <div className="f3-circuit__avatar" aria-hidden="true">
-                {player.avatar ? <img src={player.avatar} alt="" /> : initials(player.name)}
+        {showStandingsRail && (
+          <section className="f3-circuit__finalist-rail" aria-label="Circuit standings">
+            {standings.map((player, index) => (
+              <div
+                className={[
+                  'f3-circuit__finalist',
+                  player.id === human.id ? 'is-human' : '',
+                  index === 0 && completedStages > 0 ? 'is-leading' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={player.id}
+              >
+                <div className="f3-circuit__finalist-rank">#{index + 1}</div>
+                <div className="f3-circuit__avatar" aria-hidden="true">
+                  {player.avatar ? <img src={player.avatar} alt="" /> : initials(player.name)}
+                </div>
+                <div className="f3-circuit__finalist-copy">
+                  <strong>{player.name}</strong>
+                  <span>{completedStages === 0 ? 'Ready' : `${totals[player.id] ?? 0} pts`}</span>
+                  <StageBars scores={displayStages[player.id]} completed={completedStages} />
+                </div>
               </div>
-              <div className="f3-circuit__finalist-copy">
-                <strong>{player.name}</strong>
-                <span>{completedStages === 0 ? 'Ready' : `${totals[player.id] ?? 0} pts`}</span>
-                <StageBars scores={displayStages[player.id]} completed={completedStages} />
-              </div>
-            </div>
-          ))}
-        </section>
+            ))}
+          </section>
+        )}
 
         <main className="f3-circuit__main">
           {view === 'tutorialSignal' && (
@@ -279,9 +286,7 @@ export default function FinalThreeCircuit({
               <h2>{stageName}</h2>
               <div className="f3-circuit__stage-results">
                 {[...roster]
-                  .sort(
-                    (a, b) => displayStages[b.id][summaryIndex] - displayStages[a.id][summaryIndex]
-                  )
+                  .sort((a, b) => displayStages[b.id][summaryIndex] - displayStages[a.id][summaryIndex])
                   .map((player, index) => (
                     <div key={player.id} className={player.id === human.id ? 'is-human' : ''}>
                       <span>#{index + 1} {player.name}</span>
@@ -294,7 +299,7 @@ export default function FinalThreeCircuit({
                 className="f3-circuit__primary"
                 onClick={() => setView(summaryIndex === 0 ? 'tutorialSequence' : 'risk')}
               >
-                {summaryIndex === 0 ? 'Learn Sequence Builder' : 'Enter Risk Run'}
+                {summaryIndex === 0 ? 'Next stage' : 'Enter Risk Run'}
               </button>
             </section>
           )}
@@ -304,8 +309,8 @@ export default function FinalThreeCircuit({
               <div className="f3-circuit__winner-aura" aria-hidden="true" />
               <div className="f3-circuit__final-results-header">
                 <div>
-                  <p className="f3-circuit__eyebrow">Final Three Circuit complete</p>
-                  <h2>Part 1 is decided</h2>
+                  <p className="f3-circuit__eyebrow">Circuit complete</p>
+                  <h2>Part {finalPart} is decided</h2>
                 </div>
                 <div className="f3-circuit__winner-seal" aria-hidden="true">
                   <span>1</span>
@@ -314,13 +319,9 @@ export default function FinalThreeCircuit({
               </div>
 
               <div className="f3-circuit__qualification-callout">
-                <span className="f3-circuit__qualification-kicker">Direct qualifier</span>
+                <span className="f3-circuit__qualification-kicker">Part {finalPart} winner</span>
                 <strong>{winner.name}</strong>
-                <p>
-                  {winner.id === human.id
-                    ? 'You won Part 1 and advance directly to Final HOH Part 3.'
-                    : `${winner.name} advances directly to Final HOH Part 3.`}
-                </p>
+                <p>{winner.id === human.id ? 'You advance to Final HOH Part 3.' : `${winner.name} advances to Final HOH Part 3.`}</p>
               </div>
 
               <div className="f3-circuit__final-scoreboard" role="table" aria-label="Final Three Circuit results">
@@ -355,15 +356,19 @@ export default function FinalThreeCircuit({
                   <>
                     <span>Next stop</span>
                     <strong>Final HOH Part 3</strong>
-                    <p>The other two finalists will face each other in Part 2.</p>
+                    <p>{finalPart === 1 ? 'The other two finalists now play Part 2.' : 'You earned the final Part 3 seat.'}</p>
                   </>
-                ) : (
+                ) : finalPart === 1 ? (
                   <>
                     <span>Your next challenge</span>
                     <strong>Final HOH Part 2</strong>
-                    <p>
-                      You and {otherPartTwoPlayer?.name ?? 'the other non-winner'} compete for the final Part 3 seat.
-                    </p>
+                    <p>You and {otherPartTwoPlayer?.name ?? 'the other non-winner'} compete for the final Part 3 seat.</p>
+                  </>
+                ) : (
+                  <>
+                    <span>Final HOH</span>
+                    <strong>Your competition run ends here</strong>
+                    <p>You remain one of the Final 3, but the Part 3 seat goes to {winner.name}.</p>
                   </>
                 )}
               </div>
