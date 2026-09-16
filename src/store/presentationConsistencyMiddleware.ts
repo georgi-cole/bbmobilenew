@@ -109,9 +109,9 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
   const type = (action as GenericAction | null)?.type
   return Boolean(
     type === 'game/advance' &&
-      state.phase === 'pos_ceremony_results' &&
-      state.lohNominationPlan?.revealPending === true &&
-      state.lohNominationPlan.revealed !== true
+    state.phase === 'pos_ceremony_results' &&
+    state.lohNominationPlan?.revealPending === true &&
+    state.lohNominationPlan.revealed !== true
   )
 }
 
