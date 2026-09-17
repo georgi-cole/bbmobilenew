@@ -121,7 +121,7 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
       game: {
         phase: 'week_start',
         week: 4,
-        tvFeed: [],
+        tvFeed: [] as unknown[],
         players: [],
         replacementNeeded: false,
         voxPopuli: { status: 'active' },
