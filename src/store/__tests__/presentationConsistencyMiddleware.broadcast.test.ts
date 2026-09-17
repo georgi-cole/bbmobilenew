@@ -47,6 +47,61 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
     )
   })
 
+  it('adds missing live scope to any event explicitly forced onto Faux TV', () => {
+    const next = runMiddleware({
+      type: 'game/addTvEvent',
+      payload: {
+        text: 'A high-priority runtime prompt.',
+        type: 'game',
+        channels: ['tv', 'mainLog'],
+        meta: {
+          forceOnTv: true,
+          broadcastPriority: 'critical',
+          major: 'runtime_prompt',
+        },
+      },
+    })
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          meta: expect.objectContaining({
+            forceOnTv: true,
+            phase: 'nomination_results',
+            week: 4,
+          }),
+        }),
+      })
+    )
+  })
+
+  it('preserves an explicitly authored phase/day on a forced Faux TV event', () => {
+    const next = runMiddleware({
+      type: 'game/addTvEvent',
+      payload: {
+        text: 'Already scoped.',
+        type: 'game',
+        meta: {
+          forceOnTv: true,
+          phase: 'week_end',
+          week: 3,
+        },
+      },
+    })
+
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          meta: expect.objectContaining({
+            forceOnTv: true,
+            phase: 'week_end',
+            week: 3,
+          }),
+        }),
+      })
+    )
+  })
+
   it('leaves ordinary TV events untouched', () => {
     const action = {
       type: 'game/addTvEvent',
