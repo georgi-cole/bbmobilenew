@@ -22,9 +22,10 @@ function runHydrationSync(options: {
   }
   const next = vi.fn((nextAction) => nextAction)
 
-  voxPublicModeSyncMiddleware(api as never)(next as never)(
-    { type: hydrateGame.type, payload: {} } as never
-  )
+  voxPublicModeSyncMiddleware(api as never)(next as never)({
+    type: hydrateGame.type,
+    payload: {},
+  } as never)
 
   return { api, next }
 }
@@ -47,7 +48,8 @@ describe('voxPublicModeSyncMiddleware', () => {
 
   it('does not alter non-Vox or already-synchronized saves', () => {
     expect(
-      runHydrationSync({ active: false, gamePublicMode: false, settingPublicMode: true }).api.dispatch
+      runHydrationSync({ active: false, gamePublicMode: false, settingPublicMode: true }).api
+        .dispatch
     ).not.toHaveBeenCalled()
     expect(
       runHydrationSync({ active: true, gamePublicMode: true, settingPublicMode: true }).api.dispatch
