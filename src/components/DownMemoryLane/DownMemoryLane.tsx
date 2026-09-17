@@ -87,7 +87,10 @@ export default function DownMemoryLane({
   }, [participantIds, participants])
 
   const realQuestionBank = useMemo(() => buildMemoryLaneQuestionBank(game, seed), [game, seed])
-  const usingLabPreview = import.meta.env.DEV && realQuestionBank.length < 4
+  const usingLabPreview =
+    import.meta.env.DEV &&
+    window.location.hash.includes('/minigame-lab') &&
+    realQuestionBank.length < 4
   const questionBank = useMemo(
     () =>
       usingLabPreview
