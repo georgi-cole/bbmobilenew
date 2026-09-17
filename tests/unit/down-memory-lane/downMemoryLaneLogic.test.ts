@@ -238,6 +238,26 @@ describe('Down Memory Lane question bank', () => {
 
   it('uses Vox audience history when that mode is active', () => {
     const state = seasonState({
+      history: [
+        {
+          type: 'seasonReceipt:publicSave',
+          week: 2,
+          timestamp: 2_000,
+          data: { playerId: 'alex' },
+        },
+        {
+          type: 'seasonReceipt:publicSave',
+          week: 5,
+          timestamp: 5_000,
+          data: { playerId: 'alex' },
+        },
+        {
+          type: 'seasonReceipt:publicSave',
+          week: 4,
+          timestamp: 4_000,
+          data: { playerId: 'maya' },
+        },
+      ],
       voxPopuli: {
         scheduledSeason: 1,
         status: 'active',
@@ -268,6 +288,11 @@ describe('Down Memory Lane question bank', () => {
       questions.some(
         (question) =>
           question.id === 'vox-most-audience-ballots' && question.correctPlayerId === 'alex'
+      )
+    ).toBe(true)
+    expect(
+      questions.some(
+        (question) => question.id === 'vox-most-pos-saves' && question.correctPlayerId === 'alex'
       )
     ).toBe(true)
   })

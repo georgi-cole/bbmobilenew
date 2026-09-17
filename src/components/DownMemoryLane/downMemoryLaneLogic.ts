@@ -217,12 +217,33 @@ function pushQuestion(
 }
 
 function publicSaveCounts(state: GameState): Record<string, number> {
-  const counts: Record<string, number> = { ...(state.voxPopuli?.safetySaveCounts ?? {}) }
+  const counts: Record<string, number> = {}
+  const seen = new Set<string>()
+
+  for (const event of state.history ?? []) {
+    if (event.type !== 'seasonReceipt:publicSave') continue
+    const id = typeof event.data.playerId === 'string' ? event.data.playerId : null
+    if (!id) continue
+    const key = `${event.week}:${id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    counts[id] = (counts[id] ?? 0) + 1
+  }
+
+  // Older Drama-mode saves already have a durable event id ending in the
+  // actually saved player id. Use them as a backwards-compatible fallback,
+  // but never treat the nominee list's first member as the saved player.
+  const playersByLongestId = [...seasonPlayers(state)].sort(
+    (left, right) => right.id.length - left.id.length
+  )
   for (const event of state.social?.dramaNetwork?.events ?? []) {
     if (!event.id.startsWith('public-save-')) continue
-    const id = event.participantIds[0]
-    if (!id) continue
-    counts[id] = (counts[id] ?? 0) + 1
+    const saved = playersByLongestId.find((player) => event.id.endsWith(`-${player.id}`))
+    if (!saved) continue
+    const key = `${event.week}:${saved.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    counts[saved.id] = (counts[saved.id] ?? 0) + 1
   }
   return counts
 }
@@ -692,7 +713,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (firstEvicted) {
     pushQuestion(questions, state, seed, {
       id: 'first-evicted',
-      prompt: 'The season’s first elimination sent which hubmate out of the game?',
+      prompt: `The season’s first elimination happened in Week ${firstEvicted.evictedAtWeek ?? '?'}. Which hubmate left the game?`,
       correctPlayerId: firstEvicted.id,
       category: 'milestone',
       difficulty: 0.28,
@@ -704,7 +725,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (fourth.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'fourth-place',
-      prompt: 'At the final elimination before the Final 3, which hubmate left the game?',
+      prompt: `Just before the Final 3, Week ${fourth[0].evictedAtWeek ?? '?'} ended with which hubmate being eliminated?`,
       correctPlayerId: fourth[0].id,
       preferredIds: evictedPlayers(state).map((player) => player.id),
       category: 'milestone',
@@ -787,6 +808,26 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     })
   }
 
+  if (isVoxSeason(state) && state.voxPopuli?.safetySaveCounts) {
+    const mostPosSaved = uniqueWinner(
+      players,
+      (player) => state.voxPopuli?.safetySaveCounts?.[player.id] ?? 0,
+      { requirePositive: true }
+    )
+    if (mostPosSaved) {
+      const posSaveCount = state.voxPopuli.safetySaveCounts[mostPosSaved.id] ?? 0
+      pushQuestion(questions, state, seed, {
+        id: 'vox-most-pos-saves',
+        prompt: `During POS ceremonies, one hubmate was saved ${posSaveCount} time${
+          posSaveCount === 1 ? '' : 's'
+        }, more than anyone else. Who was it?`,
+        correctPlayerId: mostPosSaved.id,
+        category: 'competition',
+        difficulty: 0.64,
+      })
+    }
+  }
+
   if (state.voxPopuli?.audienceVoteDaysByPlayerId) {
     const mostAudienceBallots = uniqueWinner(
       players,
@@ -811,7 +852,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     if (audienceNeverFaced.length === 1) {
       pushQuestion(questions, state, seed, {
         id: 'vox-never-audience-ballot',
-        prompt: 'Who never faced an audience eviction vote?',
+        prompt: 'Who made it through the season without ever facing an audience elimination vote?',
         correctPlayerId: audienceNeverFaced[0].id,
         category: 'public',
         difficulty: 0.74,
