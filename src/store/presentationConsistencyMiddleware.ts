@@ -121,26 +121,31 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
 
 function normalizeImportantBroadcastAction(state: GameState, action: unknown): unknown {
   const typedAction = action as AddTvEventAction | null
-  if (
-    typedAction?.type !== 'game/addTvEvent' ||
-    typedAction.payload?.meta?.major !== 'vox_nomination_reveal_unlocked'
-  ) {
-    return action
-  }
+  if (typedAction?.type !== 'game/addTvEvent' || !typedAction.payload) return action
 
-  // This unlock prompt is gameplay-critical: the player has a limited window
-  // to inspect the secret ballot trail in the Confessional. Older emissions
-  // lacked phase/day metadata, so TvZone's relevance selector could leave the
-  // message in Game Log only. Stamp it with the live phase/day and explicitly
-  // route it to Faux TV while preserving the original Diary log entry.
+  const meta = typedAction.payload.meta
+  const isVoxNominationReveal = meta?.major === 'vox_nomination_reveal_unlocked'
+  const explicitlyForcedToTv = meta?.forceOnTv === true
+  if (!isVoxNominationReveal && !explicitlyForcedToTv) return action
+
+  // Force-to-TV is an authoring contract: these events are supposed to win a
+  // real Faux-TV slot. TvZone deliberately scopes foreground content to the
+  // current day/phase so stale broadcasts cannot leak across transitions. A
+  // handful of runtime producers (including social/intel/mission prompts) set
+  // forceOnTv but historically omitted that scope, leaving them vulnerable to
+  // being overtaken by the next feed item. Fill only missing scope here and
+  // preserve any producer-authored phase/week values.
+  //
+  // The Vox secret-ballot unlock predates forceOnTv entirely, so promote that
+  // one known gameplay-critical prompt into the same contract as well.
   return {
     ...typedAction,
     payload: {
       ...typedAction.payload,
       meta: {
-        ...typedAction.payload.meta,
-        phase: state.phase,
-        week: state.week,
+        ...meta,
+        phase: meta?.phase ?? state.phase,
+        week: meta?.week ?? state.week,
         forceOnTv: true,
       },
     },
