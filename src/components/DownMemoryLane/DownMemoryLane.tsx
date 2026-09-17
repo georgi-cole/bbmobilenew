@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppSelector } from '../../store/hooks'
 import type { GenericMinigameProps } from '../../minigames/reactComponents'
 import {
+  buildMemoryLanePreviewBank,
   buildMemoryLaneQuestionBank,
+  deriveMemoryLaneAiAbility,
   simulateMemoryLaneAiDecision,
   type MemoryLaneAiDecision,
   type MemoryLaneQuestion,
@@ -49,6 +51,7 @@ export default function DownMemoryLane({
   onFinish,
 }: GenericMinigameProps) {
   const game = useAppSelector((state) => state.game)
+
   const duelists = useMemo(() => {
     const ordered = participantIds
       .map((id) => participants.find((participant) => participant.id === id))
@@ -59,7 +62,16 @@ export default function DownMemoryLane({
     return { human, ai }
   }, [participantIds, participants])
 
-  const questionBank = useMemo(() => buildMemoryLaneQuestionBank(game, seed), [game, seed])
+  const realQuestionBank = useMemo(() => buildMemoryLaneQuestionBank(game, seed), [game, seed])
+  const usingLabPreview = import.meta.env.DEV && realQuestionBank.length < 4
+  const questionBank = useMemo(
+    () =>
+      usingLabPreview
+        ? buildMemoryLanePreviewBank(game.players, seed ^ 0x6d656d6f)
+        : realQuestionBank,
+    [game.players, realQuestionBank, seed, usingLabPreview]
+  )
+
   const [screen, setScreen] = useState<'tutorial' | 'duel' | 'finished'>('tutorial')
   const [practiceDone, setPracticeDone] = useState(false)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -83,6 +95,8 @@ export default function DownMemoryLane({
 
   const currentQuestion: MemoryLaneQuestion | null =
     questionBank.length > 0 ? questionBank[questionIndex % questionBank.length] : null
+  const memoryNumber = questionIndex + 1
+  const questionCycle = questionBank.length > 0 ? Math.floor(questionIndex / questionBank.length) : 0
 
   const gamePlayersById = useMemo(
     () => new Map(game.players.map((player) => [player.id, player])),
@@ -90,17 +104,9 @@ export default function DownMemoryLane({
   )
 
   const opponentAbility = useMemo(() => {
-    const score = duelists.ai?.precomputedScore
-    if (typeof score === 'number' && Number.isFinite(score)) return score
     const profile = gamePlayersById.get(duelists.ai?.id ?? '')?.competitionProfile
-    if (!profile) return 68
-    const numeric = Object.values(profile).filter(
-      (value): value is number => typeof value === 'number' && Number.isFinite(value)
-    )
-    if (numeric.length === 0) return 68
-    const average = numeric.reduce((sum, value) => sum + value, 0) / numeric.length
-    return average <= 1 ? average * 100 : average
-  }, [duelists.ai?.id, duelists.ai?.precomputedScore, gamePlayersById])
+    return deriveMemoryLaneAiAbility(profile)
+  }, [duelists.ai?.id, gamePlayersById])
 
   const advanceQuestion = () => {
     clearTimers()
@@ -123,6 +129,7 @@ export default function DownMemoryLane({
 
   const applyDamage = (answeredBy: 'human' | 'ai', correct: boolean, answerId: string) => {
     if (!currentQuestion || !duelists.human || !duelists.ai || feedback) return
+
     setSelectedAnswer(answerId)
     const answerName =
       gamePlayersById.get(answerId)?.name ??
@@ -198,7 +205,7 @@ export default function DownMemoryLane({
 
     clearTimers()
     const aiDecision = simulateMemoryLaneAiDecision({
-      seed: seed + questionIndex * 977,
+      seed: seed + questionIndex * 977 + questionCycle * 7919,
       question: currentQuestion,
       aiPlayerId: duelists.ai.id,
       aiAbility: opponentAbility,
@@ -215,7 +222,7 @@ export default function DownMemoryLane({
     }
 
     const expireTimer = window.setTimeout(() => {
-      setFeedback('Nobody buzzed. Next memory.')
+      setFeedback('Nobody buzzed. That memory is gone.')
       setFeedbackTone('neutral')
       timerRefs.current.push(window.setTimeout(advanceQuestion, 850))
     }, OPEN_BUZZ_WINDOW_MS)
@@ -264,7 +271,7 @@ export default function DownMemoryLane({
     return (
       <div className="memory-lane memory-lane--empty">
         <strong>Not enough season receipts yet.</strong>
-        <span>This finale duel needs a completed season history to build fair questions.</span>
+        <span>This finale duel only asks questions with a defensible, unique answer.</span>
       </div>
     )
   }
@@ -278,6 +285,11 @@ export default function DownMemoryLane({
         <p className="memory-lane__lede">
           Five lives each. Buzz first, then choose the housemate who matches the season memory.
         </p>
+        {usingLabPreview && (
+          <div className="memory-lane__preview-note">
+            Minigame Lab preview · seeded mock memories are being used because no season has been played here.
+          </div>
+        )}
         <div className="memory-lane__tutorial-rule">
           <span>✓ Correct</span><strong>Opponent −1 life</strong>
           <span>✕ Wrong</span><strong>You −1 life</strong>
@@ -311,7 +323,7 @@ export default function DownMemoryLane({
     return (
       <div className={`memory-lane memory-lane--finished ${humanWon ? 'is-win' : 'is-loss'}`}>
         <div className="memory-lane__aurora" aria-hidden="true" />
-        <p className="memory-lane__kicker">Final answer</p>
+        <p className="memory-lane__kicker">Final memory</p>
         <h1>{humanWon ? 'You own the memories.' : `${duelists.ai.name} remembers.`}</h1>
         <div className="memory-lane__winner-medallion">
           {isImageAvatar(winnerAvatar) ? (
@@ -349,10 +361,11 @@ export default function DownMemoryLane({
 
   const humanAvatar = portraitFor(duelists.human.id, game.players, duelists.human.avatar)
   const aiAvatar = portraitFor(duelists.ai.id, game.players, duelists.ai.avatar)
+  const matchPoint = humanLives <= 1 || aiLives <= 1
 
   return (
     <div
-      className={`memory-lane memory-lane--duel ${feedbackTone !== 'neutral' ? `is-${feedbackTone}` : ''}`}
+      className={`memory-lane memory-lane--duel ${feedbackTone !== 'neutral' ? `is-${feedbackTone}` : ''} ${matchPoint ? 'is-match-point' : ''}`}
     >
       <div className="memory-lane__aurora" aria-hidden="true" />
       <header className="memory-lane__duel-header">
@@ -385,16 +398,18 @@ export default function DownMemoryLane({
         </div>
       </header>
 
+      {matchPoint && <div className="memory-lane__match-point">MATCH POINT</div>}
+
       <main className="memory-lane__question-stage">
         <div className="memory-lane__question-meta">
           <span>{currentQuestion.category}</span>
-          <span>Memory {questionIndex + 1}</span>
+          <span>Memory {memoryNumber}</span>
         </div>
         <h2>{currentQuestion.prompt}</h2>
 
         {!buzzOwner && !feedback && (
           <>
-            <div className="memory-lane__buzz-clock"><i /></div>
+            <div className="memory-lane__buzz-clock" key={`buzz-${questionIndex}`}><i /></div>
             <button
               type="button"
               className="memory-lane__buzzer memory-lane__buzzer--live"
@@ -461,6 +476,7 @@ export default function DownMemoryLane({
                     currentQuestion.correctPlayerId}
                 </small>
               )}
+            {currentQuestion.receipt && <em>{currentQuestion.receipt}</em>}
           </div>
         )}
       </main>
