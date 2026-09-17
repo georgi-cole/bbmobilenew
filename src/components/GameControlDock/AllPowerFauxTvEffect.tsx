@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import { useAppSelector } from '../../store/hooks'
 import './AllPowerFauxTvEffect.css'
 
-const EFFECT_MS = 2300
+// This beat carries a title plus a full explanatory sentence. Keep it on screen
+// long enough to read at normal mobile pace instead of treating it like a stinger.
+const EFFECT_MS = 5200
 
 function seenStorageKey(gameId: string | null | undefined, week: number, winnerId: string): string {
   return `big-eye:all-power:${gameId ?? 'game'}:${week}:${winnerId}`
