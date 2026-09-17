@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -14,6 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -45,5 +46,19 @@ jobs:
             tests/unit/down-memory-lane/downMemoryLaneRegistry.test.ts \
             tests/unit/final-three-circuit/FinalOverrideChallenge.test.tsx \
             tests/unit/final-three-circuit/finalThreeCircuitLogic.test.ts
-      - name: Print formatted patch
-        run: git diff --no-ext-diff --unified=3 -- src/components/DownMemoryLane src/components/FinalThreeCircuit tests/unit/competition-ai/bracketTemplate.test.ts tests/unit/down-memory-lane tests/unit/final-three-circuit
+      - name: Commit exact Prettier output
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to format."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/DownMemoryLane \
+            src/components/FinalThreeCircuit \
+            tests/unit/competition-ai/bracketTemplate.test.ts \
+            tests/unit/down-memory-lane \
+            tests/unit/final-three-circuit
+          git commit -m "chore: format finale minigames"
+          git push origin HEAD:${{ github.head_ref }}
