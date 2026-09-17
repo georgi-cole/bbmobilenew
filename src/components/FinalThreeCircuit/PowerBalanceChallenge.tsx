@@ -83,18 +83,18 @@ export default function PowerBalanceChallenge({
     <div className="f3-circuit__risk-game f3-circuit__power-game">
       <div className="f3-circuit__power-readout">
         <div>
-          <span>Target load</span>
+          <span>Target</span>
           <strong>
             {puzzle.target}
             {puzzle.tolerance > 0 ? ` ±${puzzle.tolerance}` : ' exact'}
           </strong>
         </div>
         <div>
-          <span>Current load</span>
+          <span>Your total</span>
           <strong
             className={solved ? 'is-good' : sum > puzzle.target + puzzle.tolerance ? 'is-hot' : ''}
           >
-            {sum}
+            {sum} / {puzzle.target}
           </strong>
         </div>
         <div>
@@ -104,8 +104,8 @@ export default function PowerBalanceChallenge({
       </div>
 
       <p className="f3-circuit__copy">
-        Activate exactly the right power cells. Once a cell is committed it cannot be switched off,
-        so each choice matters.
+        Pick up to {puzzle.maxToggles} power cells whose numbers add up to the target. Once you pick
+        a cell, you cannot remove it.
       </p>
 
       <div className="f3-circuit__power-cells">
@@ -124,9 +124,7 @@ export default function PowerBalanceChallenge({
       </div>
 
       <div className="f3-circuit__micro-stats">
-        <span>
-          {toggles} / {puzzle.maxToggles} committed
-        </span>
+        <span>{puzzle.maxToggles - toggles} picks remaining</span>
         <span>{puzzle.values.length - selected.length} cells available</span>
       </div>
     </div>
