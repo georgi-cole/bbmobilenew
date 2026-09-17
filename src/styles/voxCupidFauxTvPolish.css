@@ -35,6 +35,25 @@
   max-width: 34rem;
 }
 
+.avrm--tv
+  .avrm__tallies.avrm__tallies--tv:is(
+    [data-nominee-count='6'],
+    [data-nominee-count='7'],
+    [data-nominee-count='8'],
+    [data-nominee-count='9'],
+    [data-nominee-count='10'],
+    [data-nominee-count='11'],
+    [data-nominee-count='12'],
+    [data-nominee-count='13'],
+    [data-nominee-count='14'],
+    [data-nominee-count='15'],
+    [data-nominee-count='16']
+  )
+  .avrm__tally--tv {
+  min-width: 0;
+  max-width: none;
+}
+
 .avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='6'] .avrm__tally--tv {
   flex: 0 0 28%;
   width: 28%;
