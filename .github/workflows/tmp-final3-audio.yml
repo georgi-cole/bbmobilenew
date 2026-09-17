@@ -1,10 +1,12 @@
 name: Temporary Final 3 audio patch
 on:
-  workflow_dispatch:
+  push:
+    branches: [feat/final-three-circuit]
 permissions:
   contents: write
 jobs:
   patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
