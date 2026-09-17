@@ -15,6 +15,74 @@ interface LocalizedRegistryMetadata {
   instructionKeys?: TranslationKey[]
 }
 
+const FINAL_THREE_CIRCUIT_GAME: GameRegistryEntry = {
+  key: 'finalThreeCircuit',
+  title: 'Final Three Circuit',
+  description:
+    'A three-stage Final 3 challenge. Play every stage, collect points, and try to finish with the highest total. The winner moves on to Part 3.',
+  instructions: [
+    'You will play 3 stages. No one is eliminated during this challenge.',
+    'Signal Hunt: tap the number shown as the target. The board changes after every correct tap. Wrong taps cost time and points.',
+    'Sequence Builder: slide tiles until your board matches the target. You have 5 minutes total for both puzzles. Only tiles next to the empty space can move.',
+    'Risk Run: choose Safe, Standard, or Risky. Harder choices can earn more points.',
+    'Warden Escape: you move 1 tile, then the warden can move up to 2. Use the walls to trap him and reach EXIT.',
+    'Power Balance: turn on cells to reach the target number. Once a cell is on, you cannot turn it off.',
+    'Final Override: answer 5 quick questions and choose how much of your Risk Run score to risk. Win the bet to add points; lose it and points are taken away.',
+    'The highest total score wins this Final 3 part and moves to Part 3.',
+  ],
+  metricKind: 'points',
+  metricLabel: 'Total points',
+  timeLimitMs: 0,
+  authoritative: true,
+  scoringAdapter: 'raw',
+  scoringParams: { minRaw: 150, maxRaw: 285 },
+  implementation: 'react',
+  reactComponentKey: 'FinalThreeCircuit',
+  legacy: false,
+  // Finale-only: visible to Lab / Game Manager and selected explicitly by the
+  // Final 3 Part 1/2 map, but never added to ordinary weighted random pools.
+  weight: 0,
+  category: 'logic',
+  retired: false,
+  minPlayers: 2,
+  maxPlayers: 3,
+}
+
+const DOWN_MEMORY_LANE_GAME: GameRegistryEntry = {
+  key: 'downMemoryLane',
+  title: 'Down Memory Lane',
+  description:
+    'A Final 3 head-to-head memory duel about the season you just played. Buzz first, pick the right hubmate, and protect your 5 lives.',
+  instructions: [
+    'You and your opponent start with 5 lives each.',
+    'Questions come from this season: LOH and POS wins, nominations, eliminations, public saves, shocks, and other big moments.',
+    'If you know the answer, tap BUZZ. The first player to buzz gets the question.',
+    'Pick the answer from 4 hubmates shown by name and photo.',
+    'Correct answer: your opponent loses 1 life.',
+    'Wrong answer, or no answer after buzzing: you lose 1 life.',
+    'If nobody buzzes in time, the question is skipped and a new one appears.',
+    'The first player to reach 0 lives loses. The winner takes Part 3 and the final LOH power.',
+  ],
+  metricKind: 'points',
+  metricLabel: 'Lives',
+  timeLimitMs: 0,
+  authoritative: true,
+  scoringAdapter: 'raw',
+  scoringParams: { minRaw: 0, maxRaw: 5 },
+  implementation: 'react',
+  reactComponentKey: 'DownMemoryLane',
+  legacy: false,
+  // Finale-only. The Part 3 map owns selection; ordinary competition rotation never sees it.
+  weight: 0,
+  category: 'trivia',
+  retired: false,
+  // The campaign resolver still passes the alive Final 3 count while the actual
+  // minigame context contains the two Part-3 duelists, so keep the registry
+  // compatible with both the 2-player host and the 3-player phase map.
+  minPlayers: 2,
+  maxPlayers: 3,
+}
+
 const FIT_ME_IN_INSTRUCTION_KEYS: TranslationKey[] = [
   'fitMeIn.rules.freshBoard',
   'fitMeIn.rules.fivePlus',
@@ -55,10 +123,16 @@ function applyRegistryOverrides(
 }
 
 export function getAllGames(): GameRegistryEntry[] {
-  return getAllBaseGames().map((game) => applyRegistryOverrides(game)!)
+  return [
+    ...getAllBaseGames().map((game) => applyRegistryOverrides(game)!),
+    FINAL_THREE_CIRCUIT_GAME,
+    DOWN_MEMORY_LANE_GAME,
+  ]
 }
 
 export function getGame(key: string): GameRegistryEntry | undefined {
+  if (key === FINAL_THREE_CIRCUIT_GAME.key) return FINAL_THREE_CIRCUIT_GAME
+  if (key === DOWN_MEMORY_LANE_GAME.key) return DOWN_MEMORY_LANE_GAME
   return applyRegistryOverrides(getBaseGame(key))
 }
 
@@ -67,6 +141,9 @@ export function getPoolByFilter(filter: {
   category?: GameCategory
   excludeKeys?: string[]
 }): GameRegistryEntry[] {
+  // Finale games are deliberately excluded from ordinary random pools.
+  // They remain visible to Minigame Lab / Remote Manager through getAllGames(),
+  // addressable by key through getGame(), and scheduled only by the Final 3 map.
   return getBasePoolByFilter(filter).map((game) => applyRegistryOverrides(game)!)
 }
 

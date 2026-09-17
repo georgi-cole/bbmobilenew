@@ -70,15 +70,15 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'chainOfGreed',
   'batteryLow',
   'houseOfDarkness',
+  'finalThreeCircuit',
+  'downMemoryLane',
 ] as const
 
 /** Per-game story prerequisites that apply in addition to the roster map. */
 export const CLASSIC_CAMPAIGN_GAME_MIN_DAY: Partial<
   Record<(typeof CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS)[number], number>
 > = {
-  // Social reads only feel earned after several days with the housemates.
   silentSaboteur: 4,
-  // Part 2 belongs after the original has had a chance to appear.
   castleRescue2: 9,
 }
 
@@ -110,8 +110,9 @@ export function getApprovedCompetitionGameKeys(
  * - Elimination ladders, turn-order spectacles, and social-deduction formats
  *   stay in the large-cast portion of the season. They lose their tension when
  *   only a few housemates remain.
- * - Final 3 uses sustained individual challenges: endurance, precision, and
- *   multi-round score formats that do not collapse after one elimination.
+ * - Final 3 Parts 1 and 2 use the finale-only Final Three Circuit. Part 1 runs
+ *   with all three finalists; Part 2 runs with the two Part 1 non-winners.
+ * - Final 3 Part 3 is the two-player Down Memory Lane season-recall duel.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
@@ -429,47 +430,35 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     ],
   },
   {
-    label: 'Final 3 - Part 1 endurance',
+    label: 'Final 3 - Part 1 Circuit qualifier',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp1', 'final3_comp1_minigame'],
-    loh: ['holdWall', 'pressurePlank', 'houseOfDarkness'],
+    loh: ['finalThreeCircuit'],
     pos: [],
   },
   {
-    label: 'Final 3 - Part 2 precision and memory',
+    label: 'Final 3 - Part 2 Circuit qualifier',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp2', 'final3_comp2_minigame'],
-    loh: ['memoryMatch', 'famousFigures', 'timingBar', 'estimationGame'],
+    loh: ['finalThreeCircuit'],
     pos: [],
   },
   {
-    label: 'Final 3 - Part 3 championship',
+    label: 'Final 3 - Part 3 · Down Memory Lane',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp3', 'final3_comp3_minigame'],
-    loh: ['threeDigitsQuiz', 'capitalization', 'chainOfGreed', 'batteryLow'],
+    loh: ['downMemoryLane'],
     pos: [],
   },
   {
-    // Phase-less compatibility pool for tools that only know the player count.
+    // Phase-less compatibility pool for tools that only know player count.
     label: '3 players (Final Trilogy)',
     minPlayers: 3,
     maxPlayers: 3,
-    loh: [
-      'holdWall',
-      'pressurePlank',
-      'houseOfDarkness',
-      'memoryMatch',
-      'famousFigures',
-      'timingBar',
-      'estimationGame',
-      'threeDigitsQuiz',
-      'capitalization',
-      'batteryLow',
-      'chainOfGreed',
-    ],
+    loh: ['finalThreeCircuit', 'downMemoryLane'],
     pos: [],
   },
 ]
@@ -550,8 +539,6 @@ export function getClassicCampaignPoolForContext(
     return applyGameStoryPrerequisites(pool, context.day, context.playedGameKeys)
   }
 
-  // A twist can put the roster outside a day's +/- 1 guide. Use the closest
-  // safe day row rather than abandoning the curated campaign map altogether.
   const fallback = getRosterFallbackBand(context.playerCount, template)
   if (fallback) {
     const pool = context.compType === 'POS' ? fallback.pos : fallback.loh
@@ -561,11 +548,6 @@ export function getClassicCampaignPoolForContext(
   return []
 }
 
-/**
- * Backwards-compatible count-only resolver used by admin tools and existing
- * callers. It finds the closest roster-safe day-guide row when a caller does
- * not know the current season day.
- */
 export function getBracketPoolForContext(
   playerCount: number,
   compType: 'LOH' | 'POS',

@@ -1,0 +1,38 @@
+name: Temporary Final 3 audio patch
+on:
+  push:
+    branches: [feat/final-three-circuit]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/final-three-circuit
+      - name: Add Final Three Circuit to challenge group 1
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/services/sound/musicConfig.ts')
+          s = p.read_text()
+          marker = "export const CHALLENGE_GROUP_1_GAME_KEYS = [\n"
+          if "  'finalThreeCircuit',\n" not in s:
+              s = s.replace(marker, marker + "  'finalThreeCircuit',\n", 1)
+          p.write_text(s)
+          PY
+      - name: Verify
+        run: |
+          grep -A4 "CHALLENGE_GROUP_1_GAME_KEYS" src/services/sound/musicConfig.ts
+          npx prettier --check src/services/sound/musicConfig.ts
+          npx tsc --noEmit
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/sound/musicConfig.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: use challenge group 1 audio for Final Three Circuit"
+          git push origin HEAD:feat/final-three-circuit

@@ -60,6 +60,9 @@ import ChainOfGreed from '../components/ChainOfGreed/ChainOfGreed'
 import BatteryLow from '../components/VaultVerdict/VaultVerdict'
 import BigSpender from '../components/BigSpender/BigSpender'
 import HouseOfDarknessComp from '../components/HouseOfDarknessComp/HouseOfDarknessComp'
+import FinalThreeCircuit from '../components/FinalThreeCircuit/FinalThreeCircuit'
+import DownMemoryLane from '../components/DownMemoryLane/DownMemoryLane'
+import '../components/DownMemoryLane/DownMemoryLanePolish.css'
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
@@ -128,6 +131,8 @@ const reactComponents: Record<string, ComponentType<GenericMinigameProps>> = {
   BatteryLow: BatteryLow as ComponentType<GenericMinigameProps>,
   BigSpender: BigSpender as ComponentType<GenericMinigameProps>,
   HouseOfDarkness: HouseOfDarknessComp as ComponentType<GenericMinigameProps>,
+  FinalThreeCircuit: FinalThreeCircuit as ComponentType<GenericMinigameProps>,
+  DownMemoryLane: DownMemoryLane as ComponentType<GenericMinigameProps>,
 }
 
 export default reactComponents

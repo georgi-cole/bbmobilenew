@@ -4897,6 +4897,23 @@ const gameSlice = createSlice({
 
       // Record metadata
       state.publicSavedNomineeId = savedId
+      const publicSaveAlreadyRecorded = (state.history ?? []).some(
+        (event) =>
+          event.type === 'seasonReceipt:publicSave' &&
+          event.week === state.week &&
+          event.data.playerId === savedId
+      )
+      if (!publicSaveAlreadyRecorded) {
+        state.history = [
+          ...(state.history ?? []),
+          {
+            type: 'seasonReceipt:publicSave',
+            week: state.week,
+            data: { playerId: savedId },
+            timestamp: Date.now(),
+          },
+        ]
+      }
       if (state.nominationContext) {
         state.nominationContext.publicSaveApplied = true
       }
