@@ -15,6 +15,9 @@ type AddTvEventAction = GenericAction & {
   payload?: Partial<TvEvent>
 }
 
+const VOX_IMMUNITY_COMPETITION_COPY =
+  'The Immunity Competition has begun! 🛡️ Who will secure safety today?'
+
 let deferredBackdoorAdvance = false
 
 function currentTemplateEvent(
@@ -81,6 +84,39 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
     updateTvEvent({
       id: event.id,
       text: `${event.text.trim()} ${eligibilityCopy}`,
+      type: event.type,
+    })
+  )
+}
+
+function correctVoxCompetitionBroadcast(api: MiddlewareAPI): void {
+  const { game } = api.getState() as PresentationState
+  if (game.voxPopuli?.status !== 'active' || game.phase !== 'loh_comp') return
+
+  const templated = currentTemplateEvent(game, 'loh.competition-start')
+  const fallback = [...game.tvFeed].reverse().find((event) => {
+    const eventWeek = event.meta?.week
+    return (
+      (eventWeek == null || eventWeek === game.week) &&
+      event.meta?.broadcastConsumed !== true &&
+      /leader of the (?:house|hub).*competition|power is up for grabs/i.test(event.text)
+    )
+  })
+  const event = templated ?? fallback
+  if (!event) return
+
+  // The generic competition-start template is also used by Classic. In Vox,
+  // this phase awards immunity rather than house leadership. Rewrite only copy
+  // that still carries LOH/power language so a neutral/custom Vox-safe override
+  // remains untouched.
+  const stillUsesLohLanguage =
+    /leader of the (?:house|hub)|\bLOH\b|power is up for grabs/i.test(event.text)
+  if (!stillUsesLohLanguage || event.text === VOX_IMMUNITY_COMPETITION_COPY) return
+
+  api.dispatch(
+    updateTvEvent({
+      id: event.id,
+      text: VOX_IMMUNITY_COMPETITION_COPY,
       type: event.type,
     })
   )
@@ -215,5 +251,6 @@ export const presentationConsistencyMiddleware: Middleware = (api) => (next) => 
   }
 
   decorateOutgoingLohBroadcast(api)
+  correctVoxCompetitionBroadcast(api)
   return result
 }
