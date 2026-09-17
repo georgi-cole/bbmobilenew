@@ -241,11 +241,7 @@ export default function DepressionShockController() {
       const isCurrentOrLegacyDay = eventWeek == null || eventWeek === game.week
       const isChocolateBroadcast =
         event.meta?.broadcastTemplateId === CHOCOLATE_TEMPLATE_ID || eventMajor === CHOCOLATE_MAJOR
-      if (
-        isCurrentOrLegacyDay &&
-        isChocolateBroadcast &&
-        event.meta?.broadcastConsumed !== true
-      ) {
+      if (isCurrentOrLegacyDay && isChocolateBroadcast && event.meta?.broadcastConsumed !== true) {
         dispatch(consumeBroadcastEvent(event.id))
       }
     }
