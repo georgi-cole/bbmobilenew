@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppSelector } from '../../store/hooks'
+import { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc'
 import type { GenericMinigameProps } from '../../minigames/reactComponents'
+import { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'
 import {
   buildMemoryLanePreviewBank,
   buildMemoryLaneQuestionBank,
@@ -16,21 +18,46 @@ const OPEN_BUZZ_WINDOW_MS = 8_000
 const HUMAN_ANSWER_WINDOW_MS = 6_000
 const BETWEEN_QUESTIONS_MS = 1_450
 
-function portraitFor(
-  id: string,
-  gamePlayers: Array<{ id: string; avatar: string }>,
-  fallback?: string
-): string {
-  return gamePlayers.find((player) => player.id === id)?.avatar || fallback || '👤'
+interface MemoryLanePortraitProps {
+  id: string
+  name: string
+  avatar: string
+  isUser?: boolean
+  alt: string
 }
 
-function isImageAvatar(value: string | undefined): boolean {
-  if (!value) return false
+function MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortraitProps) {
+  const { candidates: baseCandidates } = useResolvedAvatarSrc({ id, name, avatar, isUser })
+  const candidates = [
+    ...new Set(
+      baseCandidates.flatMap((candidate) => [
+        ...resolvePresentationAvatarCandidates(candidate),
+        candidate,
+      ])
+    ),
+  ]
+  const nonDiceBear = candidates.filter((candidate) => !candidate.includes('api.dicebear.com'))
+  const orderedCandidates = nonDiceBear.length > 0 ? nonDiceBear : candidates
+  const candidateKey = orderedCandidates.join('|')
+  const [candidateIndex, setCandidateIndex] = useState(0)
+
+  useEffect(() => {
+    setCandidateIndex(0)
+  }, [candidateKey])
+
+  const src = orderedCandidates[Math.min(candidateIndex, Math.max(0, orderedCandidates.length - 1))]
+  if (!src) return <span aria-hidden="true">👤</span>
+
   return (
-    /\.(png|jpe?g|webp|avif|gif|svg)(\?|$)/i.test(value) ||
-    value.startsWith('/') ||
-    value.startsWith('assets/') ||
-    value.startsWith('http')
+    <img
+      src={src}
+      alt={alt}
+      onError={() =>
+        setCandidateIndex((current) =>
+          current + 1 < orderedCandidates.length ? current + 1 : current
+        )
+      }
+    />
   )
 }
 
@@ -323,18 +350,19 @@ export default function DownMemoryLane({
   if (screen === 'finished') {
     const humanWon = winnerId === duelists.human.id
     const winner = humanWon ? duelists.human : duelists.ai
-    const winnerAvatar = portraitFor(winner.id, game.players, winner.avatar)
     return (
       <div className={`memory-lane memory-lane--finished ${humanWon ? 'is-win' : 'is-loss'}`}>
         <div className="memory-lane__aurora" aria-hidden="true" />
         <p className="memory-lane__kicker">Final memory</p>
         <h1>{humanWon ? 'You own the memories.' : `${duelists.ai.name} remembers.`}</h1>
         <div className="memory-lane__winner-medallion">
-          {isImageAvatar(winnerAvatar) ? (
-            <img src={winnerAvatar} alt={winner.name} />
-          ) : (
-            <span>{winnerAvatar}</span>
-          )}
+          <MemoryLanePortrait
+            id={winner.id}
+            name={winner.name}
+            avatar={gamePlayersById.get(winner.id)?.avatar ?? winner.avatar}
+            isUser={gamePlayersById.get(winner.id)?.isUser ?? humanWon}
+            alt={winner.name}
+          />
         </div>
         <strong className="memory-lane__winner-name">{winner.name} wins Part 3</strong>
         <p className="memory-lane__final-copy">
@@ -363,8 +391,6 @@ export default function DownMemoryLane({
 
   if (!currentQuestion) return null
 
-  const humanAvatar = portraitFor(duelists.human.id, game.players, duelists.human.avatar)
-  const aiAvatar = portraitFor(duelists.ai.id, game.players, duelists.ai.avatar)
   const matchPoint = humanLives <= 1 || aiLives <= 1
 
   return (
@@ -375,11 +401,13 @@ export default function DownMemoryLane({
       <header className="memory-lane__duel-header">
         <div className="memory-lane__fighter is-human">
           <div className="memory-lane__portrait">
-            {isImageAvatar(humanAvatar) ? (
-              <img src={humanAvatar} alt={duelists.human.name} />
-            ) : (
-              <span>{humanAvatar}</span>
-            )}
+            <MemoryLanePortrait
+              id={duelists.human.id}
+              name={duelists.human.name}
+              avatar={gamePlayersById.get(duelists.human.id)?.avatar ?? duelists.human.avatar}
+              isUser={gamePlayersById.get(duelists.human.id)?.isUser ?? true}
+              alt={duelists.human.name}
+            />
           </div>
           <div>
             <strong>{duelists.human.name}</strong>
@@ -393,11 +421,13 @@ export default function DownMemoryLane({
             <LifePips lives={aiLives} side="ai" />
           </div>
           <div className="memory-lane__portrait">
-            {isImageAvatar(aiAvatar) ? (
-              <img src={aiAvatar} alt={duelists.ai.name} />
-            ) : (
-              <span>{aiAvatar}</span>
-            )}
+            <MemoryLanePortrait
+              id={duelists.ai.id}
+              name={duelists.ai.name}
+              avatar={gamePlayersById.get(duelists.ai.id)?.avatar ?? duelists.ai.avatar}
+              isUser={gamePlayersById.get(duelists.ai.id)?.isUser ?? false}
+              alt={duelists.ai.name}
+            />
           </div>
         </div>
       </header>
@@ -449,7 +479,6 @@ export default function DownMemoryLane({
                 const player = gamePlayersById.get(id)
                 const participant = participants.find((entry) => entry.id === id)
                 const name = player?.name ?? participant?.name ?? id
-                const avatar = portraitFor(id, game.players, participant?.avatar)
                 return (
                   <button
                     type="button"
@@ -457,7 +486,13 @@ export default function DownMemoryLane({
                     onClick={() => applyDamage('human', id === currentQuestion.correctPlayerId, id)}
                   >
                     <div className="memory-lane__answer-photo">
-                      {isImageAvatar(avatar) ? <img src={avatar} alt="" /> : <span>{avatar}</span>}
+                      <MemoryLanePortrait
+                        id={id}
+                        name={name}
+                        avatar={player?.avatar ?? participant?.avatar ?? ''}
+                        isUser={player?.isUser ?? participant?.isHuman}
+                        alt=""
+                      />
                     </div>
                     <strong>{name}</strong>
                   </button>

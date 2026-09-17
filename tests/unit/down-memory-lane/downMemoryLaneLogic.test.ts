@@ -99,6 +99,12 @@ function seasonState(overrides: Partial<GameState> = {}): GameState {
         type: 'game',
         timestamp: 2,
       },
+      {
+        id: 'pos-use-1',
+        text: 'Lia used the Power of Safety on Nova. ⚡',
+        type: 'game',
+        timestamp: 3,
+      },
     ],
     isLive: true,
     seed: 99,
@@ -120,10 +126,20 @@ describe('Down Memory Lane question bank', () => {
     expect(second).toEqual(first)
     expect(first.length).toBeGreaterThanOrEqual(10)
     expect(
-      first.some((question) => question.id === 'first-loh' && question.correctPlayerId === 'maya')
+      first.some(
+        (question) =>
+          question.id === 'first-competition' &&
+          question.correctPlayerId === 'maya' &&
+          question.prompt.includes('first competition')
+      )
     ).toBe(true)
     expect(
-      first.some((question) => question.id === 'first-pos' && question.correctPlayerId === 'lia')
+      first.some(
+        (question) =>
+          question.id === 'first-pos-use' &&
+          question.correctPlayerId === 'lia' &&
+          question.prompt.includes('Nova')
+      )
     ).toBe(true)
     expect(first.every((question) => question.optionPlayerIds.length === 4)).toBe(true)
     expect(first.every((question) => new Set(question.optionPlayerIds).size === 4)).toBe(true)
@@ -180,12 +196,11 @@ describe('Down Memory Lane question bank', () => {
 
     expect(parsed).toHaveLength(3)
     expect(parsed[0]).toMatchObject({ playerId: 'nova', week: 2 })
-    expect(
-      questions.some(
-        (question) =>
-          question.id === 'highest-eviction-vote-count' && question.correctPlayerId === 'nova'
-      )
-    ).toBe(true)
+    const highestVoteQuestion = questions.find(
+      (question) => question.id === 'highest-eviction-vote-count'
+    )
+    expect(highestVoteQuestion?.correctPlayerId).toBe('nova')
+    expect(highestVoteQuestion?.prompt).toContain('6')
     expect(questions.some((question) => question.id.startsWith('eviction-companion-'))).toBe(true)
     expect(questions.some((question) => question.id.startsWith('eviction-leader-'))).toBe(true)
   })
