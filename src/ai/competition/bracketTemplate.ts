@@ -71,6 +71,7 @@ export const CLASSIC_CAMPAIGN_ELIGIBLE_GAME_KEYS = [
   'batteryLow',
   'houseOfDarkness',
   'finalThreeCircuit',
+  'downMemoryLane',
 ] as const
 
 /** Per-game story prerequisites that apply in addition to the roster map. */
@@ -111,6 +112,7 @@ export function getApprovedCompetitionGameKeys(
  *   only a few housemates remain.
  * - Final 3 Parts 1 and 2 use the finale-only Final Three Circuit. Part 1 runs
  *   with all three finalists; Part 2 runs with the two Part 1 non-winners.
+ * - Final 3 Part 3 is the two-player Down Memory Lane season-recall duel.
  */
 export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
   {
@@ -444,11 +446,11 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     pos: [],
   },
   {
-    label: 'Final 3 - Part 3 championship',
+    label: 'Final 3 - Part 3 · Down Memory Lane',
     minPlayers: 3,
     maxPlayers: 3,
     phases: ['final3_comp3', 'final3_comp3_minigame'],
-    loh: ['threeDigitsQuiz', 'capitalization', 'chainOfGreed', 'batteryLow'],
+    loh: ['downMemoryLane'],
     pos: [],
   },
   {
@@ -456,17 +458,7 @@ export const DEFAULT_BRACKET_TEMPLATE: BracketTemplate = [
     label: '3 players (Final Trilogy)',
     minPlayers: 3,
     maxPlayers: 3,
-    loh: [
-      'finalThreeCircuit',
-      'memoryMatch',
-      'famousFigures',
-      'timingBar',
-      'estimationGame',
-      'threeDigitsQuiz',
-      'capitalization',
-      'batteryLow',
-      'chainOfGreed',
-    ],
+    loh: ['finalThreeCircuit', 'downMemoryLane'],
     pos: [],
   },
 ]
