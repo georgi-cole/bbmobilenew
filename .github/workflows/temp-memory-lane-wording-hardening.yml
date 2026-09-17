@@ -1,0 +1,80 @@
+name: Temp Memory Lane Wording Hardening
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Harden Memory Lane wording and portraits
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          portrait = Path('src/components/DownMemoryLane/DownMemoryLane.tsx')
+          text = portrait.read_text()
+          old = "  const orderedCandidates = nonDiceBear.length > 0 ? nonDiceBear : candidates\n"
+          new = "  const orderedCandidates = nonDiceBear\n"
+          if old not in text:
+              raise SystemExit('portrait fallback line not found')
+          portrait.write_text(text.replace(old, new, 1))
+
+          logic = Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts')
+          text = logic.read_text()
+          replacements = {
+              "? `One hubmate finished with exactly ${value} LOH win${value === 1 ? '' : 's'}. Who was it?`": "? `Which hubmate won exactly ${value} LOH competition${value === 1 ? '' : 's'} this season?`",
+              ": kind === 'pos'\n          ? `One hubmate finished with exactly ${value} POS win${value === 1 ? '' : 's'}. Who was it?`": ": kind === 'pos'\n          ? `Which hubmate won exactly ${value} POS competition${value === 1 ? '' : 's'} this season?`",
+              ": `One hubmate was nominated exactly ${value} time${value === 1 ? '' : 's'}. Who was it?`": ": `Which hubmate was nominated exactly ${value} time${value === 1 ? '' : 's'} this season?`",
+              "? `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} immunity wins?`": "? `Who won the most immunity competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?`",
+              ": `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} LOH wins?`": ": `Who won the most LOH competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?`",
+              "prompt: `Who finished with the season-high ${mostPos.stats?.posWins ?? 0} POS wins?`,": "prompt: `Who won the most POS competitions this season, finishing with ${mostPos.stats?.posWins ?? 0} wins?`,",
+              "prompt: `LOH and POS combined, who led the season with ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competition wins?`,": "prompt: `Across LOH and POS, who won ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competitions in total—the most this season?`,",
+              "prompt: `One hubmate faced a season-high ${mostNominated.stats?.timesNominated ?? 0} nominations. Who was it?`,": "prompt: `Who was nominated ${mostNominated.stats?.timesNominated ?? 0} times—the most of any hubmate this season?`,",
+              "? `The audience saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`": "? `Who did the audience save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?`",
+              ": `The public saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`": ": `Who did the public save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?`",
+              "prompt: `During POS ceremonies, one hubmate was saved ${posSaveCount} time${\n          posSaveCount === 1 ? '' : 's'\n        }, more than anyone else. Who was it?`,": "prompt: `Who was saved by POS ${posSaveCount} time${\n          posSaveCount === 1 ? '' : 's'\n        }—more than any other hubmate?`,",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'wording target not found: {old[:80]}')
+              text = text.replace(old, new, 1)
+          logic.write_text(text)
+          PY
+
+          npx prettier --write \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts
+          npm run typecheck
+          npm run lint:ci
+          npx vitest run \
+            tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts \
+            tests/unit/down-memory-lane/downMemoryLaneRegistry.test.ts
+
+      - name: Commit wording hardening
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to update."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts
+          git commit -m "refine: clarify Memory Lane questions and portraits"
+          git push --no-verify origin HEAD:${{ github.head_ref }}
