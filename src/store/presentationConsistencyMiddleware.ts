@@ -11,7 +11,17 @@ type GenericAction = {
   type?: string
 }
 
+type AddTvEventAction = GenericAction & {
+  payload?: Partial<TvEvent>
+}
+
+const VOX_IMMUNITY_COMPETITION_COPY =
+  'The Immunity Competition has begun! 🛡️ Who will secure safety today?'
+const AUTHORIZE_VOX_AUDIENCE_VOTE_ACTION = 'presentation/authorizeVoxAudienceVoteResolution'
+const COMMIT_VOX_AUDIENCE_VOTE_ACTION = 'game/commitVoxAudienceVote'
+
 let deferredBackdoorAdvance = false
+let voxAudienceVoteResolutionAuthorized = false
 
 function currentTemplateEvent(
   game: GameState,
@@ -82,6 +92,40 @@ function decorateOutgoingLohBroadcast(api: MiddlewareAPI): void {
   )
 }
 
+function correctVoxCompetitionBroadcast(api: MiddlewareAPI): void {
+  const { game } = api.getState() as PresentationState
+  if (game.voxPopuli?.status !== 'active' || game.phase !== 'loh_comp') return
+
+  const templated = currentTemplateEvent(game, 'loh.competition-start')
+  const fallback = [...game.tvFeed].reverse().find((event) => {
+    const eventWeek = event.meta?.week
+    return (
+      (eventWeek == null || eventWeek === game.week) &&
+      event.meta?.broadcastConsumed !== true &&
+      /leader of the (?:house|hub).*competition|power is up for grabs/i.test(event.text)
+    )
+  })
+  const event = templated ?? fallback
+  if (!event) return
+
+  // The generic competition-start template is also used by Classic. In Vox,
+  // this phase awards immunity rather than house leadership. Rewrite only copy
+  // that still carries LOH/power language so a neutral/custom Vox-safe override
+  // remains untouched.
+  const stillUsesLohLanguage = /leader of the (?:house|hub)|\bLOH\b|power is up for grabs/i.test(
+    event.text
+  )
+  if (!stillUsesLohLanguage || event.text === VOX_IMMUNITY_COMPETITION_COPY) return
+
+  api.dispatch(
+    updateTvEvent({
+      id: event.id,
+      text: VOX_IMMUNITY_COMPETITION_COPY,
+      type: event.type,
+    })
+  )
+}
+
 function consumeResolvedReplacementPrompt(api: MiddlewareAPI): void {
   const { game } = api.getState() as PresentationState
   const stalePrompt = currentTemplateEvent(game, 'safety.replacement-needed')
@@ -113,6 +157,70 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
     state.lohNominationPlan?.revealPending === true &&
     state.lohNominationPlan.revealed !== true
   )
+}
+
+function isPendingVoxEvictionAudienceVote(state: GameState): boolean {
+  return Boolean(
+    state.voxPopuli?.status === 'active' &&
+    state.voxPopuli.awaitingPublicVote === true &&
+    state.voxPopuli.publicVoteContext === 'eviction'
+  )
+}
+
+function authorizeOrBlockLegacyVoxAutoResolution(state: GameState, action: unknown): boolean {
+  const type = (action as GenericAction | null)?.type
+  if (type === AUTHORIZE_VOX_AUDIENCE_VOTE_ACTION) {
+    voxAudienceVoteResolutionAuthorized = true
+    return false
+  }
+
+  if (type !== COMMIT_VOX_AUDIENCE_VOTE_ACTION || !isPendingVoxEvictionAudienceVote(state)) {
+    return false
+  }
+
+  if (!voxAudienceVoteResolutionAuthorized) {
+    // GameScreen historically scheduled this same commit after five seconds.
+    // Ignore that un-authorized path so the vote cannot start itself. The
+    // central Play button explicitly authorizes the next commit immediately
+    // before emitting ui:playPressed.
+    return true
+  }
+
+  voxAudienceVoteResolutionAuthorized = false
+  return false
+}
+
+function normalizeImportantBroadcastAction(state: GameState, action: unknown): unknown {
+  const typedAction = action as AddTvEventAction | null
+  if (typedAction?.type !== 'game/addTvEvent' || !typedAction.payload) return action
+
+  const meta = typedAction.payload.meta
+  const isVoxNominationReveal = meta?.major === 'vox_nomination_reveal_unlocked'
+  const explicitlyForcedToTv = meta?.forceOnTv === true
+  if (!isVoxNominationReveal && !explicitlyForcedToTv) return action
+
+  // Force-to-TV is an authoring contract: these events are supposed to win a
+  // real Faux-TV slot. TvZone deliberately scopes foreground content to the
+  // current day/phase so stale broadcasts cannot leak across transitions. A
+  // handful of runtime producers (including social/intel/mission prompts) set
+  // forceOnTv but historically omitted that scope, leaving them vulnerable to
+  // being overtaken by the next feed item. Fill only missing scope here and
+  // preserve any producer-authored phase/week values.
+  //
+  // The Vox secret-ballot unlock prdates forceOnTv entirely, so promote that
+  // one known gameplay-critical prompt into the same contract as well.
+  return {
+    ...typedAction,
+    payload: {
+      ...typedAction.payload,
+      meta: {
+        ...meta,
+        phase: meta?.phase ?? state.phase,
+        week: meta?.week ?? state.week,
+        forceOnTv: true,
+      },
+    },
+  }
 }
 
 function deferBackdoorAdvance(api: MiddlewareAPI, action: unknown): boolean {
@@ -166,16 +274,30 @@ export const presentationConsistencyMiddleware: Middleware = (api) => (next) => 
     return action
   }
 
+  // A normal Vox audience vote is an explicit ceremony step. The old
+  // GameScreen timer and the Play path dispatch the same commit action, so use
+  // a one-shot authorization from the central Play button to reject only the
+  // timer-driven commit while preserving the existing vote calculation.
+  if (authorizeOrBlockLegacyVoxAutoResolution(before.game, action)) {
+    return action
+  }
+
   const replacementWasPending = before.game.replacementNeeded === true
-  const result = next(action)
+  const actionForNext = normalizeImportantBroadcastAction(before.game, action)
+  const result = next(actionForNext)
 
   const after = api.getState() as PresentationState
   consumePreviousDayBroadcasts(api, before.game, after.game)
+
+  if (!isPendingVoxEvictionAudienceVote(after.game)) {
+    voxAudienceVoteResolutionAuthorized = false
+  }
 
   if (replacementWasPending && after.game.replacementNeeded !== true) {
     consumeResolvedReplacementPrompt(api)
   }
 
   decorateOutgoingLohBroadcast(api)
+  correctVoxCompetitionBroadcast(api)
   return result
 }

@@ -83,6 +83,7 @@ export const BROADCAST_PRESENTATION_REGISTRY: Readonly<Record<string, BroadcastP
       ),
     },
     depression_shock_end: {
+      eventMajor: true,
       announcement: liveCard(
         'The sun returns',
         'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.'

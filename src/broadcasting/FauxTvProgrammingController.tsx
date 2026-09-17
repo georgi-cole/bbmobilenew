@@ -115,6 +115,10 @@ export default function FauxTvProgrammingController() {
           phase: game.phase,
           week: game.week,
           broadcastLevel: 'minor',
+          // By the Numbers is deliberately rare. Once a milestone qualifies,
+          // give it a real Faux TV slot instead of letting a phase transition
+          // retire the ambient event before the player can ever see it.
+          ...(isMilestone ? { forceOnTv: true } : {}),
           ...(resumeKey ? { resumeRecapKey: resumeKey } : {}),
           editorial: {
             importance: 'optional',

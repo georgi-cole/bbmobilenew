@@ -2,7 +2,7 @@ import type { Ref } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { setHouseMenuAudioEffect } from '../../services/sound/audioRouteOwnership'
-import { useAppSelector } from '../../store/hooks'
+import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import AllPowerFauxTvEffect from './AllPowerFauxTvEffect'
 import './GameControlDock.css'
 
@@ -107,11 +107,21 @@ export default function GameControlDock({
   elevatedDuringOverlay = false,
   primaryLabel = 'Advance to next phase',
 }: GameControlDockProps) {
+  const dispatch = useAppDispatch()
   const [moreOpen, setMoreOpen] = useState(false)
   const votePresentationLocked = useAppSelector(
     (state) => Boolean(state.game.voteResults) || Boolean(state.game.evictionOverlayPlayerId)
   )
-  const dockDisabled = disabled || votePresentationLocked
+  // During the ordinary Vox audience-vote window, Play is the one intentional
+  // action: it starts the count/reveal. Lock navigation and side modules so the
+  // player cannot leave/remount the game while that ceremony is pending.
+  const voxAudienceVoteLocked = useAppSelector(
+    (state) =>
+      state.game.voxPopuli?.awaitingPublicVote === true &&
+      state.game.voxPopuli.publicVoteContext === 'eviction'
+  )
+  const dockDisabled = disabled || votePresentationLocked || voxAudienceVoteLocked
+  // The Vox lock deliberately does NOT disable the central Play control.
   const effectivePrimaryDisabled = primaryDisabled || votePresentationLocked
   const [socialLedActive, acknowledgeSocialLed] = useNotificationLed(chatBadgeCount, {
     notifyOnAnyChange: true,
@@ -149,10 +159,10 @@ export default function GameControlDock({
   }, [])
 
   useEffect(() => {
-    if (!votePresentationLocked) return undefined
+    if (!votePresentationLocked && !voxAudienceVoteLocked) return undefined
     const close = window.setTimeout(() => setMoreOpen(false), 0)
     return () => window.clearTimeout(close)
-  }, [votePresentationLocked])
+  }, [votePresentationLocked, voxAudienceVoteLocked])
 
   useEffect(() => {
     if (!moreOpen) {
@@ -177,6 +187,16 @@ export default function GameControlDock({
       setHouseMenuAudioEffect(false)
     }
   }, [moreOpen])
+
+  const handlePrimaryAction = () => {
+    if (voxAudienceVoteLocked) {
+      // Authorize exactly this Play press to resolve the pending audience vote.
+      // The presentation middleware rejects the legacy 5-second auto-resolution
+      // path, so only an explicit user Play can start the count/reveal.
+      dispatch({ type: 'presentation/authorizeVoxAudienceVoteResolution' })
+    }
+    onPrimaryActionClick?.()
+  }
 
   const navigation = (
     <nav className="game-control-dock-navigation" aria-label="Main navigation">
@@ -304,7 +324,7 @@ export default function GameControlDock({
           type="button"
           aria-label={primaryLabel}
           disabled={effectivePrimaryDisabled}
-          onClick={effectivePrimaryDisabled ? undefined : onPrimaryActionClick}
+          onClick={effectivePrimaryDisabled ? undefined : handlePrimaryAction}
         />
         <button
           className={`dock-hit-area hit-stats dock-hit-area--stats${publicUnavailableClass}`}

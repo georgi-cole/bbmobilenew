@@ -63,6 +63,7 @@ describe('By the Numbers season desk', () => {
     expect(candidate?.storyKey).toBe('stats:loh:leo:3')
     expect(candidate?.text).toContain('first player this season')
     expect(candidate?.text).toContain('3 LOH wins')
+    expect(candidate?.text).not.toContain('BY THE NUMBERS')
     expect(candidate?.subjectIds).toEqual(['leo'])
   })
 
@@ -99,6 +100,7 @@ describe('By the Numbers season desk', () => {
     )
     expect(candidate?.storyKey).toBe('stats:dual-power:leo')
     expect(candidate?.text).toContain('three-win résumé')
+    expect(candidate?.text).not.toContain('BY THE NUMBERS')
   })
 
   it('ignores ordinary nomination counts and selects a rare fifth trip to the block', () => {
@@ -115,6 +117,7 @@ describe('By the Numbers season desk', () => {
 
     expect(candidate?.storyKey).toBe('stats:nominated:zoe:5')
     expect(candidate?.text).toContain('5th time')
+    expect(candidate?.text).not.toContain('BY THE NUMBERS')
   })
 
   it('suppresses an exact milestone that already aired', () => {
@@ -152,6 +155,7 @@ describe('By the Numbers season desk', () => {
     )
 
     expect(active?.storyKey).toBe('stats:block-survival:leo:5')
+    expect(active?.text).not.toContain('BY THE NUMBERS')
     expect(evicted).toBeNull()
   })
 

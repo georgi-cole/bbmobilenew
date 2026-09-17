@@ -12,12 +12,15 @@ describe('broadcast presentation registry', () => {
     expect(isRecognizedBroadcastMajorKey('nomination_ceremony')).toBe(true)
     expect(isRecognizedBroadcastMajorKey('custom_critical')).toBe(true)
     expect(isRecognizedBroadcastMajorKey('depression_shock_chocolates')).toBe(true)
+    // Recovery is emitted as a runtime major after the sunrise cinematic. It
+    // must be recognised so it can replace the consumed Day Start weather card
+    // instead of leaving that older card visible for a second Play.
+    expect(isRecognizedBroadcastMajorKey('depression_shock_end')).toBe(true)
 
-    // These have authored presentation metadata but historically are reached
-    // through managed/bespoke flows rather than TvZone's generic major-event path.
+    // These have authored presentation metadata but are reached through their
+    // managed phase flows rather than TvZone's generic major-event path.
     expect(isRecognizedBroadcastMajorKey('vox_final3')).toBe(false)
     expect(isRecognizedBroadcastMajorKey('vox_public_vote')).toBe(false)
-    expect(isRecognizedBroadcastMajorKey('depression_shock_end')).toBe(false)
   })
 
   it('keeps standard announcement card metadata stable', () => {
@@ -33,6 +36,13 @@ describe('broadcast presentation registry', () => {
       isLive: true,
       autoDismissMs: null,
     })
+    expect(getBroadcastAnnouncementPresentation('depression_shock_end')).toEqual({
+      title: 'The sun returns',
+      subtitle:
+        'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales.',
+      isLive: true,
+      autoDismissMs: null,
+    })
   })
 
   it('centralizes shock classification without broadening it', () => {
@@ -41,6 +51,7 @@ describe('broadcast presentation registry', () => {
     expect(isBroadcastShockAnnouncementKey('custom_critical')).toBe(true)
     expect(isBroadcastShockAnnouncementKey('nomination_ceremony')).toBe(false)
     expect(isBroadcastShockAnnouncementKey('depression_shock_chocolates')).toBe(false)
+    expect(isBroadcastShockAnnouncementKey('depression_shock_end')).toBe(false)
   })
 
   it('centralizes play-through behavior independently from shock classification', () => {

@@ -75,7 +75,7 @@ function isStrongProgrammingStory(event: TvEvent): boolean {
 }
 
 describe('Faux TV optional programming scheduling', () => {
-  it('emits a rare By the Numbers milestone without entering the official queue', async () => {
+  it('gives a rare By the Numbers milestone a guaranteed Faux TV slot', async () => {
     const store = makeStore()
     const { phase, week } = store.getState().game
 
@@ -122,8 +122,9 @@ describe('Faux TV optional programming scheduling', () => {
         (event) => getBroadcastEditorialMetadata(event)?.category === 'by_the_numbers'
       )
     expect(getBroadcastEditorialMetadata(statistic!)?.presentationMode).toBe('ambient')
+    expect(statistic?.meta?.forceOnTv).toBe(true)
     expect(store.getState().game.broadcastQueue).toContain(official!.id)
-    expect(store.getState().game.broadcastQueue).not.toContain(statistic!.id)
+    expect(store.getState().game.broadcastQueue).toContain(statistic!.id)
   })
 
   it('keeps Day 1 clean', async () => {

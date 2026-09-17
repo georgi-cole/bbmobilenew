@@ -5,6 +5,8 @@ import gameReducer, {
   requestPublicModeChange,
 } from './gameSlice'
 import { withLohNominationPlanning } from './lohNominationPlanning'
+import { withImmediateVoxPublicMode } from './voxPublicModeReducer'
+import { voxPublicModeSyncMiddleware } from './voxPublicModeSyncMiddleware'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, {
@@ -77,7 +79,9 @@ import {
 import { backdoorPresentationMiddleware } from '../broadcasting/backdoorPresentationMiddleware'
 import { setRuntimeSocialActionOverrides } from '../social/socialActionManager'
 
-const strategicGameReducer = withLohNominationPlanning(gameReducer, getNominationTargetScore)
+const strategicGameReducer = withImmediateVoxPublicMode(
+  withLohNominationPlanning(gameReducer, getNominationTargetScore)
+)
 
 export const store = configureStore({
   reducer: {
@@ -124,6 +128,7 @@ export const store = configureStore({
       depressionShockMiddleware,
       backdoorPresentationMiddleware,
       presentationConsistencyMiddleware,
+      voxPublicModeSyncMiddleware,
       intelligenceMiddleware,
       socialStrategyMiddleware,
       relationshipResourcePolicyMiddleware,
@@ -137,6 +142,17 @@ export const store = configureStore({
       gameDiagnosticsMiddleware
     ),
 })
+
+// Repair saves created by the old Vox behavior where Settings could persist
+// Public Mode = on while the active game ignored the request and stayed off.
+// In Vox this is visibility-only, so reconciliation is safe during the cycle.
+const startupState = store.getState()
+if (
+  startupState.game.voxPopuli?.status === 'active' &&
+  startupState.game.publicModeEnabled !== (startupState.settings.sim.publicMode === true)
+) {
+  store.dispatch(requestPublicModeChange(startupState.settings.sim.publicMode === true))
+}
 
 const initialRemoteSocialManager = store.getState().remoteConfig.config?.socialManager
 setRuntimeSocialActionOverrides({
@@ -197,7 +213,7 @@ let prevSettings = store.getState().settings
 let prevPublicModeSetting = prevSettings.sim.publicMode
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile
-// Persist profiles state to localStorage whenever they change
+// Persist profiles state whenever they change
 let prevProfiles = store.getState().profiles
 // Persist ads state whenever they change
 let prevAds = store.getState().ads
@@ -377,8 +393,3 @@ if (typeof window !== 'undefined') {
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
-
-if (import.meta.env.DEV) {
-  // @ts-expect-error – intentionally attaching store for dev debugging
-  window.store = store
-}
