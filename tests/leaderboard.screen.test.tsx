@@ -1,13 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import { MemoryRouter, Route, Routes } from 'react-router';
-import Leaderboard from '../src/screens/Leaderboard/Leaderboard';
-import gameReducer from '../src/store/gameSlice';
+import { describe, it, expect } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { configureStore } from '@reduxjs/toolkit'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import Leaderboard from '../src/screens/Leaderboard/Leaderboard'
+import gameReducer from '../src/store/gameSlice'
 
 function makeStore(overrides: Record<string, unknown> = {}) {
-  const initialGameState = gameReducer(undefined, { type: '@@INIT' });
+  const initialGameState = gameReducer(undefined, { type: '@@INIT' })
   return configureStore({
     reducer: {
       game: gameReducer,
@@ -15,13 +15,25 @@ function makeStore(overrides: Record<string, unknown> = {}) {
     preloadedState: {
       game: {
         ...initialGameState,
+        players: [
+          {
+            id: 'user',
+            name: 'You',
+            avatar: '🧑',
+            isUser: true,
+            status: 'active',
+            stats: { lohWins: 0, posWins: 0, timesNominated: 0 },
+          },
+        ],
+        week: 1,
+        phase: 'week_start',
         ...overrides,
       },
     },
-  });
+  })
 }
 
-function renderLeaderboard(store = makeStore()) {
+function renderHallOfFame(store = makeStore()) {
   return render(
     <Provider store={store}>
       <MemoryRouter initialEntries={['/leaderboard']}>
@@ -29,13 +41,13 @@ function renderLeaderboard(store = makeStore()) {
           <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </MemoryRouter>
-    </Provider>,
-  );
+    </Provider>
+  )
 }
 
-describe('Leaderboard screen', () => {
+describe('Hall of Fame screen', () => {
   it('uses the back button to return to the previous route', async () => {
-    const store = makeStore();
+    const store = makeStore()
 
     render(
       <Provider store={store}>
@@ -45,124 +57,135 @@ describe('Leaderboard screen', () => {
             <Route path="/leaderboard" element={<Leaderboard />} />
           </Routes>
         </MemoryRouter>
-      </Provider>,
-    );
+      </Provider>
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: /go back/i }));
+    fireEvent.click(screen.getByRole('button', { name: /go back/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Game route')).toBeInTheDocument();
-    });
-  });
+      expect(screen.getByText('Game route')).toBeInTheDocument()
+    })
+  })
 
-  it('shows archived past winners', () => {
-    const store = makeStore({
-      seasonArchives: [
-        {
-          seasonIndex: 3,
-          seasonId: 'season-3',
-          playerSummaries: [
-            { playerId: 'p1', displayName: 'Georgi Cole', finalPlacement: 1 },
-            { playerId: 'p2', displayName: 'Mimi', finalPlacement: 2 },
-          ],
-        },
-      ],
-    });
+  it('replaces scoring leaderboards with Season History and Achievements only', () => {
+    renderHallOfFame()
 
-    renderLeaderboard(store);
+    expect(screen.getByRole('heading', { name: /Hall of Fame/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Season History' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    expect(screen.getByRole('tab', { name: 'Achievements' })).toBeInTheDocument()
+    expect(screen.queryByText('This Season')).toBeNull()
+    expect(screen.queryByText('All-Time')).toBeNull()
+    expect(screen.queryByText(/\d+ pts/)).toBeNull()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
-
-    expect(screen.getByText('Season 3')).toBeInTheDocument();
-    expect(screen.getByText('Georgi Cole')).toBeInTheDocument();
-    expect(screen.getByText('4.8M viewers')).toBeInTheDocument();
-  });
-
-  it('uses the canonical houseguest full name for archived winners when available', () => {
+  it('shows a compact season archive with winner, player finish, mode, and duration', () => {
     const store = makeStore({
       seasonArchives: [
         {
           seasonIndex: 4,
           seasonId: 'season-4',
+          voxPopuliActivated: true,
+          twinShockConsumed: true,
           playerSummaries: [
-            { playerId: 'mimi', displayName: 'Mimi', finalPlacement: 1 },
+            {
+              playerId: 'mimi',
+              displayName: 'Mimi',
+              finalPlacement: 1,
+              daysAlive: 31,
+            },
+            {
+              playerId: 'nova',
+              displayName: 'Nova',
+              finalPlacement: 2,
+              daysAlive: 31,
+            },
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 3,
+              daysAlive: 29,
+              timesNominated: 2,
+              titlesWon: ['GHOST_MODE'],
+            },
           ],
         },
       ],
-    });
+    })
 
-    renderLeaderboard(store);
+    renderHallOfFame(store)
 
-    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+    expect(screen.getByText('Season 4')).toBeInTheDocument()
+    expect(screen.getByText('🏆 Mimi Tanaka')).toBeInTheDocument()
+    expect(screen.getByText('You: 3rd')).toBeInTheDocument()
+    expect(screen.getByText('Vox Populi · Twin Shock · 31 days')).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('Season 4')).toBeInTheDocument();
-    expect(screen.getByText('Mimi Tanaka')).toBeInTheDocument();
-    expect(screen.getByText('6.1M viewers')).toBeInTheDocument();
-  });
-
-  it('shows only the first name when the winner has no last name', () => {
+  it('expands a season to show runner-up, Public Favorite, finish and season titles', () => {
     const store = makeStore({
       seasonArchives: [
         {
-          seasonIndex: 5,
-          seasonId: 'season-5',
+          seasonIndex: 7,
+          seasonId: 'season-7',
+          cupidArrowActivated: true,
           playerSummaries: [
-            { playerId: 'p1', displayName: 'Mononym', finalPlacement: 1 },
+            { playerId: 'nova', displayName: 'Nova', finalPlacement: 1, weeksAlive: 10 },
+            { playerId: 'finn', displayName: 'Finn', finalPlacement: 2, weeksAlive: 10 },
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 4,
+              weeksAlive: 8,
+              wonPublicFavorite: true,
+              titlesWon: ['VIBE_CURATOR'],
+            },
           ],
         },
       ],
-    });
+    })
 
-    renderLeaderboard(store);
+    renderHallOfFame(store)
+    fireEvent.click(screen.getByRole('button', { name: /Season 7/i }))
 
-    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
+    expect(screen.getByText('Runner-up')).toBeInTheDocument()
+    expect(screen.getByText('Finn')).toBeInTheDocument()
+    expect(screen.getByText('Public Favorite')).toBeInTheDocument()
+    expect(screen.getByText('4th')).toBeInTheDocument()
+    expect(screen.getByText('VIBE CURATOR')).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('Season 5')).toBeInTheDocument();
-    expect(screen.getByText('Mononym')).toBeInTheDocument();
-    expect(screen.getByText('7.4M viewers')).toBeInTheDocument();
-  });
-
-  it('shows N/A when an archived season has no recorded winner', () => {
+  it('renders the existing career achievement summary inside the Achievements tab', () => {
     const store = makeStore({
       seasonArchives: [
         {
           seasonIndex: 2,
           seasonId: 'season-2',
+          rewardsEarned: ['egg-one'],
           playerSummaries: [
-            { playerId: 'p3', displayName: 'Rune', finalPlacement: 2 },
-            { playerId: 'p4', displayName: 'Ash', finalPlacement: 3 },
+            {
+              playerId: 'user',
+              displayName: 'You',
+              finalPlacement: 1,
+              lohWins: 2,
+              posWins: 1,
+              timesNominated: 3,
+              wonPublicFavorite: true,
+              weeksAlive: 10,
+            },
           ],
         },
       ],
-    });
+    })
 
-    renderLeaderboard(store);
+    renderHallOfFame(store)
+    fireEvent.click(screen.getByRole('tab', { name: 'Achievements' }))
 
-    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
-
-    expect(screen.getByText('Season 2')).toBeInTheDocument();
-    expect(screen.getByText('N/A')).toBeInTheDocument();
-  });
-
-  it('shows N/A when winner lookups fail and the archived winner has no display name', () => {
-    const store = makeStore({
-      seasonArchives: [
-        {
-          seasonIndex: 6,
-          seasonId: 'season-6',
-          playerSummaries: [
-            { playerId: 'unknown-player', displayName: undefined, finalPlacement: 1 },
-          ],
-        },
-      ],
-    });
-
-    renderLeaderboard(store);
-
-    fireEvent.click(screen.getByRole('button', { name: /past winners/i }));
-
-    expect(screen.getByText('Season 6')).toBeInTheDocument();
-    expect(screen.getByText('N/A')).toBeInTheDocument();
-    expect(screen.getByText('5.4M viewers')).toBeInTheDocument();
-  });
-});
+    expect(screen.getByText("You's trophy case")).toBeInTheDocument()
+    expect(screen.getByText('Season wins')).toBeInTheDocument()
+    expect(screen.getByText('Competitive / Wins')).toBeInTheDocument()
+    expect(screen.getByText(/Season champ/)).toBeInTheDocument()
+    expect(screen.getByText(/Public favorite/)).toBeInTheDocument()
+  })
+})

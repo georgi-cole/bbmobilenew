@@ -28,7 +28,7 @@ const HOME_HUB_BUTTON_ICONS = [
   'play',
   'rules',
   'profile',
-  'leaderboard',
+  'hall_of_fame',
   'credits',
   'campaign',
   'survival',

@@ -93,7 +93,7 @@ describe('GameControlDock', () => {
     )
   })
 
-  it('opens a dock-attached one-column More menu and closes it on an outside pointer', () => {
+  it('opens a dock-attached one-column More menu with the Hall of Fame icon', () => {
     render(<GameControlDock />)
 
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
@@ -102,6 +102,11 @@ describe('GameControlDock', () => {
     expect(menuItems).toHaveLength(5)
     expect(menuItems.every((item) => item.querySelector('img') && !item.textContent?.trim())).toBe(
       true
+    )
+
+    const hallOfFame = screen.getByRole('menuitem', { name: 'Hall of Fame' })
+    expect(hallOfFame.querySelector('img')?.getAttribute('src')).toContain(
+      '/assets/updated_nav_fab_bar/hall_of_fame_approved_final.svg'
     )
 
     fireEvent.pointerDown(document.body)

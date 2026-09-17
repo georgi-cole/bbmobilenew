@@ -395,7 +395,7 @@ export default function GameControlDock({
                 ['settings', navAssetUrl('settings_approved_final.svg'), 'Settings'],
                 ['profile', navAssetUrl('profile_approved_final.svg'), 'Profile'],
                 ['rules', navAssetUrl('rules_approved_final.svg'), 'Rules'],
-                ['leaderboard', navAssetUrl('leaderboard_approved_final.svg'), 'Board'],
+                ['leaderboard', navAssetUrl('hall_of_fame_approved_final.svg'), 'Hall of Fame'],
                 ['store', `${BASE}/assets/icons/shop.svg`, 'Store'],
               ] as const
             ).map(([destination, icon, label]) => (

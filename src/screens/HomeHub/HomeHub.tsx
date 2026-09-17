@@ -77,7 +77,7 @@ type HomeHubIconName =
   | 'play'
   | 'rules'
   | 'profile'
-  | 'leaderboard'
+  | 'hall_of_fame'
   | 'credits'
   | 'campaign'
   | 'survival'
@@ -100,7 +100,7 @@ const HUB_BUTTONS = [
   { to: '/rules', label: 'Rules', icon: 'rules', variant: 'secondary_medium' },
   { to: '/profile', label: 'Profile', icon: 'profile', variant: 'secondary_medium' },
   { to: '/housemates', label: 'Hubmates', icon: 'housemates', variant: 'secondary_wide' },
-  { to: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard', variant: 'secondary_wide' },
+  { to: '/leaderboard', label: 'Hall of Fame', icon: 'hall_of_fame', variant: 'secondary_wide' },
   { to: '/credits', label: 'Credits', icon: 'credits', variant: 'secondary_small' },
 ] as const satisfies ReadonlyArray<{
   to: string
@@ -290,6 +290,7 @@ export default function HomeHub() {
   const shouldRestorePlayMenu = new URLSearchParams(location.search).get('menu') === 'play'
   const [playSelectionOpen, setPlaySelectionOpen] = useState(shouldRestorePlayMenu)
   const [housematesBioOpen, setHousematesBioOpen] = useState(false)
+  const [newsOpen, setNewsOpen] = useState(false)
   const [survivorPrompt, setSurvivorPrompt] = useState<SurvivorPrompt>(null)
   const [survivorRulesOpen, setSurvivorRulesOpen] = useState(false)
   const survivorRulesDismissed = hasSeenSurvivorRules(activeProfileId)
@@ -336,6 +337,55 @@ export default function HomeHub() {
     if (!autoStartGame) return
     navigate('/', { replace: true })
   }, [autoStartGame, navigate])
+
+  useEffect(() => {
+    if (!splashDone) return undefined
+    const container = document.getElementById('intro-hub')
+    if (!container) return undefined
+
+    let boundNewsButton: HTMLButtonElement | null = null
+    const handleNewsClick = () => setNewsOpen(true)
+
+    const repurposeAchievementChip = (): boolean => {
+      const existingNews = container.querySelector<HTMLButtonElement>('[data-hub-id="news"]')
+      if (existingNews) {
+        existingNews.addEventListener('click', handleNewsClick)
+        boundNewsButton = existingNews
+        return true
+      }
+
+      const achievementsButton = container.querySelector<HTMLButtonElement>(
+        '[data-hub-id="achievements"]'
+      )
+      if (!achievementsButton) return false
+
+      const newsButton = achievementsButton.cloneNode(true) as HTMLButtonElement
+      newsButton.dataset.hubId = 'news'
+      newsButton.setAttribute('aria-label', 'News')
+      newsButton.setAttribute('title', 'News')
+      const icon = newsButton.querySelector<HTMLElement>('.hub-chip__icon')
+      icon?.classList.remove('hub-chip__icon--achievements')
+      icon?.classList.add('hub-chip__icon--news')
+      newsButton.addEventListener('click', handleNewsClick)
+      achievementsButton.replaceWith(newsButton)
+      boundNewsButton = newsButton
+      return true
+    }
+
+    if (repurposeAchievementChip()) {
+      return () => boundNewsButton?.removeEventListener('click', handleNewsClick)
+    }
+
+    const observer = new MutationObserver(() => {
+      if (repurposeAchievementChip()) observer.disconnect()
+    })
+    observer.observe(container, { childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      boundNewsButton?.removeEventListener('click', handleNewsClick)
+    }
+  }, [splashDone])
 
   useEffect(() => {
     if (!splashDone || !requestedHubUtility) return undefined
@@ -648,6 +698,16 @@ export default function HomeHub() {
       {housematesBioOpen && (
         <HousematesBioCinematic onComplete={() => setHousematesBioOpen(false)} />
       )}
+
+      <ConfirmExitModal
+        open={newsOpen}
+        title="News"
+        description="No new updates right now. New features, modes, and major game changes will appear here."
+        confirmLabel="Close"
+        showCancel={false}
+        onConfirm={() => setNewsOpen(false)}
+        onCancel={() => setNewsOpen(false)}
+      />
 
       <ConfirmExitModal
         open={survivorPrompt === 'resume-or-new'}
