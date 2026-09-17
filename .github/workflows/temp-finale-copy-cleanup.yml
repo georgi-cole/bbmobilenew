@@ -1,0 +1,97 @@
+name: Temp Finale Copy Cleanup
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply Big Eye terminology and simpler copy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('src/components/DownMemoryLane/DownMemoryLane.tsx'): {
+                  'Final HOH · Part 3': 'Final 3 · Part 3',
+                  'Five lives each. Buzz first, then choose the housemate who matches the season memory.': 'Five lives each. Buzz first, then choose the hubmate who matches the season memory.',
+                  'Not enough season receipts yet.': 'Not enough season history yet.',
+                  'This finale duel only asks questions with a defensible, unique answer.': 'This duel only uses questions with one clear answer.',
+                  'seeded mock memories are being used because no season has been\n            played here.': 'practice questions are being used because no season has been\n            played here yet.',
+                  'The Final HOH is decided. One final power remains.': 'Part 3 is decided. The winner earns the final LOH power.',
+                  'Confirm Final HOH': 'Confirm Part 3 winner',
+              },
+              Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts'): {
+                  'Who was evicted with the highest single vote count of the season?': 'Who was eliminated with the highest single vote count of the season?',
+                  'Which housemate received the most eviction votes in a single house vote?': 'Which hubmate received the most votes in a single elimination?',
+                  'Whose eviction came with the season’s biggest vote total?': 'Whose elimination had the season’s biggest vote total?',
+                  ' eviction votes`': ' elimination votes`',
+                  'Whose eviction was decided by the narrowest clear vote margin?': 'Whose elimination was decided by the smallest vote margin?',
+                  'Who was sent out in the eviction decided by a single housemate’s vote?': 'Who was eliminated by a single hubmate’s vote?',
+                  'Who was sitting beside ${evictee.name} on the block when ${evictee.name} was evicted?': 'Who was nominated beside ${evictee.name} when ${evictee.name} was eliminated?',
+                  'Who was LOH when ${evictee.name} was evicted?': 'Who was LOH when ${evictee.name} was eliminated?',
+                  'Which of these housemates was evicted during ${label}?': 'Which of these hubmates was eliminated during ${label}?',
+                  'Who was the first housemate evicted this season?': 'Who was the first hubmate eliminated this season?',
+                  'Who was the last housemate evicted before the Final 3?': 'Who was the last hubmate eliminated before the Final 3?',
+                  'Who fought their way back into the game after being evicted?': 'Who returned to the game after being eliminated?',
+                  'Who was the only housemate to win both LOH and Power of Safety this season?': 'Who was the only hubmate to win both LOH and POS this season?',
+                  'Who won the first Power of Safety of the season?': 'Who won the first POS of the season?',
+                  'Who was the season’s first Safety winner?': 'Who was the season’s first POS winner?',
+                  'Who won the most Power of Safety competitions?': 'Who won the most POS competitions?',
+                  'Power of Safety competition': 'POS competition',
+                  'Who made the deepest run without winning an LOH or Power of Safety competition?': 'Who made the deepest run without winning an LOH or POS competition?',
+                  'Who spent the most time on the block?': 'Who faced the most nominations this season?',
+                  'Who survived the season’s Double Eviction danger?': 'Who survived the season’s Double Elimination danger?',
+                  "'the Double Eviction'": "'the Double Elimination'",
+                  'Who held the opening power in this preview season?': 'Who won the first LOH in this preview season?',
+                  'Who won the first Safety competition in this preview season?': 'Who won the first POS in this preview season?',
+                  'Who escaped the block most often in this preview?': 'Who survived the most nominations in this preview?',
+                  'Who returned to the house in this preview season?': 'Who returned to the game in this preview season?',
+                  'Who survived the Double Eviction in this preview?': 'Who survived the Double Elimination in this preview?',
+                  'Who reached the Final 4 after the longest block run?': 'Who reached the Final 4 after surviving the most nominations?',
+                  'Who was the season’s first evictee in this preview?': 'Who was the first hubmate eliminated in this preview?',
+                  'Who won the last Safety before the finale in this preview?': 'Who won the last POS before the finale in this preview?',
+              },
+          }
+
+          for path, mapping in replacements.items():
+              text = path.read_text()
+              for old, new in mapping.items():
+                  if old not in text:
+                      print(f'warning: text not found in {path}: {old}')
+                  text = text.replace(old, new)
+              path.write_text(text)
+          PY
+          npx prettier --write \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts \
+            src/minigames/registry.ts
+      - name: Commit copy cleanup
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to update."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts \
+            src/minigames/registry.ts
+          git commit -m "copy: align finale text with Big Eye terminology"
+          git push --no-verify origin HEAD:${{ github.head_ref }}
