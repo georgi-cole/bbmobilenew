@@ -6,6 +6,7 @@ import gameReducer, {
 } from './gameSlice'
 import { withLohNominationPlanning } from './lohNominationPlanning'
 import { withImmediateVoxPublicMode } from './voxPublicModeReducer'
+import { voxPublicModeSyncMiddleware } from './voxPublicModeSyncMiddleware'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, {
@@ -127,6 +128,7 @@ export const store = configureStore({
       depressionShockMiddleware,
       backdoorPresentationMiddleware,
       presentationConsistencyMiddleware,
+      voxPublicModeSyncMiddleware,
       intelligenceMiddleware,
       socialStrategyMiddleware,
       relationshipResourcePolicyMiddleware,
