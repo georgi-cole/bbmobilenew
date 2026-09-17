@@ -1,14 +1,9 @@
-import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
-import gameReducer, {
-  addTvEvent,
-  consumeBroadcastEvent,
-  setPhase,
-} from '../../../store/gameSlice'
+import gameReducer, { addTvEvent, consumeBroadcastEvent, setPhase } from '../../../store/gameSlice'
 import socialReducer from '../../../social/socialSlice'
 import profilesReducer from '../../../store/profilesSlice'
 import challengeReducer from '../../../store/challengeSlice'
@@ -100,9 +95,7 @@ describe('TvZone Depression Shock recovery handoff', () => {
 
     // Model the first Play: the Day Start source is consumed but deliberately
     // retained as lastPlainBroadcastEventId for viewport continuity.
-    const dayStart = store
-      .getState()
-      .game.tvFeed.find((event) => event.meta?.key === 'day_start')
+    const dayStart = store.getState().game.tvFeed.find((event) => event.meta?.key === 'day_start')
     expect(dayStart).toBeDefined()
     act(() => {
       store.dispatch(consumeBroadcastEvent(dayStart!.id))
