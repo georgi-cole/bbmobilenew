@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState, Player } from '../../types'
 import { reconcileStrategicNominationStatuses } from '../nominationStatusConsistency'
+import { withImmediateVoxPublicMode } from '../voxPublicModeReducer'
 
 function player(id: string, status: Player['status'], isUser = false): Player {
   return {
@@ -103,5 +104,23 @@ describe('strategic nomination status consistency', () => {
 
     expect(result).toBe(state)
     expect(result.players.find((candidate) => candidate.id === 'user')?.status).toBe('nominated')
+  })
+
+  it('runs the repair after the inner strategic reducer has produced its final block', () => {
+    const staleStrategicState = makeState({
+      nominees: ['quinn', 'sol'],
+      players: [
+        player('loh', 'loh'),
+        player('user', 'nominated', true),
+        player('remy', 'nominated'),
+        player('quinn', 'active'),
+        player('sol', 'active'),
+      ],
+    })
+    const reducer = withImmediateVoxPublicMode((current = staleStrategicState) => current)
+
+    const result = reducer(staleStrategicState, { type: 'test/noop' })
+
+    expect(nominatedStatusIds(result)).toEqual(['quinn', 'sol'])
   })
 })
