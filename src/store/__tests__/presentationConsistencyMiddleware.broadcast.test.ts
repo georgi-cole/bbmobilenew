@@ -115,4 +115,56 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
 
     expect(next).toHaveBeenCalledWith(action)
   })
+
+  it('relabels the generic LOH competition broadcast as immunity during active Vox', () => {
+    let state = {
+      game: {
+        phase: 'week_start',
+        week: 4,
+        tvFeed: [],
+        players: [],
+        replacementNeeded: false,
+        voxPopuli: { status: 'active' },
+      },
+    }
+    const next = vi.fn((nextAction) => {
+      state = {
+        game: {
+          ...state.game,
+          phase: 'loh_comp',
+          tvFeed: [
+            {
+              id: 'vox-competition-start',
+              text: 'The Leader of the Hub competition has begun! 🏆 Who will win power today?',
+              type: 'game',
+              timestamp: 1,
+              meta: {
+                week: 4,
+                phase: 'loh_comp',
+                broadcastTemplateId: 'loh.competition-start',
+              },
+            },
+          ],
+        },
+      }
+      return nextAction
+    })
+    const api = {
+      getState: () => state,
+      dispatch: vi.fn(),
+    }
+
+    presentationConsistencyMiddleware(api as never)(next as never)({ type: 'game/advance' })
+
+    expect(api.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'game/updateTvEvent',
+        payload: expect.objectContaining({
+          id: 'vox-competition-start',
+          text: 'The Immunity Competition has begun! 🛡️ Who will secure safety today?',
+          type: 'game',
+        }),
+      })
+    )
+  })
 })
