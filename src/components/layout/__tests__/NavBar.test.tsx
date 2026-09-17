@@ -87,7 +87,7 @@ describe('NavBar', () => {
 
     expect(screen.getByRole('button', { name: 'RULES' })).toBeDefined()
     expect(screen.queryByRole('button', { name: 'GAME' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'BOARD' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'HALL OF FAME' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'USER' })).toBeDefined()
     expect(screen.queryByRole('button', { name: 'LEADERBOARD' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'PROFILE' })).toBeNull()
