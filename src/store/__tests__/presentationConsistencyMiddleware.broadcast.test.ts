@@ -21,6 +21,30 @@ function runMiddleware(action: unknown) {
   return next
 }
 
+function createPendingVoxVoteHarness() {
+  const state = {
+    game: {
+      phase: 'live_vote',
+      week: 4,
+      tvFeed: [],
+      players: [],
+      replacementNeeded: false,
+      voxPopuli: {
+        status: 'active',
+        awaitingPublicVote: true,
+        publicVoteContext: 'eviction',
+      },
+    },
+  }
+  const next = vi.fn((nextAction) => nextAction)
+  const api = {
+    getState: () => state,
+    dispatch: vi.fn(),
+  }
+  const middleware = presentationConsistencyMiddleware(api as never)(next as never)
+  return { middleware, next }
+}
+
 describe('presentationConsistencyMiddleware important broadcasts', () => {
   it('stamps the Vox secret-ballot unlock with the live phase/day and forces it onto Faux TV', () => {
     const next = runMiddleware({
@@ -166,5 +190,81 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
         }),
       })
     )
+  })
+})
+
+describe('presentationConsistencyMiddleware Vox audience-vote Play gate', () => {
+  it('rejects an un-authorized normal Vox audience vote commit', () => {
+    runMiddleware({ type: 'test/reset-vox-vote-gate' })
+    const { middleware, next } = createPendingVoxVoteHarness()
+    const commit = {
+      type: 'game/commitVoxAudienceVote',
+      payload: {
+        context: 'eviction',
+        percentages: { a: 55, b: 45 },
+        rankedIds: ['a', 'b'],
+      },
+    }
+
+    middleware(commit)
+
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('allows exactly the next Vox audience vote commit after an explicit Play authorization', () => {
+    runMiddleware({ type: 'test/reset-vox-vote-gate' })
+    const { middleware, next } = createPendingVoxVoteHarness()
+    const authorization = { type: 'presentation/authorizeVoxAudienceVoteResolution' }
+    const commit = {
+      type: 'game/commitVoxAudienceVote',
+      payload: {
+        context: 'eviction',
+        percentages: { a: 55, b: 45 },
+        rankedIds: ['a', 'b'],
+      },
+    }
+
+    middleware(authorization)
+    middleware(commit)
+
+    expect(next).toHaveBeenCalledWith(authorization)
+    expect(next).toHaveBeenCalledWith(commit)
+
+    next.mockClear()
+    middleware(commit)
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it('does not gate Final Three Vox audience commits', () => {
+    runMiddleware({ type: 'test/reset-vox-vote-gate' })
+    const state = {
+      game: {
+        phase: 'final3_decision',
+        week: 9,
+        tvFeed: [],
+        players: [],
+        replacementNeeded: false,
+        voxPopuli: {
+          status: 'active',
+          awaitingPublicVote: true,
+          publicVoteContext: 'final3',
+        },
+      },
+    }
+    const next = vi.fn((nextAction) => nextAction)
+    const api = { getState: () => state, dispatch: vi.fn() }
+    const middleware = presentationConsistencyMiddleware(api as never)(next as never)
+    const commit = {
+      type: 'game/commitVoxAudienceVote',
+      payload: {
+        context: 'final3',
+        percentages: { a: 55, b: 45 },
+        rankedIds: ['a', 'b'],
+      },
+    }
+
+    middleware(commit)
+
+    expect(next).toHaveBeenCalledWith(commit)
   })
 })
