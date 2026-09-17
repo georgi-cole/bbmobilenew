@@ -16,7 +16,14 @@ interface RiskRunStageProps {
   onComplete: (score: number) => void
 }
 
-type RiskView = 'tutorial' | 'choice' | 'playing' | 'result' | 'stake' | 'overrideTutorial' | 'final'
+type RiskView =
+  | 'tutorial'
+  | 'choice'
+  | 'playing'
+  | 'result'
+  | 'stake'
+  | 'overrideTutorial'
+  | 'final'
 type FinalStake = (typeof FINAL_PUSH_STAKES)[number]
 
 const TASKS = [
@@ -91,7 +98,12 @@ export default function RiskRunStage({ seed, onComplete }: RiskRunStageProps) {
 
         <div className="f3-circuit__risk-tiers">
           {(Object.keys(LABELS) as RiskTier[]).map((item) => (
-            <button type="button" key={item} className={`is-${item}`} onClick={() => chooseTier(item)}>
+            <button
+              type="button"
+              key={item}
+              className={`is-${item}`}
+              onClick={() => chooseTier(item)}
+            >
               <span>{LABELS[item]}</span>
               <strong>up to {RISK_TIER_MAX_POINTS[item]}</strong>
               <small>{COPY[item]}</small>

@@ -94,7 +94,9 @@ describe('Sequence Builder sliding puzzles', () => {
     const blank = board.initial.indexOf(EMPTY_SEQUENCE_TILE)
     const illegal = board.initial.findIndex((_, index) => {
       if (index === blank) return false
-      const rowDelta = Math.abs(Math.floor(index / board.columns) - Math.floor(blank / board.columns))
+      const rowDelta = Math.abs(
+        Math.floor(index / board.columns) - Math.floor(blank / board.columns)
+      )
       const colDelta = Math.abs((index % board.columns) - (blank % board.columns))
       return rowDelta + colDelta > 1
     })
@@ -164,12 +166,15 @@ describe('Warden Escape rules', () => {
 })
 
 describe('Risk Run challenge safety', () => {
-  it.each(['safe', 'standard', 'risky'] as const)('builds a valid %s Power Balance puzzle', (tier) => {
-    const puzzle = buildPowerPuzzle(101, tier)
-    expect(puzzle.values.length).toBeGreaterThanOrEqual(5)
-    expect(puzzle.maxToggles).toBe(3)
-    expect(isPowerPuzzleSolved(puzzle.target, puzzle)).toBe(true)
-  })
+  it.each(['safe', 'standard', 'risky'] as const)(
+    'builds a valid %s Power Balance puzzle',
+    (tier) => {
+      const puzzle = buildPowerPuzzle(101, tier)
+      expect(puzzle.values.length).toBeGreaterThanOrEqual(5)
+      expect(puzzle.maxToggles).toBe(3)
+      expect(isPowerPuzzleSolved(puzzle.target, puzzle)).toBe(true)
+    }
+  )
 })
 
 describe('three-player result contract', () => {

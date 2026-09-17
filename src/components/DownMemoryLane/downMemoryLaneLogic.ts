@@ -77,7 +77,8 @@ function seasonPlayers(state: GameState): Player[] {
 
 function evictedPlayers(state: GameState): Player[] {
   return seasonPlayers(state).filter(
-    (player) => player.status === 'evicted' || player.status === 'jury' || player.evictedAtWeek != null
+    (player) =>
+      player.status === 'evicted' || player.status === 'jury' || player.evictedAtWeek != null
   )
 }
 
@@ -119,14 +120,17 @@ function firstPlayerNamedInFeed(
 }
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : []
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : []
 }
 
 function numericRecord(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return Object.fromEntries(
     Object.entries(value).filter(
-      (entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1])
+      (entry): entry is [string, number] =>
+        typeof entry[1] === 'number' && Number.isFinite(entry[1])
     )
   )
 }
@@ -134,9 +138,7 @@ function numericRecord(value: unknown): Record<string, number> {
 function stringRecord(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return Object.fromEntries(
-    Object.entries(value).filter(
-      (entry): entry is [string, string] => typeof entry[1] === 'string'
-    )
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
   )
 }
 
@@ -171,10 +173,7 @@ function makeOptions(
   const excluded = new Set(excludedIds.filter((id) => id !== correctId))
   const preferred = preferredIds.filter(
     (id, index, values) =>
-      id !== correctId &&
-      !excluded.has(id) &&
-      byId.has(id) &&
-      values.indexOf(id) === index
+      id !== correctId && !excluded.has(id) && byId.has(id) && values.indexOf(id) === index
   )
   const random = rngFor(seed, `options:${salt}`)
   const rest = shuffle(
@@ -236,7 +235,9 @@ function getFirstLohWinner(state: GameState): Player | null {
     const template = String(event.meta?.broadcastTemplateId ?? '')
     return (
       template.startsWith('loh.') ||
-      /won leader of the house|has won leader of the house|wins the immunity competition/i.test(text)
+      /won leader of the house|has won leader of the house|wins the immunity competition/i.test(
+        text
+      )
     )
   })
 }
@@ -245,9 +246,8 @@ function getFirstPosWinner(state: GameState): Player | null {
   const receipt = state.history?.find((event) => event.type === 'seasonReceipt:posWin')
   const id = typeof receipt?.data.playerId === 'string' ? receipt.data.playerId : null
   if (id) return state.players.find((player) => player.id === id) ?? null
-  return firstPlayerNamedInFeed(
-    state,
-    (text) => /won the power of safety|has won the power of safety/i.test(text)
+  return firstPlayerNamedInFeed(state, (text) =>
+    /won the power of safety|has won the power of safety/i.test(text)
   )
 }
 
@@ -260,10 +260,10 @@ function addUniqueCountQuestions(
   const players = seasonPlayers(state)
   const score = (player: Player) =>
     kind === 'loh'
-      ? player.stats?.lohWins ?? 0
+      ? (player.stats?.lohWins ?? 0)
       : kind === 'pos'
-        ? player.stats?.posWins ?? 0
-        : player.stats?.timesNominated ?? 0
+        ? (player.stats?.posWins ?? 0)
+        : (player.stats?.timesNominated ?? 0)
   const buckets = new Map<number, Player[]>()
   for (const player of players) {
     const value = score(player)
@@ -288,7 +288,9 @@ function addUniqueCountQuestions(
       correctPlayerId: player.id,
       preferredIds:
         kind === 'noms'
-          ? players.filter((entry) => (entry.stats?.timesNominated ?? 0) > 0).map((entry) => entry.id)
+          ? players
+              .filter((entry) => (entry.stats?.timesNominated ?? 0) > 0)
+              .map((entry) => entry.id)
           : compWinners(state).map((entry) => entry.id),
       category: kind === 'noms' ? 'nominations' : 'competition',
       difficulty: 0.64,
@@ -347,7 +349,11 @@ function addExitReceiptQuestions(
     })
     if (margins.length > 0) {
       const narrowest = Math.min(...margins.map((entry) => entry.margin))
-      const ids = [...new Set(margins.filter((entry) => entry.margin === narrowest).map((entry) => entry.playerId))]
+      const ids = [
+        ...new Set(
+          margins.filter((entry) => entry.margin === narrowest).map((entry) => entry.playerId)
+        ),
+      ]
       if (ids.length === 1) {
         pushQuestion(questions, state, seed, {
           id: 'narrowest-eviction-margin',
@@ -426,7 +432,9 @@ function shockWeeksFromFeed(state: GameState, pattern: RegExp): number[] {
   return [
     ...new Set(
       state.tvFeed
-        .filter((event) => pattern.test(event.text) || pattern.test(String(event.meta?.major ?? '')))
+        .filter(
+          (event) => pattern.test(event.text) || pattern.test(String(event.meta?.major ?? ''))
+        )
         .map((event) => Number(event.meta?.week ?? 0))
         .filter((week) => Number.isFinite(week) && week > 0)
     ),
@@ -461,7 +469,10 @@ function addShockExitQuestions(
     })
 }
 
-function categoryBalancedShuffle(questions: MemoryLaneQuestion[], seed: number): MemoryLaneQuestion[] {
+function categoryBalancedShuffle(
+  questions: MemoryLaneQuestion[],
+  seed: number
+): MemoryLaneQuestion[] {
   const random = rngFor(seed, 'balanced-question-order')
   const groups = new Map<MemoryLaneCategory, MemoryLaneQuestion[]>()
   for (const question of questions) {
@@ -483,7 +494,9 @@ function categoryBalancedShuffle(questions: MemoryLaneQuestion[], seed: number):
   ]
   const result: MemoryLaneQuestion[] = []
   while ([...groups.values()].some((group) => group.length > 0)) {
-    const availableCategories = preferredOrder.filter((category) => (groups.get(category)?.length ?? 0) > 0)
+    const availableCategories = preferredOrder.filter(
+      (category) => (groups.get(category)?.length ?? 0) > 0
+    )
     if (availableCategories.length === 0) break
     const offset = Math.floor(random() * availableCategories.length)
     const rotated = [...availableCategories.slice(offset), ...availableCategories.slice(0, offset)]
@@ -841,7 +854,10 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
  * preview bank exists only so the duel interaction can be QA'd in development;
  * a real Final 3 always uses buildMemoryLaneQuestionBank and real season facts.
  */
-export function buildMemoryLanePreviewBank(players: readonly Player[], seed: number): MemoryLaneQuestion[] {
+export function buildMemoryLanePreviewBank(
+  players: readonly Player[],
+  seed: number
+): MemoryLaneQuestion[] {
   if (players.length < 4) return []
   const random = rngFor(seed, 'preview-bank')
   const roster = shuffle(players, random)
@@ -861,7 +877,8 @@ export function buildMemoryLanePreviewBank(players: readonly Player[], seed: num
   ]
   return prompts.map((prompt, index) => {
     const correct = roster[index % roster.length]
-    const options = makeOptions(correct.id, players, seed + index * 31, `preview-${index}`) ??
+    const options =
+      makeOptions(correct.id, players, seed + index * 31, `preview-${index}`) ??
       players.slice(0, 4).map((player) => player.id)
     const categories: MemoryLaneCategory[] = [
       'milestone',
@@ -901,7 +918,11 @@ export function deriveMemoryLaneAiAbility(profile: CompetitionSkillProfile | und
   const clutch = normalize(profile.clutch, 55)
   const chokeRisk = normalize(profile.chokeRisk, 45)
   const ability =
-    mental * 0.56 + consistency * 0.16 + nerve * 0.12 + clutch * 0.16 - Math.max(0, chokeRisk - 50) * 0.08
+    mental * 0.56 +
+    consistency * 0.16 +
+    nerve * 0.12 +
+    clutch * 0.16 -
+    Math.max(0, chokeRisk - 50) * 0.08
   return Math.max(42, Math.min(88, ability))
 }
 
@@ -916,7 +937,10 @@ export function simulateMemoryLaneAiDecision(input: {
   const { seed, question, aiPlayerId, aiLives, humanLives } = input
   const random = rngFor(seed, `ai:${aiPlayerId}:${question.id}:${aiLives}:${humanLives}`)
   const rawAbility = Number.isFinite(input.aiAbility) ? Number(input.aiAbility) : 66
-  const ability = rawAbility > 1 ? Math.max(0, Math.min(1, rawAbility / 100)) : Math.max(0, Math.min(1, rawAbility))
+  const ability =
+    rawAbility > 1
+      ? Math.max(0, Math.min(1, rawAbility / 100))
+      : Math.max(0, Math.min(1, rawAbility))
 
   // Knowledge and buzzer confidence are intentionally separate. An AI can know
   // an answer but hesitate, or buzz confidently and be wrong.
@@ -941,7 +965,8 @@ export function simulateMemoryLaneAiDecision(input: {
   const correct = actuallyKnows && random() < executionAccuracy
   const answerPlayerId = correct
     ? question.correctPlayerId
-    : wrongOptions[Math.floor(random() * Math.max(1, wrongOptions.length))] ?? question.correctPlayerId
+    : (wrongOptions[Math.floor(random() * Math.max(1, wrongOptions.length))] ??
+      question.correctPlayerId)
 
   return { willBuzz, delayMs, correct, answerPlayerId, confidence }
 }

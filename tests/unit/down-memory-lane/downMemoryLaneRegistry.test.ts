@@ -16,9 +16,9 @@ describe('Down Memory Lane finale registration', () => {
   })
 
   it('is excluded from ordinary random pools', () => {
-    expect(getPoolByFilter({ retired: false }).some((entry) => entry.key === 'downMemoryLane')).toBe(
-      false
-    )
+    expect(
+      getPoolByFilter({ retired: false }).some((entry) => entry.key === 'downMemoryLane')
+    ).toBe(false)
   })
 
   it('owns Final 3 Part 3 and does not appear in Parts 1 or 2', () => {

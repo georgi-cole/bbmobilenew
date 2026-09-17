@@ -96,7 +96,8 @@ export default function DownMemoryLane({
   const currentQuestion: MemoryLaneQuestion | null =
     questionBank.length > 0 ? questionBank[questionIndex % questionBank.length] : null
   const memoryNumber = questionIndex + 1
-  const questionCycle = questionBank.length > 0 ? Math.floor(questionIndex / questionBank.length) : 0
+  const questionCycle =
+    questionBank.length > 0 ? Math.floor(questionIndex / questionBank.length) : 0
 
   const gamePlayersById = useMemo(
     () => new Map(game.players.map((player) => [player.id, player])),
@@ -287,12 +288,15 @@ export default function DownMemoryLane({
         </p>
         {usingLabPreview && (
           <div className="memory-lane__preview-note">
-            Minigame Lab preview · seeded mock memories are being used because no season has been played here.
+            Minigame Lab preview · seeded mock memories are being used because no season has been
+            played here.
           </div>
         )}
         <div className="memory-lane__tutorial-rule">
-          <span>✓ Correct</span><strong>Opponent −1 life</strong>
-          <span>✕ Wrong</span><strong>You −1 life</strong>
+          <span>✓ Correct</span>
+          <strong>Opponent −1 life</strong>
+          <span>✕ Wrong</span>
+          <strong>You −1 life</strong>
         </div>
         <div className="memory-lane__practice">
           <small>Try the buzzer once</small>
@@ -409,7 +413,9 @@ export default function DownMemoryLane({
 
         {!buzzOwner && !feedback && (
           <>
-            <div className="memory-lane__buzz-clock" key={`buzz-${questionIndex}`}><i /></div>
+            <div className="memory-lane__buzz-clock" key={`buzz-${questionIndex}`}>
+              <i />
+            </div>
             <button
               type="button"
               className="memory-lane__buzzer memory-lane__buzzer--live"

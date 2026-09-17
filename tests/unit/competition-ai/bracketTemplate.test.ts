@@ -38,7 +38,10 @@ describe('classic campaign map registry integrity', () => {
         ;[...band.loh, ...band.pos].forEach((key) => {
           const game = getGame(key)
           expect(game, `${key} is missing from the registry`).toBeDefined()
-          expect(supportsPlayerCount(game!, players), `${key} does not support ${players} players`).toBe(true)
+          expect(
+            supportsPlayerCount(game!, players),
+            `${key} does not support ${players} players`
+          ).toBe(true)
         })
       }
     })

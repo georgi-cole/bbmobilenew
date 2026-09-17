@@ -21,7 +21,9 @@ describe('Final Override completion', () => {
     render(<FinalOverrideChallenge seed={424242} stake={0.4} onFinish={onFinish} />)
 
     for (let round = 0; round < 5; round += 1) {
-      const prompt = screen.getByText(Object.keys(CORRECT_BY_PROMPT).find((text) => screen.queryByText(text))!)
+      const prompt = screen.getByText(
+        Object.keys(CORRECT_BY_PROMPT).find((text) => screen.queryByText(text))!
+      )
       const correct = CORRECT_BY_PROMPT[prompt.textContent ?? '']
       fireEvent.click(screen.getByRole('button', { name: correct }))
       act(() => {

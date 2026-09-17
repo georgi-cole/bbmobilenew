@@ -89,7 +89,9 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
           <p className="f3-circuit__eyebrow">Stage 2 · Sequence Builder</p>
           <h2>Slide the circuit into place</h2>
         </div>
-        <span>Board {boardIndex + 1} / {boards.length}</span>
+        <span>
+          Board {boardIndex + 1} / {boards.length}
+        </span>
       </div>
 
       <div className="f3-circuit__challenge-meter">
@@ -99,7 +101,8 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
       </div>
 
       <p className="f3-circuit__copy">
-        You have five minutes for both boards. The target stays visible, but only tiles touching the empty slot can move. The first board is a warm-up; the second is the full 3 × 3 challenge.
+        You have five minutes for both boards. The target stays visible, but only tiles touching the
+        empty slot can move. The first board is a warm-up; the second is the full 3 × 3 challenge.
       </p>
 
       <div className="f3-circuit__sequence-layout">
@@ -111,7 +114,10 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
             aria-label="Target arrangement"
           >
             {board.target.map((token, index) => (
-              <span key={`${token}:${index}`} className={token === EMPTY_SEQUENCE_TILE ? 'is-empty' : ''}>
+              <span
+                key={`${token}:${index}`}
+                className={token === EMPTY_SEQUENCE_TILE ? 'is-empty' : ''}
+              >
                 {token === EMPTY_SEQUENCE_TILE ? '' : token}
               </span>
             ))}

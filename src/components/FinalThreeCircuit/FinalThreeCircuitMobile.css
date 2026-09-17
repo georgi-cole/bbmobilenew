@@ -1,15 +1,14 @@
 .f3-circuit {
   /* Match the app's main plum/purple gameplay family instead of the earlier blue-black lab look. */
   background:
-    radial-gradient(circle at 50% 18%, rgba(139, 92, 246, 0.20), transparent 34%),
+    radial-gradient(circle at 50% 18%, rgba(139, 92, 246, 0.2), transparent 34%),
     radial-gradient(circle at 84% 78%, rgba(98, 52, 142, 0.16), transparent 40%),
     linear-gradient(180deg, #15101c 0%, #170d25 42%, #1d0f2d 72%, #0a0810 100%);
 }
 
 @media (max-width: 430px) {
   .f3-circuit {
-    padding:
-      var(--minigame-stage-top-padding, max(46px, calc(var(--minigame-safe-top, 0px) + 4px)))
+    padding: var(--minigame-stage-top-padding, max(46px, calc(var(--minigame-safe-top, 0px) + 4px)))
       max(7px, calc(var(--minigame-safe-right, 0px) + 7px))
       max(9px, calc(var(--minigame-safe-bottom, 0px) + 9px))
       max(7px, calc(var(--minigame-safe-left, 0px) + 7px));
@@ -53,7 +52,9 @@
     gap: 0.54rem;
     padding: 0.7rem;
     border-radius: 18px;
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow:
+      0 14px 32px rgba(0, 0, 0, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .f3-circuit__section-heading {

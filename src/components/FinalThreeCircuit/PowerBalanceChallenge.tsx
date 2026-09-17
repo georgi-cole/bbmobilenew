@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  buildPowerPuzzle,
-  isPowerPuzzleSolved,
-  type RiskTier,
-} from './finalThreeCircuitLogic'
+import { buildPowerPuzzle, isPowerPuzzleSolved, type RiskTier } from './finalThreeCircuitLogic'
 
 interface PowerBalanceChallengeProps {
   seed: number
@@ -11,7 +7,11 @@ interface PowerBalanceChallengeProps {
   onFinish: (accuracy: number) => void
 }
 
-export default function PowerBalanceChallenge({ seed, tier, onFinish }: PowerBalanceChallengeProps) {
+export default function PowerBalanceChallenge({
+  seed,
+  tier,
+  onFinish,
+}: PowerBalanceChallengeProps) {
   const puzzle = useMemo(() => buildPowerPuzzle(seed, tier), [seed, tier])
   const [selected, setSelected] = useState<number[]>([])
   const [toggles, setToggles] = useState(0)
@@ -40,7 +40,10 @@ export default function PowerBalanceChallenge({ seed, tier, onFinish }: PowerBal
     if (finished || selected.includes(index) || toggles >= puzzle.maxToggles) return
     const nextSelected = [...selected, index]
     const nextToggles = toggles + 1
-    const nextSum = nextSelected.reduce((total, selectedIndex) => total + puzzle.values[selectedIndex], 0)
+    const nextSum = nextSelected.reduce(
+      (total, selectedIndex) => total + puzzle.values[selectedIndex],
+      0
+    )
     setSelected(nextSelected)
     setToggles(nextToggles)
 
@@ -72,7 +75,11 @@ export default function PowerBalanceChallenge({ seed, tier, onFinish }: PowerBal
         </div>
         <div>
           <span>Current load</span>
-          <strong className={solved ? 'is-good' : sum > puzzle.target + puzzle.tolerance ? 'is-hot' : ''}>{sum}</strong>
+          <strong
+            className={solved ? 'is-good' : sum > puzzle.target + puzzle.tolerance ? 'is-hot' : ''}
+          >
+            {sum}
+          </strong>
         </div>
         <div>
           <span>Time</span>
@@ -81,7 +88,8 @@ export default function PowerBalanceChallenge({ seed, tier, onFinish }: PowerBal
       </div>
 
       <p className="f3-circuit__copy">
-        Activate exactly the right power cells. Once a cell is committed it cannot be switched off, so each choice matters.
+        Activate exactly the right power cells. Once a cell is committed it cannot be switched off,
+        so each choice matters.
       </p>
 
       <div className="f3-circuit__power-cells">
@@ -100,7 +108,9 @@ export default function PowerBalanceChallenge({ seed, tier, onFinish }: PowerBal
       </div>
 
       <div className="f3-circuit__micro-stats">
-        <span>{toggles} / {puzzle.maxToggles} committed</span>
+        <span>
+          {toggles} / {puzzle.maxToggles} committed
+        </span>
         <span>{puzzle.values.length - selected.length} cells available</span>
       </div>
     </div>

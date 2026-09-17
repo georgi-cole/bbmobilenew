@@ -38,14 +38,7 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
   useEffect(() => {
     if (remainingMs > 0 || roundScore != null) return
     setRoundScore(
-      scoreSignalRound(
-        step,
-        round.targetCount,
-        0,
-        round.timeLimitMs,
-        round.maxPoints,
-        mistakes
-      )
+      scoreSignalRound(step, round.targetCount, 0, round.timeLimitMs, round.maxPoints, mistakes)
     )
   }, [mistakes, remainingMs, round, roundScore, step])
 
@@ -111,7 +104,8 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
       </div>
 
       <p className="f3-circuit__copy">
-        Find the requested node. The board scrambles after every correct hit. A wrong tap costs time and points.
+        Find the requested node. The board scrambles after every correct hit. A wrong tap costs time
+        and points.
       </p>
 
       <div
@@ -133,7 +127,9 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
       </div>
 
       <div className="f3-circuit__micro-stats">
-        <span>{Math.min(step, round.targetCount)} / {round.targetCount} found</span>
+        <span>
+          {Math.min(step, round.targetCount)} / {round.targetCount} found
+        </span>
         <span>{mistakes} mistakes</span>
         <span>{bank} banked</span>
       </div>

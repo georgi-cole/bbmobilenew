@@ -20,7 +20,9 @@
   border-radius: 999px;
   color: #fff2c9;
   background: linear-gradient(90deg, rgba(121, 42, 81, 0.82), rgba(105, 50, 130, 0.82));
-  box-shadow: 0 0 24px rgba(232, 139, 107, 0.2), inset 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 24px rgba(232, 139, 107, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.1);
   font-size: 0.64rem;
   font-weight: 950;
   letter-spacing: 0.18em;

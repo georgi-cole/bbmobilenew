@@ -233,7 +233,8 @@ export function scoreSequenceBoard(
   }
 
   const correctTiles = order.reduce(
-    (count, tile, index) => count + (tile !== EMPTY_SEQUENCE_TILE && tile === board.target[index] ? 1 : 0),
+    (count, tile, index) =>
+      count + (tile !== EMPTY_SEQUENCE_TILE && tile === board.target[index] ? 1 : 0),
     0
   )
   const possible = Math.max(1, board.target.length - 1)
@@ -423,7 +424,11 @@ export function isPowerPuzzleSolved(sum: number, puzzle: PowerPuzzle): boolean {
   return Math.abs(sum - puzzle.target) <= puzzle.tolerance
 }
 
-export function splitAiCircuitScore(total: number, seed: number, playerId: string): CircuitStageScores {
+export function splitAiCircuitScore(
+  total: number,
+  seed: number,
+  playerId: string
+): CircuitStageScores {
   const clampedTotal = Math.max(0, Math.min(300, Math.round(total)))
   const random = seededRandom((seed ^ hashStringU32(`circuit-ai:${playerId}`)) >>> 0)
   const firstWeight = 0.29 + random() * 0.08

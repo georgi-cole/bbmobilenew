@@ -120,14 +120,10 @@ describe('Down Memory Lane question bank', () => {
     expect(second).toEqual(first)
     expect(first.length).toBeGreaterThanOrEqual(10)
     expect(
-      first.some(
-        (question) => question.id === 'first-loh' && question.correctPlayerId === 'maya'
-      )
+      first.some((question) => question.id === 'first-loh' && question.correctPlayerId === 'maya')
     ).toBe(true)
     expect(
-      first.some(
-        (question) => question.id === 'first-pos' && question.correctPlayerId === 'lia'
-      )
+      first.some((question) => question.id === 'first-pos' && question.correctPlayerId === 'lia')
     ).toBe(true)
     expect(first.every((question) => question.optionPlayerIds.length === 4)).toBe(true)
     expect(first.every((question) => new Set(question.optionPlayerIds).size === 4)).toBe(true)
@@ -142,26 +138,41 @@ describe('Down Memory Lane question bank', () => {
 
   it('uses durable seasonExit receipts for eviction vote trivia', () => {
     const history = [
-      exitReceipt(2, 'nova', { nova: 6, rune: 1 }, {
-        nomineeIds: ['nova', 'rune'],
-        leaderIds: ['maya'],
-        votesByVoterId: {
-          user: 'nova',
-          maya: 'nova',
-          alex: 'nova',
-          lia: 'nova',
-          rune: 'nova',
-          extra: 'nova',
-        },
-      }),
-      exitReceipt(6, 'lia', { lia: 3, alex: 2 }, {
-        nomineeIds: ['lia', 'alex'],
-        leaderIds: ['user'],
-      }),
-      exitReceipt(8, 'alex', { alex: 4, maya: 2 }, {
-        nomineeIds: ['alex', 'maya'],
-        leaderIds: ['rune'],
-      }),
+      exitReceipt(
+        2,
+        'nova',
+        { nova: 6, rune: 1 },
+        {
+          nomineeIds: ['nova', 'rune'],
+          leaderIds: ['maya'],
+          votesByVoterId: {
+            user: 'nova',
+            maya: 'nova',
+            alex: 'nova',
+            lia: 'nova',
+            rune: 'nova',
+            extra: 'nova',
+          },
+        }
+      ),
+      exitReceipt(
+        6,
+        'lia',
+        { lia: 3, alex: 2 },
+        {
+          nomineeIds: ['lia', 'alex'],
+          leaderIds: ['user'],
+        }
+      ),
+      exitReceipt(
+        8,
+        'alex',
+        { alex: 4, maya: 2 },
+        {
+          nomineeIds: ['alex', 'maya'],
+          leaderIds: ['rune'],
+        }
+      ),
     ]
     const state = seasonState({ history })
     const parsed = getSeasonExitReceipts(state)
@@ -175,14 +186,8 @@ describe('Down Memory Lane question bank', () => {
           question.id === 'highest-eviction-vote-count' && question.correctPlayerId === 'nova'
       )
     ).toBe(true)
-    expect(
-      questions.some(
-        (question) => question.id.startsWith('eviction-companion-')
-      )
-    ).toBe(true)
-    expect(
-      questions.some((question) => question.id.startsWith('eviction-leader-'))
-    ).toBe(true)
+    expect(questions.some((question) => question.id.startsWith('eviction-companion-'))).toBe(true)
+    expect(questions.some((question) => question.id.startsWith('eviction-leader-'))).toBe(true)
   })
 
   it('skips highest eviction vote trivia when the season record is tied', () => {
@@ -193,9 +198,7 @@ describe('Down Memory Lane question bank', () => {
       ],
     })
     const questions = buildMemoryLaneQuestionBank(state, 922)
-    expect(questions.some((question) => question.id === 'highest-eviction-vote-count')).toBe(
-      false
-    )
+    expect(questions.some((question) => question.id === 'highest-eviction-vote-count')).toBe(false)
   })
 
   it('adds Cupid pair memories only when the Cupid season context exists', () => {

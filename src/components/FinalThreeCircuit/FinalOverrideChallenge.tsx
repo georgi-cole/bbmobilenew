@@ -15,7 +15,11 @@ interface OverrideResult {
   correct: number
 }
 
-export default function FinalOverrideChallenge({ seed, stake, onFinish }: FinalOverrideChallengeProps) {
+export default function FinalOverrideChallenge({
+  seed,
+  stake,
+  onFinish,
+}: FinalOverrideChallengeProps) {
   const rounds = useMemo(() => buildFinalOverrideRounds(seed), [seed])
   const required = stake === 0.1 ? 3 : stake === 0.25 ? 4 : 5
   // One extra second on every stake level after mobile playtesting.
@@ -66,7 +70,9 @@ export default function FinalOverrideChallenge({ seed, stake, onFinish }: FinalO
 
   if (result) {
     return (
-      <div className={`f3-circuit__risk-game f3-circuit__override ${result.success ? 'is-good' : 'is-bad'}`}>
+      <div
+        className={`f3-circuit__risk-game f3-circuit__override ${result.success ? 'is-good' : 'is-bad'}`}
+      >
         <div className="f3-circuit__challenge-meter">
           <span>5 / 5</span>
           <span>{result.correct} correct</span>
@@ -96,15 +102,21 @@ export default function FinalOverrideChallenge({ seed, stake, onFinish }: FinalO
   }
 
   return (
-    <div className={`f3-circuit__risk-game f3-circuit__override ${feedback ? `is-${feedback}` : ''}`}>
+    <div
+      className={`f3-circuit__risk-game f3-circuit__override ${feedback ? `is-${feedback}` : ''}`}
+    >
       <div className="f3-circuit__challenge-meter">
-        <span>{roundIndex + 1} / {rounds.length}</span>
+        <span>
+          {roundIndex + 1} / {rounds.length}
+        </span>
         <span>{correct} correct</span>
         <span>Need {required}</span>
       </div>
 
       <div className="f3-circuit__override-timer" aria-label="Override time remaining">
-        <span style={{ width: `${Math.max(0, Math.min(100, remainingMs / roundTimeMs * 100))}%` }} />
+        <span
+          style={{ width: `${Math.max(0, Math.min(100, (remainingMs / roundTimeMs) * 100))}%` }}
+        />
       </div>
 
       <div className="f3-circuit__override-prompt">
