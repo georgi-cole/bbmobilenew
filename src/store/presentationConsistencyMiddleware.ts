@@ -11,6 +11,10 @@ type GenericAction = {
   type?: string
 }
 
+type AddTvEventAction = GenericAction & {
+  payload?: Partial<TvEvent>
+}
+
 let deferredBackdoorAdvance = false
 
 function currentTemplateEvent(
@@ -115,6 +119,34 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
   )
 }
 
+function normalizeImportantBroadcastAction(state: GameState, action: unknown): unknown {
+  const typedAction = action as AddTvEventAction | null
+  if (
+    typedAction?.type !== 'game/addTvEvent' ||
+    typedAction.payload?.meta?.major !== 'vox_nomination_reveal_unlocked'
+  ) {
+    return action
+  }
+
+  // This unlock prompt is gameplay-critical: the player has a limited window
+  // to inspect the secret ballot trail in the Confessional. Older emissions
+  // lacked phase/day metadata, so TvZone's relevance selector could leave the
+  // message in Game Log only. Stamp it with the live phase/day and explicitly
+  // route it to Faux TV while preserving the original Diary log entry.
+  return {
+    ...typedAction,
+    payload: {
+      ...typedAction.payload,
+      meta: {
+        ...typedAction.payload.meta,
+        phase: state.phase,
+        week: state.week,
+        forceOnTv: true,
+      },
+    },
+  }
+}
+
 function deferBackdoorAdvance(api: MiddlewareAPI, action: unknown): boolean {
   if (typeof document === 'undefined' || typeof window === 'undefined') return false
   if (deferredBackdoorAdvance) return true
@@ -167,7 +199,8 @@ export const presentationConsistencyMiddleware: Middleware = (api) => (next) => 
   }
 
   const replacementWasPending = before.game.replacementNeeded === true
-  const result = next(action)
+  const actionForNext = normalizeImportantBroadcastAction(before.game, action)
+  const result = next(actionForNext)
 
   const after = api.getState() as PresentationState
   consumePreviousDayBroadcasts(api, before.game, after.game)
