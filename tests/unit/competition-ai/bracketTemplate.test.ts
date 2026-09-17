@@ -25,6 +25,7 @@ describe('classic campaign map registry integrity', () => {
     const regularBands = DEFAULT_BRACKET_TEMPLATE.filter((band) => band.minDay !== undefined)
     const regular = new Set(allKeys(regularBands))
     expect(regular).not.toContain('finalThreeCircuit')
+    expect(regular).not.toContain('downMemoryLane')
     expect(regular).not.toContain('rescueTheKing')
     expect(regular).not.toContain('targetPractice')
     expect(regular).not.toContain('blackjackTournament')
@@ -43,19 +44,26 @@ describe('classic campaign map registry integrity', () => {
     })
   })
 
-  it('reserves Final Three Circuit for Final 3 Parts 1 and 2', () => {
+  it('reserves Final Three Circuit for Parts 1 and 2 and Down Memory Lane for Part 3', () => {
     const part1 = DEFAULT_BRACKET_TEMPLATE.find((band) =>
       band.phases?.includes('final3_comp1_minigame')
     )
     const part2 = DEFAULT_BRACKET_TEMPLATE.find((band) =>
       band.phases?.includes('final3_comp2_minigame')
     )
-    const game = getGame('finalThreeCircuit')
+    const part3 = DEFAULT_BRACKET_TEMPLATE.find((band) =>
+      band.phases?.includes('final3_comp3_minigame')
+    )
+    const circuit = getGame('finalThreeCircuit')
+    const memoryLane = getGame('downMemoryLane')
 
     expect(part1?.loh).toEqual(['finalThreeCircuit'])
     expect(part2?.loh).toEqual(['finalThreeCircuit'])
-    expect(game?.minPlayers).toBe(2)
-    expect(game?.maxPlayers).toBe(3)
+    expect(part3?.loh).toEqual(['downMemoryLane'])
+    expect(circuit?.minPlayers).toBe(2)
+    expect(circuit?.maxPlayers).toBe(3)
+    expect(memoryLane?.minPlayers).toBe(2)
+    expect(memoryLane?.maxPlayers).toBe(3)
   })
 })
 
@@ -68,6 +76,7 @@ describe('getBracketPoolForContext compatibility resolver', () => {
     [5, 'POS', 'quickTap'],
     [4, 'LOH', 'batteryLow'],
     [3, 'LOH', 'finalThreeCircuit'],
+    [3, 'LOH', 'downMemoryLane'],
   ] as const)('maps %i players / %s to %s', (playerCount, compType, expectedKey) => {
     expect(getBracketPoolForContext(playerCount, compType)).toContain(expectedKey)
   })
@@ -97,23 +106,42 @@ describe('getClassicCampaignPoolForContext', () => {
     expect(day2.length).toBeGreaterThan(day1.length)
   })
 
-  it('keeps the finale phase-owned: Parts 1 and 2 are Circuit, Part 3 stays separate', () => {
+  it('keeps the finale phase-owned: Circuit for Parts 1-2 and Down Memory Lane for Part 3', () => {
     const resolve = (
       phase: 'final3_comp1_minigame' | 'final3_comp2_minigame' | 'final3_comp3_minigame'
     ) => getClassicCampaignPoolForContext({ day: 14, playerCount: 3, compType: 'LOH', phase })
 
     expect(resolve('final3_comp1_minigame')).toEqual(['finalThreeCircuit'])
     expect(resolve('final3_comp2_minigame')).toEqual(['finalThreeCircuit'])
-    expect(resolve('final3_comp3_minigame')).not.toContain('finalThreeCircuit')
+    expect(resolve('final3_comp3_minigame')).toEqual(['downMemoryLane'])
   })
 
   it('is mode-agnostic for Classic, Vox Populi and Cupid finale scheduling', () => {
     // These three modes all use this same non-Survival campaign map in challengeSlice;
-    // mode-specific state only affects AI identity, not the Final 3 phase lane.
-    for (const phase of ['final3_comp1_minigame', 'final3_comp2_minigame'] as const) {
-      expect(
-        getClassicCampaignPoolForContext({ day: 14, playerCount: 3, compType: 'LOH', phase })
-      ).toEqual(['finalThreeCircuit'])
-    }
+    // mode-specific state only changes the question context and AI identity.
+    expect(
+      getClassicCampaignPoolForContext({
+        day: 14,
+        playerCount: 3,
+        compType: 'LOH',
+        phase: 'final3_comp1_minigame',
+      })
+    ).toEqual(['finalThreeCircuit'])
+    expect(
+      getClassicCampaignPoolForContext({
+        day: 14,
+        playerCount: 3,
+        compType: 'LOH',
+        phase: 'final3_comp2_minigame',
+      })
+    ).toEqual(['finalThreeCircuit'])
+    expect(
+      getClassicCampaignPoolForContext({
+        day: 14,
+        playerCount: 3,
+        compType: 'LOH',
+        phase: 'final3_comp3_minigame',
+      })
+    ).toEqual(['downMemoryLane'])
   })
 })
