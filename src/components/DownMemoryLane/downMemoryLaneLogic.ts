@@ -280,7 +280,7 @@ function addUniqueCountQuestions(
       kind === 'loh'
         ? `Who won exactly ${value} LOH competition${value === 1 ? '' : 's'} this season?`
         : kind === 'pos'
-          ? `Who won exactly ${value} Power of Safety competition${value === 1 ? '' : 's'} this season?`
+          ? `Who won exactly ${value} POS competition${value === 1 ? '' : 's'} this season?`
           : `Who received exactly ${value} nomination${value === 1 ? '' : 's'} this season?`
     pushQuestion(questions, state, seed, {
       id: `unique-${kind}-${value}-${index}`,
@@ -326,15 +326,15 @@ function addExitReceiptQuestions(
       pushQuestion(questions, state, seed, {
         id: 'highest-eviction-vote-count',
         prompt: choosePrompt(seed, 'highest-eviction-vote-count', [
-          'Who was evicted with the highest single vote count of the season?',
-          'Which housemate received the most eviction votes in a single house vote?',
-          'Whose eviction came with the season’s biggest vote total?',
+          'Who was eliminated with the highest single vote count of the season?',
+          'Which hubmate received the most votes in a single elimination?',
+          'Whose elimination had the season’s biggest vote total?',
         ]),
         correctPlayerId: highestPlayerIds[0],
         preferredIds: evictedIds,
         category: 'milestone',
         difficulty: 0.7,
-        receipt: `${highestCount} eviction votes`,
+        receipt: `${highestCount} elimination votes`,
       })
     }
 
@@ -357,7 +357,7 @@ function addExitReceiptQuestions(
       if (ids.length === 1) {
         pushQuestion(questions, state, seed, {
           id: 'narrowest-eviction-margin',
-          prompt: 'Whose eviction was decided by the narrowest clear vote margin?',
+          prompt: 'Whose elimination was decided by the smallest vote margin?',
           correctPlayerId: ids[0],
           preferredIds: evictedIds,
           category: 'milestone',
@@ -375,7 +375,7 @@ function addExitReceiptQuestions(
   if (soleVoteIds.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'sole-vote-eviction',
-      prompt: 'Who was sent out in the eviction decided by a single housemate’s vote?',
+      prompt: 'Who was eliminated by a single hubmate’s vote?',
       correctPlayerId: soleVoteIds[0],
       preferredIds: evictedIds,
       category: 'milestone',
@@ -395,7 +395,7 @@ function addExitReceiptQuestions(
     if (!survivorId || !evictee) return
     pushQuestion(questions, state, seed, {
       id: `eviction-companion-${receipt.week}-${index}`,
-      prompt: `Who was sitting beside ${evictee.name} on the block when ${evictee.name} was evicted?`,
+      prompt: `Who was nominated beside ${evictee.name} when ${evictee.name} was eliminated?`,
       correctPlayerId: survivorId,
       preferredIds: receipt.nomineeIds,
       category: 'nominations',
@@ -412,7 +412,7 @@ function addExitReceiptQuestions(
     if (!evictee) return
     pushQuestion(questions, state, seed, {
       id: `eviction-leader-${receipt.week}-${index}`,
-      prompt: `Who was LOH when ${evictee.name} was evicted?`,
+      prompt: `Who was LOH when ${evictee.name} was eliminated?`,
       correctPlayerId: receipt.leaderIds[0],
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'milestone',
@@ -458,7 +458,7 @@ function addShockExitQuestions(
     .forEach((id, index) => {
       pushQuestion(questions, state, seed, {
         id: `${idPrefix}-${index}`,
-        prompt: `Which of these housemates was evicted during ${label}?`,
+        prompt: `Which of these hubmates was eliminated during ${label}?`,
         correctPlayerId: id,
         excludedIds: ids.filter((other) => other !== id),
         preferredIds: evictedPlayers(state).map((player) => player.id),
@@ -545,8 +545,8 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     pushQuestion(questions, state, seed, {
       id: 'first-pos',
       prompt: choosePrompt(seed, 'first-pos', [
-        'Who won the first Power of Safety of the season?',
-        'Who was the season’s first Safety winner?',
+        'Who won the first POS of the season?',
+        'Who was the season’s first POS winner?',
       ]),
       correctPlayerId: firstPos.id,
       preferredIds: compWinners(state).map((player) => player.id),
@@ -578,7 +578,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (mostPos) {
     pushQuestion(questions, state, seed, {
       id: 'most-pos',
-      prompt: 'Who won the most Power of Safety competitions?',
+      prompt: 'Who won the most POS competitions?',
       correctPlayerId: mostPos.id,
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'competition',
@@ -610,7 +610,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
       id: 'most-nominated',
       prompt: choosePrompt(seed, 'most-nominated', [
         'Who was nominated the most times this season?',
-        'Who spent the most time on the block?',
+        'Who faced the most nominations this season?',
       ]),
       correctPlayerId: mostNominated.id,
       preferredIds: players
@@ -664,7 +664,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (firstEvicted) {
     pushQuestion(questions, state, seed, {
       id: 'first-evicted',
-      prompt: 'Who was the first housemate evicted this season?',
+      prompt: 'Who was the first hubmate eliminated this season?',
       correctPlayerId: firstEvicted.id,
       category: 'milestone',
       difficulty: 0.28,
@@ -676,7 +676,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (fourth.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'fourth-place',
-      prompt: 'Who was the last housemate evicted before the Final 3?',
+      prompt: 'Who was the last hubmate eliminated before the Final 3?',
       correctPlayerId: fourth[0].id,
       preferredIds: evictedPlayers(state).map((player) => player.id),
       category: 'milestone',
@@ -688,7 +688,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (battleBackWinners.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'battle-back-return',
-      prompt: 'Who fought their way back into the game after being evicted?',
+      prompt: 'Who returned to the game after being eliminated?',
       correctPlayerId: battleBackWinners[0].id,
       preferredIds: evictedPlayers(state).map((player) => player.id),
       category: 'shock',
@@ -701,7 +701,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (doubleSurvivors.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'double-survivor',
-      prompt: 'Who survived the season’s Double Eviction danger?',
+      prompt: 'Who survived the season’s Double Elimination danger?',
       correctPlayerId: doubleSurvivors[0].id,
       category: 'shock',
       difficulty: 0.56,
@@ -725,7 +725,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     exits,
     doubleWeeks,
     'double-eviction-exit',
-    'the Double Eviction'
+    'the Double Elimination'
   )
 
   const depressionWeek = state.depressionShock?.activatedWeek
@@ -817,7 +817,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (onlyBothPowerTypes.length === 1) {
     pushQuestion(questions, state, seed, {
       id: 'only-loh-and-pos-winner',
-      prompt: 'Who was the only housemate to win both LOH and Power of Safety this season?',
+      prompt: 'Who was the only hubmate to win both LOH and POS this season?',
       correctPlayerId: onlyBothPowerTypes[0].id,
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'competition',
@@ -837,7 +837,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (deepestZeroWin) {
     pushQuestion(questions, state, seed, {
       id: 'deepest-zero-win',
-      prompt: 'Who made the deepest run without winning an LOH or Power of Safety competition?',
+      prompt: 'Who made the deepest run without winning an LOH or POS competition?',
       correctPlayerId: deepestZeroWin.id,
       preferredIds: evictedPlayers(state).map((player) => player.id),
       category: 'milestone',
@@ -862,17 +862,17 @@ export function buildMemoryLanePreviewBank(
   const random = rngFor(seed, 'preview-bank')
   const roster = shuffle(players, random)
   const prompts = [
-    'Who held the opening power in this preview season?',
-    'Who won the first Safety competition in this preview season?',
+    'Who won the first LOH in this preview season?',
+    'Who won the first POS in this preview season?',
     'Who survived the biggest early vote in this preview?',
     'Who had the strongest competition record in this preview?',
-    'Who escaped the block most often in this preview?',
-    'Who returned to the house in this preview season?',
-    'Who survived the Double Eviction in this preview?',
+    'Who survived the most nominations in this preview?',
+    'Who returned to the game in this preview season?',
+    'Who survived the Double Elimination in this preview?',
     'Who was saved by the audience most often in this preview?',
-    'Who reached the Final 4 after the longest block run?',
-    'Who was the season’s first evictee in this preview?',
-    'Who won the last Safety before the finale in this preview?',
+    'Who reached the Final 4 after surviving the most nominations?',
+    'Who was the first hubmate eliminated in this preview?',
+    'Who won the last POS before the finale in this preview?',
     'Who entered finale week with the most total wins in this preview?',
   ]
   return prompts.map((prompt, index) => {

@@ -271,8 +271,8 @@ export default function DownMemoryLane({
   if (questionBank.length < 4) {
     return (
       <div className="memory-lane memory-lane--empty">
-        <strong>Not enough season receipts yet.</strong>
-        <span>This finale duel only asks questions with a defensible, unique answer.</span>
+        <strong>Not enough season history yet.</strong>
+        <span>This duel only uses questions with one clear answer.</span>
       </div>
     )
   }
@@ -281,15 +281,15 @@ export default function DownMemoryLane({
     return (
       <div className="memory-lane memory-lane--tutorial">
         <div className="memory-lane__aurora" aria-hidden="true" />
-        <p className="memory-lane__kicker">Final HOH · Part 3</p>
+        <p className="memory-lane__kicker">Final 3 · Part 3</p>
         <h1>Down Memory Lane</h1>
         <p className="memory-lane__lede">
-          Five lives each. Buzz first, then choose the housemate who matches the season memory.
+          Five lives each. Buzz first, then choose the hubmate who matches the season memory.
         </p>
         {usingLabPreview && (
           <div className="memory-lane__preview-note">
-            Minigame Lab preview · seeded mock memories are being used because no season has been
-            played here.
+            Minigame Lab preview · practice questions are being used because no season has been
+            played here yet.
           </div>
         )}
         <div className="memory-lane__tutorial-rule">
@@ -338,7 +338,7 @@ export default function DownMemoryLane({
         </div>
         <strong className="memory-lane__winner-name">{winner.name} wins Part 3</strong>
         <p className="memory-lane__final-copy">
-          The Final HOH is decided. One final power remains.
+          Part 3 is decided. The winner earns the final LOH power.
         </p>
         <button
           type="button"
@@ -355,7 +355,7 @@ export default function DownMemoryLane({
             })
           }
         >
-          Confirm Final HOH
+          Confirm Part 3 winner
         </button>
       </div>
     )
