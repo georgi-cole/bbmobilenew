@@ -17,7 +17,7 @@ function runMiddleware(action: unknown) {
     dispatch: vi.fn(),
   }
 
-  presentationConsistencyMiddleware(api as never)(next)(action)
+  presentationConsistencyMiddleware(api as never)(next as never)(action)
   return next
 }
 
