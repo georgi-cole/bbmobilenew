@@ -188,6 +188,16 @@ export default function GameControlDock({
     }
   }, [moreOpen])
 
+  const handlePrimaryAction = () => {
+    if (voxAudienceVoteLocked) {
+      // Authorize exactly this Play press to resolve the pending audience vote.
+      // The presentation middleware rejects the legacy 5-second auto-resolution
+      // path, so only an explicit user Play can start the count/reveal.
+      dispatch({ type: 'presentation/authorizeVoxAudienceVoteResolution' })
+    }
+    onPrimaryActionClick?.()
+  }
+
   const navigation = (
     <nav className="game-control-dock-navigation" aria-label="Main navigation">
       <div
@@ -314,7 +324,7 @@ export default function GameControlDock({
           type="button"
           aria-label={primaryLabel}
           disabled={effectivePrimaryDisabled}
-          onClick={effectivePrimaryDisabled ? undefined : onPrimaryActionClick}
+          onClick={effectivePrimaryDisabled ? undefined : handlePrimaryAction}
         />
         <button
           className={`dock-hit-area hit-stats dock-hit-area--stats${publicUnavailableClass}`}
@@ -408,10 +418,6 @@ export default function GameControlDock({
       </div>
     </nav>
   )
-
-  // Keep the dispatch hook mounted alongside the state hooks. It is intentionally
-  // unused here; Play ownership remains with FloatingActionBar/GameScreen.
-  void dispatch
 
   return (
     <>
