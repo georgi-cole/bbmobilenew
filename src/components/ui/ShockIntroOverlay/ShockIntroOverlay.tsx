@@ -1,11 +1,11 @@
-import { useEffect, type CSSProperties } from 'react'
+import { useContext, useEffect, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useReducedMotion } from 'framer-motion'
+import { ReactReduxContext } from 'react-redux'
 import TvAnnouncementOverlay, {
   type Announcement,
 } from '../TvAnnouncementOverlay/TvAnnouncementOverlay'
-import type { CupidArrowPair } from '../../../types'
-import { useAppSelector } from '../../../store/hooks'
+import type { CupidArrowPair, GameState } from '../../../types'
 import { SoundManager } from '../../../services/sound/SoundManager'
 import './ShockIntroOverlay.css'
 
@@ -237,14 +237,16 @@ export default function ShockIntroOverlay({
   onComplete,
 }: ShockIntroOverlayProps) {
   const prefersReducedMotion = useReducedMotion()
+  const reduxContext = useContext(ReactReduxContext)
   const isCupidIntro = shockKey === 'cupid_arrow'
   const isCupidBreak = shockKey === 'cupid_arrow_broken'
   const isCupid = isCupidIntro || isCupidBreak
   const isDepressionDrain = shockKey === 'depression_shock_day_2'
-  const replayGuardEventId = useAppSelector((state) => {
+  const replayGuardEventId = (() => {
     if (!REPLAY_GUARDED_SEASON_START_KEYS.has(shockKey)) return null
+    const state = reduxContext?.store.getState() as { game?: GameState } | undefined
     return (
-      state.game.tvFeed.find(
+      state?.game?.tvFeed.find(
         (event) =>
           event.meta?.broadcastConsumed !== true &&
           event.meta?.phase === 'season_start' &&
@@ -252,7 +254,7 @@ export default function ShockIntroOverlay({
           (event.meta?.major ?? event.major) === shockKey
       )?.id ?? null
     )
-  })
+  })()
   const replayGuardAcknowledged = Boolean(
     replayGuardEventId && acknowledgedSeasonStartShockEventIds.has(replayGuardEventId)
   )
