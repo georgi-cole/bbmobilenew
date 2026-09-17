@@ -5,6 +5,7 @@ import TvAnnouncementOverlay, {
   type Announcement,
 } from '../TvAnnouncementOverlay/TvAnnouncementOverlay'
 import type { CupidArrowPair } from '../../../types'
+import { useAppSelector } from '../../../store/hooks'
 import { SoundManager } from '../../../services/sound/SoundManager'
 import './ShockIntroOverlay.css'
 
@@ -89,6 +90,8 @@ const SHOCK_ANNOUNCEMENTS: Record<string, Announcement> = {
 }
 
 const FALLBACK_STINGER = SHOCK_ANNOUNCEMENTS.twist
+const REPLAY_GUARDED_SEASON_START_KEYS = new Set(['vox_populi', 'cupid_arrow'])
+const acknowledgedSeasonStartShockEventIds = new Set<string>()
 
 export interface ShockIntroOverlayProps {
   active: boolean
@@ -238,6 +241,21 @@ export default function ShockIntroOverlay({
   const isCupidBreak = shockKey === 'cupid_arrow_broken'
   const isCupid = isCupidIntro || isCupidBreak
   const isDepressionDrain = shockKey === 'depression_shock_day_2'
+  const replayGuardEventId = useAppSelector((state) => {
+    if (!REPLAY_GUARDED_SEASON_START_KEYS.has(shockKey)) return null
+    return (
+      state.game.tvFeed.find(
+        (event) =>
+          event.meta?.broadcastConsumed !== true &&
+          event.meta?.phase === 'season_start' &&
+          event.meta?.week === 1 &&
+          (event.meta?.major ?? event.major) === shockKey
+      )?.id ?? null
+    )
+  })
+  const replayGuardAcknowledged = Boolean(
+    replayGuardEventId && acknowledgedSeasonStartShockEventIds.has(replayGuardEventId)
+  )
   const duration = prefersReducedMotion
     ? SHOCK_INTRO_REDUCED_DURATION_MS
     : isCupidBreak
@@ -246,8 +264,22 @@ export default function ShockIntroOverlay({
         ? CUPID_INTRO_DURATION_MS
         : SHOCK_INTRO_DURATION_MS
 
+  const completeIntro = () => {
+    if (replayGuardEventId) acknowledgedSeasonStartShockEventIds.add(replayGuardEventId)
+    onComplete()
+  }
+
   useEffect(() => {
-    if (!active) return
+    if (!active || !replayGuardAcknowledged) return
+    // TvZone deliberately keeps the underlying Day 1 expansion broadcast
+    // alive for its Faux-TV handoff. When this route remounts after the player
+    // already acknowledged the fullscreen stinger, restore that handoff state
+    // immediately instead of replaying the entire Vox/Cupid cinematic.
+    onComplete()
+  }, [active, onComplete, replayGuardAcknowledged])
+
+  useEffect(() => {
+    if (!active || replayGuardAcknowledged) return
 
     const cueTimers: number[] = []
     if (isCupidIntro) {
@@ -272,7 +304,7 @@ export default function ShockIntroOverlay({
     }
 
     return () => cueTimers.forEach((timerId) => window.clearTimeout(timerId))
-  }, [active, isCupidBreak, isCupidIntro])
+  }, [active, isCupidBreak, isCupidIntro, replayGuardAcknowledged])
 
   useEffect(() => {
     if (!active || !isCupidBreak) return
@@ -286,7 +318,7 @@ export default function ShockIntroOverlay({
     return () => window.clearTimeout(timer)
   }, [active, isCupidBreak, onComplete, prefersReducedMotion])
 
-  if (!active || typeof document === 'undefined') return null
+  if (!active || replayGuardAcknowledged || typeof document === 'undefined') return null
 
   const displayAnnouncement = announcement ??
     SHOCK_ANNOUNCEMENTS[shockKey] ?? {
@@ -393,7 +425,12 @@ export default function ShockIntroOverlay({
             {isCupidBreak ? 'The individual game returns' : 'The Big Eye will reveal the rules'}
           </p>
           {!isCupidBreak && (
-            <button className="shock-intro__ack" type="button" onClick={onComplete} aria-label="OK">
+            <button
+              className="shock-intro__ack"
+              type="button"
+              onClick={completeIntro}
+              aria-label="OK"
+            >
               OK
             </button>
           )}
@@ -406,7 +443,7 @@ export default function ShockIntroOverlay({
             showInfoButton={false}
             playShockPrelude={false}
           />
-          <button className="shock-intro__ack" type="button" onClick={onComplete}>
+          <button className="shock-intro__ack" type="button" onClick={completeIntro}>
             OK
           </button>
         </div>
