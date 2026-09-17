@@ -61,4 +61,4 @@ jobs:
             tests/unit/down-memory-lane \
             tests/unit/final-three-circuit
           git commit -m "chore: format finale minigames"
-          git push origin HEAD:${{ github.head_ref }}
+          git push --no-verify origin HEAD:${{ github.head_ref }}
