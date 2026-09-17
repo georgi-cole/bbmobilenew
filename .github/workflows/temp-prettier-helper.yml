@@ -1,0 +1,49 @@
+name: Temp Prettier Helper
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Format finale files
+        run: |
+          npx prettier --write \
+            src/components/DownMemoryLane/DownMemoryLane.css \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/DownMemoryLanePolish.css \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts \
+            src/components/FinalThreeCircuit/CircuitTutorial.tsx \
+            src/components/FinalThreeCircuit/FinalOverrideChallenge.tsx \
+            src/components/FinalThreeCircuit/FinalThreeCircuit.css \
+            src/components/FinalThreeCircuit/FinalThreeCircuit.tsx \
+            src/components/FinalThreeCircuit/FinalThreeCircuitMobile.css \
+            src/components/FinalThreeCircuit/FinalThreeCircuitPolish.css \
+            src/components/FinalThreeCircuit/PowerBalanceChallenge.tsx \
+            src/components/FinalThreeCircuit/RiskRunStage.tsx \
+            src/components/FinalThreeCircuit/SequenceStage.tsx \
+            src/components/FinalThreeCircuit/SignalHuntStage.tsx \
+            src/components/FinalThreeCircuit/WardenEscapeChallenge.tsx \
+            src/components/FinalThreeCircuit/finalOverrideQuestionBank.ts \
+            src/components/FinalThreeCircuit/finalThreeCircuitLogic.ts \
+            tests/unit/competition-ai/bracketTemplate.test.ts \
+            tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts \
+            tests/unit/down-memory-lane/downMemoryLaneRegistry.test.ts \
+            tests/unit/final-three-circuit/FinalOverrideChallenge.test.tsx \
+            tests/unit/final-three-circuit/finalThreeCircuitLogic.test.ts
+      - name: Print formatted patch
+        run: git diff --no-ext-diff --unified=3 -- src/components/DownMemoryLane src/components/FinalThreeCircuit tests/unit/competition-ai/bracketTemplate.test.ts tests/unit/down-memory-lane tests/unit/final-three-circuit
