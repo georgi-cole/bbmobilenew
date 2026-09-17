@@ -361,6 +361,7 @@ export const DEFAULT_SCENE_MUSIC_POLICY: Readonly<Record<MusicScene, MusicSelect
 }
 
 export const CHALLENGE_GROUP_1_GAME_KEYS = [
+  'finalThreeCircuit',
   'bigSpender',
   'snake',
   'castleRescue',
