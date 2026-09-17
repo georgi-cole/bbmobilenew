@@ -4,11 +4,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import gameReducer, {
-  addTvEvent,
-  consumeBroadcastEvent,
-  setPhase,
-} from '../../../store/gameSlice'
+import gameReducer, { addTvEvent, consumeBroadcastEvent, setPhase } from '../../../store/gameSlice'
 import socialReducer from '../../../social/socialSlice'
 import profilesReducer from '../../../store/profilesSlice'
 import challengeReducer from '../../../store/challengeSlice'
