@@ -65,12 +65,6 @@ function shuffle<T>(values: readonly T[], random: () => number): T[] {
   return result
 }
 
-function choosePrompt(seed: number, salt: string, prompts: readonly string[]): string {
-  if (prompts.length === 0) return ''
-  const random = rngFor(seed, `prompt:${salt}`)
-  return prompts[Math.floor(random() * prompts.length)] ?? prompts[0]
-}
-
 function seasonPlayers(state: GameState): Player[] {
   return state.players.filter((player) => player.id && player.name)
 }

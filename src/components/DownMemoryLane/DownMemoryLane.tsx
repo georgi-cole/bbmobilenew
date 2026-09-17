@@ -21,13 +21,18 @@ const BETWEEN_QUESTIONS_MS = 1_450
 interface MemoryLanePortraitProps {
   id: string
   name: string
-  avatar: string
+  avatar?: string
   isUser?: boolean
   alt: string
 }
 
 function MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortraitProps) {
-  const { candidates: baseCandidates } = useResolvedAvatarSrc({ id, name, avatar, isUser })
+  const { candidates: baseCandidates } = useResolvedAvatarSrc({
+    id,
+    name,
+    avatar: avatar ?? '',
+    isUser,
+  })
   const candidates = [
     ...new Set(
       baseCandidates.flatMap((candidate) => [
@@ -38,14 +43,8 @@ function MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortrai
   ]
   const nonDiceBear = candidates.filter((candidate) => !candidate.includes('api.dicebear.com'))
   const orderedCandidates = nonDiceBear.length > 0 ? nonDiceBear : candidates
-  const candidateKey = orderedCandidates.join('|')
-  const [candidateIndex, setCandidateIndex] = useState(0)
-
-  useEffect(() => {
-    setCandidateIndex(0)
-  }, [candidateKey])
-
-  const src = orderedCandidates[Math.min(candidateIndex, Math.max(0, orderedCandidates.length - 1))]
+  const [failedSources, setFailedSources] = useState<string[]>([])
+  const src = orderedCandidates.find((candidate) => !failedSources.includes(candidate))
   if (!src) return <span aria-hidden="true">👤</span>
 
   return (
@@ -53,9 +52,7 @@ function MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortrai
       src={src}
       alt={alt}
       onError={() =>
-        setCandidateIndex((current) =>
-          current + 1 < orderedCandidates.length ? current + 1 : current
-        )
+        setFailedSources((current) => (current.includes(src) ? current : [...current, src]))
       }
     />
   )
