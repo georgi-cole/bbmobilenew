@@ -1,0 +1,85 @@
+name: Temporary Memory Lane copy cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-memory-lane-copy-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/final-three-circuit
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Patch preview routing and question copy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          tsx = Path('src/components/DownMemoryLane/DownMemoryLane.tsx')
+          s = tsx.read_text()
+          old = "  const usingLabPreview = import.meta.env.DEV && realQuestionBank.length < 4\n"
+          new = "  const usingLabPreview =\n    import.meta.env.DEV &&\n    window.location.hash.includes('/minigame-lab') &&\n    realQuestionBank.length < 4\n"
+          assert old in s
+          s = s.replace(old, new)
+          tsx.write_text(s)
+
+          logic = Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts')
+          s = logic.read_text()
+          replacements = {
+            "Think back to the very start: who won the first competition of the season?": "Who won the very first competition of the season?",
+            "The first time POS was used, the holder saved themselves. Who was it?": "On the season’s first POS use, one hubmate saved themselves. Who used it?",
+            "The first time POS was used, ${firstSafetyUse.saved.name} was saved. Who used the POS?": "${firstSafetyUse.saved.name} was saved on the season’s first POS use. Who used the POS?",
+            "Who won the most immunity competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?": "One hubmate finished with ${mostLoh.stats?.lohWins ?? 0} immunity wins — the season high. Who was it?",
+            "Who won the most LOH competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?": "One hubmate finished with ${mostLoh.stats?.lohWins ?? 0} LOH wins — the season high. Who was it?",
+            "Who won the most POS competitions this season, finishing with ${mostPos.stats?.posWins ?? 0} wins?": "One hubmate finished with ${mostPos.stats?.posWins ?? 0} POS wins — the season high. Who was it?",
+            "Across LOH and POS, who won ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competitions in total—the most this season?": "LOH and POS combined, one hubmate won ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competitions — more than anyone else. Who?",
+            "Who was nominated ${mostNominated.stats?.timesNominated ?? 0} times—the most of any hubmate this season?": "One hubmate faced nomination ${mostNominated.stats?.timesNominated ?? 0} times — the most this season. Who was it?",
+            "Who made it through the season without ever being nominated?": "Only one hubmate reached this point without ever being nominated. Who?",
+            "Who survived nomination ${survivedCount} time${survivedCount === 1 ? '' : 's'}, more than anyone else?": "One hubmate survived nomination ${survivedCount} time${survivedCount === 1 ? '' : 's'} — more than anyone else. Who?",
+            "The season’s first elimination happened in Week ${firstEvicted.evictedAtWeek ?? '?'}. Which hubmate left the game?": "Week ${firstEvicted.evictedAtWeek ?? '?'} brought the season’s first elimination. Who left the game?",
+            "Just before the Final 3, Week ${fourth[0].evictedAtWeek ?? '?'} ended with which hubmate being eliminated?": "Just before the Final 3, one hubmate was eliminated in Week ${fourth[0].evictedAtWeek ?? '?'}. Who was it?",
+            "Back 2 the Game gave one eliminated hubmate a return. Who came back?": "Back 2 the Game brought one eliminated hubmate back. Who returned?",
+            "During the Double Elimination shock, one hubmate was recorded as the survivor. Who was it?": "One hubmate survived the Double Elimination shock. Who was it?",
+            "The season-high elimination vote was ${highestCount}. Which hubmate received those ${highestCount} votes?": "The biggest elimination vote of the season was ${highestCount} votes. Who received them?",
+            "The closest clear elimination was decided by ${narrowest} vote${narrowest === 1 ? '' : 's'}. Who was eliminated?": "The closest elimination was decided by just ${narrowest} vote${narrowest === 1 ? '' : 's'}. Who was eliminated?",
+            "In Week ${receipt.week}, ${evictee.name} was eliminated. Who was nominated beside ${evictee.name}?": "${evictee.name} was eliminated in Week ${receipt.week}. Who was nominated alongside ${evictee.name}?",
+            "In Week ${receipt.week}, ${evictee.name} was eliminated. Who held LOH that week?": "${evictee.name} left in Week ${receipt.week}. Who held LOH that week?",
+            "During ${label}, one hubmate was eliminated in Week ${receipt?.week ?? '?'}. Who was it?": "${label} hit in Week ${receipt?.week ?? '?'}, when one hubmate was eliminated. Who was it?",
+            "Who did the audience save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?": "The audience saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'} — more than anyone else. Who?",
+            "Who did the public save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?": "The public saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'} — more than anyone else. Who?",
+            "Who was saved by POS ${posSaveCount} time${\n          posSaveCount === 1 ? '' : 's'\n        }—more than any other hubmate?": "One hubmate was saved by POS ${posSaveCount} time${\n          posSaveCount === 1 ? '' : 's'\n        } — more than anyone else. Who?",
+            "Who faced the audience vote on ${audienceDays} day${audienceDays === 1 ? '' : 's'}, more than any other hubmate?": "One hubmate faced the audience vote on ${audienceDays} day${audienceDays === 1 ? '' : 's'} — more than anyone else. Who?",
+            "Who made it through the season without ever facing an audience elimination vote?": "Only one hubmate never faced an audience elimination vote. Who?",
+            "Who was paired with ${subject.name} by Cupid's Arrow?": "Cupid’s Arrow paired ${subject.name} with which hubmate?",
+            "Who was the only hubmate to win both LOH and POS this season?": "Only one hubmate won both an LOH and a POS this season. Who?",
+            "Which hubmate reached Week ${deepestZeroWin.evictedAtWeek ?? '?'} without an LOH or POS win before being eliminated?": "One hubmate made it all the way to Week ${deepestZeroWin.evictedAtWeek ?? '?'} without an LOH or POS win. Who?",
+            "Who finished this preview with the most LOH and POS wins combined?": "Who has the most LOH and POS wins combined?",
+            "Who received the most audience saves in this preview?": "Who received the most audience saves?",
+            "The first elimination of the preview sent which hubmate out?": "Who was eliminated first?",
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  print('WARN missing:', old)
+              s = s.replace(old, new)
+          logic.write_text(s)
+          PY
+      - run: npx prettier --write src/components/DownMemoryLane/DownMemoryLane.tsx src/components/DownMemoryLane/downMemoryLaneLogic.ts
+      - run: npx eslint src/components/DownMemoryLane/DownMemoryLane.tsx src/components/DownMemoryLane/downMemoryLaneLogic.ts
+      - run: npx tsc --noEmit
+      - run: npx vitest run tests/unit/down-memory-lane
+      - name: Commit product changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/components/DownMemoryLane/DownMemoryLane.tsx src/components/DownMemoryLane/downMemoryLaneLogic.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: clarify Memory Lane season questions"
+          git push --no-verify origin HEAD:feat/final-three-circuit
