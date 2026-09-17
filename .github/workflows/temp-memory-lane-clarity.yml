@@ -1,4 +1,4 @@
-name: Temp Memory Lane Clarity
+name: Temp Memory Lane Fact Audit
 
 on:
   pull_request:
@@ -21,203 +21,73 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Tighten question bank and use Grey Lux portraits
+      - name: Make public-save trivia receipt-backed
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          # ------------------------------------------------------------------
-          # Down Memory Lane presentation avatars
-          # ------------------------------------------------------------------
-          path = Path('src/components/DownMemoryLane/DownMemoryLane.tsx')
+          # Persist a tiny, explicit receipt whenever the public saves a nominee.
+          # This lets the finale ask public-save questions without reconstructing
+          # history from transient week state or unrelated POS counters.
+          path = Path('src/store/gameSlice.ts')
           text = path.read_text()
-          text = text.replace(
-              "import { useAppSelector } from '../../store/hooks'\nimport type { GenericMinigameProps } from '../../minigames/reactComponents'\n",
-              "import { useAppSelector } from '../../store/hooks'\nimport { useResolvedAvatarSrc } from '../../hooks/useResolvedAvatarSrc'\nimport type { GenericMinigameProps } from '../../minigames/reactComponents'\nimport { resolvePresentationAvatarCandidates } from '../../utils/presentationAvatar'\n",
-          )
-
-          old_helpers = '''function portraitFor(\n  id: string,\n  gamePlayers: Array<{ id: string; avatar: string }>,\n  fallback?: string\n): string {\n  return gamePlayers.find((player) => player.id === id)?.avatar || fallback || '👤'\n}\n\nfunction isImageAvatar(value: string | undefined): boolean {\n  if (!value) return false\n  return (\n    /\\.(png|jpe?g|webp|avif|gif|svg)(\\?|$)/i.test(value) ||\n    value.startsWith('/') ||\n    value.startsWith('assets/') ||\n    value.startsWith('http')\n  )\n}\n'''
-          new_helpers = '''interface MemoryLanePortraitProps {\n  id: string\n  name: string\n  avatar: string\n  isUser?: boolean\n  alt: string\n}\n\nfunction MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortraitProps) {\n  const { candidates: baseCandidates } = useResolvedAvatarSrc({ id, name, avatar, isUser })\n  const candidates = [\n    ...new Set(\n      baseCandidates.flatMap((candidate) => [\n        ...resolvePresentationAvatarCandidates(candidate),\n        candidate,\n      ])\n    ),\n  ]\n  const nonDiceBear = candidates.filter((candidate) => !candidate.includes('api.dicebear.com'))\n  const orderedCandidates = nonDiceBear.length > 0 ? nonDiceBear : candidates\n  const candidateKey = orderedCandidates.join('|')\n  const [candidateIndex, setCandidateIndex] = useState(0)\n\n  useEffect(() => {\n    setCandidateIndex(0)\n  }, [candidateKey])\n\n  const src = orderedCandidates[Math.min(candidateIndex, Math.max(0, orderedCandidates.length - 1))]\n  if (!src) return <span aria-hidden=\"true\">👤</span>\n\n  return (\n    <img\n      src={src}\n      alt={alt}\n      onError={() =>\n        setCandidateIndex((current) =>\n          current + 1 < orderedCandidates.length ? current + 1 : current\n        )\n      }\n    />\n  )\n}\n'''
-          if old_helpers not in text:
-              raise SystemExit('DownMemoryLane avatar helper block not found')
-          text = text.replace(old_helpers, new_helpers)
-
-          text = text.replace(
-              "    const winnerAvatar = portraitFor(winner.id, game.players, winner.avatar)\n",
-              "",
-          )
-          old_winner = '''        <div className=\"memory-lane__winner-medallion\">\n          {isImageAvatar(winnerAvatar) ? (\n            <img src={winnerAvatar} alt={winner.name} />\n          ) : (\n            <span>{winnerAvatar}</span>\n          )}\n        </div>'''
-          new_winner = '''        <div className=\"memory-lane__winner-medallion\">\n          <MemoryLanePortrait\n            id={winner.id}\n            name={winner.name}\n            avatar={gamePlayersById.get(winner.id)?.avatar ?? winner.avatar}\n            isUser={gamePlayersById.get(winner.id)?.isUser ?? humanWon}\n            alt={winner.name}\n          />\n        </div>'''
-          if old_winner not in text:
-              raise SystemExit('winner portrait block not found')
-          text = text.replace(old_winner, new_winner)
-
-          text = text.replace(
-              "  const humanAvatar = portraitFor(duelists.human.id, game.players, duelists.human.avatar)\n  const aiAvatar = portraitFor(duelists.ai.id, game.players, duelists.ai.avatar)\n",
-              "",
-          )
-          old_human = '''          <div className=\"memory-lane__portrait\">\n            {isImageAvatar(humanAvatar) ? (\n              <img src={humanAvatar} alt={duelists.human.name} />\n            ) : (\n              <span>{humanAvatar}</span>\n            )}\n          </div>'''
-          new_human = '''          <div className=\"memory-lane__portrait\">\n            <MemoryLanePortrait\n              id={duelists.human.id}\n              name={duelists.human.name}\n              avatar={gamePlayersById.get(duelists.human.id)?.avatar ?? duelists.human.avatar}\n              isUser={gamePlayersById.get(duelists.human.id)?.isUser ?? true}\n              alt={duelists.human.name}\n            />\n          </div>'''
-          if old_human not in text:
-              raise SystemExit('human portrait block not found')
-          text = text.replace(old_human, new_human)
-
-          old_ai = '''          <div className=\"memory-lane__portrait\">\n            {isImageAvatar(aiAvatar) ? (\n              <img src={aiAvatar} alt={duelists.ai.name} />\n            ) : (\n              <span>{aiAvatar}</span>\n            )}\n          </div>'''
-          new_ai = '''          <div className=\"memory-lane__portrait\">\n            <MemoryLanePortrait\n              id={duelists.ai.id}\n              name={duelists.ai.name}\n              avatar={gamePlayersById.get(duelists.ai.id)?.avatar ?? duelists.ai.avatar}\n              isUser={gamePlayersById.get(duelists.ai.id)?.isUser ?? false}\n              alt={duelists.ai.name}\n            />\n          </div>'''
-          if old_ai not in text:
-              raise SystemExit('AI portrait block not found')
-          text = text.replace(old_ai, new_ai)
-
-          old_answer = '''                const avatar = portraitFor(id, game.players, participant?.avatar)\n                return (\n                  <button\n                    type=\"button\"\n                    key={id}\n                    onClick={() => applyDamage('human', id === currentQuestion.correctPlayerId, id)}\n                  >\n                    <div className=\"memory-lane__answer-photo\">\n                      {isImageAvatar(avatar) ? <img src={avatar} alt=\"\" /> : <span>{avatar}</span>}\n                    </div>\n                    <strong>{name}</strong>\n                  </button>\n                )'''
-          new_answer = '''                return (\n                  <button\n                    type=\"button\"\n                    key={id}\n                    onClick={() => applyDamage('human', id === currentQuestion.correctPlayerId, id)}\n                  >\n                    <div className=\"memory-lane__answer-photo\">\n                      <MemoryLanePortrait\n                        id={id}\n                        name={name}\n                        avatar={player?.avatar ?? participant?.avatar ?? ''}\n                        isUser={player?.isUser ?? participant?.isHuman}\n                        alt=\"\"\n                      />\n                    </div>\n                    <strong>{name}</strong>\n                  </button>\n                )'''
-          if old_answer not in text:
-              raise SystemExit('answer portrait block not found')
-          text = text.replace(old_answer, new_answer)
+          old = '''      // Record metadata\n      state.publicSavedNomineeId = savedId\n      if (state.nominationContext) {'''
+          new = '''      // Record metadata\n      state.publicSavedNomineeId = savedId\n      const publicSaveAlreadyRecorded = (state.history ?? []).some(\n        (event) =>\n          event.type === 'seasonReceipt:publicSave' &&\n          event.week === state.week &&\n          event.data.playerId === savedId\n      )\n      if (!publicSaveAlreadyRecorded) {\n        state.history = [\n          ...(state.history ?? []),\n          {\n            type: 'seasonReceipt:publicSave',\n            week: state.week,\n            data: { playerId: savedId },\n            timestamp: Date.now(),\n          },\n        ]\n      }\n      if (state.nominationContext) {'''
+          if old not in text:
+              raise SystemExit('commitPublicSave receipt insertion point not found')
+          text = text.replace(old, new, 1)
           path.write_text(text)
 
-          # ------------------------------------------------------------------
-          # Question bank clarity / ambiguity pass
-          # ------------------------------------------------------------------
           path = Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts')
           text = path.read_text()
+          old = '''function publicSaveCounts(state: GameState): Record<string, number> {\n  const counts: Record<string, number> = { ...(state.voxPopuli?.safetySaveCounts ?? {}) }\n  for (const event of state.social?.dramaNetwork?.events ?? []) {\n    if (!event.id.startsWith('public-save-')) continue\n    const id = event.participantIds[0]\n    if (!id) continue\n    counts[id] = (counts[id] ?? 0) + 1\n  }\n  return counts\n}\n'''
+          new = '''function publicSaveCounts(state: GameState): Record<string, number> {\n  const counts: Record<string, number> = {}\n  const seen = new Set<string>()\n\n  for (const event of state.history ?? []) {\n    if (event.type !== 'seasonReceipt:publicSave') continue\n    const id = typeof event.data.playerId === 'string' ? event.data.playerId : null\n    if (!id) continue\n    const key = `${event.week}:${id}`\n    if (seen.has(key)) continue\n    seen.add(key)\n    counts[id] = (counts[id] ?? 0) + 1\n  }\n\n  // Older Drama-mode saves already have a durable event id ending in the\n  // actually saved player id. Use them as a backwards-compatible fallback,\n  // but never treat the nominee list's first member as the saved player.\n  const playersByLongestId = [...seasonPlayers(state)].sort(\n    (left, right) => right.id.length - left.id.length\n  )\n  for (const event of state.social?.dramaNetwork?.events ?? []) {\n    if (!event.id.startsWith('public-save-')) continue\n    const saved = playersByLongestId.find((player) => event.id.endsWith(`-${player.id}`))\n    if (!saved) continue\n    const key = `${event.week}:${saved.id}`\n    if (seen.has(key)) continue\n    seen.add(key)\n    counts[saved.id] = (counts[saved.id] ?? 0) + 1\n  }\n  return counts\n}\n'''
+          if old not in text:
+              raise SystemExit('publicSaveCounts block not found')
+          text = text.replace(old, new)
 
-          old_first_pos = '''function getFirstPosWinner(state: GameState): Player | null {\n  const receipt = state.history?.find((event) => event.type === 'seasonReceipt:posWin')\n  const id = typeof receipt?.data.playerId === 'string' ? receipt.data.playerId : null\n  if (id) return state.players.find((player) => player.id === id) ?? null\n  return firstPlayerNamedInFeed(state, (text) =>\n    /won the power of safety|has won the power of safety/i.test(text)\n  )\n}\n'''
-          new_first_pos = '''interface FirstSafetyUse {\n  holder: Player\n  saved: Player\n}\n\nfunction getFirstSafetyUse(state: GameState): FirstSafetyUse | null {\n  const players = seasonPlayers(state)\n  const ordered = [...state.tvFeed].sort((left, right) => left.timestamp - right.timestamp)\n\n  for (const event of ordered) {\n    const lower = event.text.toLowerCase()\n    if (!/power of safety|used the power|used safety|used pos/.test(lower)) continue\n\n    const actionMarkers = [' decided to use ', ' used ']\n      .map((marker) => lower.indexOf(marker))\n      .filter((index) => index >= 0)\n    if (actionMarkers.length === 0) continue\n    const actionIndex = Math.min(...actionMarkers)\n\n    const named = players\n      .map((player) => ({ player, index: lower.indexOf(player.name.toLowerCase()) }))\n      .filter((entry) => entry.index >= 0)\n    const holderMatches = named.filter((entry) => entry.index < actionIndex)\n    if (holderMatches.length !== 1) continue\n    const holder = holderMatches[0].player\n\n    const afterAction = lower.slice(actionIndex)\n    if (/on (?:himself|herself|themselves|themself)/.test(afterAction)) {\n      return { holder, saved: holder }\n    }\n\n    const onIndex = lower.indexOf(' on ', actionIndex)\n    const savingIndex = lower.indexOf(' saving ', actionIndex)\n    const saveMarker = [onIndex, savingIndex].filter((index) => index >= 0).sort((a, b) => a - b)[0]\n    if (saveMarker == null) continue\n\n    const savedMatches = named.filter(\n      (entry) => entry.index > saveMarker && entry.player.id !== holder.id\n    )\n    if (savedMatches.length !== 1) continue\n    return { holder, saved: savedMatches[0].player }\n  }\n\n  return null\n}\n'''
-          if old_first_pos not in text:
-              raise SystemExit('getFirstPosWinner block not found')
-          text = text.replace(old_first_pos, new_first_pos)
-
+          # Add a separate Vox POS-save memory rather than mislabelling those\n          # saves as audience/public saves.
+          needle = '''  if (state.voxPopuli?.audienceVoteDaysByPlayerId) {\n'''
+          addition = '''  if (isVoxSeason(state) && state.voxPopuli?.safetySaveCounts) {\n    const mostPosSaved = uniqueWinner(\n      players,\n      (player) => state.voxPopuli?.safetySaveCounts?.[player.id] ?? 0,\n      { requirePositive: true }\n    )\n    if (mostPosSaved) {\n      const posSaveCount = state.voxPopuli.safetySaveCounts[mostPosSaved.id] ?? 0\n      pushQuestion(questions, state, seed, {\n        id: 'vox-most-pos-saves',\n        prompt: `During POS ceremonies, one hubmate was saved ${posSaveCount} time${\n          posSaveCount === 1 ? '' : 's'\n        }, more than anyone else. Who was it?`,\n        correctPlayerId: mostPosSaved.id,\n        category: 'competition',\n        difficulty: 0.64,\n      })\n    }\n  }\n\n'''
+          if needle not in text:
+              raise SystemExit('Vox audience question insertion point not found')
+          text = text.replace(needle, addition + needle, 1)
           text = text.replace(
-              "? `Who won exactly ${value} LOH competition${value === 1 ? '' : 's'} this season?`\n        : kind === 'pos'\n          ? `Who won exactly ${value} POS competition${value === 1 ? '' : 's'} this season?`\n          : `Who received exactly ${value} nomination${value === 1 ? '' : 's'} this season?`",
-              "? `One hubmate finished with exactly ${value} LOH win${value === 1 ? '' : 's'}. Who was it?`\n        : kind === 'pos'\n          ? `One hubmate finished with exactly ${value} POS win${value === 1 ? '' : 's'}. Who was it?`\n          : `One hubmate was nominated exactly ${value} time${value === 1 ? '' : 's'}. Who was it?`",
-          )
-
-          text = text.replace(
-              "prompt: choosePrompt(seed, 'highest-eviction-vote-count', [\n          'Who was eliminated with the highest single vote count of the season?',\n          'Which hubmate received the most votes in a single elimination?',\n          'Whose elimination had the season’s biggest vote total?',\n        ]),",
-              "prompt: `The season-high elimination vote was ${highestCount}. Which hubmate received those ${highestCount} votes?`,",
+              "prompt: 'Who never faced an audience eviction vote?',",
+              "prompt: 'Who made it through the season without ever facing an audience elimination vote?',",
           )
           text = text.replace(
-              "prompt: 'Whose elimination was decided by the smallest vote margin?',",
-              "prompt: `The closest clear elimination was decided by ${narrowest} vote${narrowest === 1 ? '' : 's'}. Who was eliminated?`,",
-          )
-          text = text.replace(
-              "prompt: 'Who was eliminated by a single hubmate’s vote?',",
-              "prompt: 'One elimination was decided by a single hubmate’s vote. Who was eliminated?',",
-          )
-          text = text.replace(
-              "prompt: `Who was nominated beside ${evictee.name} when ${evictee.name} was eliminated?`,",
-              "prompt: `In Week ${receipt.week}, ${evictee.name} was eliminated. Who was nominated beside ${evictee.name}?`,",
-          )
-          text = text.replace(
-              "prompt: `Who was LOH when ${evictee.name} was eliminated?`,",
-              "prompt: `In Week ${receipt.week}, ${evictee.name} was eliminated. Who held LOH that week?`,",
-          )
-
-          old_shock = '''  const matching = receipts.filter((receipt) => weeks.includes(receipt.week))\n  if (matching.length === 0) return\n  const ids = [...new Set(matching.map((receipt) => receipt.playerId))]\n  shuffle(ids, rngFor(seed, `shock:${idPrefix}`))\n    .slice(0, Math.min(2, ids.length))\n    .forEach((id, index) => {\n      pushQuestion(questions, state, seed, {\n        id: `${idPrefix}-${index}`,\n        prompt: `Which of these hubmates was eliminated during ${label}?`,\n        correctPlayerId: id,\n        excludedIds: ids.filter((other) => other !== id),\n        preferredIds: evictedPlayers(state).map((player) => player.id),\n        category: 'shock',\n        difficulty: 0.58,\n        receipt: label,\n      })\n    })'''
-          new_shock = '''  const matching = receipts.filter((receipt) => weeks.includes(receipt.week))\n  if (matching.length === 0) return\n  const ids = [...new Set(matching.map((receipt) => receipt.playerId))]\n  // If a shock removed more than one hubmate, \"who was eliminated during it?\"\n  // has more than one true answer. Skip that template instead of hiding another\n  // correct answer from the four options.\n  if (ids.length !== 1) return\n  const receipt = matching.find((entry) => entry.playerId === ids[0])\n  pushQuestion(questions, state, seed, {\n    id: `${idPrefix}-0`,\n    prompt: `During ${label}, one hubmate was eliminated in Week ${receipt?.week ?? '?'}. Who was it?`,\n    correctPlayerId: ids[0],\n    preferredIds: evictedPlayers(state).map((player) => player.id),\n    category: 'shock',\n    difficulty: 0.58,\n    receipt: label,\n  })'''
-          if old_shock not in text:
-              raise SystemExit('shock question block not found')
-          text = text.replace(old_shock, new_shock)
-
-          old_first_loh = '''  const firstLoh = getFirstLohWinner(state)\n  if (firstLoh) {\n    pushQuestion(questions, state, seed, {\n      id: 'first-loh',\n      prompt: isVoxSeason(state)\n        ? choosePrompt(seed, 'first-loh-vox', [\n            'Who won the very first immunity competition?',\n            'Who claimed the season’s first competition immunity?',\n          ])\n        : choosePrompt(seed, 'first-loh', [\n            'Who won the very first LOH of the season?',\n            'Who held LOH power first this season?',\n            'Who kicked off the season as the first LOH winner?',\n          ]),\n      correctPlayerId: firstLoh.id,\n      preferredIds: compWinners(state).map((player) => player.id),\n      category: 'milestone',\n      difficulty: 0.3,\n      receipt: 'Opening power',\n    })\n  }\n\n  const firstPos = getFirstPosWinner(state)\n  if (firstPos) {\n    pushQuestion(questions, state, seed, {\n      id: 'first-pos',\n      prompt: choosePrompt(seed, 'first-pos', [\n        'Who won the first POS of the season?',\n        'Who was the season’s first POS winner?',\n      ]),\n      correctPlayerId: firstPos.id,\n      preferredIds: compWinners(state).map((player) => player.id),\n      category: 'milestone',\n      difficulty: 0.34,\n      receipt: 'First Safety win',\n    })\n  }'''
-          new_first_loh = '''  const firstLoh = getFirstLohWinner(state)\n  if (firstLoh) {\n    pushQuestion(questions, state, seed, {\n      id: 'first-competition',\n      prompt: 'Think back to the very start: who won the first competition of the season?',\n      correctPlayerId: firstLoh.id,\n      preferredIds: compWinners(state).map((player) => player.id),\n      category: 'milestone',\n      difficulty: 0.28,\n      receipt: 'First competition of the season',\n    })\n  }\n\n  const firstSafetyUse = getFirstSafetyUse(state)\n  if (firstSafetyUse) {\n    const selfSave = firstSafetyUse.holder.id === firstSafetyUse.saved.id\n    pushQuestion(questions, state, seed, {\n      id: 'first-pos-use',\n      prompt: selfSave\n        ? 'The first time POS was used, the holder saved themselves. Who was it?'\n        : `The first time POS was used, ${firstSafetyUse.saved.name} was saved. Who used the POS?`,\n      correctPlayerId: firstSafetyUse.holder.id,\n      preferredIds: compWinners(state).map((player) => player.id),\n      category: 'milestone',\n      difficulty: 0.4,\n      receipt: selfSave\n        ? 'First POS use · self-save'\n        : `First POS use · saved ${firstSafetyUse.saved.name}`,\n    })\n  }'''
-          if old_first_loh not in text:
-              raise SystemExit('first LOH/POS question block not found')
-          text = text.replace(old_first_loh, new_first_loh)
-
-          text = text.replace(
-              "prompt: isVoxSeason(state)\n        ? 'Who won the most immunity competitions?'\n        : 'Who won the most LOH competitions?',",
-              "prompt: isVoxSeason(state)\n        ? `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} immunity wins?`\n        : `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} LOH wins?`,",
-          )
-          text = text.replace(
-              "prompt: 'Who won the most POS competitions?',",
-              "prompt: `Who finished with the season-high ${mostPos.stats?.posWins ?? 0} POS wins?`,",
-          )
-          text = text.replace(
-              "prompt: 'Who won the most competitions overall?',",
-              "prompt: `LOH and POS combined, who led the season with ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competition wins?`,",
-          )
-          text = text.replace(
-              "prompt: choosePrompt(seed, 'most-nominated', [\n        'Who was nominated the most times this season?',\n        'Who faced the most nominations this season?',\n      ]),",
-              "prompt: `One hubmate faced a season-high ${mostNominated.stats?.timesNominated ?? 0} nominations. Who was it?`,",
-          )
-
-          old_survived = '''  if (mostSurvivedNoms) {\n    pushQuestion(questions, state, seed, {\n      id: 'most-nomination-survivals',\n      prompt: 'Who survived being nominated the greatest number of times?',\n      correctPlayerId: mostSurvivedNoms.id,'''
-          new_survived = '''  if (mostSurvivedNoms) {\n    const survivedCount = Math.max(\n      0,\n      (mostSurvivedNoms.stats?.timesNominated ?? 0) -\n        (exitCountByPlayer.get(mostSurvivedNoms.id) ?? 0)\n    )\n    pushQuestion(questions, state, seed, {\n      id: 'most-nomination-survivals',\n      prompt: `Who survived nomination ${survivedCount} time${survivedCount === 1 ? '' : 's'}, more than anyone else?`,\n      correctPlayerId: mostSurvivedNoms.id,'''
-          if old_survived not in text:
-              raise SystemExit('nomination survival block not found')
-          text = text.replace(old_survived, new_survived)
-
-          text = text.replace(
-              "prompt: 'Who was the first hubmate eliminated this season?',",
               "prompt: 'The season’s first elimination sent which hubmate out of the game?',",
+              "prompt: `The season’s first elimination happened in Week ${firstEvicted.evictedAtWeek ?? '?'}. Which hubmate left the game?`,",
           )
           text = text.replace(
-              "prompt: 'Who was the last hubmate eliminated before the Final 3?',",
               "prompt: 'At the final elimination before the Final 3, which hubmate left the game?',",
+              "prompt: `Just before the Final 3, Week ${fourth[0].evictedAtWeek ?? '?'} ended with which hubmate being eliminated?`,",
           )
-          text = text.replace(
-              "prompt: 'Who returned to the game after being eliminated?',",
-              "prompt: 'Back 2 the Game gave one eliminated hubmate a return. Who came back?',",
-          )
-          text = text.replace(
-              "prompt: 'Who survived the season’s Double Elimination danger?',",
-              "prompt: 'During the Double Elimination shock, one hubmate was recorded as the survivor. Who was it?',",
-          )
-
-          old_saved = '''  if (mostSaved) {\n    pushQuestion(questions, state, seed, {\n      id: 'most-public-saves',\n      prompt: isVoxSeason(state)\n        ? 'Who received the most Safety saves during the audience-led season?'\n        : 'Who was saved by the public the most times?',\n      correctPlayerId: mostSaved.id,'''
-          new_saved = '''  if (mostSaved) {\n    const saveCount = saves[mostSaved.id] ?? 0\n    pushQuestion(questions, state, seed, {\n      id: 'most-public-saves',\n      prompt: isVoxSeason(state)\n        ? `The audience saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`\n        : `The public saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`,\n      correctPlayerId: mostSaved.id,'''
-          if old_saved not in text:
-              raise SystemExit('public saves block not found')
-          text = text.replace(old_saved, new_saved)
-
-          old_audience = '''    if (mostAudienceBallots) {\n      pushQuestion(questions, state, seed, {\n        id: 'vox-most-audience-ballots',\n        prompt: 'Who faced the audience vote on the most days?',\n        correctPlayerId: mostAudienceBallots.id,'''
-          new_audience = '''    if (mostAudienceBallots) {\n      const audienceDays =\n        state.voxPopuli?.audienceVoteDaysByPlayerId?.[mostAudienceBallots.id]?.length ?? 0\n      pushQuestion(questions, state, seed, {\n        id: 'vox-most-audience-ballots',\n        prompt: `Who faced the audience vote on ${audienceDays} day${audienceDays === 1 ? '' : 's'}, more than any other hubmate?`,\n        correctPlayerId: mostAudienceBallots.id,'''
-          if old_audience not in text:
-              raise SystemExit('audience ballots block not found')
-          text = text.replace(old_audience, new_audience)
-
-          old_deepest = "prompt: 'Who made the deepest run without winning an LOH or POS competition?',"
-          new_deepest = "prompt: `Which hubmate reached Week ${deepestZeroWin.evictedAtWeek ?? '?'} without an LOH or POS win before being eliminated?`,"
-          if old_deepest not in text:
-              raise SystemExit('deepest zero-win prompt not found')
-          text = text.replace(old_deepest, new_deepest)
-
-          old_preview = '''  const prompts = [\n    'Who won the first LOH in this preview season?',\n    'Who won the first POS in this preview season?',\n    'Who survived the biggest early vote in this preview?',\n    'Who had the strongest competition record in this preview?',\n    'Who survived the most nominations in this preview?',\n    'Who returned to the game in this preview season?',\n    'Who survived the Double Elimination in this preview?',\n    'Who was saved by the audience most often in this preview?',\n    'Who reached the Final 4 after surviving the most nominations?',\n    'Who was the first hubmate eliminated in this preview?',\n    'Who won the last POS before the finale in this preview?',\n    'Who entered finale week with the most total wins in this preview?',\n  ]'''
-          new_preview = '''  const prompts = [\n    'Think back to opening day: who won the first competition?',\n    'The first POS save protected a nominee. Who used that POS?',\n    'The biggest early elimination vote sent which hubmate out?',\n    'Who finished this preview with the most LOH and POS wins combined?',\n    'Who survived nomination more times than anyone else?',\n    'Back 2 the Game returned one eliminated hubmate. Who came back?',\n    'Who was recorded as the survivor of the Double Elimination shock?',\n    'Who received the most audience saves in this preview?',\n    'Which hubmate reached Final 4 after surviving the most nominations?',\n    'The first elimination of the preview sent which hubmate out?',\n    'Who won the final POS competition before finale week?',\n    'Who entered finale week with the highest total competition-win count?',\n  ]'''
-          if old_preview not in text:
-              raise SystemExit('preview prompt block not found')
-          text = text.replace(old_preview, new_preview)
-
           path.write_text(text)
 
-          # ------------------------------------------------------------------
-          # Tests: new concrete first-memory questions + numeric hints
-          # ------------------------------------------------------------------
           path = Path('tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts')
           text = path.read_text()
-          old_feed_end = '''      {\n        id: 'pos-1',\n        text: 'Lia has won the Power of Safety! 🎭',\n        type: 'game',\n        timestamp: 2,\n      },\n    ],'''
-          new_feed_end = '''      {\n        id: 'pos-1',\n        text: 'Lia has won the Power of Safety! 🎭',\n        type: 'game',\n        timestamp: 2,\n      },\n      {\n        id: 'pos-use-1',\n        text: 'Lia used the Power of Safety on Nova. ⚡',\n        type: 'game',\n        timestamp: 3,\n      },\n    ],'''
-          if old_feed_end not in text:
-              raise SystemExit('test tvFeed block not found')
-          text = text.replace(old_feed_end, new_feed_end)
-          text = text.replace(
-              "first.some((question) => question.id === 'first-loh' && question.correctPlayerId === 'maya')",
-              "first.some(\n        (question) =>\n          question.id === 'first-competition' &&\n          question.correctPlayerId === 'maya' &&\n          question.prompt.includes('first competition')\n      )",
-          )
-          text = text.replace(
-              "first.some((question) => question.id === 'first-pos' && question.correctPlayerId === 'lia')",
-              "first.some(\n        (question) =>\n          question.id === 'first-pos-use' &&\n          question.correctPlayerId === 'lia' &&\n          question.prompt.includes('Nova')\n      )",
-          )
-          text = text.replace(
-              "    expect(\n      questions.some(\n        (question) =>\n          question.id === 'highest-eviction-vote-count' && question.correctPlayerId === 'nova'\n      )\n    ).toBe(true)",
-              "    const highestVoteQuestion = questions.find(\n      (question) => question.id === 'highest-eviction-vote-count'\n    )\n    expect(highestVoteQuestion?.correctPlayerId).toBe('nova')\n    expect(highestVoteQuestion?.prompt).toContain('6')",
-          )
+          old = '''    const state = seasonState({\n      voxPopuli: {'''
+          new = '''    const state = seasonState({\n      history: [\n        {\n          type: 'seasonReceipt:publicSave',\n          week: 2,\n          timestamp: 2_000,\n          data: { playerId: 'alex' },\n        },\n        {\n          type: 'seasonReceipt:publicSave',\n          week: 5,\n          timestamp: 5_000,\n          data: { playerId: 'alex' },\n        },\n        {\n          type: 'seasonReceipt:publicSave',\n          week: 4,\n          timestamp: 4_000,\n          data: { playerId: 'maya' },\n        },\n      ],\n      voxPopuli: {'''
+          # Only replace the Vox test's occurrence, which appears after its test title.
+          marker = "  it('uses Vox audience history when that mode is active', () => {\n"
+          idx = text.index(marker)
+          prefix, suffix = text[:idx], text[idx:]
+          if old not in suffix:
+              raise SystemExit('Vox test state block not found')
+          suffix = suffix.replace(old, new, 1)
+          text = prefix + suffix
+          expectation = '''    expect(\n      questions.some(\n        (question) =>\n          question.id === 'vox-most-audience-ballots' && question.correctPlayerId === 'alex'\n      )\n    ).toBe(true)'''
+          replacement = expectation + '''\n    expect(\n      questions.some(\n        (question) => question.id === 'vox-most-pos-saves' && question.correctPlayerId === 'alex'\n      )\n    ).toBe(true)'''
+          if expectation not in text:
+              raise SystemExit('Vox audience expectation not found')
+          text = text.replace(expectation, replacement, 1)
           path.write_text(text)
           PY
 
           npx prettier --write \
-            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/store/gameSlice.ts \
             src/components/DownMemoryLane/downMemoryLaneLogic.ts \
             tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts
 
@@ -225,7 +95,7 @@ jobs:
             tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts \
             tests/unit/down-memory-lane/downMemoryLaneRegistry.test.ts
 
-      - name: Commit Memory Lane clarity pass
+      - name: Commit fact audit
         run: |
           if git diff --quiet; then
             echo "Nothing to update."
@@ -234,8 +104,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
-            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/store/gameSlice.ts \
             src/components/DownMemoryLane/downMemoryLaneLogic.ts \
             tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts
-          git commit -m "polish: clarify Memory Lane questions and portraits"
+          git commit -m "fix: ground Memory Lane public-save questions"
           git push --no-verify origin HEAD:${{ github.head_ref }}
