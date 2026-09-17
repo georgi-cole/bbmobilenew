@@ -4,6 +4,7 @@ import CircuitTutorial from '../../../src/components/FinalThreeCircuit/CircuitTu
 
 afterEach(() => {
   vi.useRealTimers()
+  window.localStorage.clear()
 })
 
 describe('Final Three Circuit interactive tutorials', () => {
@@ -18,6 +19,27 @@ describe('Final Three Circuit interactive tutorials', () => {
     expect(screen.getByRole('button', { name: 'Start Signal Hunt' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Start Signal Hunt' }))
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('can persistently hide one guide without hiding the other tutorial types', () => {
+    const firstComplete = vi.fn()
+    const first = render(<CircuitTutorial kind="signal" onComplete={firstComplete} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /don’t show this guide again/i }))
+    fireEvent.click(screen.getByRole('button', { name: '7' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start Signal Hunt' }))
+    expect(firstComplete).toHaveBeenCalledTimes(1)
+    first.unmount()
+
+    const skippedComplete = vi.fn()
+    const skipped = render(<CircuitTutorial kind="signal" onComplete={skippedComplete} />)
+    expect(skippedComplete).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Signal Hunt')).not.toBeInTheDocument()
+    skipped.unmount()
+
+    const sequenceComplete = vi.fn()
+    render(<CircuitTutorial kind="sequence" onComplete={sequenceComplete} />)
+    expect(screen.getByText('Sequence Builder')).toBeVisible()
+    expect(sequenceComplete).not.toHaveBeenCalled()
   })
 
   it('teaches Sequence Builder with a legal adjacent slide', () => {
@@ -47,7 +69,7 @@ describe('Final Three Circuit interactive tutorials', () => {
     const onComplete = vi.fn()
     render(<CircuitTutorial kind="power" onComplete={onComplete} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /POWER CELL \+8/i }))
+    fireEvent.click(screen.getByRole('button', { name: /POWER CELL\s*\+8/i }))
     expect(screen.getByText(/permanently committed/i)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Choose Power difficulty' })).toBeEnabled()
   })

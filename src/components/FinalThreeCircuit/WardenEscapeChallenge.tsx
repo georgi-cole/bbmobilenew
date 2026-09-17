@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getGridNeighbors, resolveWardenTurn, type RiskTier } from './finalThreeCircuitLogic'
-import { buildVariedWardenBoard } from './wardenBoardVariations'
+import {
+  applyWardenHintPenalty,
+  getGridNeighbors,
+  resolveWardenTurn,
+  WARDEN_HINT_PENALTY,
+  type RiskTier,
+} from './finalThreeCircuitLogic'
+import { buildVariedWardenBoard, getWardenHintMove } from './wardenBoardVariations'
 
 interface WardenEscapeChallengeProps {
   seed: number
@@ -33,7 +39,15 @@ export default function WardenEscapeChallenge({
   const [moves, setMoves] = useState(0)
   const [remainingMs, setRemainingMs] = useState(timeLimitMs)
   const [status, setStatus] = useState<'playing' | 'escaped' | 'caught' | 'timeout'>('playing')
+  const [hintCell, setHintCell] = useState<number | null>(null)
+  const [hintsUsed, setHintsUsed] = useState(0)
+  const [hintUsedAtMove, setHintUsedAtMove] = useState<number | null>(null)
+  const [hintMessage, setHintMessage] = useState<string | null>(null)
+  const hintsUsedRef = useRef(0)
   const settledRef = useRef(false)
+
+  const scoreWithHintPenalty = (accuracy: number) =>
+    applyWardenHintPenalty(accuracy, hintsUsedRef.current)
 
   useEffect(() => {
     if (status !== 'playing') return
@@ -45,7 +59,7 @@ export default function WardenEscapeChallenge({
       settledRef.current = true
       setRemainingMs(0)
       setStatus('timeout')
-      window.setTimeout(() => onFinish(0.08), 520)
+      window.setTimeout(() => onFinish(scoreWithHintPenalty(0.08)), 520)
     }, timeLimitMs)
     return () => {
       window.clearInterval(ticker)
@@ -58,9 +72,27 @@ export default function WardenEscapeChallenge({
     [board, player]
   )
 
+  const useHint = () => {
+    if (status !== 'playing' || hintUsedAtMove === moves) return
+    const recommended = getWardenHintMove(board, player, warden, moves)
+    setHintUsedAtMove(moves)
+
+    if (recommended == null) {
+      setHintMessage('No guaranteed escape route remains from this position.')
+      return
+    }
+
+    hintsUsedRef.current += 1
+    setHintsUsed(hintsUsedRef.current)
+    setHintCell(recommended)
+    setHintMessage('The glowing tile is a safe next move on a winning route.')
+  }
+
   const chooseCell = (nextPlayer: number) => {
     if (status !== 'playing' || !validMoves.has(nextPlayer) || nextPlayer === warden) return
 
+    setHintCell(null)
+    setHintMessage(null)
     const nextMoves = moves + 1
     const turn = resolveWardenTurn(board, warden, nextPlayer)
 
@@ -76,7 +108,7 @@ export default function WardenEscapeChallenge({
       const timeRatio = Math.max(0, Math.min(1, remainingMs / timeLimitMs))
       setStatus('escaped')
       const accuracy = Math.min(1, 0.78 + moveRatio * 0.14 + timeRatio * 0.08)
-      window.setTimeout(() => onFinish(accuracy), 700)
+      window.setTimeout(() => onFinish(scoreWithHintPenalty(accuracy)), 700)
       return
     }
 
@@ -84,14 +116,14 @@ export default function WardenEscapeChallenge({
       settledRef.current = true
       setStatus('caught')
       const accuracy = Math.max(0.06, Math.min(0.22, (nextMoves / board.moveBudget) * 0.22))
-      window.setTimeout(() => onFinish(accuracy), 620)
+      window.setTimeout(() => onFinish(scoreWithHintPenalty(accuracy)), 620)
       return
     }
 
     if (nextMoves >= board.moveBudget) {
       settledRef.current = true
       setStatus('caught')
-      window.setTimeout(() => onFinish(0.1), 620)
+      window.setTimeout(() => onFinish(scoreWithHintPenalty(0.1)), 620)
     }
   }
 
@@ -132,6 +164,31 @@ export default function WardenEscapeChallenge({
         Trap the guard against walls, then reach the illuminated exit.
       </p>
 
+      <div className="f3-circuit__warden-hint-bar">
+        <button
+          type="button"
+          className="f3-circuit__warden-hint"
+          disabled={status !== 'playing' || hintUsedAtMove === moves}
+          onClick={useHint}
+        >
+          <span>Hint</span>
+          <small>−{Math.round(WARDEN_HINT_PENALTY * 100)}% score</small>
+        </button>
+        <div>
+          <strong>
+            {hintsUsed === 0
+              ? 'Need a way out?'
+              : `${hintsUsed} hint${hintsUsed === 1 ? '' : 's'} used`}
+          </strong>
+          <span>
+            {hintMessage ??
+              (hintsUsed === 0
+                ? 'Highlights one safe next move.'
+                : `Current Warden score cap: ${Math.max(0, 100 - hintsUsed * 20)}%`)}
+          </span>
+        </div>
+      </div>
+
       <div className="f3-circuit__prison-frame">
         <div className="f3-circuit__prison-lights" aria-hidden="true">
           <span />
@@ -149,12 +206,14 @@ export default function WardenEscapeChallenge({
             const isWarden = cell === warden
             const isExit = cell === board.exit
             const canMove = validMoves.has(cell) && !wall && !isWarden
+            const isHint = canMove && cell === hintCell
             const classNames = [
               wall ? 'is-wall' : '',
               isPlayer ? 'is-player' : '',
               isWarden ? 'is-warden' : '',
               isExit ? 'is-exit' : '',
               canMove ? 'is-valid-move' : '',
+              isHint ? 'is-hint' : '',
             ]
               .filter(Boolean)
               .join(' ')
@@ -175,7 +234,9 @@ export default function WardenEscapeChallenge({
                         ? 'Exit'
                         : wall
                           ? 'Wall'
-                          : `Cell ${cell + 1}`
+                          : isHint
+                            ? 'Hint: recommended move'
+                            : `Cell ${cell + 1}`
                 }
               >
                 {isPlayer && (

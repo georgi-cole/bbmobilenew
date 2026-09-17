@@ -129,7 +129,10 @@ const TRANSFORMS: Transform[] = ['identity', 'flipX', 'flipY', 'flipXY']
 
 const DIFFICULTY_REQUIREMENTS: Record<
   RiskTier,
-  Pick<WardenDifficultyProfile, 'solutionMoves' | 'forcedDetourMoves' | 'retreatMoves' | 'guardStallTurns'>
+  Pick<
+    WardenDifficultyProfile,
+    'solutionMoves' | 'forcedDetourMoves' | 'retreatMoves' | 'guardStallTurns'
+  >
 > = {
   safe: {
     solutionMoves: 10,
@@ -284,6 +287,43 @@ export function getWardenDifficultyProfile(board: WardenBoard): WardenDifficulty
 
 export function isWardenBoardStateSolvable(board: WardenBoard): boolean {
   return getWardenDifficultyProfile(board) != null
+}
+
+export function getWardenHintMove(
+  board: WardenBoard,
+  playerCell: number,
+  wardenCell: number,
+  movesUsed = 0
+): number | null {
+  if (playerCell === board.exit || movesUsed >= board.moveBudget) return null
+
+  type HintState = { player: number; warden: number; moves: number; firstMove: number | null }
+  const queue: HintState[] = [
+    { player: playerCell, warden: wardenCell, moves: movesUsed, firstMove: null },
+  ]
+  const seen = new Set<string>([`${playerCell}:${wardenCell}`])
+
+  while (queue.length > 0) {
+    const state = queue.shift()!
+    if (state.moves >= board.moveBudget) continue
+
+    for (const nextPlayer of getGridNeighbors(state.player, board.size, board.walls)) {
+      if (nextPlayer === state.warden) continue
+      const nextMoves = state.moves + 1
+      const firstMove = state.firstMove ?? nextPlayer
+      if (nextPlayer === board.exit) return firstMove
+
+      const turn = resolveWardenTurn(board, state.warden, nextPlayer)
+      if (turn.caught || nextMoves >= board.moveBudget) continue
+
+      const key = `${nextPlayer}:${turn.nextWarden}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      queue.push({ player: nextPlayer, warden: turn.nextWarden, moves: nextMoves, firstMove })
+    }
+  }
+
+  return null
 }
 
 export function meetsWardenTierDifficulty(board: WardenBoard, tier: RiskTier): boolean {

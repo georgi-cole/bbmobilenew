@@ -5,6 +5,7 @@ import {
   RISK_RUN_MAX_PRE_PUSH,
   SEQUENCE_STAGE_TIME_MS,
   applyFinalPush,
+  applyWardenHintPenalty,
   buildPowerPuzzle,
   buildSequenceBoards,
   buildSignalBoard,
@@ -32,6 +33,13 @@ describe('Final Three Circuit scoring', () => {
     expect(scoreRiskAttempt('standard', 1)).toBe(30)
     expect(scoreRiskAttempt('risky', 1)).toBe(35)
     expect(scoreRiskAttempt('risky', 0)).toBe(0)
+  })
+
+  it('reduces Warden earned score by 20% per hint without compounding', () => {
+    expect(applyWardenHintPenalty(1, 0)).toBe(1)
+    expect(applyWardenHintPenalty(1, 1)).toBeCloseTo(0.8)
+    expect(applyWardenHintPenalty(0.75, 2)).toBeCloseTo(0.45)
+    expect(applyWardenHintPenalty(1, 5)).toBe(0)
   })
 
   it('awards or deducts the selected Final Push percentage in full', () => {

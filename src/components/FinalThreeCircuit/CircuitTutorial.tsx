@@ -1,7 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EMPTY_SEQUENCE_TILE, isSequenceSolved, slideSequenceTile } from './finalThreeCircuitLogic'
 
 export type CircuitTutorialKind = 'signal' | 'sequence' | 'warden' | 'power' | 'override'
+
+const TUTORIAL_PREF_PREFIX = 'the-big-eye:f3-circuit:tutorial:hidden:'
+
+function tutorialPreferenceKey(kind: CircuitTutorialKind): string {
+  return `${TUTORIAL_PREF_PREFIX}${kind}`
+}
+
+function tutorialIsHidden(kind: CircuitTutorialKind): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(tutorialPreferenceKey(kind)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function hideTutorialInFuture(kind: CircuitTutorialKind): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(tutorialPreferenceKey(kind), '1')
+  } catch {
+    // Storage can be unavailable in restricted/private contexts. The guide still works normally.
+  }
+}
 
 interface CircuitTutorialProps {
   kind: CircuitTutorialKind
@@ -314,7 +338,20 @@ function OverridePractice({ onReady }: { onReady: () => void }) {
 
 export default function CircuitTutorial({ kind, onComplete }: CircuitTutorialProps) {
   const [ready, setReady] = useState(false)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
+  const [hiddenFromPreviousRun] = useState(() => tutorialIsHidden(kind))
   const meta = META[kind]
+
+  useEffect(() => {
+    if (hiddenFromPreviousRun) onComplete()
+  }, [hiddenFromPreviousRun, onComplete])
+
+  if (hiddenFromPreviousRun) return null
+
+  const finishTutorial = () => {
+    if (dontShowAgain) hideTutorialInFuture(kind)
+    onComplete()
+  }
 
   return (
     <section
@@ -346,11 +383,20 @@ export default function CircuitTutorial({ kind, onComplete }: CircuitTutorialPro
       {kind === 'power' && <PowerPractice onReady={() => setReady(true)} />}
       {kind === 'override' && <OverridePractice onReady={() => setReady(true)} />}
 
+      <label className="f3-circuit__tutorial-skip">
+        <input
+          type="checkbox"
+          checked={dontShowAgain}
+          onChange={(event) => setDontShowAgain(event.target.checked)}
+        />
+        <span>Don’t show this guide again</span>
+      </label>
+
       <button
         type="button"
         className={`f3-circuit__primary f3-circuit__tutorial-start ${ready ? 'is-ready' : ''}`}
         disabled={!ready}
-        onClick={onComplete}
+        onClick={finishTutorial}
       >
         {ready ? meta.startLabel : 'Try the practice move first'}
       </button>

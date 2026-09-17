@@ -59,6 +59,14 @@ export const RISK_RUN_MAX_PRE_PUSH = RISK_TIER_MAX_POINTS.risky * 2
 export const FINAL_PUSH_STAKES = [0.1, 0.25, 0.4] as const
 export const EMPTY_SEQUENCE_TILE = '__empty__'
 export const SEQUENCE_STAGE_TIME_MS = 300_000
+export const WARDEN_HINT_PENALTY = 0.2
+
+export function applyWardenHintPenalty(accuracy: number, hintsUsed: number): number {
+  const safeAccuracy = Math.max(0, Math.min(1, Number.isFinite(accuracy) ? accuracy : 0))
+  const safeHints = Math.max(0, Math.floor(Number.isFinite(hintsUsed) ? hintsUsed : 0))
+  const multiplier = Math.max(0, 1 - safeHints * WARDEN_HINT_PENALTY)
+  return safeAccuracy * multiplier
+}
 
 export function clampCircuitScore(value: number, max = 100): number {
   if (!Number.isFinite(value)) return 0

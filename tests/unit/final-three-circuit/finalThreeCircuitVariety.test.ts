@@ -6,10 +6,12 @@ import {
 import {
   buildSequenceBoards,
   buildSignalRounds,
+  resolveWardenTurn,
 } from '../../../src/components/FinalThreeCircuit/finalThreeCircuitLogic'
 import {
   buildVariedWardenBoard,
   getSolvableWardenVariations,
+  getWardenHintMove,
   getWardenDifficultyProfile,
   isWardenBoardStateSolvable,
   meetsWardenTierDifficulty,
@@ -64,6 +66,31 @@ describe('Final Three Circuit content variety', () => {
       }
     }
   })
+
+  it.each(['safe', 'standard', 'risky'] as const)(
+    'provides solver-backed %s hints that can be followed all the way to EXIT',
+    (tier) => {
+      const board = buildVariedWardenBoard(tier, 717)
+      let player = board.start
+      let warden = board.wardenStart
+      let escaped = false
+
+      for (let moves = 0; moves < board.moveBudget; moves += 1) {
+        const hint = getWardenHintMove(board, player, warden, moves)
+        expect(hint).not.toBeNull()
+        const turn = resolveWardenTurn(board, warden, hint!)
+        expect(turn.caught).toBe(false)
+        player = hint!
+        if (turn.escaped) {
+          escaped = true
+          break
+        }
+        warden = turn.nextWarden
+      }
+
+      expect(escaped).toBe(true)
+    }
+  )
 
   it('reseeds Signal Hunt and Sequence Builder content', () => {
     expect(buildSignalRounds(11).map((round) => round.targetOrder)).not.toEqual(
