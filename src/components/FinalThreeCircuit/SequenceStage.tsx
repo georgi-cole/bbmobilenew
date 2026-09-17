@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   EMPTY_SEQUENCE_TILE,
   SEQUENCE_STAGE_TIME_MS,
@@ -30,53 +30,72 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
   const [bank, setBank] = useState(0)
   const [boardScore, setBoardScore] = useState<number | null>(null)
   const [resetCount, setResetCount] = useState(0)
+  const orderRef = useRef<string[]>(boards[0].initial)
+  const movesRef = useRef(0)
+  const remainingMsRef = useRef(SEQUENCE_STAGE_TIME_MS)
   const board = boards[boardIndex]
 
   useEffect(() => {
     if (boardScore != null) return
     const timer = window.setInterval(() => {
-      setRemainingMs((current) => Math.max(0, current - 100))
+      const nextRemaining = Math.max(0, remainingMsRef.current - 100)
+      remainingMsRef.current = nextRemaining
+      setRemainingMs(nextRemaining)
+      if (nextRemaining > 0) return
+      window.clearInterval(timer)
+      setBoardScore(
+        scoreSequenceBoard(board, orderRef.current, movesRef.current, 0, false)
+      )
     }, 100)
     return () => window.clearInterval(timer)
-  }, [boardScore])
-
-  useEffect(() => {
-    if (remainingMs > 0 || boardScore != null) return
-    setBoardScore(scoreSequenceBoard(board, order, moves, 0, false))
-  }, [board, boardScore, moves, order, remainingMs])
+  }, [board, boardScore])
 
   const moveTile = (index: number) => {
     if (boardScore != null) return
     const next = slideSequenceTile(order, index, board.rows, board.columns)
     if (!next) return
     const nextMoves = moves + 1
+    orderRef.current = next
+    movesRef.current = nextMoves
     setOrder(next)
     setMoves(nextMoves)
     if (isSequenceSolved(next, board.target)) {
-      setBoardScore(scoreSequenceBoard(board, next, nextMoves, remainingMs, true))
+      setBoardScore(scoreSequenceBoard(board, next, nextMoves, remainingMsRef.current, true))
     }
   }
 
   const resetBoard = () => {
     if (boardScore != null) return
-    setOrder([...board.initial])
-    setMoves((current) => current + 3)
+    const resetOrder = [...board.initial]
+    const nextMoves = moves + 3
+    const nextRemaining = Math.max(0, remainingMsRef.current - 5_000)
+    orderRef.current = resetOrder
+    movesRef.current = nextMoves
+    remainingMsRef.current = nextRemaining
+    setOrder(resetOrder)
+    setMoves(nextMoves)
     setResetCount((current) => current + 1)
-    setRemainingMs((current) => Math.max(0, current - 5_000))
+    setRemainingMs(nextRemaining)
+    if (nextRemaining <= 0) {
+      setBoardScore(scoreSequenceBoard(board, resetOrder, nextMoves, 0, false))
+    }
   }
 
   const next = () => {
     if (boardScore == null) return
     const adjustedScore = Math.max(0, boardScore - resetCount * 2)
     const nextBank = bank + adjustedScore
-    if (boardIndex >= boards.length - 1 || remainingMs <= 0) {
+    if (boardIndex >= boards.length - 1 || remainingMsRef.current <= 0) {
       onComplete(clampCircuitScore(nextBank))
       return
     }
     const nextIndex = boardIndex + 1
+    const nextOrder = [...boards[nextIndex].initial]
+    orderRef.current = nextOrder
+    movesRef.current = 0
     setBank(nextBank)
     setBoardIndex(nextIndex)
-    setOrder([...boards[nextIndex].initial])
+    setOrder(nextOrder)
     setMoves(0)
     setResetCount(0)
     setBoardScore(null)
