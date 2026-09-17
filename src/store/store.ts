@@ -5,6 +5,7 @@ import gameReducer, {
   requestPublicModeChange,
 } from './gameSlice'
 import { withLohNominationPlanning } from './lohNominationPlanning'
+import { withImmediateVoxPublicMode } from './voxPublicModeReducer'
 import finaleReducer from './finaleSlice'
 import challengeReducer from './challengeSlice'
 import settingsReducer, {
@@ -77,7 +78,9 @@ import {
 import { backdoorPresentationMiddleware } from '../broadcasting/backdoorPresentationMiddleware'
 import { setRuntimeSocialActionOverrides } from '../social/socialActionManager'
 
-const strategicGameReducer = withLohNominationPlanning(gameReducer, getNominationTargetScore)
+const strategicGameReducer = withImmediateVoxPublicMode(
+  withLohNominationPlanning(gameReducer, getNominationTargetScore)
+)
 
 export const store = configureStore({
   reducer: {
@@ -197,7 +200,7 @@ let prevSettings = store.getState().settings
 let prevPublicModeSetting = prevSettings.sim.publicMode
 // Persist userProfile to localStorage whenever it changes
 let prevUserProfile = store.getState().userProfile
-// Persist profiles state to localStorage whenever they change
+// Persist profiles state whenever they change
 let prevProfiles = store.getState().profiles
 // Persist ads state whenever they change
 let prevAds = store.getState().ads
@@ -377,8 +380,3 @@ if (typeof window !== 'undefined') {
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
-
-if (import.meta.env.DEV) {
-  // @ts-expect-error – intentionally attaching store for dev debugging
-  window.store = store
-}
