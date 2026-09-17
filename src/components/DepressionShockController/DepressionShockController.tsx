@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { consumeBroadcastEvent } from '../../store/gameSlice'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import {
   buildDepressionShockDayContext,
@@ -28,6 +29,20 @@ const DAY_TWO_COPY =
   'The rain continues. Today even the colour is draining from the hub. Every familiar room feels colder, flatter, and farther away.'
 const END_COPY =
   'Morning light breaks through the clouds. Colour returns, familiar faces reappear, and the hub finally exhales. Depression Shock is over.'
+const CHOCOLATE_TEMPLATE_ID = 'depression-shock.chocolates'
+const CHOCOLATE_MAJOR = 'depression_shock_chocolates'
+
+// The chocolate beat is an atomic card -> roster cinematic sequence. TvZone can
+// legitimately discover a major event before it reaches the head of the managed
+// broadcast queue; without a one-shot acknowledgement, that same event can later
+// become the queue head and present the card/cinematic a second time. Keep a
+// runtime guard per season/day and consume every equivalent current-day source
+// event as soon as the first presentation hands off to the cinematic.
+const completedChocolatePresentationKeys = new Set<string>()
+
+function chocolatePresentationKey(gameId: string | null | undefined, week: number): string {
+  return `${gameId ?? 'game'}:${week}`
+}
 
 const PHASE_BROADCASTS = [
   {
@@ -47,9 +62,9 @@ const PHASE_BROADCASTS = [
   {
     visualPhase: 'day2',
     phase: 'social_1',
-    templateId: 'depression-shock.chocolates',
+    templateId: CHOCOLATE_TEMPLATE_ID,
     text: 'The Big Eye has left chocolates for everyone. Wrappers open in the quiet, but the rain keeps speaking louder. 🍫',
-    major: 'depression_shock_chocolates',
+    major: CHOCOLATE_MAJOR,
   },
   {
     visualPhase: 'day2',
@@ -212,16 +227,41 @@ export default function DepressionShockController() {
     setCinematic(null)
   }, [dispatch, game.gameId, game.week])
 
+  const handleChocolatePresented = useCallback(() => {
+    const key = chocolatePresentationKey(game.gameId, game.week)
+    if (completedChocolatePresentationKeys.has(key)) return
+    completedChocolatePresentationKeys.add(key)
+
+    // Consume all equivalent sources, not just the event TvZone happened to
+    // select first. This repairs both the current queue-order repro and older
+    // saves that may already contain a duplicate legacy chocolate broadcast.
+    for (const event of game.tvFeed) {
+      const eventWeek = event.meta?.week
+      const eventMajor = event.meta?.major ?? event.major
+      const isCurrentOrLegacyDay = eventWeek == null || eventWeek === game.week
+      const isChocolateBroadcast =
+        event.meta?.broadcastTemplateId === CHOCOLATE_TEMPLATE_ID || eventMajor === CHOCOLATE_MAJOR
+      if (
+        isCurrentOrLegacyDay &&
+        isChocolateBroadcast &&
+        event.meta?.broadcastConsumed !== true
+      ) {
+        dispatch(consumeBroadcastEvent(event.id))
+      }
+    }
+
+    setCinematic('chocolate')
+  }, [dispatch, game.gameId, game.tvFeed, game.week])
+
   useEffect(() => {
     const handleThunder = () => setCinematic('thunder')
-    const handleChocolate = () => setCinematic('chocolate')
     window.addEventListener('depression-shock:thunder-presented', handleThunder)
-    window.addEventListener('depression-shock:chocolate-presented', handleChocolate)
+    window.addEventListener('depression-shock:chocolate-presented', handleChocolatePresented)
     return () => {
       window.removeEventListener('depression-shock:thunder-presented', handleThunder)
-      window.removeEventListener('depression-shock:chocolate-presented', handleChocolate)
+      window.removeEventListener('depression-shock:chocolate-presented', handleChocolatePresented)
     }
-  }, [])
+  }, [handleChocolatePresented])
 
   const handleCinematicImpact = useCallback(() => {
     if (cinematic === 'thunder') setDepressionShockPortraitMode('sad')
