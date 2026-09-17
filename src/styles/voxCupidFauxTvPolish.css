@@ -1,0 +1,98 @@
+/* Vox/Cupid presentation fixes that intentionally span lazy-loaded screens. */
+
+/*
+ * In Vox Populi, Public Mode should reveal the player's own audience pulse and
+ * requests without exposing the whole house ranking. The Vox status panel is
+ * rendered only for an active Vox season, so it is a reliable mode marker for
+ * this screen without duplicating game-mode state in CSS classes.
+ */
+.public-meter:has(.public-meter__section--vox) .public-meter__section--rankings {
+  display: none;
+}
+
+/*
+ * Six or more public-vote nominees cannot remain legible in one horizontal TV
+ * row. Keep the existing compact TV treatment, but split the field into two
+ * centered rows. Width bands cover the full 16-player roster, so unusual tie
+ * scenarios do not fall back to clipping.
+ */
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='6'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='7'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='8'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='9'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='10'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='11'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='12'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='13'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='14'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='15'],
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='16'] {
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  column-gap: clamp(0.28rem, 1.5vw, 0.52rem);
+  row-gap: clamp(0.12rem, 0.7vh, 0.28rem);
+  max-width: 34rem;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='6'] .avrm__tally--tv {
+  flex: 0 0 28%;
+  width: 28%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='7'] .avrm__tally--tv,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='8'] .avrm__tally--tv {
+  flex: 0 0 21.5%;
+  width: 21.5%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='9'] .avrm__tally--tv,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='10'] .avrm__tally--tv {
+  flex: 0 0 17%;
+  width: 17%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='11'] .avrm__tally--tv,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='12'] .avrm__tally--tv {
+  flex: 0 0 14%;
+  width: 14%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='13'] .avrm__tally--tv,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='14'] .avrm__tally--tv {
+  flex: 0 0 12%;
+  width: 12%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='15'] .avrm__tally--tv,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='16'] .avrm__tally--tv {
+  flex: 0 0 10.3%;
+  width: 10.3%;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='6'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='7'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='8'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='9'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='10'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='11'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='12'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='13'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='14'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='15'] .avrm__tv-vote-ring-shell,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='16'] .avrm__tv-vote-ring-shell {
+  width: min(100%, 3.55rem);
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='9'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='10'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='11'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='12'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='13'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='14'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='15'] .avrm__tally-count,
+.avrm--tv .avrm__tallies.avrm__tallies--tv[data-nominee-count='16'] .avrm__tally-count {
+  font-size: clamp(0.68rem, 2.5vw, 0.9rem);
+}
