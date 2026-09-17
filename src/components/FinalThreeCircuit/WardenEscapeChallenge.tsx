@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getGridNeighbors, resolveWardenTurn, type RiskTier } from './finalThreeCircuitLogic'
 import { buildVariedWardenBoard } from './wardenBoardVariations'
 
@@ -33,21 +33,25 @@ export default function WardenEscapeChallenge({
   const [moves, setMoves] = useState(0)
   const [remainingMs, setRemainingMs] = useState(timeLimitMs)
   const [status, setStatus] = useState<'playing' | 'escaped' | 'caught' | 'timeout'>('playing')
+  const settledRef = useRef(false)
 
   useEffect(() => {
     if (status !== 'playing') return
-    const timer = window.setInterval(() => {
+    const ticker = window.setInterval(() => {
       setRemainingMs((current) => Math.max(0, current - 100))
     }, 100)
-    return () => window.clearInterval(timer)
-  }, [status])
-
-  useEffect(() => {
-    if (remainingMs > 0 || status !== 'playing') return
-    setStatus('timeout')
-    const timer = window.setTimeout(() => onFinish(0.08), 520)
-    return () => window.clearTimeout(timer)
-  }, [onFinish, remainingMs, status])
+    const expiry = window.setTimeout(() => {
+      if (settledRef.current) return
+      settledRef.current = true
+      setRemainingMs(0)
+      setStatus('timeout')
+      window.setTimeout(() => onFinish(0.08), 520)
+    }, timeLimitMs)
+    return () => {
+      window.clearInterval(ticker)
+      window.clearTimeout(expiry)
+    }
+  }, [onFinish, status, timeLimitMs])
 
   const validMoves = useMemo(
     () => new Set(getGridNeighbors(player, board.size, board.walls)),
@@ -67,6 +71,7 @@ export default function WardenEscapeChallenge({
     // EXIT is terminal. Once the player steps onto it, the escape has already
     // happened and the guard does not get another two-step pursuit response.
     if (turn.escaped) {
+      settledRef.current = true
       const moveRatio = Math.max(0, 1 - nextMoves / Math.max(1, board.moveBudget))
       const timeRatio = Math.max(0, Math.min(1, remainingMs / timeLimitMs))
       setStatus('escaped')
@@ -76,6 +81,7 @@ export default function WardenEscapeChallenge({
     }
 
     if (turn.caught) {
+      settledRef.current = true
       setStatus('caught')
       const accuracy = Math.max(0.06, Math.min(0.22, (nextMoves / board.moveBudget) * 0.22))
       window.setTimeout(() => onFinish(accuracy), 620)
@@ -83,6 +89,7 @@ export default function WardenEscapeChallenge({
     }
 
     if (nextMoves >= board.moveBudget) {
+      settledRef.current = true
       setStatus('caught')
       window.setTimeout(() => onFinish(0.1), 620)
     }
