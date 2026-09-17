@@ -1,6 +1,10 @@
 import type { GameState, Player } from '../types'
 
-function nextNominationStatus(player: Player, isNominee: boolean, lohId: string | null): Player['status'] {
+function nextNominationStatus(
+  player: Player,
+  isNominee: boolean,
+  lohId: string | null
+): Player['status'] {
   const status = player.status ?? 'active'
 
   if (status === 'evicted' || status === 'jury') return status
