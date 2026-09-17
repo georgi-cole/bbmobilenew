@@ -67,8 +67,8 @@ function powerCandidate(
 
   const first = firstToThreshold(state, player.id, stat, count)
   const text = first
-    ? `BY THE NUMBERS · ${player.name} becomes the first player this season to reach ${count} ${label} wins.`
-    : `BY THE NUMBERS · ${player.name} joins rare company with ${count} ${label} wins this season.`
+    ? `${player.name} becomes the first player this season to reach ${count} ${label} wins.`
+    : `${player.name} joins rare company with ${count} ${label} wins this season.`
 
   return {
     text,
@@ -102,8 +102,8 @@ function dualPowerCandidate(
 
   return {
     text: anyoneElseHasBothAtThisLevel
-      ? `BY THE NUMBERS · ${player.name} now has ${lohWins + posWins} power wins split across LOH and the Power of Safety.`
-      : `BY THE NUMBERS · ${player.name} is the first player this season to turn wins in both powers into a three-win résumé.`,
+      ? `${player.name} now has ${lohWins + posWins} power wins split across LOH and the Power of Safety.`
+      : `${player.name} is the first player this season to turn wins in both powers into a three-win résumé.`,
     storyKey,
     cooldownKey: `stats:power:${player.id}`,
     subjectIds: [player.id],
@@ -125,7 +125,7 @@ function nominationCandidates(
 
     return [
       {
-        text: `BY THE NUMBERS · ${player.name} has reached the block for the ${ordinal(count)} time - one of the season's defining survival stories.`,
+        text: `${player.name} has reached the block for the ${ordinal(count)} time - one of the season's defining survival stories.`,
         storyKey,
         cooldownKey: `stats:nominations:${player.id}`,
         subjectIds: [player.id],
@@ -148,7 +148,7 @@ function survivalCandidates(
 
     return [
       {
-        text: `BY THE NUMBERS · ${player.name} has now survived the block ${count} times and is still in the game.`,
+        text: `${player.name} has now survived the block ${count} times and is still in the game.`,
         storyKey,
         cooldownKey: `stats:nominations:${player.id}`,
         subjectIds: [player.id],
