@@ -57,16 +57,15 @@ export default function FinalOverrideChallenge({
 
   useEffect(() => {
     if (locked || result) return
-    const timer = window.setInterval(() => {
+    const ticker = window.setInterval(() => {
       setRemainingMs((current) => Math.max(0, current - 100))
     }, 100)
-    return () => window.clearInterval(timer)
-  }, [locked, result, roundIndex])
-
-  useEffect(() => {
-    if (remainingMs > 0 || locked || result) return
-    advance(false)
-  }, [advance, locked, remainingMs, result])
+    const expiry = window.setTimeout(() => advance(false), roundTimeMs)
+    return () => {
+      window.clearInterval(ticker)
+      window.clearTimeout(expiry)
+    }
+  }, [advance, locked, result, roundIndex, roundTimeMs])
 
   if (result) {
     return (
