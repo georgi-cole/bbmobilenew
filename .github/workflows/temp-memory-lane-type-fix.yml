@@ -32,7 +32,12 @@ jobs:
           new = '''interface MemoryLanePortraitProps {\n  id: string\n  name: string\n  avatar?: string\n  isUser?: boolean\n  alt: string\n}'''
           if old not in text:
               raise SystemExit('portrait props block not found')
-          path.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+          old_call = "useResolvedAvatarSrc({ id, name, avatar, isUser })"
+          new_call = "useResolvedAvatarSrc({ id, name, avatar: avatar ?? '', isUser })"
+          if old_call not in text:
+              raise SystemExit('avatar resolver call not found')
+          path.write_text(text.replace(old_call, new_call, 1))
 
           path = Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts')
           text = path.read_text()
