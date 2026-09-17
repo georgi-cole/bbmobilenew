@@ -1,221 +1,291 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { useAppSelector } from '../../store/hooks';
-import { findByName, getById } from '../../data/houseguests';
-import { computeSeasonLeaderboard } from '../../scoring/computeLeaderboard';
-import { computeAllTimeLeaderboard } from '../../scoring/computeAllTime';
-import { DEFAULT_WEIGHTS } from '../../scoring/weights';
-import './Leaderboard.css';
-import GameBackButton from '../../components/ui/GameBackButton/GameBackButton';
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { useAppSelector } from '../../store/hooks'
+import { findByName, getById } from '../../data/houseguests'
+import {
+  buildAchievementSummary,
+  findArchiveUserSummary,
+} from '../../store/achievementSummary'
+import type { SeasonArchive } from '../../store/seasonArchive'
+import './Leaderboard.css'
+import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 
-type Tab = 'season' | 'alltime' | 'pastWinners';
+type Tab = 'history' | 'achievements'
 
-function formatWinnerName(name: string | undefined): string {
-  if (!name) return 'N/A';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'N/A';
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1]}`;
+function resolvePlayerName(playerId: string | undefined, displayName: string | undefined): string {
+  const fullNameById = playerId ? getById(playerId)?.fullName : undefined
+  const fullNameByDisplayName = displayName ? findByName(displayName)?.fullName : undefined
+  return fullNameById ?? fullNameByDisplayName ?? displayName ?? 'N/A'
 }
 
-function buildMockSeasonViewership(seasonIndex: number): string {
-  const viewers = 4.2 + (((seasonIndex * 13) % 33) / 10);
-  return `${viewers.toFixed(1)}M viewers`;
+function placementLabel(placement: number | null | undefined): string {
+  if (placement == null || placement <= 0) return '—'
+  const mod100 = placement % 100
+  const mod10 = placement % 10
+  const suffix =
+    mod100 >= 11 && mod100 <= 13
+      ? 'th'
+      : mod10 === 1
+        ? 'st'
+        : mod10 === 2
+          ? 'nd'
+          : mod10 === 3
+            ? 'rd'
+            : 'th'
+  return `${placement}${suffix}`
 }
 
-function resolveWinnerName(playerId: string | undefined, displayName: string | undefined): string {
-  const fullNameById = playerId ? getById(playerId)?.fullName : undefined;
-  const fullNameByDisplayName = displayName ? findByName(displayName)?.fullName : undefined;
-  const fullName = fullNameById ?? fullNameByDisplayName ?? displayName;
-  return formatWinnerName(fullName);
+function seasonFormatLabel(archive: SeasonArchive): string {
+  if (archive.voxPopuliActivated) return 'Vox Populi'
+  if (archive.cupidArrowActivated) return "Cupid's Arrow"
+  return 'Classic'
+}
+
+function seasonDuration(archive: SeasonArchive): number | null {
+  const durations = archive.playerSummaries
+    .map((summary) => summary.daysAlive ?? summary.weeksAlive)
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0)
+  if (durations.length === 0) return null
+  return Math.max(...durations)
 }
 
 export default function Leaderboard() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('season');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const players = useAppSelector((s) => s.game.players);
-  const seasonArchives = useAppSelector((s) => s.game.seasonArchives ?? []);
-  const userPlayerId = players.find((p) => p.isUser)?.id ?? null;
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<Tab>('history')
+  const [expandedSeasonId, setExpandedSeasonId] = useState<string | null>(null)
+  const players = useAppSelector((state) => state.game.players)
+  const week = useAppSelector((state) => state.game.week)
+  const phase = useAppSelector((state) => state.game.phase)
+  const seasonArchives = useAppSelector((state) => state.game.seasonArchives ?? [])
+  const userPlayer = players.find((player) => player.isUser) ?? null
 
-  // Build a season summary from current live players for "This Season" tab
-  const liveSummaries = players.map((p) => ({
-    playerId: p.id,
-    displayName: p.name,
-    finalPlacement: p.finalRank ?? null,
-    lohWins: p.stats?.lohWins ?? 0,
-    posWins: p.stats?.posWins ?? 0,
-    timesNominated: p.stats?.timesNominated ?? 0,
-    battleBackWins: p.stats?.battleBackWins ?? 0,
-    wonFinalHoh: p.stats?.wonFinalHoh ?? false,
-    // Only players with status 'jury' are actual jury members.
-    // The winner (finalRank=1) and runner-up (finalRank=2) are NOT jury members
-    // and should not receive the madeJury bonus.
-    madeJury: p.status === 'jury',
-  }));
+  const seasonHistory = useMemo(
+    () =>
+      [...seasonArchives]
+        .sort((left, right) => (right.seasonIndex ?? 0) - (left.seasonIndex ?? 0))
+        .map((archive) => {
+          const winner = archive.playerSummaries.find((summary) => summary.finalPlacement === 1)
+          const runnerUp = archive.playerSummaries.find((summary) => summary.finalPlacement === 2)
+          const publicFavorite = archive.playerSummaries.find((summary) => summary.wonPublicFavorite)
+          const userSummary = findArchiveUserSummary(archive, userPlayer)
+          const duration = seasonDuration(archive)
+          return {
+            archive,
+            winnerName: resolvePlayerName(winner?.playerId, winner?.displayName),
+            runnerUpName: resolvePlayerName(runnerUp?.playerId, runnerUp?.displayName),
+            publicFavoriteName: publicFavorite
+              ? resolvePlayerName(publicFavorite.playerId, publicFavorite.displayName)
+              : '—',
+            userSummary,
+            duration,
+            formatLabel: seasonFormatLabel(archive),
+          }
+        }),
+    [seasonArchives, userPlayer]
+  )
 
-  const seasonEntries = computeSeasonLeaderboard(liveSummaries, DEFAULT_WEIGHTS);
-  const allTimeEntries = computeAllTimeLeaderboard(seasonArchives, DEFAULT_WEIGHTS);
-  const pastWinners = [...seasonArchives]
-    .sort((a, b) => (b.seasonIndex ?? 0) - (a.seasonIndex ?? 0))
-    .map((archive) => {
-      const winner = archive.playerSummaries.find((summary) => summary.finalPlacement === 1);
-      return {
-        seasonId: archive.seasonId,
-        seasonIndex: archive.seasonIndex,
-        winnerName: resolveWinnerName(winner?.playerId, winner?.displayName),
-        seasonViewership: buildMockSeasonViewership(archive.seasonIndex),
-      };
-    });
-
-  const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
+  const achievementSummary = useMemo(
+    () =>
+      buildAchievementSummary({
+        userPlayer,
+        seasonArchives,
+        day: week,
+        phase,
+      }),
+    [phase, seasonArchives, userPlayer, week]
+  )
 
   return (
-    <div className="placeholder-screen leaderboard-screen">
-      <div className="leaderboard-screen__title-row">
-        <h1 className="placeholder-screen__title">🏆 Leaderboard</h1>
-        <GameBackButton className="leaderboard-screen__back" onClick={() => navigate(-1)} />
+    <div className="placeholder-screen hall-of-fame-screen">
+      <div className="hall-of-fame-screen__title-row">
+        <h1 className="placeholder-screen__title">🏆 Hall of Fame</h1>
+        <GameBackButton className="hall-of-fame-screen__back" onClick={() => navigate(-1)} />
       </div>
 
-      <div className="leaderboard-screen__tabs">
+      <div className="hall-of-fame-screen__tabs" role="tablist" aria-label="Hall of Fame">
         <button
           type="button"
-          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'season' ? ' leaderboard-screen__tab--active' : ''}`}
-          onClick={() => setTab('season')}
+          role="tab"
+          aria-selected={tab === 'history'}
+          className={`hall-of-fame-screen__tab game-button game-button--menu game-button--ghost${tab === 'history' ? ' hall-of-fame-screen__tab--active' : ''}`}
+          onClick={() => setTab('history')}
         >
-          This Season
+          Season History
         </button>
         <button
           type="button"
-          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'alltime' ? ' leaderboard-screen__tab--active' : ''}`}
-          onClick={() => setTab('alltime')}
+          role="tab"
+          aria-selected={tab === 'achievements'}
+          className={`hall-of-fame-screen__tab game-button game-button--menu game-button--ghost${tab === 'achievements' ? ' hall-of-fame-screen__tab--active' : ''}`}
+          onClick={() => setTab('achievements')}
         >
-          All-Time
-        </button>
-        <button
-          type="button"
-          className={`leaderboard-screen__tab game-button game-button--menu game-button--ghost${tab === 'pastWinners' ? ' leaderboard-screen__tab--active' : ''}`}
-          onClick={() => setTab('pastWinners')}
-        >
-          Past Winners
+          Achievements
         </button>
       </div>
 
-      {tab === 'season' && (
-        <ul className="leaderboard-screen__list">
-          {seasonEntries.map((entry, i) => {
-            const isUser = entry.playerId === userPlayerId;
-            const isExpanded = expandedId === entry.playerId;
-            const bd = entry.breakdown;
-            return (
-              <li
-                key={entry.playerId}
-                className={`leaderboard-screen__row${isUser ? ' leaderboard-screen__row--you' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="leaderboard-screen__row-main"
-                  onClick={() => toggleExpand(entry.playerId)}
-                  aria-expanded={isExpanded}
-                >
-                  <span className="leaderboard-screen__rank">#{i + 1}</span>
-                  <span className="leaderboard-screen__name">
-                    {entry.displayName}{isUser ? ' (You)' : ''}
-                  </span>
-                  <span className={`leaderboard-screen__score${isUser ? ' leaderboard-screen__score--you' : ''}`}>
-                    {entry.score} pts
-                  </span>
-                  <span className="leaderboard-screen__chevron">{isExpanded ? '▲' : '▼'}</span>
-                </button>
-                {isExpanded && (
-                  <ul className="leaderboard-screen__breakdown">
-                    {bd.lohWins > 0 && <li>LOH wins: +{bd.lohWins}</li>}
-                    {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
-                    {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
-                    {bd.madeJury > 0 && <li>Made tribunal: +{bd.madeJury}</li>}
-                    {bd.battleBackWins > 0 && <li>Back 2 the Game win(s): +{bd.battleBackWins}</li>}
-                    {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}
-                    {bd.survivedTripleEviction > 0 && <li>Survived triple eviction: +{bd.survivedTripleEviction}</li>}
-                    {bd.wonPublicFavorite > 0 && <li>Public's Favorite: +{bd.wonPublicFavorite}</li>}
-                    {bd.winBonus > 0 && <li>Win bonus: +{bd.winBonus}</li>}
-                    {bd.runnerUp > 0 && <li>Runner-up: +{bd.runnerUp}</li>}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      {tab === 'history' && (
+        <section className="hall-of-fame-screen__panel" aria-label="Season history">
+          {seasonHistory.length === 0 ? (
+            <div className="hall-of-fame-screen__empty">
+              <strong>No completed seasons yet.</strong>
+              <span>Your winners and season finishes will appear here.</span>
+            </div>
+          ) : (
+            <ul className="hall-of-fame-screen__season-list">
+              {seasonHistory.map(
+                ({
+                  archive,
+                  winnerName,
+                  runnerUpName,
+                  publicFavoriteName,
+                  userSummary,
+                  duration,
+                  formatLabel,
+                }) => {
+                  const isExpanded = expandedSeasonId === archive.seasonId
+                  const userTitles = userSummary?.titlesWon?.filter(Boolean) ?? []
+                  return (
+                    <li key={archive.seasonId} className="hall-of-fame-screen__season-card">
+                      <button
+                        type="button"
+                        className="hall-of-fame-screen__season-main"
+                        aria-expanded={isExpanded}
+                        onClick={() =>
+                          setExpandedSeasonId((current) =>
+                            current === archive.seasonId ? null : archive.seasonId
+                          )
+                        }
+                      >
+                        <span className="hall-of-fame-screen__season-copy">
+                          <span className="hall-of-fame-screen__season-heading">
+                            Season {archive.seasonIndex}
+                          </span>
+                          <span className="hall-of-fame-screen__season-meta">
+                            {formatLabel}
+                            {archive.twinShockConsumed ? ' · Twin Shock' : ''}
+                            {duration ? ` · ${duration} days` : ''}
+                          </span>
+                          <span className="hall-of-fame-screen__your-finish">
+                            You: {placementLabel(userSummary?.finalPlacement)}
+                          </span>
+                        </span>
+                        <span className="hall-of-fame-screen__winner-block">
+                          <span className="hall-of-fame-screen__winner-label">Winner</span>
+                          <span className="hall-of-fame-screen__winner-name">🏆 {winnerName}</span>
+                        </span>
+                        <span className="hall-of-fame-screen__chevron" aria-hidden="true">
+                          {isExpanded ? '▲' : '▼'}
+                        </span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="hall-of-fame-screen__season-details">
+                          <dl className="hall-of-fame-screen__detail-grid">
+                            <div>
+                              <dt>Winner</dt>
+                              <dd>{winnerName}</dd>
+                            </div>
+                            <div>
+                              <dt>Runner-up</dt>
+                              <dd>{runnerUpName}</dd>
+                            </div>
+                            <div>
+                              <dt>Public Favorite</dt>
+                              <dd>{publicFavoriteName}</dd>
+                            </div>
+                            <div>
+                              <dt>Your finish</dt>
+                              <dd>{placementLabel(userSummary?.finalPlacement)}</dd>
+                            </div>
+                          </dl>
+                          {userTitles.length > 0 && (
+                            <div className="hall-of-fame-screen__season-titles">
+                              <span>Your season titles</span>
+                              <div>
+                                {userTitles.map((title) => (
+                                  <span key={title} className="hall-of-fame-screen__badge">
+                                    {title.replace(/_/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  )
+                }
+              )}
+            </ul>
+          )}
+        </section>
       )}
 
-      {tab === 'alltime' && (
-        <ul className="leaderboard-screen__list">
-          {allTimeEntries.length === 0 && (
-            <li className="leaderboard-screen__empty">No completed seasons yet.</li>
-          )}
-          {allTimeEntries.map((entry, i) => {
-            const isUser = entry.playerId === userPlayerId;
-            const isExpanded = expandedId === `at-${entry.playerId}`;
-            const bd = entry.breakdown;
-            return (
-              <li
-                key={entry.playerId}
-                className={`leaderboard-screen__row${isUser ? ' leaderboard-screen__row--you' : ''}`}
-              >
-                <button
-                  type="button"
-                  className="leaderboard-screen__row-main"
-                  onClick={() => toggleExpand(`at-${entry.playerId}`)}
-                  aria-expanded={isExpanded}
-                >
-                  <span className="leaderboard-screen__rank">#{i + 1}</span>
-                  <span className="leaderboard-screen__name">
-                    {entry.displayName}{isUser ? ' (You)' : ''}
-                  </span>
-                  <span className={`leaderboard-screen__score${isUser ? ' leaderboard-screen__score--you' : ''}`}>
-                    {entry.totalScore} pts
-                  </span>
-                  <span className="leaderboard-screen__chevron">{isExpanded ? '▲' : '▼'}</span>
-                </button>
-                {isExpanded && (
-                  <ul className="leaderboard-screen__breakdown">
-                    <li>Seasons played: {entry.seasonsPlayed}</li>
-                    <li>Wins: {entry.wins}</li>
-                    {bd.lohWins > 0 && <li>LOH wins: +{bd.lohWins}</li>}
-                    {bd.posWins > 0 && <li>POS wins: +{bd.posWins}</li>}
-                    {bd.wonFinalHoh > 0 && <li>Final LOH: +{bd.wonFinalHoh}</li>}
-                    {bd.madeJury > 0 && <li>Made tribunal: +{bd.madeJury}</li>}
-                    {bd.battleBackWins > 0 && <li>Back 2 the Game win(s): +{bd.battleBackWins}</li>}
-                    {bd.survivedDoubleEviction > 0 && <li>Survived double eviction: +{bd.survivedDoubleEviction}</li>}
-                    {bd.survivedTripleEviction > 0 && <li>Survived triple eviction: +{bd.survivedTripleEviction}</li>}
-                    {bd.wonPublicFavorite > 0 && <li>Public's Favorite: +{bd.wonPublicFavorite}</li>}
-                    {bd.winBonus > 0 && <li>Win bonus: +{bd.winBonus}</li>}
-                    {bd.runnerUp > 0 && <li>Runner-up: +{bd.runnerUp}</li>}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {tab === 'achievements' && (
+        <section className="hall-of-fame-screen__panel hall-of-fame-screen__achievements" aria-label="Achievements">
+          <div className="hall-of-fame-screen__achievement-intro">
+            <div>
+              <span className="hall-of-fame-screen__eyebrow">Career legacy</span>
+              <h2>{achievementSummary.playerName}&apos;s trophy case</h2>
+            </div>
+            <span className="hall-of-fame-screen__achievement-count">
+              {achievementSummary.highlightBadges.length} badges
+            </span>
+          </div>
 
-      {tab === 'pastWinners' && (
-        <ul className="leaderboard-screen__list">
-          {pastWinners.length === 0 && (
-            <li className="leaderboard-screen__empty">No archived seasons yet.</li>
-          )}
-          {pastWinners.map((archive) => (
-            <li key={archive.seasonId} className="leaderboard-screen__row">
-              <div className="leaderboard-screen__row-main leaderboard-screen__row-main--static">
-                <div className="leaderboard-screen__winner-meta">
-                  <span className="leaderboard-screen__name">Season {archive.seasonIndex}</span>
-                  <span className="leaderboard-screen__subtext">{archive.seasonViewership}</span>
-                </div>
-                <span className="leaderboard-screen__score">{archive.winnerName}</span>
+          <div className="hall-of-fame-screen__featured-grid">
+            {achievementSummary.featuredStats.map((stat) => (
+              <article
+                key={stat.label}
+                className={`hall-of-fame-screen__achievement-card hall-of-fame-screen__achievement-card--${stat.tone}${stat.wide ? ' hall-of-fame-screen__achievement-card--wide' : ''}`}
+              >
+                <span className="hall-of-fame-screen__achievement-icon" aria-hidden="true">
+                  {stat.icon}
+                </span>
+                <span className="hall-of-fame-screen__achievement-value">{stat.value}</span>
+                <span className="hall-of-fame-screen__achievement-label">{stat.label}</span>
+                {stat.helper && (
+                  <span className="hall-of-fame-screen__achievement-helper">{stat.helper}</span>
+                )}
+              </article>
+            ))}
+          </div>
+
+          <div className="hall-of-fame-screen__badge-section">
+            <h3>Badges</h3>
+            {achievementSummary.highlightBadges.length > 0 ? (
+              <div className="hall-of-fame-screen__badges">
+                {achievementSummary.highlightBadges.map((badge) => (
+                  <span key={badge} className="hall-of-fame-screen__badge">
+                    {badge}
+                  </span>
+                ))}
               </div>
-            </li>
-          ))}
-        </ul>
+            ) : (
+              <p>Finish a season or hit a career milestone to start your badge collection.</p>
+            )}
+          </div>
+
+          <div className="hall-of-fame-screen__achievement-sections">
+            {achievementSummary.sections.map((section) => (
+              <section key={section.title} className="hall-of-fame-screen__achievement-section">
+                <h3>
+                  <span aria-hidden="true">{section.icon}</span> {section.title}
+                </h3>
+                <div className="hall-of-fame-screen__stat-grid">
+                  {section.stats.map((stat) => (
+                    <div key={stat.label} className="hall-of-fame-screen__stat">
+                      <span aria-hidden="true">{stat.icon}</span>
+                      <strong>{stat.value}</strong>
+                      <small>{stat.label}</small>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </section>
       )}
     </div>
-  );
+  )
 }
