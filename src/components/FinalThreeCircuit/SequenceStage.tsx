@@ -43,9 +43,7 @@ export default function SequenceStage({ seed, onComplete }: SequenceStageProps) 
       setRemainingMs(nextRemaining)
       if (nextRemaining > 0) return
       window.clearInterval(timer)
-      setBoardScore(
-        scoreSequenceBoard(board, orderRef.current, movesRef.current, 0, false)
-      )
+      setBoardScore(scoreSequenceBoard(board, orderRef.current, movesRef.current, 0, false))
     }, 100)
     return () => window.clearInterval(timer)
   }, [board, boardScore])
