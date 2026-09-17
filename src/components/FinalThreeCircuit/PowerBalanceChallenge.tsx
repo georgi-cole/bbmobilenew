@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildPowerPuzzle, isPowerPuzzleSolved, type RiskTier } from './finalThreeCircuitLogic'
 
 interface PowerBalanceChallengeProps {
@@ -17,24 +17,41 @@ export default function PowerBalanceChallenge({
   const [toggles, setToggles] = useState(0)
   const [remainingMs, setRemainingMs] = useState(puzzle.timeLimitMs)
   const [finished, setFinished] = useState(false)
+  const selectedRef = useRef<number[]>([])
+  const settledRef = useRef(false)
   const sum = selected.reduce((total, index) => total + puzzle.values[index], 0)
   const solved = isPowerPuzzleSolved(sum, puzzle)
 
-  useEffect(() => {
-    if (finished) return
-    const timer = window.setInterval(() => {
-      setRemainingMs((current) => Math.max(0, current - 100))
-    }, 100)
-    return () => window.clearInterval(timer)
-  }, [finished])
+  const finish = useCallback(
+    (accuracy: number) => {
+      if (settledRef.current) return
+      settledRef.current = true
+      setFinished(true)
+      onFinish(accuracy)
+    },
+    [onFinish]
+  )
 
   useEffect(() => {
-    if (remainingMs > 0 || finished) return
-    setFinished(true)
-    const miss = Math.abs(sum - puzzle.target)
-    const scale = Math.max(1, puzzle.target * 0.35)
-    onFinish(Math.max(0.1, 1 - miss / scale) * 0.55)
-  }, [finished, onFinish, puzzle.target, remainingMs, sum])
+    if (finished) return
+    const ticker = window.setInterval(() => {
+      setRemainingMs((current) => Math.max(0, current - 100))
+    }, 100)
+    const expiry = window.setTimeout(() => {
+      const timeoutSum = selectedRef.current.reduce(
+        (total, selectedIndex) => total + puzzle.values[selectedIndex],
+        0
+      )
+      const miss = Math.abs(timeoutSum - puzzle.target)
+      const scale = Math.max(1, puzzle.target * 0.35)
+      setRemainingMs(0)
+      finish(Math.max(0.1, 1 - miss / scale) * 0.55)
+    }, puzzle.timeLimitMs)
+    return () => {
+      window.clearInterval(ticker)
+      window.clearTimeout(expiry)
+    }
+  }, [finish, finished, puzzle])
 
   const toggleCell = (index: number) => {
     if (finished || selected.includes(index) || toggles >= puzzle.maxToggles) return
@@ -44,22 +61,21 @@ export default function PowerBalanceChallenge({
       (total, selectedIndex) => total + puzzle.values[selectedIndex],
       0
     )
+    selectedRef.current = nextSelected
     setSelected(nextSelected)
     setToggles(nextToggles)
 
     if (isPowerPuzzleSolved(nextSum, puzzle)) {
-      setFinished(true)
       const timeRatio = remainingMs / puzzle.timeLimitMs
       const toggleEfficiency = nextToggles / puzzle.maxToggles
-      onFinish(Math.min(1, 0.76 + timeRatio * 0.16 + toggleEfficiency * 0.08))
+      finish(Math.min(1, 0.76 + timeRatio * 0.16 + toggleEfficiency * 0.08))
       return
     }
 
     if (nextToggles >= puzzle.maxToggles) {
-      setFinished(true)
       const miss = Math.abs(nextSum - puzzle.target)
       const scale = Math.max(1, puzzle.target * 0.35)
-      onFinish(Math.max(0.08, 1 - miss / scale) * 0.6)
+      finish(Math.max(0.08, 1 - miss / scale) * 0.6)
     }
   }
 
