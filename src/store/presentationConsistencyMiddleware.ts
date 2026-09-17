@@ -17,8 +17,11 @@ type AddTvEventAction = GenericAction & {
 
 const VOX_IMMUNITY_COMPETITION_COPY =
   'The Immunity Competition has begun! 🛡️ Who will secure safety today?'
+const AUTHORIZE_VOX_AUDIENCE_VOTE_ACTION = 'presentation/authorizeVoxAudienceVoteResolution'
+const COMMIT_VOX_AUDIENCE_VOTE_ACTION = 'game/commitVoxAudienceVote'
 
 let deferredBackdoorAdvance = false
+let voxAudienceVoteResolutionAuthorized = false
 
 function currentTemplateEvent(
   game: GameState,
@@ -155,6 +158,37 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
   )
 }
 
+function isPendingVoxEvictionAudienceVote(state: GameState): boolean {
+  return Boolean(
+    state.voxPopuli?.status === 'active' &&
+      state.voxPopuli.awaitingPublicVote === true &&
+      state.voxPopuli.publicVoteContext === 'eviction'
+  )
+}
+
+function authorizeOrBlockLegacyVoxAutoResolution(state: GameState, action: unknown): boolean {
+  const type = (action as GenericAction | null)?.type
+  if (type === AUTHORIZE_VOX_AUDIENCE_VOTE_ACTION) {
+    voxAudienceVoteResolutionAuthorized = true
+    return false
+  }
+
+  if (type !== COMMIT_VOX_AUDIENCE_VOTE_ACTION || !isPendingVoxEvictionAudienceVote(state)) {
+    return false
+  }
+
+  if (!voxAudienceVoteResolutionAuthorized) {
+    // GameScreen historically scheduled this same commit after five seconds.
+    // Ignore that un-authorized path so the vote cannot start itself. The
+    // central Play button explicitly authorizes the next commit immediately
+    // before emitting ui:playPressed.
+    return true
+  }
+
+  voxAudienceVoteResolutionAuthorized = false
+  return false
+}
+
 function normalizeImportantBroadcastAction(state: GameState, action: unknown): unknown {
   const typedAction = action as AddTvEventAction | null
   if (typedAction?.type !== 'game/addTvEvent' || !typedAction.payload) return action
@@ -239,12 +273,24 @@ export const presentationConsistencyMiddleware: Middleware = (api) => (next) => 
     return action
   }
 
+  // A normal Vox audience vote is an explicit ceremony step. The old
+  // GameScreen timer and the Play path dispatch the same commit action, so use
+  // a one-shot authorization from the central Play button to reject only the
+  // timer-driven commit while preserving the existing vote calculation.
+  if (authorizeOrBlockLegacyVoxAutoResolution(before.game, action)) {
+    return action
+  }
+
   const replacementWasPending = before.game.replacementNeeded === true
   const actionForNext = normalizeImportantBroadcastAction(before.game, action)
   const result = next(actionForNext)
 
   const after = api.getState() as PresentationState
   consumePreviousDayBroadcasts(api, before.game, after.game)
+
+  if (!isPendingVoxEvictionAudienceVote(after.game)) {
+    voxAudienceVoteResolutionAuthorized = false
+  }
 
   if (replacementWasPending && after.game.replacementNeeded !== true) {
     consumeResolvedReplacementPrompt(api)
