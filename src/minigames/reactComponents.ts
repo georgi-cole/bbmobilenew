@@ -62,6 +62,7 @@ import BigSpender from '../components/BigSpender/BigSpender'
 import HouseOfDarknessComp from '../components/HouseOfDarknessComp/HouseOfDarknessComp'
 import FinalThreeCircuit from '../components/FinalThreeCircuit/FinalThreeCircuit'
 import DownMemoryLane from '../components/DownMemoryLane/DownMemoryLane'
+import '../components/DownMemoryLane/DownMemoryLanePolish.css'
 
 /**
  * Minimal prop contract shared by all generic React minigame components.
