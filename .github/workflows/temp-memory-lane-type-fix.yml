@@ -1,0 +1,66 @@
+name: Temp Memory Lane Type Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fix portrait type and remove dead helper
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/DownMemoryLane/DownMemoryLane.tsx')
+          text = path.read_text()
+          old = '''interface MemoryLanePortraitProps {\n  id: string\n  name: string\n  avatar: string\n  isUser?: boolean\n  alt: string\n}'''
+          new = '''interface MemoryLanePortraitProps {\n  id: string\n  name: string\n  avatar?: string\n  isUser?: boolean\n  alt: string\n}'''
+          if old not in text:
+              raise SystemExit('portrait props block not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('src/components/DownMemoryLane/downMemoryLaneLogic.ts')
+          text = path.read_text()
+          old = '''function choosePrompt(seed: number, salt: string, prompts: readonly string[]): string {\n  if (prompts.length === 0) return ''\n  const random = rngFor(seed, `prompt:${salt}`)\n  return prompts[Math.floor(random() * prompts.length)] ?? prompts[0]\n}\n\n'''
+          if old not in text:
+              raise SystemExit('choosePrompt block not found')
+          path.write_text(text.replace(old, '', 1))
+          PY
+
+          npx prettier --write \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts
+          npm run typecheck
+          npm run lint:ci
+          npx vitest run \
+            tests/unit/down-memory-lane/downMemoryLaneLogic.test.ts \
+            tests/unit/down-memory-lane/downMemoryLaneRegistry.test.ts
+
+      - name: Commit type fix
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to update."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/components/DownMemoryLane/DownMemoryLane.tsx \
+            src/components/DownMemoryLane/downMemoryLaneLogic.ts
+          git commit -m "fix: type Memory Lane portrait fallbacks"
+          git push --no-verify origin HEAD:${{ github.head_ref }}
