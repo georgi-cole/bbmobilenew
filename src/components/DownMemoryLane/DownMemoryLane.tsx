@@ -42,7 +42,7 @@ function MemoryLanePortrait({ id, name, avatar, isUser, alt }: MemoryLanePortrai
     ),
   ]
   const nonDiceBear = candidates.filter((candidate) => !candidate.includes('api.dicebear.com'))
-  const orderedCandidates = nonDiceBear.length > 0 ? nonDiceBear : candidates
+  const orderedCandidates = nonDiceBear
   const [failedSources, setFailedSources] = useState<string[]>([])
   const src = orderedCandidates.find((candidate) => !failedSources.includes(candidate))
   if (!src) return <span aria-hidden="true">👤</span>

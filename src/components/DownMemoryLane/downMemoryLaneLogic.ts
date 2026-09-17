@@ -330,10 +330,10 @@ function addUniqueCountQuestions(
     const player = bucket[0]
     const prompt =
       kind === 'loh'
-        ? `One hubmate finished with exactly ${value} LOH win${value === 1 ? '' : 's'}. Who was it?`
+        ? `Which hubmate won exactly ${value} LOH competition${value === 1 ? '' : 's'} this season?`
         : kind === 'pos'
-          ? `One hubmate finished with exactly ${value} POS win${value === 1 ? '' : 's'}. Who was it?`
-          : `One hubmate was nominated exactly ${value} time${value === 1 ? '' : 's'}. Who was it?`
+          ? `Which hubmate won exactly ${value} POS competition${value === 1 ? '' : 's'} this season?`
+          : `Which hubmate was nominated exactly ${value} time${value === 1 ? '' : 's'} this season?`
     pushQuestion(questions, state, seed, {
       id: `unique-${kind}-${value}-${index}`,
       prompt,
@@ -604,8 +604,8 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     pushQuestion(questions, state, seed, {
       id: 'most-loh',
       prompt: isVoxSeason(state)
-        ? `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} immunity wins?`
-        : `Who finished with the season-high ${mostLoh.stats?.lohWins ?? 0} LOH wins?`,
+        ? `Who won the most immunity competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?`
+        : `Who won the most LOH competitions this season, finishing with ${mostLoh.stats?.lohWins ?? 0} wins?`,
       correctPlayerId: mostLoh.id,
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'competition',
@@ -619,7 +619,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (mostPos) {
     pushQuestion(questions, state, seed, {
       id: 'most-pos',
-      prompt: `Who finished with the season-high ${mostPos.stats?.posWins ?? 0} POS wins?`,
+      prompt: `Who won the most POS competitions this season, finishing with ${mostPos.stats?.posWins ?? 0} wins?`,
       correctPlayerId: mostPos.id,
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'competition',
@@ -635,7 +635,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (mostComps) {
     pushQuestion(questions, state, seed, {
       id: 'most-comps',
-      prompt: `LOH and POS combined, who led the season with ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competition wins?`,
+      prompt: `Across LOH and POS, who won ${(mostComps.stats?.lohWins ?? 0) + (mostComps.stats?.posWins ?? 0)} competitions in total—the most this season?`,
       correctPlayerId: mostComps.id,
       preferredIds: compWinners(state).map((player) => player.id),
       category: 'competition',
@@ -649,7 +649,7 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
   if (mostNominated) {
     pushQuestion(questions, state, seed, {
       id: 'most-nominated',
-      prompt: `One hubmate faced a season-high ${mostNominated.stats?.timesNominated ?? 0} nominations. Who was it?`,
+      prompt: `Who was nominated ${mostNominated.stats?.timesNominated ?? 0} times—the most of any hubmate this season?`,
       correctPlayerId: mostNominated.id,
       preferredIds: players
         .filter((player) => (player.stats?.timesNominated ?? 0) > 0)
@@ -794,8 +794,8 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
     pushQuestion(questions, state, seed, {
       id: 'most-public-saves',
       prompt: isVoxSeason(state)
-        ? `The audience saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`
-        : `The public saved one hubmate ${saveCount} time${saveCount === 1 ? '' : 's'}, more than anyone else. Who was it?`,
+        ? `Who did the audience save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?`
+        : `Who did the public save ${saveCount} time${saveCount === 1 ? '' : 's'}—more than any other hubmate?`,
       correctPlayerId: mostSaved.id,
       category: 'public',
       difficulty: 0.66,
@@ -812,9 +812,9 @@ export function buildMemoryLaneQuestionBank(state: GameState, seed: number): Mem
       const posSaveCount = state.voxPopuli.safetySaveCounts[mostPosSaved.id] ?? 0
       pushQuestion(questions, state, seed, {
         id: 'vox-most-pos-saves',
-        prompt: `During POS ceremonies, one hubmate was saved ${posSaveCount} time${
+        prompt: `Who was saved by POS ${posSaveCount} time${
           posSaveCount === 1 ? '' : 's'
-        }, more than anyone else. Who was it?`,
+        }—more than any other hubmate?`,
         correctPlayerId: mostPosSaved.id,
         category: 'competition',
         difficulty: 0.64,
