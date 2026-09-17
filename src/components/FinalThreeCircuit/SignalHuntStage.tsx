@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildSignalBoard,
   buildSignalRounds,
@@ -20,6 +20,10 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
   const [bank, setBank] = useState(0)
   const [roundScore, setRoundScore] = useState<number | null>(null)
   const [flash, setFlash] = useState<'good' | 'bad' | null>(null)
+  const stepRef = useRef(0)
+  const mistakesRef = useRef(0)
+  const remainingMsRef = useRef(rounds[0].timeLimitMs)
+  const settledRef = useRef(false)
   const round = rounds[roundIndex]
   const target = round.targetOrder[Math.min(step, round.targetOrder.length - 1)]
   const board = useMemo(
@@ -30,40 +34,67 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
   useEffect(() => {
     if (roundScore != null) return
     const timer = window.setInterval(() => {
-      setRemainingMs((current) => Math.max(0, current - 100))
+      const nextRemaining = Math.max(0, remainingMsRef.current - 100)
+      remainingMsRef.current = nextRemaining
+      setRemainingMs(nextRemaining)
+      if (nextRemaining > 0 || settledRef.current) return
+      settledRef.current = true
+      window.clearInterval(timer)
+      setRoundScore(
+        scoreSignalRound(
+          stepRef.current,
+          round.targetCount,
+          0,
+          round.timeLimitMs,
+          round.maxPoints,
+          mistakesRef.current
+        )
+      )
     }, 100)
     return () => window.clearInterval(timer)
-  }, [roundScore])
-
-  useEffect(() => {
-    if (remainingMs > 0 || roundScore != null) return
-    setRoundScore(
-      scoreSignalRound(step, round.targetCount, 0, round.timeLimitMs, round.maxPoints, mistakes)
-    )
-  }, [mistakes, remainingMs, round, roundScore, step])
+  }, [round, roundScore])
 
   const tapCell = (value: number) => {
-    if (roundScore != null || remainingMs <= 0) return
+    if (roundScore != null || remainingMsRef.current <= 0 || settledRef.current) return
     if (value !== target) {
-      setMistakes((current) => current + 1)
-      setRemainingMs((current) => Math.max(0, current - 900))
+      const nextMistakes = mistakes + 1
+      const nextRemaining = Math.max(0, remainingMsRef.current - 900)
+      mistakesRef.current = nextMistakes
+      remainingMsRef.current = nextRemaining
+      setMistakes(nextMistakes)
+      setRemainingMs(nextRemaining)
       setFlash('bad')
       window.setTimeout(() => setFlash(null), 180)
+      if (nextRemaining <= 0) {
+        settledRef.current = true
+        setRoundScore(
+          scoreSignalRound(
+            stepRef.current,
+            round.targetCount,
+            0,
+            round.timeLimitMs,
+            round.maxPoints,
+            nextMistakes
+          )
+        )
+      }
       return
     }
 
     const nextStep = step + 1
+    stepRef.current = nextStep
     setFlash('good')
     window.setTimeout(() => setFlash(null), 140)
     if (nextStep >= round.targetCount) {
+      settledRef.current = true
       setRoundScore(
         scoreSignalRound(
           nextStep,
           round.targetCount,
-          remainingMs,
+          remainingMsRef.current,
           round.timeLimitMs,
           round.maxPoints,
-          mistakes
+          mistakesRef.current
         )
       )
       return
@@ -79,12 +110,17 @@ export default function SignalHuntStage({ seed, onComplete }: SignalHuntStagePro
       return
     }
     const nextIndex = roundIndex + 1
+    const nextTimeLimit = rounds[nextIndex].timeLimitMs
+    stepRef.current = 0
+    mistakesRef.current = 0
+    remainingMsRef.current = nextTimeLimit
+    settledRef.current = false
     setBank(nextBank)
     setRoundIndex(nextIndex)
     setStep(0)
     setMistakes(0)
     setRoundScore(null)
-    setRemainingMs(rounds[nextIndex].timeLimitMs)
+    setRemainingMs(nextTimeLimit)
   }
 
   return (
