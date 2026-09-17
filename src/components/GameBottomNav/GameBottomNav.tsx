@@ -19,9 +19,9 @@ const CONTROL_ITEMS: PrimaryItem[] = [
   },
   {
     tab: 'leaderboard',
-    glyph: 'leaderboard_approved_final.svg',
-    label: 'BOARD',
-    accessibleLabel: 'BOARD',
+    glyph: 'hall_of_fame_approved_final.svg',
+    label: 'HALL',
+    accessibleLabel: 'HALL OF FAME',
   },
   { tab: 'profile', glyph: 'profile_approved_final.svg', label: 'USER', accessibleLabel: 'USER' },
 ]
@@ -143,11 +143,11 @@ export default function GameBottomNav({
                   onClick={() => openDestination('leaderboard')}
                 >
                   <img
-                    src={`${BASE}/assets/updated_nav_fab_bar/leaderboard_approved_final.svg`}
+                    src={`${BASE}/assets/updated_nav_fab_bar/hall_of_fame_approved_final.svg`}
                     alt=""
                     aria-hidden="true"
                   />
-                  <span>Board</span>
+                  <span>Hall of Fame</span>
                 </button>
                 <button type="button" role="menuitem" onClick={() => openDestination('store')}>
                   <img src={`${BASE}/assets/icons/shop.svg`} alt="" aria-hidden="true" />
