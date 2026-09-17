@@ -112,8 +112,9 @@ function correctVoxCompetitionBroadcast(api: MiddlewareAPI): void {
   // this phase awards immunity rather than house leadership. Rewrite only copy
   // that still carries LOH/power language so a neutral/custom Vox-safe override
   // remains untouched.
-  const stillUsesLohLanguage =
-    /leader of the (?:house|hub)|\bLOH\b|power is up for grabs/i.test(event.text)
+  const stillUsesLohLanguage = /leader of the (?:house|hub)|\bLOH\b|power is up for grabs/i.test(
+    event.text
+  )
   if (!stillUsesLohLanguage || event.text === VOX_IMMUNITY_COMPETITION_COPY) return
 
   api.dispatch(
@@ -161,8 +162,8 @@ function shouldDeferBackdoorAdvance(state: GameState, action: unknown): boolean 
 function isPendingVoxEvictionAudienceVote(state: GameState): boolean {
   return Boolean(
     state.voxPopuli?.status === 'active' &&
-      state.voxPopuli.awaitingPublicVote === true &&
-      state.voxPopuli.publicVoteContext === 'eviction'
+    state.voxPopuli.awaitingPublicVote === true &&
+    state.voxPopuli.publicVoteContext === 'eviction'
   )
 }
 
@@ -206,7 +207,7 @@ function normalizeImportantBroadcastAction(state: GameState, action: unknown): u
   // being overtaken by the next feed item. Fill only missing scope here and
   // preserve any producer-authored phase/week values.
   //
-  // The Vox secret-ballot unlock predates forceOnTv entirely, so promote that
+  // The Vox secret-ballot unlock prdates forceOnTv entirely, so promote that
   // one known gameplay-critical prompt into the same contract as well.
   return {
     ...typedAction,
