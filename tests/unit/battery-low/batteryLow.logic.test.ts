@@ -3,26 +3,31 @@ import { mulberry32 } from '../../../src/store/rng';
 import {
   VAULT_VERDICT_AMOUNTS,
   VAULT_VERDICT_ROUND_SCHEDULE,
+  acceptInsuranceDeal,
   assertBroadcastPrivacy,
   buildBatteryLowVoteEffects,
   buildRawResults,
   calculateEyeBankOffer,
   calculateRemainingValues,
   choosePersonalVault,
+  counterBankOffer,
   createInitialContestant,
   createVaultPods,
   getAvailableWallVaults,
   getEarnedBatteryLowVoteEffect,
   getHighestRemainingValue,
+  getRevealCommentary,
   getSpecialRevealLabel,
   getVaultsLeftThisRound,
   maybeCreateOffer,
+  maybeCreateRareBankDeal,
   openWallVault,
   rankVaultContestants,
   resolveVaultParticipants,
   riskVault,
   signVerdict,
   simulateAiContestant,
+  swapReserveBattery,
 } from '../../../src/components/VaultVerdict/vaultVerdictLogic';
 import type { ResolvedVaultParticipant, VaultContestantState } from '../../../src/components/VaultVerdict/vaultVerdictLogic';
 
@@ -155,6 +160,112 @@ describe('Battery Low logic', () => {
     }
     expect(getSpecialRevealLabel(4.04)).toBe('BATTERY NOT FOUND');
     expect(getSpecialRevealLabel(100)).toBe('FULL POWER');
+  });
+
+  it('lets a generous Bank raise a counteroffer and a stingy Bank cut one', () => {
+    const base = playToOffer(makeHuman(124), 1);
+    const generous = {
+      ...base,
+      bankMood: 'generous' as const,
+      currentOffer: 40,
+      offerHistory: [
+        {
+          round: 1,
+          offer: 40,
+          expectedValue: 50,
+          remainingValues: calculateRemainingValues(base),
+        },
+      ],
+    };
+    const raiseRolls = [0, 0];
+    const raised = counterBankOffer(generous, () => raiseRolls.shift() ?? 0);
+    expect(raised.counterofferUsed).toBe(true);
+    expect(raised.counterofferResult?.outcome).toBe('raised');
+    expect(raised.currentOffer).toBeGreaterThan(40);
+
+    const cutRolls = [0.99, 0];
+    const cut = counterBankOffer(
+      { ...generous, bankMood: 'stingy', counterofferUsed: false, counterofferResult: null },
+      () => cutRolls.shift() ?? 0,
+    );
+    expect(cut.counterofferResult?.outcome).toBe('cut');
+    expect(cut.currentOffer).toBeLessThan(40);
+  });
+
+  it('keeps pressure offers non-negotiable', () => {
+    const base = playToOffer(makeHuman(224), 1);
+    const pressure = {
+      ...base,
+      currentDeal: { type: 'pressure' as const, resolved: false, premiumPct: 15 },
+    };
+    expect(counterBankOffer(pressure, () => 0)).toBe(pressure);
+  });
+
+  it('creates at most one rare Bank condition and lets mood influence the type', () => {
+    const contestant = {
+      ...makeHuman(330),
+      currentRound: 2,
+      rareDealOffered: false,
+      bankMood: 'generous' as const,
+    };
+    const rolls = [0, 0];
+    const deal = maybeCreateRareBankDeal(contestant, () => rolls.shift() ?? 0);
+    expect(deal).toEqual({ type: 'insurance', resolved: false, floor: 25 });
+    expect(
+      maybeCreateRareBankDeal({ ...contestant, rareDealOffered: true }, () => 0),
+    ).toBeNull();
+  });
+
+  it('insurance protects a 25% final floor and reduces future offer strength', () => {
+    const base = makeHuman(441);
+    const zero = base.vaults.find((battery) => battery.amount === 0 && !battery.specialEffect)!;
+    const chosen = choosePersonalVault(base, zero.vaultId);
+    const insured = acceptInsuranceDeal({
+      ...chosen,
+      currentRound: 7,
+      currentOffer: 18,
+      currentDeal: { type: 'insurance', resolved: false, floor: 25 },
+    });
+    expect(insured.insuranceFloor).toBe(25);
+    expect(insured.futureOfferMultiplier).toBe(0.9);
+
+    const finished = riskVault(insured, 12000);
+    expect(finished.finalAmount).toBe(25);
+    expect(finished.personalVaultAmount).toBe(0);
+  });
+
+  it('blind swap exchanges the sealed Reserve without changing the Bank offer', () => {
+    const base = makeHuman(551);
+    const chosen = choosePersonalVault(base, base.vaults[0]!.vaultId);
+    const oldReserveId = chosen.personalVaultId;
+    const offer = 43;
+    const swapped = swapReserveBattery(
+      {
+        ...chosen,
+        currentOffer: offer,
+        currentDeal: { type: 'swap', resolved: false },
+      },
+      () => 0,
+    );
+    expect(swapped.personalVaultId).not.toBe(oldReserveId);
+    expect(swapped.vaults.find((battery) => battery.vaultId === oldReserveId)?.status).toBe(
+      'available',
+    );
+    expect(
+      swapped.vaults.find((battery) => battery.vaultId === swapped.personalVaultId)?.status,
+    ).toBe('personal');
+    expect(swapped.currentOffer).toBe(offer);
+    expect(swapped.currentDeal?.resolved).toBe(true);
+  });
+
+  it('reacts differently to strong losses, good burns, and special-cell reveals', () => {
+    const base = makeHuman(661);
+    const top = base.vaults.find((battery) => battery.amount === 100)!;
+    const low = base.vaults.find((battery) => battery.amount === 0 && !battery.specialEffect)!;
+    const power = base.vaults.find((battery) => battery.specialEffect === 'doubleVote')!;
+    expect(getRevealCommentary(base, top)).toMatch(/Bank|leverage/i);
+    expect(getRevealCommentary(base, low)).toMatch(/burn|low/i);
+    expect(getRevealCommentary(base, power)).toMatch(/double vote/i);
   });
 
   it('accepting an offer sets the final charge and prevents further opening', () => {
