@@ -9416,16 +9416,21 @@ const gameSlice = createSlice({
             const isCoLohDay = Array.isArray(state.coLohIds) && state.coLohIds.length >= 2
             const tieBreakerPlayerId = getClassicEvictionTieBreakerId(state)
             const tieBreakerPlayer = state.players.find((p) => p.id === tieBreakerPlayerId)
+            const usesPosTieBreaker =
+              tieBreakerPlayerId != null &&
+              tieBreakerPlayerId === state.posWinnerId &&
+              tieBreakerPlayerId !== state.lohId
             const tiedNames = topNominees
               .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
               .join(' and ')
             if (tieBreakerPlayer?.isUser) {
-              // Human POS holder (co-LOH day) or human LOH (normal day): show tie-break modal
+              // Human POS holder (Democracia or LOH-on-block exception) or
+              // human LOH (normal day): show the appropriate tie-break modal.
               state.voteResults = { ...voteCounts }
               state.awaitingTieBreak = true
-              if (isCoLohDay) state.awaitingPosTieBreak = true
+              if (usesPosTieBreaker) state.awaitingPosTieBreak = true
               state.tiedNomineeIds = topNominees
-              if (isCoLohDay) {
+              if (usesPosTieBreaker) {
                 pushEvent(
                   state,
                   `It's a tie between ${tiedNames}! ${tieBreakerPlayer.name}, as POS holder, you must break the tie as a special exception. 🗳️`,
@@ -9445,7 +9450,7 @@ const gameSlice = createSlice({
               const evicted = state.players.find((p) => p.id === evicteeId)
               if (evicted) {
                 state.voteResults = { ...voteCounts }
-                const breakerLabel = isCoLohDay ? 'The POS holder' : 'The LOH'
+                const breakerLabel = usesPosTieBreaker ? 'The POS holder' : 'The LOH'
                 state.pendingEviction = {
                   evicteeId: evicted.id,
                   evictionMessage: `${tieBreakerPlayer.name ?? breakerLabel} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
