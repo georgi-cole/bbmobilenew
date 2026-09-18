@@ -189,22 +189,35 @@ describe('Reality alliance strategic bridge calibration', () => {
     const beforeVoteRate = voteAgainstAllyRate(protectedOnly)
     const afterVoteRate = voteAgainstAllyRate(conflicted)
 
+    const strainedProtective = allianceSnapshot('strained-protective', ['actor', 'ally'], {
+      cohesion: 0.4,
+      fractureRisk: 0.55,
+      memberCommitment: { actor: 0.38, ally: 0.4 },
+      memberPerceivedStatus: { actor: 'PERIPHERAL', ally: 'PERIPHERAL' },
+    })
+    const strainedOnly = decisionState([strainedProtective])
+    const strainedConflicted = decisionState([strainedProtective, targeting])
+    const strainedVoteRateBefore = voteAgainstAllyRate(strainedOnly)
+    const strainedVoteRateAfter = voteAgainstAllyRate(strainedConflicted)
+
     console.log(
       'REALITY_ALLIANCE_CONFLICT_CALIBRATION',
       JSON.stringify(
         {
-          protectiveRead: {
+          strongProtectiveRead: {
             sharedProtection: round(beforeRead.sharedProtection),
             currentTargetPressure: round(beforeRead.currentTargetPressure),
           },
-          conflictedRead: {
+          strongConflictedRead: {
             sharedProtection: round(afterRead.sharedProtection),
             currentTargetPressure: round(afterRead.currentTargetPressure),
           },
           nominationScoreDelta: round(afterNomination - beforeNomination),
           safetyScoreDelta: round(afterSafety - beforeSafety),
-          voteAgainstAllyRateBefore: round(beforeVoteRate),
-          voteAgainstAllyRateAfter: round(afterVoteRate),
+          strongVoteAgainstAllyRateBefore: round(beforeVoteRate),
+          strongVoteAgainstAllyRateAfter: round(afterVoteRate),
+          strainedVoteAgainstAllyRateBefore: round(strainedVoteRateBefore),
+          strainedVoteAgainstAllyRateAfter: round(strainedVoteRateAfter),
         },
         null,
         2
@@ -215,8 +228,12 @@ describe('Reality alliance strategic bridge calibration', () => {
     expect(afterRead.currentTargetPressure).toBeGreaterThan(0)
     expect(afterNomination).toBeGreaterThan(beforeNomination)
     expect(afterSafety).toBeLessThan(beforeSafety)
-    expect(afterVoteRate).toBeGreaterThan(beforeVoteRate)
+    // One coordinated plan should not automatically override a strong core pact.
+    expect(afterVoteRate).toBeGreaterThanOrEqual(beforeVoteRate)
     expect(afterVoteRate).toBeLessThan(1)
+    // The same plan should become behaviorally meaningful once the protective pact is strained.
+    expect(strainedVoteRateAfter).toBeGreaterThan(strainedVoteRateBefore)
+    expect(strainedVoteRateAfter).toBeLessThan(1)
   })
 
   it('exercises coalition growth, false-pretense infiltration, target coordination, leak discovery, and public exposure together', () => {
