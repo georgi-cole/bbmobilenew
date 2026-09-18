@@ -61,7 +61,7 @@ function resetToCleanClassicCycle(state: GameState): void {
   state.twistActive = false
   state.twistActivatedThisWeek = false
   state.dayStartShock = null
-  state.depressionShock = null
+  state.depressionShock = undefined
   if (state.doubleEviction) {
     state.doubleEviction.weekActive = false
     state.doubleEviction.pendingSecondEviction = null
@@ -196,10 +196,10 @@ describe('critical nomination and eviction engine integrity', () => {
         .map((player) => player.id)
         .sort()
 
-      expect(Object.keys(result.votes).sort()).toEqual(eligibleVoterIds)
-      expect(result.votes[humanLoh.id]).toBeUndefined()
+      expect(Object.keys(result.votes ?? {}).sort()).toEqual(eligibleVoterIds)
+      expect((result.votes ?? {})[humanLoh.id]).toBeUndefined()
       for (const nominee of nominees) {
-        expect(result.votes[nominee.id]).toBeUndefined()
+        expect((result.votes ?? {})[nominee.id]).toBeUndefined()
       }
     }
   })
@@ -224,7 +224,7 @@ describe('critical nomination and eviction engine integrity', () => {
     human.status = 'loh'
     state.awaitingHumanVote = true
     const lohAttempt = criticalGameReducer(state, submitHumanVote(targets[0].id))
-    expect(lohAttempt.votes[human.id]).toBeUndefined()
+    expect((lohAttempt.votes ?? {})[human.id]).toBeUndefined()
     expect(lohAttempt.awaitingHumanVote).toBe(true)
 
     // Same hard guard for a player who is on the block at the moment of the vote.
@@ -243,7 +243,7 @@ describe('critical nomination and eviction engine integrity', () => {
       nomineeState,
       submitHumanVote(nomineeState.nomineeIds[1])
     )
-    expect(nomineeAttempt.votes[human.id]).toBeUndefined()
+    expect((nomineeAttempt.votes ?? {})[human.id]).toBeUndefined()
     expect(nomineeAttempt.awaitingHumanVote).toBe(true)
   })
 
@@ -275,10 +275,10 @@ describe('critical nomination and eviction engine integrity', () => {
     const half = Math.floor(voters.length / 2)
     const tiedVoters = voters.slice(0, half * 2)
     tiedVoters.forEach((voter, index) => {
-      state.votes[voter.id] = nominees[index % 2].id
+      state.votes![voter.id] = nominees[index % 2].id
     })
 
-    expect(state.votes[humanLoh.id]).toBeUndefined()
+    expect((state.votes ?? {})[humanLoh.id]).toBeUndefined()
 
     const tied = criticalGameReducer(state, advance())
     expect(tied.phase).toBe('eviction_results')
@@ -371,7 +371,7 @@ describe('critical nomination and eviction engine integrity', () => {
       const expectedEvicteeId = nominees[seed % 2].id
       const otherNomineeId = nominees.find((nominee) => nominee.id !== expectedEvicteeId)!.id
       voters.forEach((voter, index) => {
-        state.votes[voter.id] = index === voters.length - 1 ? otherNomineeId : expectedEvicteeId
+        state.votes![voter.id] = index === voters.length - 1 ? otherNomineeId : expectedEvicteeId
       })
 
       const resolved = criticalGameReducer(state, advance())
