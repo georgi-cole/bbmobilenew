@@ -1,6 +1,10 @@
 import type { Middleware } from '@reduxjs/toolkit'
 import { resolveLanguagePreference, translate } from '../i18n'
-import { applyDramaAction, updateRelationship } from './socialSlice'
+import {
+  applyDramaAction,
+  recordRealityAllianceBetrayal,
+  updateRelationship,
+} from './socialSlice'
 import { getEffectiveSocialMode } from './socialMode'
 import type { RelationshipsMap } from './types'
 
@@ -173,6 +177,16 @@ export const realityIntegrityMiddleware: Middleware = (api) => (next) => (action
         week: after.game.week,
         phase: after.game.phase,
         success: true,
+      })
+    )
+    api.dispatch(
+      recordRealityAllianceBetrayal({
+        actorId: lohId,
+        targetId: nomineeId,
+        kind: 'NOMINATION',
+        day: after.game.week,
+        phase: after.game.phase,
+        sourceEventId: `replacement-nomination:${after.game.week}:${lohId}:${nomineeId}`,
       })
     )
     api.dispatch({
