@@ -76,10 +76,9 @@ export function findRealityAllianceForRecruitment(
  * nested Final-2/core deals without treating a single shared player as a bloc.
  */
 export function refreshRealityAllianceOverlaps(state: RealityDomainState): void {
-  const alliances = Object.values(state.alliances).filter(
-    (alliance) => alliance.status !== 'DISSOLVED'
-  )
-  for (const alliance of alliances) alliance.overlapAllianceIds = []
+  const allAlliances = Object.values(state.alliances)
+  for (const alliance of allAlliances) alliance.overlapAllianceIds = []
+  const alliances = allAlliances.filter((alliance) => alliance.status !== 'DISSOLVED')
 
   for (let leftIndex = 0; leftIndex < alliances.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < alliances.length; rightIndex += 1) {
@@ -114,7 +113,9 @@ export function recruitRealityAllianceMember(
   }
 ): RealityAlliance {
   const base = state.alliances[input.allianceId]
-  if (!base || base.status === 'DISSOLVED') throw new Error('Alliance is not active')
+  if (!base || (base.status !== 'ACTIVE' && base.status !== 'PROBATIONARY')) {
+    throw new Error('Alliance is not recruitable')
+  }
   if (!base.memberIds.includes(input.recruiterId))
     throw new Error('Recruiter must already belong to the alliance')
   if (base.memberPerceivedStatus[input.recruiterId] === 'PERIPHERAL')
