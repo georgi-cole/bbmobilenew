@@ -106,6 +106,33 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
   return alliance
 }
 
+export function refreshRealityAllianceLifecycle(
+  alliance: RealityAlliance
+): RealityAlliance {
+  if (alliance.status === 'DISSOLVED' || alliance.status === 'PROBATIONARY') return alliance
+
+  const engagedMembers = alliance.memberIds.filter(
+    (id) => (alliance.memberCommitment[id] ?? 0) >= 0.35
+  ).length
+
+  if (alliance.status === 'FRACTURED') {
+    if (alliance.cohesion >= 0.64 && alliance.fractureRisk <= 0.3 && engagedMembers >= 2) {
+      alliance.status = 'ACTIVE'
+    }
+    return alliance
+  }
+
+  if (alliance.status === 'DORMANT') {
+    if (alliance.cohesion >= 0.5 && engagedMembers >= 2) alliance.status = 'ACTIVE'
+    return alliance
+  }
+
+  if (alliance.status === 'ACTIVE' && alliance.cohesion < 0.26 && engagedMembers < 2) {
+    alliance.status = 'DORMANT'
+  }
+  return alliance
+}
+
 export function adjustRealityAllianceCommitment(
   state: RealityDomainState,
   allianceId: string,
@@ -118,7 +145,132 @@ export function adjustRealityAllianceCommitment(
   alliance.memberCommitment[memberId] = clamp01(
     (alliance.memberCommitment[memberId] ?? 0.5) + delta
   )
-  return refreshRealityAllianceDynamics(alliance)
+  refreshRealityAllianceDynamics(alliance)
+  return refreshRealityAllianceLifecycle(alliance)
+}
+
+export type RealityAllianceBetrayalKind =
+  | 'NOMINATION'
+  | 'VOTE'
+  | 'SAFETY_ABANDON'
+  | 'SOCIAL_BETRAYAL'
+
+export function recordRealityAllianceBetrayal(
+  state: RealityDomainState,
+  input: {
+    actorId: string
+    targetId: string
+    kind: RealityAllianceBetrayalKind
+    at: RealityClock
+    sourceEventId: string
+  }
+): RealityAlliance[] {
+  const affected: RealityAlliance[] = []
+  const baseSeverity =
+    input.kind === 'NOMINATION'
+      ? 0.3
+      : input.kind === 'SOCIAL_BETRAYAL'
+        ? 0.34
+        : input.kind === 'VOTE'
+          ? 0.22
+          : 0.12
+
+  for (const alliance of Object.values(state.alliances)) {
+    if (
+      alliance.status === 'DISSOLVED' ||
+      !alliance.memberIds.includes(input.actorId) ||
+      !alliance.memberIds.includes(input.targetId)
+    ) {
+      continue
+    }
+
+    const actorWasCore = alliance.memberPerceivedStatus[input.actorId] === 'CORE'
+    const targetWasCore = alliance.memberPerceivedStatus[input.targetId] === 'CORE'
+    const pairSeverity = alliance.memberIds.length === 2 ? 0.06 : 0
+    const severity = clamp01(
+      baseSeverity + (actorWasCore ? 0.06 : 0) + (targetWasCore ? 0.05 : 0) + pairSeverity
+    )
+    const wasFractured = alliance.status === 'FRACTURED'
+
+    alliance.memberCommitment[input.actorId] = clamp01(
+      (alliance.memberCommitment[input.actorId] ?? 0.5) - severity
+    )
+    alliance.memberCommitment[input.targetId] = clamp01(
+      (alliance.memberCommitment[input.targetId] ?? 0.5) - severity * 0.42
+    )
+    for (const memberId of alliance.memberIds) {
+      if (memberId === input.actorId || memberId === input.targetId) continue
+      alliance.memberCommitment[memberId] = clamp01(
+        (alliance.memberCommitment[memberId] ?? 0.5) - severity * 0.1
+      )
+    }
+    refreshRealityAllianceDynamics(alliance)
+
+    const betrayalEvent = appendRealityEvent(state, {
+      ...input.at,
+      type: 'ALLIANCE_BETRAYAL',
+      actorId: input.actorId,
+      targetIds: [input.targetId],
+      participantIds: [...alliance.memberIds],
+      witnessIds: [],
+      visibility: 'GROUP_VISIBLE',
+      outcome: 'SUCCESS',
+      reason: `${input.kind.toLowerCase()}:${alliance.id}`,
+      tags: ['ALLIANCE', 'BETRAYAL', input.kind],
+      relatedFactIds: [],
+      relatedPromiseIds: [...alliance.sharedPromiseIds],
+      relatedThreadIds: [],
+      publicEligible: false,
+      juryEligible: true,
+    })
+
+    applyRealityRelationshipChange(state, {
+      sourceId: input.targetId,
+      targetId: input.actorId,
+      eventId: betrayalEvent.id,
+      day: input.at.day,
+      phase: input.at.phase,
+      anchor: 'negative',
+      deltas: {
+        warmth: -severity * 28,
+        trust: -severity * 55,
+        loyalty: -severity * 60,
+        resentment: severity * 65,
+        suspicion: severity * 35,
+        reliability: -severity * 45,
+      },
+    })
+
+    const grievanceId = `grievance:alliance:${alliance.id}:${input.sourceEventId}:${input.targetId}`
+    if (!state.grievances[grievanceId]) {
+      createRealityGrievance(state, {
+        id: grievanceId,
+        holderId: input.targetId,
+        againstId: input.actorId,
+        causeEventId: input.sourceEventId,
+        severity: Math.round(35 + severity * 115),
+        at: input.at,
+      })
+    }
+
+    if (
+      wasFractured &&
+      (severity >= 0.28 || (alliance.memberCommitment[input.actorId] ?? 0) <= 0.12)
+    ) {
+      alliance.status = 'DISSOLVED'
+      alliance.currentTargetIds = []
+      alliance.fallbackTargetIds = []
+    } else if (severity >= 0.38 || alliance.fractureRisk >= 0.72) {
+      alliance.status = 'FRACTURED'
+    } else {
+      refreshRealityAllianceLifecycle(alliance)
+    }
+
+    affected.push(alliance)
+  }
+
+  if (affected.length > 0) refreshRealityAllianceOverlaps(state)
+  return affected
 }
 
 function allianceRecruitmentRank(
@@ -431,7 +583,8 @@ export function holdRealityAllianceMeeting(
       (alliance.memberCommitment[absentId] ?? 0.5) - 0.025
     )
   }
-  return refreshRealityAllianceDynamics(alliance)
+  refreshRealityAllianceDynamics(alliance)
+  return refreshRealityAllianceLifecycle(alliance)
 }
 
 export function chooseAllianceMemberVote(
@@ -497,8 +650,16 @@ export function leakRealityAlliance(
   alliance.knownLeakEventIds.push(event.id)
   alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...receiverIds])]
   alliance.secrecy = Math.max(0, alliance.secrecy - receiverIds.length * 0.16)
+  const wasFractured = alliance.status === 'FRACTURED'
   refreshRealityAllianceDynamics(alliance)
-  if (alliance.fractureRisk >= 0.72) alliance.status = 'FRACTURED'
+  if (wasFractured && alliance.fractureRisk >= 0.9) {
+    alliance.status = 'DISSOLVED'
+    alliance.currentTargetIds = []
+    alliance.fallbackTargetIds = []
+    refreshRealityAllianceOverlaps(state)
+  } else if (alliance.fractureRisk >= 0.72) {
+    alliance.status = 'FRACTURED'
+  }
 }
 
 export interface RomanceSettings {
