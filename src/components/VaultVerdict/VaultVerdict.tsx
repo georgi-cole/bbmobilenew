@@ -126,8 +126,7 @@ function BatteryTile({
         ? 'BLACKOUT'
         : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
-  const effectClass =
-    isOpened && battery.specialEffect ? ` is-effect-${battery.specialEffect}` : ''
+  const effectClass = isOpened && battery.specialEffect ? ` is-effect-${battery.specialEffect}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
     : undefined
@@ -271,9 +270,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
         : latestRevealLabel
           ? `${latestRevealLabel} · ${formatVaultAmount(latestReveal ?? 0)} revealed`
           : (feed[0]?.message ??
-          (human.personalVaultId
-            ? 'Choose the next battery to reveal.'
-            : 'Choose one battery to protect as your Reserve.'))
+            (human.personalVaultId
+              ? 'Choose the next battery to reveal.'
+              : 'Choose one battery to protect as your Reserve.'))
   const offerKey =
     human.currentOffer == null
       ? null
@@ -592,9 +591,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   {finaleReveal.step === 'revealed' &&
                     finaleReveal.insuranceFloor != null &&
                     finaleReveal.finalCharge > finaleReveal.reserveAmount && (
-                      <em>
-                        Insurance → {formatVaultAmount(finaleReveal.finalCharge)} final
-                      </em>
+                      <em>Insurance → {formatVaultAmount(finaleReveal.finalCharge)} final</em>
                     )}
                   {finaleReveal.step === 'revealed' &&
                     getSpecialRevealLabel(
