@@ -25,6 +25,7 @@
  */
 
 import type { Middleware } from '@reduxjs/toolkit'
+import type { StrategicAllianceSnapshot } from '../types'
 import { settleSecretMissionDay } from '../store/gameSlice'
 import { SocialEngine } from './SocialEngine'
 import {
@@ -37,6 +38,7 @@ import {
   applyDramaAction,
   replaceDramaNetwork,
   recordRealityActualVote,
+  recordRealityAllianceBetrayal,
   recordRealityCeremony,
   setEnergyBankEntry,
   pushIncomingInteraction,
@@ -120,6 +122,7 @@ interface GameState {
   }
   voxPopuli?: { status?: 'inactive' | 'scheduled' | 'active' | 'complete' } | null
   dramaSocialMode?: boolean
+  strategicAlliances?: StrategicAllianceSnapshot[]
   tvFeed?: Array<{
     text: string
     meta?: { week?: number; voxSocialBeat?: boolean; pairKey?: string; [key: string]: unknown }
@@ -221,6 +224,26 @@ const REALITY_SEEDING_ACTIONS = new Set([
   'game/forcePhase',
   'social/recordSocialAction',
 ])
+
+function buildStrategicAllianceSnapshot(state: StateWithGame): StrategicAllianceSnapshot[] {
+  const alliances = Object.values(state.social?.reality?.alliances ?? {})
+  return alliances.map((alliance) => ({
+    id: alliance.id,
+    memberIds: [...alliance.memberIds],
+    leaderIds: [...alliance.leaderIds],
+    status: alliance.status,
+    cohesion: alliance.cohesion,
+    fractureRisk: alliance.fractureRisk,
+    currentTargetIds: [...alliance.currentTargetIds],
+    fallbackTargetIds: [...alliance.fallbackTargetIds],
+    memberCommitment: { ...alliance.memberCommitment },
+    memberPerceivedStatus: { ...alliance.memberPerceivedStatus },
+    memberPlanBeliefs: Object.fromEntries(
+      Object.entries(alliance.memberPlanBeliefs).map(([id, plans]) => [id, [...plans]])
+    ),
+    infiltratorIds: [...alliance.infiltratorIds],
+  }))
+}
 
 function ensureRealitySimulationSeed(api: MiddlewareAPI, force = false): void {
   const state = api.getState() as StateWithGame
@@ -674,12 +697,23 @@ function applySafetyRelationshipConsequences(
     if (nomineeId === holderId || nomineeId === savedId) continue
     if (!hasAllianceBetween(relationships, holderId, nomineeId)) continue
     api.dispatch(
+      recordRealityAllianceBetrayal({
+        actorId: holderId,
+        targetId: nomineeId,
+        kind: 'SAFETY_ABANDON',
+        day: state.game.week ?? 1,
+        phase: state.game.phase,
+        sourceEventId: `safety-abandon:${state.game.week ?? 1}:${holderId}:${nomineeId}`,
+      })
+    )
+    api.dispatch(
       updateRelationship({
         source: nomineeId,
         target: holderId,
         delta: -10,
         tags: [BETRAYAL_TAG],
         actionSource: 'system',
+        skipRealityProjection: true,
       })
     )
   }
@@ -1205,6 +1239,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
       type: 'game/syncStrategicRelationships',
       payload: prevState.social?.relationships ?? {},
     })
+    api.dispatch({
+      type: 'game/syncStrategicAlliances',
+      payload: buildStrategicAllianceSnapshot(prevState),
+    })
     const prevPhase = prevState.game?.phase
     api.dispatch({
       type: 'game/setDramaSocialMode',
@@ -1254,6 +1292,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
             delta: -18,
             tags: ['betrayal'],
             actionSource: 'system',
+            skipRealityProjection: true,
           })
         )
         api.dispatch(
@@ -1263,6 +1302,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
             delta: -24,
             tags: ['betrayal'],
             actionSource: 'system',
+            skipRealityProjection: true,
           })
         )
         api.dispatch(

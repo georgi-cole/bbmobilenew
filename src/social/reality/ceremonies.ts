@@ -5,6 +5,7 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
 import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
+import { adjustRealityAllianceCommitment, recordRealityAllianceBetrayal } from './relationshipForms'
 import type {
   RealityClock,
   RealityDomainState,
@@ -142,6 +143,49 @@ function rememberOfficialCeremony(
     }
     remember(state, memory)
     learnRealityFact(state, { ownerId, factId, memory, confidence: 1 })
+  }
+}
+
+function applyAllianceSafetyCommitment(
+  state: RealityDomainState,
+  event: RealitySocialEvent,
+  kind: RealityCeremonyKind
+): void {
+  const actorId = event.actorId
+  if (!actorId || (kind !== 'SAFETY_USED' && kind !== 'SAFETY_DECLINED')) return
+
+  const affectedByAlliance = new Map<string, Set<string>>()
+  for (const targetId of event.targetIds) {
+    if (targetId === actorId) continue
+    for (const alliance of Object.values(state.alliances)) {
+      if (
+        alliance.status === 'DISSOLVED' ||
+        !alliance.memberIds.includes(actorId) ||
+        !alliance.memberIds.includes(targetId)
+      ) {
+        continue
+      }
+      const targets = affectedByAlliance.get(alliance.id) ?? new Set<string>()
+      targets.add(targetId)
+      affectedByAlliance.set(alliance.id, targets)
+    }
+  }
+
+  for (const [allianceId, targetIds] of affectedByAlliance) {
+    adjustRealityAllianceCommitment(
+      state,
+      allianceId,
+      actorId,
+      kind === 'SAFETY_USED' ? 0.08 : -0.06
+    )
+    for (const targetId of targetIds) {
+      adjustRealityAllianceCommitment(
+        state,
+        allianceId,
+        targetId,
+        kind === 'SAFETY_USED' ? 0.04 : -0.03
+      )
+    }
   }
 }
 
@@ -304,6 +348,18 @@ export function recordRealityCeremonyOutcome(
   })
   rememberOfficialCeremony(state, event, factId)
   applyCeremonyAftermath(state, event, input.kind)
+  applyAllianceSafetyCommitment(state, event, input.kind)
+  if (input.kind === 'NOMINATIONS_LOCKED' && event.actorId) {
+    for (const targetId of event.targetIds) {
+      recordRealityAllianceBetrayal(state, {
+        actorId: event.actorId,
+        targetId,
+        kind: 'NOMINATION',
+        at: { day: event.day, phase: event.phase },
+        sourceEventId: event.id,
+      })
+    }
+  }
   if (input.kind === 'SAFETY_USED') {
     reconcileNemesisWithVoluntarySafety(state, {
       actorId: input.actorId,
@@ -314,6 +370,28 @@ export function recordRealityCeremonyOutcome(
   }
   projectPublicCeremony(state, event, input.kind)
   return event
+}
+
+function reinforceAllianceVotePlan(
+  state: RealityDomainState,
+  actorId: string,
+  targetId: string
+): void {
+  for (const alliance of Object.values(state.alliances)) {
+    if (
+      (alliance.status !== 'ACTIVE' && alliance.status !== 'PROBATIONARY') ||
+      !alliance.memberIds.includes(actorId) ||
+      alliance.memberIds.includes(targetId) ||
+      !alliance.currentTargetIds.includes(targetId)
+    ) {
+      continue
+    }
+    const knowsPlan =
+      alliance.leaderIds.includes(actorId) ||
+      (alliance.memberPlanBeliefs[actorId] ?? []).some((planId) => planId.includes(targetId))
+    if (!knowsPlan) continue
+    adjustRealityAllianceCommitment(state, alliance.id, actorId, 0.04)
+  }
 }
 
 function voteIntent(state: RealityDomainState, actorId: string, day: number): RealityVoteIntent {
@@ -364,9 +442,18 @@ export function finalizeRealityVote(
   eventId: string
 ): RealityVoteIntent {
   const intent = voteIntent(state, actorId, at.day)
+  const alreadyRecordedSameVote = intent.day === at.day && intent.actualTargetId === targetId
   intent.actualTargetId = targetId
   intent.day = at.day
   intent.reasonEventIds = [...new Set([...intent.reasonEventIds, eventId])]
+  recordRealityAllianceBetrayal(state, {
+    actorId,
+    targetId,
+    kind: 'VOTE',
+    at,
+    sourceEventId: eventId,
+  })
+  if (!alreadyRecordedSameVote) reinforceAllianceVotePlan(state, actorId, targetId)
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||

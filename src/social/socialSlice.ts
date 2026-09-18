@@ -68,11 +68,13 @@ import {
   learnRealityFact,
   normalizeRealityDomainState,
   projectRealityAffinity,
+  recordRealityAllianceBetrayal as applyRealityAllianceBetrayal,
   recordRealityCeremonyOutcome,
   upsertRealityDebt,
   upsertRealityPromise,
   upsertRealitySecret,
   upsertRealityThread,
+  type RealityAllianceBetrayalKind,
   type RealityCeremonyInput,
 } from './reality'
 
@@ -107,15 +109,17 @@ function projectRealityTags(
   const tags = existingTags.filter((tag) => !REALITY_PROJECTED_TAGS.has(tag))
   const edge = reality.relationships[sourceId]?.[targetId]
   if (!edge) return tags
+  const formalPairAlliances = Object.values(reality.alliances).filter(
+    (alliance) => alliance.memberIds.includes(sourceId) && alliance.memberIds.includes(targetId)
+  )
+  const hasLiveFormalAlliance = formalPairAlliances.some(
+    (alliance) => alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
+  )
+  const hasFormalAllianceHistory = formalPairAlliances.length > 0
   if (
-    Object.values(reality.alliances).some(
-      (alliance) =>
-        alliance.status !== 'DISSOLVED' &&
-        alliance.memberIds.includes(sourceId) &&
-        alliance.memberIds.includes(targetId)
-    ) ||
-    edge.perceivedLabel === 'ALLY' ||
-    edge.perceivedLabel === 'CORE_ALLY'
+    hasLiveFormalAlliance ||
+    (!hasFormalAllianceHistory &&
+      (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY'))
   ) {
     tags.push('alliance')
   }
@@ -161,7 +165,7 @@ function projectRealityTags(
   if (
     Object.values(reality.alliances).some(
       (alliance) =>
-        alliance.status !== 'DISSOLVED' &&
+        (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
         alliance.memberIds.includes(sourceId) &&
         alliance.currentTargetIds.includes(targetId)
     )
@@ -501,6 +505,33 @@ const socialSlice = createSlice({
         { day: action.payload.day, phase: action.payload.phase },
         action.payload.eventId
       )
+      projectRealityRelationshipsIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships
+      )
+    },
+    recordRealityAllianceBetrayal(
+      state,
+      action: PayloadAction<{
+        actorId: string
+        targetId: string
+        kind: RealityAllianceBetrayalKind
+        day: number
+        phase: string
+        sourceEventId: string
+      }>
+    ) {
+      applyRealityAllianceBetrayal(state.reality as RealityDomainState, {
+        actorId: action.payload.actorId,
+        targetId: action.payload.targetId,
+        kind: action.payload.kind,
+        at: { day: action.payload.day, phase: action.payload.phase },
+        sourceEventId: action.payload.sourceEventId,
+      })
+      projectRealityRelationshipsIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships
+      )
     },
     recordRealitySimulationTrace(
       state,
@@ -755,9 +786,14 @@ const socialSlice = createSlice({
         tags?: string[]
         /** Origin of the action that produced this relationship change. */
         actionSource?: 'manual' | 'system'
+        /**
+         * Compatibility-only writes can update the legacy relationship map
+         * without feeding the same consequence back into canonical Reality state.
+         */
+        skipRealityProjection?: boolean
       }>
     ) {
-      const { source, target, delta, tags } = action.payload
+      const { source, target, delta, tags, skipRealityProjection } = action.payload
       const safeDelta = Number.isFinite(delta) ? delta : 0
       const preserveIncomingAlliance = tags?.includes(ALLIANCE_TAG) ?? false
       if (!state.relationships[source]) {
@@ -786,15 +822,17 @@ const socialSlice = createSlice({
           tags: relationshipTags,
         }
       }
-      applyLegacyRelationshipUpdateToReality(
-        state.reality as RealityDomainState,
-        source,
-        target,
-        safeDelta,
-        tags,
-        0,
-        'legacy'
-      )
+      if (!skipRealityProjection) {
+        applyLegacyRelationshipUpdateToReality(
+          state.reality as RealityDomainState,
+          source,
+          target,
+          safeDelta,
+          tags,
+          0,
+          'legacy'
+        )
+      }
     },
     /** Remove temporary relationship labels while preserving the history in affinity. */
     removeRelationshipTags(
@@ -945,6 +983,7 @@ export const {
   upsertRealityThreadRecord,
   recordRealityCeremony,
   recordRealityActualVote,
+  recordRealityAllianceBetrayal,
   recordRealitySimulationTrace,
   replaceDramaNetwork,
   applyDramaAction,

@@ -718,6 +718,21 @@ export interface GameHistoryEvent {
   timestamp: number
 }
 
+export interface StrategicAllianceSnapshot {
+  id: string
+  memberIds: string[]
+  leaderIds: string[]
+  status: import('../social/reality/types').RealityAllianceStatus
+  cohesion: number
+  fractureRisk: number
+  currentTargetIds: string[]
+  fallbackTargetIds: string[]
+  memberCommitment: Record<string, number>
+  memberPerceivedStatus: Record<string, 'CORE' | 'REGULAR' | 'PERIPHERAL'>
+  memberPlanBeliefs: Record<string, string[]>
+  infiltratorIds: string[]
+}
+
 export interface GameState {
   /** Stable unique identifier for this game instance. */
   gameId: string
@@ -1193,6 +1208,12 @@ export interface GameState {
   secretMissionTaskSetHistory?: string[]
   /** Latest social graph snapshot used by synchronous POS and eviction AI decisions. */
   strategicRelationships?: import('../social/types').RelationshipsMap
+  /**
+   * Compact Reality-alliance snapshot captured alongside strategicRelationships.
+   * It lets the synchronous game reducer consume commitment, hierarchy, overlap,
+   * fake-deal and lifecycle state without owning a second alliance model.
+   */
+  strategicAlliances?: StrategicAllianceSnapshot[]
   /** Tracks whether the optional second-mission 50% roll has already been resolved. */
   /** Runtime bridge used to keep premium social strategy out of Normal Mode. */
   dramaSocialMode?: boolean

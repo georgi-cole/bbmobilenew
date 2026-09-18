@@ -1,12 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it } from 'vitest'
-import socialReducer, { updateRelationship } from '../socialSlice'
+import socialReducer, {
+  recordRealityActualVote,
+  replaceRealityDomain,
+  updateRelationship,
+} from '../socialSlice'
 import { migrateSocialState } from '../socialStateMigration'
 import {
   addRealityFact,
   applyRealityRelationshipChange,
   createDirectedRelationship,
   createInitialRealityDomainState,
+  createRealityAlliance,
   deriveRelationshipLabel,
   learnRealityFact,
   overdueRealityPromises,
@@ -70,6 +75,133 @@ describe('Reality domain migration and directed relationships', () => {
     expect(migrated.reality.relationships.lia?.human).toBeUndefined()
   })
 
+  it('rebuilds overlap metadata when hydrating existing alliances', () => {
+    const reality = createInitialRealityDomainState()
+    createRealityAlliance(reality, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Inner pact',
+      at: { day: 2, phase: 'social_1' },
+    })
+    createRealityAlliance(reality, {
+      id: 'alliance-outer',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Wider coalition',
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    reality.alliances['alliance-core'].overlapAllianceIds = []
+    reality.alliances['alliance-outer'].overlapAllianceIds = []
+
+    const migrated = migrateSocialState({
+      ...SOCIAL_INITIAL_STATE,
+      reality,
+    })
+
+    expect(migrated.reality.alliances['alliance-core'].overlapAllianceIds).toEqual([
+      'alliance-outer',
+    ])
+    expect(migrated.reality.alliances['alliance-outer'].overlapAllianceIds).toEqual([
+      'alliance-core',
+    ])
+  })
+
+  it('preserves an established core member when alliance dynamics are rebuilt on migration', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'alliance-core-status',
+      founderIds: ['human'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.memberCommitment.human = 0.5
+    alliance.memberPerceivedStatus.human = 'CORE'
+    alliance.leaderIds = ['human']
+
+    const migrated = migrateSocialState({
+      ...SOCIAL_INITIAL_STATE,
+      reality,
+    })
+
+    expect(migrated.reality.alliances['alliance-core-status'].memberPerceivedStatus.human).toBe(
+      'CORE'
+    )
+    expect(migrated.reality.alliances['alliance-core-status'].leaderIds).toContain('human')
+  })
+
+  it('re-projects vote-night alliance fractures into the visible relationship map immediately', () => {
+    const store = configureStore({ reducer: { social: socialReducer } })
+    const reality = createInitialRealityDomainState()
+    applyRealityRelationshipChange(reality, {
+      sourceId: 'human',
+      targetId: 'lia',
+      eventId: 'core-bond',
+      day: 3,
+      phase: 'social_1',
+      anchor: 'positive',
+      deltas: { warmth: 35, trust: 50, loyalty: 55 },
+    })
+    const alliance = createRealityAlliance(reality, {
+      id: 'vote-fracture',
+      founderIds: ['human', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.memberPerceivedStatus.human = 'CORE'
+    alliance.memberPerceivedStatus.lia = 'CORE'
+    alliance.memberCommitment.human = 0.7
+    alliance.memberCommitment.lia = 0.7
+
+    store.dispatch(replaceRealityDomain(reality))
+    expect(store.getState().social.relationships.human.lia.tags).toContain('alliance')
+
+    store.dispatch(
+      recordRealityActualVote({
+        actorId: 'human',
+        targetId: 'lia',
+        day: 5,
+        phase: 'live_vote',
+        eventId: 'vote:5:human',
+      })
+    )
+
+    expect(store.getState().social.reality.alliances['vote-fracture'].status).toBe('FRACTURED')
+    expect(store.getState().social.relationships.human.lia.tags).not.toContain('alliance')
+  })
+
+  it('does not project fractured or dormant formal pacts as active alliance tags', () => {
+    for (const status of ['FRACTURED', 'DORMANT'] as const) {
+      const store = configureStore({ reducer: { social: socialReducer } })
+      const reality = createInitialRealityDomainState()
+      applyRealityRelationshipChange(reality, {
+        sourceId: 'human',
+        targetId: 'lia',
+        eventId: `bond-${status}`,
+        day: 3,
+        phase: 'social_1',
+        anchor: 'positive',
+        deltas: { warmth: 25, trust: 35, loyalty: 30 },
+      })
+      const alliance = createRealityAlliance(reality, {
+        id: `inactive-${status.toLowerCase()}`,
+        founderIds: ['human'],
+        memberIds: ['lia'],
+        purpose: 'Old pact',
+        at: { day: 2, phase: 'social_1' },
+      })
+      alliance.status = status
+
+      store.dispatch(replaceRealityDomain(reality))
+
+      expect(store.getState().social.relationships.human.lia.tags).not.toContain('alliance')
+    }
+  })
+
   it('dual-writes legacy relationship outcomes into the Reality edge only', () => {
     const store = configureStore({ reducer: { social: socialReducer } })
     store.dispatch(updateRelationship({ source: 'human', target: 'lia', delta: 8 }))
@@ -78,6 +210,25 @@ describe('Reality domain migration and directed relationships', () => {
     expect(reality.relationships.human.lia.warmth).toBeGreaterThan(0)
     expect(projectRealityAffinity(reality.relationships.human.lia)).toBeGreaterThan(0)
     expect(reality.relationships.lia?.human).toBeUndefined()
+  })
+
+  it('can update compatibility affinity without replaying an already-recorded Reality consequence', () => {
+    const store = configureStore({ reducer: { social: socialReducer } })
+    store.dispatch(
+      updateRelationship({
+        source: 'human',
+        target: 'lia',
+        delta: -18,
+        tags: ['betrayal'],
+        actionSource: 'system',
+        skipRealityProjection: true,
+      })
+    )
+
+    const state = store.getState().social
+    expect(state.relationships.human.lia.affinity).toBe(-18)
+    expect(state.relationships.human.lia.tags).toContain('betrayal')
+    expect(state.reality.relationships.human?.lia).toBeUndefined()
   })
 
   it('requires supporting anchor events before deriving major relationship labels', () => {

@@ -4,7 +4,9 @@ import {
   addRealityFact,
   createDirectedRelationship,
   createInitialRealityDomainState,
+  createRealityAlliance,
   learnRealityFact,
+  recordRealityAllianceDiscovery,
 } from '../../../social/reality'
 import type { Player } from '../../../types'
 import RealityLedger from '../RealityLedger'
@@ -13,6 +15,7 @@ const players = [
   { id: 'human', name: 'You', status: 'active', isUser: true },
   { id: 'lia', name: 'Lia', status: 'active' },
   { id: 'kai', name: 'Kai', status: 'active' },
+  { id: 'nova', name: 'Nova', status: 'active' },
 ] as Player[]
 
 describe('RealityLedger privacy projection', () => {
@@ -93,5 +96,35 @@ describe('RealityLedger privacy projection', () => {
     expect(screen.getByText('Targeting Plan')).toBeInTheDocument()
     expect(screen.getByText('Heard through Lia')).toBeInTheDocument()
     expect(screen.queryByText('Secret Final Two')).toBeNull()
+  })
+
+  it('shows only the alliance members supported by the human player’s evidence', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'hidden-coalition',
+      founderIds: ['lia'],
+      memberIds: ['kai', 'nova'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    recordRealityAllianceDiscovery(reality, {
+      allianceId: alliance.id,
+      observerId: 'human',
+      revealedMemberIds: ['lia', 'kai'],
+      confidence: 0.68,
+      at: { day: 3, phase: 'social_2' },
+      sourceEventId: 'heard-about-coalition',
+      sourceId: 'lia',
+      sourceType: 'HEARSAY',
+    })
+
+    render(<RealityLedger reality={reality} players={players} humanId="human" />)
+    fireEvent.click(screen.getByRole('button', { name: 'house' }))
+
+    expect(screen.getByText('Suspected pact')).toBeInTheDocument()
+    expect(screen.getByText(/Known links: Lia · Kai · other members unknown/)).toBeInTheDocument()
+    expect(screen.queryByText(/Nova/)).toBeNull()
+    expect(screen.queryByText(/cohesion/i)).toBeNull()
+    expect(screen.queryByText(alliance.name ?? 'not-a-name')).toBeNull()
   })
 })

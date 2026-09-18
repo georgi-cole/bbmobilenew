@@ -10,6 +10,35 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))]
 }
 
+const ALLIANCE_KNOWLEDGE_PROPOSITIONS = new Set([
+  'SECRET_ALLIANCE',
+  'ALLIANCE_PUBLIC_CLAIM',
+  'ALLIANCE_EXPOSED',
+  'ALLIANCE_FRACTURE',
+])
+
+export function resolveRealityAllianceIdForFact(
+  state: RealityDomainState,
+  fact: Pick<RealityFact, 'propositionType' | 'subjectIds' | 'objectId'>
+): string | undefined {
+  if (!ALLIANCE_KNOWLEDGE_PROPOSITIONS.has(fact.propositionType)) return undefined
+  if (fact.objectId && state.alliances[fact.objectId]) return fact.objectId
+  const subjects = unique(fact.subjectIds)
+  if (subjects.length < 2) return undefined
+  return Object.values(state.alliances)
+    .filter((alliance) => subjects.every((id) => alliance.memberIds.includes(id)))
+    .sort((left, right) => {
+      const liveRank = (status: typeof left.status) =>
+        status === 'ACTIVE' ? 4 : status === 'PROBATIONARY' ? 3 : status === 'FRACTURED' ? 2 : 1
+      return (
+        liveRank(right.status) - liveRank(left.status) ||
+        left.memberIds.length - right.memberIds.length ||
+        right.cohesion - left.cohesion ||
+        left.id.localeCompare(right.id)
+      )
+    })[0]?.id
+}
+
 export function canActorKnowFact(fact: RealityFact, actorId: string): boolean {
   if (fact.participantIds.includes(actorId) || fact.witnessIds.includes(actorId)) return true
   return fact.visibility === 'HOUSE_PUBLIC' || fact.visibility === 'CEREMONY_PUBLIC'
@@ -68,6 +97,8 @@ export function learnRealityFact(
 ): RealityBelief | null {
   const fact = state.facts[input.factId]
   if (!fact) return null
+  const allianceId = resolveRealityAllianceIdForFact(state, fact)
+  if (allianceId && !fact.objectId) fact.objectId = allianceId
   const isDirectRoute =
     input.memory.sourceType === 'DIRECT' ||
     input.memory.sourceType === 'WITNESSED' ||
@@ -104,6 +135,12 @@ export function learnRealityFact(
     status: input.status ?? (confidence < 0.35 ? 'DOUBTED' : 'ACTIVE'),
   }
   state.beliefsByOwner[input.ownerId][beliefId] = belief
+  if (allianceId) {
+    const alliance = state.alliances[allianceId]
+    if (alliance && !alliance.memberIds.includes(input.ownerId)) {
+      alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, input.ownerId])]
+    }
+  }
   return belief
 }
 

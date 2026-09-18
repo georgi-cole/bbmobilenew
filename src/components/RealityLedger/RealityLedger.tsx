@@ -3,6 +3,7 @@ import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
 import {
   canHumanKnowFact,
+  getRealityAllianceKnowledgeView,
   getRelationshipStoryLabel,
   type DirectedRelationship,
   type RealityBelief,
@@ -32,6 +33,22 @@ function titleCase(value: string): string {
     .replaceAll('_', ' ')
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function allianceStatusLabel(status: string): string {
+  if (status === 'PROBATIONARY') return 'New pact'
+  if (status === 'ACTIVE') return 'Active'
+  if (status === 'DORMANT') return 'Dormant'
+  if (status === 'FRACTURED') return 'Fractured'
+  if (status === 'DISSOLVED') return 'Ended'
+  return titleCase(status)
+}
+
+function allianceSecrecyLabel(value: number): string {
+  if (value >= 0.72) return 'Highly secret'
+  if (value >= 0.42) return 'Low profile'
+  if (value > 0.2) return 'Leaking'
+  return 'Exposed'
 }
 
 function clampRelationship(value: number): number {
@@ -221,11 +238,20 @@ export default function RealityLedger({
   }, [humanId, reality.relationshipAutonomy])
   const alliances = useMemo(
     () =>
-      Object.values(reality.alliances).filter(
-        (alliance) =>
-          alliance.memberIds.includes(humanId) || alliance.suspectedByIds.includes(humanId)
-      ),
-    [humanId, reality.alliances]
+      Object.values(reality.alliances)
+        .map((alliance) => ({
+          alliance,
+          knowledge: getRealityAllianceKnowledgeView(reality, alliance.id, humanId),
+        }))
+        .filter(({ knowledge }) => knowledge.level !== 'UNKNOWN')
+        .sort(
+          (left, right) =>
+            Number(right.knowledge.level === 'MEMBER') -
+              Number(left.knowledge.level === 'MEMBER') ||
+            right.knowledge.confidence - left.knowledge.confidence ||
+            left.alliance.id.localeCompare(right.alliance.id)
+        ),
+    [humanId, reality]
   )
   const relationships = useMemo(
     () =>
@@ -355,21 +381,45 @@ export default function RealityLedger({
               <p className="reality-ledger__empty">No known group or unresolved story is active.</p>
             ) : (
               <>
-                {alliances.map((alliance) => {
-                  const isMember = alliance.memberIds.includes(humanId)
+                {alliances.map(({ alliance, knowledge }) => {
+                  const isMember = knowledge.level === 'MEMBER'
+                  const badge = isMember
+                    ? allianceStatusLabel(alliance.status)
+                    : knowledge.level === 'PUBLIC'
+                      ? 'Public alliance'
+                      : knowledge.level === 'CONFIRMED'
+                        ? 'Confirmed pact'
+                        : 'Suspected pact'
+                  const detail = isMember
+                    ? `${Math.round((knowledge.cohesion ?? 0) * 100)}% cohesion · ${allianceSecrecyLabel(
+                        knowledge.secrecy ?? 0
+                      )}`
+                    : knowledge.level === 'PUBLIC'
+                      ? 'House-known'
+                      : confidenceLabel(knowledge.confidence)
+                  const title =
+                    knowledge.displayName ??
+                    (isMember
+                      ? 'Private pact'
+                      : knowledge.level === 'PUBLIC'
+                        ? 'Exposed alliance'
+                        : 'Possible alliance')
+                  const knownMembers = knowledge.knownMemberIds.map(playerName).join(' · ')
                   return (
                     <article className="reality-ledger__item" key={alliance.id}>
                       <div>
                         <span className="reality-ledger__badge reality-ledger__badge--alliance">
-                          {isMember ? titleCase(alliance.status) : 'Suspected group'}
+                          {badge}
                         </span>
-                        <small>{Math.round(alliance.cohesion * 100)}% cohesion</small>
+                        <small>{detail}</small>
                       </div>
-                      <strong>{alliance.name ?? 'Unnamed alliance'}</strong>
+                      <strong>{title}</strong>
                       <p>
                         {isMember
-                          ? alliance.memberIds.map(playerName).join(' · ')
-                          : 'You suspect this group exists, but do not know its full membership.'}
+                          ? knownMembers
+                          : knownMembers
+                            ? `Known links: ${knownMembers}${knowledge.fullMembershipKnown ? '' : ' · other members unknown'}`
+                            : 'You suspect a pact exists, but do not know who is fully inside it.'}
                       </p>
                     </article>
                   )

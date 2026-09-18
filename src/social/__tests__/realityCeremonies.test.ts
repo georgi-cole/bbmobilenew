@@ -3,8 +3,10 @@ import {
   applyRealityRelationshipChange,
   computeRealityJuryEvaluation,
   createInitialRealityDomainState,
+  createRealityAlliance,
   finalizeRealityVote,
   generateRealityJuryQuestion,
+  holdRealityAllianceMeeting,
   recordRealityCeremonyOutcome,
   scoreRealityNominationCandidate,
   setRealityIntendedVote,
@@ -85,9 +87,137 @@ describe('Reality ceremony aftermath', () => {
   })
 })
 
+describe('Reality alliance ceremony consequences', () => {
+  it('fractures a core pact when the LOH formally nominates their ally', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'core-pact',
+      founderIds: ['loh', 'ally'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['loh', 'ally'],
+      targetIds: ['outsider'],
+      planIds: ['vote:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    recordRealityCeremonyOutcome(state, {
+      kind: 'NOMINATIONS_LOCKED',
+      day: 5,
+      phase: 'nomination_results',
+      actorId: 'loh',
+      targetIds: ['ally'],
+      witnessIds: ['loh', 'ally', 'outsider'],
+      publicEligible: false,
+    })
+
+    expect(alliance.status).toBe('FRACTURED')
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.actorId === 'loh' &&
+          event.targetIds.includes('ally')
+      )
+    ).toBe(true)
+    expect(state.relationships.ally.loh.resentment).toBeGreaterThan(0)
+  })
+
+  it('rewards following a known alliance vote plan only once across vote projections', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'plan-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      planIds: ['vote:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const before = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'outsider', { day: 5, phase: 'live_vote' }, 'vote-cast')
+    expect(alliance.memberCommitment.ava).toBeCloseTo(before + 0.04)
+
+    const afterCast = alliance.memberCommitment.ava
+    finalizeRealityVote(
+      state,
+      'ava',
+      'outsider',
+      { day: 5, phase: 'eviction_results' },
+      'vote-revealed'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterCast)
+  })
+
+  it('records an actual vote against an ally as a distinct alliance betrayal', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'voting-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      planIds: ['vote:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const before = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'lia', { day: 5, phase: 'live_vote' }, 'vote-against-lia')
+
+    expect(alliance.memberCommitment.ava).toBeLessThan(before)
+    const afterFirstProjection = alliance.memberCommitment.ava
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.reason.includes('vote:voting-pact:vote-against-lia')
+      )
+    ).toBe(true)
+
+    finalizeRealityVote(
+      state,
+      'ava',
+      'lia',
+      { day: 5, phase: 'eviction_results' },
+      'vote-reveal-against-lia'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
+  })
+})
+
 describe('stated, intended, and actual votes', () => {
   it('keeps the three vote layers separate and resolves vote promises from reality', () => {
     const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'promise-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Vote together',
+      at: { day: 3, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['keep-options-open'],
+      at: { day: 3, phase: 'social_2' },
+    })
+    const commitmentBeforeBrokenPromise = alliance.memberCommitment.ava
     setRealityStatedVote(state, 'ava', 'lia', 5)
     setRealityIntendedVote(state, 'ava', 'kai', 5, 0.8)
     upsertRealityPromise(state, {
@@ -111,6 +241,7 @@ describe('stated, intended, and actual votes', () => {
       actualTargetId: 'kai',
     })
     expect(state.promises['vote-promise'].status).toBe('BROKEN')
+    expect(alliance.memberCommitment.ava).toBeLessThan(commitmentBeforeBrokenPromise)
   })
 })
 

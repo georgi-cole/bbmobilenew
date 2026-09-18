@@ -226,6 +226,63 @@ function recordCompetitionSuspicion(
   }
 }
 
+function maybeBroadcastPublicAllianceExposure(
+  api: IntelligenceApi,
+  before: IntelligenceRootState,
+  state: IntelligenceRootState
+) {
+  if (!isSocialSeason(state)) return
+  const beforeFactIds = new Set(Object.keys(before.social.reality.facts))
+  const deliveredFactIds = new Set(
+    (state.social.intelligenceDeliveries ?? [])
+      .filter((item) => item.channel === 'faux_tv')
+      .map((item) => item.factId)
+  )
+  const fact = Object.values(state.social.reality.facts)
+    .filter(
+      (candidate) =>
+        !beforeFactIds.has(candidate.id) &&
+        candidate.propositionType === 'ALLIANCE_EXPOSED' &&
+        candidate.publicVisible &&
+        !deliveredFactIds.has(candidate.id)
+    )
+    .sort((left, right) => right.day - left.day || left.id.localeCompare(right.id))[0]
+  if (!fact) return
+
+  const activeIds = new Set(
+    state.game.players
+      .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+      .map((player) => player.id)
+  )
+  if (fact.subjectIds.some((id) => !activeIds.has(id))) return
+
+  api.dispatch(
+    addTvEvent({
+      text: formatFauxTvWhisper(fact, state.game.players),
+      type: 'social',
+      source: 'system',
+      channels: ['tv', 'mainLog'],
+      meta: {
+        forceOnTv: true,
+        broadcastLevel: 'major',
+        broadcastOrder: 9100,
+        intelligenceFactId: fact.id,
+        allianceExposure: true,
+        week: state.game.week,
+        phase: state.game.phase,
+      },
+    })
+  )
+  api.dispatch(
+    recordIntelligenceDelivery({
+      id: `intel-delivery:tv:alliance-exposure:${fact.id}`,
+      factId: fact.id,
+      channel: 'faux_tv',
+      day: state.game.week,
+    })
+  )
+}
+
 function maybeBroadcastWhisper(
   api: IntelligenceApi,
   before: IntelligenceRootState,
@@ -319,6 +376,14 @@ export const intelligenceMiddleware: Middleware = (api) => (next) => (action) =>
     recordCompetitionSuspicion(api, state)
   }
 
+  const latest = api.getState() as IntelligenceRootState
+  if (
+    type === 'social/commitRealityOutcome' ||
+    type === 'social/replaceRealityDomain' ||
+    type === 'social/recordRealityFact'
+  ) {
+    maybeBroadcastPublicAllianceExposure(api, before, latest)
+  }
   maybeBroadcastWhisper(api, before, api.getState() as IntelligenceRootState)
   return result
 }

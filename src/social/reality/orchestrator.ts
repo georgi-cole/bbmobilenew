@@ -14,12 +14,18 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange } from './relationships'
 import { resolveRealityTargetResponse, type RealityResponseResolution } from './response'
 import { scoreRealityAction, type RealityScoreBreakdown } from './scoring'
-import { addRealityFact, learnRealityFact } from './knowledge'
+import { addRealityFact, learnRealityFact, resolveRealityAllianceIdForFact } from './knowledge'
 import {
   applyRealityApology,
   createRealityAlliance,
   createRealityGrievance,
+  coordinateRealityAllianceTarget,
+  findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  leakRealityAlliance,
+  markRealityAllianceInfiltratorIfSecondary,
+  recordRealityAllianceBetrayal,
+  recruitRealityAllianceMember,
   signalRealityRomance,
 } from './relationshipForms'
 import { upsertRealityPromise, upsertRealitySecret, upsertRealityThread } from './commitments'
@@ -158,20 +164,38 @@ function applyRealityLifecycle(input: {
           at,
         })
       } else {
-        const alliance = createRealityAlliance(domain, {
-          id: `alliance:${[interaction.actorId, targetId].sort().join('~')}:${interaction.id}`,
-          founderIds: [interaction.actorId],
-          memberIds: [targetId],
-          purpose: subjectId ? `Coordinate around ${subjectId}` : 'Mutual protection',
-          at,
-        })
-        holdRealityAllianceMeeting(domain, {
-          allianceId: alliance.id,
-          attendeeIds: [interaction.actorId, targetId],
-          targetIds: subjectId ? [subjectId] : [],
-          planIds: subjectId ? [`watch:${subjectId}`] : [`protect:${alliance.id}`],
-          at,
-        })
+        const recruitmentAlliance = findRealityAllianceForRecruitment(
+          domain,
+          interaction.actorId,
+          targetId
+        )
+        if (recruitmentAlliance) {
+          recruitRealityAllianceMember(domain, {
+            allianceId: recruitmentAlliance.id,
+            recruiterId: interaction.actorId,
+            targetId,
+            expandedAllianceId: `alliance:${[...recruitmentAlliance.memberIds, targetId]
+              .sort()
+              .join('~')}:${interaction.id}`,
+            at,
+          })
+        } else {
+          const alliance = createRealityAlliance(domain, {
+            id: `alliance:${[interaction.actorId, targetId].sort().join('~')}:${interaction.id}`,
+            founderIds: [interaction.actorId],
+            memberIds: [targetId],
+            purpose: subjectId ? `Coordinate around ${subjectId}` : 'Mutual protection',
+            at,
+          })
+          holdRealityAllianceMeeting(domain, {
+            allianceId: alliance.id,
+            attendeeIds: [interaction.actorId, targetId],
+            targetIds: subjectId ? [subjectId] : [],
+            planIds: subjectId ? [`watch:${subjectId}`] : [`protect:${alliance.id}`],
+            at,
+          })
+          markRealityAllianceInfiltratorIfSecondary(domain, alliance.id, targetId, at)
+        }
       }
     }
   } else if (action.purposes.includes('COMMITMENT') && acceptedTargets.length > 0) {
@@ -196,6 +220,51 @@ function applyRealityLifecycle(input: {
     event.relatedPromiseIds.push(promiseId)
   }
 
+  if (
+    subjectId &&
+    ['pitch_target', 'rally_votes_against', 'suggest_replacement'].includes(action.id)
+  ) {
+    const kind = action.id === 'suggest_replacement' ? 'FALLBACK' : 'CURRENT'
+    for (const targetId of acceptedTargets) {
+      coordinateRealityAllianceTarget(domain, {
+        actorId: interaction.actorId,
+        partnerId: targetId,
+        subjectId,
+        kind,
+        at,
+        sourceEventId: event.id,
+      })
+    }
+  }
+
+  if (interaction.direction !== 'HUMAN_TO_AI' && ['whisper', 'share_intel'].includes(action.id)) {
+    for (const targetId of acceptedTargets) {
+      const leakable = Object.values(domain.alliances)
+        .filter(
+          (alliance) =>
+            (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+            alliance.memberIds.includes(interaction.actorId) &&
+            !alliance.memberIds.includes(targetId) &&
+            alliance.secrecy > 0.2 &&
+            (alliance.infiltratorIds.includes(interaction.actorId) ||
+              (alliance.memberCommitment[interaction.actorId] ?? 0.5) <= 0.35)
+        )
+        .sort(
+          (left, right) =>
+            Number(right.infiltratorIds.includes(interaction.actorId)) -
+              Number(left.infiltratorIds.includes(interaction.actorId)) ||
+            (left.memberCommitment[interaction.actorId] ?? 0.5) -
+              (right.memberCommitment[interaction.actorId] ?? 0.5) ||
+            right.secrecy - left.secrecy ||
+            right.memberIds.length - left.memberIds.length ||
+            left.id.localeCompare(right.id)
+        )[0]
+      if (leakable) {
+        leakRealityAlliance(domain, leakable.id, interaction.actorId, [targetId], at)
+      }
+    }
+  }
+
   if (action.purposes.includes('ROMANCE')) {
     for (const { targetId, response } of responses) {
       signalRealityRomance(domain, {
@@ -209,7 +278,18 @@ function applyRealityLifecycle(input: {
   }
 
   if (action.purposes.includes('CONFLICT')) {
+    const allianceBetrayalAction = action.id === 'betray' || action.id === 'break_alliance'
     for (const { targetId, response } of responses) {
+      if (allianceBetrayalAction) {
+        recordRealityAllianceBetrayal(domain, {
+          actorId: interaction.actorId,
+          targetId,
+          kind: 'SOCIAL_BETRAYAL',
+          at,
+          sourceEventId: event.id,
+        })
+        continue
+      }
       const grievanceId = `grievance:${targetId}:${event.id}`
       if (!domain.grievances[grievanceId]) {
         createRealityGrievance(domain, {
@@ -285,22 +365,75 @@ function applyRealityLifecycle(input: {
   }
 
   if (action.id === 'expose_secret') {
-    const secret = Object.values(domain.secrets)
+    const allianceBelief = Object.values(domain.beliefsByOwner[interaction.actorId] ?? {})
       .filter(
-        (entry) =>
-          entry.status === 'SECRET' &&
-          entry.knowerIds.includes(interaction.actorId) &&
-          domain.facts[entry.truthFactId]?.subjectIds.some((id) => event.targetIds.includes(id))
+        (belief) =>
+          belief.status !== 'DISPROVEN' &&
+          belief.status !== 'STALE' &&
+          belief.confidence >= 0.45 &&
+          belief.propositionType === 'SECRET_ALLIANCE' &&
+          belief.subjectIds.some((id) => event.targetIds.includes(id))
       )
-      .sort((left, right) => left.id.localeCompare(right.id))[0]
-    if (secret) {
-      upsertRealitySecret(domain, {
-        ...secret,
-        status: 'EXPOSED',
-        exposure: 1,
+      .sort(
+        (left, right) =>
+          right.confidence - left.confidence ||
+          right.lastUpdatedDay - left.lastUpdatedDay ||
+          left.id.localeCompare(right.id)
+      )[0]
+
+    const allianceId = allianceBelief
+      ? resolveRealityAllianceIdForFact(domain, allianceBelief)
+      : undefined
+    const alliance = allianceId ? domain.alliances[allianceId] : undefined
+    const knownAllianceMembers =
+      allianceBelief && alliance
+        ? [...new Set(allianceBelief.subjectIds)].filter((id) => alliance.memberIds.includes(id))
+        : []
+
+    if (alliance && knownAllianceMembers.length >= 2) {
+      const claimId = `fact:alliance-public-claim:${alliance.id}:${event.id}`
+      addRealityFact(domain, {
+        id: claimId,
+        propositionType: 'ALLIANCE_PUBLIC_CLAIM',
+        subjectIds: knownAllianceMembers,
+        objectId: alliance.id,
+        value: true,
+        day: event.day,
+        phase: event.phase,
+        visibility: 'HOUSE_PUBLIC',
+        participantIds: [...event.participantIds],
+        witnessIds: [...event.witnessIds],
+        viewerVisible: true,
+        publicVisible: true,
+        juryVisible: true,
+        sourceEventId: event.id,
       })
-      event.tags.push('EXPOSED')
-      event.relatedFactIds.push(secret.truthFactId)
+      alliance.suspectedByIds = [
+        ...new Set([
+          ...alliance.suspectedByIds,
+          ...Object.keys(domain.contestants).filter((id) => !alliance.memberIds.includes(id)),
+        ]),
+      ]
+      event.tags.push('EXPOSED', 'ALLIANCE_CLAIM')
+      event.relatedFactIds.push(claimId)
+    } else {
+      const secret = Object.values(domain.secrets)
+        .filter(
+          (entry) =>
+            entry.status === 'SECRET' &&
+            entry.knowerIds.includes(interaction.actorId) &&
+            domain.facts[entry.truthFactId]?.subjectIds.some((id) => event.targetIds.includes(id))
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))[0]
+      if (secret) {
+        upsertRealitySecret(domain, {
+          ...secret,
+          status: 'EXPOSED',
+          exposure: 1,
+        })
+        event.tags.push('EXPOSED')
+        event.relatedFactIds.push(secret.truthFactId)
+      }
     }
   }
 
