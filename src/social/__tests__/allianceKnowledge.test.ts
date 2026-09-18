@@ -7,12 +7,13 @@ import {
   learnRealityFact,
   leakRealityAlliance,
 } from '../reality'
+import type { RealityMemory } from '../reality'
 
 function hearsayMemory(
   ownerId: string,
   eventId: string,
   sourceId: string
-) {
+): RealityMemory {
   return {
     id: `memory:${ownerId}:${eventId}`,
     ownerId,
