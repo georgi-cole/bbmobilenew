@@ -273,8 +273,8 @@ function buildAllianceConsultationPlan(
           )
         return ranked[0]
       })
-      .filter(
-        (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Nomination consensus')
     return {
@@ -306,8 +306,8 @@ function buildAllianceConsultationPlan(
           )
         return ranked[0]
       })
-      .filter(
-        (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
     const replacements = nominationConsultationCandidates(state, actorId).filter(
@@ -328,8 +328,8 @@ function buildAllianceConsultationPlan(
             )
           })(),
         }))
-        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id ??
-      null
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]
+        ?.id ?? null
     return {
       allianceId: alliance.id,
       attendeeIds,
@@ -348,10 +348,7 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  if (
-    nominees.length > 0 &&
-    ['pos_ceremony_results', 'social_2', 'live_vote'].includes(phase)
-  ) {
+  if (nominees.length > 0 && ['pos_ceremony_results', 'social_2', 'live_vote'].includes(phase)) {
     const nomineeIds = nominees.map((nominee) => nominee.id)
     const preferences = advisors.map((advisorId) => {
       const targetId = chooseAiEvictionVote(
@@ -394,8 +391,8 @@ function buildAllianceConsultationPlan(
         )
       return ranked[0]
     })
-    .filter(
-      (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+    .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+      Boolean(entry)
     )
   const read = summarizeAlliancePreferences(state, preferences, 'Strategic read')
   return {
