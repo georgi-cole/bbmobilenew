@@ -24,6 +24,7 @@ const files = (await collect(testsRoot))
       relative.startsWith('tests/minigameHost.') ||
       relative.startsWith('tests/integration/minigame.') ||
       relative.startsWith('tests/unit/minigame') ||
+      relative.startsWith('tests/unit/battery-low/') ||
       relative.startsWith('tests/unit/glass-bridge/') ||
       relative.includes('/minigameHost')
     )
