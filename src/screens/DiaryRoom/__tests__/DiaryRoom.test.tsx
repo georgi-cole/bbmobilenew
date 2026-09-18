@@ -499,6 +499,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'eviction_results',
           votes: {
@@ -531,6 +532,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'eviction_results',
           votes: {
@@ -570,6 +572,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'eviction_results',
           votes: {
@@ -599,6 +602,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'live_vote',
           votes: {
@@ -628,6 +632,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'eviction_results',
           votes: {
@@ -783,6 +788,7 @@ describe('DiaryRoom', () => {
       setupStore: (appStore) => {
         const game = (appStore.getState() as RootState).game
         saveEvictionVoteBreakdownUnlock({
+          gameId: game.gameId,
           week: 2,
           phase: 'eviction_results',
           votes: {

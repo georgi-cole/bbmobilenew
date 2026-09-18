@@ -18,6 +18,10 @@ export const AVATAR_TILE_LONG_PRESS_DELAY_MS = 450
 export const LONG_PRESS_CLICK_SUPPRESSION_MS = 600
 /** Pixel-distance threshold: if the finger moves more than this the long-press is cancelled. */
 export const LONG_PRESS_MOVE_THRESHOLD_PX = 10
+/** CSS entrance duration for a newly applied eviction strike. */
+export const EVICTION_MARK_ANIMATION_MS = 350
+/** Safety margin before falling back to the permanent, non-animated strike. */
+export const EVICTION_MARK_ANIMATION_FALLBACK_MS = EVICTION_MARK_ANIMATION_MS + 100
 
 type RoboStatsSummary = {
   daysInGame?: number | null
@@ -210,17 +214,59 @@ export default function AvatarTile({
   const isHoldActiveRef = React.useRef(false)
   const [statsOpen, setStatsOpen] = React.useState(false)
   const [animateEvictionMark, setAnimateEvictionMark] = React.useState(false)
+  const evictionMarkAnimationTimerRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(
+    null
+  )
+
+  const finishEvictionMarkAnimation = React.useCallback(() => {
+    if (evictionMarkAnimationTimerRef.current !== null) {
+      window.clearTimeout(evictionMarkAnimationTimerRef.current)
+      evictionMarkAnimationTimerRef.current = null
+    }
+    // The strike itself is permanent. Only the one-time entrance animation is
+    // removed here so a route change, ad prompt, or interrupted paint can never
+    // leave an evicted player without the visible red mark.
+    setAnimateEvictionMark(false)
+    if (!evictionMarkKey || typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(evictionMarkKey, 'shown')
+    } catch {
+      // Storage can be unavailable in private browsing; permanence is visual,
+      // not dependent on storage.
+    }
+  }, [evictionMarkKey])
 
   React.useEffect(() => {
-    if (!isEvicted || !evictionMarkKey || typeof window === 'undefined') return
-    try {
-      if (window.sessionStorage.getItem(evictionMarkKey)) return
-      window.sessionStorage.setItem(evictionMarkKey, 'shown')
-      setAnimateEvictionMark(true)
-    } catch {
-      // Storage can be unavailable in private browsing; the mark remains visible.
+    if (!isEvicted || !evictionMarkKey || typeof window === 'undefined') {
+      setAnimateEvictionMark(false)
+      return
     }
-  }, [evictionMarkKey, isEvicted])
+
+    try {
+      if (window.sessionStorage.getItem(evictionMarkKey)) {
+        setAnimateEvictionMark(false)
+        return
+      }
+    } catch {
+      // Keep going: the permanent strike must still render without storage.
+    }
+
+    // Do not mark the animation as consumed up front. React StrictMode and
+    // transition-heavy eviction flows can tear down the first paint. Keeping
+    // storage untouched until the animation completes lets a remount retry it.
+    setAnimateEvictionMark(true)
+    evictionMarkAnimationTimerRef.current = window.setTimeout(
+      finishEvictionMarkAnimation,
+      EVICTION_MARK_ANIMATION_FALLBACK_MS
+    )
+
+    return () => {
+      if (evictionMarkAnimationTimerRef.current !== null) {
+        window.clearTimeout(evictionMarkAnimationTimerRef.current)
+        evictionMarkAnimationTimerRef.current = null
+      }
+    }
+  }, [evictionMarkKey, finishEvictionMarkAnimation, isEvicted])
   const [isPressing, setIsPressing] = React.useState(false)
   const [profilePhotoUrl, setProfilePhotoUrl] = React.useState<string | null>(null)
   const normalAvatarUrl = profilePhotoUrl ?? (profilePhotoId ? undefined : avatarUrl)
@@ -618,6 +664,7 @@ export default function AvatarTile({
                 alt=""
                 aria-hidden="true"
                 className={`${styles.cross}${animateEvictionMark ? ` ${styles.crossAnimated}` : ''}${isReturning ? ` ${styles.returningCross}` : ''}`}
+                onAnimationEnd={animateEvictionMark ? finishEvictionMarkAnimation : undefined}
               />
             ))}
         </motion.div>

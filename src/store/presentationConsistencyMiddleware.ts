@@ -1,4 +1,5 @@
 import type { Middleware, MiddlewareAPI } from '@reduxjs/toolkit'
+import { clearEvictionVoteBreakdownUnlock } from '../features/evictionVoteBreakdownStorage'
 import { expandCupidIds } from '../features/twists/cupidArrow'
 import type { GameState, TvEvent } from '../types'
 import { consumeBroadcastEvent, updateTvEvent } from './gameSlice'
@@ -266,6 +267,15 @@ function deferBackdoorAdvance(api: MiddlewareAPI, action: unknown): boolean {
  */
 export const presentationConsistencyMiddleware: Middleware = (api) => (next) => (action) => {
   const before = api.getState() as PresentationState
+  const actionType = (action as GenericAction | null)?.type
+
+  // Rewarded vote-breakdown data is scoped to exactly one season/run.
+  // resetGame creates a fresh gameId, so clear the previous session record at
+  // the same boundary instead of allowing old or legacy data to suppress a
+  // future eviction prompt.
+  if (actionType === 'game/resetGame') {
+    clearEvictionVoteBreakdownUnlock()
+  }
 
   // A successful backdoor reveal belongs immediately after the replacement
   // nominee spotlight, never underneath it. Queue the Play/advance until that

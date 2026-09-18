@@ -641,9 +641,9 @@
     box-shadow 0.2s ease;
 }
 
-/* Live vote: reuse the nomination transition's inner-frame treatment, dyed red.
-   The emphasis stays inside each nominee tile instead of becoming a separate
-   border glow or an overlay across the roster. */
+/* Live vote: restore the original red inner-frame/sweep treatment, then
+   radiate danger the same way the LOH nomination state does: by breathing the
+   outer red box-shadow around the avatar tile. */
 .liveEvictionNominee {
   border-color: rgba(248, 87, 87, 0.86);
   box-shadow:
@@ -651,10 +651,31 @@
     0 0 0 1px rgba(248, 87, 87, 0.34),
     inset 0 1px 0 rgba(255, 228, 228, 0.12),
     inset 0 0 0 1px rgba(248, 87, 87, 0.36);
+  animation: liveEvictionNomineeGlow 2.4s ease-in-out infinite;
 }
 
 .liveEvictionNominee::before {
   animation: liveEvictionNomineeSweep 2.2s linear infinite;
+}
+
+@keyframes liveEvictionNomineeGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(248, 87, 87, 0.3),
+      0 0 10px rgba(220, 38, 38, 0.18),
+      inset 0 1px 0 rgba(255, 228, 228, 0.12),
+      inset 0 0 0 1px rgba(248, 87, 87, 0.32);
+  }
+  50% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(248, 87, 87, 0.52),
+      0 0 22px rgba(239, 68, 68, 0.46),
+      inset 0 1px 0 rgba(255, 228, 228, 0.18),
+      inset 0 0 0 1px rgba(248, 87, 87, 0.48);
+  }
 }
 
 @keyframes liveEvictionNomineeSweep {
@@ -1316,6 +1337,8 @@
   display: block;
   object-fit: contain;
   z-index: 5;
+  /* The strike is permanent; animation only controls its one-time entrance. */
+  opacity: 1;
 }
 
 .crossAnimated {
@@ -1770,6 +1793,7 @@
 
   .nomination_loh,
   .nomination_danger::before,
+  .liveEvictionNominee,
   .liveEvictionNominee::before,
   .roboStatsSheet {
     animation: none !important;

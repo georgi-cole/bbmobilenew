@@ -849,7 +849,12 @@ function managedBroadcastPriority(event: TvEvent): number {
   if (event.meta?.phase === 'season_start' && (major === 'vox_populi' || major === 'cupid_arrow')) {
     return -1
   }
-  return event.meta?.broadcastPriority === 'critical' ? 0 : 1
+  if (event.meta?.broadcastPriority === 'critical') return 0
+  // Delivery priority is deliberately separate from visual level. Runtime
+  // foreground prompts can take the next Faux-TV slot without being promoted
+  // into a critical/shock presentation.
+  if (event.meta?.broadcastDelivery === 'next') return 0.5
+  return 1
 }
 
 function enqueueManagedBroadcast(state: GameState, event: TvEvent) {
@@ -1031,7 +1036,7 @@ function pushEvent(
       ? (template?.level ??
         authoredLevel ??
         (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor'))
-      : 'minor')
+      : (authoredLevel ?? 'minor'))
   const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
   // `forceOnTv` is an explicit delivery instruction from the event producer.
   // It must work for live/observed events too, not only catalogued templates:
@@ -3244,7 +3249,13 @@ function maybePushTwinShockClue(state: GameState) {
   const clue = clues[(state.week + twinShock.cluesShownDays.length) % clues.length]
   twinShock.cluesShownDays = [...twinShock.cluesShownDays, state.week]
   state.twinShock = twinShock
-  pushEvent(state, clue, 'social', { major: 'twin_shock_clue' })
+  pushEvent(state, clue, 'social', {
+    major: 'twin_shock_clue',
+    // Foreshadowing stays visually subtle, but it must receive a real Faux-TV
+    // turn instead of existing only in the activity log.
+    broadcastLevel: 'minor',
+    forceOnTv: true,
+  })
 }
 
 function resolveCompetitionParticipants(state: GameState): string[] {

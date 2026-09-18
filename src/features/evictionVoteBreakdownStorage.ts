@@ -44,13 +44,22 @@ export function saveEvictionVoteBreakdownUnlock(unlock: EvictionVoteBreakdownUnl
   }
 }
 
+export function clearEvictionVoteBreakdownUnlock(): void {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Ignore storage failures in unsupported/private contexts.
+  }
+}
+
 /**
  * Returns true when an eviction vote-breakdown unlock exists and is valid for
  * the current eviction day. The reveal remains available after the eviction
  * animation advances from eviction_results into week_end, but it expires once
  * the next day begins and the game enters week_start. Stored unlocks must
- * originate from eviction_results so unrelated same-week unlock data does not
- * accidentally become eligible.
+ * originate from eviction_results and, when the caller supplies a gameId, must
+ * belong to that exact season/run. Legacy records without a gameId therefore
+ * cannot leak into a newer season.
  */
 export function isEvictionVoteBreakdownActive(
   unlock: EvictionVoteBreakdownUnlock | null,
@@ -60,10 +69,9 @@ export function isEvictionVoteBreakdownActive(
 ): unlock is EvictionVoteBreakdownUnlock {
   return Boolean(
     unlock &&
-    // Older unlocks predate per-game scoping. Keep those session-local records
-    // usable, while still isolating records that explicitly identify another
-    // game.
-    (!gameId || !unlock.gameId || unlock.gameId === gameId) &&
+    // When a live game ID is known, only an unlock from that exact run is valid.
+    // Legacy records without a gameId must never suppress or unlock a later season.
+    (!gameId || unlock.gameId === gameId) &&
     unlock.week === week &&
     unlock.phase === 'eviction_results' &&
     (phase === 'eviction_results' || phase === 'week_end')

@@ -236,18 +236,61 @@ export function useEvictionFlow({
   // only dismiss results after the player decides.
   const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
   const [resumeVoteResultsAfterDeduction, setResumeVoteResultsAfterDeduction] = useState(false)
-  const canOfferVoteBreakdown = useMemo(
+  const hasVoteBreakdownData = useMemo(
     () =>
       game.phase === 'eviction_results' &&
       Boolean(game.pendingEviction?.evicteeId) &&
       Object.keys(game.votes ?? {}).length > 0,
     [game.pendingEviction?.evicteeId, game.phase, game.votes]
   )
+  const canOfferVoteBreakdown = useMemo(
+    () =>
+      hasVoteBreakdownData &&
+      // A rewarded reveal should contain information the player cannot already
+      // infer from a unanimous result. If every valid ballot targets the same
+      // nominee, skip the ad prompt entirely.
+      new Set(Object.values(game.votes ?? {})).size > 1,
+    [game.votes, hasVoteBreakdownData]
+  )
 
   const hasActiveVoteBreakdownUnlock = useCallback(() => {
     const unlock = loadEvictionVoteBreakdownUnlock()
     return isEvictionVoteBreakdownActive(unlock, game.week, game.phase, game.gameId)
   }, [game.gameId, game.phase, game.week])
+
+  const armPostEvictionVoteBreakdown = useCallback(
+    (evictee: Player) => {
+      if (
+        !(canOfferVoteBreakdown || (evictee.isUser === true && hasVoteBreakdownData)) ||
+        hasActiveVoteBreakdownUnlock()
+      ) {
+        return false
+      }
+
+      isPostEvictionConfessionalModeRef.current = true
+      autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
+      postEvictionVoteSnapshotRef.current = {
+        gameId: game.gameId,
+        votes: { ...(game.votes ?? {}) },
+        nomineeIds: [...game.nomineeIds],
+        evicteeId: game.pendingEviction?.evicteeId ?? evictee.id,
+        week: game.week,
+        phase: game.phase,
+      }
+      return true
+    },
+    [
+      canOfferVoteBreakdown,
+      game.gameId,
+      game.nomineeIds,
+      game.pendingEviction?.evicteeId,
+      game.phase,
+      game.votes,
+      game.week,
+      hasActiveVoteBreakdownUnlock,
+      hasVoteBreakdownData,
+    ]
+  )
 
   const queueVoteBreakdownPrompt = useCallback(() => {
     if (!canOfferVoteBreakdown || hasActiveVoteBreakdownUnlock()) return false
@@ -279,20 +322,9 @@ export function useEvictionFlow({
     const evicteeId = game.pendingEviction?.evicteeId
     const evictee = evicteeId ? (game.players.find((p) => p.id === evicteeId) ?? null) : null
     if (evictee && game.pendingEviction) {
-      // Decide whether to offer the confessional breakdown after the animation.
-      if (canOfferVoteBreakdown && !hasActiveVoteBreakdownUnlock()) {
-        isPostEvictionConfessionalModeRef.current = true
-        autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
-        // Snapshot vote data now before any state changes.
-        postEvictionVoteSnapshotRef.current = {
-          gameId: game.gameId,
-          votes: { ...(game.votes ?? {}) },
-          nomineeIds: [...game.nomineeIds],
-          evicteeId: game.pendingEviction.evicteeId,
-          week: game.week,
-          phase: game.phase,
-        }
-      }
+      // Snapshot the per-voter map before the result flow mutates state. This
+      // same arming helper is also used by the AI tie-break path below.
+      armPostEvictionVoteBreakdown(evictee)
 
       const secondPendingEvictionId = game.doubleEviction?.pendingSecondEviction?.evicteeId ?? null
       const lohName = game.players.find((player) => player.id === game.lohId)?.name ?? 'The LOH'
@@ -373,13 +405,7 @@ export function useEvictionFlow({
     // No clear evictee (tie or edge case): fall back to the original inline flow.
     if (queueVoteBreakdownPrompt()) return
     proceedAfterVoteResults()
-  }, [
-    canOfferVoteBreakdown,
-    game,
-    hasActiveVoteBreakdownUnlock,
-    proceedAfterVoteResults,
-    queueVoteBreakdownPrompt,
-  ])
+  }, [armPostEvictionVoteBreakdown, game, proceedAfterVoteResults, queueVoteBreakdownPrompt])
 
   const handlePostVoteAnnouncementDismiss = useCallback(() => {
     setPostVoteAnnouncement(null)
@@ -454,6 +480,10 @@ export function useEvictionFlow({
           meta: {
             forceOnTv: true,
             broadcastLevel: 'major',
+            // This is created after the eviction/day-end sequence has already
+            // started. Take the next Faux-TV slot without pretending it is a
+            // critical shock announcement.
+            broadcastDelivery: 'next',
             announcementTitle: 'Confessional Unlocked',
           },
         })
@@ -647,6 +677,11 @@ export function useEvictionFlow({
           handleVoteResultsDone()
           return
         }
+        // The AI tie-break path dismisses vote results directly instead of
+        // going through handleVoteResultsDone(). Arm the post-eviction reveal
+        // first so split/tied ballots still produce the rewarded prompt after
+        // the tie-break choreography and eviction cinematic complete.
+        armPostEvictionVoteBreakdown(aiTiebreakContext.evictee)
         setActiveAiTiebreakContext(aiTiebreakContext)
         dispatch(dismissVoteResults())
         setAiTiebreakStage('tie')
@@ -655,7 +690,7 @@ export function useEvictionFlow({
         handleVoteResultsDone()
       }
     },
-    [aiTiebreakContext, dispatch, humanIsHoH, handleVoteResultsDone]
+    [aiTiebreakContext, armPostEvictionVoteBreakdown, dispatch, humanIsHoH, handleVoteResultsDone]
   )
 
   const handleAiTiebreakAnnouncementDismiss = useCallback(() => {

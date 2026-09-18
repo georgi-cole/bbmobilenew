@@ -71,6 +71,18 @@ describe('gameplay polish regressions', () => {
     ).toEqual([])
   })
 
+  it('restores the live-vote sweep and adds an LOH-style radiating red glow', () => {
+    const rosterCss = sourceText('src/components/HouseguestGrid/HouseguestGrid.module.css')
+    const glowKeyframes = rosterCss.match(
+      /@keyframes liveEvictionNomineeGlow\s*\{([\s\S]*?)\n\}/
+    )?.[1]
+
+    expect(rosterCss).toContain('animation: liveEvictionNomineeGlow 2.4s ease-in-out infinite')
+    expect(rosterCss).toContain('animation: liveEvictionNomineeSweep 2.2s linear infinite')
+    expect(glowKeyframes).toContain('box-shadow:')
+    expect(glowKeyframes).toContain('0 0 22px rgba(239, 68, 68, 0.46)')
+  })
+
   it('uses only a roster-tile reverse eviction after Back 2 the Game', () => {
     const gameScreen = sourceText('src/screens/GameScreen/GameScreen.tsx')
     const rosterCss = sourceText('src/components/HouseguestGrid/HouseguestGrid.module.css')

@@ -9,6 +9,7 @@
 //  4. AI LOH tiebreak choreography advances through the TV announcements before
 //     the eviction splash begins.
 
+import { StrictMode } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
@@ -182,6 +183,18 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
   )
 }
 
+function renderWithStoreStrict(store: ReturnType<typeof makeStore>) {
+  return render(
+    <StrictMode>
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>
+    </StrictMode>
+  )
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('GameScreen tie-break pitches', () => {
@@ -269,6 +282,9 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
 describe('Ceremony fix: AI LOH tiebreak choreography', () => {
   beforeEach(() => {
     capturedOnTiebreakerRequired = null
+    capturedOnExternalAnnouncementDismiss = null
+    capturedEvictionSplashDone = null
+    sessionStorage.clear()
     vi.useFakeTimers()
   })
 
@@ -285,6 +301,7 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
       lohId: 'p1', // AI is LOH
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 }, // tie
+      votes: { p4: 'p2', p5: 'p3' },
       pendingEviction: {
         evicteeId: 'p3',
         evictionMessage: 'LOH breaks the tie, evicting Player 3. 🗳️',
@@ -337,6 +354,15 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
       capturedOnExternalAnnouncementDismiss?.()
     })
     expect(screen.getByTestId('eviction-overlay')).toBeTruthy()
+
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
+    })
+
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
   })
 })
 
@@ -596,6 +622,64 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     await act(async () => {
       vi.advanceTimersByTime(1)
     })
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
+  })
+
+  it('does not offer a rewarded vote reveal when every ballot targets the same nominee', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 3, p3: 0 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p2' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    })
+
+    renderWithStore(store)
+    await act(async () => {})
+
+    act(() => {
+      screen.getByText('Done').click()
+    })
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.()
+    })
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS + 1)
+    })
+
+    expect(screen.queryByRole('dialog', { name: /peek behind the curtain/i })).toBeNull()
+  })
+
+  it('still offers the rewarded vote reveal under React StrictMode', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 5, p3: 4 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p3' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    })
+
+    renderWithStoreStrict(store)
+    await act(async () => {})
+
+    act(() => {
+      screen.getByText('Done').click()
+    })
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.()
+    })
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
+    })
+
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
   })
 
