@@ -1032,11 +1032,11 @@ function pushEvent(
   const defaultMajor = template?.major ?? (typeof meta?.major === 'string' ? meta.major : undefined)
   const finalLevel =
     override?.level ??
-    authoredLevel ??
     (isDeclaredSource
       ? (template?.level ??
+        authoredLevel ??
         (meta?.broadcastPriority === 'critical' ? 'critical' : defaultMajor ? 'major' : 'minor'))
-      : 'minor')
+      : (authoredLevel ?? 'minor'))
   const selectedMajor = override?.major === null ? undefined : (override?.major ?? defaultMajor)
   // `forceOnTv` is an explicit delivery instruction from the event producer.
   // It must work for live/observed events too, not only catalogued templates:
