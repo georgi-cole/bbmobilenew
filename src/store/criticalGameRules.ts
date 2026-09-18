@@ -76,8 +76,7 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
   },
   dayStartShock: {
     changes: ['eviction_authority'],
-    rationale:
-      'A direct production removal bypasses nominations and the house vote for that exit.',
+    rationale: 'A direct production removal bypasses nominations and the house vote for that exit.',
   },
   twinShock: {
     changes: ['nomination_eligibility', 'safety_replacement', 'roster_eligibility'],
