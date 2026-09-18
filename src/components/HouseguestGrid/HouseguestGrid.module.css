@@ -1316,6 +1316,8 @@
   display: block;
   object-fit: contain;
   z-index: 5;
+  /* The strike is permanent; animation only controls its one-time entrance. */
+  opacity: 1;
 }
 
 .crossAnimated {
