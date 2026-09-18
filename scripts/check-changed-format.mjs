@@ -102,6 +102,25 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
+
+  const diagnosticFile = 'src/ai/competition/index.ts'
+  if (violations.includes(diagnosticFile)) {
+    const source = await readFile(diagnosticFile, 'utf8')
+    const config = (await prettier.resolveConfig(diagnosticFile)) ?? {}
+    const formatted = await prettier.format(source, { ...config, filepath: diagnosticFile })
+    const markers = [
+      'export function clampCompetitionSeasonState',
+      'export function getCompetitionPerceptionRead',
+      'export function updateCompetitionSeasonStateByPlayerId',
+    ]
+    console.error('--- PRETTIER DIAGNOSTIC START ---')
+    for (const marker of markers) {
+      const index = formatted.indexOf(marker)
+      if (index >= 0) console.error(formatted.slice(index, index + 5000))
+    }
+    console.error('--- PRETTIER DIAGNOSTIC END ---')
+  }
+
   process.exit(1)
 }
 
