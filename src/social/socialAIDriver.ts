@@ -712,9 +712,10 @@ function liveAllianceWithHuman(
     )
     .sort(
       (left, right) =>
+        Number(right.status === 'ACTIVE') - Number(left.status === 'ACTIVE') ||
+        right.memberIds.length - left.memberIds.length ||
         (right.memberCommitment[actorId] ?? 0) - (left.memberCommitment[actorId] ?? 0) ||
         right.cohesion - left.cohesion ||
-        right.memberIds.length - left.memberIds.length ||
         left.id.localeCompare(right.id)
     )[0]
 }
