@@ -5389,9 +5389,11 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Human POS holder breaks an eviction tie on a co-LOH Democracia day.
-     * On co-LOH days, the POS holder acts as tiebreaker instead of the LOH.
-     * Clears awaitingTieBreak and awaitingPosTieBreak, queues the eviction.
+     * Human POS holder breaks an eviction tie when the rules delegate authority
+     * away from the LOH: either a co-LOH Democracia day or a shock that puts
+     * the sitting LOH on the block.
+     *
+     * Clears awaitingTieBreak and awaitingPosTieBreak, then queues the eviction.
      */
     submitPosTieBreak(state, action: PayloadAction<string>) {
       const nomineeId = action.payload
