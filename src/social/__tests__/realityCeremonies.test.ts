@@ -159,6 +159,57 @@ describe('Reality alliance ceremony consequences', () => {
     expect(alliance.memberCommitment.ava).toBe(afterCast)
   })
 
+  it('records a known vote-plan defection without treating it like voting against an ally', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'plan-defiance-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      fallbackTargetIds: ['backup'],
+      planIds: ['target:outsider', 'fallback:backup'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const commitmentBefore = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'mara', { day: 5, phase: 'live_vote' }, 'vote-defiance')
+
+    expect(alliance.memberCommitment.ava).toBeLessThan(commitmentBefore)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_PLAN_DEFIED' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('mara')
+      )
+    ).toBe(true)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('mara')
+      )
+    ).toBe(false)
+    expect(state.relationships.lia.ava.suspicion).toBeGreaterThan(0)
+
+    const afterFirstProjection = alliance.memberCommitment.ava
+    finalizeRealityVote(
+      state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'eviction_results' },
+      'vote-defiance-reveal'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
+  })
+
   it('records an actual vote against an ally as a distinct alliance betrayal', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
