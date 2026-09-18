@@ -454,6 +454,10 @@ export function useEvictionFlow({
           meta: {
             forceOnTv: true,
             broadcastLevel: 'major',
+            // This is created after the eviction/day-end sequence has already
+            // started. Take the next Faux-TV slot without pretending it is a
+            // critical shock announcement.
+            broadcastDelivery: 'next',
             announcementTitle: 'Confessional Unlocked',
           },
         })
