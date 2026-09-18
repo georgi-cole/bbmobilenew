@@ -972,8 +972,9 @@ export function leakRealityAlliance(
     juryEligible: true,
   })
   alliance.knownLeakEventIds.push(event.id)
-  alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...receiverIds])]
-  alliance.secrecy = Math.max(0, alliance.secrecy - receiverIds.length * 0.16)
+  const outsiderReceiverIds = receiverIds.filter((id) => !alliance.memberIds.includes(id))
+  alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...outsiderReceiverIds])]
+  alliance.secrecy = Math.max(0, alliance.secrecy - outsiderReceiverIds.length * 0.16)
   recordRealityAllianceLeakDiscovery(state, {
     allianceId: alliance.id,
     leakerId,
