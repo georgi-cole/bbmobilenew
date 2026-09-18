@@ -12,6 +12,10 @@ type DispatchedAction = {
     tags?: string[]
     delta?: number
     meta?: { bondBetrayal?: boolean }
+    actorId?: string
+    targetId?: string
+    kind?: string
+    sourceEventId?: string
   }
 }
 
@@ -110,6 +114,15 @@ describe('Reality integrity middleware', () => {
     expect(
       dispatched.some(
         (action) => action.type === 'game/addTvEvent' && action.payload?.meta?.bondBetrayal === true
+      )
+    ).toBe(true)
+    expect(
+      dispatched.some(
+        (action) =>
+          action.type === 'social/recordRealityAllianceBetrayal' &&
+          action.payload?.actorId === 'loh' &&
+          action.payload?.targetId === 'human' &&
+          action.payload?.kind === 'NOMINATION'
       )
     ).toBe(true)
   })
