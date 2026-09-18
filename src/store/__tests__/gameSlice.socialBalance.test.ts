@@ -73,9 +73,7 @@ describe('early Reality Mode player balance', () => {
     const state = createInitialGameState()
     const holder = state.players.find((player) => !player.isUser)!
     const human = state.players.find((player) => player.isUser)!
-    const neutral = state.players.find(
-      (player) => !player.isUser && player.id !== holder.id
-    )!
+    const neutral = state.players.find((player) => !player.isUser && player.id !== holder.id)!
 
     state.strategicRelationships = {
       [holder.id]: {
