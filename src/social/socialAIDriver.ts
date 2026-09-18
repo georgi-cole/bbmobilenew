@@ -950,6 +950,7 @@ function candidateForPlayer(
     } as Parameters<typeof chooseActionFor>[1])
   const allianceBias = allianceIdentityBias(player.aiGameIdentity)
   const actionId =
+    !allianceStrategyCandidate &&
     !relationshipCandidate &&
     !dramaMove &&
     allianceBias >= 20 &&
