@@ -130,6 +130,42 @@ describe('Reality alliance strategic influence', () => {
     )
   })
 
+  it('keeps fractured and dormant pacts as history without strategic protection or plan pressure', () => {
+    for (const status of ['FRACTURED', 'DORMANT'] as const) {
+      const state = {
+        week: 4,
+        dramaSocialMode: true,
+        players: [player('actor'), player('former-ally'), player('target')],
+        strategicRelationships: {
+          actor: {
+            'former-ally': { affinity: 10, tags: ['betrayal'] },
+            target: { affinity: 0, tags: [] },
+          },
+        },
+        strategicAlliances: [
+          allianceSnapshot('inactive-pact', ['actor', 'former-ally'], {
+            status,
+            cohesion: 0.45,
+            fractureRisk: status === 'FRACTURED' ? 0.82 : 0.35,
+            currentTargetIds: ['target'],
+            memberPlanBeliefs: {
+              actor: ['target:target'],
+              'former-ally': ['target:target'],
+            },
+          }),
+        ],
+      } as GameState
+
+      const formerAllyRead = getStrategicAllianceDecisionRead(state, 'actor', 'former-ally')
+      const targetRead = getStrategicAllianceDecisionRead(state, 'actor', 'target')
+
+      expect(formerAllyRead.sharedProtection).toBe(0)
+      expect(formerAllyRead.betrayalPressure).toBeGreaterThan(0)
+      expect(targetRead.currentTargetPressure).toBe(0)
+      expect(targetRead.fallbackTargetPressure).toBe(0)
+    }
+  })
+
   it('treats a false-pretense member as far less protected by that alliance', () => {
     const genuine = {
       week: 4,
