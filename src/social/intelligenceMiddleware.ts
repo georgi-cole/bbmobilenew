@@ -153,18 +153,31 @@ function recordCompetitionSuspicion(
   payload: {
     competitionIntents?: Record<string, CompetitionIntent>
     gameKey?: string
-  }
+  } = {}
 ) {
-  if (!payload.competitionIntents || state.game.week < 3) return
+  if (state.game.week < 3) return
   const activePlayers = state.game.players.filter(
     (player) => player.status !== 'evicted' && player.status !== 'jury'
   )
-  for (const [playerId, intent] of Object.entries(payload.competitionIntents)) {
-    if (intent !== 'throw') continue
-    const historicalThrows = state.challenge.history.filter(
-      (run) => run.competitionIntents?.[playerId] === 'throw'
-    ).length
-    if (historicalThrows < 2) continue
+  for (const player of activePlayers) {
+    const playerId = player.id
+    const perception = state.game.competitionSeasonStateByPlayerId?.[playerId]
+    const suspicion = perception?.sandbagSuspicion ?? 0
+    const bottomStreak = perception?.recentBottomStreak ?? 0
+    const explicitThrow = payload.competitionIntents?.[playerId] === 'throw'
+    let historicalThrows = 0
+    if (explicitThrow) {
+      historicalThrows = state.challenge.history.filter(
+        (run) => run.competitionIntents?.[playerId] === 'throw'
+      ).length
+    }
+    const inferredPattern = suspicion >= 15 && bottomStreak >= 3
+
+    // AI intent is private engine state; the house only develops a belief after
+    // repeated evidence. Human players have no hidden throw flag at all, so
+    // their pattern must be inferred entirely from visible performance.
+    if ((!explicitThrow || historicalThrows < 2) && !inferredPattern) continue
+
     const alreadyExists = Object.values(state.social.reality.facts).some(
       (fact) =>
         fact.propositionType === 'COMPETITION_THROW_SUSPICION' && fact.subjectIds.includes(playerId)
@@ -172,20 +185,20 @@ function recordCompetitionSuspicion(
     if (alreadyExists) continue
 
     const witnesses = activePlayers
-      .filter((player) => player.id !== playerId)
+      .filter((candidate) => candidate.id !== playerId)
       .sort(
         (left, right) =>
           hash(`${state.game.seed}:${state.game.week}:${playerId}:${left.id}`) -
           hash(`${state.game.seed}:${state.game.week}:${playerId}:${right.id}`)
       )
       .slice(0, 2)
-      .map((player) => player.id)
+      .map((candidate) => candidate.id)
     const fact: RealityFact = {
       id: `fact:intel:competition-throw:${playerId}:${state.game.week}`,
       propositionType: 'COMPETITION_THROW_SUSPICION',
       subjectIds: [playerId],
       objectId: payload.gameKey,
-      value: historicalThrows,
+      value: Math.max(historicalThrows, Math.round(suspicion)),
       day: state.game.week,
       phase: state.game.phase,
       visibility: 'GROUP_VISIBLE',
@@ -197,6 +210,7 @@ function recordCompetitionSuspicion(
       sourceEventId: `competition-pattern:${playerId}:${state.game.week}`,
     }
     api.dispatch(recordRealityFact(fact))
+    const confidence = Math.max(0.58, Math.min(0.82, 0.58 + suspicion / 180))
     for (const witnessId of witnesses) {
       learnFact(
         api,
@@ -204,7 +218,7 @@ function recordCompetitionSuspicion(
         witnessId,
         'INFERRED',
         [witnessId],
-        0.66,
+        confidence,
         state.game.week,
         state.game.phase
       )
@@ -301,6 +315,8 @@ export const intelligenceMiddleware: Middleware = (api) => (next) => (action) =>
         }
       ).payload
     )
+  } else if (type === 'game/completeMinigame' || type === 'game/applyMinigameWinner') {
+    recordCompetitionSuspicion(api, state)
   }
 
   maybeBroadcastWhisper(api, before, api.getState() as IntelligenceRootState)

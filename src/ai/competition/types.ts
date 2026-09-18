@@ -28,6 +28,16 @@ export interface CompetitionSeasonState {
   confidence: number;
   /** Light wear from repeated competition participation. */
   fatigue: number;
+  /** House-visible, smoothed relative performance. 0 = weakest observed, 100 = strongest observed. */
+  observedStrength?: number;
+  /** Consecutive ranked competitions finished in the bottom performance band. */
+  recentBottomStreak?: number;
+  /** Suspicion that recent weak results may be deliberate sandbagging. 0..100. */
+  sandbagSuspicion?: number;
+  /** Number of ranked competition results incorporated into the public read. */
+  performanceSamples?: number;
+  /** Best relative performance the house has seen from this player. 0..100. */
+  peakRelativePerformance?: number;
 }
 
 export interface CompetitionSkillWeights {

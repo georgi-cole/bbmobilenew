@@ -4,6 +4,7 @@ import gameReducer, {
   chooseAiEvictionVote,
   createInitialGameState,
   getNominationTargetScore,
+  getSafetyRelationshipScore,
 } from '../gameSlice'
 
 describe('early Reality Mode player balance', () => {
@@ -66,6 +67,47 @@ describe('early Reality Mode player balance', () => {
       },
     }
     expect(getNominationTargetScore(state, newLoh.id, priorLoh)).toBeLessThan(neutralScore)
+  })
+
+  it('does not turn chronic competition weakness into a Safety-save reward', () => {
+    const state = createInitialGameState()
+    const holder = state.players.find((player) => !player.isUser)!
+    const human = state.players.find((player) => player.isUser)!
+    const neutral = state.players.find((player) => !player.isUser && player.id !== holder.id)!
+
+    state.strategicRelationships = {
+      [holder.id]: {
+        [human.id]: { affinity: 0, tags: [] },
+        [neutral.id]: { affinity: 0, tags: [] },
+      },
+    }
+    state.competitionSeasonStateByPlayerId = {
+      ...(state.competitionSeasonStateByPlayerId ?? {}),
+      [human.id]: {
+        form: -2,
+        confidence: -1,
+        fatigue: 2,
+        observedStrength: 14,
+        recentBottomStreak: 4,
+        sandbagSuspicion: 17,
+        performanceSamples: 4,
+        peakRelativePerformance: 50,
+      },
+      [neutral.id]: {
+        form: 0,
+        confidence: 0,
+        fatigue: 0,
+        observedStrength: 50,
+        recentBottomStreak: 0,
+        sandbagSuspicion: 0,
+        performanceSamples: 2,
+        peakRelativePerformance: 50,
+      },
+    }
+
+    expect(getSafetyRelationshipScore(state, holder.id, human)).toBeLessThan(
+      getSafetyRelationshipScore(state, holder.id, neutral)
+    )
   })
 
   it('archives the original nomination ceremony at the next week start', () => {
