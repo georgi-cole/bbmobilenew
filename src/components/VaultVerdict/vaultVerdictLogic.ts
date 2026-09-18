@@ -222,6 +222,44 @@ export function getHighestRemainingValue(contestant: Pick<VaultContestantState, 
   return Math.max(0, ...calculateRemainingValues(contestant));
 }
 
+export function getBankMoodProfile(mood: BankMood) {
+  if (mood === 'stingy') {
+    return { label: 'STINGY', short: 'Hates giving ground', symbol: '−' };
+  }
+  if (mood === 'generous') {
+    return { label: 'GENEROUS', short: 'More willing to pay up', symbol: '+' };
+  }
+  if (mood === 'chaotic') {
+    return { label: 'CHAOTIC', short: 'Offers can swing hard', symbol: '↯' };
+  }
+  return { label: 'CALCULATED', short: 'Tracks the board closely', symbol: '◇' };
+}
+
+export function getRevealCommentary(
+  contestant: Pick<VaultContestantState, 'vaults' | 'openedVaultIds'>,
+  vault: VaultPodState | null,
+) {
+  if (!vault) return null;
+  if (vault.specialEffect === 'doubleVote') return 'Power Cell destroyed. The double vote is gone.';
+  if (vault.specialEffect === 'skipVote') return 'Blackout destroyed. That penalty can no longer hit you.';
+  if (vault.amount === 100) return '100% is gone. The Bank just gained serious leverage.';
+  if (vault.amount >= 88) return 'Big hit. One of the strongest charges just disappeared.';
+  if (vault.amount <= 6.66) return 'Perfect burn. A dangerous low charge is off the board.';
+  if (vault.amount <= 21) return 'Good removal. The bottom of the board just got safer.';
+
+  const remainingTop = contestant.vaults.filter(
+    (candidate) => candidate.status !== 'opened' && TOP_AMOUNTS.has(candidate.amount),
+  ).length;
+  const openedLows = contestant.vaults.filter(
+    (candidate) => candidate.status === 'opened' && candidate.amount <= 21,
+  ).length;
+  if (remainingTop >= 4 && openedLows >= 4) return 'The board is turning against the Bank.';
+  if (remainingTop <= 1 && contestant.openedVaultIds.length >= 10) {
+    return 'The ceiling is collapsing. The Bank knows it.';
+  }
+  return null;
+}
+
 export function getSpecialRevealLabel(value: number, effect?: BatteryLowVoteEffect | null) {
   if (effect === 'doubleVote') return 'POWER CELL · DOUBLE VOTE';
   if (effect === 'skipVote') return 'BLACKOUT CELL · SKIP VOTE';
@@ -712,6 +750,47 @@ export function simulateAiContestant(
     }
     state = maybeCreateOffer(state, rng);
     elapsed += randomInt(rng, 2000, 8000);
+
+    if (
+      state.currentDeal?.type === 'insurance' &&
+      !state.currentDeal.resolved &&
+      (state.aiPersonality === 'cautious' || state.aiPersonality === 'panic') &&
+      rng() < 0.48
+    ) {
+      state = acceptInsuranceDeal(state);
+      broadcasts.push({
+        id: `${contestant.contestantId}-insurance-${round}`,
+        atMs: elapsed,
+        contestantId: totalContestants <= 4 ? null : contestant.contestantId,
+        contestantName: totalContestants <= 4 ? null : contestant.displayName,
+        kind: 'decision',
+        message: totalContestants <= 4
+          ? 'Another booth just bought a safety net from the Bank.'
+          : `${contestant.displayName} took the Bank's insurance and kept playing.`,
+      });
+      state = riskVault(state, elapsed);
+      continue;
+    }
+
+    if (
+      state.currentDeal?.type === 'swap' &&
+      !state.currentDeal.resolved &&
+      rng() <
+        (state.aiPersonality === 'chaotic' || state.aiPersonality === 'show-off' ? 0.58 : 0.28)
+    ) {
+      state = swapReserveBattery(state, rng);
+    }
+
+    if (
+      !state.counterofferUsed &&
+      state.currentDeal?.type !== 'pressure' &&
+      round >= 2 &&
+      rng() <
+        (state.aiPersonality === 'greedy' || state.aiPersonality === 'show-off' ? 0.34 : 0.16)
+    ) {
+      state = counterBankOffer(state, rng);
+    }
+
     const latestOffer = state.offerHistory[state.offerHistory.length - 1]!;
     const accepted = shouldAiAcceptOffer({
       contestant: state,
