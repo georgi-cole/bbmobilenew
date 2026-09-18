@@ -273,6 +273,87 @@ export function recordRealityAllianceBetrayal(
   return affected
 }
 
+function hasStrongerRealityPact(
+  state: RealityDomainState,
+  memberId: string,
+  allianceId: string,
+  currentCommitment: number
+): boolean {
+  return Object.values(state.alliances).some(
+    (candidate) =>
+      candidate.id !== allianceId &&
+      (candidate.status === 'ACTIVE' || candidate.status === 'PROBATIONARY') &&
+      candidate.memberIds.includes(memberId) &&
+      (candidate.memberCommitment[memberId] ?? 0) >= 0.68 &&
+      (candidate.memberCommitment[memberId] ?? 0) >= currentCommitment + 0.12
+  )
+}
+
+/**
+ * A player who accepts a much weaker secondary pact while already anchored in
+ * a strong alliance can outwardly join without internally treating both deals
+ * as equal. This mirrors the existing Drama false-pretense behavior but keeps
+ * the durable truth in RealityAlliance.
+ */
+export function markRealityAllianceInfiltratorIfSecondary(
+  state: RealityDomainState,
+  allianceId: string,
+  memberId: string,
+  at: RealityClock
+): boolean {
+  const alliance = state.alliances[allianceId]
+  if (
+    !alliance ||
+    alliance.status === 'DISSOLVED' ||
+    !alliance.memberIds.includes(memberId) ||
+    alliance.infiltratorIds.includes(memberId)
+  ) {
+    return false
+  }
+  const commitment = alliance.memberCommitment[memberId] ?? 0.5
+  if (!hasStrongerRealityPact(state, memberId, allianceId, commitment)) return false
+
+  alliance.infiltratorIds = [...new Set([...alliance.infiltratorIds, memberId])]
+  alliance.genuine = false
+  alliance.memberCommitment[memberId] = Math.min(commitment, 0.3)
+  refreshRealityAllianceDynamics(alliance)
+
+  appendRealityEvent(state, {
+    ...at,
+    type: 'ALLIANCE_FALSE_PRETENSE_ESTABLISHED',
+    actorId: memberId,
+    targetIds: alliance.memberIds.filter((id) => id !== memberId),
+    participantIds: [memberId],
+    witnessIds: [],
+    visibility: 'PRIVATE',
+    outcome: 'SYSTEM',
+    reason: `secondary_to_stronger_pact:${alliance.id}`,
+    tags: ['ALLIANCE', 'FALSE_PRETENSE'],
+    relatedFactIds: [],
+    relatedPromiseIds: [...alliance.sharedPromiseIds],
+    relatedThreadIds: [],
+    publicEligible: false,
+    juryEligible: true,
+  })
+  return true
+}
+
+function refreshRealityAllianceInfiltratorIntent(
+  state: RealityDomainState,
+  alliance: RealityAlliance,
+  memberId: string
+): void {
+  if (!alliance.infiltratorIds.includes(memberId)) return
+  const commitment = alliance.memberCommitment[memberId] ?? 0
+  if (
+    commitment >= 0.58 &&
+    !hasStrongerRealityPact(state, memberId, alliance.id, commitment)
+  ) {
+    alliance.infiltratorIds = alliance.infiltratorIds.filter((id) => id !== memberId)
+    alliance.genuine = alliance.infiltratorIds.length === 0
+  }
+}
+
 function allianceRecruitmentRank(
   alliance: RealityAlliance,
   recruiterId: string
@@ -472,6 +553,7 @@ export function recruitRealityAllianceMember(
   }
 
   refreshRealityAllianceDynamics(alliance)
+  markRealityAllianceInfiltratorIfSecondary(state, alliance.id, input.targetId, input.at)
   refreshRealityAllianceOverlaps(state)
   return alliance
 }
@@ -584,6 +666,9 @@ export function holdRealityAllianceMeeting(
     )
   }
   refreshRealityAllianceDynamics(alliance)
+  for (const attendeeId of attendees) {
+    refreshRealityAllianceInfiltratorIntent(state, alliance, attendeeId)
+  }
   return refreshRealityAllianceLifecycle(alliance)
 }
 
