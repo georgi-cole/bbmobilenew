@@ -197,9 +197,7 @@ describe('Reality alliance player-facing coordination', () => {
 
     expect(alliance.name).toBe('The Night Shift')
     expect(
-      state.events.some(
-        (event) => event.type === 'ALLIANCE_RENAMED' && event.actorId === 'ava'
-      )
+      state.events.some((event) => event.type === 'ALLIANCE_RENAMED' && event.actorId === 'ava')
     ).toBe(true)
     expect(() =>
       renameRealityAlliance(state, {
