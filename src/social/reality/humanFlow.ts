@@ -234,7 +234,11 @@ function getAllianceConsultationAgenda(
   if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(state.game.phase)) {
     return 'nominations'
   }
-  if (actorHasSafety && ['pos_results', 'pos_ceremony'].includes(state.game.phase) && nomineesExist) {
+  if (
+    actorHasSafety &&
+    ['pos_results', 'pos_ceremony'].includes(state.game.phase) &&
+    nomineesExist
+  ) {
     return 'safety'
   }
   if (
