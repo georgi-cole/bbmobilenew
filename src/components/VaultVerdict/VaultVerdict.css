@@ -818,8 +818,11 @@
   z-index: 2;
   justify-self: center;
   width: min(27vw, 116px);
-  max-height: 112px;
-  object-fit: contain;
+  aspect-ratio: 1;
+  background-image: url('/assets/minigames/battery-low/hero-icons.webp');
+  background-position: var(--sprite-x) var(--sprite-y);
+  background-repeat: no-repeat;
+  background-size: 400% 200%;
   filter: drop-shadow(0 0 18px color-mix(in srgb, var(--hero-accent) 48%, transparent));
   animation: vault-verdict-hero-icon 900ms cubic-bezier(0.18, 0.82, 0.2, 1) both;
 }
@@ -2562,7 +2565,6 @@
 
   .vault-verdict__hero-event-icon {
     width: min(23vw, 90px);
-    max-height: 86px;
   }
 
   .vault-verdict__hero-event-copy > small {
