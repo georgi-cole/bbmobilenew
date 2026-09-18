@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import prettier from 'prettier'
 
 const cwd = process.cwd()
@@ -92,7 +92,13 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) violations.push(file)
+  if (!currentClean) {
+    violations.push(file)
+    if (process.env.CI) {
+      const formatted = await prettier.format(currentSource, options)
+      await writeFile(file, formatted, 'utf8')
+    }
+  }
 }
 
 console.log(`Strictly checked: ${checked.length}`)
@@ -102,6 +108,10 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
+  if (process.env.CI) {
+    const formattedDiff = git(['diff', '--', ...violations])
+    if (formattedDiff) console.error(formattedDiff)
+  }
   process.exit(1)
 }
 
