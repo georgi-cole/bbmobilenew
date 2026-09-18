@@ -26,6 +26,8 @@ export interface CriticalShockRuleDeclaration {
    * until its critical-game impact is reviewed.
    */
   rationale: string
+  /** Whether the shock is intentionally supported while Vox Populi is active. */
+  voxCompatible: boolean
 }
 
 /**
@@ -40,29 +42,35 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
     changes: ['nomination_count', 'eviction_count', 'tie_breaker'],
     rationale:
       'Three-person opening block and two exits; ordinary Classic voter eligibility stays intact.',
+    voxCompatible: true,
   },
   battleBack: {
     changes: ['roster_eligibility'],
     rationale:
       'A juror can return to active play; nomination and eviction rules are otherwise unchanged.',
+    voxCompatible: false,
   },
   vip: {
     changes: ['safety_replacement'],
     rationale: 'Double Trouble can save twice and create two replacement cycles.',
+    voxCompatible: false,
   },
   diamond: {
     changes: ['safety_replacement'],
     rationale: 'Halo Exchange transfers replacement-nominee choice to the Safety holder.',
+    voxCompatible: false,
   },
   coup: {
     changes: ['nomination_eligibility', 'safety_replacement', 'tie_breaker'],
     rationale:
       'Detox replaces the whole block, can nominate the current LOH, and hands an LOH-blocked tie to the POS holder.',
+    voxCompatible: false,
   },
   spotlight: {
     changes: ['safety_replacement'],
     rationale:
       'Force Majeure forces Safety use but does not change who casts the later eviction ballot.',
+    voxCompatible: false,
   },
   democracia: {
     changes: [
@@ -73,20 +81,24 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
     ],
     rationale:
       'The house elects leadership; a tied election can create co-LOHs who split nominations and are both excluded from the ordinary eviction ballot.',
+    voxCompatible: false,
   },
   dayStartShock: {
     changes: ['eviction_authority'],
     rationale: 'A direct production removal bypasses nominations and the house vote for that exit.',
+    voxCompatible: true,
   },
   twinShock: {
     changes: ['nomination_eligibility', 'safety_replacement', 'roster_eligibility'],
     rationale:
       'Lia/Ali cannot target each other, a twin Safety holder must save the paired nominee, and Ali can enter later.',
+    voxCompatible: true,
   },
   depressionShock: {
     changes: ['strategy_only'],
     rationale:
       'Decision preferences can invert, but eligibility, vote authority, and eviction authority do not change.',
+    voxCompatible: true,
   },
 } satisfies Record<ForcedShockType, CriticalShockRuleDeclaration>
 
