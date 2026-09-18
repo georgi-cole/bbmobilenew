@@ -184,12 +184,19 @@ export function getInteractionDedupeReason({
     }
   }
 
-  const sameType = allFromActor.find(
-    (entry) =>
-      entry.type === interaction.type &&
+  const incomingDedupeGroup =
+    typeof interaction.payload?.dedupeGroup === 'string'
+      ? interaction.payload.dedupeGroup
+      : interaction.type
+  const sameType = allFromActor.find((entry) => {
+    const entryDedupeGroup =
+      typeof entry.payload?.dedupeGroup === 'string' ? entry.payload.dedupeGroup : entry.type
+    return (
+      entryDedupeGroup === incomingDedupeGroup &&
       week >= entry.createdWeek &&
       week - entry.createdWeek <= dedupe.sameTypeCooldownWeeks
-  )
+    )
+  })
   if (sameType) {
     return 'deduped_similar_pending'
   }
