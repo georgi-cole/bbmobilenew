@@ -182,7 +182,7 @@ const AI_LOH_WIN_THREAT_WEIGHT = 4
 const AI_POS_WIN_THREAT_WEIGHT = 3
 const AI_NEVER_NOMINATED_THREAT_WEIGHT = 1
 const AI_CURRENT_LOH_POWER_THREAT_WEIGHT = 2
-const EARLY_HUMAN_GRACE_BY_WEEK = [0, 16, 12, 6] as const
+const EARLY_HUMAN_EVICTION_GRACE_BY_WEEK = [0, 16, 12, 6] as const
 
 function getPhaseOrderIndex(phase: Phase): number {
   return PHASE_ORDER.indexOf(phase)
@@ -1600,7 +1600,7 @@ function getAiIdentityMode(state: GameState): AiIdentityMode {
   return 'classic'
 }
 
-function getEarlyHumanGrace(
+function getEarlyHumanEvictionGrace(
   state: GameState,
   candidate: Player | undefined,
   affinity: number,
@@ -1608,7 +1608,7 @@ function getEarlyHumanGrace(
 ): number {
   if (!candidate?.isUser || state.week < 1 || state.week > 3 || affinity < -15) return 0
   if (tags.has('target') || tags.has('betrayal') || tags.has('rivalry')) return 0
-  return EARLY_HUMAN_GRACE_BY_WEEK[state.week] ?? 0
+  return EARLY_HUMAN_EVICTION_GRACE_BY_WEEK[state.week] ?? 0
 }
 
 function getVoxNominationMomentumScore(state: GameState, candidate: Player): number {
@@ -1729,14 +1729,12 @@ function getNominationTargetBreakdown(
   const tags = new Set(relationship?.tags ?? [])
   const affinity = relationship?.affinity ?? 0
   const threat = getAiThreatScore(state, candidate)
-  const grace = getEarlyHumanGrace(state, candidate, affinity, tags)
   const factors: Record<string, AiDecisionFactor> = {
     threatContribution: threat * 4,
     affinityPenalty: -affinity,
-    earlyHumanGrace: -grace,
     tags: [...tags].join(', ') || 'none',
   }
-  let score = threat * 4 - affinity - grace
+  let score = threat * 4 - affinity
   if (tags.has('betrayal')) {
     score += 125
     factors.betrayal = 125
@@ -3599,7 +3597,7 @@ export function chooseAiEvictionVote(
     )
     const randomDraw = rng()
 
-    const grace = getEarlyHumanGrace(state, nominee, affinity, tags)
+    const grace = getEarlyHumanEvictionGrace(state, nominee, affinity, tags)
     // An executed backdoor carries the LOH's strategic intent into the vote.
     // It is meaningful pressure, not an automatic eviction: alliance/romance
     // protection and their existing backstab rules are applied afterward and

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState, Player } from '../../types'
 import gameReducer, { advance, getNominationTargetScore } from '../gameSlice'
-import { withLohNominationPlanning } from '../lohNominationPlanning'
+import { buildLohNominationPlan, withLohNominationPlanning } from '../lohNominationPlanning'
 
 function player(id: string, name: string, overrides: Partial<Player> = {}): Player {
   return {
@@ -23,6 +23,79 @@ function nominatedIds(state: GameState): string[] {
 }
 
 describe('AI LOH opening nomination block', () => {
+  it('does not treat the human differently during cold-start target selection', () => {
+    const initial = gameReducer(undefined, { type: 'test/init' })
+    const loh = player('loh', 'LOH', { status: 'loh' })
+    const alpha = player('alpha', 'Alpha', { isUser: true })
+    const beta = player('beta', 'Beta')
+    const gamma = player('gamma', 'Gamma')
+
+    const base = {
+      ...initial,
+      gameId: 'cold-start-human-neutrality',
+      week: 1,
+      phase: 'loh_results' as const,
+      publicModeEnabled: false,
+      lohId: loh.id,
+      players: [loh, alpha, beta, gamma],
+      strategicRelationships: {},
+      lastWeekNominationRecord: null,
+    } as GameState
+
+    const first = buildLohNominationPlan(base, () => 0)
+    const swapped = buildLohNominationPlan(
+      {
+        ...base,
+        players: base.players.map((candidate) => ({
+          ...candidate,
+          isUser: candidate.id === beta.id,
+        })),
+      },
+      () => 0
+    )
+
+    expect(first).not.toBeNull()
+    expect(swapped).not.toBeNull()
+    expect(swapped?.targetId).toBe(first?.targetId)
+    expect(swapped?.pawnIds).toEqual(first?.pawnIds)
+    expect(swapped?.initialNomineeIds).toEqual(first?.initialNomineeIds)
+  })
+
+  it('does not turn a protected target score into pawn desirability and resists repeat pawns', () => {
+    const initial = gameReducer(undefined, { type: 'test/init' })
+    const loh = player('loh', 'LOH', { status: 'loh' })
+    const target = player('target', 'Target')
+    const repeatPawn = player('repeat', 'Repeat')
+    const freshPawn = player('fresh', 'Fresh')
+
+    const state = {
+      ...initial,
+      gameId: 'pawn-inversion-regression',
+      week: 2,
+      phase: 'loh_results' as const,
+      publicModeEnabled: false,
+      lohId: loh.id,
+      players: [loh, target, repeatPawn, freshPawn],
+      strategicRelationships: {},
+      lastWeekNominationRecord: {
+        week: 1,
+        lohId: 'previous-loh',
+        nomineeIds: [repeatPawn.id],
+      },
+    } as GameState
+
+    const plan = buildLohNominationPlan(state, (_game, _lohId, candidate) => {
+      if (candidate.id === target.id) return 20
+      if (candidate.id === repeatPawn.id) return -100
+      return 0
+    })
+
+    expect(plan?.strategy).toBe('direct')
+    expect(plan?.targetId).toBe(target.id)
+    expect(plan?.pawnIds).toEqual([freshPawn.id])
+    expect(plan?.initialNomineeIds).toEqual([target.id, freshPawn.id])
+  })
+
   it('uses the persisted strategic plan atomically when Public Mode is off', () => {
     const initial = gameReducer(undefined, { type: 'test/init' })
     const loh = player('bea', 'Bea', { status: 'loh' })
