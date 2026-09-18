@@ -716,6 +716,37 @@
   text-transform: uppercase;
 }
 
+.vault-verdict__bank-mood {
+  display: block;
+  margin-top: 7px;
+  color: rgba(255, 244, 211, 0.66);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  line-height: 1.15;
+}
+
+.vault-verdict__offer-sheet.is-mood-generous {
+  border-color: rgba(119, 231, 190, 0.52);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 44px rgba(77, 233, 189, 0.12);
+}
+
+.vault-verdict__offer-sheet.is-mood-chaotic {
+  border-color: rgba(185, 135, 255, 0.54);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 44px rgba(154, 108, 255, 0.14);
+}
+
+.vault-verdict__offer-sheet.is-mood-stingy {
+  border-color: rgba(220, 224, 239, 0.32);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 36px rgba(205, 211, 235, 0.07);
+}
+
 .vault-verdict__offer-value {
   margin-top: 9px;
   color: #fff4c8;
