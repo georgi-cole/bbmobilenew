@@ -326,7 +326,7 @@ describe('critical shock / ruleset matrix', () => {
   })
 
   it('keeps Twin Shock target restrictions inside the critical nomination path', () => {
-    let state = cleanState(560)
+    const state = cleanState(560)
     const lia = state.players.find((player) => player.id === 'lia')
     const originalHuman = state.players.find((player) => player.isUser)
     const otherChoices = state.players.filter(
