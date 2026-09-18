@@ -440,6 +440,78 @@ describe('Reality causal orchestration', () => {
     expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.human).toEqual(['target:nova'])
   })
 
+  it('lets a disloyal AI member leak only partial alliance knowledge through a private whisper', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'leaky-coalition',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+      secrecy: 0.75,
+    })
+    alliance.status = 'ACTIVE'
+    alliance.infiltratorIds = ['ava']
+    alliance.genuine = false
+    alliance.memberCommitment.ava = 0.3
+
+    const leakActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      kai: {
+        id: 'kai',
+        isHuman: false,
+        active: true,
+        roles: ['active'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(47),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'AI_TO_HUMAN',
+        context: {
+          ...context,
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'kai', 'human'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            kai: ['active'],
+          },
+        },
+        actors: leakActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('whisper')!,
+            targetIds: ['human'],
+          },
+        ],
+      },
+    })
+
+    expect(pending.interaction?.status).toBe('AWAITING_HUMAN')
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_1',
+    })
+
+    expect(resolved.event?.outcome).toBe('SUCCESS')
+    expect(resolved.domain.alliances['leaky-coalition'].secrecy).toBeLessThan(0.75)
+    expect(resolved.domain.alliances['leaky-coalition'].suspectedByIds).toContain('human')
+    const allianceBeliefs = Object.values(resolved.domain.beliefsByOwner.human ?? {}).filter(
+      (belief) => belief.objectId === 'leaky-coalition'
+    )
+    expect(allianceBeliefs).toHaveLength(1)
+    expect(allianceBeliefs[0].subjectIds).toHaveLength(2)
+    expect(allianceBeliefs[0].subjectIds).toContain('ava')
+    expect(allianceBeliefs[0].subjectIds).not.toContain('kai')
+  })
+
   it('recruits an accepted target into a wider coalition instead of creating another pair', () => {
     const domain = createInitialRealityDomainState()
     const core = createRealityAlliance(domain, {
