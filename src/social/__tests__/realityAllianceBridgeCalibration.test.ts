@@ -338,9 +338,8 @@ describe('Reality alliance strategic bridge calibration', () => {
           infiltratorIds: secondary.infiltratorIds,
           secrecyAfterLeak: round(secondary.secrecy),
           leakEvents: eventTypes.filter((type) => type === 'ALLIANCE_LEAKED').length,
-          publicExposureEvents: eventTypes.filter(
-            (type) => type === 'ALLIANCE_PUBLICLY_EXPOSED'
-          ).length,
+          publicExposureEvents: eventTypes.filter((type) => type === 'ALLIANCE_PUBLICLY_EXPOSED')
+            .length,
         },
         null,
         2
