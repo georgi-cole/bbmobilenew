@@ -3,6 +3,7 @@ import {
   adjustRealityAllianceCommitment,
   applyRealityApology,
   chooseAllianceMemberVote,
+  coordinateRealityAllianceTarget,
   createRealityAlliance,
   createRealityGrievance,
   createInitialRealityDomainState,
@@ -56,6 +57,56 @@ describe('operational Reality alliances', () => {
 
     expect(avaVote.intendedTargetId).toBe('nova')
     expect(kaiVote.confidence).not.toBe(avaVote.confidence)
+  })
+
+  it('keeps a private target agreement inside the strongest overlapping pact', () => {
+    const state = createInitialRealityDomainState()
+    const core = createRealityAlliance(state, {
+      id: 'core-final-two',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    core.status = 'ACTIVE'
+    core.memberCommitment.ava = 0.82
+    core.memberCommitment.lia = 0.8
+    refreshRealityAllianceDynamics(core)
+
+    const outer = createRealityAlliance(state, {
+      id: 'outer-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    outer.status = 'ACTIVE'
+    outer.memberCommitment.ava = 0.55
+    outer.memberCommitment.lia = 0.54
+    outer.memberCommitment.kai = 0.5
+    refreshRealityAllianceDynamics(outer)
+
+    const coordinated = coordinateRealityAllianceTarget(state, {
+      actorId: 'ava',
+      partnerId: 'lia',
+      subjectId: 'nova',
+      kind: 'CURRENT',
+      at: { day: 3, phase: 'social_1' },
+      sourceEventId: 'pitch:nova',
+    })
+
+    expect(coordinated?.id).toBe(core.id)
+    expect(core.currentTargetIds).toEqual(['nova'])
+    expect(core.memberPlanBeliefs.ava).toEqual(['target:nova'])
+    expect(core.memberPlanBeliefs.lia).toEqual(['target:nova'])
+    expect(outer.currentTargetIds).toEqual([])
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_TARGET_COORDINATED' &&
+          event.reason.includes('pitch:nova')
+      )
+    ).toBe(true)
   })
 })
 
