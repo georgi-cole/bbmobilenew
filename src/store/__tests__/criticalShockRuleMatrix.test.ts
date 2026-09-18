@@ -126,6 +126,12 @@ describe('critical shock / ruleset matrix', () => {
     Object.values(FORCED_SHOCK_CRITICAL_RULES).forEach((declaration) => {
       expect(declaration.rationale.length).toBeGreaterThan(20)
     })
+    expect(
+      Object.entries(FORCED_SHOCK_CRITICAL_RULES)
+        .filter(([, declaration]) => declaration.voxCompatible)
+        .map(([type]) => type)
+        .sort()
+    ).toEqual(['dayStartShock', 'depressionShock', 'doubleEviction', 'twinShock'].sort())
   })
 
   it('restores a Battle Back winner to the active Classic eligibility pool', () => {
