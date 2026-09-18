@@ -43,17 +43,6 @@ const FINAL_FEED_LIMIT = 18
 const BATTERY_LOW_ASSET_BASE = `${import.meta.env.BASE_URL}assets/minigames/battery-low/`
 const EYE_BANK_CREST = `${BATTERY_LOW_ASSET_BASE}eye-bank.webp`
 const STAGE_BACKGROUND = `${BATTERY_LOW_ASSET_BASE}stage.webp`
-const HERO_REVEAL_SPRITES: Partial<Record<RevealEffectKey, { x: string; y: string }>> = {
-  'power-cell': { x: '0%', y: '0%' },
-  'blackout-cell': { x: '33.333%', y: '0%' },
-  inferno: { x: '66.667%', y: '0%' },
-  blush: { x: '100%', y: '0%' },
-  overcharge: { x: '0%', y: '100%' },
-  powerdown: { x: '33.333%', y: '100%' },
-  unlucky: { x: '66.667%', y: '100%' },
-  'answer-signal': { x: '100%', y: '100%' },
-}
-
 interface FinaleReveal {
   reserveNumber: number
   reserveAmount: number
