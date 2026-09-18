@@ -203,6 +203,21 @@ describe('Reality alliance ceremony consequences', () => {
 describe('stated, intended, and actual votes', () => {
   it('keeps the three vote layers separate and resolves vote promises from reality', () => {
     const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'promise-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Vote together',
+      at: { day: 3, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['keep-options-open'],
+      at: { day: 3, phase: 'social_2' },
+    })
+    const commitmentBeforeBrokenPromise = alliance.memberCommitment.ava
     setRealityStatedVote(state, 'ava', 'lia', 5)
     setRealityIntendedVote(state, 'ava', 'kai', 5, 0.8)
     upsertRealityPromise(state, {
@@ -226,6 +241,7 @@ describe('stated, intended, and actual votes', () => {
       actualTargetId: 'kai',
     })
     expect(state.promises['vote-promise'].status).toBe('BROKEN')
+    expect(alliance.memberCommitment.ava).toBeLessThan(commitmentBeforeBrokenPromise)
   })
 })
 
