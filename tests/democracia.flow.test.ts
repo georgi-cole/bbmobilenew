@@ -852,7 +852,7 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         posWinnerId: 'p5',
         nomineeIds: ['p2', 'p3'],
-        votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' }, // 2-2 tie
+        votes: { p4: 'p2', p5: 'p3' }, // 1-1 tie from eligible voters only
       })
       store.dispatch(advance())
       const state = store.getState().game
@@ -876,7 +876,7 @@ describe('Democracia twist', () => {
         coLohIds: ['p0', 'p1'],
         posWinnerId: 'p5',
         nomineeIds: ['p2', 'p3'],
-        votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' }, // 2-2 tie
+        votes: { p4: 'p2', p5: 'p3' }, // 1-1 tie from eligible voters only
       })
       store.dispatch(advance())
       const state = store.getState().game
@@ -903,7 +903,7 @@ describe('Democracia twist', () => {
         awaitingPosTieBreak: true,
         tiedNomineeIds: ['p2', 'p3'],
         voteResults: null,
-        votes: { p0: 'p2', p1: 'p3', p4: 'p2', p5: 'p3' },
+        votes: { p4: 'p2', p5: 'p3' },
       })
       store.dispatch(submitPosTieBreak('p2'))
       const state = store.getState().game
