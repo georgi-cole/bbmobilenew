@@ -19,14 +19,11 @@ import type { RealityAlliance } from './types'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
 import type { RealityContext } from './types'
-import {
-  expandCupidIds,
-  getCupidPair,
-  getCupidPartnerId,
-  isCupidArrowActive,
-} from '../../features/twists/cupidArrow'
+import { getCupidPartnerId } from '../../features/twists/cupidArrow'
 import {
   chooseAiEvictionVote,
+  getEligibleNominationTargets,
+  getEligibleReplacementNominees,
   getNominationTargetScore,
   getSafetyRelationshipScore,
 } from '../../store/gameSlice'
@@ -181,23 +178,7 @@ function activeAllianceAdvisors(
 }
 
 function nominationConsultationCandidates(state: RootState, actorId: string) {
-  const lohIds = new Set(expandCupidIds(state.game, state.game.lohId ? [state.game.lohId] : []))
-  const base = state.game.players.filter(
-    (player) =>
-      player.id !== actorId &&
-      player.status !== 'evicted' &&
-      player.status !== 'jury' &&
-      !lohIds.has(player.id)
-  )
-  if (!isCupidArrowActive(state.game)) return base
-
-  const seenPairs = new Set<string>()
-  return base.filter((player) => {
-    const key = getCupidPair(state.game, player.id)?.id ?? `solo:${player.id}`
-    if (seenPairs.has(key)) return false
-    seenPairs.add(key)
-    return true
-  })
+  return getEligibleNominationTargets(state.game, actorId)
 }
 
 function summarizeAlliancePreferences(
@@ -311,9 +292,7 @@ function buildAllianceConsultationPlan(
         Boolean(entry)
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
-    const replacements = nominationConsultationCandidates(state, actorId).filter(
-      (candidate) => !state.game.nomineeIds.includes(candidate.id)
-    )
+    const replacements = getEligibleReplacementNominees(state.game)
     const replacement =
       replacements
         .map((candidate) => ({
