@@ -1,6 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it } from 'vitest'
-import socialReducer, { replaceRealityDomain, updateRelationship } from '../socialSlice'
+import socialReducer, {
+  recordRealityActualVote,
+  replaceRealityDomain,
+  updateRelationship,
+} from '../socialSlice'
 import { migrateSocialState } from '../socialStateMigration'
 import {
   addRealityFact,
@@ -126,6 +130,48 @@ describe('Reality domain migration and directed relationships', () => {
       'CORE'
     )
     expect(migrated.reality.alliances['alliance-core-status'].leaderIds).toContain('human')
+  })
+
+  it('re-projects vote-night alliance fractures into the visible relationship map immediately', () => {
+    const store = configureStore({ reducer: { social: socialReducer } })
+    const reality = createInitialRealityDomainState()
+    applyRealityRelationshipChange(reality, {
+      sourceId: 'human',
+      targetId: 'lia',
+      eventId: 'core-bond',
+      day: 3,
+      phase: 'social_1',
+      anchor: 'positive',
+      deltas: { warmth: 35, trust: 50, loyalty: 55 },
+    })
+    const alliance = createRealityAlliance(reality, {
+      id: 'vote-fracture',
+      founderIds: ['human', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.memberPerceivedStatus.human = 'CORE'
+    alliance.memberPerceivedStatus.lia = 'CORE'
+    alliance.memberCommitment.human = 0.7
+    alliance.memberCommitment.lia = 0.7
+
+    store.dispatch(replaceRealityDomain(reality))
+    expect(store.getState().social.relationships.human.lia.tags).toContain('alliance')
+
+    store.dispatch(
+      recordRealityActualVote({
+        actorId: 'human',
+        targetId: 'lia',
+        day: 5,
+        phase: 'live_vote',
+        eventId: 'vote:5:human',
+      })
+    )
+
+    expect(store.getState().social.reality.alliances['vote-fracture'].status).toBe('FRACTURED')
+    expect(store.getState().social.relationships.human.lia.tags).not.toContain('alliance')
   })
 
   it('does not project fractured or dormant formal pacts as active alliance tags', () => {
