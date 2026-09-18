@@ -84,10 +84,10 @@ describe('Reality alliance commitment and hierarchy', () => {
     expect(alliance.memberCommitment.lia).toBeCloseTo(0.54)
     expect(alliance.memberPerceivedStatus.lia).toBe('CORE')
 
-    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.03)
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.11)
     expect(alliance.memberPerceivedStatus.lia).toBe('REGULAR')
 
-    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.21)
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.13)
     expect(alliance.memberPerceivedStatus.lia).toBe('PERIPHERAL')
     expect(alliance.leaderIds).not.toContain('lia')
   })
