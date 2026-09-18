@@ -38,6 +38,7 @@ const SUPPORTED_INTEL_PROPOSITIONS = new Set([
   'SECRET_MEETING',
   'ROMANTIC_MOMENT',
   'SECRET_ALLIANCE',
+  'ALLIANCE_EXPOSED',
   'TARGETING',
   'ALLIANCE_FRACTURE',
 ])
@@ -169,6 +170,13 @@ function leadText(fact: RealityFact, players: readonly Pick<Player, 'id' | 'name
         `${first} and ${second} appear to be quietly building something together.`,
         `A pattern suggests ${first} and ${second} are coordinating more closely than they admit.`,
       ])
+    case 'ALLIANCE_EXPOSED': {
+      const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
+      const allianceName = typeof fact.value === 'string' ? fact.value : ''
+      return allianceName
+        ? `${allianceName} has been exposed: ${names} are tied to the pact.`
+        : `A hidden alliance has been exposed involving ${names}.`
+    }
     case 'TARGETING':
       return `${subject} may be targeting ${playerName(players, fact.objectId)}.`
     case 'ALLIANCE_FRACTURE':
@@ -197,6 +205,13 @@ export function formatFauxTvWhisper(
       return `HOUSE WHISPERS — A private moment between ${first} and ${second} did not go unnoticed.`
     case 'SECRET_ALLIANCE':
       return `HOUSE WHISPERS — The growing closeness between ${first} and ${second} is beginning to attract attention.`
+    case 'ALLIANCE_EXPOSED': {
+      const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
+      const allianceName = typeof fact.value === 'string' ? fact.value : ''
+      return allianceName
+        ? `HOUSE EXPOSED — ${allianceName} is no longer secret. ${names} are linked to the alliance.`
+        : `HOUSE EXPOSED — A hidden alliance has surfaced: ${names}.`
+    }
     case 'TARGETING':
       return `HOUSE WHISPERS — ${subject}'s name has been linked to a quiet campaign against ${playerName(players, fact.objectId)}.`
     case 'ALLIANCE_FRACTURE':
@@ -431,7 +446,7 @@ export function buildIntelFactFromSocialAction(
   let objectId: string | undefined
   let witnessMaximum = 1
 
-  if (['proposeAlliance', 'ride_or_die'].includes(entry.actionId)) {
+  if (['proposeAlliance', 'ally', 'ride_or_die'].includes(entry.actionId)) {
     propositionType = 'SECRET_ALLIANCE'
   } else if (
     [
