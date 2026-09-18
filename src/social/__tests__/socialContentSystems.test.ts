@@ -104,6 +104,40 @@ describe('Drama social content system', () => {
     expect(reason).toBe('deduped_scenario_weekly_cap')
   })
 
+  it('allows distinct strategic follow-ups from the same alliance spokesperson', () => {
+    const first = interaction({
+      id: 'alliance-pitch',
+      fromId: 'ai-1',
+      type: 'deal_offer',
+      payload: {
+        scenarioKey: 'alliance_nomination_pitch',
+        phase: 'social_1',
+        dramaMode: true,
+        dedupeGroup: 'alliance_strategy:alliance_nomination_pitch',
+      },
+    })
+    const second = interaction({
+      id: 'alliance-vote',
+      fromId: 'ai-1',
+      type: 'deal_offer',
+      payload: {
+        scenarioKey: 'alliance_vote_pitch',
+        phase: 'social_2',
+        dramaMode: true,
+        dedupeGroup: 'alliance_strategy:alliance_vote_pitch',
+      },
+    })
+
+    expect(
+      getInteractionDedupeReason({
+        interaction: second,
+        priority: 'high',
+        pendingInteractions: [first],
+        week: 2,
+      })
+    ).toBeNull()
+  })
+
   it('enforces credible affinity floors and ceilings for named relationships', () => {
     let state = socialReducer(
       undefined,
