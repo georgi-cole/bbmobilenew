@@ -15,6 +15,211 @@ function pairId(left: string, right: string): string {
   return [left, right].sort().join('~')
 }
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function allianceRecruitmentRank(
+  alliance: RealityAlliance,
+  recruiterId: string
+): [number, number, number, number, string] {
+  const statusRank = alliance.status === 'ACTIVE' ? 2 : alliance.status === 'PROBATIONARY' ? 1 : 0
+  const memberRank =
+    alliance.memberPerceivedStatus[recruiterId] === 'CORE'
+      ? 2
+      : alliance.memberPerceivedStatus[recruiterId] === 'REGULAR'
+        ? 1
+        : 0
+  return [
+    alliance.memberIds.length,
+    memberRank,
+    statusRank,
+    alliance.memberCommitment[recruiterId] ?? 0,
+    alliance.id,
+  ]
+}
+
+/**
+ * Pick the existing coalition a player is most plausibly recruiting into.
+ * Only core/regular members of live coalitions may extend them; peripheral
+ * members need to build their own deal instead of silently changing the group.
+ */
+export function findRealityAllianceForRecruitment(
+  state: RealityDomainState,
+  recruiterId: string,
+  targetId: string
+): RealityAlliance | null {
+  const candidates = Object.values(state.alliances).filter(
+    (alliance) =>
+      (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+      alliance.memberIds.includes(recruiterId) &&
+      !alliance.memberIds.includes(targetId) &&
+      alliance.memberPerceivedStatus[recruiterId] !== 'PERIPHERAL'
+  )
+  candidates.sort((left, right) => {
+    const a = allianceRecruitmentRank(left, recruiterId)
+    const b = allianceRecruitmentRank(right, recruiterId)
+    return (
+      b[0] - a[0] ||
+      b[1] - a[1] ||
+      b[2] - a[2] ||
+      b[3] - a[3] ||
+      String(a[4]).localeCompare(String(b[4]))
+    )
+  })
+  return candidates[0] ?? null
+}
+
+/**
+ * Recompute structural overlap links for every non-dissolved alliance.
+ * Two alliances overlap when they share at least two members, which covers
+ * nested Final-2/core deals without treating a single shared player as a bloc.
+ */
+export function refreshRealityAllianceOverlaps(state: RealityDomainState): void {
+  const alliances = Object.values(state.alliances).filter(
+    (alliance) => alliance.status !== 'DISSOLVED'
+  )
+  for (const alliance of alliances) alliance.overlapAllianceIds = []
+
+  for (let leftIndex = 0; leftIndex < alliances.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < alliances.length; rightIndex += 1) {
+      const left = alliances[leftIndex]
+      const right = alliances[rightIndex]
+      const sharedMembers = left.memberIds.filter((id) => right.memberIds.includes(id))
+      if (sharedMembers.length < 2) continue
+      left.overlapAllianceIds.push(right.id)
+      right.overlapAllianceIds.push(left.id)
+    }
+  }
+
+  for (const alliance of alliances) {
+    alliance.overlapAllianceIds = [...new Set(alliance.overlapAllianceIds)].sort()
+  }
+}
+
+/**
+ * Add a recruit to an existing coalition without flattening a two-person core.
+ * Expanding a pair creates a wider coalition and keeps the pair as an overlapping
+ * inner pact. Once a coalition already has 3+ members, later recruits extend it
+ * in place so we do not create a new alliance object for every additional member.
+ */
+export function recruitRealityAllianceMember(
+  state: RealityDomainState,
+  input: {
+    allianceId: string
+    recruiterId: string
+    targetId: string
+    expandedAllianceId: string
+    at: RealityClock
+  }
+): RealityAlliance {
+  const base = state.alliances[input.allianceId]
+  if (!base || base.status === 'DISSOLVED') throw new Error('Alliance is not active')
+  if (!base.memberIds.includes(input.recruiterId))
+    throw new Error('Recruiter must already belong to the alliance')
+  if (base.memberPerceivedStatus[input.recruiterId] === 'PERIPHERAL')
+    throw new Error('Peripheral members cannot recruit into the alliance')
+  if (base.memberIds.includes(input.targetId)) return base
+
+  const priorMembers = [...base.memberIds]
+  let alliance: RealityAlliance
+
+  if (base.memberIds.length === 2) {
+    alliance = {
+      ...base,
+      id: input.expandedAllianceId,
+      memberIds: [...priorMembers, input.targetId],
+      founderIds: [...priorMembers],
+      leaderIds: [...base.leaderIds],
+      secrecy: clamp01(base.secrecy - 0.05),
+      cohesion: clamp01((base.cohesion * priorMembers.length + 0.42) / (priorMembers.length + 1)),
+      fractureRisk: clamp01(base.fractureRisk + 0.03),
+      currentTargetIds: [...base.currentTargetIds],
+      fallbackTargetIds: [...base.fallbackTargetIds],
+      sharedPromiseIds: [...base.sharedPromiseIds],
+      memberCommitment: {
+        ...base.memberCommitment,
+        [input.targetId]: 0.42,
+      },
+      memberPerceivedStatus: {
+        ...Object.fromEntries(priorMembers.map((id) => [id, 'CORE' as const])),
+        [input.targetId]: 'REGULAR',
+      },
+      memberPlanBeliefs: {
+        ...Object.fromEntries(
+          priorMembers.map((id) => [id, [...(base.memberPlanBeliefs[id] ?? [])]])
+        ),
+        [input.targetId]: [],
+      },
+      operationalRoles: {
+        ...Object.fromEntries(
+          priorMembers.map((id) => [id, [...(base.operationalRoles[id] ?? [])]])
+        ),
+        [input.targetId]: [],
+      },
+      suspectedByIds: [...base.suspectedByIds],
+      knownLeakEventIds: [...base.knownLeakEventIds],
+      overlapAllianceIds: [],
+      lastMeeting: input.at,
+      genuine: base.genuine,
+      infiltratorIds: [...base.infiltratorIds],
+    }
+    state.alliances[alliance.id] = alliance
+  } else {
+    base.memberIds = [...base.memberIds, input.targetId]
+    base.memberCommitment[input.targetId] = 0.38
+    base.memberPerceivedStatus[input.targetId] = 'PERIPHERAL'
+    base.memberPlanBeliefs[input.targetId] = []
+    base.operationalRoles[input.targetId] = []
+    base.secrecy = clamp01(base.secrecy - 0.04)
+    base.cohesion = clamp01(
+      (base.cohesion * priorMembers.length + 0.38) / (priorMembers.length + 1)
+    )
+    base.fractureRisk = clamp01(base.fractureRisk + 0.02)
+    base.lastMeeting = input.at
+    alliance = base
+  }
+
+  const event = appendRealityEvent(state, {
+    ...input.at,
+    type: 'ALLIANCE_MEMBER_RECRUITED',
+    actorId: input.recruiterId,
+    targetIds: [input.targetId],
+    participantIds: [...alliance.memberIds],
+    witnessIds: [],
+    visibility: 'GROUP_VISIBLE',
+    outcome: 'SUCCESS',
+    reason: `recruited_into:${alliance.id}`,
+    tags: ['ALLIANCE', 'RECRUITMENT'],
+    relatedFactIds: [],
+    relatedPromiseIds: [...alliance.sharedPromiseIds],
+    relatedThreadIds: [],
+    publicEligible: false,
+    juryEligible: true,
+  })
+
+  for (const memberId of priorMembers) {
+    if (memberId === input.recruiterId) continue
+    for (const [fromId, toId] of [
+      [memberId, input.targetId],
+      [input.targetId, memberId],
+    ] as const) {
+      applyRealityRelationshipChange(state, {
+        sourceId: fromId,
+        targetId: toId,
+        eventId: event.id,
+        day: input.at.day,
+        phase: input.at.phase,
+        anchor: 'positive',
+        deltas: { trust: 3, loyalty: 4, strategicValue: 8, secretCloseness: 6, familiarity: 2 },
+      })
+    }
+  }
+
+  refreshRealityAllianceOverlaps(state)
+  return alliance
+}
+
 export function createRealityAlliance(
   state: RealityDomainState,
   input: {
