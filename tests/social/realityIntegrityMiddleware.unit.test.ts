@@ -110,7 +110,9 @@ describe('Reality integrity middleware', () => {
     expect(relationshipActions).toHaveLength(2)
     expect(relationshipActions[0].payload?.tags).toContain('broken_romance')
     expect(relationshipActions[0].payload?.tags).toContain('betrayal')
+    expect(relationshipActions[0].payload?.skipRealityProjection).toBe(true)
     expect(relationshipActions[1].payload?.delta).toBeLessThanOrEqual(-55)
+    expect(relationshipActions[1].payload?.skipRealityProjection).toBe(true)
     expect(
       dispatched.some(
         (action) => action.type === 'game/addTvEvent' && action.payload?.meta?.bondBetrayal === true
