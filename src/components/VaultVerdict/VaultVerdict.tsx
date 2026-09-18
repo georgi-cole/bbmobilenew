@@ -4,14 +4,18 @@ import type { GenericMinigameProps } from '../../minigames/reactComponents'
 import {
   VAULT_VERDICT_AMOUNTS,
   VAULT_VERDICT_ROUND_SCHEDULE,
+  acceptInsuranceDeal,
   assertBroadcastPrivacy,
   buildBatteryLowVoteEffects,
   buildRawResults,
   choosePersonalVault,
+  counterBankOffer,
   createInitialContestant,
   createVaultVerdictRng,
   formatVaultAmount,
+  getBankMoodProfile,
   getHighestRemainingValue,
+  getRevealCommentary,
   getSpecialRevealLabel,
   getVaultsLeftThisRound,
   maybeCreateOffer,
@@ -21,6 +25,7 @@ import {
   riskVault,
   signVerdict,
   simulateAiContestant,
+  swapReserveBattery,
 } from './vaultVerdictLogic'
 import type {
   BroadcastEvent,
@@ -62,13 +67,6 @@ function getChargeTone(amount: number): ChargeTone {
 
 function getReactionClass(amount: number, effect?: VaultPodState['specialEffect']) {
   return getSpecialRevealLabel(amount, effect) ? ' vault-verdict__pod--dramatic' : ''
-}
-
-function getBankMoodCopy(mood: VaultContestantState['bankMood']) {
-  if (mood === 'stingy') return 'The Bank looks confident.'
-  if (mood === 'generous') return 'The Bank is feeling generous.'
-  if (mood === 'chaotic') return 'The Bank is behaving erratically.'
-  return 'The Bank is calculating every percentage.'
 }
 
 function buildCompletion(contestants: VaultContestantState[]) {
@@ -126,6 +124,8 @@ function BatteryTile({
         ? 'BLACKOUT'
         : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
+  const effectClass =
+    isOpened && battery.specialEffect ? ` is-effect-${battery.specialEffect}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
     : undefined
@@ -142,7 +142,7 @@ function BatteryTile({
   return (
     <button
       type="button"
-      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${effectClass}${
         isOpened ? getReactionClass(battery.amount, battery.specialEffect) : ''
       }`}
       style={chargeStyle}
@@ -242,6 +242,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const revealedStandardAmounts = human.vaults
     .filter((vault) => vault.status === 'opened' && !vault.specialEffect)
     .map((vault) => vault.amount)
+  const bankProfile = getBankMoodProfile(human.bankMood)
+  const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
+  const currentOfferRecord = human.offerHistory[human.offerHistory.length - 1] ?? null
   const coreMood =
     latestReveal == null
       ? 'is-idle'
@@ -262,9 +265,11 @@ export default function BatteryLow(props: GenericMinigameProps) {
       ? human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length
         ? 'The final Bank Offer is ready.'
         : 'The Bank has made an offer.'
-      : latestRevealLabel
-        ? `${latestRevealLabel} · ${formatVaultAmount(latestReveal ?? 0)} revealed`
-        : (feed[0]?.message ??
+      : revealCommentary
+        ? revealCommentary
+        : latestRevealLabel
+          ? `${latestRevealLabel} · ${formatVaultAmount(latestReveal ?? 0)} revealed`
+          : (feed[0]?.message ??
           (human.personalVaultId
             ? 'Choose the next battery to reveal.'
             : 'Choose one battery to protect as your Reserve.'))
@@ -394,6 +399,37 @@ export default function BatteryLow(props: GenericMinigameProps) {
     if (offerKey == null || decisionPending) return
     setPendingOfferKey(offerKey)
     handleRejectOffer(eventTimeMs)
+  }
+
+  function handleCounterofferClick() {
+    if (offerKey == null || decisionPending || human.counterofferUsed) return
+    updateHuman((current) => counterBankOffer(current, rng))
+  }
+
+  function handleInsuranceClick(eventTimeMs: number) {
+    if (
+      offerKey == null ||
+      decisionPending ||
+      human.currentDeal?.type !== 'insurance' ||
+      human.currentDeal.resolved
+    ) {
+      return
+    }
+    setPendingOfferKey(offerKey)
+    const elapsed = startTimeRef.current == null ? elapsedMs : eventTimeMs - startTimeRef.current
+    updateHuman((current) => riskVault(acceptInsuranceDeal(current), elapsed))
+  }
+
+  function handleSwapClick() {
+    if (
+      offerKey == null ||
+      decisionPending ||
+      human.currentDeal?.type !== 'swap' ||
+      human.currentDeal.resolved
+    ) {
+      return
+    }
+    updateHuman((current) => swapReserveBattery(current, rng))
   }
 
   function handleCommitResults() {
@@ -663,13 +699,21 @@ export default function BatteryLow(props: GenericMinigameProps) {
         {human.currentOffer != null && gameActive && (
           <div className="vault-verdict__offer-layer">
             <section
-              className={`vault-verdict__offer-sheet is-mood-${human.bankMood}`}
+              className={`vault-verdict__offer-sheet is-mood-${human.bankMood}${
+                human.counterofferResult ? ` is-counter-${human.counterofferResult.outcome}` : ''
+              }`}
               role="dialog"
               aria-modal="true"
               aria-label="Bank Offer"
             >
-              <span className="vault-verdict__offer-kicker">Bank Offer</span>
-              <small className="vault-verdict__bank-mood">{getBankMoodCopy(human.bankMood)}</small>
+              <div className="vault-verdict__bank-heading">
+                <span className="vault-verdict__offer-kicker">Bank Offer</span>
+                <span className={`vault-verdict__mood-badge is-${human.bankMood}`}>
+                  <b>{bankProfile.symbol}</b>
+                  {bankProfile.label}
+                </span>
+              </div>
+              <small className="vault-verdict__bank-mood">{bankProfile.short}</small>
               <div className="vault-verdict__offer-value">
                 {formatVaultAmount(human.currentOffer)}
               </div>
@@ -678,6 +722,86 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   ? 'Lock this charge now, or reveal your Reserve Battery for the final result.'
                   : 'Lock this charge now, or keep playing and risk losing a stronger value.'}
               </p>
+
+              {human.counterofferResult && (
+                <div
+                  className={`vault-verdict__counter-result is-${human.counterofferResult.outcome}`}
+                  aria-live="polite"
+                >
+                  {human.counterofferResult.outcome === 'raised'
+                    ? `The Bank blinked: ${formatVaultAmount(
+                        human.counterofferResult.previousOffer
+                      )} → ${formatVaultAmount(human.counterofferResult.newOffer)}`
+                    : human.counterofferResult.outcome === 'cut'
+                      ? `The Bank punished the push: ${formatVaultAmount(
+                          human.counterofferResult.previousOffer
+                        )} → ${formatVaultAmount(human.counterofferResult.newOffer)}`
+                      : 'The Bank refuses to move.'}
+                </div>
+              )}
+
+              {human.currentDeal && (
+                <div className={`vault-verdict__deal-card is-${human.currentDeal.type}`}>
+                  <span>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'BANK CONDITION · INSURANCE'
+                      : human.currentDeal.type === 'swap'
+                        ? 'BANK CONDITION · BLIND SWAP'
+                        : 'PRESSURE OFFER · NON-NEGOTIABLE'}
+                  </span>
+                  <strong>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'Protect a 25% floor'
+                      : human.currentDeal.type === 'swap'
+                        ? human.currentDeal.resolved
+                          ? 'Reserve swapped'
+                          : 'Trade your Reserve blind'
+                        : `+${human.currentDeal.premiumPct ?? 0}% premium`}
+                  </strong>
+                  <small>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'Continue with a 25% minimum if you reach your Reserve. Future Bank offers are 10% lower.'
+                      : human.currentDeal.type === 'swap'
+                        ? human.currentDeal.resolved
+                          ? 'The new Reserve is sealed. The Bank offer is unchanged.'
+                          : 'The Bank randomly exchanges your Reserve with one unopened battery. Irreversible.'
+                        : 'This offer is already boosted. Counteroffers are disabled for this decision.'}
+                  </small>
+                  {human.currentDeal.type === 'insurance' && !human.currentDeal.resolved && (
+                    <button
+                      type="button"
+                      className="vault-verdict__deal-action"
+                      disabled={decisionPending}
+                      onClick={(event) => handleInsuranceClick(event.timeStamp)}
+                    >
+                      Insure &amp; continue
+                    </button>
+                  )}
+                  {human.currentDeal.type === 'swap' && !human.currentDeal.resolved && (
+                    <button
+                      type="button"
+                      className="vault-verdict__deal-action"
+                      disabled={decisionPending}
+                      onClick={handleSwapClick}
+                    >
+                      Blind swap
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!human.counterofferUsed && human.currentDeal?.type !== 'pressure' && (
+                <button
+                  type="button"
+                  className="vault-verdict__counteroffer"
+                  disabled={decisionPending}
+                  onClick={handleCounterofferClick}
+                >
+                  <span>Counteroffer</span>
+                  <small>One shot · the Bank may raise, hold, or cut</small>
+                </button>
+              )}
+
               <div className="vault-verdict__offer-actions">
                 <button
                   type="button"
