@@ -690,13 +690,7 @@ export function useEvictionFlow({
         handleVoteResultsDone()
       }
     },
-    [
-      aiTiebreakContext,
-      armPostEvictionVoteBreakdown,
-      dispatch,
-      humanIsHoH,
-      handleVoteResultsDone,
-    ]
+    [aiTiebreakContext, armPostEvictionVoteBreakdown, dispatch, humanIsHoH, handleVoteResultsDone]
   )
 
   const handleAiTiebreakAnnouncementDismiss = useCallback(() => {
