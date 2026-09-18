@@ -10,11 +10,7 @@ import {
 } from '../reality'
 import type { RealityMemory } from '../reality'
 
-function hearsayMemory(
-  ownerId: string,
-  eventId: string,
-  sourceId: string
-): RealityMemory {
+function hearsayMemory(ownerId: string, eventId: string, sourceId: string): RealityMemory {
   return {
     id: `memory:${ownerId}:${eventId}`,
     ownerId,
@@ -137,13 +133,7 @@ describe('Reality alliance identity and private knowledge', () => {
     })
     const eventsBefore = state.events.length
 
-    leakRealityAlliance(
-      state,
-      alliance.id,
-      'ava',
-      ['lia', 'lia'],
-      { day: 3, phase: 'social_1' }
-    )
+    leakRealityAlliance(state, alliance.id, 'ava', ['lia', 'lia'], { day: 3, phase: 'social_1' })
 
     expect(alliance.secrecy).toBe(0.75)
     expect(alliance.knownLeakEventIds).toEqual([])
@@ -162,13 +152,7 @@ describe('Reality alliance identity and private knowledge', () => {
       secrecy: 0.75,
     })
 
-    leakRealityAlliance(
-      state,
-      alliance.id,
-      'ava',
-      ['human', 'mara'],
-      { day: 4, phase: 'social_1' }
-    )
+    leakRealityAlliance(state, alliance.id, 'ava', ['human', 'mara'], { day: 4, phase: 'social_1' })
 
     const firstRead = getRealityAllianceKnowledgeView(state, alliance.id, 'human')
     expect(firstRead.level).toBe('SUSPECTED')
@@ -181,13 +165,7 @@ describe('Reality alliance identity and private knowledge', () => {
       )
     ).toBe(false)
 
-    leakRealityAlliance(
-      state,
-      alliance.id,
-      'ava',
-      ['human', 'mara'],
-      { day: 5, phase: 'social_1' }
-    )
+    leakRealityAlliance(state, alliance.id, 'ava', ['human', 'mara'], { day: 5, phase: 'social_1' })
 
     const publicRead = getRealityAllianceKnowledgeView(state, alliance.id, 'human')
     expect(publicRead.level).toBe('PUBLIC')

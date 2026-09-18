@@ -35,17 +35,11 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))]
 }
 
-function beliefMatchesAlliance(
-  belief: RealityBelief,
-  alliance: RealityAlliance
-): boolean {
+function beliefMatchesAlliance(belief: RealityBelief, alliance: RealityAlliance): boolean {
   if (
-    ![
-      'SECRET_ALLIANCE',
-      'ALLIANCE_PUBLIC_CLAIM',
-      'ALLIANCE_EXPOSED',
-      'ALLIANCE_FRACTURE',
-    ].includes(belief.propositionType)
+    !['SECRET_ALLIANCE', 'ALLIANCE_PUBLIC_CLAIM', 'ALLIANCE_EXPOSED', 'ALLIANCE_FRACTURE'].includes(
+      belief.propositionType
+    )
   ) {
     return false
   }
@@ -261,9 +255,7 @@ export function recordRealityAllianceLeakDiscovery(
       ...current.knownMemberIds,
       input.leakerId,
       ...alliance.leaderIds,
-      ...alliance.memberIds.filter(
-        (id) => alliance.memberPerceivedStatus[id] === 'CORE'
-      ),
+      ...alliance.memberIds.filter((id) => alliance.memberPerceivedStatus[id] === 'CORE'),
       ...alliance.memberIds,
     ]).filter((id) => alliance.memberIds.includes(id))
     const revealCount = Math.min(

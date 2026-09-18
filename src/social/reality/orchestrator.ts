@@ -14,11 +14,7 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange } from './relationships'
 import { resolveRealityTargetResponse, type RealityResponseResolution } from './response'
 import { scoreRealityAction, type RealityScoreBreakdown } from './scoring'
-import {
-  addRealityFact,
-  learnRealityFact,
-  resolveRealityAllianceIdForFact,
-} from './knowledge'
+import { addRealityFact, learnRealityFact, resolveRealityAllianceIdForFact } from './knowledge'
 import {
   applyRealityApology,
   createRealityAlliance,
@@ -241,10 +237,7 @@ function applyRealityLifecycle(input: {
     }
   }
 
-  if (
-    interaction.direction !== 'HUMAN_TO_AI' &&
-    ['whisper', 'share_intel'].includes(action.id)
-  ) {
+  if (interaction.direction !== 'HUMAN_TO_AI' && ['whisper', 'share_intel'].includes(action.id)) {
     for (const targetId of acceptedTargets) {
       const leakable = Object.values(domain.alliances)
         .filter(
@@ -392,9 +385,10 @@ function applyRealityLifecycle(input: {
       ? resolveRealityAllianceIdForFact(domain, allianceBelief)
       : undefined
     const alliance = allianceId ? domain.alliances[allianceId] : undefined
-    const knownAllianceMembers = allianceBelief && alliance
-      ? [...new Set(allianceBelief.subjectIds)].filter((id) => alliance.memberIds.includes(id))
-      : []
+    const knownAllianceMembers =
+      allianceBelief && alliance
+        ? [...new Set(allianceBelief.subjectIds)].filter((id) => alliance.memberIds.includes(id))
+        : []
 
     if (alliance && knownAllianceMembers.length >= 2) {
       const claimId = `fact:alliance-public-claim:${alliance.id}:${event.id}`

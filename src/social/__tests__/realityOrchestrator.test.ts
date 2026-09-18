@@ -602,19 +602,13 @@ describe('Reality causal orchestration', () => {
     })
 
     const publicClaim = Object.values(result.domain.facts).find(
-      (fact) =>
-        fact.propositionType === 'ALLIANCE_PUBLIC_CLAIM' &&
-        fact.objectId === alliance.id
+      (fact) => fact.propositionType === 'ALLIANCE_PUBLIC_CLAIM' && fact.objectId === alliance.id
     )
     expect(publicClaim?.publicVisible).toBe(true)
     expect(publicClaim?.subjectIds.sort()).toEqual(['kai', 'lia'])
     expect(publicClaim?.subjectIds).not.toContain('nova')
 
-    const outsiderView = getRealityAllianceKnowledgeView(
-      result.domain,
-      alliance.id,
-      'human'
-    )
+    const outsiderView = getRealityAllianceKnowledgeView(result.domain, alliance.id, 'human')
     expect(outsiderView.level).toBe('PUBLIC')
     expect(outsiderView.knownMemberIds.sort()).toEqual(['kai', 'lia'])
     expect(outsiderView.fullMembershipKnown).toBe(false)

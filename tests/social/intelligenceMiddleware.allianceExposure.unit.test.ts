@@ -70,9 +70,9 @@ describe('intelligenceMiddleware alliance exposure editorial gate', () => {
       broadcastLevel: 'major',
       allianceExposure: true,
     })
-    expect(
-      dispatched.some((action) => action.type === 'social/recordIntelligenceDelivery')
-    ).toBe(true)
+    expect(dispatched.some((action) => action.type === 'social/recordIntelligenceDelivery')).toBe(
+      true
+    )
   })
 
   it('does not broadcast a private alliance fact', () => {

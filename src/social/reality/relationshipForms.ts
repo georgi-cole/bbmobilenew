@@ -1,8 +1,5 @@
 import type { DramaAlliance } from '../types'
-import {
-  maybeExposeRealityAlliance,
-  recordRealityAllianceLeakDiscovery,
-} from './allianceKnowledge'
+import { maybeExposeRealityAlliance, recordRealityAllianceLeakDiscovery } from './allianceKnowledge'
 import { appendRealityEvent } from './events'
 import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
@@ -34,10 +31,24 @@ function allianceNameHash(value: string): number {
 }
 
 const ALLIANCE_NAME_POOLS = {
-  endgame: ['Final Cut', 'Last Light', 'The Finish Line', 'Endgame', 'The Last Word', 'Closing Time'],
+  endgame: [
+    'Final Cut',
+    'Last Light',
+    'The Finish Line',
+    'Endgame',
+    'The Last Word',
+    'Closing Time',
+  ],
   protection: ['Safe Harbor', 'The Shield', 'The Guard', 'The Cover', 'Home Base', 'The Anchor'],
   numbers: ['The Numbers', 'The Bloc', 'The Majority', 'The Line', 'The Vote', 'The Board'],
-  generic: ['The Circle', 'The Core', 'The Collective', 'The Quiet Pact', 'The Table', 'The Network'],
+  generic: [
+    'The Circle',
+    'The Core',
+    'The Collective',
+    'The Quiet Pact',
+    'The Table',
+    'The Network',
+  ],
 } as const
 
 function isEndgameAlliancePurpose(purpose: string): boolean {
