@@ -5,7 +5,8 @@ export const VAULT_VERDICT_AMOUNTS = [
   0, 1, 4.04, 6.66, 13, 13.37, 21, 24, 37, 42, 50, 55, 60, 66, 69, 75, 80, 88, 91, 95, 99, 100,
 ] as const;
 
-export const VAULT_VERDICT_ROUND_SCHEDULE = [5, 4, 4, 3, 2, 1, 1] as const;
+export const VAULT_VERDICT_ROUND_SCHEDULE = [6, 5, 4, 3, 2, 1, 1] as const;
+export const BATTERY_LOW_SPECIAL_RANK_VALUE = 50;
 
 export type VaultStatus = 'available' | 'personal' | 'opened' | 'remainingFinalWallVault';
 export type BankMood = 'stingy' | 'calculated' | 'generous' | 'chaotic';
@@ -147,20 +148,21 @@ export function createVaultVerdictRng(seed = 0) {
 
 export function createVaultPods(seed: number, voteEffectsEnabled = true): VaultPodState[] {
   const rng = mulberry32(seed >>> 0);
-  const amounts = shuffle(VAULT_VERDICT_AMOUNTS, rng);
-  return amounts.map((amount, index) => ({
+  const cells: Array<{ amount: number; specialEffect: BatteryLowVoteEffect | null }> =
+    VAULT_VERDICT_AMOUNTS.map((amount) => ({ amount, specialEffect: null }));
+  if (voteEffectsEnabled) {
+    cells.push(
+      { amount: BATTERY_LOW_SPECIAL_RANK_VALUE, specialEffect: 'doubleVote' },
+      { amount: BATTERY_LOW_SPECIAL_RANK_VALUE, specialEffect: 'skipVote' },
+    );
+  }
+  return shuffle(cells, rng).map((cell, index) => ({
     vaultId: `battery-${index + 1}`,
     displayNumber: index + 1,
-    amount,
+    amount: cell.amount,
     status: 'available',
     openedAt: null,
-    specialEffect: voteEffectsEnabled
-      ? amount === 1
-        ? 'doubleVote'
-        : amount === 0
-          ? 'skipVote'
-          : null
-      : null,
+    specialEffect: cell.specialEffect,
   }));
 }
 
@@ -241,20 +243,21 @@ export function createInitialContestant(
 ): VaultContestantState {
   const rng = mulberry32(mixSeed(seed, participant.id));
   const bankMood = pick(rng, BANK_MOODS);
+  const vaults = createVaultPods(
+    mixSeed(seed + originalTurnOrderIndex * 97, participant.id),
+    voteEffectsEnabled,
+  );
   return {
     contestantId: participant.id,
     displayName: participant.name,
     isUserControlled: participant.isHuman,
     originalTurnOrderIndex,
-    vaults: createVaultPods(
-      mixSeed(seed + originalTurnOrderIndex * 97, participant.id),
-      voteEffectsEnabled,
-    ),
+    vaults,
     personalVaultId: null,
     personalVaultAmount: null,
     openedVaultIds: [],
     revealedAmounts: [],
-    remainingAmounts: [...VAULT_VERDICT_AMOUNTS],
+    remainingAmounts: vaults.map((vault) => vault.amount),
     currentRound: 0,
     currentOffer: null,
     offerHistory: [],
