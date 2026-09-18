@@ -9,6 +9,7 @@ import {
   formRealityTruce,
   holdRealityAllianceMeeting,
   recruitRealityAllianceMember,
+  refreshRealityAllianceOverlaps,
   reciprocateRealityRomance,
   signalRealityRomance,
 } from '../reality'
@@ -142,6 +143,40 @@ describe('Reality coalition recruitment', () => {
     expect(duplicate.id).toBe(coalition.id)
     expect(duplicate.memberIds.filter((id) => id === 'nova')).toHaveLength(1)
     expect(state.events).toHaveLength(eventCount)
+  })
+
+  it('clears stale overlaps and refuses recruitment from a dissolved coalition', () => {
+    const state = createInitialRealityDomainState()
+    const core = createRealityAlliance(state, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Inner pact',
+      at: { day: 2, phase: 'social_1' },
+    })
+    const outer = createRealityAlliance(state, {
+      id: 'alliance-outer',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Wider coalition',
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    expect(core.overlapAllianceIds).toEqual(['alliance-outer'])
+    outer.status = 'DISSOLVED'
+    refreshRealityAllianceOverlaps(state)
+
+    expect(core.overlapAllianceIds).toEqual([])
+    expect(outer.overlapAllianceIds).toEqual([])
+    expect(() =>
+      recruitRealityAllianceMember(state, {
+        allianceId: outer.id,
+        recruiterId: 'ava',
+        targetId: 'nova',
+        expandedAllianceId: 'unused',
+        at: { day: 4, phase: 'social_1' },
+      })
+    ).toThrow('Alliance is not recruitable')
   })
 
   it('does not let a peripheral member silently expand the coalition', () => {
