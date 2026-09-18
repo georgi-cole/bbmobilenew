@@ -109,15 +109,18 @@ function projectRealityTags(
   const tags = existingTags.filter((tag) => !REALITY_PROJECTED_TAGS.has(tag))
   const edge = reality.relationships[sourceId]?.[targetId]
   if (!edge) return tags
+  const formalPairAlliances = Object.values(reality.alliances).filter(
+    (alliance) =>
+      alliance.memberIds.includes(sourceId) && alliance.memberIds.includes(targetId)
+  )
+  const hasLiveFormalAlliance = formalPairAlliances.some(
+    (alliance) => alliance.status !== 'DISSOLVED'
+  )
+  const hasFormalAllianceHistory = formalPairAlliances.length > 0
   if (
-    Object.values(reality.alliances).some(
-      (alliance) =>
-        alliance.status !== 'DISSOLVED' &&
-        alliance.memberIds.includes(sourceId) &&
-        alliance.memberIds.includes(targetId)
-    ) ||
-    edge.perceivedLabel === 'ALLY' ||
-    edge.perceivedLabel === 'CORE_ALLY'
+    hasLiveFormalAlliance ||
+    (!hasFormalAllianceHistory &&
+      (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY'))
   ) {
     tags.push('alliance')
   }
