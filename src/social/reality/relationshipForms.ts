@@ -107,7 +107,8 @@ export function renameRealityAlliance(
 ): RealityAlliance {
   const alliance = state.alliances[input.allianceId]
   if (!alliance || alliance.status === 'DISSOLVED') throw new Error('Alliance is not active')
-  if (!alliance.memberIds.includes(input.actorId)) throw new Error('Only a member can name the alliance')
+  if (!alliance.memberIds.includes(input.actorId))
+    throw new Error('Only a member can name the alliance')
 
   const name = input.name.trim().replace(/\s+/g, ' ').slice(0, 28)
   if (name.length < 2) throw new Error('Alliance name is too short')
@@ -277,7 +278,8 @@ export function removeRealityAllianceMember(
 ): RealityAlliance {
   const alliance = state.alliances[input.allianceId]
   if (!alliance || alliance.status === 'DISSOLVED') throw new Error('Alliance is not active')
-  if (!alliance.memberIds.includes(input.memberId)) throw new Error('Player is not an alliance member')
+  if (!alliance.memberIds.includes(input.memberId))
+    throw new Error('Player is not an alliance member')
 
   if (input.kind === 'EXPELLED') {
     if (input.actorId === input.memberId) throw new Error('A member cannot expel themself')
@@ -580,8 +582,7 @@ export function recordRealityAllianceBetrayal(
     }
 
     const repeatedSevereBreach =
-      wasFractured &&
-      (severity >= 0.28 || (alliance.memberCommitment[input.actorId] ?? 0) <= 0.12)
+      wasFractured && (severity >= 0.28 || (alliance.memberCommitment[input.actorId] ?? 0) <= 0.12)
     if (repeatedSevereBreach || severity >= 0.38 || alliance.fractureRisk >= 0.72) {
       alliance.status = 'FRACTURED'
     } else {
@@ -1334,13 +1335,7 @@ export function recordRealityAlliancePlanDefiance(
     refreshRealityAllianceDynamics(alliance)
     if (alliance.fractureRisk >= 0.72) alliance.status = 'FRACTURED'
     else refreshRealityAllianceLifecycle(alliance)
-    maybeExpelLowCommitmentMember(
-      state,
-      alliance,
-      input.actorId,
-      input.at,
-      input.sourceEventId
-    )
+    maybeExpelLowCommitmentMember(state, alliance, input.actorId, input.at, input.sourceEventId)
     affected.push(alliance)
   }
 
