@@ -308,20 +308,31 @@ describe('critical shock / ruleset matrix', () => {
     expect(canCastClassicEvictionVote(state, loh.id)).toBe(false)
     expect(getClassicEvictionTieBreakerId(state)).toBeNull()
 
+    const eligibleVoters = alive(state).filter((player) =>
+      canCastClassicEvictionVote(state, player.id)
+    )
+    if (eligibleVoters.length < 3) throw new Error('Expected three eligible Detox voters')
+
     state = {
       ...state,
       phase: 'live_vote',
       awaitingHumanVote: false,
-      votes: { [loh.id]: otherReplacement.id },
+      votes: {
+        [eligibleVoters[0].id]: loh.id,
+        [eligibleVoters[1].id]: loh.id,
+        [eligibleVoters[2].id]: otherReplacement.id,
+        // If this illegal LOH ballot were counted it would manufacture a 2-2 tie.
+        [loh.id]: otherReplacement.id,
+      },
     }
     const resolved = criticalGameReducer(state, advance())
 
     expect(resolved.phase).toBe('eviction_results')
-    expect(resolved.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(0)
-    expect(resolved.pendingExitContext?.voteCounts[loh.id]).toBe(0)
+    expect(resolved.pendingExitContext?.voteCounts[loh.id]).toBe(2)
+    expect(resolved.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(1)
     expect((resolved.votes ?? {})[loh.id]).toBeUndefined()
     expect(resolved.pendingExitContext?.votesByVoterId[loh.id]).toBeUndefined()
-    expect(resolved.pendingEviction?.evicteeId).toBeDefined()
+    expect(resolved.pendingEviction?.evicteeId).toBe(loh.id)
     expect(resolved.awaitingTieBreak).toBe(false)
   })
 
