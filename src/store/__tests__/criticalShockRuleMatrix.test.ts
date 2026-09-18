@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import type { GameState, Player } from '../../types'
 import gameReducer, {
+  activateBattleBack,
   activateDayStartShock,
   activateDoubleEviction,
   advance,
   commitNominees,
+  completeBattleBack,
   confirmDayStartShock,
   createInitialGameState,
   finalizePendingEviction,
   getNominationTargetScore,
   submitCoupReplacement,
+  submitDiamondReplacement,
+  submitVipSecondSaveTarget,
 } from '../gameSlice'
 import { withLohNominationPlanning } from '../lohNominationPlanning'
 import { withImmediateVoxPublicMode } from '../voxPublicModeReducer'
@@ -96,20 +100,24 @@ function assertStoredVotesAreEligible(state: GameState): void {
 }
 
 describe('critical shock / ruleset matrix', () => {
-  it('forces every current shock to declare its critical engine impact', () => {
+  it('forces every current shock to declare its critical engine impact and behavioral coverage', () => {
+    // Add a key here only after adding/updating a behavioral scenario for that
+    // shock in this file. Combined with the exhaustive production registry,
+    // a new ForcedShockType cannot silently bypass critical-engine review.
+    const behaviorallyCoveredForcedShocks = [
+      'battleBack',
+      'coup',
+      'dayStartShock',
+      'democracia',
+      'depressionShock',
+      'diamond',
+      'doubleEviction',
+      'spotlight',
+      'twinShock',
+      'vip',
+    ]
     expect(Object.keys(FORCED_SHOCK_CRITICAL_RULES).sort()).toEqual(
-      [
-        'battleBack',
-        'coup',
-        'dayStartShock',
-        'democracia',
-        'depressionShock',
-        'diamond',
-        'doubleEviction',
-        'spotlight',
-        'twinShock',
-        'vip',
-      ].sort()
+      behaviorallyCoveredForcedShocks.sort()
     )
     expect(Object.keys(FORMAT_CRITICAL_RULES).sort()).toEqual(
       ['cupidArrow', 'publicMode', 'voxPopuli'].sort()
@@ -117,6 +125,142 @@ describe('critical shock / ruleset matrix', () => {
     Object.values(FORCED_SHOCK_CRITICAL_RULES).forEach((declaration) => {
       expect(declaration.rationale.length).toBeGreaterThan(20)
     })
+  })
+
+  it('restores a Battle Back winner to the active Classic eligibility pool', () => {
+    let state = cleanState(505)
+    const returnee = alive(state).find((player) => !player.isUser)
+    if (!returnee) throw new Error('Expected a Battle Back candidate')
+
+    returnee.status = 'jury'
+    expect(canCastClassicEvictionVote(state, returnee.id)).toBe(false)
+
+    state = criticalGameReducer(
+      state,
+      activateBattleBack({ candidates: [returnee.id], week: state.week })
+    )
+    state = criticalGameReducer(state, completeBattleBack(returnee.id))
+
+    expect(state.players.find((player) => player.id === returnee.id)?.status).toBe('active')
+    expect(state.battleBack?.winnerId).toBe(returnee.id)
+    expect(canCastClassicEvictionVote(state, returnee.id)).toBe(true)
+  })
+
+  it('keeps Double Trouble replacements legal after the second Safety use', () => {
+    let state = cleanState(506)
+    const holder = alive(state).find((player) => player.isUser)
+    const aiPlayers = alive(state).filter((player) => !player.isUser)
+    if (!holder || aiPlayers.length < 4) throw new Error('Expected Double Trouble players')
+
+    const [loh, savedNominee, remainingNominee] = aiPlayers
+    loh.status = 'loh'
+    holder.status = 'pos'
+    savedNominee.status = 'nominated'
+    remainingNominee.status = 'nominated'
+    state.lohId = loh.id
+    state.posWinnerId = holder.id
+    state.nomineeIds = [savedNominee.id, remainingNominee.id]
+    state.specialVeto = {
+      seasonUsed: true,
+      activeType: 'vip',
+      activatedWeek: state.week,
+      vipUseStage: 2,
+      awaitingHolderReplacement: false,
+      awaitingCoupReplacement1: false,
+      awaitingCoupReplacement2: false,
+      coupReplacement1Id: null,
+      awaitingVipSecondUseDecision: false,
+      awaitingVipSecondSaveTarget: true,
+    }
+
+    state = criticalGameReducer(state, submitVipSecondSaveTarget(savedNominee.id))
+
+    expect(state.nomineeIds).toHaveLength(2)
+    expect(state.nomineeIds).toContain(remainingNominee.id)
+    expect(state.nomineeIds).not.toContain(savedNominee.id)
+    expect(state.nomineeIds).not.toContain(loh.id)
+    expect(state.nomineeIds).not.toContain(holder.id)
+    expect(state.povProtectedIds).toContain(savedNominee.id)
+    expect(
+      state.players
+        .filter((player) => player.status.split('+').includes('nominated'))
+        .map((player) => player.id)
+        .sort()
+    ).toEqual([...state.nomineeIds].sort())
+  })
+
+  it('keeps Halo Exchange replacement authority with the holder without exposing LOH', () => {
+    let state = cleanState(507)
+    const holder = alive(state).find((player) => player.isUser)
+    const aiPlayers = alive(state).filter((player) => !player.isUser)
+    if (!holder || aiPlayers.length < 4) throw new Error('Expected Halo Exchange players')
+
+    const [loh, remainingNominee, replacement] = aiPlayers
+    loh.status = 'loh'
+    holder.status = 'pos'
+    remainingNominee.status = 'nominated'
+    state.lohId = loh.id
+    state.posWinnerId = holder.id
+    state.nomineeIds = [remainingNominee.id]
+    state.specialVeto = {
+      seasonUsed: true,
+      activeType: 'diamond',
+      activatedWeek: state.week,
+      vipUseStage: 0,
+      awaitingHolderReplacement: true,
+      awaitingCoupReplacement1: false,
+      awaitingCoupReplacement2: false,
+      coupReplacement1Id: null,
+      awaitingVipSecondUseDecision: false,
+      awaitingVipSecondSaveTarget: false,
+    }
+
+    const illegalLohAttempt = criticalGameReducer(state, submitDiamondReplacement(loh.id))
+    expect(illegalLohAttempt.nomineeIds).toEqual([remainingNominee.id])
+    expect(illegalLohAttempt.specialVeto?.awaitingHolderReplacement).toBe(true)
+
+    state = criticalGameReducer(illegalLohAttempt, submitDiamondReplacement(replacement.id))
+    expect(state.nomineeIds).toEqual([remainingNominee.id, replacement.id])
+    expect(state.nomineeIds).not.toContain(loh.id)
+    expect(state.specialVeto?.awaitingHolderReplacement).toBe(false)
+  })
+
+  it('forces Force Majeure to save and replace without changing Classic voter roles', () => {
+    let state = cleanState(508)
+    const aiPlayers = alive(state).filter((player) => !player.isUser)
+    if (aiPlayers.length < 4) throw new Error('Expected Force Majeure players')
+
+    const [loh, holder, otherNominee] = aiPlayers
+    loh.status = 'loh'
+    holder.status = 'nominated+pos'
+    otherNominee.status = 'nominated'
+    state.phase = 'pos_ceremony'
+    state.lohId = loh.id
+    state.posWinnerId = holder.id
+    state.nomineeIds = [holder.id, otherNominee.id]
+    state.specialVeto = {
+      seasonUsed: true,
+      activeType: 'spotlight',
+      activatedWeek: state.week,
+      vipUseStage: 0,
+      awaitingHolderReplacement: false,
+      awaitingCoupReplacement1: false,
+      awaitingCoupReplacement2: false,
+      coupReplacement1Id: null,
+      awaitingVipSecondUseDecision: false,
+      awaitingVipSecondSaveTarget: false,
+    }
+
+    state = criticalGameReducer(state, advance())
+
+    expect(state.phase).toBe('pos_ceremony_results')
+    expect(state.povSavedId).toBe(holder.id)
+    expect(state.povProtectedIds).toContain(holder.id)
+    expect(state.nomineeIds).toHaveLength(2)
+    expect(state.nomineeIds).toContain(otherNominee.id)
+    expect(state.nomineeIds).not.toContain(holder.id)
+    expect(state.nomineeIds).not.toContain(loh.id)
+    expect(canCastClassicEvictionVote(state, loh.id)).toBe(false)
   })
 
   it('preserves Classic vote eligibility during Double Eviction while expanding the block to three', () => {
