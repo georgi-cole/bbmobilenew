@@ -375,6 +375,28 @@ export function recordRealityCeremonyOutcome(
   return event
 }
 
+function reinforceAllianceVotePlan(
+  state: RealityDomainState,
+  actorId: string,
+  targetId: string
+): void {
+  for (const alliance of Object.values(state.alliances)) {
+    if (
+      (alliance.status !== 'ACTIVE' && alliance.status !== 'PROBATIONARY') ||
+      !alliance.memberIds.includes(actorId) ||
+      alliance.memberIds.includes(targetId) ||
+      !alliance.currentTargetIds.includes(targetId)
+    ) {
+      continue
+    }
+    const knowsPlan =
+      alliance.leaderIds.includes(actorId) ||
+      (alliance.memberPlanBeliefs[actorId] ?? []).some((planId) => planId.includes(targetId))
+    if (!knowsPlan) continue
+    adjustRealityAllianceCommitment(state, alliance.id, actorId, 0.04)
+  }
+}
+
 function voteIntent(state: RealityDomainState, actorId: string, day: number): RealityVoteIntent {
   state.voteIntents[actorId] ??= {
     actorId,
@@ -433,6 +455,7 @@ export function finalizeRealityVote(
     at,
     sourceEventId: eventId,
   })
+  reinforceAllianceVotePlan(state, actorId, targetId)
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||
