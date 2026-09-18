@@ -17,6 +17,7 @@ import {
   getEarnedBatteryLowVoteEffect,
   getHighestRemainingValue,
   getRevealCommentary,
+  getRevealEffectProfile,
   getSpecialRevealLabel,
   getVaultsLeftThisRound,
   maybeCreateOffer,
@@ -146,6 +147,24 @@ describe('Battery Low logic', () => {
     expect(offer.remainingValues).toEqual(remaining);
     expect(offer.offer).toBeGreaterThanOrEqual(0);
     expect(offer.offer).toBeLessThanOrEqual(highestRemaining);
+  });
+
+  it('maps every numeric battery and both special cells to a show effect', () => {
+    const profiles = VAULT_VERDICT_AMOUNTS.map((amount) => getRevealEffectProfile(amount));
+    expect(profiles).toHaveLength(VAULT_VERDICT_AMOUNTS.length);
+    expect(profiles.every((profile) => profile.key && profile.title && profile.strapline)).toBe(true);
+
+    expect(getRevealEffectProfile(0).key).toBe('powerdown');
+    expect(getRevealEffectProfile(4.04).key).toBe('signal-lost');
+    expect(getRevealEffectProfile(6.66).key).toBe('inferno');
+    expect(getRevealEffectProfile(13).key).toBe('unlucky');
+    expect(getRevealEffectProfile(13.37).key).toBe('elite-code');
+    expect(getRevealEffectProfile(42).key).toBe('answer-signal');
+    expect(getRevealEffectProfile(69).key).toBe('blush');
+    expect(getRevealEffectProfile(99).key).toBe('near-perfect');
+    expect(getRevealEffectProfile(100).key).toBe('overcharge');
+    expect(getRevealEffectProfile(50, 'doubleVote').key).toBe('power-cell');
+    expect(getRevealEffectProfile(50, 'skipVote').key).toBe('blackout-cell');
   });
 
   it('tracks the center battery max charge after reveals', () => {
