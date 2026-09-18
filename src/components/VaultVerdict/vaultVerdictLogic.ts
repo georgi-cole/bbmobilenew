@@ -17,6 +17,42 @@ export type BroadcastKind = 'decision' | 'amount' | 'round' | 'flavor' | 'final'
 export type BatteryLowVoteEffect = 'doubleVote' | 'skipVote';
 export type BankDealType = 'insurance' | 'swap' | 'pressure';
 export type CounterofferOutcome = 'raised' | 'held' | 'cut';
+export type RevealTier = 'critical' | 'low' | 'mid' | 'high' | 'elite' | 'special';
+export type RevealEffectKey =
+  | 'powerdown'
+  | 'last-breath'
+  | 'signal-lost'
+  | 'inferno'
+  | 'unlucky'
+  | 'elite-code'
+  | 'low-burn'
+  | 'steady-low'
+  | 'cool-current'
+  | 'answer-signal'
+  | 'midpoint'
+  | 'steady-mid'
+  | 'charge-rise'
+  | 'redline'
+  | 'blush'
+  | 'strong-current'
+  | 'high-voltage'
+  | 'gold-band'
+  | 'elite-surge'
+  | 'near-perfect'
+  | 'overcharge'
+  | 'power-cell'
+  | 'blackout-cell';
+
+export interface RevealEffectProfile {
+  key: RevealEffectKey;
+  tier: RevealTier;
+  eyebrow: string;
+  title: string;
+  strapline: string;
+  hero: boolean;
+  soundKey?: 'ui:confirm' | 'ui:error' | 'ui:navigate' | 'tv:event';
+  soundVolume?: number;
+}
 
 export interface BankDeal {
   type: BankDealType;
@@ -102,7 +138,212 @@ export interface ResolvedVaultParticipant {
 const FALLBACK_NAMES = ['You', 'Kian', 'Mira', 'Jules', 'Nina', 'Sasha', 'Eli', 'Rhea'];
 const BANK_MOODS: BankMood[] = ['stingy', 'calculated', 'generous', 'chaotic'];
 const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'chaotic', 'show-off', 'panic'];
-const DRAMATIC_AMOUNTS = new Set([0, 4.04, 6.66, 13.37, 42, 69, 99, 100]);
+const DRAMATIC_AMOUNTS = new Set([0, 1, 4.04, 6.66, 13, 13.37, 42, 69, 99, 100]);
+
+const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
+  [0, {
+    key: 'powerdown',
+    tier: 'critical',
+    eyebrow: 'POWER FAILURE',
+    title: '0% · DEAD CELL',
+    strapline: 'The stage drops to black.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.52,
+  }],
+  [1, {
+    key: 'last-breath',
+    tier: 'critical',
+    eyebrow: 'CRITICAL',
+    title: '1% · LAST BREATH',
+    strapline: 'One flicker from empty.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.42,
+  }],
+  [4.04, {
+    key: 'signal-lost',
+    tier: 'critical',
+    eyebrow: 'SIGNAL LOST',
+    title: '4.04% · NOT FOUND',
+    strapline: 'The board loses the signal.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.44,
+  }],
+  [6.66, {
+    key: 'inferno',
+    tier: 'critical',
+    eyebrow: 'INFERNAL CHARGE',
+    title: '6.66% · CURSED',
+    strapline: 'The rack runs hot.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.58,
+  }],
+  [13, {
+    key: 'unlucky',
+    tier: 'low',
+    eyebrow: 'BAD OMEN',
+    title: '13% · UNLUCKY',
+    strapline: 'The lights misbehave.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.36,
+  }],
+  [13.37, {
+    key: 'elite-code',
+    tier: 'low',
+    eyebrow: 'SYSTEM OVERRIDE',
+    title: '13.37% · ELITE',
+    strapline: 'A rogue code pulse hits the board.',
+    hero: true,
+    soundKey: 'ui:navigate',
+    soundVolume: 0.44,
+  }],
+  [21, {
+    key: 'low-burn',
+    tier: 'low',
+    eyebrow: 'CLEAN BURN',
+    title: '21% REMOVED',
+    strapline: 'A low value leaves the rack.',
+    hero: false,
+  }],
+  [24, {
+    key: 'steady-low',
+    tier: 'low',
+    eyebrow: 'LOW CURRENT',
+    title: '24% REMOVED',
+    strapline: 'The floor gets a little safer.',
+    hero: false,
+  }],
+  [37, {
+    key: 'cool-current',
+    tier: 'mid',
+    eyebrow: 'COOL CURRENT',
+    title: '37% REVEALED',
+    strapline: 'A manageable loss.',
+    hero: false,
+  }],
+  [42, {
+    key: 'answer-signal',
+    tier: 'mid',
+    eyebrow: 'THE ANSWER',
+    title: '42% · SIGNAL LOCK',
+    strapline: 'The board finds its cosmic frequency.',
+    hero: true,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.42,
+  }],
+  [50, {
+    key: 'midpoint',
+    tier: 'mid',
+    eyebrow: 'DEAD EVEN',
+    title: '50% · HALF CHARGE',
+    strapline: 'Right down the middle.',
+    hero: false,
+  }],
+  [55, {
+    key: 'steady-mid',
+    tier: 'mid',
+    eyebrow: 'STEADY CURRENT',
+    title: '55% REVEALED',
+    strapline: 'The board barely flinches.',
+    hero: false,
+  }],
+  [60, {
+    key: 'charge-rise',
+    tier: 'mid',
+    eyebrow: 'CHARGE RISING',
+    title: '60% REVEALED',
+    strapline: 'Now the losses start to matter.',
+    hero: false,
+  }],
+  [66, {
+    key: 'redline',
+    tier: 'high',
+    eyebrow: 'REDLINE',
+    title: '66% · HOT CURRENT',
+    strapline: 'The rack flashes warning red.',
+    hero: false,
+  }],
+  [69, {
+    key: 'blush',
+    tier: 'high',
+    eyebrow: 'CHEEKY CURRENT',
+    title: '69% · NICE',
+    strapline: 'The stage blushes.',
+    hero: true,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.38,
+  }],
+  [75, {
+    key: 'strong-current',
+    tier: 'high',
+    eyebrow: 'STRONG CURRENT',
+    title: '75% REVEALED',
+    strapline: 'That one hurts.',
+    hero: false,
+  }],
+  [80, {
+    key: 'high-voltage',
+    tier: 'high',
+    eyebrow: 'HIGH VOLTAGE',
+    title: '80% REVEALED',
+    strapline: 'The Bank likes that hit.',
+    hero: false,
+  }],
+  [88, {
+    key: 'gold-band',
+    tier: 'elite',
+    eyebrow: 'GOLD BAND',
+    title: '88% · PREMIUM',
+    strapline: 'A premium charge leaves the board.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.32,
+  }],
+  [91, {
+    key: 'gold-band',
+    tier: 'elite',
+    eyebrow: 'GOLD BAND',
+    title: '91% · PREMIUM',
+    strapline: 'The top end is thinning out.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.32,
+  }],
+  [95, {
+    key: 'elite-surge',
+    tier: 'elite',
+    eyebrow: 'ELITE SURGE',
+    title: '95% REVEALED',
+    strapline: 'A near-perfect charge is gone.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.36,
+  }],
+  [99, {
+    key: 'near-perfect',
+    tier: 'elite',
+    eyebrow: 'ONE PERCENT AWAY',
+    title: '99% · SO CLOSE',
+    strapline: 'The stage freezes on the near-perfect hit.',
+    hero: true,
+    soundKey: 'tv:event',
+    soundVolume: 0.54,
+  }],
+  [100, {
+    key: 'overcharge',
+    tier: 'elite',
+    eyebrow: 'FULL POWER',
+    title: '100% · OVERCHARGE',
+    strapline: 'The biggest battery on the board explodes out.',
+    hero: true,
+    soundKey: 'tv:event',
+    soundVolume: 0.68,
+  }],
+]);
 const TOP_AMOUNTS = new Set([88, 91, 95, 99, 100]);
 const INSURANCE_FLOOR = 25;
 const INSURANCE_OFFER_MULTIPLIER = 0.9;
@@ -220,6 +461,46 @@ export function calculateEyeBankOffer(options: {
 
 export function getHighestRemainingValue(contestant: Pick<VaultContestantState, 'vaults'>) {
   return Math.max(0, ...calculateRemainingValues(contestant));
+}
+
+export function getRevealEffectProfile(
+  value: number,
+  effect?: BatteryLowVoteEffect | null,
+): RevealEffectProfile {
+  if (effect === 'doubleVote') {
+    return {
+      key: 'power-cell',
+      tier: 'special',
+      eyebrow: 'STRATEGIC POWER',
+      title: 'POWER CELL',
+      strapline: 'Double Vote potential flashes across the stage.',
+      hero: true,
+      soundKey: 'ui:confirm',
+      soundVolume: 0.62,
+    };
+  }
+  if (effect === 'skipVote') {
+    return {
+      key: 'blackout-cell',
+      tier: 'special',
+      eyebrow: 'SYSTEM BLACKOUT',
+      title: 'BLACKOUT CELL',
+      strapline: 'The house vote penalty flickers into view.',
+      hero: true,
+      soundKey: 'ui:error',
+      soundVolume: 0.62,
+    };
+  }
+  return (
+    REVEAL_EFFECTS.get(value) ?? {
+      key: value >= 88 ? 'gold-band' : value >= 66 ? 'high-voltage' : value >= 41 ? 'steady-mid' : 'cool-current',
+      tier: value >= 88 ? 'elite' : value >= 66 ? 'high' : value >= 41 ? 'mid' : 'low',
+      eyebrow: 'BATTERY REVEAL',
+      title: `${formatVaultAmount(value)} REVEALED`,
+      strapline: 'The board recalibrates.',
+      hero: false,
+    }
+  );
 }
 
 export function getBankMoodProfile(mood: BankMood) {
