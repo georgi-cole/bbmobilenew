@@ -186,12 +186,15 @@ export function recordRealityAllianceBetrayal(
     }
 
     const eventReason = `${input.kind.toLowerCase()}:${alliance.id}:${input.sourceEventId}`
+    const officialDecision =
+      input.kind === 'VOTE' || input.kind === 'NOMINATION' || input.kind === 'SAFETY_ABANDON'
     const duplicate = state.events.some(
       (event) =>
         event.type === 'ALLIANCE_BETRAYAL' &&
         event.actorId === input.actorId &&
         event.targetIds.includes(input.targetId) &&
-        event.reason === eventReason
+        event.reason.startsWith(`${input.kind.toLowerCase()}:${alliance.id}:`) &&
+        (officialDecision ? event.day === input.at.day : event.reason === eventReason)
     )
     if (duplicate) continue
 
