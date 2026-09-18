@@ -27,7 +27,7 @@ function nextAllianceMemberStatus(
 ): RealityAllianceMemberStatus {
   if (current === 'CORE') {
     if (commitment <= 0.28) return 'PERIPHERAL'
-    if (commitment < 0.52) return 'REGULAR'
+    if (commitment < 0.44) return 'REGULAR'
     return 'CORE'
   }
   if (current === 'REGULAR') {
@@ -327,6 +327,7 @@ export function recruitRealityAllianceMember(
     }
   }
 
+  refreshRealityAllianceDynamics(alliance)
   refreshRealityAllianceOverlaps(state)
   return alliance
 }
@@ -403,6 +404,7 @@ export function createRealityAlliance(
       })
     }
   }
+  refreshRealityAllianceDynamics(alliance)
   refreshRealityAllianceOverlaps(state)
   return alliance
 }
@@ -812,6 +814,9 @@ export function migrateDramaAlliances(
       genuine: legacy.falsePretenceByIds.length === 0,
       infiltratorIds: [...legacy.falsePretenceByIds],
     }
+  }
+  for (const alliance of Object.values(state.alliances)) {
+    refreshRealityAllianceDynamics(alliance)
   }
   refreshRealityAllianceOverlaps(state)
 }
