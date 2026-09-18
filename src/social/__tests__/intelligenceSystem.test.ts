@@ -7,6 +7,7 @@ import {
   applyCompetitionIntentToScore,
   buildIntelFactFromSocialAction,
   decideCompetitionIntent,
+  formatFauxTvWhisper,
   getIntelLeadViews,
   makeIntelMemory,
   selectDiscoverableFact,
@@ -201,6 +202,35 @@ describe('intelligence system', () => {
     })
 
     expect(selectIntelFactForActor(domain, 'sol', 'human', 4)).toBeNull()
+  })
+
+  it('keeps public alliance exposure copy compact for large coalitions', () => {
+    const extendedPlayers: Player[] = [
+      ...players,
+      { id: 'mara', name: 'Mara', avatar: '', status: 'active' },
+      { id: 'kai', name: 'Kai', avatar: '', status: 'active' },
+    ]
+    const text = formatFauxTvWhisper(
+      {
+        id: 'public-alliance',
+        propositionType: 'ALLIANCE_EXPOSED',
+        subjectIds: ['sol', 'lux', 'mara', 'kai'],
+        value: 'The Circle',
+        day: 5,
+        phase: 'social_2',
+        visibility: 'HOUSE_PUBLIC',
+        participantIds: ['sol', 'lux', 'mara', 'kai'],
+        witnessIds: [],
+        viewerVisible: true,
+        publicVisible: true,
+        juryVisible: true,
+        sourceEventId: 'alliance-exposure',
+      },
+      extendedPlayers
+    )
+
+    expect(text).toContain('Sol, Lux, Mara and 1 other')
+    expect(text).not.toContain('Kai')
   })
 
   it('keeps unwitnessed private facts out of ordinary observation', () => {
