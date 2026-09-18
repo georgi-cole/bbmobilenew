@@ -164,6 +164,7 @@ interface AllianceConsultationPlan {
   planIds: string[]
   agenda: string
   summary: string
+  excusedAbsentIds: string[]
 }
 
 function activeAllianceAdvisors(
@@ -251,6 +252,8 @@ function buildAllianceConsultationPlan(
   const advisors = activeAllianceAdvisors(state, alliance, actorId)
   if (advisors.length === 0) return null
   const attendeeIds = [actorId, ...advisors]
+  const attendeeSet = new Set(attendeeIds)
+  const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeSet.has(id))
   const phase = state.game.phase
   const actorIsLoh = state.game.lohId === actorId
   const actorHasSafety =
@@ -289,6 +292,7 @@ function buildAllianceConsultationPlan(
       ],
       agenda: 'nominations',
       summary: `Alliance huddle — ${read.summary}`,
+      excusedAbsentIds,
     }
   }
 
@@ -328,15 +332,18 @@ function buildAllianceConsultationPlan(
     return {
       allianceId: alliance.id,
       attendeeIds,
-      targetIds: replacement ? [replacement] : [],
-      fallbackTargetIds: [],
-      planIds: replacement ? [`replacement:${replacement}`] : [],
+      targetIds: replacement ? [replacement] : [...alliance.currentTargetIds],
+      fallbackTargetIds: replacement ? [] : [...alliance.fallbackTargetIds],
+      planIds: replacement
+        ? [`replacement:${replacement}`]
+        : attendeeIds.flatMap((id) => alliance.memberPlanBeliefs[id] ?? []),
       agenda: 'safety',
       summary: `Alliance huddle — ${read.summary}${
         replacement
           ? ` If Safety opens a seat, the group leans toward ${playerName(state, replacement)} as the replacement.`
           : ''
       }`,
+      excusedAbsentIds,
     }
   }
 
@@ -366,6 +373,7 @@ function buildAllianceConsultationPlan(
       ],
       agenda: 'eviction_vote',
       summary: `Alliance huddle — ${read.summary}`,
+      excusedAbsentIds,
     }
   }
 
@@ -399,6 +407,7 @@ function buildAllianceConsultationPlan(
     ],
     agenda: 'strategy',
     summary: `Alliance huddle — ${read.summary}`,
+    excusedAbsentIds,
   }
 }
 
@@ -701,6 +710,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           agenda: plan.agenda,
           at: { day: state.game.week, phase: state.game.phase },
           sourceEventId: orchestration.event.id,
+          excusedAbsentIds: plan.excusedAbsentIds,
         })
         allianceConsultationSummary = plan.summary
       }
