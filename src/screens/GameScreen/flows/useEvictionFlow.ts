@@ -236,12 +236,21 @@ export function useEvictionFlow({
   // only dismiss results after the player decides.
   const [showVoteDeductionOffer, setShowVoteDeductionOffer] = useState(false)
   const [resumeVoteResultsAfterDeduction, setResumeVoteResultsAfterDeduction] = useState(false)
-  const canOfferVoteBreakdown = useMemo(
+  const hasVoteBreakdownData = useMemo(
     () =>
       game.phase === 'eviction_results' &&
       Boolean(game.pendingEviction?.evicteeId) &&
       Object.keys(game.votes ?? {}).length > 0,
     [game.pendingEviction?.evicteeId, game.phase, game.votes]
+  )
+  const canOfferVoteBreakdown = useMemo(
+    () =>
+      hasVoteBreakdownData &&
+      // A rewarded reveal should contain information the player cannot already
+      // infer from a unanimous result. If every valid ballot targets the same
+      // nominee, skip the ad prompt entirely.
+      new Set(Object.values(game.votes ?? {})).size > 1,
+    [game.votes, hasVoteBreakdownData]
   )
 
   const hasActiveVoteBreakdownUnlock = useCallback(() => {
@@ -280,7 +289,10 @@ export function useEvictionFlow({
     const evictee = evicteeId ? (game.players.find((p) => p.id === evicteeId) ?? null) : null
     if (evictee && game.pendingEviction) {
       // Decide whether to offer the confessional breakdown after the animation.
-      if (canOfferVoteBreakdown && !hasActiveVoteBreakdownUnlock()) {
+      if (
+        (canOfferVoteBreakdown || (evictee.isUser === true && hasVoteBreakdownData)) &&
+        !hasActiveVoteBreakdownUnlock()
+      ) {
         isPostEvictionConfessionalModeRef.current = true
         autoRevealOwnEvictionVotesRef.current = evictee.isUser === true
         // Snapshot vote data now before any state changes.
@@ -377,6 +389,7 @@ export function useEvictionFlow({
     canOfferVoteBreakdown,
     game,
     hasActiveVoteBreakdownUnlock,
+    hasVoteBreakdownData,
     proceedAfterVoteResults,
     queueVoteBreakdownPrompt,
   ])
