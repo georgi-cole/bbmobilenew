@@ -19,6 +19,116 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
+type RealityAllianceMemberStatus = 'CORE' | 'REGULAR' | 'PERIPHERAL'
+
+function nextAllianceMemberStatus(
+  current: RealityAllianceMemberStatus,
+  commitment: number
+): RealityAllianceMemberStatus {
+  if (current === 'CORE') {
+    if (commitment <= 0.28) return 'PERIPHERAL'
+    if (commitment < 0.52) return 'REGULAR'
+    return 'CORE'
+  }
+  if (current === 'REGULAR') {
+    if (commitment >= 0.74) return 'CORE'
+    if (commitment <= 0.3) return 'PERIPHERAL'
+    return 'REGULAR'
+  }
+  return commitment >= 0.5 ? 'REGULAR' : 'PERIPHERAL'
+}
+
+function alliancePlanDisagreement(alliance: RealityAlliance): number {
+  const plans = alliance.memberIds
+    .map((id) => [...(alliance.memberPlanBeliefs[id] ?? [])].sort().join('|'))
+    .filter(Boolean)
+  if (plans.length < 2) return 0
+  const counts = new Map<string, number>()
+  for (const plan of plans) counts.set(plan, (counts.get(plan) ?? 0) + 1)
+  const largestBloc = Math.max(...counts.values())
+  return 1 - largestBloc / plans.length
+}
+
+/**
+ * Recompute hierarchy and health from durable member commitment rather than
+ * treating the raw average as coalition cohesion. Hysteresis keeps members
+ * from bouncing between tiers after a single positive or negative beat.
+ */
+export function refreshRealityAllianceDynamics(alliance: RealityAlliance): RealityAlliance {
+  if (alliance.memberIds.length === 0) return alliance
+
+  const commitments = alliance.memberIds.map((id) =>
+    clamp01(alliance.memberCommitment[id] ?? 0.5)
+  )
+  for (const [index, memberId] of alliance.memberIds.entries()) {
+    const commitment = commitments[index]
+    alliance.memberCommitment[memberId] = commitment
+    alliance.memberPerceivedStatus[memberId] = nextAllianceMemberStatus(
+      alliance.memberPerceivedStatus[memberId] ?? 'REGULAR',
+      commitment
+    )
+  }
+
+  const mean = commitments.reduce((sum, value) => sum + value, 0) / commitments.length
+  const variance =
+    commitments.reduce((sum, value) => sum + (value - mean) ** 2, 0) / commitments.length
+  const dispersion = Math.sqrt(variance)
+  const lowCommitmentShare =
+    commitments.filter((value) => value <= 0.3).length / commitments.length
+  const planDisagreement = alliancePlanDisagreement(alliance)
+  const leakPenalty = Math.min(0.24, alliance.knownLeakEventIds.length * 0.12)
+
+  alliance.cohesion = clamp01(mean - dispersion * 0.55 - planDisagreement * 0.18)
+  alliance.fractureRisk = clamp01(
+    (1 - mean) * 0.38 +
+      dispersion * 1.1 +
+      lowCommitmentShare * 0.22 +
+      planDisagreement * 0.22 +
+      leakPenalty
+  )
+
+  const previousLeaderIds = new Set(alliance.leaderIds)
+  alliance.leaderIds = alliance.memberIds
+    .filter((id) => alliance.memberPerceivedStatus[id] === 'CORE')
+    .sort(
+      (left, right) =>
+        (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
+        Number(alliance.founderIds.includes(right)) - Number(alliance.founderIds.includes(left)) ||
+        Number(previousLeaderIds.has(right)) - Number(previousLeaderIds.has(left)) ||
+        left.localeCompare(right)
+    )
+    .slice(0, 2)
+
+  if (alliance.status !== 'DISSOLVED' && alliance.status !== 'PROBATIONARY') {
+    if (alliance.fractureRisk >= 0.72) {
+      alliance.status = 'FRACTURED'
+    } else if (
+      alliance.status === 'FRACTURED' &&
+      alliance.fractureRisk <= 0.42 &&
+      alliance.cohesion >= 0.52
+    ) {
+      alliance.status = 'ACTIVE'
+    }
+  }
+
+  return alliance
+}
+
+export function adjustRealityAllianceCommitment(
+  state: RealityDomainState,
+  allianceId: string,
+  memberId: string,
+  delta: number
+): RealityAlliance {
+  const alliance = state.alliances[allianceId]
+  if (!alliance || alliance.status === 'DISSOLVED') throw new Error('Alliance is not active')
+  if (!alliance.memberIds.includes(memberId)) throw new Error('Actor is not an alliance member')
+  alliance.memberCommitment[memberId] = clamp01(
+    (alliance.memberCommitment[memberId] ?? 0.5) + delta
+  )
+  return refreshRealityAllianceDynamics(alliance)
+}
+
 function allianceRecruitmentRank(
   alliance: RealityAlliance,
   recruiterId: string
@@ -318,27 +428,16 @@ export function holdRealityAllianceMeeting(
   alliance.status = alliance.status === 'PROBATIONARY' ? 'ACTIVE' : alliance.status
   for (const attendeeId of attendees) {
     alliance.memberPlanBeliefs[attendeeId] = [...new Set(input.planIds)]
-    alliance.memberCommitment[attendeeId] = Math.min(
-      1,
-      (alliance.memberCommitment[attendeeId] ?? 0.5) + 0.08
+    alliance.memberCommitment[attendeeId] = clamp01(
+      (alliance.memberCommitment[attendeeId] ?? 0.5) + 0.05
     )
   }
   for (const absentId of alliance.memberIds.filter((id) => !attendees.includes(id))) {
-    alliance.memberCommitment[absentId] = Math.max(
-      0,
-      (alliance.memberCommitment[absentId] ?? 0.5) - 0.05
+    alliance.memberCommitment[absentId] = clamp01(
+      (alliance.memberCommitment[absentId] ?? 0.5) - 0.025
     )
   }
-  alliance.cohesion = Math.max(
-    0,
-    Math.min(
-      1,
-      alliance.memberIds.reduce((sum, id) => sum + (alliance.memberCommitment[id] ?? 0), 0) /
-        alliance.memberIds.length
-    )
-  )
-  alliance.fractureRisk = Math.max(0, 1 - alliance.cohesion - attendees.length * 0.03)
-  return alliance
+  return refreshRealityAllianceDynamics(alliance)
 }
 
 export function chooseAllianceMemberVote(
@@ -404,8 +503,7 @@ export function leakRealityAlliance(
   alliance.knownLeakEventIds.push(event.id)
   alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...receiverIds])]
   alliance.secrecy = Math.max(0, alliance.secrecy - receiverIds.length * 0.16)
-  alliance.fractureRisk = Math.min(1, alliance.fractureRisk + 0.22)
-  if (alliance.fractureRisk >= 0.72) alliance.status = 'FRACTURED'
+  refreshRealityAllianceDynamics(alliance)
 }
 
 export interface RomanceSettings {
