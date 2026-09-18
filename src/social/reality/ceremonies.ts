@@ -445,6 +445,7 @@ export function finalizeRealityVote(
   eventId: string
 ): RealityVoteIntent {
   const intent = voteIntent(state, actorId, at.day)
+  const alreadyRecordedSameVote = intent.day === at.day && intent.actualTargetId === targetId
   intent.actualTargetId = targetId
   intent.day = at.day
   intent.reasonEventIds = [...new Set([...intent.reasonEventIds, eventId])]
@@ -455,7 +456,7 @@ export function finalizeRealityVote(
     at,
     sourceEventId: eventId,
   })
-  reinforceAllianceVotePlan(state, actorId, targetId)
+  if (!alreadyRecordedSameVote) reinforceAllianceVotePlan(state, actorId, targetId)
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||
