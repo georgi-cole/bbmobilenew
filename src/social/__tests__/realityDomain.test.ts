@@ -7,6 +7,7 @@ import {
   applyRealityRelationshipChange,
   createDirectedRelationship,
   createInitialRealityDomainState,
+  createRealityAlliance,
   deriveRelationshipLabel,
   learnRealityFact,
   overdueRealityPromises,
@@ -68,6 +69,39 @@ describe('Reality domain migration and directed relationships', () => {
     expect(migrated.reality.relationships.human.lia.fromId).toBe('human')
     expect(migrated.reality.relationships.human.lia.trust).toBeGreaterThan(0)
     expect(migrated.reality.relationships.lia?.human).toBeUndefined()
+  })
+
+  it('rebuilds overlap metadata when hydrating existing alliances', () => {
+    const reality = createInitialRealityDomainState()
+    createRealityAlliance(reality, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Inner pact',
+      at: { day: 2, phase: 'social_1' },
+    })
+    createRealityAlliance(reality, {
+      id: 'alliance-outer',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Wider coalition',
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    reality.alliances['alliance-core'].overlapAllianceIds = []
+    reality.alliances['alliance-outer'].overlapAllianceIds = []
+
+    const migrated = migrateSocialState({
+      ...SOCIAL_INITIAL_STATE,
+      reality,
+    })
+
+    expect(migrated.reality.alliances['alliance-core'].overlapAllianceIds).toEqual([
+      'alliance-outer',
+    ])
+    expect(migrated.reality.alliances['alliance-outer'].overlapAllianceIds).toEqual([
+      'alliance-core',
+    ])
   })
 
   it('dual-writes legacy relationship outcomes into the Reality edge only', () => {
