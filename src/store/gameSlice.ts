@@ -1671,19 +1671,25 @@ export function getStrategicAllianceDecisionRead(
     const infiltrator = alliance.infiltratorIds.includes(actorId)
     if (infiltrator) actorInfiltrator = true
 
+    const strategicallyLive =
+      alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
+
     if (alliance.memberIds.includes(targetId)) {
       sharedAllianceCount += 1
-      const targetRoleWeight = strategicAllianceMemberWeight(
-        alliance.memberPerceivedStatus[targetId]
-      )
-      sharedWeights.push(structureWeight * targetRoleWeight * (infiltrator ? 0.12 : 1))
       betrayalWeights.push(
         clampStrategicAllianceUnit(
           (1 - actorCommitment) * 0.35 + fractureRisk * 0.35 + (infiltrator ? 0.55 : 0)
         )
       )
+      if (strategicallyLive) {
+        const targetRoleWeight = strategicAllianceMemberWeight(
+          alliance.memberPerceivedStatus[targetId]
+        )
+        sharedWeights.push(structureWeight * targetRoleWeight * (infiltrator ? 0.12 : 1))
+      }
     }
 
+    if (!strategicallyLive) continue
     const knowsPlan =
       alliance.leaderIds.includes(actorId) ||
       (alliance.memberPlanBeliefs[actorId]?.length ?? 0) > 0
