@@ -30,14 +30,12 @@ describe('Battery Low responsive styles', () => {
     expect(board).toContain('overflow: hidden;')
   })
 
-  it('keeps all 22 batteries in a three-column, eight-row board with Battery 22 centred', () => {
+  it('keeps all 24 batteries in a three-column, eight-row board', () => {
     const css = read('src/components/VaultVerdict/VaultVerdict.css')
     const grid = getRule(css, '.vault-verdict__battery-grid')
-    const finalCell = getRule(css, '.vault-verdict__battery-grid > :last-child:nth-child(3n + 1)')
 
     expect(grid).toContain('grid-template-columns: repeat(3, minmax(0, 1fr));')
     expect(grid).toContain('grid-template-rows: repeat(8, minmax(44px, 54px));')
-    expect(finalCell).toContain('grid-column: 2;')
     expect(css).toContain('@media (max-height: 760px) and (orientation: portrait)')
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
   })
