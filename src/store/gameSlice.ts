@@ -4531,10 +4531,7 @@ const gameSlice = createSlice({
       state.batteryLowVoteEffects = {
         ...(state.batteryLowVoteEffects ?? {}),
         ...Object.fromEntries(
-          validEntries.map(([playerId, effect]) => [
-            playerId,
-            { type: effect, cyclesRemaining: 2 },
-          ])
+          validEntries.map(([playerId, effect]) => [playerId, { type: effect, cyclesRemaining: 2 }])
         ),
       }
     },
