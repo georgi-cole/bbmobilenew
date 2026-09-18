@@ -412,9 +412,13 @@ export default function RealityLedger({
                   const memberHierarchy = isMember
                     ? knowledge.knownMemberIds
                         .map((memberId) => {
-                          const role = alliance.leaderIds.includes(memberId)
-                            ? 'Leader'
-                            : titleCase(alliance.memberPerceivedStatus[memberId] ?? 'member')
+                          const leaderIndex = alliance.leaderIds.indexOf(memberId)
+                          const role =
+                            leaderIndex === 0
+                              ? 'Leader'
+                              : leaderIndex === 1
+                                ? 'Co-leader'
+                                : titleCase(alliance.memberPerceivedStatus[memberId] ?? 'member')
                           return `${playerName(memberId)} (${role})`
                         })
                         .join(' · ')
