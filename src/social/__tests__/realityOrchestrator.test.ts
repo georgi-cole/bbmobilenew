@@ -711,6 +711,44 @@ describe('Reality causal orchestration', () => {
     ).toBe(true)
   })
 
+  it('makes Break the Pact leave the formal alliance instead of only changing affinity', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'break-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: ['human'],
+      planIds: ['target:human'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const result = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(41),
+      opportunity: {
+        ...opportunity('break_alliance'),
+        context: { ...context, socialIntensity: 'REALITY' },
+      },
+    })
+
+    expect(result.selectedActionId).toBe('break_alliance')
+    expect(result.domain.alliances['break-pact'].status).toBe('DISSOLVED')
+    expect(
+      result.domain.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_MEMBER_LEFT' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('ava')
+      )
+    ).toBe(true)
+  })
+
   it('creates grievances and repair debt from live conflict actions', () => {
     const conflict = runRealityOpportunity({
       domain: createInitialRealityDomainState(),
