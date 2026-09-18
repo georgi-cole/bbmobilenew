@@ -568,6 +568,14 @@ function routeHumanFacingAction(
     current.social.incomingInteractions ?? [],
     scheduled
   )
+  const unresolvedFromActor = pending.filter(
+    (entry) =>
+      entry.fromId === actorId && !entry.resolved && isIncomingInteractionActionable(entry)
+  ).length
+  if (unresolvedFromActor >= socialConfig.incomingInteractionConfig.maxPerAI) {
+    return 'deferred'
+  }
+
   const directContactsThisWeek = pending.filter(
     (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
