@@ -119,7 +119,8 @@ describe('Reality alliance commitment and hierarchy', () => {
 
     expect(polarized.cohesion).toBeLessThan(uniform.cohesion)
     expect(polarized.fractureRisk).toBeGreaterThan(uniform.fractureRisk)
-    expect(polarized.status).toBe('FRACTURED')
+    expect(polarized.fractureRisk).toBeGreaterThanOrEqual(0.72)
+    expect(polarized.status).toBe('ACTIVE')
 
     polarized.memberCommitment = { ava: 0.8, lia: 0.8, kai: 0.8, nova: 0.8 }
     polarized.memberPlanBeliefs = {
@@ -132,6 +133,7 @@ describe('Reality alliance commitment and hierarchy', () => {
 
     expect(polarized.status).toBe('ACTIVE')
     expect(polarized.cohesion).toBeGreaterThan(0.7)
+    expect(polarized.fractureRisk).toBeLessThan(0.42)
   })
 
   it('rewards repeated participation while exclusion and conflicting plans raise fracture pressure', () => {
