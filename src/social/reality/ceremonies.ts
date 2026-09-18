@@ -151,23 +151,40 @@ function applyAllianceSafetyCommitment(
   event: RealitySocialEvent,
   kind: RealityCeremonyKind
 ): void {
-  if (!event.actorId || (kind !== 'SAFETY_USED' && kind !== 'SAFETY_DECLINED')) return
+  const actorId = event.actorId
+  if (!actorId || (kind !== 'SAFETY_USED' && kind !== 'SAFETY_DECLINED')) return
 
+  const affectedByAlliance = new Map<string, Set<string>>()
   for (const targetId of event.targetIds) {
-    const sharedAlliances = Object.values(state.alliances).filter(
-      (alliance) =>
-        alliance.status !== 'DISSOLVED' &&
-        alliance.memberIds.includes(event.actorId!) &&
-        alliance.memberIds.includes(targetId)
-    )
-    for (const alliance of sharedAlliances) {
-      if (kind === 'SAFETY_USED') {
-        adjustRealityAllianceCommitment(state, alliance.id, event.actorId, 0.08)
-        adjustRealityAllianceCommitment(state, alliance.id, targetId, 0.04)
-      } else {
-        adjustRealityAllianceCommitment(state, alliance.id, event.actorId, -0.06)
-        adjustRealityAllianceCommitment(state, alliance.id, targetId, -0.03)
+    if (targetId === actorId) continue
+    for (const alliance of Object.values(state.alliances)) {
+      if (
+        alliance.status === 'DISSOLVED' ||
+        !alliance.memberIds.includes(actorId) ||
+        !alliance.memberIds.includes(targetId)
+      ) {
+        continue
       }
+      const targets = affectedByAlliance.get(alliance.id) ?? new Set<string>()
+      targets.add(targetId)
+      affectedByAlliance.set(alliance.id, targets)
+    }
+  }
+
+  for (const [allianceId, targetIds] of affectedByAlliance) {
+    adjustRealityAllianceCommitment(
+      state,
+      allianceId,
+      actorId,
+      kind === 'SAFETY_USED' ? 0.08 : -0.06
+    )
+    for (const targetId of targetIds) {
+      adjustRealityAllianceCommitment(
+        state,
+        allianceId,
+        targetId,
+        kind === 'SAFETY_USED' ? 0.04 : -0.03
+      )
     }
   }
 }
