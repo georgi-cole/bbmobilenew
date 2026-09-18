@@ -77,7 +77,8 @@ describe('gameplay polish regressions', () => {
       /@keyframes liveEvictionDangerBreath\s*\{([\s\S]*?)\n\}/
     )?.[1]
 
-    expect(rosterCss).toContain('animation: liveEvictionDangerBreath 1.75s ease-in-out infinite')
+    expect(rosterCss).toContain('animation: liveEvictionDangerBreath 1.65s ease-in-out infinite')
+    expect(rosterCss).toContain('.liveEvictionDangerHalo')
     expect(rosterCss).toContain('will-change: opacity, transform')
     expect(keyframes).toContain('opacity:')
     expect(keyframes).toContain('transform:')
