@@ -969,6 +969,8 @@ export function holdRealityAllianceMeeting(
     fallbackTargetIds?: string[]
     planIds: string[]
     at: RealityClock
+    /** Members who could not reasonably attend (for example already evicted) are neutral. */
+    excusedAbsentIds?: string[]
   }
 ): RealityAlliance {
   const alliance = state.alliances[input.allianceId]
@@ -985,7 +987,10 @@ export function holdRealityAllianceMeeting(
       (alliance.memberCommitment[attendeeId] ?? 0.5) + 0.05
     )
   }
-  for (const absentId of alliance.memberIds.filter((id) => !attendees.includes(id))) {
+  const excusedAbsentIds = new Set(input.excusedAbsentIds ?? [])
+  for (const absentId of alliance.memberIds.filter(
+    (id) => !attendees.includes(id) && !excusedAbsentIds.has(id)
+  )) {
     alliance.memberCommitment[absentId] = clamp01(
       (alliance.memberCommitment[absentId] ?? 0.5) - 0.025
     )
@@ -1010,6 +1015,7 @@ export function holdRealityAllianceStrategyMeeting(
     agenda: string
     at: RealityClock
     sourceEventId?: string
+    excusedAbsentIds?: string[]
   }
 ): RealityAlliance {
   const alliance = holdRealityAllianceMeeting(state, {
@@ -1019,6 +1025,7 @@ export function holdRealityAllianceStrategyMeeting(
     fallbackTargetIds: input.fallbackTargetIds,
     planIds: input.planIds,
     at: input.at,
+    excusedAbsentIds: input.excusedAbsentIds,
   })
 
   appendRealityEvent(state, {
