@@ -349,6 +349,7 @@ describe('Reality overlapping deals and betrayal lifecycle', () => {
 
     expect(alliance.status).toBe('FRACTURED')
     expect(state.relationships.lia.ava.resentment).toBeGreaterThan(0)
+    expect(state.memoriesByOwner.lia.some((memory) => memory.tags.includes('BETRAYAL'))).toBe(true)
     expect(
       Object.values(state.grievances).some(
         (grievance) => grievance.holderId === 'lia' && grievance.againstId === 'ava'
