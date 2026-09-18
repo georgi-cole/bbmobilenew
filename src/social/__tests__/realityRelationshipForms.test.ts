@@ -120,6 +120,18 @@ describe('Reality alliance commitment and hierarchy', () => {
     expect(polarized.cohesion).toBeLessThan(uniform.cohesion)
     expect(polarized.fractureRisk).toBeGreaterThan(uniform.fractureRisk)
     expect(polarized.status).toBe('FRACTURED')
+
+    polarized.memberCommitment = { ava: 0.8, lia: 0.8, kai: 0.8, nova: 0.8 }
+    polarized.memberPlanBeliefs = {
+      ava: ['vote:mara'],
+      lia: ['vote:mara'],
+      kai: ['vote:mara'],
+      nova: ['vote:mara'],
+    }
+    refreshRealityAllianceDynamics(polarized)
+
+    expect(polarized.status).toBe('ACTIVE')
+    expect(polarized.cohesion).toBeGreaterThan(0.7)
   })
 
   it('rewards repeated participation while exclusion and conflicting plans raise fracture pressure', () => {
