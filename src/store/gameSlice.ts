@@ -126,6 +126,11 @@ import {
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
 import { loadDepressionShockState } from '../features/twists/depressionShock'
 import {
+  canCastClassicEvictionVote,
+  getCanonicalVoterId,
+  getClassicEvictionTieBreakerId,
+} from './criticalGameRules'
+import {
   allianceIdentityBias,
   assignAiGameIdentities,
   betrayalChanceModifier,
@@ -5133,13 +5138,8 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(nomineeId)) return
       const humanPlayer = state.players.find((p) => p.isUser)
       if (!humanPlayer) return
-      if (!isVoxPopuliActive(state)) {
-        const lohIds = new Set(
-          state.coLohIds?.length ? state.coLohIds : getCupidRoleIds(state, state.lohId)
-        )
-        // Classic eviction ballots exclude the LOH and every player currently
-        // on the block. The LOH's only eviction choice is a separate tie-break.
-        if (lohIds.has(humanPlayer.id) || state.nomineeIds.includes(humanPlayer.id)) return
+      if (!isVoxPopuliActive(state) && !canCastClassicEvictionVote(state, humanPlayer.id)) {
+        return
       }
       if (!canPlayerTargetPlayer(state, humanPlayer.id, nomineeId)) return
       if (!state.votes) state.votes = {}
@@ -5168,6 +5168,8 @@ const gameSlice = createSlice({
       const evictee = state.players.find((p) => p.id === nomineeId)
       const lohPlayer = state.players.find((p) => p.id === state.lohId)
       if (!evictee || !lohPlayer?.isUser) return
+      if (state.coLohIds && state.coLohIds.length >= 2) return
+      if (getClassicEvictionTieBreakerId(state) !== lohPlayer.id) return
       if (!canPlayerTargetPlayer(state, lohPlayer.id, nomineeId)) return
 
       state.awaitingTieBreak = false
@@ -5397,7 +5399,8 @@ const gameSlice = createSlice({
       if (!tied.includes(nomineeId)) return
       const evictee = state.players.find((p) => p.id === nomineeId)
       const posHolder = state.players.find((p) => p.id === state.posWinnerId)
-      if (!evictee) return
+      if (!evictee || !posHolder?.isUser) return
+      if (getClassicEvictionTieBreakerId(state) !== posHolder.id) return
       state.awaitingTieBreak = false
       state.awaitingPosTieBreak = false
       state.tiedNomineeIds = null
@@ -9196,11 +9199,8 @@ const gameSlice = createSlice({
           // Democracia co-leaders share the office: neither co-LOH may cast
           // an eviction ballot. Keep the legacy single-LOH/Cupid behavior for
           // every other ceremony.
-          const lohIds = new Set(
-            state.coLohIds?.length ? state.coLohIds : getCupidRoleIds(state, state.lohId)
-          )
-          const eligibleVoters = alive.filter(
-            (p) => !lohIds.has(p.id) && !state.nomineeIds.includes(p.id)
+          const eligibleVoters = alive.filter((player) =>
+            canCastClassicEvictionVote(state, player.id)
           )
           const eligibleVoterIds = new Set(eligibleVoters.map((player) => player.id))
           const processedVoterUnits = new Set<string>()
@@ -9284,7 +9284,9 @@ const gameSlice = createSlice({
           // ── Tally votes ───────────────────────────────────────────────────
           const voteCounts: Record<string, number> = {}
           for (const nomineeId of state.nomineeIds) voteCounts[nomineeId] = 0
-          for (const nomineeId of Object.values(state.votes ?? {})) {
+          for (const [voteKey, nomineeId] of Object.entries(state.votes ?? {})) {
+            const voterId = getCanonicalVoterId(voteKey)
+            if (!canCastClassicEvictionVote(state, voterId)) continue
             if (nomineeId in voteCounts) voteCounts[nomineeId]++
           }
           state.pendingExitContext = {
@@ -9405,7 +9407,7 @@ const gameSlice = createSlice({
           } else {
             // Tie — on co-LOH Democracia days, POS holder breaks it; otherwise LOH breaks it.
             const isCoLohDay = Array.isArray(state.coLohIds) && state.coLohIds.length >= 2
-            const tieBreakerPlayerId = isCoLohDay ? state.posWinnerId : state.lohId
+            const tieBreakerPlayerId = getClassicEvictionTieBreakerId(state)
             const tieBreakerPlayer = state.players.find((p) => p.id === tieBreakerPlayerId)
             const tiedNames = topNominees
               .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
