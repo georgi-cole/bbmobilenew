@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import gameReducer, {
   advance,
   chooseAiEvictionVote,
+  getNominationTargetScore,
+  getSafetyRelationshipScore,
+  getStrategicAllianceDecisionRead,
   setDramaSocialMode,
 } from '../../src/store/gameSlice'
-import type { GameState, Player } from '../../src/types'
+import type { GameState, Player, StrategicAllianceSnapshot } from '../../src/types'
 
 function player(id: string): Player {
   return {
@@ -19,6 +22,159 @@ function player(id: string): Player {
 function userPlayer(id: string): Player {
   return { ...player(id), isUser: true }
 }
+
+function allianceSnapshot(
+  id: string,
+  memberIds: string[],
+  overrides: Partial<StrategicAllianceSnapshot> = {}
+): StrategicAllianceSnapshot {
+  return {
+    id,
+    memberIds,
+    leaderIds: [memberIds[0]],
+    status: 'ACTIVE',
+    cohesion: 0.8,
+    fractureRisk: 0.1,
+    currentTargetIds: [],
+    fallbackTargetIds: [],
+    memberCommitment: Object.fromEntries(memberIds.map((memberId) => [memberId, 0.8])),
+    memberPerceivedStatus: Object.fromEntries(
+      memberIds.map((memberId) => [memberId, 'CORE' as const])
+    ),
+    memberPlanBeliefs: Object.fromEntries(memberIds.map((memberId) => [memberId, []])),
+    infiltratorIds: [],
+    ...overrides,
+  }
+}
+
+describe('Reality alliance strategic influence', () => {
+  it('makes a strong core pact more protective than a weak peripheral deal', () => {
+    const holder = player('holder')
+    const core = player('core')
+    const peripheral = player('peripheral')
+    const state = {
+      week: 4,
+      dramaSocialMode: true,
+      players: [holder, core, peripheral],
+      strategicRelationships: {
+        holder: {
+          core: { affinity: 30, tags: ['alliance'] },
+          peripheral: { affinity: 30, tags: ['alliance'] },
+        },
+      },
+      strategicAlliances: [
+        allianceSnapshot('core-pact', ['holder', 'core'], {
+          cohesion: 0.92,
+          fractureRisk: 0.04,
+          memberCommitment: { holder: 0.9, core: 0.9 },
+        }),
+        allianceSnapshot('loose-deal', ['holder', 'peripheral'], {
+          cohesion: 0.34,
+          fractureRisk: 0.58,
+          memberCommitment: { holder: 0.46, peripheral: 0.29 },
+          memberPerceivedStatus: { holder: 'REGULAR', peripheral: 'PERIPHERAL' },
+        }),
+      ],
+    } as GameState
+
+    expect(getSafetyRelationshipScore(state, 'holder', core)).toBeGreaterThan(
+      getSafetyRelationshipScore(state, 'holder', peripheral)
+    )
+    expect(getNominationTargetScore(state, 'holder', core)).toBeLessThan(
+      getNominationTargetScore(state, 'holder', peripheral)
+    )
+  })
+
+  it('lets an overlapping alliance plan pressure compete with a separate protective pact', () => {
+    const target = player('target')
+    const base = {
+      week: 4,
+      dramaSocialMode: true,
+      players: [player('actor'), target, player('third')],
+      strategicRelationships: {
+        actor: {
+          target: { affinity: 45, tags: ['alliance'] },
+        },
+      },
+      strategicAlliances: [
+        allianceSnapshot('protective-pact', ['actor', 'target'], {
+          cohesion: 0.86,
+          memberCommitment: { actor: 0.86, target: 0.82 },
+        }),
+      ],
+    } as GameState
+    const conflicted = {
+      ...base,
+      strategicAlliances: [
+        ...(base.strategicAlliances ?? []),
+        allianceSnapshot('targeting-coalition', ['actor', 'third'], {
+          leaderIds: ['actor'],
+          cohesion: 0.74,
+          currentTargetIds: ['target'],
+          memberCommitment: { actor: 0.72, third: 0.7 },
+          memberPerceivedStatus: { actor: 'CORE', third: 'REGULAR' },
+          memberPlanBeliefs: { actor: ['vote:target'], third: ['vote:target'] },
+        }),
+      ],
+    } as GameState
+
+    const cleanRead = getStrategicAllianceDecisionRead(base, 'actor', 'target')
+    const conflictRead = getStrategicAllianceDecisionRead(conflicted, 'actor', 'target')
+
+    expect(cleanRead.sharedProtection).toBeGreaterThan(0)
+    expect(cleanRead.currentTargetPressure).toBe(0)
+    expect(conflictRead.sharedProtection).toBeGreaterThan(0)
+    expect(conflictRead.currentTargetPressure).toBeGreaterThan(0)
+    expect(getNominationTargetScore(conflicted, 'actor', target)).toBeGreaterThan(
+      getNominationTargetScore(base, 'actor', target)
+    )
+  })
+
+  it('treats a false-pretense member as far less protected by that alliance', () => {
+    const genuine = {
+      week: 4,
+      dramaSocialMode: true,
+      players: [player('voter'), player('ally'), player('other')],
+      strategicRelationships: {
+        voter: {
+          ally: { affinity: 35, tags: ['alliance'] },
+          other: { affinity: 0, tags: [] },
+        },
+      },
+      strategicAlliances: [
+        allianceSnapshot('deal', ['voter', 'ally'], {
+          memberCommitment: { voter: 0.8, ally: 0.75 },
+        }),
+      ],
+    } as GameState
+    const falseDeal = {
+      ...genuine,
+      strategicAlliances: [
+        allianceSnapshot('deal', ['voter', 'ally'], {
+          cohesion: 0.42,
+          fractureRisk: 0.5,
+          memberCommitment: { voter: 0.3, ally: 0.75 },
+          memberPerceivedStatus: { voter: 'PERIPHERAL', ally: 'CORE' },
+          infiltratorIds: ['voter'],
+        }),
+      ],
+    } as GameState
+
+    const genuineRead = getStrategicAllianceDecisionRead(genuine, 'voter', 'ally')
+    const falseRead = getStrategicAllianceDecisionRead(falseDeal, 'voter', 'ally')
+    expect(falseRead.sharedProtection).toBeLessThan(genuineRead.sharedProtection * 0.25)
+    expect(falseRead.betrayalPressure).toBeGreaterThan(genuineRead.betrayalPressure)
+
+    const genuineBackstabs = Array.from({ length: 120 }, (_, seed) =>
+      chooseAiEvictionVote(genuine, 'voter', ['ally', 'other'], seed)
+    ).filter((vote) => vote === 'ally').length
+    const falseDealBackstabs = Array.from({ length: 120 }, (_, seed) =>
+      chooseAiEvictionVote(falseDeal, 'voter', ['ally', 'other'], seed)
+    ).filter((vote) => vote === 'ally').length
+
+    expect(falseDealBackstabs).toBeGreaterThan(genuineBackstabs)
+  })
+})
 
 describe('relationship-aware AI eviction decisions', () => {
   it('persists the Drama Mode gameplay switch', () => {
