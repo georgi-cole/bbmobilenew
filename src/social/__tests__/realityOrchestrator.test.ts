@@ -343,6 +343,82 @@ describe('Reality causal orchestration', () => {
     expect(resolved.domain.interactions[pending.interaction!.id].status).toBe('RESOLVED')
   })
 
+  it('turns an accepted vote rally into the shared alliance target plan', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'vote-pact',
+      founderIds: ['ava'],
+      memberIds: ['human'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'human'],
+      targetIds: [],
+      planIds: ['stay-flexible'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const targetActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      nova: {
+        id: 'nova',
+        isHuman: false,
+        active: true,
+        roles: ['nominated'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(43),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'AI_TO_HUMAN',
+        context: {
+          ...context,
+          phase: 'social_2',
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human', 'nova'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            nova: ['nominated'],
+          },
+          atRiskActorIds: ['nova'],
+        },
+        actors: targetActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('rally_votes_against')!,
+            targetIds: ['human'],
+            subjectId: 'nova',
+          },
+        ],
+      },
+    })
+
+    expect(pending.interaction?.status).toBe('AWAITING_HUMAN')
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_2',
+      subjectId: 'nova',
+    })
+
+    expect(resolved.event?.outcome).toBe('SUCCESS')
+    expect(resolved.domain.alliances['vote-pact'].currentTargetIds).toEqual(['nova'])
+    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.ava).toEqual([
+      'target:nova',
+    ])
+    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.human).toEqual([
+      'target:nova',
+    ])
+  })
+
   it('recruits an accepted target into a wider coalition instead of creating another pair', () => {
     const domain = createInitialRealityDomainState()
     const core = createRealityAlliance(domain, {
