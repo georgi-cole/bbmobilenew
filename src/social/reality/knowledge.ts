@@ -12,6 +12,7 @@ function unique(values: readonly string[]): string[] {
 
 const ALLIANCE_KNOWLEDGE_PROPOSITIONS = new Set([
   'SECRET_ALLIANCE',
+  'ALLIANCE_PUBLIC_CLAIM',
   'ALLIANCE_EXPOSED',
   'ALLIANCE_FRACTURE',
 ])
