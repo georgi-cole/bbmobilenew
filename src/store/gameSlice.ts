@@ -8532,13 +8532,33 @@ const gameSlice = createSlice({
           const aiPool = autoNomineeUnitIds
             ? pool.filter((p) => !autoNomineeUnitIds.has(p.id))
             : pool
-          let nominees = pickStrategicNominationTargets(
-            state,
-            state.lohId!,
-            aiPool,
-            nomineeCount,
-            rng
-          )
+          // The persisted AI LOH plan is created before nomination_results and is
+          // the strategic source of truth when Public Mode is off. Use that same
+          // opening block here instead of independently selecting a second pair and
+          // asking the outer planning reducer to rewrite it after the fact.
+          //
+          // Keeping selection atomic prevents the ceremony from ever capturing the
+          // base reducer's provisional pair while Faux TV is rewritten to the plan.
+          const plannedNomineeIds =
+            !state.publicModeEnabled &&
+            state.lohNominationPlan?.week === state.week &&
+            state.lohNominationPlan.lohId === state.lohId &&
+            state.lohNominationPlan.status === 'planned' &&
+            state.lohNominationPlan.initialNomineeIds.length === nomineeCount
+              ? state.lohNominationPlan.initialNomineeIds
+              : null
+          const plannedNominees = plannedNomineeIds
+            ? plannedNomineeIds
+                .map((id) => aiPool.find((candidate) => candidate.id === id))
+                .filter((candidate): candidate is Player => Boolean(candidate))
+            : []
+          const canUsePlannedBlock =
+            plannedNomineeIds != null &&
+            plannedNominees.length === nomineeCount &&
+            new Set(plannedNominees.map((candidate) => candidate.id)).size === nomineeCount
+          let nominees = canUsePlannedBlock
+            ? plannedNominees
+            : pickStrategicNominationTargets(state, state.lohId!, aiPool, nomineeCount, rng)
           if ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35) {
             const alternatives = aiPool.filter(
               (candidate) => !nominees.some((nominee) => nominee.id === candidate.id)
