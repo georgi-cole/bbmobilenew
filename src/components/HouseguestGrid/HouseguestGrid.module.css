@@ -641,49 +641,58 @@
     box-shadow 0.2s ease;
 }
 
-/* Live vote: keep the red frame static, then fake a radiating danger halo
-   on the existing ::before layer. Only opacity + transform animate, so the
-   browser can composite the pulse cheaply instead of repainting blur/shadow
-   geometry every frame. */
+/* Live vote: the portrait frame itself stays static and cheap. The breathing
+   danger signal is a separate sibling layer outside avatarWrap so it is not
+   clipped by avatarWrap's overflow:hidden. Only opacity + transform animate. */
 .liveEvictionNominee {
-  border-color: rgba(248, 87, 87, 0.86);
+  position: relative;
+  z-index: 1;
+  border-color: rgba(248, 87, 87, 0.9);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(248, 87, 87, 0.34),
-    inset 0 1px 0 rgba(255, 228, 228, 0.12),
-    inset 0 0 0 1px rgba(248, 87, 87, 0.36);
+    0 0 0 1px rgba(248, 87, 87, 0.38),
+    inset 0 1px 0 rgba(255, 228, 228, 0.14),
+    inset 0 0 0 1px rgba(248, 87, 87, 0.4);
 }
 
 .liveEvictionNominee::before {
+  box-shadow:
+    inset 0 0 0 1px rgba(248, 87, 87, 0.24),
+    inset 0 0 14px 3px rgba(220, 38, 38, 0.18);
+}
+
+.liveEvictionDangerHalo {
+  position: absolute;
+  inset: -6px;
+  z-index: 0;
+  border-radius: 14px;
+  pointer-events: none;
   background: radial-gradient(
     ellipse at center,
-    rgba(248, 87, 87, 0) 44%,
-    rgba(248, 87, 87, 0.08) 66%,
-    rgba(220, 38, 38, 0.28) 100%
+    rgba(248, 87, 87, 0) 48%,
+    rgba(248, 87, 87, 0.12) 68%,
+    rgba(220, 38, 38, 0.34) 100%
   );
-  box-shadow:
-    inset 0 0 0 1px rgba(248, 87, 87, 0.2),
-    inset 0 0 14px 3px rgba(220, 38, 38, 0.16);
   opacity: 0.34;
   transform: scale(0.985);
   transform-origin: center;
   will-change: opacity, transform;
-  animation: liveEvictionDangerBreath 1.75s ease-in-out infinite;
+  animation: liveEvictionDangerBreath 1.65s ease-in-out infinite;
 }
 
 @keyframes liveEvictionDangerBreath {
   0%,
   100% {
-    opacity: 0.28;
+    opacity: 0.24;
     transform: scale(0.985);
   }
-  36% {
-    opacity: 0.82;
-    transform: scale(1.035);
+  34% {
+    opacity: 0.9;
+    transform: scale(1.045);
   }
   58% {
-    opacity: 0.48;
-    transform: scale(1.01);
+    opacity: 0.5;
+    transform: scale(1.015);
   }
 }
 
@@ -1786,9 +1795,14 @@
 
   .nomination_loh,
   .nomination_danger::before,
-  .liveEvictionNominee::before,
+  .liveEvictionDangerHalo,
   .roboStatsSheet {
     animation: none !important;
+  }
+
+  .liveEvictionDangerHalo {
+    opacity: 0.46;
+    transform: none;
   }
 }
 
