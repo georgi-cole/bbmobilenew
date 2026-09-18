@@ -60,7 +60,7 @@ function cleanState(seed: number): GameState {
   state.twistActive = false
   state.twistActivatedThisWeek = false
   state.dayStartShock = null
-  state.depressionShock = null
+  state.depressionShock = undefined
   state.cupidArrow = {
     scheduledSeason: null,
     status: 'inactive',
@@ -139,9 +139,9 @@ describe('critical shock / ruleset matrix', () => {
 
     expect(state.phase).toBe('live_vote')
     assertStoredVotesAreEligible(state)
-    expect(state.votes[loh.id]).toBeUndefined()
+    expect((state.votes ?? {})[loh.id]).toBeUndefined()
     state.nomineeIds.forEach((nomineeId) => {
-      expect(state.votes[nomineeId]).toBeUndefined()
+      expect((state.votes ?? {})[nomineeId]).toBeUndefined()
     })
   })
 
@@ -181,10 +181,10 @@ describe('critical shock / ruleset matrix', () => {
 
     expect(state.phase).toBe('live_vote')
     assertStoredVotesAreEligible(state)
-    expect(state.votes[coLohA.id]).toBeUndefined()
-    expect(state.votes[coLohB.id]).toBeUndefined()
-    expect(state.votes[human.id]).toBeUndefined()
-    expect(state.votes[otherNominee.id]).toBeUndefined()
+    expect((state.votes ?? {})[coLohA.id]).toBeUndefined()
+    expect((state.votes ?? {})[coLohB.id]).toBeUndefined()
+    expect((state.votes ?? {})[human.id]).toBeUndefined()
+    expect((state.votes ?? {})[otherNominee.id]).toBeUndefined()
     expect(getClassicEvictionTieBreakerId(state)).toBe(posHolder.id)
   })
 
@@ -235,11 +235,11 @@ describe('critical shock / ruleset matrix', () => {
     expect(state.phase).toBe('live_vote')
     assertStoredVotesAreEligible(state)
     for (const id of [...lohPair.memberIds, ...humanPair.memberIds]) {
-      expect(state.votes[id]).toBeUndefined()
+      expect((state.votes ?? {})[id]).toBeUndefined()
     }
     for (const pair of pairs.filter((pair) => pair.id !== lohPair.id && pair.id !== humanPair.id)) {
-      expect(state.votes[pair.memberIds[0]]).toBeDefined()
-      expect(state.votes[pair.memberIds[1]]).toBe(state.votes[pair.memberIds[0]])
+      expect((state.votes ?? {})[pair.memberIds[0]]).toBeDefined()
+      expect((state.votes ?? {})[pair.memberIds[1]]).toBe((state.votes ?? {})[pair.memberIds[0]])
     }
   })
 
@@ -271,9 +271,9 @@ describe('critical shock / ruleset matrix', () => {
     state = criticalGameReducer(state, advance())
 
     assertStoredVotesAreEligible(state)
-    expect(state.votes[loh.id]).toBeUndefined()
-    expect(state.votes[human.id]).toBeUndefined()
-    expect(state.votes[otherNominee.id]).toBeUndefined()
+    expect((state.votes ?? {})[loh.id]).toBeUndefined()
+    expect((state.votes ?? {})[human.id]).toBeUndefined()
+    expect((state.votes ?? {})[otherNominee.id]).toBeUndefined()
   })
 
   it('lets Detox make the LOH vulnerable but nominee status overrides all LOH voting privilege', () => {
@@ -319,7 +319,7 @@ describe('critical shock / ruleset matrix', () => {
     expect(resolved.phase).toBe('eviction_results')
     expect(resolved.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(0)
     expect(resolved.pendingExitContext?.voteCounts[loh.id]).toBe(0)
-    expect(resolved.votes[loh.id]).toBeUndefined()
+    expect((resolved.votes ?? {})[loh.id]).toBeUndefined()
     expect(resolved.pendingExitContext?.votesByVoterId[loh.id]).toBeUndefined()
     expect(resolved.pendingEviction?.evicteeId).toBeDefined()
     expect(resolved.awaitingTieBreak).toBe(false)
