@@ -10,6 +10,8 @@ import {
   formRealityTruce,
   holdRealityAllianceMeeting,
   leakRealityAlliance,
+  markRealityAllianceInfiltratorIfSecondary,
+  recordRealityAllianceBetrayal,
   recruitRealityAllianceMember,
   refreshRealityAllianceDynamics,
   refreshRealityAllianceOverlaps,
@@ -217,6 +219,163 @@ describe('Reality alliance commitment and hierarchy', () => {
 
     expect(alliance.memberPerceivedStatus.lia).toBe('CORE')
     expect(alliance.memberPerceivedStatus.kai).toBe('PERIPHERAL')
+  })
+})
+
+describe('Reality overlapping deals and betrayal lifecycle', () => {
+  it('marks a secondary deal as false pretence when the recruit already has a much stronger pact', () => {
+    const state = createInitialRealityDomainState()
+    const primary = createRealityAlliance(state, {
+      id: 'primary',
+      founderIds: ['kai'],
+      memberIds: ['nova'],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    for (let day = 1; day <= 4; day += 1) {
+      holdRealityAllianceMeeting(state, {
+        allianceId: primary.id,
+        attendeeIds: ['kai', 'nova'],
+        targetIds: [],
+        planIds: ['final-two'],
+        at: { day, phase: 'social_2' },
+      })
+    }
+
+    const core = createRealityAlliance(state, {
+      id: 'recruiting-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: core.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect:core'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const coalition = recruitRealityAllianceMember(state, {
+      allianceId: core.id,
+      recruiterId: 'ava',
+      targetId: 'kai',
+      expandedAllianceId: 'secondary-coalition',
+      at: { day: 5, phase: 'social_1' },
+    })
+
+    expect(primary.memberCommitment.kai).toBeGreaterThanOrEqual(0.68)
+    expect(coalition.infiltratorIds).toContain('kai')
+    expect(coalition.genuine).toBe(false)
+    expect(coalition.memberPerceivedStatus.kai).toBe('PERIPHERAL')
+    expect(coalition.memberCommitment.kai).toBeLessThanOrEqual(0.3)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_FALSE_PRETENSE_ESTABLISHED' && event.actorId === 'kai'
+      )
+    ).toBe(true)
+  })
+
+  it('lets a secondary false deal become genuine after the primary pact ends and loyalty rebuilds', () => {
+    const state = createInitialRealityDomainState()
+    const primary = createRealityAlliance(state, {
+      id: 'primary',
+      founderIds: ['kai'],
+      memberIds: ['nova'],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    primary.status = 'ACTIVE'
+    primary.memberCommitment.kai = 0.82
+    primary.memberCommitment.nova = 0.8
+
+    const secondary = createRealityAlliance(state, {
+      id: 'secondary',
+      founderIds: ['ava'],
+      memberIds: ['kai'],
+      purpose: 'Backup deal',
+      at: { day: 2, phase: 'social_1' },
+    })
+    expect(
+      markRealityAllianceInfiltratorIfSecondary(state, secondary.id, 'kai', {
+        day: 2,
+        phase: 'social_2',
+      })
+    ).toBe(true)
+    expect(secondary.infiltratorIds).toContain('kai')
+
+    primary.status = 'DISSOLVED'
+    for (let day = 3; day <= 9; day += 1) {
+      holdRealityAllianceMeeting(state, {
+        allianceId: secondary.id,
+        attendeeIds: ['ava', 'kai'],
+        targetIds: [],
+        planIds: ['rebuild'],
+        at: { day, phase: 'social_1' },
+      })
+    }
+
+    expect(secondary.memberCommitment.kai).toBeGreaterThanOrEqual(0.58)
+    expect(secondary.infiltratorIds).not.toContain('kai')
+    expect(secondary.genuine).toBe(true)
+  })
+
+  it('fractures a core pact after a serious betrayal and dissolves it after another severe breach', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'ride-or-die',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: ['nova'],
+      planIds: ['vote:nova'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'ava',
+      targetId: 'lia',
+      kind: 'NOMINATION',
+      at: { day: 5, phase: 'nomination_results' },
+      sourceEventId: 'nomination-1',
+    })
+
+    expect(alliance.status).toBe('FRACTURED')
+    expect(state.relationships.lia.ava.resentment).toBeGreaterThan(0)
+    expect(
+      Object.values(state.grievances).some(
+        (grievance) => grievance.holderId === 'lia' && grievance.againstId === 'ava'
+      )
+    ).toBe(true)
+
+    const commitmentAfterFirstBetrayal = alliance.memberCommitment.ava
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'ava',
+      targetId: 'lia',
+      kind: 'NOMINATION',
+      at: { day: 5, phase: 'nomination_results' },
+      sourceEventId: 'nomination-1',
+    })
+    expect(alliance.memberCommitment.ava).toBe(commitmentAfterFirstBetrayal)
+
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'ava',
+      targetId: 'lia',
+      kind: 'SOCIAL_BETRAYAL',
+      at: { day: 6, phase: 'social_1' },
+      sourceEventId: 'betrayal-2',
+    })
+
+    expect(alliance.status).toBe('DISSOLVED')
+    expect(alliance.currentTargetIds).toEqual([])
+    expect(alliance.fallbackTargetIds).toEqual([])
   })
 })
 
