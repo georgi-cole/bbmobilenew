@@ -45,12 +45,22 @@ const DEFAULT_SEASON_STATE: CompetitionSeasonState = {
   form: 0,
   confidence: 0,
   fatigue: 0,
+  observedStrength: 50,
+  recentBottomStreak: 0,
+  sandbagSuspicion: 0,
+  performanceSamples: 0,
+  peakRelativePerformance: 50,
 }
 
 const SEASON_STATE_BOUNDS = {
   form: { min: -5, max: 5 },
   confidence: { min: -3, max: 3 },
   fatigue: { min: 0, max: 5 },
+  observedStrength: { min: 0, max: 100 },
+  recentBottomStreak: { min: 0, max: 8 },
+  sandbagSuspicion: { min: 0, max: 100 },
+  performanceSamples: { min: 0, max: 20 },
+  peakRelativePerformance: { min: 0, max: 100 },
 } as const
 
 const SEASON_MODIFIER_WEIGHTS = {
@@ -170,6 +180,31 @@ export function clampCompetitionSeasonState(state: CompetitionSeasonState): Comp
       SEASON_STATE_BOUNDS.confidence.max
     ),
     fatigue: clamp(state.fatigue, SEASON_STATE_BOUNDS.fatigue.min, SEASON_STATE_BOUNDS.fatigue.max),
+    observedStrength: clamp(
+      state.observedStrength ?? DEFAULT_SEASON_STATE.observedStrength!,
+      SEASON_STATE_BOUNDS.observedStrength.min,
+      SEASON_STATE_BOUNDS.observedStrength.max
+    ),
+    recentBottomStreak: clamp(
+      state.recentBottomStreak ?? 0,
+      SEASON_STATE_BOUNDS.recentBottomStreak.min,
+      SEASON_STATE_BOUNDS.recentBottomStreak.max
+    ),
+    sandbagSuspicion: clamp(
+      state.sandbagSuspicion ?? 0,
+      SEASON_STATE_BOUNDS.sandbagSuspicion.min,
+      SEASON_STATE_BOUNDS.sandbagSuspicion.max
+    ),
+    performanceSamples: clamp(
+      state.performanceSamples ?? 0,
+      SEASON_STATE_BOUNDS.performanceSamples.min,
+      SEASON_STATE_BOUNDS.performanceSamples.max
+    ),
+    peakRelativePerformance: clamp(
+      state.peakRelativePerformance ?? DEFAULT_SEASON_STATE.peakRelativePerformance!,
+      SEASON_STATE_BOUNDS.peakRelativePerformance.min,
+      SEASON_STATE_BOUNDS.peakRelativePerformance.max
+    ),
   }
 }
 
@@ -178,7 +213,68 @@ export function getCompetitionSeasonState(
   playerId: string
 ): CompetitionSeasonState {
   const state = seasonStateByPlayerId?.[playerId]
-  return clampCompetitionSeasonState(state ?? DEFAULT_SEASON_STATE)
+  return clampCompetitionSeasonState({ ...DEFAULT_SEASON_STATE, ...state })
+}
+
+export interface CompetitionPerceptionRead {
+  observedStrength: number
+  recentBottomStreak: number
+  sandbagSuspicion: number
+  performanceSamples: number
+  peakRelativePerformance: number
+  perceivedStrength: number
+  threatBonus: number
+  pawnSuitability: number
+}
+
+/**
+ * Translate observable competition results into the house's strategic read.
+ * Weak results can lower perceived strength, but never become a direct safety
+ * bonus: persistent weakness instead increases pawn suitability. Suspicion
+ * partially restores threat when a pattern looks deliberately understated.
+ */
+export function getCompetitionPerceptionRead(
+  profile: CompetitionSkillProfile | undefined,
+  seasonState: CompetitionSeasonState | undefined
+): CompetitionPerceptionRead {
+  const current = clampCompetitionSeasonState({ ...DEFAULT_SEASON_STATE, ...seasonState })
+  const baseline = clamp(
+    profile?.overall ?? (profile ? averageBaselineSkill(profile) : 50),
+    0,
+    100
+  )
+  const samples = current.performanceSamples ?? 0
+  const sampleWeight = Math.min(0.82, samples * 0.18)
+  const observedStrength = current.observedStrength ?? 50
+  const suspicion = current.sandbagSuspicion ?? 0
+  const recentBottomStreak = current.recentBottomStreak ?? 0
+  const perceivedStrength = clamp(
+    baseline * (1 - sampleWeight) + observedStrength * sampleWeight + suspicion * 0.12,
+    0,
+    100
+  )
+  const threatBonus = clamp(
+    Math.max(0, (perceivedStrength - 52) / 8) + suspicion / 25,
+    0,
+    8
+  )
+  const pawnSuitability = clamp(
+    Math.max(0, (45 - perceivedStrength) * 0.45) +
+      recentBottomStreak * 2.5 -
+      suspicion * 0.1,
+    0,
+    24
+  )
+  return {
+    observedStrength,
+    recentBottomStreak,
+    sandbagSuspicion: suspicion,
+    performanceSamples: samples,
+    peakRelativePerformance: current.peakRelativePerformance ?? 50,
+    perceivedStrength,
+    threatBonus,
+    pawnSuitability,
+  }
 }
 
 export function getCompetitionSeasonModifiers(
@@ -309,6 +405,11 @@ export function updateCompetitionSeasonStateByPlayerId(
     let form = driftTowardZero(current.form, SEASON_DECAY.form)
     let confidence = driftTowardZero(current.confidence, SEASON_DECAY.confidence)
     let fatigue = current.fatigue
+    let observedStrength = current.observedStrength ?? 50
+    let recentBottomStreak = current.recentBottomStreak ?? 0
+    let sandbagSuspicion = current.sandbagSuspicion ?? 0
+    let performanceSamples = current.performanceSamples ?? 0
+    let peakRelativePerformance = current.peakRelativePerformance ?? 50
 
     if (participantSet.has(playerId)) {
       fatigue += SEASON_DECAY.fatigueGain
@@ -327,11 +428,45 @@ export function updateCompetitionSeasonStateByPlayerId(
           }
         }
       }
+
+      if (includePlacementBonuses) {
+        const rankIndex = rankById.get(playerId)
+        if (rankIndex !== undefined && ranked.length > 0) {
+          const relativePerformance =
+            ranked.length === 1 ? 100 : ((ranked.length - 1 - rankIndex) / (ranked.length - 1)) * 100
+          const wasBottomStreak = recentBottomStreak
+          const isBottomBand = relativePerformance <= 25
+          recentBottomStreak = isBottomBand ? recentBottomStreak + 1 : 0
+          performanceSamples = Math.min(20, performanceSamples + 1)
+          observedStrength = observedStrength * 0.68 + relativePerformance * 0.32
+
+          // Suspicion fades when the pattern stops looking odd, but repeated
+          // bottom finishes and sudden danger-time rebounds are observable tells.
+          sandbagSuspicion = Math.max(0, sandbagSuspicion - 4)
+          if (isBottomBand && recentBottomStreak >= 3) {
+            const mismatch = Math.max(0, peakRelativePerformance - relativePerformance - 30)
+            sandbagSuspicion += 5 + mismatch * 0.2 + (recentBottomStreak - 3) * 3
+          }
+          if (relativePerformance >= 70 && wasBottomStreak >= 2) {
+            sandbagSuspicion += 18 + Math.min(16, wasBottomStreak * 4)
+          }
+          peakRelativePerformance = Math.max(peakRelativePerformance, relativePerformance)
+        }
+      }
     } else {
       fatigue -= SEASON_DECAY.fatigueRecovery
     }
 
-    next[playerId] = clampCompetitionSeasonState({ form, confidence, fatigue })
+    next[playerId] = clampCompetitionSeasonState({
+      form,
+      confidence,
+      fatigue,
+      observedStrength,
+      recentBottomStreak,
+      sandbagSuspicion,
+      performanceSamples,
+      peakRelativePerformance,
+    })
   }
 
   return next
