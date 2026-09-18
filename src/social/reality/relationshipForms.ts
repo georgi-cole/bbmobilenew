@@ -959,12 +959,16 @@ export function leakRealityAlliance(
   const alliance = state.alliances[allianceId]
   if (!alliance?.memberIds.includes(leakerId))
     throw new Error('Only a member can leak the alliance')
+  const outsiderReceiverIds = [
+    ...new Set(receiverIds.filter((id) => !alliance.memberIds.includes(id))),
+  ]
+  if (outsiderReceiverIds.length === 0) return
   const event = appendRealityEvent(state, {
     ...at,
     type: 'ALLIANCE_LEAKED',
     actorId: leakerId,
-    targetIds: receiverIds,
-    participantIds: [leakerId, ...receiverIds],
+    targetIds: outsiderReceiverIds,
+    participantIds: [leakerId, ...outsiderReceiverIds],
     witnessIds: [],
     visibility: 'PAIR_ONLY',
     outcome: 'SUCCESS',
@@ -977,7 +981,6 @@ export function leakRealityAlliance(
     juryEligible: true,
   })
   alliance.knownLeakEventIds.push(event.id)
-  const outsiderReceiverIds = receiverIds.filter((id) => !alliance.memberIds.includes(id))
   alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...outsiderReceiverIds])]
   alliance.secrecy = Math.max(0, alliance.secrecy - outsiderReceiverIds.length * 0.16)
   recordRealityAllianceLeakDiscovery(state, {
