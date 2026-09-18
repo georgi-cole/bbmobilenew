@@ -61,7 +61,7 @@ describe('intelligenceMiddleware alliance exposure editorial gate', () => {
       return action
     })
 
-    invoke({ type: 'social/commitRealityOutcome', payload: {} })
+    invoke({ type: 'social/replaceRealityDomain', payload: afterDomain })
 
     const broadcast = dispatched.find((action) => action.type === 'game/addTvEvent')
     expect(broadcast?.payload?.text).toMatch(/^HOUSE EXPOSED/)
