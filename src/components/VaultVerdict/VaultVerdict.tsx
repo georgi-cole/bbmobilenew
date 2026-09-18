@@ -41,9 +41,7 @@ import './VaultVerdict.css'
 const FINAL_FEED_LIMIT = 18
 
 const EYE_BANK_CREST = '/assets/minigames/battery-low/eye-bank.webp'
-const HERO_REVEAL_SPRITES: Partial<
-  Record<RevealEffectKey, { x: string; y: string }>
-> = {
+const HERO_REVEAL_SPRITES: Partial<Record<RevealEffectKey, { x: string; y: string }>> = {
   'power-cell': { x: '0%', y: '0%' },
   'blackout-cell': { x: '33.333%', y: '0%' },
   inferno: { x: '66.667%', y: '0%' },
@@ -261,7 +259,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
       ? latestRevealProfile
       : null
   const activeHeroSprite = activeHeroProfile
-    ? HERO_REVEAL_SPRITES[activeHeroProfile.key] ?? null
+    ? (HERO_REVEAL_SPRITES[activeHeroProfile.key] ?? null)
     : null
   const bankProfile = getBankMoodProfile(human.bankMood)
   const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
@@ -535,7 +533,10 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
             </div>
             <div className="vault-verdict__header-actions">
-              <div className="vault-verdict__header-bank" aria-label={`The Eye Bank is ${bankProfile.label.toLowerCase()}`}>
+              <div
+                className="vault-verdict__header-bank"
+                aria-label={`The Eye Bank is ${bankProfile.label.toLowerCase()}`}
+              >
                 <img src={EYE_BANK_CREST} alt="" decoding="async" />
                 <div>
                   <span>The Eye Bank</span>
