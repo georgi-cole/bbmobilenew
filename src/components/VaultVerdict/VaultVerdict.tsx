@@ -41,15 +41,17 @@ import './VaultVerdict.css'
 const FINAL_FEED_LIMIT = 18
 
 const EYE_BANK_CREST = '/assets/minigames/battery-low/eye-bank.webp'
-const HERO_REVEAL_ASSETS: Partial<Record<RevealEffectKey, string>> = {
-  'power-cell': '/assets/minigames/battery-low/power-cell.webp',
-  'blackout-cell': '/assets/minigames/battery-low/blackout-cell.webp',
-  powerdown: '/assets/minigames/battery-low/power-failure.webp',
-  inferno: '/assets/minigames/battery-low/inferno.webp',
-  unlucky: '/assets/minigames/battery-low/bad-omen.webp',
-  'answer-signal': '/assets/minigames/battery-low/answer-signal.webp',
-  blush: '/assets/minigames/battery-low/blush.webp',
-  overcharge: '/assets/minigames/battery-low/overcharge.webp',
+const HERO_REVEAL_SPRITES: Partial<
+  Record<RevealEffectKey, { x: string; y: string }>
+> = {
+  'power-cell': { x: '0%', y: '0%' },
+  'blackout-cell': { x: '33.333%', y: '0%' },
+  inferno: { x: '66.667%', y: '0%' },
+  blush: { x: '100%', y: '0%' },
+  overcharge: { x: '0%', y: '100%' },
+  powerdown: { x: '33.333%', y: '100%' },
+  unlucky: { x: '66.667%', y: '100%' },
+  'answer-signal': { x: '100%', y: '100%' },
 }
 
 interface FinaleReveal {
@@ -257,8 +259,8 @@ export default function BatteryLow(props: GenericMinigameProps) {
     heroEventVaultId === latestRevealVaultId && latestRevealProfile?.hero
       ? latestRevealProfile
       : null
-  const activeHeroAsset = activeHeroProfile
-    ? HERO_REVEAL_ASSETS[activeHeroProfile.key] ?? null
+  const activeHeroSprite = activeHeroProfile
+    ? HERO_REVEAL_SPRITES[activeHeroProfile.key] ?? null
     : null
   const bankProfile = getBankMoodProfile(human.bankMood)
   const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
@@ -594,19 +596,22 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   </div>
                 </div>
 
-                {activeHeroProfile && activeHeroAsset && (
+                {activeHeroProfile && activeHeroSprite && (
                   <div
                     key={`hero-${heroEventVaultId}`}
                     className={`vault-verdict__hero-event is-${activeHeroProfile.key}`}
                     aria-live="polite"
                   >
                     <div className="vault-verdict__hero-event-halo" aria-hidden="true" />
-                    <img
+                    <div
                       className="vault-verdict__hero-event-icon"
-                      src={activeHeroAsset}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
+                      aria-hidden="true"
+                      style={
+                        {
+                          '--sprite-x': activeHeroSprite.x,
+                          '--sprite-y': activeHeroSprite.y,
+                        } as CSSProperties
+                      }
                     />
                     <div className="vault-verdict__hero-event-copy">
                       <span>{activeHeroProfile.eyebrow}</span>
