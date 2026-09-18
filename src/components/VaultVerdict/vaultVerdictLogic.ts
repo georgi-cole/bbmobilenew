@@ -150,12 +150,16 @@ export function createVaultPods(seed: number, voteEffectsEnabled = true): VaultP
   const rng = mulberry32(seed >>> 0);
   const cells: Array<{ amount: number; specialEffect: BatteryLowVoteEffect | null }> =
     VAULT_VERDICT_AMOUNTS.map((amount) => ({ amount, specialEffect: null }));
-  if (voteEffectsEnabled) {
-    cells.push(
-      { amount: BATTERY_LOW_SPECIAL_RANK_VALUE, specialEffect: 'doubleVote' },
-      { amount: BATTERY_LOW_SPECIAL_RANK_VALUE, specialEffect: 'skipVote' },
-    );
-  }
+  cells.push(
+    {
+      amount: BATTERY_LOW_SPECIAL_RANK_VALUE,
+      specialEffect: voteEffectsEnabled ? 'doubleVote' : null,
+    },
+    {
+      amount: BATTERY_LOW_SPECIAL_RANK_VALUE,
+      specialEffect: voteEffectsEnabled ? 'skipVote' : null,
+    },
+  );
   return shuffle(cells, rng).map((cell, index) => ({
     vaultId: `battery-${index + 1}`,
     displayNumber: index + 1,
