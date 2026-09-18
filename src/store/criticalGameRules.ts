@@ -15,7 +15,10 @@ export type CriticalRuleDimension =
   | 'strategy_only'
 
 export interface CriticalShockRuleDeclaration {
-  /** Critical engine dimensions this shock intentionally changes. Empty means baseline rules remain. */
+  /**
+   * Critical engine dimensions this shock intentionally changes.
+   * Empty means baseline rules remain.
+   */
   changes: readonly CriticalRuleDimension[]
   /**
    * Human-readable reason for the declaration. This registry is deliberately
@@ -35,11 +38,13 @@ export interface CriticalShockRuleDeclaration {
 export const FORCED_SHOCK_CRITICAL_RULES = {
   doubleEviction: {
     changes: ['nomination_count', 'eviction_count', 'tie_breaker'],
-    rationale: 'Three-person opening block and two exits; ordinary Classic voter eligibility stays intact.',
+    rationale:
+      'Three-person opening block and two exits; ordinary Classic voter eligibility stays intact.',
   },
   battleBack: {
     changes: ['roster_eligibility'],
-    rationale: 'A juror can return to active play; nomination and eviction rules are otherwise unchanged.',
+    rationale:
+      'A juror can return to active play; nomination and eviction rules are otherwise unchanged.',
   },
   vip: {
     changes: ['safety_replacement'],
@@ -51,11 +56,13 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
   },
   coup: {
     changes: ['nomination_eligibility', 'safety_replacement', 'tie_breaker'],
-    rationale: 'Detox replaces the whole block and explicitly allows the current LOH to become a replacement nominee.',
+    rationale:
+      'Detox replaces the whole block and explicitly allows the current LOH to become a replacement nominee.',
   },
   spotlight: {
     changes: ['safety_replacement'],
-    rationale: 'Force Majeure forces Safety use but does not change who casts the later eviction ballot.',
+    rationale:
+      'Force Majeure forces Safety use but does not change who casts the later eviction ballot.',
   },
   democracia: {
     changes: [
@@ -64,19 +71,23 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
       'ordinary_eviction_voters',
       'tie_breaker',
     ],
-    rationale: 'The house elects leadership; a tied election can create co-LOHs who split nominations and are both excluded from the ordinary eviction ballot.',
+    rationale:
+      'The house elects leadership; a tied election can create co-LOHs who split nominations and are both excluded from the ordinary eviction ballot.',
   },
   dayStartShock: {
     changes: ['eviction_authority'],
-    rationale: 'A direct production removal bypasses nominations and the house vote for that exit.',
+    rationale:
+      'A direct production removal bypasses nominations and the house vote for that exit.',
   },
   twinShock: {
     changes: ['nomination_eligibility', 'safety_replacement', 'roster_eligibility'],
-    rationale: 'Lia/Ali cannot target each other, a twin Safety holder must save the paired nominee, and Ali can enter later.',
+    rationale:
+      'Lia/Ali cannot target each other, a twin Safety holder must save the paired nominee, and Ali can enter later.',
   },
   depressionShock: {
     changes: ['strategy_only'],
-    rationale: 'Decision preferences can invert, but eligibility, vote authority, and eviction authority do not change.',
+    rationale:
+      'Decision preferences can invert, but eligibility, vote authority, and eviction authority do not change.',
   },
 } satisfies Record<ForcedShockType, CriticalShockRuleDeclaration>
 
@@ -84,7 +95,8 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
 export const FORMAT_CRITICAL_RULES = {
   publicMode: {
     changes: ['nomination_count', 'safety_replacement'],
-    rationale: 'Adds an automatic third nominee and public pre-Safety save; the later house vote remains Classic.',
+    rationale:
+      'Adds an automatic third nominee and public pre-Safety save; the later house vote remains Classic.',
   },
   cupidArrow: {
     changes: [
@@ -93,11 +105,18 @@ export const FORMAT_CRITICAL_RULES = {
       'ordinary_eviction_voters',
       'linked_exit',
     ],
-    rationale: 'Pairs cannot target each other, nominations expand to pairs, pair ballots are joint, and linked partners leave together.',
+    rationale:
+      'Pairs cannot target each other, nominations expand to pairs, pair ballots are joint, and linked partners leave together.',
   },
   voxPopuli: {
-    changes: ['nomination_authority', 'nomination_eligibility', 'eviction_authority', 'tie_breaker'],
-    rationale: 'Every active housemate nominates; the audience, not the house or LOH, controls eviction.',
+    changes: [
+      'nomination_authority',
+      'nomination_eligibility',
+      'eviction_authority',
+      'tie_breaker',
+    ],
+    rationale:
+      'Every active housemate nominates; the audience, not the house or LOH, controls eviction.',
   },
 } as const satisfies Record<string, CriticalShockRuleDeclaration>
 
