@@ -583,7 +583,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   ? finaleReveal.reserveEffect === 'doubleVote'
                     ? 'Power Cell secured. Your next eligible house eviction ballot will count twice.'
                     : finaleReveal.reserveEffect === 'skipVote'
-                      ? 'Blackout Cell. You will sit out the next house eviction vote.'
+                      ? 'Blackout Cell. You will sit out your next eligible house eviction vote.'
                       : finaleReveal.reserveAmount >= finaleReveal.offerAmount
                         ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
                         : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
@@ -639,7 +639,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
                             (battery) => battery.vaultId === result.personalVaultId
                           )?.specialEffect === 'doubleVote'
                             ? 'Double Vote earned'
-                            : 'Next vote skipped'
+                            : 'Next eligible vote skipped'
                         } `
                       : ''}
                     · {formatTime(result.finishTimeMs)}
