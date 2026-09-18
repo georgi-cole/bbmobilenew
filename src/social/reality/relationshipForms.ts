@@ -292,6 +292,7 @@ export function createRealityAlliance(
       })
     }
   }
+  refreshRealityAllianceOverlaps(state)
   return alliance
 }
 
@@ -713,4 +714,5 @@ export function migrateDramaAlliances(
       infiltratorIds: [...legacy.falsePretenceByIds],
     }
   }
+  refreshRealityAllianceOverlaps(state)
 }
