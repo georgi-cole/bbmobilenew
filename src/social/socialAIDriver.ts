@@ -71,6 +71,7 @@ import { normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './interactionVariantBank'
 import { allianceIdentityBias, type AiGameIdentity } from '../ai/aiGameIdentity'
+import { getCupidPartnerId } from '../features/twists/cupidArrow'
 import type { GameState } from '../types'
 import { chooseAiEvictionVote, getNominationTargetScore } from '../store/gameSlice'
 
@@ -771,8 +772,12 @@ function allianceHumanStrategyCandidate(
   const excludedIds = new Set(alliance.memberIds)
   const phase = state.game.phase
   const game = state.game as unknown as GameState
+  const humanIsLoh =
+    game.lohId === human.id || getCupidPartnerId(game, game.lohId) === human.id
+  const humanHasSafety =
+    game.posWinnerId === human.id || getCupidPartnerId(game, game.posWinnerId) === human.id
 
-  if (state.game.lohId === human.id && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+  if (humanIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds)
     return subjectId
       ? {
@@ -784,7 +789,7 @@ function allianceHumanStrategyCandidate(
       : null
   }
 
-  if (state.game.posWinnerId === human.id && ['pos_results', 'pos_ceremony'].includes(phase)) {
+  if (humanHasSafety && ['pos_results', 'pos_ceremony'].includes(phase)) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
       nonNomineesOnly: true,
     })
@@ -802,7 +807,7 @@ function allianceHumanStrategyCandidate(
     ['pos_ceremony_results', 'social_2'].includes(phase) &&
     game.nomineeIds.length > 1 &&
     !human.status.includes('nominated') &&
-    !human.status.includes('loh')
+    !humanIsLoh
   ) {
     const subjectId = chooseAiEvictionVote(
       game,
