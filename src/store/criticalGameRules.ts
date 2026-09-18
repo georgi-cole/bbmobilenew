@@ -155,7 +155,6 @@ export function getClassicLeaderRoleIds(state: GameState): string[] {
  */
 export function canCastClassicEvictionVote(state: GameState, playerId: string): boolean {
   if (!isActivePlayer(state, playerId)) return false
-  if (state.batteryLowVoteEffects?.[playerId] === 'skipVote') return false
   if (state.nomineeIds.includes(playerId)) return false
   if (getClassicLeaderRoleIds(state).includes(playerId)) return false
   return true
