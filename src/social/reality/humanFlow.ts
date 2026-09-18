@@ -180,11 +180,7 @@ function activeAllianceAdvisors(
   return alliance.memberIds.filter((id) => id !== actorId && activeIds.has(id))
 }
 
-function nominationConsultationCandidates(
-  state: RootState,
-  alliance: RealityAlliance,
-  actorId: string
-) {
+function nominationConsultationCandidates(state: RootState, actorId: string) {
   const lohIds = new Set(expandCupidIds(state.game, state.game.lohId ? [state.game.lohId] : []))
   const base = state.game.players.filter(
     (player) =>
@@ -261,7 +257,7 @@ function buildAllianceConsultationPlan(
   const nominees = state.game.players.filter((player) => state.game.nomineeIds.includes(player.id))
 
   if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
-    const candidates = nominationConsultationCandidates(state, alliance, actorId)
+    const candidates = nominationConsultationCandidates(state, actorId)
     if (candidates.length === 0) return null
     const preferences = advisors
       .map((advisorId) => {
@@ -314,7 +310,7 @@ function buildAllianceConsultationPlan(
         (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
-    const replacements = nominationConsultationCandidates(state, alliance, actorId).filter(
+    const replacements = nominationConsultationCandidates(state, actorId).filter(
       (candidate) => !state.game.nomineeIds.includes(candidate.id)
     )
     const replacement =
@@ -382,7 +378,7 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  const candidates = nominationConsultationCandidates(state, alliance, actorId)
+  const candidates = nominationConsultationCandidates(state, actorId)
   if (candidates.length === 0) return null
   const preferences = advisors
     .map((advisorId) => {
