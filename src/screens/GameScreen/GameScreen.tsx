@@ -1936,6 +1936,13 @@ export default function GameScreen() {
               // from game.phase). This is stable even if game.phase changes later.
               // Fall back to deriving from current game.phase for backward compatibility.
               prizeType: pendingChallenge.prizeType ?? (game.phase === 'pos_comp' ? 'POS' : 'LOH'),
+              // Keep vote-changing Battery Low cells out of incompatible formats.
+              voteEffectsEnabled:
+                (game.phase === 'loh_comp' || game.phase === 'pos_comp') &&
+                game.mode !== 'survival' &&
+                game.voxPopuli?.status !== 'active' &&
+                game.cupidArrow?.status !== 'active' &&
+                game.doubleEviction?.weekActive !== true,
             }}
             onPhaseChange={handleMinigameHostPhaseChange}
             onMusicVariantChange={handleMinigameMusicVariantChange}

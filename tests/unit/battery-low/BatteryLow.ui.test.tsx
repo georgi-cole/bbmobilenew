@@ -17,8 +17,10 @@ describe('Battery Low UI', () => {
     expect(screen.getByRole('heading', { name: 'Battery Low' })).toBeInTheDocument()
     expect(screen.getByText('Choose a reserve battery')).toBeInTheDocument()
     expect(screen.getByText('Max charge remaining')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Battery Low broadcast stage/i)).toBeInTheDocument()
+    expect(screen.getByText('The Eye Bank')).toBeInTheDocument()
     expect(screen.getByLabelText(/Elapsed time/i)).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Battery \d+$/i })).toHaveLength(22)
+    expect(screen.getAllByRole('button', { name: /^Battery \d+$/i })).toHaveLength(24)
   })
 
   it('uses an explicit Reserve state instead of the old MY marker', async () => {

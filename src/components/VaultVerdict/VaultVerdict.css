@@ -6,7 +6,11 @@
   --battery-magenta: #dd68e8;
   --battery-gold: #ffd46b;
   --battery-coral: #ff6f7d;
+  --bank-accent: #72d8ff;
+  --bank-accent-soft: rgba(114, 216, 255, 0.16);
+  --show-gold: #ffd66f;
   position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -18,10 +22,30 @@
   overflow: hidden;
   color: #f7f8ff;
   background:
-    radial-gradient(circle at 14% 8%, rgba(89, 83, 225, 0.26), transparent 31%),
-    radial-gradient(circle at 90% 23%, rgba(218, 74, 192, 0.17), transparent 28%),
-    radial-gradient(circle at 55% 100%, rgba(40, 167, 194, 0.12), transparent 36%),
-    linear-gradient(180deg, #15132e 0%, #090d1d 54%, #070a15 100%);
+    linear-gradient(
+      180deg,
+      rgba(5, 7, 24, 0.34) 0%,
+      rgba(5, 7, 20, 0.66) 42%,
+      rgba(4, 6, 15, 0.92) 100%
+    ),
+    radial-gradient(circle at 50% 15%, var(--bank-accent-soft), transparent 38%),
+    var(--battery-low-stage) center 34% / cover no-repeat,
+    #070a15;
+}
+
+.vault-verdict.is-bank-generous {
+  --bank-accent: #67e4b8;
+  --bank-accent-soft: rgba(103, 228, 184, 0.18);
+}
+
+.vault-verdict.is-bank-stingy {
+  --bank-accent: #d5d9e8;
+  --bank-accent-soft: rgba(213, 217, 232, 0.11);
+}
+
+.vault-verdict.is-bank-chaotic {
+  --bank-accent: #bb82ff;
+  --bank-accent-soft: rgba(187, 130, 255, 0.2);
 }
 
 .vault-verdict,
@@ -39,8 +63,75 @@
   margin: 0;
 }
 
+.vault-verdict__show-rig {
+  position: absolute;
+  z-index: 0;
+  inset: var(--minigame-stage-top-padding, 56px) 0 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.vault-verdict__show-rig > span {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  color: color-mix(in srgb, var(--bank-accent) 52%, transparent);
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  animation: vault-verdict-live-sign 3.4s ease-in-out infinite;
+}
+
+.vault-verdict__spotlight {
+  position: absolute;
+  top: -18%;
+  width: 42%;
+  height: 72%;
+  opacity: 0.22;
+  filter: blur(12px);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bank-accent) 32%, transparent),
+    transparent 76%
+  );
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  transform-origin: 50% 0;
+}
+
+.vault-verdict__spotlight.is-left {
+  left: -9%;
+  animation: vault-verdict-spotlight-left 7s ease-in-out infinite;
+}
+
+.vault-verdict__spotlight.is-right {
+  right: -9%;
+  animation: vault-verdict-spotlight-right 8.2s ease-in-out infinite;
+}
+
+.vault-verdict__led-rail {
+  position: absolute;
+  top: 7%;
+  bottom: 4%;
+  width: 2px;
+  opacity: 0.58;
+  background: repeating-linear-gradient(180deg, var(--bank-accent) 0 5px, transparent 5px 12px);
+  box-shadow: 0 0 12px var(--bank-accent);
+}
+
+.vault-verdict__led-rail.is-left {
+  left: max(3px, calc(50% - 286px));
+}
+
+.vault-verdict__led-rail.is-right {
+  right: max(3px, calc(50% - 286px));
+}
+
 .vault-verdict__stage {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(6px, 1.1vh, 10px);
@@ -66,8 +157,12 @@
   padding: 6px 8px;
   border: 1px solid rgba(214, 222, 255, 0.12);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(34, 31, 72, 0.86), rgba(12, 17, 36, 0.82));
-  box-shadow: 0 12px 30px rgba(2, 4, 14, 0.28);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--bank-accent) 8%, transparent), transparent 36%),
+    linear-gradient(135deg, rgba(34, 31, 72, 0.88), rgba(12, 17, 36, 0.84));
+  box-shadow:
+    0 12px 30px rgba(2, 4, 14, 0.28),
+    inset 0 0 24px color-mix(in srgb, var(--bank-accent) 5%, transparent);
   backdrop-filter: blur(16px);
 }
 
@@ -154,6 +249,47 @@
   gap: 6px;
 }
 
+.vault-verdict__header-bank {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 6px 3px 4px;
+  border: 1px solid color-mix(in srgb, var(--bank-accent) 22%, transparent);
+  border-radius: 11px;
+  background: rgba(4, 9, 24, 0.44);
+}
+
+.vault-verdict__header-bank img {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--bank-accent) 30%, transparent));
+}
+
+.vault-verdict__header-bank > div {
+  display: grid;
+  min-width: 0;
+  line-height: 1;
+}
+
+.vault-verdict__header-bank span {
+  color: rgba(223, 231, 255, 0.58);
+  font-size: 0.46rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__header-bank strong {
+  margin-top: 2px;
+  color: var(--bank-accent);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
 .vault-verdict__timer {
   display: grid;
   justify-items: end;
@@ -237,11 +373,12 @@
   overflow: hidden;
   background:
     radial-gradient(circle at 14% 5%, rgba(89, 83, 225, 0.19), transparent 30%),
-    radial-gradient(circle at 92% 90%, rgba(69, 200, 255, 0.1), transparent 36%),
-    linear-gradient(180deg, rgba(23, 24, 58, 0.94), rgba(9, 13, 30, 0.96));
+    radial-gradient(circle at 92% 90%, var(--bank-accent-soft), transparent 36%),
+    linear-gradient(180deg, rgba(23, 24, 58, 0.96), rgba(9, 13, 30, 0.98));
   box-shadow:
-    0 20px 44px rgba(2, 4, 16, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    0 20px 44px rgba(2, 4, 16, 0.42),
+    0 0 34px color-mix(in srgb, var(--bank-accent) 7%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
   transition:
     border-color 180ms ease,
     filter 180ms ease,
@@ -260,6 +397,28 @@
   background: rgba(171, 89, 255, 0.12);
   filter: blur(38px);
   pointer-events: none;
+}
+
+.vault-verdict__board::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: 0.34;
+  background:
+    linear-gradient(115deg, transparent 0 43%, rgba(103, 218, 255, 0.055) 50%, transparent 57%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.018) 0,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  background-size:
+    180% 100%,
+    100% 100%;
+  pointer-events: none;
+  animation: vault-verdict-ambient-sweep 8s ease-in-out infinite;
 }
 
 .vault-verdict__board.has-offer {
@@ -394,6 +553,30 @@
   white-space: nowrap;
 }
 
+.vault-verdict__live-bank {
+  margin-top: 4px;
+  overflow: hidden;
+  color: rgba(215, 221, 247, 0.56);
+  font-size: clamp(0.5rem, 2vw, 0.58rem);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-verdict__live-bank.is-generous {
+  color: rgba(138, 239, 201, 0.76);
+}
+
+.vault-verdict__live-bank.is-chaotic {
+  color: rgba(205, 169, 255, 0.78);
+}
+
+.vault-verdict__live-bank.is-stingy {
+  color: rgba(214, 216, 228, 0.62);
+}
+
 .vault-verdict__charge-meter {
   --charge-start: #4de9bd;
   --charge-end: #45c8ff;
@@ -455,6 +638,360 @@
 
 .vault-verdict__charge-meter.is-holding {
   animation: vault-verdict-charge-hold 520ms ease;
+}
+
+.vault-verdict__hero-stage {
+  position: relative;
+  min-height: clamp(128px, 19vh, 176px);
+  border: 1px solid rgba(210, 220, 255, 0.13);
+  border-radius: 19px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(6, 9, 27, 0.16), rgba(4, 7, 20, 0.72)),
+    var(--battery-low-stage) center 23% / cover no-repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 12px 28px rgba(0, 0, 0, 0.22),
+    0 0 28px color-mix(in srgb, var(--bank-accent) 8%, transparent);
+}
+
+.vault-verdict__hero-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 28%, transparent 0 22%, rgba(5, 8, 24, 0.18) 60%),
+    linear-gradient(90deg, rgba(5, 7, 20, 0.52), transparent 24% 76%, rgba(5, 7, 20, 0.52));
+}
+
+.vault-verdict__hero-idle {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(88px, 0.85fr) minmax(110px, 1.15fr) minmax(78px, 0.72fr);
+  align-items: end;
+  gap: 8px;
+  padding: 12px 12px 34px;
+  transition:
+    opacity 160ms ease,
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.vault-verdict__hero-stage.is-event .vault-verdict__hero-idle {
+  opacity: 0.13;
+  filter: blur(2px) saturate(0.65);
+  transform: scale(0.985);
+}
+
+.vault-verdict__hero-metric {
+  display: grid;
+  align-self: end;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(209, 220, 255, 0.11);
+  border-radius: 12px;
+  background: rgba(6, 10, 28, 0.58);
+  backdrop-filter: blur(10px);
+}
+
+.vault-verdict__hero-metric > span {
+  color: rgba(218, 225, 255, 0.62);
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vault-verdict__hero-metric > strong {
+  margin-top: 2px;
+  color: #fff;
+  font-size: clamp(1.7rem, 7.5vw, 2.35rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+  text-shadow: 0 4px 16px rgba(68, 204, 255, 0.2);
+}
+
+.vault-verdict__hero-metric > small {
+  margin-top: 4px;
+  overflow: hidden;
+  color: rgba(115, 211, 255, 0.86);
+  font-size: 0.54rem;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-verdict__hero-stage .vault-verdict__charge-meter {
+  align-self: end;
+  height: 40px;
+  margin-bottom: 4px;
+  background: rgba(3, 7, 21, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.vault-verdict__hero-bank-read {
+  display: grid;
+  align-self: end;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--bank-accent) 22%, transparent);
+  border-radius: 12px;
+  background: rgba(6, 10, 28, 0.58);
+  text-align: right;
+  backdrop-filter: blur(10px);
+}
+
+.vault-verdict__hero-bank-read > span {
+  color: var(--bank-accent);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.vault-verdict__hero-bank-read > small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(222, 228, 248, 0.58);
+  font-size: 0.49rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+}
+
+.vault-verdict__hero-commentary {
+  position: absolute;
+  z-index: 6;
+  right: 9px;
+  bottom: 8px;
+  left: 9px;
+  overflow: hidden;
+  padding: 6px 10px;
+  border: 1px solid rgba(206, 217, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(246, 248, 255, 0.88);
+  background: rgba(4, 7, 19, 0.72);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  font-size: 0.6rem;
+  font-weight: 750;
+  line-height: 1;
+  pointer-events: none;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+
+.vault-verdict__hero-event {
+  --hero-accent: #72d8ff;
+  --hero-accent-2: #7768ff;
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 34px;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 38% 46%,
+      color-mix(in srgb, var(--hero-accent) 20%, transparent),
+      transparent 38%
+    ),
+    linear-gradient(90deg, rgba(4, 6, 19, 0.72), rgba(4, 7, 22, 0.36), rgba(4, 6, 19, 0.72));
+  animation: vault-verdict-hero-scene 1800ms ease-out both;
+}
+
+.vault-verdict__hero-event-halo {
+  position: absolute;
+  left: 18%;
+  top: 50%;
+  width: 170px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0.48;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hero-accent) 42%, transparent),
+    transparent 66%
+  );
+  filter: blur(8px);
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: vault-verdict-hero-halo 1100ms ease-out both;
+}
+
+.vault-verdict__hero-event-icon {
+  position: relative;
+  z-index: 2;
+  justify-self: center;
+  width: min(27vw, 116px);
+  aspect-ratio: 1;
+  color: var(--hero-accent);
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--hero-accent) 48%, transparent));
+  animation: vault-verdict-hero-icon 900ms cubic-bezier(0.18, 0.82, 0.2, 1) both;
+}
+
+.vault-verdict__hero-event-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.vault-verdict__hero-event-icon path,
+.vault-verdict__hero-event-icon circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.vault-verdict__hero-event-icon .is-line,
+.vault-verdict__hero-event-icon .is-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vault-verdict__hero-event-icon .is-ring.is-faint {
+  opacity: 0.34;
+  stroke-width: 3;
+}
+
+.vault-verdict__hero-event-icon .is-soft {
+  opacity: 0.25;
+}
+
+.vault-verdict__hero-event-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.vault-verdict__hero-event-copy > span {
+  color: var(--hero-accent);
+  font-size: 0.54rem;
+  font-weight: 950;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__hero-event-copy > strong {
+  margin-top: 3px;
+  color: #fff;
+  font-size: clamp(1.05rem, 5.4vw, 1.55rem);
+  font-weight: 950;
+  letter-spacing: -0.025em;
+  line-height: 0.98;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--hero-accent) 24%, transparent);
+}
+
+.vault-verdict__hero-event-copy > small {
+  margin-top: 5px;
+  color: rgba(236, 240, 255, 0.72);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.vault-verdict__hero-event-particles {
+  position: absolute;
+  z-index: 1;
+  left: 28%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+}
+
+.vault-verdict__hero-event-particles i {
+  --angle: calc(var(--particle-index) * 45deg);
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--hero-accent);
+  box-shadow: 0 0 9px var(--hero-accent);
+  transform: rotate(var(--angle)) translateY(-14px) scale(0);
+  animation: vault-verdict-hero-particle 860ms ease-out both;
+  animation-delay: calc(var(--particle-index) * 18ms);
+}
+
+.vault-verdict__hero-event.is-power-cell {
+  --hero-accent: #64dcff;
+  --hero-accent-2: #ffe17a;
+}
+
+.vault-verdict__hero-event.is-blackout-cell,
+.vault-verdict__hero-event.is-powerdown {
+  --hero-accent: #aa90ff;
+  --hero-accent-2: #262235;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.86),
+    rgba(30, 18, 55, 0.72),
+    rgba(0, 0, 0, 0.86)
+  );
+}
+
+.vault-verdict__hero-event.is-inferno {
+  --hero-accent: #ff6b38;
+  --hero-accent-2: #a30d2c;
+}
+
+.vault-verdict__hero-event.is-unlucky {
+  --hero-accent: #c07cff;
+  --hero-accent-2: #4c2869;
+}
+
+.vault-verdict__hero-event.is-answer-signal {
+  --hero-accent: #74e8ff;
+  --hero-accent-2: #7768ff;
+}
+
+.vault-verdict__hero-event.is-blush {
+  --hero-accent: #ff83b7;
+  --hero-accent-2: #ffbed5;
+}
+
+.vault-verdict__hero-event.is-overcharge {
+  --hero-accent: #ffe27a;
+  --hero-accent-2: #ff9f39;
+}
+
+.vault-verdict__hero-event.is-blackout-cell::before,
+.vault-verdict__hero-event.is-powerdown::before,
+.vault-verdict__hero-event.is-inferno::before,
+.vault-verdict__hero-event.is-blush::before,
+.vault-verdict__hero-event.is-overcharge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--hero-accent) 15%, transparent);
+  animation: vault-verdict-hero-flash 680ms ease-out both;
+}
+
+.vault-verdict__hero-event.is-blackout-cell::before,
+.vault-verdict__hero-event.is-powerdown::before {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.vault-verdict__hero-event.is-inferno .vault-verdict__hero-event-particles i {
+  border-radius: 70% 30% 58% 42%;
+  background: #ffb24e;
+}
+
+.vault-verdict__hero-event.is-blush .vault-verdict__hero-event-particles i {
+  width: 8px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff9ec4;
 }
 
 .vault-verdict__battery-grid {
@@ -648,10 +1185,57 @@
   color: color-mix(in srgb, var(--charge-ink) 88%, transparent);
 }
 
-.vault-verdict__pod--dramatic {
-  animation:
-    vault-verdict-battery-reveal 280ms ease both,
-    vault-verdict-dramatic-pulse 700ms ease 1;
+.vault-verdict__pod--opened {
+  --charge-start: #4de9bd;
+  --charge-end: #45c8ff;
+  --charge-ink: #f7fbff;
+  border-color: color-mix(in srgb, var(--charge-start) 34%, rgba(224, 232, 255, 0.14));
+  color: var(--charge-ink);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), transparent 42%),
+    color-mix(in srgb, var(--charge-start) 11%, rgba(10, 16, 34, 0.96));
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.19),
+    inset 0 0 16px color-mix(in srgb, var(--charge-start) 5%, transparent);
+  animation: vault-verdict-battery-reveal 250ms ease both;
+}
+
+.vault-verdict__pod--opened.is-charge-medium {
+  --charge-start: #b9ef63;
+  --charge-end: #f1d35c;
+}
+
+.vault-verdict__pod--opened.is-charge-low {
+  --charge-start: #ffcb58;
+  --charge-end: #ff934b;
+}
+
+.vault-verdict__pod--opened.is-charge-critical {
+  --charge-start: #ff7f78;
+  --charge-end: #ff557b;
+}
+
+.vault-verdict__pod--opened .vault-verdict__pod-number,
+.vault-verdict__pod--opened .vault-verdict__pod-label {
+  color: rgba(224, 230, 248, 0.5);
+}
+
+.vault-verdict__pod--opened .vault-verdict__pod-special {
+  color: rgba(242, 246, 255, 0.72);
+}
+
+.vault-verdict__pod--opened.is-special-cell.is-doubleVote {
+  border-color: rgba(99, 218, 255, 0.56);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.2),
+    inset 0 0 18px rgba(99, 218, 255, 0.08);
+}
+
+.vault-verdict__pod--opened.is-special-cell.is-skipVote {
+  border-color: rgba(167, 143, 220, 0.46);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.23),
+    inset 0 0 18px rgba(92, 72, 126, 0.09);
 }
 
 .vault-verdict__pod--remainingFinalWallVault {
@@ -666,7 +1250,6 @@
 .vault-verdict__pod--remainingFinalWallVault .vault-verdict__pod-label {
   color: rgba(200, 187, 255, 0.72);
 }
-
 .vault-verdict__offer-layer {
   position: absolute;
   inset: 0;
@@ -686,21 +1269,48 @@
 }
 
 .vault-verdict__offer-sheet {
+  position: relative;
   width: 100%;
   max-height: calc(100% - 6px);
-  padding: clamp(15px, 3.8vw, 20px);
+  padding: clamp(14px, 3.4vw, 18px);
   border: 1px solid rgba(255, 212, 107, 0.52);
-  border-radius: 24px 24px 18px 18px;
+  border-radius: 26px 26px 18px 18px;
   overflow-y: auto;
   color: #fff9e7;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 212, 107, 0.2), transparent 35%),
-    linear-gradient(180deg, rgba(48, 35, 25, 0.98), rgba(19, 17, 27, 0.99));
+    radial-gradient(circle at 50% -8%, rgba(255, 212, 107, 0.18), transparent 35%),
+    radial-gradient(circle at 10% 95%, rgba(87, 111, 255, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(21, 21, 29, 0.985), rgba(8, 9, 15, 0.995));
   box-shadow:
-    0 -18px 48px rgba(0, 0, 0, 0.44),
-    0 0 42px rgba(255, 195, 74, 0.12);
+    0 -20px 56px rgba(0, 0, 0, 0.54),
+    0 0 42px rgba(255, 195, 74, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-align: center;
   animation: vault-verdict-offer-rise 360ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.vault-verdict__offer-sheet::before {
+  content: 'THE EYE BANK';
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  color: rgba(255, 255, 255, 0.035);
+  font-size: clamp(2.4rem, 13vw, 4rem);
+  font-weight: 950;
+  letter-spacing: -0.07em;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.vault-verdict__bank-heading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .vault-verdict__offer-kicker {
@@ -716,8 +1326,77 @@
   text-transform: uppercase;
 }
 
+.vault-verdict__mood-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  color: rgba(247, 248, 255, 0.84);
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1;
+}
+
+.vault-verdict__mood-badge b {
+  font-size: 0.74rem;
+  line-height: 0.8;
+}
+
+.vault-verdict__mood-badge.is-generous {
+  border-color: rgba(91, 229, 182, 0.28);
+  color: #9cf3d2;
+}
+
+.vault-verdict__mood-badge.is-chaotic {
+  border-color: rgba(177, 129, 255, 0.34);
+  color: #cfb0ff;
+}
+
+.vault-verdict__mood-badge.is-stingy {
+  color: #d6d8e4;
+}
+
+.vault-verdict__bank-mood {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 244, 211, 0.66);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  line-height: 1.15;
+}
+
+.vault-verdict__offer-sheet.is-mood-generous {
+  border-color: rgba(119, 231, 190, 0.52);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 44px rgba(77, 233, 189, 0.12);
+}
+
+.vault-verdict__offer-sheet.is-mood-chaotic {
+  border-color: rgba(185, 135, 255, 0.54);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 44px rgba(154, 108, 255, 0.14);
+}
+
+.vault-verdict__offer-sheet.is-mood-stingy {
+  border-color: rgba(220, 224, 239, 0.32);
+  box-shadow:
+    0 -18px 48px rgba(0, 0, 0, 0.44),
+    0 0 36px rgba(205, 211, 235, 0.07);
+}
+
 .vault-verdict__offer-value {
-  margin-top: 9px;
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
   color: #fff4c8;
   font-size: clamp(2.8rem, 14vw, 4.3rem);
   font-weight: 900;
@@ -727,11 +1406,123 @@
 }
 
 .vault-verdict__offer-sheet p {
+  position: relative;
+  z-index: 1;
   max-width: 380px;
-  margin: 10px auto 0;
+  margin: 8px auto 0;
   color: rgba(255, 249, 231, 0.78);
   font-size: clamp(0.8rem, 3.2vw, 0.92rem);
   line-height: 1.35;
+}
+
+.vault-verdict__counter-result {
+  margin: 9px auto 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(246, 247, 255, 0.88);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.vault-verdict__counter-result.is-raised {
+  border-color: rgba(93, 229, 180, 0.28);
+  color: #a2f0d1;
+}
+
+.vault-verdict__counter-result.is-cut {
+  border-color: rgba(255, 102, 124, 0.28);
+  color: #ffadb9;
+}
+
+.vault-verdict__deal-card {
+  display: grid;
+  gap: 3px;
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(130, 177, 255, 0.2);
+  border-radius: 14px;
+  text-align: left;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(94, 133, 255, 0.14), transparent 42%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.vault-verdict__deal-card.is-insurance {
+  border-color: rgba(82, 224, 181, 0.24);
+}
+
+.vault-verdict__deal-card.is-pressure {
+  border-color: rgba(255, 186, 83, 0.3);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 179, 72, 0.13), transparent 42%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.vault-verdict__deal-card > span {
+  color: rgba(191, 204, 255, 0.68);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__deal-card > strong {
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.vault-verdict__deal-card > small {
+  color: rgba(231, 234, 250, 0.65);
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.vault-verdict__deal-action,
+.vault-verdict__counteroffer {
+  min-height: 40px;
+  margin-top: 7px;
+  border: 1px solid rgba(177, 197, 255, 0.21);
+  border-radius: 12px;
+  color: #f7f8ff;
+  background: rgba(109, 124, 255, 0.1);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.vault-verdict__deal-action {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.vault-verdict__counteroffer {
+  display: grid;
+  width: 100%;
+  margin-top: 9px;
+  place-items: center;
+  padding: 5px 10px;
+}
+
+.vault-verdict__counteroffer span {
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.vault-verdict__counteroffer small {
+  margin-top: 3px;
+  color: rgba(224, 229, 255, 0.58);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vault-verdict__deal-action:not(:disabled):active,
+.vault-verdict__counteroffer:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .vault-verdict__offer-actions {
@@ -793,6 +1584,87 @@
   color: rgba(255, 242, 205, 0.68);
   font-size: 0.7rem;
   font-weight: 700;
+}
+
+.vault-verdict__offer-layer {
+  align-items: center;
+  padding: 12px;
+  background:
+    radial-gradient(
+      circle at 50% 26%,
+      color-mix(in srgb, var(--bank-accent) 12%, transparent),
+      transparent 42%
+    ),
+    rgba(3, 5, 16, 0.82);
+  backdrop-filter: blur(7px) saturate(0.72);
+}
+
+.vault-verdict__offer-sheet {
+  width: min(100%, 430px);
+  max-height: calc(100% - 10px);
+  padding: clamp(14px, 3.5vw, 18px);
+  border-color: color-mix(in srgb, var(--bank-accent) 32%, rgba(255, 215, 111, 0.42));
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--bank-accent) 16%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(180deg, rgba(10, 13, 28, 0.985), rgba(5, 7, 17, 0.995));
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.52),
+    0 0 48px color-mix(in srgb, var(--bank-accent) 11%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.vault-verdict__offer-sheet::before {
+  display: none;
+}
+
+.vault-verdict__offer-bank-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.vault-verdict__offer-bank-mark img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--bank-accent) 30%, transparent));
+}
+
+.vault-verdict__offer-bank-mark > div {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+}
+
+.vault-verdict__offer-bank-mark span {
+  color: rgba(223, 229, 250, 0.55);
+  font-size: 0.55rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__offer-bank-mark strong {
+  margin-top: 2px;
+  color: var(--bank-accent);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+}
+
+.vault-verdict__offer-value {
+  margin-top: 7px;
+  font-size: clamp(3.1rem, 15vw, 4.7rem);
+  text-shadow:
+    0 8px 30px rgba(255, 201, 79, 0.18),
+    0 0 28px color-mix(in srgb, var(--bank-accent) 13%, transparent);
 }
 
 .vault-verdict__amount-modal {
@@ -1125,6 +1997,242 @@
   min-height: 48px;
 }
 
+@keyframes vault-verdict-live-sign {
+  0%,
+  100% {
+    opacity: 0.38;
+  }
+  50% {
+    opacity: 0.84;
+    text-shadow: 0 0 12px var(--bank-accent);
+  }
+}
+
+@keyframes vault-verdict-spotlight-left {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes vault-verdict-spotlight-right {
+  0%,
+  100% {
+    transform: rotate(13deg);
+  }
+  50% {
+    transform: rotate(-10deg);
+  }
+}
+
+@keyframes vault-verdict-fx-scene {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vault-verdict-halo-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+  35% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes vault-verdict-sigil-hit {
+  0% {
+    opacity: 0;
+    transform: scale(0.42) rotate(-5deg);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.08) rotate(1deg);
+  }
+  65% {
+    opacity: 0.95;
+    transform: scale(1) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes vault-verdict-particle-burst {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-12px) scale(0);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-118px) scale(1.1);
+  }
+}
+
+@keyframes vault-verdict-lower-third {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  12%,
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+
+@keyframes vault-verdict-screen-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vault-verdict-glitch {
+  0%,
+  100% {
+    transform: translate(0);
+  }
+  25% {
+    transform: translate(5px, -2px);
+  }
+  50% {
+    transform: translate(-5px, 2px);
+  }
+  75% {
+    transform: translate(3px, 1px);
+  }
+}
+
+@keyframes vault-verdict-overcharge-spin {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(1.65);
+  }
+  100% {
+    filter: brightness(1);
+    transform: rotate(18deg) scale(1.12);
+  }
+}
+
+@keyframes vault-verdict-hero-scene {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vault-verdict-hero-halo {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  34% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.45);
+  }
+}
+
+@keyframes vault-verdict-hero-icon {
+  0% {
+    opacity: 0;
+    transform: scale(0.54) translateY(8px);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1.05) translateY(0);
+  }
+  76% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04) translateY(-3px);
+  }
+}
+
+@keyframes vault-verdict-hero-particle {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-10px) scale(0);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(-82px) scale(1.05);
+  }
+}
+
+@keyframes vault-verdict-hero-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes vault-verdict-ambient-sweep {
+  0%,
+  100% {
+    background-position:
+      120% 0,
+      0 0;
+  }
+  50% {
+    background-position:
+      -80% 0,
+      0 0;
+  }
+}
+
 @keyframes vault-verdict-toast {
   0% {
     opacity: 0;
@@ -1370,8 +2478,16 @@
     margin-top: 2px;
   }
 
-  .vault-verdict__reveal-flash {
-    top: 48px;
+  .vault-verdict__lower-third {
+    right: 7px;
+    bottom: 7px;
+    left: 7px;
+    min-height: 42px;
+    padding: 6px 8px 6px 10px;
+  }
+
+  .vault-verdict__fx-sigil {
+    width: clamp(76px, 22vw, 112px);
   }
 
   .vault-verdict__offer-sheet {
@@ -1425,6 +2541,14 @@
   .vault-verdict__pod-special {
     display: none;
   }
+
+  .vault-verdict__lower-third {
+    min-height: 38px;
+  }
+
+  .vault-verdict__lower-third > small {
+    display: none;
+  }
 }
 
 @media (max-width: 540px) {
@@ -1434,6 +2558,88 @@
 
   .vault-verdict__finale-battery {
     min-height: 96px;
+  }
+}
+
+@media (max-width: 390px) {
+  .vault-verdict__header-bank > div {
+    display: none;
+  }
+
+  .vault-verdict__header-bank {
+    padding-right: 4px;
+  }
+
+  .vault-verdict__hero-stage {
+    min-height: clamp(120px, 18vh, 154px);
+  }
+
+  .vault-verdict__hero-idle {
+    grid-template-columns: minmax(76px, 0.82fr) minmax(100px, 1.18fr) minmax(62px, 0.7fr);
+    gap: 6px;
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .vault-verdict__hero-bank-read {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+}
+
+@media (max-height: 760px) and (orientation: portrait) {
+  .vault-verdict__hero-stage {
+    min-height: 112px;
+  }
+
+  .vault-verdict__hero-idle {
+    padding: 8px 9px 30px;
+  }
+
+  .vault-verdict__hero-metric {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .vault-verdict__hero-metric > strong {
+    font-size: 1.65rem;
+  }
+
+  .vault-verdict__hero-stage .vault-verdict__charge-meter {
+    height: 32px;
+  }
+
+  .vault-verdict__hero-event {
+    padding-top: 6px;
+    padding-bottom: 30px;
+  }
+
+  .vault-verdict__hero-event-icon {
+    width: min(23vw, 90px);
+  }
+
+  .vault-verdict__hero-event-copy > small {
+    display: none;
+  }
+}
+
+@media (max-height: 680px) and (orientation: portrait) {
+  .vault-verdict__hero-stage {
+    min-height: 92px;
+  }
+
+  .vault-verdict__hero-bank-read > small {
+    display: none;
+  }
+
+  .vault-verdict__hero-commentary {
+    bottom: 5px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .vault-verdict__hero-event-copy > strong {
+    font-size: 1rem;
   }
 }
 

@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { GenericMinigameProps } from '../../minigames/reactComponents'
+import useSound from '../../hooks/useSound'
 import {
   VAULT_VERDICT_AMOUNTS,
   VAULT_VERDICT_ROUND_SCHEDULE,
+  acceptInsuranceDeal,
   assertBroadcastPrivacy,
+  buildBatteryLowVoteEffects,
   buildRawResults,
   choosePersonalVault,
+  counterBankOffer,
   createInitialContestant,
   createVaultVerdictRng,
   formatVaultAmount,
+  getBankMoodProfile,
   getHighestRemainingValue,
+  getRevealCommentary,
+  getRevealEffectProfile,
   getSpecialRevealLabel,
   getVaultsLeftThisRound,
   maybeCreateOffer,
@@ -20,10 +27,12 @@ import {
   riskVault,
   signVerdict,
   simulateAiContestant,
+  swapReserveBattery,
 } from './vaultVerdictLogic'
 import type {
   BroadcastEvent,
   RankedVaultResult,
+  RevealEffectKey,
   VaultContestantState,
   VaultPodState,
 } from './vaultVerdictLogic'
@@ -31,11 +40,18 @@ import './VaultVerdict.css'
 
 const FINAL_FEED_LIMIT = 18
 
+const BATTERY_LOW_ASSET_BASE = `${import.meta.env.BASE_URL}assets/minigames/battery-low/`
+const EYE_BANK_CREST = `${BATTERY_LOW_ASSET_BASE}eye-bank.webp`
+const STAGE_BACKGROUND = `${BATTERY_LOW_ASSET_BASE}stage.webp`
 interface FinaleReveal {
   reserveNumber: number
   reserveAmount: number
+  reserveEffect: VaultPodState['specialEffect']
+  finalCharge: number
+  insuranceFloor: number | null
   wallNumber: number | null
   wallAmount: number | null
+  wallEffect: VaultPodState['specialEffect']
   offerAmount: number
   step: 'charging' | 'revealed'
 }
@@ -57,16 +73,13 @@ function getChargeTone(amount: number): ChargeTone {
   return 'critical'
 }
 
-function getReactionClass(amount: number) {
-  return getSpecialRevealLabel(amount) ? ' vault-verdict__pod--dramatic' : ''
-}
-
 function buildCompletion(contestants: VaultContestantState[]) {
   const ranked = rankVaultContestants(contestants)
   return {
     ranked,
     winner: ranked[0],
     rawResults: buildRawResults(contestants),
+    batteryLowVoteEffects: buildBatteryLowVoteEffects(contestants),
   }
 }
 
@@ -93,6 +106,75 @@ function ReserveIcon() {
   )
 }
 
+function RevealSigil({ effectKey }: { effectKey: RevealEffectKey }) {
+  if (effectKey === 'inferno') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M20 34C29 18 38 16 45 30c5-16 17-22 31-12-7 7-10 15-7 24 5 16-4 37-21 39-21 2-34-24-20-42 3-4 4-6 5-10-6 3-10 4-13 5Z" />
+        <path d="M37 70c-5-10 0-18 9-25 1 8 7 10 10 16 3 7-2 15-10 16-4 0-7-2-9-7Z" />
+      </svg>
+    )
+  }
+  if (effectKey === 'blush') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="28" cy="55" r="11" className="is-soft" />
+        <circle cx="72" cy="55" r="11" className="is-soft" />
+        <path d="M50 72C35 62 30 54 34 46c5-9 16-7 16 2 0-9 11-11 16-2 4 8-1 16-16 26Z" />
+        <path d="M21 34c7-5 13-5 20 0M59 34c7-5 13-5 20 0" className="is-line" />
+      </svg>
+    )
+  }
+  if (effectKey === 'power-cell') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M56 8 25 54h22l-7 38 35-51H53L56 8Z" />
+        <circle cx="50" cy="50" r="42" className="is-ring" />
+      </svg>
+    )
+  }
+  if (effectKey === 'blackout-cell' || effectKey === 'powerdown') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="31" />
+        <path d="M25 25 75 75" className="is-line" />
+        <circle cx="50" cy="50" r="43" className="is-ring" />
+      </svg>
+    )
+  }
+  if (effectKey === 'answer-signal') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="12" />
+        <circle cx="50" cy="50" r="27" className="is-ring" />
+        <circle cx="50" cy="50" r="42" className="is-ring is-faint" />
+        <path d="M50 6v16M50 78v16M6 50h16M78 50h16" className="is-line" />
+      </svg>
+    )
+  }
+  if (effectKey === 'unlucky') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M22 18h22v64H30V31h-8V18Zm34 0h24L66 47c11 3 17 11 17 21 0 11-9 18-24 18-8 0-15-2-21-6l6-12c4 3 9 5 14 5 6 0 10-3 10-7 0-5-5-8-14-8h-5l12-27h-5V18Z" />
+      </svg>
+    )
+  }
+  if (effectKey === 'overcharge') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="m50 7 9 25 26-8-15 22 22 15-27 1 2 27-17-21-17 21 2-27-27-1 22-15-15-22 26 8 9-25Z" />
+        <circle cx="50" cy="50" r="18" className="is-ring" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M14 55h18l8-14 11 25 11-36 10 25h14" className="is-line" />
+      <circle cx="50" cy="50" r="40" className="is-ring is-faint" />
+    </svg>
+  )
+}
+
 function BatteryTile({
   battery,
   disabled,
@@ -105,13 +187,22 @@ function BatteryTile({
   const isOpened = battery.status === 'opened'
   const isReserve = battery.status === 'personal'
   const isFinalWall = battery.status === 'remainingFinalWallVault'
-  const specialLabel = isOpened ? getSpecialRevealLabel(battery.amount) : null
+  const specialTitle =
+    battery.specialEffect === 'doubleVote'
+      ? 'POWER'
+      : battery.specialEffect === 'skipVote'
+        ? 'BLACKOUT'
+        : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
+  const specialCellClass =
+    isOpened && battery.specialEffect ? ` is-special-cell is-${battery.specialEffect}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
     : undefined
   const ariaLabel = isOpened
-    ? `Battery ${battery.displayNumber}, opened, ${formatVaultAmount(battery.amount)}`
+    ? battery.specialEffect
+      ? `Battery ${battery.displayNumber}, opened, ${specialTitle} cell, ranks as ${formatVaultAmount(battery.amount)}`
+      : `Battery ${battery.displayNumber}, opened, ${formatVaultAmount(battery.amount)}`
     : isReserve
       ? `Reserve battery ${battery.displayNumber}`
       : isFinalWall
@@ -121,7 +212,7 @@ function BatteryTile({
   return (
     <button
       type="button"
-      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${isOpened ? getReactionClass(battery.amount) : ''}`}
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${specialCellClass}`}
       style={chargeStyle}
       disabled={disabled}
       onClick={(event) => onClick(battery.vaultId, event.timeStamp)}
@@ -129,9 +220,15 @@ function BatteryTile({
     >
       {isOpened ? (
         <>
-          <strong className="vault-verdict__pod-value">{formatVaultAmount(battery.amount)}</strong>
+          <strong className="vault-verdict__pod-value">
+            {specialTitle ?? formatVaultAmount(battery.amount)}
+          </strong>
           <span className="vault-verdict__pod-number">#{battery.displayNumber}</span>
-          {specialLabel && <em className="vault-verdict__pod-special">{specialLabel}</em>}
+          {battery.specialEffect && (
+            <em className="vault-verdict__pod-special">
+              Ranks {formatVaultAmount(battery.amount)}
+            </em>
+          )}
         </>
       ) : isReserve ? (
         <>
@@ -150,10 +247,11 @@ function BatteryTile({
 }
 
 export default function BatteryLow(props: GenericMinigameProps) {
-  const { seed: seedProp = 0, onFinish } = props
+  const { seed: seedProp = 0, onFinish, voteEffectsEnabled = true } = props
   const [sessionSeed] = useState(() => createVaultVerdictRng(seedProp).seed)
   const rng = useMemo(() => createVaultVerdictRng(sessionSeed).rng, [sessionSeed])
   const startTimeRef = useRef<number | null>(null)
+  const heroTimerRef = useRef<number | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [feed, setFeed] = useState<BroadcastEvent[]>([])
   const [feedIndex, setFeedIndex] = useState(0)
@@ -162,16 +260,23 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const [finaleReveal, setFinaleReveal] = useState<FinaleReveal | null>(null)
   const [finaleComplete, setFinaleComplete] = useState(false)
   const [pendingOfferKey, setPendingOfferKey] = useState<string | null>(null)
+  const [heroEventVaultId, setHeroEventVaultId] = useState<string | null>(null)
+  const { play } = useSound()
 
   const initialContestants = useMemo(() => {
     const participants = resolveVaultParticipants(props)
     return participants.map((participant, index) => {
-      const contestant = createInitialContestant(participant, index, sessionSeed + 101)
+      const contestant = createInitialContestant(
+        participant,
+        index,
+        sessionSeed + 101,
+        voteEffectsEnabled
+      )
       return participant.isHuman
         ? contestant
         : simulateAiContestant(contestant, sessionSeed + 909, participants.length)
     })
-  }, [props, sessionSeed])
+  }, [props, sessionSeed, voteEffectsEnabled])
 
   const [contestants, setContestants] = useState<VaultContestantState[]>(initialContestants)
   const human = contestants.find((contestant) => contestant.isUserControlled) ?? contestants[0]!
@@ -195,15 +300,33 @@ export default function BatteryLow(props: GenericMinigameProps) {
     : null
   const highestRemaining = getHighestRemainingValue(human)
   const latestReveal = human.revealedAmounts[human.revealedAmounts.length - 1] ?? null
-  const latestRevealLabel = latestReveal == null ? null : getSpecialRevealLabel(latestReveal)
+  const latestRevealVaultId = human.openedVaultIds[human.openedVaultIds.length - 1] ?? null
+  const latestRevealVault = latestRevealVaultId
+    ? human.vaults.find((vault) => vault.vaultId === latestRevealVaultId)
+    : null
+  const latestRevealLabel =
+    latestReveal == null
+      ? null
+      : getSpecialRevealLabel(latestReveal, latestRevealVault?.specialEffect)
+  const revealedStandardAmounts = human.vaults
+    .filter((vault) => vault.status === 'opened' && !vault.specialEffect)
+    .map((vault) => vault.amount)
+  const latestRevealProfile = latestRevealVault
+    ? getRevealEffectProfile(latestRevealVault.amount, latestRevealVault.specialEffect)
+    : null
+  const activeHeroProfile =
+    heroEventVaultId === latestRevealVaultId && latestRevealProfile?.hero
+      ? latestRevealProfile
+      : null
+  const bankProfile = getBankMoodProfile(human.bankMood)
+  const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
   const coreMood =
     latestReveal == null
       ? 'is-idle'
       : latestReveal > highestRemaining
         ? 'is-voltage-drop'
         : 'is-holding'
-  const eventTone =
-    human.currentOffer != null ? 'has-offer' : latestRevealLabel ? 'has-dramatic-reveal' : ''
+  const eventTone = human.currentOffer != null ? 'has-offer' : ''
   const roundProgress = !human.personalVaultId
     ? 'Choose a reserve battery'
     : human.currentOffer != null
@@ -216,17 +339,26 @@ export default function BatteryLow(props: GenericMinigameProps) {
       ? human.currentRound >= VAULT_VERDICT_ROUND_SCHEDULE.length
         ? 'The final Bank Offer is ready.'
         : 'The Bank has made an offer.'
-      : latestRevealLabel
-        ? `${latestRevealLabel} · ${formatVaultAmount(latestReveal ?? 0)} revealed`
-        : (feed[0]?.message ??
-          (human.personalVaultId
-            ? 'Choose the next battery to reveal.'
-            : 'Choose one battery to protect as your Reserve.'))
+      : revealCommentary
+        ? revealCommentary
+        : latestRevealLabel
+          ? `${latestRevealLabel} · ${formatVaultAmount(latestReveal ?? 0)} revealed`
+          : (feed[0]?.message ??
+            (human.personalVaultId
+              ? 'Choose the next battery to reveal.'
+              : 'Choose one battery to protect as your Reserve.'))
   const offerKey =
     human.currentOffer == null
       ? null
       : `${human.currentRound}:${human.offerHistory.length}:${human.currentOffer}`
   const decisionPending = offerKey != null && pendingOfferKey === offerKey
+
+  useEffect(
+    () => () => {
+      if (heroTimerRef.current != null) window.clearTimeout(heroTimerRef.current)
+    },
+    []
+  )
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return
@@ -291,6 +423,24 @@ export default function BatteryLow(props: GenericMinigameProps) {
   }
 
   function handleOpenVault(vaultId: string, eventTimeMs: number) {
+    const battery = human.vaults.find((entry) => entry.vaultId === vaultId)
+    if (battery) {
+      const profile = getRevealEffectProfile(battery.amount, battery.specialEffect)
+      if (profile.hero) {
+        if (heroTimerRef.current != null) window.clearTimeout(heroTimerRef.current)
+        setHeroEventVaultId(vaultId)
+        if (profile.soundKey) {
+          play(profile.soundKey, { volume: profile.soundVolume ?? 0.42 })
+        }
+        heroTimerRef.current = window.setTimeout(() => {
+          setHeroEventVaultId((current) => (current === vaultId ? null : current))
+          heroTimerRef.current = null
+        }, 1800)
+      } else {
+        setHeroEventVaultId(null)
+      }
+    }
+
     const openedAt = startTimeRef.current == null ? 0 : eventTimeMs - startTimeRef.current
     updateHuman((current) => maybeCreateOffer(openWallVault(current, vaultId, openedAt), rng))
   }
@@ -321,8 +471,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
       setFinaleReveal({
         reserveNumber: reserveBattery?.displayNumber ?? 0,
         reserveAmount: reserveBattery?.amount ?? resolvedHuman.finalAmount ?? 0,
+        reserveEffect: reserveBattery?.specialEffect ?? null,
+        finalCharge: resolvedHuman.finalAmount ?? reserveBattery?.amount ?? 0,
+        insuranceFloor: resolvedHuman.insuranceFloor,
         wallNumber: wallBattery?.displayNumber ?? null,
         wallAmount: wallBattery?.amount ?? null,
+        wallEffect: wallBattery?.specialEffect ?? null,
         offerAmount: human.currentOffer,
         step: 'charging',
       })
@@ -348,6 +502,37 @@ export default function BatteryLow(props: GenericMinigameProps) {
     handleRejectOffer(eventTimeMs)
   }
 
+  function handleCounterofferClick() {
+    if (offerKey == null || decisionPending || human.counterofferUsed) return
+    updateHuman((current) => counterBankOffer(current, rng))
+  }
+
+  function handleInsuranceClick(eventTimeMs: number) {
+    if (
+      offerKey == null ||
+      decisionPending ||
+      human.currentDeal?.type !== 'insurance' ||
+      human.currentDeal.resolved
+    ) {
+      return
+    }
+    setPendingOfferKey(offerKey)
+    const elapsed = startTimeRef.current == null ? elapsedMs : eventTimeMs - startTimeRef.current
+    updateHuman((current) => riskVault(acceptInsuranceDeal(current), elapsed))
+  }
+
+  function handleSwapClick() {
+    if (
+      offerKey == null ||
+      decisionPending ||
+      human.currentDeal?.type !== 'swap' ||
+      human.currentDeal.resolved
+    ) {
+      return
+    }
+    updateHuman((current) => swapReserveBattery(current, rng))
+  }
+
   function handleCommitResults() {
     if (committed) return
     const completion = buildCompletion(contestants)
@@ -357,6 +542,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
       rawValue: human.finalAmount ?? 0,
       rawResults: completion.rawResults,
       tiebreakerMs: human.finishTimeMs ?? undefined,
+      batteryLowVoteEffects: completion.batteryLowVoteEffects,
     })
   }
 
@@ -380,8 +566,18 @@ export default function BatteryLow(props: GenericMinigameProps) {
 
   return (
     <div
-      className={`vault-verdict ${gameActive ? 'is-playing' : showFinale ? 'is-finale' : 'is-results'}`}
+      className={`vault-verdict is-bank-${human.bankMood} ${
+        gameActive ? 'is-playing' : showFinale ? 'is-finale' : 'is-results'
+      }`}
+      style={{ '--battery-low-stage': `url("${STAGE_BACKGROUND}")` } as CSSProperties}
     >
+      <div className="vault-verdict__show-rig" aria-hidden="true">
+        <i className="vault-verdict__spotlight is-left" />
+        <i className="vault-verdict__spotlight is-right" />
+        <i className="vault-verdict__led-rail is-left" />
+        <i className="vault-verdict__led-rail is-right" />
+        <span>THE EYE BANK · LIVE</span>
+      </div>
       <div className="vault-verdict__stage">
         {gameActive && (
           <header className="vault-verdict__header">
@@ -395,6 +591,16 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
             </div>
             <div className="vault-verdict__header-actions">
+              <div
+                className="vault-verdict__header-bank"
+                aria-label={`The Eye Bank is ${bankProfile.label.toLowerCase()}`}
+              >
+                <img src={EYE_BANK_CREST} alt="" decoding="async" />
+                <div>
+                  <span>The Eye Bank</span>
+                  <strong>{bankProfile.label}</strong>
+                </div>
+              </div>
               <div
                 className="vault-verdict__timer"
                 aria-label={`Elapsed time ${formatTime(human.finishTimeMs ?? elapsedMs)}`}
@@ -420,40 +626,67 @@ export default function BatteryLow(props: GenericMinigameProps) {
             aria-hidden={human.currentOffer != null || undefined}
           >
             <section className={`vault-verdict__board ${eventTone}`} aria-label="Battery Low board">
-              <div key={commentaryMessage} className="vault-verdict__commentary" aria-live="polite">
-                {commentaryMessage}
-              </div>
-
-              {latestReveal != null && (
-                <div
-                  key={`${latestReveal}-${human.openedVaultIds.length}`}
-                  className={`vault-verdict__reveal-flash is-charge-${getChargeTone(latestReveal)} ${latestRevealLabel ? 'is-special' : ''}`}
-                  aria-hidden="true"
-                >
-                  <span>{latestRevealLabel ?? 'Battery revealed'}</span>
-                  <strong>{formatVaultAmount(latestReveal)}</strong>
+              <section
+                className={`vault-verdict__hero-stage ${
+                  activeHeroProfile ? `is-event is-${activeHeroProfile.key}` : 'is-idle'
+                }`}
+                aria-label="Battery Low broadcast stage"
+              >
+                <div className="vault-verdict__hero-idle">
+                  <div className="vault-verdict__hero-metric">
+                    <span>Max charge remaining</span>
+                    <strong>{formatVaultAmount(highestRemaining)}</strong>
+                    <small>
+                      {personalVaultNumber
+                        ? `Reserve battery ${personalVaultNumber}`
+                        : 'Reserve not selected'}
+                    </small>
+                  </div>
+                  <div
+                    key={`${human.openedVaultIds.length}-${highestRemaining}`}
+                    className={`vault-verdict__charge-meter ${coreMood} is-charge-${getChargeTone(highestRemaining)}`}
+                    style={{ '--charge-ratio': `${highestRemaining}%` } as CSSProperties}
+                    role="img"
+                    aria-label={`Maximum charge remaining ${formatVaultAmount(highestRemaining)}`}
+                  >
+                    <div className="vault-verdict__charge-fill" />
+                    <BatteryIcon compact />
+                  </div>
+                  <div className="vault-verdict__hero-bank-read">
+                    <span>{bankProfile.label}</span>
+                    <small>{bankProfile.short}</small>
+                  </div>
                 </div>
-              )}
 
-              <section className="vault-verdict__charge-hero" aria-label="Maximum remaining charge">
-                <div className="vault-verdict__charge-copy">
-                  <span>Max charge remaining</span>
-                  <strong>{formatVaultAmount(highestRemaining)}</strong>
-                  <small>
-                    {personalVaultNumber
-                      ? `Reserve battery ${personalVaultNumber}`
-                      : 'Reserve not selected'}
-                  </small>
-                </div>
+                {activeHeroProfile && (
+                  <div
+                    key={`hero-${heroEventVaultId}`}
+                    className={`vault-verdict__hero-event is-${activeHeroProfile.key}`}
+                    aria-live="polite"
+                  >
+                    <div className="vault-verdict__hero-event-halo" aria-hidden="true" />
+                    <div className="vault-verdict__hero-event-icon" aria-hidden="true">
+                      <RevealSigil effectKey={activeHeroProfile.key} />
+                    </div>
+                    <div className="vault-verdict__hero-event-copy">
+                      <span>{activeHeroProfile.eyebrow}</span>
+                      <strong>{activeHeroProfile.title}</strong>
+                      <small>{activeHeroProfile.strapline}</small>
+                    </div>
+                    <div className="vault-verdict__hero-event-particles" aria-hidden="true">
+                      {Array.from({ length: 8 }, (_, index) => (
+                        <i key={index} style={{ '--particle-index': index } as CSSProperties} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div
-                  key={`${human.openedVaultIds.length}-${highestRemaining}`}
-                  className={`vault-verdict__charge-meter ${coreMood} is-charge-${getChargeTone(highestRemaining)}`}
-                  style={{ '--charge-ratio': `${highestRemaining}%` } as CSSProperties}
-                  role="img"
-                  aria-label={`Maximum charge remaining ${formatVaultAmount(highestRemaining)}`}
+                  key={commentaryMessage}
+                  className="vault-verdict__hero-commentary"
+                  aria-live="polite"
                 >
-                  <div className="vault-verdict__charge-fill" />
-                  <BatteryIcon compact />
+                  {commentaryMessage}
                 </div>
               </section>
 
@@ -490,12 +723,35 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   <small>Reserve Battery</small>
                   <strong>
                     {finaleReveal.step === 'revealed'
-                      ? formatVaultAmount(finaleReveal.reserveAmount)
+                      ? finaleReveal.reserveEffect === 'doubleVote'
+                        ? 'POWER CELL'
+                        : finaleReveal.reserveEffect === 'skipVote'
+                          ? 'BLACKOUT CELL'
+                          : formatVaultAmount(finaleReveal.reserveAmount)
                       : 'Charging…'}
                   </strong>
                   {finaleReveal.step === 'revealed' &&
-                    getSpecialRevealLabel(finaleReveal.reserveAmount) && (
-                      <em>{getSpecialRevealLabel(finaleReveal.reserveAmount)}</em>
+                    finaleReveal.insuranceFloor != null &&
+                    finaleReveal.finalCharge > finaleReveal.reserveAmount && (
+                      <em>Insurance → {formatVaultAmount(finaleReveal.finalCharge)} final</em>
+                    )}
+                  {finaleReveal.step === 'revealed' &&
+                    getSpecialRevealLabel(
+                      finaleReveal.reserveAmount,
+                      finaleReveal.reserveEffect
+                    ) && (
+                      <em>
+                        {finaleReveal.reserveEffect
+                          ? `Ranks ${formatVaultAmount(finaleReveal.reserveAmount)} · ${
+                              finaleReveal.reserveEffect === 'doubleVote'
+                                ? 'Double Vote'
+                                : 'Skip Vote'
+                            }`
+                          : getSpecialRevealLabel(
+                              finaleReveal.reserveAmount,
+                              finaleReveal.reserveEffect
+                            )}
+                      </em>
                     )}
                 </div>
                 <div className="vault-verdict__finale-battery is-wall">
@@ -511,9 +767,18 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
               <p>
                 {finaleReveal.step === 'revealed'
-                  ? finaleReveal.reserveAmount >= finaleReveal.offerAmount
-                    ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
-                    : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
+                  ? finaleReveal.reserveEffect === 'doubleVote'
+                    ? 'Power Cell secured. Your next eligible house eviction ballot will count twice.'
+                    : finaleReveal.reserveEffect === 'skipVote'
+                      ? 'Blackout Cell. You will sit out your next eligible house eviction vote.'
+                      : finaleReveal.insuranceFloor != null &&
+                          finaleReveal.finalCharge > finaleReveal.reserveAmount
+                        ? `Insurance catches the fall: ${formatVaultAmount(
+                            finaleReveal.reserveAmount
+                          )} becomes a ${formatVaultAmount(finaleReveal.finalCharge)} final charge.`
+                        : finaleReveal.reserveAmount >= finaleReveal.offerAmount
+                          ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
+                          : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
                   : 'Your protected battery is about to reveal its charge.'}
               </p>
               <button
@@ -557,6 +822,22 @@ export default function BatteryLow(props: GenericMinigameProps) {
                     {result.outcomeType === 'signedVerdict'
                       ? 'Locked Bank Offer'
                       : 'Opened Reserve Battery'}{' '}
+                    {result.outcomeType === 'openedVault' &&
+                    result.personalVaultId &&
+                    result.vaults.find((battery) => battery.vaultId === result.personalVaultId)
+                      ?.specialEffect
+                      ? `· ${
+                          result.vaults.find(
+                            (battery) => battery.vaultId === result.personalVaultId
+                          )?.specialEffect === 'doubleVote'
+                            ? 'Double Vote earned'
+                            : 'Next eligible vote skipped'
+                        } `
+                      : result.outcomeType === 'openedVault' &&
+                          result.insuranceFloor != null &&
+                          (result.finalAmount ?? 0) > (result.personalVaultAmount ?? 0)
+                        ? '· Insurance floor applied '
+                        : ''}
                     · {formatTime(result.finishTimeMs)}
                   </small>
                 </article>
@@ -576,12 +857,28 @@ export default function BatteryLow(props: GenericMinigameProps) {
         {human.currentOffer != null && gameActive && (
           <div className="vault-verdict__offer-layer">
             <section
-              className="vault-verdict__offer-sheet"
+              className={`vault-verdict__offer-sheet is-mood-${human.bankMood}${
+                human.counterofferResult ? ` is-counter-${human.counterofferResult.outcome}` : ''
+              }`}
               role="dialog"
               aria-modal="true"
               aria-label="Bank Offer"
             >
-              <span className="vault-verdict__offer-kicker">Bank Offer</span>
+              <div className="vault-verdict__offer-bank-mark">
+                <img src={EYE_BANK_CREST} alt="" loading="lazy" decoding="async" />
+                <div>
+                  <span>The Eye Bank</span>
+                  <strong>{bankProfile.label}</strong>
+                </div>
+              </div>
+              <div className="vault-verdict__bank-heading">
+                <span className="vault-verdict__offer-kicker">Bank Offer</span>
+                <span className={`vault-verdict__mood-badge is-${human.bankMood}`}>
+                  <b>{bankProfile.symbol}</b>
+                  {bankProfile.label}
+                </span>
+              </div>
+              <small className="vault-verdict__bank-mood">{bankProfile.short}</small>
               <div className="vault-verdict__offer-value">
                 {formatVaultAmount(human.currentOffer)}
               </div>
@@ -590,6 +887,86 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   ? 'Lock this charge now, or reveal your Reserve Battery for the final result.'
                   : 'Lock this charge now, or keep playing and risk losing a stronger value.'}
               </p>
+
+              {human.counterofferResult && (
+                <div
+                  className={`vault-verdict__counter-result is-${human.counterofferResult.outcome}`}
+                  aria-live="polite"
+                >
+                  {human.counterofferResult.outcome === 'raised'
+                    ? `The Bank blinked: ${formatVaultAmount(
+                        human.counterofferResult.previousOffer
+                      )} → ${formatVaultAmount(human.counterofferResult.newOffer)}`
+                    : human.counterofferResult.outcome === 'cut'
+                      ? `The Bank punished the push: ${formatVaultAmount(
+                          human.counterofferResult.previousOffer
+                        )} → ${formatVaultAmount(human.counterofferResult.newOffer)}`
+                      : 'The Bank refuses to move.'}
+                </div>
+              )}
+
+              {human.currentDeal && (
+                <div className={`vault-verdict__deal-card is-${human.currentDeal.type}`}>
+                  <span>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'BANK CONDITION · INSURANCE'
+                      : human.currentDeal.type === 'swap'
+                        ? 'BANK CONDITION · BLIND SWAP'
+                        : 'PRESSURE OFFER · NON-NEGOTIABLE'}
+                  </span>
+                  <strong>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'Protect a 25% floor'
+                      : human.currentDeal.type === 'swap'
+                        ? human.currentDeal.resolved
+                          ? 'Reserve swapped'
+                          : 'Trade your Reserve blind'
+                        : `+${human.currentDeal.premiumPct ?? 0}% premium`}
+                  </strong>
+                  <small>
+                    {human.currentDeal.type === 'insurance'
+                      ? 'Continue with a 25% minimum if you reach your Reserve. Future Bank offers are 10% lower.'
+                      : human.currentDeal.type === 'swap'
+                        ? human.currentDeal.resolved
+                          ? 'The new Reserve is sealed. The Bank offer is unchanged.'
+                          : 'The Bank randomly exchanges your Reserve with one unopened battery. Irreversible.'
+                        : 'This offer is already boosted. Counteroffers are disabled for this decision.'}
+                  </small>
+                  {human.currentDeal.type === 'insurance' && !human.currentDeal.resolved && (
+                    <button
+                      type="button"
+                      className="vault-verdict__deal-action"
+                      disabled={decisionPending}
+                      onClick={(event) => handleInsuranceClick(event.timeStamp)}
+                    >
+                      Insure &amp; continue
+                    </button>
+                  )}
+                  {human.currentDeal.type === 'swap' && !human.currentDeal.resolved && (
+                    <button
+                      type="button"
+                      className="vault-verdict__deal-action"
+                      disabled={decisionPending}
+                      onClick={handleSwapClick}
+                    >
+                      Blind swap
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!human.counterofferUsed && human.currentDeal?.type !== 'pressure' && (
+                <button
+                  type="button"
+                  className="vault-verdict__counteroffer"
+                  disabled={decisionPending}
+                  onClick={handleCounterofferClick}
+                >
+                  <span>Counteroffer</span>
+                  <small>One shot · the Bank may raise, hold, or cut</small>
+                </button>
+              )}
+
               <div className="vault-verdict__offer-actions">
                 <button
                   type="button"
@@ -646,11 +1023,17 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   .map((amount) => (
                     <span
                       key={amount}
-                      className={`${human.revealedAmounts.includes(amount) ? 'is-opened' : ''} is-charge-${getChargeTone(amount)}`}
+                      className={`${revealedStandardAmounts.includes(amount) ? 'is-opened' : ''} is-charge-${getChargeTone(amount)}`}
                     >
                       {formatVaultAmount(amount)}
                     </span>
                   ))}
+                {voteEffectsEnabled && (
+                  <>
+                    <span className="is-charge-medium">Power Cell · ranks 50%</span>
+                    <span className="is-charge-medium">Blackout Cell · ranks 50%</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

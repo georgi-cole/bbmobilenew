@@ -30,16 +30,33 @@ describe('Battery Low responsive styles', () => {
     expect(board).toContain('overflow: hidden;')
   })
 
-  it('keeps all 22 batteries in a three-column, eight-row board with Battery 22 centred', () => {
+  it('keeps all 24 batteries in a three-column, eight-row board', () => {
     const css = read('src/components/VaultVerdict/VaultVerdict.css')
     const grid = getRule(css, '.vault-verdict__battery-grid')
-    const finalCell = getRule(css, '.vault-verdict__battery-grid > :last-child:nth-child(3n + 1)')
 
     expect(grid).toContain('grid-template-columns: repeat(3, minmax(0, 1fr));')
     expect(grid).toContain('grid-template-rows: repeat(8, minmax(44px, 54px));')
-    expect(finalCell).toContain('grid-column: 2;')
     expect(css).toContain('@media (max-height: 760px) and (orientation: portrait)')
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
+  })
+
+  it('keeps hero reactions inside a fixed center-stage overlay', () => {
+    const css = read('src/components/VaultVerdict/VaultVerdict.css')
+    const heroStage = getRule(css, '.vault-verdict__hero-stage')
+    const heroEvent = getRule(css, '.vault-verdict__hero-event')
+    const heroIcon = getRule(css, '.vault-verdict__hero-event-icon')
+
+    expect(heroStage).toContain('position: relative;')
+    expect(heroStage).toContain('min-height:')
+    expect(heroEvent).toContain('position: absolute;')
+    expect(heroEvent).toContain('pointer-events: none;')
+    expect(heroIcon).toContain('color: var(--hero-accent);')
+    expect(css).toContain('var(--battery-low-stage)')
+    expect(css).toContain('.vault-verdict__hero-event.is-inferno')
+    expect(css).toContain('.vault-verdict__hero-event.is-blush')
+    expect(css).toContain('.vault-verdict__hero-event.is-overcharge')
+    expect(css).toContain('.vault-verdict__hero-event.is-power-cell')
+    expect(css).toContain('.vault-verdict__hero-event.is-blackout-cell')
   })
 
   it('uses a labelled Bank Offer sheet and removes the permanent ticker UI', () => {
@@ -47,7 +64,19 @@ describe('Battery Low responsive styles', () => {
 
     expect(source).toContain('Accept offer')
     expect(source).toContain('Keep playing')
+    expect(source).toContain('Counteroffer')
+    expect(source).toContain('Insure &amp; continue')
+    expect(source).toContain('Blind swap')
+    expect(source).toContain('PRESSURE OFFER · NON-NEGOTIABLE')
     expect(source).toContain('aria-modal="true"')
+    expect(source).toContain('RevealSigil')
+    expect(source).toContain('STAGE_BACKGROUND')
+    expect(source).toContain('EYE_BANK_CREST')
+    expect(source).toContain('vault-verdict__hero-stage')
+    expect(source).toContain('vault-verdict__hero-event')
+    expect(source).toContain('vault-verdict__offer-bank-mark')
+    expect(source).not.toContain('vault-verdict__show-fx')
+    expect(source).not.toContain('vault-verdict__lower-third')
     expect(source).not.toContain('vault-verdict__ticker')
     expect(source).not.toContain("'MY'")
   })

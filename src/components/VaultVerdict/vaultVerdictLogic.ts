@@ -5,7 +5,8 @@ export const VAULT_VERDICT_AMOUNTS = [
   0, 1, 4.04, 6.66, 13, 13.37, 21, 24, 37, 42, 50, 55, 60, 66, 69, 75, 80, 88, 91, 95, 99, 100,
 ] as const;
 
-export const VAULT_VERDICT_ROUND_SCHEDULE = [5, 4, 4, 3, 2, 1, 1] as const;
+export const VAULT_VERDICT_ROUND_SCHEDULE = [5, 4, 4, 3, 3, 2, 1] as const;
+export const BATTERY_LOW_SPECIAL_RANK_VALUE = 50;
 
 export type VaultStatus = 'available' | 'personal' | 'opened' | 'remainingFinalWallVault';
 export type BankMood = 'stingy' | 'calculated' | 'generous' | 'chaotic';
@@ -13,6 +14,58 @@ export type AiPersonality = 'cautious' | 'balanced' | 'greedy' | 'chaotic' | 'sh
 export type OutcomeType = 'signedVerdict' | 'openedVault';
 export type ContestantStatus = 'Charging' | 'Locked' | 'Final Battery' | 'Finished';
 export type BroadcastKind = 'decision' | 'amount' | 'round' | 'flavor' | 'final';
+export type BatteryLowVoteEffect = 'doubleVote' | 'skipVote';
+export type BankDealType = 'insurance' | 'swap' | 'pressure';
+export type CounterofferOutcome = 'raised' | 'held' | 'cut';
+export type RevealTier = 'critical' | 'low' | 'mid' | 'high' | 'elite' | 'special';
+export type RevealEffectKey =
+  | 'powerdown'
+  | 'last-breath'
+  | 'signal-lost'
+  | 'inferno'
+  | 'unlucky'
+  | 'elite-code'
+  | 'low-burn'
+  | 'steady-low'
+  | 'cool-current'
+  | 'answer-signal'
+  | 'midpoint'
+  | 'steady-mid'
+  | 'charge-rise'
+  | 'redline'
+  | 'blush'
+  | 'strong-current'
+  | 'high-voltage'
+  | 'gold-band'
+  | 'elite-surge'
+  | 'near-perfect'
+  | 'overcharge'
+  | 'power-cell'
+  | 'blackout-cell';
+
+export interface RevealEffectProfile {
+  key: RevealEffectKey;
+  tier: RevealTier;
+  eyebrow: string;
+  title: string;
+  strapline: string;
+  hero: boolean;
+  soundKey?: 'ui:confirm' | 'ui:error' | 'ui:navigate' | 'tv:event';
+  soundVolume?: number;
+}
+
+export interface BankDeal {
+  type: BankDealType;
+  resolved: boolean;
+  floor?: number;
+  premiumPct?: number;
+}
+
+export interface CounterofferResult {
+  previousOffer: number;
+  newOffer: number;
+  outcome: CounterofferOutcome;
+}
 
 export interface VaultPodState {
   vaultId: string;
@@ -20,6 +73,8 @@ export interface VaultPodState {
   amount: number;
   status: VaultStatus;
   openedAt: number | null;
+  /** Optional one-shot season consequence carried only when this is the final Reserve. */
+  specialEffect?: BatteryLowVoteEffect | null;
 }
 
 export interface OfferRecord {
@@ -61,6 +116,12 @@ export interface VaultContestantState {
   aiPersonality: AiPersonality | null;
   bankMood: BankMood;
   broadcastEvents: BroadcastEvent[];
+  counterofferUsed: boolean;
+  counterofferResult: CounterofferResult | null;
+  rareDealOffered: boolean;
+  currentDeal: BankDeal | null;
+  insuranceFloor: number | null;
+  futureOfferMultiplier: number;
 }
 
 export interface RankedVaultResult extends VaultContestantState {
@@ -77,16 +138,223 @@ export interface ResolvedVaultParticipant {
 const FALLBACK_NAMES = ['You', 'Kian', 'Mira', 'Jules', 'Nina', 'Sasha', 'Eli', 'Rhea'];
 const BANK_MOODS: BankMood[] = ['stingy', 'calculated', 'generous', 'chaotic'];
 const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'chaotic', 'show-off', 'panic'];
-const DRAMATIC_AMOUNTS = new Set([0, 4.04, 6.66, 13.37, 42, 69, 99, 100]);
+const DRAMATIC_AMOUNTS = new Set([0, 6.66, 13, 42, 69, 100]);
+
+const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
+  [0, {
+    key: 'powerdown',
+    tier: 'critical',
+    eyebrow: 'POWER FAILURE',
+    title: '0% · DEAD CELL',
+    strapline: 'The stage drops to black.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.52,
+  }],
+  [1, {
+    key: 'last-breath',
+    tier: 'critical',
+    eyebrow: 'CRITICAL',
+    title: '1% · LAST BREATH',
+    strapline: 'One flicker from empty.',
+    hero: false,
+    soundKey: 'ui:error',
+    soundVolume: 0.42,
+  }],
+  [4.04, {
+    key: 'signal-lost',
+    tier: 'critical',
+    eyebrow: 'SIGNAL LOST',
+    title: '4.04% · NOT FOUND',
+    strapline: 'The board loses the signal.',
+    hero: false,
+    soundKey: 'ui:error',
+    soundVolume: 0.44,
+  }],
+  [6.66, {
+    key: 'inferno',
+    tier: 'critical',
+    eyebrow: 'INFERNAL CHARGE',
+    title: '6.66% · CURSED',
+    strapline: 'The rack runs hot.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.58,
+  }],
+  [13, {
+    key: 'unlucky',
+    tier: 'low',
+    eyebrow: 'BAD OMEN',
+    title: '13% · UNLUCKY',
+    strapline: 'The lights misbehave.',
+    hero: true,
+    soundKey: 'ui:error',
+    soundVolume: 0.36,
+  }],
+  [13.37, {
+    key: 'elite-code',
+    tier: 'low',
+    eyebrow: 'SYSTEM OVERRIDE',
+    title: '13.37% · ELITE',
+    strapline: 'A rogue code pulse hits the board.',
+    hero: false,
+    soundKey: 'ui:navigate',
+    soundVolume: 0.44,
+  }],
+  [21, {
+    key: 'low-burn',
+    tier: 'low',
+    eyebrow: 'CLEAN BURN',
+    title: '21% REMOVED',
+    strapline: 'A low value leaves the rack.',
+    hero: false,
+  }],
+  [24, {
+    key: 'steady-low',
+    tier: 'low',
+    eyebrow: 'LOW CURRENT',
+    title: '24% REMOVED',
+    strapline: 'The floor gets a little safer.',
+    hero: false,
+  }],
+  [37, {
+    key: 'cool-current',
+    tier: 'mid',
+    eyebrow: 'COOL CURRENT',
+    title: '37% REVEALED',
+    strapline: 'A manageable loss.',
+    hero: false,
+  }],
+  [42, {
+    key: 'answer-signal',
+    tier: 'mid',
+    eyebrow: 'THE ANSWER',
+    title: '42% · SIGNAL LOCK',
+    strapline: 'The board finds its cosmic frequency.',
+    hero: true,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.42,
+  }],
+  [50, {
+    key: 'midpoint',
+    tier: 'mid',
+    eyebrow: 'DEAD EVEN',
+    title: '50% · HALF CHARGE',
+    strapline: 'Right down the middle.',
+    hero: false,
+  }],
+  [55, {
+    key: 'steady-mid',
+    tier: 'mid',
+    eyebrow: 'STEADY CURRENT',
+    title: '55% REVEALED',
+    strapline: 'The board barely flinches.',
+    hero: false,
+  }],
+  [60, {
+    key: 'charge-rise',
+    tier: 'mid',
+    eyebrow: 'CHARGE RISING',
+    title: '60% REVEALED',
+    strapline: 'Now the losses start to matter.',
+    hero: false,
+  }],
+  [66, {
+    key: 'redline',
+    tier: 'high',
+    eyebrow: 'REDLINE',
+    title: '66% · HOT CURRENT',
+    strapline: 'The rack flashes warning red.',
+    hero: false,
+  }],
+  [69, {
+    key: 'blush',
+    tier: 'high',
+    eyebrow: 'CHEEKY CURRENT',
+    title: '69% · NICE',
+    strapline: 'The stage blushes.',
+    hero: true,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.38,
+  }],
+  [75, {
+    key: 'strong-current',
+    tier: 'high',
+    eyebrow: 'STRONG CURRENT',
+    title: '75% REVEALED',
+    strapline: 'That one hurts.',
+    hero: false,
+  }],
+  [80, {
+    key: 'high-voltage',
+    tier: 'high',
+    eyebrow: 'HIGH VOLTAGE',
+    title: '80% REVEALED',
+    strapline: 'The Bank likes that hit.',
+    hero: false,
+  }],
+  [88, {
+    key: 'gold-band',
+    tier: 'elite',
+    eyebrow: 'GOLD BAND',
+    title: '88% · PREMIUM',
+    strapline: 'A premium charge leaves the board.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.32,
+  }],
+  [91, {
+    key: 'gold-band',
+    tier: 'elite',
+    eyebrow: 'GOLD BAND',
+    title: '91% · PREMIUM',
+    strapline: 'The top end is thinning out.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.32,
+  }],
+  [95, {
+    key: 'elite-surge',
+    tier: 'elite',
+    eyebrow: 'ELITE SURGE',
+    title: '95% REVEALED',
+    strapline: 'A near-perfect charge is gone.',
+    hero: false,
+    soundKey: 'ui:confirm',
+    soundVolume: 0.36,
+  }],
+  [99, {
+    key: 'near-perfect',
+    tier: 'elite',
+    eyebrow: 'ONE PERCENT AWAY',
+    title: '99% · SO CLOSE',
+    strapline: 'The stage freezes on the near-perfect hit.',
+    hero: false,
+    soundKey: 'tv:event',
+    soundVolume: 0.54,
+  }],
+  [100, {
+    key: 'overcharge',
+    tier: 'elite',
+    eyebrow: 'FULL POWER',
+    title: '100% · OVERCHARGE',
+    strapline: 'The biggest battery on the board explodes out.',
+    hero: true,
+    soundKey: 'tv:event',
+    soundVolume: 0.68,
+  }],
+]);
 const TOP_AMOUNTS = new Set([88, 91, 95, 99, 100]);
+const INSURANCE_FLOOR = 25;
+const INSURANCE_OFFER_MULTIPLIER = 0.9;
 const OFFER_MULTIPLIERS: Array<[number, number]> = [
-  [0.45, 0.65],
-  [0.52, 0.73],
-  [0.6, 0.84],
-  [0.7, 0.95],
-  [0.78, 1.05],
-  [0.86, 1.15],
-  [0.92, 1.25],
+  [0.65, 0.8],
+  [0.72, 0.88],
+  [0.8, 0.96],
+  [0.86, 1.03],
+  [0.92, 1.1],
+  [0.96, 1.15],
+  [1.0, 1.2],
 ];
 
 function randomInt(rng: () => number, min: number, max: number) {
@@ -142,15 +410,27 @@ export function createVaultVerdictRng(seed = 0) {
   };
 }
 
-export function createVaultPods(seed: number): VaultPodState[] {
+export function createVaultPods(seed: number, voteEffectsEnabled = true): VaultPodState[] {
   const rng = mulberry32(seed >>> 0);
-  const amounts = shuffle(VAULT_VERDICT_AMOUNTS, rng);
-  return amounts.map((amount, index) => ({
+  const cells: Array<{ amount: number; specialEffect: BatteryLowVoteEffect | null }> =
+    VAULT_VERDICT_AMOUNTS.map((amount) => ({ amount, specialEffect: null }));
+  cells.push(
+    {
+      amount: BATTERY_LOW_SPECIAL_RANK_VALUE,
+      specialEffect: voteEffectsEnabled ? 'doubleVote' : null,
+    },
+    {
+      amount: BATTERY_LOW_SPECIAL_RANK_VALUE,
+      specialEffect: voteEffectsEnabled ? 'skipVote' : null,
+    },
+  );
+  return shuffle(cells, rng).map((cell, index) => ({
     vaultId: `battery-${index + 1}`,
     displayNumber: index + 1,
-    amount,
+    amount: cell.amount,
     status: 'available',
     openedAt: null,
+    specialEffect: cell.specialEffect,
   }));
 }
 
@@ -183,7 +463,87 @@ export function getHighestRemainingValue(contestant: Pick<VaultContestantState, 
   return Math.max(0, ...calculateRemainingValues(contestant));
 }
 
-export function getSpecialRevealLabel(value: number) {
+export function getRevealEffectProfile(
+  value: number,
+  effect?: BatteryLowVoteEffect | null,
+): RevealEffectProfile {
+  if (effect === 'doubleVote') {
+    return {
+      key: 'power-cell',
+      tier: 'special',
+      eyebrow: 'STRATEGIC POWER',
+      title: 'POWER CELL',
+      strapline: 'Double Vote potential flashes across the stage.',
+      hero: true,
+      soundKey: 'ui:confirm',
+      soundVolume: 0.62,
+    };
+  }
+  if (effect === 'skipVote') {
+    return {
+      key: 'blackout-cell',
+      tier: 'special',
+      eyebrow: 'SYSTEM BLACKOUT',
+      title: 'BLACKOUT CELL',
+      strapline: 'The house vote penalty flickers into view.',
+      hero: true,
+      soundKey: 'ui:error',
+      soundVolume: 0.62,
+    };
+  }
+  return (
+    REVEAL_EFFECTS.get(value) ?? {
+      key: value >= 88 ? 'gold-band' : value >= 66 ? 'high-voltage' : value >= 41 ? 'steady-mid' : 'cool-current',
+      tier: value >= 88 ? 'elite' : value >= 66 ? 'high' : value >= 41 ? 'mid' : 'low',
+      eyebrow: 'BATTERY REVEAL',
+      title: `${formatVaultAmount(value)} REVEALED`,
+      strapline: 'The board recalibrates.',
+      hero: false,
+    }
+  );
+}
+
+export function getBankMoodProfile(mood: BankMood) {
+  if (mood === 'stingy') {
+    return { label: 'STINGY', short: 'Hates giving ground', symbol: '−' };
+  }
+  if (mood === 'generous') {
+    return { label: 'GENEROUS', short: 'More willing to pay up', symbol: '+' };
+  }
+  if (mood === 'chaotic') {
+    return { label: 'CHAOTIC', short: 'Offers can swing hard', symbol: '↯' };
+  }
+  return { label: 'CALCULATED', short: 'Tracks the board closely', symbol: '◇' };
+}
+
+export function getRevealCommentary(
+  contestant: Pick<VaultContestantState, 'vaults' | 'openedVaultIds'>,
+  vault: VaultPodState | null,
+) {
+  if (!vault) return null;
+  if (vault.specialEffect === 'doubleVote') return 'Power Cell destroyed. The double vote is gone.';
+  if (vault.specialEffect === 'skipVote') return 'Blackout destroyed. That penalty can no longer hit you.';
+  if (vault.amount === 100) return '100% is gone. The Bank just gained serious leverage.';
+  if (vault.amount >= 88) return 'Big hit. One of the strongest charges just disappeared.';
+  if (vault.amount <= 6.66) return 'Perfect burn. A dangerous low charge is off the board.';
+  if (vault.amount <= 21) return 'Good removal. The bottom of the board just got safer.';
+
+  const remainingTop = contestant.vaults.filter(
+    (candidate) => candidate.status !== 'opened' && TOP_AMOUNTS.has(candidate.amount),
+  ).length;
+  const openedLows = contestant.vaults.filter(
+    (candidate) => candidate.status === 'opened' && candidate.amount <= 21,
+  ).length;
+  if (remainingTop >= 4 && openedLows >= 4) return 'The board is turning against the Bank.';
+  if (remainingTop <= 1 && contestant.openedVaultIds.length >= 10) {
+    return 'The ceiling is collapsing. The Bank knows it.';
+  }
+  return null;
+}
+
+export function getSpecialRevealLabel(value: number, effect?: BatteryLowVoteEffect | null) {
+  if (effect === 'doubleVote') return 'POWER CELL · DOUBLE VOTE';
+  if (effect === 'skipVote') return 'BLACKOUT CELL · SKIP VOTE';
   const labels = new Map<number, string>([
     [0, 'DEAD CELL'],
     [4.04, 'BATTERY NOT FOUND'],
@@ -225,20 +585,25 @@ export function createInitialContestant(
   participant: ResolvedVaultParticipant,
   originalTurnOrderIndex: number,
   seed: number,
+  voteEffectsEnabled = true,
 ): VaultContestantState {
   const rng = mulberry32(mixSeed(seed, participant.id));
   const bankMood = pick(rng, BANK_MOODS);
+  const vaults = createVaultPods(
+    mixSeed(seed + originalTurnOrderIndex * 97, participant.id),
+    voteEffectsEnabled,
+  );
   return {
     contestantId: participant.id,
     displayName: participant.name,
     isUserControlled: participant.isHuman,
     originalTurnOrderIndex,
-    vaults: createVaultPods(mixSeed(seed + originalTurnOrderIndex * 97, participant.id)),
+    vaults,
     personalVaultId: null,
     personalVaultAmount: null,
     openedVaultIds: [],
     revealedAmounts: [],
-    remainingAmounts: [...VAULT_VERDICT_AMOUNTS],
+    remainingAmounts: vaults.map((vault) => vault.amount),
     currentRound: 0,
     currentOffer: null,
     offerHistory: [],
@@ -251,6 +616,12 @@ export function createInitialContestant(
     aiPersonality: participant.isHuman ? null : pick(rng, AI_PERSONALITIES),
     bankMood,
     broadcastEvents: [],
+    counterofferUsed: false,
+    counterofferResult: null,
+    rareDealOffered: false,
+    currentDeal: null,
+    insuranceFloor: null,
+    futureOfferMultiplier: 1,
   };
 }
 
@@ -305,21 +676,204 @@ export function openWallVault(
   };
 }
 
+function getRareDealChance(mood: BankMood) {
+  if (mood === 'chaotic') return 0.14;
+  if (mood === 'generous') return 0.12;
+  if (mood === 'stingy') return 0.07;
+  return 0.09;
+}
+
+function chooseRareBankDeal(mood: BankMood, rng: () => number): BankDealType {
+  const roll = rng();
+  if (mood === 'stingy') return roll < 0.52 ? 'pressure' : roll < 0.76 ? 'swap' : 'insurance';
+  if (mood === 'generous') return roll < 0.46 ? 'insurance' : roll < 0.74 ? 'pressure' : 'swap';
+  if (mood === 'chaotic') return roll < 0.44 ? 'swap' : roll < 0.76 ? 'pressure' : 'insurance';
+  return roll < 0.4 ? 'pressure' : roll < 0.72 ? 'insurance' : 'swap';
+}
+
+export function maybeCreateRareBankDeal(
+  contestant: VaultContestantState,
+  rng: () => number,
+): BankDeal | null {
+  if (
+    contestant.rareDealOffered ||
+    contestant.currentRound < 2 ||
+    contestant.currentRound > 5 ||
+    rng() >= getRareDealChance(contestant.bankMood)
+  ) {
+    return null;
+  }
+  const type = chooseRareBankDeal(contestant.bankMood, rng);
+  if (type === 'insurance') {
+    return { type, resolved: false, floor: INSURANCE_FLOOR };
+  }
+  if (type === 'pressure') {
+    const premiumPct =
+      contestant.bankMood === 'stingy'
+        ? 10 + Math.round(rng() * 4)
+        : contestant.bankMood === 'generous'
+          ? 14 + Math.round(rng() * 5)
+          : contestant.bankMood === 'chaotic'
+            ? 10 + Math.round(rng() * 10)
+            : 12 + Math.round(rng() * 5);
+    return { type, resolved: false, premiumPct };
+  }
+  return { type, resolved: false };
+}
+
 export function maybeCreateOffer(
   contestant: VaultContestantState,
   rng: () => number,
 ): VaultContestantState {
   if (contestant.currentOffer != null || getVaultsLeftThisRound(contestant) > 0) return contestant;
-  const offer = calculateEyeBankOffer({
+  const baseOffer = calculateEyeBankOffer({
     remainingValues: calculateRemainingValues(contestant),
     offerNumber: contestant.currentRound,
     bankMood: contestant.bankMood,
     rng,
   });
+  const deal = maybeCreateRareBankDeal(contestant, rng);
+  const futureAdjusted = Math.round(baseOffer.offer * contestant.futureOfferMultiplier);
+  const premiumMultiplier = deal?.type === 'pressure' ? 1 + (deal.premiumPct ?? 0) / 100 : 1;
+  const offer = clamp(
+    Math.round(futureAdjusted * premiumMultiplier),
+    0,
+    Math.max(0, ...baseOffer.remainingValues),
+  );
+  const record = { ...baseOffer, offer };
   return {
     ...contestant,
-    currentOffer: offer.offer,
-    offerHistory: [...contestant.offerHistory, offer],
+    currentOffer: offer,
+    offerHistory: [...contestant.offerHistory, record],
+    currentDeal: deal,
+    rareDealOffered: contestant.rareDealOffered || deal != null,
+    counterofferResult: null,
+  };
+}
+
+export function counterBankOffer(
+  contestant: VaultContestantState,
+  rng: () => number,
+): VaultContestantState {
+  if (
+    contestant.currentOffer == null ||
+    contestant.counterofferUsed ||
+    contestant.currentDeal?.type === 'pressure'
+  ) {
+    return contestant;
+  }
+
+  const previousOffer = contestant.currentOffer;
+  const latest = contestant.offerHistory[contestant.offerHistory.length - 1];
+  const expectedValue = latest?.expectedValue ?? previousOffer;
+  const offerRatio = previousOffer / Math.max(1, expectedValue);
+  const roll = rng();
+
+  let raiseCutoff = 0.45;
+  let holdCutoff = 0.78;
+  let raiseMin = 1.05;
+  let raiseMax = 1.1;
+  let cutMin = 0.92;
+  let cutMax = 0.97;
+
+  if (contestant.bankMood === 'generous') {
+    raiseCutoff = 0.7;
+    holdCutoff = 0.94;
+    raiseMin = 1.07;
+    raiseMax = 1.14;
+    cutMin = 0.96;
+    cutMax = 0.99;
+  } else if (contestant.bankMood === 'stingy') {
+    raiseCutoff = 0.27;
+    holdCutoff = 0.69;
+    raiseMin = 1.03;
+    raiseMax = 1.07;
+    cutMin = 0.9;
+    cutMax = 0.96;
+  } else if (contestant.bankMood === 'chaotic') {
+    raiseCutoff = 0.47;
+    holdCutoff = 0.59;
+    raiseMin = 1.08;
+    raiseMax = 1.22;
+    cutMin = 0.84;
+    cutMax = 0.95;
+  } else if (offerRatio < 0.9) {
+    raiseCutoff = 0.58;
+    holdCutoff = 0.88;
+  }
+
+  let outcome: CounterofferOutcome;
+  let multiplier = 1;
+  if (roll < raiseCutoff) {
+    outcome = 'raised';
+    multiplier = raiseMin + rng() * (raiseMax - raiseMin);
+  } else if (roll < holdCutoff) {
+    outcome = 'held';
+  } else {
+    outcome = 'cut';
+    multiplier = cutMin + rng() * (cutMax - cutMin);
+  }
+
+  const highestRemaining = Math.max(0, ...calculateRemainingValues(contestant));
+  const newOffer = clamp(Math.round(previousOffer * multiplier), 0, highestRemaining);
+  const resolvedOutcome: CounterofferOutcome =
+    newOffer > previousOffer ? 'raised' : newOffer < previousOffer ? 'cut' : 'held';
+  const offerHistory = contestant.offerHistory.map((offer, index) =>
+    index === contestant.offerHistory.length - 1 ? { ...offer, offer: newOffer } : offer,
+  );
+
+  return {
+    ...contestant,
+    currentOffer: newOffer,
+    offerHistory,
+    counterofferUsed: true,
+    counterofferResult: {
+      previousOffer,
+      newOffer,
+      outcome: resolvedOutcome ?? outcome,
+    },
+  };
+}
+
+export function acceptInsuranceDeal(contestant: VaultContestantState): VaultContestantState {
+  if (contestant.currentDeal?.type !== 'insurance' || contestant.currentDeal.resolved) {
+    return contestant;
+  }
+  return {
+    ...contestant,
+    insuranceFloor: Math.max(contestant.insuranceFloor ?? 0, contestant.currentDeal.floor ?? INSURANCE_FLOOR),
+    futureOfferMultiplier: Math.min(contestant.futureOfferMultiplier, INSURANCE_OFFER_MULTIPLIER),
+    currentDeal: { ...contestant.currentDeal, resolved: true },
+  };
+}
+
+export function swapReserveBattery(
+  contestant: VaultContestantState,
+  rng: () => number,
+): VaultContestantState {
+  if (
+    contestant.currentDeal?.type !== 'swap' ||
+    contestant.currentDeal.resolved ||
+    !contestant.personalVaultId
+  ) {
+    return contestant;
+  }
+  const candidates = getAvailableWallVaults(contestant);
+  if (candidates.length === 0) return contestant;
+  const replacement = pick(rng, candidates);
+  const previousReserveId = contestant.personalVaultId;
+  const vaults = contestant.vaults.map((vault) => {
+    if (vault.vaultId === previousReserveId) return { ...vault, status: 'available' as const };
+    if (vault.vaultId === replacement.vaultId) return { ...vault, status: 'personal' as const };
+    return vault;
+  });
+  return {
+    ...contestant,
+    vaults,
+    personalVaultId: replacement.vaultId,
+    personalVaultAmount: replacement.amount,
+    currentDeal: { ...contestant.currentDeal, resolved: true },
+    remainingAmounts: calculateRemainingValues({ vaults }),
   };
 }
 
@@ -335,7 +889,8 @@ export function riskVault(contestant: VaultContestantState, finishTimeMs: number
       ...contestant,
       vaults,
       currentOffer: null,
-      finalAmount: contestant.personalVaultAmount ?? 0,
+      currentDeal: null,
+      finalAmount: Math.max(contestant.personalVaultAmount ?? 0, contestant.insuranceFloor ?? 0),
       outcomeType: 'openedVault',
       simulatedFinishTime: finishTimeMs,
       finishTimeMs,
@@ -346,6 +901,8 @@ export function riskVault(contestant: VaultContestantState, finishTimeMs: number
     ...contestant,
     currentRound: contestant.currentRound + 1,
     currentOffer: null,
+    currentDeal: null,
+    counterofferResult: null,
   };
 }
 
@@ -356,6 +913,7 @@ export function signVerdict(contestant: VaultContestantState, finishTimeMs: numb
     acceptedOfferAmount: contestant.currentOffer,
     finalAmount: contestant.currentOffer,
     outcomeType: 'signedVerdict',
+    currentDeal: null,
     simulatedFinishTime: finishTimeMs,
     finishTimeMs,
   };
@@ -473,6 +1031,47 @@ export function simulateAiContestant(
     }
     state = maybeCreateOffer(state, rng);
     elapsed += randomInt(rng, 2000, 8000);
+
+    if (
+      state.currentDeal?.type === 'insurance' &&
+      !state.currentDeal.resolved &&
+      (state.aiPersonality === 'cautious' || state.aiPersonality === 'panic') &&
+      rng() < 0.48
+    ) {
+      state = acceptInsuranceDeal(state);
+      broadcasts.push({
+        id: `${contestant.contestantId}-insurance-${round}`,
+        atMs: elapsed,
+        contestantId: totalContestants <= 4 ? null : contestant.contestantId,
+        contestantName: totalContestants <= 4 ? null : contestant.displayName,
+        kind: 'decision',
+        message: totalContestants <= 4
+          ? 'Another booth just bought a safety net from the Bank.'
+          : `${contestant.displayName} took the Bank's insurance and kept playing.`,
+      });
+      state = riskVault(state, elapsed);
+      continue;
+    }
+
+    if (
+      state.currentDeal?.type === 'swap' &&
+      !state.currentDeal.resolved &&
+      rng() <
+        (state.aiPersonality === 'chaotic' || state.aiPersonality === 'show-off' ? 0.58 : 0.28)
+    ) {
+      state = swapReserveBattery(state, rng);
+    }
+
+    if (
+      !state.counterofferUsed &&
+      state.currentDeal?.type !== 'pressure' &&
+      round >= 2 &&
+      rng() <
+        (state.aiPersonality === 'greedy' || state.aiPersonality === 'show-off' ? 0.34 : 0.16)
+    ) {
+      state = counterBankOffer(state, rng);
+    }
+
     const latestOffer = state.offerHistory[state.offerHistory.length - 1]!;
     const accepted = shouldAiAcceptOffer({
       contestant: state,
@@ -527,6 +1126,22 @@ export function getContestantBroadcastStatus(contestant: VaultContestantState, e
   const finalEventAt = contestant.offerHistory.length >= 7 ? contestant.offerHistory[6]?.round : null;
   if (finalEventAt != null && elapsedMs >= Math.max(0, (contestant.finishTimeMs ?? 0) - 12000)) return 'Final Battery';
   return 'Charging';
+}
+
+export function getEarnedBatteryLowVoteEffect(
+  contestant: Pick<VaultContestantState, 'outcomeType' | 'personalVaultId' | 'vaults'>,
+): BatteryLowVoteEffect | null {
+  if (contestant.outcomeType !== 'openedVault' || !contestant.personalVaultId) return null;
+  return contestant.vaults.find((vault) => vault.vaultId === contestant.personalVaultId)?.specialEffect ?? null;
+}
+
+export function buildBatteryLowVoteEffects(contestants: VaultContestantState[]) {
+  return Object.fromEntries(
+    contestants.flatMap((contestant) => {
+      const effect = getEarnedBatteryLowVoteEffect(contestant);
+      return effect ? [[contestant.contestantId, effect] as const] : [];
+    }),
+  );
 }
 
 export function rankVaultContestants(contestants: VaultContestantState[]): RankedVaultResult[] {

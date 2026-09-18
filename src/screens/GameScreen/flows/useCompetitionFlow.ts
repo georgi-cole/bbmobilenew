@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from 'react-redux'
-import { applyF3MinigameWinner, applyMinigameWinner, updateGamePRs } from '../../../store/gameSlice'
+import {
+  applyF3MinigameWinner,
+  applyMinigameWinner,
+  registerBatteryLowVoteEffects,
+  updateGamePRs,
+} from '../../../store/gameSlice'
 import {
   completeChallenge,
   selectPendingChallenge,
@@ -299,6 +304,15 @@ export function useCompetitionFlow({
           partial: partial === true,
         })
       ) as string | null
+
+      if (
+        !partial &&
+        capturedGameKey === 'batteryLow' &&
+        reactCompletion?.batteryLowVoteEffects &&
+        Object.keys(reactCompletion.batteryLowVoteEffects).length > 0
+      ) {
+        dispatch(registerBatteryLowVoteEffects(reactCompletion.batteryLowVoteEffects))
+      }
 
       if (import.meta.env.DEV) {
         console.log('[LOH_CROWN] completeChallenge returned scoreWinnerId', {
