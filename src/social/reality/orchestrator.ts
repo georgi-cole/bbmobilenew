@@ -14,7 +14,11 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange } from './relationships'
 import { resolveRealityTargetResponse, type RealityResponseResolution } from './response'
 import { scoreRealityAction, type RealityScoreBreakdown } from './scoring'
-import { addRealityFact, learnRealityFact } from './knowledge'
+import {
+  addRealityFact,
+  learnRealityFact,
+  resolveRealityAllianceIdForFact,
+} from './knowledge'
 import {
   applyRealityApology,
   createRealityAlliance,
@@ -368,22 +372,74 @@ function applyRealityLifecycle(input: {
   }
 
   if (action.id === 'expose_secret') {
-    const secret = Object.values(domain.secrets)
+    const allianceBelief = Object.values(domain.beliefsByOwner[interaction.actorId] ?? {})
       .filter(
-        (entry) =>
-          entry.status === 'SECRET' &&
-          entry.knowerIds.includes(interaction.actorId) &&
-          domain.facts[entry.truthFactId]?.subjectIds.some((id) => event.targetIds.includes(id))
+        (belief) =>
+          belief.status !== 'DISPROVEN' &&
+          belief.status !== 'STALE' &&
+          belief.confidence >= 0.45 &&
+          belief.propositionType === 'SECRET_ALLIANCE' &&
+          belief.subjectIds.some((id) => event.targetIds.includes(id))
       )
-      .sort((left, right) => left.id.localeCompare(right.id))[0]
-    if (secret) {
-      upsertRealitySecret(domain, {
-        ...secret,
-        status: 'EXPOSED',
-        exposure: 1,
+      .sort(
+        (left, right) =>
+          right.confidence - left.confidence ||
+          right.lastUpdatedDay - left.lastUpdatedDay ||
+          left.id.localeCompare(right.id)
+      )[0]
+
+    const allianceId = allianceBelief
+      ? resolveRealityAllianceIdForFact(domain, allianceBelief)
+      : undefined
+    const alliance = allianceId ? domain.alliances[allianceId] : undefined
+    const knownAllianceMembers = allianceBelief && alliance
+      ? [...new Set(allianceBelief.subjectIds)].filter((id) => alliance.memberIds.includes(id))
+      : []
+
+    if (alliance && knownAllianceMembers.length >= 2) {
+      const claimId = `fact:alliance-public-claim:${alliance.id}:${event.id}`
+      addRealityFact(domain, {
+        id: claimId,
+        propositionType: 'ALLIANCE_PUBLIC_CLAIM',
+        subjectIds: knownAllianceMembers,
+        objectId: alliance.id,
+        value: true,
+        day: event.day,
+        phase: event.phase,
+        visibility: 'HOUSE_PUBLIC',
+        participantIds: [...event.participantIds],
+        witnessIds: [...event.witnessIds],
+        viewerVisible: true,
+        publicVisible: true,
+        juryVisible: true,
+        sourceEventId: event.id,
       })
-      event.tags.push('EXPOSED')
-      event.relatedFactIds.push(secret.truthFactId)
+      alliance.suspectedByIds = [
+        ...new Set([
+          ...alliance.suspectedByIds,
+          ...Object.keys(domain.contestants).filter((id) => !alliance.memberIds.includes(id)),
+        ]),
+      ]
+      event.tags.push('EXPOSED', 'ALLIANCE_CLAIM')
+      event.relatedFactIds.push(claimId)
+    } else {
+      const secret = Object.values(domain.secrets)
+        .filter(
+          (entry) =>
+            entry.status === 'SECRET' &&
+            entry.knowerIds.includes(interaction.actorId) &&
+            domain.facts[entry.truthFactId]?.subjectIds.some((id) => event.targetIds.includes(id))
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))[0]
+      if (secret) {
+        upsertRealitySecret(domain, {
+          ...secret,
+          status: 'EXPOSED',
+          exposure: 1,
+        })
+        event.tags.push('EXPOSED')
+        event.relatedFactIds.push(secret.truthFactId)
+      }
     }
   }
 
