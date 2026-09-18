@@ -9857,7 +9857,9 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(target2)) return
 
       const humanPlayer = state.players.find((p) => p.isUser)
-      if (!humanPlayer) return
+      if (!humanPlayer || !canCastClassicEvictionVote(state, humanPlayer.id)) return
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, target1)) return
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, target2)) return
       if (!state.votes) state.votes = {}
 
       // Primary vote (same key as a normal vote)
