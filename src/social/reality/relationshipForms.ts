@@ -1,4 +1,8 @@
 import type { DramaAlliance } from '../types'
+import {
+  maybeExposeRealityAlliance,
+  recordRealityAllianceLeakDiscovery,
+} from './allianceKnowledge'
 import { appendRealityEvent } from './events'
 import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
@@ -18,6 +22,63 @@ function pairId(left: string, right: string): string {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
+}
+
+function allianceNameHash(value: string): number {
+  let hash = 2166136261
+  for (const character of value) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+const ALLIANCE_NAME_POOLS = {
+  endgame: ['Final Cut', 'Last Light', 'The Finish Line', 'Endgame', 'The Last Word', 'Closing Time'],
+  protection: ['Safe Harbor', 'The Shield', 'The Guard', 'The Cover', 'Home Base', 'The Anchor'],
+  numbers: ['The Numbers', 'The Bloc', 'The Majority', 'The Line', 'The Vote', 'The Board'],
+  generic: ['The Circle', 'The Core', 'The Collective', 'The Quiet Pact', 'The Table', 'The Network'],
+} as const
+
+function allianceNamePool(alliance: RealityAlliance): readonly string[] {
+  const purpose = alliance.purpose.toLowerCase()
+  if (/final\s*(two|2)|endgame|ride.?or.?die|last\s*two/.test(purpose)) {
+    return ALLIANCE_NAME_POOLS.endgame
+  }
+  if (/protect|safe|shield|cover/.test(purpose)) return ALLIANCE_NAME_POOLS.protection
+  if (/vote|target|control|numbers|majority|middle/.test(purpose)) {
+    return ALLIANCE_NAME_POOLS.numbers
+  }
+  return ALLIANCE_NAME_POOLS.generic
+}
+
+function shouldNameRealityAlliance(alliance: RealityAlliance): boolean {
+  if (alliance.memberIds.length >= 3) return true
+  if (alliance.memberIds.length !== 2) return false
+  return /final\s*(two|2)|endgame|ride.?or.?die|last\s*two/i.test(alliance.purpose)
+}
+
+export function ensureRealityAllianceName(
+  state: RealityDomainState,
+  alliance: RealityAlliance
+): RealityAlliance {
+  if (alliance.name?.trim() || !shouldNameRealityAlliance(alliance)) return alliance
+  const pool = allianceNamePool(alliance)
+  const used = new Set(
+    Object.values(state.alliances)
+      .filter((candidate) => candidate.id !== alliance.id && candidate.name)
+      .map((candidate) => candidate.name)
+  )
+  const start = allianceNameHash(`${alliance.id}:${alliance.purpose}`) % pool.length
+  for (let offset = 0; offset < pool.length; offset += 1) {
+    const candidate = pool[(start + offset) % pool.length]
+    if (!used.has(candidate)) {
+      alliance.name = candidate
+      return alliance
+    }
+  }
+  alliance.name = `${pool[start]} ${(allianceNameHash(alliance.id) % 90) + 10}`
+  return alliance
 }
 
 type RealityAllianceMemberStatus = 'CORE' | 'REGULAR' | 'PERIPHERAL'
@@ -636,6 +697,7 @@ export function recruitRealityAllianceMember(
     alliance = {
       ...base,
       id: input.expandedAllianceId,
+      name: undefined,
       memberIds: [...priorMembers, input.targetId],
       founderIds: [...priorMembers],
       leaderIds: [...base.leaderIds],
@@ -725,6 +787,7 @@ export function recruitRealityAllianceMember(
   }
 
   refreshRealityAllianceDynamics(alliance)
+  ensureRealityAllianceName(state, alliance)
   markRealityAllianceInfiltratorIfSecondary(state, alliance.id, input.targetId, input.at)
   refreshRealityAllianceOverlaps(state)
   return alliance
@@ -738,6 +801,7 @@ export function createRealityAlliance(
     memberIds: string[]
     purpose: string
     at: RealityClock
+    name?: string
     secrecy?: number
     genuine?: boolean
   }
@@ -746,6 +810,7 @@ export function createRealityAlliance(
   if (memberIds.length < 2) throw new Error('A Reality alliance needs at least two members')
   const alliance: RealityAlliance = {
     id: input.id,
+    ...(input.name?.trim() ? { name: input.name.trim() } : {}),
     memberIds,
     founderIds: [...new Set(input.founderIds)],
     leaderIds: [...new Set(input.founderIds)].slice(0, 2),
@@ -803,6 +868,7 @@ export function createRealityAlliance(
     }
   }
   refreshRealityAllianceDynamics(alliance)
+  ensureRealityAllianceName(state, alliance)
   refreshRealityAllianceOverlaps(state)
   return alliance
 }
@@ -841,6 +907,7 @@ export function holdRealityAllianceMeeting(
   for (const attendeeId of attendees) {
     refreshRealityAllianceInfiltratorIntent(state, alliance, attendeeId)
   }
+  ensureRealityAllianceName(state, alliance)
   return refreshRealityAllianceLifecycle(alliance)
 }
 
@@ -907,6 +974,13 @@ export function leakRealityAlliance(
   alliance.knownLeakEventIds.push(event.id)
   alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...receiverIds])]
   alliance.secrecy = Math.max(0, alliance.secrecy - receiverIds.length * 0.16)
+  recordRealityAllianceLeakDiscovery(state, {
+    allianceId: alliance.id,
+    leakerId,
+    receiverIds,
+    at,
+    sourceEventId: event.id,
+  })
   const wasFractured = alliance.status === 'FRACTURED'
   refreshRealityAllianceDynamics(alliance)
   if (wasFractured && alliance.fractureRisk >= 0.9) {
@@ -917,6 +991,7 @@ export function leakRealityAlliance(
   } else if (alliance.fractureRisk >= 0.72) {
     alliance.status = 'FRACTURED'
   }
+  maybeExposeRealityAlliance(state, alliance.id, at, event.id)
 }
 
 export interface RomanceSettings {
@@ -1228,6 +1303,7 @@ export function migrateDramaAlliances(
   }
   for (const alliance of Object.values(state.alliances)) {
     refreshRealityAllianceDynamics(alliance)
+    ensureRealityAllianceName(state, alliance)
   }
   refreshRealityAllianceOverlaps(state)
 }
