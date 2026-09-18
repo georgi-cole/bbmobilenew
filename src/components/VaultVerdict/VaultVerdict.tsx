@@ -146,7 +146,10 @@ function RevealSigil({ effectKey }: { effectKey: RevealEffectKey }) {
   if (effectKey === 'signal-lost' || effectKey === 'elite-code') {
     return (
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="M12 34h25l7 12 10-25 9 32 8-19h17M12 66h18l7-11 10 24 9-28 8 15h24" className="is-line" />
+        <path
+          d="M12 34h25l7 12 10-25 9 32 8-19h17M12 66h18l7-11 10 24 9-28 8 15h24"
+          className="is-line"
+        />
         <rect x="18" y="17" width="64" height="66" rx="12" className="is-ring" />
       </svg>
     )
@@ -382,12 +385,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
   useEffect(() => {
     if (!latestRevealVaultId || !latestRevealProfile?.soundKey) return
     play(latestRevealProfile.soundKey, { volume: latestRevealProfile.soundVolume ?? 0.42 })
-  }, [
-    latestRevealProfile?.soundKey,
-    latestRevealProfile?.soundVolume,
-    latestRevealVaultId,
-    play,
-  ])
+  }, [latestRevealProfile?.soundKey, latestRevealProfile?.soundVolume, latestRevealVaultId, play])
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return
