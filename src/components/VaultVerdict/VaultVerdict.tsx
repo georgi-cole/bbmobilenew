@@ -5,6 +5,7 @@ import {
   VAULT_VERDICT_AMOUNTS,
   VAULT_VERDICT_ROUND_SCHEDULE,
   assertBroadcastPrivacy,
+  buildBatteryLowVoteEffects,
   buildRawResults,
   choosePersonalVault,
   createInitialContestant,
@@ -34,8 +35,10 @@ const FINAL_FEED_LIMIT = 18
 interface FinaleReveal {
   reserveNumber: number
   reserveAmount: number
+  reserveEffect: VaultPodState['specialEffect']
   wallNumber: number | null
   wallAmount: number | null
+  wallEffect: VaultPodState['specialEffect']
   offerAmount: number
   step: 'charging' | 'revealed'
 }
@@ -57,8 +60,15 @@ function getChargeTone(amount: number): ChargeTone {
   return 'critical'
 }
 
-function getReactionClass(amount: number) {
-  return getSpecialRevealLabel(amount) ? ' vault-verdict__pod--dramatic' : ''
+function getReactionClass(amount: number, effect?: VaultPodState['specialEffect']) {
+  return getSpecialRevealLabel(amount, effect) ? ' vault-verdict__pod--dramatic' : ''
+}
+
+function getBankMoodCopy(mood: VaultContestantState['bankMood']) {
+  if (mood === 'stingy') return 'The Bank looks confident.'
+  if (mood === 'generous') return 'The Bank is feeling generous.'
+  if (mood === 'chaotic') return 'The Bank is behaving erratically.'
+  return 'The Bank is calculating every percentage.'
 }
 
 function buildCompletion(contestants: VaultContestantState[]) {
@@ -67,6 +77,7 @@ function buildCompletion(contestants: VaultContestantState[]) {
     ranked,
     winner: ranked[0],
     rawResults: buildRawResults(contestants),
+    batteryLowVoteEffects: buildBatteryLowVoteEffects(contestants),
   }
 }
 
@@ -105,7 +116,7 @@ function BatteryTile({
   const isOpened = battery.status === 'opened'
   const isReserve = battery.status === 'personal'
   const isFinalWall = battery.status === 'remainingFinalWallVault'
-  const specialLabel = isOpened ? getSpecialRevealLabel(battery.amount) : null
+  const specialLabel = isOpened ? getSpecialRevealLabel(battery.amount, battery.specialEffect) : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
@@ -121,7 +132,7 @@ function BatteryTile({
   return (
     <button
       type="button"
-      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${isOpened ? getReactionClass(battery.amount) : ''}`}
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${isOpened ? getReactionClass(battery.amount, battery.specialEffect) : ''}`}
       style={chargeStyle}
       disabled={disabled}
       onClick={(event) => onClick(battery.vaultId, event.timeStamp)}
@@ -150,7 +161,7 @@ function BatteryTile({
 }
 
 export default function BatteryLow(props: GenericMinigameProps) {
-  const { seed: seedProp = 0, onFinish } = props
+  const { seed: seedProp = 0, onFinish, voteEffectsEnabled = true } = props
   const [sessionSeed] = useState(() => createVaultVerdictRng(seedProp).seed)
   const rng = useMemo(() => createVaultVerdictRng(sessionSeed).rng, [sessionSeed])
   const startTimeRef = useRef<number | null>(null)
@@ -166,12 +177,17 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const initialContestants = useMemo(() => {
     const participants = resolveVaultParticipants(props)
     return participants.map((participant, index) => {
-      const contestant = createInitialContestant(participant, index, sessionSeed + 101)
+      const contestant = createInitialContestant(
+        participant,
+        index,
+        sessionSeed + 101,
+        voteEffectsEnabled,
+      )
       return participant.isHuman
         ? contestant
         : simulateAiContestant(contestant, sessionSeed + 909, participants.length)
     })
-  }, [props, sessionSeed])
+  }, [props, sessionSeed, voteEffectsEnabled])
 
   const [contestants, setContestants] = useState<VaultContestantState[]>(initialContestants)
   const human = contestants.find((contestant) => contestant.isUserControlled) ?? contestants[0]!
@@ -195,7 +211,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
     : null
   const highestRemaining = getHighestRemainingValue(human)
   const latestReveal = human.revealedAmounts[human.revealedAmounts.length - 1] ?? null
-  const latestRevealLabel = latestReveal == null ? null : getSpecialRevealLabel(latestReveal)
+  const latestRevealVaultId = human.openedVaultIds[human.openedVaultIds.length - 1] ?? null
+  const latestRevealVault = latestRevealVaultId
+    ? human.vaults.find((vault) => vault.vaultId === latestRevealVaultId)
+    : null
+  const latestRevealLabel =
+    latestReveal == null ? null : getSpecialRevealLabel(latestReveal, latestRevealVault?.specialEffect)
   const coreMood =
     latestReveal == null
       ? 'is-idle'
@@ -321,8 +342,10 @@ export default function BatteryLow(props: GenericMinigameProps) {
       setFinaleReveal({
         reserveNumber: reserveBattery?.displayNumber ?? 0,
         reserveAmount: reserveBattery?.amount ?? resolvedHuman.finalAmount ?? 0,
+        reserveEffect: reserveBattery?.specialEffect ?? null,
         wallNumber: wallBattery?.displayNumber ?? null,
         wallAmount: wallBattery?.amount ?? null,
+        wallEffect: wallBattery?.specialEffect ?? null,
         offerAmount: human.currentOffer,
         step: 'charging',
       })
@@ -357,6 +380,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
       rawValue: human.finalAmount ?? 0,
       rawResults: completion.rawResults,
       tiebreakerMs: human.finishTimeMs ?? undefined,
+      batteryLowVoteEffects: completion.batteryLowVoteEffects,
     })
   }
 
@@ -494,8 +518,10 @@ export default function BatteryLow(props: GenericMinigameProps) {
                       : 'Charging…'}
                   </strong>
                   {finaleReveal.step === 'revealed' &&
-                    getSpecialRevealLabel(finaleReveal.reserveAmount) && (
-                      <em>{getSpecialRevealLabel(finaleReveal.reserveAmount)}</em>
+                    getSpecialRevealLabel(finaleReveal.reserveAmount, finaleReveal.reserveEffect) && (
+                      <em>
+                        {getSpecialRevealLabel(finaleReveal.reserveAmount, finaleReveal.reserveEffect)}
+                      </em>
                     )}
                 </div>
                 <div className="vault-verdict__finale-battery is-wall">
@@ -511,9 +537,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
               <p>
                 {finaleReveal.step === 'revealed'
-                  ? finaleReveal.reserveAmount >= finaleReveal.offerAmount
-                    ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
-                    : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
+                  ? finaleReveal.reserveEffect === 'doubleVote'
+                    ? 'Power Cell secured. Your next eligible house eviction ballot will count twice.'
+                    : finaleReveal.reserveEffect === 'skipVote'
+                      ? 'Blackout Cell. You will sit out the next house eviction vote.'
+                      : finaleReveal.reserveAmount >= finaleReveal.offerAmount
+                        ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
+                        : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
                   : 'Your protected battery is about to reveal its charge.'}
               </p>
               <button
@@ -557,6 +587,17 @@ export default function BatteryLow(props: GenericMinigameProps) {
                     {result.outcomeType === 'signedVerdict'
                       ? 'Locked Bank Offer'
                       : 'Opened Reserve Battery'}{' '}
+                    {result.outcomeType === 'openedVault' &&
+                    result.personalVaultId &&
+                    result.vaults.find((battery) => battery.vaultId === result.personalVaultId)
+                      ?.specialEffect
+                      ? `· ${
+                          result.vaults.find((battery) => battery.vaultId === result.personalVaultId)
+                            ?.specialEffect === 'doubleVote'
+                            ? 'Double Vote earned'
+                            : 'Next vote skipped'
+                        } `
+                      : ''}
                     · {formatTime(result.finishTimeMs)}
                   </small>
                 </article>
@@ -576,12 +617,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
         {human.currentOffer != null && gameActive && (
           <div className="vault-verdict__offer-layer">
             <section
-              className="vault-verdict__offer-sheet"
+              className={`vault-verdict__offer-sheet is-mood-${human.bankMood}`}
               role="dialog"
               aria-modal="true"
               aria-label="Bank Offer"
             >
               <span className="vault-verdict__offer-kicker">Bank Offer</span>
+              <small className="vault-verdict__bank-mood">{getBankMoodCopy(human.bankMood)}</small>
               <div className="vault-verdict__offer-value">
                 {formatVaultAmount(human.currentOffer)}
               </div>
