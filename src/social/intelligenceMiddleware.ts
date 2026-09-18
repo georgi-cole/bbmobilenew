@@ -166,7 +166,9 @@ function recordCompetitionSuspicion(
     const bottomStreak = perception?.recentBottomStreak ?? 0
     const explicitThrow = payload.competitionIntents?.[playerId] === 'throw'
     const historicalThrows = explicitThrow
-      ? state.challenge.history.filter((run) => run.competitionIntents?.[playerId] === 'throw').length
+      ? state.challenge.history.filter(
+          (run) => run.competitionIntents?.[playerId] === 'throw'
+        ).length
       : 0
     const inferredPattern = suspicion >= 15 && bottomStreak >= 3
 
