@@ -5,8 +5,10 @@ import {
   REALITY_ACTION_CONTRACTS,
   createDirectedRelationship,
   createInitialRealityDomainState,
+  createRealityAlliance,
   evaluateRealityCandidate,
   resolveRealityTargetResponse,
+  holdRealityAllianceMeeting,
   resolvePendingHumanRealityInteraction,
   runRealityOpportunity,
   validateRealityActionContract,
@@ -339,6 +341,64 @@ describe('Reality causal orchestration', () => {
       status: 'ACTIVE',
     })
     expect(resolved.domain.interactions[pending.interaction!.id].status).toBe('RESOLVED')
+  })
+
+  it('recruits an accepted target into a wider coalition instead of creating another pair', () => {
+    const domain = createInitialRealityDomainState()
+    const core = createRealityAlliance(domain, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: core.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect:core'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(29),
+      opportunity: {
+        ...opportunity('proposeAlliance'),
+        direction: 'AI_TO_HUMAN',
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('proposeAlliance')!,
+            targetIds: ['human'],
+          },
+        ],
+      },
+    })
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_1',
+    })
+
+    const alliances = Object.values(resolved.domain.alliances)
+    expect(alliances).toHaveLength(2)
+    expect(resolved.domain.alliances['alliance-core'].memberIds).toEqual(['ava', 'lia'])
+
+    const coalition = alliances.find((alliance) => alliance.id !== 'alliance-core')
+    expect(coalition).toMatchObject({
+      memberIds: ['ava', 'lia', 'human'],
+      status: 'ACTIVE',
+    })
+    expect(coalition?.memberPerceivedStatus).toMatchObject({
+      ava: 'CORE',
+      lia: 'CORE',
+      human: 'REGULAR',
+    })
+    expect(coalition?.overlapAllianceIds).toEqual(['alliance-core'])
+    expect(resolved.domain.alliances['alliance-core'].overlapAllianceIds).toEqual([coalition?.id])
   })
 
   it('creates grievances and repair debt from live conflict actions', () => {
