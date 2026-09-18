@@ -170,10 +170,7 @@ function applyRealityLifecycle(input: {
             allianceId: recruitmentAlliance.id,
             recruiterId: interaction.actorId,
             targetId,
-            expandedAllianceId: `alliance:${[
-              ...recruitmentAlliance.memberIds,
-              targetId,
-            ]
+            expandedAllianceId: `alliance:${[...recruitmentAlliance.memberIds, targetId]
               .sort()
               .join('~')}:${interaction.id}`,
             at,
