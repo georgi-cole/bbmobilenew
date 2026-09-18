@@ -262,6 +262,28 @@
   pointer-events: none;
 }
 
+.vault-verdict__board::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: 0.34;
+  background:
+    linear-gradient(115deg, transparent 0 43%, rgba(103, 218, 255, 0.055) 50%, transparent 57%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.018) 0,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  background-size:
+    180% 100%,
+    100% 100%;
+  pointer-events: none;
+  animation: vault-verdict-ambient-sweep 8s ease-in-out infinite;
+}
+
 .vault-verdict__board.has-offer {
   border-color: rgba(255, 212, 107, 0.34);
   filter: saturate(0.82) brightness(0.78);
@@ -648,6 +670,28 @@
   color: color-mix(in srgb, var(--charge-ink) 88%, transparent);
 }
 
+.vault-verdict__pod--opened.is-effect-doubleVote {
+  --charge-start: #f6dc72;
+  --charge-end: #63d9ff;
+  --charge-ink: #102236;
+  border-color: rgba(255, 235, 143, 0.82);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.22),
+    0 0 30px rgba(99, 217, 255, 0.24),
+    inset 0 0 18px rgba(255, 247, 195, 0.32);
+}
+
+.vault-verdict__pod--opened.is-effect-skipVote {
+  --charge-start: #8a839d;
+  --charge-end: #302d42;
+  --charge-ink: #f2eef8;
+  border-color: rgba(195, 184, 217, 0.46);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.3),
+    0 0 24px rgba(123, 99, 158, 0.16),
+    inset 0 0 20px rgba(15, 12, 25, 0.35);
+}
+
 .vault-verdict__pod--dramatic {
   animation:
     vault-verdict-battery-reveal 280ms ease both,
@@ -686,21 +730,48 @@
 }
 
 .vault-verdict__offer-sheet {
+  position: relative;
   width: 100%;
   max-height: calc(100% - 6px);
-  padding: clamp(15px, 3.8vw, 20px);
+  padding: clamp(14px, 3.4vw, 18px);
   border: 1px solid rgba(255, 212, 107, 0.52);
-  border-radius: 24px 24px 18px 18px;
+  border-radius: 26px 26px 18px 18px;
   overflow-y: auto;
   color: #fff9e7;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 212, 107, 0.2), transparent 35%),
-    linear-gradient(180deg, rgba(48, 35, 25, 0.98), rgba(19, 17, 27, 0.99));
+    radial-gradient(circle at 50% -8%, rgba(255, 212, 107, 0.18), transparent 35%),
+    radial-gradient(circle at 10% 95%, rgba(87, 111, 255, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(21, 21, 29, 0.985), rgba(8, 9, 15, 0.995));
   box-shadow:
-    0 -18px 48px rgba(0, 0, 0, 0.44),
-    0 0 42px rgba(255, 195, 74, 0.12);
+    0 -20px 56px rgba(0, 0, 0, 0.54),
+    0 0 42px rgba(255, 195, 74, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-align: center;
   animation: vault-verdict-offer-rise 360ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+.vault-verdict__offer-sheet::before {
+  content: 'THE EYE BANK';
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  color: rgba(255, 255, 255, 0.035);
+  font-size: clamp(2.4rem, 13vw, 4rem);
+  font-weight: 950;
+  letter-spacing: -0.07em;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.vault-verdict__bank-heading {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .vault-verdict__offer-kicker {
@@ -716,9 +787,45 @@
   text-transform: uppercase;
 }
 
+.vault-verdict__mood-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  color: rgba(247, 248, 255, 0.84);
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1;
+}
+
+.vault-verdict__mood-badge b {
+  font-size: 0.74rem;
+  line-height: 0.8;
+}
+
+.vault-verdict__mood-badge.is-generous {
+  border-color: rgba(91, 229, 182, 0.28);
+  color: #9cf3d2;
+}
+
+.vault-verdict__mood-badge.is-chaotic {
+  border-color: rgba(177, 129, 255, 0.34);
+  color: #cfb0ff;
+}
+
+.vault-verdict__mood-badge.is-stingy {
+  color: #d6d8e4;
+}
+
 .vault-verdict__bank-mood {
+  position: relative;
+  z-index: 1;
   display: block;
-  margin-top: 7px;
+  margin-top: 6px;
   color: rgba(255, 244, 211, 0.66);
   font-size: 0.68rem;
   font-weight: 800;
@@ -748,7 +855,9 @@
 }
 
 .vault-verdict__offer-value {
-  margin-top: 9px;
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
   color: #fff4c8;
   font-size: clamp(2.8rem, 14vw, 4.3rem);
   font-weight: 900;
@@ -758,11 +867,123 @@
 }
 
 .vault-verdict__offer-sheet p {
+  position: relative;
+  z-index: 1;
   max-width: 380px;
-  margin: 10px auto 0;
+  margin: 8px auto 0;
   color: rgba(255, 249, 231, 0.78);
   font-size: clamp(0.8rem, 3.2vw, 0.92rem);
   line-height: 1.35;
+}
+
+.vault-verdict__counter-result {
+  margin: 9px auto 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(246, 247, 255, 0.88);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.vault-verdict__counter-result.is-raised {
+  border-color: rgba(93, 229, 180, 0.28);
+  color: #a2f0d1;
+}
+
+.vault-verdict__counter-result.is-cut {
+  border-color: rgba(255, 102, 124, 0.28);
+  color: #ffadb9;
+}
+
+.vault-verdict__deal-card {
+  display: grid;
+  gap: 3px;
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(130, 177, 255, 0.2);
+  border-radius: 14px;
+  text-align: left;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(94, 133, 255, 0.14), transparent 42%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.vault-verdict__deal-card.is-insurance {
+  border-color: rgba(82, 224, 181, 0.24);
+}
+
+.vault-verdict__deal-card.is-pressure {
+  border-color: rgba(255, 186, 83, 0.3);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 179, 72, 0.13), transparent 42%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.vault-verdict__deal-card > span {
+  color: rgba(191, 204, 255, 0.68);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.vault-verdict__deal-card > strong {
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.vault-verdict__deal-card > small {
+  color: rgba(231, 234, 250, 0.65);
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.vault-verdict__deal-action,
+.vault-verdict__counteroffer {
+  min-height: 40px;
+  margin-top: 7px;
+  border: 1px solid rgba(177, 197, 255, 0.21);
+  border-radius: 12px;
+  color: #f7f8ff;
+  background: rgba(109, 124, 255, 0.1);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.vault-verdict__deal-action {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.vault-verdict__counteroffer {
+  display: grid;
+  width: 100%;
+  margin-top: 9px;
+  place-items: center;
+  padding: 5px 10px;
+}
+
+.vault-verdict__counteroffer span {
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.vault-verdict__counteroffer small {
+  margin-top: 3px;
+  color: rgba(224, 229, 255, 0.58);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vault-verdict__deal-action:not(:disabled):active,
+.vault-verdict__counteroffer:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .vault-verdict__offer-actions {
@@ -1154,6 +1375,20 @@
 .vault-verdict__commit {
   justify-self: stretch;
   min-height: 48px;
+}
+
+@keyframes vault-verdict-ambient-sweep {
+  0%,
+  100% {
+    background-position:
+      120% 0,
+      0 0;
+  }
+  50% {
+    background-position:
+      -80% 0,
+      0 0;
+  }
 }
 
 @keyframes vault-verdict-toast {
