@@ -87,6 +87,8 @@ export interface ReactMinigameCompletion {
   rawResults?: Record<string, number>
   /** Optional time-based tie-breaker in ms (lower = faster = better rank). */
   tiebreakerMs?: number
+  /** Battery Low only: one-shot vote modifiers earned by contestants. */
+  batteryLowVoteEffects?: Record<string, 'doubleVote' | 'skipVote'>
 }
 
 interface Props {
@@ -805,6 +807,7 @@ export default function MinigameHost({
         <GenericComp
           seed={seed}
           autoStart={key !== 'HangmanChallenge'}
+          voteEffectsEnabled={gameOptions?.voteEffectsEnabled !== false}
           participantIds={participantIds}
           participants={participants}
           onFinish={(
