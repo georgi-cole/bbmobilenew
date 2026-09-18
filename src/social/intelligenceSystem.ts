@@ -38,6 +38,7 @@ const SUPPORTED_INTEL_PROPOSITIONS = new Set([
   'SECRET_MEETING',
   'ROMANTIC_MOMENT',
   'SECRET_ALLIANCE',
+  'ALLIANCE_PUBLIC_CLAIM',
   'ALLIANCE_EXPOSED',
   'TARGETING',
   'ALLIANCE_FRACTURE',
@@ -170,6 +171,8 @@ function leadText(fact: RealityFact, players: readonly Pick<Player, 'id' | 'name
         `${first} and ${second} appear to be quietly building something together.`,
         `A pattern suggests ${first} and ${second} are coordinating more closely than they admit.`,
       ])
+    case 'ALLIANCE_PUBLIC_CLAIM':
+      return `${first} and ${second} have been publicly linked as an alliance, though the full picture is still unclear.`
     case 'ALLIANCE_EXPOSED': {
       const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
       const allianceName = typeof fact.value === 'string' ? fact.value : ''
@@ -205,6 +208,8 @@ export function formatFauxTvWhisper(
       return `HOUSE WHISPERS — A private moment between ${first} and ${second} did not go unnoticed.`
     case 'SECRET_ALLIANCE':
       return `HOUSE WHISPERS — The growing closeness between ${first} and ${second} is beginning to attract attention.`
+    case 'ALLIANCE_PUBLIC_CLAIM':
+      return `HOUSE EXPOSED — ${first} and ${second} have been publicly linked, but the full alliance picture remains unclear.`
     case 'ALLIANCE_EXPOSED': {
       const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
       const allianceName = typeof fact.value === 'string' ? fact.value : ''
