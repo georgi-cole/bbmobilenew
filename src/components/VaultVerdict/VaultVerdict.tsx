@@ -40,6 +40,18 @@ import './VaultVerdict.css'
 
 const FINAL_FEED_LIMIT = 18
 
+const EYE_BANK_CREST = '/assets/minigames/battery-low/eye-bank.webp'
+const HERO_REVEAL_ASSETS: Partial<Record<RevealEffectKey, string>> = {
+  'power-cell': '/assets/minigames/battery-low/power-cell.webp',
+  'blackout-cell': '/assets/minigames/battery-low/blackout-cell.webp',
+  powerdown: '/assets/minigames/battery-low/power-failure.webp',
+  inferno: '/assets/minigames/battery-low/inferno.webp',
+  unlucky: '/assets/minigames/battery-low/bad-omen.webp',
+  'answer-signal': '/assets/minigames/battery-low/answer-signal.webp',
+  blush: '/assets/minigames/battery-low/blush.webp',
+  overcharge: '/assets/minigames/battery-low/overcharge.webp',
+}
+
 interface FinaleReveal {
   reserveNumber: number
   reserveAmount: number
@@ -68,10 +80,6 @@ function getChargeTone(amount: number): ChargeTone {
   if (amount >= 41) return 'medium'
   if (amount >= 16) return 'low'
   return 'critical'
-}
-
-function getReactionClass(amount: number, effect?: VaultPodState['specialEffect']) {
-  return getSpecialRevealLabel(amount, effect) ? ' vault-verdict__pod--dramatic' : ''
 }
 
 function buildCompletion(contestants: VaultContestantState[]) {
@@ -107,99 +115,6 @@ function ReserveIcon() {
   )
 }
 
-function RevealSigil({ effectKey }: { effectKey: RevealEffectKey }) {
-  if (effectKey === 'inferno') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="M20 34C29 18 38 16 45 30c5-16 17-22 31-12-7 7-10 15-7 24 5 16-4 37-21 39-21 2-34-24-20-42 3-4 4-6 5-10-6 3-10 4-13 5Z" />
-        <path d="M37 70c-5-10 0-18 9-25 1 8 7 10 10 16 3 7-2 15-10 16-4 0-7-2-9-7Z" />
-      </svg>
-    )
-  }
-  if (effectKey === 'blush') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="28" cy="55" r="11" className="is-soft" />
-        <circle cx="72" cy="55" r="11" className="is-soft" />
-        <path d="M50 72C35 62 30 54 34 46c5-9 16-7 16 2 0-9 11-11 16-2 4 8-1 16-16 26Z" />
-        <path d="M21 34c7-5 13-5 20 0M59 34c7-5 13-5 20 0" className="is-line" />
-      </svg>
-    )
-  }
-  if (effectKey === 'power-cell') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="M56 8 25 54h22l-7 38 35-51H53L56 8Z" />
-        <circle cx="50" cy="50" r="42" className="is-ring" />
-      </svg>
-    )
-  }
-  if (effectKey === 'blackout-cell' || effectKey === 'powerdown') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="31" />
-        <path d="M25 25 75 75" className="is-line" />
-        <circle cx="50" cy="50" r="43" className="is-ring" />
-      </svg>
-    )
-  }
-  if (effectKey === 'signal-lost' || effectKey === 'elite-code') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path
-          d="M12 34h25l7 12 10-25 9 32 8-19h17M12 66h18l7-11 10 24 9-28 8 15h24"
-          className="is-line"
-        />
-        <rect x="18" y="17" width="64" height="66" rx="12" className="is-ring" />
-      </svg>
-    )
-  }
-  if (effectKey === 'answer-signal') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="12" />
-        <circle cx="50" cy="50" r="27" className="is-ring" />
-        <circle cx="50" cy="50" r="42" className="is-ring is-faint" />
-        <path d="M50 6v16M50 78v16M6 50h16M78 50h16" className="is-line" />
-      </svg>
-    )
-  }
-  if (effectKey === 'unlucky') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="M22 18h22v64H30V31h-8V18Zm34 0h24L66 47c11 3 17 11 17 21 0 11-9 18-24 18-8 0-15-2-21-6l6-12c4 3 9 5 14 5 6 0 10-3 10-7 0-5-5-8-14-8h-5l12-27h-5V18Z" />
-      </svg>
-    )
-  }
-  if (
-    effectKey === 'gold-band' ||
-    effectKey === 'elite-surge' ||
-    effectKey === 'near-perfect' ||
-    effectKey === 'overcharge'
-  ) {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="m50 7 9 25 26-8-15 22 22 15-27 1 2 27-17-21-17 21 2-27-27-1 22-15-15-22 26 8 9-25Z" />
-        <circle cx="50" cy="50" r="18" className="is-ring" />
-      </svg>
-    )
-  }
-  if (effectKey === 'last-breath' || effectKey === 'redline') {
-    return (
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <path d="M7 55h17l8-18 13 35 12-51 11 34h25" className="is-line" />
-        <circle cx="50" cy="50" r="42" className="is-ring" />
-      </svg>
-    )
-  }
-  return (
-    <svg viewBox="0 0 100 100" aria-hidden="true">
-      <path d="M14 55h18l8-14 11 25 11-36 10 25h14" className="is-line" />
-      <circle cx="50" cy="50" r="40" className="is-ring is-faint" />
-    </svg>
-  )
-}
-
 function BatteryTile({
   battery,
   disabled,
@@ -222,10 +137,8 @@ function BatteryTile({
         ? 'BLACKOUT'
         : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
-  const revealProfile = isOpened
-    ? getRevealEffectProfile(battery.amount, battery.specialEffect)
-    : null
-  const effectClass = revealProfile ? ` is-show-${revealProfile.key}` : ''
+  const specialCellClass =
+    isOpened && battery.specialEffect ? ` is-special-cell is-${battery.specialEffect}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
     : undefined
@@ -242,9 +155,7 @@ function BatteryTile({
   return (
     <button
       type="button"
-      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${effectClass}${
-        isOpened ? getReactionClass(battery.amount, battery.specialEffect) : ''
-      }`}
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${specialCellClass}`}
       style={chargeStyle}
       disabled={disabled}
       onClick={(event) => onClick(battery.vaultId, event.timeStamp)}
@@ -293,6 +204,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const [finaleReveal, setFinaleReveal] = useState<FinaleReveal | null>(null)
   const [finaleComplete, setFinaleComplete] = useState(false)
   const [pendingOfferKey, setPendingOfferKey] = useState<string | null>(null)
+  const [heroEventVaultId, setHeroEventVaultId] = useState<string | null>(null)
   const { play } = useSound()
 
   const initialContestants = useMemo(() => {
@@ -346,6 +258,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const latestRevealProfile = latestRevealVault
     ? getRevealEffectProfile(latestRevealVault.amount, latestRevealVault.specialEffect)
     : null
+  const activeHeroProfile =
+    heroEventVaultId === latestRevealVaultId && latestRevealProfile?.hero
+      ? latestRevealProfile
+      : null
+  const activeHeroAsset = activeHeroProfile
+    ? HERO_REVEAL_ASSETS[activeHeroProfile.key] ?? null
+    : null
   const bankProfile = getBankMoodProfile(human.bankMood)
   const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
   const coreMood =
@@ -354,8 +273,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
       : latestReveal > highestRemaining
         ? 'is-voltage-drop'
         : 'is-holding'
-  const eventTone =
-    human.currentOffer != null ? 'has-offer' : latestRevealLabel ? 'has-dramatic-reveal' : ''
+  const eventTone = human.currentOffer != null ? 'has-offer' : ''
   const roundProgress = !human.personalVaultId
     ? 'Choose a reserve battery'
     : human.currentOffer != null
@@ -383,9 +301,27 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const decisionPending = offerKey != null && pendingOfferKey === offerKey
 
   useEffect(() => {
-    if (!latestRevealVaultId || !latestRevealProfile?.soundKey) return
-    play(latestRevealProfile.soundKey, { volume: latestRevealProfile.soundVolume ?? 0.42 })
-  }, [latestRevealProfile?.soundKey, latestRevealProfile?.soundVolume, latestRevealVaultId, play])
+    if (!latestRevealVaultId || !latestRevealProfile?.hero) {
+      setHeroEventVaultId(null)
+      return
+    }
+
+    setHeroEventVaultId(latestRevealVaultId)
+    if (latestRevealProfile.soundKey) {
+      play(latestRevealProfile.soundKey, { volume: latestRevealProfile.soundVolume ?? 0.42 })
+    }
+
+    const timer = window.setTimeout(() => {
+      setHeroEventVaultId((current) => (current === latestRevealVaultId ? null : current))
+    }, 1800)
+    return () => window.clearTimeout(timer)
+  }, [
+    latestRevealProfile?.hero,
+    latestRevealProfile?.soundKey,
+    latestRevealProfile?.soundVolume,
+    latestRevealVaultId,
+    play,
+  ])
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return
@@ -599,6 +535,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
               </div>
             </div>
             <div className="vault-verdict__header-actions">
+              <div className="vault-verdict__header-bank" aria-label={`The Eye Bank is ${bankProfile.label.toLowerCase()}`}>
+                <img src={EYE_BANK_CREST} alt="" decoding="async" />
+                <div>
+                  <span>The Eye Bank</span>
+                  <strong>{bankProfile.label}</strong>
+                </div>
+              </div>
               <div
                 className="vault-verdict__timer"
                 aria-label={`Elapsed time ${formatTime(human.finishTimeMs ?? elapsedMs)}`}
@@ -624,63 +567,71 @@ export default function BatteryLow(props: GenericMinigameProps) {
             aria-hidden={human.currentOffer != null || undefined}
           >
             <section className={`vault-verdict__board ${eventTone}`} aria-label="Battery Low board">
-              <div key={commentaryMessage} className="vault-verdict__commentary" aria-live="polite">
-                {commentaryMessage}
-              </div>
-
-              {latestReveal != null && latestRevealProfile && (
-                <>
+              <section
+                className={`vault-verdict__hero-stage ${
+                  activeHeroProfile ? `is-event is-${activeHeroProfile.key}` : 'is-idle'
+                }`}
+                aria-label="Battery Low broadcast stage"
+              >
+                <div className="vault-verdict__hero-idle">
+                  <div className="vault-verdict__hero-metric">
+                    <span>Max charge remaining</span>
+                    <strong>{formatVaultAmount(highestRemaining)}</strong>
+                    <small>
+                      {personalVaultNumber
+                        ? `Reserve battery ${personalVaultNumber}`
+                        : 'Reserve not selected'}
+                    </small>
+                  </div>
                   <div
-                    key={`fx-${latestRevealVaultId}`}
-                    className={`vault-verdict__show-fx is-${latestRevealProfile.key} is-tier-${latestRevealProfile.tier} ${
-                      latestRevealProfile.hero ? 'is-hero' : ''
-                    }`}
-                    aria-hidden="true"
+                    key={`${human.openedVaultIds.length}-${highestRemaining}`}
+                    className={`vault-verdict__charge-meter ${coreMood} is-charge-${getChargeTone(highestRemaining)}`}
+                    style={{ '--charge-ratio': `${highestRemaining}%` } as CSSProperties}
+                    role="img"
+                    aria-label={`Maximum charge remaining ${formatVaultAmount(highestRemaining)}`}
                   >
-                    <div className="vault-verdict__fx-halo" />
-                    <div className="vault-verdict__fx-sigil">
-                      <RevealSigil effectKey={latestRevealProfile.key} />
+                    <div className="vault-verdict__charge-fill" />
+                    <BatteryIcon compact />
+                  </div>
+                  <div className="vault-verdict__hero-bank-read">
+                    <span>{bankProfile.label}</span>
+                    <small>{bankProfile.short}</small>
+                  </div>
+                </div>
+
+                {activeHeroProfile && activeHeroAsset && (
+                  <div
+                    key={`hero-${heroEventVaultId}`}
+                    className={`vault-verdict__hero-event is-${activeHeroProfile.key}`}
+                    aria-live="polite"
+                  >
+                    <div className="vault-verdict__hero-event-halo" aria-hidden="true" />
+                    <img
+                      className="vault-verdict__hero-event-icon"
+                      src={activeHeroAsset}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="vault-verdict__hero-event-copy">
+                      <span>{activeHeroProfile.eyebrow}</span>
+                      <strong>{activeHeroProfile.title}</strong>
+                      <small>{activeHeroProfile.strapline}</small>
                     </div>
-                    <div className="vault-verdict__fx-particles">
+                    <div className="vault-verdict__hero-event-particles" aria-hidden="true">
                       {Array.from({ length: 8 }, (_, index) => (
                         <i key={index} style={{ '--particle-index': index } as CSSProperties} />
                       ))}
                     </div>
                   </div>
-                  <div
-                    key={`lower-${latestRevealVaultId}`}
-                    className={`vault-verdict__lower-third is-${latestRevealProfile.key} is-tier-${latestRevealProfile.tier}`}
-                    aria-live="polite"
-                  >
-                    <span>{latestRevealProfile.eyebrow}</span>
-                    <strong>{latestRevealProfile.title}</strong>
-                    <small>{latestRevealProfile.strapline}</small>
-                  </div>
-                </>
-              )}
+                )}
 
-              <section className="vault-verdict__charge-hero" aria-label="Maximum remaining charge">
-                <div className="vault-verdict__charge-copy">
-                  <span>Max charge remaining</span>
-                  <strong>{formatVaultAmount(highestRemaining)}</strong>
-                  <small>
-                    {personalVaultNumber
-                      ? `Reserve battery ${personalVaultNumber}`
-                      : 'Reserve not selected'}
-                  </small>
-                  <em className={`vault-verdict__live-bank is-${human.bankMood}`}>
-                    Bank: {bankProfile.label.toLowerCase()} · {bankProfile.short}
-                  </em>
-                </div>
                 <div
-                  key={`${human.openedVaultIds.length}-${highestRemaining}`}
-                  className={`vault-verdict__charge-meter ${coreMood} is-charge-${getChargeTone(highestRemaining)}`}
-                  style={{ '--charge-ratio': `${highestRemaining}%` } as CSSProperties}
-                  role="img"
-                  aria-label={`Maximum charge remaining ${formatVaultAmount(highestRemaining)}`}
+                  key={commentaryMessage}
+                  className="vault-verdict__hero-commentary"
+                  aria-live="polite"
                 >
-                  <div className="vault-verdict__charge-fill" />
-                  <BatteryIcon compact />
+                  {commentaryMessage}
                 </div>
               </section>
 
@@ -858,6 +809,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
               aria-modal="true"
               aria-label="Bank Offer"
             >
+              <div className="vault-verdict__offer-bank-mark">
+                <img src={EYE_BANK_CREST} alt="" loading="lazy" decoding="async" />
+                <div>
+                  <span>The Eye Bank</span>
+                  <strong>{bankProfile.label}</strong>
+                </div>
+              </div>
               <div className="vault-verdict__bank-heading">
                 <span className="vault-verdict__offer-kicker">Bank Offer</span>
                 <span className={`vault-verdict__mood-badge is-${human.bankMood}`}>
@@ -1017,8 +975,8 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   ))}
                 {voteEffectsEnabled && (
                   <>
-                    <span className="is-charge-medium">⚡ Power · ranks 50%</span>
-                    <span className="is-charge-medium">Blackout · ranks 50%</span>
+                    <span className="is-charge-medium">Power Cell · ranks 50%</span>
+                    <span className="is-charge-medium">Blackout Cell · ranks 50%</span>
                   </>
                 )}
               </div>
