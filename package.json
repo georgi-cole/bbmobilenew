@@ -57,7 +57,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:guard": "node scripts/check-disabled-tests.mjs",
-    "test:pr-core": "vitest run src/modes/seasonRulesets.test.ts src/screens/ProfilePicker/ProfilePicker.test.tsx src/screens/HomeHub/__tests__/HomeHub.test.tsx",
+    "test:pr-core": "vitest run src/modes/seasonRulesets.test.ts src/screens/ProfilePicker/ProfilePicker.test.tsx src/screens/HomeHub/__tests__/HomeHub.test.tsx src/store/__tests__/criticalGameIntegrity.test.ts src/store/__tests__/nominationStatusConsistency.test.ts",
     "check:pr": "npm run format:check && npm run test:guard && npm run lint:ci && npm run typecheck && npm run test:pr-core",
     "test:coverage": "vitest run --coverage --maxWorkers=2 --testTimeout=60000 --coverage.reporter=text --coverage.reporter=json-summary",
     "coverage:check": "node scripts/check-risk-coverage.mjs",
