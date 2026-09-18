@@ -67,7 +67,7 @@ function decisionState(alliances: StrategicAllianceSnapshot[]): GameState {
       },
     },
     strategicAlliances: alliances,
-  } as GameState
+  } as unknown as GameState
 }
 
 function voteAgainstAllyRate(state: GameState, seeds = 400): number {
