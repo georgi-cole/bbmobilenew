@@ -58,22 +58,34 @@ function playToOffer(contestant: VaultContestantState, round: number, seed = 100
 }
 
 describe('Battery Low logic', () => {
-  it('initializes 22 batteries with the exact percentage value table', () => {
+  it('initializes 24 batteries: 22 percentage cells plus two standalone special cells', () => {
     const batteries = createVaultPods(42);
-    expect(batteries).toHaveLength(22);
-    expect([...batteries.map((battery) => battery.amount)].sort((a, b) => a - b)).toEqual(BATTERY_VALUES);
+    const standard = batteries.filter((battery) => !battery.specialEffect);
+    const specials = batteries.filter((battery) => battery.specialEffect);
+
+    expect(batteries).toHaveLength(24);
+    expect([...standard.map((battery) => battery.amount)].sort((a, b) => a - b)).toEqual(
+      BATTERY_VALUES,
+    );
     expect([...VAULT_VERDICT_AMOUNTS]).toEqual(BATTERY_VALUES);
+    expect(specials).toHaveLength(2);
+    expect(specials.map((battery) => battery.specialEffect).sort()).toEqual([
+      'doubleVote',
+      'skipVote',
+    ]);
+    expect(specials.every((battery) => battery.amount === 50)).toBe(true);
     expect(batteries.every((battery) => battery.vaultId.startsWith('battery-'))).toBe(true);
   });
 
-  it('places the two vote modifiers on the lowest-value batteries without changing the value table', () => {
-    const batteries = createVaultPods(42);
-    expect(batteries.find((battery) => battery.amount === 1)?.specialEffect).toBe('doubleVote');
-    expect(batteries.find((battery) => battery.amount === 0)?.specialEffect).toBe('skipVote');
-
+  it('keeps the 24-cell board when vote effects are disabled', () => {
+    const enabled = createVaultPods(42);
     const disabled = createVaultPods(42, false);
+
+    expect(disabled).toHaveLength(24);
     expect(disabled.every((battery) => !battery.specialEffect)).toBe(true);
-    expect(disabled.map((battery) => battery.amount)).toEqual(batteries.map((battery) => battery.amount));
+    expect(disabled.map((battery) => battery.amount)).toEqual(
+      enabled.map((battery) => battery.amount),
+    );
   });
 
   it('only awards a vote modifier when its battery is the final opened Reserve', () => {
@@ -100,7 +112,7 @@ describe('Battery Low logic', () => {
   });
 
   it('uses the required round schedule and creates offers after each round', () => {
-    expect(VAULT_VERDICT_ROUND_SCHEDULE).toEqual([5, 4, 4, 3, 2, 1, 1]);
+    expect(VAULT_VERDICT_ROUND_SCHEDULE).toEqual([6, 5, 4, 3, 2, 1, 1]);
     let state = choosePersonalVault(makeHuman(), 'battery-1');
     for (const expectedOpenings of VAULT_VERDICT_ROUND_SCHEDULE) {
       expect(getVaultsLeftThisRound(state)).toBe(expectedOpenings);
