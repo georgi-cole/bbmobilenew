@@ -337,6 +337,45 @@ describe('critical shock / ruleset matrix', () => {
     state.nomineeIds.forEach((nomineeId) => {
       expect((state.votes ?? {})[nomineeId]).toBeUndefined()
     })
+
+    const [firstNomineeId, secondNomineeId, thirdNomineeId] = state.nomineeIds
+    const voters = alive(state).filter((player) => canCastClassicEvictionVote(state, player.id))
+    if (voters.length < 5) throw new Error('Expected enough Double Elimination voters')
+    state.votes = {}
+    voters.forEach((voter, index) => {
+      state.votes![voter.id] =
+        index < Math.ceil(voters.length * 0.6)
+          ? firstNomineeId
+          : index < voters.length - 1
+            ? secondNomineeId
+            : thirdNomineeId
+    })
+
+    const resolved = criticalGameReducer(state, advance())
+    expect(resolved.phase).toBe('eviction_results')
+    expect(resolved.pendingEviction?.evicteeId).toBe(firstNomineeId)
+    expect(resolved.doubleEviction?.pendingSecondEviction?.evicteeId).toBe(secondNomineeId)
+
+    const afterFirst = criticalGameReducer(
+      resolved,
+      finalizePendingEviction(firstNomineeId)
+    )
+    expect(afterFirst.pendingEviction?.evicteeId).toBe(secondNomineeId)
+    expect(afterFirst.doubleEviction?.pendingSecondEviction).toBeNull()
+
+    const afterSecond = criticalGameReducer(
+      afterFirst,
+      finalizePendingEviction(secondNomineeId)
+    )
+    expect(['evicted', 'jury']).toContain(
+      afterSecond.players.find((player) => player.id === firstNomineeId)?.status
+    )
+    expect(['evicted', 'jury']).toContain(
+      afterSecond.players.find((player) => player.id === secondNomineeId)?.status
+    )
+    expect(afterSecond.players.find((player) => player.id === thirdNomineeId)?.status).not.toMatch(
+      /evicted|jury/
+    )
   })
 
   it('treats Democracia co-LOHs as non-voters and delegates a tie to an eligible POS holder', () => {
