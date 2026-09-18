@@ -15,6 +15,21 @@ export type OutcomeType = 'signedVerdict' | 'openedVault';
 export type ContestantStatus = 'Charging' | 'Locked' | 'Final Battery' | 'Finished';
 export type BroadcastKind = 'decision' | 'amount' | 'round' | 'flavor' | 'final';
 export type BatteryLowVoteEffect = 'doubleVote' | 'skipVote';
+export type BankDealType = 'insurance' | 'swap' | 'pressure';
+export type CounterofferOutcome = 'raised' | 'held' | 'cut';
+
+export interface BankDeal {
+  type: BankDealType;
+  resolved: boolean;
+  floor?: number;
+  premiumPct?: number;
+}
+
+export interface CounterofferResult {
+  previousOffer: number;
+  newOffer: number;
+  outcome: CounterofferOutcome;
+}
 
 export interface VaultPodState {
   vaultId: string;
@@ -65,6 +80,12 @@ export interface VaultContestantState {
   aiPersonality: AiPersonality | null;
   bankMood: BankMood;
   broadcastEvents: BroadcastEvent[];
+  counterofferUsed: boolean;
+  counterofferResult: CounterofferResult | null;
+  rareDealOffered: boolean;
+  currentDeal: BankDeal | null;
+  insuranceFloor: number | null;
+  futureOfferMultiplier: number;
 }
 
 export interface RankedVaultResult extends VaultContestantState {
@@ -83,6 +104,8 @@ const BANK_MOODS: BankMood[] = ['stingy', 'calculated', 'generous', 'chaotic'];
 const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'chaotic', 'show-off', 'panic'];
 const DRAMATIC_AMOUNTS = new Set([0, 4.04, 6.66, 13.37, 42, 69, 99, 100]);
 const TOP_AMOUNTS = new Set([88, 91, 95, 99, 100]);
+const INSURANCE_FLOOR = 25;
+const INSURANCE_OFFER_MULTIPLIER = 0.9;
 const OFFER_MULTIPLIERS: Array<[number, number]> = [
   [0.65, 0.8],
   [0.72, 0.88],
@@ -274,6 +297,12 @@ export function createInitialContestant(
     aiPersonality: participant.isHuman ? null : pick(rng, AI_PERSONALITIES),
     bankMood,
     broadcastEvents: [],
+    counterofferUsed: false,
+    counterofferResult: null,
+    rareDealOffered: false,
+    currentDeal: null,
+    insuranceFloor: null,
+    futureOfferMultiplier: 1,
   };
 }
 
@@ -328,21 +357,204 @@ export function openWallVault(
   };
 }
 
+function getRareDealChance(mood: BankMood) {
+  if (mood === 'chaotic') return 0.14;
+  if (mood === 'generous') return 0.12;
+  if (mood === 'stingy') return 0.07;
+  return 0.09;
+}
+
+function chooseRareBankDeal(mood: BankMood, rng: () => number): BankDealType {
+  const roll = rng();
+  if (mood === 'stingy') return roll < 0.52 ? 'pressure' : roll < 0.76 ? 'swap' : 'insurance';
+  if (mood === 'generous') return roll < 0.46 ? 'insurance' : roll < 0.74 ? 'pressure' : 'swap';
+  if (mood === 'chaotic') return roll < 0.44 ? 'swap' : roll < 0.76 ? 'pressure' : 'insurance';
+  return roll < 0.4 ? 'pressure' : roll < 0.72 ? 'insurance' : 'swap';
+}
+
+export function maybeCreateRareBankDeal(
+  contestant: VaultContestantState,
+  rng: () => number,
+): BankDeal | null {
+  if (
+    contestant.rareDealOffered ||
+    contestant.currentRound < 2 ||
+    contestant.currentRound > 5 ||
+    rng() >= getRareDealChance(contestant.bankMood)
+  ) {
+    return null;
+  }
+  const type = chooseRareBankDeal(contestant.bankMood, rng);
+  if (type === 'insurance') {
+    return { type, resolved: false, floor: INSURANCE_FLOOR };
+  }
+  if (type === 'pressure') {
+    const premiumPct =
+      contestant.bankMood === 'stingy'
+        ? 10 + Math.round(rng() * 4)
+        : contestant.bankMood === 'generous'
+          ? 14 + Math.round(rng() * 5)
+          : contestant.bankMood === 'chaotic'
+            ? 10 + Math.round(rng() * 10)
+            : 12 + Math.round(rng() * 5);
+    return { type, resolved: false, premiumPct };
+  }
+  return { type, resolved: false };
+}
+
 export function maybeCreateOffer(
   contestant: VaultContestantState,
   rng: () => number,
 ): VaultContestantState {
   if (contestant.currentOffer != null || getVaultsLeftThisRound(contestant) > 0) return contestant;
-  const offer = calculateEyeBankOffer({
+  const baseOffer = calculateEyeBankOffer({
     remainingValues: calculateRemainingValues(contestant),
     offerNumber: contestant.currentRound,
     bankMood: contestant.bankMood,
     rng,
   });
+  const deal = maybeCreateRareBankDeal(contestant, rng);
+  const futureAdjusted = Math.round(baseOffer.offer * contestant.futureOfferMultiplier);
+  const premiumMultiplier = deal?.type === 'pressure' ? 1 + (deal.premiumPct ?? 0) / 100 : 1;
+  const offer = clamp(
+    Math.round(futureAdjusted * premiumMultiplier),
+    0,
+    Math.max(0, ...baseOffer.remainingValues),
+  );
+  const record = { ...baseOffer, offer };
   return {
     ...contestant,
-    currentOffer: offer.offer,
-    offerHistory: [...contestant.offerHistory, offer],
+    currentOffer: offer,
+    offerHistory: [...contestant.offerHistory, record],
+    currentDeal: deal,
+    rareDealOffered: contestant.rareDealOffered || deal != null,
+    counterofferResult: null,
+  };
+}
+
+export function counterBankOffer(
+  contestant: VaultContestantState,
+  rng: () => number,
+): VaultContestantState {
+  if (
+    contestant.currentOffer == null ||
+    contestant.counterofferUsed ||
+    contestant.currentDeal?.type === 'pressure'
+  ) {
+    return contestant;
+  }
+
+  const previousOffer = contestant.currentOffer;
+  const latest = contestant.offerHistory[contestant.offerHistory.length - 1];
+  const expectedValue = latest?.expectedValue ?? previousOffer;
+  const offerRatio = previousOffer / Math.max(1, expectedValue);
+  const roll = rng();
+
+  let raiseCutoff = 0.45;
+  let holdCutoff = 0.78;
+  let raiseMin = 1.05;
+  let raiseMax = 1.1;
+  let cutMin = 0.92;
+  let cutMax = 0.97;
+
+  if (contestant.bankMood === 'generous') {
+    raiseCutoff = 0.7;
+    holdCutoff = 0.94;
+    raiseMin = 1.07;
+    raiseMax = 1.14;
+    cutMin = 0.96;
+    cutMax = 0.99;
+  } else if (contestant.bankMood === 'stingy') {
+    raiseCutoff = 0.27;
+    holdCutoff = 0.69;
+    raiseMin = 1.03;
+    raiseMax = 1.07;
+    cutMin = 0.9;
+    cutMax = 0.96;
+  } else if (contestant.bankMood === 'chaotic') {
+    raiseCutoff = 0.47;
+    holdCutoff = 0.59;
+    raiseMin = 1.08;
+    raiseMax = 1.22;
+    cutMin = 0.84;
+    cutMax = 0.95;
+  } else if (offerRatio < 0.9) {
+    raiseCutoff = 0.58;
+    holdCutoff = 0.88;
+  }
+
+  let outcome: CounterofferOutcome;
+  let multiplier = 1;
+  if (roll < raiseCutoff) {
+    outcome = 'raised';
+    multiplier = raiseMin + rng() * (raiseMax - raiseMin);
+  } else if (roll < holdCutoff) {
+    outcome = 'held';
+  } else {
+    outcome = 'cut';
+    multiplier = cutMin + rng() * (cutMax - cutMin);
+  }
+
+  const highestRemaining = Math.max(0, ...calculateRemainingValues(contestant));
+  const newOffer = clamp(Math.round(previousOffer * multiplier), 0, highestRemaining);
+  const resolvedOutcome: CounterofferOutcome =
+    newOffer > previousOffer ? 'raised' : newOffer < previousOffer ? 'cut' : 'held';
+  const offerHistory = contestant.offerHistory.map((offer, index) =>
+    index === contestant.offerHistory.length - 1 ? { ...offer, offer: newOffer } : offer,
+  );
+
+  return {
+    ...contestant,
+    currentOffer: newOffer,
+    offerHistory,
+    counterofferUsed: true,
+    counterofferResult: {
+      previousOffer,
+      newOffer,
+      outcome: resolvedOutcome ?? outcome,
+    },
+  };
+}
+
+export function acceptInsuranceDeal(contestant: VaultContestantState): VaultContestantState {
+  if (contestant.currentDeal?.type !== 'insurance' || contestant.currentDeal.resolved) {
+    return contestant;
+  }
+  return {
+    ...contestant,
+    insuranceFloor: Math.max(contestant.insuranceFloor ?? 0, contestant.currentDeal.floor ?? INSURANCE_FLOOR),
+    futureOfferMultiplier: Math.min(contestant.futureOfferMultiplier, INSURANCE_OFFER_MULTIPLIER),
+    currentDeal: { ...contestant.currentDeal, resolved: true },
+  };
+}
+
+export function swapReserveBattery(
+  contestant: VaultContestantState,
+  rng: () => number,
+): VaultContestantState {
+  if (
+    contestant.currentDeal?.type !== 'swap' ||
+    contestant.currentDeal.resolved ||
+    !contestant.personalVaultId
+  ) {
+    return contestant;
+  }
+  const candidates = getAvailableWallVaults(contestant);
+  if (candidates.length === 0) return contestant;
+  const replacement = pick(rng, candidates);
+  const previousReserveId = contestant.personalVaultId;
+  const vaults = contestant.vaults.map((vault) => {
+    if (vault.vaultId === previousReserveId) return { ...vault, status: 'available' as const };
+    if (vault.vaultId === replacement.vaultId) return { ...vault, status: 'personal' as const };
+    return vault;
+  });
+  return {
+    ...contestant,
+    vaults,
+    personalVaultId: replacement.vaultId,
+    personalVaultAmount: replacement.amount,
+    currentDeal: { ...contestant.currentDeal, resolved: true },
+    remainingAmounts: calculateRemainingValues({ vaults }),
   };
 }
 
@@ -358,7 +570,8 @@ export function riskVault(contestant: VaultContestantState, finishTimeMs: number
       ...contestant,
       vaults,
       currentOffer: null,
-      finalAmount: contestant.personalVaultAmount ?? 0,
+      currentDeal: null,
+      finalAmount: Math.max(contestant.personalVaultAmount ?? 0, contestant.insuranceFloor ?? 0),
       outcomeType: 'openedVault',
       simulatedFinishTime: finishTimeMs,
       finishTimeMs,
@@ -369,6 +582,8 @@ export function riskVault(contestant: VaultContestantState, finishTimeMs: number
     ...contestant,
     currentRound: contestant.currentRound + 1,
     currentOffer: null,
+    currentDeal: null,
+    counterofferResult: null,
   };
 }
 
@@ -379,6 +594,7 @@ export function signVerdict(contestant: VaultContestantState, finishTimeMs: numb
     acceptedOfferAmount: contestant.currentOffer,
     finalAmount: contestant.currentOffer,
     outcomeType: 'signedVerdict',
+    currentDeal: null,
     simulatedFinishTime: finishTimeMs,
     finishTimeMs,
   };
