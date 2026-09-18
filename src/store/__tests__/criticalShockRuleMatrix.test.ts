@@ -373,9 +373,9 @@ describe('critical shock / ruleset matrix', () => {
     expect(['evicted', 'jury']).toContain(
       afterSecond.players.find((player) => player.id === secondNomineeId)?.status
     )
-    expect(afterSecond.players.find((player) => player.id === thirdNomineeId)?.status).not.toMatch(
-      /evicted|jury/
-    )
+    const survivingNominee = afterSecond.players.find((player) => player.id === thirdNomineeId)
+    expect(survivingNominee).toBeDefined()
+    expect(['evicted', 'jury']).not.toContain(survivingNominee?.status)
   })
 
   it('treats Democracia co-LOHs as non-voters and delegates a tie to an eligible POS holder', () => {
