@@ -506,6 +506,10 @@ const socialSlice = createSlice({
         { day: action.payload.day, phase: action.payload.phase },
         action.payload.eventId
       )
+      projectRealityRelationshipsIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships
+      )
     },
     recordRealityAllianceBetrayal(
       state,
