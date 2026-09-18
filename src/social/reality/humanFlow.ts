@@ -11,10 +11,25 @@ import {
 } from '../realitySimulation'
 import { getRealityActionContract, type RealityActorSnapshot } from './actionContract'
 import { runRealityOpportunity } from './orchestrator'
+import {
+  findRealityAllianceForConsultation,
+  holdRealityAllianceStrategyMeeting,
+} from './relationshipForms'
+import type { RealityAlliance } from './types'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
 import type { RealityContext } from './types'
-import { getCupidPartnerId } from '../../features/twists/cupidArrow'
+import {
+  expandCupidIds,
+  getCupidPair,
+  getCupidPartnerId,
+  isCupidArrowActive,
+} from '../../features/twists/cupidArrow'
+import {
+  chooseAiEvictionVote,
+  getNominationTargetScore,
+  getSafetyRelationshipScore,
+} from '../../store/gameSlice'
 import { shouldDepressionShockRefuseConversation } from '../../features/twists/depressionShock'
 
 export interface HumanRealityActionInput {
@@ -139,6 +154,252 @@ function result(
 function playerName(state: RootState, playerId: string | null | undefined): string {
   if (!playerId) return 'that nominee'
   return state.game.players.find((player) => player.id === playerId)?.name ?? 'that nominee'
+}
+
+interface AllianceConsultationPlan {
+  allianceId: string
+  attendeeIds: string[]
+  targetIds: string[]
+  fallbackTargetIds: string[]
+  planIds: string[]
+  agenda: string
+  summary: string
+}
+
+function activeAllianceAdvisors(
+  state: RootState,
+  alliance: RealityAlliance,
+  actorId: string
+): string[] {
+  const activeIds = new Set(
+    state.game.players
+      .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+      .map((player) => player.id)
+  )
+  return alliance.memberIds.filter((id) => id !== actorId && activeIds.has(id))
+}
+
+function nominationConsultationCandidates(
+  state: RootState,
+  alliance: RealityAlliance,
+  actorId: string
+) {
+  const lohIds = new Set(expandCupidIds(state.game, state.game.lohId ? [state.game.lohId] : []))
+  const base = state.game.players.filter(
+    (player) =>
+      player.id !== actorId &&
+      player.status !== 'evicted' &&
+      player.status !== 'jury' &&
+      !lohIds.has(player.id) &&
+      !alliance.memberIds.includes(player.id)
+  )
+  if (!isCupidArrowActive(state.game)) return base
+
+  const seenPairs = new Set<string>()
+  return base.filter((player) => {
+    const key = getCupidPair(state.game, player.id)?.id ?? `solo:${player.id}`
+    if (seenPairs.has(key)) return false
+    seenPairs.add(key)
+    return true
+  })
+}
+
+function summarizeAlliancePreferences(
+  state: RootState,
+  preferences: Array<{ advisorId: string; targetId: string; score: number }>,
+  label: string
+): { summary: string; targetIds: string[]; fallbackTargetIds: string[] } {
+  const counts = new Map<string, { votes: number; score: number }>()
+  for (const preference of preferences) {
+    const current = counts.get(preference.targetId) ?? { votes: 0, score: 0 }
+    current.votes += 1
+    current.score += preference.score
+    counts.set(preference.targetId, current)
+  }
+  const ordered = [...counts.entries()].sort(
+    (left, right) =>
+      right[1].votes - left[1].votes ||
+      right[1].score - left[1].score ||
+      left[0].localeCompare(right[0])
+  )
+  const primaryId = ordered[0]?.[0]
+  const fallbackId = ordered[1]?.[0]
+  const lines = preferences
+    .slice(0, 4)
+    .map(
+      (preference) =>
+        `${playerName(state, preference.advisorId)} → ${playerName(state, preference.targetId)}`
+    )
+    .join(' · ')
+  const consensus = primaryId
+    ? `${label}: ${playerName(state, primaryId)}${
+        fallbackId ? ` · backup ${playerName(state, fallbackId)}` : ''
+      }`
+    : `${label}: no clear consensus`
+  return {
+    summary: lines ? `${lines}. ${consensus}.` : `${consensus}.`,
+    targetIds: primaryId ? [primaryId] : [],
+    fallbackTargetIds: fallbackId ? [fallbackId] : [],
+  }
+}
+
+function buildAllianceConsultationPlan(
+  state: RootState,
+  alliance: RealityAlliance,
+  actorId: string
+): AllianceConsultationPlan | null {
+  const advisors = activeAllianceAdvisors(state, alliance, actorId)
+  if (advisors.length === 0) return null
+  const attendeeIds = [actorId, ...advisors]
+  const phase = state.game.phase
+  const actorIsLoh = state.game.lohId === actorId
+  const actorHasSafety =
+    state.game.posWinnerId === actorId ||
+    getCupidPartnerId(state.game, state.game.posWinnerId) === actorId
+  const nominees = state.game.players.filter((player) => state.game.nomineeIds.includes(player.id))
+
+  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+    const candidates = nominationConsultationCandidates(state, alliance, actorId)
+    if (candidates.length === 0) return null
+    const preferences = advisors
+      .map((advisorId) => {
+        const ranked = candidates
+          .map((candidate) => ({
+            advisorId,
+            targetId: candidate.id,
+            score: getNominationTargetScore(state.game, advisorId, candidate),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter(
+        (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+      )
+    const read = summarizeAlliancePreferences(state, preferences, 'Nomination consensus')
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: read.targetIds,
+      fallbackTargetIds: read.fallbackTargetIds,
+      planIds: [
+        ...read.targetIds.map((id) => `target:${id}`),
+        ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+      ],
+      agenda: 'nominations',
+      summary: `Alliance huddle — ${read.summary}`,
+    }
+  }
+
+  if (actorHasSafety && ['pos_results', 'pos_ceremony'].includes(phase) && nominees.length > 0) {
+    const preferences = advisors
+      .map((advisorId) => {
+        const ranked = nominees
+          .map((nominee) => ({
+            advisorId,
+            targetId: nominee.id,
+            score: getSafetyRelationshipScore(state.game, advisorId, nominee),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter(
+        (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+      )
+    const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
+    const replacements = nominationConsultationCandidates(state, alliance, actorId).filter(
+      (candidate) => !state.game.nomineeIds.includes(candidate.id)
+    )
+    const replacement =
+      replacements
+        .map((candidate) => ({
+          id: candidate.id,
+          score:
+            advisors.reduce(
+              (sum, advisorId) => sum + getNominationTargetScore(state.game, advisorId, candidate),
+              0
+            ) / Math.max(1, advisors.length),
+        }))
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id ??
+      null
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: replacement ? [replacement] : [],
+      fallbackTargetIds: [],
+      planIds: replacement ? [`replacement:${replacement}`] : [],
+      agenda: 'safety',
+      summary: `Alliance huddle — ${read.summary}${
+        replacement
+          ? ` If Safety opens a seat, the group leans toward ${playerName(state, replacement)} as the replacement.`
+          : ''
+      }`,
+    }
+  }
+
+  if (
+    nominees.length > 0 &&
+    ['pos_ceremony_results', 'social_2', 'live_vote'].includes(phase)
+  ) {
+    const nomineeIds = nominees.map((nominee) => nominee.id)
+    const preferences = advisors.map((advisorId) => {
+      const targetId = chooseAiEvictionVote(
+        state.game,
+        advisorId,
+        nomineeIds,
+        (state.game.seed ?? 0) ^ state.game.week
+      )
+      return { advisorId, targetId, score: 1 }
+    })
+    const read = summarizeAlliancePreferences(state, preferences, 'Vote consensus')
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: read.targetIds,
+      fallbackTargetIds: read.fallbackTargetIds,
+      planIds: [
+        ...read.targetIds.map((id) => `target:${id}`),
+        ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+      ],
+      agenda: 'eviction_vote',
+      summary: `Alliance huddle — ${read.summary}`,
+    }
+  }
+
+  const candidates = nominationConsultationCandidates(state, alliance, actorId)
+  if (candidates.length === 0) return null
+  const preferences = advisors
+    .map((advisorId) => {
+      const ranked = candidates
+        .map((candidate) => ({
+          advisorId,
+          targetId: candidate.id,
+          score: getNominationTargetScore(state.game, advisorId, candidate),
+        }))
+        .sort(
+          (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+        )
+      return ranked[0]
+    })
+    .filter(
+      (entry): entry is { advisorId: string; targetId: string; score: number } => Boolean(entry)
+    )
+  const read = summarizeAlliancePreferences(state, preferences, 'Strategic read')
+  return {
+    allianceId: alliance.id,
+    attendeeIds,
+    targetIds: read.targetIds,
+    fallbackTargetIds: read.fallbackTargetIds,
+    planIds: [
+      ...read.targetIds.map((id) => `target:${id}`),
+      ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+    ],
+    agenda: 'strategy',
+    summary: `Alliance huddle — ${read.summary}`,
+  }
 }
 
 /**
@@ -377,6 +638,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
 
     const contract = getRealityActionContract(input.actionId)
     if (!contract) return result(false, 'Unknown action', energy)
+
+    const consultationAlliance =
+      input.actionId === 'consult_alliance' && input.targetId
+        ? findRealityAllianceForConsultation(state.social.reality, input.actorId, input.targetId)
+        : null
+    if (input.actionId === 'consult_alliance' && !consultationAlliance) {
+      return result(false, 'You do not share an active alliance with that housemate.', energy)
+    }
     const direction =
       targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'
     let simulation = state.social.realitySimulation
@@ -418,6 +687,24 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       return result(false, reason, energy, 0, orchestration.response?.kind ?? 'Unavailable')
     }
     const succeeded = orchestration.event.outcome !== 'FAILURE'
+    let allianceConsultationSummary: string | null = null
+    if (succeeded && consultationAlliance) {
+      const plan = buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
+      if (plan) {
+        holdRealityAllianceStrategyMeeting(orchestration.domain, {
+          allianceId: plan.allianceId,
+          callerId: input.actorId,
+          attendeeIds: plan.attendeeIds,
+          targetIds: plan.targetIds,
+          fallbackTargetIds: plan.fallbackTargetIds,
+          planIds: plan.planIds,
+          agenda: plan.agenda,
+          at: { day: state.game.week, phase: state.game.phase },
+          sourceEventId: orchestration.event.id,
+        })
+        allianceConsultationSummary = plan.summary
+      }
+    }
     const dangerWarningDiscovered =
       succeeded &&
       input.actionId === 'warn_about_danger' &&
@@ -527,7 +814,8 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         )
       : null
     const baseSummary =
-      input.actionId === 'warn_about_danger' && succeeded
+      allianceConsultationSummary ??
+      (input.actionId === 'warn_about_danger' && succeeded
         ? dangerWarningDiscovered
           ? `${
               state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
@@ -535,7 +823,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           : `${
               state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
             } appreciated the warning and kept your source private.`
-        : compatibility.summary
+        : compatibility.summary)
     const latestState = getState()
     return {
       ...compatibility,
