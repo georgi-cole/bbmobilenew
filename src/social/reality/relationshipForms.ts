@@ -405,7 +405,7 @@ function maybeExpelLowCommitmentMember(
   memberId: string,
   at: RealityClock,
   sourceEventId: string
-): void {
+): boolean {
   if (
     alliance.status === 'DISSOLVED' ||
     alliance.memberIds.length < 3 ||
@@ -413,7 +413,7 @@ function maybeExpelLowCommitmentMember(
     (alliance.memberCommitment[memberId] ?? 0.5) > 0.1 ||
     (alliance.status !== 'FRACTURED' && alliance.fractureRisk < 0.78)
   ) {
-    return
+    return false
   }
 
   const expellerId = alliance.leaderIds
@@ -423,7 +423,7 @@ function maybeExpelLowCommitmentMember(
         (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
         left.localeCompare(right)
     )[0]
-  if (!expellerId) return
+  if (!expellerId) return false
 
   removeRealityAllianceMember(state, {
     allianceId: alliance.id,
@@ -433,6 +433,7 @@ function maybeExpelLowCommitmentMember(
     at,
     sourceEventId,
   })
+  return true
 }
 
 export type RealityAllianceBetrayalKind =
@@ -578,26 +579,27 @@ export function recordRealityAllianceBetrayal(
       })
     }
 
-    if (
+    const repeatedSevereBreach =
       wasFractured &&
       (severity >= 0.28 || (alliance.memberCommitment[input.actorId] ?? 0) <= 0.12)
-    ) {
-      alliance.status = 'DISSOLVED'
-      alliance.currentTargetIds = []
-      alliance.fallbackTargetIds = []
-    } else if (severity >= 0.38 || alliance.fractureRisk >= 0.72) {
+    if (repeatedSevereBreach || severity >= 0.38 || alliance.fractureRisk >= 0.72) {
       alliance.status = 'FRACTURED'
     } else {
       refreshRealityAllianceLifecycle(alliance)
     }
 
-    maybeExpelLowCommitmentMember(
+    const expelled = maybeExpelLowCommitmentMember(
       state,
       alliance,
       input.actorId,
       input.at,
       input.sourceEventId
     )
+    if (repeatedSevereBreach && !expelled) {
+      alliance.status = 'DISSOLVED'
+      alliance.currentTargetIds = []
+      alliance.fallbackTargetIds = []
+    }
     affected.push(alliance)
   }
 
