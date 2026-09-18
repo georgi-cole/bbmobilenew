@@ -38,6 +38,7 @@ import {
   applyDramaAction,
   replaceDramaNetwork,
   recordRealityActualVote,
+  recordRealityAllianceBetrayal,
   recordRealityCeremony,
   setEnergyBankEntry,
   pushIncomingInteraction,
@@ -698,12 +699,23 @@ function applySafetyRelationshipConsequences(
     if (nomineeId === holderId || nomineeId === savedId) continue
     if (!hasAllianceBetween(relationships, holderId, nomineeId)) continue
     api.dispatch(
+      recordRealityAllianceBetrayal({
+        actorId: holderId,
+        targetId: nomineeId,
+        kind: 'SAFETY_ABANDON',
+        day: state.game.week ?? 1,
+        phase: state.game.phase,
+        sourceEventId: `safety-abandon:${state.game.week ?? 1}:${holderId}:${nomineeId}`,
+      })
+    )
+    api.dispatch(
       updateRelationship({
         source: nomineeId,
         target: holderId,
         delta: -10,
         tags: [BETRAYAL_TAG],
         actionSource: 'system',
+        skipRealityProjection: true,
       })
     )
   }
