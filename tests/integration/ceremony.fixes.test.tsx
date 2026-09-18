@@ -612,6 +612,35 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
   })
 
+  it('does not offer a rewarded vote reveal when every ballot targets the same nominee', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 3, p3: 0 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p2' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    })
+
+    renderWithStore(store)
+    await act(async () => {})
+
+    act(() => {
+      screen.getByText('Done').click()
+    })
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.()
+    })
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS + 1)
+    })
+
+    expect(screen.queryByRole('dialog', { name: /peek behind the curtain/i })).toBeNull()
+  })
+
   it('still offers the rewarded vote reveal under React StrictMode', async () => {
     const store = makeStore({
       phase: 'eviction_results',
