@@ -1843,7 +1843,9 @@ function castVoxAiNominationBallots(state: GameState, rng: () => number) {
   const autoNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
   for (const voter of alive) {
     if (voter.isUser) continue
-    if (isVoxFinalFour(state) && voter.id === autoNomineeId) continue
+    // Vox nomination power belongs to every active housemate. Even the automatic
+    // Final 4 nominee still casts a secret nomination ballot; being on the block
+    // does not remove nomination power in Vox.
     const candidates = alive.filter(
       (candidate) =>
         candidate.id !== voter.id &&
@@ -5131,6 +5133,14 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(nomineeId)) return
       const humanPlayer = state.players.find((p) => p.isUser)
       if (!humanPlayer) return
+      if (!isVoxPopuliActive(state)) {
+        const lohIds = new Set(
+          state.coLohIds?.length ? state.coLohIds : getCupidRoleIds(state, state.lohId)
+        )
+        // Classic eviction ballots exclude the LOH and every player currently
+        // on the block. The LOH's only eviction choice is a separate tie-break.
+        if (lohIds.has(humanPlayer.id) || state.nomineeIds.includes(humanPlayer.id)) return
+      }
       if (!canPlayerTargetPlayer(state, humanPlayer.id, nomineeId)) return
       if (!state.votes) state.votes = {}
       const voteMap = state.votes
@@ -5157,8 +5167,8 @@ const gameSlice = createSlice({
 
       const evictee = state.players.find((p) => p.id === nomineeId)
       const lohPlayer = state.players.find((p) => p.id === state.lohId)
-      if (!evictee) return
-      if (!canPlayerTargetPlayer(state, lohPlayer?.id, nomineeId)) return
+      if (!evictee || !lohPlayer?.isUser) return
+      if (!canPlayerTargetPlayer(state, lohPlayer.id, nomineeId)) return
 
       state.awaitingTieBreak = false
       state.tiedNomineeIds = null
@@ -8413,8 +8423,9 @@ const gameSlice = createSlice({
                     canPlayerTargetPlayer(state, human.id, candidate.id)
                 )
               : []
-            const humanCanVote =
-              Boolean(human) && !(isVoxFinalFour(state) && human?.id === autoNomineeId)
+            // Vox differs from Classic: every active housemate nominates,
+            // including the automatic Final 4 nominee.
+            const humanCanVote = Boolean(human)
             if (human && humanCanVote && humanEligibleTargets.length > 0) {
               state.awaitingNominations = true
               state.pendingNominee1Id = null
