@@ -460,6 +460,7 @@ export default function SocialPanelV2() {
 
   const handleRenameAlliance = useCallback(
     (allianceId: string, name: string) => {
+      if (!humanPlayer) return
       const domain = structuredClone(socialState.reality)
       try {
         renameRealityAlliance(domain, {
@@ -473,7 +474,7 @@ export default function SocialPanelV2() {
         // The inline editor keeps the prior name when validation rejects a rename.
       }
     },
-    [dispatch, game.phase, game.week, humanPlayer.id, socialState.reality]
+    [dispatch, game.phase, game.week, humanPlayer, socialState.reality]
   )
 
   const hiddenContextualActionIds = useMemo(() => {
