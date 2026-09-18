@@ -64,9 +64,7 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
   alliance.leaderIds ??= []
   alliance.founderIds ??= []
 
-  const commitments = alliance.memberIds.map((id) =>
-    clamp01(alliance.memberCommitment[id] ?? 0.5)
-  )
+  const commitments = alliance.memberIds.map((id) => clamp01(alliance.memberCommitment[id] ?? 0.5))
   for (const [index, memberId] of alliance.memberIds.entries()) {
     const commitment = commitments[index]
     alliance.memberCommitment[memberId] = commitment
@@ -80,8 +78,7 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
   const variance =
     commitments.reduce((sum, value) => sum + (value - mean) ** 2, 0) / commitments.length
   const dispersion = Math.sqrt(variance)
-  const lowCommitmentShare =
-    commitments.filter((value) => value <= 0.3).length / commitments.length
+  const lowCommitmentShare = commitments.filter((value) => value <= 0.3).length / commitments.length
   const planDisagreement = alliancePlanDisagreement(alliance)
   const leakPenalty = Math.min(0.66, alliance.knownLeakEventIds.length * 0.22)
 
