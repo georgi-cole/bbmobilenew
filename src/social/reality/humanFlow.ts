@@ -242,6 +242,7 @@ function getAllianceConsultationAgenda(
     return 'safety'
   }
   if (
+    state.game.voxPopuli?.status !== 'active' &&
     nomineesExist &&
     ['pos_ceremony_results', 'social_2', 'live_vote'].includes(state.game.phase)
   ) {
