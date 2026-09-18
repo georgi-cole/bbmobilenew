@@ -4,6 +4,7 @@ import {
   VAULT_VERDICT_AMOUNTS,
   VAULT_VERDICT_ROUND_SCHEDULE,
   assertBroadcastPrivacy,
+  buildBatteryLowVoteEffects,
   buildRawResults,
   calculateEyeBankOffer,
   calculateRemainingValues,
@@ -11,6 +12,7 @@ import {
   createInitialContestant,
   createVaultPods,
   getAvailableWallVaults,
+  getEarnedBatteryLowVoteEffect,
   getHighestRemainingValue,
   getSpecialRevealLabel,
   getVaultsLeftThisRound,
@@ -62,6 +64,32 @@ describe('Battery Low logic', () => {
     expect([...batteries.map((battery) => battery.amount)].sort((a, b) => a - b)).toEqual(BATTERY_VALUES);
     expect([...VAULT_VERDICT_AMOUNTS]).toEqual(BATTERY_VALUES);
     expect(batteries.every((battery) => battery.vaultId.startsWith('battery-'))).toBe(true);
+  });
+
+  it('places the two vote modifiers on the lowest-value batteries without changing the value table', () => {
+    const batteries = createVaultPods(42);
+    expect(batteries.find((battery) => battery.amount === 1)?.specialEffect).toBe('doubleVote');
+    expect(batteries.find((battery) => battery.amount === 0)?.specialEffect).toBe('skipVote');
+
+    const disabled = createVaultPods(42, false);
+    expect(disabled.every((battery) => !battery.specialEffect)).toBe(true);
+    expect(disabled.map((battery) => battery.amount)).toEqual(batteries.map((battery) => battery.amount));
+  });
+
+  it('only awards a vote modifier when its battery is the final opened Reserve', () => {
+    const base = makeHuman(774);
+    const powerCell = base.vaults.find((battery) => battery.specialEffect === 'doubleVote')!;
+    const chosen = choosePersonalVault(base, powerCell.vaultId);
+
+    expect(getEarnedBatteryLowVoteEffect({ ...chosen, outcomeType: 'signedVerdict' })).toBeNull();
+
+    const finished = {
+      ...chosen,
+      outcomeType: 'openedVault' as const,
+      finalAmount: chosen.personalVaultAmount,
+    };
+    expect(getEarnedBatteryLowVoteEffect(finished)).toBe('doubleVote');
+    expect(buildBatteryLowVoteEffects([finished])).toEqual({ human: 'doubleVote' });
   });
 
   it('chooses a Reserve Battery and removes it from the normal opening pool', () => {
