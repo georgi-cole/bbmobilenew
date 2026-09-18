@@ -7,6 +7,7 @@ import type {
   RealityThread,
 } from './types'
 import { recordGroundedScandalFromSecret } from './relationshipAutonomy'
+import { adjustRealityAllianceCommitment } from './relationshipForms'
 
 const PHASE_ORDER = [
   'week_start',
@@ -44,6 +45,89 @@ export function upsertRealityPromise(state: RealityDomainState, promise: Reality
   }
 }
 
+function strongestSharedPromiseAlliance(
+  state: RealityDomainState,
+  leftId: string,
+  rightId: string
+) {
+  return Object.values(state.alliances)
+    .filter(
+      (alliance) =>
+        alliance.status !== 'DISSOLVED' &&
+        alliance.memberIds.includes(leftId) &&
+        alliance.memberIds.includes(rightId)
+    )
+    .sort((left, right) => {
+      const statusRank = (status: typeof left.status) =>
+        status === 'ACTIVE'
+          ? 4
+          : status === 'PROBATIONARY'
+            ? 3
+            : status === 'FRACTURED'
+              ? 2
+              : 1
+      const leftCommitment = Math.min(
+        left.memberCommitment[leftId] ?? 0,
+        left.memberCommitment[rightId] ?? 0
+      )
+      const rightCommitment = Math.min(
+        right.memberCommitment[leftId] ?? 0,
+        right.memberCommitment[rightId] ?? 0
+      )
+      return (
+        statusRank(right.status) - statusRank(left.status) ||
+        rightCommitment - leftCommitment ||
+        right.cohesion - left.cohesion ||
+        left.memberIds.length - right.memberIds.length ||
+        left.id.localeCompare(right.id)
+      )
+    })[0]
+}
+
+function applyPromiseAllianceConsequence(
+  state: RealityDomainState,
+  promise: RealityPromise,
+  status: 'KEPT' | 'BROKEN' | 'VOID'
+): void {
+  if (status === 'VOID') return
+  const stakeWeight = 0.5 + Math.max(0, Math.min(1, promise.stakes)) * 0.5
+  for (const beneficiaryId of promise.beneficiaryIds) {
+    const alliance = strongestSharedPromiseAlliance(
+      state,
+      promise.promisorId,
+      beneficiaryId
+    )
+    if (!alliance) continue
+    if (status === 'KEPT') {
+      adjustRealityAllianceCommitment(
+        state,
+        alliance.id,
+        promise.promisorId,
+        0.035 * stakeWeight
+      )
+      adjustRealityAllianceCommitment(
+        state,
+        alliance.id,
+        beneficiaryId,
+        0.02 * stakeWeight
+      )
+    } else {
+      adjustRealityAllianceCommitment(
+        state,
+        alliance.id,
+        promise.promisorId,
+        -0.07 * stakeWeight
+      )
+      adjustRealityAllianceCommitment(
+        state,
+        alliance.id,
+        beneficiaryId,
+        -0.03 * stakeWeight
+      )
+    }
+  }
+}
+
 export function resolveRealityPromise(
   state: RealityDomainState,
   promiseId: string,
@@ -60,6 +144,7 @@ export function resolveRealityPromise(
     const edge = state.relationships[promise.promisorId]?.[beneficiaryId]
     if (edge) edge.activePromiseIds = edge.activePromiseIds.filter((id) => id !== promise.id)
   }
+  applyPromiseAllianceConsequence(state, promise, status)
   return promise
 }
 
