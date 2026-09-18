@@ -823,6 +823,7 @@
   background-position: var(--sprite-x) var(--sprite-y);
   background-repeat: no-repeat;
   background-size: 400% 200%;
+  mix-blend-mode: screen;
   filter: drop-shadow(0 0 18px color-mix(in srgb, var(--hero-accent) 48%, transparent));
   animation: vault-verdict-hero-icon 900ms cubic-bezier(0.18, 0.82, 0.2, 1) both;
 }
