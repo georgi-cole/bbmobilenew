@@ -79,11 +79,14 @@ describe('Battery Low vote effects', () => {
       cyclesRemaining: 1,
     })
 
-    next.phase = 'social_2'
-    next.lohId = loh.id
-    next.nomineeIds = nominees.map((player) => player.id)
-    next.awaitingHumanVote = false
-    next.votes = {}
+    next = {
+      ...next,
+      phase: 'social_2',
+      lohId: loh.id,
+      nomineeIds: nominees.map((player) => player.id),
+      awaitingHumanVote: false,
+      votes: {},
+    }
 
     next = enterLiveVote(next)
     expect(next.awaitingHumanVote).toBe(true)
@@ -101,9 +104,12 @@ describe('Battery Low vote effects', () => {
     next = enterLiveVote(next)
     expect(next.batteryLowVoteEffects?.[human.id]?.cyclesRemaining).toBe(1)
 
-    next.phase = 'social_2'
-    next.awaitingHumanVote = false
-    next.votes = {}
+    next = {
+      ...next,
+      phase: 'social_2',
+      awaitingHumanVote: false,
+      votes: {},
+    }
     next = enterLiveVote(next)
 
     expect(next.batteryLowVoteEffects?.[human.id]).toBeUndefined()
