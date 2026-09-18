@@ -148,6 +148,7 @@ describe('Reality alliance ceremony consequences', () => {
     finalizeRealityVote(state, 'ava', 'lia', { day: 5, phase: 'live_vote' }, 'vote-against-lia')
 
     expect(alliance.memberCommitment.ava).toBeLessThan(before)
+    const afterFirstProjection = alliance.memberCommitment.ava
     expect(
       state.events.some(
         (event) =>
@@ -155,6 +156,15 @@ describe('Reality alliance ceremony consequences', () => {
           event.reason.includes('vote:voting-pact:vote-against-lia')
       )
     ).toBe(true)
+
+    finalizeRealityVote(
+      state,
+      'ava',
+      'lia',
+      { day: 5, phase: 'eviction_results' },
+      'vote-reveal-against-lia'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
   })
 })
 
