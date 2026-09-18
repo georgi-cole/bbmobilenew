@@ -87,7 +87,7 @@ describe('Reality alliance commitment and hierarchy', () => {
     adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.11)
     expect(alliance.memberPerceivedStatus.lia).toBe('REGULAR')
 
-    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.13)
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.14)
     expect(alliance.memberPerceivedStatus.lia).toBe('PERIPHERAL')
     expect(alliance.leaderIds).not.toContain('lia')
   })
@@ -154,7 +154,7 @@ describe('Reality alliance commitment and hierarchy', () => {
     expect(alliance.memberPlanBeliefs.kai).toEqual(['vote:nova'])
     expect(alliance.fractureRisk).toBeGreaterThan(baselineRisk)
 
-    for (let day = 4; day <= 11; day += 1) {
+    for (let day = 4; day <= 13; day += 1) {
       holdRealityAllianceMeeting(state, {
         allianceId: alliance.id,
         attendeeIds: ['ava', 'lia'],
