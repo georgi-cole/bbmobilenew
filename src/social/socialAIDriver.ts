@@ -814,11 +814,7 @@ function allianceHumanStrategyCandidate(
   }
 
   if (strategyActionId === 'suggest_replacement') {
-    const subjectId = allianceStrategySubject(
-      game,
-      player.id,
-      getEligibleReplacementNominees(game)
-    )
+    const subjectId = allianceStrategySubject(game, player.id, getEligibleReplacementNominees(game))
     return subjectId
       ? {
           actionId: strategyActionId,
