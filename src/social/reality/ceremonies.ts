@@ -5,10 +5,7 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
 import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
-import {
-  adjustRealityAllianceCommitment,
-  recordRealityAllianceBetrayal,
-} from './relationshipForms'
+import { adjustRealityAllianceCommitment, recordRealityAllianceBetrayal } from './relationshipForms'
 import type {
   RealityClock,
   RealityDomainState,

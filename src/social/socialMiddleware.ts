@@ -225,9 +225,7 @@ const REALITY_SEEDING_ACTIONS = new Set([
   'social/recordSocialAction',
 ])
 
-function buildStrategicAllianceSnapshot(
-  state: StateWithGame
-): StrategicAllianceSnapshot[] {
+function buildStrategicAllianceSnapshot(state: StateWithGame): StrategicAllianceSnapshot[] {
   const alliances = Object.values(state.social?.reality?.alliances ?? {})
   return alliances.map((alliance) => ({
     id: alliance.id,

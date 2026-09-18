@@ -1657,9 +1657,7 @@ export function getStrategicAllianceDecisionRead(
 
     const statusWeight = strategicAllianceStatusWeight(alliance.status)
     const actorCommitment = clampStrategicAllianceUnit(alliance.memberCommitment[actorId] ?? 0.5)
-    const actorRoleWeight = strategicAllianceMemberWeight(
-      alliance.memberPerceivedStatus[actorId]
-    )
+    const actorRoleWeight = strategicAllianceMemberWeight(alliance.memberPerceivedStatus[actorId])
     const cohesion = clampStrategicAllianceUnit(alliance.cohesion)
     const fractureRisk = clampStrategicAllianceUnit(alliance.fractureRisk)
     const structureWeight =
@@ -1671,8 +1669,7 @@ export function getStrategicAllianceDecisionRead(
     const infiltrator = alliance.infiltratorIds.includes(actorId)
     if (infiltrator) actorInfiltrator = true
 
-    const strategicallyLive =
-      alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
+    const strategicallyLive = alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
 
     if (alliance.memberIds.includes(targetId)) {
       sharedAllianceCount += 1
@@ -1691,8 +1688,7 @@ export function getStrategicAllianceDecisionRead(
 
     if (!strategicallyLive) continue
     const knowsPlan =
-      alliance.leaderIds.includes(actorId) ||
-      (alliance.memberPlanBeliefs[actorId]?.length ?? 0) > 0
+      alliance.leaderIds.includes(actorId) || (alliance.memberPlanBeliefs[actorId]?.length ?? 0) > 0
     if (!knowsPlan) continue
     const planWeight = structureWeight * (infiltrator ? 0.78 : 1)
     if (alliance.currentTargetIds.includes(targetId)) targetWeights.push(planWeight)
@@ -3837,8 +3833,7 @@ export function chooseAiEvictionVote(
         factors.backstabRoll = backstabRoll
         factors.realityAllianceBetrayalPressure = allianceRead.betrayalPressure
         if (backstabRoll < backstabChance) {
-          const backstabContribution =
-            70 + (1 - Math.min(1, allianceRead.sharedProtection)) * 45
+          const backstabContribution = 70 + (1 - Math.min(1, allianceRead.sharedProtection)) * 45
           score += backstabContribution
           factors.allianceBackstab = backstabContribution
         } else {

@@ -59,13 +59,7 @@ function strongestSharedPromiseAlliance(
     )
     .sort((left, right) => {
       const statusRank = (status: typeof left.status) =>
-        status === 'ACTIVE'
-          ? 4
-          : status === 'PROBATIONARY'
-            ? 3
-            : status === 'FRACTURED'
-              ? 2
-              : 1
+        status === 'ACTIVE' ? 4 : status === 'PROBATIONARY' ? 3 : status === 'FRACTURED' ? 2 : 1
       const leftCommitment = Math.min(
         left.memberCommitment[leftId] ?? 0,
         left.memberCommitment[rightId] ?? 0
@@ -94,11 +88,7 @@ function applyPromiseAllianceConsequence(
   const beneficiariesByAlliance = new Map<string, string[]>()
 
   for (const beneficiaryId of promise.beneficiaryIds) {
-    const alliance = strongestSharedPromiseAlliance(
-      state,
-      promise.promisorId,
-      beneficiaryId
-    )
+    const alliance = strongestSharedPromiseAlliance(state, promise.promisorId, beneficiaryId)
     if (!alliance) continue
     beneficiariesByAlliance.set(alliance.id, [
       ...(beneficiariesByAlliance.get(alliance.id) ?? []),

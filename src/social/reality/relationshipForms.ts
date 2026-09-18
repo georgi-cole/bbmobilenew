@@ -107,9 +107,7 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
   return alliance
 }
 
-export function refreshRealityAllianceLifecycle(
-  alliance: RealityAlliance
-): RealityAlliance {
+export function refreshRealityAllianceLifecycle(alliance: RealityAlliance): RealityAlliance {
   if (alliance.status === 'DISSOLVED' || alliance.status === 'PROBATIONARY') return alliance
 
   const engagedMembers = alliance.memberIds.filter(
@@ -385,10 +383,7 @@ function refreshRealityAllianceInfiltratorIntent(
 ): void {
   if (!alliance.infiltratorIds.includes(memberId)) return
   const commitment = alliance.memberCommitment[memberId] ?? 0
-  if (
-    commitment >= 0.58 &&
-    !hasStrongerRealityPact(state, memberId, alliance.id, commitment)
-  ) {
+  if (commitment >= 0.58 && !hasStrongerRealityPact(state, memberId, alliance.id, commitment)) {
     alliance.infiltratorIds = alliance.infiltratorIds.filter((id) => id !== memberId)
     alliance.genuine = alliance.infiltratorIds.length === 0
   }

@@ -110,8 +110,7 @@ function projectRealityTags(
   const edge = reality.relationships[sourceId]?.[targetId]
   if (!edge) return tags
   const formalPairAlliances = Object.values(reality.alliances).filter(
-    (alliance) =>
-      alliance.memberIds.includes(sourceId) && alliance.memberIds.includes(targetId)
+    (alliance) => alliance.memberIds.includes(sourceId) && alliance.memberIds.includes(targetId)
   )
   const hasLiveFormalAlliance = formalPairAlliances.some(
     (alliance) => alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'

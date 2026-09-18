@@ -1,10 +1,6 @@
 import type { Middleware } from '@reduxjs/toolkit'
 import { resolveLanguagePreference, translate } from '../i18n'
-import {
-  applyDramaAction,
-  recordRealityAllianceBetrayal,
-  updateRelationship,
-} from './socialSlice'
+import { applyDramaAction, recordRealityAllianceBetrayal, updateRelationship } from './socialSlice'
 import { getEffectiveSocialMode } from './socialMode'
 import type { RelationshipsMap } from './types'
 

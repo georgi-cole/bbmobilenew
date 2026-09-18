@@ -436,12 +436,8 @@ describe('Reality causal orchestration', () => {
 
     expect(resolved.event?.outcome).toBe('SUCCESS')
     expect(resolved.domain.alliances['vote-pact'].currentTargetIds).toEqual(['nova'])
-    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.ava).toEqual([
-      'target:nova',
-    ])
-    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.human).toEqual([
-      'target:nova',
-    ])
+    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.ava).toEqual(['target:nova'])
+    expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.human).toEqual(['target:nova'])
   })
 
   it('recruits an accepted target into a wider coalition instead of creating another pair', () => {

@@ -103,8 +103,7 @@ describe('operational Reality alliances', () => {
     expect(
       state.events.some(
         (event) =>
-          event.type === 'ALLIANCE_TARGET_COORDINATED' &&
-          event.reason.includes('pitch:nova')
+          event.type === 'ALLIANCE_TARGET_COORDINATED' && event.reason.includes('pitch:nova')
       )
     ).toBe(true)
   })
@@ -359,8 +358,7 @@ describe('Reality overlapping deals and betrayal lifecycle', () => {
     expect(coalition.memberCommitment.kai).toBeLessThanOrEqual(0.3)
     expect(
       state.events.some(
-        (event) =>
-          event.type === 'ALLIANCE_FALSE_PRETENSE_ESTABLISHED' && event.actorId === 'kai'
+        (event) => event.type === 'ALLIANCE_FALSE_PRETENSE_ESTABLISHED' && event.actorId === 'kai'
       )
     ).toBe(true)
   })

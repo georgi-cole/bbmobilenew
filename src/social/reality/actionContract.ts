@@ -282,8 +282,7 @@ function relationshipTagsForReality(
   const edge = reality.relationships[actorId]?.[targetId]
   const tags = new Set<string>()
   const formalPairAlliances = Object.values(reality.alliances).filter(
-    (alliance) =>
-      alliance.memberIds.includes(actorId) && alliance.memberIds.includes(targetId)
+    (alliance) => alliance.memberIds.includes(actorId) && alliance.memberIds.includes(targetId)
   )
   const hasLiveFormalAlliance = formalPairAlliances.some(
     (alliance) => alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
