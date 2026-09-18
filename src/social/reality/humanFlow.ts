@@ -335,14 +335,18 @@ function buildAllianceConsultationPlan(
         }))
         .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]
         ?.id ?? null
+    const fallbackTargetIds = replacement ? [replacement] : [...alliance.fallbackTargetIds]
+    const planIds = [
+      ...alliance.currentTargetIds.map((id) => `target:${id}`),
+      ...fallbackTargetIds.map((id) => `fallback:${id}`),
+      ...(read.targetIds[0] ? [`save:${read.targetIds[0]}`] : []),
+    ]
     return {
       allianceId: alliance.id,
       attendeeIds,
-      targetIds: replacement ? [replacement] : [...alliance.currentTargetIds],
-      fallbackTargetIds: replacement ? [] : [...alliance.fallbackTargetIds],
-      planIds: replacement
-        ? [`replacement:${replacement}`]
-        : attendeeIds.flatMap((id) => alliance.memberPlanBeliefs[id] ?? []),
+      targetIds: [...alliance.currentTargetIds],
+      fallbackTargetIds,
+      planIds,
       agenda: 'safety',
       summary: `Alliance huddle — ${read.summary}${
         replacement
