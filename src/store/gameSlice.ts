@@ -1707,7 +1707,7 @@ function getSafetyRelationshipBreakdown(
   return { total: score, factors }
 }
 
-function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
+export function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
   return getSafetyRelationshipBreakdown(state, holderId, nominee).total
 }
 
