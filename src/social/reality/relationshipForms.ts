@@ -959,6 +959,7 @@ export function leakRealityAlliance(
   const alliance = state.alliances[allianceId]
   if (!alliance?.memberIds.includes(leakerId))
     throw new Error('Only a member can leak the alliance')
+  if (alliance.status === 'DISSOLVED') return
   const outsiderReceiverIds = [
     ...new Set(receiverIds.filter((id) => !alliance.memberIds.includes(id))),
   ]
