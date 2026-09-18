@@ -14,19 +14,20 @@ export type CriticalRuleDimension =
   | 'roster_eligibility'
   | 'strategy_only'
 
-export interface CriticalShockRuleDeclaration {
+export interface CriticalRuleDeclaration {
   /**
-   * Critical engine dimensions this shock intentionally changes.
+   * Critical engine dimensions this rule intentionally changes.
    * Empty means baseline rules remain.
    */
   changes: readonly CriticalRuleDimension[]
-  /**
-   * Human-readable reason for the declaration. This registry is deliberately
-   * exhaustive over ForcedShockType so adding a new shock fails TypeScript
-   * until its critical-game impact is reviewed.
-   */
   rationale: string
-  /** Whether the shock is intentionally supported while Vox Populi is active. */
+}
+
+export interface CriticalShockRuleDeclaration extends CriticalRuleDeclaration {
+  /**
+   * This registry is exhaustive over ForcedShockType so adding a new shock
+   * fails TypeScript until both its engine impact and format support are reviewed.
+   */
   voxCompatible: boolean
 }
 
@@ -129,7 +130,7 @@ export const FORMAT_CRITICAL_RULES = {
     rationale:
       'Every active housemate nominates; the audience, not the house or LOH, controls eviction.',
   },
-} as const satisfies Record<string, CriticalShockRuleDeclaration>
+} as const satisfies Record<string, CriticalRuleDeclaration>
 
 function isActivePlayer(state: GameState, playerId: string): boolean {
   const player = state.players.find((candidate) => candidate.id === playerId)
