@@ -89,6 +89,7 @@ function clampBank(
 
 const REALITY_PROJECTED_TAGS = new Set([
   'alliance',
+  'broken_alliance',
   'romance',
   'bromance',
   'rivalry',
@@ -123,6 +124,16 @@ function projectRealityTags(
   ) {
     tags.push('alliance')
   }
+  const exitedSharedAlliance = reality.events.some(
+    (event) =>
+      ['ALLIANCE_MEMBER_LEFT', 'ALLIANCE_MEMBER_DEFECTED', 'ALLIANCE_MEMBER_EXPELLED'].includes(
+        event.type
+      ) &&
+      event.participantIds.includes(sourceId) &&
+      event.participantIds.includes(targetId) &&
+      (event.targetIds.includes(sourceId) || event.targetIds.includes(targetId))
+  )
+  if (!hasLiveFormalAlliance && exitedSharedAlliance) tags.push('broken_alliance')
   if (
     Object.values(reality.romances).some(
       (romance) =>
