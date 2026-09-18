@@ -91,6 +91,8 @@ function applyPromiseAllianceConsequence(
 ): void {
   if (status === 'VOID') return
   const stakeWeight = 0.5 + Math.max(0, Math.min(1, promise.stakes)) * 0.5
+  const beneficiariesByAlliance = new Map<string, string[]>()
+
   for (const beneficiaryId of promise.beneficiaryIds) {
     const alliance = strongestSharedPromiseAlliance(
       state,
@@ -98,31 +100,25 @@ function applyPromiseAllianceConsequence(
       beneficiaryId
     )
     if (!alliance) continue
-    if (status === 'KEPT') {
+    beneficiariesByAlliance.set(alliance.id, [
+      ...(beneficiariesByAlliance.get(alliance.id) ?? []),
+      beneficiaryId,
+    ])
+  }
+
+  for (const [allianceId, beneficiaryIds] of beneficiariesByAlliance) {
+    adjustRealityAllianceCommitment(
+      state,
+      allianceId,
+      promise.promisorId,
+      (status === 'KEPT' ? 0.035 : -0.07) * stakeWeight
+    )
+    for (const beneficiaryId of [...new Set(beneficiaryIds)]) {
       adjustRealityAllianceCommitment(
         state,
-        alliance.id,
-        promise.promisorId,
-        0.035 * stakeWeight
-      )
-      adjustRealityAllianceCommitment(
-        state,
-        alliance.id,
+        allianceId,
         beneficiaryId,
-        0.02 * stakeWeight
-      )
-    } else {
-      adjustRealityAllianceCommitment(
-        state,
-        alliance.id,
-        promise.promisorId,
-        -0.07 * stakeWeight
-      )
-      adjustRealityAllianceCommitment(
-        state,
-        alliance.id,
-        beneficiaryId,
-        -0.03 * stakeWeight
+        (status === 'KEPT' ? 0.02 : -0.03) * stakeWeight
       )
     }
   }
