@@ -36,7 +36,6 @@ describe('Force to TV broadcasts', () => {
     expect(welcome?.meta?.major).toBeUndefined()
   })
 
-
   it('keeps an authored runtime level and lets a next-delivery prompt take the next TV slot', () => {
     let state = gameReducer(undefined, { type: '@@INIT' })
 
