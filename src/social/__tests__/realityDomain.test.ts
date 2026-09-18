@@ -104,6 +104,30 @@ describe('Reality domain migration and directed relationships', () => {
     ])
   })
 
+  it('preserves an established core member when alliance dynamics are rebuilt on migration', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'alliance-core-status',
+      founderIds: ['human'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.memberCommitment.human = 0.5
+    alliance.memberPerceivedStatus.human = 'CORE'
+    alliance.leaderIds = ['human']
+
+    const migrated = migrateSocialState({
+      ...SOCIAL_INITIAL_STATE,
+      reality,
+    })
+
+    expect(migrated.reality.alliances['alliance-core-status'].memberPerceivedStatus.human).toBe(
+      'CORE'
+    )
+    expect(migrated.reality.alliances['alliance-core-status'].leaderIds).toContain('human')
+  })
+
   it('dual-writes legacy relationship outcomes into the Reality edge only', () => {
     const store = configureStore({ reducer: { social: socialReducer } })
     store.dispatch(updateRelationship({ source: 'human', target: 'lia', delta: 8 }))
