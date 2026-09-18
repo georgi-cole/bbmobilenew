@@ -6,6 +6,7 @@ import {
   getRealityAllianceKnowledgeView,
   learnRealityFact,
   leakRealityAlliance,
+  recruitRealityAllianceMember,
 } from '../reality'
 import type { RealityMemory } from '../reality'
 
@@ -67,6 +68,19 @@ describe('Reality alliance identity and private knowledge', () => {
     expect(finalTwo.name).toBeTruthy()
     expect(coalition.name).toBeTruthy()
     expect(finalTwo.name).not.toBe(coalition.name)
+
+    const finalTwoName = finalTwo.name
+    const outer = recruitRealityAllianceMember(state, {
+      allianceId: finalTwo.id,
+      recruiterId: 'kai',
+      targetId: 'mara',
+      expandedAllianceId: 'final-two-outer',
+      at: { day: 3, phase: 'social_1' },
+    })
+    expect(state.alliances['final-two'].name).toBe(finalTwoName)
+    expect(outer.purpose).toBe('Wider coalition')
+    expect(outer.name).toBeTruthy()
+    expect(outer.name).not.toBe(finalTwoName)
   })
 
   it('binds witnessed alliance claims to the real pact without granting extra membership knowledge', () => {
