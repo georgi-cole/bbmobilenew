@@ -57,7 +57,7 @@ export const FORCED_SHOCK_CRITICAL_RULES = {
   coup: {
     changes: ['nomination_eligibility', 'safety_replacement', 'tie_breaker'],
     rationale:
-      'Detox replaces the whole block and explicitly allows the current LOH to become a replacement nominee.',
+      'Detox replaces the whole block, can nominate the current LOH, and hands an LOH-blocked tie to the POS holder.',
   },
   spotlight: {
     changes: ['safety_replacement'],
@@ -155,10 +155,28 @@ export function canCastClassicEvictionVote(state: GameState, playerId: string): 
  * break the tie; this matters for Detox, which can put the LOH on the block.
  */
 export function getClassicEvictionTieBreakerId(state: GameState): string | null {
-  const candidateId = state.coLohIds && state.coLohIds.length >= 2 ? state.posWinnerId : state.lohId
-  if (!candidateId || !isActivePlayer(state, candidateId)) return null
-  if (state.nomineeIds.includes(candidateId)) return null
-  return candidateId
+  const isCoLohDay = Boolean(state.coLohIds && state.coLohIds.length >= 2)
+  const primaryCandidateId = isCoLohDay ? state.posWinnerId : state.lohId
+  if (
+    primaryCandidateId &&
+    isActivePlayer(state, primaryCandidateId) &&
+    !state.nomineeIds.includes(primaryCandidateId)
+  ) {
+    return primaryCandidateId
+  }
+
+  // Some shocks (currently Detox) can deliberately put the sitting LOH on the
+  // block. A nominee cannot break their own eviction tie, so the POS holder
+  // becomes the explicit emergency tie-break authority instead of silently
+  // falling through to a random elimination.
+  if (!isCoLohDay && state.lohId && state.nomineeIds.includes(state.lohId)) {
+    const fallbackId = state.posWinnerId
+    if (fallbackId && isActivePlayer(state, fallbackId) && !state.nomineeIds.includes(fallbackId)) {
+      return fallbackId
+    }
+  }
+
+  return null
 }
 
 /** Synthetic second-vote keys still belong to the same human voter. */
