@@ -663,6 +663,7 @@ export function createInitialGameState(options?: {
     nominationContext: null,
     awaitingPublicSave: false,
     votes: {},
+    batteryLowVoteEffects: {},
     awaitingHumanVote: false,
     awaitingTieBreak: false,
     tiedNomineeIds: null,
@@ -2502,6 +2503,7 @@ function resetVoxFinalThreeRound(state: GameState): void {
   state.awaitingFinal3Eviction = false
   state.awaitingFinal3Plea = false
   state.votes = {}
+  state.batteryLowVoteEffects = {}
   state.voteResults = null
   state.voteResultsMode = undefined
   state.pendingEviction = null
@@ -4503,6 +4505,35 @@ const gameSlice = createSlice({
       applyCompetitionSeasonUpdateToState(state, action.payload)
     },
 
+    /** Persist one-shot Battery Low vote effects without coupling them to Secret Missions. */
+    registerBatteryLowVoteEffects(
+      state,
+      action: PayloadAction<Record<string, 'doubleVote' | 'skipVote'>>
+    ) {
+      if (
+        state.mode === 'survival' ||
+        isVoxPopuliActive(state) ||
+        isCupidArrowActive(state) ||
+        state.doubleEviction?.weekActive === true
+      ) {
+        return
+      }
+      const activeIds = new Set(
+        state.players
+          .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+          .map((player) => player.id)
+      )
+      const validEntries = Object.entries(action.payload).filter(
+        ([playerId, effect]) =>
+          activeIds.has(playerId) && (effect === 'doubleVote' || effect === 'skipVote')
+      )
+      if (validEntries.length === 0) return
+      state.batteryLowVoteEffects = {
+        ...(state.batteryLowVoteEffects ?? {}),
+        ...Object.fromEntries(validEntries),
+      }
+    },
+
     /** Acknowledges the narrated opening without allowing a reload to replay it. */
     completeFinalThreeOpening(state) {
       if (state.phase !== 'final3') return
@@ -5193,6 +5224,9 @@ const gameSlice = createSlice({
         const voter = state.players.find((player) => player.id === voterId)
         if (voter && voter.status !== 'evicted' && voter.status !== 'jury') {
           voteMap[voterId] = nomineeId
+          if (state.batteryLowVoteEffects?.[voterId] === 'doubleVote') {
+            voteMap[`${voterId}__dv2`] = nomineeId
+          }
         }
       })
       state.awaitingHumanVote = false
@@ -8277,6 +8311,7 @@ const gameSlice = createSlice({
           state.nominationContext = null
           state.awaitingPublicSave = false
           state.votes = {}
+          state.batteryLowVoteEffects = {}
           state.voteResultsMode = 'house'
           state.awaitingHumanVote = false
           state.awaitingTieBreak = false
@@ -9287,6 +9322,9 @@ const gameSlice = createSlice({
                 )
             jointVoterIds.forEach((voterId) => {
               voteMap[voterId] = targetId
+              if (state.batteryLowVoteEffects?.[voterId] === 'doubleVote') {
+                voteMap[`${voterId}__dv2`] = targetId
+              }
             })
           }
 
@@ -9358,6 +9396,9 @@ const gameSlice = createSlice({
             votesByVoterId: { ...validVotesByVoterId },
             voteCounts: { ...voteCounts },
           }
+          // Battery Low vote effects last for one elimination only, even if the
+          // holder was nominated or otherwise unable to cast a ballot.
+          state.batteryLowVoteEffects = {}
 
           // ── Double Eviction: evict top 2 nominees ─────────────────────────
           if (state.doubleEviction?.weekActive && nominees.length >= 2) {
@@ -10027,6 +10068,7 @@ export const {
   skipMinigame,
   applyMinigameWinner,
   applyCompetitionSeasonUpdate,
+  registerBatteryLowVoteEffects,
   applyF3MinigameWinner,
   updateGamePRs,
   advance,
