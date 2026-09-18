@@ -139,6 +139,42 @@ describe('Reality alliance commitment and hierarchy', () => {
     expect(polarized.fractureRisk).toBeLessThan(0.42)
   })
 
+  it('lets a neglected alliance go dormant and later revive through renewed participation', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'dormant-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['nova'],
+      planIds: ['vote:nova'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    adjustRealityAllianceCommitment(state, alliance.id, 'ava', -0.4)
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.4)
+
+    expect(alliance.status).toBe('DORMANT')
+
+    for (let day = 3; day <= 9; day += 1) {
+      holdRealityAllianceMeeting(state, {
+        allianceId: alliance.id,
+        attendeeIds: ['ava', 'lia', 'kai'],
+        targetIds: ['nova'],
+        planIds: ['vote:nova'],
+        at: { day, phase: 'social_1' },
+      })
+    }
+
+    expect(alliance.status).toBe('ACTIVE')
+    expect(alliance.cohesion).toBeGreaterThanOrEqual(0.5)
+  })
+
   it('keeps explicit leak-driven fracture behavior separate from passive fracture pressure', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
