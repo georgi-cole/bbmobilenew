@@ -57,6 +57,13 @@ function alliancePlanDisagreement(alliance: RealityAlliance): number {
 export function refreshRealityAllianceDynamics(alliance: RealityAlliance): RealityAlliance {
   if (alliance.memberIds.length === 0) return alliance
 
+  alliance.memberCommitment ??= {}
+  alliance.memberPerceivedStatus ??= {}
+  alliance.memberPlanBeliefs ??= {}
+  alliance.knownLeakEventIds ??= []
+  alliance.leaderIds ??= []
+  alliance.founderIds ??= []
+
   const commitments = alliance.memberIds.map((id) =>
     clamp01(alliance.memberCommitment[id] ?? 0.5)
   )
