@@ -30,10 +30,7 @@ function makeClassicVoteState() {
 describe('Battery Low vote effects', () => {
   it('Power Cell duplicates the normal human ballot to the same nominee', () => {
     const { state, human, nominees } = makeClassicVoteState()
-    let next = gameReducer(
-      state,
-      registerBatteryLowVoteEffects({ [human.id]: 'doubleVote' }),
-    )
+    let next = gameReducer(state, registerBatteryLowVoteEffects({ [human.id]: 'doubleVote' }))
 
     next = gameReducer(next, submitHumanVote(nominees[0]!.id))
 
@@ -44,10 +41,7 @@ describe('Battery Low vote effects', () => {
 
   it('Blackout Cell makes its holder ineligible for the ordinary house ballot', () => {
     const { state, human } = makeClassicVoteState()
-    const next = gameReducer(
-      state,
-      registerBatteryLowVoteEffects({ [human.id]: 'skipVote' }),
-    )
+    const next = gameReducer(state, registerBatteryLowVoteEffects({ [human.id]: 'skipVote' }))
 
     expect(canCastClassicEvictionVote(next, human.id)).toBe(false)
   })
@@ -57,10 +51,7 @@ describe('Battery Low vote effects', () => {
     if (!state.voxPopuli) throw new Error('Expected Vox Populi state')
     state.voxPopuli.status = 'active'
 
-    const next = gameReducer(
-      state,
-      registerBatteryLowVoteEffects({ [human.id]: 'doubleVote' }),
-    )
+    const next = gameReducer(state, registerBatteryLowVoteEffects({ [human.id]: 'doubleVote' }))
 
     expect(next.batteryLowVoteEffects).toEqual({})
   })
