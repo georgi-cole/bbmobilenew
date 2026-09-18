@@ -83,7 +83,7 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
   const lowCommitmentShare =
     commitments.filter((value) => value <= 0.3).length / commitments.length
   const planDisagreement = alliancePlanDisagreement(alliance)
-  const leakPenalty = Math.min(0.24, alliance.knownLeakEventIds.length * 0.12)
+  const leakPenalty = Math.min(0.66, alliance.knownLeakEventIds.length * 0.22)
 
   alliance.cohesion = clamp01(mean - dispersion * 0.55 - planDisagreement * 0.18)
   alliance.fractureRisk = clamp01(
@@ -105,18 +105,6 @@ export function refreshRealityAllianceDynamics(alliance: RealityAlliance): Reali
         left.localeCompare(right)
     )
     .slice(0, 2)
-
-  if (alliance.status !== 'DISSOLVED' && alliance.status !== 'PROBATIONARY') {
-    if (alliance.fractureRisk >= 0.72) {
-      alliance.status = 'FRACTURED'
-    } else if (
-      alliance.status === 'FRACTURED' &&
-      alliance.fractureRisk <= 0.42 &&
-      alliance.cohesion >= 0.52
-    ) {
-      alliance.status = 'ACTIVE'
-    }
-  }
 
   return alliance
 }
@@ -513,6 +501,7 @@ export function leakRealityAlliance(
   alliance.suspectedByIds = [...new Set([...alliance.suspectedByIds, ...receiverIds])]
   alliance.secrecy = Math.max(0, alliance.secrecy - receiverIds.length * 0.16)
   refreshRealityAllianceDynamics(alliance)
+  if (alliance.fractureRisk >= 0.72) alliance.status = 'FRACTURED'
 }
 
 export interface RomanceSettings {
