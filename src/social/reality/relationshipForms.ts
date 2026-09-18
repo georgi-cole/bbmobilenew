@@ -111,13 +111,6 @@ export function renameRealityAlliance(
 
   const name = input.name.trim().replace(/\s+/g, ' ').slice(0, 28)
   if (name.length < 2) throw new Error('Alliance name is too short')
-  const duplicate = Object.values(state.alliances).some(
-    (candidate) =>
-      candidate.id !== alliance.id &&
-      candidate.name?.trim().toLowerCase() === name.toLowerCase() &&
-      candidate.status !== 'DISSOLVED'
-  )
-  if (duplicate) throw new Error('That alliance name is already in use')
   if (alliance.name === name) return alliance
 
   alliance.name = name
