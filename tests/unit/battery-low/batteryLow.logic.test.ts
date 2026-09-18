@@ -165,6 +165,17 @@ describe('Battery Low logic', () => {
     expect(getRevealEffectProfile(100).key).toBe('overcharge');
     expect(getRevealEffectProfile(50, 'doubleVote').key).toBe('power-cell');
     expect(getRevealEffectProfile(50, 'skipVote').key).toBe('blackout-cell');
+
+    const heroValues = VAULT_VERDICT_AMOUNTS.filter(
+      (amount) => getRevealEffectProfile(amount).hero,
+    );
+    expect(heroValues).toEqual([0, 6.66, 13, 42, 69, 100]);
+    expect(getRevealEffectProfile(50, 'doubleVote').hero).toBe(true);
+    expect(getRevealEffectProfile(50, 'skipVote').hero).toBe(true);
+    expect(getRevealEffectProfile(1).hero).toBe(false);
+    expect(getRevealEffectProfile(4.04).hero).toBe(false);
+    expect(getRevealEffectProfile(13.37).hero).toBe(false);
+    expect(getRevealEffectProfile(99).hero).toBe(false);
   });
 
   it('tracks the center battery max charge after reveals', () => {
