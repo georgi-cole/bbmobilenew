@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import prettier from 'prettier'
 
 const cwd = process.cwd()
@@ -92,25 +92,7 @@ for (const file of files) {
   }
 
   checked.push(file)
-  if (!currentClean) {
-    violations.push(file)
-    if (
-      file === 'src/components/VaultVerdict/VaultVerdict.tsx' ||
-      file === 'src/store/gameSlice.ts'
-    ) {
-      const formatted = await prettier.format(currentSource, options)
-      const tmpFile = `/tmp/prettier-${file.replaceAll('/', '-')}`
-      await writeFile(tmpFile, formatted, 'utf8')
-      const diff = spawnSync('diff', ['-u', file, tmpFile], {
-        cwd,
-        encoding: 'utf8',
-        maxBuffer: 20 * 1024 * 1024,
-      })
-      console.error(`PRETTIER_DIAGNOSTIC_START:${file}`)
-      console.error(diff.stdout)
-      console.error(`PRETTIER_DIAGNOSTIC_END:${file}`)
-    }
-  }
+  if (!currentClean) violations.push(file)
 }
 
 console.log(`Strictly checked: ${checked.length}`)
