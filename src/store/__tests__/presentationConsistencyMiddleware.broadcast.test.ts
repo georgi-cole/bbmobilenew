@@ -158,9 +158,7 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
       status: 'available' as const,
     }
 
-    expect(
-      isEvictionVoteBreakdownActive(legacyUnlock, 4, 'week_end', 'current-season')
-    ).toBe(false)
+    expect(isEvictionVoteBreakdownActive(legacyUnlock, 4, 'week_end', 'current-season')).toBe(false)
   })
 
   it('leaves ordinary TV events untouched', () => {
