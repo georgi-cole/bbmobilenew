@@ -641,9 +641,10 @@
     box-shadow 0.2s ease;
 }
 
-/* Live vote: reuse the nomination transition's inner-frame treatment, dyed red.
-   The emphasis stays inside each nominee tile instead of becoming a separate
-   border glow or an overlay across the roster. */
+/* Live vote: keep the red frame static, then fake a radiating danger halo
+   on the existing ::before layer. Only opacity + transform animate, so the
+   browser can composite the pulse cheaply instead of repainting blur/shadow
+   geometry every frame. */
 .liveEvictionNominee {
   border-color: rgba(248, 87, 87, 0.86);
   box-shadow:
@@ -654,22 +655,35 @@
 }
 
 .liveEvictionNominee::before {
-  animation: liveEvictionNomineeSweep 2.2s linear infinite;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(248, 87, 87, 0) 44%,
+    rgba(248, 87, 87, 0.08) 66%,
+    rgba(220, 38, 38, 0.28) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(248, 87, 87, 0.2),
+    inset 0 0 14px 3px rgba(220, 38, 38, 0.16);
+  opacity: 0.34;
+  transform: scale(0.985);
+  transform-origin: center;
+  will-change: opacity, transform;
+  animation: liveEvictionDangerBreath 1.75s ease-in-out infinite;
 }
 
-@keyframes liveEvictionNomineeSweep {
+@keyframes liveEvictionDangerBreath {
   0%,
   100% {
-    box-shadow:
-      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
-      inset -18px 0 24px rgba(220, 38, 38, 0.34),
-      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
+    opacity: 0.28;
+    transform: scale(0.985);
   }
-  50% {
-    box-shadow:
-      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
-      inset 18px 0 24px rgba(248, 87, 87, 0.42),
-      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
+  36% {
+    opacity: 0.82;
+    transform: scale(1.035);
+  }
+  58% {
+    opacity: 0.48;
+    transform: scale(1.01);
   }
 }
 
