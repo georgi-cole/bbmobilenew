@@ -19,6 +19,7 @@ import {
   applyRealityApology,
   createRealityAlliance,
   createRealityGrievance,
+  coordinateRealityAllianceTarget,
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
   markRealityAllianceInfiltratorIfSecondary,
@@ -216,6 +217,23 @@ function applyRealityLifecycle(input: {
       status: 'ACTIVE',
     })
     event.relatedPromiseIds.push(promiseId)
+  }
+
+  if (
+    subjectId &&
+    ['pitch_target', 'rally_votes_against', 'suggest_replacement'].includes(action.id)
+  ) {
+    const kind = action.id === 'suggest_replacement' ? 'FALLBACK' : 'CURRENT'
+    for (const targetId of acceptedTargets) {
+      coordinateRealityAllianceTarget(domain, {
+        actorId: interaction.actorId,
+        partnerId: targetId,
+        subjectId,
+        kind,
+        at,
+        sourceEventId: event.id,
+      })
+    }
   }
 
   if (action.purposes.includes('ROMANCE')) {
