@@ -319,6 +319,8 @@ describe('critical shock / ruleset matrix', () => {
     expect(resolved.phase).toBe('eviction_results')
     expect(resolved.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(0)
     expect(resolved.pendingExitContext?.voteCounts[loh.id]).toBe(0)
+    expect(resolved.votes[loh.id]).toBeUndefined()
+    expect(resolved.pendingExitContext?.votesByVoterId[loh.id]).toBeUndefined()
     expect(resolved.pendingEviction?.evicteeId).toBeDefined()
     expect(resolved.awaitingTieBreak).toBe(false)
   })
