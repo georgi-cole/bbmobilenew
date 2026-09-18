@@ -73,7 +73,12 @@ import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './inte
 import { allianceIdentityBias, type AiGameIdentity } from '../ai/aiGameIdentity'
 import { getCupidPartnerId } from '../features/twists/cupidArrow'
 import type { GameState } from '../types'
-import { chooseAiEvictionVote, getNominationTargetScore } from '../store/gameSlice'
+import {
+  chooseAiEvictionVote,
+  getEligibleNominationTargets,
+  getEligibleReplacementNominees,
+  getNominationTargetScore,
+} from '../store/gameSlice'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -717,27 +722,13 @@ function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: str
 }
 
 function allianceStrategySubject(
-  state: DriverState,
+  game: GameState,
   actorId: string,
   excludedIds: ReadonlySet<string>,
-  options: { nomineesOnly?: boolean; nonNomineesOnly?: boolean } = {}
+  candidates: readonly GameState['players'][number][]
 ): string | undefined {
-  const game = state.game as unknown as GameState
-  const candidates = game.players.filter((candidate) => {
-    if (
-      candidate.id === actorId ||
-      excludedIds.has(candidate.id) ||
-      candidate.status === 'evicted' ||
-      candidate.status === 'jury'
-    ) {
-      return false
-    }
-    const nominated = game.nomineeIds.includes(candidate.id)
-    if (options.nomineesOnly && !nominated) return false
-    if (options.nonNomineesOnly && nominated) return false
-    return true
-  })
   return candidates
+    .filter((candidate) => candidate.id !== actorId && !excludedIds.has(candidate.id))
     .map((candidate) => ({
       id: candidate.id,
       score: getNominationTargetScore(game, actorId, candidate),
@@ -753,6 +744,30 @@ function allianceHumanStrategyCandidate(
   const alliance = liveAllianceWithHuman(state, player.id, human.id)
   if (!alliance) return null
 
+  const excludedIds = new Set(alliance.memberIds)
+  const phase = state.game.phase
+  const game = state.game as unknown as GameState
+  const humanIsLoh =
+    game.lohId === human.id || getCupidPartnerId(game, game.lohId) === human.id
+  const humanHasSafety =
+    game.posWinnerId === human.id || getCupidPartnerId(game, game.posWinnerId) === human.id
+
+  const strategyActionId =
+    humanIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)
+      ? 'pitch_target'
+      : humanHasSafety && ['pos_results', 'pos_ceremony'].includes(phase)
+        ? 'suggest_replacement'
+        : ['pos_ceremony_results', 'social_2'].includes(phase) &&
+            game.nomineeIds.length > 1 &&
+            !human.status.includes('nominated') &&
+            !humanIsLoh
+          ? 'rally_votes_against'
+          : null
+  if (!strategyActionId) return null
+
+  const strategyAction = getActionById(strategyActionId)
+  if (!strategyAction) return null
+  const strategyCosts = normalizeActionCosts(strategyAction, 1, true)
   const activeAiMembers = alliance.memberIds
     .filter((id) => id !== human.id)
     .filter((id) =>
@@ -760,6 +775,12 @@ function allianceHumanStrategyCandidate(
         (candidate) =>
           candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
       )
+    )
+    .filter(
+      (id) =>
+        (state.social.energyBank[id] ?? 0) >= strategyCosts.energy &&
+        (state.social.influenceBank[id] ?? 0) >= strategyCosts.influence &&
+        (state.social.infoBank[id] ?? 0) >= strategyCosts.info
     )
     .sort(
       (left, right) =>
@@ -769,19 +790,16 @@ function allianceHumanStrategyCandidate(
     )
   if (activeAiMembers[0] !== player.id) return null
 
-  const excludedIds = new Set(alliance.memberIds)
-  const phase = state.game.phase
-  const game = state.game as unknown as GameState
-  const humanIsLoh =
-    game.lohId === human.id || getCupidPartnerId(game, game.lohId) === human.id
-  const humanHasSafety =
-    game.posWinnerId === human.id || getCupidPartnerId(game, game.posWinnerId) === human.id
-
-  if (humanIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
-    const subjectId = allianceStrategySubject(state, player.id, excludedIds)
+  if (strategyActionId === 'pitch_target') {
+    const subjectId = allianceStrategySubject(
+      game,
+      player.id,
+      excludedIds,
+      getEligibleNominationTargets(game, human.id)
+    )
     return subjectId
       ? {
-          actionId: 'pitch_target',
+          actionId: strategyActionId,
           targetIds: [human.id],
           subjectId,
           reason: 'alliance spokesperson pitching the human LOH',
@@ -789,13 +807,16 @@ function allianceHumanStrategyCandidate(
       : null
   }
 
-  if (humanHasSafety && ['pos_results', 'pos_ceremony'].includes(phase)) {
-    const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
-      nonNomineesOnly: true,
-    })
+  if (strategyActionId === 'suggest_replacement') {
+    const subjectId = allianceStrategySubject(
+      game,
+      player.id,
+      excludedIds,
+      getEligibleReplacementNominees(game)
+    )
     return subjectId
       ? {
-          actionId: 'suggest_replacement',
+          actionId: strategyActionId,
           targetIds: [human.id],
           subjectId,
           reason: 'alliance spokesperson coordinating a Safety replacement',
@@ -803,29 +824,20 @@ function allianceHumanStrategyCandidate(
       : null
   }
 
-  if (
-    ['pos_ceremony_results', 'social_2'].includes(phase) &&
-    game.nomineeIds.length > 1 &&
-    !human.status.includes('nominated') &&
-    !humanIsLoh
-  ) {
-    const subjectId = chooseAiEvictionVote(
-      game,
-      player.id,
-      [...game.nomineeIds],
-      (game.seed ?? 0) ^ game.week
-    )
-    return subjectId
-      ? {
-          actionId: 'rally_votes_against',
-          targetIds: [human.id],
-          subjectId,
-          reason: 'alliance spokesperson aligning the human vote',
-        }
-      : null
-  }
-
-  return null
+  const subjectId = chooseAiEvictionVote(
+    game,
+    player.id,
+    [...game.nomineeIds],
+    (game.seed ?? 0) ^ game.week
+  )
+  return subjectId
+    ? {
+        actionId: strategyActionId,
+        targetIds: [human.id],
+        subjectId,
+        reason: 'alliance spokesperson aligning the human vote',
+      }
+    : null
 }
 
 function relationshipCandidateForPlayer(
