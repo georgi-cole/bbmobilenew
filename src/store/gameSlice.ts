@@ -1535,6 +1535,16 @@ function getReplacementEligiblePlayers(
   return nonProtected.length >= neededCount ? nonProtected : baseEligible
 }
 
+export function getEligibleReplacementNominees(
+  state: GameState,
+  actorId: string | null | undefined = state.lohId
+): Player[] {
+  const alivePlayers = state.players.filter(
+    (player) => player.status !== 'evicted' && player.status !== 'jury'
+  )
+  return getReplacementEligiblePlayers(state, alivePlayers, 1, { actorId })
+}
+
 function isEligibleReplacementNominee(
   state: GameState,
   playerId: string,
@@ -2016,6 +2026,45 @@ function getVoxNominationImmunityId(state: GameState): string | null {
 
 function getVoxBallotSize(state: GameState): number {
   return isVoxFinalFour(state) ? 1 : 2
+}
+
+export function getEligibleNominationTargets(state: GameState, actorId: string): Player[] {
+  const alive = getAlivePlayers(state)
+
+  if (isVoxPopuliActive(state)) {
+    const immunityWinnerId = getVoxNominationImmunityId(state)
+    const autoNomineeId = state.voxPopuli?.autoNomineeId ?? state.lastHohCompFinisherId ?? null
+    return collapseCupidCandidates(
+      state,
+      alive.filter(
+        (candidate) =>
+          candidate.id !== actorId &&
+          candidate.id !== immunityWinnerId &&
+          candidate.id !== autoNomineeId &&
+          canPlayerTargetPlayer(state, actorId, candidate.id)
+      )
+    )
+  }
+
+  const lohUnitIds = new Set(expandCupidIds(state, state.lohId ? [state.lohId] : [actorId]))
+  let candidates = collapseCupidCandidates(
+    state,
+    alive.filter(
+      (candidate) =>
+        candidate.id !== actorId &&
+        !lohUnitIds.has(candidate.id) &&
+        canPlayerTargetPlayer(state, state.lohId ?? actorId, candidate.id)
+    )
+  )
+
+  const canUsePublicAutoNominee =
+    state.publicModeEnabled === true && state.doubleEviction?.weekActive !== true
+  if (canUsePublicAutoNominee && state.lastHohCompFinisherId) {
+    const forcedUnitIds = new Set(expandCupidIds(state, [state.lastHohCompFinisherId]))
+    candidates = candidates.filter((candidate) => !forcedUnitIds.has(candidate.id))
+  }
+
+  return candidates
 }
 
 function castVoxAiNominationBallots(state: GameState, rng: () => number) {
