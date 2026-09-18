@@ -65,7 +65,9 @@ describe('Reality alliance ecology calibration', () => {
         (sum, alliance) => sum + new Set(alliance.overlapAllianceIds).size,
         0
       )
-      infiltratorAlliances += alliances.filter((alliance) => alliance.infiltratorIds.length > 0).length
+      infiltratorAlliances += alliances.filter(
+        (alliance) => alliance.infiltratorIds.length > 0
+      ).length
       nonGenuineAlliances += alliances.filter((alliance) => !alliance.genuine).length
 
       for (const alliance of alliances) {
@@ -89,9 +91,7 @@ describe('Reality alliance ecology calibration', () => {
           membershipLoad.set(memberId, (membershipLoad.get(memberId) ?? 0) + 1)
         }
       }
-      maxLivePactsPerActorPerSeason.push(
-        Math.max(0, ...Array.from(membershipLoad.values()))
-      )
+      maxLivePactsPerActorPerSeason.push(Math.max(0, ...Array.from(membershipLoad.values())))
 
       const liveCommitments = live.flatMap((alliance) =>
         alliance.memberIds.map((memberId) => alliance.memberCommitment[memberId] ?? 0.5)
