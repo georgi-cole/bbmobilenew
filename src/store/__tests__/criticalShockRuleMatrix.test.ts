@@ -362,17 +362,11 @@ describe('critical shock / ruleset matrix', () => {
     expect(resolved.pendingEviction?.evicteeId).toBe(firstNomineeId)
     expect(resolved.doubleEviction?.pendingSecondEviction?.evicteeId).toBe(secondNomineeId)
 
-    const afterFirst = criticalGameReducer(
-      resolved,
-      finalizePendingEviction(firstNomineeId)
-    )
+    const afterFirst = criticalGameReducer(resolved, finalizePendingEviction(firstNomineeId))
     expect(afterFirst.pendingEviction?.evicteeId).toBe(secondNomineeId)
     expect(afterFirst.doubleEviction?.pendingSecondEviction).toBeNull()
 
-    const afterSecond = criticalGameReducer(
-      afterFirst,
-      finalizePendingEviction(secondNomineeId)
-    )
+    const afterSecond = criticalGameReducer(afterFirst, finalizePendingEviction(secondNomineeId))
     expect(['evicted', 'jury']).toContain(
       afterSecond.players.find((player) => player.id === firstNomineeId)?.status
     )
