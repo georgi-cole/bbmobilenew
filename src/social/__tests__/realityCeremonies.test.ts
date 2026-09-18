@@ -8,13 +8,14 @@ import {
   generateRealityJuryQuestion,
   holdRealityAllianceMeeting,
   recordRealityCeremonyOutcome,
+  removeRealityAllianceMember,
   scoreRealityNominationCandidate,
   setRealityIntendedVote,
   setRealityStatedVote,
   upsertRealityPromise,
 } from '../reality'
 import { aiJurorVote, realityJurorScorecard } from '../../utils/juryUtils'
-import socialReducer, { recordRealityCeremony } from '../socialSlice'
+import socialReducer, { recordRealityCeremony, replaceRealityDomain } from '../socialSlice'
 
 describe('Reality ceremony aftermath', () => {
   it('turns official ceremonies into facts, memories, goals, and public perception', () => {
@@ -248,6 +249,45 @@ describe('Reality alliance ceremony consequences', () => {
       'vote-reveal-against-lia'
     )
     expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
+  })
+})
+
+describe('Reality alliance exit projection', () => {
+  it('removes the live alliance tag and projects a broken membership after expulsion', () => {
+    const initial = socialReducer(undefined, { type: 'init' })
+    const reality = createInitialRealityDomainState(initial.relationships)
+    const alliance = createRealityAlliance(reality, {
+      id: 'exit-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.memberCommitment.ava = 0.9
+    alliance.memberCommitment.lia = 0.85
+    alliance.memberCommitment.kai = 0.05
+    alliance.memberPerceivedStatus.ava = 'CORE'
+    alliance.memberPerceivedStatus.lia = 'CORE'
+    alliance.memberPerceivedStatus.kai = 'PERIPHERAL'
+    alliance.leaderIds = ['ava', 'lia']
+
+    let state = socialReducer(initial, replaceRealityDomain(reality))
+    expect(state.relationships.ava.kai.tags).toContain('alliance')
+
+    const nextReality = structuredClone(state.reality)
+    removeRealityAllianceMember(nextReality, {
+      allianceId: alliance.id,
+      memberId: 'kai',
+      actorId: 'ava',
+      kind: 'EXPELLED',
+      at: { day: 4, phase: 'social_2' },
+      sourceEventId: 'expel-kai',
+    })
+    state = socialReducer(state, replaceRealityDomain(nextReality))
+
+    expect(state.relationships.ava.kai.tags).not.toContain('alliance')
+    expect(state.relationships.ava.kai.tags).toContain('broken_alliance')
   })
 })
 
