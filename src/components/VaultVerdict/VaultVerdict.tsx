@@ -127,9 +127,6 @@ function BatteryTile({
   const isOpened = battery.status === 'opened'
   const isReserve = battery.status === 'personal'
   const isFinalWall = battery.status === 'remainingFinalWallVault'
-  const specialLabel = isOpened
-    ? getSpecialRevealLabel(battery.amount, battery.specialEffect)
-    : null
   const specialTitle =
     battery.specialEffect === 'doubleVote'
       ? 'POWER'
@@ -167,12 +164,10 @@ function BatteryTile({
             {specialTitle ?? formatVaultAmount(battery.amount)}
           </strong>
           <span className="vault-verdict__pod-number">#{battery.displayNumber}</span>
-          {battery.specialEffect ? (
+          {battery.specialEffect && (
             <em className="vault-verdict__pod-special">
               Ranks {formatVaultAmount(battery.amount)}
             </em>
-          ) : (
-            specialLabel && <em className="vault-verdict__pod-special">{specialLabel}</em>
           )}
         </>
       ) : isReserve ? (
