@@ -46,6 +46,31 @@ describe('early Reality Mode player balance', () => {
     expect(chooseAiEvictionVote(state, voter.id, [human.id, aiNominee.id], 42)).toBe(human.id)
   })
 
+  it('scores a neutral human exactly like an equivalent AI nomination target on Days 1-3', () => {
+    const state = createInitialGameState()
+    const human = state.players.find((player) => player.isUser)!
+    const loh = state.players.find((player) => !player.isUser)!
+    const ai = state.players.find((player) => !player.isUser && player.id !== loh.id)!
+
+    human.stats = { lohWins: 0, posWins: 0, timesNominated: 0 }
+    ai.stats = { lohWins: 0, posWins: 0, timesNominated: 0 }
+    human.competitionProfile = undefined
+    ai.competitionProfile = undefined
+    state.strategicRelationships = {
+      [loh.id]: {
+        [human.id]: { affinity: 0, tags: [] },
+        [ai.id]: { affinity: 0, tags: [] },
+      },
+    }
+
+    for (const week of [1, 2, 3]) {
+      state.week = week
+      expect(getNominationTargetScore(state, loh.id, human)).toBe(
+        getNominationTargetScore(state, loh.id, ai)
+      )
+    }
+  })
+
   it('treats prior nomination as a moderate revenge motive that alliances can override', () => {
     const state = createInitialGameState()
     const newLoh = state.players.find((player) => player.isUser)!
