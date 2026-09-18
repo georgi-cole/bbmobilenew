@@ -1,5 +1,6 @@
 import type { Reducer, UnknownAction } from '@reduxjs/toolkit'
 import type { GameState, Player, TvEvent } from '../types'
+import { getCompetitionPerceptionRead } from '../ai/competition'
 import { TWIN_SHOCK_ALI_ID, TWIN_SHOCK_LIA_ID } from '../bb/twinShock'
 
 export type LohNominationStrategy = 'direct' | 'backdoor'
@@ -132,13 +133,13 @@ function isCanonicalPlanningDay(state: GameState): boolean {
   return true
 }
 
-function competitionStrength(player: Player): number {
-  const profile = player.competitionProfile
-  const base =
-    profile?.overall ??
-    (profile ? (profile.physical + profile.mental + profile.precision + profile.nerve) / 4 : 50)
+function competitionStrength(state: GameState, player: Player): number {
+  const read = getCompetitionPerceptionRead(
+    player.competitionProfile,
+    state.competitionSeasonStateByPlayerId?.[player.id]
+  )
   const wins = (player.stats?.lohWins ?? 0) + (player.stats?.posWins ?? 0)
-  return clamp(base + Math.min(24, wins * 6), 0, 100)
+  return clamp(read.perceivedStrength + Math.min(24, wins * 6), 0, 100)
 }
 
 function incomingSocialShield(state: GameState, candidateId: string): number {
@@ -157,7 +158,7 @@ function incomingSocialShield(state: GameState, candidateId: string): number {
 }
 
 function coldStartVulnerability(state: GameState, lohId: string, candidate: Player): number {
-  const comp = competitionStrength(candidate)
+  const comp = competitionStrength(state, candidate)
   const shield = incomingSocialShield(state, candidate.id)
   const retaliationAffinity = affinity(state, candidate.id, lohId)
   const retaliationRisk = Math.max(0, -retaliationAffinity) * 0.12
@@ -196,10 +197,15 @@ function choosePawns(
       const allyPenalty =
         hasAnyTag(tags, ALLY_TAGS) || affinity(state, lohId, candidate.id) >= 45 ? 80 : 0
       const hostilePenalty = hasAnyTag(tags, HOSTILE_TAGS) ? 18 : 0
+      const competitionRead = getCompetitionPerceptionRead(
+        candidate.competitionProfile,
+        state.competitionSeasonStateByPlayerId?.[candidate.id]
+      )
       const utility =
         incomingSocialShield(state, candidate.id) * 0.42 -
         scoreFn(state, lohId, candidate) * 0.34 -
-        competitionStrength(candidate) * 0.12 -
+        competitionStrength(state, candidate) * 0.12 +
+        competitionRead.pawnSuitability * 0.65 -
         allyPenalty -
         hostilePenalty +
         seededUnit(`${state.gameId}:${state.week}:${lohId}:${candidate.id}:pawn`) * 4
@@ -234,7 +240,7 @@ function calculateBackdoorChance(
 
   const tags = relationshipTags(state, lohId, target.id)
   const wins = (target.stats?.lohWins ?? 0) + (target.stats?.posWins ?? 0)
-  const comp = competitionStrength(target)
+  const comp = competitionStrength(state, target)
   const hostility = hasAnyTag(tags, HOSTILE_TAGS) || affinity(state, lohId, target.id) <= -30
   const seriousThreat = comp >= 64 || wins > 0 || hostility || targetScore - secondScore >= 36
   if (!seriousThreat) return 0
