@@ -193,6 +193,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
   const [sessionSeed] = useState(() => createVaultVerdictRng(seedProp).seed)
   const rng = useMemo(() => createVaultVerdictRng(sessionSeed).rng, [sessionSeed])
   const startTimeRef = useRef<number | null>(null)
+  const heroTimerRef = useRef<number | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [feed, setFeed] = useState<BroadcastEvent[]>([])
   const [feedIndex, setFeedIndex] = useState(0)
@@ -297,28 +298,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
       : `${human.currentRound}:${human.offerHistory.length}:${human.currentOffer}`
   const decisionPending = offerKey != null && pendingOfferKey === offerKey
 
-  useEffect(() => {
-    if (!latestRevealVaultId || !latestRevealProfile?.hero) {
-      setHeroEventVaultId(null)
-      return
-    }
-
-    setHeroEventVaultId(latestRevealVaultId)
-    if (latestRevealProfile.soundKey) {
-      play(latestRevealProfile.soundKey, { volume: latestRevealProfile.soundVolume ?? 0.42 })
-    }
-
-    const timer = window.setTimeout(() => {
-      setHeroEventVaultId((current) => (current === latestRevealVaultId ? null : current))
-    }, 1800)
-    return () => window.clearTimeout(timer)
-  }, [
-    latestRevealProfile?.hero,
-    latestRevealProfile?.soundKey,
-    latestRevealProfile?.soundVolume,
-    latestRevealVaultId,
-    play,
-  ])
+  useEffect(
+    () => () => {
+      if (heroTimerRef.current != null) window.clearTimeout(heroTimerRef.current)
+    },
+    []
+  )
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return
@@ -383,6 +368,24 @@ export default function BatteryLow(props: GenericMinigameProps) {
   }
 
   function handleOpenVault(vaultId: string, eventTimeMs: number) {
+    const battery = human.vaults.find((entry) => entry.vaultId === vaultId)
+    if (battery) {
+      const profile = getRevealEffectProfile(battery.amount, battery.specialEffect)
+      if (profile.hero) {
+        if (heroTimerRef.current != null) window.clearTimeout(heroTimerRef.current)
+        setHeroEventVaultId(vaultId)
+        if (profile.soundKey) {
+          play(profile.soundKey, { volume: profile.soundVolume ?? 0.42 })
+        }
+        heroTimerRef.current = window.setTimeout(() => {
+          setHeroEventVaultId((current) => (current === vaultId ? null : current))
+          heroTimerRef.current = null
+        }, 1800)
+      } else {
+        setHeroEventVaultId(null)
+      }
+    }
+
     const openedAt = startTimeRef.current == null ? 0 : eventTimeMs - startTimeRef.current
     updateHuman((current) => maybeCreateOffer(openWallVault(current, vaultId, openedAt), rng))
   }
