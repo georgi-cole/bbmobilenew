@@ -1587,6 +1587,63 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
     },
   ],
 
+  alliance_nomination_pitch: makeScenePool(
+    'alliance_nomination_pitch',
+    [
+      '{subject} is the move I would make with your LOH. That is where I want the pressure.',
+      'If you want my read, put {subject} on the block. I think that gives us the cleanest week.',
+      'I keep coming back to {subject}. With your LOH, that is the name I would use.',
+    ],
+    [
+      'I trust you with the power, but I want to be clear: my preference is {subject}.',
+      'We do not have to see every move the same way, but I think {subject} is best for us.',
+      'I wanted to tell you privately before nominations: I would feel safest with {subject} up.',
+    ],
+    [
+      'One more thing before nominations lock: I am still on {subject}.',
+      'My read has not changed. If we are comparing notes, {subject} is still my choice.',
+      'Before you decide, I want my vote in the room: I would nominate {subject}.',
+    ]
+  ),
+
+  alliance_safety_pitch: makeScenePool(
+    'alliance_safety_pitch',
+    [
+      'If Safety opens the block, I want {subject} as the replacement.',
+      'If you use the power, {subject} is the replacement that makes the most sense to me.',
+      'My replacement read is {subject}. That is where I would redirect the week.',
+    ],
+    [
+      'If the nominations move, I would feel best with {subject} taking the open seat.',
+      'I trust your call on Safety. My preference, if a seat opens, is {subject}.',
+      'I do not want to overplay it, but if the block changes I would put {subject} there.',
+    ],
+    [
+      'If Safety changes anything, I am still leaning {subject} for the open seat.',
+      'My replacement idea has not moved: {subject}.',
+      'Before the Safety decision lands, I want you to know I still see {subject} as the replacement.',
+    ]
+  ),
+
+  alliance_vote_pitch: makeScenePool(
+    'alliance_vote_pitch',
+    [
+      'For the vote, I am on {subject}. I want us lined up if you see it the same way.',
+      'My vote is {subject}. I am checking whether we are together on that.',
+      'I want {subject} out. That is the direction I am taking into the vote.',
+    ],
+    [
+      'I do not want to force your hand, but my preference is {subject}.',
+      'If we are comparing votes, I am leaning {subject}.',
+      'I trust you to make your own call. I just want you to know my vote is {subject}.',
+    ],
+    [
+      'My vote has not moved. I am still on {subject}.',
+      'Before we lock anything, I am still voting {subject}.',
+      'Last check before the vote: I am staying with {subject}.',
+    ]
+  ),
+
   generic_check_in: [
     {
       id: 'gci_casual',
