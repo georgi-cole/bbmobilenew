@@ -155,7 +155,7 @@ describe('RealityLedger privacy projection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'house' }))
 
     expect(screen.getByText(/You \(Leader\)/)).toBeInTheDocument()
-    expect(screen.getByText(/Lia \(Leader\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Lia \(Co-leader\)/)).toBeInTheDocument()
     expect(screen.getByText(/Kai \(Regular\)/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename alliance' }))
