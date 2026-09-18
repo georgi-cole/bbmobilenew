@@ -341,15 +341,16 @@ describe('critical shock / ruleset matrix', () => {
     const [firstNomineeId, secondNomineeId, thirdNomineeId] = state.nomineeIds
     const voters = alive(state).filter((player) => canCastClassicEvictionVote(state, player.id))
     if (voters.length < 5) throw new Error('Expected enough Double Elimination voters')
-    state.votes = {}
+    const deterministicVotes: Record<string, string> = {}
     voters.forEach((voter, index) => {
-      state.votes![voter.id] =
+      deterministicVotes[voter.id] =
         index < Math.ceil(voters.length * 0.6)
           ? firstNomineeId
           : index < voters.length - 1
             ? secondNomineeId
             : thirdNomineeId
     })
+    state = { ...state, votes: deterministicVotes }
 
     const resolved = criticalGameReducer(state, advance())
     expect(resolved.phase).toBe('eviction_results')
@@ -539,7 +540,7 @@ describe('critical shock / ruleset matrix', () => {
 
     expect(state.nomineeIds).toContain(loh.id)
     expect(canCastClassicEvictionVote(state, loh.id)).toBe(false)
-    expect(getClassicEvictionTieBreakerId(state)).toBeNull()
+    expect(getClassicEvictionTieBreakerId(state)).toBe(humanHolder.id)
 
     const eligibleVoters = alive(state).filter((player) =>
       canCastClassicEvictionVote(state, player.id)
