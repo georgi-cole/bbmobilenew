@@ -1707,7 +1707,11 @@ function getSafetyRelationshipBreakdown(
   return { total: score, factors }
 }
 
-export function getSafetyRelationshipScore(state: GameState, holderId: string, nominee: Player): number {
+export function getSafetyRelationshipScore(
+  state: GameState,
+  holderId: string,
+  nominee: Player
+): number {
   return getSafetyRelationshipBreakdown(state, holderId, nominee).total
 }
 
@@ -2089,8 +2093,7 @@ function shouldAiUseTargetedSafetyPower(
       tags.has('betrayal')
     )
   })
-  const strategicUpgrade =
-    hasStrategicReplacement && replacementValue > currentValue + 18
+  const strategicUpgrade = hasStrategicReplacement && replacementValue > currentValue + 18
   let useChance = strategicUpgrade ? 0.35 : 0.05
   if (bestRelationship >= 75) useChance += 0.5
   else if (bestRelationship >= 45) useChance += 0.35
