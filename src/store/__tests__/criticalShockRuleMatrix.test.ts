@@ -158,6 +158,25 @@ describe('critical shock / ruleset matrix', () => {
     expect(detoxRejected.tvFeed[0]?.text).toMatch(/unavailable during Vox Populi/i)
   })
 
+  it('rejects forced shocks immediately while Cupid owns the season', () => {
+    const state = cleanState(503)
+    state.expansionMode = 'cupidArrow'
+    state.cupidArrow = {
+      scheduledSeason: state.season,
+      status: 'scheduled',
+      activatedSeason: null,
+      activatedWeek: null,
+      pairs: [],
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
+      visualsRevealed: false,
+    }
+
+    const result = criticalGameReducer(state, queueForcedShock('doubleEviction'))
+    expect(result.pendingForcedShock).toBeNull()
+    expect(result.tvFeed[0]?.text).toMatch(/unavailable while Cupid's Arrow/i)
+  })
+
   it('restores a Battle Back winner to the active Classic eligibility pool', () => {
     let state = cleanState(505)
     const returnee = alive(state).find((player) => !player.isUser)
