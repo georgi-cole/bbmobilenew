@@ -13,6 +13,7 @@ export type AiPersonality = 'cautious' | 'balanced' | 'greedy' | 'chaotic' | 'sh
 export type OutcomeType = 'signedVerdict' | 'openedVault';
 export type ContestantStatus = 'Charging' | 'Locked' | 'Final Battery' | 'Finished';
 export type BroadcastKind = 'decision' | 'amount' | 'round' | 'flavor' | 'final';
+export type BatteryLowVoteEffect = 'doubleVote' | 'skipVote';
 
 export interface VaultPodState {
   vaultId: string;
@@ -20,6 +21,8 @@ export interface VaultPodState {
   amount: number;
   status: VaultStatus;
   openedAt: number | null;
+  /** Optional one-shot season consequence carried only when this is the final Reserve. */
+  specialEffect?: BatteryLowVoteEffect | null;
 }
 
 export interface OfferRecord {
@@ -80,13 +83,13 @@ const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'ch
 const DRAMATIC_AMOUNTS = new Set([0, 4.04, 6.66, 13.37, 42, 69, 99, 100]);
 const TOP_AMOUNTS = new Set([88, 91, 95, 99, 100]);
 const OFFER_MULTIPLIERS: Array<[number, number]> = [
-  [0.45, 0.65],
-  [0.52, 0.73],
-  [0.6, 0.84],
-  [0.7, 0.95],
-  [0.78, 1.05],
-  [0.86, 1.15],
-  [0.92, 1.25],
+  [0.65, 0.8],
+  [0.72, 0.88],
+  [0.8, 0.96],
+  [0.86, 1.03],
+  [0.92, 1.1],
+  [0.96, 1.15],
+  [1.0, 1.2],
 ];
 
 function randomInt(rng: () => number, min: number, max: number) {
@@ -142,7 +145,7 @@ export function createVaultVerdictRng(seed = 0) {
   };
 }
 
-export function createVaultPods(seed: number): VaultPodState[] {
+export function createVaultPods(seed: number, voteEffectsEnabled = true): VaultPodState[] {
   const rng = mulberry32(seed >>> 0);
   const amounts = shuffle(VAULT_VERDICT_AMOUNTS, rng);
   return amounts.map((amount, index) => ({
@@ -151,6 +154,13 @@ export function createVaultPods(seed: number): VaultPodState[] {
     amount,
     status: 'available',
     openedAt: null,
+    specialEffect: voteEffectsEnabled
+      ? amount === 1
+        ? 'doubleVote'
+        : amount === 0
+          ? 'skipVote'
+          : null
+      : null,
   }));
 }
 
@@ -183,7 +193,9 @@ export function getHighestRemainingValue(contestant: Pick<VaultContestantState, 
   return Math.max(0, ...calculateRemainingValues(contestant));
 }
 
-export function getSpecialRevealLabel(value: number) {
+export function getSpecialRevealLabel(value: number, effect?: BatteryLowVoteEffect | null) {
+  if (effect === 'doubleVote') return 'POWER CELL · DOUBLE VOTE';
+  if (effect === 'skipVote') return 'BLACKOUT CELL · SKIP VOTE';
   const labels = new Map<number, string>([
     [0, 'DEAD CELL'],
     [4.04, 'BATTERY NOT FOUND'],
@@ -225,6 +237,7 @@ export function createInitialContestant(
   participant: ResolvedVaultParticipant,
   originalTurnOrderIndex: number,
   seed: number,
+  voteEffectsEnabled = true,
 ): VaultContestantState {
   const rng = mulberry32(mixSeed(seed, participant.id));
   const bankMood = pick(rng, BANK_MOODS);
@@ -233,7 +246,10 @@ export function createInitialContestant(
     displayName: participant.name,
     isUserControlled: participant.isHuman,
     originalTurnOrderIndex,
-    vaults: createVaultPods(mixSeed(seed + originalTurnOrderIndex * 97, participant.id)),
+    vaults: createVaultPods(
+      mixSeed(seed + originalTurnOrderIndex * 97, participant.id),
+      voteEffectsEnabled,
+    ),
     personalVaultId: null,
     personalVaultAmount: null,
     openedVaultIds: [],
@@ -527,6 +543,22 @@ export function getContestantBroadcastStatus(contestant: VaultContestantState, e
   const finalEventAt = contestant.offerHistory.length >= 7 ? contestant.offerHistory[6]?.round : null;
   if (finalEventAt != null && elapsedMs >= Math.max(0, (contestant.finishTimeMs ?? 0) - 12000)) return 'Final Battery';
   return 'Charging';
+}
+
+export function getEarnedBatteryLowVoteEffect(
+  contestant: Pick<VaultContestantState, 'outcomeType' | 'personalVaultId' | 'vaults'>,
+): BatteryLowVoteEffect | null {
+  if (contestant.outcomeType !== 'openedVault' || !contestant.personalVaultId) return null;
+  return contestant.vaults.find((vault) => vault.vaultId === contestant.personalVaultId)?.specialEffect ?? null;
+}
+
+export function buildBatteryLowVoteEffects(contestants: VaultContestantState[]) {
+  return Object.fromEntries(
+    contestants.flatMap((contestant) => {
+      const effect = getEarnedBatteryLowVoteEffect(contestant);
+      return effect ? [[contestant.contestantId, effect] as const] : [];
+    }),
+  );
 }
 
 export function rankVaultContestants(contestants: VaultContestantState[]): RankedVaultResult[] {
