@@ -9283,12 +9283,19 @@ const gameSlice = createSlice({
 
           // ── Tally votes ───────────────────────────────────────────────────
           const voteCounts: Record<string, number> = {}
+          const validVotesByVoterId: Record<string, string> = {}
           for (const nomineeId of state.nomineeIds) voteCounts[nomineeId] = 0
           for (const [voteKey, nomineeId] of Object.entries(state.votes ?? {})) {
             const voterId = getCanonicalVoterId(voteKey)
             if (!canCastClassicEvictionVote(state, voterId)) continue
-            if (nomineeId in voteCounts) voteCounts[nomineeId]++
+            if (!(nomineeId in voteCounts)) continue
+            validVotesByVoterId[voteKey] = nomineeId
+            voteCounts[nomineeId]++
           }
+          // From this point onward, the canonical vote map contains only legal
+          // ballots. This keeps the result, Confessional breakdown, and archived
+          // season-exit receipt from preserving a stale/forged ineligible vote.
+          state.votes = validVotesByVoterId
           state.pendingExitContext = {
             week: state.week,
             leaderIds: state.coLohIds?.length
@@ -9297,7 +9304,7 @@ const gameSlice = createSlice({
                 ? [state.lohId]
                 : [],
             nomineeIds: [...state.nomineeIds],
-            votesByVoterId: { ...(state.votes ?? {}) },
+            votesByVoterId: { ...validVotesByVoterId },
             voteCounts: { ...voteCounts },
           }
 
