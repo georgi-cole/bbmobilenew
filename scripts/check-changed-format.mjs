@@ -81,7 +81,14 @@ for (const file of files) {
 
   if (baseSource == null) {
     checked.push(file)
-    if (!currentClean) violations.push(file)
+    if (!currentClean) {
+      violations.push(file)
+      if (file === 'src/store/__tests__/criticalShockRuleMatrix.test.ts') {
+        console.error('--- PRETTIER_MATRIX_START ---')
+        console.error(await prettier.format(currentSource, options))
+        console.error('--- PRETTIER_MATRIX_END ---')
+      }
+    }
     continue
   }
 
