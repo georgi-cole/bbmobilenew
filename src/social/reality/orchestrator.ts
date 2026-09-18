@@ -19,7 +19,9 @@ import {
   applyRealityApology,
   createRealityAlliance,
   createRealityGrievance,
+  findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  recruitRealityAllianceMember,
   signalRealityRomance,
 } from './relationshipForms'
 import { upsertRealityPromise, upsertRealitySecret, upsertRealityThread } from './commitments'
@@ -158,20 +160,40 @@ function applyRealityLifecycle(input: {
           at,
         })
       } else {
-        const alliance = createRealityAlliance(domain, {
-          id: `alliance:${[interaction.actorId, targetId].sort().join('~')}:${interaction.id}`,
-          founderIds: [interaction.actorId],
-          memberIds: [targetId],
-          purpose: subjectId ? `Coordinate around ${subjectId}` : 'Mutual protection',
-          at,
-        })
-        holdRealityAllianceMeeting(domain, {
-          allianceId: alliance.id,
-          attendeeIds: [interaction.actorId, targetId],
-          targetIds: subjectId ? [subjectId] : [],
-          planIds: subjectId ? [`watch:${subjectId}`] : [`protect:${alliance.id}`],
-          at,
-        })
+        const recruitmentAlliance = findRealityAllianceForRecruitment(
+          domain,
+          interaction.actorId,
+          targetId
+        )
+        if (recruitmentAlliance) {
+          recruitRealityAllianceMember(domain, {
+            allianceId: recruitmentAlliance.id,
+            recruiterId: interaction.actorId,
+            targetId,
+            expandedAllianceId: `alliance:${[
+              ...recruitmentAlliance.memberIds,
+              targetId,
+            ]
+              .sort()
+              .join('~')}:${interaction.id}`,
+            at,
+          })
+        } else {
+          const alliance = createRealityAlliance(domain, {
+            id: `alliance:${[interaction.actorId, targetId].sort().join('~')}:${interaction.id}`,
+            founderIds: [interaction.actorId],
+            memberIds: [targetId],
+            purpose: subjectId ? `Coordinate around ${subjectId}` : 'Mutual protection',
+            at,
+          })
+          holdRealityAllianceMeeting(domain, {
+            allianceId: alliance.id,
+            attendeeIds: [interaction.actorId, targetId],
+            targetIds: subjectId ? [subjectId] : [],
+            planIds: subjectId ? [`watch:${subjectId}`] : [`protect:${alliance.id}`],
+            at,
+          })
+        }
       }
     }
   } else if (action.purposes.includes('COMMITMENT') && acceptedTargets.length > 0) {
