@@ -6,6 +6,7 @@ import type {
   DepressionShockState,
   GameState,
   Player,
+  StrategicAllianceSnapshot,
   Phase,
   TvEvent,
   MinigameResult,
@@ -1593,6 +1594,115 @@ function getStrategicRelationship(state: GameState, actorId: string, targetId: s
   return state.strategicRelationships?.[actorId]?.[targetId] ?? null
 }
 
+export interface StrategicAllianceDecisionRead {
+  sharedProtection: number
+  currentTargetPressure: number
+  fallbackTargetPressure: number
+  betrayalPressure: number
+  sharedAllianceCount: number
+  actorInfiltrator: boolean
+}
+
+function clampStrategicAllianceUnit(value: number): number {
+  return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0))
+}
+
+function strategicAllianceStatusWeight(status: StrategicAllianceSnapshot['status']): number {
+  if (status === 'ACTIVE') return 1
+  if (status === 'PROBATIONARY') return 0.78
+  if (status === 'FRACTURED') return 0.32
+  if (status === 'DORMANT') return 0.14
+  return 0
+}
+
+function strategicAllianceMemberWeight(
+  status: 'CORE' | 'REGULAR' | 'PERIPHERAL' | undefined
+): number {
+  if (status === 'CORE') return 1
+  if (status === 'REGULAR') return 0.78
+  return 0.5
+}
+
+function combineStrategicAllianceWeights(values: number[], cap = 1.25): number {
+  const sorted = values.filter((value) => value > 0).sort((left, right) => right - left)
+  if (sorted.length === 0) return 0
+  return Math.min(
+    cap,
+    sorted[0] +
+      (sorted[1] ?? 0) * 0.35 +
+      sorted.slice(2).reduce((sum, value) => sum + value * 0.15, 0)
+  )
+}
+
+/**
+ * Convert overlapping Reality alliances into one actor-specific strategic read.
+ * Strong core pacts dominate loose secondary coalitions, while conflicting
+ * target plans remain able to compete with that protection. Infiltrators keep
+ * the appearance of membership but receive very little inward loyalty weight.
+ */
+export function getStrategicAllianceDecisionRead(
+  state: GameState,
+  actorId: string,
+  targetId: string
+): StrategicAllianceDecisionRead {
+  const sharedWeights: number[] = []
+  const targetWeights: number[] = []
+  const fallbackWeights: number[] = []
+  const betrayalWeights: number[] = []
+  let sharedAllianceCount = 0
+  let actorInfiltrator = false
+
+  for (const alliance of state.strategicAlliances ?? []) {
+    if (!alliance.memberIds.includes(actorId) || alliance.status === 'DISSOLVED') continue
+
+    const statusWeight = strategicAllianceStatusWeight(alliance.status)
+    const actorCommitment = clampStrategicAllianceUnit(alliance.memberCommitment[actorId] ?? 0.5)
+    const actorRoleWeight = strategicAllianceMemberWeight(
+      alliance.memberPerceivedStatus[actorId]
+    )
+    const cohesion = clampStrategicAllianceUnit(alliance.cohesion)
+    const fractureRisk = clampStrategicAllianceUnit(alliance.fractureRisk)
+    const structureWeight =
+      statusWeight *
+      actorCommitment *
+      actorRoleWeight *
+      (0.35 + cohesion * 0.65) *
+      (1 - fractureRisk * 0.55)
+    const infiltrator = alliance.infiltratorIds.includes(actorId)
+    if (infiltrator) actorInfiltrator = true
+
+    if (alliance.memberIds.includes(targetId)) {
+      sharedAllianceCount += 1
+      const targetRoleWeight = strategicAllianceMemberWeight(
+        alliance.memberPerceivedStatus[targetId]
+      )
+      sharedWeights.push(structureWeight * targetRoleWeight * (infiltrator ? 0.12 : 1))
+      betrayalWeights.push(
+        clampStrategicAllianceUnit(
+          (1 - actorCommitment) * 0.35 + fractureRisk * 0.35 + (infiltrator ? 0.55 : 0)
+        )
+      )
+    }
+
+    const knowsPlan =
+      alliance.leaderIds.includes(actorId) ||
+      (alliance.memberPlanBeliefs[actorId]?.length ?? 0) > 0
+    if (!knowsPlan) continue
+    const planWeight = structureWeight * (infiltrator ? 0.78 : 1)
+    if (alliance.currentTargetIds.includes(targetId)) targetWeights.push(planWeight)
+    if (alliance.fallbackTargetIds.includes(targetId)) fallbackWeights.push(planWeight)
+  }
+
+  return {
+    sharedProtection: combineStrategicAllianceWeights(sharedWeights),
+    currentTargetPressure: combineStrategicAllianceWeights(targetWeights, 1.2),
+    fallbackTargetPressure: combineStrategicAllianceWeights(fallbackWeights, 1),
+    betrayalPressure: Math.max(0, ...betrayalWeights),
+    sharedAllianceCount,
+    actorInfiltrator,
+  }
+}
+
 function getAiIdentityMode(state: GameState): AiIdentityMode {
   if (state.mode === 'survival') return 'survival'
   if (isVoxPopuliActive(state)) return 'vox_populi'
@@ -1634,14 +1744,21 @@ function getSafetyRelationshipBreakdown(
   nominee: Player
 ): { total: number; factors: Record<string, AiDecisionFactor> } {
   const relationship = getStrategicRelationship(state, holderId, nominee.id)
+  const allianceRead = getStrategicAllianceDecisionRead(state, holderId, nominee.id)
   const threat = getAiThreatScore(state, nominee)
   const competitionRead = getCompetitionPerceptionRead(
     nominee.competitionProfile,
     state.competitionSeasonStateByPlayerId?.[nominee.id]
   )
   const expendablePawnPenalty = competitionRead.pawnSuitability
+  const realityAllianceContribution = state.dramaSocialMode
+    ? allianceRead.sharedProtection * 82 -
+      allianceRead.currentTargetPressure * 58 -
+      allianceRead.fallbackTargetPressure * 28
+    : 0
+
   if (!relationship) {
-    const total = -threat * 3 - expendablePawnPenalty
+    const total = -threat * 3 - expendablePawnPenalty + realityAllianceContribution
     return {
       total,
       factors: {
@@ -1649,9 +1766,11 @@ function getSafetyRelationshipBreakdown(
         expendablePawnPenalty: -expendablePawnPenalty,
         sandbagSuspicion: competitionRead.sandbagSuspicion,
         relationship: 'none',
+        realityAllianceContribution,
       },
     }
   }
+
   const holder = state.players.find((player) => player.id === holderId)
   const factors: Record<string, AiDecisionFactor> = {
     affinity: relationship.affinity,
@@ -1666,6 +1785,7 @@ function getSafetyRelationshipBreakdown(
     (relationship.tags.includes('alliance') ? 1 : 0.18)
   score += identityContribution
   factors.identityContribution = identityContribution
+
   if (!state.dramaSocialMode) {
     if (relationship.tags.includes('alliance')) {
       score += 55
@@ -1682,14 +1802,21 @@ function getSafetyRelationshipBreakdown(
     factors.total = score
     return { total: score, factors }
   }
+
   const tags = new Set(relationship.tags)
   if (tags.has('betrayal')) {
     score -= 140
     factors.betrayal = -140
   } else {
     if (tags.has('alliance')) {
-      score += 65
-      factors.alliance = 65
+      const formalAllianceContribution =
+        state.strategicAlliances !== undefined && allianceRead.sharedAllianceCount > 0
+          ? 12 + Math.min(1.2, allianceRead.sharedProtection) * 70
+          : state.strategicAlliances !== undefined
+            ? 40
+            : 65
+      score += formalAllianceContribution
+      factors.alliance = formalAllianceContribution
     }
     if (tags.has('romance') || tags.has('bromance')) {
       score += 45
@@ -1705,9 +1832,15 @@ function getSafetyRelationshipBreakdown(
     }
   }
   if (tags.has('target') || tags.has('rivalry')) {
-    score -= 45
-    factors.targetOrRivalry = -45
+    const personalTargetPenalty = allianceRead.currentTargetPressure > 0 ? -18 : -45
+    score += personalTargetPenalty
+    factors.targetOrRivalry = personalTargetPenalty
   }
+  score += realityAllianceContribution
+  factors.realityAllianceContribution = realityAllianceContribution
+  factors.realityAllianceProtection = allianceRead.sharedProtection
+  factors.realityAllianceTargetPressure = allianceRead.currentTargetPressure
+  factors.realityAllianceFallbackPressure = allianceRead.fallbackTargetPressure
   factors.total = score
   return { total: score, factors }
 }
@@ -1726,6 +1859,7 @@ function getNominationTargetBreakdown(
   candidate: Player
 ): { total: number; factors: Record<string, AiDecisionFactor> } {
   const relationship = getStrategicRelationship(state, lohId, candidate.id)
+  const allianceRead = getStrategicAllianceDecisionRead(state, lohId, candidate.id)
   const tags = new Set(relationship?.tags ?? [])
   const affinity = relationship?.affinity ?? 0
   const threat = getAiThreatScore(state, candidate)
@@ -1740,8 +1874,16 @@ function getNominationTargetBreakdown(
     factors.betrayal = 125
   } else {
     if (tags.has('alliance')) {
-      score -= 110
-      factors.alliance = -110
+      const formalProtection =
+        state.dramaSocialMode &&
+        state.strategicAlliances !== undefined &&
+        allianceRead.sharedAllianceCount > 0
+          ? -(12 + Math.min(1.2, allianceRead.sharedProtection) * 105)
+          : state.dramaSocialMode && state.strategicAlliances !== undefined
+            ? -65
+            : -110
+      score += formalProtection
+      factors.alliance = formalProtection
     }
     if (tags.has('romance') || tags.has('bromance')) {
       score -= 80
@@ -1753,8 +1895,16 @@ function getNominationTargetBreakdown(
     }
   }
   if (tags.has('target')) {
-    score += 55
-    factors.target = 55
+    const directTarget = allianceRead.currentTargetPressure > 0 ? 20 : 55
+    score += directTarget
+    factors.target = directTarget
+  }
+  if (state.dramaSocialMode) {
+    const alliancePlanPressure =
+      allianceRead.currentTargetPressure * 72 + allianceRead.fallbackTargetPressure * 32
+    score += alliancePlanPressure
+    factors.realityAlliancePlanPressure = alliancePlanPressure
+    factors.realityAllianceProtection = allianceRead.sharedProtection
   }
   if (tags.has('rivalry')) {
     score += 45
@@ -3589,6 +3739,7 @@ export function chooseAiEvictionVote(
   const scored = nomineeIds.map((nomineeId) => {
     const nominee = state.players.find((player) => player.id === nomineeId)
     const relationship = getStrategicRelationship(state, voterId, nomineeId)
+    const allianceRead = getStrategicAllianceDecisionRead(state, voterId, nomineeId)
     const tags = new Set(relationship?.tags ?? [])
     const affinity = relationship?.affinity ?? 0
     const threat = nominee ? getAiThreatScore(state, nominee) : 0
@@ -3613,7 +3764,18 @@ export function chooseAiEvictionVote(
     if (backdoorTargetContribution > 0) {
       factors.backdoorTargetContribution = backdoorTargetContribution
     }
-    let score = threat * 8 - affinity + randomDraw * 4 - grace * 1.35 + backdoorTargetContribution
+    const alliancePlanContribution = state.dramaSocialMode
+      ? allianceRead.currentTargetPressure * 68 + allianceRead.fallbackTargetPressure * 30
+      : 0
+    factors.realityAlliancePlanContribution = alliancePlanContribution
+    factors.realityAllianceProtection = allianceRead.sharedProtection
+    let score =
+      threat * 8 -
+      affinity +
+      randomDraw * 4 -
+      grace * 1.35 +
+      backdoorTargetContribution +
+      alliancePlanContribution
     if (tags.has('target')) {
       score += 25
       factors.target = 25
@@ -3648,21 +3810,54 @@ export function chooseAiEvictionVote(
         score += romanceProtection
         factors.romanceProtection = romanceProtection
       }
-    } else if (tags.has('alliance')) {
-      backstabChance = Math.max(
-        0,
-        Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity))
-      )
-      backstabRoll = rng()
-      factors.backstabChance = backstabChance
-      factors.backstabRoll = backstabRoll
-      if (backstabRoll < backstabChance) {
-        score += 95
-        factors.allianceBackstab = 95
+    } else if (tags.has('alliance') || allianceRead.sharedAllianceCount > 0) {
+      if (
+        state.dramaSocialMode &&
+        state.strategicAlliances !== undefined &&
+        allianceRead.sharedAllianceCount > 0
+      ) {
+        backstabChance = Math.max(
+          0.01,
+          Math.min(
+            0.62,
+            0.025 +
+              threat * 0.012 +
+              betrayalChanceModifier(voterIdentity) +
+              allianceRead.betrayalPressure * 0.42
+          )
+        )
+        backstabRoll = rng()
+        factors.backstabChance = backstabChance
+        factors.backstabRoll = backstabRoll
+        factors.realityAllianceBetrayalPressure = allianceRead.betrayalPressure
+        if (backstabRoll < backstabChance) {
+          const backstabContribution =
+            70 + (1 - Math.min(1, allianceRead.sharedProtection)) * 45
+          score += backstabContribution
+          factors.allianceBackstab = backstabContribution
+        } else {
+          const allianceProtection =
+            -(25 + Math.min(1.2, allianceRead.sharedProtection) * 95) -
+            allianceIdentityBias(voterIdentity) * Math.min(1, allianceRead.sharedProtection)
+          score += allianceProtection
+          factors.allianceProtection = allianceProtection
+        }
       } else {
-        const allianceProtection = -(90 + allianceIdentityBias(voterIdentity))
-        score += allianceProtection
-        factors.allianceProtection = allianceProtection
+        backstabChance = Math.max(
+          0,
+          Math.min(0.36, 0.05 + threat * 0.015 + betrayalChanceModifier(voterIdentity))
+        )
+        backstabRoll = rng()
+        factors.backstabChance = backstabChance
+        factors.backstabRoll = backstabRoll
+        if (backstabRoll < backstabChance) {
+          score += 95
+          factors.allianceBackstab = 95
+        } else {
+          const allianceProtection = -(90 + allianceIdentityBias(voterIdentity))
+          score += allianceProtection
+          factors.allianceProtection = allianceProtection
+        }
       }
     }
 
@@ -3759,6 +3954,12 @@ const gameSlice = createSlice({
       action: PayloadAction<NonNullable<GameState['strategicRelationships']>>
     ) {
       state.strategicRelationships = action.payload
+    },
+    syncStrategicAlliances(
+      state,
+      action: PayloadAction<NonNullable<GameState['strategicAlliances']>>
+    ) {
+      state.strategicAlliances = action.payload
     },
     setDramaSocialMode(state, action: PayloadAction<boolean>) {
       state.dramaSocialMode = action.payload
@@ -10003,6 +10204,7 @@ export const {
   advanceWeek,
   updatePlayer,
   syncStrategicRelationships,
+  syncStrategicAlliances,
   setLohSocialPlan,
   addTvEvent,
   updateTvEvent,
