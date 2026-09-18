@@ -641,58 +641,56 @@
     box-shadow 0.2s ease;
 }
 
-/* Live vote: the portrait frame itself stays static and cheap. The breathing
-   danger signal is a separate sibling layer outside avatarWrap so it is not
-   clipped by avatarWrap's overflow:hidden. Only opacity + transform animate. */
+/* Live vote: restore the original red inner-frame/sweep treatment, then
+   radiate danger the same way the LOH nomination state does: by breathing the
+   outer red box-shadow around the avatar tile. */
 .liveEvictionNominee {
-  position: relative;
-  z-index: 1;
-  border-color: rgba(248, 87, 87, 0.9);
+  border-color: rgba(248, 87, 87, 0.86);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.48),
-    0 0 0 1px rgba(248, 87, 87, 0.38),
-    inset 0 1px 0 rgba(255, 228, 228, 0.14),
-    inset 0 0 0 1px rgba(248, 87, 87, 0.4);
+    0 0 0 1px rgba(248, 87, 87, 0.34),
+    inset 0 1px 0 rgba(255, 228, 228, 0.12),
+    inset 0 0 0 1px rgba(248, 87, 87, 0.36);
+  animation: liveEvictionNomineeGlow 2.4s ease-in-out infinite;
 }
 
 .liveEvictionNominee::before {
-  box-shadow:
-    inset 0 0 0 1px rgba(248, 87, 87, 0.24),
-    inset 0 0 14px 3px rgba(220, 38, 38, 0.18);
+  animation: liveEvictionNomineeSweep 2.2s linear infinite;
 }
 
-.liveEvictionDangerHalo {
-  position: absolute;
-  inset: -6px;
-  z-index: 0;
-  border-radius: 14px;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(248, 87, 87, 0) 48%,
-    rgba(248, 87, 87, 0.12) 68%,
-    rgba(220, 38, 38, 0.34) 100%
-  );
-  opacity: 0.34;
-  transform: scale(0.985);
-  transform-origin: center;
-  will-change: opacity, transform;
-  animation: liveEvictionDangerBreath 1.65s ease-in-out infinite;
-}
-
-@keyframes liveEvictionDangerBreath {
+@keyframes liveEvictionNomineeGlow {
   0%,
   100% {
-    opacity: 0.24;
-    transform: scale(0.985);
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(248, 87, 87, 0.3),
+      0 0 10px rgba(220, 38, 38, 0.18),
+      inset 0 1px 0 rgba(255, 228, 228, 0.12),
+      inset 0 0 0 1px rgba(248, 87, 87, 0.32);
   }
-  34% {
-    opacity: 0.9;
-    transform: scale(1.045);
+  50% {
+    box-shadow:
+      0 6px 16px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(248, 87, 87, 0.52),
+      0 0 22px rgba(239, 68, 68, 0.46),
+      inset 0 1px 0 rgba(255, 228, 228, 0.18),
+      inset 0 0 0 1px rgba(248, 87, 87, 0.48);
   }
-  58% {
-    opacity: 0.5;
-    transform: scale(1.015);
+}
+
+@keyframes liveEvictionNomineeSweep {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset -18px 0 24px rgba(220, 38, 38, 0.34),
+      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(7, 10, 16, 0.56),
+      inset 18px 0 24px rgba(248, 87, 87, 0.42),
+      inset 0 0 20px 5px rgba(12, 17, 27, 0.62);
   }
 }
 
@@ -1795,14 +1793,10 @@
 
   .nomination_loh,
   .nomination_danger::before,
-  .liveEvictionDangerHalo,
+  .liveEvictionNominee,
+  .liveEvictionNominee::before,
   .roboStatsSheet {
     animation: none !important;
-  }
-
-  .liveEvictionDangerHalo {
-    opacity: 0.46;
-    transform: none;
   }
 }
 
