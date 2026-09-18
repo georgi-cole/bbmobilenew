@@ -301,10 +301,11 @@ export function maybeExposeRealityAlliance(
 
   alliance.secrecy = 0
   const factId = `fact:alliance-exposed:${alliance.id}:${at.day}`
+  const sourceActorId = state.events.find((event) => event.id === sourceEventId)?.actorId
   const event = appendRealityEvent(state, {
     ...at,
     type: 'ALLIANCE_PUBLICLY_EXPOSED',
-    actorId: alliance.leaderIds[0] ?? alliance.memberIds[0],
+    actorId: sourceActorId ?? alliance.leaderIds[0] ?? alliance.memberIds[0],
     targetIds: [],
     participantIds: [...alliance.memberIds],
     witnessIds: [],
