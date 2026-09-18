@@ -40,6 +40,25 @@ describe('Battery Low responsive styles', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)')
   })
 
+  it('builds the show package from transient overlays rather than extra layout rows', () => {
+    const css = read('src/components/VaultVerdict/VaultVerdict.css')
+    const rig = getRule(css, '.vault-verdict__show-rig')
+    const showFx = getRule(css, '.vault-verdict__show-fx')
+    const lowerThird = getRule(css, '.vault-verdict__lower-third')
+
+    expect(rig).toContain('position: absolute;')
+    expect(rig).toContain('pointer-events: none;')
+    expect(showFx).toContain('position: absolute;')
+    expect(showFx).toContain('pointer-events: none;')
+    expect(lowerThird).toContain('position: absolute;')
+    expect(lowerThird).toContain('pointer-events: none;')
+    expect(css).toContain('.vault-verdict__show-fx.is-inferno')
+    expect(css).toContain('.vault-verdict__show-fx.is-blush')
+    expect(css).toContain('.vault-verdict__show-fx.is-overcharge')
+    expect(css).toContain('.vault-verdict__show-fx.is-power-cell')
+    expect(css).toContain('.vault-verdict__show-fx.is-blackout-cell')
+  })
+
   it('uses a labelled Bank Offer sheet and removes the permanent ticker UI', () => {
     const source = read('src/components/VaultVerdict/VaultVerdict.tsx')
 
@@ -50,6 +69,10 @@ describe('Battery Low responsive styles', () => {
     expect(source).toContain('Blind swap')
     expect(source).toContain('PRESSURE OFFER · NON-NEGOTIABLE')
     expect(source).toContain('aria-modal="true"')
+    expect(source).toContain('RevealSigil')
+    expect(source).toContain('vault-verdict__show-rig')
+    expect(source).toContain('vault-verdict__show-fx')
+    expect(source).toContain('vault-verdict__lower-third')
     expect(source).not.toContain('vault-verdict__ticker')
     expect(source).not.toContain("'MY'")
   })
