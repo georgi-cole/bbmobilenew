@@ -40,9 +40,13 @@ const ALLIANCE_NAME_POOLS = {
   generic: ['The Circle', 'The Core', 'The Collective', 'The Quiet Pact', 'The Table', 'The Network'],
 } as const
 
+function isEndgameAlliancePurpose(purpose: string): boolean {
+  return /final\s*(two|2)|endgame|ride.?or.?die|last\s*two/i.test(purpose)
+}
+
 function allianceNamePool(alliance: RealityAlliance): readonly string[] {
   const purpose = alliance.purpose.toLowerCase()
-  if (/final\s*(two|2)|endgame|ride.?or.?die|last\s*two/.test(purpose)) {
+  if (isEndgameAlliancePurpose(purpose)) {
     return ALLIANCE_NAME_POOLS.endgame
   }
   if (/protect|safe|shield|cover/.test(purpose)) return ALLIANCE_NAME_POOLS.protection
@@ -55,7 +59,7 @@ function allianceNamePool(alliance: RealityAlliance): readonly string[] {
 function shouldNameRealityAlliance(alliance: RealityAlliance): boolean {
   if (alliance.memberIds.length >= 3) return true
   if (alliance.memberIds.length !== 2) return false
-  return /final\s*(two|2)|endgame|ride.?or.?die|last\s*two/i.test(alliance.purpose)
+  return isEndgameAlliancePurpose(alliance.purpose)
 }
 
 export function ensureRealityAllianceName(
@@ -700,6 +704,7 @@ export function recruitRealityAllianceMember(
       name: undefined,
       memberIds: [...priorMembers, input.targetId],
       founderIds: [...priorMembers],
+      purpose: isEndgameAlliancePurpose(base.purpose) ? 'Wider coalition' : base.purpose,
       leaderIds: [...base.leaderIds],
       secrecy: clamp01(base.secrecy - 0.05),
       cohesion: clamp01((base.cohesion * priorMembers.length + 0.42) / (priorMembers.length + 1)),
