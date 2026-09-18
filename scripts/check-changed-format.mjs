@@ -81,7 +81,14 @@ for (const file of files) {
 
   if (baseSource == null) {
     checked.push(file)
-    if (!currentClean) violations.push(file)
+    if (!currentClean) {
+      violations.push(file)
+      if (file === 'src/store/criticalGameRules.ts') {
+        console.error('--- PRETTIER_EXPECTED_START ---')
+        console.error(await prettier.format(currentSource, options))
+        console.error('--- PRETTIER_EXPECTED_END ---')
+      }
+    }
     continue
   }
 
