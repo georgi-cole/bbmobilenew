@@ -125,6 +125,32 @@ describe('Reality alliance identity and private knowledge', () => {
     expect(view.status).toBeUndefined()
   })
 
+  it('does not count an internal disclosure as a leak', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'internal-discussion',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+      secrecy: 0.75,
+    })
+    const eventsBefore = state.events.length
+
+    leakRealityAlliance(
+      state,
+      alliance.id,
+      'ava',
+      ['lia', 'lia'],
+      { day: 3, phase: 'social_1' }
+    )
+
+    expect(alliance.secrecy).toBe(0.75)
+    expect(alliance.knownLeakEventIds).toEqual([])
+    expect(alliance.suspectedByIds).toEqual([])
+    expect(state.events).toHaveLength(eventsBefore)
+  })
+
   it('reveals alliance membership incrementally and only exposes the full roster after a public leak threshold', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
