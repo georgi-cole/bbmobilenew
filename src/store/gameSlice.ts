@@ -182,6 +182,7 @@ const AI_LOH_WIN_THREAT_WEIGHT = 4
 const AI_POS_WIN_THREAT_WEIGHT = 3
 const AI_NEVER_NOMINATED_THREAT_WEIGHT = 1
 const AI_CURRENT_LOH_POWER_THREAT_WEIGHT = 2
+const EARLY_HUMAN_EVICTION_GRACE_BY_WEEK = [0, 16, 12, 6] as const
 
 function getPhaseOrderIndex(phase: Phase): number {
   return PHASE_ORDER.indexOf(phase)
@@ -1597,6 +1598,17 @@ function getAiIdentityMode(state: GameState): AiIdentityMode {
   if (isVoxPopuliActive(state)) return 'vox_populi'
   if (isCupidArrowActive(state)) return 'cupid'
   return 'classic'
+}
+
+function getEarlyHumanEvictionGrace(
+  state: GameState,
+  candidate: Player | undefined,
+  affinity: number,
+  tags: ReadonlySet<string>
+): number {
+  if (!candidate?.isUser || state.week < 1 || state.week > 3 || affinity < -15) return 0
+  if (tags.has('target') || tags.has('betrayal') || tags.has('rivalry')) return 0
+  return EARLY_HUMAN_EVICTION_GRACE_BY_WEEK[state.week] ?? 0
 }
 
 function getVoxNominationMomentumScore(state: GameState, candidate: Player): number {
@@ -3585,7 +3597,7 @@ export function chooseAiEvictionVote(
     )
     const randomDraw = rng()
 
-    const grace = getEarlyHumanGrace(state, nominee, affinity, tags)
+    const grace = getEarlyHumanEvictionGrace(state, nominee, affinity, tags)
     // An executed backdoor carries the LOH's strategic intent into the vote.
     // It is meaningful pressure, not an automatic eviction: alliance/romance
     // protection and their existing backstab rules are applied afterward and
