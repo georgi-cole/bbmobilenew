@@ -13,6 +13,7 @@ import gameReducer, {
   getNominationTargetScore,
   submitCoupReplacement,
   submitDiamondReplacement,
+  submitPosTieBreak,
   submitVipSecondSaveTarget,
 } from '../gameSlice'
 import { withLohNominationPlanning } from '../lohNominationPlanning'
@@ -455,7 +456,7 @@ describe('critical shock / ruleset matrix', () => {
     const eligibleVoters = alive(state).filter((player) =>
       canCastClassicEvictionVote(state, player.id)
     )
-    if (eligibleVoters.length < 3) throw new Error('Expected three eligible Detox voters')
+    if (eligibleVoters.length < 4) throw new Error('Expected four eligible Detox voters')
 
     state = {
       ...state,
@@ -465,19 +466,27 @@ describe('critical shock / ruleset matrix', () => {
         [eligibleVoters[0].id]: loh.id,
         [eligibleVoters[1].id]: loh.id,
         [eligibleVoters[2].id]: otherReplacement.id,
-        // If this illegal LOH ballot were counted it would manufacture a 2-2 tie.
+        [eligibleVoters[3].id]: otherReplacement.id,
+        // This stale/forged LOH ballot must be removed, not counted.
         [loh.id]: otherReplacement.id,
       },
     }
-    const resolved = criticalGameReducer(state, advance())
+    const tied = criticalGameReducer(state, advance())
 
-    expect(resolved.phase).toBe('eviction_results')
-    expect(resolved.pendingExitContext?.voteCounts[loh.id]).toBe(2)
-    expect(resolved.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(1)
-    expect((resolved.votes ?? {})[loh.id]).toBeUndefined()
-    expect(resolved.pendingExitContext?.votesByVoterId[loh.id]).toBeUndefined()
-    expect(resolved.pendingEviction?.evicteeId).toBe(loh.id)
-    expect(resolved.awaitingTieBreak).toBe(false)
+    expect(tied.phase).toBe('eviction_results')
+    expect(tied.pendingExitContext?.voteCounts[loh.id]).toBe(2)
+    expect(tied.pendingExitContext?.voteCounts[otherReplacement.id]).toBe(2)
+    expect((tied.votes ?? {})[loh.id]).toBeUndefined()
+    expect(tied.pendingExitContext?.votesByVoterId[loh.id]).toBeUndefined()
+    expect(tied.awaitingTieBreak).toBe(true)
+    expect(tied.awaitingPosTieBreak).toBe(true)
+    expect(getClassicEvictionTieBreakerId(tied)).toBe(humanHolder.id)
+    expect(tied.pendingEviction).toBeNull()
+
+    const decided = criticalGameReducer(tied, submitPosTieBreak(loh.id))
+    expect(decided.awaitingTieBreak).toBe(false)
+    expect(decided.awaitingPosTieBreak).toBe(false)
+    expect(decided.pendingEviction?.evicteeId).toBe(loh.id)
   })
 
   it('keeps Twin Shock target restrictions inside the critical nomination path', () => {
