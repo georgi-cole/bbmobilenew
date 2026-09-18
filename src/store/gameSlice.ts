@@ -126,6 +126,12 @@ import {
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
 import { loadDepressionShockState } from '../features/twists/depressionShock'
 import {
+  FORCED_SHOCK_CRITICAL_RULES,
+  canCastClassicEvictionVote,
+  getCanonicalVoterId,
+  getClassicEvictionTieBreakerId,
+} from './criticalGameRules'
+import {
   allianceIdentityBias,
   assignAiGameIdentities,
   betrayalChanceModifier,
@@ -1843,7 +1849,9 @@ function castVoxAiNominationBallots(state: GameState, rng: () => number) {
   const autoNomineeId = state.voxPopuli.autoNomineeId ?? state.lastHohCompFinisherId ?? null
   for (const voter of alive) {
     if (voter.isUser) continue
-    if (isVoxFinalFour(state) && voter.id === autoNomineeId) continue
+    // Vox nomination power belongs to every active housemate. Even the automatic
+    // Final 4 nominee still casts a secret nomination ballot; being on the block
+    // does not remove nomination power in Vox.
     const candidates = alive.filter(
       (candidate) =>
         candidate.id !== voter.id &&
@@ -5131,6 +5139,9 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(nomineeId)) return
       const humanPlayer = state.players.find((p) => p.isUser)
       if (!humanPlayer) return
+      if (!isVoxPopuliActive(state) && !canCastClassicEvictionVote(state, humanPlayer.id)) {
+        return
+      }
       if (!canPlayerTargetPlayer(state, humanPlayer.id, nomineeId)) return
       if (!state.votes) state.votes = {}
       const voteMap = state.votes
@@ -5157,8 +5168,10 @@ const gameSlice = createSlice({
 
       const evictee = state.players.find((p) => p.id === nomineeId)
       const lohPlayer = state.players.find((p) => p.id === state.lohId)
-      if (!evictee) return
-      if (!canPlayerTargetPlayer(state, lohPlayer?.id, nomineeId)) return
+      if (!evictee || !lohPlayer?.isUser) return
+      if (state.coLohIds && state.coLohIds.length >= 2) return
+      if (getClassicEvictionTieBreakerId(state) !== lohPlayer.id) return
+      if (!canPlayerTargetPlayer(state, lohPlayer.id, nomineeId)) return
 
       state.awaitingTieBreak = false
       state.tiedNomineeIds = null
@@ -5376,9 +5389,11 @@ const gameSlice = createSlice({
     },
 
     /**
-     * Human POS holder breaks an eviction tie on a co-LOH Democracia day.
-     * On co-LOH days, the POS holder acts as tiebreaker instead of the LOH.
-     * Clears awaitingTieBreak and awaitingPosTieBreak, queues the eviction.
+     * Human POS holder breaks an eviction tie when the rules delegate authority
+     * away from the LOH: either a co-LOH Democracia day or a shock that puts
+     * the sitting LOH on the block.
+     *
+     * Clears awaitingTieBreak and awaitingPosTieBreak, then queues the eviction.
      */
     submitPosTieBreak(state, action: PayloadAction<string>) {
       const nomineeId = action.payload
@@ -5387,7 +5402,8 @@ const gameSlice = createSlice({
       if (!tied.includes(nomineeId)) return
       const evictee = state.players.find((p) => p.id === nomineeId)
       const posHolder = state.players.find((p) => p.id === state.posWinnerId)
-      if (!evictee) return
+      if (!evictee || !posHolder?.isUser) return
+      if (getClassicEvictionTieBreakerId(state) !== posHolder.id) return
       state.awaitingTieBreak = false
       state.awaitingPosTieBreak = false
       state.tiedNomineeIds = null
@@ -6109,10 +6125,15 @@ const gameSlice = createSlice({
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
       const type = action.payload
-      if (
-        isVoxPopuliActive(state) &&
-        !['doubleEviction', 'dayStartShock', 'twinShock'].includes(type)
-      ) {
+      if (isCupidArrowTwistLocked(state)) {
+        pushEvent(
+          state,
+          `[DEBUG] ${formatForcedShockLabel(type)} is unavailable while Cupid's Arrow controls the season.`,
+          'game'
+        )
+        return
+      }
+      if (isVoxPopuliActive(state) && !FORCED_SHOCK_CRITICAL_RULES[type].voxCompatible) {
         pushEvent(
           state,
           `[DEBUG] ${formatForcedShockLabel(type)} is unavailable during Vox Populi.`,
@@ -8413,8 +8434,9 @@ const gameSlice = createSlice({
                     canPlayerTargetPlayer(state, human.id, candidate.id)
                 )
               : []
-            const humanCanVote =
-              Boolean(human) && !(isVoxFinalFour(state) && human?.id === autoNomineeId)
+            // Vox differs from Classic: every active housemate nominates,
+            // including the automatic Final 4 nominee.
+            const humanCanVote = Boolean(human)
             if (human && humanCanVote && humanEligibleTargets.length > 0) {
               state.awaitingNominations = true
               state.pendingNominee1Id = null
@@ -8532,13 +8554,33 @@ const gameSlice = createSlice({
           const aiPool = autoNomineeUnitIds
             ? pool.filter((p) => !autoNomineeUnitIds.has(p.id))
             : pool
-          let nominees = pickStrategicNominationTargets(
-            state,
-            state.lohId!,
-            aiPool,
-            nomineeCount,
-            rng
-          )
+          // The persisted AI LOH plan is created before nomination_results and is
+          // the strategic source of truth when Public Mode is off. Use that same
+          // opening block here instead of independently selecting a second pair and
+          // asking the outer planning reducer to rewrite it after the fact.
+          //
+          // Keeping selection atomic prevents the ceremony from ever capturing the
+          // base reducer's provisional pair while Faux TV is rewritten to the plan.
+          const plannedNomineeIds =
+            !state.publicModeEnabled &&
+            state.lohNominationPlan?.week === state.week &&
+            state.lohNominationPlan.lohId === state.lohId &&
+            state.lohNominationPlan.status === 'planned' &&
+            state.lohNominationPlan.initialNomineeIds.length === nomineeCount
+              ? state.lohNominationPlan.initialNomineeIds
+              : null
+          const plannedNominees = plannedNomineeIds
+            ? plannedNomineeIds
+                .map((id) => aiPool.find((candidate) => candidate.id === id))
+                .filter((candidate): candidate is Player => Boolean(candidate))
+            : []
+          const canUsePlannedBlock =
+            plannedNomineeIds != null &&
+            plannedNominees.length === nomineeCount &&
+            new Set(plannedNominees.map((candidate) => candidate.id)).size === nomineeCount
+          let nominees = canUsePlannedBlock
+            ? plannedNominees
+            : pickStrategicNominationTargets(state, state.lohId!, aiPool, nomineeCount, rng)
           if ((state.depressionShock?.activeDay ?? 0) > 0 && rng() < 0.35) {
             const alternatives = aiPool.filter(
               (candidate) => !nominees.some((nominee) => nominee.id === candidate.id)
@@ -9165,11 +9207,8 @@ const gameSlice = createSlice({
           // Democracia co-leaders share the office: neither co-LOH may cast
           // an eviction ballot. Keep the legacy single-LOH/Cupid behavior for
           // every other ceremony.
-          const lohIds = new Set(
-            state.coLohIds?.length ? state.coLohIds : getCupidRoleIds(state, state.lohId)
-          )
-          const eligibleVoters = alive.filter(
-            (p) => !lohIds.has(p.id) && !state.nomineeIds.includes(p.id)
+          const eligibleVoters = alive.filter((player) =>
+            canCastClassicEvictionVote(state, player.id)
           )
           const eligibleVoterIds = new Set(eligibleVoters.map((player) => player.id))
           const processedVoterUnits = new Set<string>()
@@ -9252,10 +9291,19 @@ const gameSlice = createSlice({
 
           // ── Tally votes ───────────────────────────────────────────────────
           const voteCounts: Record<string, number> = {}
+          const validVotesByVoterId: Record<string, string> = {}
           for (const nomineeId of state.nomineeIds) voteCounts[nomineeId] = 0
-          for (const nomineeId of Object.values(state.votes ?? {})) {
-            if (nomineeId in voteCounts) voteCounts[nomineeId]++
+          for (const [voteKey, nomineeId] of Object.entries(state.votes ?? {})) {
+            const voterId = getCanonicalVoterId(voteKey)
+            if (!canCastClassicEvictionVote(state, voterId)) continue
+            if (!(nomineeId in voteCounts)) continue
+            validVotesByVoterId[voteKey] = nomineeId
+            voteCounts[nomineeId]++
           }
+          // From this point onward, the canonical vote map contains only legal
+          // ballots. This keeps the result, Confessional breakdown, and archived
+          // season-exit receipt from preserving a stale/forged ineligible vote.
+          state.votes = validVotesByVoterId
           state.pendingExitContext = {
             week: state.week,
             leaderIds: state.coLohIds?.length
@@ -9264,7 +9312,7 @@ const gameSlice = createSlice({
                 ? [state.lohId]
                 : [],
             nomineeIds: [...state.nomineeIds],
-            votesByVoterId: { ...(state.votes ?? {}) },
+            votesByVoterId: { ...validVotesByVoterId },
             voteCounts: { ...voteCounts },
           }
 
@@ -9374,18 +9422,24 @@ const gameSlice = createSlice({
           } else {
             // Tie — on co-LOH Democracia days, POS holder breaks it; otherwise LOH breaks it.
             const isCoLohDay = Array.isArray(state.coLohIds) && state.coLohIds.length >= 2
-            const tieBreakerPlayerId = isCoLohDay ? state.posWinnerId : state.lohId
+            const tieBreakerPlayerId = getClassicEvictionTieBreakerId(state)
             const tieBreakerPlayer = state.players.find((p) => p.id === tieBreakerPlayerId)
+            const usesPosTieBreaker =
+              isCoLohDay ||
+              (tieBreakerPlayerId != null &&
+                tieBreakerPlayerId === state.posWinnerId &&
+                tieBreakerPlayerId !== state.lohId)
             const tiedNames = topNominees
               .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
               .join(' and ')
             if (tieBreakerPlayer?.isUser) {
-              // Human POS holder (co-LOH day) or human LOH (normal day): show tie-break modal
+              // Human POS holder (Democracia or LOH-on-block exception) or
+              // human LOH (normal day): show the appropriate tie-break modal.
               state.voteResults = { ...voteCounts }
               state.awaitingTieBreak = true
-              if (isCoLohDay) state.awaitingPosTieBreak = true
+              if (usesPosTieBreaker) state.awaitingPosTieBreak = true
               state.tiedNomineeIds = topNominees
-              if (isCoLohDay) {
+              if (usesPosTieBreaker) {
                 pushEvent(
                   state,
                   `It's a tie between ${tiedNames}! ${tieBreakerPlayer.name}, as POS holder, you must break the tie as a special exception. 🗳️`,
@@ -9405,7 +9459,7 @@ const gameSlice = createSlice({
               const evicted = state.players.find((p) => p.id === evicteeId)
               if (evicted) {
                 state.voteResults = { ...voteCounts }
-                const breakerLabel = isCoLohDay ? 'The POS holder' : 'The LOH'
+                const breakerLabel = usesPosTieBreaker ? 'The POS holder' : 'The LOH'
                 state.pendingEviction = {
                   evicteeId: evicted.id,
                   evictionMessage: `${tieBreakerPlayer.name ?? breakerLabel} breaks the tie, voting to eliminate ${evicted.name}. ${evicted.name} has been eliminated from The Big Eye house. 🗳️`,
@@ -9817,13 +9871,15 @@ const gameSlice = createSlice({
       if (!state.nomineeIds.includes(target2)) return
 
       const humanPlayer = state.players.find((p) => p.isUser)
-      if (!humanPlayer) return
+      if (!humanPlayer || !canCastClassicEvictionVote(state, humanPlayer.id)) return
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, target1)) return
+      if (!canPlayerTargetPlayer(state, humanPlayer.id, target2)) return
       if (!state.votes) state.votes = {}
 
       // Primary vote (same key as a normal vote)
       state.votes[humanPlayer.id] = target1
-      // Secondary vote stored under a suffix key — tallied by the same loop
-      // in advance() that iterates Object.values(state.votes).
+      // Secondary vote uses a suffix key, but the eviction tally canonicalizes
+      // it back to the human voter before re-checking eligibility.
       state.votes[`${humanPlayer.id}__dv2`] = target2
 
       state.awaitingHumanVote = false
