@@ -120,11 +120,9 @@ export function getRealityAllianceKnowledgeView(
       : confidence > 0 || alliance.suspectedByIds.includes(observerId)
         ? 'SUSPECTED'
         : 'UNKNOWN'
-  const fullMembershipKnown =
-    isPublic ||
-    (confidence >= 0.82 &&
-      knownMemberIds.length > 0 &&
-      knownMemberIds.length === alliance.memberIds.length)
+  // Private evidence can confirm that named people are working together, but
+  // it must never prove by omission that nobody else belongs to the pact.
+  const fullMembershipKnown = isPublic
   const publicName = publicFacts
     .map((fact) => (typeof fact.value === 'string' ? fact.value : undefined))
     .find((value) => value && value !== 'true')
@@ -187,12 +185,9 @@ export function recordRealityAllianceDiscovery(
   const alliance = state.alliances[input.allianceId]
   if (!alliance || alliance.memberIds.includes(input.observerId)) return null
 
-  const orderedMembers = unique([
-    ...input.revealedMemberIds,
-    ...alliance.leaderIds,
-    ...alliance.memberIds,
-  ]).filter((id) => alliance.memberIds.includes(id))
-  const revealed = orderedMembers.slice(0, Math.min(alliance.memberIds.length, 3))
+  const revealed = unique(input.revealedMemberIds)
+    .filter((id) => alliance.memberIds.includes(id))
+    .slice(0, 3)
   if (revealed.length < 2) return null
 
   const confidence = Math.max(0.2, Math.min(0.96, input.confidence))
