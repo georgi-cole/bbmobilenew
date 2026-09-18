@@ -9864,8 +9864,8 @@ const gameSlice = createSlice({
 
       // Primary vote (same key as a normal vote)
       state.votes[humanPlayer.id] = target1
-      // Secondary vote stored under a suffix key — tallied by the same loop
-      // in advance() that iterates Object.values(state.votes).
+      // Secondary vote uses a suffix key, but the eviction tally canonicalizes
+      // it back to the human voter before re-checking eligibility.
       state.votes[`${humanPlayer.id}__dv2`] = target2
 
       state.awaitingHumanVote = false
