@@ -326,7 +326,8 @@ export default function SocialPanelV2() {
   const isBatchCompatible =
     targetMode === 'primary' &&
     !selectedAction?.requiredTargetStatus &&
-    selectedActionId !== 'proposeAlliance'
+    selectedActionId !== 'proposeAlliance' &&
+    selectedActionId !== 'consult_alliance'
   const usesMultipleTargets = targetMode === 'multi' || (multiSelectActive && isBatchCompatible)
   // A POS holder begins with the LOH selected for an individual consultation
   // without mutating local state from an effect. Group selections always use
