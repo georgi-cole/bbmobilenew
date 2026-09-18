@@ -250,7 +250,8 @@ function buildAllianceConsultationPlan(
   const attendeeSet = new Set(attendeeIds)
   const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeSet.has(id))
   const phase = state.game.phase
-  const actorIsLoh = state.game.lohId === actorId
+  const actorIsLoh =
+    state.game.lohId === actorId || getCupidPartnerId(state.game, state.game.lohId) === actorId
   const actorHasSafety =
     state.game.posWinnerId === actorId ||
     getCupidPartnerId(state.game, state.game.posWinnerId) === actorId
