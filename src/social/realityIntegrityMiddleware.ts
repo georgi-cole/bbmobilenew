@@ -157,7 +157,6 @@ export const realityIntegrityMiddleware: Middleware = (api) => (next) => (action
         tags: ruptureTags,
         actionSource: 'system',
         skipRealityProjection: true,
-        skipRealityProjection: true,
       })
     )
     api.dispatch(
@@ -167,6 +166,7 @@ export const realityIntegrityMiddleware: Middleware = (api) => (next) => (action
         delta: Math.min(-55, -70 - inwardAffinity),
         tags: ruptureTags,
         actionSource: 'system',
+        skipRealityProjection: true,
       })
     )
     api.dispatch(
