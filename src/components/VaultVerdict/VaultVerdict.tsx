@@ -116,7 +116,9 @@ function BatteryTile({
   const isOpened = battery.status === 'opened'
   const isReserve = battery.status === 'personal'
   const isFinalWall = battery.status === 'remainingFinalWallVault'
-  const specialLabel = isOpened ? getSpecialRevealLabel(battery.amount, battery.specialEffect) : null
+  const specialLabel = isOpened
+    ? getSpecialRevealLabel(battery.amount, battery.specialEffect)
+    : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
@@ -132,7 +134,9 @@ function BatteryTile({
   return (
     <button
       type="button"
-      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${isOpened ? getReactionClass(battery.amount, battery.specialEffect) : ''}`}
+      className={`vault-verdict__pod vault-verdict__pod--${battery.status}${toneClass}${
+        isOpened ? getReactionClass(battery.amount, battery.specialEffect) : ''
+      }`}
       style={chargeStyle}
       disabled={disabled}
       onClick={(event) => onClick(battery.vaultId, event.timeStamp)}
@@ -181,7 +185,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
         participant,
         index,
         sessionSeed + 101,
-        voteEffectsEnabled,
+        voteEffectsEnabled
       )
       return participant.isHuman
         ? contestant
@@ -216,7 +220,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
     ? human.vaults.find((vault) => vault.vaultId === latestRevealVaultId)
     : null
   const latestRevealLabel =
-    latestReveal == null ? null : getSpecialRevealLabel(latestReveal, latestRevealVault?.specialEffect)
+    latestReveal == null
+      ? null
+      : getSpecialRevealLabel(latestReveal, latestRevealVault?.specialEffect)
   const coreMood =
     latestReveal == null
       ? 'is-idle'
@@ -518,9 +524,15 @@ export default function BatteryLow(props: GenericMinigameProps) {
                       : 'Charging…'}
                   </strong>
                   {finaleReveal.step === 'revealed' &&
-                    getSpecialRevealLabel(finaleReveal.reserveAmount, finaleReveal.reserveEffect) && (
+                    getSpecialRevealLabel(
+                      finaleReveal.reserveAmount,
+                      finaleReveal.reserveEffect
+                    ) && (
                       <em>
-                        {getSpecialRevealLabel(finaleReveal.reserveAmount, finaleReveal.reserveEffect)}
+                        {getSpecialRevealLabel(
+                          finaleReveal.reserveAmount,
+                          finaleReveal.reserveEffect
+                        )}
                       </em>
                     )}
                 </div>
@@ -592,8 +604,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
                     result.vaults.find((battery) => battery.vaultId === result.personalVaultId)
                       ?.specialEffect
                       ? `· ${
-                          result.vaults.find((battery) => battery.vaultId === result.personalVaultId)
-                            ?.specialEffect === 'doubleVote'
+                          result.vaults.find(
+                            (battery) => battery.vaultId === result.personalVaultId
+                          )?.specialEffect === 'doubleVote'
                             ? 'Double Vote earned'
                             : 'Next vote skipped'
                         } `
@@ -623,7 +636,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
               aria-label="Bank Offer"
             >
               <span className="vault-verdict__offer-kicker">Bank Offer</span>
-              <small className="vault-verdict__bank-mood">{getBankMoodCopy(human.bankMood)}</small>
+              <small className="vault-verdict__bank-mood">
+                {getBankMoodCopy(human.bankMood)}
+              </small>
               <div className="vault-verdict__offer-value">
                 {formatVaultAmount(human.currentOffer)}
               </div>
