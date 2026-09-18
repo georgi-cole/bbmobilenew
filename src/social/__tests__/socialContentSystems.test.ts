@@ -65,6 +65,25 @@ describe('Drama social content system', () => {
     expect(new Set(variants).size).toBeGreaterThan(1)
   })
 
+  it('gives alliance strategy scenes decision-specific accept and decline choices', () => {
+    for (const scenarioKey of [
+      'alliance_nomination_pitch',
+      'alliance_safety_pitch',
+      'alliance_vote_pitch',
+    ]) {
+      const choices = getDramaResponseBlueprint(
+        'deal_offer',
+        interaction({
+          id: scenarioKey,
+          type: 'deal_offer',
+          payload: { scenarioKey, phase: 'social_1', dramaMode: true },
+        })
+      )
+      expect(choices?.[0]?.responseType).toBe('accept')
+      expect(choices?.[2]?.responseType).toBe('decline')
+    }
+  })
+
   it('makes high-stakes replies matter more than casual replies', () => {
     expect(getIncomingResponseRelationshipDelta('alliance_proposal', 'accept', 'Trusting')).toBe(14)
     expect(getIncomingResponseRelationshipDelta('compliment', 'neutral', 'Curious')).toBe(1)
