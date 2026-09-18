@@ -246,7 +246,6 @@ export default function BatteryLow(props: GenericMinigameProps) {
     .map((vault) => vault.amount)
   const bankProfile = getBankMoodProfile(human.bankMood)
   const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
-  const currentOfferRecord = human.offerHistory[human.offerHistory.length - 1] ?? null
   const coreMood =
     latestReveal == null
       ? 'is-idle'
@@ -695,7 +694,11 @@ export default function BatteryLow(props: GenericMinigameProps) {
                             ? 'Double Vote earned'
                             : 'Next eligible vote skipped'
                         } `
-                      : ''}
+                      : result.outcomeType === 'openedVault' &&
+                          result.insuranceFloor != null &&
+                          (result.finalAmount ?? 0) > (result.personalVaultAmount ?? 0)
+                        ? '· Insurance floor applied '
+                        : ''}
                     · {formatTime(result.finishTimeMs)}
                   </small>
                 </article>
