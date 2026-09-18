@@ -783,9 +783,14 @@ const socialSlice = createSlice({
         tags?: string[]
         /** Origin of the action that produced this relationship change. */
         actionSource?: 'manual' | 'system'
+        /**
+         * Compatibility-only writes can update the legacy relationship map
+         * without feeding the same consequence back into canonical Reality state.
+         */
+        skipRealityProjection?: boolean
       }>
     ) {
-      const { source, target, delta, tags } = action.payload
+      const { source, target, delta, tags, skipRealityProjection } = action.payload
       const safeDelta = Number.isFinite(delta) ? delta : 0
       const preserveIncomingAlliance = tags?.includes(ALLIANCE_TAG) ?? false
       if (!state.relationships[source]) {
@@ -814,15 +819,17 @@ const socialSlice = createSlice({
           tags: relationshipTags,
         }
       }
-      applyLegacyRelationshipUpdateToReality(
-        state.reality as RealityDomainState,
-        source,
-        target,
-        safeDelta,
-        tags,
-        0,
-        'legacy'
-      )
+      if (!skipRealityProjection) {
+        applyLegacyRelationshipUpdateToReality(
+          state.reality as RealityDomainState,
+          source,
+          target,
+          safeDelta,
+          tags,
+          0,
+          'legacy'
+        )
+      }
     },
     /** Remove temporary relationship labels while preserving the history in affinity. */
     removeRelationshipTags(
