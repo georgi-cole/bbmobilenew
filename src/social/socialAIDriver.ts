@@ -565,8 +565,13 @@ function routeHumanFacingAction(
   const directContactsThisWeek = pending.filter(
     (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
+  const isAllianceStrategyContact = [
+    'pitch_target',
+    'suggest_replacement',
+    'rally_votes_against',
+  ].includes(actionId)
   if (
-    directContactsThisWeek >= 2 ||
+    (!isAllianceStrategyContact && directContactsThisWeek >= 2) ||
     pending.filter((entry) => entry.createdWeek === week).length >=
       socialConfig.incomingInteractionConfig.maxPerWeek
   ) {
