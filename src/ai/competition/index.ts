@@ -238,11 +238,7 @@ export function getCompetitionPerceptionRead(
   seasonState: CompetitionSeasonState | undefined
 ): CompetitionPerceptionRead {
   const current = clampCompetitionSeasonState({ ...DEFAULT_SEASON_STATE, ...seasonState })
-  const baseline = clamp(
-    profile?.overall ?? (profile ? averageBaselineSkill(profile) : 50),
-    0,
-    100
-  )
+  const baseline = clamp(profile?.overall ?? (profile ? averageBaselineSkill(profile) : 50), 0, 100)
   const samples = current.performanceSamples ?? 0
   const sampleWeight = Math.min(0.82, samples * 0.18)
   const observedStrength = current.observedStrength ?? 50
@@ -253,11 +249,7 @@ export function getCompetitionPerceptionRead(
     0,
     100
   )
-  const threatBonus = clamp(
-    Math.max(0, (perceivedStrength - 52) / 8) + suspicion / 25,
-    0,
-    8
-  )
+  const threatBonus = clamp(Math.max(0, (perceivedStrength - 52) / 8) + suspicion / 25, 0, 8)
   const pawnSuitability = clamp(
     Math.max(0, (45 - perceivedStrength) * 0.45) +
       recentBottomStreak * 2.5 -
@@ -433,7 +425,9 @@ export function updateCompetitionSeasonStateByPlayerId(
         const rankIndex = rankById.get(playerId)
         if (rankIndex !== undefined && ranked.length > 0) {
           const relativePerformance =
-            ranked.length === 1 ? 100 : ((ranked.length - 1 - rankIndex) / (ranked.length - 1)) * 100
+            ranked.length === 1
+              ? 100
+              : ((ranked.length - 1 - rankIndex) / (ranked.length - 1)) * 100
           const wasBottomStreak = recentBottomStreak
           const isBottomBand = relativePerformance <= 25
           recentBottomStreak = isBottomBand ? recentBottomStreak + 1 : 0
