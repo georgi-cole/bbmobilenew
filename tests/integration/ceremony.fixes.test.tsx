@@ -282,6 +282,9 @@ describe('Ceremony fix: replacement animation gated on veto being used', () => {
 describe('Ceremony fix: AI LOH tiebreak choreography', () => {
   beforeEach(() => {
     capturedOnTiebreakerRequired = null
+    capturedOnExternalAnnouncementDismiss = null
+    capturedEvictionSplashDone = null
+    sessionStorage.clear()
     vi.useFakeTimers()
   })
 
@@ -298,6 +301,7 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
       lohId: 'p1', // AI is LOH
       nomineeIds: ['p2', 'p3'],
       voteResults: { p2: 1, p3: 1 }, // tie
+      votes: { p4: 'p2', p5: 'p3' },
       pendingEviction: {
         evicteeId: 'p3',
         evictionMessage: 'LOH breaks the tie, evicting Player 3. 🗳️',
@@ -350,6 +354,15 @@ describe('Ceremony fix: AI LOH tiebreak choreography', () => {
       capturedOnExternalAnnouncementDismiss?.()
     })
     expect(screen.getByTestId('eviction-overlay')).toBeTruthy()
+
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
+    })
+
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
   })
 })
 
