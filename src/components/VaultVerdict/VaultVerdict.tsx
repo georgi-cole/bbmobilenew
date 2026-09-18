@@ -41,6 +41,8 @@ interface FinaleReveal {
   reserveNumber: number
   reserveAmount: number
   reserveEffect: VaultPodState['specialEffect']
+  finalCharge: number
+  insuranceFloor: number | null
   wallNumber: number | null
   wallAmount: number | null
   wallEffect: VaultPodState['specialEffect']
@@ -373,6 +375,8 @@ export default function BatteryLow(props: GenericMinigameProps) {
         reserveNumber: reserveBattery?.displayNumber ?? 0,
         reserveAmount: reserveBattery?.amount ?? resolvedHuman.finalAmount ?? 0,
         reserveEffect: reserveBattery?.specialEffect ?? null,
+        finalCharge: resolvedHuman.finalAmount ?? reserveBattery?.amount ?? 0,
+        insuranceFloor: resolvedHuman.insuranceFloor,
         wallNumber: wallBattery?.displayNumber ?? null,
         wallAmount: wallBattery?.amount ?? null,
         wallEffect: wallBattery?.specialEffect ?? null,
@@ -587,6 +591,13 @@ export default function BatteryLow(props: GenericMinigameProps) {
                       : 'Charging…'}
                   </strong>
                   {finaleReveal.step === 'revealed' &&
+                    finaleReveal.insuranceFloor != null &&
+                    finaleReveal.finalCharge > finaleReveal.reserveAmount && (
+                      <em>
+                        Insurance → {formatVaultAmount(finaleReveal.finalCharge)} final
+                      </em>
+                    )}
+                  {finaleReveal.step === 'revealed' &&
                     getSpecialRevealLabel(
                       finaleReveal.reserveAmount,
                       finaleReveal.reserveEffect
@@ -622,9 +633,14 @@ export default function BatteryLow(props: GenericMinigameProps) {
                     ? 'Power Cell secured. Your next eligible house eviction ballot will count twice.'
                     : finaleReveal.reserveEffect === 'skipVote'
                       ? 'Blackout Cell. You will sit out your next eligible house eviction vote.'
-                      : finaleReveal.reserveAmount >= finaleReveal.offerAmount
-                        ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
-                        : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
+                      : finaleReveal.insuranceFloor != null &&
+                          finaleReveal.finalCharge > finaleReveal.reserveAmount
+                        ? `Insurance catches the fall: ${formatVaultAmount(
+                            finaleReveal.reserveAmount
+                          )} becomes a ${formatVaultAmount(finaleReveal.finalCharge)} final charge.`
+                        : finaleReveal.reserveAmount >= finaleReveal.offerAmount
+                          ? 'The risk paid off. Your Reserve held more charge than the Bank offered.'
+                          : 'The Bank had the better read, but your Reserve is now locked as the final charge.'
                   : 'Your protected battery is about to reveal its charge.'}
               </p>
               <button
