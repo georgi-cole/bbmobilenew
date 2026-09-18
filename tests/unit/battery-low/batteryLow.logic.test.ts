@@ -112,7 +112,7 @@ describe('Battery Low logic', () => {
   });
 
   it('uses the required round schedule and creates offers after each round', () => {
-    expect(VAULT_VERDICT_ROUND_SCHEDULE).toEqual([6, 5, 4, 3, 2, 1, 1]);
+    expect(VAULT_VERDICT_ROUND_SCHEDULE).toEqual([5, 4, 4, 3, 3, 2, 1]);
     let state = choosePersonalVault(makeHuman(), 'battery-1');
     for (const expectedOpenings of VAULT_VERDICT_ROUND_SCHEDULE) {
       expect(getVaultsLeftThisRound(state)).toBe(expectedOpenings);
