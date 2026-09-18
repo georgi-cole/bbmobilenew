@@ -70,6 +70,7 @@ const CONCEALMENT_SENSITIVE_ARCHETYPES = new Set([
   'double_agent',
 ])
 const ALWAYS_PUSH_ARCHETYPES = new Set(['aggressive_competitor', 'clutch_competitor'])
+const REPEAT_PAWN_PENALTY = 12
 
 function hashStringU32(value: string): number {
   let hash = 0x811c9dc5
@@ -162,8 +163,8 @@ function coldStartVulnerability(state: GameState, lohId: string, candidate: Play
   const shield = incomingSocialShield(state, candidate.id)
   const retaliationAffinity = affinity(state, candidate.id, lohId)
   const retaliationRisk = Math.max(0, -retaliationAffinity) * 0.12
-  const earlyHumanGrace = candidate.isUser ? (state.week <= 1 ? 14 : state.week === 2 ? 8 : 0) : 0
-  return (100 - comp) * 0.68 + (100 - shield) * 0.32 - retaliationRisk - earlyHumanGrace
+  // Cold-start uncertainty applies identically to human and AI contestants.
+  return (100 - comp) * 0.68 + (100 - shield) * 0.32 - retaliationRisk
 }
 
 function hasStrategicEvidence(
@@ -201,13 +202,21 @@ function choosePawns(
         candidate.competitionProfile,
         state.competitionSeasonStateByPlayerId?.[candidate.id]
       )
+      // A low/negative target score means "do not target this player"; it must
+      // never turn into a positive pawn bonus. Positive target pressure can
+      // still discourage using a strategically dangerous player as camouflage.
+      const strategicTargetPressure = Math.max(0, scoreFn(state, lohId, candidate))
+      const repeatPawnPenalty = state.lastWeekNominationRecord?.nomineeIds.includes(candidate.id)
+        ? REPEAT_PAWN_PENALTY
+        : 0
       const utility =
         incomingSocialShield(state, candidate.id) * 0.42 -
-        scoreFn(state, lohId, candidate) * 0.34 -
+        strategicTargetPressure * 0.34 -
         competitionStrength(state, candidate) * 0.12 +
         competitionRead.pawnSuitability * 0.65 -
         allyPenalty -
-        hostilePenalty +
+        hostilePenalty -
+        repeatPawnPenalty +
         seededUnit(`${state.gameId}:${state.week}:${lohId}:${candidate.id}:pawn`) * 4
       return { candidate, utility }
     })
