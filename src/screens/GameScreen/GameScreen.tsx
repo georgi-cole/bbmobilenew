@@ -680,10 +680,11 @@ export default function GameScreen() {
     // can briefly retain a provisional nomination while the strategic LOH planner
     // replaces the block, so never allow a stale "nominated" fragment to leak back
     // through this fallback (especially while the real nominees are animating).
-    const fallbackStatus = (p.status ?? 'active')
-      .split('+')
-      .filter((status) => status !== 'nominated')
-      .join('+') || 'active'
+    const fallbackStatus =
+      (p.status ?? 'active')
+        .split('+')
+        .filter((status) => status !== 'nominated')
+        .join('+') || 'active'
     const statuses =
       parts.length > 0
         ? parts.join('+')
