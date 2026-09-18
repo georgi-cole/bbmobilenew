@@ -636,9 +636,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
               aria-label="Bank Offer"
             >
               <span className="vault-verdict__offer-kicker">Bank Offer</span>
-              <small className="vault-verdict__bank-mood">
-                {getBankMoodCopy(human.bankMood)}
-              </small>
+              <small className="vault-verdict__bank-mood">{getBankMoodCopy(human.bankMood)}</small>
               <div className="vault-verdict__offer-value">
                 {formatVaultAmount(human.currentOffer)}
               </div>
