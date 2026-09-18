@@ -191,8 +191,7 @@ function nominationConsultationCandidates(
       player.id !== actorId &&
       player.status !== 'evicted' &&
       player.status !== 'jury' &&
-      !lohIds.has(player.id) &&
-      !alliance.memberIds.includes(player.id)
+      !lohIds.has(player.id)
   )
   if (!isCupidArrowActive(state.game)) return base
 
@@ -267,6 +266,7 @@ function buildAllianceConsultationPlan(
     const preferences = advisors
       .map((advisorId) => {
         const ranked = candidates
+          .filter((candidate) => candidate.id !== advisorId)
           .map((candidate) => ({
             advisorId,
             targetId: candidate.id,
@@ -321,11 +321,16 @@ function buildAllianceConsultationPlan(
       replacements
         .map((candidate) => ({
           id: candidate.id,
-          score:
-            advisors.reduce(
-              (sum, advisorId) => sum + getNominationTargetScore(state.game, advisorId, candidate),
-              0
-            ) / Math.max(1, advisors.length),
+          score: (() => {
+            const eligibleAdvisors = advisors.filter((advisorId) => advisorId !== candidate.id)
+            return (
+              eligibleAdvisors.reduce(
+                (sum, advisorId) =>
+                  sum + getNominationTargetScore(state.game, advisorId, candidate),
+                0
+              ) / Math.max(1, eligibleAdvisors.length)
+            )
+          })(),
         }))
         .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id ??
       null
@@ -382,6 +387,7 @@ function buildAllianceConsultationPlan(
   const preferences = advisors
     .map((advisorId) => {
       const ranked = candidates
+        .filter((candidate) => candidate.id !== advisorId)
         .map((candidate) => ({
           advisorId,
           targetId: candidate.id,
