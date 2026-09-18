@@ -45,6 +45,10 @@ describe('Battery Low responsive styles', () => {
 
     expect(source).toContain('Accept offer')
     expect(source).toContain('Keep playing')
+    expect(source).toContain('Counteroffer')
+    expect(source).toContain('Insure &amp; continue')
+    expect(source).toContain('Blind swap')
+    expect(source).toContain('PRESSURE OFFER · NON-NEGOTIABLE')
     expect(source).toContain('aria-modal="true"')
     expect(source).not.toContain('vault-verdict__ticker')
     expect(source).not.toContain("'MY'")
