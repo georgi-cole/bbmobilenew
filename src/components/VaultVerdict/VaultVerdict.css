@@ -416,6 +416,30 @@
   white-space: nowrap;
 }
 
+.vault-verdict__live-bank {
+  margin-top: 4px;
+  overflow: hidden;
+  color: rgba(215, 221, 247, 0.56);
+  font-size: clamp(0.5rem, 2vw, 0.58rem);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-verdict__live-bank.is-generous {
+  color: rgba(138, 239, 201, 0.76);
+}
+
+.vault-verdict__live-bank.is-chaotic {
+  color: rgba(205, 169, 255, 0.78);
+}
+
+.vault-verdict__live-bank.is-stingy {
+  color: rgba(214, 216, 228, 0.62);
+}
+
 .vault-verdict__charge-meter {
   --charge-start: #4de9bd;
   --charge-end: #45c8ff;
