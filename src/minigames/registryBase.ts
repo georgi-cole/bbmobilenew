@@ -1390,6 +1390,8 @@ const REGISTRY: Record<string, GameRegistryEntry> = {
       'After each stage, consider the bank’s offer based on the charges still hidden.',
       'Accept an offer to lock in your charge, or reject it to keep playing.',
       'If you play to the end, your reserve battery decides the final charge.',
+      'In ordinary house-vote formats, Power and Blackout cells each rank as 50%: Power doubles your next eligible eviction vote, while Blackout skips it.',
+      'Unused special effects expire after two ordinary eviction cycles.',
       'The strongest final charge wins.',
     ],
     resultMode: 'placement',
