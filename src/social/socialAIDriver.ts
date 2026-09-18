@@ -755,6 +755,7 @@ function allianceHumanStrategyCandidate(
 
   const phase = state.game.phase
   const game = state.game as unknown as GameState
+  if (game.voxPopuli?.status === 'active') return null
   const humanIsLoh = game.lohId === human.id || getCupidPartnerId(game, game.lohId) === human.id
   const humanHasSafety =
     game.posWinnerId === human.id || getCupidPartnerId(game, game.posWinnerId) === human.id
