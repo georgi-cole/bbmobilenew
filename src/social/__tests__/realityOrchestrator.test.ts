@@ -401,6 +401,44 @@ describe('Reality causal orchestration', () => {
     expect(resolved.domain.alliances['alliance-core'].overlapAllianceIds).toEqual([coalition?.id])
   })
 
+  it('routes the live Betray Ally action into the formal alliance lifecycle', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'betrayal-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: ['human'],
+      planIds: ['vote:human'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const result = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(37),
+      opportunity: {
+        ...opportunity('betray'),
+        context: { ...context, socialIntensity: 'REALITY' },
+      },
+    })
+
+    expect(result.selectedActionId).toBe('betray')
+    expect(result.domain.alliances['betrayal-pact'].status).toBe('FRACTURED')
+    expect(
+      result.domain.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('lia')
+      )
+    ).toBe(true)
+  })
+
   it('creates grievances and repair debt from live conflict actions', () => {
     const conflict = runRealityOpportunity({
       domain: createInitialRealityDomainState(),
