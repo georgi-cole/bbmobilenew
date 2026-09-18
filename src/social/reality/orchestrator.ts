@@ -22,6 +22,7 @@ import {
   coordinateRealityAllianceTarget,
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  leakRealityAlliance,
   markRealityAllianceInfiltratorIfSecondary,
   recordRealityAllianceBetrayal,
   recruitRealityAllianceMember,
@@ -233,6 +234,37 @@ function applyRealityLifecycle(input: {
         at,
         sourceEventId: event.id,
       })
+    }
+  }
+
+  if (
+    interaction.direction !== 'HUMAN_TO_AI' &&
+    ['whisper', 'share_intel'].includes(action.id)
+  ) {
+    for (const targetId of acceptedTargets) {
+      const leakable = Object.values(domain.alliances)
+        .filter(
+          (alliance) =>
+            (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+            alliance.memberIds.includes(interaction.actorId) &&
+            !alliance.memberIds.includes(targetId) &&
+            alliance.secrecy > 0.2 &&
+            (alliance.infiltratorIds.includes(interaction.actorId) ||
+              (alliance.memberCommitment[interaction.actorId] ?? 0.5) <= 0.35)
+        )
+        .sort(
+          (left, right) =>
+            Number(right.infiltratorIds.includes(interaction.actorId)) -
+              Number(left.infiltratorIds.includes(interaction.actorId)) ||
+            (left.memberCommitment[interaction.actorId] ?? 0.5) -
+              (right.memberCommitment[interaction.actorId] ?? 0.5) ||
+            right.secrecy - left.secrecy ||
+            right.memberIds.length - left.memberIds.length ||
+            left.id.localeCompare(right.id)
+        )[0]
+      if (leakable) {
+        leakRealityAlliance(domain, leakable.id, interaction.actorId, [targetId], at)
+      }
     }
   }
 
