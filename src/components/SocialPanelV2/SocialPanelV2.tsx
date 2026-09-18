@@ -12,6 +12,7 @@ import {
   selectSessionLogs,
   selectSocialPanelOpen,
   selectWeekStartRelSnapshot,
+  replaceRealityDomain,
 } from '../../social/socialSlice'
 import { addTvEvent } from '../../store/gameSlice'
 import { SocialManeuvers } from '../../social/SocialManeuvers'
@@ -35,6 +36,7 @@ import { getEffectiveSocialMode } from '../../social/socialMode'
 import { validateSocialExecution } from '../../social/socialExecutionGuard'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { executeHumanRealityAction } from '../../social/reality/humanFlow'
+import { renameRealityAlliance } from '../../social/reality'
 import { getCupidPartnerId, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import type { PublicDirection } from '../../publicOpinion/types'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
@@ -455,6 +457,24 @@ export default function SocialPanelV2() {
 
   const canExecute =
     hasExecutableSelection && (executionEligibility.eligible || !executionEligibility.reason)
+
+  const handleRenameAlliance = useCallback(
+    (allianceId: string, name: string) => {
+      const domain = structuredClone(socialState.reality)
+      try {
+        renameRealityAlliance(domain, {
+          allianceId,
+          actorId: humanPlayer.id,
+          name,
+          at: { day: game.week, phase: game.phase },
+        })
+        dispatch(replaceRealityDomain(domain))
+      } catch {
+        // The inline editor keeps the prior name when validation rejects a rename.
+      }
+    },
+    [dispatch, game.phase, game.week, humanPlayer.id, socialState.reality]
+  )
 
   const hiddenContextualActionIds = useMemo(() => {
     const hidden = new Set<string>()
@@ -961,6 +981,7 @@ export default function SocialPanelV2() {
               weekStartRelSnapshot={weekStartRelSnapshot}
               currentWeek={game.week}
               reality={socialState.reality}
+              onRenameAlliance={handleRenameAlliance}
             />
           )}
         </div>
