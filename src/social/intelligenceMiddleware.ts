@@ -377,7 +377,11 @@ export const intelligenceMiddleware: Middleware = (api) => (next) => (action) =>
   }
 
   const latest = api.getState() as IntelligenceRootState
-  if (type === 'social/commitRealityOutcome' || type === 'social/recordRealityFact') {
+  if (
+    type === 'social/commitRealityOutcome' ||
+    type === 'social/replaceRealityDomain' ||
+    type === 'social/recordRealityFact'
+  ) {
     maybeBroadcastPublicAllianceExposure(api, before, latest)
   }
   maybeBroadcastWhisper(api, before, api.getState() as IntelligenceRootState)
