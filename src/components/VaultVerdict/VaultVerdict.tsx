@@ -535,6 +535,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
                       ? `Reserve battery ${personalVaultNumber}`
                       : 'Reserve not selected'}
                   </small>
+                  <em className={`vault-verdict__live-bank is-${human.bankMood}`}>
+                    Bank: {bankProfile.label.toLowerCase()} · {bankProfile.short}
+                  </em>
                 </div>
                 <div
                   key={`${human.openedVaultIds.length}-${highestRemaining}`}
