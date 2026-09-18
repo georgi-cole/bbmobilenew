@@ -510,6 +510,138 @@ describe('Reality overlapping deals and betrayal lifecycle', () => {
     expect(secondary.genuine).toBe(true)
   })
 
+  it('lets a recruit organically defect from a weak unrelated pact after loyalty shifts', () => {
+    const state = createInitialRealityDomainState()
+    const oldPact = createRealityAlliance(state, {
+      id: 'old-pact',
+      founderIds: ['kai'],
+      memberIds: ['nova'],
+      purpose: 'Old protection deal',
+      at: { day: 1, phase: 'social_1' },
+    })
+    oldPact.status = 'ACTIVE'
+    oldPact.memberCommitment.kai = 0.18
+    oldPact.memberCommitment.nova = 0.55
+    refreshRealityAllianceDynamics(oldPact)
+
+    const newCoalition = createRealityAlliance(state, {
+      id: 'new-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    newCoalition.status = 'ACTIVE'
+    newCoalition.memberCommitment.ava = 0.78
+    newCoalition.memberCommitment.lia = 0.76
+    newCoalition.memberCommitment.kai = 0.71
+    refreshRealityAllianceDynamics(newCoalition)
+
+    holdRealityAllianceMeeting(state, {
+      allianceId: newCoalition.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['mara'],
+      planIds: ['target:mara'],
+      at: { day: 4, phase: 'social_2' },
+    })
+
+    expect(newCoalition.memberIds).toContain('kai')
+    expect(oldPact.memberIds).not.toContain('kai')
+    expect(oldPact.status).toBe('DISSOLVED')
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_MEMBER_DEFECTED' &&
+          event.targetIds.includes('kai') &&
+          event.reason.includes('old-pact')
+      )
+    ).toBe(true)
+  })
+
+  it('does not break a nested inner pact when loyalty rises in its overlapping coalition', () => {
+    const state = createInitialRealityDomainState()
+    const inner = createRealityAlliance(state, {
+      id: 'inner-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    inner.status = 'ACTIVE'
+    inner.memberCommitment.ava = 0.18
+    inner.memberCommitment.lia = 0.82
+    refreshRealityAllianceDynamics(inner)
+
+    const coalition = createRealityAlliance(state, {
+      id: 'outer-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Wider coalition',
+      at: { day: 2, phase: 'social_1' },
+    })
+    coalition.status = 'ACTIVE'
+    coalition.memberCommitment.ava = 0.71
+    coalition.memberCommitment.lia = 0.74
+    coalition.memberCommitment.kai = 0.7
+    refreshRealityAllianceDynamics(coalition)
+
+    holdRealityAllianceMeeting(state, {
+      allianceId: coalition.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['mara'],
+      planIds: ['target:mara'],
+      at: { day: 4, phase: 'social_2' },
+    })
+
+    expect(inner.memberIds).toContain('ava')
+    expect(inner.status).not.toBe('DISSOLVED')
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_MEMBER_DEFECTED' &&
+          event.targetIds.includes('ava') &&
+          event.reason.includes('inner-pact')
+      )
+    ).toBe(false)
+  })
+
+  it('expels a collapsed member from a fractured coalition instead of destroying the whole group', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'fractured-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.memberCommitment.ava = 0.9
+    alliance.memberCommitment.lia = 0.85
+    alliance.memberCommitment.kai = 0.12
+    refreshRealityAllianceDynamics(alliance)
+    alliance.status = 'FRACTURED'
+
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'kai',
+      targetId: 'lia',
+      kind: 'SOCIAL_BETRAYAL',
+      at: { day: 5, phase: 'social_2' },
+      sourceEventId: 'kai-crossed-line',
+    })
+
+    expect(alliance.memberIds).toEqual(expect.arrayContaining(['ava', 'lia']))
+    expect(alliance.memberIds).not.toContain('kai')
+    expect(alliance.status).not.toBe('DISSOLVED')
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_MEMBER_EXPELLED' &&
+          event.targetIds.includes('kai') &&
+          event.reason.includes('fractured-coalition')
+      )
+    ).toBe(true)
+  })
+
   it('fractures a core pact after a serious betrayal and dissolves it after another severe breach', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
