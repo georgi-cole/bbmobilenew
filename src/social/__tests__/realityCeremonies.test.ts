@@ -127,6 +127,38 @@ describe('Reality alliance ceremony consequences', () => {
     expect(state.relationships.ally.loh.resentment).toBeGreaterThan(0)
   })
 
+  it('rewards following a known alliance vote plan only once across vote projections', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'plan-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      planIds: ['vote:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const before = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'outsider', { day: 5, phase: 'live_vote' }, 'vote-cast')
+    expect(alliance.memberCommitment.ava).toBeCloseTo(before + 0.04)
+
+    const afterCast = alliance.memberCommitment.ava
+    finalizeRealityVote(
+      state,
+      'ava',
+      'outsider',
+      { day: 5, phase: 'eviction_results' },
+      'vote-revealed'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterCast)
+  })
+
   it('records an actual vote against an ally as a distinct alliance betrayal', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
