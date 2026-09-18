@@ -40,7 +40,9 @@ import './VaultVerdict.css'
 
 const FINAL_FEED_LIMIT = 18
 
-const EYE_BANK_CREST = '/assets/minigames/battery-low/eye-bank.webp'
+const BATTERY_LOW_ASSET_BASE = `${import.meta.env.BASE_URL}assets/minigames/battery-low/`
+const EYE_BANK_CREST = `${BATTERY_LOW_ASSET_BASE}eye-bank.webp`
+const STAGE_BACKGROUND = `${BATTERY_LOW_ASSET_BASE}stage.webp`
 const HERO_REVEAL_SPRITES: Partial<Record<RevealEffectKey, { x: string; y: string }>> = {
   'power-cell': { x: '0%', y: '0%' },
   'blackout-cell': { x: '33.333%', y: '0%' },
@@ -581,6 +583,7 @@ export default function BatteryLow(props: GenericMinigameProps) {
       className={`vault-verdict is-bank-${human.bankMood} ${
         gameActive ? 'is-playing' : showFinale ? 'is-finale' : 'is-results'
       }`}
+      style={{ '--battery-low-stage': `url("${STAGE_BACKGROUND}")` } as CSSProperties}
     >
       <div className="vault-verdict__show-rig" aria-hidden="true">
         <i className="vault-verdict__spotlight is-left" />
