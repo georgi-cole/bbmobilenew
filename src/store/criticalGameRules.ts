@@ -155,8 +155,7 @@ export function canCastClassicEvictionVote(state: GameState, playerId: string): 
  * break the tie; this matters for Detox, which can put the LOH on the block.
  */
 export function getClassicEvictionTieBreakerId(state: GameState): string | null {
-  const candidateId =
-    state.coLohIds && state.coLohIds.length >= 2 ? state.posWinnerId : state.lohId
+  const candidateId = state.coLohIds && state.coLohIds.length >= 2 ? state.posWinnerId : state.lohId
   if (!candidateId || !isActivePlayer(state, candidateId)) return null
   if (state.nomineeIds.includes(candidateId)) return null
   return candidateId
