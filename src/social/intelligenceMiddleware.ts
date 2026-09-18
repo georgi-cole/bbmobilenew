@@ -168,7 +168,7 @@ function recordCompetitionSuspicion(
     const historicalThrows = explicitThrow
       ? state.challenge.history.filter((run) => run.competitionIntents?.[playerId] === 'throw').length
       : 0
-    const inferredPattern = suspicion >= 18 && bottomStreak >= 3
+    const inferredPattern = suspicion >= 15 && bottomStreak >= 3
 
     // AI intent is private engine state; the house only develops a belief after
     // repeated evidence. Human players have no hidden throw flag at all, so
