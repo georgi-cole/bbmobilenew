@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { describe, expect, it } from 'vitest'
-import socialReducer, { updateRelationship } from '../socialSlice'
+import socialReducer, { replaceRealityDomain, updateRelationship } from '../socialSlice'
 import { migrateSocialState } from '../socialStateMigration'
 import {
   addRealityFact,
@@ -126,6 +126,34 @@ describe('Reality domain migration and directed relationships', () => {
       'CORE'
     )
     expect(migrated.reality.alliances['alliance-core-status'].leaderIds).toContain('human')
+  })
+
+  it('does not project fractured or dormant formal pacts as active alliance tags', () => {
+    for (const status of ['FRACTURED', 'DORMANT'] as const) {
+      const store = configureStore({ reducer: { social: socialReducer } })
+      const reality = createInitialRealityDomainState()
+      applyRealityRelationshipChange(reality, {
+        sourceId: 'human',
+        targetId: 'lia',
+        eventId: `bond-${status}`,
+        day: 3,
+        phase: 'social_1',
+        anchor: 'positive',
+        deltas: { warmth: 25, trust: 35, loyalty: 30 },
+      })
+      const alliance = createRealityAlliance(reality, {
+        id: `inactive-${status.toLowerCase()}`,
+        founderIds: ['human'],
+        memberIds: ['lia'],
+        purpose: 'Old pact',
+        at: { day: 2, phase: 'social_1' },
+      })
+      alliance.status = status
+
+      store.dispatch(replaceRealityDomain(reality))
+
+      expect(store.getState().social.relationships.human.lia.tags).not.toContain('alliance')
+    }
   })
 
   it('dual-writes legacy relationship outcomes into the Reality edge only', () => {
