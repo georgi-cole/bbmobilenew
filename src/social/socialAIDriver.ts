@@ -697,12 +697,7 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
-
-function liveAllianceWithHuman(
-  state: DriverState,
-  actorId: string,
-  humanId: string
-) {
+function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: string) {
   return Object.values(state.social.reality.alliances)
     .filter(
       (alliance) =>
@@ -761,7 +756,8 @@ function allianceHumanStrategyCandidate(
     .filter((id) => id !== human.id)
     .filter((id) =>
       state.game.players.some(
-        (candidate) => candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
+        (candidate) =>
+          candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
       )
     )
     .sort(
@@ -776,10 +772,7 @@ function allianceHumanStrategyCandidate(
   const phase = state.game.phase
   const game = state.game as unknown as GameState
 
-  if (
-    state.game.lohId === human.id &&
-    ['loh_results', 'social_1', 'nominations'].includes(phase)
-  ) {
+  if (state.game.lohId === human.id && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds)
     return subjectId
       ? {
@@ -791,10 +784,7 @@ function allianceHumanStrategyCandidate(
       : null
   }
 
-  if (
-    state.game.posWinnerId === human.id &&
-    ['pos_results', 'pos_ceremony'].includes(phase)
-  ) {
+  if (state.game.posWinnerId === human.id && ['pos_results', 'pos_ceremony'].includes(phase)) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
       nonNomineesOnly: true,
     })
