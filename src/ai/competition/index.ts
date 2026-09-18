@@ -181,7 +181,7 @@ export function clampCompetitionSeasonState(state: CompetitionSeasonState): Comp
     ),
     fatigue: clamp(state.fatigue, SEASON_STATE_BOUNDS.fatigue.min, SEASON_STATE_BOUNDS.fatigue.max),
     observedStrength: clamp(
-      state.observedStrength ?? DEFAULT_SEASON_STATE.observedStrength!,
+      state.observedStrength ?? 50,
       SEASON_STATE_BOUNDS.observedStrength.min,
       SEASON_STATE_BOUNDS.observedStrength.max
     ),
@@ -201,7 +201,7 @@ export function clampCompetitionSeasonState(state: CompetitionSeasonState): Comp
       SEASON_STATE_BOUNDS.performanceSamples.max
     ),
     peakRelativePerformance: clamp(
-      state.peakRelativePerformance ?? DEFAULT_SEASON_STATE.peakRelativePerformance!,
+      state.peakRelativePerformance ?? 50,
       SEASON_STATE_BOUNDS.peakRelativePerformance.min,
       SEASON_STATE_BOUNDS.peakRelativePerformance.max
     ),
@@ -238,7 +238,8 @@ export function getCompetitionPerceptionRead(
   seasonState: CompetitionSeasonState | undefined
 ): CompetitionPerceptionRead {
   const current = clampCompetitionSeasonState({ ...DEFAULT_SEASON_STATE, ...seasonState })
-  const baseline = clamp(profile?.overall ?? (profile ? averageBaselineSkill(profile) : 50), 0, 100)
+  const rawBaseline = profile?.overall ?? (profile ? averageBaselineSkill(profile) : 50)
+  const baseline = clamp(rawBaseline, 0, 100)
   const samples = current.performanceSamples ?? 0
   const sampleWeight = Math.min(0.82, samples * 0.18)
   const observedStrength = current.observedStrength ?? 50
@@ -424,10 +425,11 @@ export function updateCompetitionSeasonStateByPlayerId(
       if (includePlacementBonuses) {
         const rankIndex = rankById.get(playerId)
         if (rankIndex !== undefined && ranked.length > 0) {
-          const relativePerformance =
-            ranked.length === 1
-              ? 100
-              : ((ranked.length - 1 - rankIndex) / (ranked.length - 1)) * 100
+          let relativePerformance = 100
+          if (ranked.length > 1) {
+            const placementsBelow = ranked.length - 1 - rankIndex
+            relativePerformance = (placementsBelow / (ranked.length - 1)) * 100
+          }
           const wasBottomStreak = recentBottomStreak
           const isBottomBand = relativePerformance <= 25
           recentBottomStreak = isBottomBand ? recentBottomStreak + 1 : 0
