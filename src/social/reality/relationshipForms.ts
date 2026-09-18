@@ -394,6 +394,143 @@ function refreshRealityAllianceInfiltratorIntent(
   }
 }
 
+function allianceCoordinationRank(
+  alliance: RealityAlliance,
+  actorId: string,
+  partnerId: string
+): [number, number, number, number, string] {
+  const statusRank = alliance.status === 'ACTIVE' ? 2 : 1
+  const actorRole =
+    alliance.memberPerceivedStatus[actorId] === 'CORE'
+      ? 2
+      : alliance.memberPerceivedStatus[actorId] === 'REGULAR'
+        ? 1
+        : 0
+  const partnerRole =
+    alliance.memberPerceivedStatus[partnerId] === 'CORE'
+      ? 2
+      : alliance.memberPerceivedStatus[partnerId] === 'REGULAR'
+        ? 1
+        : 0
+  const mutualCommitment = Math.min(
+    alliance.memberCommitment[actorId] ?? 0,
+    alliance.memberCommitment[partnerId] ?? 0
+  )
+  // A tight inner pact should own a private agreement before a looser outer
+  // coalition does. Size is therefore only a final tiebreak after live health,
+  // member standing and mutual commitment.
+  return [
+    statusRank,
+    actorRole + partnerRole,
+    mutualCommitment + alliance.cohesion * 0.35,
+    -alliance.memberIds.length,
+    alliance.id,
+  ]
+}
+
+export function findRealityAllianceForCoordination(
+  state: RealityDomainState,
+  actorId: string,
+  partnerId: string,
+  subjectId?: string
+): RealityAlliance | null {
+  const candidates = Object.values(state.alliances).filter(
+    (alliance) =>
+      (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+      alliance.memberIds.includes(actorId) &&
+      alliance.memberIds.includes(partnerId) &&
+      (!subjectId || !alliance.memberIds.includes(subjectId))
+  )
+  candidates.sort((left, right) => {
+    const a = allianceCoordinationRank(left, actorId, partnerId)
+    const b = allianceCoordinationRank(right, actorId, partnerId)
+    return (
+      b[0] - a[0] ||
+      b[1] - a[1] ||
+      b[2] - a[2] ||
+      b[3] - a[3] ||
+      String(a[4]).localeCompare(String(b[4]))
+    )
+  })
+  return candidates[0] ?? null
+}
+
+/**
+ * Persist an accepted target conversation into the strongest shared pact only.
+ * This deliberately does not call holdRealityAllianceMeeting: two members
+ * agreeing privately should not count absent coalition members as skipping a
+ * formal meeting. Their differing memberPlanBeliefs instead create natural
+ * internal disagreement until the wider group aligns.
+ */
+export function coordinateRealityAllianceTarget(
+  state: RealityDomainState,
+  input: {
+    actorId: string
+    partnerId: string
+    subjectId: string
+    kind: 'CURRENT' | 'FALLBACK'
+    at: RealityClock
+    sourceEventId: string
+  }
+): RealityAlliance | null {
+  if (
+    input.actorId === input.partnerId ||
+    input.actorId === input.subjectId ||
+    input.partnerId === input.subjectId
+  ) {
+    return null
+  }
+  const alliance = findRealityAllianceForCoordination(
+    state,
+    input.actorId,
+    input.partnerId,
+    input.subjectId
+  )
+  if (!alliance) return null
+
+  const planId =
+    input.kind === 'CURRENT' ? `target:${input.subjectId}` : `fallback:${input.subjectId}`
+  if (input.kind === 'CURRENT') {
+    alliance.currentTargetIds = [input.subjectId]
+    alliance.fallbackTargetIds = alliance.fallbackTargetIds.filter(
+      (targetId) => targetId !== input.subjectId
+    )
+  } else {
+    alliance.fallbackTargetIds = [input.subjectId]
+  }
+
+  for (const memberId of [input.actorId, input.partnerId]) {
+    alliance.memberPlanBeliefs[memberId] = [planId]
+    const commitmentGain = alliance.infiltratorIds.includes(memberId) ? 0.005 : 0.02
+    alliance.memberCommitment[memberId] = clamp01(
+      (alliance.memberCommitment[memberId] ?? 0.5) + commitmentGain
+    )
+  }
+
+  appendRealityEvent(state, {
+    ...input.at,
+    type: 'ALLIANCE_TARGET_COORDINATED',
+    actorId: input.actorId,
+    targetIds: [input.subjectId],
+    participantIds: [input.actorId, input.partnerId],
+    witnessIds: [],
+    visibility: 'PAIR_ONLY',
+    outcome: 'SUCCESS',
+    reason: `${input.kind.toLowerCase()}:${alliance.id}:${input.sourceEventId}`,
+    tags: ['ALLIANCE', 'PLAN', input.kind],
+    relatedFactIds: [],
+    relatedPromiseIds: [...alliance.sharedPromiseIds],
+    relatedThreadIds: [],
+    publicEligible: false,
+    juryEligible: true,
+  })
+
+  refreshRealityAllianceDynamics(alliance)
+  refreshRealityAllianceInfiltratorIntent(state, alliance, input.actorId)
+  refreshRealityAllianceInfiltratorIntent(state, alliance, input.partnerId)
+  return refreshRealityAllianceLifecycle(alliance)
+}
+
 function allianceRecruitmentRank(
   alliance: RealityAlliance,
   recruiterId: string
