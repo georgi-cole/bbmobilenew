@@ -138,7 +138,7 @@ export interface ResolvedVaultParticipant {
 const FALLBACK_NAMES = ['You', 'Kian', 'Mira', 'Jules', 'Nina', 'Sasha', 'Eli', 'Rhea'];
 const BANK_MOODS: BankMood[] = ['stingy', 'calculated', 'generous', 'chaotic'];
 const AI_PERSONALITIES: AiPersonality[] = ['cautious', 'balanced', 'greedy', 'chaotic', 'show-off', 'panic'];
-const DRAMATIC_AMOUNTS = new Set([0, 1, 4.04, 6.66, 13, 13.37, 42, 69, 99, 100]);
+const DRAMATIC_AMOUNTS = new Set([0, 6.66, 13, 42, 69, 100]);
 
 const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
   [0, {
@@ -157,7 +157,7 @@ const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
     eyebrow: 'CRITICAL',
     title: '1% · LAST BREATH',
     strapline: 'One flicker from empty.',
-    hero: true,
+    hero: false,
     soundKey: 'ui:error',
     soundVolume: 0.42,
   }],
@@ -167,7 +167,7 @@ const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
     eyebrow: 'SIGNAL LOST',
     title: '4.04% · NOT FOUND',
     strapline: 'The board loses the signal.',
-    hero: true,
+    hero: false,
     soundKey: 'ui:error',
     soundVolume: 0.44,
   }],
@@ -197,7 +197,7 @@ const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
     eyebrow: 'SYSTEM OVERRIDE',
     title: '13.37% · ELITE',
     strapline: 'A rogue code pulse hits the board.',
-    hero: true,
+    hero: false,
     soundKey: 'ui:navigate',
     soundVolume: 0.44,
   }],
@@ -329,7 +329,7 @@ const REVEAL_EFFECTS = new Map<number, RevealEffectProfile>([
     eyebrow: 'ONE PERCENT AWAY',
     title: '99% · SO CLOSE',
     strapline: 'The stage freezes on the near-perfect hit.',
-    hero: true,
+    hero: false,
     soundKey: 'tv:event',
     soundVolume: 0.54,
   }],
