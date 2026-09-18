@@ -281,15 +281,20 @@ function relationshipTagsForReality(
 ): Set<string> {
   const edge = reality.relationships[actorId]?.[targetId]
   const tags = new Set<string>()
-  const formalAlliance = Object.values(reality.alliances).some(
+  const formalPairAlliances = Object.values(reality.alliances).filter(
     (alliance) =>
-      alliance.status !== 'DISSOLVED' &&
-      alliance.memberIds.includes(actorId) &&
-      alliance.memberIds.includes(targetId)
+      alliance.memberIds.includes(actorId) && alliance.memberIds.includes(targetId)
   )
-  if (formalAlliance) tags.add('alliance')
+  const hasLiveFormalAlliance = formalPairAlliances.some(
+    (alliance) => alliance.status !== 'DISSOLVED'
+  )
+  const hasFormalAllianceHistory = formalPairAlliances.length > 0
+  if (hasLiveFormalAlliance) tags.add('alliance')
   if (!edge) return tags
-  if (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY') {
+  if (
+    !hasFormalAllianceHistory &&
+    (edge.perceivedLabel === 'ALLY' || edge.perceivedLabel === 'CORE_ALLY')
+  ) {
     tags.add('alliance')
   }
   if (edge.perceivedLabel === 'ROMANCE' || edge.perceivedLabel === 'POWER_PAIR') {
