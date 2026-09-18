@@ -119,12 +119,20 @@ function BatteryTile({
   const specialLabel = isOpened
     ? getSpecialRevealLabel(battery.amount, battery.specialEffect)
     : null
+  const specialTitle =
+    battery.specialEffect === 'doubleVote'
+      ? 'POWER'
+      : battery.specialEffect === 'skipVote'
+        ? 'BLACKOUT'
+        : null
   const toneClass = isOpened ? ` is-charge-${getChargeTone(battery.amount)}` : ''
   const chargeStyle = isOpened
     ? ({ '--battery-value': `${battery.amount}%` } as CSSProperties)
     : undefined
   const ariaLabel = isOpened
-    ? `Battery ${battery.displayNumber}, opened, ${formatVaultAmount(battery.amount)}`
+    ? battery.specialEffect
+      ? `Battery ${battery.displayNumber}, opened, ${specialTitle} cell, ranks as ${formatVaultAmount(battery.amount)}`
+      : `Battery ${battery.displayNumber}, opened, ${formatVaultAmount(battery.amount)}`
     : isReserve
       ? `Reserve battery ${battery.displayNumber}`
       : isFinalWall
@@ -144,9 +152,15 @@ function BatteryTile({
     >
       {isOpened ? (
         <>
-          <strong className="vault-verdict__pod-value">{formatVaultAmount(battery.amount)}</strong>
+          <strong className="vault-verdict__pod-value">
+            {specialTitle ?? formatVaultAmount(battery.amount)}
+          </strong>
           <span className="vault-verdict__pod-number">#{battery.displayNumber}</span>
-          {specialLabel && <em className="vault-verdict__pod-special">{specialLabel}</em>}
+          {battery.specialEffect ? (
+            <em className="vault-verdict__pod-special">Ranks {formatVaultAmount(battery.amount)}</em>
+          ) : (
+            specialLabel && <em className="vault-verdict__pod-special">{specialLabel}</em>
+          )}
         </>
       ) : isReserve ? (
         <>
@@ -223,6 +237,9 @@ export default function BatteryLow(props: GenericMinigameProps) {
     latestReveal == null
       ? null
       : getSpecialRevealLabel(latestReveal, latestRevealVault?.specialEffect)
+  const revealedStandardAmounts = human.vaults
+    .filter((vault) => vault.status === 'opened' && !vault.specialEffect)
+    .map((vault) => vault.amount)
   const coreMood =
     latestReveal == null
       ? 'is-idle'
@@ -461,7 +478,11 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   aria-hidden="true"
                 >
                   <span>{latestRevealLabel ?? 'Battery revealed'}</span>
-                  <strong>{formatVaultAmount(latestReveal)}</strong>
+                  <strong>
+                    {latestRevealVault?.specialEffect
+                      ? `Ranks ${formatVaultAmount(latestReveal)}`
+                      : formatVaultAmount(latestReveal)}
+                  </strong>
                 </div>
               )}
 
@@ -520,7 +541,11 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   <small>Reserve Battery</small>
                   <strong>
                     {finaleReveal.step === 'revealed'
-                      ? formatVaultAmount(finaleReveal.reserveAmount)
+                      ? finaleReveal.reserveEffect === 'doubleVote'
+                        ? 'POWER CELL'
+                        : finaleReveal.reserveEffect === 'skipVote'
+                          ? 'BLACKOUT CELL'
+                          : formatVaultAmount(finaleReveal.reserveAmount)
                       : 'Charging…'}
                   </strong>
                   {finaleReveal.step === 'revealed' &&
@@ -529,10 +554,16 @@ export default function BatteryLow(props: GenericMinigameProps) {
                       finaleReveal.reserveEffect
                     ) && (
                       <em>
-                        {getSpecialRevealLabel(
-                          finaleReveal.reserveAmount,
-                          finaleReveal.reserveEffect
-                        )}
+                        {finaleReveal.reserveEffect
+                          ? `Ranks ${formatVaultAmount(finaleReveal.reserveAmount)} · ${
+                              finaleReveal.reserveEffect === 'doubleVote'
+                                ? 'Double Vote'
+                                : 'Skip Vote'
+                            }`
+                          : getSpecialRevealLabel(
+                              finaleReveal.reserveAmount,
+                              finaleReveal.reserveEffect
+                            )}
                       </em>
                     )}
                 </div>
@@ -701,11 +732,17 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   .map((amount) => (
                     <span
                       key={amount}
-                      className={`${human.revealedAmounts.includes(amount) ? 'is-opened' : ''} is-charge-${getChargeTone(amount)}`}
+                      className={`${revealedStandardAmounts.includes(amount) ? 'is-opened' : ''} is-charge-${getChargeTone(amount)}`}
                     >
                       {formatVaultAmount(amount)}
                     </span>
                   ))}
+                {voteEffectsEnabled && (
+                  <>
+                    <span className="is-charge-medium">⚡ Power · ranks 50%</span>
+                    <span className="is-charge-medium">Blackout · ranks 50%</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
