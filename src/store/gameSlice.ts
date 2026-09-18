@@ -9417,9 +9417,10 @@ const gameSlice = createSlice({
             const tieBreakerPlayerId = getClassicEvictionTieBreakerId(state)
             const tieBreakerPlayer = state.players.find((p) => p.id === tieBreakerPlayerId)
             const usesPosTieBreaker =
-              tieBreakerPlayerId != null &&
-              tieBreakerPlayerId === state.posWinnerId &&
-              tieBreakerPlayerId !== state.lohId
+              isCoLohDay ||
+              (tieBreakerPlayerId != null &&
+                tieBreakerPlayerId === state.posWinnerId &&
+                tieBreakerPlayerId !== state.lohId)
             const tiedNames = topNominees
               .map((id) => state.players.find((p) => p.id === id)?.name ?? id)
               .join(' and ')
