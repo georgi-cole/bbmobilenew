@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  adjustRealityAllianceCommitment,
   applyRealityApology,
   chooseAllianceMemberVote,
   createRealityAlliance,
@@ -9,6 +10,7 @@ import {
   formRealityTruce,
   holdRealityAllianceMeeting,
   recruitRealityAllianceMember,
+  refreshRealityAllianceDynamics,
   refreshRealityAllianceOverlaps,
   reciprocateRealityRomance,
   signalRealityRomance,
@@ -51,6 +53,119 @@ describe('operational Reality alliances', () => {
 
     expect(avaVote.intendedTargetId).toBe('nova')
     expect(kaiVote.confidence).not.toBe(avaVote.confidence)
+  })
+})
+
+describe('Reality alliance commitment and hierarchy', () => {
+  it('requires sustained commitment before promotion and sustained erosion before demotion', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'alliance-commitment',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    alliance.memberCommitment.lia = 0.73
+    alliance.memberPerceivedStatus.lia = 'REGULAR'
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', 0.01)
+    expect(alliance.memberPerceivedStatus.lia).toBe('CORE')
+    expect(alliance.leaderIds).toContain('lia')
+
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.2)
+    expect(alliance.memberCommitment.lia).toBeCloseTo(0.54)
+    expect(alliance.memberPerceivedStatus.lia).toBe('CORE')
+
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.03)
+    expect(alliance.memberPerceivedStatus.lia).toBe('REGULAR')
+
+    adjustRealityAllianceCommitment(state, alliance.id, 'lia', -0.21)
+    expect(alliance.memberPerceivedStatus.lia).toBe('PERIPHERAL')
+    expect(alliance.leaderIds).not.toContain('lia')
+  })
+
+  it('treats a polarized alliance as less cohesive than an equally committed uniform alliance', () => {
+    const uniformState = createInitialRealityDomainState()
+    const uniform = createRealityAlliance(uniformState, {
+      id: 'uniform',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai', 'nova'],
+      purpose: 'Control the middle',
+      at: { day: 3, phase: 'social_1' },
+    })
+    uniform.status = 'ACTIVE'
+    uniform.memberCommitment = { ava: 0.5, lia: 0.5, kai: 0.5, nova: 0.5 }
+    refreshRealityAllianceDynamics(uniform)
+
+    const polarizedState = createInitialRealityDomainState()
+    const polarized = createRealityAlliance(polarizedState, {
+      id: 'polarized',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai', 'nova'],
+      purpose: 'Control the middle',
+      at: { day: 3, phase: 'social_1' },
+    })
+    polarized.status = 'ACTIVE'
+    polarized.memberCommitment = { ava: 0.9, lia: 0.9, kai: 0.1, nova: 0.1 }
+    refreshRealityAllianceDynamics(polarized)
+
+    expect(polarized.cohesion).toBeLessThan(uniform.cohesion)
+    expect(polarized.fractureRisk).toBeGreaterThan(uniform.fractureRisk)
+    expect(polarized.status).toBe('FRACTURED')
+  })
+
+  it('rewards repeated participation while exclusion and conflicting plans raise fracture pressure', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'alliance-meetings',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Coordinate the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['nova'],
+      planIds: ['vote:nova'],
+      at: { day: 2, phase: 'social_2' },
+    })
+    const baselineRisk = alliance.fractureRisk
+    const kaiBefore = alliance.memberCommitment.kai
+
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: ['mara'],
+      planIds: ['vote:mara'],
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    expect(alliance.memberCommitment.ava).toBeGreaterThan(alliance.memberCommitment.kai)
+    expect(alliance.memberCommitment.kai).toBeLessThan(kaiBefore)
+    expect(alliance.memberPlanBeliefs.kai).toEqual(['vote:nova'])
+    expect(alliance.fractureRisk).toBeGreaterThan(baselineRisk)
+
+    for (let day = 4; day <= 11; day += 1) {
+      holdRealityAllianceMeeting(state, {
+        allianceId: alliance.id,
+        attendeeIds: ['ava', 'lia'],
+        targetIds: ['mara'],
+        planIds: ['vote:mara'],
+        at: { day, phase: 'social_1' },
+      })
+    }
+
+    expect(alliance.memberPerceivedStatus.lia).toBe('CORE')
+    expect(alliance.memberPerceivedStatus.kai).toBe('PERIPHERAL')
   })
 })
 
