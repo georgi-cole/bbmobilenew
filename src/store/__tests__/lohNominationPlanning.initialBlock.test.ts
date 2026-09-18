@@ -3,11 +3,7 @@ import type { GameState, Player } from '../../types'
 import gameReducer, { advance, getNominationTargetScore } from '../gameSlice'
 import { withLohNominationPlanning } from '../lohNominationPlanning'
 
-function player(
-  id: string,
-  name: string,
-  overrides: Partial<Player> = {}
-): Player {
+function player(id: string, name: string, overrides: Partial<Player> = {}): Player {
   return {
     id,
     name,
