@@ -165,11 +165,12 @@ function recordCompetitionSuspicion(
     const suspicion = perception?.sandbagSuspicion ?? 0
     const bottomStreak = perception?.recentBottomStreak ?? 0
     const explicitThrow = payload.competitionIntents?.[playerId] === 'throw'
-    const historicalThrows = explicitThrow
-      ? state.challenge.history.filter(
-          (run) => run.competitionIntents?.[playerId] === 'throw'
-        ).length
-      : 0
+    let historicalThrows = 0
+    if (explicitThrow) {
+      historicalThrows = state.challenge.history.filter(
+        (run) => run.competitionIntents?.[playerId] === 'throw'
+      ).length
+    }
     const inferredPattern = suspicion >= 15 && bottomStreak >= 3
 
     // AI intent is private engine state; the house only develops a belief after
