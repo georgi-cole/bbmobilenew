@@ -184,6 +184,16 @@ export function recordRealityAllianceBetrayal(
       continue
     }
 
+    const eventReason = `${input.kind.toLowerCase()}:${alliance.id}:${input.sourceEventId}`
+    const duplicate = state.events.some(
+      (event) =>
+        event.type === 'ALLIANCE_BETRAYAL' &&
+        event.actorId === input.actorId &&
+        event.targetIds.includes(input.targetId) &&
+        event.reason === eventReason
+    )
+    if (duplicate) continue
+
     const actorWasCore = alliance.memberPerceivedStatus[input.actorId] === 'CORE'
     const targetWasCore = alliance.memberPerceivedStatus[input.targetId] === 'CORE'
     const pairSeverity = alliance.memberIds.length === 2 ? 0.06 : 0
@@ -215,7 +225,7 @@ export function recordRealityAllianceBetrayal(
       witnessIds: [],
       visibility: 'GROUP_VISIBLE',
       outcome: 'SUCCESS',
-      reason: `${input.kind.toLowerCase()}:${alliance.id}`,
+      reason: eventReason,
       tags: ['ALLIANCE', 'BETRAYAL', input.kind],
       relatedFactIds: [],
       relatedPromiseIds: [...alliance.sharedPromiseIds],
