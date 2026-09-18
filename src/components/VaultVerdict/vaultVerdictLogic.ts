@@ -5,7 +5,7 @@ export const VAULT_VERDICT_AMOUNTS = [
   0, 1, 4.04, 6.66, 13, 13.37, 21, 24, 37, 42, 50, 55, 60, 66, 69, 75, 80, 88, 91, 95, 99, 100,
 ] as const;
 
-export const VAULT_VERDICT_ROUND_SCHEDULE = [6, 5, 4, 3, 2, 1, 1] as const;
+export const VAULT_VERDICT_ROUND_SCHEDULE = [5, 4, 4, 3, 3, 2, 1] as const;
 export const BATTERY_LOW_SPECIAL_RANK_VALUE = 50;
 
 export type VaultStatus = 'available' | 'personal' | 'opened' | 'remainingFinalWallVault';
