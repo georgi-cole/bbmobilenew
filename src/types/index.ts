@@ -898,8 +898,14 @@ export interface GameState {
    * Populated during `live_vote` transition (AI votes) and by `submitHumanVote`.
    */
   votes?: Record<string, string>
-  /** One-shot Battery Low modifier, consumed at the next house eviction vote. */
-  batteryLowVoteEffects?: Record<string, 'doubleVote' | 'skipVote'>
+  /**
+   * Battery Low modifier waiting for the next ordinary eviction ballot the holder
+   * could actually cast. It expires after two ordinary eviction cycles.
+   */
+  batteryLowVoteEffects?: Record<
+    string,
+    { type: 'doubleVote' | 'skipVote'; cyclesRemaining: number }
+  >
   /**
    * When true, the human player is an eligible voter during `live_vote` and must
    * cast their eviction vote via a blocking modal before `advance()` continues.
