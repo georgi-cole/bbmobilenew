@@ -115,6 +115,75 @@ function ReserveIcon() {
   )
 }
 
+function RevealSigil({ effectKey }: { effectKey: RevealEffectKey }) {
+  if (effectKey === 'inferno') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M20 34C29 18 38 16 45 30c5-16 17-22 31-12-7 7-10 15-7 24 5 16-4 37-21 39-21 2-34-24-20-42 3-4 4-6 5-10-6 3-10 4-13 5Z" />
+        <path d="M37 70c-5-10 0-18 9-25 1 8 7 10 10 16 3 7-2 15-10 16-4 0-7-2-9-7Z" />
+      </svg>
+    )
+  }
+  if (effectKey === 'blush') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="28" cy="55" r="11" className="is-soft" />
+        <circle cx="72" cy="55" r="11" className="is-soft" />
+        <path d="M50 72C35 62 30 54 34 46c5-9 16-7 16 2 0-9 11-11 16-2 4 8-1 16-16 26Z" />
+        <path d="M21 34c7-5 13-5 20 0M59 34c7-5 13-5 20 0" className="is-line" />
+      </svg>
+    )
+  }
+  if (effectKey === 'power-cell') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M56 8 25 54h22l-7 38 35-51H53L56 8Z" />
+        <circle cx="50" cy="50" r="42" className="is-ring" />
+      </svg>
+    )
+  }
+  if (effectKey === 'blackout-cell' || effectKey === 'powerdown') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="31" />
+        <path d="M25 25 75 75" className="is-line" />
+        <circle cx="50" cy="50" r="43" className="is-ring" />
+      </svg>
+    )
+  }
+  if (effectKey === 'answer-signal') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="12" />
+        <circle cx="50" cy="50" r="27" className="is-ring" />
+        <circle cx="50" cy="50" r="42" className="is-ring is-faint" />
+        <path d="M50 6v16M50 78v16M6 50h16M78 50h16" className="is-line" />
+      </svg>
+    )
+  }
+  if (effectKey === 'unlucky') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M22 18h22v64H30V31h-8V18Zm34 0h24L66 47c11 3 17 11 17 21 0 11-9 18-24 18-8 0-15-2-21-6l6-12c4 3 9 5 14 5 6 0 10-3 10-7 0-5-5-8-14-8h-5l12-27h-5V18Z" />
+      </svg>
+    )
+  }
+  if (effectKey === 'overcharge') {
+    return (
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <path d="m50 7 9 25 26-8-15 22 22 15-27 1 2 27-17-21-17 21 2-27-27-1 22-15-15-22 26 8 9-25Z" />
+        <circle cx="50" cy="50" r="18" className="is-ring" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M14 55h18l8-14 11 25 11-36 10 25h14" className="is-line" />
+      <circle cx="50" cy="50" r="40" className="is-ring is-faint" />
+    </svg>
+  )
+}
+
 function BatteryTile({
   battery,
   disabled,
