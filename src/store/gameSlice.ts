@@ -126,6 +126,7 @@ import {
 import { loadBroadcastConfig } from '../broadcasting/broadcastConfigPersistence'
 import { loadDepressionShockState } from '../features/twists/depressionShock'
 import {
+  FORCED_SHOCK_CRITICAL_RULES,
   canCastClassicEvictionVote,
   getCanonicalVoterId,
   getClassicEvictionTieBreakerId,
@@ -6122,10 +6123,15 @@ const gameSlice = createSlice({
 
     queueForcedShock(state, action: PayloadAction<ForcedShockType>) {
       const type = action.payload
-      if (
-        isVoxPopuliActive(state) &&
-        !['doubleEviction', 'dayStartShock', 'twinShock'].includes(type)
-      ) {
+      if (isCupidArrowTwistLocked(state)) {
+        pushEvent(
+          state,
+          `[DEBUG] ${formatForcedShockLabel(type)} is unavailable while Cupid's Arrow controls the season.`,
+          'game'
+        )
+        return
+      }
+      if (isVoxPopuliActive(state) && !FORCED_SHOCK_CRITICAL_RULES[type].voxCompatible) {
         pushEvent(
           state,
           `[DEBUG] ${formatForcedShockLabel(type)} is unavailable during Vox Populi.`,
