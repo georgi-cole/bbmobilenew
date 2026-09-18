@@ -610,6 +610,9 @@ function routeHumanFacingAction(
       variantFamilyId: content.variantFamilyId,
       variantId: content.variantId,
       source: 'background_social',
+      ...(isAllianceStrategyContact
+        ? { dedupeGroup: `alliance_strategy:${content.scenarioKey}` }
+        : {}),
       ...(actionId === 'group_chat' ? { groupScene: true } : {}),
       ...(subjectId ? { subjectId } : {}),
     },
