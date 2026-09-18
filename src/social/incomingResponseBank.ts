@@ -104,6 +104,22 @@ export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
     set('Renew the pact', 'Compare plans', 'Set new terms', 'End check-in'),
     set('Show loyalty', 'Stay cautious', 'Call out the crack', 'Move on'),
   ],
+  'scenario:alliance_nomination_pitch': [
+    set('Back the target', 'Ask why them', 'Reject the target', 'Make no promise', true),
+    set('Go with it', 'Hear the case', 'Choose your own move', 'Keep it open', true),
+    set('Lock the plan', 'Ask for the logic', 'Push another name', 'End the huddle', true),
+  ],
+  'scenario:alliance_safety_pitch': [
+    set('Back the replacement', 'Ask the logic', 'Reject the move', 'Keep options open', true),
+    set('Use that plan', 'Talk through risks', 'Choose another route', 'Make no promise', true),
+    set('Lock the backup', 'Ask who benefits', 'Refuse the replacement', 'End the pitch', true),
+  ],
+  'scenario:alliance_vote_pitch': [
+    set('Vote with them', 'Hear the case', 'Vote your own way', 'Keep vote private', true),
+    set('Lock the vote', 'Ask why', 'Reject the plan', 'Stay uncommitted', true),
+    set('Stay together', 'Compare reads', 'Break from the plan', 'End the talk', true),
+  ],
+
   'scenario:nomination_aftershock': [
     set('Own your choice', 'Explain carefully', 'Stand your ground', 'End talk'),
     set('Offer a path back', 'Hear their anger', 'Refuse apology', 'Walk away'),
