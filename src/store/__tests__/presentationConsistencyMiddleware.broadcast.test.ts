@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
+import {
+  isEvictionVoteBreakdownActive,
+  loadEvictionVoteBreakdownUnlock,
+  saveEvictionVoteBreakdownUnlock,
+} from '../../features/evictionVoteBreakdownStorage'
 import { presentationConsistencyMiddleware } from '../presentationConsistencyMiddleware'
 
 function runMiddleware(action: unknown) {
@@ -124,6 +129,38 @@ describe('presentationConsistencyMiddleware important broadcasts', () => {
         }),
       })
     )
+  })
+
+  it('clears the previous season vote-reveal unlock when a new season starts', () => {
+    sessionStorage.clear()
+    saveEvictionVoteBreakdownUnlock({
+      gameId: 'old-season',
+      week: 4,
+      phase: 'eviction_results',
+      votes: { p1: 'p2' },
+      nomineeIds: ['p2'],
+      evicteeId: 'p2',
+      status: 'available',
+    })
+
+    runMiddleware({ type: 'game/resetGame' })
+
+    expect(loadEvictionVoteBreakdownUnlock()).toBeNull()
+  })
+
+  it('rejects a legacy unlock without a gameId when the current run has one', () => {
+    const legacyUnlock = {
+      week: 4,
+      phase: 'eviction_results' as const,
+      votes: { p1: 'p2' },
+      nomineeIds: ['p2'],
+      evicteeId: 'p2',
+      status: 'available' as const,
+    }
+
+    expect(
+      isEvictionVoteBreakdownActive(legacyUnlock, 4, 'week_end', 'current-season')
+    ).toBe(false)
   })
 
   it('leaves ordinary TV events untouched', () => {
