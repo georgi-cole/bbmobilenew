@@ -727,11 +727,10 @@ function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: str
 function allianceStrategySubject(
   game: GameState,
   actorId: string,
-  excludedIds: ReadonlySet<string>,
   candidates: readonly GameState['players'][number][]
 ): string | undefined {
   return candidates
-    .filter((candidate) => candidate.id !== actorId && !excludedIds.has(candidate.id))
+    .filter((candidate) => candidate.id !== actorId)
     .map((candidate) => ({
       id: candidate.id,
       score: getNominationTargetScore(game, actorId, candidate),
@@ -747,7 +746,6 @@ function allianceHumanStrategyCandidate(
   const alliance = liveAllianceWithHuman(state, player.id, human.id)
   if (!alliance) return null
 
-  const excludedIds = new Set(alliance.memberIds)
   const phase = state.game.phase
   const game = state.game as unknown as GameState
   const humanIsLoh = game.lohId === human.id || getCupidPartnerId(game, game.lohId) === human.id
@@ -796,7 +794,6 @@ function allianceHumanStrategyCandidate(
     const subjectId = allianceStrategySubject(
       game,
       player.id,
-      excludedIds,
       getEligibleNominationTargets(game, human.id)
     )
     return subjectId
@@ -813,7 +810,6 @@ function allianceHumanStrategyCandidate(
     const subjectId = allianceStrategySubject(
       game,
       player.id,
-      excludedIds,
       getEligibleReplacementNominees(game)
     )
     return subjectId
