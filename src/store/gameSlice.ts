@@ -3767,7 +3767,7 @@ export function chooseAiEvictionVote(
       factors.backdoorTargetContribution = backdoorTargetContribution
     }
     const alliancePlanContribution = state.dramaSocialMode
-      ? allianceRead.currentTargetPressure * 68 + allianceRead.fallbackTargetPressure * 30
+      ? allianceRead.currentTargetPressure * 52 + allianceRead.fallbackTargetPressure * 23
       : 0
     factors.realityAlliancePlanContribution = alliancePlanContribution
     factors.realityAllianceProtection = allianceRead.sharedProtection
