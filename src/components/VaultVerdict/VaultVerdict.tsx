@@ -318,9 +318,6 @@ export default function BatteryLow(props: GenericMinigameProps) {
     heroEventVaultId === latestRevealVaultId && latestRevealProfile?.hero
       ? latestRevealProfile
       : null
-  const activeHeroSprite = activeHeroProfile
-    ? (HERO_REVEAL_SPRITES[activeHeroProfile.key] ?? null)
-    : null
   const bankProfile = getBankMoodProfile(human.bankMood)
   const revealCommentary = getRevealCommentary(human, latestRevealVault ?? null)
   const coreMood =
@@ -661,23 +658,16 @@ export default function BatteryLow(props: GenericMinigameProps) {
                   </div>
                 </div>
 
-                {activeHeroProfile && activeHeroSprite && (
+                {activeHeroProfile && (
                   <div
                     key={`hero-${heroEventVaultId}`}
                     className={`vault-verdict__hero-event is-${activeHeroProfile.key}`}
                     aria-live="polite"
                   >
                     <div className="vault-verdict__hero-event-halo" aria-hidden="true" />
-                    <div
-                      className="vault-verdict__hero-event-icon"
-                      aria-hidden="true"
-                      style={
-                        {
-                          '--sprite-x': activeHeroSprite.x,
-                          '--sprite-y': activeHeroSprite.y,
-                        } as CSSProperties
-                      }
-                    />
+                    <div className="vault-verdict__hero-event-icon" aria-hidden="true">
+                      <RevealSigil effectKey={activeHeroProfile.key} />
+                    </div>
                     <div className="vault-verdict__hero-event-copy">
                       <span>{activeHeroProfile.eyebrow}</span>
                       <strong>{activeHeroProfile.title}</strong>
