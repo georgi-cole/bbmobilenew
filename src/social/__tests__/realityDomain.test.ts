@@ -138,6 +138,25 @@ describe('Reality domain migration and directed relationships', () => {
     expect(reality.relationships.lia?.human).toBeUndefined()
   })
 
+  it('can update compatibility affinity without replaying an already-recorded Reality consequence', () => {
+    const store = configureStore({ reducer: { social: socialReducer } })
+    store.dispatch(
+      updateRelationship({
+        source: 'human',
+        target: 'lia',
+        delta: -18,
+        tags: ['betrayal'],
+        actionSource: 'system',
+        skipRealityProjection: true,
+      })
+    )
+
+    const state = store.getState().social
+    expect(state.relationships.human.lia.affinity).toBe(-18)
+    expect(state.relationships.human.lia.tags).toContain('betrayal')
+    expect(state.reality.relationships.human?.lia).toBeUndefined()
+  })
+
   it('requires supporting anchor events before deriving major relationship labels', () => {
     const edge = createDirectedRelationship('human', 'lia')
     edge.loyalty = 80
