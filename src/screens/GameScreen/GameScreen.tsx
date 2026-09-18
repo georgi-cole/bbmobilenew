@@ -332,6 +332,10 @@ export default function GameScreen() {
   }, [activeConfessionalDecisionKey])
 
   useEffect(() => {
+    // React StrictMode runs an effect setup → cleanup → setup cycle in development.
+    // Re-arm the mounted flag on every setup so delayed post-eviction prompts are
+    // not permanently suppressed after StrictMode's simulated cleanup.
+    isMountedRef.current = true
     return () => {
       isMountedRef.current = false
     }
