@@ -382,7 +382,12 @@ export default function BatteryLow(props: GenericMinigameProps) {
   useEffect(() => {
     if (!latestRevealVaultId || !latestRevealProfile?.soundKey) return
     play(latestRevealProfile.soundKey, { volume: latestRevealProfile.soundVolume ?? 0.42 })
-  }, [latestRevealProfile, latestRevealVaultId, play])
+  }, [
+    latestRevealProfile?.soundKey,
+    latestRevealProfile?.soundVolume,
+    latestRevealVaultId,
+    play,
+  ])
 
   useEffect(() => {
     if (!human.personalVaultId || human.finalAmount != null) return
