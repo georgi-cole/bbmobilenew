@@ -142,6 +142,17 @@ function namesForPair(fact: RealityFact, players: readonly Pick<Player, 'id' | '
   return fact.subjectIds.slice(0, 2).map((id) => playerName(players, id))
 }
 
+function compactGroupNames(
+  fact: RealityFact,
+  players: readonly Pick<Player, 'id' | 'name'>[],
+  maximum = 3
+): string {
+  const names = fact.subjectIds.map((id) => playerName(players, id))
+  if (names.length <= maximum) return names.join(', ')
+  const hiddenCount = names.length - maximum
+  return `${names.slice(0, maximum).join(', ')} and ${hiddenCount} ${hiddenCount === 1 ? 'other' : 'others'}`
+}
+
 function leadText(fact: RealityFact, players: readonly Pick<Player, 'id' | 'name'>[]): string {
   const subject = playerName(players, fact.subjectIds[0])
   const [first, second] = namesForPair(fact, players)
@@ -174,7 +185,7 @@ function leadText(fact: RealityFact, players: readonly Pick<Player, 'id' | 'name
     case 'ALLIANCE_PUBLIC_CLAIM':
       return `${first} and ${second} have been publicly linked as an alliance, though the full picture is still unclear.`
     case 'ALLIANCE_EXPOSED': {
-      const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
+      const names = compactGroupNames(fact, players)
       const allianceName = typeof fact.value === 'string' ? fact.value : ''
       return allianceName
         ? `${allianceName} has been exposed: ${names} are tied to the pact.`
@@ -211,7 +222,7 @@ export function formatFauxTvWhisper(
     case 'ALLIANCE_PUBLIC_CLAIM':
       return `HOUSE EXPOSED — ${first} and ${second} have been publicly linked, but the full alliance picture remains unclear.`
     case 'ALLIANCE_EXPOSED': {
-      const names = fact.subjectIds.map((id) => playerName(players, id)).join(', ')
+      const names = compactGroupNames(fact, players)
       const allianceName = typeof fact.value === 'string' ? fact.value : ''
       return allianceName
         ? `HOUSE EXPOSED — ${allianceName} is no longer secret. ${names} are linked to the alliance.`
