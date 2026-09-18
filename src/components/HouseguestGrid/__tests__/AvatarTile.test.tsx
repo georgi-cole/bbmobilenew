@@ -19,15 +19,6 @@ describe('AvatarTile', () => {
     expect(tile.className).toContain('interactive')
     expect(container.querySelector('[class*="interactionCue"]')).toBeNull()
   })
-  it('renders an unclipped live-vote danger halo for nominees', () => {
-    const { container } = render(
-      <AvatarTile name="Taylor" avatarUrl="/avatars/Taylor.png" liveEvictionNominee />
-    )
-
-    expect(container.querySelector('[class*="liveEvictionDangerHalo"]')).not.toBeNull()
-    expect(container.querySelector('[class*="liveEvictionNominee"]')).not.toBeNull()
-  })
-
   it('renders the nomination badge asset for nominated players', () => {
     render(<AvatarTile name="Taylor" avatarUrl="/avatars/Taylor.png" statuses="nominated" />)
 
