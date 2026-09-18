@@ -232,6 +232,66 @@ describe('persistent relationship autonomy', () => {
     expect(declinedAlliance.memberCommitment.rae).toBeLessThan(raeBeforeDecline)
   })
 
+  it('does not double-penalize one Safety decline or reward a self-save as alliance protection', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'alliance-three',
+      founderIds: ['player'],
+      memberIds: ['rae', 'ivy'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['player', 'rae', 'ivy'],
+      targetIds: [],
+      planIds: ['protect'],
+      at: { day: 2, phase: 'social_2' },
+    })
+    const playerBeforeDecline = alliance.memberCommitment.player
+
+    recordRealityCeremonyOutcome(domain, {
+      kind: 'SAFETY_DECLINED',
+      day: 4,
+      phase: 'pos_ceremony_results',
+      actorId: 'player',
+      targetIds: ['rae', 'ivy'],
+      witnessIds: ['player', 'rae', 'ivy'],
+      publicEligible: true,
+    })
+
+    expect(alliance.memberCommitment.player).toBeCloseTo(playerBeforeDecline - 0.06)
+
+    const selfSaveDomain = createInitialRealityDomainState()
+    const selfSaveAlliance = createRealityAlliance(selfSaveDomain, {
+      id: 'alliance-self-save',
+      founderIds: ['player'],
+      memberIds: ['rae'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(selfSaveDomain, {
+      allianceId: selfSaveAlliance.id,
+      attendeeIds: ['player', 'rae'],
+      targetIds: [],
+      planIds: ['protect'],
+      at: { day: 2, phase: 'social_2' },
+    })
+    const commitmentBeforeSelfSave = selfSaveAlliance.memberCommitment.player
+
+    recordRealityCeremonyOutcome(selfSaveDomain, {
+      kind: 'SAFETY_USED',
+      day: 4,
+      phase: 'pos_ceremony_results',
+      actorId: 'player',
+      targetIds: ['player'],
+      witnessIds: ['player', 'rae'],
+      publicEligible: true,
+    })
+
+    expect(selfSaveAlliance.memberCommitment.player).toBe(commitmentBeforeSelfSave)
+  })
+
   it('creates jealousy only for a bonded third party who actually witnessed the new romantic signal', () => {
     const domain = createInitialRealityDomainState()
     signalRealityRomance(domain, {
