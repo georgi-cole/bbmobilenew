@@ -1,5 +1,6 @@
 import type { DramaAlliance } from '../types'
 import { appendRealityEvent } from './events'
+import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { recordGroundedJealousy } from './relationshipAutonomy'
 import type {
@@ -250,6 +251,32 @@ export function recordRealityAllianceBetrayal(
         reliability: -severity * 45,
       },
     })
+
+    for (const ownerId of alliance.memberIds) {
+      remember(state, {
+        id: `memory:${ownerId}:${betrayalEvent.id}`,
+        ownerId,
+        eventId: betrayalEvent.id,
+        day: input.at.day,
+        phase: input.at.phase,
+        participantIds: [...alliance.memberIds],
+        sourceType:
+          ownerId === input.actorId || ownerId === input.targetId ? 'DIRECT' : 'WITNESSED',
+        sourceChain: [input.actorId],
+        confidence: 1,
+        importance: 0.92,
+        surprise: 0.75,
+        emotionalValence: ownerId === input.actorId ? -0.2 : -0.78,
+        emotionalIntensity: ownerId === input.actorId ? 0.55 : 0.88,
+        secrecy: 0.55,
+        strategicRelevance: 1,
+        visibility: 'GROUP_VISIBLE',
+        tags: [...betrayalEvent.tags],
+        relatedPromiseIds: [...betrayalEvent.relatedPromiseIds],
+        relatedSecretIds: [],
+        recallStrength: 1,
+      })
+    }
 
     const grievanceId = `grievance:alliance:${alliance.id}:${input.sourceEventId}:${input.targetId}`
     if (!state.grievances[grievanceId]) {
