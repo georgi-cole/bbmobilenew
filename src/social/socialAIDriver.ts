@@ -569,8 +569,7 @@ function routeHumanFacingAction(
     scheduled
   )
   const unresolvedFromActor = pending.filter(
-    (entry) =>
-      entry.fromId === actorId && !entry.resolved && isIncomingInteractionActionable(entry)
+    (entry) => entry.fromId === actorId && !entry.resolved && isIncomingInteractionActionable(entry)
   ).length
   if (unresolvedFromActor >= socialConfig.incomingInteractionConfig.maxPerAI) {
     return 'deferred'
