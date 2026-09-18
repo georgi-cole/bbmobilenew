@@ -252,9 +252,7 @@ export function getCompetitionPerceptionRead(
   )
   const threatBonus = clamp(Math.max(0, (perceivedStrength - 52) / 8) + suspicion / 25, 0, 8)
   const pawnSuitability = clamp(
-    Math.max(0, (45 - perceivedStrength) * 0.45) +
-      recentBottomStreak * 2.5 -
-      suspicion * 0.1,
+    Math.max(0, (45 - perceivedStrength) * 0.45) + recentBottomStreak * 2.5 - suspicion * 0.1,
     0,
     24
   )
