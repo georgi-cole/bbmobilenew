@@ -81,12 +81,15 @@ export interface GenericMinigameProps {
       rawValue?: number
       rawResults?: Record<string, number>
       tiebreakerMs?: number
+      batteryLowVoteEffects?: Record<string, 'doubleVote' | 'skipVote'>
     }
   ) => void
   /** Deterministic competition seed forwarded from gameOptions.seed. */
   seed?: number
   /** When true the game starts immediately on mount (no Start button needed). */
   autoStart?: boolean
+  /** Battery Low only: enable one-shot vote effects in compatible weekly formats. */
+  voteEffectsEnabled?: boolean
   /** Authoritative participant ids forwarded from MinigameHost for hosted competitions. */
   participantIds?: string[]
   /** Full participant records forwarded when a game needs names/AI scoreboard data. */
