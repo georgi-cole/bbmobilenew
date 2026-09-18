@@ -133,6 +133,31 @@ describe('Reality action contract', () => {
     expect(result.blockedReasons).not.toContain('cooldown_active')
   })
 
+  it('does not let a fractured formal pact satisfy active-alliance action gates', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'fractured-action-gate',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Former final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'FRACTURED'
+
+    const result = evaluateRealityCandidate({
+      action: REALITY_ACTION_BY_ID.get('betray')!,
+      actor: actors.ava,
+      targetIds: ['lia'],
+      actors,
+      context: { ...context, socialIntensity: 'REALITY' },
+      reality,
+      direction: 'AI_TO_AI',
+    })
+
+    expect(result.eligible).toBe(false)
+    expect(result.blockedReasons).toContain('relationship_required')
+  })
+
   it('uses exact phase-scoped repetition chances when resolving a target', () => {
     const reality = createInitialRealityDomainState()
     const action = REALITY_ACTION_BY_ID.get('compliment')!
