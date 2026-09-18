@@ -9,6 +9,7 @@
 //  4. AI LOH tiebreak choreography advances through the TV announcements before
 //     the eviction splash begins.
 
+import { StrictMode } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
@@ -179,6 +180,18 @@ function renderWithStore(store: ReturnType<typeof makeStore>) {
         <GameScreen />
       </MemoryRouter>
     </Provider>
+  )
+}
+
+function renderWithStoreStrict(store: ReturnType<typeof makeStore>) {
+  return render(
+    <StrictMode>
+      <Provider store={store}>
+        <MemoryRouter>
+          <GameScreen />
+        </MemoryRouter>
+      </Provider>
+    </StrictMode>
   )
 }
 
@@ -596,6 +609,35 @@ describe('Ceremony follow-up: eviction vote breakdown reward prompt', () => {
     await act(async () => {
       vi.advanceTimersByTime(1)
     })
+    expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
+  })
+
+  it('still offers the rewarded vote reveal under React StrictMode', async () => {
+    const store = makeStore({
+      phase: 'eviction_results',
+      nomineeIds: ['p2', 'p3'],
+      voteResults: { p2: 5, p3: 4 },
+      votes: { p1: 'p2', p4: 'p2', p5: 'p3' },
+      pendingEviction: { evicteeId: 'p2', evictionMessage: 'Player 2 has been eliminated. 🚪' },
+    })
+
+    renderWithStoreStrict(store)
+    await act(async () => {})
+
+    act(() => {
+      screen.getByText('Done').click()
+    })
+
+    await act(async () => {
+      capturedOnExternalAnnouncementDismiss?.()
+    })
+    await act(async () => {
+      capturedEvictionSplashDone?.()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(POST_EVICTION_VOTE_BREAKDOWN_PROMPT_DELAY_MS)
+    })
+
     expect(screen.getByRole('dialog', { name: /peek behind the curtain/i })).toBeTruthy()
   })
 
