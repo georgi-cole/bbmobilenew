@@ -68,11 +68,13 @@ import {
   learnRealityFact,
   normalizeRealityDomainState,
   projectRealityAffinity,
+  recordRealityAllianceBetrayal as applyRealityAllianceBetrayal,
   recordRealityCeremonyOutcome,
   upsertRealityDebt,
   upsertRealityPromise,
   upsertRealitySecret,
   upsertRealityThread,
+  type RealityAllianceBetrayalKind,
   type RealityCeremonyInput,
 } from './reality'
 
@@ -161,7 +163,7 @@ function projectRealityTags(
   if (
     Object.values(reality.alliances).some(
       (alliance) =>
-        alliance.status !== 'DISSOLVED' &&
+        (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
         alliance.memberIds.includes(sourceId) &&
         alliance.currentTargetIds.includes(targetId)
     )
@@ -500,6 +502,29 @@ const socialSlice = createSlice({
         action.payload.targetId,
         { day: action.payload.day, phase: action.payload.phase },
         action.payload.eventId
+      )
+    },
+    recordRealityAllianceBetrayal(
+      state,
+      action: PayloadAction<{
+        actorId: string
+        targetId: string
+        kind: RealityAllianceBetrayalKind
+        day: number
+        phase: string
+        sourceEventId: string
+      }>
+    ) {
+      applyRealityAllianceBetrayal(state.reality as RealityDomainState, {
+        actorId: action.payload.actorId,
+        targetId: action.payload.targetId,
+        kind: action.payload.kind,
+        at: { day: action.payload.day, phase: action.payload.phase },
+        sourceEventId: action.payload.sourceEventId,
+      })
+      projectRealityRelationshipsIntoLegacy(
+        state.reality as RealityDomainState,
+        state.relationships
       )
     },
     recordRealitySimulationTrace(
@@ -945,6 +970,7 @@ export const {
   upsertRealityThreadRecord,
   recordRealityCeremony,
   recordRealityActualVote,
+  recordRealityAllianceBetrayal,
   recordRealitySimulationTrace,
   replaceDramaNetwork,
   applyDramaAction,
