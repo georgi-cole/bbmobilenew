@@ -676,6 +676,14 @@ export default function GameScreen() {
       isAnimatingSaveTarget ||
       isPublicSaveWinner ||
       isAnimatingReplacementNominee
+    // Nomination is rendered exclusively from game.nomineeIds above. Player.status
+    // can briefly retain a provisional nomination while the strategic LOH planner
+    // replaces the block, so never allow a stale "nominated" fragment to leak back
+    // through this fallback (especially while the real nominees are animating).
+    const fallbackStatus = (p.status ?? 'active')
+      .split('+')
+      .filter((status) => status !== 'nominated')
+      .join('+') || 'active'
     const statuses =
       parts.length > 0
         ? parts.join('+')
@@ -683,7 +691,7 @@ export default function GameScreen() {
           ? 'active'
           : isVoxFinalFour && (p.id === game.lohId || p.status.includes('loh'))
             ? 'active'
-            : (p.status ?? 'active')
+            : fallbackStatus
     const isReturning = battleBackReturnId === p.id
     const nominationCeremonyState: 'loh' | 'danger' | 'locked' | undefined =
       !isEvicted && showNominationDangerSignals
