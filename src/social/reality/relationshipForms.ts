@@ -329,7 +329,7 @@ export function removeRealityAllianceMember(
       eventId: event.id,
       day: input.at.day,
       phase: input.at.phase,
-      anchor: input.kind === 'VOLUNTARY' ? 'neutral' : 'negative',
+      anchor: 'negative',
       deltas:
         input.kind === 'VOLUNTARY'
           ? { trust: -2, loyalty: -3, familiarity: 2 }
