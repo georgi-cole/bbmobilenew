@@ -5,6 +5,7 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
 import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
+import { adjustRealityAllianceCommitment } from './relationshipForms'
 import type {
   RealityClock,
   RealityDomainState,
@@ -142,6 +143,32 @@ function rememberOfficialCeremony(
     }
     remember(state, memory)
     learnRealityFact(state, { ownerId, factId, memory, confidence: 1 })
+  }
+}
+
+function applyAllianceSafetyCommitment(
+  state: RealityDomainState,
+  event: RealitySocialEvent,
+  kind: RealityCeremonyKind
+): void {
+  if (!event.actorId || (kind !== 'SAFETY_USED' && kind !== 'SAFETY_DECLINED')) return
+
+  for (const targetId of event.targetIds) {
+    const sharedAlliances = Object.values(state.alliances).filter(
+      (alliance) =>
+        alliance.status !== 'DISSOLVED' &&
+        alliance.memberIds.includes(event.actorId!) &&
+        alliance.memberIds.includes(targetId)
+    )
+    for (const alliance of sharedAlliances) {
+      if (kind === 'SAFETY_USED') {
+        adjustRealityAllianceCommitment(state, alliance.id, event.actorId, 0.08)
+        adjustRealityAllianceCommitment(state, alliance.id, targetId, 0.04)
+      } else {
+        adjustRealityAllianceCommitment(state, alliance.id, event.actorId, -0.06)
+        adjustRealityAllianceCommitment(state, alliance.id, targetId, -0.03)
+      }
+    }
   }
 }
 
@@ -304,6 +331,7 @@ export function recordRealityCeremonyOutcome(
   })
   rememberOfficialCeremony(state, event, factId)
   applyCeremonyAftermath(state, event, input.kind)
+  applyAllianceSafetyCommitment(state, event, input.kind)
   if (input.kind === 'SAFETY_USED') {
     reconcileNemesisWithVoluntarySafety(state, {
       actorId: input.actorId,
