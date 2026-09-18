@@ -39,9 +39,14 @@ function beliefMatchesAlliance(
   belief: RealityBelief,
   alliance: RealityAlliance
 ): boolean {
-  if (!['SECRET_ALLIANCE', 'ALLIANCE_EXPOSED', 'ALLIANCE_FRACTURE'].includes(
-    belief.propositionType
-  )) {
+  if (
+    ![
+      'SECRET_ALLIANCE',
+      'ALLIANCE_PUBLIC_CLAIM',
+      'ALLIANCE_EXPOSED',
+      'ALLIANCE_FRACTURE',
+    ].includes(belief.propositionType)
+  ) {
     return false
   }
   if (belief.objectId) return belief.objectId === alliance.id
@@ -56,7 +61,12 @@ function publicFactMatchesAlliance(
   alliance: RealityAlliance,
   observerId: string
 ): boolean {
-  if (fact.propositionType !== 'ALLIANCE_EXPOSED') return false
+  if (
+    fact.propositionType !== 'ALLIANCE_EXPOSED' &&
+    fact.propositionType !== 'ALLIANCE_PUBLIC_CLAIM'
+  ) {
+    return false
+  }
   if (fact.objectId && fact.objectId !== alliance.id) return false
   if (!canActorKnowFact(fact, observerId)) return false
   return fact.subjectIds.every((id) => alliance.memberIds.includes(id))
@@ -113,6 +123,9 @@ export function getRealityAllianceKnowledgeView(
     0
   )
   const isPublic = publicFacts.length > 0
+  const hasFullPublicExposure = publicFacts.some(
+    (fact) => fact.propositionType === 'ALLIANCE_EXPOSED'
+  )
   const level: RealityAllianceKnowledgeLevel = isPublic
     ? 'PUBLIC'
     : confidence >= 0.82
@@ -122,8 +135,9 @@ export function getRealityAllianceKnowledgeView(
         : 'UNKNOWN'
   // Private evidence can confirm that named people are working together, but
   // it must never prove by omission that nobody else belongs to the pact.
-  const fullMembershipKnown = isPublic
+  const fullMembershipKnown = hasFullPublicExposure
   const publicName = publicFacts
+    .filter((fact) => fact.propositionType === 'ALLIANCE_EXPOSED')
     .map((fact) => (typeof fact.value === 'string' ? fact.value : undefined))
     .find((value) => value && value !== 'true')
 
