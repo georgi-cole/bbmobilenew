@@ -5,8 +5,10 @@ import {
   createRealityAlliance,
   createRealityGrievance,
   createInitialRealityDomainState,
+  findRealityAllianceForRecruitment,
   formRealityTruce,
   holdRealityAllianceMeeting,
+  recruitRealityAllianceMember,
   reciprocateRealityRomance,
   signalRealityRomance,
 } from '../reality'
@@ -48,6 +50,121 @@ describe('operational Reality alliances', () => {
 
     expect(avaVote.intendedTargetId).toBe('nova')
     expect(kaiVote.confidence).not.toBe(avaVote.confidence)
+  })
+})
+
+describe('Reality coalition recruitment', () => {
+  it('preserves a two-person core while creating a wider overlapping coalition', () => {
+    const state = createInitialRealityDomainState()
+    const core = createRealityAlliance(state, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: core.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect:core'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    expect(findRealityAllianceForRecruitment(state, 'ava', 'kai')?.id).toBe(core.id)
+
+    const coalition = recruitRealityAllianceMember(state, {
+      allianceId: core.id,
+      recruiterId: 'ava',
+      targetId: 'kai',
+      expandedAllianceId: 'alliance-coalition',
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    expect(core.memberIds).toEqual(['ava', 'lia'])
+    expect(coalition.memberIds).toEqual(['ava', 'lia', 'kai'])
+    expect(coalition.memberPerceivedStatus).toMatchObject({
+      ava: 'CORE',
+      lia: 'CORE',
+      kai: 'REGULAR',
+    })
+    expect(core.overlapAllianceIds).toEqual(['alliance-coalition'])
+    expect(coalition.overlapAllianceIds).toEqual(['alliance-core'])
+    expect(Object.values(state.alliances)).toHaveLength(2)
+  })
+
+  it('extends the wider coalition in place and keeps duplicate recruitment idempotent', () => {
+    const state = createInitialRealityDomainState()
+    const core = createRealityAlliance(state, {
+      id: 'alliance-core',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: core.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect:core'],
+      at: { day: 2, phase: 'social_2' },
+    })
+    const coalition = recruitRealityAllianceMember(state, {
+      allianceId: core.id,
+      recruiterId: 'ava',
+      targetId: 'kai',
+      expandedAllianceId: 'alliance-coalition',
+      at: { day: 3, phase: 'social_1' },
+    })
+
+    expect(findRealityAllianceForRecruitment(state, 'ava', 'nova')?.id).toBe(coalition.id)
+
+    const expanded = recruitRealityAllianceMember(state, {
+      allianceId: coalition.id,
+      recruiterId: 'ava',
+      targetId: 'nova',
+      expandedAllianceId: 'unused-id',
+      at: { day: 4, phase: 'social_1' },
+    })
+    expect(expanded.id).toBe(coalition.id)
+    expect(expanded.memberIds).toEqual(['ava', 'lia', 'kai', 'nova'])
+    expect(expanded.memberPerceivedStatus.nova).toBe('PERIPHERAL')
+    expect(Object.values(state.alliances)).toHaveLength(2)
+
+    const eventCount = state.events.length
+    const duplicate = recruitRealityAllianceMember(state, {
+      allianceId: coalition.id,
+      recruiterId: 'ava',
+      targetId: 'nova',
+      expandedAllianceId: 'still-unused',
+      at: { day: 4, phase: 'social_2' },
+    })
+    expect(duplicate.id).toBe(coalition.id)
+    expect(duplicate.memberIds.filter((id) => id === 'nova')).toHaveLength(1)
+    expect(state.events).toHaveLength(eventCount)
+  })
+
+  it('does not let a peripheral member silently expand the coalition', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'alliance-1',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.memberPerceivedStatus.kai = 'PERIPHERAL'
+
+    expect(findRealityAllianceForRecruitment(state, 'kai', 'nova')).toBeNull()
+    expect(() =>
+      recruitRealityAllianceMember(state, {
+        allianceId: alliance.id,
+        recruiterId: 'kai',
+        targetId: 'nova',
+        expandedAllianceId: 'alliance-2',
+        at: { day: 3, phase: 'social_1' },
+      })
+    ).toThrow('Peripheral members cannot recruit')
   })
 })
 
