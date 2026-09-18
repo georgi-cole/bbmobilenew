@@ -3,12 +3,15 @@ import { createInitialRealitySimulationState } from '../realitySimulation'
 import {
   REALITY_ACTION_BY_ID,
   REALITY_ACTION_CONTRACTS,
+  addRealityFact,
   createDirectedRelationship,
   createInitialRealityDomainState,
   createRealityAlliance,
   evaluateRealityCandidate,
+  getRealityAllianceKnowledgeView,
   resolveRealityTargetResponse,
   holdRealityAllianceMeeting,
+  learnRealityFact,
   resolvePendingHumanRealityInteraction,
   runRealityOpportunity,
   validateRealityActionContract,
@@ -510,6 +513,112 @@ describe('Reality causal orchestration', () => {
     expect(allianceBeliefs[0].subjectIds).toHaveLength(2)
     expect(allianceBeliefs[0].subjectIds).toContain('ava')
     expect(allianceBeliefs[0].subjectIds).not.toContain('kai')
+  })
+
+  it('takes only the discovered slice of an alliance public with Expose a Secret', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'partially-known-coalition',
+      founderIds: ['lia'],
+      memberIds: ['kai', 'nova'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    addRealityFact(domain, {
+      id: 'secret-alliance-lead',
+      propositionType: 'SECRET_ALLIANCE',
+      subjectIds: ['lia', 'kai'],
+      objectId: alliance.id,
+      value: true,
+      day: 3,
+      phase: 'social_1',
+      visibility: 'PAIR_ONLY',
+      participantIds: ['lia', 'kai'],
+      witnessIds: [],
+      viewerVisible: false,
+      publicVisible: false,
+      juryVisible: false,
+      sourceEventId: 'secret-alliance-lead-event',
+    })
+    learnRealityFact(domain, {
+      ownerId: 'ava',
+      factId: 'secret-alliance-lead',
+      confidence: 0.76,
+      memory: {
+        id: 'memory:ava:secret-alliance-lead',
+        ownerId: 'ava',
+        eventId: 'secret-alliance-lead-event',
+        day: 3,
+        phase: 'social_1',
+        participantIds: ['lia', 'kai'],
+        sourceType: 'HEARSAY',
+        sourceChain: ['lia'],
+        confidence: 0.76,
+        importance: 0.8,
+        surprise: 0.7,
+        emotionalValence: -0.1,
+        emotionalIntensity: 0.5,
+        secrecy: 0.85,
+        strategicRelevance: 0.95,
+        visibility: 'PAIR_ONLY',
+        tags: ['intel', 'secret_alliance'],
+        relatedPromiseIds: [],
+        relatedSecretIds: [],
+        recallStrength: 0.9,
+      },
+    })
+
+    const result = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(61),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'AI_TO_AI',
+        context: { ...context, socialIntensity: 'REALITY' },
+        actors: {
+          ...actors,
+          kai: {
+            id: 'kai',
+            isHuman: false,
+            active: true,
+            roles: ['active'],
+            resources: { energy: 20, influence: 1_000, info: 1_000 },
+          },
+          nova: {
+            id: 'nova',
+            isHuman: false,
+            active: true,
+            roles: ['active'],
+            resources: { energy: 20, influence: 1_000, info: 1_000 },
+          },
+        },
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('expose_secret')!,
+            targetIds: ['lia'],
+          },
+        ],
+      },
+    })
+
+    const publicClaim = Object.values(result.domain.facts).find(
+      (fact) =>
+        fact.propositionType === 'ALLIANCE_PUBLIC_CLAIM' &&
+        fact.objectId === alliance.id
+    )
+    expect(publicClaim?.publicVisible).toBe(true)
+    expect(publicClaim?.subjectIds.sort()).toEqual(['kai', 'lia'])
+    expect(publicClaim?.subjectIds).not.toContain('nova')
+
+    const outsiderView = getRealityAllianceKnowledgeView(
+      result.domain,
+      alliance.id,
+      'human'
+    )
+    expect(outsiderView.level).toBe('PUBLIC')
+    expect(outsiderView.knownMemberIds.sort()).toEqual(['kai', 'lia'])
+    expect(outsiderView.fullMembershipKnown).toBe(false)
+    expect(outsiderView.displayName).toBeUndefined()
   })
 
   it('recruits an accepted target into a wider coalition instead of creating another pair', () => {
