@@ -5,7 +5,10 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
 import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
-import { adjustRealityAllianceCommitment } from './relationshipForms'
+import {
+  adjustRealityAllianceCommitment,
+  recordRealityAllianceBetrayal,
+} from './relationshipForms'
 import type {
   RealityClock,
   RealityDomainState,
@@ -349,6 +352,17 @@ export function recordRealityCeremonyOutcome(
   rememberOfficialCeremony(state, event, factId)
   applyCeremonyAftermath(state, event, input.kind)
   applyAllianceSafetyCommitment(state, event, input.kind)
+  if (input.kind === 'NOMINATIONS_LOCKED' && event.actorId) {
+    for (const targetId of event.targetIds) {
+      recordRealityAllianceBetrayal(state, {
+        actorId: event.actorId,
+        targetId,
+        kind: 'NOMINATION',
+        at: { day: event.day, phase: event.phase },
+        sourceEventId: event.id,
+      })
+    }
+  }
   if (input.kind === 'SAFETY_USED') {
     reconcileNemesisWithVoluntarySafety(state, {
       actorId: input.actorId,
@@ -412,6 +426,13 @@ export function finalizeRealityVote(
   intent.actualTargetId = targetId
   intent.day = at.day
   intent.reasonEventIds = [...new Set([...intent.reasonEventIds, eventId])]
+  recordRealityAllianceBetrayal(state, {
+    actorId,
+    targetId,
+    kind: 'VOTE',
+    at,
+    sourceEventId: eventId,
+  })
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||
