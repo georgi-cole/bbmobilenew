@@ -7,12 +7,15 @@ import {
   createRealityAlliance,
   createRealityGrievance,
   createInitialRealityDomainState,
+  findRealityAllianceForConsultation,
   findRealityAllianceForRecruitment,
   formRealityTruce,
   holdRealityAllianceMeeting,
+  holdRealityAllianceStrategyMeeting,
   leakRealityAlliance,
   markRealityAllianceInfiltratorIfSecondary,
   recordRealityAllianceBetrayal,
+  renameRealityAlliance,
   recruitRealityAllianceMember,
   refreshRealityAllianceDynamics,
   refreshRealityAllianceOverlaps,
@@ -106,6 +109,106 @@ describe('operational Reality alliances', () => {
           event.type === 'ALLIANCE_TARGET_COORDINATED' && event.reason.includes('pitch:nova')
       )
     ).toBe(true)
+  })
+})
+
+describe('Reality alliance player-facing coordination', () => {
+  it('uses the wider coalition for a group consultation when an inner pact overlaps it', () => {
+    const state = createInitialRealityDomainState()
+    const core = createRealityAlliance(state, {
+      id: 'inner-final-two',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    core.status = 'ACTIVE'
+    core.memberCommitment.ava = 0.9
+    core.memberCommitment.lia = 0.9
+    refreshRealityAllianceDynamics(core)
+
+    const coalition = createRealityAlliance(state, {
+      id: 'wider-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai', 'nova'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    coalition.status = 'ACTIVE'
+    refreshRealityAllianceDynamics(coalition)
+
+    expect(findRealityAllianceForConsultation(state, 'ava', 'lia')?.id).toBe(coalition.id)
+  })
+
+  it('persists a strategy huddle as the shared alliance plan without penalizing excused absences', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'strategy-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai', 'nova'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    const novaBefore = alliance.memberCommitment.nova
+
+    holdRealityAllianceStrategyMeeting(state, {
+      allianceId: alliance.id,
+      callerId: 'ava',
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['mara'],
+      fallbackTargetIds: ['zoe'],
+      planIds: ['target:mara', 'fallback:zoe'],
+      agenda: 'nominations',
+      at: { day: 4, phase: 'social_1' },
+      sourceEventId: 'consult-1',
+      excusedAbsentIds: ['nova'],
+    })
+
+    expect(alliance.currentTargetIds).toEqual(['mara'])
+    expect(alliance.fallbackTargetIds).toEqual(['zoe'])
+    expect(alliance.memberPlanBeliefs.lia).toEqual(['target:mara', 'fallback:zoe'])
+    expect(alliance.memberCommitment.nova).toBe(novaBefore)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+          event.reason.includes('nominations:consult-1')
+      )
+    ).toBe(true)
+  })
+
+  it('lets a member give the alliance a private custom name', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'named-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+
+    renameRealityAlliance(state, {
+      allianceId: alliance.id,
+      actorId: 'ava',
+      name: '  The Night Shift  ',
+      at: { day: 3, phase: 'social_2' },
+    })
+
+    expect(alliance.name).toBe('The Night Shift')
+    expect(
+      state.events.some(
+        (event) => event.type === 'ALLIANCE_RENAMED' && event.actorId === 'ava'
+      )
+    ).toBe(true)
+    expect(() =>
+      renameRealityAlliance(state, {
+        allianceId: alliance.id,
+        actorId: 'outsider',
+        name: 'Stolen Name',
+        at: { day: 3, phase: 'social_2' },
+      })
+    ).toThrow('Only a member')
   })
 })
 
