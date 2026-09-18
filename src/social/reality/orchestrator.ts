@@ -21,6 +21,8 @@ import {
   createRealityGrievance,
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  markRealityAllianceInfiltratorIfSecondary,
+  recordRealityAllianceBetrayal,
   recruitRealityAllianceMember,
   signalRealityRomance,
 } from './relationshipForms'
@@ -190,6 +192,7 @@ function applyRealityLifecycle(input: {
             planIds: subjectId ? [`watch:${subjectId}`] : [`protect:${alliance.id}`],
             at,
           })
+          markRealityAllianceInfiltratorIfSecondary(domain, alliance.id, targetId, at)
         }
       }
     }
@@ -228,7 +231,18 @@ function applyRealityLifecycle(input: {
   }
 
   if (action.purposes.includes('CONFLICT')) {
+    const allianceBetrayalAction = action.id === 'betray' || action.id === 'break_alliance'
     for (const { targetId, response } of responses) {
+      if (allianceBetrayalAction) {
+        recordRealityAllianceBetrayal(domain, {
+          actorId: interaction.actorId,
+          targetId,
+          kind: 'SOCIAL_BETRAYAL',
+          at,
+          sourceEventId: event.id,
+        })
+        continue
+      }
       const grievanceId = `grievance:${targetId}:${event.id}`
       if (!domain.grievances[grievanceId]) {
         createRealityGrievance(domain, {
