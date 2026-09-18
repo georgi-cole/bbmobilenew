@@ -23,6 +23,7 @@ import {
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
   leakRealityAlliance,
+  removeRealityAllianceMember,
   markRealityAllianceInfiltratorIfSecondary,
   recordRealityAllianceBetrayal,
   recruitRealityAllianceMember,
@@ -281,6 +282,24 @@ function applyRealityLifecycle(input: {
     const allianceBetrayalAction = action.id === 'betray' || action.id === 'break_alliance'
     for (const { targetId, response } of responses) {
       if (allianceBetrayalAction) {
+        const pactToLeave =
+          action.id === 'break_alliance'
+            ? Object.values(domain.alliances)
+                .filter(
+                  (alliance) =>
+                    alliance.status !== 'DISSOLVED' &&
+                    alliance.memberIds.includes(interaction.actorId) &&
+                    alliance.memberIds.includes(targetId)
+                )
+                .sort(
+                  (left, right) =>
+                    Number(right.status === 'ACTIVE') - Number(left.status === 'ACTIVE') ||
+                    left.memberIds.length - right.memberIds.length ||
+                    (right.memberCommitment[interaction.actorId] ?? 0) -
+                      (left.memberCommitment[interaction.actorId] ?? 0) ||
+                    left.id.localeCompare(right.id)
+                )[0]
+            : undefined
         recordRealityAllianceBetrayal(domain, {
           actorId: interaction.actorId,
           targetId,
@@ -288,6 +307,21 @@ function applyRealityLifecycle(input: {
           at,
           sourceEventId: event.id,
         })
+        if (
+          action.id === 'break_alliance' &&
+          pactToLeave &&
+          pactToLeave.status !== 'DISSOLVED' &&
+          pactToLeave.memberIds.includes(interaction.actorId)
+        ) {
+          removeRealityAllianceMember(domain, {
+            allianceId: pactToLeave.id,
+            memberId: interaction.actorId,
+            actorId: interaction.actorId,
+            kind: 'VOLUNTARY',
+            at,
+            sourceEventId: event.id,
+          })
+        }
         continue
       }
       const grievanceId = `grievance:${targetId}:${event.id}`
