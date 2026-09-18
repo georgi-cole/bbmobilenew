@@ -25,6 +25,7 @@ import type { IncomingInteraction, SocialActionLogEntry } from '../social/types'
 import type { LohNominationPlan } from './lohNominationPlanning'
 import { mulberry32, seededPick, seededPickN } from './rng'
 import {
+  getCompetitionPerceptionRead,
   getCompetitionSeasonState,
   getDefaultCompetitionProfile,
   getDefaultCompetitionSeasonState,
@@ -1566,7 +1567,11 @@ function getAiThreatScore(
   const lohWins = player.stats?.lohWins ?? 0
   const posWins = player.stats?.posWins ?? 0
   const timesNominated = player.stats?.timesNominated ?? 0
-  let score = 0
+  const competitionRead = getCompetitionPerceptionRead(
+    player.competitionProfile,
+    state.competitionSeasonStateByPlayerId?.[player.id]
+  )
+  let score = competitionRead.threatBonus
   if (player.id === state.lohId) {
     score += options.preferLoh === true ? AI_LOH_REVENGE_THREAT_WEIGHT : AI_LOH_BASE_THREAT_WEIGHT
   }
@@ -1625,20 +1630,32 @@ function getSafetyRelationshipBreakdown(
 ): { total: number; factors: Record<string, AiDecisionFactor> } {
   const relationship = getStrategicRelationship(state, holderId, nominee.id)
   const threat = getAiThreatScore(state, nominee)
+  const competitionRead = getCompetitionPerceptionRead(
+    nominee.competitionProfile,
+    state.competitionSeasonStateByPlayerId?.[nominee.id]
+  )
+  const expendablePawnPenalty = competitionRead.pawnSuitability
   if (!relationship) {
-    const total = -threat * 3
+    const total = -threat * 3 - expendablePawnPenalty
     return {
       total,
-      factors: { threatContribution: -threat * 3, relationship: 'none' },
+      factors: {
+        threatContribution: -threat * 3,
+        expendablePawnPenalty: -expendablePawnPenalty,
+        sandbagSuspicion: competitionRead.sandbagSuspicion,
+        relationship: 'none',
+      },
     }
   }
   const holder = state.players.find((player) => player.id === holderId)
   const factors: Record<string, AiDecisionFactor> = {
     affinity: relationship.affinity,
     threatPenalty: -threat * 3,
+    expendablePawnPenalty: -expendablePawnPenalty,
+    sandbagSuspicion: competitionRead.sandbagSuspicion,
     tags: relationship.tags.join(', ') || 'none',
   }
-  let score = relationship.affinity - threat * 3
+  let score = relationship.affinity - threat * 3 - expendablePawnPenalty
   const identityContribution =
     allianceIdentityBias(holder?.aiGameIdentity) *
     (relationship.tags.includes('alliance') ? 1 : 0.18)
@@ -2046,13 +2063,15 @@ function shouldAiUseTargetedSafetyPower(
     return true
   }
 
-  // Preserve the established Classic campaign strategy. Classic holders may
-  // make a calculated block swap even without a close personal bond.
+  // A Classic holder may make a calculated block swap, but "this nominee is
+  // weak" is not itself a reason to save them. A strategic swap requires a
+  // replacement the holder actually wants exposed (enemy/target/betrayer), not
+  // merely a globally stronger competitor who happens to be available.
   const currentScores = currentNominees
-    .map((player) => getAiThreatScore(state, player, options))
+    .map((player) => getNominationTargetScore(state, holderId, player))
     .sort((a, b) => a - b)
   const replacementScores = eligibleReplacements
-    .map((player) => getAiThreatScore(state, player, options))
+    .map((player) => getNominationTargetScore(state, holderId, player))
     .sort((a, b) => b - a)
   const currentValue = currentScores
     .slice(0, Math.min(replacementCount, currentScores.length))
@@ -2060,7 +2079,18 @@ function shouldAiUseTargetedSafetyPower(
   const replacementValue = replacementScores
     .slice(0, Math.min(replacementCount, replacementScores.length))
     .reduce((sum, score) => sum + score, 0)
-  const strategicUpgrade = replacementValue > currentValue
+  const hasStrategicReplacement = eligibleReplacements.some((candidate) => {
+    const relationship = getStrategicRelationship(state, holderId, candidate.id)
+    const tags = new Set(relationship?.tags ?? [])
+    return (
+      (relationship?.affinity ?? 0) <= -20 ||
+      tags.has('target') ||
+      tags.has('rivalry') ||
+      tags.has('betrayal')
+    )
+  })
+  const strategicUpgrade =
+    hasStrategicReplacement && replacementValue > currentValue + 18
   let useChance = strategicUpgrade ? 0.35 : 0.05
   if (bestRelationship >= 75) useChance += 0.5
   else if (bestRelationship >= 45) useChance += 0.35
@@ -2116,6 +2146,7 @@ function shouldAiUseTargetedSafetyPower(
       currentValue,
       replacementValue,
       strategicUpgrade,
+      hasStrategicReplacement,
       useChance,
       randomDraw,
       lohAdvice: lohAdvice?.advice ?? null,
@@ -2132,8 +2163,8 @@ function shouldAiUseTargetedSafetyPower(
       ...eligibleReplacements.map((candidate) => ({
         id: candidate.id,
         label: candidate.name,
-        total: getAiThreatScore(state, candidate, options),
-        factors: { role: 'eligible replacement' },
+        total: getNominationTargetScore(state, holderId, candidate),
+        factors: { role: 'eligible replacement', actorSpecific: true },
       })),
     ],
   })
