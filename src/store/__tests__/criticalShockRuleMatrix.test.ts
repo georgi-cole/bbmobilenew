@@ -11,6 +11,7 @@ import gameReducer, {
   createInitialGameState,
   finalizePendingEviction,
   getNominationTargetScore,
+  queueForcedShock,
   submitCoupReplacement,
   submitDiamondReplacement,
   submitPosTieBreak,
@@ -18,6 +19,7 @@ import gameReducer, {
 } from '../gameSlice'
 import { withLohNominationPlanning } from '../lohNominationPlanning'
 import { withImmediateVoxPublicMode } from '../voxPublicModeReducer'
+import { createInitialVoxPopuliState } from '../../features/twists/voxPopuli'
 import {
   FORCED_SHOCK_CRITICAL_RULES,
   FORMAT_CRITICAL_RULES,
@@ -132,6 +134,28 @@ describe('critical shock / ruleset matrix', () => {
         .map(([type]) => type)
         .sort()
     ).toEqual(['dayStartShock', 'depressionShock', 'doubleEviction', 'twinShock'].sort())
+  })
+
+  it('keeps the debug shock queue aligned with Vox-compatible production rules', () => {
+    const base = cleanState(504)
+    base.expansionMode = 'voxPopuli'
+    base.voxPopuli = {
+      ...createInitialVoxPopuliState(base.season),
+      status: 'active',
+      activatedSeason: base.season,
+      activatedWeek: 1,
+    }
+
+    const depressionQueued = criticalGameReducer(base, queueForcedShock('depressionShock'))
+    expect(depressionQueued.pendingForcedShock?.type).toBe('depressionShock')
+
+    const reset = {
+      ...depressionQueued,
+      pendingForcedShock: null,
+    }
+    const detoxRejected = criticalGameReducer(reset, queueForcedShock('coup'))
+    expect(detoxRejected.pendingForcedShock).toBeNull()
+    expect(detoxRejected.tvFeed[0]?.text).toMatch(/unavailable during Vox Populi/i)
   })
 
   it('restores a Battle Back winner to the active Classic eligibility pool', () => {
