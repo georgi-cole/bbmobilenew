@@ -114,7 +114,7 @@ function projectRealityTags(
       alliance.memberIds.includes(sourceId) && alliance.memberIds.includes(targetId)
   )
   const hasLiveFormalAlliance = formalPairAlliances.some(
-    (alliance) => alliance.status !== 'DISSOLVED'
+    (alliance) => alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY'
   )
   const hasFormalAllianceHistory = formalPairAlliances.length > 0
   if (
