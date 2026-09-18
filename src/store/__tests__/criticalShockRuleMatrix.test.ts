@@ -350,7 +350,12 @@ describe('critical shock / ruleset matrix', () => {
             ? secondNomineeId
             : thirdNomineeId
     })
-    state = { ...state, votes: deterministicVotes }
+    state = {
+      ...state,
+      votes: deterministicVotes,
+      awaitingHumanVote: false,
+      awaitingDoubleVoteOffer: false,
+    }
 
     const resolved = criticalGameReducer(state, advance())
     expect(resolved.phase).toBe('eviction_results')
