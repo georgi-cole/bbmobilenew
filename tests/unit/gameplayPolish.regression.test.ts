@@ -71,19 +71,16 @@ describe('gameplay polish regressions', () => {
     ).toEqual([])
   })
 
-  it('uses a compositor-only live-vote danger pulse instead of animated shadows', () => {
+  it('restores the live-vote sweep and adds an LOH-style radiating red glow', () => {
     const rosterCss = sourceText('src/components/HouseguestGrid/HouseguestGrid.module.css')
-    const keyframes = rosterCss.match(
-      /@keyframes liveEvictionDangerBreath\s*\{([\s\S]*?)\n\}/
+    const glowKeyframes = rosterCss.match(
+      /@keyframes liveEvictionNomineeGlow\s*\{([\s\S]*?)\n\}/
     )?.[1]
 
-    expect(rosterCss).toContain('animation: liveEvictionDangerBreath 1.65s ease-in-out infinite')
-    expect(rosterCss).toContain('.liveEvictionDangerHalo')
-    expect(rosterCss).toContain('will-change: opacity, transform')
-    expect(keyframes).toContain('opacity:')
-    expect(keyframes).toContain('transform:')
-    expect(keyframes).not.toContain('box-shadow:')
-    expect(keyframes).not.toContain('filter:')
+    expect(rosterCss).toContain('animation: liveEvictionNomineeGlow 2.4s ease-in-out infinite')
+    expect(rosterCss).toContain('animation: liveEvictionNomineeSweep 2.2s linear infinite')
+    expect(glowKeyframes).toContain('box-shadow:')
+    expect(glowKeyframes).toContain('0 0 22px rgba(239, 68, 68, 0.46)')
   })
 
   it('uses only a roster-tile reverse eviction after Back 2 the Game', () => {
