@@ -220,6 +220,32 @@ function summarizeAlliancePreferences(
   }
 }
 
+function getAllianceConsultationAgenda(
+  state: RootState,
+  actorId: string
+): AllianceConsultationPlan['agenda'] {
+  const actorIsLoh =
+    state.game.lohId === actorId || getCupidPartnerId(state.game, state.game.lohId) === actorId
+  const actorHasSafety =
+    state.game.posWinnerId === actorId ||
+    getCupidPartnerId(state.game, state.game.posWinnerId) === actorId
+  const nomineesExist = state.game.nomineeIds.length > 0
+
+  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(state.game.phase)) {
+    return 'nominations'
+  }
+  if (actorHasSafety && ['pos_results', 'pos_ceremony'].includes(state.game.phase) && nomineesExist) {
+    return 'safety'
+  }
+  if (
+    nomineesExist &&
+    ['pos_ceremony_results', 'social_2', 'live_vote'].includes(state.game.phase)
+  ) {
+    return 'eviction_vote'
+  }
+  return 'strategy'
+}
+
 function buildAllianceConsultationPlan(
   state: RootState,
   alliance: RealityAlliance,
@@ -230,15 +256,10 @@ function buildAllianceConsultationPlan(
   const attendeeIds = [actorId, ...advisors]
   const attendeeSet = new Set(attendeeIds)
   const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeSet.has(id))
-  const phase = state.game.phase
-  const actorIsLoh =
-    state.game.lohId === actorId || getCupidPartnerId(state.game, state.game.lohId) === actorId
-  const actorHasSafety =
-    state.game.posWinnerId === actorId ||
-    getCupidPartnerId(state.game, state.game.posWinnerId) === actorId
+  const agenda = getAllianceConsultationAgenda(state, actorId)
   const nominees = state.game.players.filter((player) => state.game.nomineeIds.includes(player.id))
 
-  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+  if (agenda === 'nominations') {
     const candidates = nominationConsultationCandidates(state, actorId)
     if (candidates.length === 0) return null
     const preferences = advisors
@@ -274,7 +295,7 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  if (actorHasSafety && ['pos_results', 'pos_ceremony'].includes(phase) && nominees.length > 0) {
+  if (agenda === 'safety') {
     const preferences = advisors
       .map((advisorId) => {
         const ranked = nominees
@@ -328,7 +349,7 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  if (nominees.length > 0 && ['pos_ceremony_results', 'social_2', 'live_vote'].includes(phase)) {
+  if (agenda === 'eviction_vote') {
     const nomineeIds = nominees.map((nominee) => nominee.id)
     const preferences = advisors.map((advisorId) => {
       const targetId = chooseAiEvictionVote(
@@ -633,6 +654,24 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         : null
     if (input.actionId === 'consult_alliance' && !consultationAlliance) {
       return result(false, 'You do not share an active alliance with that housemate.', energy)
+    }
+    if (consultationAlliance) {
+      const agenda = getAllianceConsultationAgenda(state, input.actorId)
+      const alreadyMet = state.social.reality.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+          event.day === state.game.week &&
+          event.reason.startsWith(`strategy_meeting:${consultationAlliance.id}:${agenda}:`)
+      )
+      if (alreadyMet) {
+        return result(
+          false,
+          'You already held an alliance huddle on this decision today.',
+          energy,
+          0,
+          'Already consulted'
+        )
+      }
     }
     const direction =
       targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'
