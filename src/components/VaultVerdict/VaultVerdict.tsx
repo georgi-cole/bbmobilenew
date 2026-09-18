@@ -157,7 +157,9 @@ function BatteryTile({
           </strong>
           <span className="vault-verdict__pod-number">#{battery.displayNumber}</span>
           {battery.specialEffect ? (
-            <em className="vault-verdict__pod-special">Ranks {formatVaultAmount(battery.amount)}</em>
+            <em className="vault-verdict__pod-special">
+              Ranks {formatVaultAmount(battery.amount)}
+            </em>
           ) : (
             specialLabel && <em className="vault-verdict__pod-special">{specialLabel}</em>
           )}
