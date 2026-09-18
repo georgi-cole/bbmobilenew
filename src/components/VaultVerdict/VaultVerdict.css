@@ -22,7 +22,12 @@
   overflow: hidden;
   color: #f7f8ff;
   background:
-    linear-gradient(180deg, rgba(5, 7, 24, 0.34) 0%, rgba(5, 7, 20, 0.66) 42%, rgba(4, 6, 15, 0.92) 100%),
+    linear-gradient(
+      180deg,
+      rgba(5, 7, 24, 0.34) 0%,
+      rgba(5, 7, 20, 0.66) 42%,
+      rgba(4, 6, 15, 0.92) 100%
+    ),
     radial-gradient(circle at 50% 15%, var(--bank-accent-soft), transparent 38%),
     url('/assets/minigames/battery-low/stage.webp') center 34% / cover no-repeat,
     #070a15;
@@ -794,7 +799,11 @@
   overflow: hidden;
   pointer-events: none;
   background:
-    radial-gradient(circle at 38% 46%, color-mix(in srgb, var(--hero-accent) 20%, transparent), transparent 38%),
+    radial-gradient(
+      circle at 38% 46%,
+      color-mix(in srgb, var(--hero-accent) 20%, transparent),
+      transparent 38%
+    ),
     linear-gradient(90deg, rgba(4, 6, 19, 0.72), rgba(4, 7, 22, 0.36), rgba(4, 6, 19, 0.72));
   animation: vault-verdict-hero-scene 1800ms ease-out both;
 }
@@ -807,7 +816,11 @@
   aspect-ratio: 1;
   border-radius: 50%;
   opacity: 0.48;
-  background: radial-gradient(circle, color-mix(in srgb, var(--hero-accent) 42%, transparent), transparent 66%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hero-accent) 42%, transparent),
+    transparent 66%
+  );
   filter: blur(8px);
   transform: translate(-50%, -50%) scale(0.3);
   animation: vault-verdict-hero-halo 1100ms ease-out both;
@@ -892,7 +905,12 @@
 .vault-verdict__hero-event.is-powerdown {
   --hero-accent: #aa90ff;
   --hero-accent-2: #262235;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.86), rgba(30, 18, 55, 0.72), rgba(0, 0, 0, 0.86));
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.86),
+    rgba(30, 18, 55, 0.72),
+    rgba(0, 0, 0, 0.86)
+  );
 }
 
 .vault-verdict__hero-event.is-inferno {
@@ -1206,7 +1224,6 @@
 .vault-verdict__pod--remainingFinalWallVault .vault-verdict__pod-label {
   color: rgba(200, 187, 255, 0.72);
 }
-
 .vault-verdict__offer-layer {
   position: absolute;
   inset: 0;
@@ -1548,7 +1565,11 @@
   align-items: center;
   padding: 12px;
   background:
-    radial-gradient(circle at 50% 26%, color-mix(in srgb, var(--bank-accent) 12%, transparent), transparent 42%),
+    radial-gradient(
+      circle at 50% 26%,
+      color-mix(in srgb, var(--bank-accent) 12%, transparent),
+      transparent 42%
+    ),
     rgba(3, 5, 16, 0.82);
   backdrop-filter: blur(7px) saturate(0.72);
 }
@@ -1560,7 +1581,11 @@
   border-color: color-mix(in srgb, var(--bank-accent) 32%, rgba(255, 215, 111, 0.42));
   border-radius: 24px;
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--bank-accent) 16%, transparent), transparent 34%),
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--bank-accent) 16%, transparent),
+      transparent 34%
+    ),
     linear-gradient(180deg, rgba(10, 13, 28, 0.985), rgba(5, 7, 17, 0.995));
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.52),
