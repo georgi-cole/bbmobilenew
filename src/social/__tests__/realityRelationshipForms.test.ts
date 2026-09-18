@@ -9,6 +9,7 @@ import {
   findRealityAllianceForRecruitment,
   formRealityTruce,
   holdRealityAllianceMeeting,
+  leakRealityAlliance,
   recruitRealityAllianceMember,
   refreshRealityAllianceDynamics,
   refreshRealityAllianceOverlaps,
@@ -134,6 +135,42 @@ describe('Reality alliance commitment and hierarchy', () => {
     expect(polarized.status).toBe('ACTIVE')
     expect(polarized.cohesion).toBeGreaterThan(0.7)
     expect(polarized.fractureRisk).toBeLessThan(0.42)
+  })
+
+  it('keeps explicit leak-driven fracture behavior separate from passive fracture pressure', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'alliance-leaks',
+      founderIds: ['ava'],
+      memberIds: ['lia'],
+      purpose: 'Mutual protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia'],
+      targetIds: [],
+      planIds: ['protect'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    leakRealityAlliance(state, alliance.id, 'ava', ['kai'], {
+      day: 3,
+      phase: 'social_1',
+    })
+    leakRealityAlliance(state, alliance.id, 'ava', ['nova'], {
+      day: 4,
+      phase: 'social_1',
+    })
+    expect(alliance.status).toBe('ACTIVE')
+
+    leakRealityAlliance(state, alliance.id, 'ava', ['mara'], {
+      day: 5,
+      phase: 'social_1',
+    })
+
+    expect(alliance.fractureRisk).toBeGreaterThanOrEqual(0.72)
+    expect(alliance.status).toBe('FRACTURED')
   })
 
   it('rewards repeated participation while exclusion and conflicting plans raise fracture pressure', () => {
