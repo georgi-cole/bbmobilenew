@@ -526,9 +526,6 @@ export default function AvatarTile({
             : undefined
         }
       >
-        {liveEvictionNominee && (
-          <span className={styles.liveEvictionDangerHalo} aria-hidden="true" />
-        )}
         <motion.div
           className={[
             styles.avatarWrap,
