@@ -71,6 +71,20 @@ describe('gameplay polish regressions', () => {
     ).toEqual([])
   })
 
+  it('uses a compositor-only live-vote danger pulse instead of animated shadows', () => {
+    const rosterCss = sourceText('src/components/HouseguestGrid/HouseguestGrid.module.css')
+    const keyframes = rosterCss.match(
+      /@keyframes liveEvictionDangerBreath\s*\{([\s\S]*?)\n\}/
+    )?.[1]
+
+    expect(rosterCss).toContain('animation: liveEvictionDangerBreath 1.75s ease-in-out infinite')
+    expect(rosterCss).toContain('will-change: opacity, transform')
+    expect(keyframes).toContain('opacity:')
+    expect(keyframes).toContain('transform:')
+    expect(keyframes).not.toContain('box-shadow:')
+    expect(keyframes).not.toContain('filter:')
+  })
+
   it('uses only a roster-tile reverse eviction after Back 2 the Game', () => {
     const gameScreen = sourceText('src/screens/GameScreen/GameScreen.tsx')
     const rosterCss = sourceText('src/components/HouseguestGrid/HouseguestGrid.module.css')
