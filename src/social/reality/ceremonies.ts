@@ -5,7 +5,11 @@ import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
 import { createRealityContestantState, createRealityPerception } from './state'
 import { reconcileNemesisWithVoluntarySafety } from './relationshipAutonomy'
-import { adjustRealityAllianceCommitment, recordRealityAllianceBetrayal } from './relationshipForms'
+import {
+  adjustRealityAllianceCommitment,
+  recordRealityAllianceBetrayal,
+  recordRealityAlliancePlanDefiance,
+} from './relationshipForms'
 import type {
   RealityClock,
   RealityDomainState,
@@ -453,7 +457,15 @@ export function finalizeRealityVote(
     at,
     sourceEventId: eventId,
   })
-  if (!alreadyRecordedSameVote) reinforceAllianceVotePlan(state, actorId, targetId)
+  if (!alreadyRecordedSameVote) {
+    recordRealityAlliancePlanDefiance(state, {
+      actorId,
+      actualTargetId: targetId,
+      at,
+      sourceEventId: eventId,
+    })
+    reinforceAllianceVotePlan(state, actorId, targetId)
+  }
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||
