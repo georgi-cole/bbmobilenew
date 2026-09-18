@@ -1295,7 +1295,6 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
             tags: ['betrayal'],
             actionSource: 'system',
             skipRealityProjection: true,
-            skipRealityProjection: true,
           })
         )
         api.dispatch(
@@ -1305,6 +1304,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
             delta: -24,
             tags: ['betrayal'],
             actionSource: 'system',
+            skipRealityProjection: true,
           })
         )
         api.dispatch(
