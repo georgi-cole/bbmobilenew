@@ -10,9 +10,13 @@ import SeasonTutorialTour from './SeasonTutorialTour'
 import { selectCurrentQueuedBroadcast } from './seasonOnboardingQueue'
 import {
   hasHandledSeasonTutorial,
-  isSeasonTutorialEnabled,
   markSeasonTutorialHandled,
 } from './seasonTutorialPreference'
+import {
+  isTutorialGuidePending,
+  markTutorialGuideHandled,
+  subscribeTutorialPreferenceChanges,
+} from './tutorialGuidePreference'
 import './SeasonStartOnboardingController.css'
 import './SeasonOpeningCinematic.css'
 
@@ -54,7 +58,7 @@ export default function SeasonStartOnboardingController() {
   const [gameScreenMounted, setGameScreenMounted] = useState(false)
   const [tutorialHandled, setTutorialHandled] = useState(
     () =>
-      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+      !isTutorialGuidePending(activeProfileId, isGuest, 'game') ||
       hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
   )
   const [promptOpen, setPromptOpen] = useState(false)
@@ -120,13 +124,24 @@ export default function SeasonStartOnboardingController() {
     // These states reset in response to an external profile/game change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTutorialHandled(
-      !isSeasonTutorialEnabled(activeProfileId, isGuest) ||
+      !isTutorialGuidePending(activeProfileId, isGuest, 'game') ||
         hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
     )
     setPromptOpen(false)
     setTourOpen(false)
     setHandoffToFirstCompetition(false)
   }, [activeProfileId, gameId, isGuest])
+
+  useEffect(
+    () =>
+      subscribeTutorialPreferenceChanges(() => {
+        setTutorialHandled(
+          !isTutorialGuidePending(activeProfileId, isGuest, 'game') ||
+            hasHandledSeasonTutorial(activeProfileId, isGuest, gameId)
+        )
+      }),
+    [activeProfileId, gameId, isGuest]
+  )
 
   useLayoutEffect(() => {
     // The staged onboarding welcome fully replaces the old "about to begin"
@@ -312,6 +327,7 @@ export default function SeasonStartOnboardingController() {
 
   const finishOnboarding = useCallback(() => {
     markSeasonTutorialHandled(activeProfileId, isGuest, gameId)
+    markTutorialGuideHandled(activeProfileId, isGuest, 'game')
     setTutorialHandled(true)
     beginFirstCompetitionHandoff()
   }, [activeProfileId, beginFirstCompetitionHandoff, gameId, isGuest])
