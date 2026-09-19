@@ -939,8 +939,7 @@ export default function SocialPanelV2() {
 
   const executeCopy = 'Execute'
   const realityTutorialEligible = dramaMode && vip !== undefined
-  const showRealityTutorial =
-    realityTutorialEligible && !realityTutorialHandled && socialPanelOpen
+  const showRealityTutorial = realityTutorialEligible && !realityTutorialHandled && socialPanelOpen
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
