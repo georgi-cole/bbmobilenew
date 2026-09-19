@@ -1247,6 +1247,7 @@ export function evaluateIncomingInteractionEnqueueDecision(
     'competition_low_finish_support',
     'competition_low_finish_taunt',
     'alliance_nomination_pitch',
+    'alliance_vox_ballot_pitch',
     'alliance_safety_pitch',
     'alliance_vote_pitch',
     'alliance_power_nomination_huddle',
