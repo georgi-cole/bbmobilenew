@@ -182,7 +182,11 @@ export function RealitySocialTutorialPrompt({
   if (typeof document === 'undefined') return null
 
   return createPortal(
-    <div className="season-tutorial-prompt" role="presentation" data-testid="reality-social-tutorial-prompt">
+    <div
+      className="season-tutorial-prompt"
+      role="presentation"
+      data-testid="reality-social-tutorial-prompt"
+    >
       <div className="season-tutorial-prompt__backdrop" aria-hidden="true" />
       <section
         className="season-tutorial-prompt__card"
@@ -200,12 +204,7 @@ export function RealitySocialTutorialPrompt({
           <button type="button" className="season-tutorial__secondary" onClick={onSkip}>
             Skip
           </button>
-          <button
-            type="button"
-            className="season-tutorial__primary"
-            onClick={onStart}
-            autoFocus
-          >
+          <button type="button" className="season-tutorial__primary" onClick={onStart} autoFocus>
             Quick tour
           </button>
         </div>
