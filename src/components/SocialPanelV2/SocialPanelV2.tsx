@@ -919,11 +919,23 @@ export default function SocialPanelV2() {
   const focusedOutward = focusedPlayer
     ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]
     : undefined
-  const focusedAffinity = focusedOutward?.affinity
+  const focusedInward = focusedPlayer
+    ? relationships?.[focusedPlayer.id]?.[humanPlayer.id]
+    : undefined
+  const focusedAffinity = dramaMode
+    ? focusedOutward?.affinity
+    : focusedOutward?.affinity !== undefined || focusedInward?.affinity !== undefined
+      ? Math.round(((focusedOutward?.affinity ?? 0) + (focusedInward?.affinity ?? 0)) / 2)
+      : undefined
   const focusedRelationship =
     focusedAffinity === undefined ? null : getRelationshipLabel(focusedAffinity)
   const focusedTags = focusedPlayer
-    ? [...(focusedOutward?.tags ?? [])].filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
+    ? (dramaMode
+        ? [...(focusedOutward?.tags ?? [])]
+        : Array.from(
+            new Set([...(focusedOutward?.tags ?? []), ...(focusedInward?.tags ?? [])])
+          )
+      ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
   const executeCopy = 'Execute'
@@ -1091,6 +1103,7 @@ export default function SocialPanelV2() {
               relationshipPulseDeltas={relationshipPulseDeltas}
               multiSelect={usesMultipleTargets}
               cupidPartners={cupidPartners}
+              playerLimitedRead={dramaMode}
             />
           </section>
 
