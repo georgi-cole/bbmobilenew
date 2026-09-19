@@ -209,10 +209,14 @@ export default function RealitySocialTutorialTour({
       }
       dispatchTutorialEvent('reality-social-tutorial:open-pulse')
       dispatchTutorialEvent('reality-social-tutorial:set-pulse-tab', 'ledger')
-      dispatchTutorialEvent(
-        'reality-social-tutorial:set-ledger-tab',
-        mode === 'ledger-house' ? 'house' : 'relationships'
-      )
+      // RealityLedger mounts only after HousePulse switches to My Game. Give
+      // React one turn to mount it before asking its internal tab to change.
+      window.setTimeout(() => {
+        dispatchTutorialEvent(
+          'reality-social-tutorial:set-ledger-tab',
+          mode === 'ledger-house' ? 'house' : 'relationships'
+        )
+      }, 0)
     },
     [onClearTarget, onEnsureTarget]
   )
