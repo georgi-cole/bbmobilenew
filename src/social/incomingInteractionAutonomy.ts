@@ -1398,6 +1398,31 @@ const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
     'No matter how loud the house gets, I still see us as solid.',
     'I needed a quick check-in with you because our connection still matters to me.',
   ],
+  alliance_nomination_pitch: [
+    'If you want my alliance read, {subject} is the name I would put on the block.',
+    'I trust your LOH call, but my preference is {subject}.',
+    'Before nominations lock, I want you to know I am still leaning {subject}.',
+  ],
+  alliance_safety_pitch: [
+    'If Safety opens a seat, my replacement choice is {subject}.',
+    'I trust your Safety call. If the block moves, I would put up {subject}.',
+    'Before the Safety decision lands, my replacement read is still {subject}.',
+  ],
+  alliance_vote_pitch: [
+    'For the vote, I am on {subject}. I wanted you to know where I stand.',
+    'If we are comparing votes, I am leaning {subject}.',
+    'My vote has not moved. I am still on {subject}.',
+  ],
+  alliance_power_nomination_huddle: [
+    'I have LOH and want the alliance read before I lock anything. I am leaning {subject}.',
+    'This power affects all of us. Right now my nomination target is {subject}.',
+    'Before nominations, I want one alliance check: I am still on {subject}.',
+  ],
+  alliance_power_safety_huddle: [
+    'I have Safety. The alliance read is {subject}, with {secondary} as the replacement if needed.',
+    'Before I use Safety, I want us aligned: {subject} stays exposed and {secondary} is the backup.',
+    'My Safety read is to keep pressure on {subject}; {secondary} is the replacement option.',
+  ],
   generic_gossip: [
     'There is a lot moving underneath the surface right now.',
     'House dynamics are getting messy, and I thought you should know that.',
