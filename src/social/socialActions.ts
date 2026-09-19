@@ -573,6 +573,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     allowActorAsSubject: true,
     successWeight: 1,
     outcomeTag: 'protection',
+    realityPurposes: ['PERSUADE', 'COMMITMENT'],
     availabilityHint: 'Talk to POS about a nominee',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
     dramaAllowedPhases: [
@@ -595,6 +596,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'safety_intel',
+    realityPurposes: ['INFORMATION'],
     availabilityHint: 'Available while Safety is still undecided',
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
     allowedPhases: ['pos_results', 'pos_ceremony'],
@@ -611,6 +613,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'safety_request',
+    realityPurposes: ['PERSUADE', 'COMMITMENT'],
     availabilityHint: 'LOH only, before Safety is used',
     requiredActorStatus: ['loh', 'loh+pos'],
     requiredTargetStatus: ['pos', 'loh+pos', 'nominated+pos'],
