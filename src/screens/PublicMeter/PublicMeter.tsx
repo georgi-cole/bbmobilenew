@@ -376,7 +376,7 @@ export default function PublicMeter() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
-  const [contextualGuideRevision, setContextualGuideRevision] = useState(0)
+  const [, refreshContextualGuides] = useState(0)
   const publicOpinion = useAppSelector(selectPublicOpinion)
   const rankedProfiles = useAppSelector(selectRankedProfiles)
   const feed = useAppSelector(selectPublicFeed)
@@ -415,9 +415,10 @@ export default function PublicMeter() {
     [allDirections, userPlayer]
   )
 
-  const hasSeenPublicRequestGuide = useMemo(
-    () => hasSeenContextualGuide('public-request', activeProfileId, isGuest),
-    [activeProfileId, contextualGuideRevision, isGuest]
+  const hasSeenPublicRequestGuide = hasSeenContextualGuide(
+    'public-request',
+    activeProfileId,
+    isGuest
   )
   const showPublicRequestGuide =
     game.publicModeEnabled === true && userActiveDirections.length > 0 && !hasSeenPublicRequestGuide
@@ -837,7 +838,7 @@ export default function PublicMeter() {
           body="Public requests give you a direction to pursue. Following one can improve your standing, but you still decide how — or whether — to respond."
           onComplete={() => {
             markContextualGuideSeen('public-request', activeProfileId, isGuest)
-            setContextualGuideRevision((revision) => revision + 1)
+            refreshContextualGuides((revision) => revision + 1)
           }}
         />
       )}
