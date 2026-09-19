@@ -4,10 +4,10 @@ import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import { FEATURE_LOCALIZATION_SETTINGS } from '../../config/featureFlags'
 import {
-  isSeasonTutorialEnabled,
-  setSeasonTutorialEnabled,
-} from '../../onboarding/seasonTutorialPreference'
-import { resetRealitySocialTutorial } from '../../onboarding/realitySocialTutorialPreference'
+  isTutorialReplayEnabled,
+  setTutorialReplayEnabled,
+  subscribeTutorialPreferenceChanges,
+} from '../../onboarding/tutorialGuidePreference'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { AppDispatch } from '../../store/store'
 import {
@@ -113,12 +113,8 @@ export default function Settings() {
   const [lockedFeature, setLockedFeature] = useState<LockedFeature | null>(null)
   const [publicModeNotice, setPublicModeNotice] = useState<boolean | null>(null)
   const [tutorialEnabled, setTutorialEnabled] = useState(() =>
-    isSeasonTutorialEnabled(activeProfileId, isGuest)
+    isTutorialReplayEnabled(activeProfileId, isGuest)
   )
-  const [realityGuideReadyFor, setRealityGuideReadyFor] = useState<string | null>(null)
-  const realityGuideScope = `${isGuest ? 'guest' : (activeProfileId ?? 'profile')}:${
-    hasRealityAccess ? 'reality' : 'locked'
-  }`
 
   const themeOptions: DropdownItem['options'] = [
     { value: 'midnight', label: t('settings.theme.midnight') },
@@ -309,7 +305,10 @@ export default function Settings() {
   }, [dispatch, realityAgeEligibility, settings.gameUX.realityModePreset])
 
   useEffect(() => {
-    setTutorialEnabled(isSeasonTutorialEnabled(activeProfileId, isGuest))
+    const syncTutorialToggle = () =>
+      setTutorialEnabled(isTutorialReplayEnabled(activeProfileId, isGuest))
+    syncTutorialToggle()
+    return subscribeTutorialPreferenceChanges(syncTutorialToggle)
   }, [activeProfileId, isGuest])
 
   function renderItem(item: SettingItem) {
@@ -453,40 +452,21 @@ export default function Settings() {
         ))}
         <div className="settings-row">
           <label className="settings-row__label" htmlFor="setting-replay-tutorial">
-            Replay tutorial
+            Replay tutorials
           </label>
           <input
             id="setting-replay-tutorial"
             type="checkbox"
             className="settings-toggle"
             checked={tutorialEnabled}
-            disabled={isGuest}
             onChange={(event) => {
               const enabled = event.target.checked
-              setSeasonTutorialEnabled(activeProfileId, isGuest, enabled)
-              setTutorialEnabled(isGuest ? true : enabled)
+              setTutorialReplayEnabled(activeProfileId, isGuest, enabled)
+              setTutorialEnabled(enabled)
             }}
-            aria-label="Toggle Replay tutorial"
+            aria-label="Toggle Replay tutorials"
           />
         </div>
-        {hasRealityAccess && (
-          <button
-            type="button"
-            className="settings-row settings-row--legal"
-            onClick={() => {
-              resetRealitySocialTutorial(activeProfileId, isGuest)
-              setRealityGuideReadyFor(realityGuideScope)
-            }}
-          >
-            <span>
-              <strong>Replay Reality Social guide</strong>
-              <small>Show the walkthrough next time you open Social in Reality Mode.</small>
-            </span>
-            <span aria-live="polite">
-              {realityGuideReadyFor === realityGuideScope ? 'Ready' : 'Replay'}
-            </span>
-          </button>
-        )}
         <button
           type="button"
           className="settings-row settings-row--legal"
