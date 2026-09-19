@@ -507,6 +507,7 @@ const socialSlice = createSlice({
         day: number
         phase: string
         eventId: string
+        eligibleTargetIds?: string[]
       }>
     ) {
       finalizeRealityVote(
@@ -514,7 +515,8 @@ const socialSlice = createSlice({
         action.payload.actorId,
         action.payload.targetId,
         { day: action.payload.day, phase: action.payload.phase },
-        action.payload.eventId
+        action.payload.eventId,
+        action.payload.eligibleTargetIds
       )
       projectRealityRelationshipsIntoLegacy(
         state.reality as RealityDomainState,
