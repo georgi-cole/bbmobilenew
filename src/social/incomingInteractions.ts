@@ -11,6 +11,7 @@ import {
   addSocialCommitment,
   applyDramaIncomingResponse,
   applyInfoDelta,
+  applyInfluenceDelta,
   dismissIncomingInteraction,
   replaceRealityDomain,
   resolveIncomingInteractionsByDeadline,
@@ -19,6 +20,7 @@ import {
   updateSocialMemory,
   learnRealityKnowledge,
   recordIntelligenceDelivery,
+  recordSocialAction,
 } from './socialSlice'
 import {
   coordinateRealityAllianceTarget,
@@ -49,6 +51,9 @@ import type {
   IncomingInteractionType,
 } from './types'
 import { makeIntelMemory } from './intelligenceSystem'
+import { getRuntimeSocialActionById } from './socialActionManager'
+import { normalizeActionCosts } from './smExecNormalize'
+import { getSocialResourceEffect } from './socialResourceEconomy'
 
 const TYPE_LABELS: Record<IncomingInteractionType, string> = {
   compliment: 'compliment',
@@ -979,6 +984,83 @@ function applyIncomingChoiceConsequences({
   }
 }
 
+function settleBackgroundSocialAction(
+  dispatch: AppDispatch,
+  getState: () => RootState,
+  interaction: IncomingInteraction,
+  resolvedAt: number
+): void {
+  if (
+    interaction.payload?.source !== 'background_social' ||
+    typeof interaction.payload?.originActionId !== 'string' ||
+    typeof interaction.payload?.realityInteractionId !== 'string'
+  ) {
+    return
+  }
+
+  const action = getRuntimeSocialActionById(interaction.payload.originActionId)
+  if (!action) return
+
+  const state = getState()
+  const realityInteraction = state.social.reality.interactions[
+    interaction.payload.realityInteractionId
+  ]
+  const resolvedEvent = [...state.social.reality.events]
+    .reverse()
+    .find((event) => event.interactionId === interaction.payload?.realityInteractionId)
+  if (!resolvedEvent || !realityInteraction) return
+
+  const outcome = resolvedEvent.outcome === 'SUCCESS' ? 'success' : 'failure'
+  const targetCount = Math.max(1, realityInteraction.targetIds.length)
+  const effect = getSocialResourceEffect(action, outcome, targetCount)
+  if (effect.influence !== 0) {
+    dispatch(applyInfluenceDelta({ playerId: interaction.fromId, delta: effect.influence }))
+  }
+  if (effect.info !== 0) {
+    dispatch(applyInfoDelta({ playerId: interaction.fromId, delta: effect.info }))
+  }
+
+  const after = getState()
+  const costs = normalizeActionCosts(
+    action,
+    targetCount,
+    getInteractionSocialMode(interaction, after) === 'drama'
+  )
+  dispatch(
+    recordSocialAction({
+      entry: {
+        actionId: action.id,
+        actorId: interaction.fromId,
+        targetId: realityInteraction.targetIds[0] ?? interaction.fromId,
+        targetIds: [...realityInteraction.targetIds],
+        cost: costs.energy,
+        costs,
+        delta: 0,
+        outcome,
+        newEnergy: after.social.energyBank[interaction.fromId] ?? 0,
+        balancesAfter: {
+          energy: after.social.energyBank[interaction.fromId] ?? 0,
+          influence: after.social.influenceBank[interaction.fromId] ?? 0,
+          info: after.social.infoBank[interaction.fromId] ?? 0,
+        },
+        timestamp: resolvedAt,
+        week: interaction.createdDay ?? interaction.createdWeek,
+        phase: interaction.createdPhase ?? state.game.phase,
+        source: 'system',
+        ...(effect.influence !== 0 || effect.info !== 0
+          ? {
+              yieldsApplied: {
+                ...(effect.influence !== 0 ? { influence: effect.influence } : {}),
+                ...(effect.info !== 0 ? { info: effect.info } : {}),
+              },
+            }
+          : {}),
+        label: resolvedEvent.outcome,
+      },
+    })
+  )
+}
+
 export function respondToIncomingInteraction({
   interactionId,
   responseType,
@@ -1031,6 +1113,7 @@ export function respondToIncomingInteraction({
       state.game.phase,
       realityBeforeResponse
     )
+    settleBackgroundSocialAction(dispatch, getState, interaction, resolvedAt)
 
     dispatch(
       resolveIncomingInteraction({
@@ -1101,6 +1184,7 @@ export function autoResolveExpiredIncomingInteractionsForClock(day: number, phas
         phase,
         realityBeforeResponse
       )
+      settleBackgroundSocialAction(dispatch, getState, interaction, resolvedAt)
     }
 
     dispatch(
