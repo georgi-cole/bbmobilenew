@@ -461,14 +461,16 @@ export default function SocialPanelV2() {
   const selectedScopeLabel = selectedAction
     ? selectedActionId === 'idle'
       ? 'You'
-      : targetMode === 'none'
-        ? 'House'
-        : usesMultipleTargets
-          ? 'Group'
-          : effectivePrimaryTargetId
-            ? (game.players.find((player) => player.id === effectivePrimaryTargetId)?.name ??
-              'Target')
-            : 'Choose target'
+      : selectedActionId === 'consult_alliance'
+        ? 'Alliance'
+        : targetMode === 'none'
+          ? 'House'
+          : usesMultipleTargets
+            ? 'Group'
+            : effectivePrimaryTargetId
+              ? (game.players.find((player) => player.id === effectivePrimaryTargetId)?.name ??
+                'Target')
+              : 'Choose target'
     : null
 
   const selectedCostLabel = totalCosts
