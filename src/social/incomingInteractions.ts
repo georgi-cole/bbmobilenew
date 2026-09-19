@@ -113,6 +113,10 @@ function resolveRealityIncomingInteraction(
       typeof interaction.payload?.subjectId === 'string'
         ? interaction.payload.subjectId
         : undefined,
+    allianceId:
+      typeof interaction.payload?.allianceId === 'string'
+        ? interaction.payload.allianceId
+        : undefined,
   })
   if (resolved.event) dispatch(replaceRealityDomain(resolved.domain))
 }
