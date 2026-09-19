@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  armRealityUpgradeTutorial,
   getSocialGuideLevel,
   isTutorialGuidePending,
   isTutorialReplayEnabled,
@@ -51,6 +52,11 @@ describe('tutorial guide preference', () => {
 
     expect(getSocialGuideLevel('profile-a', false)).toBe(1)
     expect(resolveSocialTutorialVariant('profile-a', false, false)).toBeNull()
+
+    armRealityUpgradeTutorial('profile-a', false)
+
+    expect(isTutorialGuidePending('profile-a', false, 'social')).toBe(true)
+    expect(isTutorialReplayEnabled('profile-a', false)).toBe(true)
     expect(resolveSocialTutorialVariant('profile-a', false, true)).toBe('reality-upgrade')
 
     markSocialTutorialHandled('profile-a', false, 'reality-upgrade')
