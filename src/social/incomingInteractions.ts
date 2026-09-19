@@ -992,7 +992,7 @@ export function respondToIncomingInteraction({
     const resolvedAt = Date.now()
     const realityBeforeResponse = state.social.reality
 
-    if (isIncomingInteractionInvalidated(interaction, state.game)) {
+    if (isIncomingInteractionInvalidated(interaction, state.game, state.social.reality)) {
       dispatch(
         dismissIncomingInteraction({
           interactionId,
