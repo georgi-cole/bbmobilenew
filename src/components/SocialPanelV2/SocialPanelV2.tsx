@@ -1126,7 +1126,7 @@ export default function SocialPanelV2() {
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
               onPremiumLockedClick={handleRealityUpgrade}
-              selectedTargetIds={targetMode === 'none' ? undefined : selectedPlayerIds}
+              selectedTargetIds={selectedPlayerIds}
               players={orderedPlayers}
               actorId={humanPlayer.id}
               actorEnergy={energy}
