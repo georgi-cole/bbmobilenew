@@ -1,5 +1,5 @@
 import { addRealityFact, learnRealityFact } from './knowledge'
-import { resolveRealityPromise } from './commitments'
+import { compareRealityClock, resolveRealityPromise } from './commitments'
 import { appendRealityEvent } from './events'
 import { remember } from './memory'
 import { applyRealityRelationshipChange, getRealityRelationship } from './relationships'
@@ -148,6 +148,105 @@ function rememberOfficialCeremony(
     }
     remember(state, memory)
     learnRealityFact(state, { ownerId, factId, memory, confidence: 1 })
+  }
+}
+
+function resolveCeremonyPromises(
+  state: RealityDomainState,
+  event: RealitySocialEvent,
+  kind: RealityCeremonyKind
+): void {
+  const activePromises = () =>
+    Object.values(state.promises).filter(
+      (promise) => promise.status === 'ACTIVE' || promise.status === 'PROPOSED'
+    )
+
+  const resolveAndAttach = (
+    promiseId: string,
+    status: 'KEPT' | 'BROKEN' | 'VOID'
+  ) => {
+    const resolved = resolveRealityPromise(
+      state,
+      promiseId,
+      status,
+      { day: event.day, phase: event.phase },
+      event.id
+    )
+    if (resolved && !event.relatedPromiseIds.includes(promiseId)) {
+      event.relatedPromiseIds.push(promiseId)
+    }
+  }
+
+  if (kind === 'NOMINATIONS_LOCKED' && event.actorId) {
+    for (const promise of activePromises()) {
+      if (promise.promisorId !== event.actorId || promise.kind !== 'protect') continue
+      const beneficiaryId = promise.beneficiaryIds[0]
+      if (!beneficiaryId) continue
+      resolveAndAttach(
+        promise.id,
+        event.targetIds.includes(beneficiaryId) ? 'BROKEN' : 'KEPT'
+      )
+    }
+  }
+
+  if ((kind === 'SAFETY_USED' || kind === 'SAFETY_DECLINED') && event.actorId) {
+    const latestNomination = [...state.events]
+      .reverse()
+      .find(
+        (candidate) =>
+          candidate.day === event.day && candidate.type === 'CEREMONY_NOMINATIONS_LOCKED'
+      )
+
+    for (const promise of activePromises()) {
+      if (promise.promisorId !== event.actorId) continue
+
+      if (promise.kind === 'use_safety_on_player') {
+        const beneficiaryId = promise.beneficiaryIds[0]
+        if (!beneficiaryId) continue
+        resolveAndAttach(
+          promise.id,
+          kind === 'SAFETY_USED' && event.targetIds.includes(beneficiaryId)
+            ? 'KEPT'
+            : 'BROKEN'
+        )
+        continue
+      }
+
+      if (promise.kind === 'hold_safety') {
+        resolveAndAttach(promise.id, kind === 'SAFETY_DECLINED' ? 'KEPT' : 'BROKEN')
+        continue
+      }
+
+      if (promise.kind === 'protect') {
+        const beneficiaryId = promise.beneficiaryIds[0]
+        if (!beneficiaryId) continue
+        if (kind === 'SAFETY_USED' && event.targetIds.includes(beneficiaryId)) {
+          resolveAndAttach(promise.id, 'KEPT')
+        } else if (
+          (kind === 'SAFETY_DECLINED' && event.targetIds.includes(beneficiaryId)) ||
+          (kind === 'SAFETY_USED' && latestNomination?.targetIds.includes(beneficiaryId))
+        ) {
+          resolveAndAttach(promise.id, 'BROKEN')
+        }
+      }
+    }
+  }
+
+  if (kind === 'EVICTION') {
+    for (const promise of activePromises()) {
+      if (
+        promise.deadline &&
+        compareRealityClock(promise.deadline, {
+          day: event.day,
+          phase: event.phase,
+        }) <= 0
+      ) {
+        // No relevant power/vote opportunity ever resolved this promise. Do not
+        // reward or punish a contestant for an obligation the game never gave
+        // them a chance to act on, but never leave it active into future days.
+        resolveAndAttach(promise.id, 'VOID')
+      }
+    }
   }
 }
 
@@ -370,6 +469,7 @@ export function recordRealityCeremonyOutcome(
   })
   rememberOfficialCeremony(state, event, factId)
   applyCeremonyAftermath(state, event, input.kind)
+  resolveCeremonyPromises(state, event, input.kind)
   applyAllianceSafetyCommitment(state, event, input.kind)
   if (input.kind === 'NOMINATIONS_LOCKED' && event.actorId) {
     for (const targetId of event.targetIds) {
@@ -489,11 +589,26 @@ export function finalizeRealityVote(
   for (const promise of Object.values(state.promises)) {
     if (
       promise.promisorId !== actorId ||
-      (promise.status !== 'ACTIVE' && promise.status !== 'PROPOSED') ||
-      !promise.kind.toLowerCase().includes('vote')
+      (promise.status !== 'ACTIVE' && promise.status !== 'PROPOSED')
     ) {
       continue
     }
+
+    if (promise.kind === 'protect') {
+      const beneficiaryId = promise.beneficiaryIds[0]
+      if (beneficiaryId && eligibleTargetIds?.includes(beneficiaryId)) {
+        resolveRealityPromise(
+          state,
+          promise.id,
+          targetId === beneficiaryId ? 'BROKEN' : 'KEPT',
+          at,
+          eventId
+        )
+      }
+      continue
+    }
+
+    if (!promise.kind.toLowerCase().includes('vote')) continue
     const promisedTarget =
       typeof promise.scope.targetId === 'string'
         ? promise.scope.targetId
