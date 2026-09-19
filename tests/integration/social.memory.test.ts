@@ -275,6 +275,76 @@ describe('social memory integration for incoming interactions', () => {
     ])
   })
 
+  it('drops an evicted alliance member from a delayed group huddle', () => {
+    const store = makeStore()
+    const game = store.getState().game
+    const human = game.players.find((player) => player.isUser)!
+    const ai = game.players.filter((player) => !player.isUser)
+    const [caller, evictedAlly, activeAlly, target] = ai
+
+    const social = structuredClone(
+      socialReducer(undefined, { type: 'init' }) as SocialState
+    )
+    const alliance = createRealityAlliance(social.reality, {
+      id: 'incoming-huddle-evicted-member',
+      founderIds: [caller.id, human.id],
+      memberIds: [evictedAlly.id, activeAlly.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    store.dispatch(hydrateSocial(social))
+
+    const nextGame = structuredClone(game)
+    const evicted = nextGame.players.find((player) => player.id === evictedAlly.id)!
+    evicted.status = 'evicted'
+    store.dispatch({ type: 'game/hydrateGame', payload: nextGame })
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'alliance-huddle-evicted-member',
+          fromId: caller.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            allianceId: alliance.id,
+            allianceStrategyKind: 'NOMINATION',
+            allianceGroupHuddle: true,
+            allianceGroupMemberIds: [caller.id, human.id, evictedAlly.id, activeAlly.id],
+            subjectId: target.id,
+            allianceMemberTargetPreferences: {
+              [caller.id]: target.id,
+              [evictedAlly.id]: target.id,
+              [activeAlly.id]: target.id,
+            },
+          },
+          createdWeek: game.week,
+          expiresAtWeek: game.week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'alliance-huddle-evicted-member',
+        responseType: 'accept',
+      }) as never
+    )
+
+    const huddle = store
+      .getState()
+      .social.reality.events.find(
+        (event) =>
+          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+          event.reason.includes('alliance-huddle-evicted-member')
+      )
+    expect(huddle?.participantIds).not.toContain(evictedAlly.id)
+    expect(huddle?.participantIds).toEqual(
+      expect.arrayContaining([caller.id, activeAlly.id, human.id])
+    )
+  })
+
   it('lets an AI alliance reach a majority even when the human openly dissents', () => {
     const store = makeStore()
     const game = store.getState().game
