@@ -230,7 +230,6 @@ export default function SocialPanelV2() {
 
   useEffect(() => {
     // Profile switches change the persistence scope for this one-time premium guide.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRealityTutorialHandled(hasHandledRealitySocialTutorial(activeProfileId, isGuest))
   }, [activeProfileId, isGuest])
 
