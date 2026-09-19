@@ -229,14 +229,10 @@ describe('Reality alliance ceremony consequences', () => {
     })
 
     const commitmentBefore = alliance.memberCommitment.ava
-    finalizeRealityVote(
-      state,
-      'ava',
+    finalizeRealityVote(state, 'ava', 'mara', { day: 5, phase: 'live_vote' }, 'forced-choice', [
       'mara',
-      { day: 5, phase: 'live_vote' },
-      'forced-choice',
-      ['mara', 'zoe']
-    )
+      'zoe',
+    ])
 
     expect(alliance.memberCommitment.ava).toBe(commitmentBefore)
     expect(state.events.some((event) => event.type === 'ALLIANCE_PLAN_DEFIED')).toBe(false)
