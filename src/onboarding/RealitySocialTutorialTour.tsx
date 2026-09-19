@@ -203,22 +203,25 @@ function tutorialStepsFor(variant: SocialTutorialVariant): readonly TutorialStep
 
 const PROMPT_COPY: Record<
   SocialTutorialVariant,
-  { eyebrow: string; title: string; body: string }
+  { eyebrow: string; title: string; body: string; startLabel: string }
 > = {
   normal: {
     eyebrow: 'SOCIAL',
     title: 'Welcome to Social',
     body: 'Want a quick tour of relationships and social moves?',
+    startLabel: 'Quick tour',
   },
   reality: {
     eyebrow: 'REALITY MODE',
     title: 'Welcome to Reality Social',
     body: 'Want a quick tour of the deeper social game?',
+    startLabel: 'Quick tour',
   },
   'reality-upgrade': {
     eyebrow: 'REALITY MODE',
     title: 'Social just got deeper',
     body: 'You already know the basics. Want a quick look at what Reality Mode adds?',
+    startLabel: 'Show me',
   },
 }
 
@@ -314,7 +317,7 @@ export function RealitySocialTutorialPrompt({
             Skip
           </button>
           <button type="button" className="season-tutorial__primary" onClick={onStart} autoFocus>
-            Quick tour
+            {copy.startLabel}
           </button>
         </div>
       </section>
