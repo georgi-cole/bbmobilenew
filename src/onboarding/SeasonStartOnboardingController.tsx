@@ -50,6 +50,7 @@ export default function SeasonStartOnboardingController() {
   const week = useAppSelector((state) => state.game.week)
   const phase = useAppSelector((state) => state.game.phase)
   const mode = useAppSelector((state) => state.game.mode)
+  const publicModeEnabled = useAppSelector((state) => state.game.publicModeEnabled === true)
   const tvFeed = useAppSelector((state) => state.game.tvFeed)
   const broadcastQueue = useAppSelector((state) => state.game.broadcastQueue ?? [])
   const activeProfileId = useAppSelector((state) => state.profiles.activeProfileId)
@@ -353,8 +354,8 @@ export default function SeasonStartOnboardingController() {
               aria-labelledby="season-tutorial-prompt-title"
               aria-describedby="season-tutorial-prompt-copy"
             >
-              <span className="season-tutorial-prompt__eyebrow">WELCOME TO THE HUB</span>
-              <h2 id="season-tutorial-prompt-title">New to The Big Eye?</h2>
+              <span className="season-tutorial-prompt__eyebrow">QUICK TOUR</span>
+              <h2 id="season-tutorial-prompt-title">Welcome to The Big Eye</h2>
               <p id="season-tutorial-prompt-copy">Want a quick tour of the game screen?</p>
               <div className="season-tutorial-prompt__actions">
                 <button
@@ -377,7 +378,13 @@ export default function SeasonStartOnboardingController() {
           </div>,
           document.body
         )}
-      {tourOpen && <SeasonTutorialTour onComplete={finishOnboarding} onSkip={finishOnboarding} />}
+      {tourOpen && (
+        <SeasonTutorialTour
+          showPublicStep={publicModeEnabled}
+          onComplete={finishOnboarding}
+          onSkip={finishOnboarding}
+        />
+      )}
     </>
   )
 }
