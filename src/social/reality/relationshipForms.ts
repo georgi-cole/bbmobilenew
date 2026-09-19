@@ -263,7 +263,11 @@ export function adjustRealityAllianceCommitment(
   return refreshRealityAllianceLifecycle(alliance)
 }
 
-export type RealityAllianceMembershipExitKind = 'VOLUNTARY' | 'EXPELLED' | 'DEFECTION'
+export type RealityAllianceMembershipExitKind =
+  | 'VOLUNTARY'
+  | 'EXPELLED'
+  | 'DEFECTION'
+  | 'EVICTED'
 
 export function removeRealityAllianceMember(
   state: RealityDomainState,
@@ -296,7 +300,9 @@ export function removeRealityAllianceMember(
       ? 'ALLIANCE_MEMBER_EXPELLED'
       : input.kind === 'DEFECTION'
         ? 'ALLIANCE_MEMBER_DEFECTED'
-        : 'ALLIANCE_MEMBER_LEFT'
+        : input.kind === 'EVICTED'
+          ? 'ALLIANCE_MEMBER_EVICTED'
+          : 'ALLIANCE_MEMBER_LEFT'
   const event = appendRealityEvent(state, {
     ...input.at,
     type: eventType,
@@ -324,21 +330,23 @@ export function removeRealityAllianceMember(
   delete alliance.operationalRoles[input.memberId]
   alliance.genuine = alliance.infiltratorIds.length === 0
 
-  for (const memberId of alliance.memberIds) {
-    applyRealityRelationshipChange(state, {
-      sourceId: memberId,
-      targetId: input.memberId,
-      eventId: event.id,
-      day: input.at.day,
-      phase: input.at.phase,
-      anchor: 'negative',
-      deltas:
-        input.kind === 'VOLUNTARY'
-          ? { trust: -2, loyalty: -3, familiarity: 2 }
-          : input.kind === 'DEFECTION'
-            ? { trust: -7, loyalty: -9, resentment: 5, suspicion: 5, reliability: -8 }
-            : { trust: -5, loyalty: -7, resentment: 4, suspicion: 4, reliability: -5 },
-    })
+  if (input.kind !== 'EVICTED') {
+    for (const memberId of alliance.memberIds) {
+      applyRealityRelationshipChange(state, {
+        sourceId: memberId,
+        targetId: input.memberId,
+        eventId: event.id,
+        day: input.at.day,
+        phase: input.at.phase,
+        anchor: 'negative',
+        deltas:
+          input.kind === 'VOLUNTARY'
+            ? { trust: -2, loyalty: -3, familiarity: 2 }
+            : input.kind === 'DEFECTION'
+              ? { trust: -7, loyalty: -9, resentment: 5, suspicion: 5, reliability: -8 }
+              : { trust: -5, loyalty: -7, resentment: 4, suspicion: 4, reliability: -5 },
+      })
+    }
   }
 
   if (alliance.memberIds.length < 2) {
