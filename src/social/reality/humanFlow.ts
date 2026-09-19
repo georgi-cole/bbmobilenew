@@ -864,6 +864,11 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       return result(false, reason, energy, 0, orchestration.response?.kind ?? 'Unavailable')
     }
     const succeeded = orchestration.event.outcome !== 'FAILURE'
+    // A counteroffer is a resolved conversation, but it is not an accepted pact.
+    // Keep the compatibility/UI layer from manufacturing an Alliance tag until
+    // the Reality response itself has actually been accepted.
+    const resolvedAsSuccess =
+      input.actionId === 'proposeAlliance' ? orchestration.response?.accepted === true : succeeded
     let allianceConsultationSummary: string | null = null
     if (succeeded && consultationAlliance) {
       const plan = buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
@@ -906,14 +911,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       ? executeAction(input.actorId, input.targetId, input.actionId, {
           source: 'manual',
           subjectId: input.subjectId,
-          outcome: succeeded ? 'success' : 'failure',
+          outcome: resolvedAsSuccess ? 'success' : 'failure',
           repetitionAlreadyResolved: true,
           costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
         })
       : direction === 'GROUP' && actionTargetMode === 'multi'
         ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
-            outcome: succeeded ? 'success' : 'failure',
+            outcome: resolvedAsSuccess ? 'success' : 'failure',
             costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
           })
         : direction === 'GROUP'
@@ -922,7 +927,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                 executeAction(input.actorId, targetId, input.actionId, {
                   source: 'manual',
                   subjectId: input.subjectId,
-                  outcome: succeeded ? 'success' : 'failure',
+                  outcome: resolvedAsSuccess ? 'success' : 'failure',
                   repetitionAlreadyResolved: true,
                   waiveCosts: index > 0,
                   costOverride:
@@ -956,7 +961,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               {
                 source: 'manual',
                 subjectId: input.subjectId,
-                outcome: succeeded ? 'success' : 'failure',
+                outcome: resolvedAsSuccess ? 'success' : 'failure',
                 repetitionAlreadyResolved: true,
                 costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
               }
@@ -969,7 +974,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     // An accepted human alliance is authoritative in both relationship models.
     // Projecting the Reality domain can otherwise leave one legacy direction
     // just below the threshold used by badges and action eligibility.
-    if (succeeded && input.actionId === 'proposeAlliance' && targetIds.length === 1) {
+    if (resolvedAsSuccess && input.actionId === 'proposeAlliance' && targetIds.length === 1) {
       dispatch(
         updateRelationship({
           source: input.actorId,
@@ -989,7 +994,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         })
       )
     }
-    const cupidRipplePartnerNames = succeeded
+    const cupidRipplePartnerNames = resolvedAsSuccess
       ? applyCupidPartnerRipple(
           dispatch,
           state,
@@ -999,9 +1004,15 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           compatibility.delta
         )
       : null
+    const allianceProposalCountered =
+      input.actionId === 'proposeAlliance' && orchestration.response?.kind === 'COUNTER'
     const baseSummary =
-      allianceConsultationSummary ??
-      (input.actionId === 'warn_about_danger' && succeeded
+      allianceProposalCountered
+        ? `${
+            state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+          } made a counteroffer. No alliance was formed yet.`
+        : allianceConsultationSummary ??
+          (input.actionId === 'warn_about_danger' && succeeded
         ? dangerWarningDiscovered
           ? `${
               state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
