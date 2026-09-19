@@ -38,7 +38,7 @@ import { resolveAvatar, getDicebear } from '../../utils/avatar'
 import HOUSEGUESTS from '../../data/houseguests'
 import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio'
 import { publishMinigameMusicVariant } from '../../services/sound/minigameMusicVariant'
-import VIP_SHOWROOM_ASSET from './vipShowroomAsset'
+import riskWheelBackground from '../../features/riskWheel/risk_wheel_background.png'
 import './RiskWheelComp.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -931,7 +931,7 @@ export default function RiskWheelComp({
         <div className="rw-vip-showroom" aria-hidden="true" data-testid="rw-vip-showroom">
           <img
             className="rw-vip-showroom-bg"
-            src={VIP_SHOWROOM_ASSET}
+            src={riskWheelBackground}
             alt=""
             draggable={false}
             data-testid="rw-vip-showroom-bg"

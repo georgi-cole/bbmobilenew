@@ -2487,7 +2487,7 @@ body.no-animations .rw-root--vip .rw-vip-showroom-beam,body.no-animations .rw-ro
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  filter: saturate(1.03) brightness(.82) contrast(1.06);
+  filter: none;
 }
 
 .rw-vip-showroom-vignette {
@@ -2500,7 +2500,7 @@ body.no-animations .rw-root--vip .rw-vip-showroom-beam,body.no-animations .rw-ro
       rgba(2, 4, 14, .05) 0%,
       rgba(2, 4, 14, .08) 34%,
       rgba(2, 4, 14, .18) 68%,
-      rgba(2, 4, 14, .68) 100%
+      rgba(2, 4, 14, .42) 100%
     ),
     radial-gradient(
       ellipse at 50% 37%,
