@@ -931,9 +931,7 @@ export default function SocialPanelV2() {
   const focusedTags = focusedPlayer
     ? (dramaMode
         ? [...(focusedOutward?.tags ?? [])]
-        : Array.from(
-            new Set([...(focusedOutward?.tags ?? []), ...(focusedInward?.tags ?? [])])
-          )
+        : Array.from(new Set([...(focusedOutward?.tags ?? []), ...(focusedInward?.tags ?? [])]))
       ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
