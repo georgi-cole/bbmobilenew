@@ -76,6 +76,7 @@ export default function ActionGrid({
   const appliedInvitationRef = useRef<string | null>(null)
   const [realityModePromptOpen, setRealityModePromptOpen] = useState(false)
   const game = useAppSelector((state) => state.game)
+  const reality = useAppSelector((state) => state.social.reality)
   const hasRealityAccess = useAppSelector(selectHasDramaModeAccess)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
@@ -153,6 +154,7 @@ export default function ActionGrid({
         primaryTargetStatus,
         relationships,
         dramaNetwork,
+        reality,
         dramaMode,
       }).eligible
     )
@@ -175,6 +177,7 @@ export default function ActionGrid({
         primaryTargetStatus,
         relationships,
         dramaNetwork,
+        reality,
         dramaMode: false,
         ignoreRealityModeGate: true,
       }).eligible
