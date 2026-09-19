@@ -581,6 +581,15 @@ export function scoreRealitySafetyDecision(
   )
 }
 
+function eventKnownToJuror(event: RealitySocialEvent, jurorId: string): boolean {
+  if (event.participantIds.includes(jurorId) || event.witnessIds.includes(jurorId)) return true
+  return (
+    event.visibility === 'HOUSE_PUBLIC' ||
+    event.visibility === 'CEREMONY_PUBLIC' ||
+    event.visibility === 'JURY_ONLY'
+  )
+}
+
 export function computeRealityJuryEvaluation(
   state: RealityDomainState,
   jurorId: string,
@@ -590,7 +599,9 @@ export function computeRealityJuryEvaluation(
   const relationship = getRealityRelationship(state, jurorId, finalistId)
   const sourceEvents = state.events.filter(
     (event) =>
-      event.juryEligible && (event.actorId === finalistId || event.targetIds.includes(finalistId))
+      event.juryEligible &&
+      eventKnownToJuror(event, jurorId) &&
+      (event.actorId === finalistId || event.targetIds.includes(finalistId))
   )
   const betrayalEvents = sourceEvents.filter(
     (event) =>
