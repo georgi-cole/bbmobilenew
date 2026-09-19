@@ -2087,3 +2087,367 @@ body.no-animations .rw-root--vip .rw-vip-showroom-beam,body.no-animations .rw-ro
     padding-block: 8px;
   }
 }
+
+
+/* ─── VIP showroom + wheel clarity pass ─────────────────────────────────────
+   Removes the raster wheel overlay that duplicated/blurred sector values,
+   lets the canonical SVG wheel dominate, translates the approved TV-show
+   concept into crisp CSS/DOM scenery, and compacts the action controls.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.rw-root--vip .rw-main {
+  gap: 17px;
+  padding-top: 15px;
+  padding-bottom: 28px;
+}
+
+.rw-root--vip .rw-wheel-outer {
+  width: clamp(326px, 84vw, 358px);
+  height: clamp(326px, 84vw, 358px);
+  margin-top: 5px;
+  margin-bottom: 17px;
+  filter:
+    drop-shadow(0 18px 28px rgba(0,0,0,.4))
+    drop-shadow(0 0 8px rgba(70,210,255,.12));
+}
+
+/* The frame is now fully crisp/CSS. No raster image is layered over the sectors. */
+.rw-vip-wheel-frame {
+  display: none !important;
+}
+
+.rw-vip-wheel-frame-fallback {
+  z-index: 3;
+  inset: -1.5%;
+  background:
+    radial-gradient(
+      circle,
+      transparent 0 88%,
+      rgba(9,16,48,.98) 88.2% 90.2%,
+      rgba(248,205,96,.98) 90.5% 92%,
+      rgba(45,168,235,.86) 92.3% 94.2%,
+      rgba(129,73,220,.8) 94.4% 95.6%,
+      rgba(248,205,96,.86) 95.8% 97%,
+      transparent 97.2%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255,242,190,.12),
+    0 0 12px rgba(66,205,255,.14);
+  filter: none;
+}
+
+.rw-root--vip .rw-wheel-svg-wrapper {
+  inset: 2.5%;
+  width: 95%;
+  height: 95%;
+  border: 1.5px solid rgba(246,200,95,.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.1),
+    inset 0 0 10px rgba(0,0,0,.27),
+    0 0 0 1px rgba(12,24,65,.9);
+}
+
+.rw-root--vip .rw-wheel-svg-wrapper--spinning {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.12),
+    inset 0 0 10px rgba(0,0,0,.25),
+    0 0 0 1px rgba(246,200,95,.72),
+    0 0 14px rgba(76,216,255,.3);
+}
+
+.rw-wheel-sector-label {
+  stroke-width: 1.05px !important;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.46));
+}
+
+.rw-root--vip .rw-wheel-pointer--vip {
+  top: -11px;
+  width: 40px;
+  height: 52px;
+}
+
+.rw-vip-center-hub {
+  width: 12.8%;
+  height: 12.8%;
+}
+
+/* Compact result treatment */
+.rw-root--vip .rw-result-chip {
+  min-width: min(222px, calc(100vw - 76px));
+  max-width: 248px;
+  min-height: 42px;
+  margin-top: 1px;
+  margin-bottom: 4px;
+  padding: 8px 18px 9px;
+  border-radius: 13px;
+  font-size: .91rem;
+}
+
+.rw-vip-result-plaque-asset {
+  inset: -4px -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 8px);
+  opacity: .86;
+  filter:
+    drop-shadow(0 4px 7px rgba(0,0,0,.2))
+    drop-shadow(0 0 3px rgba(94,220,255,.06));
+}
+
+/* Compact TV controls: the old full-width mobile-card feeling is deliberately gone. */
+.rw-root--vip .rw-actions {
+  width: min(238px, calc(100vw - 92px));
+  max-width: 238px;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.rw-root--vip .rw-btn,
+.rw-root--vip .rw-btn--lg,
+.rw-root--vip .rw-btn--spin,
+.rw-root--vip .rw-btn--bank,
+.rw-root--vip .rw-btn--primary {
+  min-height: 39px;
+  padding: 7px 13px;
+  border-radius: 11px;
+  font-size: .8rem;
+  letter-spacing: .012em;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.11),
+    0 5px 12px rgba(0,0,0,.2);
+}
+
+.rw-root--vip .rw-btn::after {
+  border-radius: 9px;
+}
+
+.rw-root--vip .rw-btn--spin {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.14),
+    0 5px 13px rgba(39,49,158,.22),
+    0 0 8px rgba(93,210,255,.07);
+}
+
+.rw-root--vip .rw-btn--bank {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 5px 13px rgba(7,122,91,.2);
+}
+
+.rw-root--vip .rw-bank-score {
+  min-height: 20px;
+  margin-left: 5px;
+  padding: 1px 7px;
+  border-radius: 7px;
+  font-size: .79em;
+}
+
+/* Approved-showroom translation: crisp stage architecture rather than the
+   earlier abstract beam background or a low-resolution baked UI image. */
+.rw-vip-showroom {
+  inset: 55px 0 auto;
+  height: min(760px, 84vh);
+  opacity: 1;
+  background:
+    linear-gradient(90deg,
+      rgba(7,11,34,.96) 0 4%,
+      rgba(25,30,78,.58) 10%,
+      transparent 25% 75%,
+      rgba(42,22,86,.56) 90%,
+      rgba(7,9,28,.96) 96% 100%),
+    radial-gradient(ellipse at 50% 24%, rgba(34,126,225,.14), transparent 33%),
+    linear-gradient(180deg, #070a1c 0%, #080a20 48%, #050713 100%);
+}
+
+.rw-vip-showroom::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(90deg,
+      transparent 0 15%,
+      rgba(35,159,247,.13) 15.2% 15.55%,
+      transparent 15.8% 84.2%,
+      rgba(174,76,255,.13) 84.45% 84.8%,
+      transparent 85%),
+    radial-gradient(ellipse at 50% 38%, rgba(4,7,22,.66) 0 24%, rgba(4,7,22,.34) 42%, transparent 66%);
+  pointer-events:none;
+}
+
+.rw-vip-showroom::after {
+  content:'';
+  position:absolute;
+  left:-12%;
+  right:-12%;
+  bottom:-80px;
+  height:320px;
+  border-radius:50% 50% 0 0 / 24% 24% 0 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9%, rgba(45,186,255,.11) 9.2% 9.38%, transparent 9.6% 18%),
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(247,201,92,.07) 31px 32px, transparent 33px 58px),
+    radial-gradient(ellipse at 50% 0%, rgba(247,201,92,.16), rgba(49,169,240,.1) 28%, rgba(109,56,205,.09) 49%, rgba(5,7,19,.92) 73%);
+  border-top:1px solid rgba(247,201,92,.28);
+  transform:perspective(520px) rotateX(61deg);
+  transform-origin:50% 0;
+}
+
+.rw-vip-showroom-truss {
+  position:absolute;
+  top:18px;
+  left:5%;
+  right:5%;
+  height:20px;
+  border-top:2px solid rgba(245,200,96,.26);
+  border-bottom:1px solid rgba(71,190,255,.22);
+  background:
+    repeating-linear-gradient(115deg, transparent 0 18px, rgba(139,151,206,.18) 19px 20px, transparent 21px 40px);
+  box-shadow:0 7px 24px rgba(47,170,255,.08);
+}
+
+.rw-vip-stage-panel {
+  position:absolute;
+  top:112px;
+  width:122px;
+  min-height:166px;
+  padding:18px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid rgba(247,202,102,.52);
+  border-radius:5px;
+  color:#f8d176;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(62,104,206,.22), transparent 48%),
+    linear-gradient(180deg, rgba(10,16,52,.9), rgba(13,10,39,.92));
+  box-shadow:
+    inset 0 0 0 2px rgba(247,202,102,.05),
+    0 0 0 5px rgba(69,76,151,.08),
+    0 0 22px rgba(52,161,244,.1);
+  text-align:center;
+  letter-spacing:.05em;
+  opacity:.86;
+}
+
+.rw-vip-stage-panel--left { left:17px; transform:perspective(320px) rotateY(8deg); }
+.rw-vip-stage-panel--right { right:17px; transform:perspective(320px) rotateY(-8deg); }
+
+.rw-vip-stage-panel span {
+  font-size:.58rem;
+  font-weight:800;
+  opacity:.78;
+}
+
+.rw-vip-stage-panel strong {
+  font-size:.9rem;
+  line-height:1.14;
+  font-weight:900;
+}
+
+.rw-vip-stage-panel i {
+  font-size:1.45rem;
+  font-style:normal;
+  line-height:1;
+}
+
+.rw-vip-showroom-audience {
+  position:absolute;
+  top:320px;
+  width:27%;
+  height:128px;
+  opacity:.52;
+  background:
+    radial-gradient(circle at 10% 25%, #050611 0 8px, transparent 9px),
+    radial-gradient(circle at 28% 39%, #050611 0 9px, transparent 10px),
+    radial-gradient(circle at 48% 22%, #050611 0 8px, transparent 9px),
+    radial-gradient(circle at 68% 42%, #050611 0 9px, transparent 10px),
+    radial-gradient(circle at 88% 28%, #050611 0 8px, transparent 9px),
+    linear-gradient(180deg, transparent 0 34%, rgba(3,4,11,.94) 35% 100%);
+  filter:drop-shadow(0 -2px 6px rgba(57,167,255,.08));
+}
+
+.rw-vip-showroom-audience--left { left:0; }
+.rw-vip-showroom-audience--right { right:0; transform:scaleX(-1); }
+
+.rw-vip-showroom-floor {
+  position:absolute;
+  left:8%;
+  right:8%;
+  top:455px;
+  height:190px;
+  border-top:1px solid rgba(247,201,92,.18);
+  background:
+    linear-gradient(90deg, transparent, rgba(51,181,251,.09), transparent 42%, rgba(160,78,247,.08), transparent),
+    linear-gradient(180deg, rgba(13,18,48,.18), rgba(4,6,17,.68));
+  box-shadow:inset 0 18px 45px rgba(42,146,220,.05);
+}
+
+.rw-vip-showroom-beam {
+  top:-4px;
+  width:88px;
+  height:430px;
+  opacity:.5;
+  filter:blur(2px);
+}
+
+.rw-vip-showroom-beam--left { left:10%; }
+.rw-vip-showroom-beam--right { right:10%; }
+
+@media (max-width: 430px) {
+  .rw-root--vip .rw-wheel-outer {
+    width:min(86vw,342px);
+    height:min(86vw,342px);
+  }
+
+  .rw-root--vip .rw-actions {
+    width:min(228px,calc(100vw - 86px));
+    max-width:228px;
+  }
+
+  .rw-vip-stage-panel {
+    width:104px;
+    min-height:145px;
+    padding:14px 8px;
+  }
+
+  .rw-vip-stage-panel--left { left:8px; }
+  .rw-vip-stage-panel--right { right:8px; }
+
+  .rw-vip-stage-panel strong { font-size:.78rem; }
+  .rw-vip-stage-panel span { font-size:.52rem; }
+}
+
+@media (max-width: 360px) {
+  .rw-vip-stage-panel {
+    opacity:.56;
+    width:88px;
+  }
+
+  .rw-root--vip .rw-actions {
+    width:214px;
+    max-width:214px;
+  }
+}
+
+@media (max-height: 760px) and (orientation: portrait) {
+  .rw-root--vip .rw-main {
+    gap:11px;
+  }
+
+  .rw-root--vip .rw-wheel-outer {
+    width:min(78vw,310px);
+    height:min(78vw,310px);
+    margin-bottom:11px;
+  }
+
+  .rw-root--vip .rw-actions {
+    max-width:220px;
+  }
+
+  .rw-root--vip .rw-btn,
+  .rw-root--vip .rw-btn--spin,
+  .rw-root--vip .rw-btn--bank {
+    min-height:37px;
+    padding-block:6px;
+  }
+}

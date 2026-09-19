@@ -232,25 +232,14 @@ function WheelSvg({
   onTransitionEnd,
   premium = false,
 }: WheelSvgProps) {
-  const R = premium ? 97 : 95
-  const LABEL_R = premium ? 76 : 72
+  const R = premium ? 98 : 95
+  const LABEL_R = premium ? 78 : 72
 
   return (
     <div
       className={`rw-wheel-outer${premium ? ' rw-wheel-outer--vip rw-wheel-outer--vip-assets' : ''}`}
     >
       {premium ? <div className="rw-vip-wheel-frame-fallback" aria-hidden="true" /> : null}
-      {premium ? (
-        <img
-          className="rw-vip-wheel-frame"
-          src={`${VIP_ASSET_ROOT}/wheel-frame.webp`}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          data-testid="rw-vip-wheel-frame"
-          onError={(event) => event.currentTarget.remove()}
-        />
-      ) : null}
       {/* Pointer indicator */}
       {premium ? (
         <div className="rw-wheel-pointer rw-wheel-pointer--vip" aria-hidden="true">
@@ -937,22 +926,25 @@ export default function RiskWheelComp({
 
   return (
     <div className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}>
-      {premiumPresentation && (
-        <img
-          className="rw-vip-stage-asset"
-          src={`${VIP_ASSET_ROOT}/stage.webp`}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          data-testid="rw-vip-stage"
-          onError={(event) => event.currentTarget.remove()}
-        />
-      )}
       {premiumPresentation ? (
         <div className="rw-vip-showroom" aria-hidden="true" data-testid="rw-vip-showroom">
+          <div className="rw-vip-showroom-truss" />
           <span className="rw-vip-showroom-beam rw-vip-showroom-beam--left" />
           <span className="rw-vip-showroom-beam rw-vip-showroom-beam--center" />
           <span className="rw-vip-showroom-beam rw-vip-showroom-beam--right" />
+          <div className="rw-vip-stage-panel rw-vip-stage-panel--left">
+            <span>THE</span>
+            <strong>BIG EYE</strong>
+            <i>◉</i>
+          </div>
+          <div className="rw-vip-stage-panel rw-vip-stage-panel--right">
+            <span>SAME PLAYERS</span>
+            <strong>DIFFERENT REALITY</strong>
+            <i>◉</i>
+          </div>
+          <div className="rw-vip-showroom-audience rw-vip-showroom-audience--left" />
+          <div className="rw-vip-showroom-audience rw-vip-showroom-audience--right" />
+          <div className="rw-vip-showroom-floor" />
         </div>
       ) : null}
       {/* Header */}
