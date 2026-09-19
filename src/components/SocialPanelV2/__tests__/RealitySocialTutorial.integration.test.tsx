@@ -120,7 +120,7 @@ describe('adaptive Social first-use tutorial', () => {
 
     const upgradePrompt = screen.getByTestId('reality-social-tutorial-prompt')
     expect(upgradePrompt).toHaveAttribute('data-variant', 'reality-upgrade')
-    expect(screen.getByText('Reality Mode is on')).toBeInTheDocument()
+    expect(screen.getByText('Social just got deeper')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Quick tour' }))
 
