@@ -244,11 +244,12 @@ function resolveRealityIncomingInteraction(
                 memberId,
                 [
                   ...(targetPreference
-                    ? [
-                        targetPreference === currentTargetIds[0]
-                          ? `target:${targetPreference}`
-                          : `preference:${targetPreference}`,
-                      ]
+                    ? targetPreference === currentTargetIds[0]
+                      ? [`target:${targetPreference}`]
+                      : [
+                          ...(currentTargetIds[0] ? [`aware:${currentTargetIds[0]}`] : []),
+                          `preference:${targetPreference}`,
+                        ]
                     : targetPreferences
                       ? []
                       : currentTargetCandidate
