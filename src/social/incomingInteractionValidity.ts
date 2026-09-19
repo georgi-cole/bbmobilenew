@@ -10,6 +10,7 @@ interface InteractionValidityPlayer {
 
 export interface InteractionValidityGameState {
   phase?: string
+  week?: number
   lohId?: string | null
   posWinnerId?: string | null
   nomineeIds?: string[]
@@ -76,9 +77,33 @@ function violatesRealityAllianceContext(
   const subjectIds = [interaction.payload?.subjectId, interaction.payload?.secondarySubjectId].filter(
     (value): value is string => typeof value === 'string'
   )
-  return subjectIds.some((subjectId) =>
-    isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId)
-  )
+  if (
+    subjectIds.some((subjectId) =>
+      isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId)
+    )
+  ) {
+    return true
+  }
+
+  const scenarioKey = getScenarioKey(interaction)
+  const groupAgenda =
+    scenarioKey === 'alliance_power_nomination_huddle'
+      ? 'nominations'
+      : scenarioKey === 'alliance_power_safety_huddle'
+        ? 'safety'
+        : null
+  if (groupAgenda) {
+    const day = game.week ?? interaction.createdWeek
+    const alreadyMet = reality.events.some(
+      (event) =>
+        event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+        event.day === day &&
+        event.reason.startsWith(`strategy_meeting:${alliance.id}:${groupAgenda}:`)
+    )
+    if (alreadyMet) return true
+  }
+
+  return false
 }
 
 function getPlayer(
