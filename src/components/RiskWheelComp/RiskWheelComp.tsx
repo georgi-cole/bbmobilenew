@@ -45,6 +45,7 @@ import './RiskWheelComp.css'
 const SPIN_DURATION_MS = 2200
 const AI_RESOLVE_DELAY_MS = 600
 const SECTOR_HIGHLIGHT_DURATION_MS = 850
+const VIP_ASSET_ROOT = '/assets/minigames/risk-wheel-vip'
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations')
@@ -235,11 +236,30 @@ function WheelSvg({
   const LABEL_R = 72
 
   return (
-    <div className={`rw-wheel-outer${premium ? ' rw-wheel-outer--vip' : ''}`}>
+    <div
+      className={`rw-wheel-outer${premium ? ' rw-wheel-outer--vip rw-wheel-outer--vip-assets' : ''}`}
+    >
+      {premium ? (
+        <img
+          className="rw-vip-wheel-frame"
+          src={`${VIP_ASSET_ROOT}/wheel-frame.webp`}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          data-testid="rw-vip-wheel-frame"
+        />
+      ) : null}
       {/* Pointer indicator */}
       {premium ? (
         <div className="rw-wheel-pointer rw-wheel-pointer--vip" aria-hidden="true">
-          <span />
+          <img
+            className="rw-vip-pointer-asset"
+            src={`${VIP_ASSET_ROOT}/pointer.webp`}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            data-testid="rw-vip-pointer"
+          />
         </div>
       ) : (
         <div className="rw-wheel-pointer" aria-hidden="true">
@@ -370,6 +390,16 @@ function WheelSvg({
           </text>
         </svg>
       </div>
+      {premium ? (
+        <img
+          className="rw-vip-center-hub"
+          src={`${VIP_ASSET_ROOT}/center-hub.webp`}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          data-testid="rw-vip-center-hub"
+        />
+      ) : null}
     </div>
   )
 }
@@ -849,6 +879,13 @@ export default function RiskWheelComp({
 
   return (
     <div className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}>
+      {premiumPresentation ? (
+        <div className="rw-vip-showroom" aria-hidden="true" data-testid="rw-vip-showroom">
+          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--left" />
+          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--center" />
+          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--right" />
+        </div>
+      ) : null}
       {/* Header */}
       <header className="rw-header">
         <div className="rw-header-left">

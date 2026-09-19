@@ -1712,3 +1712,368 @@ body.no-animations .rw-confetti-piece {
     transition: none;
   }
 }
+
+
+/* ─── VIP generated production asset pass ───────────────────────────────────
+   Live sectors remain canonical SVG/data. Generated assets provide the
+   premium physical-show shell; the generated stage image plus this light rig
+   create the television-studio environment.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.rw-root--vip {
+  background:
+    linear-gradient(180deg, rgba(2, 4, 16, 0.04) 0%, rgba(2, 4, 16, 0.15) 42%, rgba(2, 4, 15, 0.72) 78%, rgba(2, 4, 12, 0.94) 100%),
+    url('/assets/minigames/risk-wheel-vip/stage.webp') center 8% / cover no-repeat,
+    #040615;
+}
+
+.rw-root--vip .rw-header {
+  position: relative;
+  z-index: 4;
+  background: linear-gradient(180deg, rgba(4, 6, 22, 0.72), rgba(4, 6, 20, 0.52));
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+
+.rw-vip-showroom {
+  position: absolute;
+  inset: 56px 0 auto;
+  height: min(560px, 68vh);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.95;
+}
+
+.rw-vip-showroom::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(112deg, transparent 0 15%, rgba(73, 218, 255, 0.11) 16%, rgba(73, 218, 255, 0.02) 25%, transparent 34%),
+    linear-gradient(248deg, transparent 0 15%, rgba(195, 92, 255, 0.11) 16%, rgba(195, 92, 255, 0.02) 25%, transparent 34%),
+    radial-gradient(circle at 13% 32%, rgba(57, 186, 255, 0.18), transparent 16%),
+    radial-gradient(circle at 87% 32%, rgba(187, 84, 255, 0.18), transparent 16%);
+}
+
+.rw-vip-showroom::after {
+  content: '';
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: -64px;
+  height: 235px;
+  border-radius: 50% 50% 0 0 / 38% 38% 0 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9%, rgba(82, 210, 255, 0.055) 9.2% 9.45%, transparent 9.7% 18%),
+    repeating-linear-gradient(0deg, transparent 0 25px, rgba(246, 200, 95, 0.045) 26px 27px, transparent 28px 52px),
+    radial-gradient(ellipse at 50% 0%, rgba(246, 200, 95, 0.2), rgba(75, 205, 255, 0.12) 28%, rgba(131, 70, 227, 0.09) 47%, transparent 72%);
+  border-top: 1px solid rgba(246, 200, 95, 0.25);
+  transform: perspective(480px) rotateX(61deg);
+  transform-origin: 50% 0%;
+  filter: blur(0.15px);
+}
+
+.rw-vip-showroom-beam {
+  position: absolute;
+  top: -30px;
+  width: 118px;
+  height: 430px;
+  opacity: 0.5;
+  transform-origin: 50% 0%;
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  mix-blend-mode: screen;
+  filter: blur(5px);
+}
+
+.rw-vip-showroom-beam--left {
+  left: 7%;
+  transform: rotate(-14deg);
+  background: linear-gradient(180deg, rgba(82, 220, 255, 0.34), rgba(82, 220, 255, 0.02) 72%, transparent);
+}
+
+.rw-vip-showroom-beam--center {
+  left: calc(50% - 59px);
+  opacity: 0.32;
+  background: linear-gradient(180deg, rgba(255, 216, 115, 0.27), rgba(148, 96, 255, 0.04) 68%, transparent);
+}
+
+.rw-vip-showroom-beam--right {
+  right: 7%;
+  transform: rotate(14deg);
+  background: linear-gradient(180deg, rgba(187, 84, 255, 0.34), rgba(187, 84, 255, 0.02) 72%, transparent);
+}
+
+.rw-root--vip .rw-main {
+  padding-top: 13px;
+}
+
+.rw-root--vip .rw-current-player {
+  min-width: 196px;
+  padding: 9px 20px 10px;
+  border-color: rgba(246, 200, 95, 0.34);
+  background:
+    radial-gradient(circle at 50% -35%, rgba(78, 211, 255, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(12, 20, 52, 0.84), rgba(5, 10, 29, 0.76));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(91, 220, 255, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.32),
+    0 0 24px rgba(67, 198, 255, 0.13);
+}
+
+.rw-root--vip .rw-current-player::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(246, 200, 95, 0.42), transparent 26%, transparent 70%, rgba(94, 220, 255, 0.36));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+}
+
+.rw-root--vip .rw-wheel-outer {
+  width: clamp(300px, 79vw, 332px);
+  height: clamp(300px, 79vw, 332px);
+  margin-top: 8px;
+  overflow: visible;
+  filter:
+    drop-shadow(0 24px 34px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 18px rgba(75, 213, 255, 0.2))
+    drop-shadow(0 0 28px rgba(156, 87, 255, 0.12));
+}
+
+.rw-root--vip .rw-wheel-outer::before {
+  display: none;
+}
+
+.rw-root--vip .rw-wheel-outer::after {
+  left: 8%;
+  right: 8%;
+  bottom: -30px;
+  height: 48px;
+  background: radial-gradient(ellipse at center, rgba(246, 200, 95, 0.22), rgba(66, 208, 255, 0.13) 38%, transparent 72%);
+  filter: blur(8px);
+}
+
+.rw-vip-wheel-frame {
+  position: absolute;
+  z-index: 4;
+  left: -8%;
+  top: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter:
+    drop-shadow(0 0 8px rgba(255, 211, 104, 0.28))
+    drop-shadow(0 0 17px rgba(74, 217, 255, 0.24))
+    drop-shadow(0 18px 18px rgba(0, 0, 0, 0.34));
+}
+
+.rw-root--vip .rw-wheel-svg-wrapper {
+  position: absolute;
+  z-index: 2;
+  left: 15%;
+  top: 15%;
+  width: 70%;
+  height: 70%;
+  border: 2px solid rgba(246, 200, 95, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 0 0 18px rgba(0, 0, 0, 0.42),
+    0 0 0 2px rgba(13, 25, 71, 0.9),
+    0 0 14px rgba(78, 218, 255, 0.28);
+}
+
+.rw-root--vip .rw-wheel-svg-wrapper--spinning {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 0 18px rgba(0, 0, 0, 0.4),
+    0 0 0 2px rgba(246, 200, 95, 0.74),
+    0 0 22px rgba(78, 218, 255, 0.5),
+    0 0 38px rgba(164, 85, 255, 0.25);
+}
+
+.rw-root--vip .rw-wheel-pointer--vip {
+  top: -18px;
+  width: 52px;
+  height: 69px;
+  overflow: visible;
+  clip-path: none;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  z-index: 7;
+}
+
+.rw-root--vip .rw-wheel-pointer--vip::before,
+.rw-root--vip .rw-wheel-pointer--vip::after {
+  display: none;
+}
+
+.rw-vip-pointer-asset {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter:
+    drop-shadow(0 0 8px rgba(255, 211, 104, 0.45))
+    drop-shadow(0 0 13px rgba(70, 219, 255, 0.38))
+    drop-shadow(0 5px 5px rgba(0, 0, 0, 0.42));
+}
+
+.rw-vip-center-hub {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 50%;
+  width: 23%;
+  height: 23%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter:
+    drop-shadow(0 0 8px rgba(246, 200, 95, 0.42))
+    drop-shadow(0 0 13px rgba(70, 219, 255, 0.28));
+}
+
+.rw-root--vip .rw-wheel-svg-wrapper svg circle:last-of-type,
+.rw-root--vip .rw-wheel-svg-wrapper svg text:last-of-type {
+  opacity: 0;
+}
+
+.rw-root--vip .rw-vip-result-halo {
+  width: 88%;
+  height: 88%;
+  z-index: 3;
+  border-width: 2px;
+  box-shadow:
+    0 0 22px rgba(91, 221, 255, 0.5),
+    inset 0 0 20px rgba(246, 200, 95, 0.2);
+}
+
+.rw-root--vip .rw-result-chip {
+  position: relative;
+  min-width: min(305px, calc(100vw - 32px));
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+  padding: 15px 42px 16px;
+  border: 0;
+  border-radius: 18px;
+  color: #fff6da;
+  background: url('/assets/minigames/risk-wheel-vip/result-plaque.webp') center / 100% 100% no-repeat;
+  box-shadow:
+    0 15px 28px rgba(0, 0, 0, 0.3),
+    0 0 22px rgba(74, 216, 255, 0.16);
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 0.62),
+    0 0 8px rgba(246, 200, 95, 0.22);
+}
+
+.rw-root--vip .rw-result-chip--devil,
+.rw-root--vip .rw-result-chip--bankrupt {
+  background:
+    linear-gradient(180deg, rgba(94, 18, 74, 0.35), rgba(34, 7, 25, 0.36)),
+    url('/assets/minigames/risk-wheel-vip/result-plaque.webp') center / 100% 100% no-repeat;
+  background-blend-mode: multiply, normal;
+}
+
+.rw-root--vip .rw-btn--spin {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(246, 200, 95, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 9px 22px rgba(30, 40, 145, 0.26),
+    0 0 20px rgba(93, 210, 255, 0.13);
+}
+
+.rw-root--vip .rw-btn--spin::after {
+  content: '';
+  position: absolute;
+  inset: 1px auto 1px -42%;
+  width: 34%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+
+.rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-btn--spin::after {
+  animation: rw-vip-button-sheen 1.25s ease 1;
+}
+
+.rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-vip-showroom-beam {
+  animation: rw-vip-stage-focus 2.15s ease-in-out 1;
+}
+
+@keyframes rw-vip-button-sheen {
+  from { left: -42%; }
+  to { left: 112%; }
+}
+
+@keyframes rw-vip-stage-focus {
+  0% { opacity: 0.35; }
+  44% { opacity: 0.82; }
+  100% { opacity: 0.5; }
+}
+
+.rw-root--vip .rw-score-chip {
+  border-color: rgba(246, 200, 95, 0.19);
+  background: linear-gradient(180deg, rgba(9, 16, 42, 0.82), rgba(4, 9, 26, 0.78));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.rw-root--vip .rw-score-chip--me {
+  border-color: rgba(94, 220, 255, 0.38);
+  box-shadow:
+    inset 0 0 0 1px rgba(246, 200, 95, 0.12),
+    0 0 16px rgba(77, 212, 255, 0.11);
+}
+
+@media (max-width: 390px) {
+  .rw-root--vip .rw-wheel-outer {
+    width: min(79vw, 308px);
+    height: min(79vw, 308px);
+  }
+
+  .rw-root--vip .rw-result-chip {
+    padding-inline: 34px;
+  }
+}
+
+@media (max-height: 760px) {
+  .rw-vip-showroom {
+    height: 470px;
+  }
+
+  .rw-root--vip .rw-wheel-outer {
+    width: min(72vw, 292px);
+    height: min(72vw, 292px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-vip-showroom-beam,
+  .rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-btn--spin::after {
+    animation: none !important;
+  }
+}
+
+body.no-animations .rw-root--vip .rw-vip-showroom-beam,
+body.no-animations .rw-root--vip .rw-btn--spin::after {
+  animation: none !important;
+}

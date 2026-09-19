@@ -39,6 +39,12 @@ describe('RiskWheelComp styles', () => {
       'utf8'
     )
     const stagePath = resolve(process.cwd(), 'public/assets/minigames/risk-wheel-vip/stage.webp')
+    const generatedAssets = [
+      'wheel-frame.webp',
+      'pointer.webp',
+      'center-hub.webp',
+      'result-plaque.webp',
+    ].map((name) => resolve(process.cwd(), 'public/assets/minigames/risk-wheel-vip', name))
 
     expect(css).toContain('.rw-root--vip {')
     expect(css).toContain('/assets/minigames/risk-wheel-vip/stage.webp')
@@ -46,8 +52,22 @@ describe('RiskWheelComp styles', () => {
     expect(css).toContain('.rw-vip-result-halo')
     expect(source).toContain('premiumPresentation = false')
     expect(source).toContain("premiumPresentation ? ' rw-root--vip' : ''")
+    expect(source).toContain('data-testid="rw-vip-showroom"')
+    expect(source).toContain('data-testid="rw-vip-wheel-frame"')
+    expect(source).toContain('data-testid="rw-vip-pointer"')
+    expect(source).toContain('data-testid="rw-vip-center-hub"')
+    expect(css).toContain('/assets/minigames/risk-wheel-vip/wheel-frame.webp')
+    expect(css).toContain('/assets/minigames/risk-wheel-vip/result-plaque.webp')
     expect(host).toContain('premiumPresentation={isVipActive}')
     expect(statSync(stagePath).size).toBeLessThan(50_000)
+    generatedAssets.forEach((assetPath) => {
+      expect(statSync(assetPath).size).toBeLessThan(50_000)
+    })
+    const premiumPackSize = [stagePath, ...generatedAssets].reduce(
+      (sum, assetPath) => sum + statSync(assetPath).size,
+      0
+    )
+    expect(premiumPackSize).toBeLessThan(120_000)
   })
 
   it('includes the larger wheel, smaller spin button, and wheel highlight states', () => {
