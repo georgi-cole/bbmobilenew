@@ -12,7 +12,7 @@ import {
   selectSessionLogs,
   selectSocialPanelOpen,
   selectWeekStartRelSnapshot,
-  replaceRealityDomain,
+  renameRealityAllianceRecord,
 } from '../../social/socialSlice'
 import { addTvEvent } from '../../store/gameSlice'
 import { SocialManeuvers } from '../../social/SocialManeuvers'
@@ -36,7 +36,6 @@ import { getEffectiveSocialMode } from '../../social/socialMode'
 import { validateSocialExecution } from '../../social/socialExecutionGuard'
 import { getSocialActionPresentation } from '../../social/socialRuntimeConfig'
 import { executeHumanRealityAction } from '../../social/reality/humanFlow'
-import { renameRealityAlliance } from '../../social/reality'
 import { getCupidPartnerId, isCupidArrowActive } from '../../features/twists/cupidArrow'
 import type { PublicDirection } from '../../publicOpinion/types'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
@@ -462,20 +461,17 @@ export default function SocialPanelV2() {
   const handleRenameAlliance = useCallback(
     (allianceId: string, name: string) => {
       if (!humanPlayer) return
-      const domain = structuredClone(socialState.reality)
-      try {
-        renameRealityAlliance(domain, {
+      dispatch(
+        renameRealityAllianceRecord({
           allianceId,
           actorId: humanPlayer.id,
           name,
-          at: { day: game.week, phase: game.phase },
+          day: game.week,
+          phase: game.phase,
         })
-        dispatch(replaceRealityDomain(domain))
-      } catch {
-        // The inline editor keeps the prior name when validation rejects a rename.
-      }
+      )
     },
-    [dispatch, game.phase, game.week, humanPlayer, socialState.reality]
+    [dispatch, game.phase, game.week, humanPlayer]
   )
 
   const hiddenContextualActionIds = useMemo(() => {
