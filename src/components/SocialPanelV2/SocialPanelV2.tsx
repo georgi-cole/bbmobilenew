@@ -248,7 +248,7 @@ export default function SocialPanelV2() {
         : null
     )
   const [socialTutorialTourOpen, setSocialTutorialTourOpen] = useState(false)
-  const [contextualGuideRevision, setContextualGuideRevision] = useState(0)
+  const [, refreshContextualGuides] = useState(0)
 
   useEffect(() => {
     if (!socialPanelOpen) {
@@ -972,7 +972,6 @@ export default function SocialPanelV2() {
       ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
-  void contextualGuideRevision
   const hasSeenAllianceGuide = hasSeenContextualGuide('alliance', activeProfileId, isGuest)
   const hasSeenAllianceConsultGuide = hasSeenContextualGuide(
     'alliance-consult',
@@ -982,7 +981,7 @@ export default function SocialPanelV2() {
 
   const dismissContextualGuide = (guide: 'alliance' | 'alliance-consult') => {
     markContextualGuideSeen(guide, activeProfileId, isGuest)
-    setContextualGuideRevision((revision) => revision + 1)
+    refreshContextualGuides((revision) => revision + 1)
   }
 
   const executeCopy = 'Execute'
