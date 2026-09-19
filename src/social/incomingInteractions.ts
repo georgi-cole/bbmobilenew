@@ -117,6 +117,15 @@ function resolveRealityIncomingInteraction(
       typeof interaction.payload?.allianceId === 'string'
         ? interaction.payload.allianceId
         : undefined,
+    allianceStrategyKind:
+      interaction.payload?.allianceStrategyKind === 'NOMINATION' ||
+      interaction.payload?.allianceStrategyKind === 'SAFETY'
+        ? interaction.payload.allianceStrategyKind
+        : undefined,
+    secondarySubjectId:
+      typeof interaction.payload?.secondarySubjectId === 'string'
+        ? interaction.payload.secondarySubjectId
+        : undefined,
   })
   if (resolved.event) dispatch(replaceRealityDomain(resolved.domain))
 }
