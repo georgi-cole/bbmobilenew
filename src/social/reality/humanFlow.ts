@@ -245,6 +245,37 @@ function summarizeAlliancePreferences(
   }
 }
 
+function buildConsultationMemberPlanBeliefs(
+  attendeeIds: readonly string[],
+  actorId: string,
+  read: {
+    targetIds: string[]
+    fallbackTargetIds: string[]
+    preferenceByAdvisor: Record<string, string>
+  }
+): Record<string, string[]> {
+  const consensusTarget = read.targetIds[0]
+  const fallbackTarget = read.fallbackTargetIds[0]
+  return Object.fromEntries(
+    attendeeIds.map((memberId) => {
+      if (memberId === actorId) {
+        return [
+          memberId,
+          [
+            ...(consensusTarget ? [`target:${consensusTarget}`] : []),
+            ...(fallbackTarget ? [`fallback:${fallbackTarget}`] : []),
+          ],
+        ]
+      }
+      const preference = read.preferenceByAdvisor[memberId]
+      if (!preference) return [memberId, []]
+      if (preference === consensusTarget) return [memberId, [`target:${preference}`]]
+      if (preference === fallbackTarget) return [memberId, [`fallback:${preference}`]]
+      return [memberId, [`preference:${preference}`]]
+    })
+  )
+}
+
 function getAllianceConsultationAgenda(
   state: RootState,
   actorId: string
@@ -334,6 +365,11 @@ function buildAllianceConsultationPlan(
       agenda: 'nominations',
       summary: `Alliance huddle — ${read.summary}`,
       excusedAbsentIds,
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
+        attendeeIds,
+        actorId,
+        read
+      ),
     }
   }
 
@@ -426,6 +462,11 @@ function buildAllianceConsultationPlan(
       agenda,
       summary: `Alliance huddle — ${read.summary}`,
       excusedAbsentIds,
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
+        attendeeIds,
+        actorId,
+        read
+      ),
     }
   }
 
@@ -466,6 +507,11 @@ function buildAllianceConsultationPlan(
     agenda: 'strategy',
     summary: `Alliance huddle — ${read.summary}`,
     excusedAbsentIds,
+    memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
+      attendeeIds,
+      actorId,
+      read
+    ),
   }
 }
 
