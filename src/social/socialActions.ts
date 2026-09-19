@@ -398,7 +398,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     id: 'betray',
     title: 'Betray Ally',
     icon: '🗡️',
-    description: 'Break an existing alliance for personal gain.',
+    description: 'Turn against an ally for personal gain while remaining in the pact.',
     category: 'aggressive',
     kind: 'aggressive',
     baseCost: 3,
