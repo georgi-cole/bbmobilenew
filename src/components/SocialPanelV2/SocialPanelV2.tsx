@@ -458,6 +458,25 @@ export default function SocialPanelV2() {
   const canExecute =
     hasExecutableSelection && (executionEligibility.eligible || !executionEligibility.reason)
 
+  const selectedScopeLabel = selectedAction
+    ? selectedActionId === 'idle'
+      ? 'You'
+      : targetMode === 'none'
+        ? 'House'
+        : usesMultipleTargets
+          ? 'Group'
+          : effectivePrimaryTargetId
+            ? (game.players.find((player) => player.id === effectivePrimaryTargetId)?.name ??
+              'Target')
+            : 'Choose target'
+    : null
+
+  const selectedCostLabel = totalCosts
+    ? `⚡${totalCosts.energy}${totalCosts.influence ? ` · 🤝${totalCosts.influence}` : ''}${
+        totalCosts.info ? ` · 💡${totalCosts.info}` : ''
+      }`
+    : null
+
   const handleRenameAlliance = useCallback(
     (allianceId: string, name: string) => {
       if (!humanPlayer) return
@@ -1213,10 +1232,8 @@ export default function SocialPanelV2() {
             </span>
           ) : (
             <span className="sp2-footer__cost">
-              {totalCosts
-                ? `Cost: ⚡${totalCosts.energy}${
-                    totalCosts.influence ? ` · 🤝${totalCosts.influence}` : ''
-                  }${totalCosts.info ? ` · 💡${totalCosts.info}` : ''}`
+              {selectedCostLabel
+                ? `${selectedScopeLabel ? `${selectedScopeLabel} · ` : ''}${selectedCostLabel}`
                 : 'Cost: —'}
             </span>
           )}
