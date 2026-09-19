@@ -58,7 +58,7 @@ describe('RiskWheelComp styles', () => {
     expect(source).toContain('data-testid="rw-vip-wheel-frame"')
     expect(source).toContain('data-testid="rw-vip-pointer"')
     expect(source).toContain('data-testid="rw-vip-center-hub"')
-    expect(css).toContain('/assets/minigames/risk-wheel-vip/wheel-frame.webp')
+    expect(source).toContain("`${VIP_ASSET_ROOT}/wheel-frame.webp`")
     expect(source).toContain("`${VIP_ASSET_ROOT}/result-plaque.webp`")
     expect(source).toContain('className="rw-wheel-sector-label"')
     expect(host).toContain('premiumPresentation={isVipActive}')
