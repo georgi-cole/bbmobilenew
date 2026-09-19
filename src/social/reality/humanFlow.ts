@@ -394,29 +394,63 @@ function buildAllianceConsultationPlan(
     const replacements = getEligibleReplacementNominees(state.game).filter(
       (candidate) => !alliance.memberIds.includes(candidate.id)
     )
-    const replacement =
-      replacements
-        .map((candidate) => ({
-          id: candidate.id,
-          score: (() => {
-            const eligibleAdvisors = advisors.filter((advisorId) => advisorId !== candidate.id)
-            return (
-              eligibleAdvisors.reduce(
-                (sum, advisorId) =>
-                  sum + getNominationTargetScore(state.game, advisorId, candidate),
-                0
-              ) / Math.max(1, eligibleAdvisors.length)
-            )
-          })(),
-        }))
-        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]
-        ?.id ?? null
+    const replacementPreferences = advisors
+      .map((advisorId) => {
+        const ranked = replacements
+          .filter((candidate) => candidate.id !== advisorId)
+          .map((candidate) => ({
+            advisorId,
+            targetId: candidate.id,
+            score: getNominationTargetScore(state.game, advisorId, candidate),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
+      )
+    const replacementRead = summarizeAlliancePreferences(
+      state,
+      replacementPreferences,
+      'Replacement consensus'
+    )
+    const replacement = replacementRead.targetIds[0] ?? null
     const fallbackTargetIds = replacement ? [replacement] : [...alliance.fallbackTargetIds]
     const planIds = [
       ...alliance.currentTargetIds.map((id) => `target:${id}`),
       ...fallbackTargetIds.map((id) => `fallback:${id}`),
       ...(read.targetIds[0] ? [`save:${read.targetIds[0]}`] : []),
     ]
+    const memberPlanBeliefs = Object.fromEntries(
+      attendeeIds.map((memberId) => {
+        if (memberId === actorId) {
+          return [
+            memberId,
+            [
+              ...(read.targetIds[0] ? [`save:${read.targetIds[0]}`] : []),
+              ...(replacement ? [`fallback:${replacement}`] : []),
+            ],
+          ]
+        }
+        const savePreference = read.preferenceByAdvisor[memberId]
+        const replacementPreference = replacementRead.preferenceByAdvisor[memberId]
+        return [
+          memberId,
+          [
+            ...(savePreference ? [`save:${savePreference}`] : []),
+            ...(replacementPreference
+              ? [
+                  replacementPreference === replacement
+                    ? `fallback:${replacementPreference}`
+                    : `replacement_preference:${replacementPreference}`,
+                ]
+              : []),
+          ],
+        ]
+      })
+    )
     return {
       allianceId: alliance.id,
       attendeeIds,
@@ -424,12 +458,9 @@ function buildAllianceConsultationPlan(
       fallbackTargetIds,
       planIds,
       agenda: 'safety',
-      summary: `Alliance huddle — ${read.summary}${
-        replacement
-          ? ` If Safety opens a seat, the group leans toward ${playerName(state, replacement)} as the replacement.`
-          : ''
-      }`,
+      summary: `Alliance huddle — ${read.summary} ${replacementRead.summary}`,
       excusedAbsentIds,
+      memberPlanBeliefs,
     }
   }
 
