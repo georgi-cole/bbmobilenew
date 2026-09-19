@@ -7,6 +7,7 @@ import {
   finalizeRealityVote,
   generateRealityJuryQuestion,
   holdRealityAllianceMeeting,
+  recordRealityAllianceBetrayal,
   recordRealityCeremonyOutcome,
   removeRealityAllianceMember,
   scoreRealityNominationCandidate,
@@ -85,6 +86,53 @@ describe('Reality ceremony aftermath', () => {
           state.reality.relationships.nominee.loh.fear * 0.03
       )
     )
+  })
+})
+
+describe('Reality jury knowledge boundaries', () => {
+  it('does not score a finalist from a hidden alliance event the juror never learned', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'hidden-jury-pact',
+      founderIds: ['finalist', 'ally'],
+      memberIds: [],
+      purpose: 'Private final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'finalist',
+      targetId: 'ally',
+      kind: 'SOCIAL_BETRAYAL',
+      at: { day: 4, phase: 'social_2' },
+      sourceEventId: 'private-betrayal',
+    })
+    const hidden = state.events.find((event) => event.type === 'ALLIANCE_BETRAYAL')
+    expect(hidden).toBeDefined()
+    expect(hidden?.visibility).toBe('GROUP_VISIBLE')
+    expect(hidden?.participantIds).not.toContain('juror')
+
+    const evaluation = computeRealityJuryEvaluation(state, 'juror', 'finalist', false)
+    expect(evaluation.sourceEventIds).not.toContain(hidden?.id)
+    expect(evaluation.ownership).toBe(0)
+  })
+
+  it('still scores a public ceremony even when the juror was not an explicit witness', () => {
+    const state = createInitialRealityDomainState()
+    const event = recordRealityCeremonyOutcome(state, {
+      kind: 'POWER_WON',
+      day: 4,
+      phase: 'loh_results',
+      actorId: 'finalist',
+      targetIds: [],
+      witnessIds: ['ally'],
+      publicEligible: true,
+    })
+
+    const evaluation = computeRealityJuryEvaluation(state, 'juror', 'finalist', false)
+    expect(evaluation.sourceEventIds).toContain(event.id)
+    expect(evaluation.competitionRespect).toBeGreaterThan(0)
   })
 })
 
