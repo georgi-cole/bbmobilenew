@@ -2,6 +2,7 @@
 import { evaluateSocialActionEligibility } from '../socialActionEligibility'
 import { SOCIAL_ACTIONS, type SocialActionDefinition } from '../socialActions'
 import { createInitialDramaSocialNetwork } from '../dramaModeEngine'
+import { createInitialRealityDomainState, createRealityAlliance } from '../reality'
 
 function action(id: string): SocialActionDefinition {
   const value = SOCIAL_ACTIONS.find((candidate) => candidate.id === id)
@@ -109,6 +110,51 @@ describe('evaluateSocialActionEligibility', () => {
         },
       }).eligible
     ).toBe(true)
+  })
+
+  it('uses a live formal Reality alliance even when projected legacy affinity is low', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'formal-low-affinity-pact',
+      founderIds: ['user', 'ally'],
+      memberIds: [],
+      purpose: 'Strategic protection',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    const relationships = {
+      user: { ally: { affinity: 4, tags: ['alliance'] } },
+      ally: { user: { affinity: 3, tags: ['alliance'] } },
+    }
+
+    expect(
+      evaluateSocialActionEligibility({
+        action: action('consult_alliance'),
+        actorId: 'user',
+        targetIds: ['ally'],
+        phase: 'social_1',
+        players,
+        relationships,
+        reality,
+        requireCompleteSelection: true,
+        dramaMode: true,
+      }).eligible
+    ).toBe(true)
+
+    expect(
+      evaluateSocialActionEligibility({
+        action: action('proposeAlliance'),
+        actorId: 'user',
+        targetIds: ['ally'],
+        phase: 'social_1',
+        players,
+        relationships,
+        reality,
+        requireCompleteSelection: true,
+        dramaMode: true,
+      }).eligible
+    ).toBe(false)
   })
 
   it('enforces role and weekly window for Drama Mode political actions', () => {
