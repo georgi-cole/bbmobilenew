@@ -271,7 +271,13 @@ function buildConsultationMemberPlanBeliefs(
       if (!preference) return [memberId, []]
       if (preference === consensusTarget) return [memberId, [`target:${preference}`]]
       if (preference === fallbackTarget) return [memberId, [`fallback:${preference}`]]
-      return [memberId, [`preference:${preference}`]]
+      return [
+        memberId,
+        [
+          ...(consensusTarget ? [`aware:${consensusTarget}`] : []),
+          `preference:${preference}`,
+        ],
+      ]
     })
   )
 }
