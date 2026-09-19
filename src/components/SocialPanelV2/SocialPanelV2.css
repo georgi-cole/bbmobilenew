@@ -2020,15 +2020,6 @@
   -webkit-line-clamp: 2;
 }
 
-.sp2-moves .ac-card--selected {
-  grid-column: 1 / -1;
-  min-height: 7.15rem;
-}
-
-.sp2-moves .ac-card--selected .ac-card__description {
-  -webkit-line-clamp: unset;
-}
-
 .sp2-recent {
   height: 4.35rem;
   padding: 0.36rem 0.7rem 0.44rem;
