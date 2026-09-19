@@ -820,6 +820,12 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     if (consultationAlliance && executionTargetIds.length === 0) {
       return result(false, 'No active alliance member is available for a huddle.', energy)
     }
+    const consultationPlan = consultationAlliance
+      ? buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
+      : null
+    if (consultationAlliance && !consultationPlan) {
+      return result(false, 'There is no useful alliance strategy question to resolve right now.', energy)
+    }
     const direction =
       executionTargetIds.length === 0
         ? 'SELF'
@@ -876,24 +882,21 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const resolvedAsSuccess =
       input.actionId === 'proposeAlliance' ? orchestration.response?.accepted === true : succeeded
     let allianceConsultationSummary: string | null = null
-    if (succeeded && consultationAlliance) {
-      const plan = buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
-      if (plan) {
-        holdRealityAllianceStrategyMeeting(orchestration.domain, {
-          allianceId: plan.allianceId,
-          callerId: input.actorId,
-          attendeeIds: plan.attendeeIds,
-          targetIds: plan.targetIds,
-          fallbackTargetIds: plan.fallbackTargetIds,
-          planIds: plan.planIds,
-          agenda: plan.agenda,
-          at: { day: state.game.week, phase: state.game.phase },
-          sourceEventId: orchestration.event.id,
-          excusedAbsentIds: plan.excusedAbsentIds,
-          memberPlanBeliefs: plan.memberPlanBeliefs,
-        })
-        allianceConsultationSummary = plan.summary
-      }
+    if (succeeded && consultationPlan) {
+      holdRealityAllianceStrategyMeeting(orchestration.domain, {
+        allianceId: consultationPlan.allianceId,
+        callerId: input.actorId,
+        attendeeIds: consultationPlan.attendeeIds,
+        targetIds: consultationPlan.targetIds,
+        fallbackTargetIds: consultationPlan.fallbackTargetIds,
+        planIds: consultationPlan.planIds,
+        agenda: consultationPlan.agenda,
+        at: { day: state.game.week, phase: state.game.phase },
+        sourceEventId: orchestration.event.id,
+        excusedAbsentIds: consultationPlan.excusedAbsentIds,
+        memberPlanBeliefs: consultationPlan.memberPlanBeliefs,
+      })
+      allianceConsultationSummary = consultationPlan.summary
     }
     const dangerWarningDiscovered =
       succeeded &&
