@@ -27,6 +27,7 @@ export default function RiskWheelTestPage() {
   const [humanInGame, setHumanInGame] = useState(true);
   const [running, setRunning] = useState(false);
   const [keepOnComplete, setKeepOnComplete] = useState(true);
+  const [premiumPresentation, setPremiumPresentation] = useState(false);
   const [gameKey, setGameKey] = useState(0);
 
   const participants = useMemo(() => {
@@ -122,6 +123,15 @@ export default function RiskWheelTestPage() {
             Stay on final screen after completion
           </label>
 
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={premiumPresentation}
+              onChange={(e) => setPremiumPresentation(e.target.checked)}
+            />
+            VIP premium presentation
+          </label>
+
           <div style={{ textAlign: 'center', opacity: 0.75, fontSize: '0.9rem' }}>
             Players: {participants.map((p) => p.name).join(', ')}
           </div>
@@ -152,6 +162,7 @@ export default function RiskWheelTestPage() {
               prizeType={prizeType}
               seed={seed}
               standalone={true}
+              premiumPresentation={premiumPresentation}
               onComplete={keepOnComplete ? undefined : () => setRunning(false)}
             />
           </div>
