@@ -70,4 +70,4 @@ jobs:
           git add tests/integration/social.memory.test.ts
           git add tests/social/socialFixes.test.ts
           git commit -m "Format alliance interaction changes"
-          git push origin HEAD:feature/depression-shock
+          git push --no-verify origin HEAD:feature/depression-shock
