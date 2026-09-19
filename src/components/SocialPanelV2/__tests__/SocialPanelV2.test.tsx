@@ -322,7 +322,8 @@ describe('SocialPanelV2 – execute flow', () => {
   })
 
   it('execute button is enabled when a targetless action (idle) is selected', () => {
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
+    expect(screen.getByText(/You.*⚡0/)).toBeInTheDocument()
     const btn = screen.getByRole('button', { name: 'Execute' })
     expect((btn as HTMLButtonElement).disabled).toBe(false)
   })
@@ -346,10 +347,10 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(players[1].name, 'i') })[0])
     expect((btn as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByText(/Cost:.*2/)).toBeDefined()
+    expect(screen.getByText(/Group.*⚡2/)).toBeDefined()
 
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(players[2].name, 'i') })[0])
-    expect(screen.getByText(/Cost:.*3/)).toBeDefined()
+    expect(screen.getByText(/Group.*⚡3/)).toBeDefined()
   })
 
   it('does not execute any group target when the aggregate price is unaffordable', () => {
@@ -381,7 +382,7 @@ describe('SocialPanelV2 – execute flow', () => {
       fireEvent.click(screen.getAllByRole('button', { name: new RegExp(player.name, 'i') })[0])
     })
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }))
-    expect(screen.getByText(/Cost:.*3/)).toBeDefined()
+    expect(screen.getByText(/Group.*⚡3/)).toBeDefined()
 
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
 
@@ -427,13 +428,14 @@ describe('SocialPanelV2 – execute flow', () => {
 
     expect(screen.getByRole('button', { name: /Propose Alliance/i })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /Observe/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Watch Room/i }))
 
+    expect(screen.getByText(/House.*⚡2/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Propose Alliance/i })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /Propose Alliance/i }).getAttribute('aria-pressed')
     ).toBe('false')
-    expect(screen.getByRole('button', { name: /Observe/i }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('button', { name: /Watch Room/i }).getAttribute('aria-pressed')).toBe(
       'true'
     )
   })
@@ -461,13 +463,13 @@ describe('SocialPanelV2 – execute flow', () => {
     expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(
       false
     )
-    expect(screen.getByText(/Cost:.*2/)).toBeInTheDocument()
+    expect(screen.getByText(/Group.*⚡2/)).toBeInTheDocument()
 
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(people[2].name, 'i') })[0])
     expect((screen.getByRole('button', { name: 'Execute' }) as HTMLButtonElement).disabled).toBe(
       false
     )
-    expect(screen.getByText(/Cost:.*3/)).toBeInTheDocument()
+    expect(screen.getByText(/Group.*⚡3/)).toBeInTheDocument()
   })
 
   it('execute button is enabled when action and a player are both selected', () => {
@@ -475,6 +477,7 @@ describe('SocialPanelV2 – execute flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }))
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0])
 
+    expect(screen.getByText(new RegExp(`${nonUserPlayer.name}.*⚡1`))).toBeInTheDocument()
     const btn = screen.getByRole('button', { name: 'Execute' })
     expect((btn as HTMLButtonElement).disabled).toBe(false)
   })
@@ -495,7 +498,7 @@ describe('SocialPanelV2 – execute flow', () => {
   })
 
   it('shows feedback after executing idle action', () => {
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
     expect(screen.getByRole('status')).toBeDefined()
   })
@@ -505,7 +508,7 @@ describe('SocialPanelV2 – execute flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Compliment/i }))
     fireEvent.click(screen.getAllByRole('button', { name: new RegExp(nonUserPlayer.name, 'i') })[0])
 
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
 
     const logs = store.getState().social.sessionLogs
@@ -528,7 +531,7 @@ describe('SocialPanelV2 – execute flow', () => {
     // cleared so that (a) the action grid stays visible and (b) no stray
     // preview popup "%" appears because selectedTarget became null while
     // previewActionId was still set.
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
     // After success, action stays selected → button remains enabled
     const btn = screen.getByRole('button', { name: 'Execute' })
@@ -537,7 +540,7 @@ describe('SocialPanelV2 – execute flow', () => {
 
   it('action grid remains visible (cards are rendered) after a successful execution', () => {
     // Regression test: cards must not disappear from the DOM after execute.
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
     // The action grid wrapper should still be present
     expect(screen.getByLabelText('Action grid')).toBeDefined()
@@ -580,7 +583,7 @@ describe('SocialPanelV2 – success pulse', () => {
     initManeuvers(store)
     renderPanel(store)
 
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
 
     const btn = screen.getByRole('button', { name: 'Execute' })
@@ -596,7 +599,7 @@ describe('SocialPanelV2 – success pulse', () => {
     initManeuvers(store)
     renderPanel(store)
 
-    fireEvent.click(screen.getByRole('button', { name: /Stay Idle/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Lay Low/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }))
 
     act(() => {
