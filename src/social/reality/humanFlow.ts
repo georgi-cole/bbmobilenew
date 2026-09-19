@@ -1028,7 +1028,11 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           target: input.targetId,
           delta: 0,
           tags: [ALLIANCE_TAG],
-          actionSource: 'manual',
+          // The compatibility action already recorded the player-authored
+          // alliance transition and its one canonical resource reward. This
+          // second write only repairs the post-projection legacy affinity/tag
+          // representation, so it must not pay the transition a second time.
+          actionSource: 'system',
         })
       )
       dispatch(
@@ -1037,7 +1041,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           target: input.actorId,
           delta: 0,
           tags: [ALLIANCE_TAG],
-          actionSource: 'manual',
+          actionSource: 'system',
         })
       )
     }
