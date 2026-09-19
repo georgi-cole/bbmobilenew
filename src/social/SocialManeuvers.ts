@@ -1355,7 +1355,7 @@ export function executeGroupAction(
   })
   if (!eligibility.eligible) return unavailable(eligibility.reason)
 
-  const costs = normalizeActionCosts(action, targetIds.length, dramaMode)
+  const costs = options?.costOverride ?? normalizeActionCosts(action, targetIds.length, dramaMode)
   if (!canAfford(actorId, costs)) {
     return {
       ...unavailable(
