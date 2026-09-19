@@ -581,11 +581,7 @@ function buildResponseOutcomeText(
   responseLabel?: string
 ): string | undefined {
   const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
-  if (
-    !hasContextualScenario &&
-    interaction.type === 'alliance_proposal' &&
-    responseType === 'accept'
-  ) {
+  if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
     return `The alliance with ${fromName} is now active. Later votes and nominations will show whether it holds.`
   }
 
