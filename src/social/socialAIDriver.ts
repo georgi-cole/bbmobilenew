@@ -451,15 +451,15 @@ const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
   ],
   pitch_target: [
     'We should use your LOH power on {subject}. That is the name I want on the block.',
-    'I think {subject} is the move. If we are serious about this alliance, that is where I would put the pressure.',
+    'I think {subject} is the move. That is where I would put the pressure.',
   ],
   suggest_replacement: [
-    'If Safety opens a seat, I want {subject} going up. That keeps the move inside our plan.',
-    'If the block changes, {subject} is my replacement choice. I think that gives us the cleanest path.',
+    'If Safety opens a seat, I want {subject} going up. That is the replacement I would make.',
+    'If the block changes, {subject} is my replacement choice. I think that gives you the cleanest path.',
   ],
   rally_votes_against: [
-    'I want us together on this vote. My choice is {subject}.',
-    'For this vote, I think the alliance should land on {subject}. Are you with me?',
+    'My choice for this vote is {subject}. I wanted you to know where I stand.',
+    'For this vote, I am landing on {subject}. Are you leaning the same way?',
   ],
   group_chat: [
     'A few of us are comparing notes. You can join in, observe, challenge the plan, or keep your distance.',
@@ -500,9 +500,10 @@ function pickHumanFacingText(
   playerName: string,
   week: number,
   phase: string,
-  subjectName?: string
+  subjectName?: string,
+  scenarioOverride?: string
 ): { text: string; scenarioKey: string; variantFamilyId: string; variantId: string } {
-  const scenarioKey = getHumanFacingActionScenario(actionId)
+  const scenarioKey = scenarioOverride ?? getHumanFacingActionScenario(actionId)
   const variantFamilies = SCENARIO_VARIANT_POOLS[scenarioKey]
   const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.']
   const random = createDeterministicSocialRandom([actorId, actionId, week, phase])
@@ -580,11 +581,12 @@ function routeHumanFacingAction(
   const directContactsThisWeek = pending.filter(
     (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
-  const isAllianceStrategyContact = [
+  const strategicPitchAction = [
     'pitch_target',
     'suggest_replacement',
     'rally_votes_against',
   ].includes(actionId)
+  const isAllianceStrategyContact = Boolean(allianceId) && strategicPitchAction
   if (
     (!isAllianceStrategyContact && directContactsThisWeek >= 2) ||
     pending.filter((entry) => entry.createdWeek === week).length >=
@@ -603,7 +605,8 @@ function routeHumanFacingAction(
     human.name ?? 'you',
     week,
     phase,
-    subjectName
+    subjectName,
+    strategicPitchAction && !isAllianceStrategyContact ? `strategy_${actionId}` : undefined
   )
   const interaction = createIncomingInteraction({
     id: `ai-action-${actionId}-${actorId}-${deterministicSequence}`,
