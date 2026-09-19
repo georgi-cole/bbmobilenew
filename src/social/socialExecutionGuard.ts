@@ -3,6 +3,7 @@ import { evaluateSocialActionEligibility } from './socialActionEligibility'
 import { resolveActionTargetMode, type SocialActionDefinition } from './socialActions'
 import { getEffectiveSocialMode } from './socialMode'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
+import type { RealityDomainState } from './reality/types'
 import { isActionAllowedForRealityPreset } from './socialActionManager'
 
 interface SocialExecutionState {
@@ -21,6 +22,7 @@ interface SocialExecutionState {
   social?: {
     relationships?: RelationshipsMap
     dramaNetwork?: DramaSocialNetwork
+    reality?: RealityDomainState
   }
 }
 
@@ -72,6 +74,7 @@ export function validateSocialExecution(
     primaryTargetStatus,
     relationships: state.social?.relationships,
     dramaNetwork: state.social?.dramaNetwork,
+    reality: state.social?.reality,
     dramaMode,
     requireCompleteSelection: selection.requireCompleteSelection ?? true,
     allowAIOnly: selection.allowAIOnly ?? false,
