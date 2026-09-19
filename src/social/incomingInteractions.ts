@@ -122,18 +122,105 @@ function resolveRealityIncomingInteraction(
             : []
           const attendeeIds = [...new Set([interaction.fromId, humanId, ...authoredMembers])]
           const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeIds.includes(id))
-          const currentTargetIds =
-            subjectId && !alliance.memberIds.includes(subjectId)
-              ? [subjectId]
-              : [...alliance.currentTargetIds]
-          const fallbackTargetIds =
+          const rawTargetPreferences = interaction.payload?.allianceMemberTargetPreferences
+          const rawFallbackPreferences = interaction.payload?.allianceMemberFallbackPreferences
+          const targetPreferences =
+            rawTargetPreferences &&
+            typeof rawTargetPreferences === 'object' &&
+            !Array.isArray(rawTargetPreferences)
+              ? Object.fromEntries(
+                  Object.entries(rawTargetPreferences).filter(
+                    (entry): entry is [string, string] =>
+                      typeof entry[1] === 'string' && attendeeIds.includes(entry[0])
+                  )
+                )
+              : null
+          const fallbackPreferences =
+            rawFallbackPreferences &&
+            typeof rawFallbackPreferences === 'object' &&
+            !Array.isArray(rawFallbackPreferences)
+              ? Object.fromEntries(
+                  Object.entries(rawFallbackPreferences).filter(
+                    (entry): entry is [string, string] =>
+                      typeof entry[1] === 'string' && attendeeIds.includes(entry[0])
+                  )
+                )
+              : null
+          const majority = Math.floor(attendeeIds.length / 2) + 1
+          const currentTargetCandidate =
+            subjectId && !alliance.memberIds.includes(subjectId) ? subjectId : undefined
+          const fallbackTargetCandidate =
             secondarySubjectId && !alliance.memberIds.includes(secondarySubjectId)
-              ? [secondarySubjectId]
-              : [...alliance.fallbackTargetIds]
+              ? secondarySubjectId
+              : undefined
+          const currentSupport = currentTargetCandidate
+            ? attendeeIds.filter((memberId) =>
+                memberId === humanId
+                  ? true
+                  : targetPreferences
+                    ? targetPreferences[memberId] === currentTargetCandidate
+                    : true
+              ).length
+            : 0
+          const fallbackSupport = fallbackTargetCandidate
+            ? attendeeIds.filter((memberId) =>
+                memberId === humanId
+                  ? true
+                  : fallbackPreferences
+                    ? fallbackPreferences[memberId] === fallbackTargetCandidate
+                    : true
+              ).length
+            : 0
+          const currentTargetIds =
+            currentTargetCandidate && currentSupport >= majority ? [currentTargetCandidate] : []
+          const fallbackTargetIds =
+            fallbackTargetCandidate && fallbackSupport >= majority ? [fallbackTargetCandidate] : []
           const planIds = [
             ...currentTargetIds.map((id) => `target:${id}`),
             ...fallbackTargetIds.map((id) => `fallback:${id}`),
           ]
+          const memberPlanBeliefs = Object.fromEntries(
+            attendeeIds.map((memberId) => {
+              if (memberId === humanId) {
+                return [
+                  memberId,
+                  [
+                    ...(currentTargetCandidate ? [`target:${currentTargetCandidate}`] : []),
+                    ...(fallbackTargetCandidate ? [`fallback:${fallbackTargetCandidate}`] : []),
+                  ],
+                ]
+              }
+              const targetPreference = targetPreferences?.[memberId]
+              const fallbackPreference = fallbackPreferences?.[memberId]
+              return [
+                memberId,
+                [
+                  ...(targetPreference
+                    ? [
+                        targetPreference === currentTargetIds[0]
+                          ? `target:${targetPreference}`
+                          : `preference:${targetPreference}`,
+                      ]
+                    : targetPreferences
+                      ? []
+                      : currentTargetCandidate
+                        ? [`target:${currentTargetCandidate}`]
+                        : []),
+                  ...(fallbackPreference
+                    ? [
+                        fallbackPreference === fallbackTargetIds[0]
+                          ? `fallback:${fallbackPreference}`
+                          : `replacement_preference:${fallbackPreference}`,
+                      ]
+                    : fallbackPreferences
+                      ? []
+                      : fallbackTargetCandidate
+                        ? [`fallback:${fallbackTargetCandidate}`]
+                        : []),
+                ],
+              ]
+            })
+          )
           holdRealityAllianceStrategyMeeting(domain, {
             allianceId,
             callerId: interaction.fromId,
@@ -150,6 +237,7 @@ function resolveRealityIncomingInteraction(
             at: { day, phase },
             sourceEventId: `incoming:${interaction.id}`,
             excusedAbsentIds,
+            memberPlanBeliefs,
           })
           dispatch(replaceRealityDomain(domain))
           return
