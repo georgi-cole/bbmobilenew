@@ -312,6 +312,25 @@ describe('Reality human alliance proposal acceptance', () => {
     expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
     expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
 
+    const afterCounter = store.getState()
+    const energyAfterCounter = afterCounter.social.energyBank.p1
+    const infoAfterCounter = afterCounter.social.infoBank.p1
+    const eventCountAfterCounter = afterCounter.social.reality.events.length
+    const rngCursorAfterCounter = afterCounter.social.realitySimulation.rng?.cursor
+
+    const retry = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(retry.success).toBe(false)
+    expect(retry.label).toBe('Already approached')
+    expect(store.getState().social.energyBank.p1).toBe(energyAfterCounter)
+    expect(store.getState().social.infoBank.p1).toBe(infoAfterCounter)
+    expect(store.getState().social.reality.events).toHaveLength(eventCountAfterCounter)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(rngCursorAfterCounter)
+
     store.dispatch(setPhase('week_start'))
 
     expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
