@@ -9,6 +9,7 @@ import {
   adjustRealityAllianceCommitment,
   recordRealityAllianceBetrayal,
   recordRealityAlliancePlanDefiance,
+  removeRealityAllianceMember,
 } from './relationshipForms'
 import type {
   RealityClock,
@@ -285,6 +286,23 @@ function applyCeremonyAftermath(
       evictee.stress = clamp(evictee.stress + 28, 0, 100)
       evictee.emotions.sadness = clamp(evictee.emotions.sadness + 35, 0, 100)
       evictee.primaryGoalId = 'EVALUATE_JURY_VOTE'
+
+      const allianceIds = Object.values(state.alliances)
+        .filter(
+          (alliance) =>
+            alliance.status !== 'DISSOLVED' && alliance.memberIds.includes(targetId)
+        )
+        .map((alliance) => alliance.id)
+      for (const allianceId of allianceIds) {
+        removeRealityAllianceMember(state, {
+          allianceId,
+          memberId: targetId,
+          actorId: targetId,
+          kind: 'EVICTED',
+          at: { day: event.day, phase: event.phase },
+          sourceEventId: event.id,
+        })
+      }
     }
     for (const witnessId of event.witnessIds) {
       if (event.targetIds.includes(witnessId)) continue
