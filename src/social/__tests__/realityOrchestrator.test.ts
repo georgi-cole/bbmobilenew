@@ -443,6 +443,81 @@ describe('Reality causal orchestration', () => {
     expect(resolved.domain.alliances['vote-pact'].memberPlanBeliefs.human).toEqual(['target:nova'])
   })
 
+  it('keeps an incoming coalition pitch attached to the coalition that sent it', () => {
+    const domain = createInitialRealityDomainState()
+    const inner = createRealityAlliance(domain, {
+      id: 'inner-final-two',
+      founderIds: ['ava', 'human'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    inner.status = 'ACTIVE'
+    inner.memberCommitment.ava = 0.9
+    inner.memberCommitment.human = 0.9
+
+    const outer = createRealityAlliance(domain, {
+      id: 'outer-coalition',
+      founderIds: ['ava', 'human'],
+      memberIds: ['lia'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    outer.status = 'ACTIVE'
+
+    const targetActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      nova: {
+        id: 'nova',
+        isHuman: false,
+        active: true,
+        roles: ['nominated'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(47),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'AI_TO_HUMAN',
+        context: {
+          ...context,
+          phase: 'social_2',
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human', 'nova'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            nova: ['nominated'],
+          },
+          atRiskActorIds: ['nova'],
+        },
+        actors: targetActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('rally_votes_against')!,
+            targetIds: ['human'],
+            subjectId: 'nova',
+          },
+        ],
+      },
+    })
+
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_2',
+      subjectId: 'nova',
+      allianceId: outer.id,
+    })
+
+    expect(resolved.domain.alliances[outer.id].currentTargetIds).toEqual(['nova'])
+    expect(resolved.domain.alliances[inner.id].currentTargetIds).toEqual([])
+  })
+
   it('lets a disloyal AI member leak only partial alliance knowledge through a private whisper', () => {
     const domain = createInitialRealityDomainState()
     const alliance = createRealityAlliance(domain, {
