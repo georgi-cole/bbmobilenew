@@ -179,7 +179,7 @@ function resolveRealityIncomingInteraction(
             ...currentTargetIds.map((id) => `target:${id}`),
             ...fallbackTargetIds.map((id) => `fallback:${id}`),
           ]
-          const memberPlanBeliefs = Object.fromEntries(
+          const memberPlanBeliefs: Record<string, string[]> = Object.fromEntries(
             attendeeIds.map((memberId) => {
               if (memberId === humanId) {
                 return [
