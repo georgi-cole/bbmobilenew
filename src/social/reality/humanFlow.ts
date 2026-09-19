@@ -182,6 +182,16 @@ function nominationConsultationCandidates(state: RootState, actorId: string) {
   return getEligibleNominationTargets(state.game, actorId)
 }
 
+function isAllianceProtectedGameUnit(
+  state: RootState,
+  alliance: RealityAlliance,
+  playerId: string
+): boolean {
+  if (alliance.memberIds.includes(playerId)) return true
+  const cupidPartnerId = getCupidPartnerId(state.game, playerId)
+  return cupidPartnerId !== null && alliance.memberIds.includes(cupidPartnerId)
+}
+
 function summarizeAlliancePreferences(
   state: RootState,
   preferences: Array<{ advisorId: string; targetId: string; score: number }>,
@@ -335,7 +345,7 @@ function buildAllianceConsultationPlan(
 
   if (agenda === 'nominations') {
     const candidates = nominationConsultationCandidates(state, actorId).filter(
-      (candidate) => !alliance.memberIds.includes(candidate.id)
+      (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
     )
     if (candidates.length === 0) return null
     const preferences = advisors
@@ -400,7 +410,7 @@ function buildAllianceConsultationPlan(
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
     const replacements = getEligibleReplacementNominees(state.game).filter(
-      (candidate) => !alliance.memberIds.includes(candidate.id)
+      (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
     )
     const replacementPreferences = advisors
       .map((advisorId) => {
@@ -474,7 +484,7 @@ function buildAllianceConsultationPlan(
 
   if (agenda === 'block_strategy' || agenda === 'eviction_vote') {
     const nomineeIds = nominees
-      .filter((nominee) => !alliance.memberIds.includes(nominee.id))
+      .filter((nominee) => !isAllianceProtectedGameUnit(state, alliance, nominee.id))
       .map((nominee) => nominee.id)
     if (nomineeIds.length === 0) return null
     const preferences = advisors.map((advisorId) => {
@@ -513,7 +523,7 @@ function buildAllianceConsultationPlan(
   }
 
   const candidates = nominationConsultationCandidates(state, actorId).filter(
-    (candidate) => !alliance.memberIds.includes(candidate.id)
+    (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
   )
   if (candidates.length === 0) return null
   const preferences = advisors
