@@ -14,7 +14,7 @@ interface PlayerCardProps {
   disabled: boolean
   /** Called when the card is activated. additive=true when Ctrl/Cmd is held; shiftKey=true when Shift is held. */
   onSelect: (playerId: string, additive: boolean, shiftKey: boolean) => void
-  /** Optional signed relationship percentage toward the human player. */
+  /** Optional signed relationship score representing the human player's current read. */
   affinity?: number
   /**
    * Relationship delta accumulated this session (sum of action deltas for this
