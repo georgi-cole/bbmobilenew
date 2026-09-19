@@ -108,7 +108,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'alliances',
     title: 'Alliances are living structures',
-    body: 'House shows only alliances you actually know about. Your own pact reveals members, hierarchy, cohesion and secrecy. Consult Alliance can gather real member opinions; only a genuine majority becomes a plan, and knowingly defying one can strain the pact.',
+    body: 'House shows only alliances you actually know about. Your pact reveals members, hierarchy, cohesion and secrecy. Consult Alliance gathers real opinions—only a genuine majority becomes a plan. Allies can also pitch you through Incoming, and knowingly defying a plan can strain the pact.',
     selector: '[data-reality-tutorial="ledger-house"]',
     padding: 5,
     shape: 'rounded',
