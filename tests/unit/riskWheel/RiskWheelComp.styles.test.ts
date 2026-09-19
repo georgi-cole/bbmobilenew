@@ -46,7 +46,7 @@ describe('RiskWheelComp styles', () => {
     expect(css).toContain('.rw-vip-result-halo')
     expect(source).toContain('premiumPresentation = false')
     expect(source).toContain("premiumPresentation ? ' rw-root--vip' : ''")
-    expect(host).toContain('premiumPresentation={hasPremiumChallengesAccess}')
+    expect(host).toContain('premiumPresentation={isVipActive}')
     expect(statSync(stagePath).size).toBeLessThan(50_000)
   })
 
