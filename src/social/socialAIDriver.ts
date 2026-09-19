@@ -289,6 +289,7 @@ interface CandidateMove {
   actionId: string
   targetIds: string[]
   subjectId?: string
+  allianceId?: string
   reason: string
   relationshipIntent?: RealityRelationshipIntentKind
 }
@@ -539,7 +540,8 @@ function routeHumanFacingAction(
   actionId: string,
   subjectId: string | undefined,
   costs: { energy: number; influence: number; info: number },
-  sceneTargetIds?: string[]
+  sceneTargetIds?: string[],
+  allianceId?: string
 ): HumanRouteResult {
   if (!_store) return 'blocked'
   const type = HUMAN_FACING_ACTION_TYPES[actionId] ?? 'other'
@@ -618,10 +620,13 @@ function routeHumanFacingAction(
       variantId: content.variantId,
       source: 'background_social',
       ...(isAllianceStrategyContact
-        ? { dedupeGroup: `alliance_strategy:${content.scenarioKey}` }
+        ? {
+            dedupeGroup: `alliance_strategy:${allianceId ?? 'unknown'}:${content.scenarioKey}`,
+          }
         : {}),
       ...(actionId === 'group_chat' ? { groupScene: true } : {}),
       ...(subjectId ? { subjectId } : {}),
+      ...(allianceId ? { allianceId } : {}),
     },
   })
   const priority = getIncomingInteractionPriority(type)
@@ -809,6 +814,7 @@ function allianceHumanStrategyCandidate(
           actionId: strategyActionId,
           targetIds: [human.id],
           subjectId,
+          allianceId: alliance.id,
           reason: 'alliance spokesperson pitching the human LOH',
         }
       : null
@@ -821,6 +827,7 @@ function allianceHumanStrategyCandidate(
           actionId: strategyActionId,
           targetIds: [human.id],
           subjectId,
+          allianceId: alliance.id,
           reason: 'alliance spokesperson coordinating a Safety replacement',
         }
       : null
@@ -837,6 +844,7 @@ function allianceHumanStrategyCandidate(
         actionId: strategyActionId,
         targetIds: [human.id],
         subjectId,
+        allianceId: alliance.id,
         reason: 'alliance spokesperson aligning the human vote',
       }
     : null
@@ -1050,7 +1058,8 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      [primaryTarget.id]
+      [primaryTarget.id],
+      candidate.allianceId
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
@@ -1067,7 +1076,8 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      candidate.targetIds
+      candidate.targetIds,
+      candidate.allianceId
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
