@@ -12,6 +12,7 @@ import type {
   IncomingInteractionType,
   ScheduledIncomingInteraction,
 } from './types'
+import type { RealityDomainState } from './reality/types'
 
 const DELIVERY_PHASE_ORDER = INCOMING_INTERACTION_PHASE_ORDER
 
@@ -31,6 +32,7 @@ interface SchedulerStore {
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
       incomingInteractionDelivery?: IncomingInteractionDeliveryState
       relationships?: Record<string, Record<string, { affinity: number; tags: string[] }>>
+      reality?: RealityDomainState
     }
     game?: {
       week?: number
@@ -411,7 +413,13 @@ export function deliverScheduledIncomingInteractionsForPhase(
   }
 
   for (const entry of scheduled) {
-    if (isIncomingInteractionInvalidated(entry.interaction, state.game ?? {})) {
+    if (
+      isIncomingInteractionInvalidated(
+        entry.interaction,
+        state.game ?? {},
+        state.social?.reality
+      )
+    ) {
       logDecision(entry, 'expiration', 'invalidated_before_delivery')
       continue
     }
