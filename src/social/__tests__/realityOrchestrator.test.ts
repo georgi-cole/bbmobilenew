@@ -71,6 +71,99 @@ function opportunity(actionId = 'compliment'): RealityOpportunity {
   }
 }
 
+describe('Reality Safety commitment semantics', () => {
+  it('does not turn asking about the Safety plan into a promise', () => {
+    const safetyActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      lia: { ...actors.lia, roles: ['pos'] },
+    }
+    const result = runRealityOpportunity({
+      domain: createInitialRealityDomainState(),
+      simulation: createInitialRealitySimulationState(17),
+      opportunity: {
+        actorId: 'human',
+        direction: 'HUMAN_TO_AI',
+        context: {
+          ...context,
+          phase: 'pos_results',
+          socialIntensity: 'REALITY',
+          rolesByActor: { ...context.rolesByActor, lia: ['pos'] },
+          powerHolderIds: ['lia'],
+        },
+        actors: safetyActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('ask_safety_plan')!,
+            targetIds: ['lia'],
+            acceptanceChanceOverride: 1,
+          },
+        ],
+      },
+    })
+
+    expect(result.event?.outcome).toBe('SUCCESS')
+    expect(Object.values(result.domain.promises)).toHaveLength(0)
+  })
+
+  it('records an accepted use-Safety request as the holder promise to the named nominee', () => {
+    const safetyActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      lia: { ...actors.lia, roles: ['pos'] },
+      nominee: {
+        id: 'nominee',
+        isHuman: false,
+        active: true,
+        roles: ['nominated'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const result = runRealityOpportunity({
+      domain: createInitialRealityDomainState(),
+      simulation: createInitialRealitySimulationState(19),
+      opportunity: {
+        actorId: 'human',
+        direction: 'HUMAN_TO_AI',
+        context: {
+          ...context,
+          phase: 'pos_results',
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human', 'nominee'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            lia: ['pos'],
+            nominee: ['nominated'],
+          },
+          atRiskActorIds: ['nominee'],
+          powerHolderIds: ['lia'],
+        },
+        actors: safetyActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('ask_use_safety')!,
+            targetIds: ['lia'],
+            subjectId: 'nominee',
+            acceptanceChanceOverride: 1,
+          },
+        ],
+      },
+    })
+
+    const promise = Object.values(result.domain.promises)[0]
+    expect(result.event?.outcome).toBe('SUCCESS')
+    expect(promise).toMatchObject({
+      kind: 'use_safety_on_player',
+      promisorId: 'lia',
+      beneficiaryIds: ['nominee'],
+      status: 'ACTIVE',
+    })
+    expect(promise.scope).toMatchObject({
+      actionId: 'ask_use_safety',
+      targetId: 'nominee',
+      requestedById: 'human',
+    })
+  })
+})
+
 describe('Reality action contract', () => {
   it('validates every bundled action definition', () => {
     const invalid = REALITY_ACTION_CONTRACTS.flatMap((action) =>
