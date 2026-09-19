@@ -917,24 +917,13 @@ export default function SocialPanelV2() {
     ? (game.players.find((player) => player.id === focusedTargetId) ?? null)
     : null
   const focusedOutward = focusedPlayer
-    ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.affinity
+    ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]
     : undefined
-  const focusedInward = focusedPlayer
-    ? relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.affinity
-    : undefined
-  const focusedAffinity =
-    focusedOutward !== undefined || focusedInward !== undefined
-      ? Math.round(((focusedOutward ?? 0) + (focusedInward ?? 0)) / 2)
-      : undefined
+  const focusedAffinity = focusedOutward?.affinity
   const focusedRelationship =
     focusedAffinity === undefined ? null : getRelationshipLabel(focusedAffinity)
   const focusedTags = focusedPlayer
-    ? Array.from(
-        new Set([
-          ...(relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.tags ?? []),
-          ...(relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.tags ?? []),
-        ])
-      ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
+    ? [...(focusedOutward?.tags ?? [])].filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
   const executeCopy = 'Execute'
@@ -968,7 +957,7 @@ export default function SocialPanelV2() {
         Skip to actions
       </a>
       <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ' sp2-modal--normal'}`}>
-        <header className="sp2-header">
+        <header className="sp2-header" data-reality-tutorial="social-header">
           <span className="sp2-header__identity">
             <span className="sp2-header__title">{dramaMode ? 'Reality Mode' : 'Social Phase'}</span>
             <span className="sp2-header__subtitle">House relationships</span>
