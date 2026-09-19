@@ -379,6 +379,45 @@ describe('incoming interaction invalidation', () => {
     ).toBe(true)
   })
 
+  it('invalidates a Safety huddle when its fallback target has already left the house', () => {
+    const { game, human, nominee, otherNominee, loh } = buildGameState()
+    game.phase = 'pos_results'
+    game.posWinnerId = loh.id
+    loh.status = 'pos'
+    human.status = 'active'
+    nominee.status = 'nominated'
+    otherNominee.status = 'evicted'
+    game.nomineeIds = [nominee.id]
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'stale-safety-fallback',
+      founderIds: [loh.id],
+      memberIds: [human.id],
+      purpose: 'Control Safety',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: loh.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_safety_huddle',
+            phase: 'pos_results',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+            secondarySubjectId: otherNominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
   it('dismisses veto pitches from a nominee once that nominee is saved', () => {
     const store = makeStore()
     const { game, human, nominee, otherNominee, loh } = buildGameState()
