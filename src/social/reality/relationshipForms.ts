@@ -796,6 +796,7 @@ export function coordinateRealityAllianceTarget(
     kind: 'CURRENT' | 'FALLBACK'
     at: RealityClock
     sourceEventId: string
+    allianceId?: string
   }
 ): RealityAlliance | null {
   if (
@@ -805,12 +806,21 @@ export function coordinateRealityAllianceTarget(
   ) {
     return null
   }
-  const alliance = findRealityAllianceForCoordination(
-    state,
-    input.actorId,
-    input.partnerId,
-    input.subjectId
-  )
+  const requestedAlliance = input.allianceId ? state.alliances[input.allianceId] : undefined
+  const alliance = input.allianceId
+    ? requestedAlliance &&
+      (requestedAlliance.status === 'ACTIVE' || requestedAlliance.status === 'PROBATIONARY') &&
+      requestedAlliance.memberIds.includes(input.actorId) &&
+      requestedAlliance.memberIds.includes(input.partnerId) &&
+      !requestedAlliance.memberIds.includes(input.subjectId)
+      ? requestedAlliance
+      : null
+    : findRealityAllianceForCoordination(
+        state,
+        input.actorId,
+        input.partnerId,
+        input.subjectId
+      )
   if (!alliance) return null
 
   const planId =
