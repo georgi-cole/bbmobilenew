@@ -218,6 +218,29 @@ describe('SocialPanelV2 – layout', () => {
     expect(screen.getByRole('button', { name: /Watch Room/i })).toBeInTheDocument()
   })
 
+  it('clears a targeted move if the selected housemate is deselected', () => {
+    const store = makeStore({ phase: 'social_1' })
+    act(() => {
+      store.dispatch(openSocialPanel())
+    })
+    renderPanel(store)
+
+    const target = store.getState().game.players.find((player) => !player.isUser)!
+    const targetButton = screen.getAllByRole('button', { name: new RegExp(target.name, 'i') })[0]
+
+    fireEvent.click(targetButton)
+    fireEvent.click(screen.getByRole('button', { name: /Compliment/i }))
+    expect(screen.getByRole('button', { name: /Compliment/i })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+
+    fireEvent.click(targetButton)
+
+    expect(screen.queryByRole('button', { name: /Compliment/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Watch Room/i })).toBeInTheDocument()
+  })
+
   it('renders player roster placeholder', () => {
     const store = makeStore({ phase: 'social_1' })
     act(() => {
