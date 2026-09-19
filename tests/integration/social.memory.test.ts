@@ -234,6 +234,70 @@ describe('social memory integration for incoming interactions', () => {
     expect(resolved.memberPlanBeliefs[allyB.id]).toEqual([`preference:${alternative.id}`])
   })
 
+  it('lets an AI alliance reach a majority even when the human openly dissents', () => {
+    const store = makeStore()
+    const game = store.getState().game
+    const human = game.players.find((player) => player.isUser)!
+    const ai = game.players.filter((player) => !player.isUser)
+    const [caller, allyA, allyB, target] = ai
+
+    const social = structuredClone(
+      socialReducer(undefined, { type: 'init' }) as SocialState
+    )
+    const alliance = createRealityAlliance(social.reality, {
+      id: 'incoming-huddle-human-dissent',
+      founderIds: [caller.id, human.id],
+      memberIds: [allyA.id, allyB.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(social.reality, {
+      allianceId: alliance.id,
+      attendeeIds: [caller.id, human.id, allyA.id, allyB.id],
+      targetIds: [],
+      planIds: ['stay-flexible'],
+      at: { day: game.week, phase: 'social_1' },
+    })
+    store.dispatch(hydrateSocial(social))
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'alliance-huddle-human-dissent',
+          fromId: caller.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            allianceId: alliance.id,
+            allianceStrategyKind: 'NOMINATION',
+            allianceGroupHuddle: true,
+            allianceGroupMemberIds: [caller.id, human.id, allyA.id, allyB.id],
+            subjectId: target.id,
+            allianceMemberTargetPreferences: {
+              [caller.id]: target.id,
+              [allyA.id]: target.id,
+              [allyB.id]: target.id,
+            },
+          },
+          createdWeek: game.week,
+          expiresAtWeek: game.week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'alliance-huddle-human-dissent',
+        responseType: 'decline',
+      }) as never
+    )
+
+    const resolved = store.getState().social.reality.alliances[alliance.id]
+    expect(resolved.currentTargetIds).toEqual([target.id])
+    expect(resolved.memberPlanBeliefs[human.id]).toEqual([`dissent:${target.id}`])
+    expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`target:${target.id}`])
+  })
+
   it('keeps an accepted AI alliance huddle split when support only ties the room', () => {
     const store = makeStore()
     const game = store.getState().game
