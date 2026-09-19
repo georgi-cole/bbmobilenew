@@ -182,24 +182,19 @@ function applyRealityLifecycle(input: {
 
       if (attendees.length >= 2) {
         const targetIds =
-          allianceStrategyKind === 'NOMINATION' && subjectId
+          subjectId && !alliance.memberIds.includes(subjectId)
             ? [subjectId]
             : [...alliance.currentTargetIds]
         const fallbackTargetIds =
-          allianceStrategyKind === 'SAFETY' && secondarySubjectId
+          allianceStrategyKind === 'SAFETY' &&
+          secondarySubjectId &&
+          !alliance.memberIds.includes(secondarySubjectId)
             ? [secondarySubjectId]
             : [...alliance.fallbackTargetIds]
-        const planIds =
-          allianceStrategyKind === 'NOMINATION'
-            ? [
-                ...targetIds.map((id) => `target:${id}`),
-                ...fallbackTargetIds.map((id) => `fallback:${id}`),
-              ]
-            : [
-                ...targetIds.map((id) => `target:${id}`),
-                ...fallbackTargetIds.map((id) => `fallback:${id}`),
-                ...(subjectId ? [`save:${subjectId}`] : []),
-              ]
+        const planIds = [
+          ...targetIds.map((id) => `target:${id}`),
+          ...fallbackTargetIds.map((id) => `fallback:${id}`),
+        ]
 
         holdRealityAllianceStrategyMeeting(domain, {
           allianceId,
