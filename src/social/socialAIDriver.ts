@@ -71,6 +71,8 @@ import { normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './interactionVariantBank'
 import { allianceIdentityBias, type AiGameIdentity } from '../ai/aiGameIdentity'
+import type { GameState } from '../types'
+import { chooseAiEvictionVote, getNominationTargetScore } from '../store/gameSlice'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -734,6 +736,150 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
+
+function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: string) {
+  return Object.values(state.social.reality.alliances)
+    .filter(
+      (alliance) =>
+        (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+        alliance.memberIds.includes(actorId) &&
+        alliance.memberIds.includes(humanId)
+    )
+    .sort(
+      (left, right) =>
+        (right.memberCommitment[actorId] ?? 0) - (left.memberCommitment[actorId] ?? 0) ||
+        right.cohesion - left.cohesion ||
+        right.memberIds.length - left.memberIds.length ||
+        left.id.localeCompare(right.id)
+    )[0]
+}
+
+function allianceStrategySubject(
+  state: DriverState,
+  actorId: string,
+  excludedIds: ReadonlySet<string>,
+  options: { nomineesOnly?: boolean; nonNomineesOnly?: boolean } = {}
+): string | undefined {
+  const game = state.game as unknown as GameState
+  const candidates = game.players.filter((candidate) => {
+    if (
+      candidate.id === actorId ||
+      excludedIds.has(candidate.id) ||
+      candidate.status === 'evicted' ||
+      candidate.status === 'jury'
+    ) {
+      return false
+    }
+    const nominated = game.nomineeIds.includes(candidate.id)
+    if (options.nomineesOnly && !nominated) return false
+    if (options.nonNomineesOnly && nominated) return false
+    return true
+  })
+  return candidates
+    .map((candidate) => ({
+      id: candidate.id,
+      score: getNominationTargetScore(game, actorId, candidate),
+    }))
+    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
+}
+
+function allianceHumanStrategyCandidate(
+  state: DriverState,
+  player: DriverPlayer,
+  human: DriverPlayer
+): CandidateMove | null {
+  const alliance = liveAllianceWithHuman(state, player.id, human.id)
+  if (!alliance) return null
+
+  // One spokesperson per live alliance keeps the inbox from becoming a chorus
+  // of duplicate pitches. Leaders speak first, then the most committed member.
+  const activeAiMembers = alliance.memberIds
+    .filter((id) => id !== human.id)
+    .filter((id) =>
+      state.game.players.some(
+        (candidate) =>
+          candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
+      )
+    )
+    .sort(
+      (left, right) =>
+        Number(alliance.leaderIds.includes(right)) - Number(alliance.leaderIds.includes(left)) ||
+        (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
+        left.localeCompare(right)
+    )
+  if (activeAiMembers[0] !== player.id) return null
+
+  const game = state.game as unknown as GameState
+  const phase = state.game.phase
+  const excludedIds = new Set<string>([human.id])
+
+  if (
+    state.game.lohId === human.id &&
+    ['loh_results', 'social_1', 'nominations'].includes(phase)
+  ) {
+    const subjectId = allianceStrategySubject(state, player.id, excludedIds)
+    return subjectId
+      ? {
+          actionId: 'pitch_target',
+          targetIds: [human.id],
+          subjectId,
+          allianceId: alliance.id,
+          allianceStrategyKind: 'NOMINATION',
+          scenarioOverride: 'alliance_nomination_pitch',
+          reason: 'alliance spokesperson pitching the human LOH',
+        }
+      : null
+  }
+
+  if (
+    state.game.posWinnerId === human.id &&
+    ['nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'].includes(
+      phase
+    )
+  ) {
+    const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
+      nonNomineesOnly: true,
+    })
+    return subjectId
+      ? {
+          actionId: 'suggest_replacement',
+          targetIds: [human.id],
+          subjectId,
+          allianceId: alliance.id,
+          allianceStrategyKind: 'SAFETY',
+          scenarioOverride: 'alliance_safety_pitch',
+          reason: 'alliance spokesperson coordinating a Safety replacement',
+        }
+      : null
+  }
+
+  if (
+    ['pos_ceremony_results', 'social_2'].includes(phase) &&
+    game.nomineeIds.length > 1 &&
+    !human.status.includes('nominated') &&
+    !human.status.includes('loh')
+  ) {
+    const subjectId = chooseAiEvictionVote(
+      game,
+      player.id,
+      [...game.nomineeIds],
+      (game.seed ?? 0) ^ game.week
+    )
+    return subjectId
+      ? {
+          actionId: 'rally_votes_against',
+          targetIds: [human.id],
+          subjectId,
+          allianceId: alliance.id,
+          scenarioOverride: 'alliance_vote_pitch',
+          reason: 'alliance spokesperson aligning the human vote',
+        }
+      : null
+  }
+
+  return null
+}
+
 function relationshipCandidateForPlayer(
   state: DriverState,
   player: DriverPlayer
@@ -807,6 +953,10 @@ function candidateForPlayer(
       ? 'pitch_target'
       : null
   if (contactBoundary && nemesis && !strategicNemesisAction) return null
+  const allianceStrategyCandidate =
+    dramaMode && attempt === 0 && human
+      ? allianceHumanStrategyCandidate(state, player, human)
+      : null
   const relationshipCandidate =
     dramaMode && attempt === 0 ? relationshipCandidateForPlayer(state, player) : null
   const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
@@ -831,6 +981,7 @@ function candidateForPlayer(
 
   const policyActionId =
     strategicNemesisAction ??
+    allianceStrategyCandidate?.actionId ??
     relationshipCandidate?.actionId ??
     dramaMove?.actionId ??
     chooseActionFor(player.id, {
@@ -847,6 +998,7 @@ function candidateForPlayer(
     } as Parameters<typeof chooseActionFor>[1])
   const allianceBias = allianceIdentityBias(player.aiGameIdentity)
   const actionId =
+    !allianceStrategyCandidate &&
     !relationshipCandidate &&
     !dramaMove &&
     allianceBias >= 20 &&
@@ -869,6 +1021,9 @@ function candidateForPlayer(
   } else if (strategicNemesisAction && human) {
     targetIds = [state.game.lohId!]
     subjectId = human.id
+  } else if (allianceStrategyCandidate) {
+    targetIds = allianceStrategyCandidate.targetIds
+    subjectId = allianceStrategyCandidate.subjectId
   } else if (relationshipCandidate) {
     targetIds = relationshipCandidate.targetIds
   } else if (dramaMove) {
@@ -905,7 +1060,13 @@ function candidateForPlayer(
     actionId,
     targetIds,
     subjectId,
+    secondarySubjectId: allianceStrategyCandidate?.secondarySubjectId,
+    allianceId: allianceStrategyCandidate?.allianceId,
+    allianceStrategyKind: allianceStrategyCandidate?.allianceStrategyKind,
+    sceneTargetIds: allianceStrategyCandidate?.sceneTargetIds,
+    scenarioOverride: allianceStrategyCandidate?.scenarioOverride,
     reason:
+      allianceStrategyCandidate?.reason ??
       relationshipCandidate?.reason ??
       dramaMove?.reason ??
       `contextual policy attempt ${attempt + 1}`,
