@@ -1302,9 +1302,10 @@ export function recordRealityAlliancePlanDefiance(
       continue
     }
 
+    const actorPlanBeliefs = alliance.memberPlanBeliefs[input.actorId] ?? []
     const knowsPlan =
       alliance.leaderIds.includes(input.actorId) ||
-      (alliance.memberPlanBeliefs[input.actorId] ?? []).some((planId) =>
+      actorPlanBeliefs.some((planId) =>
         planTargetIds.some((targetId) => planId.includes(targetId))
       )
     if (!knowsPlan) continue
@@ -1314,6 +1315,19 @@ export function recordRealityAlliancePlanDefiance(
     ) {
       continue
     }
+
+    const declaredDissent = actorPlanBeliefs.some(
+      (planId) =>
+        planId.startsWith('dissent') &&
+        planTargetIds.some((targetId) => planId.includes(targetId))
+    )
+    const merelyAware =
+      !declaredDissent &&
+      actorPlanBeliefs.some(
+        (planId) =>
+          planId.startsWith('aware') &&
+          planTargetIds.some((targetId) => planId.includes(targetId))
+      )
 
     const duplicate = state.events.some(
       (event) =>
@@ -1325,9 +1339,9 @@ export function recordRealityAlliancePlanDefiance(
     if (duplicate) continue
 
     const severity =
-      0.07 +
+      (declaredDissent ? 0.03 : merelyAware ? 0.045 : 0.07) +
       (alliance.memberPerceivedStatus[input.actorId] === 'CORE' ? 0.025 : 0) +
-      alliance.cohesion * 0.035
+      alliance.cohesion * (declaredDissent ? 0.015 : merelyAware ? 0.025 : 0.035)
     alliance.memberCommitment[input.actorId] = clamp01(
       (alliance.memberCommitment[input.actorId] ?? 0.5) - severity
     )
@@ -1342,7 +1356,13 @@ export function recordRealityAlliancePlanDefiance(
       visibility: 'GROUP_VISIBLE',
       outcome: 'SUCCESS',
       reason: `vote_defiance:${alliance.id}:${alliance.currentTargetIds[0]}:${input.actualTargetId}`,
-      tags: ['ALLIANCE', 'PLAN', 'DEFIANCE', 'VOTE'],
+      tags: [
+        'ALLIANCE',
+        'PLAN',
+        'DEFIANCE',
+        'VOTE',
+        ...(declaredDissent ? ['DECLARED_DISSENT'] : merelyAware ? ['NONCOMMITTAL'] : []),
+      ],
       relatedFactIds: [],
       relatedPromiseIds: [...alliance.sharedPromiseIds],
       relatedThreadIds: [],
@@ -1350,6 +1370,7 @@ export function recordRealityAlliancePlanDefiance(
       juryEligible: true,
     })
 
+    const reactionScale = declaredDissent ? 0.45 : merelyAware ? 0.7 : 1
     for (const memberId of alliance.memberIds) {
       if (memberId === input.actorId) continue
       applyRealityRelationshipChange(state, {
@@ -1360,12 +1381,12 @@ export function recordRealityAlliancePlanDefiance(
         phase: input.at.phase,
         anchor: 'negative',
         deltas: {
-          trust: -6,
-          loyalty: -8,
-          resentment: 4,
-          suspicion: 6,
-          reliability: -8,
-          strategicValue: -3,
+          trust: -6 * reactionScale,
+          loyalty: -8 * reactionScale,
+          resentment: 4 * reactionScale,
+          suspicion: 6 * reactionScale,
+          reliability: -8 * reactionScale,
+          strategicValue: -3 * reactionScale,
         },
       })
     }
