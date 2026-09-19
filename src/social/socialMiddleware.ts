@@ -17,11 +17,9 @@
  *   LOH win               → +5  energy to winner
  *   POS win               → +6  energy to winner
  *   Survived nomination   → +4  energy to remaining nominees (entering live_vote)
- *   New alliance formed   → +2  energy + influence +200 to both parties
  *   Saved by POS          → +2  energy to saved player
  *   Competition skipped   → -3  energy to all alive players
  *   Zero score (minigame) → -2  energy to the scoring player
- *   Broke alliance        → -3  energy to the actor (betrayal tag)
  */
 
 import type { Middleware } from '@reduxjs/toolkit'
@@ -31,7 +29,6 @@ import { SocialEngine } from './SocialEngine'
 import {
   snapshotWeekRelationships,
   applyEnergyDelta,
-  applyInfluenceDelta,
   decaySocialMemory,
   drainEvictedPlayerSocial,
   invalidateIncomingInteractions,
