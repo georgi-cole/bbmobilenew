@@ -172,6 +172,7 @@ type InteractionScenarioKey =
   | 'targeted_snark'
   | 'alliance_reassurance'
   | 'alliance_nomination_pitch'
+  | 'alliance_vox_ballot_pitch'
   | 'alliance_safety_pitch'
   | 'alliance_vote_pitch'
   | 'alliance_power_nomination_huddle'
@@ -210,6 +211,7 @@ const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
   'replacement_nominee_reacts_to_loh',
   'live_vote_pitch',
   'alliance_nomination_pitch',
+  'alliance_vox_ballot_pitch',
   'alliance_safety_pitch',
   'alliance_vote_pitch',
   'alliance_power_nomination_huddle',
@@ -669,6 +671,27 @@ function resolveAllianceInteractionPlan(
   }
 
   if (actorId !== spokespersonId) return null
+
+  if (
+    context.voxPopuliActive &&
+    ['social_1', 'nominations'].includes(phase)
+  ) {
+    const subjectId = bestStrategicTarget(
+      game,
+      actorId,
+      getEligibleNominationTargets(game, playerId).filter(
+        (candidate) => !alliance.memberIds.includes(candidate.id)
+      )
+    )
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_vox_ballot_pitch',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'NOMINATION',
+      subjectId,
+    }
+  }
 
   if (
     !context.voxPopuliActive &&
