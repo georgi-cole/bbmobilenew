@@ -133,9 +133,17 @@ function resolveRealityIncomingInteraction(
       ) {
         const groupHuddle = interaction.payload?.allianceGroupHuddle === true
         if (groupHuddle) {
+          const activePlayerIds = new Set(
+            state.game.players
+              .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+              .map((player) => player.id)
+          )
           const authoredMembers = Array.isArray(interaction.payload?.allianceGroupMemberIds)
             ? interaction.payload.allianceGroupMemberIds.filter(
-                (id): id is string => typeof id === 'string' && alliance.memberIds.includes(id)
+                (id): id is string =>
+                  typeof id === 'string' &&
+                  alliance.memberIds.includes(id) &&
+                  activePlayerIds.has(id)
               )
             : []
           const humanAttends = responseType !== 'dismiss' && responseType !== 'ignore'
