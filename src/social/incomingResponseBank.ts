@@ -104,6 +104,16 @@ export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
     set('Renew the pact', 'Compare plans', 'Set new terms', 'End check-in'),
     set('Show loyalty', 'Stay cautious', 'Call out the crack', 'Move on'),
   ],
+  'scenario:alliance_power_nomination_huddle': [
+    set('Back the plan', 'Talk it through', 'Push another name', 'Sit this out', true),
+    set('Stay together', 'Ask for the case', 'Challenge the target', 'Leave the huddle', true),
+    set('Support the move', 'Compare reads', 'Argue another route', 'Make no commitment', true),
+  ],
+  'scenario:alliance_power_safety_huddle': [
+    set('Back the Safety plan', 'Talk through it', 'Push another route', 'Sit this out', true),
+    set('Support the move', 'Ask about the risks', 'Challenge the plan', 'Leave the huddle', true),
+    set('Stay with the group', 'Compare options', 'Argue another save', 'Make no commitment', true),
+  ],
   'scenario:alliance_nomination_pitch': [
     set('Back the target', 'Ask why them', 'Reject the target', 'Make no promise', true),
     set('Go with it', 'Hear the case', 'Choose your own move', 'Keep it open', true),
