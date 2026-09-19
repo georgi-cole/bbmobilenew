@@ -251,7 +251,9 @@ function WheelSvg({
             aria-hidden="true"
             draggable={false}
             data-testid="rw-vip-pointer"
-            onError={(event) => { event.currentTarget.style.display = 'none' }}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
           />
         </div>
       ) : (
@@ -415,7 +417,9 @@ function WheelSvg({
           aria-hidden="true"
           draggable={false}
           data-testid="rw-vip-center-hub"
-          onError={(event) => { event.currentTarget.style.display = 'none' }}
+          onError={(event) => {
+            event.currentTarget.style.display = 'none'
+          }}
         />
       ) : null}
     </div>
@@ -765,7 +769,9 @@ export default function RiskWheelComp({
             alt=""
             aria-hidden="true"
             draggable={false}
-            onError={(event) => { event.currentTarget.style.display = 'none' }}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
           />
         )}
         <p>Loading…</p>
@@ -804,7 +810,9 @@ export default function RiskWheelComp({
             alt=""
             aria-hidden="true"
             draggable={false}
-            onError={(event) => { event.currentTarget.style.display = 'none' }}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
           />
         )}
         <div className="rw-winner-confetti" aria-hidden="true">
@@ -856,7 +864,9 @@ export default function RiskWheelComp({
             alt=""
             aria-hidden="true"
             draggable={false}
-            onError={(event) => { event.currentTarget.style.display = 'none' }}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+            }}
           />
         )}
         <div className="rw-summary-header">
@@ -1007,7 +1017,9 @@ export default function RiskWheelComp({
                 alt=""
                 aria-hidden="true"
                 draggable={false}
-                onError={(event) => { event.currentTarget.style.display = 'none' }}
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none'
+                }}
               />
             )}
             <span className="rw-result-chip-content">
