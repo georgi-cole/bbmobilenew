@@ -1259,11 +1259,17 @@ body.no-animations .rw-confetti-piece {
     0 0 15px rgba(94, 220, 255, 0.08);
 }
 
-.rw-vip-brand img {
-  width: 27px;
-  height: 27px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 7px rgba(94, 220, 255, 0.28));
+.rw-vip-brand-gem {
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex: 0 0 auto;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background:
+    linear-gradient(135deg, #eafcff 0 12%, #6fe5ff 28%, #2b68ff 54%, #9158ff 78%, #e9d782 100%);
+  box-shadow:
+    0 0 0 2px rgba(246, 200, 95, 0.42),
+    0 0 10px rgba(94, 220, 255, 0.38);
 }
 
 .rw-vip-brand span {
@@ -1386,18 +1392,44 @@ body.no-animations .rw-confetti-piece {
 }
 
 .rw-root--vip .rw-wheel-pointer--vip {
-  top: -29px;
-  width: 54px;
-  height: 58px;
+  top: -28px;
+  width: 44px;
+  height: 50px;
   padding: 0;
   overflow: visible;
-  clip-path: none;
-  background: transparent;
-  box-shadow: none;
-  object-fit: contain;
+  clip-path: polygon(50% 100%, 9% 30%, 31% 27%, 50% 0, 69% 27%, 91% 30%);
+  background:
+    linear-gradient(180deg, #fff8cf 0%, #f7cf61 28%, #c37f22 72%, #81500f 100%);
+  box-shadow:
+    0 0 0 2px rgba(255, 239, 171, 0.22),
+    0 0 16px rgba(94, 220, 255, 0.28);
   filter:
-    drop-shadow(0 0 9px rgba(94, 220, 255, 0.5))
+    drop-shadow(0 0 9px rgba(246, 200, 95, 0.52))
     drop-shadow(0 5px 8px rgba(0, 0, 0, 0.5));
+}
+
+.rw-root--vip .rw-wheel-pointer--vip::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateX(-50%) rotate(45deg);
+  border: 2px solid rgba(255, 240, 178, 0.78);
+  background: linear-gradient(135deg, #a5f7ff, #3475e8 58%, #8d58ff);
+  box-shadow: 0 0 10px rgba(94, 220, 255, 0.52);
+}
+
+.rw-root--vip .rw-wheel-pointer--vip span {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 8px;
+  height: 18px;
+  transform: translateX(-50%);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  background: #15245e;
 }
 
 .rw-root--vip .rw-wheel-pointer--vip::after {
@@ -1434,8 +1466,18 @@ body.no-animations .rw-confetti-piece {
   inset: -31px;
   border-radius: 50%;
   pointer-events: none;
-  background: url('/assets/minigames/risk-wheel-vip/result-halo.webp') center / contain no-repeat;
   opacity: 0;
+  background:
+    radial-gradient(circle, transparent 0 44%, rgba(94, 220, 255, 0.18) 45% 51%, transparent 53%),
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(246, 200, 95, 0.92) 0 1.3deg,
+      transparent 1.3deg 8deg,
+      rgba(94, 220, 255, 0.7) 8deg 9deg,
+      transparent 9deg 16deg
+    );
+  -webkit-mask: radial-gradient(circle, transparent 0 41%, #000 43% 100%);
+  mask: radial-gradient(circle, transparent 0 41%, #000 43% 100%);
   mix-blend-mode: screen;
   animation: rw-vip-halo-reveal 900ms ease-out both;
 }
@@ -1459,8 +1501,9 @@ body.no-animations .rw-confetti-piece {
   overflow: visible;
   color: #fff5d0;
   background:
-    linear-gradient(180deg, rgba(7, 14, 48, 0.28), rgba(7, 12, 35, 0.56)),
-    url('/assets/minigames/risk-wheel-vip/result-plate.webp') center / 100% 100% no-repeat;
+    radial-gradient(circle at 50% 0%, rgba(94, 220, 255, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(12, 24, 70, 0.9), rgba(6, 12, 39, 0.94));
+  border: 1px solid rgba(246, 200, 95, 0.48);
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.31),
     0 0 24px rgba(94, 220, 255, 0.12);
@@ -1532,13 +1575,22 @@ body.no-animations .rw-confetti-piece {
 }
 
 .rw-vip-summary-crest {
-  width: 74px;
-  height: 74px;
-  margin-bottom: -8px;
-  object-fit: contain;
+  width: 68px;
+  height: 54px;
+  margin-bottom: -6px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(50% 0, 63% 19%, 93% 22%, 77% 52%, 86% 100%, 50% 79%, 14% 100%, 23% 52%, 7% 22%, 37% 19%);
+  color: #fff2b5;
+  background:
+    linear-gradient(180deg, rgba(246, 200, 95, 0.96), rgba(131, 83, 19, 0.96));
+  font-size: 0.73rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   filter:
-    drop-shadow(0 0 12px rgba(94, 220, 255, 0.28))
-    drop-shadow(0 4px 12px rgba(0, 0, 0, 0.34));
+    drop-shadow(0 0 10px rgba(246, 200, 95, 0.26))
+    drop-shadow(0 0 13px rgba(94, 220, 255, 0.15));
 }
 
 .rw-root--vip .rw-summary-row {
@@ -1577,10 +1629,23 @@ body.no-animations .rw-confetti-piece {
   place-items: center;
 }
 
-.rw-root--vip .rw-winner-crown img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.rw-vip-winner-badge {
+  width: 102px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(50% 0, 63% 18%, 92% 21%, 77% 49%, 87% 100%, 50% 82%, 13% 100%, 23% 49%, 8% 21%, 37% 18%);
+  color: #fff3bc;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(94, 220, 255, 0.34), transparent 24%),
+    linear-gradient(180deg, #f8d36d, #875719 72%);
+  border-radius: 18px;
+  font-size: 1.05rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.62),
+    0 0 8px rgba(94, 220, 255, 0.26);
   filter:
     drop-shadow(0 0 18px rgba(246, 200, 95, 0.34))
     drop-shadow(0 0 24px rgba(94, 220, 255, 0.16));
