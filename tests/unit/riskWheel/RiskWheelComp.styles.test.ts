@@ -47,7 +47,8 @@ describe('RiskWheelComp styles', () => {
     ].map((name) => resolve(process.cwd(), 'public/assets/minigames/risk-wheel-vip', name))
 
     expect(css).toContain('.rw-root--vip {')
-    expect(css).toContain('/assets/minigames/risk-wheel-vip/stage.webp')
+    expect(source).toContain('data-testid="rw-vip-stage"')
+    expect(source).toContain("`${VIP_ASSET_ROOT}/stage.webp`")
     expect(css).toContain('.rw-wheel-sector--vip')
     expect(css).toContain('.rw-vip-result-halo')
     expect(source).toContain('premiumPresentation = false')
@@ -58,7 +59,8 @@ describe('RiskWheelComp styles', () => {
     expect(source).toContain('data-testid="rw-vip-pointer"')
     expect(source).toContain('data-testid="rw-vip-center-hub"')
     expect(css).toContain('/assets/minigames/risk-wheel-vip/wheel-frame.webp')
-    expect(css).toContain('/assets/minigames/risk-wheel-vip/result-plaque.webp')
+    expect(source).toContain("`${VIP_ASSET_ROOT}/result-plaque.webp`")
+    expect(source).toContain('className="rw-wheel-sector-label"')
     expect(host).toContain('premiumPresentation={isVipActive}')
     expect(statSync(stagePath).size).toBeLessThan(50_000)
     generatedAssets.forEach((assetPath) => {

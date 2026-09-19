@@ -1724,7 +1724,7 @@ body.no-animations .rw-confetti-piece {
 .rw-root--vip {
   background:
     linear-gradient(180deg, rgba(2,4,16,.04), rgba(2,4,16,.15) 42%, rgba(2,4,15,.72) 78%, rgba(2,4,12,.94)),
-    url('/assets/minigames/risk-wheel-vip/stage.webp') center 8% / cover no-repeat,
+    radial-gradient(circle at 50% 26%, rgba(44, 144, 255, 0.09), transparent 38%),
     #040615;
 }
 
@@ -1745,7 +1745,8 @@ body.no-animations .rw-confetti-piece {
 .rw-root--vip .rw-wheel-outer::before { display:none; }
 .rw-root--vip .rw-wheel-outer::after { left:8%; right:8%; bottom:-30px; height:48px; background:radial-gradient(ellipse at center,rgba(246,200,95,.22),rgba(66,208,255,.13) 38%,transparent 72%); filter:blur(8px); }
 
-.rw-vip-wheel-frame { position:absolute; z-index:3; inset:-7%; width:114%; height:114%; object-fit:contain; pointer-events:none; user-select:none; -webkit-user-drag:none; filter:drop-shadow(0 0 8px rgba(255,211,104,.28)) drop-shadow(0 0 17px rgba(74,217,255,.24)); }
+.rw-vip-wheel-frame-fallback { position:absolute; z-index:1; inset:-5.5%; border-radius:50%; pointer-events:none; background:radial-gradient(circle, transparent 0 78%, rgba(8,16,50,.98) 78.4% 82%, rgba(246,200,95,.96) 82.4% 84%, rgba(30,88,184,.96) 84.4% 87%, rgba(246,200,95,.88) 87.4% 89%, transparent 89.5%), repeating-conic-gradient(from 0deg, rgba(255,226,137,.95) 0 1.2deg, rgba(48,183,255,.3) 1.2deg 5.5deg, rgba(155,78,255,.28) 5.5deg 10deg); filter:drop-shadow(0 0 9px rgba(246,200,95,.28)) drop-shadow(0 0 18px rgba(74,217,255,.24)); }
+.rw-vip-wheel-frame { position:absolute; z-index:4; inset:-7%; width:114%; height:114%; object-fit:contain; pointer-events:none; user-select:none; -webkit-user-drag:none; filter:drop-shadow(0 0 8px rgba(255,211,104,.28)) drop-shadow(0 0 17px rgba(74,217,255,.24)); }
 .rw-root--vip .rw-wheel-svg-wrapper { position:absolute; z-index:2; inset:8%; width:84%; height:84%; border:2px solid rgba(246,200,95,.72); box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 0 18px rgba(0,0,0,.42),0 0 0 2px rgba(13,25,71,.9),0 0 14px rgba(78,218,255,.28); }
 .rw-root--vip .rw-wheel-svg-wrapper--spinning { box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),inset 0 0 18px rgba(0,0,0,.4),0 0 0 2px rgba(246,200,95,.74),0 0 22px rgba(78,218,255,.5),0 0 38px rgba(164,85,255,.25); }
 
@@ -1773,3 +1774,71 @@ body.no-animations .rw-confetti-piece {
 @media (max-height:760px) { .rw-vip-showroom{height:470px} .rw-root--vip .rw-wheel-outer{width:min(72vw,292px);height:min(72vw,292px)} }
 @media (prefers-reduced-motion:reduce) { .rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-vip-showroom-beam,.rw-root--vip:has(.rw-wheel-svg-wrapper--spinning) .rw-btn--spin::after{animation:none!important} }
 body.no-animations .rw-root--vip .rw-vip-showroom-beam,body.no-animations .rw-root--vip .rw-btn--spin::after{animation:none!important}
+
+.rw-wheel-sector-labels,
+.rw-wheel-sector-label {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+.rw-wheel-sector-label {
+  fill: #fff9e6 !important;
+  paint-order: stroke fill;
+  stroke: rgba(13, 10, 35, 0.82);
+  stroke-width: 1.35px;
+  stroke-linejoin: round;
+  text-shadow: 0 1px 2px rgba(0,0,0,.8);
+}
+
+.rw-vip-stage-asset {
+  position: absolute;
+  inset: 54px 0 auto;
+  width: 100%;
+  height: min(660px, 78vh);
+  object-fit: cover;
+  object-position: center top;
+  z-index: 0;
+  opacity: .78;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: saturate(1.05) brightness(.72) contrast(1.06);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 68%, rgba(0,0,0,.82) 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0 68%, rgba(0,0,0,.82) 80%, transparent 100%);
+}
+.rw-root--vip > .rw-header,
+.rw-root--vip > .rw-main,
+.rw-root--vip > .rw-summary-header,
+.rw-root--vip > .rw-summary-list,
+.rw-root--vip > .rw-summary-footer,
+.rw-root--vip > .rw-winner-confetti,
+.rw-root--vip > .rw-winner-crown,
+.rw-root--vip > .rw-winner-avatar,
+.rw-root--vip > .rw-winner-title,
+.rw-root--vip > .rw-winner-name,
+.rw-root--vip > .rw-winner-subtitle,
+.rw-root--vip > .rw-btn {
+  position: relative;
+  z-index: 2;
+}
+
+.rw-root--vip .rw-result-chip {
+  overflow: visible;
+  background: linear-gradient(180deg, rgba(12,24,70,.9), rgba(6,12,39,.94));
+}
+.rw-vip-result-plaque-asset {
+  position: absolute;
+  z-index: 0;
+  inset: -12px -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 24px);
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)) drop-shadow(0 0 12px rgba(94,220,255,.15));
+}
+.rw-result-chip-content {
+  position: relative;
+  z-index: 1;
+}
