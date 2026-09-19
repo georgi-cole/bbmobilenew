@@ -19,6 +19,7 @@ interface HousePulseProps {
   weekStartRelSnapshot: Record<string, Record<string, number>>
   currentWeek: number
   reality?: RealityDomainState
+  onRenameAlliance?: (allianceId: string, name: string) => void
 }
 
 const RUMOUR_LABEL: Record<string, string> = {
@@ -158,6 +159,7 @@ export default function HousePulse({
   weekStartRelSnapshot,
   currentWeek,
   reality,
+  onRenameAlliance,
 }: HousePulseProps) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<PulseTab>('stream')
@@ -391,6 +393,7 @@ export default function HousePulse({
               players={players}
               humanId={humanId}
               relationships={relationships}
+              onRenameAlliance={onRenameAlliance}
             />
           )}
         </div>

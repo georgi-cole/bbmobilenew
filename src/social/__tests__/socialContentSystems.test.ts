@@ -65,6 +65,28 @@ describe('Drama social content system', () => {
     expect(new Set(variants).size).toBeGreaterThan(1)
   })
 
+  it('gives alliance strategy scenes decision-specific accept and decline choices', () => {
+    for (const scenarioKey of [
+      'alliance_nomination_pitch',
+      'alliance_vox_ballot_pitch',
+      'alliance_safety_pitch',
+      'alliance_vote_pitch',
+      'alliance_power_nomination_huddle',
+      'alliance_power_safety_huddle',
+    ]) {
+      const choices = getDramaResponseBlueprint(
+        'deal_offer',
+        interaction({
+          id: scenarioKey,
+          type: 'deal_offer',
+          payload: { scenarioKey, phase: 'social_1', dramaMode: true },
+        })
+      )
+      expect(choices?.[0]?.responseType).toBe('accept')
+      expect(choices?.[2]?.responseType).toBe('decline')
+    }
+  })
+
   it('makes high-stakes replies matter more than casual replies', () => {
     expect(getIncomingResponseRelationshipDelta('alliance_proposal', 'accept', 'Trusting')).toBe(14)
     expect(getIncomingResponseRelationshipDelta('compliment', 'neutral', 'Curious')).toBe(1)
@@ -102,6 +124,40 @@ describe('Drama social content system', () => {
       week: 2,
     })
     expect(reason).toBe('deduped_scenario_weekly_cap')
+  })
+
+  it('allows distinct strategic follow-ups from the same alliance spokesperson', () => {
+    const first = interaction({
+      id: 'alliance-pitch',
+      fromId: 'ai-1',
+      type: 'deal_offer',
+      payload: {
+        scenarioKey: 'alliance_nomination_pitch',
+        phase: 'social_1',
+        dramaMode: true,
+        dedupeGroup: 'alliance_strategy:alliance_nomination_pitch',
+      },
+    })
+    const second = interaction({
+      id: 'alliance-vote',
+      fromId: 'ai-1',
+      type: 'deal_offer',
+      payload: {
+        scenarioKey: 'alliance_vote_pitch',
+        phase: 'social_2',
+        dramaMode: true,
+        dedupeGroup: 'alliance_strategy:alliance_vote_pitch',
+      },
+    })
+
+    expect(
+      getInteractionDedupeReason({
+        interaction: second,
+        priority: 'high',
+        pendingInteractions: [first],
+        week: 2,
+      })
+    ).toBeNull()
   })
 
   it('enforces credible affinity floors and ceilings for named relationships', () => {

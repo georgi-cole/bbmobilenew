@@ -69,6 +69,7 @@ import {
   normalizeRealityDomainState,
   projectRealityAffinity,
   recordRealityAllianceBetrayal as applyRealityAllianceBetrayal,
+  renameRealityAlliance as applyRealityAllianceRename,
   recordRealityCeremonyOutcome,
   upsertRealityDebt,
   upsertRealityPromise,
@@ -89,6 +90,7 @@ function clampBank(
 
 const REALITY_PROJECTED_TAGS = new Set([
   'alliance',
+  'broken_alliance',
   'romance',
   'bromance',
   'rivalry',
@@ -123,6 +125,16 @@ function projectRealityTags(
   ) {
     tags.push('alliance')
   }
+  const exitedSharedAlliance = reality.events.some(
+    (event) =>
+      ['ALLIANCE_MEMBER_LEFT', 'ALLIANCE_MEMBER_DEFECTED', 'ALLIANCE_MEMBER_EXPELLED'].includes(
+        event.type
+      ) &&
+      event.participantIds.includes(sourceId) &&
+      event.participantIds.includes(targetId) &&
+      (event.targetIds.includes(sourceId) || event.targetIds.includes(targetId))
+  )
+  if (!hasLiveFormalAlliance && exitedSharedAlliance) tags.push('broken_alliance')
   if (
     Object.values(reality.romances).some(
       (romance) =>
@@ -496,6 +508,7 @@ const socialSlice = createSlice({
         day: number
         phase: string
         eventId: string
+        eligibleTargetIds?: string[]
       }>
     ) {
       finalizeRealityVote(
@@ -503,7 +516,8 @@ const socialSlice = createSlice({
         action.payload.actorId,
         action.payload.targetId,
         { day: action.payload.day, phase: action.payload.phase },
-        action.payload.eventId
+        action.payload.eventId,
+        action.payload.eligibleTargetIds
       )
       projectRealityRelationshipsIntoLegacy(
         state.reality as RealityDomainState,
@@ -532,6 +546,34 @@ const socialSlice = createSlice({
         state.reality as RealityDomainState,
         state.relationships
       )
+    },
+    renameRealityAllianceRecord(
+      state,
+      action: PayloadAction<{
+        allianceId: string
+        actorId: string
+        name: string
+        day: number
+        phase: string
+      }>
+    ) {
+      const reality = state.reality as RealityDomainState
+      const alliance = reality.alliances[action.payload.allianceId]
+      if (
+        !alliance ||
+        alliance.status === 'DISSOLVED' ||
+        !alliance.memberIds.includes(action.payload.actorId)
+      ) {
+        return
+      }
+      const name = action.payload.name.trim()
+      if (name.length < 2) return
+      applyRealityAllianceRename(reality, {
+        allianceId: action.payload.allianceId,
+        actorId: action.payload.actorId,
+        name,
+        at: { day: action.payload.day, phase: action.payload.phase },
+      })
     },
     recordRealitySimulationTrace(
       state,
@@ -984,6 +1026,7 @@ export const {
   recordRealityCeremony,
   recordRealityActualVote,
   recordRealityAllianceBetrayal,
+  renameRealityAllianceRecord,
   recordRealitySimulationTrace,
   replaceDramaNetwork,
   applyDramaAction,

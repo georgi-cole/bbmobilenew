@@ -49,7 +49,7 @@ import {
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission'
 import { classifyTwinShockAnswer, resolveTwinShockTurn } from '../../bb/twinShock'
-import { applyInfluenceDelta } from '../../social/socialSlice'
+import { applyInfluenceDelta, renameRealityAllianceRecord } from '../../social/socialSlice'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import RealityLedger from '../../components/RealityLedger/RealityLedger'
 import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'
@@ -509,6 +509,22 @@ export default function DiaryRoom() {
   const alivePlayers = useAppSelector(selectAlivePlayers)
   const confessionalLocked = userPlayer?.status === 'evicted' || userPlayer?.status === 'jury'
   const voxPopuliActive = gameState.voxPopuli?.status === 'active'
+
+  const handleRenameAlliance = useCallback(
+    (allianceId: string, name: string) => {
+      if (!userPlayer) return
+      dispatch(
+        renameRealityAllianceRecord({
+          allianceId,
+          actorId: userPlayer.id,
+          name,
+          day: gameState.week,
+          phase,
+        })
+      )
+    },
+    [dispatch, gameState.week, phase, userPlayer]
+  )
 
   // ── Active ceremony decision routed to the confessional ───────────────────
   // When non-null the player must complete the decision before leaving.
@@ -1399,6 +1415,8 @@ export default function DiaryRoom() {
                     reality={realityDomain}
                     players={players}
                     humanId={userPlayer.id}
+                    relationships={socialRelationships}
+                    onRenameAlliance={handleRenameAlliance}
                   />
                 </details>
               )}

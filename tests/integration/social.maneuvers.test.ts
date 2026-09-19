@@ -26,6 +26,8 @@ import socialReducer, {
   setInfoBankEntry,
   applyEnergyDelta,
   recordSocialAction,
+  initializeRealitySimulation,
+  replaceRealityDomain,
   updateRelationship,
 } from '../../src/social/socialSlice'
 import { SOCIAL_ACTIONS } from '../../src/social/socialActions'
@@ -43,11 +45,19 @@ import {
   canAfford,
   computeRepeatedPositiveDelta,
   executeAction,
+  executeGroupAction,
 } from '../../src/social/SocialManeuvers'
 import { socialMiddleware } from '../../src/social/socialMiddleware'
+import { relationshipResourcePolicyMiddleware } from '../../src/social/relationshipResourcePolicyMiddleware'
 import { socialConfig } from '../../src/social/socialConfig'
 import { MIN_ALLIANCE_AFFINITY, hasAllianceBetween } from '../../src/social/socialAlliance'
 import { executeHumanRealityAction } from '../../src/social/reality/humanFlow'
+import {
+  createDirectedRelationship,
+  createInitialRealityDomainState,
+  createRealityAlliance,
+  holdRealityAllianceStrategyMeeting,
+} from '../../src/social/reality'
 
 function sequence(...rolls: number[]) {
   return () => rolls.shift() ?? 0
@@ -162,6 +172,527 @@ describe('Classic social isolation', () => {
     expect(store.getState().social.reality.events).toHaveLength(0)
     expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
     expect(store.getState().social.realitySimulation.rng).toBeNull()
+  })
+})
+
+describe('Reality action cost atomicity', () => {
+  it('blocks an unaffordable dynamic group action before Reality creates any effects', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+      { id: 'p5', name: 'P5', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 2 }))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3', 'p4', 'p5'],
+      actionId: 'group_chat',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/insufficient resources/i)
+    expect(store.getState().social.energyBank.p1).toBe(2)
+    expect(store.getState().social.sessionLogs).toHaveLength(0)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
+  })
+
+  it('prices a direct Reality batch of primary actions per selected target', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3'],
+      actionId: 'compliment',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(store.getState().social.energyBank.p1).toBe(8)
+    const logs = store
+      .getState()
+      .social.actionHistory.filter(
+        (entry) =>
+          entry.actorId === 'p1' &&
+          entry.actionId === 'compliment' &&
+          entry.week === store.getState().game.week &&
+          entry.phase === 'social_1'
+      )
+    expect(logs).toHaveLength(2)
+    expect(logs.find((entry) => entry.targetId === 'p2')?.outcome).toBe('failure')
+    expect(logs.find((entry) => entry.targetId === 'p3')?.outcome).toBe('success')
+    expect(store.getState().social.reality.events.at(-1)?.outcome).toBe('PARTIAL')
+  })
+
+  it('rejects an invalid multi-target alliance proposal before cost or RNG mutation', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+
+    const beforeCursor = store.getState().social.realitySimulation.rng?.cursor
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3'],
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.label).toBe('Invalid selection')
+    expect(store.getState().social.energyBank.p1).toBe(10)
+    expect(store.getState().social.infoBank.p1).toBe(300)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(beforeCursor)
+  })
+
+  it('rejects a target-plus-subject action with no subject before Reality mutation', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+
+    const beforeCursor = store.getState().social.realitySimulation.rng?.cursor
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'warn_about_player',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/choose who the conversation is about/i)
+    expect(store.getState().social.energyBank.p1).toBe(10)
+    expect(store.getState().social.infoBank.p1).toBe(300)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(beforeCursor)
+  })
+
+  it('keeps mixed group recipient reactions without granting a full-action success reward', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const result = executeGroupAction('p1', ['p2', 'p3'], 'group_chat', {
+      source: 'manual',
+      outcome: 'failure',
+      targetOutcomes: { p2: 'success', p3: 'failure' },
+      costOverride: { energy: 2, influence: 0, info: 0 },
+      random: () => 0,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.targetDeltas?.p2).toBeGreaterThan(0)
+    expect(result.targetDeltas?.p3).toBeLessThanOrEqual(0)
+    expect(store.getState().social.actionHistory.at(-1)?.outcome).toBe('failure')
+    expect(store.getState().social.energyBank.p1).toBe(3)
+  })
+
+  it('honors an explicitly precomputed atomic price for a group action', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+      { id: 'p5', name: 'P5', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 3 }))
+
+    const result = executeGroupAction('p1', ['p2', 'p3', 'p4', 'p5'], 'group_chat', {
+      source: 'manual',
+      costOverride: { energy: 2, influence: 0, info: 0 },
+      random: () => 0,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.newEnergy).toBe(1)
+    expect(store.getState().social.sessionLogs.at(-1)?.costs).toEqual({
+      energy: 2,
+      influence: 0,
+      info: 0,
+    })
+  })
+})
+
+describe('Reality compatibility outcome semantics', () => {
+  it('does not award a full success payoff when a commitment action is countered', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'Kian', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 8, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 10 }))
+
+    const reality = createInitialRealityDomainState()
+    reality.relationships.p1 = {
+      p2: createDirectedRelationship('p1', 'p2', -20),
+    }
+    reality.relationships.p2 = {
+      p1: createDirectedRelationship('p2', 'p1', -20),
+    }
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'protect',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.label).toBe('COUNTER')
+    expect(store.getState().social.actionHistory.at(-1)?.outcome).toBe('failure')
+    expect(store.getState().social.influenceBank.p1).toBe(9)
+    expect(Object.values(store.getState().social.reality.promises)).toHaveLength(0)
+  })
+})
+
+describe('Reality human alliance proposal acceptance', () => {
+  function makeAllianceProposalStore(seed: number) {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'Kian', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+    store.dispatch(
+      updateRelationship({
+        source: 'p1',
+        target: 'p2',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    store.dispatch(
+      updateRelationship({
+        source: 'p2',
+        target: 'p1',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    return store
+  }
+
+  it('does not manufacture an alliance tag when the target only counters the proposal', () => {
+    // Seed 8 makes the second persisted Reality draw land in the counteroffer
+    // band for this relationship state.
+    const store = makeAllianceProposalStore(8)
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.label).toBe('COUNTER')
+    expect(result.summary).toMatch(/counteroffer/i)
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
+
+    const afterCounter = store.getState()
+    const energyAfterCounter = afterCounter.social.energyBank.p1
+    const infoAfterCounter = afterCounter.social.infoBank.p1
+    const eventCountAfterCounter = afterCounter.social.reality.events.length
+    const rngCursorAfterCounter = afterCounter.social.realitySimulation.rng?.cursor
+
+    const retry = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(retry.success).toBe(false)
+    expect(retry.label).toBe('Already approached')
+    expect(store.getState().social.energyBank.p1).toBe(energyAfterCounter)
+    expect(store.getState().social.infoBank.p1).toBe(infoAfterCounter)
+    expect(store.getState().social.reality.events).toHaveLength(eventCountAfterCounter)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(rngCursorAfterCounter)
+
+    store.dispatch(setPhase('week_start'))
+
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
+  })
+
+  it('pays the calibrated alliance reward exactly once after Reality projection repair', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players: [
+            { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+            { id: 'p2', name: 'Kian', status: 'active' as const },
+          ],
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(relationshipResourcePolicyMiddleware, socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+    store.dispatch(
+      updateRelationship({
+        source: 'p1',
+        target: 'p2',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    store.dispatch(
+      updateRelationship({
+        source: 'p2',
+        target: 'p1',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(1)
+    expect(store.getState().social.energyBank.p1).toBe(6)
+    expect(store.getState().social.infoBank.p1).toBe(200)
+    expect(store.getState().social.influenceBank.p1).toBe(20)
+    expect(store.getState().social.influenceBank.p2).toBe(20)
+  })
+
+  it('keeps a genuinely accepted human alliance through the next day projection', () => {
+    // Seed 1 makes the target accept this otherwise identical proposal.
+    const store = makeAllianceProposalStore(1)
+
+    executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    const alliance = Object.values(store.getState().social.reality.alliances)[0]
+    expect(alliance?.memberIds).toEqual(expect.arrayContaining(['p1', 'p2']))
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).toContain('alliance')
+
+    store.dispatch(setPhase('week_start'))
+
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(1)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).toContain('alliance')
+  })
+})
+
+describe('Reality alliance consultation economy', () => {
+  it('turns one selected alliance member into a real group huddle at one fixed cost', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const players = [
+      { id: 'p1', name: 'P1', status: 'loh' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+    ]
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players,
+          week: 2,
+          phase: 'social_1',
+          lohId: 'p1',
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'group-huddle',
+      founderIds: ['p1', 'p2'],
+      memberIds: ['p3'],
+      purpose: 'Control the middle',
+      at: { day: 1, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'consult_alliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(result.summary).toMatch(/P2.*P4/i)
+    expect(result.summary).toMatch(/P3.*P4/i)
+    expect(store.getState().social.energyBank.p1).toBe(3)
+    const huddle = store
+      .getState()
+      .social.reality.events.find((event) => event.type === 'ALLIANCE_STRATEGY_MEETING')
+    expect(huddle?.participantIds).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']))
+    expect(store.getState().social.reality.alliances[alliance.id].currentTargetIds).toEqual(['p4'])
+  })
+
+  it('does not charge energy when an alliance huddle has no valid outside target', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const players = [
+      { id: 'p1', name: 'P1', status: 'loh' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ]
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players,
+          week: 2,
+          phase: 'social_1',
+          lohId: 'p1',
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'all-in-house-alliance',
+      founderIds: ['p1', 'p2'],
+      memberIds: ['p3'],
+      purpose: 'Mutual protection',
+      at: { day: 1, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'consult_alliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/no useful alliance strategy question/i)
+    expect(result.newEnergy).toBe(5)
+    expect(store.getState().social.energyBank.p1).toBe(5)
+    expect(
+      store
+        .getState()
+        .social.reality.events.filter((event) => event.type === 'ALLIANCE_STRATEGY_MEETING')
+    ).toHaveLength(0)
+  })
+
+  it('does not charge energy for repeating the same alliance agenda on the same day', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const players = [
+      { id: 'p1', name: 'P1', status: 'loh' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+    ]
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players,
+          week: 2,
+          phase: 'social_1',
+          lohId: 'p1',
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'player-coalition',
+      founderIds: ['p1', 'p2'],
+      memberIds: ['p3'],
+      purpose: 'Control the middle',
+      at: { day: 1, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    holdRealityAllianceStrategyMeeting(reality, {
+      allianceId: alliance.id,
+      callerId: 'p1',
+      attendeeIds: ['p1', 'p2', 'p3'],
+      targetIds: ['p4'],
+      planIds: ['target:p4'],
+      agenda: 'nominations',
+      at: { day: 2, phase: 'social_1' },
+      sourceEventId: 'first-huddle',
+    })
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'consult_alliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/already held an alliance huddle/i)
+    expect(result.newEnergy).toBe(5)
+    expect(store.getState().social.energyBank.p1).toBe(5)
+    expect(
+      store
+        .getState()
+        .social.reality.events.filter((event) => event.type === 'ALLIANCE_STRATEGY_MEETING')
+    ).toHaveLength(1)
   })
 })
 

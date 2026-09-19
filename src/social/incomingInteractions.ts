@@ -11,6 +11,7 @@ import {
   addSocialCommitment,
   applyDramaIncomingResponse,
   applyInfoDelta,
+  applyInfluenceDelta,
   dismissIncomingInteraction,
   replaceRealityDomain,
   resolveIncomingInteractionsByDeadline,
@@ -19,9 +20,19 @@ import {
   updateSocialMemory,
   learnRealityKnowledge,
   recordIntelligenceDelivery,
+  recordSocialAction,
 } from './socialSlice'
-import { resolvePendingHumanRealityInteraction } from './reality'
-import { resolveRelationshipStoryResponse } from './reality'
+import {
+  coordinateRealityAllianceTarget,
+  createRealityAlliance,
+  findRealityAllianceForRecruitment,
+  holdRealityAllianceMeeting,
+  holdRealityAllianceStrategyMeeting,
+  markRealityAllianceInfiltratorIfSecondary,
+  recruitRealityAllianceMember,
+  resolvePendingHumanRealityInteraction,
+  resolveRelationshipStoryResponse,
+} from './reality'
 import { isIncomingInteractionOverdue } from './incomingInteractionDeadline'
 import {
   createCommitmentFromInteraction,
@@ -40,6 +51,9 @@ import type {
   IncomingInteractionType,
 } from './types'
 import { makeIntelMemory } from './intelligenceSystem'
+import { getRuntimeSocialActionById } from './socialActionManager'
+import { normalizeActionCosts } from './smExecNormalize'
+import { getSocialResourceEffect } from './socialResourceEconomy'
 
 const TYPE_LABELS: Record<IncomingInteractionType, string> = {
   compliment: 'compliment',
@@ -65,6 +79,19 @@ const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
 
 type ResolutionSource = 'player' | 'expiry'
 
+const ALLIANCE_STRATEGY_SCENARIOS = new Set([
+  'alliance_nomination_pitch',
+  'alliance_vox_ballot_pitch',
+  'alliance_safety_pitch',
+  'alliance_vote_pitch',
+  'alliance_power_nomination_huddle',
+  'alliance_power_safety_huddle',
+])
+
+function isAllianceStrategyScenario(value: unknown): boolean {
+  return typeof value === 'string' && ALLIANCE_STRATEGY_SCENARIOS.has(value)
+}
+
 function resolveRealityIncomingInteraction(
   dispatch: AppDispatch,
   getState: () => RootState,
@@ -82,24 +109,295 @@ function resolveRealityIncomingInteraction(
   const humanId = state.game.players.find((player) => player.isUser)?.id
   if (!humanId) return
   if (!realityInteractionId) {
-    const relationshipIntent = interaction.payload?.relationshipIntent
-    if (typeof relationshipIntent !== 'string') return
-    // Immediate incoming effects may already have updated the social projection.
-    // Start from the latest domain so recording the storyline never rolls those
-    // relationship changes back.
-    const domain = structuredClone(getState().social.reality)
-    if (
-      resolveRelationshipStoryResponse(domain, {
-        ownerId: interaction.fromId,
-        targetId: humanId,
-        intent: relationshipIntent,
-        responseType,
-        eventId: `incoming:${interaction.id}`,
-        at: { day, phase },
-      })
-    ) {
-      dispatch(replaceRealityDomain(domain))
+    const allianceId =
+      typeof interaction.payload?.allianceId === 'string'
+        ? interaction.payload.allianceId
+        : undefined
+    const allianceStrategyKind =
+      interaction.payload?.allianceStrategyKind === 'NOMINATION' ||
+      interaction.payload?.allianceStrategyKind === 'SAFETY' ||
+      interaction.payload?.allianceStrategyKind === 'VOTE'
+        ? interaction.payload.allianceStrategyKind
+        : undefined
+    const subjectId =
+      typeof interaction.payload?.subjectId === 'string' ? interaction.payload.subjectId : undefined
+    const secondarySubjectId =
+      typeof interaction.payload?.secondarySubjectId === 'string'
+        ? interaction.payload.secondarySubjectId
+        : undefined
+    const aligned = responseType === 'accept' || responseType === 'positive'
+
+    if (allianceId && allianceStrategyKind) {
+      const domain = structuredClone(getState().social.reality)
+      const alliance = domain.alliances[allianceId]
+      if (
+        alliance &&
+        (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+        alliance.memberIds.includes(interaction.fromId) &&
+        alliance.memberIds.includes(humanId)
+      ) {
+        const groupHuddle = interaction.payload?.allianceGroupHuddle === true
+        if (groupHuddle) {
+          const activePlayerIds = new Set(
+            state.game.players
+              .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+              .map((player) => player.id)
+          )
+          const authoredMembers = Array.isArray(interaction.payload?.allianceGroupMemberIds)
+            ? interaction.payload.allianceGroupMemberIds.filter(
+                (id): id is string =>
+                  typeof id === 'string' &&
+                  alliance.memberIds.includes(id) &&
+                  activePlayerIds.has(id)
+              )
+            : []
+          const humanAttends = responseType !== 'dismiss' && responseType !== 'ignore'
+          const attendeeIds = [
+            ...new Set([
+              interaction.fromId,
+              ...authoredMembers.filter((id) => id !== humanId),
+              ...(humanAttends ? [humanId] : []),
+            ]),
+          ]
+          if (attendeeIds.length < 2) return
+          // Choosing to sit out is a real absence, not an excused one. Members
+          // missing from the authored active roster are treated as unavailable.
+          const excusedAbsentIds = alliance.memberIds.filter(
+            (id) => !attendeeIds.includes(id) && id !== humanId
+          )
+          const rawTargetPreferences = interaction.payload?.allianceMemberTargetPreferences
+          const rawFallbackPreferences = interaction.payload?.allianceMemberFallbackPreferences
+          const targetPreferences =
+            rawTargetPreferences &&
+            typeof rawTargetPreferences === 'object' &&
+            !Array.isArray(rawTargetPreferences)
+              ? Object.fromEntries(
+                  Object.entries(rawTargetPreferences).filter(
+                    (entry): entry is [string, string] =>
+                      typeof entry[1] === 'string' && attendeeIds.includes(entry[0])
+                  )
+                )
+              : null
+          const fallbackPreferences =
+            rawFallbackPreferences &&
+            typeof rawFallbackPreferences === 'object' &&
+            !Array.isArray(rawFallbackPreferences)
+              ? Object.fromEntries(
+                  Object.entries(rawFallbackPreferences).filter(
+                    (entry): entry is [string, string] =>
+                      typeof entry[1] === 'string' && attendeeIds.includes(entry[0])
+                  )
+                )
+              : null
+          const majority = Math.floor(attendeeIds.length / 2) + 1
+          const currentTargetCandidate =
+            subjectId && !alliance.memberIds.includes(subjectId) ? subjectId : undefined
+          const fallbackTargetCandidate =
+            secondarySubjectId && !alliance.memberIds.includes(secondarySubjectId)
+              ? secondarySubjectId
+              : undefined
+          const currentSupport = currentTargetCandidate
+            ? attendeeIds.filter((memberId) =>
+                memberId === humanId
+                  ? aligned
+                  : targetPreferences
+                    ? targetPreferences[memberId] === currentTargetCandidate
+                    : true
+              ).length
+            : 0
+          const fallbackSupport = fallbackTargetCandidate
+            ? attendeeIds.filter((memberId) =>
+                memberId === humanId
+                  ? aligned
+                  : fallbackPreferences
+                    ? fallbackPreferences[memberId] === fallbackTargetCandidate
+                    : true
+              ).length
+            : 0
+          const currentTargetIds =
+            currentTargetCandidate && currentSupport >= majority ? [currentTargetCandidate] : []
+          const fallbackTargetIds =
+            fallbackTargetCandidate && fallbackSupport >= majority ? [fallbackTargetCandidate] : []
+          const planIds = [
+            ...currentTargetIds.map((id) => `target:${id}`),
+            ...fallbackTargetIds.map((id) => `fallback:${id}`),
+          ]
+          const memberPlanBeliefs: Record<string, string[]> = Object.fromEntries(
+            attendeeIds.map((memberId) => {
+              if (memberId === humanId) {
+                const humanPosition =
+                  responseType === 'decline' || responseType === 'negative'
+                    ? 'dissent'
+                    : aligned
+                      ? 'support'
+                      : 'aware'
+                return [
+                  memberId,
+                  [
+                    ...(currentTargetCandidate
+                      ? [
+                          humanPosition === 'support'
+                            ? `target:${currentTargetCandidate}`
+                            : `${humanPosition}:${currentTargetCandidate}`,
+                        ]
+                      : []),
+                    ...(fallbackTargetCandidate
+                      ? [
+                          humanPosition === 'support'
+                            ? `fallback:${fallbackTargetCandidate}`
+                            : `${humanPosition}_fallback:${fallbackTargetCandidate}`,
+                        ]
+                      : []),
+                  ],
+                ]
+              }
+              const targetPreference = targetPreferences?.[memberId]
+              const fallbackPreference = fallbackPreferences?.[memberId]
+              return [
+                memberId,
+                [
+                  ...(targetPreference
+                    ? targetPreference === currentTargetIds[0]
+                      ? [`target:${targetPreference}`]
+                      : [
+                          ...(currentTargetIds[0] ? [`aware:${currentTargetIds[0]}`] : []),
+                          `preference:${targetPreference}`,
+                        ]
+                    : targetPreferences
+                      ? []
+                      : currentTargetCandidate
+                        ? [`target:${currentTargetCandidate}`]
+                        : []),
+                  ...(fallbackPreference
+                    ? [
+                        fallbackPreference === fallbackTargetIds[0]
+                          ? `fallback:${fallbackPreference}`
+                          : `replacement_preference:${fallbackPreference}`,
+                      ]
+                    : fallbackPreferences
+                      ? []
+                      : fallbackTargetCandidate
+                        ? [`fallback:${fallbackTargetCandidate}`]
+                        : []),
+                ],
+              ]
+            })
+          )
+          holdRealityAllianceStrategyMeeting(domain, {
+            allianceId,
+            callerId: interaction.fromId,
+            attendeeIds,
+            targetIds: currentTargetIds,
+            fallbackTargetIds,
+            planIds,
+            agenda:
+              allianceStrategyKind === 'NOMINATION'
+                ? 'nominations'
+                : allianceStrategyKind === 'SAFETY'
+                  ? 'safety'
+                  : 'eviction_vote',
+            at: { day, phase },
+            sourceEventId: `incoming:${interaction.id}`,
+            excusedAbsentIds,
+            memberPlanBeliefs,
+          })
+          dispatch(replaceRealityDomain(domain))
+          return
+        }
+
+        if (aligned && subjectId) {
+          coordinateRealityAllianceTarget(domain, {
+            actorId: interaction.fromId,
+            partnerId: humanId,
+            subjectId,
+            kind: allianceStrategyKind === 'SAFETY' ? 'FALLBACK' : 'CURRENT',
+            at: { day, phase },
+            sourceEventId: `incoming:${interaction.id}`,
+            allianceId,
+          })
+          dispatch(replaceRealityDomain(domain))
+          return
+        }
+      }
     }
+
+    const relationshipIntent = interaction.payload?.relationshipIntent
+    const domain = structuredClone(getState().social.reality)
+    let domainChanged = false
+
+    if (typeof relationshipIntent === 'string') {
+      // Immediate incoming effects may already have updated the social projection.
+      // Start from the latest domain so recording the storyline never rolls those
+      // relationship changes back.
+      domainChanged =
+        resolveRelationshipStoryResponse(domain, {
+          ownerId: interaction.fromId,
+          targetId: humanId,
+          intent: relationshipIntent,
+          responseType,
+          eventId: `incoming:${interaction.id}`,
+          at: { day, phase },
+        }) || domainChanged
+    }
+
+    // Autonomy-scheduled alliance proposals do not carry a pending Reality
+    // interaction id. Accepting one must still create/recruit a canonical
+    // RealityAlliance; otherwise the legacy Alliance tag is only temporary and
+    // disappears when the Reality projection runs on the next phase/day.
+    if (
+      getInteractionSocialMode(interaction, state) === 'drama' &&
+      interaction.type === 'alliance_proposal' &&
+      responseType === 'accept'
+    ) {
+      const existing = Object.values(domain.alliances).find(
+        (alliance) =>
+          (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+          alliance.memberIds.includes(interaction.fromId) &&
+          alliance.memberIds.includes(humanId)
+      )
+      if (!existing) {
+        const recruitmentAlliance = findRealityAllianceForRecruitment(
+          domain,
+          interaction.fromId,
+          humanId
+        )
+        if (recruitmentAlliance) {
+          recruitRealityAllianceMember(domain, {
+            allianceId: recruitmentAlliance.id,
+            recruiterId: interaction.fromId,
+            targetId: humanId,
+            expandedAllianceId: `alliance:${[...recruitmentAlliance.memberIds, humanId]
+              .sort()
+              .join('~')}:incoming:${interaction.id}`,
+            at: { day, phase },
+          })
+        } else {
+          const alliance = createRealityAlliance(domain, {
+            id: `alliance:${[interaction.fromId, humanId]
+              .sort()
+              .join('~')}:incoming:${interaction.id}`,
+            founderIds: [interaction.fromId],
+            memberIds: [humanId],
+            purpose: 'Mutual protection',
+            at: { day, phase },
+          })
+          holdRealityAllianceMeeting(domain, {
+            allianceId: alliance.id,
+            attendeeIds: [interaction.fromId, humanId],
+            targetIds: [],
+            planIds: [`protect:${alliance.id}`],
+            at: { day, phase },
+          })
+          markRealityAllianceInfiltratorIfSecondary(domain, alliance.id, humanId, {
+            day,
+            phase,
+          })
+        }
+        domainChanged = true
+      }
+    }
+
+    if (domainChanged) dispatch(replaceRealityDomain(domain))
     return
   }
   const resolved = resolvePendingHumanRealityInteraction({
@@ -112,6 +410,19 @@ function resolveRealityIncomingInteraction(
     subjectId:
       typeof interaction.payload?.subjectId === 'string'
         ? interaction.payload.subjectId
+        : undefined,
+    allianceId:
+      typeof interaction.payload?.allianceId === 'string'
+        ? interaction.payload.allianceId
+        : undefined,
+    allianceStrategyKind:
+      interaction.payload?.allianceStrategyKind === 'NOMINATION' ||
+      interaction.payload?.allianceStrategyKind === 'SAFETY'
+        ? interaction.payload.allianceStrategyKind
+        : undefined,
+    secondarySubjectId:
+      typeof interaction.payload?.secondarySubjectId === 'string'
+        ? interaction.payload.secondarySubjectId
         : undefined,
   })
   if (resolved.event) dispatch(replaceRealityDomain(resolved.domain))
@@ -127,6 +438,14 @@ function getResponseDelta(
   responseLabel?: string
 ): number {
   const scenarioKey = interaction.payload?.scenarioKey
+  const allianceStrategyScenario = isAllianceStrategyScenario(scenarioKey)
+  if (allianceStrategyScenario) {
+    if (responseType === 'accept' || responseType === 'positive') return 3
+    if (responseType === 'neutral' || responseType === 'decline' || responseType === 'negative') {
+      return 0
+    }
+    return -2
+  }
   if (
     scenarioKey === 'safety_holder_consults_loh' ||
     scenarioKey === 'loh_consults_safety_holder'
@@ -277,15 +596,31 @@ function buildResponseOutcomeText(
   responseLabel?: string
 ): string | undefined {
   const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
-  if (
-    !hasContextualScenario &&
-    interaction.type === 'alliance_proposal' &&
-    responseType === 'accept'
-  ) {
+  if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
     return `The alliance with ${fromName} is now active. Later votes and nominations will show whether it holds.`
   }
 
   const scenarioKey = interaction.payload?.scenarioKey
+  if (isAllianceStrategyScenario(scenarioKey)) {
+    if (responseType === 'accept' || responseType === 'positive') {
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `Your position joined ${fromName}'s alliance huddle. Any majority-backed plan is now recorded.`
+        : `${fromName} took your answer as strategic alignment. The shared alliance plan is now live.`
+    }
+    if (responseType === 'neutral') {
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `You heard ${fromName}'s alliance read without committing. Your position was recorded, and the room may still settle on a majority-backed plan.`
+        : `You heard ${fromName}'s alliance read without committing to it. No shared plan was locked.`
+    }
+    if (responseType === 'decline' || responseType === 'negative') {
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `You pushed back on ${fromName}'s proposed move. Your dissent was recorded, though the alliance can still lock a majority-backed plan.`
+        : `You pushed back on ${fromName}'s proposed move. The alliance remains intact, but this target was not agreed.`
+    }
+    return interaction.payload?.allianceGroupHuddle === true
+      ? `You stepped out of ${fromName}'s alliance huddle. The remaining members may still reach a plan without you.`
+      : `You stepped out of ${fromName}'s strategy conversation. No alliance plan was locked from your response.`
+  }
   if (scenarioKey === 'safety_holder_consults_loh') {
     const choice = getDeclaredSafetyChoice(interaction, responseLabel)
     if (choice.kind === 'save')
@@ -421,6 +756,7 @@ function applyIncomingChoiceConsequences({
   const consultationScenario =
     interaction.payload?.scenarioKey === 'safety_holder_consults_loh' ||
     interaction.payload?.scenarioKey === 'loh_consults_safety_holder'
+  const allianceStrategyScenario = isAllianceStrategyScenario(interaction.payload?.scenarioKey)
   const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
   const contextualResolution = resolveIncomingResponse({
     interaction,
@@ -433,14 +769,18 @@ function applyIncomingChoiceConsequences({
     responseLabel,
     senderIsNominated: state.game.nomineeIds.includes(interaction.fromId),
   })
-  const actorDelta =
-    hasContextualScenario && !consultationScenario
+  const actorDelta = allianceStrategyScenario
+    ? baseDelta
+    : hasContextualScenario && !consultationScenario
       ? contextualResolution.actorDelta
       : dramaMode && !consultationScenario
         ? getIncomingResponseRelationshipDelta(interaction.type, responseType, responseTone)
         : baseDelta
-  const playerDelta =
-    hasContextualScenario && !consultationScenario ? contextualResolution.playerDelta : 0
+  const playerDelta = allianceStrategyScenario
+    ? Math.sign(baseDelta) * Math.min(1, Math.abs(baseDelta))
+    : hasContextualScenario && !consultationScenario
+      ? contextualResolution.playerDelta
+      : 0
   const outcomeText =
     buildResponseOutcomeText(interaction, responseType, fromName, subjectName, responseLabel) ??
     contextualResolution.outcomeText
@@ -540,12 +880,16 @@ function applyIncomingChoiceConsequences({
       updateSocialMemory({
         actorId: interaction.fromId,
         targetId: humanPlayer.id,
-        deltas: hasContextualScenario
-          ? mergeSocialMemoryDeltas(
-              buildSocialMemoryDeltaForResponse(responseType),
-              contextualResolution.memoryDelta
+        deltas: allianceStrategyScenario
+          ? buildSocialMemoryDeltaForResponse(
+              responseType === 'decline' || responseType === 'negative' ? 'neutral' : responseType
             )
-          : buildSocialMemoryDeltaForResponse(responseType),
+          : hasContextualScenario
+            ? mergeSocialMemoryDeltas(
+                buildSocialMemoryDeltaForResponse(responseType),
+                contextualResolution.memoryDelta
+              )
+            : buildSocialMemoryDeltaForResponse(responseType),
         event: buildSocialMemoryEvent(
           interaction,
           responseType,
@@ -633,6 +977,82 @@ function applyIncomingChoiceConsequences({
   }
 }
 
+function settleBackgroundSocialAction(
+  dispatch: AppDispatch,
+  getState: () => RootState,
+  interaction: IncomingInteraction,
+  resolvedAt: number
+): void {
+  if (
+    interaction.payload?.source !== 'background_social' ||
+    typeof interaction.payload?.originActionId !== 'string' ||
+    typeof interaction.payload?.realityInteractionId !== 'string'
+  ) {
+    return
+  }
+
+  const action = getRuntimeSocialActionById(interaction.payload.originActionId)
+  if (!action) return
+
+  const state = getState()
+  const realityInteraction =
+    state.social.reality.interactions[interaction.payload.realityInteractionId]
+  const resolvedEvent = [...state.social.reality.events]
+    .reverse()
+    .find((event) => event.interactionId === interaction.payload?.realityInteractionId)
+  if (!resolvedEvent || !realityInteraction) return
+
+  const outcome = resolvedEvent.outcome === 'SUCCESS' ? 'success' : 'failure'
+  const targetCount = Math.max(1, realityInteraction.targetIds.length)
+  const effect = getSocialResourceEffect(action, outcome, targetCount)
+  if (effect.influence !== 0) {
+    dispatch(applyInfluenceDelta({ playerId: interaction.fromId, delta: effect.influence }))
+  }
+  if (effect.info !== 0) {
+    dispatch(applyInfoDelta({ playerId: interaction.fromId, delta: effect.info }))
+  }
+
+  const after = getState()
+  const costs = normalizeActionCosts(
+    action,
+    targetCount,
+    getInteractionSocialMode(interaction, after) === 'drama'
+  )
+  dispatch(
+    recordSocialAction({
+      entry: {
+        actionId: action.id,
+        actorId: interaction.fromId,
+        targetId: realityInteraction.targetIds[0] ?? interaction.fromId,
+        targetIds: [...realityInteraction.targetIds],
+        cost: costs.energy,
+        costs,
+        delta: 0,
+        outcome,
+        newEnergy: after.social.energyBank[interaction.fromId] ?? 0,
+        balancesAfter: {
+          energy: after.social.energyBank[interaction.fromId] ?? 0,
+          influence: after.social.influenceBank[interaction.fromId] ?? 0,
+          info: after.social.infoBank[interaction.fromId] ?? 0,
+        },
+        timestamp: resolvedAt,
+        week: interaction.createdDay ?? interaction.createdWeek,
+        phase: interaction.createdPhase ?? state.game.phase,
+        source: 'system',
+        ...(effect.influence !== 0 || effect.info !== 0
+          ? {
+              yieldsApplied: {
+                ...(effect.influence !== 0 ? { influence: effect.influence } : {}),
+                ...(effect.info !== 0 ? { info: effect.info } : {}),
+              },
+            }
+          : {}),
+        label: resolvedEvent.outcome,
+      },
+    })
+  )
+}
+
 export function respondToIncomingInteraction({
   interactionId,
   responseType,
@@ -654,7 +1074,7 @@ export function respondToIncomingInteraction({
     const resolvedAt = Date.now()
     const realityBeforeResponse = state.social.reality
 
-    if (isIncomingInteractionInvalidated(interaction, state.game)) {
+    if (isIncomingInteractionInvalidated(interaction, state.game, state.social.reality)) {
       dispatch(
         dismissIncomingInteraction({
           interactionId,
@@ -685,6 +1105,7 @@ export function respondToIncomingInteraction({
       state.game.phase,
       realityBeforeResponse
     )
+    settleBackgroundSocialAction(dispatch, getState, interaction, resolvedAt)
 
     dispatch(
       resolveIncomingInteraction({
@@ -755,6 +1176,7 @@ export function autoResolveExpiredIncomingInteractionsForClock(day: number, phas
         phase,
         realityBeforeResponse
       )
+      settleBackgroundSocialAction(dispatch, getState, interaction, resolvedAt)
     }
 
     dispatch(

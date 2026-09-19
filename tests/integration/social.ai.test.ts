@@ -6,24 +6,26 @@
 //     the driver skips that action (actionsExecuted stays 0).
 //  3. When all resources are available the driver executes the action normally.
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { configureStore } from '@reduxjs/toolkit';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { configureStore } from '@reduxjs/toolkit'
 import socialReducer, {
   setEnergyBankEntry,
   setInfluenceBankEntry,
   setInfoBankEntry,
-} from '../../src/social/socialSlice';
-import { initManeuvers, canAfford } from '../../src/social/SocialManeuvers';
-import { normalizeActionCosts } from '../../src/social/smExecNormalize';
-import { getActionById } from '../../src/social/SocialManeuvers';
-import { setStore, start, stop, getStatus } from '../../src/social/socialAIDriver';
-import { socialConfig } from '../../src/social/socialConfig';
-import * as SocialPolicy from '../../src/social/SocialPolicy';
+  initializeRealitySimulation,
+} from '../../src/social/socialSlice'
+import { initManeuvers, canAfford } from '../../src/social/SocialManeuvers'
+import { normalizeActionCosts } from '../../src/social/smExecNormalize'
+import { getActionById } from '../../src/social/SocialManeuvers'
+import { setStore, start, stop, getStatus } from '../../src/social/socialAIDriver'
+import { socialConfig } from '../../src/social/socialConfig'
+import * as SocialPolicy from '../../src/social/SocialPolicy'
+import * as DramaPolicy from '../../src/social/dramaAIPolicy'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makeStore() {
-  return configureStore({ reducer: { social: socialReducer } });
+  return configureStore({ reducer: { social: socialReducer } })
 }
 
 function makeFullStore() {
@@ -32,7 +34,11 @@ function makeFullStore() {
     reducer: {
       social: socialReducer,
       game: (
-        state: { players: Array<{ id: string; status: string; isUser?: boolean }>; seed: number; week: number } = {
+        state: {
+          players: Array<{ id: string; status: string; isUser?: boolean }>
+          seed: number
+          week: number
+        } = {
           players: [
             { id: 'ai1', status: 'active', isUser: false },
             { id: 'p_human', status: 'active', isUser: true },
@@ -40,161 +46,230 @@ function makeFullStore() {
           seed: 42,
           week: 1,
           phase: 'social_1',
-        },
+        }
       ) => state,
     },
-  });
+  })
+}
+
+function makeRealityAiStore() {
+  return configureStore({
+    reducer: {
+      social: socialReducer,
+      settings: (
+        state = {
+          gameUX: {
+            dramaMode: true,
+            romanceStorylines: true,
+          },
+        }
+      ) => state,
+      game: (
+        state = {
+          players: [
+            { id: 'ai1', name: 'AI 1', status: 'active', isUser: false },
+            { id: 'ai2', name: 'AI 2', status: 'active', isUser: false },
+            { id: 'human', name: 'Human', status: 'active', isUser: true },
+          ],
+          seed: 42,
+          week: 1,
+          phase: 'social_1',
+          mode: 'classic' as const,
+          publicModeEnabled: false,
+          lohId: null,
+          posWinnerId: null,
+          nomineeIds: [],
+          povProtectedIds: [],
+        }
+      ) => state,
+    },
+  })
 }
 
 // ── canAfford unit tests (driver-context) ──────────────────────────────────
 
 describe('canAfford – multi-resource combinations', () => {
   it('returns true when all costs are 0 and no banks are set', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    expect(canAfford('ai1', { energy: 0, influence: 0, info: 0 })).toBe(true);
-  });
+    const store = makeStore()
+    initManeuvers(store)
+    expect(canAfford('ai1', { energy: 0, influence: 0, info: 0 })).toBe(true)
+  })
 
   it('returns false when influence is required but bank is empty', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }))
     // influenceBank not set → 0
-    expect(canAfford('ai1', { energy: 1, influence: 1, info: 0 })).toBe(false);
-  });
+    expect(canAfford('ai1', { energy: 1, influence: 1, info: 0 })).toBe(false)
+  })
 
   it('returns false when info is required but bank is empty', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }))
     // infoBank not set → 0
-    expect(canAfford('ai1', { energy: 1, influence: 0, info: 1 })).toBe(false);
-  });
+    expect(canAfford('ai1', { energy: 1, influence: 0, info: 1 })).toBe(false)
+  })
 
   it('returns true after provisioning all three resources', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'ai1', value: 2 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'ai1', value: 3 }));
-    expect(canAfford('ai1', { energy: 5, influence: 2, info: 3 })).toBe(true);
-  });
-});
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }))
+    store.dispatch(setInfluenceBankEntry({ playerId: 'ai1', value: 2 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'ai1', value: 3 }))
+    expect(canAfford('ai1', { energy: 5, influence: 2, info: 3 })).toBe(true)
+  })
+})
 
 // ── AI driver skips unaffordable multi-resource actions ───────────────────
 
 describe('socialAIDriver – canAfford gating', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-  });
+    vi.useFakeTimers()
+  })
 
   afterEach(() => {
-    stop();
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
+    stop()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
 
   it('executes 0 actions when chosen action requires influence but player has none', () => {
-    const store = makeFullStore();
-    initManeuvers(store);
-    setStore(store);
+    const store = makeFullStore()
+    initManeuvers(store)
+    setStore(store)
 
     // Give the AI player energy but no influence
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }))
     // influenceBank left empty (0)
 
     // Force the AI to always choose vote_rally ({ energy:2, influence:50 })
-    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('vote_rally');
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('vote_rally')
 
-    start();
-    vi.advanceTimersByTime(socialConfig.tickIntervalMs);
+    start()
+    vi.advanceTimersByTime(socialConfig.tickIntervalMs)
 
-    expect(getStatus().actionsExecuted).toBe(0);
-  });
+    expect(getStatus().actionsExecuted).toBe(0)
+  })
 
   it('executes 0 actions when chosen action requires info but player has none', () => {
-    const store = makeFullStore();
-    initManeuvers(store);
-    setStore(store);
+    const store = makeFullStore()
+    initManeuvers(store)
+    setStore(store)
 
     // Give the AI player energy but no info
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }))
     // infoBank left empty (0)
 
     // Force the AI to always choose rumor ({ energy:2, info:100 })
-    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('rumor');
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('rumor')
 
-    start();
-    vi.advanceTimersByTime(socialConfig.tickIntervalMs);
+    start()
+    vi.advanceTimersByTime(socialConfig.tickIntervalMs)
 
-    expect(getStatus().actionsExecuted).toBe(0);
-  });
+    expect(getStatus().actionsExecuted).toBe(0)
+  })
 
   it('executes actions when all resources are available', () => {
-    const store = makeFullStore();
-    initManeuvers(store);
-    setStore(store);
+    const store = makeFullStore()
+    initManeuvers(store)
+    setStore(store)
 
     // Give the AI player all resources needed for ally (energy=3, no influence/info required)
-    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }));
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 5 }))
 
     // Force the AI to choose ally (plain energy cost only)
-    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('ally');
-    vi.spyOn(SocialPolicy, 'chooseTargetsFor').mockReturnValue(['p_human']);
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('ally')
+    vi.spyOn(SocialPolicy, 'chooseTargetsFor').mockReturnValue(['p_human'])
 
-    start();
-    vi.advanceTimersByTime(socialConfig.tickIntervalMs);
+    start()
+    vi.advanceTimersByTime(socialConfig.tickIntervalMs)
 
-    expect(getStatus().actionsExecuted).toBeGreaterThan(0);
-  });
-});
+    expect(getStatus().actionsExecuted).toBeGreaterThan(0)
+  })
+})
+
+describe('socialAIDriver – Reality resource settlement', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    stop()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('applies the same outcome-sensitive Information gain to a resolved AI Reality action', () => {
+    const store = makeRealityAiStore()
+    initManeuvers(store as never)
+    setStore(store as never)
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai2', value: 0 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'ai1', value: 0 }))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+
+    vi.spyOn(DramaPolicy, 'chooseUtilityDramaAIMove').mockReturnValue(null)
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('observe')
+
+    start()
+    vi.advanceTimersByTime(socialConfig.tickIntervalMs)
+
+    expect(getStatus().actionsExecuted).toBe(1)
+    expect(store.getState().social.energyBank.ai1).toBe(8)
+    expect(store.getState().social.infoBank.ai1).toBe(100)
+    expect(store.getState().social.actionHistory.at(-1)?.yieldsApplied).toEqual({
+      info: 100,
+    })
+  })
+})
 
 // ── normalizeActionCosts integration with canAfford ───────────────────────
 
 describe('normalizeActionCosts + canAfford integration', () => {
   it('proposeAlliance is unaffordable without info (costs info:200)', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
     // infoBank not set → 0 < 200 required
 
-    const action = getActionById('proposeAlliance')!;
-    const costs = normalizeActionCosts(action);
-    expect(costs).toEqual({ energy: 3, influence: 0, info: 200 });
-    expect(canAfford('p1', costs)).toBe(false);
-  });
+    const action = getActionById('proposeAlliance')!
+    const costs = normalizeActionCosts(action)
+    expect(costs).toEqual({ energy: 3, influence: 0, info: 200 })
+    expect(canAfford('p1', costs)).toBe(false)
+  })
 
   it('proposeAlliance becomes affordable when info is provisioned (200+ pts)', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 200 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 200 }))
 
-    const action = getActionById('proposeAlliance')!;
-    const costs = normalizeActionCosts(action);
-    expect(canAfford('p1', costs)).toBe(true);
-  });
+    const action = getActionById('proposeAlliance')!
+    const costs = normalizeActionCosts(action)
+    expect(canAfford('p1', costs)).toBe(true)
+  })
 
   it('rumor is unaffordable without info (costs info:100)', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
 
-    const action = getActionById('rumor')!;
-    const costs = normalizeActionCosts(action);
-    expect(costs).toEqual({ energy: 2, influence: 0, info: 100 });
-    expect(canAfford('p1', costs)).toBe(false);
-  });
+    const action = getActionById('rumor')!
+    const costs = normalizeActionCosts(action)
+    expect(costs).toEqual({ energy: 2, influence: 0, info: 100 })
+    expect(canAfford('p1', costs)).toBe(false)
+  })
 
   it('favor_request is affordable once denominated influence is provisioned (20+ pts)', () => {
-    const store = makeStore();
-    initManeuvers(store);
-    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }));
-    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 20 }));
+    const store = makeStore()
+    initManeuvers(store)
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 20 }))
 
-    const action = getActionById('favor_request')!;
-    const costs = normalizeActionCosts(action);
-    expect(costs).toEqual({ energy: 1, influence: 20, info: 0 });
-    expect(canAfford('p1', costs)).toBe(true);
-  });
-});
+    const action = getActionById('favor_request')!
+    const costs = normalizeActionCosts(action)
+    expect(costs).toEqual({ energy: 1, influence: 20, info: 0 })
+    expect(canAfford('p1', costs)).toBe(true)
+  })
+})

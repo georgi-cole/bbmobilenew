@@ -12,6 +12,7 @@ import type {
   IncomingInteractionType,
   ScheduledIncomingInteraction,
 } from './types'
+import type { RealityDomainState } from './reality/types'
 
 const DELIVERY_PHASE_ORDER = INCOMING_INTERACTION_PHASE_ORDER
 
@@ -31,6 +32,7 @@ interface SchedulerStore {
       scheduledIncomingInteractions?: ScheduledIncomingInteraction[]
       incomingInteractionDelivery?: IncomingInteractionDeliveryState
       relationships?: Record<string, Record<string, { affinity: number; tags: string[] }>>
+      reality?: RealityDomainState
     }
     game?: {
       week?: number
@@ -184,12 +186,19 @@ export function getInteractionDedupeReason({
     }
   }
 
-  const sameType = allFromActor.find(
-    (entry) =>
-      entry.type === interaction.type &&
+  const incomingDedupeGroup =
+    typeof interaction.payload?.dedupeGroup === 'string'
+      ? interaction.payload.dedupeGroup
+      : interaction.type
+  const sameType = allFromActor.find((entry) => {
+    const entryDedupeGroup =
+      typeof entry.payload?.dedupeGroup === 'string' ? entry.payload.dedupeGroup : entry.type
+    return (
+      entryDedupeGroup === incomingDedupeGroup &&
       week >= entry.createdWeek &&
       week - entry.createdWeek <= dedupe.sameTypeCooldownWeeks
-  )
+    )
+  })
   if (sameType) {
     return 'deduped_similar_pending'
   }
@@ -281,7 +290,10 @@ export function assignDeliverySlot({
     maxDeliveredPerPhase: number
   }>
 }): { scheduledForWeek: number; scheduledForPhase: string; deliveryReason: string } | null {
-  const deliveryConfig = { ...socialConfig.incomingInteractionDeliveryConfig, ...deliveryConfigOverride }
+  const deliveryConfig = {
+    ...socialConfig.incomingInteractionDeliveryConfig,
+    ...deliveryConfigOverride,
+  }
   const phaseIndex = getDeliveryPhaseIndex(phase)
   if (phaseIndex === null) {
     return null
@@ -404,7 +416,9 @@ export function deliverScheduledIncomingInteractionsForPhase(
   }
 
   for (const entry of scheduled) {
-    if (isIncomingInteractionInvalidated(entry.interaction, state.game ?? {})) {
+    if (
+      isIncomingInteractionInvalidated(entry.interaction, state.game ?? {}, state.social?.reality)
+    ) {
       logDecision(entry, 'expiration', 'invalidated_before_delivery')
       continue
     }

@@ -78,6 +78,35 @@ export const INCOMING_INTERACTION_VALIDITY_BANK: Record<string, IncomingInteract
     humanMustBeHoh: true,
     invalidPhases: ['live_vote', 'eviction_results', 'week_end', 'week_start'],
   },
+  alliance_nomination_pitch: {
+    humanMustBeHoh: true,
+    subjectMustBeInHouse: true,
+    allowedPhases: ['loh_results', 'social_1', 'nominations'],
+  },
+  alliance_vox_ballot_pitch: {
+    subjectMustBeInHouse: true,
+    allowedPhases: ['social_1', 'nominations'],
+  },
+  alliance_safety_pitch: {
+    humanMustHoldSafety: true,
+    subjectMustBeInHouse: true,
+    allowedPhases: ['pos_results'],
+  },
+  alliance_vote_pitch: {
+    humanMustBeEligibleVoter: true,
+    subjectMustBeInHouse: true,
+    allowedPhases: ['social_2', 'live_vote'],
+  },
+  alliance_power_nomination_huddle: {
+    senderMustBeHoh: true,
+    subjectMustBeInHouse: true,
+    allowedPhases: ['loh_results', 'social_1', 'nominations'],
+  },
+  alliance_power_safety_huddle: {
+    senderMustHoldSafety: true,
+    subjectMustBeInHouse: true,
+    allowedPhases: ['pos_results'],
+  },
   betrayal_warning: {
     subjectMustBeInHouse: true,
   },

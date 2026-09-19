@@ -7,14 +7,16 @@ import {
   finalizeRealityVote,
   generateRealityJuryQuestion,
   holdRealityAllianceMeeting,
+  recordRealityAllianceBetrayal,
   recordRealityCeremonyOutcome,
+  removeRealityAllianceMember,
   scoreRealityNominationCandidate,
   setRealityIntendedVote,
   setRealityStatedVote,
   upsertRealityPromise,
 } from '../reality'
 import { aiJurorVote, realityJurorScorecard } from '../../utils/juryUtils'
-import socialReducer, { recordRealityCeremony } from '../socialSlice'
+import socialReducer, { recordRealityCeremony, replaceRealityDomain } from '../socialSlice'
 
 describe('Reality ceremony aftermath', () => {
   it('turns official ceremonies into facts, memories, goals, and public perception', () => {
@@ -87,6 +89,186 @@ describe('Reality ceremony aftermath', () => {
   })
 })
 
+describe('Reality jury knowledge boundaries', () => {
+  it('does not score a finalist from a hidden alliance event the juror never learned', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'hidden-jury-pact',
+      founderIds: ['finalist', 'ally'],
+      memberIds: [],
+      purpose: 'Private final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    recordRealityAllianceBetrayal(state, {
+      actorId: 'finalist',
+      targetId: 'ally',
+      kind: 'SOCIAL_BETRAYAL',
+      at: { day: 4, phase: 'social_2' },
+      sourceEventId: 'private-betrayal',
+    })
+    const hidden = state.events.find((event) => event.type === 'ALLIANCE_BETRAYAL')
+    expect(hidden).toBeDefined()
+    expect(hidden?.visibility).toBe('GROUP_VISIBLE')
+    expect(hidden?.participantIds).not.toContain('juror')
+
+    const evaluation = computeRealityJuryEvaluation(state, 'juror', 'finalist', false)
+    expect(evaluation.sourceEventIds).not.toContain(hidden?.id)
+    expect(evaluation.ownership).toBe(0)
+  })
+
+  it('still scores a public ceremony even when the juror was not an explicit witness', () => {
+    const state = createInitialRealityDomainState()
+    const event = recordRealityCeremonyOutcome(state, {
+      kind: 'POWER_WON',
+      day: 4,
+      phase: 'loh_results',
+      actorId: 'finalist',
+      targetIds: [],
+      witnessIds: ['ally'],
+      publicEligible: true,
+    })
+
+    const evaluation = computeRealityJuryEvaluation(state, 'juror', 'finalist', false)
+    expect(evaluation.sourceEventIds).toContain(event.id)
+    expect(evaluation.competitionRespect).toBeGreaterThan(0)
+  })
+})
+
+describe('Reality promise ceremony resolution', () => {
+  it('resolves a Safety-use promise from the actual holder decision', () => {
+    const state = createInitialRealityDomainState()
+    upsertRealityPromise(state, {
+      id: 'use-safety-promise',
+      kind: 'use_safety_on_player',
+      promisorId: 'holder',
+      beneficiaryIds: ['nominee'],
+      witnessIds: ['requester'],
+      createdAt: { day: 3, phase: 'pos_results' },
+      deadline: { day: 3, phase: 'pos_ceremony_results' },
+      stakes: 0.7,
+      scope: { actionId: 'ask_use_safety', targetId: 'nominee' },
+      status: 'ACTIVE',
+    })
+
+    const event = recordRealityCeremonyOutcome(state, {
+      kind: 'SAFETY_USED',
+      day: 3,
+      phase: 'social_2',
+      actorId: 'holder',
+      targetIds: ['nominee'],
+      witnessIds: ['holder', 'nominee', 'requester'],
+      publicEligible: true,
+    })
+
+    expect(state.promises['use-safety-promise'].status).toBe('KEPT')
+    expect(state.promises['use-safety-promise'].resolutionEventId).toBe(event.id)
+    expect(event.relatedPromiseIds).toContain('use-safety-promise')
+  })
+
+  it('breaks a hold-Safety promise when the holder uses the power', () => {
+    const state = createInitialRealityDomainState()
+    upsertRealityPromise(state, {
+      id: 'hold-safety-promise',
+      kind: 'hold_safety',
+      promisorId: 'holder',
+      beneficiaryIds: ['loh'],
+      witnessIds: ['loh'],
+      createdAt: { day: 3, phase: 'pos_results' },
+      deadline: { day: 3, phase: 'pos_ceremony_results' },
+      stakes: 0.65,
+      scope: { actionId: 'ask_hold_safety' },
+      status: 'ACTIVE',
+    })
+
+    recordRealityCeremonyOutcome(state, {
+      kind: 'SAFETY_USED',
+      day: 3,
+      phase: 'social_2',
+      actorId: 'holder',
+      targetIds: ['nominee'],
+      witnessIds: ['holder', 'nominee', 'loh'],
+      publicEligible: true,
+    })
+
+    expect(state.promises['hold-safety-promise'].status).toBe('BROKEN')
+  })
+
+  it('resolves generic protection at the decision the promisor actually controls and voids unused promises', () => {
+    const nominationState = createInitialRealityDomainState()
+    upsertRealityPromise(nominationState, {
+      id: 'loh-protection',
+      kind: 'protect',
+      promisorId: 'loh',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_1' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+
+    recordRealityCeremonyOutcome(nominationState, {
+      kind: 'NOMINATIONS_LOCKED',
+      day: 2,
+      phase: 'nomination_results',
+      actorId: 'loh',
+      targetIds: ['outsider', 'pawn'],
+      witnessIds: ['loh', 'ally', 'outsider', 'pawn'],
+      publicEligible: true,
+    })
+    expect(nominationState.promises['loh-protection'].status).toBe('KEPT')
+
+    const voteState = createInitialRealityDomainState()
+    upsertRealityPromise(voteState, {
+      id: 'vote-protection',
+      kind: 'protect',
+      promisorId: 'voter',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_2' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+    finalizeRealityVote(
+      voteState,
+      'voter',
+      'outsider',
+      { day: 2, phase: 'live_vote' },
+      'vote-event',
+      ['ally', 'outsider']
+    )
+    expect(voteState.promises['vote-protection'].status).toBe('KEPT')
+
+    const unusedState = createInitialRealityDomainState()
+    upsertRealityPromise(unusedState, {
+      id: 'unused-protection',
+      kind: 'protect',
+      promisorId: 'bystander',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_1' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+    recordRealityCeremonyOutcome(unusedState, {
+      kind: 'EVICTION',
+      day: 2,
+      phase: 'eviction_results',
+      targetIds: ['outsider'],
+      witnessIds: ['bystander', 'ally', 'outsider'],
+      publicEligible: true,
+    })
+    expect(unusedState.promises['unused-protection'].status).toBe('VOID')
+  })
+})
+
 describe('Reality alliance ceremony consequences', () => {
   it('fractures a core pact when the LOH formally nominates their ally', () => {
     const state = createInitialRealityDomainState()
@@ -127,6 +309,53 @@ describe('Reality alliance ceremony consequences', () => {
     expect(state.relationships.ally.loh.resentment).toBeGreaterThan(0)
   })
 
+  it('removes an evicted member from operational alliances without treating the eviction as betrayal', () => {
+    const state = createInitialRealityDomainState()
+    const pair = createRealityAlliance(state, {
+      id: 'eviction-pair',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    pair.status = 'ACTIVE'
+    const wider = createRealityAlliance(state, {
+      id: 'eviction-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    wider.status = 'ACTIVE'
+
+    recordRealityCeremonyOutcome(state, {
+      kind: 'EVICTION',
+      day: 5,
+      phase: 'eviction_results',
+      targetIds: ['lia'],
+      witnessIds: ['ava', 'lia', 'kai'],
+      publicEligible: true,
+    })
+
+    expect(pair.memberIds).toEqual(['ava'])
+    expect(pair.status).toBe('DISSOLVED')
+    expect(wider.memberIds).toEqual(expect.arrayContaining(['ava', 'kai']))
+    expect(wider.memberIds).not.toContain('lia')
+    expect(wider.status).toBe('ACTIVE')
+    expect(
+      state.events.filter(
+        (event) => event.type === 'ALLIANCE_MEMBER_EVICTED' && event.targetIds.includes('lia')
+      )
+    ).toHaveLength(2)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          (event.actorId === 'lia' || event.targetIds.includes('lia'))
+      )
+    ).toBe(false)
+  })
+
   it('rewards following a known alliance vote plan only once across vote projections', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
@@ -157,6 +386,136 @@ describe('Reality alliance ceremony consequences', () => {
       'vote-revealed'
     )
     expect(alliance.memberCommitment.ava).toBe(afterCast)
+  })
+
+  it('records a known vote-plan defection without treating it like voting against an ally', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'plan-defiance-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      fallbackTargetIds: ['backup'],
+      planIds: ['target:outsider', 'fallback:backup'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const commitmentBefore = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'mara', { day: 5, phase: 'live_vote' }, 'vote-defiance')
+
+    expect(alliance.memberCommitment.ava).toBeLessThan(commitmentBefore)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_PLAN_DEFIED' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('mara')
+      )
+    ).toBe(true)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('mara')
+      )
+    ).toBe(false)
+    expect(state.relationships.lia.ava.suspicion).toBeGreaterThan(0)
+
+    const afterFirstProjection = alliance.memberCommitment.ava
+    finalizeRealityVote(
+      state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'eviction_results' },
+      'vote-defiance-reveal'
+    )
+    expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
+  })
+
+  it('does not punish a member when the alliance target is not available on the live block', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'stale-plan-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      planIds: ['target:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const commitmentBefore = alliance.memberCommitment.ava
+    finalizeRealityVote(state, 'ava', 'mara', { day: 5, phase: 'live_vote' }, 'forced-choice', [
+      'mara',
+      'zoe',
+    ])
+
+    expect(alliance.memberCommitment.ava).toBe(commitmentBefore)
+    expect(state.events.some((event) => event.type === 'ALLIANCE_PLAN_DEFIED')).toBe(false)
+  })
+
+  it('reacts to declared alliance dissent less harshly than a surprise plan defection', () => {
+    const buildState = (declaredDissent: boolean) => {
+      const state = createInitialRealityDomainState()
+      const alliance = createRealityAlliance(state, {
+        id: declaredDissent ? 'declared-dissent-pact' : 'surprise-defiance-pact',
+        founderIds: ['ava'],
+        memberIds: ['lia', 'kai'],
+        purpose: 'Vote together',
+        at: { day: 2, phase: 'social_1' },
+      })
+      holdRealityAllianceMeeting(state, {
+        allianceId: alliance.id,
+        attendeeIds: ['ava', 'lia', 'kai'],
+        targetIds: ['outsider'],
+        planIds: ['target:outsider'],
+        at: { day: 2, phase: 'social_2' },
+      })
+      if (declaredDissent) alliance.memberPlanBeliefs.ava = ['dissent:outsider']
+      return { state, alliance }
+    }
+
+    const surprise = buildState(false)
+    const declared = buildState(true)
+    const surpriseBefore = surprise.alliance.memberCommitment.ava
+    const declaredBefore = declared.alliance.memberCommitment.ava
+
+    finalizeRealityVote(
+      surprise.state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'live_vote' },
+      'surprise-defiance'
+    )
+    finalizeRealityVote(
+      declared.state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'live_vote' },
+      'declared-defiance'
+    )
+
+    const surpriseDrop = surpriseBefore - surprise.alliance.memberCommitment.ava
+    const declaredDrop = declaredBefore - declared.alliance.memberCommitment.ava
+    expect(declaredDrop).toBeGreaterThan(0)
+    expect(declaredDrop).toBeLessThan(surpriseDrop)
+    expect(
+      declared.state.events.some(
+        (event) => event.type === 'ALLIANCE_PLAN_DEFIED' && event.tags.includes('DECLARED_DISSENT')
+      )
+    ).toBe(true)
   })
 
   it('records an actual vote against an ally as a distinct alliance betrayal', () => {
@@ -197,6 +556,45 @@ describe('Reality alliance ceremony consequences', () => {
       'vote-reveal-against-lia'
     )
     expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
+  })
+})
+
+describe('Reality alliance exit projection', () => {
+  it('removes the live alliance tag and projects a broken membership after expulsion', () => {
+    const initial = socialReducer(undefined, { type: 'init' })
+    const reality = createInitialRealityDomainState(initial.relationships)
+    const alliance = createRealityAlliance(reality, {
+      id: 'exit-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.memberCommitment.ava = 0.9
+    alliance.memberCommitment.lia = 0.85
+    alliance.memberCommitment.kai = 0.05
+    alliance.memberPerceivedStatus.ava = 'CORE'
+    alliance.memberPerceivedStatus.lia = 'CORE'
+    alliance.memberPerceivedStatus.kai = 'PERIPHERAL'
+    alliance.leaderIds = ['ava', 'lia']
+
+    let state = socialReducer(initial, replaceRealityDomain(reality))
+    expect(state.relationships.ava.kai.tags).toContain('alliance')
+
+    const nextReality = structuredClone(state.reality)
+    removeRealityAllianceMember(nextReality, {
+      allianceId: alliance.id,
+      memberId: 'kai',
+      actorId: 'ava',
+      kind: 'EXPELLED',
+      at: { day: 4, phase: 'social_2' },
+      sourceEventId: 'expel-kai',
+    })
+    state = socialReducer(state, replaceRealityDomain(nextReality))
+
+    expect(state.relationships.ava.kai.tags).not.toContain('alliance')
+    expect(state.relationships.ava.kai.tags).toContain('broken_alliance')
   })
 })
 

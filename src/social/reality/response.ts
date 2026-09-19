@@ -1,22 +1,7 @@
 import type { RealityActionContract } from './actionContract'
-import type { RealityDomainState } from './types'
+import type { RealityDomainState, RealityResponseResolution } from './types'
 
-export type RealityResponseKind =
-  | 'ACCEPT'
-  | 'REJECT'
-  | 'QUESTION'
-  | 'LIE'
-  | 'COUNTER'
-  | 'DE_ESCALATE'
-  | 'ESCALATE'
-  | 'WALK_AWAY'
-
-export interface RealityResponseResolution {
-  kind: RealityResponseKind
-  utility: number
-  reason: string
-  accepted: boolean
-}
+export type { RealityResponseKind, RealityResponseResolution } from './types'
 
 export function resolveRealityTargetResponse(input: {
   action: RealityActionContract

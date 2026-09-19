@@ -19,6 +19,7 @@ export interface RealityLedgerProps {
   humanId: string
   /** Live social graph used to keep labels/meters synchronized after actions. */
   relationships?: RelationshipsMap
+  onRenameAlliance?: (allianceId: string, name: string) => void
 }
 
 function confidenceLabel(confidence: number): string {
@@ -152,9 +153,12 @@ export default function RealityLedger({
   players,
   humanId,
   relationships: liveRelationships,
+  onRenameAlliance,
 }: RealityLedgerProps) {
   const [tab, setTab] = useState<LedgerTab>('relationships')
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [editingAllianceId, setEditingAllianceId] = useState<string | null>(null)
+  const [allianceNameDraft, setAllianceNameDraft] = useState('')
   const activePlayerIds = useMemo(
     () =>
       new Set(
@@ -405,6 +409,21 @@ export default function RealityLedger({
                         ? 'Exposed alliance'
                         : 'Possible alliance')
                   const knownMembers = knowledge.knownMemberIds.map(playerName).join(' · ')
+                  const memberHierarchy = isMember
+                    ? knowledge.knownMemberIds
+                        .map((memberId) => {
+                          const leaderIndex = alliance.leaderIds.indexOf(memberId)
+                          const role =
+                            leaderIndex === 0
+                              ? 'Leader'
+                              : leaderIndex === 1
+                                ? 'Co-leader'
+                                : titleCase(alliance.memberPerceivedStatus[memberId] ?? 'member')
+                          return `${playerName(memberId)} (${role})`
+                        })
+                        .join(' · ')
+                    : ''
+                  const editingName = editingAllianceId === alliance.id
                   return (
                     <article className="reality-ledger__item" key={alliance.id}>
                       <div>
@@ -416,11 +435,56 @@ export default function RealityLedger({
                       <strong>{title}</strong>
                       <p>
                         {isMember
-                          ? knownMembers
+                          ? memberHierarchy
                           : knownMembers
                             ? `Known links: ${knownMembers}${knowledge.fullMembershipKnown ? '' : ' · other members unknown'}`
                             : 'You suspect a pact exists, but do not know who is fully inside it.'}
                       </p>
+                      {isMember && onRenameAlliance && alliance.status !== 'DISSOLVED' && (
+                        <div className="reality-ledger__alliance-actions">
+                          {editingName ? (
+                            <>
+                              <input
+                                type="text"
+                                value={allianceNameDraft}
+                                maxLength={28}
+                                aria-label="Alliance name"
+                                onChange={(event) => setAllianceNameDraft(event.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const nextName = allianceNameDraft.trim()
+                                  if (nextName.length < 2) return
+                                  onRenameAlliance(alliance.id, nextName)
+                                  setEditingAllianceId(null)
+                                }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingAllianceId(null)
+                                  setAllianceNameDraft('')
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingAllianceId(alliance.id)
+                                setAllianceNameDraft(alliance.name ?? '')
+                              }}
+                            >
+                              Rename alliance
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </article>
                   )
                 })}

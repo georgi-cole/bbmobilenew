@@ -22,7 +22,9 @@ import {
   coordinateRealityAllianceTarget,
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  holdRealityAllianceStrategyMeeting,
   leakRealityAlliance,
+  removeRealityAllianceMember,
   markRealityAllianceInfiltratorIfSecondary,
   recordRealityAllianceBetrayal,
   recruitRealityAllianceMember,
@@ -66,6 +68,10 @@ export interface RealityOrchestrationResult {
   event: RealitySocialEvent | null
   selectedActionId: string | null
   response: RealityResponseResolution | null
+  /** Per-target resolutions are retained for compatibility adapters so a
+   * partially successful group interaction does not flatten every target to
+   * the same legacy success/failure result. */
+  targetResponses?: Array<{ targetId: string; response: RealityResponseResolution }>
   score?: RealityScoreBreakdown
 }
 
@@ -139,13 +145,76 @@ function applyRealityLifecycle(input: {
   event: RealitySocialEvent
   action: RealityActionContract
   subjectId?: string
+  secondarySubjectId?: string
+  allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
   responses: Array<{ targetId: string; response: RealityResponseResolution }>
 }): void {
-  const { domain, interaction, event, action, subjectId, responses } = input
+  const {
+    domain,
+    interaction,
+    event,
+    action,
+    subjectId,
+    secondarySubjectId,
+    allianceId,
+    allianceStrategyKind,
+    responses,
+  } = input
   const acceptedTargets = responses
     .filter((entry) => entry.response.accepted)
     .map((entry) => entry.targetId)
   const at = { day: event.day, phase: event.phase }
+
+  if (
+    action.id === 'consult_alliance' &&
+    allianceId &&
+    allianceStrategyKind &&
+    acceptedTargets.length > 0
+  ) {
+    const alliance = domain.alliances[allianceId]
+    if (
+      alliance &&
+      (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+      alliance.memberIds.includes(interaction.actorId)
+    ) {
+      const attendees = [
+        interaction.actorId,
+        ...interaction.targetIds.filter((id) => alliance.memberIds.includes(id)),
+      ].filter((id, index, values) => values.indexOf(id) === index)
+      const excusedAbsentIds = alliance.memberIds.filter((id) => !attendees.includes(id))
+
+      if (attendees.length >= 2) {
+        const targetIds =
+          subjectId && !alliance.memberIds.includes(subjectId)
+            ? [subjectId]
+            : [...alliance.currentTargetIds]
+        const fallbackTargetIds =
+          allianceStrategyKind === 'SAFETY' &&
+          secondarySubjectId &&
+          !alliance.memberIds.includes(secondarySubjectId)
+            ? [secondarySubjectId]
+            : [...alliance.fallbackTargetIds]
+        const planIds = [
+          ...targetIds.map((id) => `target:${id}`),
+          ...fallbackTargetIds.map((id) => `fallback:${id}`),
+        ]
+
+        holdRealityAllianceStrategyMeeting(domain, {
+          allianceId,
+          callerId: interaction.actorId,
+          attendeeIds: attendees,
+          targetIds,
+          fallbackTargetIds,
+          planIds,
+          agenda: allianceStrategyKind === 'NOMINATION' ? 'nominations' : 'safety',
+          at,
+          sourceEventId: event.id,
+          excusedAbsentIds,
+        })
+      }
+    }
+  }
 
   if (action.purposes.includes('COMMITMENT') && ['proposeAlliance', 'ally'].includes(action.id)) {
     for (const targetId of acceptedTargets) {
@@ -198,6 +267,49 @@ function applyRealityLifecycle(input: {
         }
       }
     }
+  } else if (action.id === 'ask_use_safety' && subjectId && acceptedTargets.length > 0) {
+    for (const safetyHolderId of acceptedTargets) {
+      const promiseId = `promise:${interaction.id}:use-safety:${safetyHolderId}`
+      upsertRealityPromise(domain, {
+        id: promiseId,
+        kind: 'use_safety_on_player',
+        // The housemate who accepted the request owns the promise. The original
+        // requester must never be recorded as promising to use somebody else's power.
+        promisorId: safetyHolderId,
+        beneficiaryIds: [subjectId],
+        witnessIds: [...new Set([interaction.actorId, ...event.witnessIds])],
+        createdAt: at,
+        deadline: { day: event.day, phase: 'pos_ceremony_results' },
+        stakes: Math.min(1, 0.55 + (action.baseWeight ?? 0) * 0.1),
+        scope: {
+          actionId: action.id,
+          targetId: subjectId,
+          requestedById: interaction.actorId,
+        },
+        status: 'ACTIVE',
+      })
+      event.relatedPromiseIds.push(promiseId)
+    }
+  } else if (action.id === 'ask_hold_safety' && acceptedTargets.length > 0) {
+    for (const safetyHolderId of acceptedTargets) {
+      const promiseId = `promise:${interaction.id}:hold-safety:${safetyHolderId}`
+      upsertRealityPromise(domain, {
+        id: promiseId,
+        kind: 'hold_safety',
+        promisorId: safetyHolderId,
+        beneficiaryIds: [interaction.actorId],
+        witnessIds: [...new Set([interaction.actorId, ...event.witnessIds])],
+        createdAt: at,
+        deadline: { day: event.day, phase: 'pos_ceremony_results' },
+        stakes: Math.min(1, 0.5 + (action.baseWeight ?? 0) * 0.1),
+        scope: {
+          actionId: action.id,
+          requestedById: interaction.actorId,
+        },
+        status: 'ACTIVE',
+      })
+      event.relatedPromiseIds.push(promiseId)
+    }
   } else if (action.purposes.includes('COMMITMENT') && acceptedTargets.length > 0) {
     const promiseId = `promise:${interaction.id}`
     upsertRealityPromise(domain, {
@@ -233,6 +345,7 @@ function applyRealityLifecycle(input: {
         kind,
         at,
         sourceEventId: event.id,
+        allianceId,
       })
     }
   }
@@ -281,13 +394,47 @@ function applyRealityLifecycle(input: {
     const allianceBetrayalAction = action.id === 'betray' || action.id === 'break_alliance'
     for (const { targetId, response } of responses) {
       if (allianceBetrayalAction) {
+        const pactToLeave =
+          action.id === 'break_alliance'
+            ? Object.values(domain.alliances)
+                .filter(
+                  (alliance) =>
+                    alliance.status !== 'DISSOLVED' &&
+                    alliance.memberIds.includes(interaction.actorId) &&
+                    alliance.memberIds.includes(targetId)
+                )
+                .sort(
+                  (left, right) =>
+                    Number(right.status === 'ACTIVE') - Number(left.status === 'ACTIVE') ||
+                    left.memberIds.length - right.memberIds.length ||
+                    (right.memberCommitment[interaction.actorId] ?? 0) -
+                      (left.memberCommitment[interaction.actorId] ?? 0) ||
+                    left.id.localeCompare(right.id)
+                )[0]
+            : undefined
         recordRealityAllianceBetrayal(domain, {
           actorId: interaction.actorId,
           targetId,
           kind: 'SOCIAL_BETRAYAL',
           at,
           sourceEventId: event.id,
+          ...(pactToLeave ? { allianceId: pactToLeave.id } : {}),
         })
+        if (
+          action.id === 'break_alliance' &&
+          pactToLeave &&
+          pactToLeave.status !== 'DISSOLVED' &&
+          pactToLeave.memberIds.includes(interaction.actorId)
+        ) {
+          removeRealityAllianceMember(domain, {
+            allianceId: pactToLeave.id,
+            memberId: interaction.actorId,
+            actorId: interaction.actorId,
+            kind: 'VOLUNTARY',
+            at,
+            sourceEventId: event.id,
+          })
+        }
         continue
       }
       const grievanceId = `grievance:${targetId}:${event.id}`
@@ -489,6 +636,53 @@ function updateRealityExperience(
   )
 }
 
+function summarizeRealityResponses(
+  action: RealityActionContract,
+  responses: Array<{ targetId: string; response: RealityResponseResolution }>
+): {
+  response: RealityResponseResolution
+  outcome: RealitySocialEvent['outcome']
+} {
+  const acceptedCount = responses.filter((entry) => entry.response.accepted).length
+  const response: RealityResponseResolution =
+    responses.length === 1
+      ? responses[0].response
+      : acceptedCount === responses.length
+        ? {
+            kind: 'ACCEPT',
+            utility: 1,
+            reason: 'group_accepted',
+            accepted: true,
+          }
+        : acceptedCount > 0
+          ? {
+              kind: 'COUNTER',
+              utility: acceptedCount / Math.max(1, responses.length),
+              reason: `group_partial_acceptance:${acceptedCount}/${responses.length}`,
+              accepted: false,
+            }
+          : {
+              kind: 'REJECT',
+              utility: 0,
+              reason: 'group_rejected',
+              accepted: false,
+            }
+
+  const outcome: RealitySocialEvent['outcome'] =
+    responses.length > 1 && acceptedCount > 0 && acceptedCount < responses.length
+      ? 'PARTIAL'
+      : response.kind === 'COUNTER'
+        ? 'COUNTERED'
+        : action.purposes.includes('INFORMATION') &&
+            (response.kind === 'QUESTION' || response.kind === 'LIE')
+          ? 'PARTIAL'
+          : response.accepted || action.purposes.includes('CONFLICT')
+            ? 'SUCCESS'
+            : 'FAILURE'
+
+  return { response, outcome }
+}
+
 export function runRealityOpportunity(input: {
   domain: RealityDomainState
   simulation: RealitySimulationState
@@ -601,6 +795,41 @@ export function runRealityOpportunity(input: {
   }
   domain.interactions[interaction.id] = interaction
   if (awaitingHuman) {
+    // A mixed group scene can include both the human and AI housemates. Resolve
+    // the AI recipients now with the persisted RNG, then store those individual
+    // reactions on the pending interaction. The human still decides only their
+    // own position later; the eventual group outcome combines all responses.
+    if (input.opportunity.direction === 'GROUP') {
+      const targetResponses: Record<string, RealityResponseResolution> = {}
+      for (const targetId of selected.targetIds) {
+        if (input.opportunity.actors[targetId]?.isHuman) continue
+        const responseDraw = drawRealityRandom(simulation.rng ?? selectionDraw.next)
+        simulation = { ...simulation, rng: responseDraw.next }
+        const targetResponse = resolveRealityTargetResponse({
+          action: selected.action,
+          actorId: actor.id,
+          targetId,
+          reality: domain,
+          draw: responseDraw.value,
+          acceptanceChanceOverride: selected.acceptanceChanceOverride,
+        })
+        targetResponses[targetId] = targetResponse
+        simulation = appendRealitySimulationTrace(simulation, {
+          day: input.opportunity.context.day,
+          phase: input.opportunity.context.phase,
+          stage: 'response',
+          actorId: targetId,
+          targetIds: [actor.id],
+          actionId: selected.action.id,
+          reason: targetResponse.reason,
+          randomDraw: responseDraw.value,
+          rngCursor: responseDraw.next.cursor,
+        })
+      }
+      if (Object.keys(targetResponses).length > 0) {
+        interaction.targetResponses = targetResponses
+      }
+    }
     return {
       domain,
       simulation,
@@ -650,43 +879,9 @@ export function runRealityOpportunity(input: {
       })
     }
   }
-  const acceptedCount = responses.filter((entry) => entry.response.accepted).length
-  const response: RealityResponseResolution =
-    responses.length === 1
-      ? responses[0].response
-      : acceptedCount === responses.length
-        ? {
-            kind: 'ACCEPT',
-            utility: 1,
-            reason: 'group_accepted',
-            accepted: true,
-          }
-        : acceptedCount > 0
-          ? {
-              kind: 'COUNTER',
-              utility: acceptedCount / Math.max(1, responses.length),
-              reason: `group_partial_acceptance:${acceptedCount}/${responses.length}`,
-              accepted: false,
-            }
-          : {
-              kind: 'REJECT',
-              utility: 0,
-              reason: 'group_rejected',
-              accepted: false,
-            }
+  const { response, outcome } = summarizeRealityResponses(selected.action, responses)
   const eventSequence = domain.nextSequence
   domain.nextSequence += 1
-  const outcome =
-    responses.length > 1 && acceptedCount > 0 && acceptedCount < responses.length
-      ? 'PARTIAL'
-      : response.kind === 'COUNTER'
-        ? 'COUNTERED'
-        : selected.action.purposes.includes('INFORMATION') &&
-            (response.kind === 'QUESTION' || response.kind === 'LIE')
-          ? 'PARTIAL'
-          : response.accepted || selected.action.purposes.includes('CONFLICT')
-            ? 'SUCCESS'
-            : 'FAILURE'
   const event: RealitySocialEvent = {
     id: `reality-event-${eventSequence}`,
     sequence: eventSequence,
@@ -814,6 +1009,7 @@ export function runRealityOpportunity(input: {
     event,
     selectedActionId: selected.action.id,
     response,
+    targetResponses: responses,
     score: selected.score,
   }
 }
@@ -859,6 +1055,9 @@ export function resolvePendingHumanRealityInteraction(input: {
   day: number
   phase: string
   subjectId?: string
+  secondarySubjectId?: string
+  allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
 }): { domain: RealityDomainState; event: RealitySocialEvent | null } {
   const domain = cloneDomain(input.domain)
   const interaction = domain.interactions[input.interactionId]
@@ -871,6 +1070,27 @@ export function resolvePendingHumanRealityInteraction(input: {
     return { domain, event: null }
   }
   const humanResponse = explicitHumanResponse(input.responseType)
+  const responses: Array<{ targetId: string; response: RealityResponseResolution }> = [
+    ...Object.entries(interaction.targetResponses ?? {})
+      .filter(
+        ([targetId]) => targetId !== input.humanId && interaction.targetIds.includes(targetId)
+      )
+      .map(([targetId, response]) => ({ targetId, response })),
+    { targetId: input.humanId, response: humanResponse },
+  ]
+  const aggregate =
+    responses.length > 1
+      ? summarizeRealityResponses(action, responses)
+      : {
+          response: humanResponse,
+          outcome: (humanResponse.accepted
+            ? 'SUCCESS'
+            : humanResponse.kind === 'QUESTION'
+              ? 'COUNTERED'
+              : humanResponse.kind === 'WALK_AWAY'
+                ? 'IGNORED'
+                : 'FAILURE') as RealitySocialEvent['outcome'],
+        }
   const sequence = domain.nextSequence
   domain.nextSequence += 1
   const event: RealitySocialEvent = {
@@ -886,15 +1106,9 @@ export function resolvePendingHumanRealityInteraction(input: {
     participantIds: [...new Set([interaction.actorId, ...interaction.targetIds])],
     witnessIds: [...interaction.witnessIds],
     visibility: interaction.visibility,
-    outcome: humanResponse.accepted
-      ? 'SUCCESS'
-      : humanResponse.kind === 'QUESTION'
-        ? 'COUNTERED'
-        : humanResponse.kind === 'WALK_AWAY'
-          ? 'IGNORED'
-          : 'FAILURE',
-    reason: humanResponse.reason,
-    tags: [...action.purposes, humanResponse.kind, 'HUMAN_RESPONSE'],
+    outcome: aggregate.outcome,
+    reason: aggregate.response.reason,
+    tags: [...action.purposes, aggregate.response.kind, 'HUMAN_RESPONSE'],
     relatedFactIds: [],
     relatedPromiseIds: [],
     relatedThreadIds: [],
@@ -904,34 +1118,61 @@ export function resolvePendingHumanRealityInteraction(input: {
   }
   const actorId = interaction.actorId
   if (actorId !== input.humanId) {
-    applyRealityRelationshipChange(domain, {
-      sourceId: actorId,
-      targetId: input.humanId,
-      deltas: relationshipDeltas(action, humanResponse),
-      day: input.day,
-      phase: input.phase,
-      eventId: event.id,
-      anchor:
-        humanResponse.accepted && action.purposes.includes('COMMITMENT')
-          ? 'positive'
-          : action.purposes.includes('CONFLICT')
-            ? 'negative'
-            : undefined,
-    })
-    applyRealityRelationshipChange(domain, {
-      sourceId: input.humanId,
-      targetId: actorId,
-      deltas: humanResponse.accepted
-        ? { warmth: 5, trust: 5, familiarity: 3 }
-        : humanResponse.kind === 'WALK_AWAY'
-          ? { warmth: -2, suspicion: 2, familiarity: 1 }
-          : { trust: -3, suspicion: 3, familiarity: 2 },
-      day: input.day,
-      phase: input.phase,
-      eventId: event.id,
-      anchor:
-        humanResponse.accepted && action.purposes.includes('COMMITMENT') ? 'positive' : undefined,
-    })
+    for (const { targetId, response: targetResponse } of responses) {
+      applyRealityRelationshipChange(domain, {
+        sourceId: actorId,
+        targetId,
+        deltas: relationshipDeltas(action, targetResponse),
+        day: input.day,
+        phase: input.phase,
+        eventId: event.id,
+        anchor:
+          targetResponse.accepted && action.purposes.includes('COMMITMENT')
+            ? 'positive'
+            : action.purposes.includes('CONFLICT')
+              ? 'negative'
+              : undefined,
+      })
+
+      if (targetId === input.humanId) {
+        applyRealityRelationshipChange(domain, {
+          sourceId: targetId,
+          targetId: actorId,
+          deltas: targetResponse.accepted
+            ? { warmth: 5, trust: 5, familiarity: 3 }
+            : targetResponse.kind === 'WALK_AWAY'
+              ? { warmth: -2, suspicion: 2, familiarity: 1 }
+              : { trust: -3, suspicion: 3, familiarity: 2 },
+          day: input.day,
+          phase: input.phase,
+          eventId: event.id,
+          anchor:
+            targetResponse.accepted && action.purposes.includes('COMMITMENT')
+              ? 'positive'
+              : undefined,
+        })
+      } else {
+        applyRealityRelationshipChange(domain, {
+          sourceId: targetId,
+          targetId: actorId,
+          deltas:
+            targetResponse.kind === 'ESCALATE'
+              ? { warmth: -8, trust: -7, resentment: 12, perceivedThreat: 5 }
+              : targetResponse.accepted
+                ? { warmth: 4, trust: 4, familiarity: 3 }
+                : { suspicion: 2, familiarity: 1 },
+          day: input.day,
+          phase: input.phase,
+          eventId: event.id,
+          anchor:
+            targetResponse.accepted && action.purposes.includes('COMMITMENT')
+              ? 'positive'
+              : targetResponse.kind === 'ESCALATE'
+                ? 'negative'
+                : undefined,
+        })
+      }
+    }
   }
   domain.events.push(event)
   domain.events = domain.events.slice(-500)
@@ -941,7 +1182,10 @@ export function resolvePendingHumanRealityInteraction(input: {
     event,
     action,
     subjectId: input.subjectId,
-    responses: [{ targetId: input.humanId, response: humanResponse }],
+    secondarySubjectId: input.secondarySubjectId,
+    allianceId: input.allianceId,
+    allianceStrategyKind: input.allianceStrategyKind,
+    responses,
   })
   resolveRelationshipStoryResponse(domain, {
     ownerId: actorId,
@@ -954,7 +1198,7 @@ export function resolvePendingHumanRealityInteraction(input: {
     at: { day: input.day, phase: input.phase },
   })
   interaction.status = 'RESOLVED'
-  interaction.selectedResponseId = humanResponse.kind
+  interaction.selectedResponseId = aggregate.response.kind
   interaction.outcomeEventIds.push(event.id)
   for (const participantId of event.participantIds) {
     remember(

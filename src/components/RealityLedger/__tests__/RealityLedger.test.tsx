@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   addRealityFact,
   createDirectedRelationship,
@@ -126,5 +126,43 @@ describe('RealityLedger privacy projection', () => {
     expect(screen.queryByText(/Nova/)).toBeNull()
     expect(screen.queryByText(/cohesion/i)).toBeNull()
     expect(screen.queryByText(alliance.name ?? 'not-a-name')).toBeNull()
+  })
+
+  it('shows hierarchy for the player’s alliance and lets the player submit a custom name', () => {
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'player-coalition',
+      founderIds: ['human', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    alliance.leaderIds = ['human', 'lia']
+    alliance.memberPerceivedStatus.human = 'CORE'
+    alliance.memberPerceivedStatus.lia = 'CORE'
+    alliance.memberPerceivedStatus.kai = 'REGULAR'
+    const onRenameAlliance = vi.fn()
+
+    render(
+      <RealityLedger
+        reality={reality}
+        players={players}
+        humanId="human"
+        onRenameAlliance={onRenameAlliance}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'house' }))
+
+    expect(screen.getByText(/You \(Leader\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Lia \(Co-leader\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Kai \(Regular\)/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename alliance' }))
+    const input = screen.getByRole('textbox', { name: 'Alliance name' })
+    fireEvent.change(input, { target: { value: 'Night Shift' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onRenameAlliance).toHaveBeenCalledWith('player-coalition', 'Night Shift')
   })
 })

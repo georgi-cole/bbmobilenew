@@ -104,6 +104,50 @@ export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
     set('Renew the pact', 'Compare plans', 'Set new terms', 'End check-in'),
     set('Show loyalty', 'Stay cautious', 'Call out the crack', 'Move on'),
   ],
+  'scenario:alliance_power_nomination_huddle': [
+    set('Back the plan', 'Hear the case', 'Challenge the target', 'Sit this out', true),
+    set('Stay together', 'Ask for the logic', 'Challenge the target', 'Leave the huddle', true),
+    set('Support the move', 'Hear everyone out', 'Reject the target', 'Leave the huddle', true),
+  ],
+  'scenario:alliance_power_safety_huddle': [
+    set('Back the Safety plan', 'Hear the case', 'Challenge the Safety plan', 'Sit this out', true),
+    set('Support the move', 'Ask about the risks', 'Challenge the plan', 'Leave the huddle', true),
+    set(
+      'Stay with the group',
+      'Hear the options',
+      'Reject the proposed save',
+      'Leave the huddle',
+      true
+    ),
+  ],
+  'scenario:alliance_nomination_pitch': [
+    set('Back the target', 'Ask why them', 'Reject the target', 'Make no promise', true),
+    set('Go with it', 'Hear the case', 'Choose your own move', 'Keep it open', true),
+    set('Lock the plan', 'Ask for the logic', 'Reject that target', 'End the huddle', true),
+  ],
+  'scenario:alliance_vox_ballot_pitch': [
+    set(
+      'Match that name',
+      'Compare ballot reads',
+      'Nominate your own way',
+      'Keep ballot private',
+      true
+    ),
+    set('Coordinate one pick', 'Ask why them', 'Reject that name', 'Make no promise', true),
+    set('Back the pressure', 'Hear the case', 'Keep your ballot independent', 'End the talk', true),
+  ],
+
+  'scenario:alliance_safety_pitch': [
+    set('Back the replacement', 'Ask the logic', 'Reject the move', 'Keep options open', true),
+    set('Use that plan', 'Talk through risks', 'Reject that route', 'Make no promise', true),
+    set('Lock the backup', 'Ask who benefits', 'Refuse the replacement', 'End the pitch', true),
+  ],
+  'scenario:alliance_vote_pitch': [
+    set('Vote with them', 'Hear the case', 'Vote your own way', 'Keep vote private', true),
+    set('Lock the vote', 'Ask why', 'Reject the plan', 'Stay uncommitted', true),
+    set('Stay together', 'Compare reads', 'Break from the plan', 'End the talk', true),
+  ],
+
   'scenario:nomination_aftershock': [
     set('Own your choice', 'Explain carefully', 'Stand your ground', 'End talk'),
     set('Offer a path back', 'Hear their anger', 'Refuse apology', 'Walk away'),

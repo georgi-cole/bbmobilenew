@@ -1587,6 +1587,120 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
     },
   ],
 
+  alliance_power_nomination_huddle: makeScenePool(
+    'alliance_power_nomination_huddle',
+    [
+      'I have the LOH, and I do not want to make this move in a vacuum. I am leaning toward {subject}.',
+      'Before I lock nominations, I want our group on the same page. My first name is {subject}.',
+      'I have the power this round. My current read is {subject}, but I want the alliance in the room before I decide.',
+    ],
+    [
+      'I am holding the LOH, so this is my decision in the end. Still, I want to compare notes with us before I lock {subject}.',
+      'The power is mine this round, but the consequences hit all of us. I am leaning {subject}.',
+      'I want this to be an alliance conversation, not a decree. Right now my target is {subject}.',
+    ],
+    [
+      'Nominations are getting close. I am still leaning {subject}, and I want one last alliance read before I lock it.',
+      'I have not moved off {subject}. If anyone sees a problem with that move, now is the time to say it.',
+      'Last huddle before nominations: {subject} is still where my head is.',
+    ]
+  ),
+
+  alliance_power_safety_huddle: makeScenePool(
+    'alliance_power_safety_huddle',
+    [
+      'I have Safety. I am leaning toward keeping {subject} exposed; if I move the block, {secondary} is my replacement read.',
+      'Before I decide on Safety, I want the alliance in the room. I am leaning against {subject}, with {secondary} as the replacement if a seat opens.',
+      'I am holding Safety, and this can redraw the week. My current pressure is on {subject}; {secondary} is the replacement I am considering.',
+    ],
+    [
+      'I do not want to burn Safety just because I have it. I am leaning toward keeping {subject} exposed, with {secondary} as the backup target.',
+      'The Safety decision is mine, but it affects all of us. My current pressure is on {subject}; {secondary} is the replacement read I want us to discuss.',
+      'I want the alliance read before I touch the block. Right now I want {subject} left vulnerable and {secondary} exposed if the block moves.',
+    ],
+    [
+      'The Safety ceremony is close. I am still leaning against {subject}; if it moves, {secondary} remains my replacement read.',
+      'One last check before Safety locks: keep pressure on {subject}, and use {secondary} if a new seat opens.',
+      'My Safety read has not changed: {subject} stays exposed; {secondary} is the backup target I want us to consider if the block changes.',
+    ]
+  ),
+
+  alliance_vox_ballot_pitch: makeScenePool(
+    'alliance_vox_ballot_pitch',
+    [
+      'My first secret-ballot name is {subject}. I want to know if we are putting pressure in the same place.',
+      'I am leaning {subject} on the ballot. We do not have to match both names, but I want our alliance comparing notes.',
+      'For the secret nominations, {subject} is the name I most want counted.',
+    ],
+    [
+      'Nobody controls the block in Vox, so I am not pretending this is an order. My ballot read is {subject}.',
+      'The audience decides the exit, but our ballots decide who faces them. I am leaning {subject}.',
+      'I want to coordinate without making this obvious. {subject} is my strongest nomination read.',
+    ],
+    [
+      'Before the secret ballots lock, I am still on {subject}.',
+      'Last alliance check before nominations: {subject} is still my first name.',
+      'My ballot has not moved off {subject}. I wanted you to know before we vote in secret.',
+    ]
+  ),
+
+  alliance_nomination_pitch: makeScenePool(
+    'alliance_nomination_pitch',
+    [
+      '{subject} is the move I would make with your LOH. That is where I want the pressure.',
+      'If you want my read, put {subject} on the block. I think that gives us the cleanest week.',
+      'I keep coming back to {subject}. With your LOH, that is the name I would use.',
+    ],
+    [
+      'I trust you with the power, but I want to be clear: my preference is {subject}.',
+      'We do not have to see every move the same way, but I think {subject} is best for us.',
+      'I wanted to tell you privately before nominations: I would feel safest with {subject} up.',
+    ],
+    [
+      'One more thing before nominations lock: I am still on {subject}.',
+      'My read has not changed. If we are comparing notes, {subject} is still my choice.',
+      'Before you decide, I want my vote in the room: I would nominate {subject}.',
+    ]
+  ),
+
+  alliance_safety_pitch: makeScenePool(
+    'alliance_safety_pitch',
+    [
+      'If Safety opens the block, I want {subject} as the replacement.',
+      'If you use the power, {subject} is the replacement that makes the most sense to me.',
+      'My replacement read is {subject}. That is where I would redirect the week.',
+    ],
+    [
+      'If the nominations move, I would feel best with {subject} taking the open seat.',
+      'I trust your call on Safety. My preference, if a seat opens, is {subject}.',
+      'I do not want to overplay it, but if the block changes I would put {subject} there.',
+    ],
+    [
+      'If Safety changes anything, I am still leaning {subject} for the open seat.',
+      'My replacement idea has not moved: {subject}.',
+      'Before the Safety decision lands, I want you to know I still see {subject} as the replacement.',
+    ]
+  ),
+
+  alliance_vote_pitch: makeScenePool(
+    'alliance_vote_pitch',
+    [
+      'For the vote, I am on {subject}. I want us lined up if you see it the same way.',
+      'My vote is {subject}. I am checking whether we are together on that.',
+      'I want {subject} out. That is the direction I am taking into the vote.',
+    ],
+    [
+      'I do not want to force your hand, but my preference is {subject}.',
+      'If we are comparing votes, I am leaning {subject}.',
+      'I trust you to make your own call. I just want you to know my vote is {subject}.',
+    ],
+    [
+      'My vote has not moved. I am still on {subject}.',
+      'Before we lock anything, I am still voting {subject}.',
+      'Last check before the vote: I am staying with {subject}.',
+    ]
+  ),
+
   generic_check_in: [
     {
       id: 'gci_casual',

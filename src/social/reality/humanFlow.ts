@@ -5,17 +5,31 @@ import { replaceRealityDomain, replaceRealitySimulation, updateRelationship } fr
 import { ALLIANCE_TAG } from '../socialAlliance'
 import { getEffectiveSocialMode } from '../socialMode'
 import { resolveActionTargetMode } from '../socialActions'
+import { normalizeActionCosts } from '../smExecNormalize'
 import {
   createInitialRealitySimulationState,
   deriveRealitySimulationSeed,
 } from '../realitySimulation'
 import { getRealityActionContract, type RealityActorSnapshot } from './actionContract'
 import { runRealityOpportunity } from './orchestrator'
+import {
+  findRealityAllianceForConsultation,
+  holdRealityAllianceStrategyMeeting,
+} from './relationshipForms'
+import type { RealityAlliance } from './types'
 import { getRealityModeAdapter } from './modeAdapters'
 import { applyRealityRelationshipChange } from './relationships'
 import type { RealityContext } from './types'
 import { getCupidPartnerId } from '../../features/twists/cupidArrow'
+import {
+  chooseAiEvictionVote,
+  getEligibleNominationTargets,
+  getEligibleReplacementNominees,
+  getNominationTargetScore,
+  getSafetyRelationshipScore,
+} from '../../store/gameSlice'
 import { shouldDepressionShockRefuseConversation } from '../../features/twists/depressionShock'
+import { validateSocialExecution } from '../socialExecutionGuard'
 
 export interface HumanRealityActionInput {
   actorId: string
@@ -139,6 +153,407 @@ function result(
 function playerName(state: RootState, playerId: string | null | undefined): string {
   if (!playerId) return 'that nominee'
   return state.game.players.find((player) => player.id === playerId)?.name ?? 'that nominee'
+}
+
+interface AllianceConsultationPlan {
+  allianceId: string
+  attendeeIds: string[]
+  targetIds: string[]
+  fallbackTargetIds: string[]
+  planIds: string[]
+  agenda: string
+  summary: string
+  excusedAbsentIds: string[]
+  memberPlanBeliefs: Record<string, string[]>
+}
+
+function activeAllianceAdvisors(
+  state: RootState,
+  alliance: RealityAlliance,
+  actorId: string
+): string[] {
+  const activeIds = new Set(
+    state.game.players
+      .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+      .map((player) => player.id)
+  )
+  return alliance.memberIds.filter((id) => id !== actorId && activeIds.has(id))
+}
+
+function nominationConsultationCandidates(state: RootState, actorId: string) {
+  return getEligibleNominationTargets(state.game, actorId)
+}
+
+function isAllianceProtectedGameUnit(
+  state: RootState,
+  alliance: RealityAlliance,
+  playerId: string
+): boolean {
+  if (alliance.memberIds.includes(playerId)) return true
+  const cupidPartnerId = getCupidPartnerId(state.game, playerId)
+  return cupidPartnerId !== null && alliance.memberIds.includes(cupidPartnerId)
+}
+
+function summarizeAlliancePreferences(
+  state: RootState,
+  preferences: Array<{ advisorId: string; targetId: string; score: number }>,
+  label: string,
+  excludedPlanTargetIds: ReadonlySet<string> = new Set()
+): {
+  summary: string
+  targetIds: string[]
+  fallbackTargetIds: string[]
+  hasConsensus: boolean
+  preferenceByAdvisor: Record<string, string>
+} {
+  const counts = new Map<string, { votes: number; score: number }>()
+  for (const preference of preferences) {
+    if (excludedPlanTargetIds.has(preference.targetId)) continue
+    const current = counts.get(preference.targetId) ?? { votes: 0, score: 0 }
+    current.votes += 1
+    current.score += preference.score
+    counts.set(preference.targetId, current)
+  }
+  const ordered = [...counts.entries()].sort(
+    (left, right) =>
+      right[1].votes - left[1].votes ||
+      right[1].score - left[1].score ||
+      left[0].localeCompare(right[0])
+  )
+  const primary = ordered[0]
+  const fallback = ordered[1]
+  const primaryId = primary?.[0]
+  const topVotes = primary?.[1].votes ?? 0
+  const hasConsensus =
+    preferences.length >= 2 && topVotes >= 2 && topVotes / Math.max(1, preferences.length) > 0.5
+  const fallbackId = hasConsensus && fallback && fallback[1].votes >= 2 ? fallback[0] : undefined
+  const preferenceByAdvisor = Object.fromEntries(
+    preferences.map((preference) => [preference.advisorId, preference.targetId])
+  )
+  const lines = preferences
+    .slice(0, 4)
+    .map(
+      (preference) =>
+        `${playerName(state, preference.advisorId)} → ${playerName(state, preference.targetId)}`
+    )
+    .join(' · ')
+  const consensus =
+    hasConsensus && primaryId
+      ? `${label}: ${playerName(state, primaryId)}${
+          fallbackId ? ` · backup ${playerName(state, fallbackId)}` : ''
+        }`
+      : preferences.length === 1 && primaryId
+        ? `${label}: ${playerName(state, preferences[0].advisorId)} recommends ${playerName(
+            state,
+            primaryId
+          )}; no group decision`
+        : `${label}: split; no alliance decision`
+  return {
+    summary: lines ? `${lines}. ${consensus}.` : `${consensus}.`,
+    targetIds: hasConsensus && primaryId ? [primaryId] : [],
+    fallbackTargetIds: fallbackId ? [fallbackId] : [],
+    hasConsensus,
+    preferenceByAdvisor,
+  }
+}
+
+function buildConsultationMemberPlanBeliefs(
+  attendeeIds: readonly string[],
+  actorId: string,
+  read: {
+    targetIds: string[]
+    fallbackTargetIds: string[]
+    preferenceByAdvisor: Record<string, string>
+  }
+): Record<string, string[]> {
+  const consensusTarget = read.targetIds[0]
+  const fallbackTarget = read.fallbackTargetIds[0]
+  return Object.fromEntries(
+    attendeeIds.map((memberId) => {
+      if (memberId === actorId) {
+        return [
+          memberId,
+          [
+            ...(consensusTarget ? [`target:${consensusTarget}`] : []),
+            ...(fallbackTarget ? [`fallback:${fallbackTarget}`] : []),
+          ],
+        ]
+      }
+      const preference = read.preferenceByAdvisor[memberId]
+      if (!preference) return [memberId, []]
+      if (preference === consensusTarget) return [memberId, [`target:${preference}`]]
+      if (preference === fallbackTarget) return [memberId, [`fallback:${preference}`]]
+      return [
+        memberId,
+        [...(consensusTarget ? [`aware:${consensusTarget}`] : []), `preference:${preference}`],
+      ]
+    })
+  )
+}
+
+function getAllianceConsultationAgenda(
+  state: RootState,
+  actorId: string
+): AllianceConsultationPlan['agenda'] {
+  const actorIsLoh =
+    state.game.lohId === actorId || getCupidPartnerId(state.game, state.game.lohId) === actorId
+  const actorHasSafety =
+    state.game.posWinnerId === actorId ||
+    getCupidPartnerId(state.game, state.game.posWinnerId) === actorId
+  const nomineesExist = state.game.nomineeIds.length > 0
+
+  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(state.game.phase)) {
+    return 'nominations'
+  }
+  if (
+    actorHasSafety &&
+    ['pos_results', 'pos_ceremony'].includes(state.game.phase) &&
+    nomineesExist
+  ) {
+    return 'safety'
+  }
+  if (
+    state.game.voxPopuli?.status !== 'active' &&
+    nomineesExist &&
+    ['nomination_results', 'pos_results', 'pos_ceremony'].includes(state.game.phase)
+  ) {
+    return 'block_strategy'
+  }
+  if (
+    state.game.voxPopuli?.status !== 'active' &&
+    nomineesExist &&
+    ['pos_ceremony_results', 'social_2', 'live_vote'].includes(state.game.phase)
+  ) {
+    return 'eviction_vote'
+  }
+  return 'strategy'
+}
+
+function buildAllianceConsultationPlan(
+  state: RootState,
+  alliance: RealityAlliance,
+  actorId: string
+): AllianceConsultationPlan | null {
+  const advisors = activeAllianceAdvisors(state, alliance, actorId)
+  if (advisors.length === 0) return null
+  const attendeeIds = [actorId, ...advisors]
+  const attendeeSet = new Set(attendeeIds)
+  const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeSet.has(id))
+  const agenda = getAllianceConsultationAgenda(state, actorId)
+  const nominees = state.game.players.filter((player) => state.game.nomineeIds.includes(player.id))
+
+  if (agenda === 'nominations') {
+    const candidates = nominationConsultationCandidates(state, actorId).filter(
+      (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
+    )
+    if (candidates.length === 0) return null
+    const preferences = advisors
+      .map((advisorId) => {
+        const ranked = candidates
+          .filter((candidate) => candidate.id !== advisorId)
+          .map((candidate) => ({
+            advisorId,
+            targetId: candidate.id,
+            score: getNominationTargetScore(state.game, advisorId, candidate),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
+      )
+    const read = summarizeAlliancePreferences(
+      state,
+      preferences,
+      'Nomination consensus',
+      new Set(alliance.memberIds)
+    )
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: read.targetIds,
+      fallbackTargetIds: read.fallbackTargetIds,
+      planIds: [
+        ...read.targetIds.map((id) => `target:${id}`),
+        ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+      ],
+      agenda: 'nominations',
+      summary: `Alliance huddle — ${read.summary}`,
+      excusedAbsentIds,
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
+    }
+  }
+
+  if (agenda === 'safety') {
+    const preferences = advisors
+      .map((advisorId) => {
+        const ranked = nominees
+          .map((nominee) => ({
+            advisorId,
+            targetId: nominee.id,
+            score: getSafetyRelationshipScore(state.game, advisorId, nominee),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
+      )
+    const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
+    const replacements = getEligibleReplacementNominees(state.game).filter(
+      (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
+    )
+    const replacementPreferences = advisors
+      .map((advisorId) => {
+        const ranked = replacements
+          .filter((candidate) => candidate.id !== advisorId)
+          .map((candidate) => ({
+            advisorId,
+            targetId: candidate.id,
+            score: getNominationTargetScore(state.game, advisorId, candidate),
+          }))
+          .sort(
+            (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+          )
+        return ranked[0]
+      })
+      .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+        Boolean(entry)
+      )
+    const replacementRead = summarizeAlliancePreferences(
+      state,
+      replacementPreferences,
+      'Replacement consensus'
+    )
+    const replacement = replacementRead.targetIds[0] ?? null
+    const fallbackTargetIds = replacement ? [replacement] : [...alliance.fallbackTargetIds]
+    const planIds = [
+      ...alliance.currentTargetIds.map((id) => `target:${id}`),
+      ...fallbackTargetIds.map((id) => `fallback:${id}`),
+      ...(read.targetIds[0] ? [`save:${read.targetIds[0]}`] : []),
+    ]
+    const memberPlanBeliefs = Object.fromEntries(
+      attendeeIds.map((memberId) => {
+        if (memberId === actorId) {
+          return [
+            memberId,
+            [
+              ...(read.targetIds[0] ? [`save:${read.targetIds[0]}`] : []),
+              ...(replacement ? [`fallback:${replacement}`] : []),
+            ],
+          ]
+        }
+        const savePreference = read.preferenceByAdvisor[memberId]
+        const replacementPreference = replacementRead.preferenceByAdvisor[memberId]
+        return [
+          memberId,
+          [
+            ...(savePreference ? [`save:${savePreference}`] : []),
+            ...(replacementPreference
+              ? [
+                  replacementPreference === replacement
+                    ? `fallback:${replacementPreference}`
+                    : `replacement_preference:${replacementPreference}`,
+                ]
+              : []),
+          ],
+        ]
+      })
+    )
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: [...alliance.currentTargetIds],
+      fallbackTargetIds,
+      planIds,
+      agenda: 'safety',
+      summary: `Alliance huddle — ${read.summary} ${replacementRead.summary}`,
+      excusedAbsentIds,
+      memberPlanBeliefs,
+    }
+  }
+
+  if (agenda === 'block_strategy' || agenda === 'eviction_vote') {
+    const nomineeIds = nominees
+      .filter((nominee) => !isAllianceProtectedGameUnit(state, alliance, nominee.id))
+      .map((nominee) => nominee.id)
+    if (nomineeIds.length === 0) return null
+    const preferences = advisors.map((advisorId) => {
+      const targetId = chooseAiEvictionVote(
+        state.game,
+        advisorId,
+        nomineeIds,
+        (state.game.seed ?? 0) ^ state.game.week
+      )
+      return { advisorId, targetId, score: 1 }
+    })
+    const read = summarizeAlliancePreferences(
+      state,
+      preferences,
+      agenda === 'eviction_vote' ? 'Vote consensus' : 'Current block',
+      new Set(alliance.memberIds)
+    )
+    return {
+      allianceId: alliance.id,
+      attendeeIds,
+      targetIds: read.targetIds,
+      fallbackTargetIds: read.fallbackTargetIds,
+      planIds: [
+        ...read.targetIds.map((id) => `target:${id}`),
+        ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+      ],
+      agenda,
+      summary: `Alliance huddle — ${read.summary}`,
+      excusedAbsentIds,
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
+    }
+  }
+
+  const candidates = nominationConsultationCandidates(state, actorId).filter(
+    (candidate) => !isAllianceProtectedGameUnit(state, alliance, candidate.id)
+  )
+  if (candidates.length === 0) return null
+  const preferences = advisors
+    .map((advisorId) => {
+      const ranked = candidates
+        .filter((candidate) => candidate.id !== advisorId)
+        .map((candidate) => ({
+          advisorId,
+          targetId: candidate.id,
+          score: getNominationTargetScore(state.game, advisorId, candidate),
+        }))
+        .sort(
+          (left, right) => right.score - left.score || left.targetId.localeCompare(right.targetId)
+        )
+      return ranked[0]
+    })
+    .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
+      Boolean(entry)
+    )
+  const read = summarizeAlliancePreferences(
+    state,
+    preferences,
+    'Strategic read',
+    new Set(alliance.memberIds)
+  )
+  return {
+    allianceId: alliance.id,
+    attendeeIds,
+    targetIds: read.targetIds,
+    fallbackTargetIds: read.fallbackTargetIds,
+    planIds: [
+      ...read.targetIds.map((id) => `target:${id}`),
+      ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
+    ],
+    agenda: 'strategy',
+    summary: `Alliance huddle — ${read.summary}`,
+    excusedAbsentIds,
+    memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
+  }
 }
 
 /**
@@ -289,8 +704,80 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const state = getState()
     const action = getActionById(input.actionId)
     const energy = state.social.energyBank[input.actorId] ?? 0
-    const targetIds = input.targetIds ?? [input.targetId]
     if (!action) return result(false, 'Unknown action', energy)
+
+    const dramaMode = getEffectiveSocialMode(state) === 'drama'
+    const actionTargetMode = resolveActionTargetMode(action, dramaMode)
+    const requestedTargetIds = input.targetIds ?? [input.targetId]
+    const targetIds =
+      actionTargetMode === 'none'
+        ? []
+        : [...new Set(requestedTargetIds.filter((targetId) => Boolean(targetId)))]
+    const resolvedRequiredTargetStatus = dramaMode
+      ? (action.dramaRequiredTargetStatus ?? action.requiredTargetStatus)
+      : action.requiredTargetStatus
+    const isPrimaryBatch = actionTargetMode === 'primary' && targetIds.length > 1
+    const batchCompatible =
+      actionTargetMode === 'primary' &&
+      !resolvedRequiredTargetStatus &&
+      input.actionId !== 'proposeAlliance' &&
+      input.actionId !== 'consult_alliance'
+
+    if (isPrimaryBatch && !batchCompatible) {
+      return result(
+        false,
+        'This action can only target one housemate at a time.',
+        energy,
+        0,
+        'Invalid selection'
+      )
+    }
+
+    const executionState = {
+      game: state.game,
+      settings: state.settings,
+      vip: state.vip,
+      social: state.social,
+    }
+    if (isPrimaryBatch) {
+      for (const targetId of targetIds) {
+        const eligibility = validateSocialExecution(executionState, {
+          action,
+          actorId: input.actorId,
+          targetIds: [targetId],
+          subjectId: input.subjectId,
+          requireCompleteSelection: true,
+        })
+        if (!eligibility.eligible) {
+          return result(false, eligibility.reason, energy, 0, 'Unavailable')
+        }
+      }
+    } else {
+      const eligibility = validateSocialExecution(executionState, {
+        action,
+        actorId: input.actorId,
+        targetIds,
+        subjectId: input.subjectId,
+        requireCompleteSelection: true,
+      })
+      if (!eligibility.eligible) {
+        return result(false, eligibility.reason, energy, 0, 'Unavailable')
+      }
+    }
+
+    const baseExecutionCosts = normalizeActionCosts(
+      action,
+      actionTargetMode === 'multi' ? targetIds.length : actionTargetMode === 'none' ? 0 : 1,
+      dramaMode
+    )
+    const defaultExecutionCosts = isPrimaryBatch
+      ? {
+          energy: baseExecutionCosts.energy * targetIds.length,
+          influence: baseExecutionCosts.influence * targetIds.length,
+          info: baseExecutionCosts.info * targetIds.length,
+        }
+      : baseExecutionCosts
+    const requestedExecutionCosts = input.costOverride ?? defaultExecutionCosts
 
     // During Depression Shock, a housemate may simply shut the conversation
     // down. Resolve this before affordability/execution so a refusal costs the
@@ -322,12 +809,12 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
 
     // Classic is a complete, independent social ruleset. It must never create
     // premium Reality events, causal memories, or simulation traces.
-    if (getEffectiveSocialMode(state) !== 'drama') {
-      const mode = resolveActionTargetMode(action, false)
+    if (!dramaMode) {
+      const mode = actionTargetMode
       if (mode === 'multi') {
         return executeGroupAction(input.actorId, targetIds, input.actionId, {
           source: 'manual',
-          costOverride: input.costOverride,
+          costOverride: requestedExecutionCosts,
         })
       }
       if (targetIds.length > 1) {
@@ -337,7 +824,8 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               source: 'manual',
               subjectId: input.subjectId,
               waiveCosts: index > 0,
-              costOverride: index === 0 ? input.costOverride : { energy: 0, influence: 0, info: 0 },
+              costOverride:
+                index === 0 ? requestedExecutionCosts : { energy: 0, influence: 0, info: 0 },
             })
           )
           .reduce<ExecuteActionResult>(
@@ -366,7 +854,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         {
           source: 'manual',
           subjectId: input.subjectId,
-          costOverride: input.costOverride,
+          costOverride: requestedExecutionCosts,
         }
       )
       return {
@@ -377,8 +865,93 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
 
     const contract = getRealityActionContract(input.actionId)
     if (!contract) return result(false, 'Unknown action', energy)
+
+    if (input.actionId === 'proposeAlliance' && input.targetId) {
+      const alreadyProposedThisPhase = state.social.reality.events.some(
+        (event) =>
+          event.day === state.game.week &&
+          event.phase === state.game.phase &&
+          event.actorId === input.actorId &&
+          event.actionId === 'proposeAlliance' &&
+          event.targetIds.includes(input.targetId)
+      )
+      if (alreadyProposedThisPhase) {
+        const targetName =
+          state.game.players.find((player) => player.id === input.targetId)?.name ?? 'them'
+        return result(
+          false,
+          `You already approached ${targetName} about an alliance this phase. Give the conversation time before trying again.`,
+          energy,
+          0,
+          'Already approached'
+        )
+      }
+    }
+
+    const consultationAlliance =
+      input.actionId === 'consult_alliance' && input.targetId
+        ? findRealityAllianceForConsultation(state.social.reality, input.actorId, input.targetId)
+        : null
+    if (input.actionId === 'consult_alliance' && !consultationAlliance) {
+      return result(false, 'You do not share an active alliance with that housemate.', energy)
+    }
+    if (consultationAlliance) {
+      const agenda = getAllianceConsultationAgenda(state, input.actorId)
+      const alreadyMet = state.social.reality.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+          event.day === state.game.week &&
+          event.reason.startsWith(`strategy_meeting:${consultationAlliance.id}:${agenda}:`)
+      )
+      if (alreadyMet) {
+        return result(
+          false,
+          'You already held an alliance huddle on this decision today.',
+          energy,
+          0,
+          'Already consulted'
+        )
+      }
+    }
+    const executionTargetIds = consultationAlliance
+      ? activeAllianceAdvisors(state, consultationAlliance, input.actorId)
+      : targetIds
+    if (consultationAlliance && executionTargetIds.length === 0) {
+      return result(false, 'No active alliance member is available for a huddle.', energy)
+    }
+    const consultationPlan = consultationAlliance
+      ? buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
+      : null
+    if (consultationAlliance && !consultationPlan) {
+      return result(
+        false,
+        'There is no useful alliance strategy question to resolve right now.',
+        energy
+      )
+    }
+
+    // The Reality contract stores a representative one-target price. Dynamic
+    // multi-target actions (notably Group Chat) must be checked against their
+    // full atomic price before the causal Reality domain is allowed to mutate.
+    // Otherwise a large group action could create memories/relationship effects
+    // and only discover afterward that the player could not afford it.
+    const executionCosts = requestedExecutionCosts
+    const influence = state.social.influenceBank[input.actorId] ?? 0
+    const info = state.social.infoBank[input.actorId] ?? 0
+    if (
+      energy < executionCosts.energy ||
+      influence < executionCosts.influence ||
+      info < executionCosts.info
+    ) {
+      return result(false, 'Insufficient resources. Nothing was spent.', energy, 0, 'Unavailable')
+    }
+
     const direction =
-      targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'
+      executionTargetIds.length === 0
+        ? 'SELF'
+        : executionTargetIds.length > 1
+          ? 'GROUP'
+          : 'HUMAN_TO_AI'
     let simulation = state.social.realitySimulation
     if (!simulation.rng) {
       simulation = createInitialRealitySimulationState(
@@ -397,9 +970,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         candidates: [
           {
             action: contract,
-            targetIds,
+            targetIds: executionTargetIds,
             subjectId: input.subjectId,
-            acceptanceChanceOverride: getPhaseRepetitionChance(state, input),
+            // An active alliance huddle is a convened group meeting. Disagreement
+            // belongs in each member's strategic read, not in a random refusal by
+            // whichever member the player tapped to identify the alliance.
+            acceptanceChanceOverride: consultationAlliance
+              ? 1
+              : getPhaseRepetitionChance(state, input),
           },
         ],
       },
@@ -417,9 +995,39 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               : 'No action was selected.'
       return result(false, reason, energy, 0, orchestration.response?.kind ?? 'Unavailable')
     }
-    const succeeded = orchestration.event.outcome !== 'FAILURE'
+    const resolved = orchestration.event.outcome !== 'FAILURE'
+    // Compatibility "success" is intentionally stricter than "the conversation
+    // produced a Reality event". COUNTERED and PARTIAL outcomes still cost the
+    // action and remain in Reality memory, but they must not receive full legacy
+    // success rewards or trigger success-only downstream adapters.
+    const resolvedAsSuccess = orchestration.event.outcome === 'SUCCESS'
+    const targetCompatibilitySucceeded = (targetId: string): boolean => {
+      const targetResponse = orchestration.targetResponses?.find(
+        (entry) => entry.targetId === targetId
+      )?.response
+      return targetResponse
+        ? targetResponse.accepted || contract.purposes.includes('CONFLICT')
+        : resolvedAsSuccess
+    }
+    let allianceConsultationSummary: string | null = null
+    if (resolvedAsSuccess && consultationPlan) {
+      holdRealityAllianceStrategyMeeting(orchestration.domain, {
+        allianceId: consultationPlan.allianceId,
+        callerId: input.actorId,
+        attendeeIds: consultationPlan.attendeeIds,
+        targetIds: consultationPlan.targetIds,
+        fallbackTargetIds: consultationPlan.fallbackTargetIds,
+        planIds: consultationPlan.planIds,
+        agenda: consultationPlan.agenda,
+        at: { day: state.game.week, phase: state.game.phase },
+        sourceEventId: orchestration.event.id,
+        excusedAbsentIds: consultationPlan.excusedAbsentIds,
+        memberPlanBeliefs: consultationPlan.memberPlanBeliefs,
+      })
+      allianceConsultationSummary = consultationPlan.summary
+    }
     const dangerWarningDiscovered =
-      succeeded &&
+      resolved &&
       input.actionId === 'warn_about_danger' &&
       Boolean(state.game.lohId) &&
       state.game.lohId !== input.actorId &&
@@ -435,35 +1043,44 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         anchor: 'negative',
       })
     }
-    const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
-    const compatibility =
-      direction === 'GROUP' && actionTargetMode === 'multi'
-        ? executeGroupAction(input.actorId, targetIds, input.actionId, {
+    const compatibility = consultationAlliance
+      ? executeAction(input.actorId, input.targetId, input.actionId, {
+          source: 'manual',
+          subjectId: input.subjectId,
+          outcome: resolvedAsSuccess ? 'success' : 'failure',
+          repetitionAlreadyResolved: true,
+          costOverride: executionCosts,
+        })
+      : direction === 'GROUP' && actionTargetMode === 'multi'
+        ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
-            outcome: succeeded ? 'success' : 'failure',
-            costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+            outcome: resolvedAsSuccess ? 'success' : 'failure',
+            targetOutcomes: Object.fromEntries(
+              executionTargetIds.map((targetId) => [
+                targetId,
+                targetCompatibilitySucceeded(targetId) ? 'success' : 'failure',
+              ])
+            ),
+            costOverride: executionCosts,
           })
         : direction === 'GROUP'
-          ? targetIds
+          ? executionTargetIds
               .map((targetId, index) =>
                 executeAction(input.actorId, targetId, input.actionId, {
                   source: 'manual',
                   subjectId: input.subjectId,
-                  outcome: succeeded ? 'success' : 'failure',
+                  outcome: targetCompatibilitySucceeded(targetId) ? 'success' : 'failure',
                   repetitionAlreadyResolved: true,
                   waiveCosts: index > 0,
-                  costOverride:
-                    index === 0
-                      ? (input.costOverride ?? contract.costs[context.socialIntensity])
-                      : { energy: 0, influence: 0, info: 0 },
+                  costOverride: index === 0 ? executionCosts : { energy: 0, influence: 0, info: 0 },
                 })
               )
               .reduce<ExecuteActionResult>(
                 (combined, entry, index) => ({
                   success: combined.success || entry.success,
                   summary:
-                    index === targetIds.length - 1
-                      ? `Reached ${targetIds.length} housemates.`
+                    index === executionTargetIds.length - 1
+                      ? `Reached ${executionTargetIds.length} housemates.`
                       : combined.summary,
                   newEnergy: entry.newEnergy,
                   delta: (combined.delta * index + entry.delta) / Math.max(1, index + 1),
@@ -471,7 +1088,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                   score: (combined.score * index + entry.score) / Math.max(1, index + 1),
                   targetDeltas: {
                     ...(combined.targetDeltas ?? {}),
-                    [targetIds[index]]: entry.delta,
+                    [executionTargetIds[index]]: entry.delta,
                   },
                 }),
                 result(false, '', energy)
@@ -483,9 +1100,9 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               {
                 source: 'manual',
                 subjectId: input.subjectId,
-                outcome: succeeded ? 'success' : 'failure',
+                outcome: resolvedAsSuccess ? 'success' : 'failure',
                 repetitionAlreadyResolved: true,
-                costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+                costOverride: executionCosts,
               }
             )
     // Legacy execution preserves specialized ceremony copy and existing game
@@ -496,14 +1113,18 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     // An accepted human alliance is authoritative in both relationship models.
     // Projecting the Reality domain can otherwise leave one legacy direction
     // just below the threshold used by badges and action eligibility.
-    if (succeeded && input.actionId === 'proposeAlliance' && targetIds.length === 1) {
+    if (resolvedAsSuccess && input.actionId === 'proposeAlliance' && targetIds.length === 1) {
       dispatch(
         updateRelationship({
           source: input.actorId,
           target: input.targetId,
           delta: 0,
           tags: [ALLIANCE_TAG],
-          actionSource: 'manual',
+          // The compatibility action already recorded the player-authored
+          // alliance transition and its one canonical resource reward. This
+          // second write only repairs the post-projection legacy affinity/tag
+          // representation, so it must not pay the transition a second time.
+          actionSource: 'system',
         })
       )
       dispatch(
@@ -512,30 +1133,34 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           target: input.actorId,
           delta: 0,
           tags: [ALLIANCE_TAG],
-          actionSource: 'manual',
+          actionSource: 'system',
         })
       )
     }
-    const cupidRipplePartnerNames = succeeded
+    const cupidRipplePartnerNames = resolvedAsSuccess
       ? applyCupidPartnerRipple(
           dispatch,
           state,
           input.actorId,
-          targetIds,
+          executionTargetIds,
           compatibility.targetDeltas,
           compatibility.delta
         )
       : null
-    const baseSummary =
-      input.actionId === 'warn_about_danger' && succeeded
-        ? dangerWarningDiscovered
-          ? `${
-              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-            } appreciated the warning, but the LOH found out you leaked the plan.`
-          : `${
-              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-            } appreciated the warning and kept your source private.`
-        : compatibility.summary
+    const allianceProposalCountered =
+      input.actionId === 'proposeAlliance' && orchestration.response?.kind === 'COUNTER'
+    let baseSummary = allianceConsultationSummary ?? compatibility.summary
+    if (allianceProposalCountered) {
+      const targetName =
+        state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+      baseSummary = `${targetName} made a counteroffer. No alliance was formed yet.`
+    } else if (input.actionId === 'warn_about_danger' && resolved) {
+      const targetName =
+        state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+      baseSummary = dangerWarningDiscovered
+        ? `${targetName} appreciated the warning, but the LOH found out you leaked the plan.`
+        : `${targetName} appreciated the warning and kept your source private.`
+    }
     const latestState = getState()
     return {
       ...compatibility,

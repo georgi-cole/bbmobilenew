@@ -12,6 +12,7 @@ import {
   selectSessionLogs,
   selectSocialPanelOpen,
   selectWeekStartRelSnapshot,
+  renameRealityAllianceRecord,
 } from '../../social/socialSlice'
 import { addTvEvent } from '../../store/gameSlice'
 import { SocialManeuvers } from '../../social/SocialManeuvers'
@@ -324,7 +325,8 @@ export default function SocialPanelV2() {
   const isBatchCompatible =
     targetMode === 'primary' &&
     !selectedAction?.requiredTargetStatus &&
-    selectedActionId !== 'proposeAlliance'
+    selectedActionId !== 'proposeAlliance' &&
+    selectedActionId !== 'consult_alliance'
   const usesMultipleTargets = targetMode === 'multi' || (multiSelectActive && isBatchCompatible)
   // A POS holder begins with the LOH selected for an individual consultation
   // without mutating local state from an effect. Group selections always use
@@ -456,6 +458,43 @@ export default function SocialPanelV2() {
   const canExecute =
     hasExecutableSelection && (executionEligibility.eligible || !executionEligibility.reason)
 
+  const selectedScopeLabel = selectedAction
+    ? selectedActionId === 'idle'
+      ? 'You'
+      : selectedActionId === 'consult_alliance'
+        ? 'Alliance'
+        : targetMode === 'none'
+          ? 'House'
+          : usesMultipleTargets
+            ? 'Group'
+            : effectivePrimaryTargetId
+              ? (game.players.find((player) => player.id === effectivePrimaryTargetId)?.name ??
+                'Target')
+              : 'Choose target'
+    : null
+
+  const selectedCostLabel = totalCosts
+    ? `⚡${totalCosts.energy}${totalCosts.influence ? ` · 🤝${totalCosts.influence}` : ''}${
+        totalCosts.info ? ` · 💡${totalCosts.info}` : ''
+      }`
+    : null
+
+  const handleRenameAlliance = useCallback(
+    (allianceId: string, name: string) => {
+      if (!humanPlayer) return
+      dispatch(
+        renameRealityAllianceRecord({
+          allianceId,
+          actorId: humanPlayer.id,
+          name,
+          day: game.week,
+          phase: game.phase,
+        })
+      )
+    },
+    [dispatch, game.phase, game.week, humanPlayer]
+  )
+
   const hiddenContextualActionIds = useMemo(() => {
     const hidden = new Set<string>()
     const isVoxPopuli = game.voxPopuli?.status === 'active'
@@ -547,7 +586,8 @@ export default function SocialPanelV2() {
       const nextBatchCompatible =
         nextMode === 'primary' &&
         !nextAction?.requiredTargetStatus &&
-        actionId !== 'proposeAlliance'
+        actionId !== 'proposeAlliance' &&
+        actionId !== 'consult_alliance'
       if (nextMode === 'multi') {
         setMultiSelectActive(true)
       } else if (!nextBatchCompatible && primaryTargetId) {
@@ -574,6 +614,16 @@ export default function SocialPanelV2() {
       setSelectedSubjectId(null)
       setFeedbackMsg(null)
 
+      if (
+        ids.size === 0 &&
+        selectedAction &&
+        resolveActionTargetMode(selectedAction, dramaMode) !== 'none'
+      ) {
+        setSelectedActionId(null)
+        setMultiSelectActive(false)
+        return
+      }
+
       if (selectedAction?.requiredTargetStatus) {
         const nextTargetStatus = details.primaryTargetId
           ? game.players.find((player) => player.id === details.primaryTargetId)?.status
@@ -583,7 +633,7 @@ export default function SocialPanelV2() {
         }
       }
     },
-    [game.players, selectedAction, usesMultipleTargets]
+    [dramaMode, game.players, selectedAction, usesMultipleTargets]
   )
 
   const handleExecute = useCallback(() => {
@@ -961,6 +1011,7 @@ export default function SocialPanelV2() {
               weekStartRelSnapshot={weekStartRelSnapshot}
               currentWeek={game.week}
               reality={socialState.reality}
+              onRenameAlliance={handleRenameAlliance}
             />
           )}
         </div>
@@ -1106,7 +1157,7 @@ export default function SocialPanelV2() {
               selectedId={selectedActionId}
               onActionClick={handleActionClick}
               onPremiumLockedClick={handleRealityUpgrade}
-              selectedTargetIds={targetMode === 'none' ? undefined : selectedPlayerIds}
+              selectedTargetIds={selectedPlayerIds}
               players={orderedPlayers}
               actorId={humanPlayer.id}
               actorEnergy={energy}
@@ -1193,10 +1244,8 @@ export default function SocialPanelV2() {
             </span>
           ) : (
             <span className="sp2-footer__cost">
-              {totalCosts
-                ? `Cost: ⚡${totalCosts.energy}${
-                    totalCosts.influence ? ` · 🤝${totalCosts.influence}` : ''
-                  }${totalCosts.info ? ` · 💡${totalCosts.info}` : ''}`
+              {selectedCostLabel
+                ? `Cost: ${selectedScopeLabel ? `${selectedScopeLabel} · ` : ''}${selectedCostLabel}`
                 : 'Cost: —'}
             </span>
           )}

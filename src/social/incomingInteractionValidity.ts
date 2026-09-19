@@ -1,5 +1,6 @@
 import { getIncomingInteractionValidityRule } from './incomingInteractionValidityBank'
 import type { IncomingInteraction, ScheduledIncomingInteraction } from './types'
+import type { RealityDomainState } from './reality/types'
 
 interface InteractionValidityPlayer {
   id: string
@@ -9,6 +10,7 @@ interface InteractionValidityPlayer {
 
 export interface InteractionValidityGameState {
   phase?: string
+  week?: number
   lohId?: string | null
   posWinnerId?: string | null
   nomineeIds?: string[]
@@ -16,6 +18,10 @@ export interface InteractionValidityGameState {
   awaitingPovDecision?: boolean
   awaitingPovSaveTarget?: boolean
   povProtectedIds?: string[]
+  cupidArrow?: {
+    status?: 'inactive' | 'scheduled' | 'active' | 'broken'
+    pairs?: Array<{ memberIds: [string, string] }>
+  }
   players?: InteractionValidityPlayer[]
 }
 
@@ -23,6 +29,88 @@ function getScenarioKey(interaction: IncomingInteraction): string | null {
   return typeof interaction.payload?.scenarioKey === 'string'
     ? interaction.payload.scenarioKey
     : null
+}
+
+const ALLIANCE_STRATEGY_SCENARIOS = new Set([
+  'alliance_nomination_pitch',
+  'alliance_vox_ballot_pitch',
+  'alliance_safety_pitch',
+  'alliance_vote_pitch',
+  'alliance_power_nomination_huddle',
+  'alliance_power_safety_huddle',
+])
+
+function isAllianceProtectedGameUnit(
+  game: InteractionValidityGameState,
+  allianceMemberIds: readonly string[],
+  playerId: string
+): boolean {
+  if (allianceMemberIds.includes(playerId)) return true
+  if (game.cupidArrow?.status !== 'active') return false
+  const pair = game.cupidArrow.pairs?.find((entry) => entry.memberIds.includes(playerId))
+  const partnerId = pair?.memberIds.find((id) => id !== playerId)
+  return partnerId !== undefined && allianceMemberIds.includes(partnerId)
+}
+
+function violatesRealityAllianceContext(
+  interaction: IncomingInteraction,
+  game: InteractionValidityGameState,
+  reality?: RealityDomainState
+): boolean {
+  if (!reality || !ALLIANCE_STRATEGY_SCENARIOS.has(getScenarioKey(interaction) ?? '')) return false
+
+  const allianceId =
+    typeof interaction.payload?.allianceId === 'string' ? interaction.payload.allianceId : null
+  const human = humanPlayer(game)
+  if (!allianceId || !human) return true
+
+  const alliance = reality.alliances[allianceId]
+  if (
+    !alliance ||
+    (alliance.status !== 'ACTIVE' && alliance.status !== 'PROBATIONARY') ||
+    !alliance.memberIds.includes(interaction.fromId) ||
+    !alliance.memberIds.includes(human.id)
+  ) {
+    return true
+  }
+
+  const subjectIds = [
+    interaction.payload?.subjectId,
+    interaction.payload?.secondarySubjectId,
+  ].filter((value): value is string => typeof value === 'string')
+  if (
+    subjectIds.some((subjectId) => {
+      const subject = getPlayer(game, subjectId)
+      return !subject || isEvictedOrGone(subject)
+    })
+  ) {
+    return true
+  }
+  if (
+    subjectIds.some((subjectId) => isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId))
+  ) {
+    return true
+  }
+
+  const scenarioKey = getScenarioKey(interaction)
+  const groupAgenda =
+    scenarioKey === 'alliance_power_nomination_huddle'
+      ? 'nominations'
+      : scenarioKey === 'alliance_power_safety_huddle'
+        ? 'safety'
+        : null
+  if (groupAgenda) {
+    const day = game.week ?? interaction.createdWeek
+    const alreadyMet = reality.events.some(
+      (event) =>
+        event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+        event.day === day &&
+        event.reason.startsWith(`strategy_meeting:${alliance.id}:${groupAgenda}:`)
+    )
+    if (alreadyMet) return true
+  }
+
+  return false
 }
 
 function getPlayer(
@@ -122,7 +210,8 @@ function violatesDeclarativeRule(
 
 export function isIncomingInteractionInvalidated(
   interaction: IncomingInteraction,
-  game: InteractionValidityGameState
+  game: InteractionValidityGameState,
+  reality?: RealityDomainState
 ): boolean {
   const sender = getPlayer(game, interaction.fromId)
   const human = humanPlayer(game)
@@ -144,28 +233,33 @@ export function isIncomingInteractionInvalidated(
     return true
   }
 
-  return violatesDeclarativeRule(interaction, game)
+  return (
+    violatesDeclarativeRule(interaction, game) ||
+    violatesRealityAllianceContext(interaction, game, reality)
+  )
 }
 
 export function collectInvalidIncomingInteractionIds({
   incomingInteractions,
   scheduledIncomingInteractions,
   game,
+  reality,
 }: {
   incomingInteractions: IncomingInteraction[]
   scheduledIncomingInteractions: ScheduledIncomingInteraction[]
   game: InteractionValidityGameState
+  reality?: RealityDomainState
 }): string[] {
   const ids = new Set<string>()
 
   for (const interaction of incomingInteractions) {
-    if (!interaction.resolved && isIncomingInteractionInvalidated(interaction, game)) {
+    if (!interaction.resolved && isIncomingInteractionInvalidated(interaction, game, reality)) {
       ids.add(interaction.id)
     }
   }
 
   for (const entry of scheduledIncomingInteractions) {
-    if (isIncomingInteractionInvalidated(entry.interaction, game)) {
+    if (isIncomingInteractionInvalidated(entry.interaction, game, reality)) {
       ids.add(entry.interaction.id)
     }
   }

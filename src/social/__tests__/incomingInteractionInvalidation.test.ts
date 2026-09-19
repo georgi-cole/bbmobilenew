@@ -14,6 +14,11 @@ import socialReducer, {
 import { socialMiddleware } from '../socialMiddleware'
 import { respondToIncomingInteraction } from '../incomingInteractions'
 import { isIncomingInteractionInvalidated } from '../incomingInteractionValidity'
+import {
+  createInitialRealityDomainState,
+  createRealityAlliance,
+  holdRealityAllianceStrategyMeeting,
+} from '../reality'
 import type { IncomingInteraction, SocialState } from '../types'
 
 function makeInteraction(overrides: Partial<IncomingInteraction> = {}): IncomingInteraction {
@@ -148,6 +153,267 @@ describe('incoming interaction invalidation', () => {
           payload: { scenarioKey: 'live_vote_pitch', phase: 'live_vote' },
         }),
         game
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates an alliance nomination pitch once the nomination window has passed', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'nomination_results'
+    game.lohId = human.id
+    human.status = 'loh'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_nomination_pitch',
+            phase: 'social_1',
+            subjectId: nominee.id,
+          },
+        }),
+        game
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates an alliance strategy pitch when its named target has left the house', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'social_2'
+    game.lohId = null
+    human.status = 'active'
+    nominee.status = 'evicted'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [otherNominee.id]
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_vote_pitch',
+            phase: 'social_2',
+            subjectId: nominee.id,
+          },
+        }),
+        game
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates an alliance huddle if the referenced pact has dissolved', () => {
+    const { game, human, nominee, loh } = buildGameState()
+    game.phase = 'social_1'
+    game.lohId = loh.id
+    loh.status = 'loh'
+    human.status = 'active'
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'stale-alliance-huddle',
+      founderIds: [loh.id],
+      memberIds: [human.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'DISSOLVED'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: loh.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            phase: 'social_1',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates an alliance strategy pitch if its target joins the same pact before response', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'social_2'
+    game.lohId = null
+    human.status = 'active'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'changed-alliance-target',
+      founderIds: [otherNominee.id],
+      memberIds: [human.id, nominee.id],
+      purpose: 'Control the vote',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_vote_pitch',
+            phase: 'social_2',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates alliance strategy against the Cupid partner of an alliance member', () => {
+    const { game, human, nominee, otherNominee, loh } = buildGameState()
+    game.phase = 'social_2'
+    game.lohId = null
+    human.status = 'active'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+    game.cupidArrow = {
+      scheduledSeason: 1,
+      status: 'active',
+      activatedSeason: 1,
+      activatedWeek: game.week,
+      pairs: [
+        {
+          id: 'cupid-test-pair',
+          memberIds: [nominee.id, loh.id],
+          color: '#ffffff',
+        },
+      ],
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
+      visualsRevealed: true,
+    }
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'cupid-protected-alliance',
+      founderIds: [otherNominee.id],
+      memberIds: [human.id, loh.id],
+      purpose: 'Control the vote',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_vote_pitch',
+            phase: 'social_2',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates a second alliance power huddle for the same agenda on the same day', () => {
+    const { game, human, nominee, loh } = buildGameState()
+    game.week = 4
+    game.phase = 'social_1'
+    game.lohId = loh.id
+    loh.status = 'loh'
+    human.status = 'active'
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'already-met-alliance',
+      founderIds: [loh.id],
+      memberIds: [human.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'loh_results' },
+    })
+    alliance.status = 'ACTIVE'
+    holdRealityAllianceStrategyMeeting(reality, {
+      allianceId: alliance.id,
+      callerId: human.id,
+      attendeeIds: [human.id, loh.id],
+      targetIds: [nominee.id],
+      planIds: [`target:${nominee.id}`],
+      agenda: 'nominations',
+      at: { day: game.week, phase: 'loh_results' },
+      sourceEventId: 'first-huddle',
+    })
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: loh.id,
+          type: 'deal_offer',
+          createdWeek: game.week,
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            phase: 'social_1',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates a Safety huddle when its fallback target has already left the house', () => {
+    const { game, human, nominee, otherNominee, loh } = buildGameState()
+    game.phase = 'pos_results'
+    game.posWinnerId = loh.id
+    loh.status = 'pos'
+    human.status = 'active'
+    nominee.status = 'nominated'
+    otherNominee.status = 'evicted'
+    game.nomineeIds = [nominee.id]
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'stale-safety-fallback',
+      founderIds: [loh.id],
+      memberIds: [human.id],
+      purpose: 'Control Safety',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: loh.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_safety_huddle',
+            phase: 'pos_results',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+            secondarySubjectId: otherNominee.id,
+          },
+        }),
+        game,
+        reality
       )
     ).toBe(true)
   })

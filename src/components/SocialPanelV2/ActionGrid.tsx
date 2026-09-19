@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
+import {
+  isRealityExclusiveAction,
+  resolveActionTargetMode,
+  type SocialActionDefinition,
+} from '../../social/socialActions'
 import type { ActionCategory } from '../../social/socialActions'
 import {
   buildEffectiveSocialActions,
@@ -72,6 +76,7 @@ export default function ActionGrid({
   const appliedInvitationRef = useRef<string | null>(null)
   const [realityModePromptOpen, setRealityModePromptOpen] = useState(false)
   const game = useAppSelector((state) => state.game)
+  const reality = useAppSelector((state) => state.social.reality)
   const hasRealityAccess = useAppSelector(selectHasDramaModeAccess)
   const realityModePreset = useAppSelector((state) => state.settings.gameUX.realityModePreset)
   const actionOverrides = useAppSelector((state) => state.settings?.social?.actionOverrides ?? {})
@@ -149,6 +154,7 @@ export default function ActionGrid({
         primaryTargetStatus,
         relationships,
         dramaNetwork,
+        reality,
         dramaMode,
       }).eligible
     )
@@ -171,6 +177,7 @@ export default function ActionGrid({
         primaryTargetStatus,
         relationships,
         dramaNetwork,
+        reality,
         dramaMode: false,
         ignoreRealityModeGate: true,
       }).eligible
@@ -244,8 +251,17 @@ export default function ActionGrid({
     if (typeof window !== 'undefined') window.location.hash = '/settings'
   }
 
+  const explicitlyNoTargetSelected = selectedTargetIds !== undefined && selectedTargetIds.size === 0
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
+    .filter((action) => {
+      if (!explicitlyNoTargetSelected) return true
+      const actionMode = resolveActionTargetMode(
+        action,
+        dramaMode || isRealityExclusiveAction(action)
+      )
+      return actionMode === 'none'
+    })
     .filter((action) => action.id === suggestedActionId || matchesCategoryFilter(action.category))
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
@@ -256,20 +272,10 @@ export default function ActionGrid({
       if (right.id === 'ask_loh_target') return 1
       return 0
     })
-  // Keep a chosen move at the start of its existing grid row. If it was the
-  // right-hand card, its row-mate follows it instead, so the featured card
-  // gets a full row without sending the player back to the top of the list.
-  const selectedActionIndex = orderedVisibleActions.findIndex((action) => action.id === selectedId)
-  const visibleActions =
-    selectedActionIndex === -1
-      ? orderedVisibleActions
-      : [
-          ...orderedVisibleActions.slice(0, Math.floor(selectedActionIndex / 2) * 2),
-          orderedVisibleActions[selectedActionIndex],
-          ...orderedVisibleActions
-            .filter((_, index) => index !== selectedActionIndex)
-            .slice(Math.floor(selectedActionIndex / 2) * 2),
-        ]
+  // Selecting a move should only change its visual state. Keep the catalogue
+  // order fixed so cards never jump, expand into a featured row, or appear to
+  // disappear when the player compares actions.
+  const visibleActions = orderedVisibleActions
 
   useEffect(() => {
     if (!invitation || appliedInvitationRef.current === invitation.id) return

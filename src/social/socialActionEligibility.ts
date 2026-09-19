@@ -3,6 +3,7 @@ import { getPublicDramaActionAvailability, isPublicDramaAction } from './dramaPa
 import type { SocialActionDefinition, SubjectPool } from './socialActions'
 import { isRealityExclusiveAction, resolveActionTargetMode } from './socialActions'
 import type { DramaSocialNetwork, RelationshipsMap } from './types'
+import type { RealityDomainState } from './reality/types'
 
 export interface ActionEligibilityPlayer {
   id: string
@@ -21,6 +22,7 @@ export interface SocialActionEligibilityContext {
   actorStatus?: PlayerStatus | null
   relationships?: RelationshipsMap
   dramaNetwork?: DramaSocialNetwork
+  reality?: RealityDomainState
   dramaMode?: boolean
   /** Used by Classic upgrade previews to test relevance without unlocking execution. */
   ignoreRealityModeGate?: boolean
@@ -57,9 +59,20 @@ function hasActiveRelationshipTag(
   relationships: RelationshipsMap,
   actorId: string,
   targetId: string,
-  tag: string
+  tag: string,
+  reality?: RealityDomainState
 ): boolean {
   if (tag === 'alliance') {
+    const formalAlliance = reality
+      ? Object.values(reality.alliances).some(
+          (alliance) =>
+            (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+            alliance.memberIds.includes(actorId) &&
+            alliance.memberIds.includes(targetId)
+        )
+      : false
+    if (formalAlliance) return true
+
     const actorAffinity = relationships[actorId]?.[targetId]?.affinity ?? 0
     const targetAffinity = relationships[targetId]?.[actorId]?.affinity ?? 0
     const tagged =
@@ -117,6 +130,7 @@ export function evaluateSocialActionEligibility({
   actorStatus,
   relationships,
   dramaNetwork,
+  reality,
   dramaMode = false,
   ignoreRealityModeGate = false,
   requireCompleteSelection = false,
@@ -248,14 +262,14 @@ export function evaluateSocialActionEligibility({
       if (
         requiredRelationshipTags &&
         !requiredRelationshipTags.some((tag) =>
-          hasActiveRelationshipTag(relationships, actorId, targetId, tag)
+          hasActiveRelationshipTag(relationships, actorId, targetId, tag, reality)
         )
       ) {
         return unavailable('The required relationship is not active')
       }
       if (
         excludedRelationshipTags?.some((tag) =>
-          hasActiveRelationshipTag(relationships, actorId, targetId, tag)
+          hasActiveRelationshipTag(relationships, actorId, targetId, tag, reality)
         )
       ) {
         return unavailable('This relationship has already moved past that action')
