@@ -1258,6 +1258,7 @@ export function recordRealityAlliancePlanDefiance(
     actualTargetId: string
     at: RealityClock
     sourceEventId: string
+    eligibleTargetIds?: string[]
   }
 ): RealityAlliance[] {
   const affected: RealityAlliance[] = []
@@ -1272,12 +1273,18 @@ export function recordRealityAlliancePlanDefiance(
       continue
     }
 
+    const planTargetIds = [...alliance.currentTargetIds, ...alliance.fallbackTargetIds]
+    if (
+      input.eligibleTargetIds &&
+      !planTargetIds.some((targetId) => input.eligibleTargetIds!.includes(targetId))
+    ) {
+      continue
+    }
+
     const knowsPlan =
       alliance.leaderIds.includes(input.actorId) ||
       (alliance.memberPlanBeliefs[input.actorId] ?? []).some((planId) =>
-        [...alliance.currentTargetIds, ...alliance.fallbackTargetIds].some((targetId) =>
-          planId.includes(targetId)
-        )
+        planTargetIds.some((targetId) => planId.includes(targetId))
       )
     if (!knowsPlan) continue
     if (
