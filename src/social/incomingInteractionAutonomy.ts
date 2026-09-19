@@ -949,7 +949,7 @@ function resolveIncomingInteractionPlan(
         : { type: 'gossip', scenarioKey: 'generic_gossip' }
   }
   if (!plan) return null
-  if (canSendInteractionType(plan.type, constraints, signals)) {
+  if (plan.allianceId || canSendInteractionType(plan.type, constraints, signals)) {
     return plan
   }
 
@@ -1091,7 +1091,11 @@ export function evaluateIncomingInteractionEnqueueDecision(
   const planPriority = getIncomingInteractionPriority(plan.type, plan.scenarioKey)
   const isMajorInteraction =
     (context.dramaMode || context.voxPopuliActive) && planPriority === 'high'
-  const isCriticalConsultation = plan.scenarioKey === 'loh_consults_safety_holder'
+  const isCriticalConsultation = [
+    'loh_consults_safety_holder',
+    'alliance_power_nomination_huddle',
+    'alliance_power_safety_huddle',
+  ].includes(plan.scenarioKey)
 
   const globalActive = pendingInteractions.filter(
     (interaction) => !interaction.resolved && isIncomingInteractionActionable(interaction)
@@ -1848,6 +1852,9 @@ export function scheduleIncomingInteractionsForPhase(
       mode: useVoxDrama ? 'drama' : 'normal',
       payload: {
         scenarioKey: plan.scenarioKey,
+        ...(plan.allianceId
+          ? { dedupeGroup: `alliance_strategy:${plan.allianceId}:${plan.scenarioKey}` }
+          : {}),
         ...(plan.relationshipIntent ? { relationshipIntent: plan.relationshipIntent } : {}),
         ...(plan.relationshipBeatId ? { relationshipBeatId: plan.relationshipBeatId } : {}),
         variantFamilyId: textResult.variantFamilyId,
@@ -1897,7 +1904,11 @@ export function scheduleIncomingInteractionsForPhase(
           ? `score=${decision.score.toFixed(3)};scenario=${plan.scenarioKey}`
           : `scenario=${plan.scenarioKey}`,
     })
-    const mustDeliverConsultationNow = plan.scenarioKey === 'loh_consults_safety_holder'
+    const mustDeliverConsultationNow = [
+      'loh_consults_safety_holder',
+      'alliance_power_nomination_huddle',
+      'alliance_power_safety_huddle',
+    ].includes(plan.scenarioKey)
     const candidateDedupeReason = getInteractionDedupeReason({
       interaction,
       priority,
