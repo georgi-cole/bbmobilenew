@@ -172,6 +172,58 @@ describe('Classic social isolation', () => {
 })
 
 describe('Reality alliance consultation economy', () => {
+  it('turns one selected alliance member into a real group huddle at one fixed cost', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const players = [
+      { id: 'p1', name: 'P1', status: 'loh' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+    ]
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players,
+          week: 2,
+          phase: 'social_1',
+          lohId: 'p1',
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'group-huddle',
+      founderIds: ['p1', 'p2'],
+      memberIds: ['p3'],
+      purpose: 'Control the middle',
+      at: { day: 1, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'consult_alliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(result.summary).toMatch(/P2.*P4/i)
+    expect(result.summary).toMatch(/P3.*P4/i)
+    expect(store.getState().social.energyBank.p1).toBe(3)
+    const huddle = store
+      .getState()
+      .social.reality.events.find((event) => event.type === 'ALLIANCE_STRATEGY_MEETING')
+    expect(huddle?.participantIds).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']))
+    expect(store.getState().social.reality.alliances[alliance.id].currentTargetIds).toEqual(['p4'])
+  })
+
   it('does not charge energy for repeating the same alliance agenda on the same day', () => {
     const initialGame = gameReducer(undefined, { type: '@@test/init' })
     const players = [
