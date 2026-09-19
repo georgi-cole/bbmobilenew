@@ -593,6 +593,53 @@ function updateRealityExperience(
   )
 }
 
+function summarizeRealityResponses(
+  action: RealityActionContract,
+  responses: Array<{ targetId: string; response: RealityResponseResolution }>
+): {
+  response: RealityResponseResolution
+  outcome: RealitySocialEvent['outcome']
+} {
+  const acceptedCount = responses.filter((entry) => entry.response.accepted).length
+  const response: RealityResponseResolution =
+    responses.length === 1
+      ? responses[0].response
+      : acceptedCount === responses.length
+        ? {
+            kind: 'ACCEPT',
+            utility: 1,
+            reason: 'group_accepted',
+            accepted: true,
+          }
+        : acceptedCount > 0
+          ? {
+              kind: 'COUNTER',
+              utility: acceptedCount / Math.max(1, responses.length),
+              reason: `group_partial_acceptance:${acceptedCount}/${responses.length}`,
+              accepted: false,
+            }
+          : {
+              kind: 'REJECT',
+              utility: 0,
+              reason: 'group_rejected',
+              accepted: false,
+            }
+
+  const outcome: RealitySocialEvent['outcome'] =
+    responses.length > 1 && acceptedCount > 0 && acceptedCount < responses.length
+      ? 'PARTIAL'
+      : response.kind === 'COUNTER'
+        ? 'COUNTERED'
+        : action.purposes.includes('INFORMATION') &&
+            (response.kind === 'QUESTION' || response.kind === 'LIE')
+          ? 'PARTIAL'
+          : response.accepted || action.purposes.includes('CONFLICT')
+            ? 'SUCCESS'
+            : 'FAILURE'
+
+  return { response, outcome }
+}
+
 export function runRealityOpportunity(input: {
   domain: RealityDomainState
   simulation: RealitySimulationState
@@ -754,43 +801,9 @@ export function runRealityOpportunity(input: {
       })
     }
   }
-  const acceptedCount = responses.filter((entry) => entry.response.accepted).length
-  const response: RealityResponseResolution =
-    responses.length === 1
-      ? responses[0].response
-      : acceptedCount === responses.length
-        ? {
-            kind: 'ACCEPT',
-            utility: 1,
-            reason: 'group_accepted',
-            accepted: true,
-          }
-        : acceptedCount > 0
-          ? {
-              kind: 'COUNTER',
-              utility: acceptedCount / Math.max(1, responses.length),
-              reason: `group_partial_acceptance:${acceptedCount}/${responses.length}`,
-              accepted: false,
-            }
-          : {
-              kind: 'REJECT',
-              utility: 0,
-              reason: 'group_rejected',
-              accepted: false,
-            }
+  const { response, outcome } = summarizeRealityResponses(selected.action, responses)
   const eventSequence = domain.nextSequence
   domain.nextSequence += 1
-  const outcome =
-    responses.length > 1 && acceptedCount > 0 && acceptedCount < responses.length
-      ? 'PARTIAL'
-      : response.kind === 'COUNTER'
-        ? 'COUNTERED'
-        : selected.action.purposes.includes('INFORMATION') &&
-            (response.kind === 'QUESTION' || response.kind === 'LIE')
-          ? 'PARTIAL'
-          : response.accepted || selected.action.purposes.includes('CONFLICT')
-            ? 'SUCCESS'
-            : 'FAILURE'
   const event: RealitySocialEvent = {
     id: `reality-event-${eventSequence}`,
     sequence: eventSequence,
