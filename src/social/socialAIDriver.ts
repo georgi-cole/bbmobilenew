@@ -538,7 +538,7 @@ function pickHumanFacingText(
     text: text
       .replaceAll('{player}', playerName)
       .replaceAll('{subject}', subjectName ?? 'that player')
-        .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
+      .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
     scenarioKey,
     variantFamilyId: `legacy_background_${actionId}`,
     variantId: `legacy_background_${actionId}:${variants.indexOf(text)}`,
