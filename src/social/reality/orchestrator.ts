@@ -68,6 +68,10 @@ export interface RealityOrchestrationResult {
   event: RealitySocialEvent | null
   selectedActionId: string | null
   response: RealityResponseResolution | null
+  /** Per-target resolutions are retained for compatibility adapters so a
+   * partially successful group interaction does not flatten every target to
+   * the same legacy success/failure result. */
+  targetResponses?: Array<{ targetId: string; response: RealityResponseResolution }>
   score?: RealityScoreBreakdown
 }
 
@@ -914,6 +918,7 @@ export function runRealityOpportunity(input: {
     event,
     selectedActionId: selected.action.id,
     response,
+    targetResponses: responses,
     score: selected.score,
   }
 }
