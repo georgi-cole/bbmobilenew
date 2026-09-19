@@ -371,6 +371,7 @@ function applyRealityLifecycle(input: {
           kind: 'SOCIAL_BETRAYAL',
           at,
           sourceEventId: event.id,
+          ...(pactToLeave ? { allianceId: pactToLeave.id } : {}),
         })
         if (
           action.id === 'break_alliance' &&
