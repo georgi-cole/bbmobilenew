@@ -514,6 +514,16 @@ function sharedLiveAlliance(
   )
 }
 
+function isAllianceProtectedGameUnit(
+  game: GameState,
+  alliance: RealityAlliance,
+  playerId: string
+): boolean {
+  if (alliance.memberIds.includes(playerId)) return true
+  const cupidPartnerId = getCupidPartnerId(game, playerId)
+  return cupidPartnerId !== null && alliance.memberIds.includes(cupidPartnerId)
+}
+
 function allianceSpokespersonId(
   alliance: RealityAlliance,
   playerId: string,
@@ -609,7 +619,7 @@ function resolveAllianceInteractionPlan(
     ['loh_results', 'social_1', 'nominations'].includes(phase)
   ) {
     const candidates = getEligibleNominationTargets(game, actorId).filter(
-      (candidate) => !alliance.memberIds.includes(candidate.id)
+      (candidate) => !isAllianceProtectedGameUnit(game, alliance, candidate.id)
     )
     const allianceMemberTargetPreferences = strategicPreferencesByMember(
       game,
@@ -634,7 +644,8 @@ function resolveAllianceInteractionPlan(
   if (actorHasSafety && phase === 'pos_results') {
     const nominees = game.players.filter(
       (candidate) =>
-        game.nomineeIds.includes(candidate.id) && !alliance.memberIds.includes(candidate.id)
+        game.nomineeIds.includes(candidate.id) &&
+        !isAllianceProtectedGameUnit(game, alliance, candidate.id)
     )
     if (nominees.length === 0) return null
     const allianceMemberTargetPreferences = strategicPreferencesByMember(
@@ -645,7 +656,7 @@ function resolveAllianceInteractionPlan(
     const subjectId =
       allianceMemberTargetPreferences[actorId] ?? bestStrategicTarget(game, actorId, nominees)
     const replacements = getEligibleReplacementNominees(game, game.lohId).filter(
-      (candidate) => !alliance.memberIds.includes(candidate.id)
+      (candidate) => !isAllianceProtectedGameUnit(game, alliance, candidate.id)
     )
     const allianceMemberFallbackPreferences = strategicPreferencesByMember(
       game,
@@ -680,7 +691,7 @@ function resolveAllianceInteractionPlan(
       game,
       actorId,
       getEligibleNominationTargets(game, playerId).filter(
-        (candidate) => !alliance.memberIds.includes(candidate.id)
+        (candidate) => !isAllianceProtectedGameUnit(game, alliance, candidate.id)
       )
     )
     if (!subjectId) return null
@@ -702,7 +713,7 @@ function resolveAllianceInteractionPlan(
       game,
       actorId,
       getEligibleNominationTargets(game, playerId).filter(
-        (candidate) => !alliance.memberIds.includes(candidate.id)
+        (candidate) => !isAllianceProtectedGameUnit(game, alliance, candidate.id)
       )
     )
     if (!subjectId) return null
@@ -720,7 +731,7 @@ function resolveAllianceInteractionPlan(
       game,
       actorId,
       getEligibleReplacementNominees(game, game.lohId).filter(
-        (candidate) => !alliance.memberIds.includes(candidate.id)
+        (candidate) => !isAllianceProtectedGameUnit(game, alliance, candidate.id)
       )
     )
     if (!subjectId) return null
@@ -741,7 +752,7 @@ function resolveAllianceInteractionPlan(
     !playerIsLoh
   ) {
     const eligibleNomineeIds = game.nomineeIds.filter(
-      (nomineeId) => !alliance.memberIds.includes(nomineeId)
+      (nomineeId) => !isAllianceProtectedGameUnit(game, alliance, nomineeId)
     )
     if (eligibleNomineeIds.length === 0) return null
     const subjectId = chooseAiEvictionVote(
