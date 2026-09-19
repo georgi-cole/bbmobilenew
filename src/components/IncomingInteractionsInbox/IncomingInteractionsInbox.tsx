@@ -641,7 +641,7 @@ export default function IncomingInteractionsInbox() {
         <ContextualGuidePrompt
           eyebrow="PROMISE"
           title="You made a promise"
-          body="This commitment will be judged when the relevant game decision happens. Keeping or breaking it can affect trust and your reputation. You can review it in My Game → Deals."
+          body="This commitment will be judged when the relevant game decision happens. Keeping or breaking it can affect trust and your reputation. You can review active promises here in Incoming."
           onComplete={() => dismissContextualGuide('promise')}
         />
       )}
