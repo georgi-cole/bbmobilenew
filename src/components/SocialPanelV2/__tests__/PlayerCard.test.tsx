@@ -241,6 +241,7 @@ describe('PlayerList', () => {
           },
         }}
         selectedIds={new Set(['a'])}
+        playerLimitedRead
       />
     )
 
@@ -248,6 +249,27 @@ describe('PlayerList', () => {
     expect(screen.getByText(/Ally/)).toBeInTheDocument()
     expect(screen.queryByText(/Rival/)).toBeNull()
     expect(screen.queryByText('-10%')).toBeNull()
+  })
+
+  it('preserves the mutual relationship summary outside Reality Mode', () => {
+    render(
+      <PlayerList
+        players={[players[0]]}
+        humanPlayerId="human"
+        relationships={{
+          human: {
+            a: { affinity: 60, tags: [] },
+          },
+          a: {
+            human: { affinity: -80, tags: ['rivalry'] },
+          },
+        }}
+        selectedIds={new Set(['a'])}
+      />
+    )
+
+    expect(screen.getByText('-10%')).toBeInTheDocument()
+    expect(screen.getByText(/Rival/)).toBeInTheDocument()
   })
 
   it('single-click selects only the clicked player', () => {
