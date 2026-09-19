@@ -104,7 +104,6 @@ describe('Reality Social first-use tutorial', () => {
     renderPanel(normalStore)
 
     expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
-    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
     expect(screen.queryByTestId('reality-social-tutorial')).toBeNull()
     expect(window.localStorage.getItem(realitySocialTutorialStorageKey('profile-a'))).toBeNull()
 
@@ -128,6 +127,7 @@ describe('Reality Social first-use tutorial', () => {
     const store = makeStore({ vipOwned: true })
     renderPanel(store)
 
+    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
     expect(screen.queryByTestId('reality-social-tutorial')).toBeNull()
   })
 })
