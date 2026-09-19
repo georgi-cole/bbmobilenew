@@ -214,7 +214,9 @@ export default function SeasonTutorialTour({
   useLayoutEffect(() => {
     if (currentStep.id === 'more' || currentStep.id === 'profile') {
       window.dispatchEvent(new Event('season-tutorial:open-more-menu'))
+      return
     }
+    window.dispatchEvent(new Event('season-tutorial:close-more-menu'))
   }, [currentStep.id])
 
   useLayoutEffect(() => {
