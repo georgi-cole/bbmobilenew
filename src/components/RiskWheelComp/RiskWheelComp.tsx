@@ -68,12 +68,12 @@ const N_SECTORS = WHEEL_SECTORS.length
 const DEG_PER_SECTOR = 360 / N_SECTORS
 
 function getTargetRotation(currentRotation: number, sectorIndex: number): number {
-  // Bring sectorIndex to the top (pointer at 12 o'clock).
-  // At rotation 0, sector 0 is centered at the top.
-  // sector i center is at i * DEG_PER_SECTOR degrees clockwise from the top.
-  // To bring sector i to the top the wheel must rotate so that i * DEG_PER_SECTOR ≡ 0 (mod 360).
-  // That means rotation ≡ -i * DEG_PER_SECTOR (mod 360).
-  const targetBase = -(sectorIndex * DEG_PER_SECTOR)
+  // sectorPath() starts sector 0 at the 12 o'clock boundary, so each sector's
+  // visual center is half a sector clockwise from its start boundary.
+  // Offset by half a sector so the pointer lands on the middle of the chosen
+  // sector rather than on the divider between two sectors.
+  const sectorCenterAngle = (sectorIndex + 0.5) * DEG_PER_SECTOR
+  const targetBase = -sectorCenterAngle
   // We want at least 5 full rotations beyond current position.
   const minTarget = currentRotation + 5 * 360
   const k = Math.ceil((minTarget - targetBase) / 360)
