@@ -47,8 +47,6 @@ const AI_RESOLVE_DELAY_MS = 600
 const SECTOR_HIGHLIGHT_DURATION_MS = 850
 
 const VIP_STAGE_ASSET = '/assets/minigames/risk-wheel-vip/stage.webp'
-const VIP_POINTER_ASSET = '/assets/minigames/risk-wheel-vip/pointer.webp'
-const VIP_CREST_ASSET = '/assets/minigames/risk-wheel-vip/vip-crest.webp'
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations')
@@ -242,7 +240,9 @@ function WheelSvg({
     <div className={`rw-wheel-outer${premium ? ' rw-wheel-outer--vip' : ''}`}>
       {/* Pointer indicator */}
       {premium ? (
-        <img className="rw-wheel-pointer rw-wheel-pointer--vip" src={VIP_POINTER_ASSET} alt="" />
+        <div className="rw-wheel-pointer rw-wheel-pointer--vip" aria-hidden="true">
+          <span />
+        </div>
       ) : (
         <div className="rw-wheel-pointer" aria-hidden="true">
           ▼
@@ -749,7 +749,7 @@ export default function RiskWheelComp({
           ))}
         </div>
         <div className="rw-winner-crown" aria-hidden="true">
-          {premiumPresentation ? <img src={VIP_CREST_ASSET} alt="" /> : '🏆'}
+          {premiumPresentation ? <span className="rw-vip-winner-badge">VIP</span> : '🏆'}
         </div>
         {winnerId && (
           <img
@@ -785,7 +785,9 @@ export default function RiskWheelComp({
       <div className={`rw-root rw-round-summary${premiumRootClass}`}>
         <div className="rw-summary-header">
           {premiumPresentation && (
-            <img className="rw-vip-summary-crest" src={VIP_CREST_ASSET} alt="" />
+            <span className="rw-vip-summary-crest" aria-hidden="true">
+              VIP
+            </span>
           )}
           <span className="rw-summary-round-badge">Round {round}</span>
           <h2 className="rw-summary-title">Results</h2>
@@ -861,7 +863,7 @@ export default function RiskWheelComp({
         <div className="rw-header-left">
           {premiumPresentation && (
             <div className="rw-vip-brand" aria-label="VIP Risk Wheel">
-              <img src={VIP_CREST_ASSET} alt="" />
+              <i className="rw-vip-brand-gem" aria-hidden="true" />
               <span>VIP SHOW</span>
             </div>
           )}
