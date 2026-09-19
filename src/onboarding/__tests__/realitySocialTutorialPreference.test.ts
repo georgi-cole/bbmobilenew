@@ -19,9 +19,7 @@ describe('Reality Social tutorial preference', () => {
 
     expect(hasHandledRealitySocialTutorial('profile-a', false)).toBe(true)
     expect(hasHandledRealitySocialTutorial('profile-b', false)).toBe(false)
-    expect(
-      window.localStorage.getItem(realitySocialTutorialStorageKey('profile-a'))
-    ).toBe('done')
+    expect(window.localStorage.getItem(realitySocialTutorialStorageKey('profile-a'))).toBe('done')
   })
 
   it('keeps guest completion session-scoped', () => {
