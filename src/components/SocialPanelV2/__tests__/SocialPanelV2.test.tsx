@@ -200,6 +200,24 @@ describe('SocialPanelV2 – energy display', () => {
 })
 
 describe('SocialPanelV2 – layout', () => {
+  it('starts with targetless moves and reveals targeted moves after choosing a housemate', () => {
+    const store = makeStore({ phase: 'social_1' })
+    act(() => {
+      store.dispatch(openSocialPanel())
+    })
+    renderPanel(store)
+
+    expect(screen.getByRole('button', { name: /Watch Room/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Lay Low/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Compliment/i })).not.toBeInTheDocument()
+
+    const target = store.getState().game.players.find((player) => !player.isUser)!
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(target.name, 'i') })[0])
+
+    expect(screen.getByRole('button', { name: /Compliment/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Watch Room/i })).toBeInTheDocument()
+  })
+
   it('renders player roster placeholder', () => {
     const store = makeStore({ phase: 'social_1' })
     act(() => {
