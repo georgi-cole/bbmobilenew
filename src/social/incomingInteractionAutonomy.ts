@@ -196,6 +196,8 @@ interface InteractionPlan {
   secondarySubjectId?: string
   allianceGroupMemberIds?: string[]
   allianceGroupHuddle?: boolean
+  allianceMemberTargetPreferences?: Record<string, string>
+  allianceMemberFallbackPreferences?: Record<string, string>
 }
 
 const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
@@ -551,33 +553,23 @@ function bestStrategicTarget(
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
 }
 
-function allianceConsensusTarget(
+function strategicPreferencesByMember(
   game: GameState,
   voterIds: readonly string[],
   candidates: readonly Player[]
-): string | undefined {
-  const counts = new Map<string, { votes: number; score: number }>()
-  for (const voterId of voterIds) {
-    const ranked = candidates
-      .filter((candidate) => candidate.id !== voterId)
-      .map((candidate) => ({
-        id: candidate.id,
-        score: getNominationTargetScore(game, voterId, candidate),
-      }))
-      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
-    const preferred = ranked[0]
-    if (!preferred) continue
-    const current = counts.get(preferred.id) ?? { votes: 0, score: 0 }
-    current.votes += 1
-    current.score += preferred.score
-    counts.set(preferred.id, current)
-  }
-  return [...counts.entries()].sort(
-    (left, right) =>
-      right[1].votes - left[1].votes ||
-      right[1].score - left[1].score ||
-      left[0].localeCompare(right[0])
-  )[0]?.[0]
+): Record<string, string> {
+  return Object.fromEntries(
+    voterIds.flatMap((voterId) => {
+      const preferred = candidates
+        .filter((candidate) => candidate.id !== voterId)
+        .map((candidate) => ({
+          id: candidate.id,
+          score: getNominationTargetScore(game, voterId, candidate),
+        }))
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]
+      return preferred ? [[voterId, preferred.id] as const] : []
+    })
+  )
 }
 
 function resolveAllianceInteractionPlan(
@@ -617,7 +609,13 @@ function resolveAllianceInteractionPlan(
     const candidates = getEligibleNominationTargets(game, actorId).filter(
       (candidate) => !alliance.memberIds.includes(candidate.id)
     )
-    const subjectId = allianceConsensusTarget(game, activeStrategists, candidates)
+    const allianceMemberTargetPreferences = strategicPreferencesByMember(
+      game,
+      activeStrategists,
+      candidates
+    )
+    const subjectId =
+      allianceMemberTargetPreferences[actorId] ?? bestStrategicTarget(game, actorId, candidates)
     if (!subjectId) return null
     return {
       type: 'deal_offer',
@@ -627,6 +625,7 @@ function resolveAllianceInteractionPlan(
       subjectId,
       allianceGroupMemberIds: activeMembers,
       allianceGroupHuddle: true,
+      allianceMemberTargetPreferences,
     }
   }
 
@@ -636,11 +635,24 @@ function resolveAllianceInteractionPlan(
         game.nomineeIds.includes(candidate.id) && !alliance.memberIds.includes(candidate.id)
     )
     if (nominees.length === 0) return null
-    const subjectId = allianceConsensusTarget(game, activeStrategists, nominees)
+    const allianceMemberTargetPreferences = strategicPreferencesByMember(
+      game,
+      activeStrategists,
+      nominees
+    )
+    const subjectId =
+      allianceMemberTargetPreferences[actorId] ?? bestStrategicTarget(game, actorId, nominees)
     const replacements = getEligibleReplacementNominees(game, game.lohId).filter(
       (candidate) => !alliance.memberIds.includes(candidate.id)
     )
-    const secondarySubjectId = allianceConsensusTarget(game, activeStrategists, replacements)
+    const allianceMemberFallbackPreferences = strategicPreferencesByMember(
+      game,
+      activeStrategists,
+      replacements
+    )
+    const secondarySubjectId =
+      allianceMemberFallbackPreferences[actorId] ??
+      bestStrategicTarget(game, actorId, replacements)
     if (!subjectId) return null
     return {
       type: 'deal_offer',
@@ -651,6 +663,8 @@ function resolveAllianceInteractionPlan(
       secondarySubjectId,
       allianceGroupMemberIds: activeMembers,
       allianceGroupHuddle: true,
+      allianceMemberTargetPreferences,
+      allianceMemberFallbackPreferences,
     }
   }
 
@@ -1931,6 +1945,12 @@ export function scheduleIncomingInteractionsForPhase(
           ? { allianceGroupMemberIds: plan.allianceGroupMemberIds }
           : {}),
         ...(plan.allianceGroupHuddle ? { allianceGroupHuddle: true, groupScene: true } : {}),
+        ...(plan.allianceMemberTargetPreferences
+          ? { allianceMemberTargetPreferences: plan.allianceMemberTargetPreferences }
+          : {}),
+        ...(plan.allianceMemberFallbackPreferences
+          ? { allianceMemberFallbackPreferences: plan.allianceMemberFallbackPreferences }
+          : {}),
         ...(intelLead
           ? {
               intelFactId: intelLead.fact.id,
