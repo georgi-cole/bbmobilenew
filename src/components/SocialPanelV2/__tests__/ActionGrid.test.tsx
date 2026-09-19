@@ -39,6 +39,21 @@ function actionCard(title: string): HTMLElement {
 }
 
 describe('ActionGrid catalogue rendering', () => {
+  it('shows only targetless moves until a housemate is selected', () => {
+    const { rerender } = render(<ActionGrid selectedTargetIds={new Set()} actorId="human" />)
+
+    expect(screen.getByText('Watch Room')).toBeInTheDocument()
+    expect(screen.getByText('Lay Low')).toBeInTheDocument()
+    expect(screen.queryByText('Compliment')).not.toBeInTheDocument()
+    expect(screen.queryByText('Group Chat')).not.toBeInTheDocument()
+
+    rerender(<ActionGrid selectedTargetIds={new Set(['lia'])} actorId="human" />)
+
+    expect(screen.getByText('Compliment')).toBeInTheDocument()
+    expect(screen.getByText('Group Chat')).toBeInTheDocument()
+    expect(screen.getByText('Watch Room')).toBeInTheDocument()
+  })
+
   it('keeps the Classic catalogue playable while appending locked Reality previews', () => {
     render(<ActionGrid />)
 
