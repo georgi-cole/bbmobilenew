@@ -45,9 +45,11 @@ import RealitySocialTutorialTour, {
   RealitySocialTutorialPrompt,
 } from '../../onboarding/RealitySocialTutorialTour'
 import {
-  hasHandledRealitySocialTutorial,
-  markRealitySocialTutorialHandled,
-} from '../../onboarding/realitySocialTutorialPreference'
+  markSocialTutorialHandled,
+  resolveSocialTutorialVariant,
+  subscribeTutorialPreferenceChanges,
+  type SocialTutorialVariant,
+} from '../../onboarding/tutorialGuidePreference'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
@@ -226,15 +228,32 @@ export default function SocialPanelV2() {
   const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
-  const [realityTutorialHandled, setRealityTutorialHandled] = useState(() =>
-    hasHandledRealitySocialTutorial(activeProfileId, isGuest)
-  )
-  const [realityTutorialTourOpen, setRealityTutorialTourOpen] = useState(false)
+  const [socialTutorialVariant, setSocialTutorialVariant] =
+    useState<SocialTutorialVariant | null>(() =>
+      socialPanelOpen
+        ? resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode)
+        : null
+    )
+  const [socialTutorialTourOpen, setSocialTutorialTourOpen] = useState(false)
 
   useEffect(() => {
-    // Profile switches change the persistence scope for this one-time premium guide.
-    setRealityTutorialHandled(hasHandledRealitySocialTutorial(activeProfileId, isGuest))
-  }, [activeProfileId, isGuest])
+    if (!socialPanelOpen) {
+      setSocialTutorialVariant(null)
+      setSocialTutorialTourOpen(false)
+      return
+    }
+    setSocialTutorialVariant(resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode))
+    setSocialTutorialTourOpen(false)
+  }, [activeProfileId, dramaMode, isGuest, socialPanelOpen])
+
+  useEffect(
+    () =>
+      subscribeTutorialPreferenceChanges(() => {
+        if (!socialPanelOpen) return
+        setSocialTutorialVariant(resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode))
+      }),
+    [activeProfileId, dramaMode, isGuest, socialPanelOpen]
+  )
 
   const publicFocus = useMemo(() => {
     if (!activePublicDirection || !humanPlayer) return null
@@ -939,14 +958,10 @@ export default function SocialPanelV2() {
     : []
 
   const executeCopy = 'Execute'
-  const realityTutorialEligible = dramaMode && vip !== undefined
-  const showRealityTutorialPrompt =
-    realityTutorialEligible &&
-    !realityTutorialHandled &&
-    socialPanelOpen &&
-    !realityTutorialTourOpen
-  const showRealityTutorialTour =
-    realityTutorialEligible && !realityTutorialHandled && socialPanelOpen && realityTutorialTourOpen
+  const showSocialTutorialPrompt =
+    socialTutorialVariant !== null && socialPanelOpen && !socialTutorialTourOpen
+  const showSocialTutorialTour =
+    socialTutorialVariant !== null && socialPanelOpen && socialTutorialTourOpen
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
@@ -964,10 +979,11 @@ export default function SocialPanelV2() {
     setFeedbackMsg(null)
   }
 
-  const completeRealityTutorial = () => {
-    markRealitySocialTutorialHandled(activeProfileId, isGuest)
-    setRealityTutorialHandled(true)
-    setRealityTutorialTourOpen(false)
+  const completeSocialTutorial = () => {
+    if (!socialTutorialVariant) return
+    markSocialTutorialHandled(activeProfileId, isGuest, socialTutorialVariant)
+    setSocialTutorialVariant(null)
+    setSocialTutorialTourOpen(false)
   }
 
   return (
@@ -1318,17 +1334,19 @@ export default function SocialPanelV2() {
           </button>
         </footer>
       </div>
-      {showRealityTutorialPrompt && (
+      {showSocialTutorialPrompt && socialTutorialVariant && (
         <RealitySocialTutorialPrompt
-          onStart={() => setRealityTutorialTourOpen(true)}
-          onSkip={completeRealityTutorial}
+          variant={socialTutorialVariant}
+          onStart={() => setSocialTutorialTourOpen(true)}
+          onSkip={completeSocialTutorial}
         />
       )}
-      {showRealityTutorialTour && (
+      {showSocialTutorialTour && socialTutorialVariant && (
         <RealitySocialTutorialTour
+          variant={socialTutorialVariant}
           onClearTarget={clearRealityTutorialTarget}
           onEnsureTarget={ensureRealityTutorialTarget}
-          onComplete={completeRealityTutorial}
+          onComplete={completeSocialTutorial}
         />
       )}
     </div>
