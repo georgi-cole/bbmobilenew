@@ -1609,19 +1609,19 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
   alliance_power_safety_huddle: makeScenePool(
     'alliance_power_safety_huddle',
     [
-      'I have Safety. I am leaning toward using it on {subject}; if that opens the block, {secondary} is the name I would rather see exposed.',
-      'Before I decide on Safety, I want our group to compare notes. My strongest save is {subject}, with {secondary} as the replacement I can live with.',
-      'I am holding Safety, and this can redraw the week. I am looking at {subject} to save and {secondary} if a replacement opens.',
+      'I have Safety. The alliance read is to keep {subject} exposed; if I move the block, {secondary} is the replacement we would rather see.',
+      'Before I decide on Safety, I want our group aligned. The pressure is on {subject}, with {secondary} as the replacement if a seat opens.',
+      'I am holding Safety, and this can redraw the week. The group is leaning against {subject}; {secondary} is our cleaner replacement.',
     ],
     [
-      'I do not want to burn Safety just because I have it. My current lean is {subject}, and if the block moves I would rather see {secondary} exposed.',
-      'The Safety decision is mine, but it affects all of us. I am leaning toward {subject}; {secondary} is my preferred backup target.',
-      'I want the alliance read before I touch the block. Right now I see {subject} as the save and {secondary} as the better replacement.',
+      'I do not want to burn Safety just because I have it. The alliance is leaning toward keeping {subject} exposed, with {secondary} as the backup target.',
+      'The Safety decision is mine, but it affects all of us. Our current pressure is on {subject}; {secondary} is the replacement read.',
+      'I want the alliance read before I touch the block. Right now the group wants {subject} left vulnerable and {secondary} exposed if the block moves.',
     ],
     [
-      'The Safety ceremony is close. I am still leaning toward {subject}; if it moves, {secondary} is still my replacement read.',
-      'One last check before Safety locks: {subject} is my save lean, and {secondary} is the backup name I prefer.',
-      'My Safety read has not changed: {subject} first, then {secondary} if a seat opens.',
+      'The Safety ceremony is close. The alliance is still leaning against {subject}; if it moves, {secondary} remains the replacement read.',
+      'One last check before Safety locks: keep pressure on {subject}, and use {secondary} if a new seat opens.',
+      'Our Safety read has not changed: {subject} stays exposed; {secondary} is the backup target if the block changes.',
     ]
   ),
 
