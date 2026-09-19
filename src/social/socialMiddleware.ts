@@ -795,6 +795,7 @@ function syncInvalidIncomingInteractions(api: MiddlewareAPI): void {
     incomingInteractions: state.social.incomingInteractions ?? [],
     scheduledIncomingInteractions: state.social.scheduledIncomingInteractions ?? [],
     game: state.game,
+    reality: state.social.reality,
   })
   if (interactionIds.length === 0) return
 
