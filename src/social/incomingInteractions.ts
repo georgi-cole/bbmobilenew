@@ -22,7 +22,12 @@ import {
 } from './socialSlice'
 import {
   coordinateRealityAllianceTarget,
+  createRealityAlliance,
+  findRealityAllianceForRecruitment,
+  holdRealityAllianceMeeting,
   holdRealityAllianceStrategyMeeting,
+  markRealityAllianceInfiltratorIfSecondary,
+  recruitRealityAllianceMember,
   resolvePendingHumanRealityInteraction,
   resolveRelationshipStoryResponse,
 } from './reality'
@@ -68,6 +73,19 @@ const RESPONSE_VERBS: Record<IncomingInteractionResponseType, string> = {
 }
 
 type ResolutionSource = 'player' | 'expiry'
+
+const ALLIANCE_STRATEGY_SCENARIOS = new Set([
+  'alliance_nomination_pitch',
+  'alliance_vox_ballot_pitch',
+  'alliance_safety_pitch',
+  'alliance_vote_pitch',
+  'alliance_power_nomination_huddle',
+  'alliance_power_safety_huddle',
+])
+
+function isAllianceStrategyScenario(value: unknown): boolean {
+  return typeof value === 'string' && ALLIANCE_STRATEGY_SCENARIOS.has(value)
+}
 
 function resolveRealityIncomingInteraction(
   dispatch: AppDispatch,
@@ -290,23 +308,81 @@ function resolveRealityIncomingInteraction(
     }
 
     const relationshipIntent = interaction.payload?.relationshipIntent
-    if (typeof relationshipIntent !== 'string') return
-    // Immediate incoming effects may already have updated the social projection.
-    // Start from the latest domain so recording the storyline never rolls those
-    // relationship changes back.
     const domain = structuredClone(getState().social.reality)
-    if (
-      resolveRelationshipStoryResponse(domain, {
-        ownerId: interaction.fromId,
-        targetId: humanId,
-        intent: relationshipIntent,
-        responseType,
-        eventId: `incoming:${interaction.id}`,
-        at: { day, phase },
-      })
-    ) {
-      dispatch(replaceRealityDomain(domain))
+    let domainChanged = false
+
+    if (typeof relationshipIntent === 'string') {
+      // Immediate incoming effects may already have updated the social projection.
+      // Start from the latest domain so recording the storyline never rolls those
+      // relationship changes back.
+      domainChanged =
+        resolveRelationshipStoryResponse(domain, {
+          ownerId: interaction.fromId,
+          targetId: humanId,
+          intent: relationshipIntent,
+          responseType,
+          eventId: `incoming:${interaction.id}`,
+          at: { day, phase },
+        }) || domainChanged
     }
+
+    // Autonomy-scheduled alliance proposals do not carry a pending Reality
+    // interaction id. Accepting one must still create/recruit a canonical
+    // RealityAlliance; otherwise the legacy Alliance tag is only temporary and
+    // disappears when the Reality projection runs on the next phase/day.
+    if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
+      const existing = Object.values(domain.alliances).find(
+        (alliance) =>
+          (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+          alliance.memberIds.includes(interaction.fromId) &&
+          alliance.memberIds.includes(humanId)
+      )
+      if (!existing) {
+        const recruitmentAlliance = findRealityAllianceForRecruitment(
+          domain,
+          interaction.fromId,
+          humanId
+        )
+        if (recruitmentAlliance) {
+          recruitRealityAllianceMember(domain, {
+            allianceId: recruitmentAlliance.id,
+            recruiterId: interaction.fromId,
+            targetId: humanId,
+            expandedAllianceId: `alliance:${[
+              ...recruitmentAlliance.memberIds,
+              humanId,
+            ]
+              .sort()
+              .join('~')}:incoming:${interaction.id}`,
+            at: { day, phase },
+          })
+        } else {
+          const alliance = createRealityAlliance(domain, {
+            id: `alliance:${[interaction.fromId, humanId]
+              .sort()
+              .join('~')}:incoming:${interaction.id}`,
+            founderIds: [interaction.fromId],
+            memberIds: [humanId],
+            purpose: 'Mutual protection',
+            at: { day, phase },
+          })
+          holdRealityAllianceMeeting(domain, {
+            allianceId: alliance.id,
+            attendeeIds: [interaction.fromId, humanId],
+            targetIds: [],
+            planIds: [`protect:${alliance.id}`],
+            at: { day, phase },
+          })
+          markRealityAllianceInfiltratorIfSecondary(domain, alliance.id, humanId, {
+            day,
+            phase,
+          })
+        }
+        domainChanged = true
+      }
+    }
+
+    if (domainChanged) dispatch(replaceRealityDomain(domain))
     return
   }
   const resolved = resolvePendingHumanRealityInteraction({
@@ -347,15 +423,7 @@ function getResponseDelta(
   responseLabel?: string
 ): number {
   const scenarioKey = interaction.payload?.scenarioKey
-  const allianceStrategyScenario =
-    typeof scenarioKey === 'string' &&
-    [
-      'alliance_nomination_pitch',
-      'alliance_safety_pitch',
-      'alliance_vote_pitch',
-      'alliance_power_nomination_huddle',
-      'alliance_power_safety_huddle',
-    ].includes(scenarioKey)
+  const allianceStrategyScenario = isAllianceStrategyScenario(scenarioKey)
   if (allianceStrategyScenario) {
     if (responseType === 'accept' || responseType === 'positive') return 3
     if (responseType === 'neutral' || responseType === 'decline' || responseType === 'negative') {
@@ -523,17 +591,12 @@ function buildResponseOutcomeText(
 
   const scenarioKey = interaction.payload?.scenarioKey
   if (
-    typeof scenarioKey === 'string' &&
-    [
-      'alliance_nomination_pitch',
-      'alliance_safety_pitch',
-      'alliance_vote_pitch',
-      'alliance_power_nomination_huddle',
-      'alliance_power_safety_huddle',
-    ].includes(scenarioKey)
+    isAllianceStrategyScenario(scenarioKey)
   ) {
     if (responseType === 'accept' || responseType === 'positive') {
-      return `${fromName} took your answer as strategic alignment. The shared alliance plan is now live.`
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `Your position joined ${fromName}'s alliance huddle. Any majority-backed plan is now recorded.`
+        : `${fromName} took your answer as strategic alignment. The shared alliance plan is now live.`
     }
     if (responseType === 'neutral') {
       return `You heard ${fromName}'s alliance read without committing to it. No shared plan was locked.`
@@ -678,15 +741,9 @@ function applyIncomingChoiceConsequences({
   const consultationScenario =
     interaction.payload?.scenarioKey === 'safety_holder_consults_loh' ||
     interaction.payload?.scenarioKey === 'loh_consults_safety_holder'
-  const allianceStrategyScenario =
-    typeof interaction.payload?.scenarioKey === 'string' &&
-    [
-      'alliance_nomination_pitch',
-      'alliance_safety_pitch',
-      'alliance_vote_pitch',
-      'alliance_power_nomination_huddle',
-      'alliance_power_safety_huddle',
-    ].includes(interaction.payload.scenarioKey)
+  const allianceStrategyScenario = isAllianceStrategyScenario(
+    interaction.payload?.scenarioKey
+  )
   const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
   const contextualResolution = resolveIncomingResponse({
     interaction,
