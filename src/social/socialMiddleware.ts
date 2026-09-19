@@ -10,8 +10,8 @@
  *   - game/applyMinigameWinner   (LOH/POS winner from challenge flow)
  *   - game/skipMinigame          (competition skipped: -3 energy to all alive)
  *   - game/submitPovSaveTarget   (POS holder saves a nominee: +2 energy to saved player)
- *   - social/updateRelationship  (alliance formed: +2 energy +200 influence;
- *                                 betrayal: -3 energy to actor)
+ *   - social/updateRelationship  (relationship/twin propagation only; calibrated
+ *                                 resource transitions live in relationshipResourcePolicyMiddleware)
  *
  * Event delta rules:
  *   LOH win               → +5  energy to winner
@@ -1409,22 +1409,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         }
       }
     ).payload
-    const stateBeforeRelationshipUpdate = api.getState() as StateWithGame
-    const hadAllianceBefore =
-      payload.tags?.includes('alliance') === true &&
-      hasAllianceBetween(
-        stateBeforeRelationshipUpdate.social?.relationships ?? {},
-        payload.source,
-        payload.target
-      )
     const result = next(action)
-    const hasAllianceAfter =
-      payload.tags?.includes('alliance') === true &&
-      hasAllianceBetween(
-        (api.getState() as StateWithGame).social?.relationships ?? {},
-        payload.source,
-        payload.target
-      )
     if (
       isDramaModeEnabled(api as unknown as MiddlewareAPI) &&
       !payload.twinPropagation &&
@@ -1489,22 +1474,10 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
         })
       }
     }
-    // Only apply game-event bonuses for manual (human) actions.
-    // System/AI actions must not trigger alliance or betrayal resource grants —
-    // they are the root cause of influence/energy inflation when many AI players
-    // target the human player with 'ally' actions each phase.
-    if (payload.tags && payload.actionSource !== 'system') {
-      if (payload.tags.includes('alliance') && !hadAllianceBefore && hasAllianceAfter) {
-        // Reward only the actual transition into a new alliance.
-        grantEnergy(api as unknown as MiddlewareAPI, payload.source, 2)
-        grantEnergy(api as unknown as MiddlewareAPI, payload.target, 2)
-        grantInfluence(api as unknown as MiddlewareAPI, payload.source, 200)
-        grantInfluence(api as unknown as MiddlewareAPI, payload.target, 200)
-      } else if (payload.tags.includes('betrayal')) {
-        // Broke alliance: actor loses 3 energy.
-        grantEnergy(api as unknown as MiddlewareAPI, payload.source, -3)
-      }
-    }
+    // Resource consequences for relationship transitions are owned by
+    // relationshipResourcePolicyMiddleware. Keeping them out of this legacy
+    // middleware prevents a single alliance/betrayal transition from being
+    // rewarded or penalized twice when both production middlewares are active.
     return result
   }
 
