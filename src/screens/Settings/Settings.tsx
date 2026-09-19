@@ -115,7 +115,10 @@ export default function Settings() {
   const [tutorialEnabled, setTutorialEnabled] = useState(() =>
     isSeasonTutorialEnabled(activeProfileId, isGuest)
   )
-  const [realityGuideReady, setRealityGuideReady] = useState(false)
+  const [realityGuideReadyFor, setRealityGuideReadyFor] = useState<string | null>(null)
+  const realityGuideScope = `${isGuest ? 'guest' : (activeProfileId ?? 'profile')}:${
+    hasRealityAccess ? 'reality' : 'locked'
+  }`
 
   const themeOptions: DropdownItem['options'] = [
     { value: 'midnight', label: t('settings.theme.midnight') },
@@ -307,7 +310,6 @@ export default function Settings() {
 
   useEffect(() => {
     setTutorialEnabled(isSeasonTutorialEnabled(activeProfileId, isGuest))
-    setRealityGuideReady(false)
   }, [activeProfileId, isGuest])
 
   function renderItem(item: SettingItem) {
@@ -473,14 +475,16 @@ export default function Settings() {
             className="settings-row settings-row--legal"
             onClick={() => {
               resetRealitySocialTutorial(activeProfileId, isGuest)
-              setRealityGuideReady(true)
+              setRealityGuideReadyFor(realityGuideScope)
             }}
           >
             <span>
               <strong>Replay Reality Social guide</strong>
               <small>Show the walkthrough next time you open Social in Reality Mode.</small>
             </span>
-            <span aria-live="polite">{realityGuideReady ? 'Ready' : 'Replay'}</span>
+            <span aria-live="polite">
+              {realityGuideReadyFor === realityGuideScope ? 'Ready' : 'Replay'}
+            </span>
           </button>
         )}
         <button
