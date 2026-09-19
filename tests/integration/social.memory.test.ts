@@ -179,7 +179,7 @@ describe('social memory integration for incoming interactions', () => {
           id: 'autonomy-alliance-proposal',
           fromId: ai.id,
           type: 'alliance_proposal',
-          payload: { scenarioKey: 'week_start_alliance_lock' },
+          payload: { scenarioKey: 'week_start_alliance_lock', dramaMode: true },
           createdWeek: week,
           expiresAtWeek: week + 1,
         })
