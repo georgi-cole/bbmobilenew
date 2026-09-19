@@ -450,22 +450,25 @@ export default function Settings() {
             {section.items.map(renderItem)}
           </section>
         ))}
-        <div className="settings-row">
-          <label className="settings-row__label" htmlFor="setting-replay-tutorial">
-            Replay tutorials
-          </label>
-          <input
-            id="setting-replay-tutorial"
-            type="checkbox"
-            className="settings-toggle"
-            checked={tutorialEnabled}
-            onChange={(event) => {
-              const enabled = event.target.checked
-              setTutorialReplayEnabled(activeProfileId, isGuest, enabled)
-              setTutorialEnabled(enabled)
-            }}
-            aria-label="Toggle Replay tutorials"
-          />
+        <div className="settings-row settings-row--col">
+          <div className="settings-row settings-row--nested">
+            <label className="settings-row__label" htmlFor="setting-replay-tutorial">
+              Replay tutorials
+            </label>
+            <input
+              id="setting-replay-tutorial"
+              type="checkbox"
+              className="settings-toggle"
+              checked={tutorialEnabled}
+              onChange={(event) => {
+                const enabled = event.target.checked
+                setTutorialReplayEnabled(activeProfileId, isGuest, enabled)
+                setTutorialEnabled(enabled)
+              }}
+              aria-label="Toggle Replay tutorials"
+            />
+          </div>
+          <p className="settings-helper-text">Turn off and on to replay the guides.</p>
         </div>
         <button
           type="button"
