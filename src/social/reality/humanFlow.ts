@@ -937,7 +937,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                   score: (combined.score * index + entry.score) / Math.max(1, index + 1),
                   targetDeltas: {
                     ...(combined.targetDeltas ?? {}),
-                    [targetIds[index]]: entry.delta,
+                    [executionTargetIds[index]]: entry.delta,
                   },
                 }),
                 result(false, '', energy)
