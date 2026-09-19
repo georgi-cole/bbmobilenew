@@ -162,6 +162,7 @@ interface AllianceConsultationPlan {
   agenda: string
   summary: string
   excusedAbsentIds: string[]
+  memberPlanBeliefs: Record<string, string[]>
 }
 
 function activeAllianceAdvisors(
@@ -186,7 +187,13 @@ function summarizeAlliancePreferences(
   preferences: Array<{ advisorId: string; targetId: string; score: number }>,
   label: string,
   excludedPlanTargetIds: ReadonlySet<string> = new Set()
-): { summary: string; targetIds: string[]; fallbackTargetIds: string[] } {
+): {
+  summary: string
+  targetIds: string[]
+  fallbackTargetIds: string[]
+  hasConsensus: boolean
+  preferenceByAdvisor: Record<string, string>
+} {
   const counts = new Map<string, { votes: number; score: number }>()
   for (const preference of preferences) {
     if (excludedPlanTargetIds.has(preference.targetId)) continue
@@ -201,8 +208,17 @@ function summarizeAlliancePreferences(
       right[1].score - left[1].score ||
       left[0].localeCompare(right[0])
   )
-  const primaryId = ordered[0]?.[0]
-  const fallbackId = ordered[1]?.[0]
+  const primary = ordered[0]
+  const fallback = ordered[1]
+  const primaryId = primary?.[0]
+  const topVotes = primary?.[1].votes ?? 0
+  const hasConsensus =
+    preferences.length >= 2 && topVotes >= 2 && topVotes / Math.max(1, preferences.length) > 0.5
+  const fallbackId =
+    hasConsensus && fallback && fallback[1].votes >= 2 ? fallback[0] : undefined
+  const preferenceByAdvisor = Object.fromEntries(
+    preferences.map((preference) => [preference.advisorId, preference.targetId])
+  )
   const lines = preferences
     .slice(0, 4)
     .map(
@@ -210,15 +226,22 @@ function summarizeAlliancePreferences(
         `${playerName(state, preference.advisorId)} → ${playerName(state, preference.targetId)}`
     )
     .join(' · ')
-  const consensus = primaryId
+  const consensus = hasConsensus && primaryId
     ? `${label}: ${playerName(state, primaryId)}${
         fallbackId ? ` · backup ${playerName(state, fallbackId)}` : ''
       }`
-    : `${label}: no clear consensus`
+    : preferences.length === 1 && primaryId
+      ? `${label}: ${playerName(state, preferences[0].advisorId)} recommends ${playerName(
+          state,
+          primaryId
+        )}; no group decision`
+      : `${label}: split; no alliance decision`
   return {
     summary: lines ? `${lines}. ${consensus}.` : `${consensus}.`,
-    targetIds: primaryId ? [primaryId] : [],
+    targetIds: hasConsensus && primaryId ? [primaryId] : [],
     fallbackTargetIds: fallbackId ? [fallbackId] : [],
+    hasConsensus,
+    preferenceByAdvisor,
   }
 }
 
