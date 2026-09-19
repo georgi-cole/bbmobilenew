@@ -238,6 +238,59 @@ describe('Reality alliance ceremony consequences', () => {
     expect(state.events.some((event) => event.type === 'ALLIANCE_PLAN_DEFIED')).toBe(false)
   })
 
+  it('reacts to declared alliance dissent less harshly than a surprise plan defection', () => {
+    const buildState = (declaredDissent: boolean) => {
+      const state = createInitialRealityDomainState()
+      const alliance = createRealityAlliance(state, {
+        id: declaredDissent ? 'declared-dissent-pact' : 'surprise-defiance-pact',
+        founderIds: ['ava'],
+        memberIds: ['lia', 'kai'],
+        purpose: 'Vote together',
+        at: { day: 2, phase: 'social_1' },
+      })
+      holdRealityAllianceMeeting(state, {
+        allianceId: alliance.id,
+        attendeeIds: ['ava', 'lia', 'kai'],
+        targetIds: ['outsider'],
+        planIds: ['target:outsider'],
+        at: { day: 2, phase: 'social_2' },
+      })
+      if (declaredDissent) alliance.memberPlanBeliefs.ava = ['dissent:outsider']
+      return { state, alliance }
+    }
+
+    const surprise = buildState(false)
+    const declared = buildState(true)
+    const surpriseBefore = surprise.alliance.memberCommitment.ava
+    const declaredBefore = declared.alliance.memberCommitment.ava
+
+    finalizeRealityVote(
+      surprise.state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'live_vote' },
+      'surprise-defiance'
+    )
+    finalizeRealityVote(
+      declared.state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'live_vote' },
+      'declared-defiance'
+    )
+
+    const surpriseDrop = surpriseBefore - surprise.alliance.memberCommitment.ava
+    const declaredDrop = declaredBefore - declared.alliance.memberCommitment.ava
+    expect(declaredDrop).toBeGreaterThan(0)
+    expect(declaredDrop).toBeLessThan(surpriseDrop)
+    expect(
+      declared.state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_PLAN_DEFIED' && event.tags.includes('DECLARED_DISSENT')
+      )
+    ).toBe(true)
+  })
+
   it('records an actual vote against an ally as a distinct alliance betrayal', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
