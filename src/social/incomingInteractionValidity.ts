@@ -17,6 +17,10 @@ export interface InteractionValidityGameState {
   awaitingPovDecision?: boolean
   awaitingPovSaveTarget?: boolean
   povProtectedIds?: string[]
+  cupidArrow?: {
+    status?: 'inactive' | 'scheduled' | 'active' | 'broken'
+    pairs?: Array<{ memberIds: [string, string] }>
+  }
   players?: InteractionValidityPlayer[]
 }
 
@@ -34,6 +38,18 @@ const ALLIANCE_STRATEGY_SCENARIOS = new Set([
   'alliance_power_nomination_huddle',
   'alliance_power_safety_huddle',
 ])
+
+function isAllianceProtectedGameUnit(
+  game: InteractionValidityGameState,
+  allianceMemberIds: readonly string[],
+  playerId: string
+): boolean {
+  if (allianceMemberIds.includes(playerId)) return true
+  if (game.cupidArrow?.status !== 'active') return false
+  const pair = game.cupidArrow.pairs?.find((entry) => entry.memberIds.includes(playerId))
+  const partnerId = pair?.memberIds.find((id) => id !== playerId)
+  return partnerId !== undefined && allianceMemberIds.includes(partnerId)
+}
 
 function violatesRealityAllianceContext(
   interaction: IncomingInteraction,
@@ -60,7 +76,9 @@ function violatesRealityAllianceContext(
   const subjectIds = [interaction.payload?.subjectId, interaction.payload?.secondarySubjectId].filter(
     (value): value is string => typeof value === 'string'
   )
-  return subjectIds.some((subjectId) => alliance.memberIds.includes(subjectId))
+  return subjectIds.some((subjectId) =>
+    isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId)
+  )
 }
 
 function getPlayer(
