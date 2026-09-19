@@ -452,6 +452,7 @@ export function recordRealityAllianceBetrayal(
     kind: RealityAllianceBetrayalKind
     at: RealityClock
     sourceEventId: string
+    allianceId?: string
   }
 ): RealityAlliance[] {
   const affected: RealityAlliance[] = []
@@ -467,6 +468,7 @@ export function recordRealityAllianceBetrayal(
   for (const alliance of Object.values(state.alliances)) {
     if (
       alliance.status === 'DISSOLVED' ||
+      (input.allianceId !== undefined && alliance.id !== input.allianceId) ||
       !alliance.memberIds.includes(input.actorId) ||
       !alliance.memberIds.includes(input.targetId)
     ) {
