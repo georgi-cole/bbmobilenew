@@ -275,6 +275,57 @@ describe('incoming interaction invalidation', () => {
     ).toBe(true)
   })
 
+  it('invalidates alliance strategy against the Cupid partner of an alliance member', () => {
+    const { game, human, nominee, otherNominee, loh } = buildGameState()
+    game.phase = 'social_2'
+    game.lohId = null
+    human.status = 'active'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+    game.cupidArrow = {
+      status: 'active',
+      scheduledSeason: 1,
+      activatedSeason: 1,
+      pairs: [
+        {
+          id: 'cupid-test-pair',
+          memberIds: [nominee.id, loh.id],
+        },
+      ],
+      brokenPairIds: [],
+      revealedPairIds: [],
+      visualsRevealed: true,
+    }
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'cupid-protected-alliance',
+      founderIds: [otherNominee.id],
+      memberIds: [human.id, loh.id],
+      purpose: 'Control the vote',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_vote_pitch',
+            phase: 'social_2',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
   it('dismisses veto pitches from a nominee once that nominee is saved', () => {
     const store = makeStore()
     const { game, human, nominee, otherNominee, loh } = buildGameState()
