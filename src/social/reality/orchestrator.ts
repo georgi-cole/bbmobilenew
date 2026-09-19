@@ -267,6 +267,53 @@ function applyRealityLifecycle(input: {
         }
       }
     }
+  } else if (
+    action.id === 'ask_use_safety' &&
+    subjectId &&
+    acceptedTargets.length > 0
+  ) {
+    for (const safetyHolderId of acceptedTargets) {
+      const promiseId = `promise:${interaction.id}:use-safety:${safetyHolderId}`
+      upsertRealityPromise(domain, {
+        id: promiseId,
+        kind: 'use_safety_on_player',
+        // The housemate who accepted the request owns the promise. The original
+        // requester must never be recorded as promising to use somebody else's power.
+        promisorId: safetyHolderId,
+        beneficiaryIds: [subjectId],
+        witnessIds: [...new Set([interaction.actorId, ...event.witnessIds])],
+        createdAt: at,
+        deadline: { day: event.day, phase: 'pos_ceremony_results' },
+        stakes: Math.min(1, 0.55 + (action.baseWeight ?? 0) * 0.1),
+        scope: {
+          actionId: action.id,
+          targetId: subjectId,
+          requestedById: interaction.actorId,
+        },
+        status: 'ACTIVE',
+      })
+      event.relatedPromiseIds.push(promiseId)
+    }
+  } else if (action.id === 'ask_hold_safety' && acceptedTargets.length > 0) {
+    for (const safetyHolderId of acceptedTargets) {
+      const promiseId = `promise:${interaction.id}:hold-safety:${safetyHolderId}`
+      upsertRealityPromise(domain, {
+        id: promiseId,
+        kind: 'hold_safety',
+        promisorId: safetyHolderId,
+        beneficiaryIds: [interaction.actorId],
+        witnessIds: [...new Set([interaction.actorId, ...event.witnessIds])],
+        createdAt: at,
+        deadline: { day: event.day, phase: 'pos_ceremony_results' },
+        stakes: Math.min(1, 0.5 + (action.baseWeight ?? 0) * 0.1),
+        scope: {
+          actionId: action.id,
+          requestedById: interaction.actorId,
+        },
+        status: 'ACTIVE',
+      })
+      event.relatedPromiseIds.push(promiseId)
+    }
   } else if (action.purposes.includes('COMMITMENT') && acceptedTargets.length > 0) {
     const promiseId = `promise:${interaction.id}`
     upsertRealityPromise(domain, {
