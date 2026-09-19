@@ -41,6 +41,11 @@ import type { PublicDirection } from '../../publicOpinion/types'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import IntelLeads from './IntelLeads'
 import { getRelationshipLabel } from './relationshipUtils'
+import RealitySocialTutorialTour from '../../onboarding/RealitySocialTutorialTour'
+import {
+  hasHandledRealitySocialTutorial,
+  markRealitySocialTutorialHandled,
+} from '../../onboarding/realitySocialTutorialPreference'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
@@ -139,6 +144,8 @@ export default function SocialPanelV2() {
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
   const socialState = useAppSelector((state) => state.social)
+  const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const energyBank = useAppSelector(selectEnergyBank)
   const influenceBank = useAppSelector(selectInfluenceBank)
   const infoBank = useAppSelector(selectInfoBank)
@@ -217,6 +224,16 @@ export default function SocialPanelV2() {
   const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
+  const [realityTutorialHandled, setRealityTutorialHandled] = useState(() =>
+    hasHandledRealitySocialTutorial(activeProfileId, isGuest)
+  )
+
+  useEffect(() => {
+    // Profile switches change the persistence scope for this one-time premium guide.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRealityTutorialHandled(hasHandledRealitySocialTutorial(activeProfileId, isGuest))
+  }, [activeProfileId, isGuest])
+
   const publicFocus = useMemo(() => {
     if (!activePublicDirection || !humanPlayer) return null
     const relatedId = activePublicDirection.relatedPlayerId
@@ -921,6 +938,29 @@ export default function SocialPanelV2() {
     : []
 
   const executeCopy = 'Execute'
+  const realityTutorialEligible = dramaMode && vip !== undefined
+  const showRealityTutorial =
+    realityTutorialEligible && !realityTutorialHandled && socialPanelOpen
+
+  const clearRealityTutorialTarget = () => {
+    resetPanelSelection()
+  }
+
+  const ensureRealityTutorialTarget = () => {
+    if (primaryTargetId || selectedTargets.size > 0) return
+    const sample = orderedPlayers.find((player) => !disabledPlayerIds.includes(player.id))
+    if (!sample) return
+    setPrimaryTargetId(sample.id)
+    setSelectedTargets(new Set([sample.id]))
+    setSelectedActionId(null)
+    setSelectedSubjectId(null)
+    setFeedbackMsg(null)
+  }
+
+  const completeRealityTutorial = () => {
+    markRealitySocialTutorialHandled(activeProfileId, isGuest)
+    setRealityTutorialHandled(true)
+  }
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -935,6 +975,7 @@ export default function SocialPanelV2() {
           </span>
           <div
             className={`sp2-header__resources${dramaMode ? '' : ' sp2-header__resources--normal'}`}
+            data-reality-tutorial="resources"
           >
             <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
@@ -1064,7 +1105,10 @@ export default function SocialPanelV2() {
             />
           </section>
 
-          <section className={`sp2-focus${focusedPlayer ? ' sp2-focus--active' : ''}`}>
+          <section
+            className={`sp2-focus${focusedPlayer ? ' sp2-focus--active' : ''}`}
+            data-reality-tutorial="relationship-read"
+          >
             {focusedPlayer ? (
               <>
                 <div className="sp2-focus__portrait">
@@ -1123,7 +1167,11 @@ export default function SocialPanelV2() {
             )}
           </section>
 
-          <section className="sp2-moves" aria-label="Social actions">
+          <section
+            className="sp2-moves"
+            aria-label="Social actions"
+            data-reality-tutorial="actions"
+          >
             <div className="sp2-moves__heading">
               <div>
                 <span className="sp2-section-heading__eyebrow">Your move</span>
@@ -1233,7 +1281,7 @@ export default function SocialPanelV2() {
           />
         </div>
 
-        <footer className="sp2-footer">
+        <footer className="sp2-footer" data-reality-tutorial="footer">
           {feedbackMsg ? (
             <span className="sp2-footer__feedback" role="status" aria-live="polite">
               {feedbackMsg}
@@ -1261,6 +1309,13 @@ export default function SocialPanelV2() {
           </button>
         </footer>
       </div>
+      {showRealityTutorial && (
+        <RealitySocialTutorialTour
+          onClearTarget={clearRealityTutorialTarget}
+          onEnsureTarget={ensureRealityTutorialTarget}
+          onComplete={completeRealityTutorial}
+        />
+      )}
     </div>
   )
 }
