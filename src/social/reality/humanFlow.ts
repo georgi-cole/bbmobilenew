@@ -808,8 +808,18 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         )
       }
     }
+    const executionTargetIds = consultationAlliance
+      ? activeAllianceAdvisors(state, consultationAlliance, input.actorId)
+      : targetIds
+    if (consultationAlliance && executionTargetIds.length === 0) {
+      return result(false, 'No active alliance member is available for a huddle.', energy)
+    }
     const direction =
-      targetIds.length === 0 ? 'SELF' : targetIds.length > 1 ? 'GROUP' : 'HUMAN_TO_AI'
+      executionTargetIds.length === 0
+        ? 'SELF'
+        : executionTargetIds.length > 1
+          ? 'GROUP'
+          : 'HUMAN_TO_AI'
     let simulation = state.social.realitySimulation
     if (!simulation.rng) {
       simulation = createInitialRealitySimulationState(
@@ -828,9 +838,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         candidates: [
           {
             action: contract,
-            targetIds,
+            targetIds: executionTargetIds,
             subjectId: input.subjectId,
-            acceptanceChanceOverride: getPhaseRepetitionChance(state, input),
+            // An active alliance huddle is a convened group meeting. Disagreement
+            // belongs in each member's strategic read, not in a random refusal by
+            // whichever member the player tapped to identify the alliance.
+            acceptanceChanceOverride: consultationAlliance
+              ? 1
+              : getPhaseRepetitionChance(state, input),
           },
         ],
       },
@@ -889,13 +904,13 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
     const compatibility =
       direction === 'GROUP' && actionTargetMode === 'multi'
-        ? executeGroupAction(input.actorId, targetIds, input.actionId, {
+        ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
             outcome: succeeded ? 'success' : 'failure',
             costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
           })
         : direction === 'GROUP'
-          ? targetIds
+          ? executionTargetIds
               .map((targetId, index) =>
                 executeAction(input.actorId, targetId, input.actionId, {
                   source: 'manual',
@@ -913,8 +928,8 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                 (combined, entry, index) => ({
                   success: combined.success || entry.success,
                   summary:
-                    index === targetIds.length - 1
-                      ? `Reached ${targetIds.length} housemates.`
+                    index === executionTargetIds.length - 1
+                      ? `Reached ${executionTargetIds.length} housemates.`
                       : combined.summary,
                   newEnergy: entry.newEnergy,
                   delta: (combined.delta * index + entry.delta) / Math.max(1, index + 1),
@@ -972,7 +987,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           dispatch,
           state,
           input.actorId,
-          targetIds,
+          executionTargetIds,
           compatibility.targetDeltas,
           compatibility.delta
         )
