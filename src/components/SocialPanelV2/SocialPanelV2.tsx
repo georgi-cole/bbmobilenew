@@ -41,7 +41,9 @@ import type { PublicDirection } from '../../publicOpinion/types'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import IntelLeads from './IntelLeads'
 import { getRelationshipLabel } from './relationshipUtils'
-import RealitySocialTutorialTour from '../../onboarding/RealitySocialTutorialTour'
+import RealitySocialTutorialTour, {
+  RealitySocialTutorialPrompt,
+} from '../../onboarding/RealitySocialTutorialTour'
 import {
   hasHandledRealitySocialTutorial,
   markRealitySocialTutorialHandled,
@@ -227,6 +229,7 @@ export default function SocialPanelV2() {
   const [realityTutorialHandled, setRealityTutorialHandled] = useState(() =>
     hasHandledRealitySocialTutorial(activeProfileId, isGuest)
   )
+  const [realityTutorialTourOpen, setRealityTutorialTourOpen] = useState(false)
 
   useEffect(() => {
     // Profile switches change the persistence scope for this one-time premium guide.
@@ -937,7 +940,16 @@ export default function SocialPanelV2() {
 
   const executeCopy = 'Execute'
   const realityTutorialEligible = dramaMode && vip !== undefined
-  const showRealityTutorial = realityTutorialEligible && !realityTutorialHandled && socialPanelOpen
+  const showRealityTutorialPrompt =
+    realityTutorialEligible &&
+    !realityTutorialHandled &&
+    socialPanelOpen &&
+    !realityTutorialTourOpen
+  const showRealityTutorialTour =
+    realityTutorialEligible &&
+    !realityTutorialHandled &&
+    socialPanelOpen &&
+    realityTutorialTourOpen
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
@@ -958,6 +970,7 @@ export default function SocialPanelV2() {
   const completeRealityTutorial = () => {
     markRealitySocialTutorialHandled(activeProfileId, isGuest)
     setRealityTutorialHandled(true)
+    setRealityTutorialTourOpen(false)
   }
 
   return (
@@ -1308,7 +1321,13 @@ export default function SocialPanelV2() {
           </button>
         </footer>
       </div>
-      {showRealityTutorial && (
+      {showRealityTutorialPrompt && (
+        <RealitySocialTutorialPrompt
+          onStart={() => setRealityTutorialTourOpen(true)}
+          onSkip={completeRealityTutorial}
+        />
+      )}
+      {showRealityTutorialTour && (
         <RealitySocialTutorialTour
           onClearTarget={clearRealityTutorialTarget}
           onEnsureTarget={ensureRealityTutorialTarget}
