@@ -36,8 +36,8 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'resources',
     title: 'Welcome to Reality Social',
-    body: 'Reality Mode tracks more than one friendship bar. Your choices can shape trust, warmth, loyalty, respect and tension, while another player’s private opinion of you stays hidden.',
-    selector: '[data-reality-tutorial="resources"]',
+    body: 'Reality Mode adds deeper relationship memory, promises, alliances and player-limited knowledge. Your choices matter over time, but another player’s private opinion of you stays hidden.',
+    selector: '[data-reality-tutorial="social-header"]',
     padding: 5,
     shape: 'rounded',
     mode: 'social',
@@ -108,7 +108,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'alliances',
     title: 'Alliances are living structures',
-    body: 'House shows only alliances you actually know about. Your own alliances expose members, hierarchy, cohesion and secrecy; they can be renamed, consulted in the right windows, strengthened, fractured or left.',
+    body: 'House shows only alliances you actually know about. Your own pact reveals members, hierarchy, cohesion and secrecy. Consult Alliance can gather real member opinions; only a genuine majority becomes a plan, and knowingly defying one can strain the pact.',
     selector: '[data-reality-tutorial="ledger-house"]',
     padding: 5,
     shape: 'rounded',
