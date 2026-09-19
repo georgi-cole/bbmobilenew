@@ -1,13 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
 import gameReducer from '../../src/store/gameSlice'
-import socialReducer, { pushIncomingInteraction } from '../../src/social/socialSlice'
+import socialReducer, {
+  hydrateSocial,
+  pushIncomingInteraction,
+} from '../../src/social/socialSlice'
 import {
   respondToIncomingInteraction,
   autoResolveExpiredIncomingInteractionsForWeek,
 } from '../../src/social/incomingInteractions'
 import { socialConfig } from '../../src/social/socialConfig'
-import type { IncomingInteraction } from '../../src/social/types'
+import type { IncomingInteraction, SocialState } from '../../src/social/types'
+import {
+  createRealityAlliance,
+  holdRealityAllianceMeeting,
+} from '../../src/social/reality'
 
 function makeStore() {
   return configureStore({ reducer: { game: gameReducer, social: socialReducer } })
@@ -158,6 +165,140 @@ describe('social memory integration for incoming interactions', () => {
           (entry) => entry.reason === 'auto_resolved_ignored' && entry.stage === 'auto_resolution'
         )
     ).toHaveLength(2)
+  })
+
+  it('turns an accepted AI alliance huddle into a plan only when the room has a real majority', () => {
+    const store = makeStore()
+    const game = store.getState().game
+    const human = game.players.find((player) => player.isUser)!
+    const ai = game.players.filter((player) => !player.isUser)
+    const [caller, allyA, allyB, target, alternative] = ai
+    expect(alternative).toBeDefined()
+
+    const social = structuredClone(
+      socialReducer(undefined, { type: 'init' }) as SocialState
+    )
+    const alliance = createRealityAlliance(social.reality, {
+      id: 'incoming-huddle-majority',
+      founderIds: [caller.id, human.id],
+      memberIds: [allyA.id, allyB.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(social.reality, {
+      allianceId: alliance.id,
+      attendeeIds: [caller.id, human.id, allyA.id, allyB.id],
+      targetIds: [],
+      planIds: ['stay-flexible'],
+      at: { day: game.week, phase: 'social_1' },
+    })
+    store.dispatch(hydrateSocial(social))
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'alliance-huddle-majority',
+          fromId: caller.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            allianceId: alliance.id,
+            allianceStrategyKind: 'NOMINATION',
+            allianceGroupHuddle: true,
+            allianceGroupMemberIds: [caller.id, human.id, allyA.id, allyB.id],
+            subjectId: target.id,
+            allianceMemberTargetPreferences: {
+              [caller.id]: target.id,
+              [allyA.id]: target.id,
+              [allyB.id]: alternative.id,
+            },
+          },
+          createdWeek: game.week,
+          expiresAtWeek: game.week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'alliance-huddle-majority',
+        responseType: 'accept',
+      }) as never
+    )
+
+    const resolved = store.getState().social.reality.alliances[alliance.id]
+    expect(resolved.currentTargetIds).toEqual([target.id])
+    expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`target:${target.id}`])
+    expect(resolved.memberPlanBeliefs[human.id]).toEqual([`target:${target.id}`])
+    expect(resolved.memberPlanBeliefs[allyA.id]).toEqual([`target:${target.id}`])
+    expect(resolved.memberPlanBeliefs[allyB.id]).toEqual([`preference:${alternative.id}`])
+  })
+
+  it('keeps an accepted AI alliance huddle split when support only ties the room', () => {
+    const store = makeStore()
+    const game = store.getState().game
+    const human = game.players.find((player) => player.isUser)!
+    const ai = game.players.filter((player) => !player.isUser)
+    const [caller, allyA, allyB, target, alternative] = ai
+    expect(alternative).toBeDefined()
+
+    const social = structuredClone(
+      socialReducer(undefined, { type: 'init' }) as SocialState
+    )
+    const alliance = createRealityAlliance(social.reality, {
+      id: 'incoming-huddle-split',
+      founderIds: [caller.id, human.id],
+      memberIds: [allyA.id, allyB.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(social.reality, {
+      allianceId: alliance.id,
+      attendeeIds: [caller.id, human.id, allyA.id, allyB.id],
+      targetIds: [],
+      planIds: ['stay-flexible'],
+      at: { day: game.week, phase: 'social_1' },
+    })
+    store.dispatch(hydrateSocial(social))
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'alliance-huddle-split',
+          fromId: caller.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            allianceId: alliance.id,
+            allianceStrategyKind: 'NOMINATION',
+            allianceGroupHuddle: true,
+            allianceGroupMemberIds: [caller.id, human.id, allyA.id, allyB.id],
+            subjectId: target.id,
+            allianceMemberTargetPreferences: {
+              [caller.id]: target.id,
+              [allyA.id]: alternative.id,
+              [allyB.id]: alternative.id,
+            },
+          },
+          createdWeek: game.week,
+          expiresAtWeek: game.week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'alliance-huddle-split',
+        responseType: 'accept',
+      }) as never
+    )
+
+    const resolved = store.getState().social.reality.alliances[alliance.id]
+    expect(resolved.currentTargetIds).toEqual([])
+    expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`preference:${target.id}`])
+    expect(resolved.memberPlanBeliefs[human.id]).toEqual([`target:${target.id}`])
+    expect(resolved.memberPlanBeliefs[allyA.id]).toEqual([`preference:${alternative.id}`])
+    expect(resolved.memberPlanBeliefs[allyB.id]).toEqual([`preference:${alternative.id}`])
   })
 
   it('records every expired required message even when they came from one sender', () => {
