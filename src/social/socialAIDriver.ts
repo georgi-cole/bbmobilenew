@@ -317,7 +317,6 @@ function executedSystemActionsThisPhase(state: DriverState, playerId: string): n
   return history.filter(
     (entry) =>
       entry.source === 'system' &&
-      entry.outcome === 'success' &&
       entry.actorId === playerId &&
       entry.week === state.game.week &&
       entry.phase === state.game.phase
