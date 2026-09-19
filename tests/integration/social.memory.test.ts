@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
-import gameReducer from '../../src/store/gameSlice'
+import gameReducer, { hydrateGame } from '../../src/store/gameSlice'
 import socialReducer, {
   hydrateSocial,
   pushIncomingInteraction,
@@ -213,6 +213,12 @@ describe('social memory integration for incoming interactions', () => {
     const [caller, allyA, allyB, target, alternative] = ai
     expect(alternative).toBeDefined()
 
+    const huddleGame = structuredClone(game)
+    huddleGame.phase = 'social_1'
+    huddleGame.lohId = caller.id
+    huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
+    store.dispatch(hydrateGame(huddleGame))
+
     const social = structuredClone(
       socialReducer(undefined, { type: 'init' }) as SocialState
     )
@@ -282,6 +288,12 @@ describe('social memory integration for incoming interactions', () => {
     const ai = game.players.filter((player) => !player.isUser)
     const [caller, evictedAlly, activeAlly, target] = ai
 
+    const huddleGame = structuredClone(game)
+    huddleGame.phase = 'social_1'
+    huddleGame.lohId = caller.id
+    huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
+    store.dispatch(hydrateGame(huddleGame))
+
     const social = structuredClone(
       socialReducer(undefined, { type: 'init' }) as SocialState
     )
@@ -295,10 +307,10 @@ describe('social memory integration for incoming interactions', () => {
     alliance.status = 'ACTIVE'
     store.dispatch(hydrateSocial(social))
 
-    const nextGame = structuredClone(game)
+    const nextGame = structuredClone(store.getState().game)
     const evicted = nextGame.players.find((player) => player.id === evictedAlly.id)!
     evicted.status = 'evicted'
-    store.dispatch({ type: 'game/hydrateGame', payload: nextGame })
+    store.dispatch(hydrateGame(nextGame))
 
     store.dispatch(
       pushIncomingInteraction(
@@ -351,6 +363,12 @@ describe('social memory integration for incoming interactions', () => {
     const human = game.players.find((player) => player.isUser)!
     const ai = game.players.filter((player) => !player.isUser)
     const [caller, allyA, allyB, target] = ai
+
+    const huddleGame = structuredClone(game)
+    huddleGame.phase = 'social_1'
+    huddleGame.lohId = caller.id
+    huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
+    store.dispatch(hydrateGame(huddleGame))
 
     const social = structuredClone(
       socialReducer(undefined, { type: 'init' }) as SocialState
@@ -420,6 +438,12 @@ describe('social memory integration for incoming interactions', () => {
     const ai = game.players.filter((player) => !player.isUser)
     const [caller, allyA, allyB, target, alternative] = ai
     expect(alternative).toBeDefined()
+
+    const huddleGame = structuredClone(game)
+    huddleGame.phase = 'social_1'
+    huddleGame.lohId = caller.id
+    huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
+    store.dispatch(hydrateGame(huddleGame))
 
     const social = structuredClone(
       socialReducer(undefined, { type: 'init' }) as SocialState
