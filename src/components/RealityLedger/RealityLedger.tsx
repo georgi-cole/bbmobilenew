@@ -171,8 +171,7 @@ export default function RealityLedger({
       }
     }
     window.addEventListener('reality-social-tutorial:set-ledger-tab', setLedgerTab)
-    return () =>
-      window.removeEventListener('reality-social-tutorial:set-ledger-tab', setLedgerTab)
+    return () => window.removeEventListener('reality-social-tutorial:set-ledger-tab', setLedgerTab)
   }, [])
   const [editingAllianceId, setEditingAllianceId] = useState<string | null>(null)
   const [allianceNameDraft, setAllianceNameDraft] = useState('')
