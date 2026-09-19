@@ -167,6 +167,44 @@ describe('social memory integration for incoming interactions', () => {
     ).toHaveLength(2)
   })
 
+  it('turns a generic incoming alliance acceptance into a durable Reality alliance', () => {
+    const store = makeStore()
+    const { players, week } = store.getState().game
+    const human = players.find((player) => player.isUser)!
+    const ai = players.find((player) => !player.isUser)!
+
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'autonomy-alliance-proposal',
+          fromId: ai.id,
+          type: 'alliance_proposal',
+          payload: { scenarioKey: 'week_start_alliance_lock' },
+          createdWeek: week,
+          expiresAtWeek: week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'autonomy-alliance-proposal',
+        responseType: 'accept',
+      }) as never
+    )
+
+    const sharedAlliance = Object.values(store.getState().social.reality.alliances).find(
+      (alliance) =>
+        alliance.status !== 'DISSOLVED' &&
+        alliance.memberIds.includes(ai.id) &&
+        alliance.memberIds.includes(human.id)
+    )
+
+    expect(sharedAlliance).toBeDefined()
+    expect(store.getState().social.relationships[ai.id]?.[human.id]?.tags).toContain('alliance')
+    expect(store.getState().social.relationships[human.id]?.[ai.id]?.tags).toContain('alliance')
+  })
+
   it('turns an accepted AI alliance huddle into a plan only when the room has a real majority', () => {
     const store = makeStore()
     const game = store.getState().game
@@ -358,7 +396,11 @@ describe('social memory integration for incoming interactions', () => {
     )
 
     const resolved = store.getState().social.reality.alliances[alliance.id]
+    const resolvedInteraction = store
+      .getState()
+      .social.incomingInteractions.find((entry) => entry.id === 'alliance-huddle-split')
     expect(resolved.currentTargetIds).toEqual([])
+    expect(resolvedInteraction?.outcomeText).toMatch(/majority-backed plan/i)
     expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`preference:${target.id}`])
     expect(resolved.memberPlanBeliefs[human.id]).toEqual([`target:${target.id}`])
     expect(resolved.memberPlanBeliefs[allyA.id]).toEqual([`preference:${alternative.id}`])
