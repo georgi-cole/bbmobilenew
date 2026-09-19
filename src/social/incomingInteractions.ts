@@ -330,7 +330,11 @@ function resolveRealityIncomingInteraction(
     // interaction id. Accepting one must still create/recruit a canonical
     // RealityAlliance; otherwise the legacy Alliance tag is only temporary and
     // disappears when the Reality projection runs on the next phase/day.
-    if (interaction.type === 'alliance_proposal' && responseType === 'accept') {
+    if (
+      getInteractionSocialMode(interaction, state) === 'drama' &&
+      interaction.type === 'alliance_proposal' &&
+      responseType === 'accept'
+    ) {
       const existing = Object.values(domain.alliances).find(
         (alliance) =>
           (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
