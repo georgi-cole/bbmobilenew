@@ -78,6 +78,7 @@ import {
   getEligibleNominationTargets,
   getEligibleReplacementNominees,
   getNominationTargetScore,
+  getSafetyRelationshipScore,
 } from '../store/gameSlice'
 
 interface StoreAPI {
@@ -289,7 +290,11 @@ interface CandidateMove {
   actionId: string
   targetIds: string[]
   subjectId?: string
+  secondarySubjectId?: string
   allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
+  sceneTargetIds?: string[]
+  scenarioOverride?: string
   reason: string
   relationshipIntent?: RealityRelationshipIntentKind
 }
@@ -401,6 +406,7 @@ const HUMAN_FACING_ACTION_TYPES: Partial<Record<string, IncomingInteractionType>
   pitch_target: 'deal_offer',
   suggest_replacement: 'deal_offer',
   rally_votes_against: 'deal_offer',
+  consult_alliance: 'deal_offer',
   group_chat: 'other',
 }
 
@@ -542,7 +548,10 @@ function routeHumanFacingAction(
   subjectId: string | undefined,
   costs: { energy: number; influence: number; info: number },
   sceneTargetIds?: string[],
-  allianceId?: string
+  allianceId?: string,
+  scenarioOverride?: string,
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY',
+  secondarySubjectId?: string
 ): HumanRouteResult {
   if (!_store) return 'blocked'
   const type = HUMAN_FACING_ACTION_TYPES[actionId] ?? 'other'
@@ -586,7 +595,8 @@ function routeHumanFacingAction(
     'suggest_replacement',
     'rally_votes_against',
   ].includes(actionId)
-  const isAllianceStrategyContact = Boolean(allianceId) && strategicPitchAction
+  const isAllianceStrategyContact =
+    Boolean(allianceId) && (strategicPitchAction || actionId === 'consult_alliance')
   if (
     (!isAllianceStrategyContact && directContactsThisWeek >= 2) ||
     pending.filter((entry) => entry.createdWeek === week).length >=
@@ -606,7 +616,8 @@ function routeHumanFacingAction(
     week,
     phase,
     subjectName,
-    strategicPitchAction && !isAllianceStrategyContact ? `strategy_${actionId}` : undefined
+    scenarioOverride ??
+      (strategicPitchAction && !isAllianceStrategyContact ? `strategy_${actionId}` : undefined)
   )
   const interaction = createIncomingInteraction({
     id: `ai-action-${actionId}-${actorId}-${deterministicSequence}`,
@@ -627,9 +638,13 @@ function routeHumanFacingAction(
             dedupeGroup: `alliance_strategy:${allianceId ?? 'unknown'}:${content.scenarioKey}`,
           }
         : {}),
-      ...(actionId === 'group_chat' ? { groupScene: true } : {}),
+      ...(actionId === 'group_chat' || (sceneTargetIds?.length ?? 0) > 1
+        ? { groupScene: true }
+        : {}),
       ...(subjectId ? { subjectId } : {}),
+      ...(secondarySubjectId ? { secondarySubjectId } : {}),
       ...(allianceId ? { allianceId } : {}),
+      ...(allianceStrategyKind ? { allianceStrategyKind } : {}),
     },
   })
   const priority = getIncomingInteractionPriority(type)
@@ -751,6 +766,90 @@ function allianceStrategySubject(
       score: getNominationTargetScore(game, actorId, candidate),
     }))
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
+}
+
+function alliancePowerHolderCandidate(
+  state: DriverState,
+  player: DriverPlayer,
+  human: DriverPlayer
+): CandidateMove | null {
+  const alliance = liveAllianceWithHuman(state, player.id, human.id)
+  if (!alliance) return null
+
+  const game = state.game as unknown as GameState
+  if (game.voxPopuli?.status === 'active') return null
+
+  const phase = game.phase
+  const playerIsLoh =
+    game.lohId === player.id || getCupidPartnerId(game, game.lohId) === player.id
+  const playerHasSafety =
+    game.posWinnerId === player.id || getCupidPartnerId(game, game.posWinnerId) === player.id
+  const activeMemberIds = alliance.memberIds
+    .filter((id) => id !== player.id)
+    .filter((id) =>
+      game.players.some(
+        (candidate) =>
+          candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
+      )
+    )
+    .sort(
+      (left, right) =>
+        Number(left !== human.id) - Number(right !== human.id) ||
+        Number(alliance.leaderIds.includes(right)) - Number(alliance.leaderIds.includes(left)) ||
+        (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
+        left.localeCompare(right)
+    )
+  if (!activeMemberIds.includes(human.id)) return null
+
+  if (playerIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+    const subjectId = allianceStrategySubject(
+      game,
+      player.id,
+      getEligibleNominationTargets(game, player.id)
+    )
+    if (!subjectId) return null
+    return {
+      actionId: 'consult_alliance',
+      targetIds: [human.id],
+      sceneTargetIds: activeMemberIds,
+      subjectId,
+      allianceId: alliance.id,
+      allianceStrategyKind: 'NOMINATION',
+      scenarioOverride: 'alliance_power_nomination_huddle',
+      reason: 'alliance LOH calling a strategy huddle',
+    }
+  }
+
+  if (playerHasSafety && ['pos_results', 'pos_ceremony'].includes(phase)) {
+    const nominees = game.players.filter((candidate) => game.nomineeIds.includes(candidate.id))
+    if (nominees.length === 0) return null
+    const saveTargetId = nominees
+      .map((nominee) => ({
+        id: nominee.id,
+        score: getSafetyRelationshipScore(game, player.id, nominee),
+      }))
+      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
+    if (!saveTargetId) return null
+
+    const replacementTargetId = allianceStrategySubject(
+      game,
+      player.id,
+      getEligibleReplacementNominees(game, game.lohId)
+    )
+    return {
+      actionId: 'consult_alliance',
+      targetIds: [human.id],
+      sceneTargetIds: activeMemberIds,
+      subjectId: saveTargetId,
+      secondarySubjectId: replacementTargetId,
+      allianceId: alliance.id,
+      allianceStrategyKind: 'SAFETY',
+      scenarioOverride: 'alliance_power_safety_huddle',
+      reason: 'alliance Safety holder calling a strategy huddle',
+    }
+  }
+
+  return null
 }
 
 function allianceHumanStrategyCandidate(
@@ -926,8 +1025,10 @@ function candidateForPlayer(
       ? 'pitch_target'
       : null
   if (contactBoundary && nemesis && !strategicNemesisAction) return null
+  const alliancePowerCandidate =
+    dramaMode && attempt === 0 && human ? alliancePowerHolderCandidate(state, player, human) : null
   const allianceStrategyCandidate =
-    dramaMode && attempt === 0 && human
+    dramaMode && attempt === 0 && human && !alliancePowerCandidate
       ? allianceHumanStrategyCandidate(state, player, human)
       : null
   const relationshipCandidate =
@@ -954,6 +1055,7 @@ function candidateForPlayer(
 
   const policyActionId =
     strategicNemesisAction ??
+    alliancePowerCandidate?.actionId ??
     allianceStrategyCandidate?.actionId ??
     relationshipCandidate?.actionId ??
     dramaMove?.actionId ??
@@ -971,6 +1073,7 @@ function candidateForPlayer(
     } as Parameters<typeof chooseActionFor>[1])
   const allianceBias = allianceIdentityBias(player.aiGameIdentity)
   const actionId =
+    !alliancePowerCandidate &&
     !allianceStrategyCandidate &&
     !relationshipCandidate &&
     !dramaMove &&
@@ -994,6 +1097,9 @@ function candidateForPlayer(
   } else if (strategicNemesisAction && human) {
     targetIds = [state.game.lohId!]
     subjectId = human.id
+  } else if (alliancePowerCandidate) {
+    targetIds = alliancePowerCandidate.targetIds
+    subjectId = alliancePowerCandidate.subjectId
   } else if (allianceStrategyCandidate) {
     targetIds = allianceStrategyCandidate.targetIds
     subjectId = allianceStrategyCandidate.subjectId
@@ -1033,7 +1139,13 @@ function candidateForPlayer(
     actionId,
     targetIds,
     subjectId,
+    secondarySubjectId: alliancePowerCandidate?.secondarySubjectId,
+    allianceId: alliancePowerCandidate?.allianceId ?? allianceStrategyCandidate?.allianceId,
+    allianceStrategyKind: alliancePowerCandidate?.allianceStrategyKind,
+    sceneTargetIds: alliancePowerCandidate?.sceneTargetIds,
+    scenarioOverride: alliancePowerCandidate?.scenarioOverride,
     reason:
+      alliancePowerCandidate?.reason ??
       allianceStrategyCandidate?.reason ??
       relationshipCandidate?.reason ??
       dramaMove?.reason ??
@@ -1061,8 +1173,11 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      [primaryTarget.id],
-      candidate.allianceId
+      candidate.sceneTargetIds ?? [primaryTarget.id],
+      candidate.allianceId,
+      candidate.scenarioOverride,
+      candidate.allianceStrategyKind,
+      candidate.secondarySubjectId
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
@@ -1079,8 +1194,11 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      candidate.targetIds,
-      candidate.allianceId
+      candidate.sceneTargetIds ?? candidate.targetIds,
+      candidate.allianceId,
+      candidate.scenarioOverride,
+      candidate.allianceStrategyKind,
+      candidate.secondarySubjectId
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
