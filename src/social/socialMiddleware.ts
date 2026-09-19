@@ -865,6 +865,7 @@ function recordActualVotes(api: MiddlewareAPI): void {
         day: afterCeremony.game.week ?? 1,
         phase: afterCeremony.game.phase,
         eventId,
+        eligibleTargetIds: [...afterCeremony.game.nomineeIds],
       })
     )
   }
@@ -1221,6 +1222,7 @@ export const socialMiddleware: Middleware = (api) => (next) => (action) => {
           day: before.game.week ?? 1,
           phase: before.game.phase,
           eventId: `vote:${before.game.week}:${humanId}`,
+          eligibleTargetIds: [...before.game.nomineeIds],
         })
       )
     }
