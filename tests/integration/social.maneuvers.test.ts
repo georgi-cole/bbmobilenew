@@ -48,6 +48,7 @@ import {
   executeGroupAction,
 } from '../../src/social/SocialManeuvers'
 import { socialMiddleware } from '../../src/social/socialMiddleware'
+import { relationshipResourcePolicyMiddleware } from '../../src/social/relationshipResourcePolicyMiddleware'
 import { socialConfig } from '../../src/social/socialConfig'
 import { MIN_ALLIANCE_AFFINITY, hasAllianceBetween } from '../../src/social/socialAlliance'
 import { executeHumanRealityAction } from '../../src/social/reality/humanFlow'
@@ -316,6 +317,59 @@ describe('Reality human alliance proposal acceptance', () => {
     expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
     expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
     expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
+  })
+
+  it('pays the calibrated alliance reward exactly once after Reality projection repair', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players: [
+            { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+            { id: 'p2', name: 'Kian', status: 'active' as const },
+          ],
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(relationshipResourcePolicyMiddleware, socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+    store.dispatch(
+      updateRelationship({
+        source: 'p1',
+        target: 'p2',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    store.dispatch(
+      updateRelationship({
+        source: 'p2',
+        target: 'p1',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(1)
+    expect(store.getState().social.energyBank.p1).toBe(6)
+    expect(store.getState().social.infoBank.p1).toBe(200)
+    expect(store.getState().social.influenceBank.p1).toBe(20)
+    expect(store.getState().social.influenceBank.p2).toBe(20)
   })
 
   it('keeps a genuinely accepted human alliance through the next day projection', () => {
