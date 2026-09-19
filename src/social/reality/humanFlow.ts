@@ -914,14 +914,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               : 'No action was selected.'
       return result(false, reason, energy, 0, orchestration.response?.kind ?? 'Unavailable')
     }
-    const succeeded = orchestration.event.outcome !== 'FAILURE'
-    // A counteroffer is a resolved conversation, but it is not an accepted pact.
-    // Keep the compatibility/UI layer from manufacturing an Alliance tag until
-    // the Reality response itself has actually been accepted.
-    const resolvedAsSuccess =
-      input.actionId === 'proposeAlliance' ? orchestration.response?.accepted === true : succeeded
+    const resolved = orchestration.event.outcome !== 'FAILURE'
+    // Compatibility "success" is intentionally stricter than "the conversation
+    // produced a Reality event". COUNTERED and PARTIAL outcomes still cost the
+    // action and remain in Reality memory, but they must not receive full legacy
+    // success rewards or trigger success-only downstream adapters.
+    const resolvedAsSuccess = orchestration.event.outcome === 'SUCCESS'
     let allianceConsultationSummary: string | null = null
-    if (succeeded && consultationPlan) {
+    if (resolvedAsSuccess && consultationPlan) {
       holdRealityAllianceStrategyMeeting(orchestration.domain, {
         allianceId: consultationPlan.allianceId,
         callerId: input.actorId,
@@ -938,7 +938,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       allianceConsultationSummary = consultationPlan.summary
     }
     const dangerWarningDiscovered =
-      succeeded &&
+      resolved &&
       input.actionId === 'warn_about_danger' &&
       Boolean(state.game.lohId) &&
       state.game.lohId !== input.actorId &&
@@ -1058,7 +1058,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       const targetName =
         state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
       baseSummary = `${targetName} made a counteroffer. No alliance was formed yet.`
-    } else if (input.actionId === 'warn_about_danger' && succeeded) {
+    } else if (input.actionId === 'warn_about_danger' && resolved) {
       const targetName =
         state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
       baseSummary = dangerWarningDiscovered
