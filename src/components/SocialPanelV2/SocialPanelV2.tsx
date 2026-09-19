@@ -1399,7 +1399,7 @@ export default function SocialPanelV2() {
         <ContextualGuidePrompt
           eyebrow="ALLIANCE"
           title="You're in an alliance"
-          body="Alliances have their own strength, trust and secrecy. Your choices — and your allies' choices — can strengthen or strain the group. You can review it in My Game → House."
+          body="Alliances have their own cohesion and secrecy. Your choices — and your allies' choices — can strengthen or strain the group. You can review it in My Game → House."
           onComplete={() => dismissContextualGuide('alliance')}
         />
       )}
