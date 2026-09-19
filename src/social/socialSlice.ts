@@ -69,6 +69,7 @@ import {
   normalizeRealityDomainState,
   projectRealityAffinity,
   recordRealityAllianceBetrayal as applyRealityAllianceBetrayal,
+  renameRealityAlliance as applyRealityAllianceRename,
   recordRealityCeremonyOutcome,
   upsertRealityDebt,
   upsertRealityPromise,
@@ -546,6 +547,32 @@ const socialSlice = createSlice({
         state.relationships
       )
     },
+    renameRealityAllianceRecord(
+      state,
+      action: PayloadAction<{
+        allianceId: string
+        actorId: string
+        name: string
+        day: number
+        phase: string
+      }>
+    ) {
+      const reality = state.reality as RealityDomainState
+      const alliance = reality.alliances[action.payload.allianceId]
+      if (
+        !alliance ||
+        alliance.status === 'DISSOLVED' ||
+        !alliance.memberIds.includes(action.payload.actorId)
+      ) {
+        return
+      }
+      applyRealityAllianceRename(reality, {
+        allianceId: action.payload.allianceId,
+        actorId: action.payload.actorId,
+        name: action.payload.name,
+        at: { day: action.payload.day, phase: action.payload.phase },
+      })
+    },
     recordRealitySimulationTrace(
       state,
       action: PayloadAction<Omit<RealitySimulationTrace, 'id' | 'sequence'>>
@@ -997,6 +1024,7 @@ export const {
   recordRealityCeremony,
   recordRealityActualVote,
   recordRealityAllianceBetrayal,
+  renameRealityAllianceRecord,
   recordRealitySimulationTrace,
   replaceDramaNetwork,
   applyDramaAction,
