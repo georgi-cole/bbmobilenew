@@ -583,6 +583,12 @@ export interface ExecuteActionOptions {
   costOverride?: { energy: number; influence: number; info: number }
   /** Reality orchestration already resolved the phase-scoped repetition roll. */
   repetitionAlreadyResolved?: boolean
+  /**
+   * Optional per-recipient outcome map for Reality group actions. The top-level
+   * outcome still controls whole-action rewards/logging, while this map keeps
+   * accepted and rejected recipients from receiving the same relationship delta.
+   */
+  targetOutcomes?: Readonly<Record<string, 'success' | 'failure'>>
 }
 
 export interface ExecuteActionResult {
@@ -1377,6 +1383,7 @@ export function executeGroupAction(
   const targetDeltas: Record<string, number> = {}
   let anyBackfire = false
   for (const targetId of targetIds) {
+    const targetOutcome = options?.targetOutcomes?.[targetId] ?? outcome
     const repeats = countPriorRepeatedActions(
       getPersistentSocialHistory(state.social as SocialStateWithHistory),
       actorId,
@@ -1385,9 +1392,9 @@ export function executeGroupAction(
       state.game?.week,
       state.game?.phase
     )
-    const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, outcome)
+    const baseDelta = computeOutcomeDelta(actionId, actorId, targetId, targetOutcome)
     const repeated =
-      outcome === 'success' && baseDelta > 0
+      targetOutcome === 'success' && baseDelta > 0
         ? computeRepeatedPositiveDelta(repeats, random)
         : { delta: baseDelta, didBackfire: false }
     targetDeltas[targetId] = repeated.delta
