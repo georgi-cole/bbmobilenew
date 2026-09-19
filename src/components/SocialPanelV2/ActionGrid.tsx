@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { isRealityExclusiveAction, type SocialActionDefinition } from '../../social/socialActions'
+import {
+  isRealityExclusiveAction,
+  resolveActionTargetMode,
+  type SocialActionDefinition,
+} from '../../social/socialActions'
 import type { ActionCategory } from '../../social/socialActions'
 import {
   buildEffectiveSocialActions,
@@ -244,8 +248,17 @@ export default function ActionGrid({
     if (typeof window !== 'undefined') window.location.hash = '/settings'
   }
 
+  const explicitlyNoTargetSelected = selectedTargetIds !== undefined && selectedTargetIds.size === 0
   const orderedVisibleActions = actions
     .filter((action) => isRealityPreview(action) || isContextEligible(action))
+    .filter((action) => {
+      if (!explicitlyNoTargetSelected) return true
+      const actionMode = resolveActionTargetMode(
+        action,
+        dramaMode || isRealityExclusiveAction(action)
+      )
+      return actionMode === 'none'
+    })
     .filter((action) => action.id === suggestedActionId || matchesCategoryFilter(action.category))
     .sort((left, right) => {
       const leftPreview = isRealityPreview(left)
