@@ -52,6 +52,7 @@ import { socialConfig } from '../../src/social/socialConfig'
 import { MIN_ALLIANCE_AFFINITY, hasAllianceBetween } from '../../src/social/socialAlliance'
 import { executeHumanRealityAction } from '../../src/social/reality/humanFlow'
 import {
+  createDirectedRelationship,
   createInitialRealityDomainState,
   createRealityAlliance,
   holdRealityAllianceStrategyMeeting,
@@ -226,6 +227,40 @@ describe('Reality action cost atomicity', () => {
       influence: 0,
       info: 0,
     })
+  })
+})
+
+describe('Reality compatibility outcome semantics', () => {
+  it('does not award a full success payoff when a commitment action is countered', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'Kian', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 8, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfluenceBankEntry({ playerId: 'p1', value: 10 }))
+
+    const reality = createInitialRealityDomainState()
+    reality.relationships.p1 = {
+      p2: createDirectedRelationship('p1', 'p2', -20),
+    }
+    reality.relationships.p2 = {
+      p1: createDirectedRelationship('p2', 'p1', -20),
+    }
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'protect',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.label).toBe('COUNTER')
+    expect(store.getState().social.actionHistory.at(-1)?.outcome).toBe('failure')
+    expect(store.getState().social.influenceBank.p1).toBe(9)
+    expect(Object.values(store.getState().social.reality.promises)).toHaveLength(0)
   })
 })
 
