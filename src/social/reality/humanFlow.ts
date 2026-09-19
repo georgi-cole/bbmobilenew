@@ -184,10 +184,12 @@ function nominationConsultationCandidates(state: RootState, actorId: string) {
 function summarizeAlliancePreferences(
   state: RootState,
   preferences: Array<{ advisorId: string; targetId: string; score: number }>,
-  label: string
+  label: string,
+  excludedPlanTargetIds: ReadonlySet<string> = new Set()
 ): { summary: string; targetIds: string[]; fallbackTargetIds: string[] } {
   const counts = new Map<string, { votes: number; score: number }>()
   for (const preference of preferences) {
+    if (excludedPlanTargetIds.has(preference.targetId)) continue
     const current = counts.get(preference.targetId) ?? { votes: 0, score: 0 }
     current.votes += 1
     current.score += preference.score
@@ -284,7 +286,12 @@ function buildAllianceConsultationPlan(
       .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
         Boolean(entry)
       )
-    const read = summarizeAlliancePreferences(state, preferences, 'Nomination consensus')
+    const read = summarizeAlliancePreferences(
+      state,
+      preferences,
+      'Nomination consensus',
+      new Set(alliance.memberIds)
+    )
     return {
       allianceId: alliance.id,
       attendeeIds,
@@ -318,7 +325,9 @@ function buildAllianceConsultationPlan(
         Boolean(entry)
       )
     const read = summarizeAlliancePreferences(state, preferences, 'Safety preference')
-    const replacements = getEligibleReplacementNominees(state.game)
+    const replacements = getEligibleReplacementNominees(state.game).filter(
+      (candidate) => !alliance.memberIds.includes(candidate.id)
+    )
     const replacement =
       replacements
         .map((candidate) => ({
@@ -369,7 +378,12 @@ function buildAllianceConsultationPlan(
       )
       return { advisorId, targetId, score: 1 }
     })
-    const read = summarizeAlliancePreferences(state, preferences, 'Vote consensus')
+    const read = summarizeAlliancePreferences(
+      state,
+      preferences,
+      'Vote consensus',
+      new Set(alliance.memberIds)
+    )
     return {
       allianceId: alliance.id,
       attendeeIds,
@@ -404,7 +418,12 @@ function buildAllianceConsultationPlan(
     .filter((entry): entry is { advisorId: string; targetId: string; score: number } =>
       Boolean(entry)
     )
-  const read = summarizeAlliancePreferences(state, preferences, 'Strategic read')
+  const read = summarizeAlliancePreferences(
+    state,
+    preferences,
+    'Strategic read',
+    new Set(alliance.memberIds)
+  )
   return {
     allianceId: alliance.id,
     attendeeIds,
