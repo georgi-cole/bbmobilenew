@@ -45,6 +45,7 @@ import {
   canAfford,
   computeRepeatedPositiveDelta,
   executeAction,
+  executeGroupAction,
 } from '../../src/social/SocialManeuvers'
 import { socialMiddleware } from '../../src/social/socialMiddleware'
 import { socialConfig } from '../../src/social/socialConfig'
@@ -169,6 +170,62 @@ describe('Classic social isolation', () => {
     expect(store.getState().social.reality.events).toHaveLength(0)
     expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
     expect(store.getState().social.realitySimulation.rng).toBeNull()
+  })
+})
+
+describe('Reality action cost atomicity', () => {
+  it('blocks an unaffordable dynamic group action before Reality creates any effects', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+      { id: 'p5', name: 'P5', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 2 }))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3', 'p4', 'p5'],
+      actionId: 'group_chat',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/insufficient resources/i)
+    expect(store.getState().social.energyBank.p1).toBe(2)
+    expect(store.getState().social.sessionLogs).toHaveLength(0)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
+  })
+
+  it('honors an explicitly precomputed atomic price for a group action', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+      { id: 'p4', name: 'P4', status: 'active' as const },
+      { id: 'p5', name: 'P5', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 3 }))
+
+    const result = executeGroupAction('p1', ['p2', 'p3', 'p4', 'p5'], 'group_chat', {
+      source: 'manual',
+      costOverride: { energy: 2, influence: 0, info: 0 },
+      random: () => 0,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.newEnergy).toBe(1)
+    expect(store.getState().social.sessionLogs.at(-1)?.costs).toEqual({
+      energy: 2,
+      influence: 0,
+      info: 0,
+    })
   })
 })
 
