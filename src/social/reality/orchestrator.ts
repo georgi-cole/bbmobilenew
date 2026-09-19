@@ -140,9 +140,10 @@ function applyRealityLifecycle(input: {
   event: RealitySocialEvent
   action: RealityActionContract
   subjectId?: string
+  allianceId?: string
   responses: Array<{ targetId: string; response: RealityResponseResolution }>
 }): void {
-  const { domain, interaction, event, action, subjectId, responses } = input
+  const { domain, interaction, event, action, subjectId, allianceId, responses } = input
   const acceptedTargets = responses
     .filter((entry) => entry.response.accepted)
     .map((entry) => entry.targetId)
@@ -234,6 +235,7 @@ function applyRealityLifecycle(input: {
         kind,
         at,
         sourceEventId: event.id,
+        allianceId,
       })
     }
   }
@@ -893,6 +895,7 @@ export function resolvePendingHumanRealityInteraction(input: {
   day: number
   phase: string
   subjectId?: string
+  allianceId?: string
 }): { domain: RealityDomainState; event: RealitySocialEvent | null } {
   const domain = cloneDomain(input.domain)
   const interaction = domain.interactions[input.interactionId]
@@ -975,6 +978,7 @@ export function resolvePendingHumanRealityInteraction(input: {
     event,
     action,
     subjectId: input.subjectId,
+    allianceId: input.allianceId,
     responses: [{ targetId: input.humanId, response: humanResponse }],
   })
   resolveRelationshipStoryResponse(domain, {
