@@ -807,6 +807,28 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const contract = getRealityActionContract(input.actionId)
     if (!contract) return result(false, 'Unknown action', energy)
 
+    if (input.actionId === 'proposeAlliance' && input.targetId) {
+      const alreadyProposedThisPhase = state.social.reality.events.some(
+        (event) =>
+          event.day === state.game.week &&
+          event.phase === state.game.phase &&
+          event.actorId === input.actorId &&
+          event.actionId === 'proposeAlliance' &&
+          event.targetIds.includes(input.targetId)
+      )
+      if (alreadyProposedThisPhase) {
+        const targetName =
+          state.game.players.find((player) => player.id === input.targetId)?.name ?? 'them'
+        return result(
+          false,
+          `You already approached ${targetName} about an alliance this phase. Give the conversation time before trying again.`,
+          energy,
+          0,
+          'Already approached'
+        )
+      }
+    }
+
     const consultationAlliance =
       input.actionId === 'consult_alliance' && input.targetId
         ? findRealityAllianceForConsultation(state.social.reality, input.actorId, input.targetId)
