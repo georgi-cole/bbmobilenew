@@ -475,10 +475,7 @@ function canSendInteractionType(
   }
 }
 
-function activeAllianceMembers(
-  alliance: RealityAlliance,
-  context: AutonomyContext
-): string[] {
+function activeAllianceMembers(alliance: RealityAlliance, context: AutonomyContext): string[] {
   const activeIds = new Set(
     context.players
       .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
@@ -524,8 +521,16 @@ function allianceSpokespersonId(
       .sort(
         (left, right) =>
           Number(alliance.leaderIds.includes(right)) - Number(alliance.leaderIds.includes(left)) ||
-          (alliance.memberPerceivedStatus[right] === 'CORE' ? 2 : alliance.memberPerceivedStatus[right] === 'REGULAR' ? 1 : 0) -
-            (alliance.memberPerceivedStatus[left] === 'CORE' ? 2 : alliance.memberPerceivedStatus[left] === 'REGULAR' ? 1 : 0) ||
+          (alliance.memberPerceivedStatus[right] === 'CORE'
+            ? 2
+            : alliance.memberPerceivedStatus[right] === 'REGULAR'
+              ? 1
+              : 0) -
+            (alliance.memberPerceivedStatus[left] === 'CORE'
+              ? 2
+              : alliance.memberPerceivedStatus[left] === 'REGULAR'
+                ? 1
+                : 0) ||
           (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
           left.localeCompare(right)
       )[0] ?? null
@@ -567,13 +572,12 @@ function allianceConsensusTarget(
     current.score += preferred.score
     counts.set(preferred.id, current)
   }
-  return [...counts.entries()]
-    .sort(
-      (left, right) =>
-        right[1].votes - left[1].votes ||
-        right[1].score - left[1].score ||
-        left[0].localeCompare(right[0])
-    )[0]?.[0]
+  return [...counts.entries()].sort(
+    (left, right) =>
+      right[1].votes - left[1].votes ||
+      right[1].score - left[1].score ||
+      left[0].localeCompare(right[0])
+  )[0]?.[0]
 }
 
 function resolveAllianceInteractionPlan(
@@ -786,143 +790,147 @@ function resolveIncomingInteractionPlan(
       if (!shouldInitiateLohSafetyConsult(actorId, playerId, context)) return null
       plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
     } else if (
-    context.phase === 'pos_results' &&
-    constraints.actorHasSafetyPower &&
-    constraints.playerIsHoh &&
-    !constraints.actorIsNominee
-  ) {
-    plan = { type: 'deal_offer', scenarioKey: 'safety_holder_consults_loh' }
-  } else if (
-    context.phase === 'pos_results' &&
-    constraints.playerHasSafetyPower &&
-    !constraints.actorIsNominee &&
-    (signals.isMildAlly || signals.tags.has('alliance'))
-  ) {
-    plan = { type: 'compliment', scenarioKey: 'safety_win_congratulations' }
-  } else if (context.phase === 'nomination_results' && constraints.playerIsNominee) {
-    if (signals.isMildAlly || signals.tags.has('alliance')) {
-      plan = { type: 'check_in', scenarioKey: 'player_nominated_support' }
-    } else if (signals.isMildEnemy || signals.tags.has('target') || signals.tags.has('betrayal')) {
-      plan = {
-        type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
-        scenarioKey: 'player_nominated_tension',
-      }
-    }
-  } else if (
-    (context.phase === 'loh_results' || context.phase === 'social_1') &&
-    constraints.playerFinishedLastLohComp
-  ) {
-    if (signals.isMildAlly || signals.tags.has('alliance')) {
-      plan = { type: 'check_in', scenarioKey: 'competition_low_finish_support' }
-    } else if (signals.isMildEnemy) {
-      plan = { type: 'snide_remark', scenarioKey: 'competition_low_finish_taunt' }
-    }
-  } else if (
-    context.phase === 'social_2' &&
-    (context.playerSocialActionCount ?? 0) >= 3 &&
-    (signals.isMildAlly || signals.isMildEnemy)
-  ) {
-    plan = {
-      type: signals.isMildAlly ? 'compliment' : 'warning',
-      scenarioKey: 'social_momentum_notice',
-    }
-  } else if (context.phase === 'eviction_results' && constraints.actorSurvivedCurrentVote) {
-    if (
-      !signals.tags.has('alliance') &&
-      signals.affinity >= thresholds.allianceProposalMinAffinity
+      context.phase === 'pos_results' &&
+      constraints.actorHasSafetyPower &&
+      constraints.playerIsHoh &&
+      !constraints.actorIsNominee
     ) {
-      plan = { type: 'alliance_proposal', scenarioKey: 'survivor_gratitude' }
-    } else {
-      plan = { type: 'compliment', scenarioKey: 'survivor_gratitude' }
-    }
-  } else if (
-    context.phase === 'pos_ceremony_results' &&
-    constraints.actorWasSaved &&
-    (constraints.playerIsHoh || constraints.playerHasSafetyPower)
-  ) {
-    if (
-      !signals.tags.has('alliance') &&
-      signals.affinity >= thresholds.allianceProposalMinAffinity
-    ) {
-      plan = { type: 'alliance_proposal', scenarioKey: 'post_veto_gratitude' }
-    } else {
-      plan = { type: 'compliment', scenarioKey: 'post_veto_gratitude' }
-    }
-  } else if (
-    constraints.actorIsNominee &&
-    (context.phase === 'pos_results' || context.phase === 'pos_ceremony_results') &&
-    constraints.playerHasSafetyPower
-  ) {
-    plan = {
-      type: signals.isMildEnemy ? 'check_in' : 'deal_offer',
-      scenarioKey: 'nominee_veto_pitch',
-    }
-  } else if (
-    constraints.actorIsNominee &&
-    context.phase === 'nominations' &&
-    constraints.playerIsHoh
-  ) {
-    plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' }
-  } else if (
-    constraints.actorIsNominee &&
-    constraints.playerCanVote &&
-    (context.phase === 'social_2' || context.phase === 'live_vote')
-  ) {
-    plan = {
-      type: context.phase === 'live_vote' ? 'deal_offer' : 'check_in',
-      scenarioKey: context.phase === 'live_vote' ? 'live_vote_pitch' : 'nominee_campaign',
-    }
-  } else if (
-    (context.phase === 'social_1' ||
-      context.phase === 'nominations' ||
-      context.phase === 'loh_results') &&
-    constraints.playerIsHoh &&
-    !constraints.actorIsNominee &&
-    !constraints.actorIsCurrentHoh
-  ) {
-    if (signals.isStrongAlly || signals.tags.has('alliance')) {
-      plan = {
-        type: signals.tags.has('alliance') ? 'check_in' : 'compliment',
-        scenarioKey: 'hoh_safety_request',
-      }
-    } else {
-      plan = { type: 'deal_offer', scenarioKey: 'hoh_safety_request' }
-    }
-  } else if (context.phase === 'nomination_results' && constraints.actorIsNominee) {
-    if (context.dramaMode && constraints.playerIsHoh) {
-      plan =
-        signals.isMildEnemy || signals.tags.has('betrayal')
-          ? { type: 'warning', scenarioKey: 'nominee_confronts_loh' }
-          : { type: 'check_in', scenarioKey: 'nominee_understands_loh' }
-    } else {
-      plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' }
-    }
-  } else if (
-    !context.voxPopuliActive &&
-    context.phase === 'pos_ceremony_results' &&
-    constraints.actorWasReplacementNominee
-  ) {
-    if (context.dramaMode && constraints.playerIsHoh) {
-      plan = {
-        type: signals.isMildEnemy ? 'warning' : 'check_in',
-        scenarioKey: 'replacement_nominee_reacts_to_loh',
-      }
-    } else {
-      plan = { type: 'check_in', scenarioKey: 'post_veto_campaign' }
-    }
-  } else if (context.phase === 'loh_results' && constraints.playerIsHoh) {
-    if (signals.isStrongAlly || signals.tags.has('alliance')) {
-      plan = { type: 'compliment', scenarioKey: 'hoh_congratulations' }
+      plan = { type: 'deal_offer', scenarioKey: 'safety_holder_consults_loh' }
     } else if (
-      signals.tags.has('betrayal') ||
-      signals.isStrongEnemy ||
-      signals.tags.has('target')
+      context.phase === 'pos_results' &&
+      constraints.playerHasSafetyPower &&
+      !constraints.actorIsNominee &&
+      (signals.isMildAlly || signals.tags.has('alliance'))
+    ) {
+      plan = { type: 'compliment', scenarioKey: 'safety_win_congratulations' }
+    } else if (context.phase === 'nomination_results' && constraints.playerIsNominee) {
+      if (signals.isMildAlly || signals.tags.has('alliance')) {
+        plan = { type: 'check_in', scenarioKey: 'player_nominated_support' }
+      } else if (
+        signals.isMildEnemy ||
+        signals.tags.has('target') ||
+        signals.tags.has('betrayal')
+      ) {
+        plan = {
+          type: signals.isStrongEnemy ? 'snide_remark' : 'warning',
+          scenarioKey: 'player_nominated_tension',
+        }
+      }
+    } else if (
+      (context.phase === 'loh_results' || context.phase === 'social_1') &&
+      constraints.playerFinishedLastLohComp
+    ) {
+      if (signals.isMildAlly || signals.tags.has('alliance')) {
+        plan = { type: 'check_in', scenarioKey: 'competition_low_finish_support' }
+      } else if (signals.isMildEnemy) {
+        plan = { type: 'snide_remark', scenarioKey: 'competition_low_finish_taunt' }
+      }
+    } else if (
+      context.phase === 'social_2' &&
+      (context.playerSocialActionCount ?? 0) >= 3 &&
+      (signals.isMildAlly || signals.isMildEnemy)
     ) {
       plan = {
-        type: signals.isStrongEnemy ? 'warning' : 'gossip',
-        scenarioKey: 'betrayal_warning',
+        type: signals.isMildAlly ? 'compliment' : 'warning',
+        scenarioKey: 'social_momentum_notice',
       }
-    }
+    } else if (context.phase === 'eviction_results' && constraints.actorSurvivedCurrentVote) {
+      if (
+        !signals.tags.has('alliance') &&
+        signals.affinity >= thresholds.allianceProposalMinAffinity
+      ) {
+        plan = { type: 'alliance_proposal', scenarioKey: 'survivor_gratitude' }
+      } else {
+        plan = { type: 'compliment', scenarioKey: 'survivor_gratitude' }
+      }
+    } else if (
+      context.phase === 'pos_ceremony_results' &&
+      constraints.actorWasSaved &&
+      (constraints.playerIsHoh || constraints.playerHasSafetyPower)
+    ) {
+      if (
+        !signals.tags.has('alliance') &&
+        signals.affinity >= thresholds.allianceProposalMinAffinity
+      ) {
+        plan = { type: 'alliance_proposal', scenarioKey: 'post_veto_gratitude' }
+      } else {
+        plan = { type: 'compliment', scenarioKey: 'post_veto_gratitude' }
+      }
+    } else if (
+      constraints.actorIsNominee &&
+      (context.phase === 'pos_results' || context.phase === 'pos_ceremony_results') &&
+      constraints.playerHasSafetyPower
+    ) {
+      plan = {
+        type: signals.isMildEnemy ? 'check_in' : 'deal_offer',
+        scenarioKey: 'nominee_veto_pitch',
+      }
+    } else if (
+      constraints.actorIsNominee &&
+      context.phase === 'nominations' &&
+      constraints.playerIsHoh
+    ) {
+      plan = { type: 'nomination_plea', scenarioKey: 'nominee_hoh_plea' }
+    } else if (
+      constraints.actorIsNominee &&
+      constraints.playerCanVote &&
+      (context.phase === 'social_2' || context.phase === 'live_vote')
+    ) {
+      plan = {
+        type: context.phase === 'live_vote' ? 'deal_offer' : 'check_in',
+        scenarioKey: context.phase === 'live_vote' ? 'live_vote_pitch' : 'nominee_campaign',
+      }
+    } else if (
+      (context.phase === 'social_1' ||
+        context.phase === 'nominations' ||
+        context.phase === 'loh_results') &&
+      constraints.playerIsHoh &&
+      !constraints.actorIsNominee &&
+      !constraints.actorIsCurrentHoh
+    ) {
+      if (signals.isStrongAlly || signals.tags.has('alliance')) {
+        plan = {
+          type: signals.tags.has('alliance') ? 'check_in' : 'compliment',
+          scenarioKey: 'hoh_safety_request',
+        }
+      } else {
+        plan = { type: 'deal_offer', scenarioKey: 'hoh_safety_request' }
+      }
+    } else if (context.phase === 'nomination_results' && constraints.actorIsNominee) {
+      if (context.dramaMode && constraints.playerIsHoh) {
+        plan =
+          signals.isMildEnemy || signals.tags.has('betrayal')
+            ? { type: 'warning', scenarioKey: 'nominee_confronts_loh' }
+            : { type: 'check_in', scenarioKey: 'nominee_understands_loh' }
+      } else {
+        plan = { type: 'check_in', scenarioKey: 'nomination_aftershock' }
+      }
+    } else if (
+      !context.voxPopuliActive &&
+      context.phase === 'pos_ceremony_results' &&
+      constraints.actorWasReplacementNominee
+    ) {
+      if (context.dramaMode && constraints.playerIsHoh) {
+        plan = {
+          type: signals.isMildEnemy ? 'warning' : 'check_in',
+          scenarioKey: 'replacement_nominee_reacts_to_loh',
+        }
+      } else {
+        plan = { type: 'check_in', scenarioKey: 'post_veto_campaign' }
+      }
+    } else if (context.phase === 'loh_results' && constraints.playerIsHoh) {
+      if (signals.isStrongAlly || signals.tags.has('alliance')) {
+        plan = { type: 'compliment', scenarioKey: 'hoh_congratulations' }
+      } else if (
+        signals.tags.has('betrayal') ||
+        signals.isStrongEnemy ||
+        signals.tags.has('target')
+      ) {
+        plan = {
+          type: signals.isStrongEnemy ? 'warning' : 'gossip',
+          scenarioKey: 'betrayal_warning',
+        }
+      }
     } else if (
       (context.phase === 'week_start' || context.phase === 'social_1') &&
       !signals.tags.has('alliance') &&
@@ -1717,8 +1725,7 @@ export function scheduleIncomingInteractionsForPhase(
     intelligenceDeliveries:
       contextOverride?.intelligenceDeliveries ?? socialState.intelligenceDeliveries ?? [],
     gameState:
-      contextOverride?.gameState ??
-      (gameState ? (gameState as unknown as GameState) : undefined),
+      contextOverride?.gameState ?? (gameState ? (gameState as unknown as GameState) : undefined),
     random:
       contextOverride?.random ??
       createDeterministicSocialRandom([gameState?.seed ?? 0, week, phase, playerId]),
@@ -1916,9 +1923,7 @@ export function scheduleIncomingInteractionsForPhase(
         subjectId: subject?.id,
         ...(plan.secondarySubjectId ? { secondarySubjectId: plan.secondarySubjectId } : {}),
         ...(plan.allianceId ? { allianceId: plan.allianceId } : {}),
-        ...(plan.allianceStrategyKind
-          ? { allianceStrategyKind: plan.allianceStrategyKind }
-          : {}),
+        ...(plan.allianceStrategyKind ? { allianceStrategyKind: plan.allianceStrategyKind } : {}),
         ...(plan.allianceGroupMemberIds
           ? { allianceGroupMemberIds: plan.allianceGroupMemberIds }
           : {}),
