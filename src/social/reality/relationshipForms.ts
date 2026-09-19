@@ -1159,6 +1159,9 @@ export function holdRealityAllianceMeeting(
     at: RealityClock
     /** Members who could not reasonably attend (for example already evicted) are neutral. */
     excusedAbsentIds?: string[]
+    /** Defaults preserve legacy meeting behavior. Strategy wrappers may tune these. */
+    attendeeCommitmentDelta?: number
+    absentCommitmentDelta?: number
   }
 ): RealityAlliance {
   const alliance = state.alliances[input.allianceId]
@@ -1169,10 +1172,12 @@ export function holdRealityAllianceMeeting(
   alliance.fallbackTargetIds = [...new Set(input.fallbackTargetIds ?? [])]
   alliance.lastMeeting = input.at
   alliance.status = alliance.status === 'PROBATIONARY' ? 'ACTIVE' : alliance.status
+  const attendeeCommitmentDelta = input.attendeeCommitmentDelta ?? 0.05
+  const absentCommitmentDelta = input.absentCommitmentDelta ?? -0.025
   for (const attendeeId of attendees) {
     alliance.memberPlanBeliefs[attendeeId] = [...new Set(input.planIds)]
     alliance.memberCommitment[attendeeId] = clamp01(
-      (alliance.memberCommitment[attendeeId] ?? 0.5) + 0.05
+      (alliance.memberCommitment[attendeeId] ?? 0.5) + attendeeCommitmentDelta
     )
   }
   const excusedAbsentIds = new Set(input.excusedAbsentIds ?? [])
@@ -1180,7 +1185,7 @@ export function holdRealityAllianceMeeting(
     (id) => !attendees.includes(id) && !excusedAbsentIds.has(id)
   )) {
     alliance.memberCommitment[absentId] = clamp01(
-      (alliance.memberCommitment[absentId] ?? 0.5) - 0.025
+      (alliance.memberCommitment[absentId] ?? 0.5) + absentCommitmentDelta
     )
   }
   refreshRealityAllianceDynamics(alliance)
@@ -1214,8 +1219,17 @@ export function holdRealityAllianceStrategyMeeting(
     at: RealityClock
     sourceEventId?: string
     excusedAbsentIds?: string[]
+    /** Optional attendee-specific reads preserve real disagreement inside the coalition. */
+    memberPlanBeliefs?: Record<string, string[]>
   }
 ): RealityAlliance {
+  const priorMeeting = state.events.some(
+    (event) =>
+      event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+      event.day === input.at.day &&
+      event.phase === input.at.phase &&
+      event.reason.startsWith(`strategy_meeting:${input.allianceId}:${input.agenda}:`)
+  )
   const alliance = holdRealityAllianceMeeting(state, {
     allianceId: input.allianceId,
     attendeeIds: input.attendeeIds,
@@ -1224,7 +1238,19 @@ export function holdRealityAllianceStrategyMeeting(
     planIds: input.planIds,
     at: input.at,
     excusedAbsentIds: input.excusedAbsentIds,
+    attendeeCommitmentDelta: priorMeeting ? 0 : 0.015,
+    absentCommitmentDelta: priorMeeting ? 0 : -0.01,
   })
+
+  if (input.memberPlanBeliefs) {
+    for (const attendeeId of input.attendeeIds) {
+      if (!alliance.memberIds.includes(attendeeId)) continue
+      const beliefs = input.memberPlanBeliefs[attendeeId]
+      if (beliefs) alliance.memberPlanBeliefs[attendeeId] = [...new Set(beliefs)]
+    }
+    refreshRealityAllianceDynamics(alliance)
+    refreshRealityAllianceLifecycle(alliance)
+  }
 
   appendRealityEvent(state, {
     ...input.at,
