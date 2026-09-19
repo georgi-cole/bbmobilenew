@@ -152,6 +152,56 @@ describe('incoming interaction invalidation', () => {
     ).toBe(true)
   })
 
+  it('invalidates an alliance nomination pitch once the nomination window has passed', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'nomination_results'
+    game.lohId = human.id
+    human.status = 'loh'
+    nominee.status = 'nominated'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [nominee.id, otherNominee.id]
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_nomination_pitch',
+            phase: 'social_1',
+            subjectId: nominee.id,
+          },
+        }),
+        game
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates an alliance strategy pitch when its named target has left the house', () => {
+    const { game, human, nominee, otherNominee } = buildGameState()
+    game.phase = 'social_2'
+    game.lohId = null
+    human.status = 'active'
+    nominee.status = 'evicted'
+    otherNominee.status = 'nominated'
+    game.nomineeIds = [otherNominee.id]
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: otherNominee.id,
+          type: 'deal_offer',
+          payload: {
+            scenarioKey: 'alliance_vote_pitch',
+            phase: 'social_2',
+            subjectId: nominee.id,
+          },
+        }),
+        game
+      )
+    ).toBe(true)
+  })
+
   it('dismisses veto pitches from a nominee once that nominee is saved', () => {
     const store = makeStore()
     const { game, human, nominee, otherNominee, loh } = buildGameState()
