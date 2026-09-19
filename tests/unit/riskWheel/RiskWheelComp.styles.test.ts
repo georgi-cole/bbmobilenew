@@ -61,6 +61,9 @@ describe('RiskWheelComp styles', () => {
     expect(source).toContain("`${VIP_ASSET_ROOT}/wheel-frame.webp`")
     expect(source).toContain("`${VIP_ASSET_ROOT}/result-plaque.webp`")
     expect(source).toContain('className="rw-wheel-sector-label"')
+    expect(source).toContain("const R = premium ? 97 : 95")
+    expect(source).toContain("const LABEL_R = premium ? 76 : 72")
+    expect(css).toContain('/* ─── VIP composition refinement')
     expect(host).toContain('premiumPresentation={isVipActive}')
     expect(statSync(stagePath).size).toBeLessThan(50_000)
     generatedAssets.forEach((assetPath) => {

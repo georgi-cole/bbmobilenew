@@ -232,8 +232,8 @@ function WheelSvg({
   onTransitionEnd,
   premium = false,
 }: WheelSvgProps) {
-  const R = 95
-  const LABEL_R = 72
+  const R = premium ? 97 : 95
+  const LABEL_R = premium ? 76 : 72
 
   return (
     <div
@@ -351,7 +351,15 @@ function WheelSvg({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={premium ? '#fff9e6' : '#fff'}
-                  fontSize={getSectorFontSize(sector.label.length)}
+                  fontSize={
+                    premium
+                      ? sector.label.length <= 2
+                        ? '11.6'
+                        : sector.label.length === 3
+                          ? '10'
+                          : '8.2'
+                      : getSectorFontSize(sector.label.length)
+                  }
                   fontWeight={premium ? '900' : '800'}
                   fontFamily="inherit"
                   transform={`rotate(${textAngleDeg.toFixed(1)}, ${lx.toFixed(3)}, ${ly.toFixed(3)})`}
@@ -393,7 +401,7 @@ function WheelSvg({
           <circle
             cx="0"
             cy="0"
-            r={premium ? '13.5' : '12'}
+            r={premium ? '11.5' : '12'}
             fill={premium ? 'url(#rw-vip-hub)' : '#0f0f1e'}
             stroke={premium ? '#f5c85c' : 'rgba(255,255,255,0.4)'}
             strokeWidth={premium ? '2.4' : '2'}
@@ -402,7 +410,7 @@ function WheelSvg({
             x="0"
             y="4.5"
             textAnchor="middle"
-            fontSize="10"
+            fontSize={premium ? '8.8' : '10'}
             fill={premium ? '#fff2a8' : 'rgba(255,255,255,0.8)'}
           >
             ★
