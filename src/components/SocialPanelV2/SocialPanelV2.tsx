@@ -612,6 +612,16 @@ export default function SocialPanelV2() {
       setSelectedSubjectId(null)
       setFeedbackMsg(null)
 
+      if (
+        ids.size === 0 &&
+        selectedAction &&
+        resolveActionTargetMode(selectedAction, dramaMode) !== 'none'
+      ) {
+        setSelectedActionId(null)
+        setMultiSelectActive(false)
+        return
+      }
+
       if (selectedAction?.requiredTargetStatus) {
         const nextTargetStatus = details.primaryTargetId
           ? game.players.find((player) => player.id === details.primaryTargetId)?.status
@@ -621,7 +631,7 @@ export default function SocialPanelV2() {
         }
       }
     },
-    [game.players, selectedAction, usesMultipleTargets]
+    [dramaMode, game.players, selectedAction, usesMultipleTargets]
   )
 
   const handleExecute = useCallback(() => {
