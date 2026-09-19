@@ -256,20 +256,10 @@ export default function ActionGrid({
       if (right.id === 'ask_loh_target') return 1
       return 0
     })
-  // Keep a chosen move at the start of its existing grid row. If it was the
-  // right-hand card, its row-mate follows it instead, so the featured card
-  // gets a full row without sending the player back to the top of the list.
-  const selectedActionIndex = orderedVisibleActions.findIndex((action) => action.id === selectedId)
-  const visibleActions =
-    selectedActionIndex === -1
-      ? orderedVisibleActions
-      : [
-          ...orderedVisibleActions.slice(0, Math.floor(selectedActionIndex / 2) * 2),
-          orderedVisibleActions[selectedActionIndex],
-          ...orderedVisibleActions
-            .filter((_, index) => index !== selectedActionIndex)
-            .slice(Math.floor(selectedActionIndex / 2) * 2),
-        ]
+  // Selecting a move should only change its visual state. Keep the catalogue
+  // order fixed so cards never jump, expand into a featured row, or appear to
+  // disappear when the player compares actions.
+  const visibleActions = orderedVisibleActions
 
   useEffect(() => {
     if (!invitation || appliedInvitationRef.current === invitation.id) return
