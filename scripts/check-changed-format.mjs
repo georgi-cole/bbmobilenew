@@ -102,6 +102,26 @@ for (const file of legacyExceptions) console.log(`  legacy: ${file}`)
 if (violations.length > 0) {
   console.error('Changed-file formatting regressions:')
   for (const file of violations) console.error(`  ${file}`)
+
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const chunkSize = 20_000
+    for (const file of violations) {
+      const config = (await prettier.resolveConfig(file)) ?? {}
+      const options = { ...config, filepath: file }
+      const currentSource = await readFile(file, 'utf8')
+      const formattedSource = await prettier.format(currentSource, options)
+      const encoded = Buffer.from(formattedSource, 'utf8').toString('base64')
+      let chunkIndex = 0
+      for (let offset = 0; offset < encoded.length; offset += chunkSize) {
+        console.error(
+          `PRETTIER_DEBUG_CHUNK|${file}|${chunkIndex}|${encoded.slice(offset, offset + chunkSize)}`
+        )
+        chunkIndex += 1
+      }
+      console.error(`PRETTIER_DEBUG_END|${file}|${chunkIndex}`)
+    }
+  }
+
   process.exit(1)
 }
 
