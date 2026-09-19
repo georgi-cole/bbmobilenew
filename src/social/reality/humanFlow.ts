@@ -942,6 +942,14 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     // action and remain in Reality memory, but they must not receive full legacy
     // success rewards or trigger success-only downstream adapters.
     const resolvedAsSuccess = orchestration.event.outcome === 'SUCCESS'
+    const targetCompatibilitySucceeded = (targetId: string): boolean => {
+      const targetResponse = orchestration.targetResponses?.find(
+        (entry) => entry.targetId === targetId
+      )?.response
+      return targetResponse
+        ? targetResponse.accepted || contract.purposes.includes('CONFLICT')
+        : resolvedAsSuccess
+    }
     let allianceConsultationSummary: string | null = null
     if (resolvedAsSuccess && consultationPlan) {
       holdRealityAllianceStrategyMeeting(orchestration.domain, {
@@ -996,7 +1004,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                 executeAction(input.actorId, targetId, input.actionId, {
                   source: 'manual',
                   subjectId: input.subjectId,
-                  outcome: resolvedAsSuccess ? 'success' : 'failure',
+                  outcome: targetCompatibilitySucceeded(targetId) ? 'success' : 'failure',
                   repetitionAlreadyResolved: true,
                   waiveCosts: index > 0,
                   costOverride:
