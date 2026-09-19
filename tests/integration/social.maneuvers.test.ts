@@ -203,6 +203,96 @@ describe('Reality action cost atomicity', () => {
     expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
   })
 
+  it('prices a direct Reality batch of primary actions per selected target', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3'],
+      actionId: 'compliment',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(true)
+    expect(store.getState().social.energyBank.p1).toBe(8)
+    const logs = store
+      .getState()
+      .social.actionHistory.filter(
+        (entry) =>
+          entry.actorId === 'p1' &&
+          entry.actionId === 'compliment' &&
+          entry.week === store.getState().game.week &&
+          entry.phase === 'social_1'
+      )
+    expect(logs).toHaveLength(2)
+    expect(logs.find((entry) => entry.targetId === 'p2')?.outcome).toBe('failure')
+    expect(logs.find((entry) => entry.targetId === 'p3')?.outcome).toBe('success')
+    expect(store.getState().social.reality.events.at(-1)?.outcome).toBe('PARTIAL')
+  })
+
+  it('rejects an invalid multi-target alliance proposal before cost or RNG mutation', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+
+    const beforeCursor = store.getState().social.realitySimulation.rng?.cursor
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      targetIds: ['p2', 'p3'],
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.label).toBe('Invalid selection')
+    expect(store.getState().social.energyBank.p1).toBe(10)
+    expect(store.getState().social.infoBank.p1).toBe(300)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(beforeCursor)
+  })
+
+  it('rejects a target-plus-subject action with no subject before Reality mutation', () => {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+
+    const beforeCursor = store.getState().social.realitySimulation.rng?.cursor
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'warn_about_player',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/choose who the conversation is about/i)
+    expect(store.getState().social.energyBank.p1).toBe(10)
+    expect(store.getState().social.infoBank.p1).toBe(300)
+    expect(store.getState().social.reality.events).toHaveLength(0)
+    expect(store.getState().social.realitySimulation.rng?.cursor).toBe(beforeCursor)
+  })
+
   it('honors an explicitly precomputed atomic price for a group action', () => {
     const store = makeStoreWithSocialMiddleware(true, [
       { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
