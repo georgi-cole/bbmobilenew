@@ -815,12 +815,7 @@ export function coordinateRealityAllianceTarget(
       !requestedAlliance.memberIds.includes(input.subjectId)
       ? requestedAlliance
       : null
-    : findRealityAllianceForCoordination(
-        state,
-        input.actorId,
-        input.partnerId,
-        input.subjectId
-      )
+    : findRealityAllianceForCoordination(state, input.actorId, input.partnerId, input.subjectId)
   if (!alliance) return null
 
   const planId =
