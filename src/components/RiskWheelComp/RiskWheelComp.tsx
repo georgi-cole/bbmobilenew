@@ -46,6 +46,10 @@ const SPIN_DURATION_MS = 2200
 const AI_RESOLVE_DELAY_MS = 600
 const SECTOR_HIGHLIGHT_DURATION_MS = 850
 
+const VIP_STAGE_ASSET = '/assets/minigames/risk-wheel-vip/stage.webp'
+const VIP_POINTER_ASSET = '/assets/minigames/risk-wheel-vip/pointer.webp'
+const VIP_CREST_ASSET = '/assets/minigames/risk-wheel-vip/vip-crest.webp'
+
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations')
 }
@@ -93,6 +97,8 @@ interface Props {
   seed?: number
   onComplete?: (completion?: ReactMinigameCompletion) => void
   standalone?: boolean
+  /** Presentation-only VIP remaster. Gameplay and wheel odds remain identical. */
+  premiumPresentation?: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -166,6 +172,40 @@ const SECTOR_COLORS: string[] = [
   '#5b21b6', // 666 – purple
 ]
 
+interface VipSectorPalette {
+  start: string
+  end: string
+  glow: string
+}
+
+function getVipSectorPalette(
+  sector: (typeof WHEEL_SECTORS)[number],
+  index: number
+): VipSectorPalette {
+  if (sector.type === 'bankrupt') return { start: '#3d0715', end: '#951631', glow: '#ff5f7d' }
+  if (sector.type === 'devil') return { start: '#43106d', end: '#a733cf', glow: '#d978ff' }
+  if (sector.type === 'skip') return { start: '#5f2b08', end: '#d27a18', glow: '#ffbd5d' }
+  if (sector.type === 'zero') return { start: '#29334b', end: '#586783', glow: '#c4d6ff' }
+  if (sector.type === 'points' && (sector.value ?? 0) < 0) {
+    return index % 2 === 0
+      ? { start: '#65142b', end: '#c32f59', glow: '#ff6f95' }
+      : { start: '#521229', end: '#a71e48', glow: '#ff7197' }
+  }
+  if (sector.type === 'points' && (sector.value ?? 0) >= 500) {
+    return index % 2 === 0
+      ? { start: '#87520b', end: '#f0b52d', glow: '#ffe47b' }
+      : { start: '#6d3d08', end: '#d78919', glow: '#ffd466' }
+  }
+
+  const jewelPalettes: VipSectorPalette[] = [
+    { start: '#142d86', end: '#225ce3', glow: '#62a8ff' },
+    { start: '#0a5b8f', end: '#13a9de', glow: '#62e3ff' },
+    { start: '#40208d', end: '#7b42db', glow: '#b985ff' },
+    { start: '#7b176f', end: '#d82fae', glow: '#ff7cdb' },
+  ]
+  return jewelPalettes[index % jewelPalettes.length]
+}
+
 // ─── SVG Wheel ────────────────────────────────────────────────────────────────
 
 function sectorPath(i: number, n: number, r: number): string {
@@ -185,6 +225,7 @@ interface WheelSvgProps {
   transitioning: boolean
   highlightedSectorIndex: number | null
   onTransitionEnd?: () => void
+  premium?: boolean
 }
 
 function WheelSvg({
@@ -192,16 +233,24 @@ function WheelSvg({
   transitioning,
   highlightedSectorIndex,
   onTransitionEnd,
+  premium = false,
 }: WheelSvgProps) {
   const R = 95
   const LABEL_R = 72
 
   return (
-    <div className="rw-wheel-outer">
+    <div className={`rw-wheel-outer${premium ? ' rw-wheel-outer--vip' : ''}`}>
       {/* Pointer indicator */}
-      <div className="rw-wheel-pointer" aria-hidden="true">
-        ▼
-      </div>
+      {premium ? (
+        <img className="rw-wheel-pointer rw-wheel-pointer--vip" src={VIP_POINTER_ASSET} alt="" />
+      ) : (
+        <div className="rw-wheel-pointer" aria-hidden="true">
+          ▼
+        </div>
+      )}
+      {premium && highlightedSectorIndex !== null && (
+        <div className="rw-vip-result-halo" aria-hidden="true" />
+      )}
       <div
         className={`rw-wheel-svg-wrapper${transitioning ? ' rw-wheel-svg-wrapper--spinning' : ''}`}
         style={{
@@ -217,6 +266,32 @@ function WheelSvg({
           aria-hidden="true"
           style={{ width: '100%', height: '100%', display: 'block' }}
         >
+          {premium && (
+            <defs>
+              {WHEEL_SECTORS.map((sector, i) => {
+                const palette = getVipSectorPalette(sector, i)
+                return (
+                  <linearGradient
+                    key={i}
+                    id={`rw-vip-sector-${i}`}
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" stopColor={palette.start} />
+                    <stop offset="58%" stopColor={palette.end} />
+                    <stop offset="100%" stopColor={palette.start} />
+                  </linearGradient>
+                )
+              })}
+              <radialGradient id="rw-vip-hub" cx="38%" cy="30%">
+                <stop offset="0%" stopColor="#8cecff" />
+                <stop offset="38%" stopColor="#286ddd" />
+                <stop offset="100%" stopColor="#101c62" />
+              </radialGradient>
+            </defs>
+          )}
           {/* Sectors */}
           {WHEEL_SECTORS.map((sector, i) => {
             const slice = (2 * Math.PI) / N_SECTORS
@@ -224,23 +299,31 @@ function WheelSvg({
             const lx = LABEL_R * Math.cos(midAngle)
             const ly = LABEL_R * Math.sin(midAngle)
             const textAngleDeg = (midAngle * 180) / Math.PI + 90
+            const vipPalette = premium ? getVipSectorPalette(sector, i) : null
             return (
               <g key={i}>
                 <path
-                  className={`rw-wheel-sector${highlightedSectorIndex === i ? ' rw-wheel-sector--highlight' : ''}`}
+                  className={`rw-wheel-sector rw-wheel-sector--${sector.type}${
+                    highlightedSectorIndex === i ? ' rw-wheel-sector--highlight' : ''
+                  }${premium ? ' rw-wheel-sector--vip' : ''}`}
                   d={sectorPath(i, N_SECTORS, R)}
-                  fill={SECTOR_COLORS[i] ?? '#374151'}
-                  stroke="#0a0a16"
-                  strokeWidth="1.2"
+                  fill={premium ? `url(#rw-vip-sector-${i})` : (SECTOR_COLORS[i] ?? '#374151')}
+                  stroke={premium ? '#d9a73d' : '#0a0a16'}
+                  strokeWidth={premium ? '1.05' : '1.2'}
+                  style={
+                    premium && vipPalette
+                      ? ({ '--rw-sector-glow': vipPalette.glow } as React.CSSProperties)
+                      : undefined
+                  }
                 />
                 <text
                   x={lx.toFixed(3)}
                   y={ly.toFixed(3)}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fill="#fff"
+                  fill={premium ? '#fff9e6' : '#fff'}
                   fontSize={getSectorFontSize(sector.label.length)}
-                  fontWeight="800"
+                  fontWeight={premium ? '900' : '800'}
                   fontFamily="inherit"
                   transform={`rotate(${textAngleDeg.toFixed(1)}, ${lx.toFixed(3)}, ${ly.toFixed(3)})`}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -251,17 +334,40 @@ function WheelSvg({
             )
           })}
           {/* Outer ring */}
-          <circle cx="0" cy="0" r={R} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
+          <circle
+            cx="0"
+            cy="0"
+            r={R}
+            fill="none"
+            stroke={premium ? '#f1c65c' : 'rgba(255,255,255,0.25)'}
+            strokeWidth={premium ? '2.8' : '2'}
+          />
+          {premium && (
+            <circle
+              cx="0"
+              cy="0"
+              r="90.5"
+              fill="none"
+              stroke="rgba(89, 216, 255, 0.74)"
+              strokeWidth="0.9"
+            />
+          )}
           {/* Center hub */}
           <circle
             cx="0"
             cy="0"
-            r="12"
-            fill="#0f0f1e"
-            stroke="rgba(255,255,255,0.4)"
-            strokeWidth="2"
+            r={premium ? '13.5' : '12'}
+            fill={premium ? 'url(#rw-vip-hub)' : '#0f0f1e'}
+            stroke={premium ? '#f5c85c' : 'rgba(255,255,255,0.4)'}
+            strokeWidth={premium ? '2.4' : '2'}
           />
-          <text x="0" y="4.5" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,0.8)">
+          <text
+            x="0"
+            y="4.5"
+            textAnchor="middle"
+            fontSize="10"
+            fill={premium ? '#fff2a8' : 'rgba(255,255,255,0.8)'}
+          >
             ★
           </text>
         </svg>
@@ -291,8 +397,10 @@ export default function RiskWheelComp({
   seed,
   onComplete,
   standalone = false,
+  premiumPresentation = false,
 }: Props) {
   const dispatch = useDispatch<AppDispatch>()
+  const premiumRootClass = premiumPresentation ? ' rw-root--vip' : ''
   const rw = useSelector((s: RootState) => s.riskWheel)
   const gamePhase = useSelector((s: RootState) => s.game.phase)
   const isFinal3HostedMinigame = !standalone && isFinal3HostedPhase(gamePhase)
@@ -603,7 +711,7 @@ export default function RiskWheelComp({
   // ─────────────────────────────────────────────────────────────────────────
   if (!rw || rw.phase === 'idle') {
     return (
-      <div className="rw-root rw-loading">
+      <div className={`rw-root rw-loading${premiumRootClass}`}>
         <p>Loading…</p>
       </div>
     )
@@ -632,7 +740,7 @@ export default function RiskWheelComp({
   if (phase === 'complete') {
     const winnerName = winnerId ? getName(winnerId, participants) : '—'
     return (
-      <div className="rw-root rw-winner-screen">
+      <div className={`rw-root rw-winner-screen${premiumRootClass}`}>
         <div className="rw-winner-confetti" aria-hidden="true">
           {['🎉', '✨', '🏆', '⭐', '🎊', '✨', '🎉'].map((e, i) => (
             <span key={i} className="rw-confetti-piece">
@@ -641,7 +749,7 @@ export default function RiskWheelComp({
           ))}
         </div>
         <div className="rw-winner-crown" aria-hidden="true">
-          🏆
+          {premiumPresentation ? <img src={VIP_CREST_ASSET} alt="" /> : '🏆'}
         </div>
         {winnerId && (
           <img
@@ -674,8 +782,11 @@ export default function RiskWheelComp({
       round >= getRoundCap(initialPlayerCount) ||
       activePlayerIds.length - eliminatedThisRound.length <= 1
     return (
-      <div className="rw-root rw-round-summary">
+      <div className={`rw-root rw-round-summary${premiumRootClass}`}>
         <div className="rw-summary-header">
+          {premiumPresentation && (
+            <img className="rw-vip-summary-crest" src={VIP_CREST_ASSET} alt="" />
+          )}
           <span className="rw-summary-round-badge">Round {round}</span>
           <h2 className="rw-summary-title">Results</h2>
         </div>
@@ -737,10 +848,23 @@ export default function RiskWheelComp({
   const otherPlayers = allPlayerIds.filter((id) => id !== currentId)
 
   return (
-    <div className={`rw-root rw-game${isDevil ? ' rw-devil-mode' : ''}`}>
+    <div
+      className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}
+      style={
+        premiumPresentation
+          ? ({ '--rw-vip-stage': `url("${VIP_STAGE_ASSET}")` } as React.CSSProperties)
+          : undefined
+      }
+    >
       {/* Header */}
       <header className="rw-header">
         <div className="rw-header-left">
+          {premiumPresentation && (
+            <div className="rw-vip-brand" aria-label="VIP Risk Wheel">
+              <img src={VIP_CREST_ASSET} alt="" />
+              <span>VIP SHOW</span>
+            </div>
+          )}
           <span className="rw-round-badge" aria-label={`Round ${round} of ${roundCap}`}>
             R{round}/{roundCap}
           </span>
@@ -784,6 +908,7 @@ export default function RiskWheelComp({
           rotation={wheelAngle}
           transitioning={wheelTransitioning}
           highlightedSectorIndex={highlightedSectorIndex}
+          premium={premiumPresentation}
         />
 
         {/* Result chip */}
