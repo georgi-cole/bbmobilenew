@@ -7,6 +7,7 @@ import {
   isSeasonTutorialEnabled,
   setSeasonTutorialEnabled,
 } from '../../onboarding/seasonTutorialPreference'
+import { resetRealitySocialTutorial } from '../../onboarding/realitySocialTutorialPreference'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { AppDispatch } from '../../store/store'
 import {
@@ -114,6 +115,7 @@ export default function Settings() {
   const [tutorialEnabled, setTutorialEnabled] = useState(() =>
     isSeasonTutorialEnabled(activeProfileId, isGuest)
   )
+  const [realityGuideReady, setRealityGuideReady] = useState(false)
 
   const themeOptions: DropdownItem['options'] = [
     { value: 'midnight', label: t('settings.theme.midnight') },
@@ -305,6 +307,7 @@ export default function Settings() {
 
   useEffect(() => {
     setTutorialEnabled(isSeasonTutorialEnabled(activeProfileId, isGuest))
+    setRealityGuideReady(false)
   }, [activeProfileId, isGuest])
 
   function renderItem(item: SettingItem) {
@@ -464,6 +467,22 @@ export default function Settings() {
             aria-label="Toggle Replay tutorial"
           />
         </div>
+        {hasRealityAccess && (
+          <button
+            type="button"
+            className="settings-row settings-row--legal"
+            onClick={() => {
+              resetRealitySocialTutorial(activeProfileId, isGuest)
+              setRealityGuideReady(true)
+            }}
+          >
+            <span>
+              <strong>Replay Reality Social guide</strong>
+              <small>Show the walkthrough next time you open Social in Reality Mode.</small>
+            </span>
+            <span aria-live="polite">{realityGuideReady ? 'Ready' : 'Replay'}</span>
+          </button>
+        )}
         <button
           type="button"
           className="settings-row settings-row--legal"
