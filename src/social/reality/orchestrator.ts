@@ -752,6 +752,41 @@ export function runRealityOpportunity(input: {
   }
   domain.interactions[interaction.id] = interaction
   if (awaitingHuman) {
+    // A mixed group scene can include both the human and AI housemates. Resolve
+    // the AI recipients now with the persisted RNG, then store those individual
+    // reactions on the pending interaction. The human still decides only their
+    // own position later; the eventual group outcome combines all responses.
+    if (input.opportunity.direction === 'GROUP') {
+      const targetResponses: Record<string, RealityResponseResolution> = {}
+      for (const targetId of selected.targetIds) {
+        if (input.opportunity.actors[targetId]?.isHuman) continue
+        const responseDraw = drawRealityRandom(simulation.rng ?? selectionDraw.next)
+        simulation = { ...simulation, rng: responseDraw.next }
+        const targetResponse = resolveRealityTargetResponse({
+          action: selected.action,
+          actorId: actor.id,
+          targetId,
+          reality: domain,
+          draw: responseDraw.value,
+          acceptanceChanceOverride: selected.acceptanceChanceOverride,
+        })
+        targetResponses[targetId] = targetResponse
+        simulation = appendRealitySimulationTrace(simulation, {
+          day: input.opportunity.context.day,
+          phase: input.opportunity.context.phase,
+          stage: 'response',
+          actorId: targetId,
+          targetIds: [actor.id],
+          actionId: selected.action.id,
+          reason: targetResponse.reason,
+          randomDraw: responseDraw.value,
+          rngCursor: responseDraw.next.cursor,
+        })
+      }
+      if (Object.keys(targetResponses).length > 0) {
+        interaction.targetResponses = targetResponses
+      }
+    }
     return {
       domain,
       simulation,
