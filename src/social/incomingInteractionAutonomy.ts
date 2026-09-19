@@ -581,7 +581,7 @@ function resolveAllianceInteractionPlan(
   playerId: string,
   context: AutonomyContext
 ): InteractionPlan | null {
-  if (!context.dramaMode || context.voxPopuliActive || !context.gameState || !context.reality) {
+  if (!context.dramaMode || !context.gameState || !context.reality) {
     return null
   }
   const alliance = sharedLiveAlliance(actorId, playerId, context)
@@ -602,8 +602,14 @@ function resolveAllianceInteractionPlan(
   const spokespersonId = allianceSpokespersonId(alliance, playerId, context)
   const phase = context.phase
 
-  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
-    const candidates = getEligibleNominationTargets(game, actorId)
+  if (
+    !context.voxPopuliActive &&
+    actorIsLoh &&
+    ['loh_results', 'social_1', 'nominations'].includes(phase)
+  ) {
+    const candidates = getEligibleNominationTargets(game, actorId).filter(
+      (candidate) => !alliance.memberIds.includes(candidate.id)
+    )
     const subjectId = allianceConsensusTarget(game, activeMembers, candidates)
     if (!subjectId) return null
     return {
@@ -618,10 +624,15 @@ function resolveAllianceInteractionPlan(
   }
 
   if (actorHasSafety && phase === 'pos_results') {
-    const nominees = game.players.filter((candidate) => game.nomineeIds.includes(candidate.id))
+    const nominees = game.players.filter(
+      (candidate) =>
+        game.nomineeIds.includes(candidate.id) && !alliance.memberIds.includes(candidate.id)
+    )
     if (nominees.length === 0) return null
     const subjectId = allianceConsensusTarget(game, activeMembers, nominees)
-    const replacements = getEligibleReplacementNominees(game, game.lohId)
+    const replacements = getEligibleReplacementNominees(game, game.lohId).filter(
+      (candidate) => !alliance.memberIds.includes(candidate.id)
+    )
     const secondarySubjectId = allianceConsensusTarget(game, activeMembers, replacements)
     if (!subjectId) return null
     return {
@@ -638,8 +649,18 @@ function resolveAllianceInteractionPlan(
 
   if (actorId !== spokespersonId) return null
 
-  if (playerIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
-    const subjectId = bestStrategicTarget(game, actorId, getEligibleNominationTargets(game, playerId))
+  if (
+    !context.voxPopuliActive &&
+    playerIsLoh &&
+    ['loh_results', 'social_1', 'nominations'].includes(phase)
+  ) {
+    const subjectId = bestStrategicTarget(
+      game,
+      actorId,
+      getEligibleNominationTargets(game, playerId).filter(
+        (candidate) => !alliance.memberIds.includes(candidate.id)
+      )
+    )
     if (!subjectId) return null
     return {
       type: 'deal_offer',
@@ -654,7 +675,9 @@ function resolveAllianceInteractionPlan(
     const subjectId = bestStrategicTarget(
       game,
       actorId,
-      getEligibleReplacementNominees(game, game.lohId)
+      getEligibleReplacementNominees(game, game.lohId).filter(
+        (candidate) => !alliance.memberIds.includes(candidate.id)
+      )
     )
     if (!subjectId) return null
     return {
@@ -667,15 +690,20 @@ function resolveAllianceInteractionPlan(
   }
 
   if (
+    !context.voxPopuliActive &&
     phase === 'social_2' &&
     game.nomineeIds.length > 1 &&
     !player.status.includes('nominated') &&
     !playerIsLoh
   ) {
+    const eligibleNomineeIds = game.nomineeIds.filter(
+      (nomineeId) => !alliance.memberIds.includes(nomineeId)
+    )
+    if (eligibleNomineeIds.length === 0) return null
     const subjectId = chooseAiEvictionVote(
       game,
       actorId,
-      [...game.nomineeIds],
+      eligibleNomineeIds,
       (game.seed ?? 0) ^ game.week
     )
     if (!subjectId) return null
