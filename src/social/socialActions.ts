@@ -337,7 +337,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     targetMode: 'primary',
     successWeight: 1,
     outcomeTag: 'alliance',
-    availabilityHint: 'Requires positive affinity',
+    availabilityHint: 'More likely to land with positive affinity',
     excludedRelationshipTags: ['alliance'],
     realityExclusive: true,
     yields: { influence: 0.06 },
