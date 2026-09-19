@@ -1587,6 +1587,44 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
     },
   ],
 
+  alliance_power_nomination_huddle: makeScenePool(
+    'alliance_power_nomination_huddle',
+    [
+      'I have the LOH, and I do not want to make this move in a vacuum. I am leaning toward {subject}.',
+      'Before I lock nominations, I want our group on the same page. My first name is {subject}.',
+      'I have the power this round. My current read is {subject}, but I want the alliance in the room before I decide.',
+    ],
+    [
+      'I am holding the LOH, so this is my decision in the end. Still, I want to compare notes with us before I lock {subject}.',
+      'The power is mine this round, but the consequences hit all of us. I am leaning {subject}.',
+      'I want this to be an alliance conversation, not a decree. Right now my target is {subject}.',
+    ],
+    [
+      'Nominations are getting close. I am still leaning {subject}, and I want one last alliance read before I lock it.',
+      'I have not moved off {subject}. If anyone sees a problem with that move, now is the time to say it.',
+      'Last huddle before nominations: {subject} is still where my head is.',
+    ]
+  ),
+
+  alliance_power_safety_huddle: makeScenePool(
+    'alliance_power_safety_huddle',
+    [
+      'I have Safety. I am leaning toward using it on {subject}; if that opens the block, {secondary} is the name I would rather see exposed.',
+      'Before I decide on Safety, I want our group to compare notes. My strongest save is {subject}, with {secondary} as the replacement I can live with.',
+      'I am holding Safety, and this can redraw the week. I am looking at {subject} to save and {secondary} if a replacement opens.',
+    ],
+    [
+      'I do not want to burn Safety just because I have it. My current lean is {subject}, and if the block moves I would rather see {secondary} exposed.',
+      'The Safety decision is mine, but it affects all of us. I am leaning toward {subject}; {secondary} is my preferred backup target.',
+      'I want the alliance read before I touch the block. Right now I see {subject} as the save and {secondary} as the better replacement.',
+    ],
+    [
+      'The Safety ceremony is close. I am still leaning toward {subject}; if it moves, {secondary} is still my replacement read.',
+      'One last check before Safety locks: {subject} is my save lean, and {secondary} is the backup name I prefer.',
+      'My Safety read has not changed: {subject} first, then {secondary} if a seat opens.',
+    ]
+  ),
+
   alliance_nomination_pitch: makeScenePool(
     'alliance_nomination_pitch',
     [
