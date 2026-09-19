@@ -44,6 +44,11 @@ import { getRelationshipLabel } from './relationshipUtils'
 import RealitySocialTutorialTour, {
   RealitySocialTutorialPrompt,
 } from '../../onboarding/RealitySocialTutorialTour'
+import ContextualGuidePrompt from '../../onboarding/ContextualGuidePrompt'
+import {
+  hasSeenContextualGuide,
+  markContextualGuideSeen,
+} from '../../onboarding/contextualGuidePreference'
 import {
   armRealityUpgradeTutorial,
   markSocialTutorialHandled,
@@ -171,6 +176,13 @@ export default function SocialPanelV2() {
   )
 
   const humanPlayer = game.players.find((player) => player.isUser)
+  const memberAllianceExists = useMemo(() => {
+    if (!dramaMode || !humanPlayer) return false
+    return Object.values(socialState.reality?.alliances ?? {}).some(
+      (alliance) =>
+        alliance.memberIds.includes(humanPlayer.id) && alliance.status !== 'DISSOLVED'
+    )
+  }, [dramaMode, humanPlayer, socialState.reality?.alliances])
   const activePublicDirection = useMemo(
     () =>
       game.publicModeEnabled && humanPlayer
@@ -236,6 +248,7 @@ export default function SocialPanelV2() {
         : null
     )
   const [socialTutorialTourOpen, setSocialTutorialTourOpen] = useState(false)
+  const [contextualGuideRevision, setContextualGuideRevision] = useState(0)
 
   useEffect(() => {
     if (!socialPanelOpen) {
@@ -959,11 +972,43 @@ export default function SocialPanelV2() {
       ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
+  const hasSeenAllianceGuide = useMemo(
+    () => hasSeenContextualGuide('alliance', activeProfileId, isGuest),
+    [activeProfileId, contextualGuideRevision, isGuest]
+  )
+  const hasSeenAllianceConsultGuide = useMemo(
+    () => hasSeenContextualGuide('alliance-consult', activeProfileId, isGuest),
+    [activeProfileId, contextualGuideRevision, isGuest]
+  )
+
+  const dismissContextualGuide = useCallback(
+    (guide: 'alliance' | 'alliance-consult') => {
+      markContextualGuideSeen(guide, activeProfileId, isGuest)
+      setContextualGuideRevision((revision) => revision + 1)
+    },
+    [activeProfileId, isGuest]
+  )
+
   const executeCopy = 'Execute'
   const showSocialTutorialPrompt =
     socialTutorialVariant !== null && socialPanelOpen && !socialTutorialTourOpen
   const showSocialTutorialTour =
     socialTutorialVariant !== null && socialPanelOpen && socialTutorialTourOpen
+  const showAllianceContextGuide =
+    dramaMode &&
+    socialPanelOpen &&
+    socialTutorialVariant === null &&
+    !socialTutorialTourOpen &&
+    memberAllianceExists &&
+    !hasSeenAllianceGuide
+  const showAllianceConsultGuide =
+    dramaMode &&
+    socialPanelOpen &&
+    socialTutorialVariant === null &&
+    !socialTutorialTourOpen &&
+    !showAllianceContextGuide &&
+    selectedActionId === 'consult_alliance' &&
+    !hasSeenAllianceConsultGuide
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
@@ -1084,7 +1129,11 @@ export default function SocialPanelV2() {
         </div>
 
         <div id="sp2-body" className="sp2-body">
-          <section className="sp2-hubmates" aria-label="Player roster">
+          <section
+            className="sp2-hubmates"
+            aria-label="Player roster"
+            data-reality-tutorial="hubmates"
+          >
             <div className="sp2-section-heading">
               <span>
                 <span className="sp2-section-heading__eyebrow">Private lounge</span>
@@ -1349,6 +1398,22 @@ export default function SocialPanelV2() {
           onClearTarget={clearRealityTutorialTarget}
           onEnsureTarget={ensureRealityTutorialTarget}
           onComplete={completeSocialTutorial}
+        />
+      )}
+      {showAllianceContextGuide && (
+        <ContextualGuidePrompt
+          eyebrow="ALLIANCE"
+          title="You're in an alliance"
+          body="Alliances have their own strength, trust and secrecy. Your choices — and your allies' choices — can strengthen or strain the group. You can review it in My Game → House."
+          onComplete={() => dismissContextualGuide('alliance')}
+        />
+      )}
+      {showAllianceConsultGuide && (
+        <ContextualGuidePrompt
+          eyebrow="ALLIANCE MOVE"
+          title="Consult the alliance"
+          body="Ask your allies what they think before a major move. If most of the alliance agrees, that choice becomes the group's plan. Following or deliberately breaking it can affect the alliance."
+          onComplete={() => dismissContextualGuide('alliance-consult')}
         />
       )}
     </div>
