@@ -1245,7 +1245,7 @@ export default function SocialPanelV2() {
           ) : (
             <span className="sp2-footer__cost">
               {selectedCostLabel
-                ? `${selectedScopeLabel ? `${selectedScopeLabel} · ` : ''}${selectedCostLabel}`
+                ? `Cost: ${selectedScopeLabel ? `${selectedScopeLabel} · ` : ''}${selectedCostLabel}`
                 : 'Cost: —'}
             </span>
           )}
