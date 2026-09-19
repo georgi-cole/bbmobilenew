@@ -12,9 +12,13 @@ import {
 import { socialConfig } from '../../src/social/socialConfig'
 import type { IncomingInteraction, SocialState } from '../../src/social/types'
 import {
+  REALITY_ACTION_BY_ID,
+  createInitialRealityDomainState,
   createRealityAlliance,
   holdRealityAllianceMeeting,
+  runRealityOpportunity,
 } from '../../src/social/reality'
+import { createInitialRealitySimulationState } from '../../src/social/realitySimulation'
 
 function makeStore() {
   return configureStore({ reducer: { game: gameReducer, social: socialReducer } })
@@ -61,6 +65,99 @@ describe('social memory integration for incoming interactions', () => {
     const expected = socialConfig.socialMemoryConfig.incomingInteractionDeltas.positive.gratitude
     expect(entry.gratitude).toBe(expected)
     expect(entry.recentEvents[0].type).toBe('appreciated_compliment')
+  })
+
+  it('settles a background AI action when the human-facing Reality scene resolves', () => {
+    const store = makeStore()
+    const game = store.getState().game
+    const human = game.players.find((player) => player.isUser)!
+    const ai = game.players.find((player) => !player.isUser)!
+    const action = REALITY_ACTION_BY_ID.get('compliment')!
+    const pending = runRealityOpportunity({
+      domain: createInitialRealityDomainState(),
+      simulation: createInitialRealitySimulationState(71),
+      opportunity: {
+        actorId: ai.id,
+        direction: 'AI_TO_HUMAN',
+        context: {
+          day: game.week,
+          phase: game.phase,
+          gameMode: 'CLASSIC',
+          socialIntensity: 'REALITY',
+          audienceMode: 'OFF',
+          feedPerspective: 'PLAYER_LIMITED',
+          activeActorIds: [ai.id, human.id],
+          rolesByActor: {
+            [ai.id]: [ai.status],
+            [human.id]: [human.status],
+          },
+          atRiskActorIds: [],
+          powerHolderIds: [],
+          romanceEnabled: true,
+        },
+        actors: {
+          [ai.id]: {
+            id: ai.id,
+            isHuman: false,
+            active: true,
+            roles: [ai.status],
+            resources: { energy: 10, influence: 0, info: 0 },
+          },
+          [human.id]: {
+            id: human.id,
+            isHuman: true,
+            active: true,
+            roles: [human.status],
+            resources: { energy: 10, influence: 0, info: 0 },
+          },
+        },
+        candidates: [{ action, targetIds: [human.id] }],
+      },
+    })
+
+    const social = structuredClone(store.getState().social as SocialState)
+    social.reality = pending.domain
+    social.realitySimulation = pending.simulation
+    social.energyBank[ai.id] = 8
+    social.influenceBank[ai.id] = 0
+    store.dispatch(hydrateSocial(social))
+    store.dispatch(
+      pushIncomingInteraction(
+        makeInteraction({
+          id: 'background-compliment',
+          fromId: ai.id,
+          type: 'compliment',
+          payload: {
+            source: 'background_social',
+            originActionId: 'compliment',
+            realityInteractionId: pending.interaction!.id,
+            modeAtCreation: 'drama',
+          },
+          createdWeek: game.week,
+          createdDay: game.week,
+          createdPhase: game.phase,
+          expiresAtWeek: game.week + 1,
+        })
+      )
+    )
+
+    store.dispatch(
+      respondToIncomingInteraction({
+        interactionId: 'background-compliment',
+        responseType: 'positive',
+      }) as never
+    )
+
+    const after = store.getState().social
+    expect(after.influenceBank[ai.id]).toBe(3)
+    expect(after.energyBank[ai.id]).toBe(8)
+    expect(after.actionHistory.at(-1)).toMatchObject({
+      actionId: 'compliment',
+      actorId: ai.id,
+      outcome: 'success',
+      source: 'system',
+      yieldsApplied: { influence: 3 },
+    })
   })
 
   it('projects a contextual incoming conversation into both sides of the main relationship graph', () => {
