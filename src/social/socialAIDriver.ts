@@ -736,7 +736,6 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
-
 function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: string) {
   return Object.values(state.social.reality.alliances)
     .filter(
@@ -813,10 +812,7 @@ function allianceHumanStrategyCandidate(
   const phase = state.game.phase
   const excludedIds = new Set<string>([human.id])
 
-  if (
-    state.game.lohId === human.id &&
-    ['loh_results', 'social_1', 'nominations'].includes(phase)
-  ) {
+  if (state.game.lohId === human.id && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds)
     return subjectId
       ? {
@@ -833,9 +829,13 @@ function allianceHumanStrategyCandidate(
 
   if (
     state.game.posWinnerId === human.id &&
-    ['nomination_results', 'pos_comp_announcement', 'pos_comp', 'pos_results', 'pos_ceremony'].includes(
-      phase
-    )
+    [
+      'nomination_results',
+      'pos_comp_announcement',
+      'pos_comp',
+      'pos_results',
+      'pos_ceremony',
+    ].includes(phase)
   ) {
     const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
       nonNomineesOnly: true,
