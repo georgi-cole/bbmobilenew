@@ -20,16 +20,28 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Format Depression Shock changes
+      - name: Format PR 1506 changes
         run: >-
           npx prettier --write
-          src/components/DepressionShockController/DepressionShockController.css
-          src/components/DepressionShockController/DepressionShockController.tsx
-          src/components/ResolvedAvatarImage/ResolvedAvatarImage.tsx
-          src/features/twists/__tests__/depressionShock.test.ts
-          src/features/twists/depressionShock.ts
-          src/features/twists/depressionShockMiddleware.ts
+          src/screens/DiaryRoom/DiaryRoom.tsx
+          src/components/SocialPanelV2/SocialPanelV2.tsx
+          src/social/__tests__/realityCeremonies.test.ts
+          src/social/__tests__/realityOrchestrator.test.ts
+          src/social/incomingInteractionAutonomy.ts
+          src/social/incomingInteractionScheduler.ts
+          src/social/incomingInteractionValidity.ts
+          src/social/incomingInteractions.ts
+          src/social/incomingResponseBank.ts
+          src/social/reality/ceremonies.ts
           src/social/reality/humanFlow.ts
+          src/social/reality/orchestrator.ts
+          src/social/reality/relationshipForms.ts
+          src/social/reality/response.ts
+          src/social/socialAIDriver.ts
+          src/social/socialMiddleware.ts
+          tests/integration/social.ai.test.ts
+          tests/integration/social.memory.test.ts
+          tests/social/socialFixes.test.ts
       - name: Commit formatting
         shell: bash
         run: |
@@ -38,12 +50,24 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/components/DepressionShockController/DepressionShockController.css
-          git add src/components/DepressionShockController/DepressionShockController.tsx
-          git add src/components/ResolvedAvatarImage/ResolvedAvatarImage.tsx
-          git add src/features/twists/__tests__/depressionShock.test.ts
-          git add src/features/twists/depressionShock.ts
-          git add src/features/twists/depressionShockMiddleware.ts
+          git add src/screens/DiaryRoom/DiaryRoom.tsx
+          git add src/components/SocialPanelV2/SocialPanelV2.tsx
+          git add src/social/__tests__/realityCeremonies.test.ts
+          git add src/social/__tests__/realityOrchestrator.test.ts
+          git add src/social/incomingInteractionAutonomy.ts
+          git add src/social/incomingInteractionScheduler.ts
+          git add src/social/incomingInteractionValidity.ts
+          git add src/social/incomingInteractions.ts
+          git add src/social/incomingResponseBank.ts
+          git add src/social/reality/ceremonies.ts
           git add src/social/reality/humanFlow.ts
-          git commit -m "Format Depression Shock implementation"
+          git add src/social/reality/orchestrator.ts
+          git add src/social/reality/relationshipForms.ts
+          git add src/social/reality/response.ts
+          git add src/social/socialAIDriver.ts
+          git add src/social/socialMiddleware.ts
+          git add tests/integration/social.ai.test.ts
+          git add tests/integration/social.memory.test.ts
+          git add tests/social/socialFixes.test.ts
+          git commit -m "Format alliance interaction changes"
           git push origin HEAD:feature/depression-shock
