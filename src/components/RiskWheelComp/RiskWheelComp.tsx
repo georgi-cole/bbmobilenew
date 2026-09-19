@@ -13,7 +13,7 @@
  *  - Bug #4 fixed: Removed cluttered player-card sidebar; header layout
  *    fixed; festive round-summary leaderboard.
  */
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useRef, useState, type CSSProperties } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import type { AppDispatch } from '../../store/store'
 import type { RootState } from '../../store/store'
@@ -45,8 +45,6 @@ import './RiskWheelComp.css'
 const SPIN_DURATION_MS = 2200
 const AI_RESOLVE_DELAY_MS = 600
 const SECTOR_HIGHLIGHT_DURATION_MS = 850
-
-const VIP_STAGE_ASSET = '/assets/minigames/risk-wheel-vip/stage.webp'
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations')
@@ -312,7 +310,7 @@ function WheelSvg({
                   strokeWidth={premium ? '1.05' : '1.2'}
                   style={
                     premium && vipPalette
-                      ? ({ '--rw-sector-glow': vipPalette.glow } as React.CSSProperties)
+                      ? ({ '--rw-sector-glow': vipPalette.glow } as CSSProperties)
                       : undefined
                   }
                 />
@@ -850,14 +848,7 @@ export default function RiskWheelComp({
   const otherPlayers = allPlayerIds.filter((id) => id !== currentId)
 
   return (
-    <div
-      className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}
-      style={
-        premiumPresentation
-          ? ({ '--rw-vip-stage': `url("${VIP_STAGE_ASSET}")` } as React.CSSProperties)
-          : undefined
-      }
-    >
+    <div className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}>
       {/* Header */}
       <header className="rw-header">
         <div className="rw-header-left">
