@@ -334,7 +334,9 @@ function buildAllianceConsultationPlan(
   const nominees = state.game.players.filter((player) => state.game.nomineeIds.includes(player.id))
 
   if (agenda === 'nominations') {
-    const candidates = nominationConsultationCandidates(state, actorId)
+    const candidates = nominationConsultationCandidates(state, actorId).filter(
+      (candidate) => !alliance.memberIds.includes(candidate.id)
+    )
     if (candidates.length === 0) return null
     const preferences = advisors
       .map((advisorId) => {
@@ -471,7 +473,10 @@ function buildAllianceConsultationPlan(
   }
 
   if (agenda === 'block_strategy' || agenda === 'eviction_vote') {
-    const nomineeIds = nominees.map((nominee) => nominee.id)
+    const nomineeIds = nominees
+      .filter((nominee) => !alliance.memberIds.includes(nominee.id))
+      .map((nominee) => nominee.id)
+    if (nomineeIds.length === 0) return null
     const preferences = advisors.map((advisorId) => {
       const targetId = chooseAiEvictionVote(
         state.game,
@@ -507,7 +512,9 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  const candidates = nominationConsultationCandidates(state, actorId)
+  const candidates = nominationConsultationCandidates(state, actorId).filter(
+    (candidate) => !alliance.memberIds.includes(candidate.id)
+  )
   if (candidates.length === 0) return null
   const preferences = advisors
     .map((advisorId) => {
