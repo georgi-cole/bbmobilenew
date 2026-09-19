@@ -45,6 +45,7 @@ import RealitySocialTutorialTour, {
   RealitySocialTutorialPrompt,
 } from '../../onboarding/RealitySocialTutorialTour'
 import {
+  armRealityUpgradeTutorial,
   markSocialTutorialHandled,
   resolveSocialTutorialVariant,
   subscribeTutorialPreferenceChanges,
@@ -242,6 +243,7 @@ export default function SocialPanelV2() {
       setSocialTutorialTourOpen(false)
       return
     }
+    if (dramaMode) armRealityUpgradeTutorial(activeProfileId, isGuest)
     setSocialTutorialVariant(resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode))
     setSocialTutorialTourOpen(false)
   }, [activeProfileId, dramaMode, isGuest, socialPanelOpen])
