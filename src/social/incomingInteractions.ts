@@ -104,7 +104,7 @@ function resolveRealityIncomingInteraction(
         : undefined
     const aligned = responseType === 'accept' || responseType === 'positive'
 
-    if (allianceId && allianceStrategyKind && aligned) {
+    if (allianceId && allianceStrategyKind) {
       const domain = structuredClone(getState().social.reality)
       const alliance = domain.alliances[allianceId]
       if (
@@ -120,8 +120,20 @@ function resolveRealityIncomingInteraction(
                 (id): id is string => typeof id === 'string' && alliance.memberIds.includes(id)
               )
             : []
-          const attendeeIds = [...new Set([interaction.fromId, humanId, ...authoredMembers])]
-          const excusedAbsentIds = alliance.memberIds.filter((id) => !attendeeIds.includes(id))
+          const humanAttends = responseType !== 'dismiss' && responseType !== 'ignore'
+          const attendeeIds = [
+            ...new Set([
+              interaction.fromId,
+              ...authoredMembers.filter((id) => id !== humanId),
+              ...(humanAttends ? [humanId] : []),
+            ]),
+          ]
+          if (attendeeIds.length < 2) return
+          // Choosing to sit out is a real absence, not an excused one. Members
+          // missing from the authored active roster are treated as unavailable.
+          const excusedAbsentIds = alliance.memberIds.filter(
+            (id) => !attendeeIds.includes(id) && id !== humanId
+          )
           const rawTargetPreferences = interaction.payload?.allianceMemberTargetPreferences
           const rawFallbackPreferences = interaction.payload?.allianceMemberFallbackPreferences
           const targetPreferences =
@@ -156,7 +168,7 @@ function resolveRealityIncomingInteraction(
           const currentSupport = currentTargetCandidate
             ? attendeeIds.filter((memberId) =>
                 memberId === humanId
-                  ? true
+                  ? aligned
                   : targetPreferences
                     ? targetPreferences[memberId] === currentTargetCandidate
                     : true
@@ -165,7 +177,7 @@ function resolveRealityIncomingInteraction(
           const fallbackSupport = fallbackTargetCandidate
             ? attendeeIds.filter((memberId) =>
                 memberId === humanId
-                  ? true
+                  ? aligned
                   : fallbackPreferences
                     ? fallbackPreferences[memberId] === fallbackTargetCandidate
                     : true
@@ -182,11 +194,29 @@ function resolveRealityIncomingInteraction(
           const memberPlanBeliefs: Record<string, string[]> = Object.fromEntries(
             attendeeIds.map((memberId) => {
               if (memberId === humanId) {
+                const humanPosition =
+                  responseType === 'decline' || responseType === 'negative'
+                    ? 'dissent'
+                    : aligned
+                      ? 'support'
+                      : 'aware'
                 return [
                   memberId,
                   [
-                    ...(currentTargetCandidate ? [`target:${currentTargetCandidate}`] : []),
-                    ...(fallbackTargetCandidate ? [`fallback:${fallbackTargetCandidate}`] : []),
+                    ...(currentTargetCandidate
+                      ? [
+                          humanPosition === 'support'
+                            ? `target:${currentTargetCandidate}`
+                            : `${humanPosition}:${currentTargetCandidate}`,
+                        ]
+                      : []),
+                    ...(fallbackTargetCandidate
+                      ? [
+                          humanPosition === 'support'
+                            ? `fallback:${fallbackTargetCandidate}`
+                            : `${humanPosition}_fallback:${fallbackTargetCandidate}`,
+                        ]
+                      : []),
                   ],
                 ]
               }
@@ -243,7 +273,7 @@ function resolveRealityIncomingInteraction(
           return
         }
 
-        if (subjectId) {
+        if (aligned && subjectId) {
           coordinateRealityAllianceTarget(domain, {
             actorId: interaction.fromId,
             partnerId: humanId,
