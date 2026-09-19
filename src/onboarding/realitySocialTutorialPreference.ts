@@ -30,10 +30,7 @@ export function hasHandledRealitySocialTutorial(
   }
 }
 
-export function markRealitySocialTutorialHandled(
-  profileId: string | null,
-  isGuest: boolean
-): void {
+export function markRealitySocialTutorialHandled(profileId: string | null, isGuest: boolean): void {
   try {
     tutorialStorage(isGuest)?.setItem(realitySocialTutorialStorageKey(profileId), 'done')
   } catch {
