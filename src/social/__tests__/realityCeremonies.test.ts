@@ -128,6 +128,54 @@ describe('Reality alliance ceremony consequences', () => {
     expect(state.relationships.ally.loh.resentment).toBeGreaterThan(0)
   })
 
+  it('removes an evicted member from operational alliances without treating the eviction as betrayal', () => {
+    const state = createInitialRealityDomainState()
+    const pair = createRealityAlliance(state, {
+      id: 'eviction-pair',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 2, phase: 'social_1' },
+    })
+    pair.status = 'ACTIVE'
+    const wider = createRealityAlliance(state, {
+      id: 'eviction-coalition',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['kai'],
+      purpose: 'Control the vote',
+      at: { day: 2, phase: 'social_1' },
+    })
+    wider.status = 'ACTIVE'
+
+    recordRealityCeremonyOutcome(state, {
+      kind: 'EVICTION',
+      day: 5,
+      phase: 'eviction_results',
+      targetIds: ['lia'],
+      witnessIds: ['ava', 'lia', 'kai'],
+      publicEligible: true,
+    })
+
+    expect(pair.memberIds).toEqual(['ava'])
+    expect(pair.status).toBe('DISSOLVED')
+    expect(wider.memberIds).toEqual(expect.arrayContaining(['ava', 'kai']))
+    expect(wider.memberIds).not.toContain('lia')
+    expect(wider.status).toBe('ACTIVE')
+    expect(
+      state.events.filter(
+        (event) =>
+          event.type === 'ALLIANCE_MEMBER_EVICTED' && event.targetIds.includes('lia')
+      )
+    ).toHaveLength(2)
+    expect(
+      state.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          (event.actorId === 'lia' || event.targetIds.includes('lia'))
+      )
+    ).toBe(false)
+  })
+
   it('rewards following a known alliance vote plan only once across vote projections', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
