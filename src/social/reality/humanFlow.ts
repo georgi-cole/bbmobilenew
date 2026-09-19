@@ -1006,21 +1006,18 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       : null
     const allianceProposalCountered =
       input.actionId === 'proposeAlliance' && orchestration.response?.kind === 'COUNTER'
-    const baseSummary =
-      allianceProposalCountered
-        ? `${
-            state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-          } made a counteroffer. No alliance was formed yet.`
-        : allianceConsultationSummary ??
-          (input.actionId === 'warn_about_danger' && succeeded
-        ? dangerWarningDiscovered
-          ? `${
-              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-            } appreciated the warning, but the LOH found out you leaked the plan.`
-          : `${
-              state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
-            } appreciated the warning and kept your source private.`
-        : compatibility.summary)
+    let baseSummary = allianceConsultationSummary ?? compatibility.summary
+    if (allianceProposalCountered) {
+      const targetName =
+        state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+      baseSummary = `${targetName} made a counteroffer. No alliance was formed yet.`
+    } else if (input.actionId === 'warn_about_danger' && succeeded) {
+      const targetName =
+        state.game.players.find((player) => player.id === input.targetId)?.name ?? 'They'
+      baseSummary = dangerWarningDiscovered
+        ? `${targetName} appreciated the warning, but the LOH found out you leaked the plan.`
+        : `${targetName} appreciated the warning and kept your source private.`
+    }
     const latestState = getState()
     return {
       ...compatibility,
