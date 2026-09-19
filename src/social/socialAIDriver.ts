@@ -71,8 +71,6 @@ import { normalizeDramaSocialNetwork } from './dramaModeEngine'
 import { chooseUtilityDramaAIMove } from './dramaAIPolicy'
 import { SCENARIO_VARIANT_POOLS, getVoiceProfile, pickVariantText } from './interactionVariantBank'
 import { allianceIdentityBias, type AiGameIdentity } from '../ai/aiGameIdentity'
-import type { GameState } from '../types'
-import { chooseAiEvictionVote, getNominationTargetScore } from '../store/gameSlice'
 
 interface StoreAPI {
   dispatch: (action: unknown) => unknown
@@ -283,11 +281,6 @@ interface CandidateMove {
   actionId: string
   targetIds: string[]
   subjectId?: string
-  secondarySubjectId?: string
-  allianceId?: string
-  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
-  sceneTargetIds?: string[]
-  scenarioOverride?: string
   reason: string
   relationshipIntent?: RealityRelationshipIntentKind
 }
@@ -396,10 +389,6 @@ const HUMAN_FACING_ACTION_TYPES: Partial<Record<string, IncomingInteractionType>
   startFight: 'snide_remark',
   ask_use_safety: 'deal_offer',
   nominate: 'warning',
-  pitch_target: 'deal_offer',
-  suggest_replacement: 'deal_offer',
-  rally_votes_against: 'deal_offer',
-  consult_alliance: 'deal_offer',
   group_chat: 'other',
 }
 
@@ -448,18 +437,6 @@ const HUMAN_FACING_ACTION_TEXT: Partial<Record<string, string[]>> = {
     'I am considering putting your name in danger this week. Give me a reason not to.',
     'Your name is part of my plan right now, and I wanted to hear what you would say.',
   ],
-  pitch_target: [
-    'We should use your LOH power on {subject}. That is the name I want on the block.',
-    'I think {subject} is the move. That is where I would put the pressure.',
-  ],
-  suggest_replacement: [
-    'If Safety opens a seat, I want {subject} going up. That is the replacement I would make.',
-    'If the block changes, {subject} is my replacement choice. I think that gives you the cleanest path.',
-  ],
-  rally_votes_against: [
-    'My choice for this vote is {subject}. I wanted you to know where I stand.',
-    'For this vote, I am landing on {subject}. Are you leaning the same way?',
-  ],
   group_chat: [
     'A few of us are comparing notes. You can join in, observe, challenge the plan, or keep your distance.',
     'There is a group conversation forming right now. How visible do you want to be in it?',
@@ -483,9 +460,6 @@ const HUMAN_FACING_ACTION_SCENARIOS: Partial<Record<string, string>> = {
   startFight: 'targeted_snark',
   ask_use_safety: 'nominee_veto_pitch',
   nominate: 'nomination_aftershock',
-  pitch_target: 'alliance_nomination_pitch',
-  suggest_replacement: 'alliance_safety_pitch',
-  rally_votes_against: 'alliance_vote_pitch',
   group_chat: 'social_momentum_notice',
 }
 
@@ -498,12 +472,9 @@ function pickHumanFacingText(
   actorId: string,
   playerName: string,
   week: number,
-  phase: string,
-  subjectName?: string,
-  secondarySubjectName?: string,
-  scenarioOverride?: string
+  phase: string
 ): { text: string; scenarioKey: string; variantFamilyId: string; variantId: string } {
-  const scenarioKey = scenarioOverride ?? getHumanFacingActionScenario(actionId)
+  const scenarioKey = getHumanFacingActionScenario(actionId)
   const variantFamilies = SCENARIO_VARIANT_POOLS[scenarioKey]
   const variants = HUMAN_FACING_ACTION_TEXT[actionId] ?? ['I wanted to talk to you directly.']
   const random = createDeterministicSocialRandom([actorId, actionId, week, phase])
@@ -517,10 +488,7 @@ function pickHumanFacingText(
       new Set()
     )
     return {
-      text: text
-        .replaceAll('{player}', playerName)
-        .replaceAll('{subject}', subjectName ?? 'that player')
-        .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
+      text: text.replaceAll('{player}', playerName),
       scenarioKey,
       variantFamilyId: familyId,
       variantId,
@@ -528,10 +496,7 @@ function pickHumanFacingText(
   }
   const text = variants[Math.floor(random() * variants.length)] ?? variants[0]
   return {
-    text: text
-      .replaceAll('{player}', playerName)
-      .replaceAll('{subject}', subjectName ?? 'that player')
-      .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
+    text,
     scenarioKey,
     variantFamilyId: `legacy_background_${actionId}`,
     variantId: `legacy_background_${actionId}:${variants.indexOf(text)}`,
@@ -543,11 +508,7 @@ function routeHumanFacingAction(
   actionId: string,
   subjectId: string | undefined,
   costs: { energy: number; influence: number; info: number },
-  sceneTargetIds?: string[],
-  allianceId?: string,
-  scenarioOverride?: string,
-  allianceStrategyKind?: 'NOMINATION' | 'SAFETY',
-  secondarySubjectId?: string
+  sceneTargetIds?: string[]
 ): HumanRouteResult {
   if (!_store) return 'blocked'
   const type = HUMAN_FACING_ACTION_TYPES[actionId] ?? 'other'
@@ -576,25 +537,11 @@ function routeHumanFacingAction(
     current.social.incomingInteractions ?? [],
     scheduled
   )
-  const unresolvedFromActor = pending.filter(
-    (entry) => entry.fromId === actorId && !entry.resolved && isIncomingInteractionActionable(entry)
-  ).length
-  if (unresolvedFromActor >= socialConfig.incomingInteractionConfig.maxPerAI) {
-    return 'deferred'
-  }
-
   const directContactsThisWeek = pending.filter(
     (entry) => entry.createdWeek === week && entry.payload?.source === 'background_social'
   ).length
-  const strategicPitchAction = [
-    'pitch_target',
-    'suggest_replacement',
-    'rally_votes_against',
-  ].includes(actionId)
-  const isAllianceStrategyContact =
-    Boolean(allianceId) && (strategicPitchAction || actionId === 'consult_alliance')
   if (
-    (!isAllianceStrategyContact && directContactsThisWeek >= 2) ||
+    directContactsThisWeek >= 2 ||
     pending.filter((entry) => entry.createdWeek === week).length >=
       socialConfig.incomingInteractionConfig.maxPerWeek
   ) {
@@ -602,23 +549,7 @@ function routeHumanFacingAction(
   }
 
   const mode = getEffectiveSocialMode(current)
-  const subjectName = subjectId
-    ? current.game.players.find((player) => player.id === subjectId)?.name
-    : undefined
-  const secondarySubjectName = secondarySubjectId
-    ? current.game.players.find((player) => player.id === secondarySubjectId)?.name
-    : undefined
-  const content = pickHumanFacingText(
-    actionId,
-    actorId,
-    human.name ?? 'you',
-    week,
-    phase,
-    subjectName,
-    secondarySubjectName,
-    scenarioOverride ??
-      (strategicPitchAction && !isAllianceStrategyContact ? `strategy_${actionId}` : undefined)
-  )
+  const content = pickHumanFacingText(actionId, actorId, human.name ?? 'you', week, phase)
   const interaction = createIncomingInteraction({
     id: `ai-action-${actionId}-${actorId}-${deterministicSequence}`,
     fromId: actorId,
@@ -633,18 +564,8 @@ function routeHumanFacingAction(
       variantFamilyId: content.variantFamilyId,
       variantId: content.variantId,
       source: 'background_social',
-      ...(isAllianceStrategyContact
-        ? {
-            dedupeGroup: `alliance_strategy:${allianceId ?? 'unknown'}:${content.scenarioKey}`,
-          }
-        : {}),
-      ...(actionId === 'group_chat' || (sceneTargetIds?.length ?? 0) > 1
-        ? { groupScene: true }
-        : {}),
+      ...(actionId === 'group_chat' ? { groupScene: true } : {}),
       ...(subjectId ? { subjectId } : {}),
-      ...(secondarySubjectId ? { secondarySubjectId } : {}),
-      ...(allianceId ? { allianceId } : {}),
-      ...(allianceStrategyKind ? { allianceStrategyKind } : {}),
     },
   })
   const priority = getIncomingInteractionPriority(type)
@@ -736,150 +657,6 @@ function groupTargets(state: DriverState, actorId: string, maximum = 3): string[
     .map((player) => player.id)
 }
 
-function liveAllianceWithHuman(state: DriverState, actorId: string, humanId: string) {
-  return Object.values(state.social.reality.alliances)
-    .filter(
-      (alliance) =>
-        (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
-        alliance.memberIds.includes(actorId) &&
-        alliance.memberIds.includes(humanId)
-    )
-    .sort(
-      (left, right) =>
-        (right.memberCommitment[actorId] ?? 0) - (left.memberCommitment[actorId] ?? 0) ||
-        right.cohesion - left.cohesion ||
-        right.memberIds.length - left.memberIds.length ||
-        left.id.localeCompare(right.id)
-    )[0]
-}
-
-function allianceStrategySubject(
-  state: DriverState,
-  actorId: string,
-  excludedIds: ReadonlySet<string>,
-  options: { nomineesOnly?: boolean; nonNomineesOnly?: boolean } = {}
-): string | undefined {
-  const game = state.game as unknown as GameState
-  const candidates = game.players.filter((candidate) => {
-    if (
-      candidate.id === actorId ||
-      excludedIds.has(candidate.id) ||
-      candidate.status === 'evicted' ||
-      candidate.status === 'jury'
-    ) {
-      return false
-    }
-    const nominated = game.nomineeIds.includes(candidate.id)
-    if (options.nomineesOnly && !nominated) return false
-    if (options.nonNomineesOnly && nominated) return false
-    return true
-  })
-  return candidates
-    .map((candidate) => ({
-      id: candidate.id,
-      score: getNominationTargetScore(game, actorId, candidate),
-    }))
-    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
-}
-
-function allianceHumanStrategyCandidate(
-  state: DriverState,
-  player: DriverPlayer,
-  human: DriverPlayer
-): CandidateMove | null {
-  const alliance = liveAllianceWithHuman(state, player.id, human.id)
-  if (!alliance) return null
-
-  // One spokesperson per live alliance keeps the inbox from becoming a chorus
-  // of duplicate pitches. Leaders speak first, then the most committed member.
-  const activeAiMembers = alliance.memberIds
-    .filter((id) => id !== human.id)
-    .filter((id) =>
-      state.game.players.some(
-        (candidate) =>
-          candidate.id === id && candidate.status !== 'evicted' && candidate.status !== 'jury'
-      )
-    )
-    .sort(
-      (left, right) =>
-        Number(alliance.leaderIds.includes(right)) - Number(alliance.leaderIds.includes(left)) ||
-        (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
-        left.localeCompare(right)
-    )
-  if (activeAiMembers[0] !== player.id) return null
-
-  const game = state.game as unknown as GameState
-  const phase = state.game.phase
-  const excludedIds = new Set<string>([human.id])
-
-  if (state.game.lohId === human.id && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
-    const subjectId = allianceStrategySubject(state, player.id, excludedIds)
-    return subjectId
-      ? {
-          actionId: 'pitch_target',
-          targetIds: [human.id],
-          subjectId,
-          allianceId: alliance.id,
-          allianceStrategyKind: 'NOMINATION',
-          scenarioOverride: 'alliance_nomination_pitch',
-          reason: 'alliance spokesperson pitching the human LOH',
-        }
-      : null
-  }
-
-  if (
-    state.game.posWinnerId === human.id &&
-    [
-      'nomination_results',
-      'pos_comp_announcement',
-      'pos_comp',
-      'pos_results',
-      'pos_ceremony',
-    ].includes(phase)
-  ) {
-    const subjectId = allianceStrategySubject(state, player.id, excludedIds, {
-      nonNomineesOnly: true,
-    })
-    return subjectId
-      ? {
-          actionId: 'suggest_replacement',
-          targetIds: [human.id],
-          subjectId,
-          allianceId: alliance.id,
-          allianceStrategyKind: 'SAFETY',
-          scenarioOverride: 'alliance_safety_pitch',
-          reason: 'alliance spokesperson coordinating a Safety replacement',
-        }
-      : null
-  }
-
-  if (
-    ['pos_ceremony_results', 'social_2'].includes(phase) &&
-    game.nomineeIds.length > 1 &&
-    !human.status.includes('nominated') &&
-    !human.status.includes('loh')
-  ) {
-    const subjectId = chooseAiEvictionVote(
-      game,
-      player.id,
-      [...game.nomineeIds],
-      (game.seed ?? 0) ^ game.week
-    )
-    return subjectId
-      ? {
-          actionId: 'rally_votes_against',
-          targetIds: [human.id],
-          subjectId,
-          allianceId: alliance.id,
-          scenarioOverride: 'alliance_vote_pitch',
-          reason: 'alliance spokesperson aligning the human vote',
-        }
-      : null
-  }
-
-  return null
-}
-
 function relationshipCandidateForPlayer(
   state: DriverState,
   player: DriverPlayer
@@ -953,10 +730,6 @@ function candidateForPlayer(
       ? 'pitch_target'
       : null
   if (contactBoundary && nemesis && !strategicNemesisAction) return null
-  const allianceStrategyCandidate =
-    dramaMode && attempt === 0 && human
-      ? allianceHumanStrategyCandidate(state, player, human)
-      : null
   const relationshipCandidate =
     dramaMode && attempt === 0 ? relationshipCandidateForPlayer(state, player) : null
   const history = getPersistentSocialHistory(state.social as SocialStateWithHistory)
@@ -981,7 +754,6 @@ function candidateForPlayer(
 
   const policyActionId =
     strategicNemesisAction ??
-    allianceStrategyCandidate?.actionId ??
     relationshipCandidate?.actionId ??
     dramaMove?.actionId ??
     chooseActionFor(player.id, {
@@ -998,7 +770,6 @@ function candidateForPlayer(
     } as Parameters<typeof chooseActionFor>[1])
   const allianceBias = allianceIdentityBias(player.aiGameIdentity)
   const actionId =
-    !allianceStrategyCandidate &&
     !relationshipCandidate &&
     !dramaMove &&
     allianceBias >= 20 &&
@@ -1021,9 +792,6 @@ function candidateForPlayer(
   } else if (strategicNemesisAction && human) {
     targetIds = [state.game.lohId!]
     subjectId = human.id
-  } else if (allianceStrategyCandidate) {
-    targetIds = allianceStrategyCandidate.targetIds
-    subjectId = allianceStrategyCandidate.subjectId
   } else if (relationshipCandidate) {
     targetIds = relationshipCandidate.targetIds
   } else if (dramaMove) {
@@ -1060,13 +828,7 @@ function candidateForPlayer(
     actionId,
     targetIds,
     subjectId,
-    secondarySubjectId: allianceStrategyCandidate?.secondarySubjectId,
-    allianceId: allianceStrategyCandidate?.allianceId,
-    allianceStrategyKind: allianceStrategyCandidate?.allianceStrategyKind,
-    sceneTargetIds: allianceStrategyCandidate?.sceneTargetIds,
-    scenarioOverride: allianceStrategyCandidate?.scenarioOverride,
     reason:
-      allianceStrategyCandidate?.reason ??
       relationshipCandidate?.reason ??
       dramaMove?.reason ??
       `contextual policy attempt ${attempt + 1}`,
@@ -1093,11 +855,7 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      candidate.sceneTargetIds ?? [primaryTarget.id],
-      candidate.allianceId,
-      candidate.scenarioOverride,
-      candidate.allianceStrategyKind,
-      candidate.secondarySubjectId
+      [primaryTarget.id]
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
@@ -1114,11 +872,7 @@ function executeCandidate(
       candidate.actionId,
       candidate.subjectId,
       costs,
-      candidate.sceneTargetIds ?? candidate.targetIds,
-      candidate.allianceId,
-      candidate.scenarioOverride,
-      candidate.allianceStrategyKind,
-      candidate.secondarySubjectId
+      candidate.targetIds
     )
     if (route === 'scheduled') return true
     if (route === 'blocked' || route === 'deferred') return false
