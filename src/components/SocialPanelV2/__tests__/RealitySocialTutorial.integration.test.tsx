@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { configureStore } from '@reduxjs/toolkit'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryRouter } from 'react-router'
@@ -103,6 +103,8 @@ describe('Reality Social first-use tutorial', () => {
     const normalStore = makeStore({ vipOwned: false })
     renderPanel(normalStore)
 
+    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
+    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
     expect(screen.queryByTestId('reality-social-tutorial')).toBeNull()
     expect(window.localStorage.getItem(realitySocialTutorialStorageKey('profile-a'))).toBeNull()
 
@@ -111,8 +113,13 @@ describe('Reality Social first-use tutorial', () => {
     const vipStore = makeStore({ vipOwned: true })
     renderPanel(vipStore)
 
-    expect(screen.getByTestId('reality-social-tutorial')).toBeInTheDocument()
+    expect(screen.getByTestId('reality-social-tutorial-prompt')).toBeInTheDocument()
     expect(screen.getByText('Welcome to Reality Social')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick tour' }))
+
+    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
+    expect(screen.getByTestId('reality-social-tutorial')).toBeInTheDocument()
   })
 
   it('does not reopen after that profile has handled the guide', () => {
