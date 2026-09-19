@@ -323,6 +323,9 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     yields: { info: 1 },
     allowedPhases: ['social_1', 'social_2'],
     voxOnly: true,
+    // Keep the legacy action available to AI/old saves, but avoid showing two
+    // near-identical targetless "watch the house" moves to human players.
+    aiOnly: true,
   },
   // ── Alliance & relationship actions ───────────────────────────────────────
   {
