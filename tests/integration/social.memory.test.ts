@@ -269,7 +269,10 @@ describe('social memory integration for incoming interactions', () => {
     expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`target:${target.id}`])
     expect(resolved.memberPlanBeliefs[human.id]).toEqual([`target:${target.id}`])
     expect(resolved.memberPlanBeliefs[allyA.id]).toEqual([`target:${target.id}`])
-    expect(resolved.memberPlanBeliefs[allyB.id]).toEqual([`preference:${alternative.id}`])
+    expect(resolved.memberPlanBeliefs[allyB.id]).toEqual([
+      `aware:${target.id}`,
+      `preference:${alternative.id}`,
+    ])
   })
 
   it('lets an AI alliance reach a majority even when the human openly dissents', () => {
