@@ -181,10 +181,13 @@ export default function SeasonTutorialTour({
   const tooltipRef = useRef<HTMLElement | null>(null)
   const finishTimerRef = useRef<number | null>(null)
 
-  const moveToStep = useCallback((nextIndex: number) => {
-    setMeasuredStepId(null)
-    setStepIndex(clamp(nextIndex, 0, tutorialSteps.length - 1))
-  }, [])
+  const moveToStep = useCallback(
+    (nextIndex: number) => {
+      setMeasuredStepId(null)
+      setStepIndex(clamp(nextIndex, 0, tutorialSteps.length - 1))
+    },
+    [tutorialSteps.length]
+  )
 
   const completeWithHandoff = useCallback(() => {
     if (finishing) return
