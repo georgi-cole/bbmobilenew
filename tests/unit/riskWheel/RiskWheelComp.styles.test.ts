@@ -64,6 +64,8 @@ describe('RiskWheelComp styles', () => {
     expect(source).toContain('data-testid="rw-vip-showroom"')
     expect(source).toContain('data-testid="rw-vip-pointer"')
     expect(source).toContain('data-testid="rw-vip-center-hub"')
+    expect(source).not.toContain('event.currentTarget.remove()')
+    expect(source).toContain("event.currentTarget.style.display = 'none'")
     expect(source).not.toContain('data-testid="rw-vip-wheel-frame"')
     expect(source).toContain("`${VIP_ASSET_ROOT}/result-plaque.webp`")
     expect(source).toContain('className="rw-wheel-sector-label"')
