@@ -211,6 +211,37 @@ describe('Reality alliance ceremony consequences', () => {
     expect(alliance.memberCommitment.ava).toBe(afterFirstProjection)
   })
 
+  it('does not punish a member when the alliance target is not available on the live block', () => {
+    const state = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(state, {
+      id: 'stale-plan-pact',
+      founderIds: ['ava'],
+      memberIds: ['lia', 'kai'],
+      purpose: 'Vote together',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(state, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'lia', 'kai'],
+      targetIds: ['outsider'],
+      planIds: ['target:outsider'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const commitmentBefore = alliance.memberCommitment.ava
+    finalizeRealityVote(
+      state,
+      'ava',
+      'mara',
+      { day: 5, phase: 'live_vote' },
+      'forced-choice',
+      ['mara', 'zoe']
+    )
+
+    expect(alliance.memberCommitment.ava).toBe(commitmentBefore)
+    expect(state.events.some((event) => event.type === 'ALLIANCE_PLAN_DEFIED')).toBe(false)
+  })
+
   it('records an actual vote against an ally as a distinct alliance betrayal', () => {
     const state = createInitialRealityDomainState()
     const alliance = createRealityAlliance(state, {
