@@ -22,6 +22,7 @@ import {
   coordinateRealityAllianceTarget,
   findRealityAllianceForRecruitment,
   holdRealityAllianceMeeting,
+  holdRealityAllianceStrategyMeeting,
   leakRealityAlliance,
   removeRealityAllianceMember,
   markRealityAllianceInfiltratorIfSecondary,
@@ -140,14 +141,81 @@ function applyRealityLifecycle(input: {
   event: RealitySocialEvent
   action: RealityActionContract
   subjectId?: string
+  secondarySubjectId?: string
   allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
   responses: Array<{ targetId: string; response: RealityResponseResolution }>
 }): void {
-  const { domain, interaction, event, action, subjectId, allianceId, responses } = input
+  const {
+    domain,
+    interaction,
+    event,
+    action,
+    subjectId,
+    secondarySubjectId,
+    allianceId,
+    allianceStrategyKind,
+    responses,
+  } = input
   const acceptedTargets = responses
     .filter((entry) => entry.response.accepted)
     .map((entry) => entry.targetId)
   const at = { day: event.day, phase: event.phase }
+
+  if (
+    action.id === 'consult_alliance' &&
+    allianceId &&
+    allianceStrategyKind &&
+    acceptedTargets.length > 0
+  ) {
+    const alliance = domain.alliances[allianceId]
+    if (
+      alliance &&
+      (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+      alliance.memberIds.includes(interaction.actorId)
+    ) {
+      const attendees = [
+        interaction.actorId,
+        ...interaction.targetIds.filter((id) => alliance.memberIds.includes(id)),
+      ].filter((id, index, values) => values.indexOf(id) === index)
+      const excusedAbsentIds = alliance.memberIds.filter((id) => !attendees.includes(id))
+
+      if (attendees.length >= 2) {
+        const targetIds =
+          allianceStrategyKind === 'NOMINATION' && subjectId
+            ? [subjectId]
+            : [...alliance.currentTargetIds]
+        const fallbackTargetIds =
+          allianceStrategyKind === 'SAFETY' && secondarySubjectId
+            ? [secondarySubjectId]
+            : [...alliance.fallbackTargetIds]
+        const planIds =
+          allianceStrategyKind === 'NOMINATION'
+            ? [
+                ...targetIds.map((id) => `target:${id}`),
+                ...fallbackTargetIds.map((id) => `fallback:${id}`),
+              ]
+            : [
+                ...targetIds.map((id) => `target:${id}`),
+                ...fallbackTargetIds.map((id) => `fallback:${id}`),
+                ...(subjectId ? [`save:${subjectId}`] : []),
+              ]
+
+        holdRealityAllianceStrategyMeeting(domain, {
+          allianceId,
+          callerId: interaction.actorId,
+          attendeeIds: attendees,
+          targetIds,
+          fallbackTargetIds,
+          planIds,
+          agenda: allianceStrategyKind === 'NOMINATION' ? 'nominations' : 'safety',
+          at,
+          sourceEventId: event.id,
+          excusedAbsentIds,
+        })
+      }
+    }
+  }
 
   if (action.purposes.includes('COMMITMENT') && ['proposeAlliance', 'ally'].includes(action.id)) {
     for (const targetId of acceptedTargets) {
@@ -895,7 +963,9 @@ export function resolvePendingHumanRealityInteraction(input: {
   day: number
   phase: string
   subjectId?: string
+  secondarySubjectId?: string
   allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY'
 }): { domain: RealityDomainState; event: RealitySocialEvent | null } {
   const domain = cloneDomain(input.domain)
   const interaction = domain.interactions[input.interactionId]
@@ -978,7 +1048,9 @@ export function resolvePendingHumanRealityInteraction(input: {
     event,
     action,
     subjectId: input.subjectId,
+    secondarySubjectId: input.secondarySubjectId,
     allianceId: input.allianceId,
+    allianceStrategyKind: input.allianceStrategyKind,
     responses: [{ targetId: input.humanId, response: humanResponse }],
   })
   resolveRelationshipStoryResponse(domain, {
