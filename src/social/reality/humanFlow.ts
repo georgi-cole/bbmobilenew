@@ -246,6 +246,13 @@ function getAllianceConsultationAgenda(
   if (
     state.game.voxPopuli?.status !== 'active' &&
     nomineesExist &&
+    ['nomination_results', 'pos_results', 'pos_ceremony'].includes(state.game.phase)
+  ) {
+    return 'block_strategy'
+  }
+  if (
+    state.game.voxPopuli?.status !== 'active' &&
+    nomineesExist &&
     ['pos_ceremony_results', 'social_2', 'live_vote'].includes(state.game.phase)
   ) {
     return 'eviction_vote'
@@ -367,7 +374,7 @@ function buildAllianceConsultationPlan(
     }
   }
 
-  if (agenda === 'eviction_vote') {
+  if (agenda === 'block_strategy' || agenda === 'eviction_vote') {
     const nomineeIds = nominees.map((nominee) => nominee.id)
     const preferences = advisors.map((advisorId) => {
       const targetId = chooseAiEvictionVote(
@@ -381,7 +388,7 @@ function buildAllianceConsultationPlan(
     const read = summarizeAlliancePreferences(
       state,
       preferences,
-      'Vote consensus',
+      agenda === 'eviction_vote' ? 'Vote consensus' : 'Current block',
       new Set(alliance.memberIds)
     )
     return {
@@ -393,7 +400,7 @@ function buildAllianceConsultationPlan(
         ...read.targetIds.map((id) => `target:${id}`),
         ...read.fallbackTargetIds.map((id) => `fallback:${id}`),
       ],
-      agenda: 'eviction_vote',
+      agenda,
       summary: `Alliance huddle — ${read.summary}`,
       excusedAbsentIds,
     }
