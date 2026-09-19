@@ -1452,6 +1452,11 @@ const SCENARIO_TEMPLATES: Record<InteractionScenarioKey, string[]> = {
     'I trust your LOH call, but my preference is {subject}.',
     'Before nominations lock, I want you to know I am still leaning {subject}.',
   ],
+  alliance_vox_ballot_pitch: [
+    'My first secret-ballot name is {subject}. I want to know if we are applying pressure in the same place.',
+    'I am leaning {subject} on the ballot. We do not have to match both names, but I want us comparing reads.',
+    'Before the secret ballot locks, {subject} is still the name I most want counted.',
+  ],
   alliance_safety_pitch: [
     'If Safety opens a seat, my replacement choice is {subject}.',
     'I trust your Safety call. If the block moves, I would put up {subject}.',
