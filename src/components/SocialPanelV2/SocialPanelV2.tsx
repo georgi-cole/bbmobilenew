@@ -569,7 +569,8 @@ export default function SocialPanelV2() {
       const nextBatchCompatible =
         nextMode === 'primary' &&
         !nextAction?.requiredTargetStatus &&
-        actionId !== 'proposeAlliance'
+        actionId !== 'proposeAlliance' &&
+        actionId !== 'consult_alliance'
       if (nextMode === 'multi') {
         setMultiSelectActive(true)
       } else if (!nextBatchCompatible && primaryTargetId) {
