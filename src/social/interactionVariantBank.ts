@@ -1625,6 +1625,25 @@ export const SCENARIO_VARIANT_POOLS: Record<string, VariantFamily[]> = {
     ]
   ),
 
+  alliance_vox_ballot_pitch: makeScenePool(
+    'alliance_vox_ballot_pitch',
+    [
+      'My first secret-ballot name is {subject}. I want to know if we are putting pressure in the same place.',
+      'I am leaning {subject} on the ballot. We do not have to match both names, but I want our alliance comparing notes.',
+      'For the secret nominations, {subject} is the name I most want counted.',
+    ],
+    [
+      'Nobody controls the block in Vox, so I am not pretending this is an order. My ballot read is {subject}.',
+      'The audience decides the exit, but our ballots decide who faces them. I am leaning {subject}.',
+      'I want to coordinate without making this obvious. {subject} is my strongest nomination read.',
+    ],
+    [
+      'Before the secret ballots lock, I am still on {subject}.',
+      'Last alliance check before nominations: {subject} is still my first name.',
+      'My ballot has not moved off {subject}. I wanted you to know before we vote in secret.',
+    ]
+  ),
+
   alliance_nomination_pitch: makeScenePool(
     'alliance_nomination_pitch',
     [
