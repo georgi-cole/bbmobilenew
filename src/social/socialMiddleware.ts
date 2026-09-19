@@ -659,11 +659,6 @@ function grantEnergy(api: MiddlewareAPI, playerId: string, delta: number): void 
   }
 }
 
-/** Dispatch influence delta (integer pts ×100) to a player. */
-function grantInfluence(api: MiddlewareAPI, playerId: string, delta: number): void {
-  api.dispatch(applyInfluenceDelta({ playerId, delta }))
-}
-
 function applySafetyRelationshipConsequences(
   api: MiddlewareAPI,
   holderId: string | null,
