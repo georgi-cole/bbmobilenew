@@ -68,6 +68,7 @@ describe('Drama social content system', () => {
   it('gives alliance strategy scenes decision-specific accept and decline choices', () => {
     for (const scenarioKey of [
       'alliance_nomination_pitch',
+      'alliance_vox_ballot_pitch',
       'alliance_safety_pitch',
       'alliance_vote_pitch',
       'alliance_power_nomination_huddle',
