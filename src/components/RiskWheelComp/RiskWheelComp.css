@@ -2451,3 +2451,84 @@ body.no-animations .rw-root--vip .rw-vip-showroom-beam,body.no-animations .rw-ro
     padding-block:6px;
   }
 }
+
+
+/* ─── VIP generated showroom asset ──────────────────────────────────────────
+   Exact background-only image generated for the VIP Risk Wheel. The live
+   score card, wheel, result plaque and controls remain real UI above it.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.rw-vip-showroom {
+  inset: 55px 0 auto;
+  height: min(820px, 88vh);
+  opacity: 1;
+  overflow: hidden;
+  background: #040615;
+}
+
+.rw-vip-showroom::before,
+.rw-vip-showroom::after,
+.rw-vip-showroom-truss,
+.rw-vip-stage-panel,
+.rw-vip-showroom-audience,
+.rw-vip-showroom-floor,
+.rw-vip-showroom-beam {
+  display: none !important;
+}
+
+.rw-vip-showroom-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: saturate(1.03) brightness(.82) contrast(1.06);
+}
+
+.rw-vip-showroom-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(2, 4, 14, .05) 0%,
+      rgba(2, 4, 14, .08) 34%,
+      rgba(2, 4, 14, .18) 68%,
+      rgba(2, 4, 14, .68) 100%
+    ),
+    radial-gradient(
+      ellipse at 50% 37%,
+      transparent 0 35%,
+      rgba(2, 4, 14, .025) 54%,
+      rgba(2, 4, 14, .12) 82%,
+      rgba(2, 4, 14, .22) 100%
+    );
+}
+
+.rw-root--vip > .rw-header,
+.rw-root--vip > .rw-main {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 430px) {
+  .rw-vip-showroom {
+    height: min(790px, 88vh);
+  }
+
+  .rw-vip-showroom-bg {
+    object-position: center top;
+  }
+}
+
+@media (max-height: 760px) and (orientation: portrait) {
+  .rw-vip-showroom {
+    height: min(690px, 91vh);
+  }
+}

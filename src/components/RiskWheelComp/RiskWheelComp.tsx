@@ -38,6 +38,7 @@ import { resolveAvatar, getDicebear } from '../../utils/avatar'
 import HOUSEGUESTS from '../../data/houseguests'
 import { useRiskWheelAudio } from '../../hooks/useRiskWheelAudio'
 import { publishMinigameMusicVariant } from '../../services/sound/minigameMusicVariant'
+import VIP_SHOWROOM_ASSET from './vipShowroomAsset'
 import './RiskWheelComp.css'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -928,23 +929,14 @@ export default function RiskWheelComp({
     <div className={`rw-root rw-game${premiumRootClass}${isDevil ? ' rw-devil-mode' : ''}`}>
       {premiumPresentation ? (
         <div className="rw-vip-showroom" aria-hidden="true" data-testid="rw-vip-showroom">
-          <div className="rw-vip-showroom-truss" />
-          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--left" />
-          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--center" />
-          <span className="rw-vip-showroom-beam rw-vip-showroom-beam--right" />
-          <div className="rw-vip-stage-panel rw-vip-stage-panel--left">
-            <span>THE</span>
-            <strong>BIG EYE</strong>
-            <i>◉</i>
-          </div>
-          <div className="rw-vip-stage-panel rw-vip-stage-panel--right">
-            <span>SAME PLAYERS</span>
-            <strong>DIFFERENT REALITY</strong>
-            <i>◉</i>
-          </div>
-          <div className="rw-vip-showroom-audience rw-vip-showroom-audience--left" />
-          <div className="rw-vip-showroom-audience rw-vip-showroom-audience--right" />
-          <div className="rw-vip-showroom-floor" />
+          <img
+            className="rw-vip-showroom-bg"
+            src={VIP_SHOWROOM_ASSET}
+            alt=""
+            draggable={false}
+            data-testid="rw-vip-showroom-bg"
+          />
+          <div className="rw-vip-showroom-vignette" />
         </div>
       ) : null}
       {/* Header */}
