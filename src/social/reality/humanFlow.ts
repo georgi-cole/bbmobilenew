@@ -29,6 +29,7 @@ import {
   getSafetyRelationshipScore,
 } from '../../store/gameSlice'
 import { shouldDepressionShockRefuseConversation } from '../../features/twists/depressionShock'
+import { validateSocialExecution } from '../socialExecutionGuard'
 
 export interface HumanRealityActionInput {
   actorId: string
@@ -718,8 +719,81 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     const state = getState()
     const action = getActionById(input.actionId)
     const energy = state.social.energyBank[input.actorId] ?? 0
-    const targetIds = input.targetIds ?? [input.targetId]
     if (!action) return result(false, 'Unknown action', energy)
+
+    const dramaMode = getEffectiveSocialMode(state) === 'drama'
+    const actionTargetMode = resolveActionTargetMode(action, dramaMode)
+    const requestedTargetIds = input.targetIds ?? [input.targetId]
+    const targetIds =
+      actionTargetMode === 'none'
+        ? []
+        : [...new Set(requestedTargetIds.filter((targetId) => Boolean(targetId)))]
+    const resolvedRequiredTargetStatus = dramaMode
+      ? (action.dramaRequiredTargetStatus ?? action.requiredTargetStatus)
+      : action.requiredTargetStatus
+    const isPrimaryBatch = actionTargetMode === 'primary' && targetIds.length > 1
+    const batchCompatible =
+      actionTargetMode === 'primary' &&
+      !resolvedRequiredTargetStatus &&
+      input.actionId !== 'proposeAlliance' &&
+      input.actionId !== 'consult_alliance'
+
+    if (isPrimaryBatch && !batchCompatible) {
+      return result(
+        false,
+        'This action can only target one housemate at a time.',
+        energy,
+        0,
+        'Invalid selection'
+      )
+    }
+
+    const executionState = {
+      game: state.game,
+      settings: state.settings,
+      vip: state.vip,
+      social: state.social,
+    }
+    if (isPrimaryBatch) {
+      for (const targetId of targetIds) {
+        const eligibility = validateSocialExecution(executionState, {
+          action,
+          actorId: input.actorId,
+          targetIds: [targetId],
+          subjectId: input.subjectId,
+          requireCompleteSelection: true,
+        })
+        if (!eligibility.eligible) {
+          return result(false, eligibility.reason, energy, 0, 'Unavailable')
+        }
+      }
+    } else {
+      const eligibility = validateSocialExecution(executionState, {
+        action,
+        actorId: input.actorId,
+        targetIds,
+        subjectId: input.subjectId,
+        requireCompleteSelection: true,
+      })
+      if (!eligibility.eligible) {
+        return result(false, eligibility.reason, energy, 0, 'Unavailable')
+      }
+    }
+
+    const baseExecutionCosts = normalizeActionCosts(
+      action,
+      actionTargetMode === 'multi' ? targetIds.length : actionTargetMode === 'none' ? 0 : 1,
+      dramaMode
+    )
+    const defaultExecutionCosts =
+      isPrimaryBatch
+        ? {
+            energy: baseExecutionCosts.energy * targetIds.length,
+            influence: baseExecutionCosts.influence * targetIds.length,
+            info: baseExecutionCosts.info * targetIds.length,
+          }
+        : baseExecutionCosts
+    const requestedExecutionCosts = input.costOverride ?? defaultExecutionCosts
 
     // During Depression Shock, a housemate may simply shut the conversation
     // down. Resolve this before affordability/execution so a refusal costs the
@@ -751,12 +825,12 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
 
     // Classic is a complete, independent social ruleset. It must never create
     // premium Reality events, causal memories, or simulation traces.
-    if (getEffectiveSocialMode(state) !== 'drama') {
-      const mode = resolveActionTargetMode(action, false)
+    if (!dramaMode) {
+      const mode = actionTargetMode
       if (mode === 'multi') {
         return executeGroupAction(input.actorId, targetIds, input.actionId, {
           source: 'manual',
-          costOverride: input.costOverride,
+          costOverride: requestedExecutionCosts,
         })
       }
       if (targetIds.length > 1) {
@@ -766,7 +840,8 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
               source: 'manual',
               subjectId: input.subjectId,
               waiveCosts: index > 0,
-              costOverride: index === 0 ? input.costOverride : { energy: 0, influence: 0, info: 0 },
+              costOverride:
+                index === 0 ? requestedExecutionCosts : { energy: 0, influence: 0, info: 0 },
             })
           )
           .reduce<ExecuteActionResult>(
@@ -795,7 +870,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         {
           source: 'manual',
           subjectId: input.subjectId,
-          costOverride: input.costOverride,
+          costOverride: requestedExecutionCosts,
         }
       )
       return {
@@ -872,11 +947,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     // full atomic price before the causal Reality domain is allowed to mutate.
     // Otherwise a large group action could create memories/relationship effects
     // and only discover afterward that the player could not afford it.
-    const actionTargetMode = resolveActionTargetMode(action, true)
-    const targetCountForCost =
-      actionTargetMode === 'multi' ? executionTargetIds.length : actionTargetMode === 'none' ? 0 : 1
-    const executionCosts =
-      input.costOverride ?? normalizeActionCosts(action, targetCountForCost, true)
+    const executionCosts = requestedExecutionCosts
     const influence = state.social.influenceBank[input.actorId] ?? 0
     const info = state.social.infoBank[input.actorId] ?? 0
     if (
