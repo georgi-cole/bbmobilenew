@@ -331,7 +331,11 @@ describe('social memory integration for incoming interactions', () => {
     )
 
     const resolved = store.getState().social.reality.alliances[alliance.id]
+    const resolvedInteraction = store
+      .getState()
+      .social.incomingInteractions.find((entry) => entry.id === 'alliance-huddle-human-dissent')
     expect(resolved.currentTargetIds).toEqual([target.id])
+    expect(resolvedInteraction?.outcomeText).toMatch(/majority-backed plan/i)
     expect(resolved.memberPlanBeliefs[human.id]).toEqual([`dissent:${target.id}`])
     expect(resolved.memberPlanBeliefs[caller.id]).toEqual([`target:${target.id}`])
   })
