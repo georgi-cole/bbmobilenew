@@ -420,7 +420,7 @@ export default function PublicMeter() {
     [activeProfileId, contextualGuideRevision, isGuest]
   )
   const showPublicRequestGuide =
-    userActiveDirections.length > 0 && !hasSeenPublicRequestGuide
+    game.publicModeEnabled === true && userActiveDirections.length > 0 && !hasSeenPublicRequestGuide
 
   const hasProfiles = Object.keys(publicOpinion.profiles).length > 0
   const selectedProfile = selectedPlayerId ? publicOpinion.profiles[selectedPlayerId] : undefined
