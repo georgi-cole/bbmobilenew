@@ -1027,6 +1027,25 @@ export function resolvePendingHumanRealityInteraction(input: {
     return { domain, event: null }
   }
   const humanResponse = explicitHumanResponse(input.responseType)
+  const responses: Array<{ targetId: string; response: RealityResponseResolution }> = [
+    ...Object.entries(interaction.targetResponses ?? {})
+      .filter(([targetId]) => targetId !== input.humanId && interaction.targetIds.includes(targetId))
+      .map(([targetId, response]) => ({ targetId, response })),
+    { targetId: input.humanId, response: humanResponse },
+  ]
+  const aggregate =
+    responses.length > 1
+      ? summarizeRealityResponses(action, responses)
+      : {
+          response: humanResponse,
+          outcome: (humanResponse.accepted
+            ? 'SUCCESS'
+            : humanResponse.kind === 'QUESTION'
+              ? 'COUNTERED'
+              : humanResponse.kind === 'WALK_AWAY'
+                ? 'IGNORED'
+                : 'FAILURE') as RealitySocialEvent['outcome'],
+        }
   const sequence = domain.nextSequence
   domain.nextSequence += 1
   const event: RealitySocialEvent = {
@@ -1042,15 +1061,9 @@ export function resolvePendingHumanRealityInteraction(input: {
     participantIds: [...new Set([interaction.actorId, ...interaction.targetIds])],
     witnessIds: [...interaction.witnessIds],
     visibility: interaction.visibility,
-    outcome: humanResponse.accepted
-      ? 'SUCCESS'
-      : humanResponse.kind === 'QUESTION'
-        ? 'COUNTERED'
-        : humanResponse.kind === 'WALK_AWAY'
-          ? 'IGNORED'
-          : 'FAILURE',
-    reason: humanResponse.reason,
-    tags: [...action.purposes, humanResponse.kind, 'HUMAN_RESPONSE'],
+    outcome: aggregate.outcome,
+    reason: aggregate.response.reason,
+    tags: [...action.purposes, aggregate.response.kind, 'HUMAN_RESPONSE'],
     relatedFactIds: [],
     relatedPromiseIds: [],
     relatedThreadIds: [],
@@ -1060,34 +1073,61 @@ export function resolvePendingHumanRealityInteraction(input: {
   }
   const actorId = interaction.actorId
   if (actorId !== input.humanId) {
-    applyRealityRelationshipChange(domain, {
-      sourceId: actorId,
-      targetId: input.humanId,
-      deltas: relationshipDeltas(action, humanResponse),
-      day: input.day,
-      phase: input.phase,
-      eventId: event.id,
-      anchor:
-        humanResponse.accepted && action.purposes.includes('COMMITMENT')
-          ? 'positive'
-          : action.purposes.includes('CONFLICT')
-            ? 'negative'
-            : undefined,
-    })
-    applyRealityRelationshipChange(domain, {
-      sourceId: input.humanId,
-      targetId: actorId,
-      deltas: humanResponse.accepted
-        ? { warmth: 5, trust: 5, familiarity: 3 }
-        : humanResponse.kind === 'WALK_AWAY'
-          ? { warmth: -2, suspicion: 2, familiarity: 1 }
-          : { trust: -3, suspicion: 3, familiarity: 2 },
-      day: input.day,
-      phase: input.phase,
-      eventId: event.id,
-      anchor:
-        humanResponse.accepted && action.purposes.includes('COMMITMENT') ? 'positive' : undefined,
-    })
+    for (const { targetId, response: targetResponse } of responses) {
+      applyRealityRelationshipChange(domain, {
+        sourceId: actorId,
+        targetId,
+        deltas: relationshipDeltas(action, targetResponse),
+        day: input.day,
+        phase: input.phase,
+        eventId: event.id,
+        anchor:
+          targetResponse.accepted && action.purposes.includes('COMMITMENT')
+            ? 'positive'
+            : action.purposes.includes('CONFLICT')
+              ? 'negative'
+              : undefined,
+      })
+
+      if (targetId === input.humanId) {
+        applyRealityRelationshipChange(domain, {
+          sourceId: targetId,
+          targetId: actorId,
+          deltas: targetResponse.accepted
+            ? { warmth: 5, trust: 5, familiarity: 3 }
+            : targetResponse.kind === 'WALK_AWAY'
+              ? { warmth: -2, suspicion: 2, familiarity: 1 }
+              : { trust: -3, suspicion: 3, familiarity: 2 },
+          day: input.day,
+          phase: input.phase,
+          eventId: event.id,
+          anchor:
+            targetResponse.accepted && action.purposes.includes('COMMITMENT')
+              ? 'positive'
+              : undefined,
+        })
+      } else {
+        applyRealityRelationshipChange(domain, {
+          sourceId: targetId,
+          targetId: actorId,
+          deltas:
+            targetResponse.kind === 'ESCALATE'
+              ? { warmth: -8, trust: -7, resentment: 12, perceivedThreat: 5 }
+              : targetResponse.accepted
+                ? { warmth: 4, trust: 4, familiarity: 3 }
+                : { suspicion: 2, familiarity: 1 },
+          day: input.day,
+          phase: input.phase,
+          eventId: event.id,
+          anchor:
+            targetResponse.accepted && action.purposes.includes('COMMITMENT')
+              ? 'positive'
+              : targetResponse.kind === 'ESCALATE'
+                ? 'negative'
+                : undefined,
+        })
+      }
+    }
   }
   domain.events.push(event)
   domain.events = domain.events.slice(-500)
@@ -1100,7 +1140,7 @@ export function resolvePendingHumanRealityInteraction(input: {
     secondarySubjectId: input.secondarySubjectId,
     allianceId: input.allianceId,
     allianceStrategyKind: input.allianceStrategyKind,
-    responses: [{ targetId: input.humanId, response: humanResponse }],
+    responses,
   })
   resolveRelationshipStoryResponse(domain, {
     ownerId: actorId,
@@ -1113,7 +1153,7 @@ export function resolvePendingHumanRealityInteraction(input: {
     at: { day: input.day, phase: input.phase },
   })
   interaction.status = 'RESOLVED'
-  interaction.selectedResponseId = humanResponse.kind
+  interaction.selectedResponseId = aggregate.response.kind
   interaction.outcomeEventIds.push(event.id)
   for (const participantId of event.participantIds) {
     remember(
