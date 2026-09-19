@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Player } from '../../types'
 import type { RelationshipsMap } from '../../social/types'
 import {
@@ -157,6 +157,23 @@ export default function RealityLedger({
 }: RealityLedgerProps) {
   const [tab, setTab] = useState<LedgerTab>('relationships')
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const setLedgerTab = (event: Event) => {
+      const nextTab = (event as CustomEvent<string>).detail
+      if (
+        nextTab === 'relationships' ||
+        nextTab === 'knowledge' ||
+        nextTab === 'deals' ||
+        nextTab === 'house'
+      ) {
+        setTab(nextTab)
+      }
+    }
+    window.addEventListener('reality-social-tutorial:set-ledger-tab', setLedgerTab)
+    return () =>
+      window.removeEventListener('reality-social-tutorial:set-ledger-tab', setLedgerTab)
+  }, [])
   const [editingAllianceId, setEditingAllianceId] = useState<string | null>(null)
   const [allianceNameDraft, setAllianceNameDraft] = useState('')
   const activePlayerIds = useMemo(
@@ -279,12 +296,17 @@ export default function RealityLedger({
         <span>Your private game read</span>
         <small>Only information your player has learned appears here.</small>
       </div>
-      <nav className="reality-ledger__tabs" aria-label="Reality ledger sections">
+      <nav
+        className="reality-ledger__tabs"
+        aria-label="Reality ledger sections"
+        data-reality-tutorial="ledger-tabs"
+      >
         {(['relationships', 'knowledge', 'deals', 'house'] as LedgerTab[]).map((item) => (
           <button
             key={item}
             type="button"
             className={tab === item ? 'is-active' : ''}
+            data-reality-tutorial={item === 'house' ? 'ledger-house' : undefined}
             onClick={() => setTab(item)}
           >
             {item === 'knowledge' ? 'Known' : item === 'relationships' ? 'People' : item}
