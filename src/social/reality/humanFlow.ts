@@ -902,8 +902,15 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       })
     }
     const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
-    const compatibility =
-      direction === 'GROUP' && actionTargetMode === 'multi'
+    const compatibility = consultationAlliance
+      ? executeAction(input.actorId, input.targetId, input.actionId, {
+          source: 'manual',
+          subjectId: input.subjectId,
+          outcome: succeeded ? 'success' : 'failure',
+          repetitionAlreadyResolved: true,
+          costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+        })
+      : direction === 'GROUP' && actionTargetMode === 'multi'
         ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
             outcome: succeeded ? 'success' : 'failure',
