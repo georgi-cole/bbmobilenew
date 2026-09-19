@@ -37,7 +37,15 @@ import { getSocialPersonality } from './socialPersonalityBank'
 import { getEffectiveSocialMode } from './socialMode'
 import { getRemoteScenarioLines, isIncomingInteractionActionable } from './socialRuntimeConfig'
 import { formatIncomingIntel, selectIntelFactForActor } from './intelligenceSystem'
-import type { RealityDomainState } from './reality/types'
+import type { RealityAlliance, RealityDomainState } from './reality/types'
+import type { GameState, Player } from '../types'
+import {
+  chooseAiEvictionVote,
+  getEligibleNominationTargets,
+  getEligibleReplacementNominees,
+  getNominationTargetScore,
+} from '../store/gameSlice'
+import { getCupidPartnerId } from '../features/twists/cupidArrow'
 import { planRelationshipStoryBeat, reserveRelationshipBeat } from './reality/relationshipAutonomy'
 import type {
   IncomingInteraction,
@@ -87,6 +95,8 @@ export interface AutonomyContext {
   reality?: RealityDomainState
   romanceEnabled?: boolean
   intelligenceDeliveries?: IntelligenceDelivery[]
+  /** Full gameplay snapshot used only by strategy-aware incoming planners. */
+  gameState?: GameState
 }
 
 /** Minimal Redux-like store interface required by the autonomy scheduler. */
@@ -161,6 +171,11 @@ type InteractionScenarioKey =
   | 'ignored_warning'
   | 'targeted_snark'
   | 'alliance_reassurance'
+  | 'alliance_nomination_pitch'
+  | 'alliance_safety_pitch'
+  | 'alliance_vote_pitch'
+  | 'alliance_power_nomination_huddle'
+  | 'alliance_power_safety_huddle'
   | 'generic_gossip'
   | 'generic_check_in'
   | 'relationship_friendship_check_in'
@@ -175,6 +190,12 @@ interface InteractionPlan {
   scenarioKey: InteractionScenarioKey
   relationshipIntent?: string
   relationshipBeatId?: string
+  allianceId?: string
+  allianceStrategyKind?: 'NOMINATION' | 'SAFETY' | 'VOTE'
+  subjectId?: string
+  secondarySubjectId?: string
+  allianceGroupMemberIds?: string[]
+  allianceGroupHuddle?: boolean
 }
 
 const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
@@ -186,6 +207,11 @@ const CRITICAL_EVENT_SCENARIOS = new Set<InteractionScenarioKey>([
   'nominee_confronts_loh',
   'replacement_nominee_reacts_to_loh',
   'live_vote_pitch',
+  'alliance_nomination_pitch',
+  'alliance_safety_pitch',
+  'alliance_vote_pitch',
+  'alliance_power_nomination_huddle',
+  'alliance_power_safety_huddle',
 ])
 
 function isCriticalEventScenario(plan: InteractionPlan | null | undefined): boolean {
@@ -449,6 +475,222 @@ function canSendInteractionType(
   }
 }
 
+function activeAllianceMembers(
+  alliance: RealityAlliance,
+  context: AutonomyContext
+): string[] {
+  const activeIds = new Set(
+    context.players
+      .filter((player) => player.status !== 'evicted' && player.status !== 'jury')
+      .map((player) => player.id)
+  )
+  return alliance.memberIds.filter((id) => activeIds.has(id))
+}
+
+function sharedLiveAlliance(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext
+): RealityAlliance | null {
+  if (!context.reality) return null
+  return (
+    Object.values(context.reality.alliances)
+      .filter(
+        (alliance) =>
+          (alliance.status === 'ACTIVE' || alliance.status === 'PROBATIONARY') &&
+          alliance.memberIds.includes(actorId) &&
+          alliance.memberIds.includes(playerId)
+      )
+      .sort(
+        (left, right) =>
+          Number(right.status === 'ACTIVE') - Number(left.status === 'ACTIVE') ||
+          right.memberIds.length - left.memberIds.length ||
+          (right.memberCommitment[actorId] ?? 0) - (left.memberCommitment[actorId] ?? 0) ||
+          (right.memberCommitment[playerId] ?? 0) - (left.memberCommitment[playerId] ?? 0) ||
+          right.cohesion - left.cohesion ||
+          left.id.localeCompare(right.id)
+      )[0] ?? null
+  )
+}
+
+function allianceSpokespersonId(
+  alliance: RealityAlliance,
+  playerId: string,
+  context: AutonomyContext
+): string | null {
+  return (
+    activeAllianceMembers(alliance, context)
+      .filter((id) => id !== playerId)
+      .sort(
+        (left, right) =>
+          Number(alliance.leaderIds.includes(right)) - Number(alliance.leaderIds.includes(left)) ||
+          (alliance.memberPerceivedStatus[right] === 'CORE' ? 2 : alliance.memberPerceivedStatus[right] === 'REGULAR' ? 1 : 0) -
+            (alliance.memberPerceivedStatus[left] === 'CORE' ? 2 : alliance.memberPerceivedStatus[left] === 'REGULAR' ? 1 : 0) ||
+          (alliance.memberCommitment[right] ?? 0) - (alliance.memberCommitment[left] ?? 0) ||
+          left.localeCompare(right)
+      )[0] ?? null
+  )
+}
+
+function bestStrategicTarget(
+  game: GameState,
+  actorId: string,
+  candidates: readonly Player[]
+): string | undefined {
+  return candidates
+    .filter((candidate) => candidate.id !== actorId)
+    .map((candidate) => ({
+      id: candidate.id,
+      score: getNominationTargetScore(game, actorId, candidate),
+    }))
+    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))[0]?.id
+}
+
+function allianceConsensusTarget(
+  game: GameState,
+  voterIds: readonly string[],
+  candidates: readonly Player[]
+): string | undefined {
+  const counts = new Map<string, { votes: number; score: number }>()
+  for (const voterId of voterIds) {
+    const ranked = candidates
+      .filter((candidate) => candidate.id !== voterId)
+      .map((candidate) => ({
+        id: candidate.id,
+        score: getNominationTargetScore(game, voterId, candidate),
+      }))
+      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+    const preferred = ranked[0]
+    if (!preferred) continue
+    const current = counts.get(preferred.id) ?? { votes: 0, score: 0 }
+    current.votes += 1
+    current.score += preferred.score
+    counts.set(preferred.id, current)
+  }
+  return [...counts.entries()]
+    .sort(
+      (left, right) =>
+        right[1].votes - left[1].votes ||
+        right[1].score - left[1].score ||
+        left[0].localeCompare(right[0])
+    )[0]?.[0]
+}
+
+function resolveAllianceInteractionPlan(
+  actorId: string,
+  playerId: string,
+  context: AutonomyContext
+): InteractionPlan | null {
+  if (!context.dramaMode || context.voxPopuliActive || !context.gameState || !context.reality) {
+    return null
+  }
+  const alliance = sharedLiveAlliance(actorId, playerId, context)
+  if (!alliance) return null
+
+  const game = context.gameState
+  const actor = game.players.find((candidate) => candidate.id === actorId)
+  const player = game.players.find((candidate) => candidate.id === playerId)
+  if (!actor || !player) return null
+
+  const actorIsLoh = game.lohId === actorId || getCupidPartnerId(game, game.lohId) === actorId
+  const playerIsLoh = game.lohId === playerId || getCupidPartnerId(game, game.lohId) === playerId
+  const actorHasSafety =
+    game.posWinnerId === actorId || getCupidPartnerId(game, game.posWinnerId) === actorId
+  const playerHasSafety =
+    game.posWinnerId === playerId || getCupidPartnerId(game, game.posWinnerId) === playerId
+  const activeMembers = activeAllianceMembers(alliance, context)
+  const spokespersonId = allianceSpokespersonId(alliance, playerId, context)
+  const phase = context.phase
+
+  if (actorIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+    const candidates = getEligibleNominationTargets(game, actorId)
+    const subjectId = allianceConsensusTarget(game, activeMembers, candidates)
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_power_nomination_huddle',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'NOMINATION',
+      subjectId,
+      allianceGroupMemberIds: activeMembers,
+      allianceGroupHuddle: true,
+    }
+  }
+
+  if (actorHasSafety && phase === 'pos_results') {
+    const nominees = game.players.filter((candidate) => game.nomineeIds.includes(candidate.id))
+    if (nominees.length === 0) return null
+    const subjectId = allianceConsensusTarget(game, activeMembers, nominees)
+    const replacements = getEligibleReplacementNominees(game, game.lohId)
+    const secondarySubjectId = allianceConsensusTarget(game, activeMembers, replacements)
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_power_safety_huddle',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'SAFETY',
+      subjectId,
+      secondarySubjectId,
+      allianceGroupMemberIds: activeMembers,
+      allianceGroupHuddle: true,
+    }
+  }
+
+  if (actorId !== spokespersonId) return null
+
+  if (playerIsLoh && ['loh_results', 'social_1', 'nominations'].includes(phase)) {
+    const subjectId = bestStrategicTarget(game, actorId, getEligibleNominationTargets(game, playerId))
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_nomination_pitch',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'NOMINATION',
+      subjectId,
+    }
+  }
+
+  if (playerHasSafety && phase === 'pos_results') {
+    const subjectId = bestStrategicTarget(
+      game,
+      actorId,
+      getEligibleReplacementNominees(game, game.lohId)
+    )
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_safety_pitch',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'SAFETY',
+      subjectId,
+    }
+  }
+
+  if (
+    phase === 'social_2' &&
+    game.nomineeIds.length > 1 &&
+    !player.status.includes('nominated') &&
+    !playerIsLoh
+  ) {
+    const subjectId = chooseAiEvictionVote(
+      game,
+      actorId,
+      [...game.nomineeIds],
+      (game.seed ?? 0) ^ game.week
+    )
+    if (!subjectId) return null
+    return {
+      type: 'deal_offer',
+      scenarioKey: 'alliance_vote_pitch',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'VOTE',
+      subjectId,
+    }
+  }
+
+  return null
+}
+
 function fallbackInteractionPlan(
   phase: string,
   constraints: ActorConstraints,
@@ -505,16 +747,16 @@ function resolveIncomingInteractionPlan(
 
   const signals = buildRelationshipSignals(actorId, playerId, context)
   const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds
-  let plan: InteractionPlan | null = null
+  let plan: InteractionPlan | null = resolveAllianceInteractionPlan(actorId, playerId, context)
 
-  if (
+  if (!plan && (
     context.phase === 'pos_results' &&
     constraints.actorIsCurrentHoh &&
     constraints.playerHasSafetyPower
   ) {
     if (!shouldInitiateLohSafetyConsult(actorId, playerId, context)) return null
     plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
-  } else if (
+  }) else if (
     context.phase === 'pos_results' &&
     constraints.actorHasSafetyPower &&
     constraints.playerIsHoh &&
@@ -922,6 +1164,11 @@ export function evaluateIncomingInteractionEnqueueDecision(
     'safety_win_congratulations',
     'competition_low_finish_support',
     'competition_low_finish_taunt',
+    'alliance_nomination_pitch',
+    'alliance_safety_pitch',
+    'alliance_vote_pitch',
+    'alliance_power_nomination_huddle',
+    'alliance_power_safety_huddle',
   ])
   const baseScore = computeIncomingInteractionEngagementScore(
     actorId,
@@ -1410,6 +1657,9 @@ export function scheduleIncomingInteractionsForPhase(
     romanceEnabled: state.settings?.gameUX?.romanceStorylines !== false,
     intelligenceDeliveries:
       contextOverride?.intelligenceDeliveries ?? socialState.intelligenceDeliveries ?? [],
+    gameState:
+      contextOverride?.gameState ??
+      (gameState ? (gameState as unknown as GameState) : undefined),
     random:
       contextOverride?.random ??
       createDeterministicSocialRandom([gameState?.seed ?? 0, week, phase, playerId]),
@@ -1550,30 +1800,42 @@ export function scheduleIncomingInteractionsForPhase(
       pendingInteractions,
       context.random
     )
-    const subject = intelLead
-      ? context.players.find(
-          (candidate) =>
-            candidate.id === intelLead.fact.subjectIds[0] ||
-            candidate.id === intelLead.fact.objectId
-        )
-      : useVoxDrama
-        ? selectInteractionSubject(actor.id, playerId, plan.type, context)
-        : undefined
-    const subjectName = subject?.name ?? subject?.id
-    const interactionText = intelLead
-      ? formatIncomingIntel(
-          intelLead.fact,
-          context.players as Array<{ id: string; name: string }>,
-          playerId
-        )
-      : subjectName && (plan.type === 'gossip' || plan.type === 'warning')
-        ? getNamedInteractionText(
-            plan.scenarioKey,
-            plan.type,
-            subjectName,
-            `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`
+    const plannedSubject = plan.subjectId
+      ? context.players.find((candidate) => candidate.id === plan.subjectId)
+      : undefined
+    const subject = plannedSubject
+      ? plannedSubject
+      : intelLead
+        ? context.players.find(
+            (candidate) =>
+              candidate.id === intelLead.fact.subjectIds[0] ||
+              candidate.id === intelLead.fact.objectId
           )
-        : textResult.text
+        : useVoxDrama
+          ? selectInteractionSubject(actor.id, playerId, plan.type, context)
+          : undefined
+    const subjectName = subject?.name ?? subject?.id
+    const secondarySubjectName = plan.secondarySubjectId
+      ? getPlayerName(context, plan.secondarySubjectId, plan.secondarySubjectId)
+      : undefined
+    const interactionText = (
+      intelLead
+        ? formatIncomingIntel(
+            intelLead.fact,
+            context.players as Array<{ id: string; name: string }>,
+            playerId
+          )
+        : subjectName && (plan.type === 'gossip' || plan.type === 'warning')
+          ? getNamedInteractionText(
+              plan.scenarioKey,
+              plan.type,
+              subjectName,
+              `${actor.id}:${playerId}:${week}:${phase}:${textResult.variantId}`
+            )
+          : textResult.text
+    )
+      .replaceAll('{subject}', subjectName ?? 'that player')
+      .replaceAll('{secondary}', secondarySubjectName ?? 'another option')
     const interaction = createIncomingInteraction({
       id: generateInteractionId(),
       fromId: actor.id,
@@ -1590,6 +1852,15 @@ export function scheduleIncomingInteractionsForPhase(
         variantId: textResult.variantId,
         actorStatus: actor.status,
         subjectId: subject?.id,
+        ...(plan.secondarySubjectId ? { secondarySubjectId: plan.secondarySubjectId } : {}),
+        ...(plan.allianceId ? { allianceId: plan.allianceId } : {}),
+        ...(plan.allianceStrategyKind
+          ? { allianceStrategyKind: plan.allianceStrategyKind }
+          : {}),
+        ...(plan.allianceGroupMemberIds
+          ? { allianceGroupMemberIds: plan.allianceGroupMemberIds }
+          : {}),
+        ...(plan.allianceGroupHuddle ? { allianceGroupHuddle: true, groupScene: true } : {}),
         ...(intelLead
           ? {
               intelFactId: intelLead.fact.id,
