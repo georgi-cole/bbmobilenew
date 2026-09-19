@@ -97,9 +97,7 @@ function resolveRealityIncomingInteraction(
         ? interaction.payload.allianceStrategyKind
         : undefined
     const subjectId =
-      typeof interaction.payload?.subjectId === 'string'
-        ? interaction.payload.subjectId
-        : undefined
+      typeof interaction.payload?.subjectId === 'string' ? interaction.payload.subjectId : undefined
     const secondarySubjectId =
       typeof interaction.payload?.secondarySubjectId === 'string'
         ? interaction.payload.secondarySubjectId
