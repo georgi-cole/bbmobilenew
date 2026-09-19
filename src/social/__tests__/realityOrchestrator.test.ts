@@ -1000,6 +1000,59 @@ describe('Reality causal orchestration', () => {
     ).toBe(true)
   })
 
+  it('breaks only one overlapping pact instead of betraying every shared alliance', () => {
+    const domain = createInitialRealityDomainState()
+    const inner = createRealityAlliance(domain, {
+      id: 'inner-break-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: [],
+      purpose: 'Final two',
+      at: { day: 1, phase: 'social_1' },
+    })
+    inner.status = 'ACTIVE'
+    inner.memberCommitment.ava = 0.86
+    inner.memberCommitment.lia = 0.84
+
+    const outer = createRealityAlliance(domain, {
+      id: 'outer-shared-pact',
+      founderIds: ['ava', 'lia'],
+      memberIds: ['human'],
+      purpose: 'Control the middle',
+      at: { day: 2, phase: 'social_1' },
+    })
+    outer.status = 'ACTIVE'
+    const outerAvaCommitment = outer.memberCommitment.ava
+    const outerLiaCommitment = outer.memberCommitment.lia
+
+    const result = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(41),
+      opportunity: {
+        ...opportunity('break_alliance'),
+        context: { ...context, socialIntensity: 'REALITY' },
+      },
+    })
+
+    expect(result.domain.alliances[inner.id].status).toBe('DISSOLVED')
+    expect(result.domain.alliances[outer.id].status).toBe('ACTIVE')
+    expect(result.domain.alliances[outer.id].memberCommitment.ava).toBe(outerAvaCommitment)
+    expect(result.domain.alliances[outer.id].memberCommitment.lia).toBe(outerLiaCommitment)
+    expect(
+      result.domain.events.filter(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' &&
+          event.actorId === 'ava' &&
+          event.targetIds.includes('lia')
+      )
+    ).toHaveLength(1)
+    expect(
+      result.domain.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_BETRAYAL' && event.reason.includes(`:${outer.id}:`)
+      )
+    ).toBe(false)
+  })
+
   it('creates grievances and repair debt from live conflict actions', () => {
     const conflict = runRealityOpportunity({
       domain: createInitialRealityDomainState(),
