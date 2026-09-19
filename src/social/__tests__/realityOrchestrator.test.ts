@@ -454,7 +454,7 @@ describe('Reality causal orchestration', () => {
     ).toBe(true)
   })
 
-  it('keeps an accepted AI Safety huddle as save intel plus a fallback target', () => {
+  it('keeps an accepted AI Safety huddle as current pressure plus a fallback target', () => {
     const domain = createInitialRealityDomainState()
     const alliance = createRealityAlliance(domain, {
       id: 'safety-huddle',
@@ -540,12 +540,11 @@ describe('Reality causal orchestration', () => {
       allianceStrategyKind: 'SAFETY',
     })
 
-    expect(resolved.domain.alliances[alliance.id].currentTargetIds).toEqual(['mara'])
+    expect(resolved.domain.alliances[alliance.id].currentTargetIds).toEqual(['nova'])
     expect(resolved.domain.alliances[alliance.id].fallbackTargetIds).toEqual(['zoe'])
     expect(resolved.domain.alliances[alliance.id].memberPlanBeliefs.human).toEqual([
-      'target:mara',
+      'target:nova',
       'fallback:zoe',
-      'save:nova',
     ])
   })
 
