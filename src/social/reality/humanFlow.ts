@@ -864,6 +864,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
           at: { day: state.game.week, phase: state.game.phase },
           sourceEventId: orchestration.event.id,
           excusedAbsentIds: plan.excusedAbsentIds,
+          memberPlanBeliefs: plan.memberPlanBeliefs,
         })
         allianceConsultationSummary = plan.summary
       }
