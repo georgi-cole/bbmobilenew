@@ -44,7 +44,7 @@ describe('RiskWheelComp styles', () => {
     )
 
     expect(css).toContain('.rw-root--vip {')
-    expect(css).toContain("/assets/minigames/risk-wheel-vip/stage.webp")
+    expect(css).toContain('/assets/minigames/risk-wheel-vip/stage.webp')
     expect(css).toContain('.rw-wheel-sector--vip')
     expect(css).toContain('.rw-vip-result-halo')
     expect(source).toContain('premiumPresentation = false')
