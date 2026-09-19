@@ -34,6 +34,7 @@ import { createIncomingInteraction } from './incomingInteractionFactory'
 import { createDeterministicSocialRandom, validateSocialExecution } from './socialExecutionGuard'
 import { getPersistentSocialHistory, type SocialStateWithHistory } from './socialHistory'
 import { getEffectiveSocialMode } from './socialMode'
+import { getSocialResourceEffect } from './socialResourceEconomy'
 import { isIncomingInteractionActionable } from './socialRuntimeConfig'
 import type {
   DramaSocialNetwork,
@@ -223,6 +224,12 @@ function executeRealityCandidate(
     })
   }
   const costs = normalizeActionCosts(action, candidate.targetIds.length, dramaMode)
+  const compatibilityOutcome = result.event.outcome === 'SUCCESS' ? 'success' : 'failure'
+  const resourceEffect = getSocialResourceEffect(
+    action,
+    compatibilityOutcome,
+    candidate.targetIds.length
+  )
   const compatibilityDeltas = Object.fromEntries(
     candidate.targetIds.map((targetId) => [
       targetId,
@@ -240,8 +247,8 @@ function executeRealityCandidate(
       simulation: result.simulation,
       actorId: player.id,
       energyDelta: -costs.energy,
-      influenceDelta: costs.influence > 0 ? -costs.influence : 0,
-      infoDelta: costs.info > 0 ? -costs.info : 0,
+      influenceDelta: -costs.influence + resourceEffect.influence,
+      infoDelta: -costs.info + resourceEffect.info,
     })
   )
   const latestState = _store.getState() as DriverState
@@ -256,7 +263,7 @@ function executeRealityCandidate(
         cost: costs.energy,
         costs,
         delta: compatibilityDelta,
-        outcome: result.event.outcome === 'SUCCESS' ? 'success' : 'failure',
+        outcome: compatibilityOutcome,
         newEnergy: latestState.social.energyBank[player.id] ?? 0,
         balancesAfter: {
           energy: latestState.social.energyBank[player.id] ?? 0,
@@ -267,6 +274,16 @@ function executeRealityCandidate(
         week: state.game.week,
         phase: state.game.phase,
         source: 'system',
+        ...(resourceEffect.influence !== 0 || resourceEffect.info !== 0
+          ? {
+              yieldsApplied: {
+                ...(resourceEffect.influence !== 0
+                  ? { influence: resourceEffect.influence }
+                  : {}),
+                ...(resourceEffect.info !== 0 ? { info: resourceEffect.info } : {}),
+              },
+            }
+          : {}),
         score: result.score?.total,
         label: result.response?.kind ?? 'Resolved',
       },
