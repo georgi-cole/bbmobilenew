@@ -122,7 +122,7 @@ describe('adaptive Social first-use tutorial', () => {
     expect(upgradePrompt).toHaveAttribute('data-variant', 'reality-upgrade')
     expect(screen.getByText('Social just got deeper')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Quick tour' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show me' }))
 
     const upgradeTour = screen.getByTestId('reality-social-tutorial')
     expect(upgradeTour).toHaveAttribute('data-variant', 'reality-upgrade')
