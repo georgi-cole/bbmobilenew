@@ -347,7 +347,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     title: 'Consult Alliance',
     icon: '🗣️',
     description:
-      'Pull your alliance together for a private strategy huddle. Choose one member to identify which alliance you want to consult.',
+      'Call a private strategy huddle. Choose one ally and the active members of that shared alliance join the conversation.',
     category: 'strategic',
     kind: 'rapport',
     baseCost: { energy: 2 },
