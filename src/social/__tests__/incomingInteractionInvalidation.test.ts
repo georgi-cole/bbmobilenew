@@ -284,17 +284,19 @@ describe('incoming interaction invalidation', () => {
     otherNominee.status = 'nominated'
     game.nomineeIds = [nominee.id, otherNominee.id]
     game.cupidArrow = {
-      status: 'active',
       scheduledSeason: 1,
+      status: 'active',
       activatedSeason: 1,
+      activatedWeek: game.week,
       pairs: [
         {
           id: 'cupid-test-pair',
           memberIds: [nominee.id, loh.id],
+          color: '#ffffff',
         },
       ],
-      brokenPairIds: [],
-      revealedPairIds: [],
+      eliminatedPairCount: 0,
+      pendingPartnerEvictionId: null,
       visualsRevealed: true,
     }
 
