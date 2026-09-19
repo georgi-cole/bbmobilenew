@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -23,6 +23,34 @@ describe('RiskWheelComp styles', () => {
     expect(dvhIndex).toBeGreaterThan(vhIndex)
     expect(rootRuleBody).toContain('overflow-y: auto;')
     expect(rootRuleBody).toContain('-webkit-overflow-scrolling: touch;')
+  })
+
+  it('keeps VIP presentation additive and lightweight', () => {
+    const css = readFileSync(
+      resolve(process.cwd(), 'src/components/RiskWheelComp/RiskWheelComp.css'),
+      'utf8'
+    )
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/RiskWheelComp/RiskWheelComp.tsx'),
+      'utf8'
+    )
+    const host = readFileSync(
+      resolve(process.cwd(), 'src/components/MinigameHost/MinigameHost.tsx'),
+      'utf8'
+    )
+    const stagePath = resolve(
+      process.cwd(),
+      'public/assets/minigames/risk-wheel-vip/stage.webp'
+    )
+
+    expect(css).toContain('.rw-root--vip {')
+    expect(css).toContain("/assets/minigames/risk-wheel-vip/stage.webp")
+    expect(css).toContain('.rw-wheel-sector--vip')
+    expect(css).toContain('.rw-vip-result-halo')
+    expect(source).toContain('premiumPresentation = false')
+    expect(source).toContain("premiumPresentation ? ' rw-root--vip' : ''")
+    expect(host).toContain('premiumPresentation={hasPremiumChallengesAccess}')
+    expect(statSync(stagePath).size).toBeLessThan(50_000)
   })
 
   it('includes the larger wheel, smaller spin button, and wheel highlight states', () => {
