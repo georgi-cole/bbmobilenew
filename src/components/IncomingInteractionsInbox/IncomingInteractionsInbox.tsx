@@ -49,6 +49,11 @@ import {
   isIncomingInteractionUrgent,
 } from '../../social/incomingInteractionDeadline'
 import PlayerAvatar from '../PlayerAvatar/PlayerAvatar'
+import ContextualGuidePrompt from '../../onboarding/ContextualGuidePrompt'
+import {
+  hasSeenContextualGuide,
+  markContextualGuideSeen,
+} from '../../onboarding/contextualGuidePreference'
 import IncomingInteractionIcon from './IncomingInteractionIcon'
 import './IncomingInteractionsInbox.css'
 
@@ -362,8 +367,11 @@ export default function IncomingInteractionsInbox() {
   const dramaNetwork = useAppSelector(selectDramaNetwork)
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
+  const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
   const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())
+  const [, refreshContextualGuides] = useState(0)
 
   const players = game.players
   const currentWeek = game.week ?? 1
@@ -440,6 +448,25 @@ export default function IncomingInteractionsInbox() {
     openInteractions.length === 0
       ? 'All caught up'
       : `${openInteractions.length} open conversation${openInteractions.length === 1 ? '' : 's'}`
+
+  const hasSeenIncomingGuide = hasSeenContextualGuide('incoming', activeProfileId, isGuest)
+  const hasSeenPromiseGuide = hasSeenContextualGuide('promise', activeProfileId, isGuest)
+  const hasMeaningfulIncoming =
+    globalDramaMode && openInteractions.some(({ policy }) => policy === 'required')
+  const hasHumanPromise =
+    globalDramaMode &&
+    Boolean(
+      humanPlayer &&
+        pendingCommitments.some((commitment) => commitment.promisorId === humanPlayer.id)
+    )
+  const showIncomingContextGuide = open && hasMeaningfulIncoming && !hasSeenIncomingGuide
+  const showPromiseContextGuide =
+    open && hasHumanPromise && !showIncomingContextGuide && !hasSeenPromiseGuide
+
+  const dismissContextualGuide = (guide: 'incoming' | 'promise') => {
+    markContextualGuideSeen(guide, activeProfileId, isGuest)
+    refreshContextualGuides((revision) => revision + 1)
+  }
 
   useEffect(() => {
     if (!open || socialModuleAvailability.canOpen) return
@@ -602,6 +629,22 @@ export default function IncomingInteractionsInbox() {
           )}
         </div>
       </div>
+      {showIncomingContextGuide && (
+        <ContextualGuidePrompt
+          eyebrow="INCOMING"
+          title="They came to you"
+          body="Incoming is driven by the other players. Your response can change the relationship — and some conversations can create commitments that matter later."
+          onComplete={() => dismissContextualGuide('incoming')}
+        />
+      )}
+      {showPromiseContextGuide && (
+        <ContextualGuidePrompt
+          eyebrow="PROMISE"
+          title="You made a promise"
+          body="This commitment will be judged when the relevant game decision happens. Keeping or breaking it can affect trust and your reputation. You can review active promises here in Incoming."
+          onComplete={() => dismissContextualGuide('promise')}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Player } from '../../types'
 import { buildSocialStoryStream, type SocialStoryBeat } from '../../social/socialStoryStream'
@@ -163,6 +163,31 @@ export default function HousePulse({
 }: HousePulseProps) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<PulseTab>('stream')
+
+  useEffect(() => {
+    const openPulse = () => {
+      setTab('stream')
+      setOpen(true)
+    }
+    const closePulse = () => setOpen(false)
+    const setPulseTab = (event: Event) => {
+      const nextTab = (event as CustomEvent<string>).detail
+      if (nextTab === 'stream' || nextTab === 'ledger') {
+        setTab(nextTab)
+        setOpen(true)
+      }
+    }
+
+    window.addEventListener('reality-social-tutorial:open-pulse', openPulse)
+    window.addEventListener('reality-social-tutorial:close-pulse', closePulse)
+    window.addEventListener('reality-social-tutorial:set-pulse-tab', setPulseTab)
+    return () => {
+      window.removeEventListener('reality-social-tutorial:open-pulse', openPulse)
+      window.removeEventListener('reality-social-tutorial:close-pulse', closePulse)
+      window.removeEventListener('reality-social-tutorial:set-pulse-tab', setPulseTab)
+    }
+  }, [])
+
   const playerName = useCallback(
     (id: string) => players.find((player) => player.id === id)?.name ?? 'Unknown',
     [players]
@@ -279,7 +304,10 @@ export default function HousePulse({
           ))}
         </nav>
 
-        <div className="house-pulse__content">
+        <div
+          className="house-pulse__content"
+          data-reality-tutorial={tab === 'stream' ? 'pulse-stream' : undefined}
+        >
           {tab === 'stream' &&
             (storyBeats.length ? (
               storyBeats.map((beat) => (
@@ -406,6 +434,7 @@ export default function HousePulse({
       <button
         type="button"
         className="house-pulse__summary"
+        data-reality-tutorial="pulse-summary"
         onClick={() => {
           setTab('stream')
           setOpen(true)

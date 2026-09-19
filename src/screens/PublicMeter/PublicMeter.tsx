@@ -17,6 +17,11 @@ import {
 import type { Player } from '../../types'
 import { isEmoji, resolveAvatarCandidates } from '../../utils/avatar'
 import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
+import ContextualGuidePrompt from '../../onboarding/ContextualGuidePrompt'
+import {
+  hasSeenContextualGuide,
+  markContextualGuideSeen,
+} from '../../onboarding/contextualGuidePreference'
 import { createAudienceRequestStory } from '../../publicOpinion/publicRequestNarratives'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import './PublicMeter.css'
@@ -371,12 +376,15 @@ export default function PublicMeter() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [, refreshContextualGuides] = useState(0)
   const publicOpinion = useAppSelector(selectPublicOpinion)
   const rankedProfiles = useAppSelector(selectRankedProfiles)
   const feed = useAppSelector(selectPublicFeed)
   const allDirections = useAppSelector(selectAllDirections)
 
   const game = useAppSelector((s) => s.game)
+  const activeProfileId = useAppSelector((s) => s.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((s) => s.profiles?.isGuest ?? false)
   const isVoxPopuli = game.voxPopuli?.status === 'active'
   const userPlayer = game.players.find((p) => p.isUser)
   const userProfile = userPlayer ? publicOpinion.profiles[userPlayer.id] : undefined
@@ -406,6 +414,14 @@ export default function PublicMeter() {
         : 0,
     [allDirections, userPlayer]
   )
+
+  const hasSeenPublicRequestGuide = hasSeenContextualGuide(
+    'public-request',
+    activeProfileId,
+    isGuest
+  )
+  const showPublicRequestGuide =
+    game.publicModeEnabled === true && userActiveDirections.length > 0 && !hasSeenPublicRequestGuide
 
   const hasProfiles = Object.keys(publicOpinion.profiles).length > 0
   const selectedProfile = selectedPlayerId ? publicOpinion.profiles[selectedPlayerId] : undefined
@@ -813,6 +829,18 @@ export default function PublicMeter() {
             </div>
           )}
         </div>
+      )}
+
+      {showPublicRequestGuide && (
+        <ContextualGuidePrompt
+          eyebrow="PUBLIC REQUEST"
+          title="The audience wants something"
+          body="Public requests give you a direction to pursue. Following one can improve your standing, but you still decide how — or whether — to respond."
+          onComplete={() => {
+            markContextualGuideSeen('public-request', activeProfileId, isGuest)
+            refreshContextualGuides((revision) => revision + 1)
+          }}
+        />
       )}
 
       {selectedProfile && (

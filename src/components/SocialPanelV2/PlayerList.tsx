@@ -37,6 +37,8 @@ interface PlayerListProps {
   multiSelect?: boolean
   /** Active Cupid's Arrow partner information, keyed by roster player ID. */
   cupidPartners?: Record<string, { name: string; color: string; isYourPartner: boolean }>
+  /** Reality Mode hides the reverse housemate→human edge as private information. */
+  playerLimitedRead?: boolean
 }
 
 function selectCurrentSocialInvitation() {
@@ -75,6 +77,7 @@ export default function PlayerList({
   relationshipPulseDeltas,
   multiSelect = false,
   cupidPartners,
+  playerLimitedRead = false,
 }: PlayerListProps) {
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(new Set())
   const lastFocusedIndexRef = useRef<number>(-1)
@@ -177,21 +180,26 @@ export default function PlayerList({
         const disabled = disabledIds.includes(player.id)
         const isSelected = displaySelectedIds.has(player.id)
 
-        // Affinity: the human's perception of this player (human → player relationship).
         let affinity: number | undefined
         let relationshipTags: string[] = []
         if (humanPlayerId && relationships) {
-          const outward = relationships[humanPlayerId]?.[player.id]?.affinity
-          const inward = relationships[player.id]?.[humanPlayerId]?.affinity
-          if (outward !== undefined || inward !== undefined) {
-            affinity = Math.round(((outward ?? 0) + (inward ?? 0)) / 2)
+          const outward = relationships[humanPlayerId]?.[player.id]
+          const inward = relationships[player.id]?.[humanPlayerId]
+          if (playerLimitedRead) {
+            // Reality Social is a player-limited read. The reverse
+            // housemate → human edge is private state and must not leak into
+            // the visible score, ring, label or directional tags.
+            affinity = outward?.affinity
+            relationshipTags = [...(outward?.tags ?? [])]
+          } else {
+            // Preserve Normal Social's established mutual-summary presentation.
+            if (outward?.affinity !== undefined || inward?.affinity !== undefined) {
+              affinity = Math.round(((outward?.affinity ?? 0) + (inward?.affinity ?? 0)) / 2)
+            }
+            relationshipTags = Array.from(
+              new Set([...(outward?.tags ?? []), ...(inward?.tags ?? [])])
+            )
           }
-          relationshipTags = Array.from(
-            new Set([
-              ...(relationships[humanPlayerId]?.[player.id]?.tags ?? []),
-              ...(relationships[player.id]?.[humanPlayerId]?.tags ?? []),
-            ])
-          )
         }
 
         return (

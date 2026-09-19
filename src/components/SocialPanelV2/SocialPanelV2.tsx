@@ -41,6 +41,21 @@ import type { PublicDirection } from '../../publicOpinion/types'
 import { getPublicRequestProgressStage } from '../../publicOpinion/publicRequestProgress'
 import IntelLeads from './IntelLeads'
 import { getRelationshipLabel } from './relationshipUtils'
+import RealitySocialTutorialTour, {
+  RealitySocialTutorialPrompt,
+} from '../../onboarding/RealitySocialTutorialTour'
+import ContextualGuidePrompt from '../../onboarding/ContextualGuidePrompt'
+import {
+  hasSeenContextualGuide,
+  markContextualGuideSeen,
+} from '../../onboarding/contextualGuidePreference'
+import {
+  armRealityUpgradeTutorial,
+  markSocialTutorialHandled,
+  resolveSocialTutorialVariant,
+  subscribeTutorialPreferenceChanges,
+  type SocialTutorialVariant,
+} from '../../onboarding/tutorialGuidePreference'
 import './SocialPanelV2.css'
 
 const EXECUTE_REENTRY_GUARD_MS = 250
@@ -139,6 +154,8 @@ export default function SocialPanelV2() {
   const settings = useAppSelector((state) => state.settings)
   const vip = useAppSelector((state) => state.vip)
   const socialState = useAppSelector((state) => state.social)
+  const activeProfileId = useAppSelector((state) => state.profiles?.activeProfileId ?? null)
+  const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const energyBank = useAppSelector(selectEnergyBank)
   const influenceBank = useAppSelector(selectInfluenceBank)
   const infoBank = useAppSelector(selectInfoBank)
@@ -159,6 +176,13 @@ export default function SocialPanelV2() {
   )
 
   const humanPlayer = game.players.find((player) => player.isUser)
+  const memberAllianceExists = useMemo(() => {
+    if (!dramaMode || !humanPlayer) return false
+    return Object.values(socialState.reality?.alliances ?? {}).some(
+      (alliance) =>
+        alliance.memberIds.includes(humanPlayer.id) && alliance.status !== 'DISSOLVED'
+    )
+  }, [dramaMode, humanPlayer, socialState.reality?.alliances])
   const activePublicDirection = useMemo(
     () =>
       game.publicModeEnabled && humanPlayer
@@ -217,6 +241,35 @@ export default function SocialPanelV2() {
   const [moveFilter, setMoveFilter] = useState<(typeof MOVE_FILTERS)[number]['id']>('all')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executing, setExecuting] = useState(false)
+  const [socialTutorialVariant, setSocialTutorialVariant] =
+    useState<SocialTutorialVariant | null>(() =>
+      socialPanelOpen
+        ? resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode)
+        : null
+    )
+  const [socialTutorialTourOpen, setSocialTutorialTourOpen] = useState(false)
+  const [, refreshContextualGuides] = useState(0)
+
+  useEffect(() => {
+    if (!socialPanelOpen) {
+      setSocialTutorialVariant(null)
+      setSocialTutorialTourOpen(false)
+      return
+    }
+    if (dramaMode) armRealityUpgradeTutorial(activeProfileId, isGuest)
+    setSocialTutorialVariant(resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode))
+    setSocialTutorialTourOpen(false)
+  }, [activeProfileId, dramaMode, isGuest, socialPanelOpen])
+
+  useEffect(
+    () =>
+      subscribeTutorialPreferenceChanges(() => {
+        if (!socialPanelOpen) return
+        setSocialTutorialVariant(resolveSocialTutorialVariant(activeProfileId, isGuest, dramaMode))
+      }),
+    [activeProfileId, dramaMode, isGuest, socialPanelOpen]
+  )
+
   const publicFocus = useMemo(() => {
     if (!activePublicDirection || !humanPlayer) return null
     const relatedId = activePublicDirection.relatedPlayerId
@@ -900,27 +953,80 @@ export default function SocialPanelV2() {
     ? (game.players.find((player) => player.id === focusedTargetId) ?? null)
     : null
   const focusedOutward = focusedPlayer
-    ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.affinity
+    ? relationships?.[humanPlayer.id]?.[focusedPlayer.id]
     : undefined
   const focusedInward = focusedPlayer
-    ? relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.affinity
+    ? relationships?.[focusedPlayer.id]?.[humanPlayer.id]
     : undefined
-  const focusedAffinity =
-    focusedOutward !== undefined || focusedInward !== undefined
-      ? Math.round(((focusedOutward ?? 0) + (focusedInward ?? 0)) / 2)
+  const focusedAffinity = dramaMode
+    ? focusedOutward?.affinity
+    : focusedOutward?.affinity !== undefined || focusedInward?.affinity !== undefined
+      ? Math.round(((focusedOutward?.affinity ?? 0) + (focusedInward?.affinity ?? 0)) / 2)
       : undefined
   const focusedRelationship =
     focusedAffinity === undefined ? null : getRelationshipLabel(focusedAffinity)
   const focusedTags = focusedPlayer
-    ? Array.from(
-        new Set([
-          ...(relationships?.[humanPlayer.id]?.[focusedPlayer.id]?.tags ?? []),
-          ...(relationships?.[focusedPlayer.id]?.[humanPlayer.id]?.tags ?? []),
-        ])
+    ? (dramaMode
+        ? [...(focusedOutward?.tags ?? [])]
+        : Array.from(new Set([...(focusedOutward?.tags ?? []), ...(focusedInward?.tags ?? [])]))
       ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
+  const hasSeenAllianceGuide = hasSeenContextualGuide('alliance', activeProfileId, isGuest)
+  const hasSeenAllianceConsultGuide = hasSeenContextualGuide(
+    'alliance-consult',
+    activeProfileId,
+    isGuest
+  )
+
+  const dismissContextualGuide = (guide: 'alliance' | 'alliance-consult') => {
+    markContextualGuideSeen(guide, activeProfileId, isGuest)
+    refreshContextualGuides((revision) => revision + 1)
+  }
+
   const executeCopy = 'Execute'
+  const showSocialTutorialPrompt =
+    socialTutorialVariant !== null && socialPanelOpen && !socialTutorialTourOpen
+  const showSocialTutorialTour =
+    socialTutorialVariant !== null && socialPanelOpen && socialTutorialTourOpen
+  const showAllianceContextGuide =
+    dramaMode &&
+    socialPanelOpen &&
+    socialTutorialVariant === null &&
+    !socialTutorialTourOpen &&
+    memberAllianceExists &&
+    !hasSeenAllianceGuide
+  const showAllianceConsultGuide =
+    dramaMode &&
+    socialPanelOpen &&
+    socialTutorialVariant === null &&
+    !socialTutorialTourOpen &&
+    !showAllianceContextGuide &&
+    selectedActionId === 'consult_alliance' &&
+    !hasSeenAllianceConsultGuide
+
+  const clearRealityTutorialTarget = () => {
+    resetPanelSelection()
+    setMoveFilter('all')
+  }
+
+  const ensureRealityTutorialTarget = () => {
+    if (primaryTargetId || selectedTargets.size > 0) return
+    const sample = orderedPlayers.find((player) => !disabledPlayerIds.includes(player.id))
+    if (!sample) return
+    setPrimaryTargetId(sample.id)
+    setSelectedTargets(new Set([sample.id]))
+    setSelectedActionId(null)
+    setSelectedSubjectId(null)
+    setFeedbackMsg(null)
+  }
+
+  const completeSocialTutorial = () => {
+    if (!socialTutorialVariant) return
+    markSocialTutorialHandled(activeProfileId, isGuest, socialTutorialVariant)
+    setSocialTutorialVariant(null)
+    setSocialTutorialTourOpen(false)
+  }
 
   return (
     <div className="sp2-backdrop" role="dialog" aria-modal="true" aria-label="Social Phase">
@@ -928,13 +1034,14 @@ export default function SocialPanelV2() {
         Skip to actions
       </a>
       <div className={`sp2-modal${dramaMode ? ' sp2-modal--drama' : ' sp2-modal--normal'}`}>
-        <header className="sp2-header">
+        <header className="sp2-header" data-reality-tutorial="social-header">
           <span className="sp2-header__identity">
             <span className="sp2-header__title">{dramaMode ? 'Reality Mode' : 'Social Phase'}</span>
             <span className="sp2-header__subtitle">House relationships</span>
           </span>
           <div
             className={`sp2-header__resources${dramaMode ? '' : ' sp2-header__resources--normal'}`}
+            data-reality-tutorial="resources"
           >
             <span className="sp2-energy-chip" aria-live="polite" aria-label={`Energy: ${energy}`}>
               ⚡ {energy}
@@ -1017,7 +1124,11 @@ export default function SocialPanelV2() {
         </div>
 
         <div id="sp2-body" className="sp2-body">
-          <section className="sp2-hubmates" aria-label="Player roster">
+          <section
+            className="sp2-hubmates"
+            aria-label="Player roster"
+            data-reality-tutorial="hubmates"
+          >
             <div className="sp2-section-heading">
               <span>
                 <span className="sp2-section-heading__eyebrow">Private lounge</span>
@@ -1061,10 +1172,14 @@ export default function SocialPanelV2() {
               relationshipPulseDeltas={relationshipPulseDeltas}
               multiSelect={usesMultipleTargets}
               cupidPartners={cupidPartners}
+              playerLimitedRead={dramaMode}
             />
           </section>
 
-          <section className={`sp2-focus${focusedPlayer ? ' sp2-focus--active' : ''}`}>
+          <section
+            className={`sp2-focus${focusedPlayer ? ' sp2-focus--active' : ''}`}
+            data-reality-tutorial="relationship-read"
+          >
             {focusedPlayer ? (
               <>
                 <div className="sp2-focus__portrait">
@@ -1123,7 +1238,11 @@ export default function SocialPanelV2() {
             )}
           </section>
 
-          <section className="sp2-moves" aria-label="Social actions">
+          <section
+            className="sp2-moves"
+            aria-label="Social actions"
+            data-reality-tutorial="actions"
+          >
             <div className="sp2-moves__heading">
               <div>
                 <span className="sp2-section-heading__eyebrow">Your move</span>
@@ -1233,7 +1352,7 @@ export default function SocialPanelV2() {
           />
         </div>
 
-        <footer className="sp2-footer">
+        <footer className="sp2-footer" data-reality-tutorial="footer">
           {feedbackMsg ? (
             <span className="sp2-footer__feedback" role="status" aria-live="polite">
               {feedbackMsg}
@@ -1261,6 +1380,37 @@ export default function SocialPanelV2() {
           </button>
         </footer>
       </div>
+      {showSocialTutorialPrompt && socialTutorialVariant && (
+        <RealitySocialTutorialPrompt
+          variant={socialTutorialVariant}
+          onStart={() => setSocialTutorialTourOpen(true)}
+          onSkip={completeSocialTutorial}
+        />
+      )}
+      {showSocialTutorialTour && socialTutorialVariant && (
+        <RealitySocialTutorialTour
+          variant={socialTutorialVariant}
+          onClearTarget={clearRealityTutorialTarget}
+          onEnsureTarget={ensureRealityTutorialTarget}
+          onComplete={completeSocialTutorial}
+        />
+      )}
+      {showAllianceContextGuide && (
+        <ContextualGuidePrompt
+          eyebrow="ALLIANCE"
+          title="You're in an alliance"
+          body="Alliances have their own cohesion and secrecy. Your choices — and your allies' choices — can strengthen or strain the group. You can review it in My Game → House."
+          onComplete={() => dismissContextualGuide('alliance')}
+        />
+      )}
+      {showAllianceConsultGuide && (
+        <ContextualGuidePrompt
+          eyebrow="ALLIANCE MOVE"
+          title="Consult the alliance"
+          body="Ask your allies what they think before a major move. If most of the alliance agrees, that choice becomes the group's plan. Following or deliberately breaking it can affect the alliance."
+          onComplete={() => dismissContextualGuide('alliance-consult')}
+        />
+      )}
     </div>
   )
 }

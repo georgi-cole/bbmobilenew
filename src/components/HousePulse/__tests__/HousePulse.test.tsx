@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { createInitialDramaSocialNetwork } from '../../../social/dramaModeEngine'
 import { createInitialRealityDomainState } from '../../../social/reality'
@@ -35,6 +35,46 @@ describe('HousePulse', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'My Game' }))
     expect(screen.getByText('Your private game read')).toBeInTheDocument()
+  })
+
+  it('responds to the Reality Social tutorial navigation events', () => {
+    render(
+      <HousePulse
+        network={createInitialDramaSocialNetwork()}
+        players={players}
+        humanId="human"
+        actionHistory={[]}
+        relationships={{}}
+        weekStartRelSnapshot={{}}
+        currentWeek={2}
+        reality={createInitialRealityDomainState()}
+      />
+    )
+
+    act(() => {
+      window.dispatchEvent(new Event('reality-social-tutorial:open-pulse'))
+    })
+    expect(screen.getByRole('dialog', { name: 'My Pulse' })).toBeInTheDocument()
+    expect(screen.getByText(/major developments will appear here/i)).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('reality-social-tutorial:set-pulse-tab', { detail: 'ledger' })
+      )
+    })
+    expect(screen.getByText('Your private game read')).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('reality-social-tutorial:set-ledger-tab', { detail: 'house' })
+      )
+    })
+    expect(screen.getByText('Your groups and open stories')).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(new Event('reality-social-tutorial:close-pulse'))
+    })
+    expect(screen.queryByRole('dialog', { name: 'My Pulse' })).toBeNull()
   })
 
   it('presents a causal stream, continuing stories and concrete intel known to the player', () => {

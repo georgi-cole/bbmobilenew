@@ -4,9 +4,10 @@ import GameBackButton from '../../components/ui/GameBackButton/GameBackButton'
 import ConfirmExitModal from '../../components/ConfirmExitModal/ConfirmExitModal'
 import { FEATURE_LOCALIZATION_SETTINGS } from '../../config/featureFlags'
 import {
-  isSeasonTutorialEnabled,
-  setSeasonTutorialEnabled,
-} from '../../onboarding/seasonTutorialPreference'
+  isTutorialReplayEnabled,
+  setTutorialReplayEnabled,
+  subscribeTutorialPreferenceChanges,
+} from '../../onboarding/tutorialGuidePreference'
 import { useAppDispatch, useAppSelector } from '../../store/hooks'
 import type { AppDispatch } from '../../store/store'
 import {
@@ -112,7 +113,7 @@ export default function Settings() {
   const [lockedFeature, setLockedFeature] = useState<LockedFeature | null>(null)
   const [publicModeNotice, setPublicModeNotice] = useState<boolean | null>(null)
   const [tutorialEnabled, setTutorialEnabled] = useState(() =>
-    isSeasonTutorialEnabled(activeProfileId, isGuest)
+    isTutorialReplayEnabled(activeProfileId, isGuest)
   )
 
   const themeOptions: DropdownItem['options'] = [
@@ -304,7 +305,10 @@ export default function Settings() {
   }, [dispatch, realityAgeEligibility, settings.gameUX.realityModePreset])
 
   useEffect(() => {
-    setTutorialEnabled(isSeasonTutorialEnabled(activeProfileId, isGuest))
+    const syncTutorialToggle = () =>
+      setTutorialEnabled(isTutorialReplayEnabled(activeProfileId, isGuest))
+    syncTutorialToggle()
+    return subscribeTutorialPreferenceChanges(syncTutorialToggle)
   }, [activeProfileId, isGuest])
 
   function renderItem(item: SettingItem) {
@@ -446,23 +450,25 @@ export default function Settings() {
             {section.items.map(renderItem)}
           </section>
         ))}
-        <div className="settings-row">
-          <label className="settings-row__label" htmlFor="setting-replay-tutorial">
-            Replay tutorial
-          </label>
-          <input
-            id="setting-replay-tutorial"
-            type="checkbox"
-            className="settings-toggle"
-            checked={tutorialEnabled}
-            disabled={isGuest}
-            onChange={(event) => {
-              const enabled = event.target.checked
-              setSeasonTutorialEnabled(activeProfileId, isGuest, enabled)
-              setTutorialEnabled(isGuest ? true : enabled)
-            }}
-            aria-label="Toggle Replay tutorial"
-          />
+        <div className="settings-row settings-row--col">
+          <div className="settings-row settings-row--nested">
+            <label className="settings-row__label" htmlFor="setting-replay-tutorial">
+              Replay tutorials
+            </label>
+            <input
+              id="setting-replay-tutorial"
+              type="checkbox"
+              className="settings-toggle"
+              checked={tutorialEnabled}
+              onChange={(event) => {
+                const enabled = event.target.checked
+                setTutorialReplayEnabled(activeProfileId, isGuest, enabled)
+                setTutorialEnabled(enabled)
+              }}
+              aria-label="Toggle Replay tutorials"
+            />
+          </div>
+          <p className="settings-helper-text">Turn off and on to replay the guides.</p>
         </div>
         <button
           type="button"
