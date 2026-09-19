@@ -302,6 +302,57 @@ describe('Reality alliance consultation economy', () => {
     expect(store.getState().social.reality.alliances[alliance.id].currentTargetIds).toEqual(['p4'])
   })
 
+  it('does not charge energy when an alliance huddle has no valid outside target', () => {
+    const initialGame = gameReducer(undefined, { type: '@@test/init' })
+    const players = [
+      { id: 'p1', name: 'P1', status: 'loh' as const, isUser: true },
+      { id: 'p2', name: 'P2', status: 'active' as const },
+      { id: 'p3', name: 'P3', status: 'active' as const },
+    ]
+    const store = configureStore({
+      reducer: { game: gameReducer, social: socialReducer, settings: settingsReducer },
+      preloadedState: {
+        game: {
+          ...initialGame,
+          players,
+          week: 2,
+          phase: 'social_1',
+          lohId: 'p1',
+        },
+      } as never,
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(socialMiddleware),
+    })
+    store.dispatch(setGameUX({ dramaMode: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 5 }))
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'all-in-house-alliance',
+      founderIds: ['p1', 'p2'],
+      memberIds: ['p3'],
+      purpose: 'Mutual protection',
+      at: { day: 1, phase: 'social_1' },
+    })
+    alliance.status = 'ACTIVE'
+    store.dispatch(replaceRealityDomain(reality))
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'consult_alliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.success).toBe(false)
+    expect(result.summary).toMatch(/no useful alliance strategy question/i)
+    expect(result.newEnergy).toBe(5)
+    expect(store.getState().social.energyBank.p1).toBe(5)
+    expect(
+      store
+        .getState()
+        .social.reality.events.filter((event) => event.type === 'ALLIANCE_STRATEGY_MEETING')
+    ).toHaveLength(0)
+  })
+
   it('does not charge energy for repeating the same alliance agenda on the same day', () => {
     const initialGame = gameReducer(undefined, { type: '@@test/init' })
     const players = [
