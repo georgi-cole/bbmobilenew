@@ -70,6 +70,8 @@ describe('Drama social content system', () => {
       'alliance_nomination_pitch',
       'alliance_safety_pitch',
       'alliance_vote_pitch',
+      'alliance_power_nomination_huddle',
+      'alliance_power_safety_huddle',
     ]) {
       const choices = getDramaResponseBlueprint(
         'deal_offer',
