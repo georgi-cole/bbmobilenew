@@ -507,6 +507,7 @@ function pickHumanFacingText(
   week: number,
   phase: string,
   subjectName?: string,
+  secondarySubjectName?: string,
   scenarioOverride?: string
 ): { text: string; scenarioKey: string; variantFamilyId: string; variantId: string } {
   const scenarioKey = scenarioOverride ?? getHumanFacingActionScenario(actionId)
@@ -525,7 +526,8 @@ function pickHumanFacingText(
     return {
       text: text
         .replaceAll('{player}', playerName)
-        .replaceAll('{subject}', subjectName ?? 'that player'),
+        .replaceAll('{subject}', subjectName ?? 'that player')
+        .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
       scenarioKey,
       variantFamilyId: familyId,
       variantId,
@@ -535,7 +537,8 @@ function pickHumanFacingText(
   return {
     text: text
       .replaceAll('{player}', playerName)
-      .replaceAll('{subject}', subjectName ?? 'that player'),
+      .replaceAll('{subject}', subjectName ?? 'that player')
+        .replaceAll('{secondary}', secondarySubjectName ?? 'another option'),
     scenarioKey,
     variantFamilyId: `legacy_background_${actionId}`,
     variantId: `legacy_background_${actionId}:${variants.indexOf(text)}`,
@@ -609,6 +612,9 @@ function routeHumanFacingAction(
   const subjectName = subjectId
     ? current.game.players.find((player) => player.id === subjectId)?.name
     : undefined
+  const secondarySubjectName = secondarySubjectId
+    ? current.game.players.find((player) => player.id === secondarySubjectId)?.name
+    : undefined
   const content = pickHumanFacingText(
     actionId,
     actorId,
@@ -616,6 +622,7 @@ function routeHumanFacingAction(
     week,
     phase,
     subjectName,
+    secondarySubjectName,
     scenarioOverride ??
       (strategicPitchAction && !isAllianceStrategyContact ? `strategy_${actionId}` : undefined)
   )
