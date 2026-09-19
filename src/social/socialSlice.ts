@@ -566,10 +566,12 @@ const socialSlice = createSlice({
       ) {
         return
       }
+      const name = action.payload.name.trim()
+      if (name.length < 2) return
       applyRealityAllianceRename(reality, {
         allianceId: action.payload.allianceId,
         actorId: action.payload.actorId,
-        name: action.payload.name,
+        name,
         at: { day: action.payload.day, phase: action.payload.phase },
       })
     },
