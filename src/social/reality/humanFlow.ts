@@ -1067,6 +1067,12 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
             outcome: resolvedAsSuccess ? 'success' : 'failure',
+            targetOutcomes: Object.fromEntries(
+              executionTargetIds.map((targetId) => [
+                targetId,
+                targetCompatibilitySucceeded(targetId) ? 'success' : 'failure',
+              ])
+            ),
             costOverride: executionCosts,
           })
         : direction === 'GROUP'
