@@ -603,6 +603,9 @@ function resolveAllianceInteractionPlan(
   const playerHasSafety =
     game.posWinnerId === playerId || getCupidPartnerId(game, game.posWinnerId) === playerId
   const activeMembers = activeAllianceMembers(alliance, context)
+  // Never infer the human player's strategic preference from AI scoring.
+  // The human contributes through the actual response to the incoming huddle.
+  const activeStrategists = activeMembers.filter((id) => id !== playerId)
   const spokespersonId = allianceSpokespersonId(alliance, playerId, context)
   const phase = context.phase
 
@@ -614,7 +617,7 @@ function resolveAllianceInteractionPlan(
     const candidates = getEligibleNominationTargets(game, actorId).filter(
       (candidate) => !alliance.memberIds.includes(candidate.id)
     )
-    const subjectId = allianceConsensusTarget(game, activeMembers, candidates)
+    const subjectId = allianceConsensusTarget(game, activeStrategists, candidates)
     if (!subjectId) return null
     return {
       type: 'deal_offer',
@@ -633,11 +636,11 @@ function resolveAllianceInteractionPlan(
         game.nomineeIds.includes(candidate.id) && !alliance.memberIds.includes(candidate.id)
     )
     if (nominees.length === 0) return null
-    const subjectId = allianceConsensusTarget(game, activeMembers, nominees)
+    const subjectId = allianceConsensusTarget(game, activeStrategists, nominees)
     const replacements = getEligibleReplacementNominees(game, game.lohId).filter(
       (candidate) => !alliance.memberIds.includes(candidate.id)
     )
-    const secondarySubjectId = allianceConsensusTarget(game, activeMembers, replacements)
+    const secondarySubjectId = allianceConsensusTarget(game, activeStrategists, replacements)
     if (!subjectId) return null
     return {
       type: 'deal_offer',
