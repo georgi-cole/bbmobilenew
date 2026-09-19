@@ -267,11 +267,7 @@ function applyRealityLifecycle(input: {
         }
       }
     }
-  } else if (
-    action.id === 'ask_use_safety' &&
-    subjectId &&
-    acceptedTargets.length > 0
-  ) {
+  } else if (action.id === 'ask_use_safety' && subjectId && acceptedTargets.length > 0) {
     for (const safetyHolderId of acceptedTargets) {
       const promiseId = `promise:${interaction.id}:use-safety:${safetyHolderId}`
       upsertRealityPromise(domain, {
@@ -1076,7 +1072,9 @@ export function resolvePendingHumanRealityInteraction(input: {
   const humanResponse = explicitHumanResponse(input.responseType)
   const responses: Array<{ targetId: string; response: RealityResponseResolution }> = [
     ...Object.entries(interaction.targetResponses ?? {})
-      .filter(([targetId]) => targetId !== input.humanId && interaction.targetIds.includes(targetId))
+      .filter(
+        ([targetId]) => targetId !== input.humanId && interaction.targetIds.includes(targetId)
+      )
       .map(([targetId, response]) => ({ targetId, response })),
     { targetId: input.humanId, response: humanResponse },
   ]

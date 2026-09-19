@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
 import gameReducer, { hydrateGame } from '../../src/store/gameSlice'
-import socialReducer, {
-  hydrateSocial,
-  pushIncomingInteraction,
-} from '../../src/social/socialSlice'
+import socialReducer, { hydrateSocial, pushIncomingInteraction } from '../../src/social/socialSlice'
 import {
   respondToIncomingInteraction,
   autoResolveExpiredIncomingInteractionsForWeek,
@@ -316,9 +313,7 @@ describe('social memory integration for incoming interactions', () => {
     huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
     store.dispatch(hydrateGame(huddleGame))
 
-    const social = structuredClone(
-      socialReducer(undefined, { type: 'init' }) as SocialState
-    )
+    const social = structuredClone(socialReducer(undefined, { type: 'init' }) as SocialState)
     const alliance = createRealityAlliance(social.reality, {
       id: 'incoming-huddle-majority',
       founderIds: [caller.id, human.id],
@@ -391,9 +386,7 @@ describe('social memory integration for incoming interactions', () => {
     huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
     store.dispatch(hydrateGame(huddleGame))
 
-    const social = structuredClone(
-      socialReducer(undefined, { type: 'init' }) as SocialState
-    )
+    const social = structuredClone(socialReducer(undefined, { type: 'init' }) as SocialState)
     const alliance = createRealityAlliance(social.reality, {
       id: 'incoming-huddle-evicted-member',
       founderIds: [caller.id, human.id],
@@ -467,9 +460,7 @@ describe('social memory integration for incoming interactions', () => {
     huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
     store.dispatch(hydrateGame(huddleGame))
 
-    const social = structuredClone(
-      socialReducer(undefined, { type: 'init' }) as SocialState
-    )
+    const social = structuredClone(socialReducer(undefined, { type: 'init' }) as SocialState)
     const alliance = createRealityAlliance(social.reality, {
       id: 'incoming-huddle-human-dissent',
       founderIds: [caller.id, human.id],
@@ -542,9 +533,7 @@ describe('social memory integration for incoming interactions', () => {
     huddleGame.players.find((player) => player.id === caller.id)!.status = 'loh'
     store.dispatch(hydrateGame(huddleGame))
 
-    const social = structuredClone(
-      socialReducer(undefined, { type: 'init' }) as SocialState
-    )
+    const social = structuredClone(socialReducer(undefined, { type: 'init' }) as SocialState)
     const alliance = createRealityAlliance(social.reality, {
       id: 'incoming-huddle-split',
       founderIds: [caller.id, human.id],

@@ -277,9 +277,7 @@ function executeRealityCandidate(
         ...(resourceEffect.influence !== 0 || resourceEffect.info !== 0
           ? {
               yieldsApplied: {
-                ...(resourceEffect.influence !== 0
-                  ? { influence: resourceEffect.influence }
-                  : {}),
+                ...(resourceEffect.influence !== 0 ? { influence: resourceEffect.influence } : {}),
                 ...(resourceEffect.info !== 0 ? { info: resourceEffect.info } : {}),
               },
             }

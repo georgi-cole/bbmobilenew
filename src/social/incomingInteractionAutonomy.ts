@@ -664,8 +664,7 @@ function resolveAllianceInteractionPlan(
       replacements
     )
     const secondarySubjectId =
-      allianceMemberFallbackPreferences[actorId] ??
-      bestStrategicTarget(game, actorId, replacements)
+      allianceMemberFallbackPreferences[actorId] ?? bestStrategicTarget(game, actorId, replacements)
     if (!subjectId) return null
     return {
       type: 'deal_offer',
@@ -683,10 +682,7 @@ function resolveAllianceInteractionPlan(
 
   if (actorId !== spokespersonId) return null
 
-  if (
-    context.voxPopuliActive &&
-    ['social_1', 'nominations'].includes(phase)
-  ) {
+  if (context.voxPopuliActive && ['social_1', 'nominations'].includes(phase)) {
     const subjectId = bestStrategicTarget(
       game,
       actorId,

@@ -263,11 +263,7 @@ export function adjustRealityAllianceCommitment(
   return refreshRealityAllianceLifecycle(alliance)
 }
 
-export type RealityAllianceMembershipExitKind =
-  | 'VOLUNTARY'
-  | 'EXPELLED'
-  | 'DEFECTION'
-  | 'EVICTED'
+export type RealityAllianceMembershipExitKind = 'VOLUNTARY' | 'EXPELLED' | 'DEFECTION' | 'EVICTED'
 
 export function removeRealityAllianceMember(
   state: RealityDomainState,
@@ -1315,9 +1311,7 @@ export function recordRealityAlliancePlanDefiance(
     const actorPlanBeliefs = alliance.memberPlanBeliefs[input.actorId] ?? []
     const knowsPlan =
       alliance.leaderIds.includes(input.actorId) ||
-      actorPlanBeliefs.some((planId) =>
-        planTargetIds.some((targetId) => planId.includes(targetId))
-      )
+      actorPlanBeliefs.some((planId) => planTargetIds.some((targetId) => planId.includes(targetId)))
     if (!knowsPlan) continue
     if (
       alliance.currentTargetIds.includes(input.actualTargetId) ||
@@ -1328,15 +1322,13 @@ export function recordRealityAlliancePlanDefiance(
 
     const declaredDissent = actorPlanBeliefs.some(
       (planId) =>
-        planId.startsWith('dissent') &&
-        planTargetIds.some((targetId) => planId.includes(targetId))
+        planId.startsWith('dissent') && planTargetIds.some((targetId) => planId.includes(targetId))
     )
     const merelyAware =
       !declaredDissent &&
       actorPlanBeliefs.some(
         (planId) =>
-          planId.startsWith('aware') &&
-          planTargetIds.some((targetId) => planId.includes(targetId))
+          planId.startsWith('aware') && planTargetIds.some((targetId) => planId.includes(targetId))
       )
 
     const duplicate = state.events.some(

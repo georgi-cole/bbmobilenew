@@ -290,7 +290,10 @@ export function assignDeliverySlot({
     maxDeliveredPerPhase: number
   }>
 }): { scheduledForWeek: number; scheduledForPhase: string; deliveryReason: string } | null {
-  const deliveryConfig = { ...socialConfig.incomingInteractionDeliveryConfig, ...deliveryConfigOverride }
+  const deliveryConfig = {
+    ...socialConfig.incomingInteractionDeliveryConfig,
+    ...deliveryConfigOverride,
+  }
   const phaseIndex = getDeliveryPhaseIndex(phase)
   if (phaseIndex === null) {
     return null
@@ -414,11 +417,7 @@ export function deliverScheduledIncomingInteractionsForPhase(
 
   for (const entry of scheduled) {
     if (
-      isIncomingInteractionInvalidated(
-        entry.interaction,
-        state.game ?? {},
-        state.social?.reality
-      )
+      isIncomingInteractionInvalidated(entry.interaction, state.game ?? {}, state.social?.reality)
     ) {
       logDecision(entry, 'expiration', 'invalidated_before_delivery')
       continue

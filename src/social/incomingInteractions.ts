@@ -366,10 +366,7 @@ function resolveRealityIncomingInteraction(
             allianceId: recruitmentAlliance.id,
             recruiterId: interaction.fromId,
             targetId: humanId,
-            expandedAllianceId: `alliance:${[
-              ...recruitmentAlliance.memberIds,
-              humanId,
-            ]
+            expandedAllianceId: `alliance:${[...recruitmentAlliance.memberIds, humanId]
               .sort()
               .join('~')}:incoming:${interaction.id}`,
             at: { day, phase },
@@ -604,9 +601,7 @@ function buildResponseOutcomeText(
   }
 
   const scenarioKey = interaction.payload?.scenarioKey
-  if (
-    isAllianceStrategyScenario(scenarioKey)
-  ) {
+  if (isAllianceStrategyScenario(scenarioKey)) {
     if (responseType === 'accept' || responseType === 'positive') {
       return interaction.payload?.allianceGroupHuddle === true
         ? `Your position joined ${fromName}'s alliance huddle. Any majority-backed plan is now recorded.`
@@ -761,9 +756,7 @@ function applyIncomingChoiceConsequences({
   const consultationScenario =
     interaction.payload?.scenarioKey === 'safety_holder_consults_loh' ||
     interaction.payload?.scenarioKey === 'loh_consults_safety_holder'
-  const allianceStrategyScenario = isAllianceStrategyScenario(
-    interaction.payload?.scenarioKey
-  )
+  const allianceStrategyScenario = isAllianceStrategyScenario(interaction.payload?.scenarioKey)
   const hasContextualScenario = typeof interaction.payload?.scenarioKey === 'string'
   const contextualResolution = resolveIncomingResponse({
     interaction,
@@ -1002,9 +995,8 @@ function settleBackgroundSocialAction(
   if (!action) return
 
   const state = getState()
-  const realityInteraction = state.social.reality.interactions[
-    interaction.payload.realityInteractionId
-  ]
+  const realityInteraction =
+    state.social.reality.interactions[interaction.payload.realityInteractionId]
   const resolvedEvent = [...state.social.reality.events]
     .reverse()
     .find((event) => event.interactionId === interaction.payload?.realityInteractionId)

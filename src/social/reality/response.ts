@@ -1,8 +1,5 @@
 import type { RealityActionContract } from './actionContract'
-import type {
-  RealityDomainState,
-  RealityResponseResolution,
-} from './types'
+import type { RealityDomainState, RealityResponseResolution } from './types'
 
 export type { RealityResponseKind, RealityResponseResolution } from './types'
 

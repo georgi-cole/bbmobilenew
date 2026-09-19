@@ -161,10 +161,7 @@ function resolveCeremonyPromises(
       (promise) => promise.status === 'ACTIVE' || promise.status === 'PROPOSED'
     )
 
-  const resolveAndAttach = (
-    promiseId: string,
-    status: 'KEPT' | 'BROKEN' | 'VOID'
-  ) => {
+  const resolveAndAttach = (promiseId: string, status: 'KEPT' | 'BROKEN' | 'VOID') => {
     const resolved = resolveRealityPromise(
       state,
       promiseId,
@@ -182,10 +179,7 @@ function resolveCeremonyPromises(
       if (promise.promisorId !== event.actorId || promise.kind !== 'protect') continue
       const beneficiaryId = promise.beneficiaryIds[0]
       if (!beneficiaryId) continue
-      resolveAndAttach(
-        promise.id,
-        event.targetIds.includes(beneficiaryId) ? 'BROKEN' : 'KEPT'
-      )
+      resolveAndAttach(promise.id, event.targetIds.includes(beneficiaryId) ? 'BROKEN' : 'KEPT')
     }
   }
 
@@ -205,9 +199,7 @@ function resolveCeremonyPromises(
         if (!beneficiaryId) continue
         resolveAndAttach(
           promise.id,
-          kind === 'SAFETY_USED' && event.targetIds.includes(beneficiaryId)
-            ? 'KEPT'
-            : 'BROKEN'
+          kind === 'SAFETY_USED' && event.targetIds.includes(beneficiaryId) ? 'KEPT' : 'BROKEN'
         )
         continue
       }
@@ -388,8 +380,7 @@ function applyCeremonyAftermath(
 
       const allianceIds = Object.values(state.alliances)
         .filter(
-          (alliance) =>
-            alliance.status !== 'DISSOLVED' && alliance.memberIds.includes(targetId)
+          (alliance) => alliance.status !== 'DISSOLVED' && alliance.memberIds.includes(targetId)
         )
         .map((alliance) => alliance.id)
       for (const allianceId of allianceIds) {

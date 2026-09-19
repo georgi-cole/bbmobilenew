@@ -1187,8 +1187,7 @@ describe('Reality causal orchestration', () => {
     ).toHaveLength(1)
     expect(
       result.domain.events.some(
-        (event) =>
-          event.type === 'ALLIANCE_BETRAYAL' && event.reason.includes(`:${outer.id}:`)
+        (event) => event.type === 'ALLIANCE_BETRAYAL' && event.reason.includes(`:${outer.id}:`)
       )
     ).toBe(false)
   })

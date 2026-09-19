@@ -226,8 +226,7 @@ function summarizeAlliancePreferences(
   const topVotes = primary?.[1].votes ?? 0
   const hasConsensus =
     preferences.length >= 2 && topVotes >= 2 && topVotes / Math.max(1, preferences.length) > 0.5
-  const fallbackId =
-    hasConsensus && fallback && fallback[1].votes >= 2 ? fallback[0] : undefined
+  const fallbackId = hasConsensus && fallback && fallback[1].votes >= 2 ? fallback[0] : undefined
   const preferenceByAdvisor = Object.fromEntries(
     preferences.map((preference) => [preference.advisorId, preference.targetId])
   )
@@ -238,16 +237,17 @@ function summarizeAlliancePreferences(
         `${playerName(state, preference.advisorId)} → ${playerName(state, preference.targetId)}`
     )
     .join(' · ')
-  const consensus = hasConsensus && primaryId
-    ? `${label}: ${playerName(state, primaryId)}${
-        fallbackId ? ` · backup ${playerName(state, fallbackId)}` : ''
-      }`
-    : preferences.length === 1 && primaryId
-      ? `${label}: ${playerName(state, preferences[0].advisorId)} recommends ${playerName(
-          state,
-          primaryId
-        )}; no group decision`
-      : `${label}: split; no alliance decision`
+  const consensus =
+    hasConsensus && primaryId
+      ? `${label}: ${playerName(state, primaryId)}${
+          fallbackId ? ` · backup ${playerName(state, fallbackId)}` : ''
+        }`
+      : preferences.length === 1 && primaryId
+        ? `${label}: ${playerName(state, preferences[0].advisorId)} recommends ${playerName(
+            state,
+            primaryId
+          )}; no group decision`
+        : `${label}: split; no alliance decision`
   return {
     summary: lines ? `${lines}. ${consensus}.` : `${consensus}.`,
     targetIds: hasConsensus && primaryId ? [primaryId] : [],
@@ -285,10 +285,7 @@ function buildConsultationMemberPlanBeliefs(
       if (preference === fallbackTarget) return [memberId, [`fallback:${preference}`]]
       return [
         memberId,
-        [
-          ...(consensusTarget ? [`aware:${consensusTarget}`] : []),
-          `preference:${preference}`,
-        ],
+        [...(consensusTarget ? [`aware:${consensusTarget}`] : []), `preference:${preference}`],
       ]
     })
   )
@@ -385,11 +382,7 @@ function buildAllianceConsultationPlan(
       agenda: 'nominations',
       summary: `Alliance huddle — ${read.summary}`,
       excusedAbsentIds,
-      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
-        attendeeIds,
-        actorId,
-        read
-      ),
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
     }
   }
 
@@ -516,11 +509,7 @@ function buildAllianceConsultationPlan(
       agenda,
       summary: `Alliance huddle — ${read.summary}`,
       excusedAbsentIds,
-      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
-        attendeeIds,
-        actorId,
-        read
-      ),
+      memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
     }
   }
 
@@ -563,11 +552,7 @@ function buildAllianceConsultationPlan(
     agenda: 'strategy',
     summary: `Alliance huddle — ${read.summary}`,
     excusedAbsentIds,
-    memberPlanBeliefs: buildConsultationMemberPlanBeliefs(
-      attendeeIds,
-      actorId,
-      read
-    ),
+    memberPlanBeliefs: buildConsultationMemberPlanBeliefs(attendeeIds, actorId, read),
   }
 }
 
@@ -785,14 +770,13 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       actionTargetMode === 'multi' ? targetIds.length : actionTargetMode === 'none' ? 0 : 1,
       dramaMode
     )
-    const defaultExecutionCosts =
-      isPrimaryBatch
-        ? {
-            energy: baseExecutionCosts.energy * targetIds.length,
-            influence: baseExecutionCosts.influence * targetIds.length,
-            info: baseExecutionCosts.info * targetIds.length,
-          }
-        : baseExecutionCosts
+    const defaultExecutionCosts = isPrimaryBatch
+      ? {
+          energy: baseExecutionCosts.energy * targetIds.length,
+          influence: baseExecutionCosts.influence * targetIds.length,
+          info: baseExecutionCosts.info * targetIds.length,
+        }
+      : baseExecutionCosts
     const requestedExecutionCosts = input.costOverride ?? defaultExecutionCosts
 
     // During Depression Shock, a housemate may simply shut the conversation
@@ -939,7 +923,11 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
       ? buildAllianceConsultationPlan(state, consultationAlliance, input.actorId)
       : null
     if (consultationAlliance && !consultationPlan) {
-      return result(false, 'There is no useful alliance strategy question to resolve right now.', energy)
+      return result(
+        false,
+        'There is no useful alliance strategy question to resolve right now.',
+        energy
+      )
     }
 
     // The Reality contract stores a representative one-target price. Dynamic
@@ -1084,10 +1072,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                   outcome: targetCompatibilitySucceeded(targetId) ? 'success' : 'failure',
                   repetitionAlreadyResolved: true,
                   waiveCosts: index > 0,
-                  costOverride:
-                    index === 0
-                      ? executionCosts
-                      : { energy: 0, influence: 0, info: 0 },
+                  costOverride: index === 0 ? executionCosts : { energy: 0, influence: 0, info: 0 },
                 })
               )
               .reduce<ExecuteActionResult>(

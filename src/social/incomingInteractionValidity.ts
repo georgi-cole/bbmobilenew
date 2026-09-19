@@ -74,9 +74,10 @@ function violatesRealityAllianceContext(
     return true
   }
 
-  const subjectIds = [interaction.payload?.subjectId, interaction.payload?.secondarySubjectId].filter(
-    (value): value is string => typeof value === 'string'
-  )
+  const subjectIds = [
+    interaction.payload?.subjectId,
+    interaction.payload?.secondarySubjectId,
+  ].filter((value): value is string => typeof value === 'string')
   if (
     subjectIds.some((subjectId) => {
       const subject = getPlayer(game, subjectId)
@@ -86,9 +87,7 @@ function violatesRealityAllianceContext(
     return true
   }
   if (
-    subjectIds.some((subjectId) =>
-      isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId)
-    )
+    subjectIds.some((subjectId) => isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId))
   ) {
     return true
   }

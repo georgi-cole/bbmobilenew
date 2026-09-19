@@ -49,10 +49,7 @@ import {
   type SecretMissionBoxRewardType,
 } from '../../bb/secretMission'
 import { classifyTwinShockAnswer, resolveTwinShockTurn } from '../../bb/twinShock'
-import {
-  applyInfluenceDelta,
-  renameRealityAllianceRecord,
-} from '../../social/socialSlice'
+import { applyInfluenceDelta, renameRealityAllianceRecord } from '../../social/socialSlice'
 import { getEffectiveSocialMode } from '../../social/socialMode'
 import RealityLedger from '../../components/RealityLedger/RealityLedger'
 import StoreProductIcon from '../../components/StoreProductModal/StoreProductIcon'

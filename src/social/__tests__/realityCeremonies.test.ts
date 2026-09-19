@@ -344,8 +344,7 @@ describe('Reality alliance ceremony consequences', () => {
     expect(wider.status).toBe('ACTIVE')
     expect(
       state.events.filter(
-        (event) =>
-          event.type === 'ALLIANCE_MEMBER_EVICTED' && event.targetIds.includes('lia')
+        (event) => event.type === 'ALLIANCE_MEMBER_EVICTED' && event.targetIds.includes('lia')
       )
     ).toHaveLength(2)
     expect(
@@ -514,8 +513,7 @@ describe('Reality alliance ceremony consequences', () => {
     expect(declaredDrop).toBeLessThan(surpriseDrop)
     expect(
       declared.state.events.some(
-        (event) =>
-          event.type === 'ALLIANCE_PLAN_DEFIED' && event.tags.includes('DECLARED_DISSENT')
+        (event) => event.type === 'ALLIANCE_PLAN_DEFIED' && event.tags.includes('DECLARED_DISSENT')
       )
     ).toBe(true)
   })
