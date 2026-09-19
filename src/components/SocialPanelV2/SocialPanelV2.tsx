@@ -944,6 +944,7 @@ export default function SocialPanelV2() {
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
+    setMoveFilter('all')
   }
 
   const ensureRealityTutorialTarget = () => {
