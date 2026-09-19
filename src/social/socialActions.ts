@@ -357,7 +357,7 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     realityExclusive: true,
     requiredRelationshipTags: ['alliance'],
     dramaRequiredRelationshipTags: ['alliance'],
-    realityPurposes: ['INFORMATION', 'COMMITMENT'],
+    realityPurposes: ['INFORMATION'],
     realityVisibility: 'GROUP_VISIBLE',
     affinityEffects: { success: 1, failure: 0 },
     realityEffects: {
