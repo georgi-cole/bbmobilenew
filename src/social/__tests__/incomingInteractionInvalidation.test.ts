@@ -14,7 +14,11 @@ import socialReducer, {
 import { socialMiddleware } from '../socialMiddleware'
 import { respondToIncomingInteraction } from '../incomingInteractions'
 import { isIncomingInteractionInvalidated } from '../incomingInteractionValidity'
-import { createInitialRealityDomainState, createRealityAlliance } from '../reality'
+import {
+  createInitialRealityDomainState,
+  createRealityAlliance,
+  holdRealityAllianceStrategyMeeting,
+} from '../reality'
 import type { IncomingInteraction, SocialState } from '../types'
 
 function makeInteraction(overrides: Partial<IncomingInteraction> = {}): IncomingInteraction {
@@ -318,6 +322,53 @@ describe('incoming interaction invalidation', () => {
           payload: {
             scenarioKey: 'alliance_vote_pitch',
             phase: 'social_2',
+            allianceId: alliance.id,
+            subjectId: nominee.id,
+          },
+        }),
+        game,
+        reality
+      )
+    ).toBe(true)
+  })
+
+  it('invalidates a second alliance power huddle for the same agenda on the same day', () => {
+    const { game, human, nominee, loh } = buildGameState()
+    game.week = 4
+    game.phase = 'social_1'
+    game.lohId = loh.id
+    loh.status = 'loh'
+    human.status = 'active'
+
+    const reality = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(reality, {
+      id: 'already-met-alliance',
+      founderIds: [loh.id],
+      memberIds: [human.id],
+      purpose: 'Control nominations',
+      at: { day: game.week, phase: 'loh_results' },
+    })
+    alliance.status = 'ACTIVE'
+    holdRealityAllianceStrategyMeeting(reality, {
+      allianceId: alliance.id,
+      callerId: human.id,
+      attendeeIds: [human.id, loh.id],
+      targetIds: [nominee.id],
+      planIds: [`target:${nominee.id}`],
+      agenda: 'nominations',
+      at: { day: game.week, phase: 'loh_results' },
+      sourceEventId: 'first-huddle',
+    })
+
+    expect(
+      isIncomingInteractionInvalidated(
+        makeInteraction({
+          fromId: loh.id,
+          type: 'deal_offer',
+          createdWeek: game.week,
+          payload: {
+            scenarioKey: 'alliance_power_nomination_huddle',
+            phase: 'social_1',
             allianceId: alliance.id,
             subjectId: nominee.id,
           },
