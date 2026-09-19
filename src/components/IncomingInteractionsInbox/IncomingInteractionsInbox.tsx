@@ -371,7 +371,7 @@ export default function IncomingInteractionsInbox() {
   const isGuest = useAppSelector((state) => state.profiles?.isGuest ?? false)
   const globalDramaMode = getEffectiveSocialMode({ game, settings, vip }) === 'drama'
   const [recentlyResolvedIds, setRecentlyResolvedIds] = useState<Set<string>>(() => new Set())
-  const [contextualGuideRevision, setContextualGuideRevision] = useState(0)
+  const [, refreshContextualGuides] = useState(0)
 
   const players = game.players
   const currentWeek = game.week ?? 1
@@ -449,14 +449,8 @@ export default function IncomingInteractionsInbox() {
       ? 'All caught up'
       : `${openInteractions.length} open conversation${openInteractions.length === 1 ? '' : 's'}`
 
-  const hasSeenIncomingGuide = useMemo(
-    () => hasSeenContextualGuide('incoming', activeProfileId, isGuest),
-    [activeProfileId, contextualGuideRevision, isGuest]
-  )
-  const hasSeenPromiseGuide = useMemo(
-    () => hasSeenContextualGuide('promise', activeProfileId, isGuest),
-    [activeProfileId, contextualGuideRevision, isGuest]
-  )
+  const hasSeenIncomingGuide = hasSeenContextualGuide('incoming', activeProfileId, isGuest)
+  const hasSeenPromiseGuide = hasSeenContextualGuide('promise', activeProfileId, isGuest)
   const hasMeaningfulIncoming =
     globalDramaMode && openInteractions.some(({ policy }) => policy === 'required')
   const hasHumanPromise =
@@ -471,7 +465,7 @@ export default function IncomingInteractionsInbox() {
 
   const dismissContextualGuide = (guide: 'incoming' | 'promise') => {
     markContextualGuideSeen(guide, activeProfileId, isGuest)
-    setContextualGuideRevision((revision) => revision + 1)
+    refreshContextualGuides((revision) => revision + 1)
   }
 
   useEffect(() => {
