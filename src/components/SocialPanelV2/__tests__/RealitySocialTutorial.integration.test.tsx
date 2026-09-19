@@ -33,6 +33,35 @@ function makeStore({ vipOwned }: { vipOwned: boolean }) {
     createdAt: '2026-01-01T00:00:00.000Z',
   }
 
+  const preloadedState: typeof initial = {
+    ...initial,
+    game: {
+      ...initial.game,
+      phase: 'social_1',
+    },
+    settings: {
+      ...initial.settings,
+      gameUX: {
+        ...initial.settings.gameUX,
+        dramaMode: vipOwned,
+      },
+    },
+    profiles: {
+      profiles: [profile],
+      activeProfileId: profile.id,
+      isGuest: false,
+    },
+    vip: {
+      ...initial.vip,
+      status: 'ready',
+      isActive: vipOwned,
+      entitlements: {
+        ...initial.vip.entitlements,
+        dramaMode: vipOwned,
+      },
+    },
+  }
+
   return configureStore({
     reducer: {
       game: gameReducer,
@@ -41,34 +70,7 @@ function makeStore({ vipOwned }: { vipOwned: boolean }) {
       vip: vipReducer,
       social: socialReducer,
     },
-    preloadedState: {
-      ...initial,
-      game: {
-        ...initial.game,
-        phase: 'social_1',
-      },
-      settings: {
-        ...initial.settings,
-        gameUX: {
-          ...initial.settings.gameUX,
-          dramaMode: vipOwned,
-        },
-      },
-      profiles: {
-        profiles: [profile],
-        activeProfileId: profile.id,
-        isGuest: false,
-      },
-      vip: {
-        ...initial.vip,
-        status: 'ready',
-        isActive: vipOwned,
-        entitlements: {
-          ...initial.vip.entitlements,
-          dramaMode: vipOwned,
-        },
-      },
-    },
+    preloadedState,
   })
 }
 
