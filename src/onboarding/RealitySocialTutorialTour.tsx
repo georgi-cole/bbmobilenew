@@ -172,6 +172,49 @@ function dispatchTutorialEvent(name: string, detail?: string) {
   window.dispatchEvent(detail ? new CustomEvent(name, { detail }) : new Event(name))
 }
 
+export function RealitySocialTutorialPrompt({
+  onStart,
+  onSkip,
+}: {
+  onStart: () => void
+  onSkip: () => void
+}) {
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="season-tutorial-prompt" role="presentation" data-testid="reality-social-tutorial-prompt">
+      <div className="season-tutorial-prompt__backdrop" aria-hidden="true" />
+      <section
+        className="season-tutorial-prompt__card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reality-social-tutorial-prompt-title"
+        aria-describedby="reality-social-tutorial-prompt-copy"
+      >
+        <span className="season-tutorial-prompt__eyebrow">REALITY MODE</span>
+        <h2 id="reality-social-tutorial-prompt-title">Welcome to Reality Social</h2>
+        <p id="reality-social-tutorial-prompt-copy">
+          Want a quick tour of relationships, moves and My Pulse?
+        </p>
+        <div className="season-tutorial-prompt__actions">
+          <button type="button" className="season-tutorial__secondary" onClick={onSkip}>
+            Skip
+          </button>
+          <button
+            type="button"
+            className="season-tutorial__primary"
+            onClick={onStart}
+            autoFocus
+          >
+            Quick tour
+          </button>
+        </div>
+      </section>
+    </div>,
+    document.body
+  )
+}
+
 export default function RealitySocialTutorialTour({
   onClearTarget,
   onEnsureTarget,
