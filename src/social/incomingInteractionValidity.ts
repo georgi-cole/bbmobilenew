@@ -78,6 +78,14 @@ function violatesRealityAllianceContext(
     (value): value is string => typeof value === 'string'
   )
   if (
+    subjectIds.some((subjectId) => {
+      const subject = getPlayer(game, subjectId)
+      return !subject || isEvictedOrGone(subject)
+    })
+  ) {
+    return true
+  }
+  if (
     subjectIds.some((subjectId) =>
       isAllianceProtectedGameUnit(game, alliance.memberIds, subjectId)
     )
