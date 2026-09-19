@@ -61,6 +61,7 @@ type PartialSocialState = {
   influenceBank?: Record<string, number>
   infoBank?: Record<string, number>
   relationships: SocialState['relationships']
+  reality?: SocialState['reality']
   sessionLogs: SocialActionLogEntry[]
   actionHistory?: SocialActionLogEntry[]
 }
@@ -709,6 +710,7 @@ export function executeAction(
     players: state.game?.players,
     relationships: state.social.relationships,
     dramaNetwork: state.social.dramaNetwork,
+    reality: state.social.reality,
     dramaMode,
     requireCompleteSelection: true,
     allowAIOnly: true,
@@ -1349,6 +1351,7 @@ export function executeGroupAction(
     players: state.game?.players,
     relationships: state.social.relationships,
     dramaNetwork: state.social.dramaNetwork,
+    reality: state.social.reality,
     dramaMode,
     requireCompleteSelection: true,
     allowAIOnly: true,
