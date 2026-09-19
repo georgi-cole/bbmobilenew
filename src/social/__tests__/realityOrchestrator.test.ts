@@ -448,8 +448,7 @@ describe('Reality causal orchestration', () => {
     expect(
       resolved.domain.events.some(
         (event) =>
-          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
-          event.reason.includes('nominations')
+          event.type === 'ALLIANCE_STRATEGY_MEETING' && event.reason.includes('nominations')
       )
     ).toBe(true)
   })
