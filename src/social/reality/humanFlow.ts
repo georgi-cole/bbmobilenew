@@ -5,6 +5,7 @@ import { replaceRealityDomain, replaceRealitySimulation, updateRelationship } fr
 import { ALLIANCE_TAG } from '../socialAlliance'
 import { getEffectiveSocialMode } from '../socialMode'
 import { resolveActionTargetMode } from '../socialActions'
+import { normalizeActionCosts } from '../smExecNormalize'
 import {
   createInitialRealitySimulationState,
   deriveRealitySimulationSeed,
@@ -843,6 +844,27 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
     if (consultationAlliance && !consultationPlan) {
       return result(false, 'There is no useful alliance strategy question to resolve right now.', energy)
     }
+
+    // The Reality contract stores a representative one-target price. Dynamic
+    // multi-target actions (notably Group Chat) must be checked against their
+    // full atomic price before the causal Reality domain is allowed to mutate.
+    // Otherwise a large group action could create memories/relationship effects
+    // and only discover afterward that the player could not afford it.
+    const actionTargetMode = resolveActionTargetMode(action, true)
+    const targetCountForCost =
+      actionTargetMode === 'multi' ? executionTargetIds.length : actionTargetMode === 'none' ? 0 : 1
+    const executionCosts =
+      input.costOverride ?? normalizeActionCosts(action, targetCountForCost, true)
+    const influence = state.social.influenceBank[input.actorId] ?? 0
+    const info = state.social.infoBank[input.actorId] ?? 0
+    if (
+      energy < executionCosts.energy ||
+      influence < executionCosts.influence ||
+      info < executionCosts.info
+    ) {
+      return result(false, 'Insufficient resources. Nothing was spent.', energy, 0, 'Unavailable')
+    }
+
     const direction =
       executionTargetIds.length === 0
         ? 'SELF'
@@ -932,20 +954,19 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
         anchor: 'negative',
       })
     }
-    const actionTargetMode = resolveActionTargetMode(action, context.socialIntensity === 'REALITY')
     const compatibility = consultationAlliance
       ? executeAction(input.actorId, input.targetId, input.actionId, {
           source: 'manual',
           subjectId: input.subjectId,
           outcome: resolvedAsSuccess ? 'success' : 'failure',
           repetitionAlreadyResolved: true,
-          costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+          costOverride: executionCosts,
         })
       : direction === 'GROUP' && actionTargetMode === 'multi'
         ? executeGroupAction(input.actorId, executionTargetIds, input.actionId, {
             source: 'manual',
             outcome: resolvedAsSuccess ? 'success' : 'failure',
-            costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+            costOverride: executionCosts,
           })
         : direction === 'GROUP'
           ? executionTargetIds
@@ -958,7 +979,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                   waiveCosts: index > 0,
                   costOverride:
                     index === 0
-                      ? (input.costOverride ?? contract.costs[context.socialIntensity])
+                      ? executionCosts
                       : { energy: 0, influence: 0, info: 0 },
                 })
               )
@@ -989,7 +1010,7 @@ export function executeHumanRealityAction(input: HumanRealityActionInput) {
                 subjectId: input.subjectId,
                 outcome: resolvedAsSuccess ? 'success' : 'failure',
                 repetitionAlreadyResolved: true,
-                costOverride: input.costOverride ?? contract.costs[context.socialIntensity],
+                costOverride: executionCosts,
               }
             )
     // Legacy execution preserves specialized ceremony copy and existing game
