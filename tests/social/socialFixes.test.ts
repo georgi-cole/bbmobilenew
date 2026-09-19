@@ -17,6 +17,7 @@ import socialReducer, {
   selectSessionLogs,
 } from '../../src/social/socialSlice';
 import { socialMiddleware } from '../../src/social/socialMiddleware';
+import { relationshipResourcePolicyMiddleware } from '../../src/social/relationshipResourcePolicyMiddleware';
 import { isVisibleInMainLog, isVisibleInDr } from '../../src/services/activityService';
 import { initManeuvers, executeAction } from '../../src/social/SocialManeuvers';
 import type { SocialActionLogEntry } from '../../src/social/types';
@@ -31,7 +32,10 @@ function makeMiddlewareStore() {
   return configureStore({
     reducer: { game: gameReducer, social: socialReducer },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(socialMiddleware as never),
+      getDefaultMiddleware().concat(
+        relationshipResourcePolicyMiddleware as never,
+        socialMiddleware as never,
+      ),
   });
 }
 
@@ -120,7 +124,7 @@ describe('sessionLogs source filtering (RecentActivity logic)', () => {
 
 // ── Fix 3a: AI alliance actions do NOT inflate target's resources ─────────
 
-describe('socialMiddleware — alliance bonus only for manual actions', () => {
+describe('relationship transition resource policy', () => {
   it('system updateRelationship with alliance tag does NOT grant resources to target', () => {
     const store = makeMiddlewareStore();
     store.dispatch(setInfluenceBankEntry({ playerId: 'human', value: 0 }));
@@ -139,12 +143,12 @@ describe('socialMiddleware — alliance bonus only for manual actions', () => {
     });
 
     const state = store.getState() as { social: { influenceBank: Record<string, number>; energyBank: Record<string, number> } };
-    // Human should NOT receive +200 influence or +2 energy from system action
+    // System/AI relationship writes must not create player-facing resource rewards.
     expect(state.social.influenceBank['human'] ?? 0).toBe(0);
     expect(state.social.energyBank['human']).toBe(10);
   });
 
-  it('manual updateRelationship with alliance tag DOES grant resources to target', () => {
+  it('manual alliance transition pays the calibrated reward exactly once', () => {
     const store = makeMiddlewareStore();
     store.dispatch(setInfluenceBankEntry({ playerId: 'human', value: 0 }));
     store.dispatch(setEnergyBankEntry({ playerId: 'human', value: 10 }));
@@ -174,11 +178,12 @@ describe('socialMiddleware — alliance bonus only for manual actions', () => {
     });
 
     const state = store.getState() as { social: { influenceBank: Record<string, number>; energyBank: Record<string, number> } };
-    // Both parties get +200 influence and +2 energy for manual alliance
-    expect(state.social.influenceBank['human']).toBe(200);
-    expect(state.social.energyBank['human']).toBe(12);
-    expect(state.social.influenceBank['actor']).toBe(200);
-    expect(state.social.energyBank['actor']).toBe(12);
+    // The canonical policy pays +20 Influence to both parties and does not
+    // manufacture extra Energy.
+    expect(state.social.influenceBank['human']).toBe(20);
+    expect(state.social.energyBank['human']).toBe(10);
+    expect(state.social.influenceBank['actor']).toBe(20);
+    expect(state.social.energyBank['actor']).toBe(10);
   });
 
   it('system updateRelationship with betrayal tag does NOT penalise the actor', () => {
