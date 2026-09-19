@@ -38,10 +38,7 @@ describe('RiskWheelComp styles', () => {
       resolve(process.cwd(), 'src/components/MinigameHost/MinigameHost.tsx'),
       'utf8'
     )
-    const stagePath = resolve(
-      process.cwd(),
-      'public/assets/minigames/risk-wheel-vip/stage.webp'
-    )
+    const stagePath = resolve(process.cwd(), 'public/assets/minigames/risk-wheel-vip/stage.webp')
 
     expect(css).toContain('.rw-root--vip {')
     expect(css).toContain('/assets/minigames/risk-wheel-vip/stage.webp')
