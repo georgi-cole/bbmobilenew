@@ -256,7 +256,7 @@ function executeRealityCandidate(
         cost: costs.energy,
         costs,
         delta: compatibilityDelta,
-        outcome: result.event.outcome === 'FAILURE' ? 'failure' : 'success',
+        outcome: result.event.outcome === 'SUCCESS' ? 'success' : 'failure',
         newEnergy: latestState.social.energyBank[player.id] ?? 0,
         balancesAfter: {
           energy: latestState.social.energyBank[player.id] ?? 0,
