@@ -443,7 +443,8 @@ export function finalizeRealityVote(
   actorId: string,
   targetId: string,
   at: RealityClock,
-  eventId: string
+  eventId: string,
+  eligibleTargetIds?: string[]
 ): RealityVoteIntent {
   const intent = voteIntent(state, actorId, at.day)
   const alreadyRecordedSameVote = intent.day === at.day && intent.actualTargetId === targetId
@@ -463,6 +464,7 @@ export function finalizeRealityVote(
       actualTargetId: targetId,
       at,
       sourceEventId: eventId,
+      eligibleTargetIds,
     })
     reinforceAllianceVotePlan(state, actorId, targetId)
   }
