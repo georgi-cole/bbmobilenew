@@ -12,6 +12,7 @@ import socialReducer, {
   setEnergyBankEntry,
   setInfluenceBankEntry,
   setInfoBankEntry,
+  initializeRealitySimulation,
 } from '../../src/social/socialSlice';
 import { initManeuvers, canAfford } from '../../src/social/SocialManeuvers';
 import { normalizeActionCosts } from '../../src/social/smExecNormalize';
@@ -19,6 +20,7 @@ import { getActionById } from '../../src/social/SocialManeuvers';
 import { setStore, start, stop, getStatus } from '../../src/social/socialAIDriver';
 import { socialConfig } from '../../src/social/socialConfig';
 import * as SocialPolicy from '../../src/social/SocialPolicy';
+import * as DramaPolicy from '../../src/social/dramaAIPolicy';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,40 @@ function makeFullStore() {
           seed: 42,
           week: 1,
           phase: 'social_1',
+        },
+      ) => state,
+    },
+  });
+}
+
+function makeRealityAiStore() {
+  return configureStore({
+    reducer: {
+      social: socialReducer,
+      settings: (
+        state = {
+          gameUX: {
+            dramaMode: true,
+            romanceStorylines: true,
+          },
+        },
+      ) => state,
+      game: (
+        state = {
+          players: [
+            { id: 'ai1', name: 'AI 1', status: 'active', isUser: false },
+            { id: 'ai2', name: 'AI 2', status: 'active', isUser: false },
+            { id: 'human', name: 'Human', status: 'active', isUser: true },
+          ],
+          seed: 42,
+          week: 1,
+          phase: 'social_1',
+          mode: 'classic' as const,
+          publicModeEnabled: false,
+          lohId: null,
+          posWinnerId: null,
+          nomineeIds: [],
+          povProtectedIds: [],
         },
       ) => state,
     },
@@ -146,6 +182,41 @@ describe('socialAIDriver – canAfford gating', () => {
     vi.advanceTimersByTime(socialConfig.tickIntervalMs);
 
     expect(getStatus().actionsExecuted).toBeGreaterThan(0);
+  });
+});
+
+describe('socialAIDriver – Reality resource settlement', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    stop();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('applies the same outcome-sensitive Information gain to a resolved AI Reality action', () => {
+    const store = makeRealityAiStore();
+    initManeuvers(store as never);
+    setStore(store as never);
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai1', value: 10 }));
+    store.dispatch(setEnergyBankEntry({ playerId: 'ai2', value: 0 }));
+    store.dispatch(setInfoBankEntry({ playerId: 'ai1', value: 0 }));
+    store.dispatch(initializeRealitySimulation({ seed: 1, force: true }));
+
+    vi.spyOn(DramaPolicy, 'chooseUtilityDramaAIMove').mockReturnValue(null);
+    vi.spyOn(SocialPolicy, 'chooseActionFor').mockReturnValue('observe');
+
+    start();
+    vi.advanceTimersByTime(socialConfig.tickIntervalMs);
+
+    expect(getStatus().actionsExecuted).toBe(1);
+    expect(store.getState().social.energyBank.ai1).toBe(8);
+    expect(store.getState().social.infoBank.ai1).toBe(100);
+    expect(store.getState().social.actionHistory.at(-1)?.yieldsApplied).toEqual({
+      info: 100,
+    });
   });
 });
 
