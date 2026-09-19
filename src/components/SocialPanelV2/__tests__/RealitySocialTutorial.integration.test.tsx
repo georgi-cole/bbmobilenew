@@ -11,9 +11,10 @@ import socialReducer, { openSocialPanel } from '../../../social/socialSlice'
 import { I18nProvider } from '../../../i18n/I18nProvider'
 import SocialPanelV2 from '../SocialPanelV2'
 import {
-  markRealitySocialTutorialHandled,
-  realitySocialTutorialStorageKey,
-} from '../../../onboarding/realitySocialTutorialPreference'
+  getSocialGuideLevel,
+  isTutorialGuidePending,
+  setTutorialReplayEnabled,
+} from '../../../onboarding/tutorialGuidePreference'
 
 function makeStore({ vipOwned }: { vipOwned: boolean }) {
   const base = configureStore({
@@ -89,7 +90,7 @@ function renderPanel(store: ReturnType<typeof makeStore>) {
   )
 }
 
-describe('Reality Social first-use tutorial', () => {
+describe('adaptive Social first-use tutorial', () => {
   beforeEach(() => {
     window.localStorage.clear()
     window.sessionStorage.clear()
@@ -99,35 +100,65 @@ describe('Reality Social first-use tutorial', () => {
     cleanup()
   })
 
-  it('does not consume the premium tutorial when Social is used before upgrading', () => {
+  it('teaches Normal Social first, then offers only the Reality upgrade chapter', () => {
     const normalStore = makeStore({ vipOwned: false })
     renderPanel(normalStore)
 
-    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
-    expect(screen.queryByTestId('reality-social-tutorial')).toBeNull()
-    expect(window.localStorage.getItem(realitySocialTutorialStorageKey('profile-a'))).toBeNull()
+    const normalPrompt = screen.getByTestId('reality-social-tutorial-prompt')
+    expect(normalPrompt).toHaveAttribute('data-variant', 'normal')
+    expect(screen.getByText('Welcome to Social')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+
+    expect(getSocialGuideLevel('profile-a', false)).toBe(1)
+    expect(isTutorialGuidePending('profile-a', false, 'social')).toBe(false)
 
     cleanup()
 
     const vipStore = makeStore({ vipOwned: true })
     renderPanel(vipStore)
 
-    expect(screen.getByTestId('reality-social-tutorial-prompt')).toBeInTheDocument()
-    expect(screen.getByText('Welcome to Reality Social')).toBeInTheDocument()
+    const upgradePrompt = screen.getByTestId('reality-social-tutorial-prompt')
+    expect(upgradePrompt).toHaveAttribute('data-variant', 'reality-upgrade')
+    expect(screen.getByText('Reality Mode is on')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Quick tour' }))
 
-    expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
-    expect(screen.getByTestId('reality-social-tutorial')).toBeInTheDocument()
+    const upgradeTour = screen.getByTestId('reality-social-tutorial')
+    expect(upgradeTour).toHaveAttribute('data-variant', 'reality-upgrade')
   })
 
-  it('does not reopen after that profile has handled the guide', () => {
-    markRealitySocialTutorialHandled('profile-a', false)
-
+  it('shows the full Reality guide when Reality is active on the first Social open', () => {
     const store = makeStore({ vipOwned: true })
     renderPanel(store)
 
+    const prompt = screen.getByTestId('reality-social-tutorial-prompt')
+    expect(prompt).toHaveAttribute('data-variant', 'reality')
+    expect(screen.getByText('Welcome to Reality Social')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+
+    expect(getSocialGuideLevel('profile-a', false)).toBe(2)
+
+    cleanup()
+    renderPanel(makeStore({ vipOwned: true }))
+
     expect(screen.queryByTestId('reality-social-tutorial-prompt')).toBeNull()
-    expect(screen.queryByTestId('reality-social-tutorial')).toBeNull()
+  })
+
+  it('re-arms Social once when the centralized replay toggle is enabled', () => {
+    const firstStore = makeStore({ vipOwned: true })
+    renderPanel(firstStore)
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+    cleanup()
+
+    setTutorialReplayEnabled('profile-a', false, true)
+    const replayStore = makeStore({ vipOwned: true })
+    renderPanel(replayStore)
+
+    expect(screen.getByTestId('reality-social-tutorial-prompt')).toHaveAttribute(
+      'data-variant',
+      'reality'
+    )
   })
 })
