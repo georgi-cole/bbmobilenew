@@ -26,6 +26,7 @@ import socialReducer, {
   setInfoBankEntry,
   applyEnergyDelta,
   recordSocialAction,
+  initializeRealitySimulation,
   replaceRealityDomain,
   updateRelationship,
 } from '../../src/social/socialSlice'
@@ -168,6 +169,83 @@ describe('Classic social isolation', () => {
     expect(store.getState().social.reality.events).toHaveLength(0)
     expect(store.getState().social.realitySimulation.trace).toHaveLength(0)
     expect(store.getState().social.realitySimulation.rng).toBeNull()
+  })
+})
+
+describe('Reality human alliance proposal acceptance', () => {
+  function makeAllianceProposalStore(seed: number) {
+    const store = makeStoreWithSocialMiddleware(true, [
+      { id: 'p1', name: 'Player', status: 'active' as const, isUser: true },
+      { id: 'p2', name: 'Kian', status: 'active' as const },
+    ])
+    initManeuvers(store)
+    store.dispatch(setPhase('social_1'))
+    store.dispatch(initializeRealitySimulation({ seed, force: true }))
+    store.dispatch(setEnergyBankEntry({ playerId: 'p1', value: 10 }))
+    store.dispatch(setInfoBankEntry({ playerId: 'p1', value: 300 }))
+    store.dispatch(
+      updateRelationship({
+        source: 'p1',
+        target: 'p2',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    store.dispatch(
+      updateRelationship({
+        source: 'p2',
+        target: 'p1',
+        delta: 10,
+        actionSource: 'system',
+      })
+    )
+    return store
+  }
+
+  it('does not manufacture an alliance tag when the target only counters the proposal', () => {
+    // Seed 8 makes the second persisted Reality draw land in the counteroffer
+    // band for this relationship state.
+    const store = makeAllianceProposalStore(8)
+
+    const result = executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    expect(result.label).toBe('COUNTER')
+    expect(result.summary).toMatch(/counteroffer/i)
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
+
+    store.dispatch(setPhase('week_start'))
+
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(0)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).not.toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).not.toContain('alliance')
+  })
+
+  it('keeps a genuinely accepted human alliance through the next day projection', () => {
+    // Seed 1 makes the target accept this otherwise identical proposal.
+    const store = makeAllianceProposalStore(1)
+
+    executeHumanRealityAction({
+      actorId: 'p1',
+      targetId: 'p2',
+      actionId: 'proposeAlliance',
+    })(store.dispatch as never, store.getState as never)
+
+    const alliance = Object.values(store.getState().social.reality.alliances)[0]
+    expect(alliance?.memberIds).toEqual(expect.arrayContaining(['p1', 'p2']))
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).toContain('alliance')
+
+    store.dispatch(setPhase('week_start'))
+
+    expect(Object.values(store.getState().social.reality.alliances)).toHaveLength(1)
+    expect(store.getState().social.relationships.p1?.p2?.tags ?? []).toContain('alliance')
+    expect(store.getState().social.relationships.p2?.p1?.tags ?? []).toContain('alliance')
   })
 })
 
