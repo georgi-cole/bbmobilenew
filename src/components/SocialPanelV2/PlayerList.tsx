@@ -177,21 +177,15 @@ export default function PlayerList({
         const disabled = disabledIds.includes(player.id)
         const isSelected = displaySelectedIds.has(player.id)
 
-        // Affinity: the human's perception of this player (human → player relationship).
+        // Human-facing Social is a player-limited read. The reverse
+        // housemate → human edge is private state and must not leak into the
+        // visible score, ring, label or directional relationship tags.
         let affinity: number | undefined
         let relationshipTags: string[] = []
         if (humanPlayerId && relationships) {
-          const outward = relationships[humanPlayerId]?.[player.id]?.affinity
-          const inward = relationships[player.id]?.[humanPlayerId]?.affinity
-          if (outward !== undefined || inward !== undefined) {
-            affinity = Math.round(((outward ?? 0) + (inward ?? 0)) / 2)
-          }
-          relationshipTags = Array.from(
-            new Set([
-              ...(relationships[humanPlayerId]?.[player.id]?.tags ?? []),
-              ...(relationships[player.id]?.[humanPlayerId]?.tags ?? []),
-            ])
-          )
+          const outward = relationships[humanPlayerId]?.[player.id]
+          affinity = outward?.affinity
+          relationshipTags = [...(outward?.tags ?? [])]
         }
 
         return (
