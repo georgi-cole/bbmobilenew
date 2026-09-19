@@ -215,6 +215,16 @@ describe('ActionGrid interaction and accessibility', () => {
 })
 
 describe('ActionGrid stable placement and affordability', () => {
+  it('keeps canonical card order when a move is selected', () => {
+    const { rerender } = render(<ActionGrid />)
+    const canonical = renderedActionIds()
+    const selectedId = canonical[Math.min(2, canonical.length - 1)]
+
+    rerender(<ActionGrid selectedId={selectedId} />)
+
+    expect(renderedActionIds()).toEqual(canonical)
+  })
+
   it('preserves canonical placement when resources change', () => {
     const { rerender } = render(<ActionGrid />)
     const canonical = renderedActionIds()
