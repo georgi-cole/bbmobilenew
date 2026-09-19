@@ -338,6 +338,53 @@ describe('Reality causal orchestration', () => {
     expect(selfResult.simulation.rng?.cursor).toBe(1)
   })
 
+  it('persists AI member reactions while a mixed group scene waits for the human', () => {
+    const pending = runRealityOpportunity({
+      domain: createInitialRealityDomainState(),
+      simulation: createInitialRealitySimulationState(31),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'GROUP',
+        context: {
+          ...context,
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human'],
+        },
+        actors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('group_chat')!,
+            targetIds: ['lia', 'human'],
+          },
+        ],
+      },
+    })
+
+    expect(pending.event).toBeNull()
+    expect(pending.interaction?.status).toBe('AWAITING_HUMAN')
+    expect(pending.interaction?.targetResponses?.lia).toBeDefined()
+    expect(pending.interaction?.targetResponses?.human).toBeUndefined()
+    expect(pending.simulation.rng?.cursor).toBe(2)
+
+    const resumedDomain = structuredClone(pending.domain)
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: resumedDomain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_1',
+    })
+
+    expect(['SUCCESS', 'PARTIAL']).toContain(resolved.event?.outcome)
+    expect(resolved.event?.targetIds).toEqual(expect.arrayContaining(['lia', 'human']))
+    expect(resolved.domain.relationships.ava.lia).toBeDefined()
+    expect(resolved.domain.relationships.lia.ava).toBeDefined()
+    expect(resolved.domain.relationships.ava.human).toBeDefined()
+    expect(resolved.domain.relationships.human.ava).toBeDefined()
+    expect(resolved.domain.interactions[pending.interaction!.id].status).toBe('RESOLVED')
+  })
+
   it('turns an explicit human acceptance into a live operational alliance', () => {
     const pending = runRealityOpportunity({
       domain: createInitialRealityDomainState(),
