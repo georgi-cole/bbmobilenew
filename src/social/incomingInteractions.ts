@@ -599,12 +599,18 @@ function buildResponseOutcomeText(
         : `${fromName} took your answer as strategic alignment. The shared alliance plan is now live.`
     }
     if (responseType === 'neutral') {
-      return `You heard ${fromName}'s alliance read without committing to it. No shared plan was locked.`
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `You heard ${fromName}'s alliance read without committing. Your position was recorded, and the room may still settle on a majority-backed plan.`
+        : `You heard ${fromName}'s alliance read without committing to it. No shared plan was locked.`
     }
     if (responseType === 'decline' || responseType === 'negative') {
-      return `You pushed back on ${fromName}'s proposed move. The alliance remains intact, but this target was not agreed.`
+      return interaction.payload?.allianceGroupHuddle === true
+        ? `You pushed back on ${fromName}'s proposed move. Your dissent was recorded, though the alliance can still lock a majority-backed plan.`
+        : `You pushed back on ${fromName}'s proposed move. The alliance remains intact, but this target was not agreed.`
     }
-    return `You stepped out of ${fromName}'s strategy conversation. No alliance plan was locked from your response.`
+    return interaction.payload?.allianceGroupHuddle === true
+      ? `You stepped out of ${fromName}'s alliance huddle. The remaining members may still reach a plan without you.`
+      : `You stepped out of ${fromName}'s strategy conversation. No alliance plan was locked from your response.`
   }
   if (scenarioKey === 'safety_holder_consults_loh') {
     const choice = getDeclaredSafetyChoice(interaction, responseLabel)
