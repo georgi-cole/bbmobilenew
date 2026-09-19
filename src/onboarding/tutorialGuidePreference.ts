@@ -51,10 +51,14 @@ function migratedReplayState(
 ): TutorialReplayState {
   if (!storage) return { gamePending: true, socialPending: true }
 
+  const legacySetting = storage.getItem(legacySeasonTutorialEnabledStorageKey(profileId))
   const legacyGameEnabled = isGuest
     ? true
-    : storage.getItem(legacySeasonTutorialEnabledStorageKey(profileId)) !== 'disabled' &&
-      storage.getItem(legacySeasonTutorialStorageKey(profileId)) !== 'done'
+    : legacySetting === 'enabled'
+      ? true
+      : legacySetting === 'disabled'
+        ? false
+        : storage.getItem(legacySeasonTutorialStorageKey(profileId)) !== 'done'
   const legacyRealityHandled =
     storage.getItem(legacyRealitySocialStorageKey(profileId)) === 'done'
 
@@ -185,6 +189,16 @@ function markSocialGuideLevel(
  * chapter has been seen, only the new Reality-specific chapter is offered.
  * A manual replay uses the current mode and never downgrades learned progress.
  */
+export function armRealityUpgradeTutorial(
+  profileId: string | null,
+  isGuest: boolean
+): void {
+  if (getSocialGuideLevel(profileId, isGuest) !== 1) return
+  const state = readReplayState(profileId, isGuest)
+  if (state.socialPending) return
+  writeReplayState(profileId, isGuest, { ...state, socialPending: true })
+}
+
 export function resolveSocialTutorialVariant(
   profileId: string | null,
   isGuest: boolean,
