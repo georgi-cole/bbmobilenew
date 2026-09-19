@@ -946,10 +946,7 @@ export default function SocialPanelV2() {
     socialPanelOpen &&
     !realityTutorialTourOpen
   const showRealityTutorialTour =
-    realityTutorialEligible &&
-    !realityTutorialHandled &&
-    socialPanelOpen &&
-    realityTutorialTourOpen
+    realityTutorialEligible && !realityTutorialHandled && socialPanelOpen && realityTutorialTourOpen
 
   const clearRealityTutorialTarget = () => {
     resetPanelSelection()
