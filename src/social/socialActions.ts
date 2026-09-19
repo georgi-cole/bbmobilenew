@@ -254,9 +254,9 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   },
   {
     id: 'observe',
-    title: 'Observe',
+    title: 'Watch Room',
     icon: '👁️',
-    description: 'Watch and listen. Costs only energy.',
+    description: 'Watch the whole house without approaching anyone.',
     category: 'strategic',
     kind: 'intel_gain',
     baseCost: { energy: 1 },
@@ -755,9 +755,9 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
   },
   {
     id: 'idle',
-    title: 'Stay Idle',
+    title: 'Lay Low',
     icon: '😴',
-    description: 'Wait and observe. Costs nothing.',
+    description: 'Keep to yourself and make no social move.',
     category: 'strategic',
     baseCost: 0,
     targetMode: 'none',
