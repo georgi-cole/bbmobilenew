@@ -749,14 +749,15 @@ function resolveIncomingInteractionPlan(
   const thresholds = socialConfig.incomingInteractionAutonomyTuning.scenarioThresholds
   let plan: InteractionPlan | null = resolveAllianceInteractionPlan(actorId, playerId, context)
 
-  if (!plan && (
-    context.phase === 'pos_results' &&
-    constraints.actorIsCurrentHoh &&
-    constraints.playerHasSafetyPower
-  ) {
-    if (!shouldInitiateLohSafetyConsult(actorId, playerId, context)) return null
-    plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
-  }) else if (
+  if (!plan) {
+    if (
+      context.phase === 'pos_results' &&
+      constraints.actorIsCurrentHoh &&
+      constraints.playerHasSafetyPower
+    ) {
+      if (!shouldInitiateLohSafetyConsult(actorId, playerId, context)) return null
+      plan = { type: 'deal_offer', scenarioKey: 'loh_consults_safety_holder' }
+    } else if (
     context.phase === 'pos_results' &&
     constraints.actorHasSafetyPower &&
     constraints.playerIsHoh &&
@@ -894,12 +895,13 @@ function resolveIncomingInteractionPlan(
         scenarioKey: 'betrayal_warning',
       }
     }
-  } else if (
-    (context.phase === 'week_start' || context.phase === 'social_1') &&
-    !signals.tags.has('alliance') &&
-    signals.isStrongAlly
-  ) {
-    plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' }
+    } else if (
+      (context.phase === 'week_start' || context.phase === 'social_1') &&
+      !signals.tags.has('alliance') &&
+      signals.isStrongAlly
+    ) {
+      plan = { type: 'alliance_proposal', scenarioKey: 'week_start_alliance_lock' }
+    }
   }
 
   if (
