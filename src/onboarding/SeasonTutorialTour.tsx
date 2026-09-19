@@ -28,7 +28,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'tv',
     title: 'The Big Eye TV',
-    body: 'Ceremonies, results and important Big Eye announcements appear here.',
+    body: 'Competitions, nominations, Safety, votes and major announcements appear here.',
     selector: '.tv-zone__viewport',
     padding: 2,
     shape: 'panel',
@@ -36,23 +36,15 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'roster',
     title: 'Your hubmates',
-    body: 'This roster shows every player in the season and updates as the game unfolds.',
+    body: 'This is everyone still in the game. Press and hold an avatar for a quick player preview.',
     selector: '[data-houseguest-roster="true"]',
     padding: 3,
     shape: 'panel',
   },
   {
-    id: 'player-preview',
-    title: 'Press and hold for a preview',
-    body: 'Press and hold a player’s avatar to see a short profile. For their full biography, return to the Home Hub and open Hubmates.',
-    selector: '[data-houseguest-roster="true"] li[data-player-id] [role="button"]',
-    padding: 5,
-    shape: 'rounded',
-  },
-  {
     id: 'log',
     title: 'Game Log',
-    body: 'The Log keeps a running record of what happened, including rules and service messages.',
+    body: 'Missed something? The Log keeps a timeline of announcements, results and important game events.',
     selector: 'button[aria-label^="Open game log"], [aria-label="Game event log"]',
     padding: 5,
     shape: 'rounded',
@@ -60,7 +52,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'social',
     title: 'Social',
-    body: 'Talk to hubmates, build relationships and influence the social game.',
+    body: 'You approach other hubmates here. Build relationships, make strategic moves and shape your social game.',
     selector: '.game-control-dock__icon.social, button[aria-label^="Social"]',
     padding: 10,
     shape: 'circle',
@@ -68,7 +60,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'incoming',
     title: 'Incoming',
-    body: 'Hubmates can approach you with conversations, offers and requests.',
+    body: 'This is where other hubmates approach you with conversations, offers and requests.',
     selector: '.game-control-dock__icon.requests, button[aria-label^="Incoming requests"]',
     padding: 10,
     shape: 'circle',
@@ -76,7 +68,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'public',
     title: 'Public',
-    body: 'See how the audience currently feels about you and the other hubmates.',
+    body: 'See the audience’s current read of the house and any public pressure or requests affecting your game.',
     selector: '.game-control-dock__icon.stats, button[aria-label^="Public meter"]',
     padding: 10,
     shape: 'circle',
@@ -84,15 +76,15 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'confessional',
     title: 'Confessional',
-    body: 'Private decisions and messages from The Big Eye happen in the Confessional.',
+    body: 'Private choices, secret opportunities and messages from The Big Eye happen here.',
     selector: '.game-control-dock__icon.confessional, button[aria-label^="Confessional"]',
     padding: 10,
     shape: 'circle',
   },
   {
     id: 'more',
-    title: 'More options',
-    body: 'The three-dot menu holds useful shortcuts, including Settings, Rules, the leaderboard, store and Profile.',
+    title: 'More',
+    body: 'Open Settings, Rules, Hall of Fame, Store and other useful shortcuts here.',
     selector: '.dock-hit-area--more, button[aria-label="More"]',
     padding: 5,
     shape: 'circle',
@@ -100,7 +92,7 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'profile',
     title: 'Create a Profile',
-    body: 'Choose Profile, then Create Profile, to save your seasons and progress on this device.',
+    body: 'Create or use a Profile to save your seasons and progress on this device.',
     selector: '[role="menuitem"][aria-label="Profile"]',
     padding: 5,
     shape: 'rounded',
@@ -108,12 +100,14 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'play',
     title: 'Play',
-    body: 'Play moves the game forward when you are ready.',
+    body: 'When you’re ready, press Play to move the game forward.',
     selector: '.game-control-dock__play, button[aria-label="Advance to next phase"]',
     padding: 0,
     shape: 'circle',
   },
 ]
+
+const TUTORIAL_STEPS_WITHOUT_PUBLIC = TUTORIAL_STEPS.filter((step) => step.id !== 'public')
 
 type TargetRect = {
   left: number
@@ -170,23 +164,26 @@ function targetRectsEqual(left: TargetRect | null, right: TargetRect): boolean {
 }
 
 export default function SeasonTutorialTour({
+  showPublicStep,
   onComplete,
   onSkip,
 }: {
+  showPublicStep: boolean
   onComplete: () => void
   onSkip: () => void
 }) {
+  const tutorialSteps = showPublicStep ? TUTORIAL_STEPS : TUTORIAL_STEPS_WITHOUT_PUBLIC
   const [stepIndex, setStepIndex] = useState(0)
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null)
   const [measuredStepId, setMeasuredStepId] = useState<string | null>(null)
   const [finishing, setFinishing] = useState(false)
-  const currentStep = TUTORIAL_STEPS[stepIndex]
+  const currentStep = tutorialSteps[stepIndex]
   const tooltipRef = useRef<HTMLElement | null>(null)
   const finishTimerRef = useRef<number | null>(null)
 
   const moveToStep = useCallback((nextIndex: number) => {
     setMeasuredStepId(null)
-    setStepIndex(clamp(nextIndex, 0, TUTORIAL_STEPS.length - 1))
+    setStepIndex(clamp(nextIndex, 0, tutorialSteps.length - 1))
   }, [])
 
   const completeWithHandoff = useCallback(() => {
@@ -257,7 +254,7 @@ export default function SeasonTutorialTour({
       missingTargetTimer = window.setTimeout(() => {
         if (findTourTarget(currentStep)) {
           findAndMeasure()
-        } else if (stepIndex < TUTORIAL_STEPS.length - 1) {
+        } else if (stepIndex < tutorialSteps.length - 1) {
           moveToStep(stepIndex + 1)
         } else {
           completeWithHandoff()
@@ -302,7 +299,7 @@ export default function SeasonTutorialTour({
         onSkip()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
-        if (stepIndex === TUTORIAL_STEPS.length - 1) completeWithHandoff()
+        if (stepIndex === tutorialSteps.length - 1) completeWithHandoff()
         else moveToStep(stepIndex + 1)
       } else if (event.key === 'ArrowLeft' && stepIndex > 0) {
         event.preventDefault()
@@ -351,7 +348,7 @@ export default function SeasonTutorialTour({
         transform: 'translateY(-50%)',
       } as CSSProperties)
 
-  const isLastStep = stepIndex === TUTORIAL_STEPS.length - 1
+  const isLastStep = stepIndex === tutorialSteps.length - 1
   const focusSettled = measuredStepId === currentStep.id
 
   return createPortal(
@@ -399,11 +396,11 @@ export default function SeasonTutorialTour({
       >
         <div
           className="season-tutorial__progress"
-          aria-label={`Step ${stepIndex + 1} of ${TUTORIAL_STEPS.length}`}
+          aria-label={`Step ${stepIndex + 1} of ${tutorialSteps.length}`}
         >
           <span>{stepIndex + 1}</span>
           <i />
-          <span>{TUTORIAL_STEPS.length}</span>
+          <span>{tutorialSteps.length}</span>
         </div>
         <h2 id="season-tutorial-title">{currentStep.title}</h2>
         <p id="season-tutorial-copy">{currentStep.body}</p>
