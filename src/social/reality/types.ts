@@ -422,6 +422,23 @@ export type RealityInteractionStatus =
   | 'EXPIRED'
   | 'INVALIDATED'
 
+export type RealityResponseKind =
+  | 'ACCEPT'
+  | 'REJECT'
+  | 'QUESTION'
+  | 'LIE'
+  | 'COUNTER'
+  | 'DE_ESCALATE'
+  | 'ESCALATE'
+  | 'WALK_AWAY'
+
+export interface RealityResponseResolution {
+  kind: RealityResponseKind
+  utility: number
+  reason: string
+  accepted: boolean
+}
+
 export interface RealityInteraction {
   id: string
   actionId: string
@@ -435,6 +452,13 @@ export interface RealityInteraction {
   status: RealityInteractionStatus
   deadline?: RealityDeadline
   responseOptions: string[]
+  /**
+   * In a mixed AI/human group scene, non-human members resolve independently
+   * when the scene is scheduled. Their deterministic responses are persisted
+   * until the human answers so the eventual group outcome does not flatten
+   * everyone to the human's choice.
+   */
+  targetResponses?: Record<RealityActorId, RealityResponseResolution>
   selectedResponseId?: string
   outcomeEventIds: string[]
   createdSequence: number
