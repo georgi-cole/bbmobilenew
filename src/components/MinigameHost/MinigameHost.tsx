@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom'
 import { isPlacementRankingGame, type GameRegistryEntry } from '../../minigames/registry'
 import { resolvePremiumGameForAccess } from '../../minigames/premiumGameAccess'
 import { store } from '../../store/store'
-import { selectHasPremiumChallengesAccess } from '../../store/vipSlice'
+import { selectHasPremiumChallengesAccess, selectIsVipActive } from '../../store/vipSlice'
 import MinigameRules from '../MinigameRules/MinigameRules'
 import MinigameTurnDemo, { TURN_DEMO_KEYS } from '../MinigameTurnDemo/MinigameTurnDemo'
 import MinigameUtilityDock from '../MinigameUtilityDock/MinigameUtilityDock'
@@ -150,6 +150,11 @@ export default function MinigameHost({
     store.subscribe,
     () => selectHasPremiumChallengesAccess(store.getState()),
     () => selectHasPremiumChallengesAccess(store.getState())
+  )
+  const isVipActive = useSyncExternalStore(
+    store.subscribe,
+    () => selectIsVipActive(store.getState()),
+    () => selectIsVipActive(store.getState())
   )
   const launchedGame = useMemo(() => {
     return resolvePremiumGameForAccess(game, hasPremiumChallengesAccess)
@@ -618,6 +623,7 @@ export default function MinigameHost({
           participantIds={participantIds}
           participants={participants}
           prizeType={(gameOptions?.prizeType as RiskWheelCompetitionType) ?? 'LOH'}
+          premiumPresentation={isVipActive}
           onComplete={handleAttemptReactComplete}
         />
       )

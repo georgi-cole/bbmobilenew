@@ -48,6 +48,52 @@ function findPositivePointsSeed(): number {
 }
 
 describe('RiskWheelComp', () => {
+  it('keeps the classic skin by default and enables the VIP skin only when requested', async () => {
+    const classicStore = makeStore();
+    const classic = render(
+      <Provider store={classicStore}>
+        <RiskWheelComp
+          participantIds={['human', 'ai-1']}
+          participants={[
+            { id: 'human', name: 'Human', isHuman: true },
+            { id: 'ai-1', name: 'AI 1', isHuman: false },
+          ]}
+          prizeType="LOH"
+          seed={42}
+          standalone
+        />
+      </Provider>,
+    );
+
+    await screen.findByRole('button', { name: /spin the wheel/i });
+    expect(classic.container.querySelector('.rw-root--vip')).toBeNull();
+    classic.unmount();
+
+    const vipStore = makeStore();
+    const vip = render(
+      <Provider store={vipStore}>
+        <RiskWheelComp
+          participantIds={['human', 'ai-1']}
+          participants={[
+            { id: 'human', name: 'Human', isHuman: true },
+            { id: 'ai-1', name: 'AI 1', isHuman: false },
+          ]}
+          prizeType="LOH"
+          seed={42}
+          standalone
+          premiumPresentation
+        />
+      </Provider>,
+    );
+
+    await screen.findByRole('button', { name: /spin the wheel/i });
+    expect(vip.container.querySelector('.rw-root--vip')).not.toBeNull();
+    expect(screen.getByLabelText(/VIP Risk Wheel/i)).toBeInTheDocument();
+    expect(vip.container.querySelectorAll('.rw-wheel-sector--vip')).toHaveLength(
+      WHEEL_SECTORS.length,
+    );
+  });
+
   it('advances straight to round results when the human taps Stop and Bank', async () => {
     const store = makeStore();
     const seed = findPositivePointsSeed();
