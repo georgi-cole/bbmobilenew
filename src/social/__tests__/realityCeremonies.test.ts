@@ -136,6 +136,139 @@ describe('Reality jury knowledge boundaries', () => {
   })
 })
 
+describe('Reality promise ceremony resolution', () => {
+  it('resolves a Safety-use promise from the actual holder decision', () => {
+    const state = createInitialRealityDomainState()
+    upsertRealityPromise(state, {
+      id: 'use-safety-promise',
+      kind: 'use_safety_on_player',
+      promisorId: 'holder',
+      beneficiaryIds: ['nominee'],
+      witnessIds: ['requester'],
+      createdAt: { day: 3, phase: 'pos_results' },
+      deadline: { day: 3, phase: 'pos_ceremony_results' },
+      stakes: 0.7,
+      scope: { actionId: 'ask_use_safety', targetId: 'nominee' },
+      status: 'ACTIVE',
+    })
+
+    const event = recordRealityCeremonyOutcome(state, {
+      kind: 'SAFETY_USED',
+      day: 3,
+      phase: 'social_2',
+      actorId: 'holder',
+      targetIds: ['nominee'],
+      witnessIds: ['holder', 'nominee', 'requester'],
+      publicEligible: true,
+    })
+
+    expect(state.promises['use-safety-promise'].status).toBe('KEPT')
+    expect(state.promises['use-safety-promise'].resolutionEventId).toBe(event.id)
+    expect(event.relatedPromiseIds).toContain('use-safety-promise')
+  })
+
+  it('breaks a hold-Safety promise when the holder uses the power', () => {
+    const state = createInitialRealityDomainState()
+    upsertRealityPromise(state, {
+      id: 'hold-safety-promise',
+      kind: 'hold_safety',
+      promisorId: 'holder',
+      beneficiaryIds: ['loh'],
+      witnessIds: ['loh'],
+      createdAt: { day: 3, phase: 'pos_results' },
+      deadline: { day: 3, phase: 'pos_ceremony_results' },
+      stakes: 0.65,
+      scope: { actionId: 'ask_hold_safety' },
+      status: 'ACTIVE',
+    })
+
+    recordRealityCeremonyOutcome(state, {
+      kind: 'SAFETY_USED',
+      day: 3,
+      phase: 'social_2',
+      actorId: 'holder',
+      targetIds: ['nominee'],
+      witnessIds: ['holder', 'nominee', 'loh'],
+      publicEligible: true,
+    })
+
+    expect(state.promises['hold-safety-promise'].status).toBe('BROKEN')
+  })
+
+  it('resolves generic protection at the decision the promisor actually controls and voids unused promises', () => {
+    const nominationState = createInitialRealityDomainState()
+    upsertRealityPromise(nominationState, {
+      id: 'loh-protection',
+      kind: 'protect',
+      promisorId: 'loh',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_1' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+
+    recordRealityCeremonyOutcome(nominationState, {
+      kind: 'NOMINATIONS_LOCKED',
+      day: 2,
+      phase: 'nomination_results',
+      actorId: 'loh',
+      targetIds: ['outsider', 'pawn'],
+      witnessIds: ['loh', 'ally', 'outsider', 'pawn'],
+      publicEligible: true,
+    })
+    expect(nominationState.promises['loh-protection'].status).toBe('KEPT')
+
+    const voteState = createInitialRealityDomainState()
+    upsertRealityPromise(voteState, {
+      id: 'vote-protection',
+      kind: 'protect',
+      promisorId: 'voter',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_2' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+    finalizeRealityVote(
+      voteState,
+      'voter',
+      'outsider',
+      { day: 2, phase: 'live_vote' },
+      'vote-event',
+      ['ally', 'outsider']
+    )
+    expect(voteState.promises['vote-protection'].status).toBe('KEPT')
+
+    const unusedState = createInitialRealityDomainState()
+    upsertRealityPromise(unusedState, {
+      id: 'unused-protection',
+      kind: 'protect',
+      promisorId: 'bystander',
+      beneficiaryIds: ['ally'],
+      witnessIds: [],
+      createdAt: { day: 2, phase: 'social_1' },
+      deadline: { day: 2, phase: 'eviction_results' },
+      stakes: 0.65,
+      scope: { actionId: 'protect' },
+      status: 'ACTIVE',
+    })
+    recordRealityCeremonyOutcome(unusedState, {
+      kind: 'EVICTION',
+      day: 2,
+      phase: 'eviction_results',
+      targetIds: ['outsider'],
+      witnessIds: ['bystander', 'ally', 'outsider'],
+      publicEligible: true,
+    })
+    expect(unusedState.promises['unused-protection'].status).toBe('VOID')
+  })
+})
+
 describe('Reality alliance ceremony consequences', () => {
   it('fractures a core pact when the LOH formally nominates their ally', () => {
     const state = createInitialRealityDomainState()
