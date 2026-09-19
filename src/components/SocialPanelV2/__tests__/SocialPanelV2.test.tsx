@@ -413,6 +413,31 @@ describe('SocialPanelV2 – execute flow', () => {
     )
   })
 
+  it('keeps target-dependent actions visible when a targetless move is selected', () => {
+    cleanup()
+    store = makeStore({ phase: 'social_1', dramaMode: true })
+    humanId = store.getState().game.players.find((player) => player.isUser)!.id
+    store.dispatch(setEnergyBankEntry({ playerId: humanId, value: 10 }))
+    store.dispatch(openSocialPanel())
+    initManeuvers(store)
+    renderPanel(store)
+
+    const target = store.getState().game.players.find((player) => !player.isUser)!
+    fireEvent.click(screen.getAllByRole('button', { name: new RegExp(target.name, 'i') })[0])
+
+    expect(screen.getByRole('button', { name: /Propose Alliance/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Observe/i }))
+
+    expect(screen.getByRole('button', { name: /Propose Alliance/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Propose Alliance/i }).getAttribute('aria-pressed')
+    ).toBe('false')
+    expect(screen.getByRole('button', { name: /Observe/i }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
+  })
+
   it('Drama Mode group chat uses plain taps for multi-select and scales its displayed cost', () => {
     cleanup()
     store = makeStore({ phase: 'social_1', dramaMode: true })
