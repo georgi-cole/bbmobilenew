@@ -45,7 +45,7 @@ import './RiskWheelComp.css'
 const SPIN_DURATION_MS = 2200
 const AI_RESOLVE_DELAY_MS = 600
 const SECTOR_HIGHLIGHT_DURATION_MS = 850
-const VIP_ASSET_ROOT = '/assets/minigames/risk-wheel-vip'
+const VIP_ASSET_ROOT = `${import.meta.env.BASE_URL}assets/minigames/risk-wheel-vip`
 
 function areAnimationsDisabled(): boolean {
   return typeof document !== 'undefined' && document.body.classList.contains('no-animations')

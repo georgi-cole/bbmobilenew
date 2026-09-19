@@ -51,6 +51,7 @@ describe('RiskWheelComp styles', () => {
     expect(css).toContain('.rw-wheel-sector--vip')
     expect(css).toContain('.rw-vip-result-halo')
     expect(source).toContain('premiumPresentation = false')
+    expect(source).toContain('import.meta.env.BASE_URL')
     expect(source).toContain("premiumPresentation ? ' rw-root--vip' : ''")
     expect(source).toContain('data-testid="rw-vip-showroom"')
     expect(source).toContain('data-testid="rw-vip-wheel-frame"')
