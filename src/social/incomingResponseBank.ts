@@ -125,6 +125,12 @@ export const DRAMA_RESPONSE_BANK: Record<string, ResponseSet[]> = {
     set('Go with it', 'Hear the case', 'Choose your own move', 'Keep it open', true),
     set('Lock the plan', 'Ask for the logic', 'Push another name', 'End the huddle', true),
   ],
+  'scenario:alliance_vox_ballot_pitch': [
+    set('Match that name', 'Compare ballot reads', 'Nominate your own way', 'Keep ballot private', true),
+    set('Coordinate one pick', 'Ask why them', 'Reject that name', 'Make no promise', true),
+    set('Back the pressure', 'Hear the case', 'Keep your ballot independent', 'End the talk', true),
+  ],
+
   'scenario:alliance_safety_pitch': [
     set('Back the replacement', 'Ask the logic', 'Reject the move', 'Keep options open', true),
     set('Use that plan', 'Talk through risks', 'Choose another route', 'Make no promise', true),
