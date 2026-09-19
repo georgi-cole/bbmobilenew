@@ -972,22 +972,18 @@ export default function SocialPanelV2() {
       ).filter((tag) => tag in RELATIONSHIP_TAG_LABELS)
     : []
 
-  const hasSeenAllianceGuide = useMemo(
-    () => hasSeenContextualGuide('alliance', activeProfileId, isGuest),
-    [activeProfileId, contextualGuideRevision, isGuest]
-  )
-  const hasSeenAllianceConsultGuide = useMemo(
-    () => hasSeenContextualGuide('alliance-consult', activeProfileId, isGuest),
-    [activeProfileId, contextualGuideRevision, isGuest]
+  void contextualGuideRevision
+  const hasSeenAllianceGuide = hasSeenContextualGuide('alliance', activeProfileId, isGuest)
+  const hasSeenAllianceConsultGuide = hasSeenContextualGuide(
+    'alliance-consult',
+    activeProfileId,
+    isGuest
   )
 
-  const dismissContextualGuide = useCallback(
-    (guide: 'alliance' | 'alliance-consult') => {
-      markContextualGuideSeen(guide, activeProfileId, isGuest)
-      setContextualGuideRevision((revision) => revision + 1)
-    },
-    [activeProfileId, isGuest]
-  )
+  const dismissContextualGuide = (guide: 'alliance' | 'alliance-consult') => {
+    markContextualGuideSeen(guide, activeProfileId, isGuest)
+    setContextualGuideRevision((revision) => revision + 1)
+  }
 
   const executeCopy = 'Execute'
   const showSocialTutorialPrompt =
