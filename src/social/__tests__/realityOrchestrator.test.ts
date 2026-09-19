@@ -371,6 +371,184 @@ describe('Reality causal orchestration', () => {
     expect(resolved.domain.interactions[pending.interaction!.id].status).toBe('RESOLVED')
   })
 
+  it('turns an accepted AI LOH alliance huddle into a group nomination plan', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'power-huddle',
+      founderIds: ['ava', 'human'],
+      memberIds: ['lia'],
+      purpose: 'Control nominations',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'human', 'lia'],
+      targetIds: [],
+      planIds: ['stay-flexible'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const huddleActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      nova: {
+        id: 'nova',
+        isHuman: false,
+        active: true,
+        roles: ['active'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(71),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'GROUP',
+        context: {
+          ...context,
+          phase: 'social_1',
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human', 'nova'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            ava: ['loh'],
+            nova: ['active'],
+          },
+          powerHolderIds: ['ava'],
+        },
+        actors: huddleActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('consult_alliance')!,
+            targetIds: ['human', 'lia'],
+            subjectId: 'nova',
+          },
+        ],
+      },
+    })
+
+    expect(pending.interaction?.status).toBe('AWAITING_HUMAN')
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'social_1',
+      subjectId: 'nova',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'NOMINATION',
+    })
+
+    expect(resolved.event?.outcome).toBe('SUCCESS')
+    expect(resolved.domain.alliances[alliance.id].currentTargetIds).toEqual(['nova'])
+    expect(resolved.domain.alliances[alliance.id].memberPlanBeliefs.ava).toEqual(['target:nova'])
+    expect(resolved.domain.alliances[alliance.id].memberPlanBeliefs.human).toEqual(['target:nova'])
+    expect(resolved.domain.alliances[alliance.id].memberPlanBeliefs.lia).toEqual(['target:nova'])
+    expect(
+      resolved.domain.events.some(
+        (event) =>
+          event.type === 'ALLIANCE_STRATEGY_MEETING' &&
+          event.reason.includes('nominations')
+      )
+    ).toBe(true)
+  })
+
+  it('keeps an accepted AI Safety huddle as save intel plus a fallback target', () => {
+    const domain = createInitialRealityDomainState()
+    const alliance = createRealityAlliance(domain, {
+      id: 'safety-huddle',
+      founderIds: ['ava', 'human'],
+      memberIds: ['lia'],
+      purpose: 'Protect the group',
+      at: { day: 2, phase: 'social_1' },
+    })
+    holdRealityAllianceMeeting(domain, {
+      allianceId: alliance.id,
+      attendeeIds: ['ava', 'human', 'lia'],
+      targetIds: ['mara'],
+      planIds: ['target:mara'],
+      at: { day: 2, phase: 'social_2' },
+    })
+
+    const huddleActors: Record<string, RealityActorSnapshot> = {
+      ...actors,
+      nova: {
+        id: 'nova',
+        isHuman: false,
+        active: true,
+        roles: ['nominated'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+      mara: {
+        id: 'mara',
+        isHuman: false,
+        active: true,
+        roles: ['active'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+      zoe: {
+        id: 'zoe',
+        isHuman: false,
+        active: true,
+        roles: ['active'],
+        resources: { energy: 20, influence: 1_000, info: 1_000 },
+      },
+    }
+    const pending = runRealityOpportunity({
+      domain,
+      simulation: createInitialRealitySimulationState(73),
+      opportunity: {
+        actorId: 'ava',
+        direction: 'GROUP',
+        context: {
+          ...context,
+          phase: 'pos_results',
+          socialIntensity: 'REALITY',
+          activeActorIds: ['ava', 'lia', 'human', 'nova', 'mara', 'zoe'],
+          rolesByActor: {
+            ...context.rolesByActor,
+            ava: ['pos'],
+            nova: ['nominated'],
+            mara: ['active'],
+            zoe: ['active'],
+          },
+          atRiskActorIds: ['nova'],
+          powerHolderIds: ['ava'],
+        },
+        actors: huddleActors,
+        candidates: [
+          {
+            action: REALITY_ACTION_BY_ID.get('consult_alliance')!,
+            targetIds: ['human', 'lia'],
+            subjectId: 'nova',
+          },
+        ],
+      },
+    })
+
+    const resolved = resolvePendingHumanRealityInteraction({
+      domain: pending.domain,
+      interactionId: pending.interaction!.id,
+      humanId: 'human',
+      responseType: 'accept',
+      day: 3,
+      phase: 'pos_results',
+      subjectId: 'nova',
+      secondarySubjectId: 'zoe',
+      allianceId: alliance.id,
+      allianceStrategyKind: 'SAFETY',
+    })
+
+    expect(resolved.domain.alliances[alliance.id].currentTargetIds).toEqual(['mara'])
+    expect(resolved.domain.alliances[alliance.id].fallbackTargetIds).toEqual(['zoe'])
+    expect(resolved.domain.alliances[alliance.id].memberPlanBeliefs.human).toEqual([
+      'target:mara',
+      'fallback:zoe',
+      'save:nova',
+    ])
+  })
+
   it('turns an accepted vote rally into the shared alliance target plan', () => {
     const domain = createInitialRealityDomainState()
     const alliance = createRealityAlliance(domain, {
