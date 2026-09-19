@@ -359,10 +359,12 @@ export const SOCIAL_ACTIONS: SocialActionDefinition[] = [
     dramaRequiredRelationshipTags: ['alliance'],
     realityPurposes: ['INFORMATION'],
     realityVisibility: 'GROUP_VISIBLE',
-    affinityEffects: { success: 1, failure: 0 },
+    affinityEffects: { success: 0, failure: 0 },
     realityEffects: {
-      accepted: { trust: 2, loyalty: 3, strategicValue: 4, secretCloseness: 2 },
-      rejected: { trust: -1, suspicion: 1 },
+      // Consulting the group is strategic work, not a repeatable loyalty farm.
+      // Cohesion/commitment changes belong to the meeting lifecycle itself.
+      accepted: { strategicValue: 2, secretCloseness: 1, familiarity: 1 },
+      rejected: { suspicion: 1 },
     },
     allowedPhases: [
       'loh_results',
