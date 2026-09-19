@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
+import type { SocialTutorialVariant } from './tutorialGuidePreference'
 import './SeasonStartOnboardingController.css'
 
 const TOOLTIP_GAP_PX = 14
@@ -32,7 +33,55 @@ type TutorialStep = {
   mode: TutorialMode
 }
 
-const TUTORIAL_STEPS: readonly TutorialStep[] = [
+const NORMAL_TUTORIAL_STEPS: readonly TutorialStep[] = [
+  {
+    id: 'normal-intro',
+    title: 'Welcome to Social',
+    body: 'This is where you manage relationships and make social moves. What you do here can change how the house sees you and how other players act later.',
+    selector: '[data-reality-tutorial="social-header"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'social',
+  },
+  {
+    id: 'normal-targetless',
+    title: 'Start with the room — or choose a person',
+    body: 'With no hubmate selected, the grid shows house-wide moves. Pick someone and the available actions update to what makes sense for that person and the current phase.',
+    selector: '[data-reality-tutorial="actions"]',
+    padding: 4,
+    shape: 'panel',
+    mode: 'targetless',
+  },
+  {
+    id: 'normal-relationship',
+    title: 'Read the relationship',
+    body: 'The ring, label and tags summarize the relationship between you and the selected hubmate. Use that read to decide whether to build trust, repair damage or apply pressure.',
+    selector: '[data-reality-tutorial="relationship-read"]',
+    padding: 5,
+    shape: 'panel',
+    mode: 'target',
+  },
+  {
+    id: 'normal-moves',
+    title: 'Choose your move',
+    body: 'Available actions depend on the target, phase and current relationship. Selecting a move only prepares it; nothing happens until you press Execute.',
+    selector: '[data-reality-tutorial="actions"]',
+    padding: 4,
+    shape: 'panel',
+    mode: 'target',
+  },
+  {
+    id: 'normal-costs',
+    title: 'Watch your Energy',
+    body: 'Social moves use Energy ⚡. The footer shows the exact cost and whether your current selection is ready to execute.',
+    selector: '[data-reality-tutorial="footer"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'target',
+  },
+]
+
+const REALITY_TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'resources',
     title: 'Welcome to Reality Social',
@@ -116,6 +165,108 @@ const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
 ]
 
+const REALITY_UPGRADE_STEPS: readonly TutorialStep[] = [
+  {
+    id: 'upgrade-intro',
+    title: 'Reality Mode changes Social',
+    body: 'You already know the Social basics. Reality Mode now adds private relationship reads, longer memory, strategic resources, promises, alliances and knowledge your player must actually earn.',
+    selector: '[data-reality-tutorial="social-header"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'social',
+  },
+  {
+    id: 'upgrade-relationship',
+    title: 'Your read is no longer perfect knowledge',
+    body: 'The relationship panel shows how your character currently reads this person. The other player can privately feel differently, so trust the signals you have rather than assuming perfect information.',
+    selector: '[data-reality-tutorial="relationship-read"]',
+    padding: 5,
+    shape: 'panel',
+    mode: 'target',
+  },
+  {
+    id: 'upgrade-moves',
+    title: 'Reality unlocks contextual strategy',
+    body: 'New moves can appear or disappear based on roles, relationships, alliances, promises and the current phase. The same person can offer very different options as the game develops.',
+    selector: '[data-reality-tutorial="actions"]',
+    padding: 4,
+    shape: 'panel',
+    mode: 'target',
+  },
+  {
+    id: 'upgrade-costs',
+    title: 'You now have three social resources',
+    body: 'Energy ⚡ still powers activity, while stronger strategic moves can also spend Influence 🤝 or Information 💡. The footer always shows the exact price before Execute.',
+    selector: '[data-reality-tutorial="footer"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'target',
+  },
+  {
+    id: 'upgrade-pulse',
+    title: 'Meet My Pulse',
+    body: 'My Pulse is your private strategy read. It surfaces only developments, relationships, facts and claims your player has actually experienced, witnessed, learned or seen become public.',
+    selector: '[data-reality-tutorial="pulse-summary"]',
+    padding: 5,
+    shape: 'panel',
+    mode: 'social',
+  },
+  {
+    id: 'upgrade-stream',
+    title: 'Stream shows what reached you',
+    body: 'Stream recaps moments you took part in, witnessed, or that became public. Hidden AI activity stays hidden until your player has a legitimate way to know it.',
+    selector: '[data-reality-tutorial="pulse-stream"]',
+    padding: 5,
+    shape: 'panel',
+    mode: 'pulse-stream',
+  },
+  {
+    id: 'upgrade-my-game',
+    title: 'My Game adds the deeper model',
+    body: 'People separates Trust, Warmth, Loyalty, Respect and Tension. Known separates facts from claims. Deals tracks promises and debts. House tracks alliances and ongoing stories.',
+    selector: '[data-reality-tutorial="ledger-tabs"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'ledger-relationships',
+  },
+  {
+    id: 'upgrade-alliances',
+    title: 'Alliances now have a life of their own',
+    body: 'House shows only alliances you actually know about. Your pact has members, hierarchy, cohesion and secrecy, and Consult Alliance can turn genuine majority opinion into a shared plan.',
+    selector: '[data-reality-tutorial="ledger-house"]',
+    padding: 5,
+    shape: 'rounded',
+    mode: 'ledger-house',
+  },
+]
+
+function tutorialStepsFor(variant: SocialTutorialVariant): readonly TutorialStep[] {
+  if (variant === 'normal') return NORMAL_TUTORIAL_STEPS
+  if (variant === 'reality-upgrade') return REALITY_UPGRADE_STEPS
+  return REALITY_TUTORIAL_STEPS
+}
+
+const PROMPT_COPY: Record<
+  SocialTutorialVariant,
+  { eyebrow: string; title: string; body: string }
+> = {
+  normal: {
+    eyebrow: 'SOCIAL',
+    title: 'Welcome to Social',
+    body: 'Want a quick tour of relationships, moves and Energy?',
+  },
+  reality: {
+    eyebrow: 'REALITY MODE',
+    title: 'Welcome to Reality Social',
+    body: 'Want a quick tour of relationships, moves and My Pulse?',
+  },
+  'reality-upgrade': {
+    eyebrow: 'REALITY MODE',
+    title: 'Reality Mode is on',
+    body: 'Social has new strategy layers. Want a quick tour of what changed?',
+  },
+}
+
 type TargetRect = {
   left: number
   top: number
@@ -173,19 +324,24 @@ function dispatchTutorialEvent(name: string, detail?: string) {
 }
 
 export function RealitySocialTutorialPrompt({
+  variant,
   onStart,
   onSkip,
 }: {
+  variant: SocialTutorialVariant
   onStart: () => void
   onSkip: () => void
 }) {
   if (typeof document === 'undefined') return null
+
+  const copy = PROMPT_COPY[variant]
 
   return createPortal(
     <div
       className="season-tutorial-prompt"
       role="presentation"
       data-testid="reality-social-tutorial-prompt"
+      data-variant={variant}
     >
       <div className="season-tutorial-prompt__backdrop" aria-hidden="true" />
       <section
@@ -195,11 +351,9 @@ export function RealitySocialTutorialPrompt({
         aria-labelledby="reality-social-tutorial-prompt-title"
         aria-describedby="reality-social-tutorial-prompt-copy"
       >
-        <span className="season-tutorial-prompt__eyebrow">REALITY MODE</span>
-        <h2 id="reality-social-tutorial-prompt-title">Welcome to Reality Social</h2>
-        <p id="reality-social-tutorial-prompt-copy">
-          Want a quick tour of relationships, moves and My Pulse?
-        </p>
+        <span className="season-tutorial-prompt__eyebrow">{copy.eyebrow}</span>
+        <h2 id="reality-social-tutorial-prompt-title">{copy.title}</h2>
+        <p id="reality-social-tutorial-prompt-copy">{copy.body}</p>
         <div className="season-tutorial-prompt__actions">
           <button type="button" className="season-tutorial__secondary" onClick={onSkip}>
             Skip
@@ -215,18 +369,21 @@ export function RealitySocialTutorialPrompt({
 }
 
 export default function RealitySocialTutorialTour({
+  variant,
   onClearTarget,
   onEnsureTarget,
   onComplete,
 }: {
+  variant: SocialTutorialVariant
   onClearTarget: () => void
   onEnsureTarget: () => void
   onComplete: () => void
 }) {
+  const tutorialSteps = tutorialStepsFor(variant)
   const [stepIndex, setStepIndex] = useState(0)
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null)
   const tooltipRef = useRef<HTMLElement | null>(null)
-  const currentStep = TUTORIAL_STEPS[stepIndex]
+  const currentStep = tutorialSteps[stepIndex]
 
   const applyStepMode = useCallback(
     (mode: TutorialMode) => {
@@ -251,8 +408,6 @@ export default function RealitySocialTutorialTour({
       }
       dispatchTutorialEvent('reality-social-tutorial:open-pulse')
       dispatchTutorialEvent('reality-social-tutorial:set-pulse-tab', 'ledger')
-      // RealityLedger mounts only after HousePulse switches to My Game. Give
-      // React one turn to mount it before asking its internal tab to change.
       window.setTimeout(() => {
         dispatchTutorialEvent(
           'reality-social-tutorial:set-ledger-tab',
@@ -265,12 +420,12 @@ export default function RealitySocialTutorialTour({
 
   const moveToStep = useCallback(
     (nextIndex: number) => {
-      const clamped = clamp(nextIndex, 0, TUTORIAL_STEPS.length - 1)
-      applyStepMode(TUTORIAL_STEPS[clamped].mode)
+      const clamped = clamp(nextIndex, 0, tutorialSteps.length - 1)
+      applyStepMode(tutorialSteps[clamped].mode)
       setTargetRect(null)
       setStepIndex(clamped)
     },
-    [applyStepMode]
+    [applyStepMode, tutorialSteps]
   )
 
   const finish = useCallback(() => {
@@ -320,7 +475,7 @@ export default function RealitySocialTutorialTour({
     if (!findAndMeasure()) {
       missingTimer = window.setTimeout(() => {
         if (!findAndMeasure()) {
-          if (stepIndex < TUTORIAL_STEPS.length - 1) moveToStep(stepIndex + 1)
+          if (stepIndex < tutorialSteps.length - 1) moveToStep(stepIndex + 1)
           else finish()
         }
       }, 700)
@@ -349,7 +504,7 @@ export default function RealitySocialTutorialTour({
       observer.disconnect()
       resizeObserver?.disconnect()
     }
-  }, [currentStep, finish, moveToStep, stepIndex])
+  }, [currentStep, finish, moveToStep, stepIndex, tutorialSteps])
 
   useEffect(() => {
     tooltipRef.current?.focus()
@@ -362,7 +517,7 @@ export default function RealitySocialTutorialTour({
         finish()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
-        if (stepIndex === TUTORIAL_STEPS.length - 1) finish()
+        if (stepIndex === tutorialSteps.length - 1) finish()
         else moveToStep(stepIndex + 1)
       } else if (event.key === 'ArrowLeft' && stepIndex > 0) {
         event.preventDefault()
@@ -371,7 +526,7 @@ export default function RealitySocialTutorialTour({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [finish, moveToStep, stepIndex])
+  }, [finish, moveToStep, stepIndex, tutorialSteps.length])
 
   if (typeof document === 'undefined') return null
 
@@ -411,10 +566,15 @@ export default function RealitySocialTutorialTour({
         transform: 'translateY(-50%)',
       } as CSSProperties)
 
-  const isLastStep = stepIndex === TUTORIAL_STEPS.length - 1
+  const isLastStep = stepIndex === tutorialSteps.length - 1
 
   return createPortal(
-    <div className="season-tutorial" role="presentation" data-testid="reality-social-tutorial">
+    <div
+      className="season-tutorial"
+      role="presentation"
+      data-testid="reality-social-tutorial"
+      data-variant={variant}
+    >
       <div className="season-tutorial__input-shield" aria-hidden="true" />
       {targetRect && (
         <>
@@ -445,11 +605,11 @@ export default function RealitySocialTutorialTour({
       >
         <div
           className="season-tutorial__progress"
-          aria-label={`Step ${stepIndex + 1} of ${TUTORIAL_STEPS.length}`}
+          aria-label={`Step ${stepIndex + 1} of ${tutorialSteps.length}`}
         >
           <span>{stepIndex + 1}</span>
           <i />
-          <span>{TUTORIAL_STEPS.length}</span>
+          <span>{tutorialSteps.length}</span>
         </div>
         <h2 id="reality-social-tutorial-title">{currentStep.title}</h2>
         <p id="reality-social-tutorial-copy">{currentStep.body}</p>
