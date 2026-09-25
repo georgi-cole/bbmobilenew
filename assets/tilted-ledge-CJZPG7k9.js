@@ -1,0 +1,43 @@
+(function(e){function t(t,n,r={}){console.warn(`[tilted-ledge.js] DEPRECATED: This legacy minigame module has been superseded by the native React component.
+  Component : src/components/TiltedLedge/TiltedLedge.tsx
+  Screen    : src/screens/TiltedLedgeTestPage/TiltedLedgeScreen.tsx
+Please migrate to the React component. This module will be removed in a future release.`);let i=document.createElement(`div`);i.style.cssText=`position:relative;display:grid;grid-template-rows:auto 1fr auto;height:100%;min-height:480px;background:linear-gradient(180deg,#0b1020,#0f1530);color:#e8f3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;`;let a=`instructions`,o=50,s=0,c=0,l=0,u=null,d=!1,f=0,p=1,m=document.createElement(`div`);m.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:100;`,m.innerHTML=`
+      <h2 style="margin:0 0 16px;font-size:1.8rem;color:#83bfff;">The Tilted Ledge</h2>
+      <div style="max-width:400px;text-align:center;line-height:1.6;color:#95a9c0;margin-bottom:24px;">
+        <p style="margin:0 0 12px;">Keep your balance on a constantly tilting ledge!</p>
+        <p style="margin:0 0 12px;"><strong style="color:#e8f3ff;">Tap LEFT</strong> to lean left<br><strong style="color:#e8f3ff;">Tap RIGHT</strong> to lean right</p>
+        <p style="margin:0 0 12px;">Watch for <strong style="color:#ff6b9d;">telegraphed jerks</strong> that will push you off balance.</p>
+        <p style="margin:0;">Survive as long as possible!</p>
+      </div>
+      <button id="startBtn" style="padding:12px 32px;font-size:1.1rem;background:#83bfff;color:#0b1020;border:none;border-radius:8px;cursor:pointer;font-weight:600;touch-action:manipulation;">
+        START GAME
+      </button>
+    `,i.appendChild(m);let h=document.createElement(`div`);h.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99;`,h.innerHTML=`
+      <div id="countdownText" style="font-size:6rem;font-weight:bold;color:#83bfff;">3</div>
+    `,i.appendChild(h);let g=document.createElement(`div`);g.style.cssText=`display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px;background:rgba(10,15,30,0.8);backdrop-filter:blur(4px);`,g.innerHTML=`
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Time</div>
+        <div id="timeDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">0.0s</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Score</div>
+        <div id="scoreDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">0</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Level</div>
+        <div id="levelDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">1</div>
+      </div>
+    `,i.appendChild(g);let _=document.createElement(`div`);_.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;`;let v=document.createElement(`div`);v.style.cssText=`position:relative;width:100%;max-width:400px;height:40px;background:rgba(20,30,50,0.6);border-radius:20px;overflow:hidden;margin-bottom:40px;`;let y=document.createElement(`div`);y.id=`balanceBar`,y.style.cssText=`position:absolute;top:0;left:50%;width:4px;height:100%;background:#83bfff;transform:translateX(-50%);transition:left 0.1s ease-out;`,v.appendChild(y);let b=document.createElement(`div`);b.style.cssText=`position:absolute;top:0;left:30%;width:40%;height:100%;background:rgba(131,191,255,0.15);pointer-events:none;`,v.appendChild(b),_.appendChild(v);let x=document.createElement(`div`);x.id=`ledge`,x.style.cssText=`width:300px;height:60px;background:linear-gradient(180deg,#2a4a6a,#1a2a3a);border-radius:8px;position:relative;transition:transform 0.1s ease-out;box-shadow:0 4px 20px rgba(0,0,0,0.4);`;let S=document.createElement(`div`);S.style.cssText=`position:absolute;top:50%;left:50%;width:24px;height:24px;background:#ff6b9d;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(255,107,157,0.6);`,x.appendChild(S),_.appendChild(x);let C=document.createElement(`div`);C.id=`warningIndicator`,C.style.cssText=`margin-top:20px;padding:8px 16px;background:rgba(255,107,157,0.2);border:2px solid #ff6b9d;border-radius:8px;opacity:0;transition:opacity 0.3s;font-size:0.9rem;color:#ff6b9d;font-weight:600;`,C.textContent=`⚠ JERK INCOMING!`,_.appendChild(C),i.appendChild(_);let w=document.createElement(`div`);w.style.cssText=`display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;`,w.innerHTML=`
+      <button id="leftBtn" style="padding:20px;font-size:1.2rem;background:#2a4a6a;color:#83bfff;border:none;border-radius:12px;cursor:pointer;font-weight:600;touch-action:manipulation;">← LEFT</button>
+      <button id="rightBtn" style="padding:20px;font-size:1.2rem;background:#2a4a6a;color:#83bfff;border:none;border-radius:12px;cursor:pointer;font-weight:600;touch-action:manipulation;">RIGHT →</button>
+    `,i.appendChild(w);let T=document.createElement(`div`);T.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:98;`,T.innerHTML=`
+      <h2 style="margin:0 0 16px;font-size:2rem;color:#83bfff;">Game Over!</h2>
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:0.9rem;color:#95a9c0;margin-bottom:8px;">Final Score</div>
+        <div id="finalScore" style="font-size:3rem;font-weight:bold;color:#ff6b9d;">0</div>
+        <div style="font-size:0.9rem;color:#95a9c0;margin-top:8px;">Time Survived: <span id="finalTime">0.0s</span></div>
+      </div>
+      <button id="replayBtn" style="padding:12px 32px;font-size:1.1rem;background:#83bfff;color:#0b1020;border:none;border-radius:8px;cursor:pointer;font-weight:600;touch-action:manipulation;">
+        REPLAY
+      </button>
+    `,i.appendChild(T),t.appendChild(i);let E=i.querySelector(`#startBtn`),D=i.querySelector(`#leftBtn`),O=i.querySelector(`#rightBtn`),k=i.querySelector(`#replayBtn`);function A(){a=`countdown`,m.style.display=`none`,h.style.display=`flex`;let e=3,t=h.querySelector(`#countdownText`),n=setInterval(()=>{e--,e>0?t.textContent=e:e===0?t.textContent=`GO!`:(clearInterval(n),h.style.display=`none`,j())},1e3)}function j(){a=`playing`,o=50,s=0,c=0,l=Date.now(),p=1,d=!0,L(),F(),N()}let M=0;function N(){if(a!==`playing`)return;let e=3e3/p;M=Date.now()+e,setTimeout(()=>{if(a===`playing`){let e=i.querySelector(`#warningIndicator`);e.style.opacity=`1`}},e-500)}function P(){let e=Math.random()<.5?-1:1,t=8*(1+p*.2);o+=e*t;let n=i.querySelector(`#warningIndicator`);n.style.opacity=`0`,N()}function F(){if(a!==`playing`)return;c=Date.now()-l;let e=.03*(1+p*.15);if(o+=(o<50?-1:1)*e,Date.now()>=M&&P(),o=Math.max(0,Math.min(100,o)),o<=5||o>=95){z();return}s=Math.floor(c/100);let t=Math.floor(c/1e4)+1;t>p&&(p=t),I(),L(),u=requestAnimationFrame(F)}function I(){let e=i.querySelector(`#balanceBar`);e.style.left=`${o}%`;let t=i.querySelector(`#ledge`),n=(o-50)*.5;t.style.transform=`rotate(${n}deg)`}function L(){i.querySelector(`#timeDisplay`).textContent=`${(c/1e3).toFixed(1)}s`,i.querySelector(`#scoreDisplay`).textContent=s,i.querySelector(`#levelDisplay`).textContent=p}function R(e){if(!d||a!==`playing`)return;let t=Date.now();if(t-f<100)return;f=t;let n=3*e;o+=n}function z(){a=`end`,d=!1,u&&cancelAnimationFrame(u);let t=Math.min(100,Math.max(0,s));T.style.display=`flex`,i.querySelector(`#finalScore`).textContent=Math.round(t),i.querySelector(`#finalTime`).textContent=`${(c/1e3).toFixed(1)}s`,e.minigameResult={game:`tilted-ledge`,score:t,time:c,survived:c/1e3},e.dispatchEvent(new CustomEvent(`minigame:end`,{detail:e.minigameResult})),setTimeout(()=>{typeof n==`function`&&n(t)},1500)}E.addEventListener(`click`,A),D.addEventListener(`click`,()=>R(-1)),O.addEventListener(`click`,()=>R(1)),k.addEventListener(`click`,()=>{T.style.display=`none`,m.style.display=`flex`,a=`instructions`}),document.addEventListener(`keydown`,e=>{a===`playing`&&(e.key===`ArrowLeft`||e.key===`a`||e.key===`A`?R(-1):(e.key===`ArrowRight`||e.key===`d`||e.key===`D`)&&R(1))})}e.MiniGames||={},e.MiniGames.tiltedLedge={render:t}})(window);

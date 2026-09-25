@@ -1,0 +1,240 @@
+/* Intro Hub UI Styles
+ * Side utility buttons for the intro screen
+ * Chips are positioned in four corners: top-left, top-right, bottom-left, bottom-right
+ */
+
+:root {
+  --floating-corner-top-base: 16px;
+  --floating-corner-top-safe-padding: 8px;
+  --floating-corner-top-touch-base: 24px;
+  --floating-corner-top-touch-safe-padding: 20px;
+  --floating-corner-left-base: 16px;
+  --floating-corner-left-safe-padding: 16px;
+  --floating-corner-left-touch-base: 20px;
+  --floating-corner-left-touch-safe-padding: 20px;
+  --floating-corner-right-base: 16px;
+  --floating-corner-right-safe-padding: 16px;
+  --floating-corner-right-touch-base: 20px;
+  --floating-corner-right-touch-safe-padding: 20px;
+  --hub-chip-top-offset: var(
+    --floating-corner-top-offset,
+    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
+  );
+  --hub-chip-left-offset: var(
+    --floating-corner-left-offset,
+    max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
+  );
+  --hub-chip-right-offset: var(
+    --floating-corner-right-offset,
+    max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
+  );
+  --hub-chip-stack-step: 44px;
+  --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
+}
+
+/* ===== Hub Container ===== */
+#intro-hub {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  pointer-events: none;
+  z-index: 9000;
+}
+
+/* ===== Hub Base: side utility buttons ===== */
+.hub-chip {
+  position: absolute;
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  background: transparent url('../assets/side_utilities_button/side_utility_shell_normal.svg') center / contain no-repeat;
+  border: 0;
+  box-shadow: none;
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform 150ms ease;
+  padding: 0;
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+.hub-chip:hover {
+  background-image: url('../assets/side_utilities_button/side_utility_shell_hover.svg');
+  transform: scale(1.05);
+}
+
+.hub-chip:active {
+  background-image: url('../assets/side_utilities_button/side_utility_shell_pressed.svg');
+  transform: scale(0.96);
+}
+
+.hub-chip:focus-visible {
+  outline: 2px solid rgba(123, 146, 255, 0.7);
+  outline-offset: 2px;
+}
+
+/* ===== Inactive chip state (e.g. music/sounds off) ===== */
+.hub-chip--inactive {
+  background-image: url('../assets/side_utilities_button/side_utility_shell_disabled.svg');
+}
+
+.hub-chip--inactive:hover,
+.hub-chip--inactive:active {
+  background-image: url('../assets/side_utilities_button/side_utility_shell_disabled.svg');
+}
+
+.hub-chip__icon {
+  position: absolute;
+  inset: 18%;
+  width: 64%;
+  height: 64%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  pointer-events: none;
+}
+
+.hub-chip--inactive .hub-chip__icon {
+  opacity: 0.55;
+}
+
+.hub-chip__icon--housemates { background-image: url('../assets/side_utilities_button/housemates_v2.svg'); }
+.hub-chip__icon--music { background-image: url('../assets/side_utilities_button/music_v2.svg'); }
+.hub-chip__icon--sound { background-image: url('../assets/side_utilities_button/sound_v2.svg'); }
+.hub-chip__icon--settings { background-image: url('../assets/side_utilities_button/settings_v2.svg'); }
+.hub-chip__icon--share { background-image: url('../assets/side_utilities_button/share_v2.svg'); }
+.hub-chip__icon--feedback { background-image: url('../assets/side_utilities_button/feedback_v2.svg'); }
+.hub-chip__icon--news { background-image: url('../assets/side_utilities_button/news_v2.svg'); }
+.hub-chip__icon--achievements { background-image: url('../assets/side_utilities_button/achievements_v2.svg'); }
+.hub-chip__icon--social { background-image: url('../assets/side_utilities_button/social_v2.svg'); }
+.hub-chip__icon--shop { background-image: url('../assets/side_utilities_button/shop_v2.svg'); }
+
+/* ===== Chip Label — hidden (icon-only chips) ===== */
+.hub-chip__label {
+  display: none;
+}
+
+/* ===== Notification Badge Dot ===== */
+.hub-chip__badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  background: transparent url('../assets/side_utilities_button/badge_alert_red.svg') center / contain no-repeat;
+  display: none;
+}
+
+.hub-chip--has-notification .hub-chip__badge {
+  display: block;
+}
+
+/* ===== Position Helpers ===== */
+.hub-chip--top-left {
+  top: var(--hub-chip-top-offset);
+  left: var(--hub-chip-left-offset);
+}
+
+.hub-chip--top-right {
+  top: var(--hub-chip-top-offset);
+  right: var(--hub-chip-right-offset);
+}
+
+.hub-chip--bottom-left {
+  bottom: 32px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right {
+  bottom: 32px;
+  right: 16px;
+}
+
+/* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
+.hub-chip--top-left-2 {
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  left: var(--hub-chip-left-offset);
+}
+
+.hub-chip--top-right-2 {
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
+  right: var(--hub-chip-right-offset);
+}
+
+.hub-chip--bottom-left-2 {
+  bottom: 84px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right-2 {
+  bottom: 84px;
+  right: 16px;
+}
+
+/* Third row if needed */
+.hub-chip--top-left-3 {
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
+  left: var(--hub-chip-left-offset);
+}
+
+.hub-chip--top-right-3 {
+  top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step-double));
+  right: var(--hub-chip-right-offset);
+}
+
+.hub-chip--bottom-left-3 {
+  bottom: 128px;
+  left: 16px;
+}
+
+.hub-chip--bottom-right-3 {
+  bottom: 128px;
+  right: 16px;
+}
+
+/* ===== Responsive ===== */
+@media (hover: none) and (pointer: coarse) {
+  :root {
+    --floating-corner-top-offset: max(
+      var(--floating-corner-top-touch-base),
+      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-touch-safe-padding))
+    );
+    --floating-corner-left-offset: max(
+      var(--floating-corner-left-touch-base),
+      calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-touch-safe-padding))
+    );
+    --floating-corner-right-offset: max(
+      var(--floating-corner-right-touch-base),
+      calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-touch-safe-padding))
+    );
+  }
+}
+
+@media (max-width: 360px) {
+  .hub-chip {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .hub-chip--bottom-left,
+  .hub-chip--bottom-right {
+    bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+
+  .hub-chip--bottom-left-2,
+  .hub-chip--bottom-right-2 {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .hub-chip--bottom-left-3,
+  .hub-chip--bottom-right-3 {
+    bottom: calc(128px + env(safe-area-inset-bottom));
+  }
+}

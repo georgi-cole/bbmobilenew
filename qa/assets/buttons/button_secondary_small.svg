@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120" fill="none">
+  <defs>
+    <linearGradient id="grad-button_secondary_small.svg" x1="0" y1="0" x2="420" y2="120">
+      <stop offset="0%" stop-color="rgba(45,56,92,0.94)"/>
+      <stop offset="58%" stop-color="rgba(63,76,120,0.92)"/>
+      <stop offset="100%" stop-color="rgba(96,110,160,0.88)"/>
+    </linearGradient>
+
+    <linearGradient id="sheen-button_secondary_small.svg" x1="0" y1="0" x2="0" y2="120">
+      <stop offset="0%" stop-color="white" stop-opacity="0.55"/>
+      <stop offset="42%" stop-color="white" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="bottomShadow-button_secondary_small.svg" x1="0" y1="0" x2="0" y2="120">
+      <stop offset="0%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.38"/>
+    </linearGradient>
+
+    <filter id="glow-button_secondary_small.svg" x="-30%" y="-50%" width="160%" height="220%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+    </filter>
+
+    <filter id="soft-button_secondary_small.svg" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+
+    <clipPath id="clip-button_secondary_small.svg">
+      <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18"/>
+    </clipPath>
+  </defs>
+
+  <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" fill="rgba(141,160,220,0.33)" opacity="0.9" filter="url(#glow-button_secondary_small.svg)"/>
+  <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" fill="url(#grad-button_secondary_small.svg)"/>
+
+  <g clip-path="url(#clip-button_secondary_small.svg)">
+    <path d="M 28 14 L 310 14 L 276 50.4 L 46 40.8 Z" fill="rgba(255,255,255,0.10)"/>
+    <rect x="38" y="27.6" width="275" height="2" rx="1" fill="rgba(255,255,255,0.20)"/>
+    <rect x="46" y="31.6" width="230" height="1" rx="0.5" fill="rgba(255,255,255,0.14)"/>
+    <path d="M 24 67.2 L 346 61.2 L 390 102 L 40 110 Z" fill="rgba(0,0,0,0.26)" filter="url(#soft-button_secondary_small.svg)"/>
+    <rect x="0" y="0" width="420" height="120" fill="url(#sheen-button_secondary_small.svg)" opacity="0.10"/>
+  </g>
+
+  <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" stroke="rgba(220,232,255,0.34)" stroke-width="2.2" filter="url(#soft-button_secondary_small.svg)"/>
+</svg>

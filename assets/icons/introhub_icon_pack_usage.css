@@ -1,0 +1,20 @@
+
+.sideIconBtn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+.sideIconBtn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sideIconBtn:hover { transform: scale(1.04); }
+.sideIconBtn:active { transform: scale(0.97); }
+.sideIconBtn[disabled] { cursor: default; filter: grayscale(.15); opacity: .7; }

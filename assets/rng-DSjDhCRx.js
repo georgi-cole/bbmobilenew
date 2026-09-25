@@ -1,0 +1,1 @@
+function e(e){let t=e>>>0;return function(){t=t+1831565813>>>0;let e=Math.imul(t^t>>>15,1|t);return e=e+Math.imul(e^e>>>7,61|e)^e,((e^e>>>14)>>>0)/4294967296}}function t(e,t){return t[Math.floor(e()*t.length)]}function n(e,t,n){let r=[...t],i=[];for(let t=0;t<n&&r.length>0;t++){let t=Math.floor(e()*r.length);i.push(...r.splice(t,1))}return i}export{t as n,n as r,e as t};

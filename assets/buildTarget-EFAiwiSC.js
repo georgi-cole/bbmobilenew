@@ -1,0 +1,1 @@
+function e(e){return e.explicitTarget===`admin`||e.mode===`admin`?`admin`:e.explicitTarget===`mobile-dev`?`mobile-dev`:e.isDev||e.mode===`test`?`test`:`release`}var t=e({explicitTarget:void 0,mode:`release`,isDev:!1}),n=t===`admin`,r=t===`mobile-dev`,i=t===`release`||r;export{r as n,i as r,n as t};

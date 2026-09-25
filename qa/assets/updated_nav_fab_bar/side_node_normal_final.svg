@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="168" height="168" viewBox="0 0 168 168" fill="none">
+  <defs>
+    <linearGradient id="g" x1="18" y1="16" x2="150" y2="152">
+      <stop offset="0%" stop-color="#1D2C5B"/>
+      <stop offset="56%" stop-color="#101C42"/>
+      <stop offset="100%" stop-color="#0A132F"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="84" y1="18" x2="84" y2="84">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.42)"/>
+      <stop offset="48%" stop-color="rgba(255,255,255,0.11)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <clipPath id="clip"><rect x="18" y="18" width="92" height="92" rx="28"/></clipPath>
+  </defs>
+  <g transform="translate(84 84) scale(1) translate(-84 -84)">
+    <g opacity="0.42" filter="url(#glow)">
+      <g fill="rgba(98,114,255,0.18)"><rect x="18" y="18" width="92" height="92" rx="28"/></g>
+    </g>
+    <g fill="url(#g)" stroke="rgba(255,255,255,0.15)" stroke-width="2"><rect x="18" y="18" width="92" height="92" rx="28"/></g>
+    <g clip-path="url(#clip)">
+      <path d="M 24 22 H 104 Q 98 46 64 52 Q 30 46 24 22 Z" fill="url(#shine)" opacity="0.92"/>
+      <path d="M 30 118 Q 84 132 138 118 V 154 H 30 Z" fill="rgba(0,0,0,0.10)"/>
+    </g>
+  </g>
+</svg>

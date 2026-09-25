@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="120" y2="120">
+      <stop offset="0%" stop-color="rgba(42,52,96,1)"/>
+      <stop offset="100%" stop-color="rgba(66,84,138,0.96)"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="soft" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+  </defs>
+  <g transform="translate(-1.80 -1.80) scale(1.03)">
+    <path d="M 60 12
+        Q 86 12 100 22
+        Q 108 30 108 60
+        Q 108 90 100 98
+        Q 86 108 60 108
+        Q 34 108 20 98
+        Q 12 90 12 60
+        Q 12 30 20 22
+        Q 34 12 60 12" fill="rgba(150,178,255,0.38)" filter="url(#glow)"/>
+    <path d="M 60 12
+        Q 86 12 100 22
+        Q 108 30 108 60
+        Q 108 90 100 98
+        Q 86 108 60 108
+        Q 34 108 20 98
+        Q 12 90 12 60
+        Q 12 30 20 22
+        Q 34 12 60 12" fill="url(#g)" stroke="rgba(255,255,255,0.34)" stroke-width="1.8"/>
+    <path d="M 28 22 L 82 22" stroke="rgba(255,255,255,0.12)" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M 30 92 L 80 92" stroke="rgba(0,0,0,0.18)" stroke-width="1.6" stroke-linecap="round"/>
+  </g>
+</svg>

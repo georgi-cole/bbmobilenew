@@ -1,0 +1,1 @@
+.houseguests-screen__grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));justify-items:center;gap:16px 12px;padding:8px 0 16px;display:grid}.houseguests-screen__grid--out{opacity:.6}

@@ -1,0 +1,44 @@
+(function(e){function t(t,n,r={}){let i=document.createElement(`div`);i.style.cssText=`position:relative;display:grid;grid-template-rows:auto 1fr auto;height:100%;min-height:480px;background:radial-gradient(120% 120% at 50% 0%, #0a0f22, #0c1630);color:#e9f3ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;`;let a=`instructions`,o=0,s=40,c=60,l=0,u=0,d=0,f=null,p=!1,m=0,h=1,g=document.createElement(`div`);g.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:100;`,g.innerHTML=`
+      <h2 style="margin:0 0 16px;font-size:1.8rem;color:#83bfff;">Pressure Plank</h2>
+      <div style="max-width:400px;text-align:center;line-height:1.6;color:#95a9c0;margin-bottom:24px;">
+        <p style="margin:0 0 12px;">Maintain rhythm to keep pressure in the safe zone!</p>
+        <p style="margin:0 0 12px;"><strong style="color:#e8f3ff;">HOLD</strong> to increase pressure<br><strong style="color:#e8f3ff;">RELEASE</strong> to decrease pressure</p>
+        <p style="margin:0 0 12px;">The safe zone <strong style="color:#ff6b9d;">moves</strong> — adjust your rhythm!</p>
+        <p style="margin:0;">Stay in the zone as long as possible!</p>
+      </div>
+      <button id="startBtn" style="padding:12px 32px;font-size:1.1rem;background:#83bfff;color:#0b1020;border:none;border-radius:8px;cursor:pointer;font-weight:600;touch-action:manipulation;">
+        START GAME
+      </button>
+    `,i.appendChild(g);let _=document.createElement(`div`);_.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:99;`,_.innerHTML=`
+      <div id="countdownText" style="font-size:6rem;font-weight:bold;color:#83bfff;">3</div>
+    `,i.appendChild(_);let v=document.createElement(`div`);v.style.cssText=`display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px;background:rgba(10,15,30,0.8);backdrop-filter:blur(4px);`,v.innerHTML=`
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Time</div>
+        <div id="timeDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">0.0s</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Score</div>
+        <div id="scoreDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">0</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:#95a9c0;text-transform:uppercase;margin-bottom:4px;">Level</div>
+        <div id="levelDisplay" style="font-size:1.3rem;font-weight:600;color:#83bfff;">1</div>
+      </div>
+    `,i.appendChild(v);let y=document.createElement(`div`);y.style.cssText=`position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;`;let b=document.createElement(`div`);b.style.cssText=`position:relative;width:100%;max-width:400px;height:300px;background:rgba(20,30,50,0.6);border-radius:12px;overflow:hidden;margin-bottom:20px;`;let x=document.createElement(`div`);x.id=`targetZone`,x.style.cssText=`position:absolute;left:0;width:100%;height:20%;background:rgba(131,191,255,0.3);border-top:2px solid #83bfff;border-bottom:2px solid #83bfff;transition:bottom 0.1s ease-out;pointer-events:none;`,b.appendChild(x);let S=document.createElement(`div`);S.id=`pressureBar`,S.style.cssText=`position:absolute;bottom:0;left:0;width:100%;height:0%;background:linear-gradient(180deg,#ff6b9d,#ff3d7f);transition:height 0.05s ease-out;`,b.appendChild(S);let C=document.createElement(`div`);C.style.cssText=`position:absolute;left:0;width:100%;height:3px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,0.8);transition:bottom 0.05s ease-out;pointer-events:none;`,b.appendChild(C),y.appendChild(b);let w=document.createElement(`div`);w.id=`statusIndicator`,w.style.cssText=`padding:8px 16px;background:rgba(131,191,255,0.2);border:2px solid #83bfff;border-radius:8px;font-size:0.9rem;color:#83bfff;font-weight:600;transition:all 0.2s;`,w.textContent=`READY`,y.appendChild(w),i.appendChild(y);let T=document.createElement(`div`);T.style.cssText=`padding:16px;`,T.innerHTML=`
+      <button id="holdBtn" style="width:100%;padding:24px;font-size:1.3rem;background:#2a4a6a;color:#83bfff;border:none;border-radius:12px;cursor:pointer;font-weight:600;touch-action:manipulation;transition:background 0.2s;">
+        TAP TO HOLD
+      </button>
+      <div style="text-align:center;margin-top:8px;font-size:0.85rem;color:#95a9c0;">
+        Tap and hold to increase pressure • Release to decrease
+      </div>
+    `,i.appendChild(T);let E=document.createElement(`div`);E.style.cssText=`position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,15,30,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:98;`,E.innerHTML=`
+      <h2 style="margin:0 0 16px;font-size:2rem;color:#83bfff;">Game Over!</h2>
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:0.9rem;color:#95a9c0;margin-bottom:8px;">Final Score</div>
+        <div id="finalScore" style="font-size:3rem;font-weight:bold;color:#ff6b9d;">0</div>
+        <div style="font-size:0.9rem;color:#95a9c0;margin-top:8px;">Time Survived: <span id="finalTime">0.0s</span></div>
+      </div>
+      <button id="replayBtn" style="padding:12px 32px;font-size:1.1rem;background:#83bfff;color:#0b1020;border:none;border-radius:8px;cursor:pointer;font-weight:600;touch-action:manipulation;">
+        REPLAY
+      </button>
+    `,i.appendChild(E),t.appendChild(i);let D=i.querySelector(`#startBtn`),O=i.querySelector(`#holdBtn`),k=i.querySelector(`#replayBtn`);function A(){a=`countdown`,g.style.display=`none`,_.style.display=`flex`;let e=3,t=_.querySelector(`#countdownText`),n=setInterval(()=>{e--,e>0?t.textContent=e:e===0?t.textContent=`GO!`:(clearInterval(n),_.style.display=`none`,j())},1e3)}function j(){a=`playing`,o=50,s=40,c=60,l=0,u=0,d=Date.now(),h=1,p=!1,F(),P(),N()}let M=1;function N(){if(a!==`playing`)return;u=Date.now()-d;let e=.5*(1+h*.1),t=.3*(1+h*.1);p?o+=e:o-=t,o=Math.max(0,Math.min(100,o));let n=.02*(1+h*.2),r=(s+c)/2+M*n*60;(r<=10||r>=90)&&(M*=-1);let i=20-h*.5;if(s=Math.max(0,r-i/2),c=Math.min(100,r+i/2),o>=s&&o<=c)l+=1;else if(o<=0||o>=100){I();return}let m=Math.floor(u/1e4)+1;m>h&&(h=m),P(),F(),f=requestAnimationFrame(N)}function P(){let e=i.querySelector(`#pressureBar`);e.style.height=`${o}%`;let t=i.querySelector(`#targetZone`);t.style.bottom=`${s}%`,t.style.height=`${c-s}%`;let n=i.querySelector(`#statusIndicator`);o>=s&&o<=c?(n.textContent=`✓ IN ZONE`,n.style.background=`rgba(131,191,255,0.3)`,n.style.borderColor=`#83bfff`,n.style.color=`#83bfff`):(n.textContent=`⚠ OUT OF ZONE`,n.style.background=`rgba(255,107,157,0.3)`,n.style.borderColor=`#ff6b9d`,n.style.color=`#ff6b9d`);let r=i.querySelector(`#holdBtn`);p?(r.style.background=`#ff6b9d`,r.style.color=`#0b1020`,r.textContent=`HOLDING...`):(r.style.background=`#2a4a6a`,r.style.color=`#83bfff`,r.textContent=`TAP TO HOLD`)}function F(){i.querySelector(`#timeDisplay`).textContent=`${(u/1e3).toFixed(1)}s`,i.querySelector(`#scoreDisplay`).textContent=Math.floor(l/60),i.querySelector(`#levelDisplay`).textContent=h}function I(){a=`end`,p=!1,f&&cancelAnimationFrame(f);let t=u/1e3,r=Math.min(100,Math.max(0,t*2));E.style.display=`flex`,i.querySelector(`#finalScore`).textContent=Math.round(r),i.querySelector(`#finalTime`).textContent=`${t.toFixed(1)}s`,e.minigameResult={game:`pressure-plank`,score:r,time:u,survived:t},e.dispatchEvent(new CustomEvent(`minigame:end`,{detail:e.minigameResult})),setTimeout(()=>{typeof n==`function`&&n(r)},1500)}D.addEventListener(`click`,A),O.addEventListener(`pointerdown`,e=>{if(e.preventDefault(),a!==`playing`)return;let t=Date.now();t-m<150||(m=t,p=!0,P())}),O.addEventListener(`pointerup`,e=>{e.preventDefault(),a===`playing`&&(p=!1,P())}),O.addEventListener(`pointerleave`,e=>{a===`playing`&&(p=!1,P())}),k.addEventListener(`click`,()=>{E.style.display=`none`,g.style.display=`flex`,a=`instructions`}),document.addEventListener(`keydown`,e=>{a===`playing`&&(e.key===` `||e.key===`Spacebar`)&&(e.preventDefault(),p=!0,P())}),document.addEventListener(`keyup`,e=>{a===`playing`&&(e.key===` `||e.key===`Spacebar`)&&(e.preventDefault(),p=!1,P())})}e.MiniGames||={},e.MiniGames.pressurePlank={render:t}})(window);

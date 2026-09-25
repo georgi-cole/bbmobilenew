@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-DVpe7PXp.js";var t=e();function n(){return(0,t.jsxs)(`div`,{className:`placeholder-screen`,children:[(0,t.jsx)(`h1`,{className:`placeholder-screen__title`,children:`📅 Day`}),(0,t.jsx)(`p`,{className:`placeholder-screen__note`,children:`Day summary — coming soon`})]})}export{n as default};

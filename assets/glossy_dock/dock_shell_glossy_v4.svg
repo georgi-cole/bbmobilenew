@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="190" viewBox="0 0 900 190" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="900" y2="190">
+      <stop offset="0%" stop-color="rgba(8,14,32,0.98)"/>
+      <stop offset="55%" stop-color="rgba(13,23,48,0.98)"/>
+      <stop offset="100%" stop-color="rgba(9,15,34,0.98)"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="450" y1="10" x2="450" y2="90">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.34)"/>
+      <stop offset="40%" stop-color="rgba(255,255,255,0.10)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="40%">
+      <stop offset="0%" stop-color="rgba(155,126,255,0.26)"/>
+      <stop offset="45%" stop-color="rgba(95,126,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(95,126,255,0)"/>
+    </radialGradient>
+    <filter id="outerGlow" x="-20%" y="-50%" width="140%" height="220%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <path d="M 88 20 Q 118 8 156 8 L 744 8 Q 782 8 812 20 L 854 38 Q 884 50 888 82 L 888 108 Q 884 140 854 152 L 812 170 Q 782 182 744 182 L 156 182 Q 118 182 88 170 L 46 152 Q 16 140 12 108 L 12 82 Q 16 50 46 38 Z"
+    fill="rgba(124,146,255,0.16)" filter="url(#outerGlow)"/>
+
+  <path d="M 88 20 Q 118 8 156 8 L 744 8 Q 782 8 812 20 L 854 38 Q 884 50 888 82 L 888 108 Q 884 140 854 152 L 812 170 Q 782 182 744 182 L 156 182 Q 118 182 88 170 L 46 152 Q 16 140 12 108 L 12 82 Q 16 50 46 38 Z"
+    fill="url(#bg)" stroke="rgba(224,234,255,0.18)" stroke-width="2"/>
+
+  <ellipse cx="450" cy="95" rx="165" ry="72" fill="url(#coreGlow)"/>
+
+  <path d="M 102 24 L 798 24" stroke="rgba(255,255,255,0.18)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 100 160 L 800 160" stroke="rgba(255,255,255,0.05)" stroke-width="1.4" stroke-linecap="round"/>
+
+  <path d="M 98 18 Q 450 4 802 18 Q 764 62 450 72 Q 136 62 98 18 Z" fill="url(#sheen)" opacity="0.8"/>
+
+  <ellipse cx="190" cy="96" rx="48" ry="48" fill="rgba(255,255,255,0.024)"/>
+  <ellipse cx="310" cy="96" rx="48" ry="48" fill="rgba(255,255,255,0.018)"/>
+  <ellipse cx="590" cy="96" rx="48" ry="48" fill="rgba(255,255,255,0.018)"/>
+  <ellipse cx="710" cy="96" rx="48" ry="48" fill="rgba(255,255,255,0.024)"/>
+
+  <path d="M 286 96 H 356 M 544 96 H 614" stroke="rgba(150,170,255,0.16)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 406 150 Q 450 160 494 150" stroke="rgba(152,132,255,0.22)" stroke-width="3.6" stroke-linecap="round"/>
+</svg>

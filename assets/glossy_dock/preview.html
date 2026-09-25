@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Glossy Dock V4 Preview</title>
+<style>
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Arial,sans-serif;
+  color:#fff;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(108,132,255,.14), transparent 22%),
+    linear-gradient(180deg,#060c1b 0%,#0c1430 55%,#09101f 100%);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 20px 60px}
+h1{text-align:center;margin:0 0 8px;font-size:28px}
+p{text-align:center;opacity:.78;margin:0 0 24px}
+.card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+  backdrop-filter:blur(8px);
+}
+.dock{
+  position:relative;
+  width:min(650px,94vw);
+  aspect-ratio:900/190;
+  margin:0 auto;
+}
+.dock > .bg{position:absolute;inset:0;width:100%;height:100%}
+.node{position:absolute}
+.node img.bg{width:100%;height:100%;display:block}
+.node img.glyph{position:absolute;inset:24%;width:52%;height:52%}
+.play{width:24%;left:38%;top:10%}
+.a,.b,.c,.d{width:17.5%;top:22%}
+.a{left:9%}.b{left:23%}.c{right:23%}.d{right:9%}
+.row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.demo{position:relative;width:86px;height:86px}
+.demo img.bg{width:100%;height:100%}
+.demo img.glyph{position:absolute;inset:22%;width:56%;height:56%}
+.label{text-align:center;font-size:13px;opacity:.8;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Glossy Dock V4</h1>
+  <p>Made to match the richer glossy navbar direction while keeping the dock more like a control console than app icons.</p>
+
+  <div class="card">
+    <div class="dock">
+      <img class="bg" src="dock_shell_glossy_v4.svg" alt="">
+      <div class="node a"><img class="bg" src="side_node_chat_normal_glossy_v4.svg"><img class="glyph" src="chat_glossy_v4.svg"></div>
+      <div class="node b"><img class="bg" src="side_node_log_normal_glossy_v4.svg"><img class="glyph" src="log_glossy_v4.svg"></div>
+      <div class="node play"><img class="bg" src="play_node_normal_glossy_v4.svg"><img class="glyph" src="play_glossy_v4.svg"></div>
+      <div class="node c"><img class="bg" src="side_node_stats_normal_glossy_v4.svg"><img class="glyph" src="stats_glossy_v4.svg"></div>
+      <div class="node d"><img class="bg" src="side_node_action_normal_glossy_v4.svg"><img class="glyph" src="action_glossy_v4.svg"></div>
+    </div>
+    <div class="label">Glossy dock with center hero button and role-based side node colors.</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="row">
+          <div class="demo"><img class="bg" src="play_node_normal_glossy_v4.svg"><img class="glyph" src="play_glossy_v4.svg"></div>
+          <div class="demo"><img class="bg" src="play_node_hover_glossy_v4.svg"><img class="glyph" src="play_glossy_v4.svg"></div>
+          <div class="demo"><img class="bg" src="play_node_pressed_glossy_v4.svg"><img class="glyph" src="play_glossy_v4.svg"></div>
+        </div>
+        <div class="label">Play node states</div>
+      </div>
+      <div>
+        <div class="row">
+          <div class="demo"><img class="bg" src="side_node_chat_normal_glossy_v4.svg"><img class="glyph" src="chat_glossy_v4.svg"></div>
+          <div class="demo"><img class="bg" src="side_node_stats_normal_glossy_v4.svg"><img class="glyph" src="stats_glossy_v4.svg"></div>
+          <div class="demo"><img class="bg" src="side_node_action_normal_glossy_v4.svg"><img class="glyph" src="action_glossy_v4.svg"></div>
+        </div>
+        <div class="label">Colored side roles</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

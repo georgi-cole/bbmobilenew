@@ -1,0 +1,25 @@
+
+/* Suggested mapping:
+chat   -> side_node_chat_*_glossy_v4.svg
+log    -> side_node_log_*_glossy_v4.svg
+stats  -> side_node_stats_*_glossy_v4.svg
+action -> side_node_action_*_glossy_v4.svg
+play   -> play_node_*_glossy_v4.svg
+
+Use glossy glyphs:
+chat_glossy_v4.svg
+log_glossy_v4.svg
+stats_glossy_v4.svg
+action_glossy_v4.svg
+play_glossy_v4.svg
+
+Suggested behavior:
+.dockNode:hover { transform: scale(1.03); }
+.dockNode:active { transform: scale(0.985); }
+.dockNode.play:not(:active):not([disabled]) {
+  animation: playPulse 2.3s ease-in-out infinite;
+}
+@keyframes playPulse {
+  0%,100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.02); filter: brightness(1.06); }
+}

@@ -1,0 +1,10 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="deactScratch" x1="4.5" y1="18.5" x2="19.5" y2="5.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5B21B6"></stop>
+      <stop offset="0.5" stop-color="#8B5CF6"></stop>
+      <stop offset="1" stop-color="#D8B4FE"></stop>
+    </linearGradient>
+  </defs>
+  <path d="M5.5 18.5C8 16 10.3 13.8 12 12C13.9 10 16.1 7.9 18.5 5.5" stroke="url(#deactScratch)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>

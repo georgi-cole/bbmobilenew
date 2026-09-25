@@ -1,0 +1,43 @@
+Use the assets from /public/assets/... and reproduce the left reference FAB exactly in structure and feel.
+
+FILES:
+- fab_shell_clean.svg
+- fab_center_play_clean.svg
+- fab_icon_social_clean.svg
+- fab_icon_requests_clean.svg
+- fab_icon_stats_clean.svg
+- fab_icon_confessional_clean.svg
+- fab_clean_positioning.css
+
+IMPLEMENTATION RULES:
+1. Do NOT create separate side button backgrounds.
+2. Do NOT wrap side icons in square or rounded button shells.
+3. Side icons must sit directly over the inner glass lane of the shell.
+4. Use the CSS positions from fab_clean_positioning.css exactly.
+5. Center play button stays large and floating.
+6. Confessional icon is the DOOR icon, not lightning.
+
+STRUCTURE:
+<div className="fabClean">
+  <img className="fabShell" src="/assets/.../fab_shell_clean.svg" alt="" />
+  <img className="fabPlay" src="/assets/.../fab_center_play_clean.svg" alt="" />
+
+  <img className="fabIcon social" src="/assets/.../fab_icon_social_clean.svg" alt="" />
+  <img className="fabIcon requests" src="/assets/.../fab_icon_requests_clean.svg" alt="" />
+  <img className="fabIcon stats" src="/assets/.../fab_icon_stats_clean.svg" alt="" />
+  <img className="fabIcon confessional" src="/assets/.../fab_icon_confessional_clean.svg" alt="" />
+
+  <button className="hit-social" ... />
+  <button className="hit-requests" ... />
+  <button className="hit-play" ... />
+  <button className="hit-stats" ... />
+  <button className="hit-confessional" ... />
+</div>
+
+IMPORTANT:
+- visual images and hit areas must be separate
+- do not visually render the hit buttons
+- do not redesign
+- do not recolor
+- preserve SVG aspect ratio
+- add only subtle hover/pressed transforms from the CSS

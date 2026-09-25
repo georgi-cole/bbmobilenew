@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Game favicon - abstract watcher mark</title>
+  <desc id="desc">An original abstract eye-like game icon made from orbit curves, a central dot, and a subtle highlight.</desc>
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#172033"/>
+      <stop offset="1" stop-color="#0A0F1F"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="10" y1="20" x2="54" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#69E6D1"/>
+      <stop offset="0.52" stop-color="#8AA8FF"/>
+      <stop offset="1" stop-color="#D78CFF"/>
+    </linearGradient>
+    <radialGradient id="core" cx="32" cy="32" r="14" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.42" stop-color="#8FE7FF"/>
+      <stop offset="1" stop-color="#486BFF"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+
+  <g filter="url(#softShadow)">
+    <!-- Abstract orbital eye shape: not a literal Big Brother eye -->
+    <path d="M8.5 32C14.7 22.8 23.4 18.2 32 18.2C40.6 18.2 49.3 22.8 55.5 32C49.3 41.2 40.6 45.8 32 45.8C23.4 45.8 14.7 41.2 8.5 32Z"
+          fill="none" stroke="url(#accent)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Broken orbit lines give it a game/tech identity and reduce brand similarity -->
+    <path d="M17.2 23.7C21.1 18.9 26.1 16.5 32 16.5C37.9 16.5 42.9 18.9 46.8 23.7"
+          fill="none" stroke="#69E6D1" stroke-width="2.4" stroke-linecap="round" opacity="0.72"/>
+    <path d="M46.8 40.3C42.9 45.1 37.9 47.5 32 47.5C26.1 47.5 21.1 45.1 17.2 40.3"
+          fill="none" stroke="#D78CFF" stroke-width="2.4" stroke-linecap="round" opacity="0.72"/>
+
+    <!-- Central game token / focus point -->
+    <circle cx="32" cy="32" r="10.5" fill="url(#core)"/>
+    <circle cx="32" cy="32" r="4.2" fill="#0A0F1F" opacity="0.9"/>
+    <circle cx="28.7" cy="28.2" r="2.1" fill="#FFFFFF" opacity="0.92"/>
+  </g>
+
+  <!-- Small pixel accents, reinforcing game UI instead of TV-show branding -->
+  <rect x="12" y="12" width="3" height="3" rx="0.8" fill="#69E6D1" opacity="0.8"/>
+  <rect x="49" y="49" width="3" height="3" rx="0.8" fill="#D78CFF" opacity="0.75"/>
+</svg>

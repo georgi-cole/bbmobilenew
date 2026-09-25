@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Glossy Consistent Navbar Icons</title>
+<style>
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Arial,sans-serif;
+  color:#fff;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(108,132,255,.14), transparent 22%),
+    linear-gradient(180deg,#060c1b 0%,#0c1430 55%,#09101f 100%);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 20px 60px}
+h1{text-align:center;margin:0 0 8px;font-size:28px}
+p{text-align:center;opacity:.78;margin:0 0 24px}
+.card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+  backdrop-filter:blur(8px);
+}
+.row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.iconCard{
+  width:170px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  background:rgba(255,255,255,.02);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;
+  padding:14px 10px;
+}
+.iconCard img{width:70px;height:70px}
+.label{font-size:14px;font-weight:800;opacity:.9}
+.nav{
+  position:relative;
+  width:min(790px,95vw);
+  aspect-ratio:980/150;
+  margin:0 auto;
+}
+.nav .bg{position:absolute;inset:0;width:100%;height:100%}
+.nav .items{
+  position:absolute;inset:0;
+  display:grid;grid-template-columns:repeat(5,1fr);
+  align-items:center;
+}
+.item{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  font-size:12px;font-weight:800;letter-spacing:.03em;
+  color:rgba(255,255,255,.92);
+  opacity:.86;
+}
+.item img{width:34px;height:34px}
+.item.active{
+  opacity:1;
+  transform:translateY(-2px) scale(1.04);
+  text-shadow:0 0 18px rgba(168,148,255,.45);
+}
+.item.active img{
+  filter:drop-shadow(0 0 12px rgba(168,148,255,.35));
+}
+.note{
+  margin-top:10px;
+  text-align:center;
+  font-size:13px;
+  opacity:.76;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Glossy Consistent Navbar Icons</h1>
+  <p>Inspired by glossy app icons, but unified into one family so the navbar feels richer and more game-like.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="iconCard"><img src="home_glossy_v4.svg"><div class="label">HOME</div></div>
+      <div class="iconCard"><img src="rules_glossy_v4.svg"><div class="label">RULES</div></div>
+      <div class="iconCard"><img src="settings_glossy_v4.svg"><div class="label">SETTINGS</div></div>
+      <div class="iconCard"><img src="leaderboard_glossy_v4.svg"><div class="label">LEADERBOARD</div></div>
+      <div class="iconCard"><img src="profile_glossy_v4.svg"><div class="label">PROFILE</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="nav">
+      <img class="bg" src="navbar_shell_preview.svg" alt="">
+      <div class="items">
+        <div class="item"><img src="home_glossy_v4.svg"><div>HOME</div></div>
+        <div class="item"><img src="rules_glossy_v4.svg"><div>RULES</div></div>
+        <div class="item active"><img src="settings_glossy_v4.svg"><div>SETTINGS</div></div>
+        <div class="item"><img src="leaderboard_glossy_v4.svg"><div>LEADERBOARD</div></div>
+        <div class="item"><img src="profile_glossy_v4.svg"><div>PROFILE</div></div>
+      </div>
+    </div>
+    <div class="note">Consistent glossy look, visible color, and still polished enough for your game UI.</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="g" x1="64" y1="18" x2="64" y2="108">
+      <stop offset="0%" stop-color="#FFF8D8"/>
+      <stop offset="100%" stop-color="#F7E79F"/>
+    </linearGradient>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="rgba(0,0,0,0.18)"/>
+    </filter>
+  </defs>
+  <g opacity="0.30" filter="url(#glow)" stroke="rgba(255,235,140,0.40)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M45 31h38v18c0 15-8 26-19 26S45 64 45 49V31Z" stroke-width="7"/>
+    <path d="M45 38H33v7c0 10 6 17 15 19M83 38h12v7c0 10-6 17-15 19M64 75v14M49 101h30M55 89h18" stroke-width="7"/>
+  </g>
+  <g transform="translate(0 2)" opacity="0.16" stroke="black" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M45 31h38v18c0 15-8 26-19 26S45 64 45 49V31Z" stroke-width="7"/>
+    <path d="M45 38H33v7c0 10 6 17 15 19M83 38h12v7c0 10-6 17-15 19M64 75v14M49 101h30M55 89h18" stroke-width="7"/>
+  </g>
+  <g filter="url(#shadow)" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M45 31h38v18c0 15-8 26-19 26S45 64 45 49V31Z" stroke-width="7"/>
+    <path d="M45 38H33v7c0 10 6 17 15 19M83 38h12v7c0 10-6 17-15 19M64 75v14M49 101h30M55 89h18" stroke-width="7"/>
+    <path d="m64 42 4 6 7 2-4.5 5.5.3 7-6.8-2.4-6.8 2.4.3-7L53 50l7-2 4-6Z" fill="url(#g)" stroke-width="3"/>
+  </g>
+</svg>
