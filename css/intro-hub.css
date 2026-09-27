@@ -112,7 +112,7 @@
 .hub-chip__icon--news { background-image: url('../assets/side_utilities_button/news_v2.svg'); }
 .hub-chip__icon--achievements { background-image: url('../assets/side_utilities_button/achievements_v2.svg'); }
 .hub-chip__icon--social { background-image: url('../assets/side_utilities_button/social_v2.svg'); }
-.hub-chip__icon--shop { background-image: url('../assets/side_utilities_button/shop_v2.svg'); }
+.hub-chip__icon--hall_of_fame { background-image: url('../assets/side_utilities_button/hall_of_fame_v2.svg'); }
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {

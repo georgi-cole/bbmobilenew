@@ -2,7 +2,7 @@
 // Intro Hub UI — side utility button overlay
 //
 // Chips: Music, Sounds (top-left), Houseguests, Achievements, Feedback (bottom-left),
-//        Store, Settings, Share (bottom-right)
+//        Hall of Fame, Settings, Share (bottom-right)
 //
 // Notification dots are driven by window.game.hubNotifications (object keyed by chip id).
 // Runtime API: window.game.hub.setNotification(id, bool) / window.game.hub.refreshNotifications()
@@ -34,8 +34,8 @@
     { id: 'houseguests', label: 'Players', icon: 'housemates', position: 'bottom-left' },
     { id: 'achievements', label: 'Achievements', icon: 'achievements', position: 'bottom-left-2' },
     { id: 'feedback', label: 'Feedback', icon: 'feedback', position: 'bottom-left-3' },
-    // Bottom-right corner (stacked bottom → top: store, settings, share)
-    { id: 'store', label: 'Store', icon: 'shop', position: 'bottom-right' },
+    // Bottom-right corner (stacked bottom → top: Hall of Fame, settings, share)
+    { id: 'leaderboard', label: 'Hall of Fame', icon: 'hall_of_fame', position: 'bottom-right' },
     { id: 'settings', label: 'Settings', icon: 'settings', position: 'bottom-right-2' },
     { id: 'share', label: 'Share', icon: 'share', position: 'bottom-right-3' },
   ]
@@ -1104,8 +1104,8 @@
       case 'achievements':
         openAchievementsPanel()
         break
-      case 'store':
-        global.location.hash = '#/store'
+      case 'leaderboard':
+        global.location.hash = '#/leaderboard'
         break
       case 'share':
         openShareDialog()
