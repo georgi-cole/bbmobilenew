@@ -15,6 +15,66 @@
   ],
   "bindings": [
     {
+      "path": "music/season_start.mp3",
+      "key": "music:season_start",
+      "category": "music",
+      "trackId": "season_start",
+      "displayName": "Season Start — Player Reveal Hits",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "ceremony"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/final_three_week.mp3",
+      "key": "music:final_three_week",
+      "category": "music",
+      "trackId": "final_three_week",
+      "displayName": "Final 3 Week",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "finale"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/weekend_1.mp3",
+      "key": "music:weekend_1",
+      "category": "music",
+      "trackId": "weekend_1",
+      "displayName": "Weekend 1 — Move Into Me",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "social"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/weekend_2.mp3",
+      "key": "music:weekend_2",
+      "category": "music",
+      "trackId": "weekend_2",
+      "displayName": "Weekend 2 — Hub Party",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "social"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
+      "path": "music/weekend_3.mp3",
+      "key": "music:weekend_3",
+      "category": "music",
+      "trackId": "weekend_3",
+      "displayName": "Weekend 3 — The Season So Far",
+      "fallbackTrack": "none",
+      "tags": ["ambient", "social"],
+      "preload": false,
+      "volume": 0.5,
+      "loop": true
+    },
+    {
       "path": "sounds/minigames/minigame_all_3_seconds_timer.mp3",
       "key": "minigame:all_3_seconds_timer",
       "category": "minigame",
