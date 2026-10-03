@@ -83,10 +83,10 @@
       },
       "loh.democracia-vote-start": {
         "text": "🗳️ Today's Leader of the Hub will be chosen by popular vote! Cast your votes now.",
-        "major": "democracia",
+        "major": null,
         "type": "game",
-        "level": "major",
-        "forceOnTv": true
+        "level": "minor",
+        "forceOnTv": false
       },
       "loh.winner": {
         "text": "{winner} has won Leader of the Hub! 👑",
@@ -103,12 +103,11 @@
         "forceOnTv": true
       },
       "card.democracia-vote": {
-        "text": "The house votes by secret ballot to elect the Leader of the Hub.",
-        "title": "DEMOCRACIA!",
-        "major": "democracia",
+        "text": "The hubmates vote by secret ballot to elect the Leader of the Hub.",
+        "major": null,
         "type": "game",
-        "level": "critical",
-        "forceOnTv": true
+        "level": "minor",
+        "forceOnTv": false
       },
       "democracia.winner": {
         "text": "🗳️ {winner} has been elected Leader of the Hub! 👑",
@@ -198,7 +197,7 @@
         "forceOnTv": true
       },
       "nominations.co-loh-prompt": {
-        "text": "{leader}, as co-Leader of the Hub, you must nominate one houseguest for elimination. 🎯",
+        "text": "{leader}, as co-Leader of the Hub, you must nominate one hubmate for elimination. 🎯",
         "major": null,
         "type": "game",
         "level": "minor",
