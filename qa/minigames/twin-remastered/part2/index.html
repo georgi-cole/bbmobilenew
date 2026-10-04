@@ -204,12 +204,152 @@
         }
       }
     </style>
+    <style id="mobile-game-presentation">
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        overflow-x: hidden;
+      }
+      .shell {
+        position: relative;
+        box-sizing: border-box;
+      }
+      .message-slot {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: min(100%, 1120px);
+        min-height: 44px;
+        padding: 0 54px;
+      }
+      .topnote,
+      .banner {
+        position: relative;
+        inset: auto;
+        left: auto;
+        top: auto;
+        z-index: 1;
+        transform: none;
+        display: block;
+        width: fit-content;
+        max-width: 100%;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.3;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .fullscreen-toggle {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        min-width: 42px;
+        min-height: 38px;
+        transform: translateY(-50%);
+        border: 1px solid #b99cff;
+        border-radius: 10px;
+        background: #100c27e8;
+        color: #f3ecff;
+        font-size: 21px;
+        line-height: 1;
+        touch-action: manipulation;
+      }
+      .fullscreen-toggle[hidden] {
+        display: none;
+      }
+      .control,
+      .key,
+      .controls {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .control,
+      .key {
+        touch-action: none;
+      }
+      @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
+        html,
+        body {
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .shell {
+          display: grid;
+          grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr) minmax(124px, 23vw);
+          grid-template-rows: minmax(0, 1fr) auto;
+          align-items: stretch;
+          justify-content: stretch;
+          align-content: stretch;
+          gap: 4px 8px;
+          width: 100vw;
+          height: 100dvh;
+          min-height: 100dvh;
+          padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+            max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+        }
+        .frame {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: center;
+          align-self: center;
+          width: 100%;
+          max-width: 100%;
+          max-height: 100%;
+        }
+        .message-slot {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: stretch;
+          width: 100%;
+          min-height: 34px;
+          padding: 0 48px 0 4px;
+        }
+        .controls {
+          display: contents;
+        }
+        .controls .group:first-child,
+        .controls .group:last-child {
+          align-self: center;
+          justify-content: center;
+          gap: clamp(4px, 1vw, 10px);
+          width: 100%;
+          pointer-events: auto;
+        }
+        .controls .group:first-child {
+          grid-column: 1;
+          grid-row: 1;
+        }
+        .controls .group:last-child {
+          grid-column: 3;
+          grid-row: 1;
+        }
+        .control,
+        .key {
+          width: clamp(46px, 8vw, 72px);
+          min-width: clamp(46px, 8vw, 72px);
+          height: clamp(48px, 15dvh, 74px);
+          padding: 0 3px;
+          font-size: clamp(9px, 1.5vw, 12px);
+        }
+        .message-slot .topnote,
+        .message-slot .banner {
+          font-size: 11px;
+        }
+      }
+    </style>
   </head>
   <body>
     <main class="shell">
       <section class="frame">
         <canvas id="game" width="960" height="540" tabindex="0"></canvas>
-        <div class="banner" id="banner"></div>
+
         <section class="cover" id="intro">
           <div>
             <div class="eyebrow">FIND YOUR TWIN 2</div>
@@ -230,6 +370,18 @@
           </div>
         </section>
       </section>
+      <div class="message-slot" aria-live="polite" aria-atomic="true">
+        <div class="banner" id="banner" role="status"></div>
+        <button
+          class="fullscreen-toggle"
+          id="fullscreen"
+          type="button"
+          aria-label="Enter fullscreen"
+          title="Enter fullscreen"
+        >
+          ⛶
+        </button>
+      </div>
       <div class="controls">
         <div class="group">
           <button class="key" data-k="left">◀</button><button class="key" data-k="right">▶</button>
@@ -440,8 +592,24 @@
           exit: -100,
           coins: [],
           enemies: [
-            { x: 260, y: G - 28, l: 70, r: 720, v: 1.55, a: true, type: 'fire' },
-            { x: 570, y: G - 28, l: 70, r: 720, v: -1.35, a: true, type: 'ice' },
+            {
+              x: 260,
+              y: G - 28,
+              l: 70,
+              r: 720,
+              v: 1.55,
+              a: true,
+              type: 'fire',
+            },
+            {
+              x: 570,
+              y: G - 28,
+              l: 70,
+              r: 720,
+              v: -1.35,
+              a: true,
+              type: 'ice',
+            },
           ],
         }
         player.x = 60
@@ -1150,63 +1318,120 @@
         if (t > noteUntil) banner.classList.remove('show')
         requestAnimationFrame(loop)
       }
+      const inputSources = Object.fromEntries(Object.keys(keys).map((key) => [key, new Set()]))
+      const activePointers = new Map()
+      const controlButtons = [...document.querySelectorAll('[data-key], [data-k]')]
+
+      function setInputSource(key, source, pressed) {
+        const sources = inputSources[key]
+        if (!sources) return
+        if (pressed) sources.add(source)
+        else sources.delete(source)
+        keys[key] = sources.size > 0
+      }
+
       function resetInputState() {
+        activePointers.clear()
+        Object.values(inputSources).forEach((sources) => sources.clear())
         Object.keys(keys).forEach((key) => {
           keys[key] = false
         })
       }
 
-      document.addEventListener('keydown', (e) => {
-        let k = e.code
-        if (['ArrowLeft', 'KeyA'].includes(k)) keys.left = true
-        if (['ArrowRight', 'KeyD'].includes(k)) keys.right = true
-        if (['Space', 'KeyZ'].includes(k)) {
-          keys.jump = true
-          e.preventDefault()
-        }
-        if (['ArrowUp', 'KeyW', 'Enter'].includes(k)) {
-          keys.enter = true
-          e.preventDefault()
-        }
+      const keyBindings = {
+        ArrowLeft: 'left',
+        KeyA: 'left',
+        ArrowRight: 'right',
+        KeyD: 'right',
+        Space: 'jump',
+        ArrowUp: 'enter',
+        KeyW: 'enter',
+        KeyZ: 'jump',
+        ArrowDown: 'enter',
+        KeyS: 'enter',
+        Enter: 'enter',
+      }
+      const activeKeyBindings = Object.fromEntries(
+        Object.entries(keyBindings)
+          .filter(([, gameKey]) => Object.hasOwn(keys, gameKey))
+          .map(([code, gameKey]) => [code, gameKey])
+      )
+
+      document.addEventListener('keydown', (event) => {
+        const key = activeKeyBindings[event.code]
+        if (!key) return
+        if (!event.repeat) setInputSource(key, 'keyboard:' + event.code, true)
+        event.preventDefault()
       })
-      document.addEventListener('keyup', (e) => {
-        if (['ArrowLeft', 'KeyA'].includes(e.code)) keys.left = false
-        if (['ArrowRight', 'KeyD'].includes(e.code)) keys.right = false
-        if (['Space', 'KeyZ'].includes(e.code)) keys.jump = false
-        if (['ArrowUp', 'KeyW', 'Enter'].includes(e.code)) keys.enter = false
+      document.addEventListener('keyup', (event) => {
+        const key = activeKeyBindings[event.code]
+        if (key) setInputSource(key, 'keyboard:' + event.code, false)
       })
 
-      document.querySelectorAll('[data-k]').forEach((button) => {
-        const key = button.dataset.k
-        const release = (event) => {
-          keys[key] = false
-          if (event?.pointerId != null && button.hasPointerCapture?.(event.pointerId)) {
-            button.releasePointerCapture(event.pointerId)
-          }
-        }
+      function releasePointer(event) {
+        const active = activePointers.get(event.pointerId)
+        if (!active) return
+        activePointers.delete(event.pointerId)
+        setInputSource(active.key, 'pointer:' + event.pointerId, false)
+      }
 
+      controlButtons.forEach((button) => {
+        const key = button.dataset.key ?? button.dataset.k
         button.addEventListener('pointerdown', (event) => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return
           event.preventDefault()
-          button.setPointerCapture?.(event.pointerId)
-          keys[key] = true
+          if (activePointers.has(event.pointerId)) return
+          activePointers.set(event.pointerId, { key, button })
+          try {
+            button.setPointerCapture(event.pointerId)
+          } catch {
+            // Global pointer-up and focus-reset handlers remain as a fallback.
+          }
+          setInputSource(key, 'pointer:' + event.pointerId, true)
         })
-        ;['pointerup', 'pointerleave', 'pointercancel', 'lostpointercapture'].forEach((eventName) =>
-          button.addEventListener(eventName, release)
-        )
+        button.addEventListener('pointerup', releasePointer)
+        button.addEventListener('pointercancel', releasePointer)
+        button.addEventListener('lostpointercapture', releasePointer)
         button.addEventListener('contextmenu', (event) => event.preventDefault())
         button.addEventListener('dragstart', (event) => event.preventDefault())
       })
-      ;[c, document.querySelector('.controls')].forEach((surface) => {
-        surface?.addEventListener('contextmenu', (event) => event.preventDefault())
-        surface?.addEventListener('selectstart', (event) => event.preventDefault())
-      })
 
+      window.addEventListener('pointerup', releasePointer)
+      window.addEventListener('pointercancel', releasePointer)
       window.addEventListener('blur', resetInputState)
       window.addEventListener('pagehide', resetInputState)
       window.addEventListener('orientationchange', resetInputState)
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) resetInputState()
       })
+      document.addEventListener('selectstart', (event) => {
+        if (event.target.closest?.('canvas, .controls')) event.preventDefault()
+      })
+    </script>
+    <script>
+      const fullscreenToggle = document.querySelector('#fullscreen')
+      if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
+        fullscreenToggle.hidden = true
+      } else {
+        fullscreenToggle.addEventListener('click', async () => {
+          try {
+            if (document.fullscreenElement) await document.exitFullscreen()
+            else
+              await document.documentElement.requestFullscreen({
+                navigationUI: 'hide',
+              })
+          } catch {
+            fullscreenToggle.title = 'Fullscreen is unavailable in this browser'
+            fullscreenToggle.setAttribute('aria-label', fullscreenToggle.title)
+          }
+        })
+        document.addEventListener('fullscreenchange', () => {
+          const isFullscreen = Boolean(document.fullscreenElement)
+          fullscreenToggle.textContent = isFullscreen ? '⤢' : '⛶'
+          fullscreenToggle.title = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
+          fullscreenToggle.setAttribute('aria-label', fullscreenToggle.title)
+        })
+      }
     </script>
     <script src="../bridge.js"></script>
   </body>
