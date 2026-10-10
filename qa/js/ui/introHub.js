@@ -385,87 +385,284 @@
     openShareFallback(shareData)
   }
 
-  function buildFeedbackMailtoUrl() {
-    const subject = encodeURIComponent('BBMobile New feedback')
-    const day = typeof g.week === 'number' ? `Day ${g.week}` : null
-    const season = typeof g.season === 'number' ? `Season ${g.season}` : null
-    const context = [season, day].filter(Boolean).join(' · ')
-    const intro = context
-      ? `Hi,\n\nI want to share some feedback about ${context}.\n\n`
-      : 'Hi,\n\nI want to share some feedback about BBMobile New.\n\n'
-    return `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodeURIComponent(intro)}`
+  function getFeedbackContext(includeDevice) {
+    const build = global.__bigEyeFeedbackBuild || {}
+    const gameContext = global.__bigEyeFeedbackContext || g
+    const day = typeof gameContext.day === 'number' ? gameContext.day : gameContext.week
+    const lines = [
+      'Game: The Big Eye',
+      'Version: ' + (build.version || 'unknown'),
+      'Build: ' + (build.buildId || 'unknown'),
+      'Season: ' + (typeof gameContext.season === 'number' ? gameContext.season : 'unknown'),
+      'Day: ' + (typeof day === 'number' ? day : 'unknown'),
+      'Phase: ' +
+        (typeof gameContext.phase === 'string' ? gameContext.phase.slice(0, 80) : 'unknown'),
+      'Reported at (UTC): ' + new Date().toISOString(),
+    ]
+    if (includeDevice) {
+      lines.push('Device/browser: ' + (global.navigator?.userAgent || 'unknown'))
+      lines.push('Viewport: ' + (global.innerWidth || '?') + ' × ' + (global.innerHeight || '?'))
+    }
+    return lines.join('\n')
   }
 
-  function openFeedbackFallback(mailtoUrl) {
+  function buildFeedbackReport(kind, details, steps, expected, includeDevice) {
+    return [
+      'Type: ' + kind,
+      '',
+      'What happened:',
+      details.trim(),
+      '',
+      'Steps to reproduce:',
+      steps.trim() || 'Not provided',
+      '',
+      'What I expected:',
+      expected.trim() || 'Not provided',
+      '',
+      '--- Game context (no save data attached) ---',
+      getFeedbackContext(includeDevice),
+    ].join('\n')
+  }
+
+  function buildFeedbackMailtoUrl(kind, report) {
+    const subject = encodeURIComponent('The Big Eye — ' + kind)
+    return `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${encodeURIComponent(report)}`
+  }
+
+  function openFeedbackComposer() {
     openHubDialog({
-      title: 'Send feedback',
+      title: 'Report a bug',
       icon: '💬',
-      description: 'Open your email app and send your thoughts straight to the developer inbox.',
+      description:
+        'Tell us what happened. You can also share suggestions. ' +
+        'This prepares an email; nothing is sent automatically.',
       renderBody: function (body) {
-        const helper = createTextNode('p', `Email: ${FEEDBACK_EMAIL}`, {
-          margin: '0',
-          color: 'rgba(236, 241, 255, 0.8)',
-          fontSize: '14px',
+        const form = applyStyles(document.createElement('form'), {
+          display: 'grid',
+          gap: '12px',
+          minWidth: '0',
         })
-        body.appendChild(helper)
+        form.noValidate = true
+
+        function addField(labelText, control) {
+          const wrapper = applyStyles(document.createElement('label'), {
+            display: 'grid',
+            gap: '6px',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'rgba(236,241,255,0.85)',
+          })
+          wrapper.appendChild(createTextNode('span', labelText))
+          applyStyles(control, {
+            width: '100%',
+            boxSizing: 'border-box',
+            minWidth: '0',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: '1px solid rgba(176,198,255,0.24)',
+            background: 'rgba(10,14,24,0.76)',
+            color: '#fff',
+            font: 'inherit',
+            fontSize: '14px',
+          })
+          wrapper.appendChild(control)
+          form.appendChild(wrapper)
+          return control
+        }
+
+        const kind = document.createElement('select')
+        kind.dataset.feedbackField = 'kind'
+        ;['Bug', 'Suggestion', 'Other feedback'].forEach(function (type) {
+          const option = document.createElement('option')
+          option.value = type
+          option.textContent = type
+          kind.appendChild(option)
+        })
+        addField('Report type', kind)
+
+        function addTextArea(label, field, placeholder, maxLength, rows) {
+          const textarea = document.createElement('textarea')
+          textarea.dataset.feedbackField = field
+          textarea.placeholder = placeholder
+          textarea.maxLength = maxLength
+          textarea.rows = rows
+          textarea.style.resize = 'vertical'
+          return addField(label, textarea)
+        }
+
+        const details = addTextArea(
+          'What happened? *',
+          'details',
+          'Describe the problem and where you were in the game.',
+          1200,
+          4
+        )
+        const steps = addTextArea(
+          'How can we reproduce it? (optional)',
+          'steps',
+          'For example: Won POS → saved an ally → replacement nomination.',
+          800,
+          2
+        )
+        const expected = addTextArea(
+          'What did you expect? (optional)',
+          'expected',
+          'What should have happened instead?',
+          600,
+          2
+        )
+
+        const deviceLabel = applyStyles(document.createElement('label'), {
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '9px',
+          fontSize: '12px',
+          lineHeight: '1.5',
+          color: 'rgba(236,241,255,0.76)',
+        })
+        const includeDevice = document.createElement('input')
+        includeDevice.type = 'checkbox'
+        includeDevice.dataset.feedbackField = 'device'
+        includeDevice.style.marginTop = '3px'
+        deviceLabel.appendChild(includeDevice)
+        deviceLabel.appendChild(
+          createTextNode(
+            'span',
+            'Include browser/device details to help reproduce the issue (optional).'
+          )
+        )
+        form.appendChild(deviceLabel)
+        form.appendChild(
+          createTextNode(
+            'p',
+            'Season, day, phase and build info are included. No saved game, account data or screenshot is attached. ' +
+              'You can attach a screenshot in your email app.',
+            {
+              margin: '0',
+              fontSize: '12px',
+              lineHeight: '1.5',
+              color: 'rgba(236,241,255,0.65)',
+            }
+          )
+        )
+
+        const status = createTextNode('p', '', {
+          margin: '0',
+          fontSize: '12px',
+          lineHeight: '1.5',
+          color: '#d5c3ff',
+        })
+        status.setAttribute('role', 'status')
+
+        const manualCopy = document.createElement('textarea')
+        manualCopy.readOnly = true
+        manualCopy.rows = 5
+        manualCopy.setAttribute('aria-label', 'Report text to manually copy')
+        applyStyles(manualCopy, {
+          display: 'none',
+          width: '100%',
+          boxSizing: 'border-box',
+          padding: '10px',
+          borderRadius: '12px',
+          color: '#fff',
+          background: '#171320',
+        })
+
+        function reportOrExplain() {
+          if (!details.value.trim()) {
+            status.textContent = 'Please describe what happened first.'
+            details.focus()
+            return null
+          }
+          status.textContent = ''
+          return buildFeedbackReport(
+            kind.value,
+            details.value,
+            steps.value,
+            expected.value,
+            includeDevice.checked
+          )
+        }
 
         const actions = applyStyles(document.createElement('div'), {
           display: 'flex',
           flexWrap: 'wrap',
           gap: '10px',
         })
-
-        const emailLink = createTextNode('a', 'Open email app', {
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+        const actionStyle = {
           padding: '11px 16px',
           borderRadius: '999px',
-          background: 'rgba(124, 146, 255, 0.18)',
-          border: '1px solid rgba(176, 198, 255, 0.14)',
+          border: '1px solid rgba(176,198,255,0.18)',
+          background: 'rgba(124,146,255,0.18)',
           color: '#fff',
           fontSize: '14px',
           fontWeight: '600',
+          cursor: 'pointer',
+        }
+
+        const emailLink = createTextNode('a', 'Open email app', {
+          ...actionStyle,
+          display: 'inline-flex',
+          alignItems: 'center',
           textDecoration: 'none',
         })
-        emailLink.href = mailtoUrl
+        emailLink.dataset.feedbackAction = 'email'
+        emailLink.href = '#'
+        emailLink.addEventListener('click', function (event) {
+          const report = reportOrExplain()
+          if (!report) {
+            event.preventDefault()
+            return
+          }
+          emailLink.href = buildFeedbackMailtoUrl(kind.value, report)
+          status.textContent =
+            'Your email app should open. Please press Send there to submit your report.'
+        })
         actions.appendChild(emailLink)
 
-        actions.appendChild(
-          renderActionButton(
-            'Close',
-            {
-              padding: '11px 16px',
-              borderRadius: '999px',
-              border: '1px solid rgba(255,255,255,0.14)',
-              background: 'rgba(255,255,255,0.06)',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            },
-            closeHubDialog
-          )
-        )
+        const copyButton = renderActionButton('Copy report', actionStyle, function () {
+          const report = reportOrExplain()
+          if (!report) return
+          manualCopy.value = report
+          if (global.navigator?.clipboard?.writeText) {
+            Promise.resolve(global.navigator.clipboard.writeText(report))
+              .then(function () {
+                manualCopy.style.display = 'none'
+                status.textContent =
+                  'Report copied. Paste it into an email or message to the developer.'
+              })
+              .catch(function () {
+                manualCopy.style.display = 'block'
+                manualCopy.focus()
+                manualCopy.select()
+                status.textContent = 'Copy the selected report text below.'
+              })
+          } else {
+            manualCopy.style.display = 'block'
+            manualCopy.focus()
+            manualCopy.select()
+            status.textContent = 'Copy the selected report text below.'
+          }
+        })
+        copyButton.dataset.feedbackAction = 'copy'
+        actions.appendChild(copyButton)
 
-        body.appendChild(actions)
+        form.appendChild(actions)
+        form.appendChild(status)
+        form.appendChild(manualCopy)
+        form.appendChild(
+          createTextNode('p', 'Developer inbox: ' + FEEDBACK_EMAIL, {
+            margin: '0',
+            fontSize: '12px',
+            color: 'rgba(236,241,255,0.6)',
+          })
+        )
+        form.addEventListener('submit', function (event) {
+          event.preventDefault()
+        })
+        body.appendChild(form)
       },
     })
-  }
-
-  function openFeedbackComposer() {
-    const mailtoUrl = buildFeedbackMailtoUrl()
-
-    try {
-      if (typeof global.open === 'function') {
-        const popup = global.open(mailtoUrl, '_self')
-        if (popup !== null) return
-      }
-    } catch (error) {
-      console.warn('[introHub] Could not open feedback email directly', error)
-    }
-
-    openFeedbackFallback(mailtoUrl)
   }
 
   function toNumber(value) {
@@ -1266,6 +1463,7 @@
     init: init,
     toggleChipVisual: toggleChipVisual,
     closeDialog: closeHubDialog,
+    openFeedback: openFeedbackComposer,
   }
 
   // Expose houseguests panel hook (can be overridden before this module loads)
