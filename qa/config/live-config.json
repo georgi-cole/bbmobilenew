@@ -1,21 +1,21 @@
 {
   "broadcast": {
     "enabled": false,
-    "title": "Big Brother Update",
+    "title": "The Big Eye Update",
     "priority": "normal"
   },
   "broadcastManager": {
     "enabled": true,
     "overrides": {
       "season.welcome": {
-        "text": "Welcome to The Big Eye hub! 🏠 Season {season} is about to begin.",
+        "text": "Welcome to the Hub! 🏠 Season {season} is about to begin.",
         "major": null,
         "type": "game",
         "level": "minor",
         "forceOnTv": true
       },
       "survival.opening": {
-        "text": "Surveyeval Mode activated\nEight contestants enter; synthetic players keep the board full after every robo eviction.",
+        "text": "Surveyeval Mode activated\nEight contestants enter; synthetic players keep the board full after every robo elimination.",
         "major": "surveyeval_opening",
         "type": "game",
         "level": "major",
@@ -226,14 +226,14 @@
         "forceOnTv": true
       },
       "vote.evicted": {
-        "text": "{evictee}, you have been eliminated from The Big Eye hub. 🚪",
+        "text": "{evictee}, you have been eliminated from the Hub. 🚪",
         "major": null,
         "type": "game",
         "level": "minor",
         "forceOnTv": true
       },
       "cupid.spell-broken": {
-        "text": "💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid takes flight from The Big Eye couple's house. The rose glow fades: every survivor now plays alone. What the pairs felt - and what they did to each other - remains.",
+        "text": "💔 Four pairs have fallen. Cracks race through Cupid's hearts, the final arrow dissolves into light, and Cupid leaves the Hub. The rose glow fades: every survivor now plays alone. What the pairs felt - and what they did to each other - remains.",
         "major": "cupid_arrow_broken",
         "type": "twist",
         "level": "critical",
@@ -447,7 +447,7 @@
         ],
         "gratitude": [
           "You are welcome. Do not make me sentimental.",
-          "Noted. Gratitude is rare currency in this house.",
+          "Noted. Gratitude is rare currency in the Hub.",
           "You are welcome. Now spend that clearer head wisely."
         ],
         "realness": ["More real than you think."],
@@ -470,7 +470,7 @@
         "late_game": 60
       },
       "templates": {
-        "returned": ["I watched you leave. Apparently the House was not finished with you."],
+        "returned": ["I watched you leave. Apparently the Hub was not finished with you."],
         "newly_nominated": ["Back already. And this time your name is on the block."],
         "became_leader": ["Power suits you. For now."],
         "won_safety": ["You won safety. I noticed."],
