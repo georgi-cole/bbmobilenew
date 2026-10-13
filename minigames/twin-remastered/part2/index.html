@@ -281,66 +281,115 @@
           overflow: hidden;
         }
         .shell {
-          display: grid;
-          grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr) minmax(124px, 23vw);
-          grid-template-rows: minmax(0, 1fr) auto;
-          align-items: stretch;
-          justify-content: stretch;
-          align-content: stretch;
-          gap: 4px 8px;
+          display: block;
+          position: fixed;
+          inset: 0;
           width: 100vw;
           height: 100dvh;
           min-height: 100dvh;
-          padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-            max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+          padding: 0;
+          overflow: hidden;
         }
         .frame {
-          grid-column: 2;
-          grid-row: 1;
-          justify-self: center;
-          align-self: center;
-          width: 100%;
-          max-width: 100%;
-          max-height: 100%;
+          position: absolute;
+          inset: 0;
+          width: 100vw;
+          height: 100dvh;
+          max-width: none;
+          max-height: none;
+          aspect-ratio: auto;
+          border: 0;
+          border-radius: 0;
+          container-type: size;
         }
         .message-slot {
-          grid-column: 2;
-          grid-row: 2;
-          justify-self: stretch;
-          width: 100%;
+          position: absolute;
+          z-index: 8;
+          top: max(48px, calc(env(safe-area-inset-top) + 42px));
+          left: 50%;
+          transform: translateX(-50%);
+          width: min(64vw, 620px);
           min-height: 34px;
-          padding: 0 48px 0 4px;
+          padding: 0 48px 0 12px;
+          border: 1px solid #b99cff66;
+          border-radius: 999px;
+          background: #100c27e8;
         }
         .controls {
-          display: contents;
+          position: absolute;
+          z-index: 8;
+          left: max(8px, env(safe-area-inset-left));
+          right: max(8px, env(safe-area-inset-right));
+          bottom: max(8px, env(safe-area-inset-bottom));
+          display: flex;
+          justify-content: space-between;
+          width: auto;
+          pointer-events: none;
         }
         .controls .group:first-child,
         .controls .group:last-child {
           align-self: center;
           justify-content: center;
-          gap: clamp(4px, 1vw, 10px);
-          width: 100%;
+          gap: clamp(4px, 1vw, 8px);
+          width: auto;
           pointer-events: auto;
-        }
-        .controls .group:first-child {
-          grid-column: 1;
-          grid-row: 1;
-        }
-        .controls .group:last-child {
-          grid-column: 3;
-          grid-row: 1;
         }
         .control,
         .key {
-          width: clamp(46px, 8vw, 72px);
-          min-width: clamp(46px, 8vw, 72px);
-          height: clamp(48px, 15dvh, 74px);
+          width: clamp(42px, 6vw, 58px);
+          min-width: clamp(42px, 6vw, 58px);
+          height: clamp(44px, 14dvh, 62px);
           padding: 0 3px;
-          font-size: clamp(9px, 1.5vw, 12px);
+          font-size: clamp(10px, 1.35vw, 12px);
         }
         .message-slot .topnote,
         .message-slot .banner {
           font-size: 11px;
+        }
+        .cover.result-overlay {
+          z-index: 6;
+          padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+        }
+        .result-panel {
+          display: grid;
+          grid-template-rows: minmax(0, 1fr) auto;
+          width: min(100%, 760px);
+          height: min(100%, 300px);
+          max-height: 100%;
+          padding: clamp(12px, 3cqh, 24px);
+          overflow: hidden;
+          border: 1px solid #b99cff88;
+          border-radius: 18px;
+          background: linear-gradient(145deg, #211739e8, #070a18f5);
+          box-shadow:
+            0 24px 80px #000b,
+            inset 0 1px #fff2;
+        }
+        .result-main {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-height: 0;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+        .result-overlay h1 {
+          font-size: clamp(26px, min(9cqw, 14cqh), 64px);
+        }
+        .result-actions {
+          position: relative;
+          z-index: 1;
+          padding-top: clamp(8px, 2cqh, 16px);
+          border-top: 1px solid #c4b5fd55;
+          background: linear-gradient(180deg, #1b1530, #0b0c19);
+        }
+        .result-actions .start {
+          width: min(100%, 360px);
+          margin: 0;
+        }
+        .shell.is-finished .controls,
+        .shell.is-finished .message-slot {
+          display: none;
         }
       }
     </style>
@@ -356,17 +405,21 @@
             <h1>LOST<br />AGAIN</h1>
             <p>
               Benny searches the castle for Lenny. Find the three hidden doors in order, explore the
-              Housemate Gallery and Kolequant Vault, then reach Lenny beyond the great gate.
+              Hubmate Gallery and Kolequant Vault, then reach Lenny beyond the great gate.
             </p>
             <button class="start" id="start">ENTER THE CASTLE</button>
           </div>
         </section>
-        <section class="cover" id="end" hidden>
-          <div>
-            <div class="eyebrow">TOGETHER AGAIN</div>
-            <h1>BENNY FOUND<br />LENNY</h1>
-            <p id="score"></p>
-            <button class="start" onclick="location.reload()">PLAY AGAIN</button>
+        <section class="cover result-overlay" id="end" hidden>
+          <div class="result-panel">
+            <div class="result-main">
+              <div class="eyebrow">TOGETHER AGAIN</div>
+              <h1>BENNY FOUND<br />LENNY</h1>
+              <p id="score"></p>
+            </div>
+            <div class="result-actions">
+              <button class="start" onclick="location.reload()">PLAY AGAIN</button>
+            </div>
           </div>
         </section>
       </section>
@@ -711,7 +764,7 @@
         cam = 0
         message(
           kind === 'bonus'
-            ? 'Housemate Gallery — treasures among the portraits'
+            ? 'Hubmate Gallery — treasures among the portraits'
             : 'Kolequant Vault — stomp guards or find the exit'
         )
       }
@@ -724,6 +777,7 @@
           ? 'TOGETHER AGAIN'
           : 'LOST AGAIN'
         document.querySelector('#score').textContent = score + ' PTS · ' + detail
+        document.querySelector('.shell').classList.add('is-finished')
         document.querySelector('#end').hidden = false
       }
       function hurt(cause = 'A warden caught you') {
@@ -1121,7 +1175,7 @@
           }
           x.fillStyle = '#ffe7a6'
           x.font = '900 16px system-ui'
-          x.fillText('HOUSEMATE GALLERY', 34, 86)
+          x.fillText('HUBMATE GALLERY', 34, 86)
         } else {
           x.fillStyle = '#e7dcff'
           x.font = '900 24px system-ui'

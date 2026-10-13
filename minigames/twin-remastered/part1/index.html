@@ -285,66 +285,116 @@
           overflow: hidden;
         }
         .shell {
-          display: grid;
-          grid-template-columns: minmax(112px, 21vw) minmax(0, 1fr) minmax(124px, 23vw);
-          grid-template-rows: minmax(0, 1fr) auto;
-          align-items: stretch;
-          justify-content: stretch;
-          align-content: stretch;
-          gap: 4px 8px;
+          display: block;
+          position: fixed;
+          inset: 0;
           width: 100vw;
           height: 100dvh;
           min-height: 100dvh;
-          padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-            max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+          padding: 0;
+          overflow: hidden;
         }
         .frame {
-          grid-column: 2;
-          grid-row: 1;
-          justify-self: center;
-          align-self: center;
-          width: 100%;
-          max-width: 100%;
-          max-height: 100%;
+          position: absolute;
+          inset: 0;
+          width: 100vw;
+          height: 100dvh;
+          max-width: none;
+          max-height: none;
+          aspect-ratio: auto;
+          border: 0;
+          border-radius: 0;
+          container-type: size;
         }
         .message-slot {
-          grid-column: 2;
-          grid-row: 2;
-          justify-self: stretch;
-          width: 100%;
+          position: absolute;
+          z-index: 8;
+          top: max(48px, calc(env(safe-area-inset-top) + 42px));
+          left: 50%;
+          transform: translateX(-50%);
+          width: min(64vw, 620px);
           min-height: 34px;
-          padding: 0 48px 0 4px;
+          padding: 0 48px 0 12px;
+          border: 1px solid #85dcf255;
+          border-radius: 999px;
+          background: #07122ad9;
         }
         .controls {
-          display: contents;
+          position: absolute;
+          z-index: 8;
+          left: max(8px, env(safe-area-inset-left));
+          right: max(8px, env(safe-area-inset-right));
+          bottom: max(8px, env(safe-area-inset-bottom));
+          display: flex;
+          justify-content: space-between;
+          width: auto;
+          padding: 0;
+          pointer-events: none;
         }
         .controls .group:first-child,
         .controls .group:last-child {
           align-self: center;
           justify-content: center;
-          gap: clamp(4px, 1vw, 10px);
-          width: 100%;
+          gap: clamp(4px, 1vw, 8px);
+          width: auto;
           pointer-events: auto;
-        }
-        .controls .group:first-child {
-          grid-column: 1;
-          grid-row: 1;
-        }
-        .controls .group:last-child {
-          grid-column: 3;
-          grid-row: 1;
         }
         .control,
         .key {
-          width: clamp(46px, 8vw, 72px);
-          min-width: clamp(46px, 8vw, 72px);
-          height: clamp(48px, 15dvh, 74px);
+          width: clamp(42px, 6vw, 58px);
+          min-width: clamp(42px, 6vw, 58px);
+          height: clamp(44px, 14dvh, 62px);
           padding: 0 3px;
-          font-size: clamp(9px, 1.5vw, 12px);
+          font-size: clamp(10px, 1.35vw, 12px);
         }
         .message-slot .topnote,
         .message-slot .banner {
           font-size: 11px;
+        }
+        .result-overlay {
+          z-index: 6;
+          padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+        }
+        .result-panel {
+          display: grid;
+          grid-template-rows: minmax(0, 1fr) auto;
+          width: min(100%, 760px);
+          height: min(100%, 300px);
+          max-height: 100%;
+          padding: clamp(12px, 3cqh, 24px);
+          overflow: hidden;
+          border: 1px solid #a78bfa88;
+          border-radius: 18px;
+          background: linear-gradient(145deg, #17132bdc, #060a18f5);
+          box-shadow:
+            0 24px 80px #000b,
+            inset 0 1px #fff2;
+        }
+        .result-main {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-height: 0;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+        .result-overlay h1 {
+          font-size: clamp(26px, min(9cqw, 14cqh), 64px);
+        }
+        .result-actions {
+          position: relative;
+          z-index: 1;
+          padding-top: clamp(8px, 2cqh, 16px);
+          border-top: 1px solid #c4b5fd44;
+          background: linear-gradient(180deg, #141027, #0a0b18);
+        }
+        .result-actions .primary {
+          width: min(100%, 360px);
+          margin: 0;
+        }
+        .shell.is-finished .controls,
+        .shell.is-finished .message-slot {
+          display: none;
         }
       }
     </style>
@@ -371,13 +421,17 @@
             <button class="primary" id="start">START THE SEARCH</button>
           </div>
         </section>
-        <section class="overlay" id="result" hidden>
-          <div>
-            <div class="eyebrow" id="resultEyebrow">Together again</div>
-            <h1 id="resultTitle">TWIN FOUND</h1>
-            <div class="result-score" id="finalScore">0 PTS</div>
-            <p id="finalDetail"></p>
-            <button class="primary" onclick="location.reload()">PLAY AGAIN</button>
+        <section class="overlay result-overlay" id="result" hidden>
+          <div class="result-panel">
+            <div class="result-main">
+              <div class="eyebrow" id="resultEyebrow">Together again</div>
+              <h1 id="resultTitle">TWIN FOUND</h1>
+              <div class="result-score" id="finalScore">0 PTS</div>
+              <p id="finalDetail"></p>
+            </div>
+            <div class="result-actions">
+              <button class="primary" onclick="location.reload()">PLAY AGAIN</button>
+            </div>
           </div>
         </section>
       </section>
@@ -985,6 +1039,7 @@
           '/3 pipes · ' +
           wrongPipes +
           ' wrong routes'
+        document.querySelector('.shell').classList.add('is-finished')
         document.querySelector('#result').hidden = false
       }
       function pipe(x, used) {
@@ -1252,7 +1307,7 @@
         }
         X.fillStyle = '#d6c7ad'
         X.font = 'bold 11px system-ui'
-        X.fillText('HOUSEMATE PORTRAITS', 112, 165)
+        X.fillText('HUBMATE PORTRAITS', 112, 165)
       }
       function drawBenny(x, y) {
         const walking = Math.abs(player.vx) > 0.1,
@@ -1468,7 +1523,7 @@
         }
         X.fillStyle = '#fff7ed'
         X.font = '900 13px system-ui'
-        X.fillText('MEMORY WALL · HOUSEMATE PORTRAITS', 42, 27)
+        X.fillText('MEMORY WALL · HUBMATE PORTRAITS', 42, 27)
         X.fillStyle = '#4c1d95'
         X.fillRect(0, G, 760, 32)
         X.fillStyle = '#22d3ee'
@@ -1662,6 +1717,7 @@
           '/3 pipes · ' +
           wrongPipes +
           ' wrong routes'
+        document.querySelector('.shell').classList.add('is-finished')
         document.querySelector('#result').hidden = false
       }
       function drawHud() {
