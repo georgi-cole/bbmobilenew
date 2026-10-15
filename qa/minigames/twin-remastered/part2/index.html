@@ -18,7 +18,8 @@
         color: #eff7ff;
       }
       .shell {
-        min-height: 100dvh;
+        min-height: 100vh;
+        min-height: 100svh;
         display: grid;
         place-content: center;
         gap: 14px;
@@ -97,6 +98,15 @@
         color: #d1c8e8;
         line-height: 1.55;
       }
+      .portrait-invitation {
+        display: none;
+        color: #d9c8ff;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .shell.needs-portrait .portrait-invitation {
+        display: block;
+      }
       .start {
         border: 1px solid #e1d5ff;
         background: linear-gradient(135deg, #763eb1, #ac6ede);
@@ -143,14 +153,16 @@
       @media (max-width: 620px) {
         .shell {
           /* Match Find Your Twin 1: keep the game centered after mobile rotation. */
-          min-height: 100dvh;
+          min-height: 100vh;
+          min-height: 100svh;
           padding: 8px;
           place-content: center;
           gap: 10px;
         }
         .frame {
           width: 100%;
-          max-height: calc(100dvh - 76px);
+          max-height: calc(100vh - 76px);
+          max-height: calc(100svh - 76px);
           border-radius: 0;
           border-width: 0 0 1px;
         }
@@ -171,13 +183,15 @@
     <style>
       @media (max-width: 620px), (max-height: 760px) {
         .shell {
-          min-height: 100dvh;
+          min-height: 100vh;
+          min-height: 100svh;
           place-content: center;
           padding: 8px;
         }
         .frame {
           width: 100%;
-          max-height: calc(100dvh - 76px);
+          max-height: calc(100vh - 76px);
+          max-height: calc(100svh - 76px);
         }
         .overlay {
           padding: 12px;
@@ -272,6 +286,12 @@
       .key {
         touch-action: none;
       }
+      canvas {
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
       @media (orientation: landscape) and (pointer: coarse) and (max-height: 700px) {
         html,
         body {
@@ -285,16 +305,19 @@
           position: fixed;
           inset: 0;
           width: 100vw;
-          height: 100dvh;
-          min-height: 100dvh;
+          height: 100vh;
+          height: 100svh;
+          min-height: 100vh;
+          min-height: 100svh;
           padding: 0;
           overflow: hidden;
         }
         .frame {
           position: absolute;
-          inset: 0;
+          inset: 0 0 calc(clamp(58px, 12vh, 82px) + env(safe-area-inset-bottom)) 0;
+          inset: 0 0 calc(clamp(58px, 12svh, 82px) + env(safe-area-inset-bottom)) 0;
           width: 100vw;
-          height: 100dvh;
+          height: auto;
           max-width: none;
           max-height: none;
           aspect-ratio: auto;
@@ -318,29 +341,37 @@
         .controls {
           position: absolute;
           z-index: 8;
-          left: max(8px, env(safe-area-inset-left));
-          right: max(8px, env(safe-area-inset-right));
-          bottom: max(8px, env(safe-area-inset-bottom));
+          left: 0;
+          right: 0;
+          bottom: 0;
           display: flex;
           justify-content: space-between;
           width: auto;
+          height: calc(clamp(58px, 12vh, 82px) + env(safe-area-inset-bottom));
+          height: calc(clamp(58px, 12svh, 82px) + env(safe-area-inset-bottom));
+          padding: 0 max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+            max(16px, env(safe-area-inset-left));
+          background: linear-gradient(180deg, #121027 0%, #090815 100%);
+          border-top: 1px solid #9d8fbd44;
           pointer-events: none;
         }
         .controls .group:first-child,
         .controls .group:last-child {
           align-self: center;
           justify-content: center;
-          gap: clamp(4px, 1vw, 8px);
+          gap: clamp(8px, 1.5vw, 18px);
           width: auto;
           pointer-events: auto;
         }
         .control,
         .key {
-          width: clamp(42px, 6vw, 58px);
-          min-width: clamp(42px, 6vw, 58px);
-          height: clamp(44px, 14dvh, 62px);
-          padding: 0 3px;
-          font-size: clamp(10px, 1.35vw, 12px);
+          width: clamp(72px, 10vw, 108px);
+          min-width: clamp(72px, 10vw, 108px);
+          height: clamp(38px, 7vh, 50px);
+          height: clamp(38px, 7svh, 50px);
+          padding: 0 8px;
+          font-size: clamp(10px, 1.35vw, 13px);
+          border-radius: 12px;
         }
         .message-slot .topnote,
         .message-slot .banner {
@@ -416,6 +447,9 @@
               <div class="eyebrow">TOGETHER AGAIN</div>
               <h1>BENNY FOUND<br />LENNY</h1>
               <p id="score"></p>
+              <p class="portrait-invitation" role="status">
+                Game complete — rotate back to portrait when you’re ready.
+              </p>
             </div>
             <div class="result-actions">
               <button class="start" onclick="location.reload()">PLAY AGAIN</button>
@@ -456,6 +490,27 @@
         PW = 28,
         PH = 40
       const keys = { left: false, right: false, jump: false, enter: false }
+      const queuedActions = { jump: 0, enter: 0 }
+      function queueAction(key) {
+        if (Object.hasOwn(queuedActions, key))
+          queuedActions[key] = Math.min(4, queuedActions[key] + 1)
+      }
+      function consumeAction(key) {
+        if (!queuedActions[key]) return false
+        queuedActions[key] -= 1
+        return true
+      }
+      const landscapeTouchQuery = window.matchMedia(
+        '(orientation: landscape) and (pointer: coarse)'
+      )
+      function updatePortraitInvitation() {
+        const shell = document.querySelector('.shell')
+        shell.classList.toggle(
+          'needs-portrait',
+          shell.classList.contains('is-finished') && landscapeTouchQuery.matches
+        )
+      }
+      landscapeTouchQuery.addEventListener('change', updatePortraitInvitation)
       let player,
         doors,
         coins,
@@ -778,6 +833,7 @@
           : 'LOST AGAIN'
         document.querySelector('#score').textContent = score + ' PTS · ' + detail
         document.querySelector('.shell').classList.add('is-finished')
+        updatePortraitInvitation()
         document.querySelector('#end').hidden = false
       }
       function hurt(cause = 'A warden caught you') {
@@ -799,13 +855,12 @@
           frozen = performance.now() < player.frozenUntil
         player.vx = frozen ? 0 : keys.left ? -4.4 : keys.right ? 4.4 : 0
         if (player.vx) player.facing = Math.sign(player.vx)
-        if (!frozen && keys.jump && player.on) {
+        if (!frozen && player.on && queuedActions.jump > 0) {
+          consumeAction('jump')
           player.vy = -15.5
           player.on = false
         }
-        keys.jump = false
-        if (!frozen && keys.enter) enter()
-        keys.enter = false
+        if (!frozen && consumeAction('enter')) enter()
         let px = player.x,
           py = player.y
         player.vy = Math.min(15, player.vy + 0.58 * s)
@@ -1379,14 +1434,19 @@
       function setInputSource(key, source, pressed) {
         const sources = inputSources[key]
         if (!sources) return
-        if (pressed) sources.add(source)
-        else sources.delete(source)
+        if (pressed) {
+          if (!sources.has(source)) queueAction(key)
+          sources.add(source)
+        } else sources.delete(source)
         keys[key] = sources.size > 0
       }
 
       function resetInputState() {
         activePointers.clear()
         Object.values(inputSources).forEach((sources) => sources.clear())
+        Object.keys(queuedActions).forEach((key) => {
+          queuedActions[key] = 0
+        })
         Object.keys(keys).forEach((key) => {
           keys[key] = false
         })
@@ -1454,11 +1514,24 @@
       window.addEventListener('pointercancel', releasePointer)
       window.addEventListener('blur', resetInputState)
       window.addEventListener('pagehide', resetInputState)
-      window.addEventListener('orientationchange', resetInputState)
+      window.addEventListener('orientationchange', () => {
+        resetInputState()
+        updatePortraitInvitation()
+      })
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) resetInputState()
       })
       document.addEventListener('selectstart', (event) => {
+        if (event.target.closest?.('canvas, .controls')) event.preventDefault()
+      })
+      document.addEventListener(
+        'touchstart',
+        (event) => {
+          if (event.target.closest?.('canvas, .controls')) event.preventDefault()
+        },
+        { passive: false }
+      )
+      document.addEventListener('contextmenu', (event) => {
         if (event.target.closest?.('canvas, .controls')) event.preventDefault()
       })
     </script>
