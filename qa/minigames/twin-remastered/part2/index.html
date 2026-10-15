@@ -20,6 +20,7 @@
       .shell {
         min-height: 100vh;
         min-height: 100svh;
+        min-height: 100dvh;
         display: grid;
         place-content: center;
         gap: 14px;
@@ -155,6 +156,7 @@
           /* Match Find Your Twin 1: keep the game centered after mobile rotation. */
           min-height: 100vh;
           min-height: 100svh;
+          min-height: 100dvh;
           padding: 8px;
           place-content: center;
           gap: 10px;
@@ -163,6 +165,7 @@
           width: 100%;
           max-height: calc(100vh - 76px);
           max-height: calc(100svh - 76px);
+          max-height: calc(100dvh - 76px);
           border-radius: 0;
           border-width: 0 0 1px;
         }
@@ -185,6 +188,7 @@
         .shell {
           min-height: 100vh;
           min-height: 100svh;
+          min-height: 100dvh;
           place-content: center;
           padding: 8px;
         }
@@ -192,6 +196,7 @@
           width: 100%;
           max-height: calc(100vh - 76px);
           max-height: calc(100svh - 76px);
+          max-height: calc(100dvh - 76px);
         }
         .overlay {
           padding: 12px;
@@ -309,6 +314,7 @@
           height: 100svh;
           min-height: 100vh;
           min-height: 100svh;
+          min-height: 100dvh;
           padding: 0;
           overflow: hidden;
         }
@@ -1514,10 +1520,8 @@
       window.addEventListener('pointercancel', releasePointer)
       window.addEventListener('blur', resetInputState)
       window.addEventListener('pagehide', resetInputState)
-      window.addEventListener('orientationchange', () => {
-        resetInputState()
-        updatePortraitInvitation()
-      })
+      window.addEventListener('orientationchange', resetInputState)
+      window.addEventListener('orientationchange', updatePortraitInvitation)
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) resetInputState()
       })
