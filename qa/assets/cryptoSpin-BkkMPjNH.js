@@ -1,0 +1,1 @@
+function e(){let e=new Uint32Array(1);return typeof crypto<`u`&&typeof crypto.getRandomValues==`function`?crypto.getRandomValues(e):e[0]=Math.random()*4294967296>>>0,(e[0]||1)>>>0}export{e as t};

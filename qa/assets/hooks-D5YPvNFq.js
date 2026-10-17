@@ -1,0 +1,1 @@
+import{a as e,i as t}from"./react-redux-B4a8hI0N.js";var n=()=>t(),r=(t,n)=>e(t,n);export{r as n,n as t};

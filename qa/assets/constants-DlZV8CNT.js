@@ -1,0 +1,1 @@
+var e=6e4;e/1e3;export{e as t};
