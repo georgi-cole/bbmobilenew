@@ -1,4 +1,7 @@
 {
+  "iconRotation": {
+    "enabled": true
+  },
   "broadcast": {
     "enabled": false,
     "title": "The Big Eye Update",
