@@ -20,7 +20,6 @@
       .shell {
         min-height: 100vh;
         min-height: 100svh;
-        min-height: 100dvh;
         display: grid;
         place-content: center;
         gap: 14px;
@@ -156,7 +155,6 @@
           /* Match Find Your Twin 1: keep the game centered after mobile rotation. */
           min-height: 100vh;
           min-height: 100svh;
-          min-height: 100dvh;
           padding: 8px;
           place-content: center;
           gap: 10px;
@@ -165,7 +163,6 @@
           width: 100%;
           max-height: calc(100vh - 76px);
           max-height: calc(100svh - 76px);
-          max-height: calc(100dvh - 76px);
           border-radius: 0;
           border-width: 0 0 1px;
         }
@@ -188,7 +185,6 @@
         .shell {
           min-height: 100vh;
           min-height: 100svh;
-          min-height: 100dvh;
           place-content: center;
           padding: 8px;
         }
@@ -196,7 +192,6 @@
           width: 100%;
           max-height: calc(100vh - 76px);
           max-height: calc(100svh - 76px);
-          max-height: calc(100dvh - 76px);
         }
         .overlay {
           padding: 12px;
@@ -314,19 +309,30 @@
           height: 100svh;
           min-height: 100vh;
           min-height: 100svh;
-          min-height: 100dvh;
           padding: 0;
           overflow: hidden;
         }
         .frame {
           position: absolute;
-          inset: 0 0 calc(clamp(58px, 12vh, 82px) + env(safe-area-inset-bottom)) 0;
-          inset: 0 0 calc(clamp(58px, 12svh, 82px) + env(safe-area-inset-bottom)) 0;
-          width: 100vw;
+          inset: auto;
+          left: 50%;
+          top: calc(
+            env(safe-area-inset-top, 0px) +
+              (
+                100svh - env(safe-area-inset-top, 0px) - clamp(58px, 12svh, 82px) -
+                  env(safe-area-inset-bottom, 0px)
+              ) /
+              2
+          );
+          transform: translate(-50%, -50%);
+          width: min(
+            calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)),
+            141svh
+          );
           height: auto;
           max-width: none;
           max-height: none;
-          aspect-ratio: auto;
+          aspect-ratio: 16/9;
           border: 0;
           border-radius: 0;
           container-type: size;
@@ -1520,8 +1526,10 @@
       window.addEventListener('pointercancel', releasePointer)
       window.addEventListener('blur', resetInputState)
       window.addEventListener('pagehide', resetInputState)
-      window.addEventListener('orientationchange', resetInputState)
-      window.addEventListener('orientationchange', updatePortraitInvitation)
+      window.addEventListener('orientationchange', () => {
+        resetInputState()
+        updatePortraitInvitation()
+      })
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) resetInputState()
       })
