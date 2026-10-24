@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120" fill="none">
   <defs>
-    <linearGradient id="grad-secondary_small_pressed.svg" x1="0" y1="0" x2="420" y2="120">
-      <stop offset="0%" stop-color="rgba(31, 21, 62, 0.98)"/>
-      <stop offset="58%" stop-color="rgba(49, 34, 91, 0.96)"/>
-      <stop offset="100%" stop-color="rgba(76, 56, 128, 0.92)"/>
+    <linearGradient id="grad-secondary_small_pressed.svg" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="rgba(37, 47, 77, 0.94)"/>
+      <stop offset="34%" stop-color="rgba(37, 47, 77, 0.88)"/>
+      <stop offset="60%" stop-color="rgba(49, 60, 94, 0.72)"/>
+      <stop offset="82%" stop-color="rgba(24, 32, 53, 0.32)"/>
+      <stop offset="100%" stop-color="rgba(8, 12, 22, 0.06)"/>
     </linearGradient>
 
     <linearGradient id="sheen-secondary_small_pressed.svg" x1="0" y1="0" x2="0" y2="120">
@@ -48,7 +50,7 @@
     Q 28 112, 18 94
     L 10 66.0
     Q 6 58.0, 12 48.0
-    L 22 18" fill="rgba(150, 128, 220, 0.18)" opacity="1" filter="url(#glow-secondary_small_pressed.svg)"/>
+    L 22 18" fill="rgba(91, 112, 173, 0.14)" opacity="1" filter="url(#glow-secondary_small_pressed.svg)"/>
     <path d="M 22 18
     Q 30 10, 42 10
     L 328 10
@@ -70,17 +72,6 @@
       <rect x="0" y="0" width="420" height="120" fill="url(#sheen-secondary_small_pressed.svg)" opacity="0.10"/>
     </g>
 
-    <path d="M 22 18
-    Q 30 10, 42 10
-    L 328 10
-    Q 354 10, 372 24
-    L 402 60.0
-    L 366 104
-    Q 350 114, 322 114
-    L 52 112
-    Q 28 112, 18 94
-    L 10 66.0
-    Q 6 58.0, 12 48.0
-    L 22 18" stroke="rgba(211, 199, 247, 0.3)" stroke-width="2.2" filter="url(#soft-secondary_small_pressed.svg)"/>
+
   </g>
 </svg>

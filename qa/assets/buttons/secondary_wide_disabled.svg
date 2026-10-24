@@ -70,17 +70,6 @@
       <rect x="0" y="0" width="560" height="132" fill="url(#sheen-secondary_wide_disabled.svg)" opacity="0.10"/>
     </g>
 
-    <path d="M 22 18
-    Q 30 10, 42 10
-    L 468 10
-    Q 494 10, 512 24
-    L 542 66.0
-    L 506 116
-    Q 490 126, 462 126
-    L 52 124
-    Q 28 124, 18 106
-    L 10 72.0
-    Q 6 64.0, 12 54.0
-    L 22 18" stroke="rgba(220,232,255,0.16)" stroke-width="2.2" filter="url(#soft-secondary_wide_disabled.svg)"/>
+
   </g>
 </svg>
