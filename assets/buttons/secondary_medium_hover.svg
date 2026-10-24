@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="500" height="132" viewBox="0 0 500 132" fill="none">
   <defs>
     <linearGradient id="grad-secondary_medium_hover.svg" x1="0" y1="0" x2="500" y2="132">
-      <stop offset="0%" stop-color="rgba(58,71,116,0.98)"/>
-      <stop offset="58%" stop-color="rgba(85,101,155,0.96)"/>
-      <stop offset="100%" stop-color="rgba(120,137,188,0.92)"/>
+      <stop offset="0%" stop-color="rgba(67, 43, 125, 0.98)"/>
+      <stop offset="58%" stop-color="rgba(98, 67, 163, 0.96)"/>
+      <stop offset="100%" stop-color="rgba(129, 98, 193, 0.92)"/>
     </linearGradient>
 
     <linearGradient id="sheen-secondary_medium_hover.svg" x1="0" y1="0" x2="0" y2="132">
@@ -48,7 +48,7 @@
     Q 28 124, 18 106
     L 10 72.0
     Q 6 64.0, 12 54.0
-    L 22 18" fill="rgba(165,186,255,0.38)" opacity="1" filter="url(#glow-secondary_medium_hover.svg)"/>
+    L 22 18" fill="rgba(193, 171, 255, 0.42)" opacity="1" filter="url(#glow-secondary_medium_hover.svg)"/>
     <path d="M 22 18
     Q 30 10, 42 10
     L 408 10
@@ -81,6 +81,6 @@
     Q 28 124, 18 106
     L 10 72.0
     Q 6 64.0, 12 54.0
-    L 22 18" stroke="rgba(234,242,255,0.54)" stroke-width="2.2" filter="url(#soft-secondary_medium_hover.svg)"/>
+    L 22 18" stroke="rgba(242, 234, 255, 0.58)" stroke-width="2.2" filter="url(#soft-secondary_medium_hover.svg)"/>
   </g>
 </svg>

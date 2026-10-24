@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="560" height="132" viewBox="0 0 560 132" fill="none">
   <defs>
     <linearGradient id="grad-secondary_wide_pressed.svg" x1="0" y1="0" x2="560" y2="132">
-      <stop offset="0%" stop-color="rgba(34,42,72,0.98)"/>
-      <stop offset="58%" stop-color="rgba(51,63,102,0.96)"/>
-      <stop offset="100%" stop-color="rgba(80,95,142,0.92)"/>
+      <stop offset="0%" stop-color="rgba(31, 21, 62, 0.98)"/>
+      <stop offset="58%" stop-color="rgba(49, 34, 91, 0.96)"/>
+      <stop offset="100%" stop-color="rgba(76, 56, 128, 0.92)"/>
     </linearGradient>
 
     <linearGradient id="sheen-secondary_wide_pressed.svg" x1="0" y1="0" x2="0" y2="132">
@@ -48,7 +48,7 @@
     Q 28 124, 18 106
     L 10 72.0
     Q 6 64.0, 12 54.0
-    L 22 18" fill="rgba(120,135,188,0.15)" opacity="1" filter="url(#glow-secondary_wide_pressed.svg)"/>
+    L 22 18" fill="rgba(150, 128, 220, 0.18)" opacity="1" filter="url(#glow-secondary_wide_pressed.svg)"/>
     <path d="M 22 18
     Q 30 10, 42 10
     L 468 10
@@ -81,6 +81,6 @@
     Q 28 124, 18 106
     L 10 72.0
     Q 6 64.0, 12 54.0
-    L 22 18" stroke="rgba(220,232,255,0.26)" stroke-width="2.2" filter="url(#soft-secondary_wide_pressed.svg)"/>
+    L 22 18" stroke="rgba(211, 199, 247, 0.3)" stroke-width="2.2" filter="url(#soft-secondary_wide_pressed.svg)"/>
   </g>
 </svg>
