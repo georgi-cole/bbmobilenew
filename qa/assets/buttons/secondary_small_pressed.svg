@@ -14,10 +14,6 @@
       <stop offset="100%" stop-color="white" stop-opacity="0"/>
     </linearGradient>
 
-    <filter id="glow-secondary_small_pressed.svg" x="-35%" y="-60%" width="170%" height="240%">
-      <feGaussianBlur stdDeviation="16" result="blur"/>
-    </filter>
-
     <filter id="soft-secondary_small_pressed.svg" x="-8%" y="-8%" width="116%" height="116%">
       <feGaussianBlur stdDeviation="0.7"/>
     </filter>
@@ -39,18 +35,7 @@
   </defs>
 
   <g transform="translate(1.05 0.30) scale(0.995)">
-    <path d="M 22 18
-    Q 30 10, 42 10
-    L 328 10
-    Q 354 10, 372 24
-    L 402 60.0
-    L 366 104
-    Q 350 114, 322 114
-    L 52 112
-    Q 28 112, 18 94
-    L 10 66.0
-    Q 6 58.0, 12 48.0
-    L 22 18" fill="rgba(91, 112, 173, 0.14)" opacity="1" filter="url(#glow-secondary_small_pressed.svg)"/>
+
     <path d="M 22 18
     Q 30 10, 42 10
     L 328 10
@@ -72,6 +57,18 @@
       <rect x="0" y="0" width="420" height="120" fill="url(#sheen-secondary_small_pressed.svg)" opacity="0.10"/>
     </g>
 
-
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 328 10
+    Q 354 10, 372 24
+    L 402 60.0
+    L 366 104
+    Q 350 114, 322 114
+    L 52 112
+    Q 28 112, 18 94
+    L 10 66.0
+    Q 6 58.0, 12 48.0
+    L 22 18" fill="none" stroke="rgba(225, 235, 255, 0.34)" stroke-width="2" stroke-linejoin="round"/>
   </g>
+
 </svg>
