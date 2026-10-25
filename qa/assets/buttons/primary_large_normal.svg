@@ -1,11 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="156" viewBox="0 0 640 156" fill="none">
   <defs>
-    <linearGradient id="grad-primary_large_normal.svg" x1="0%" y1="50%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="rgba(111, 86, 255, 0.96)"/>
-      <stop offset="34%" stop-color="rgba(111, 86, 255, 0.9)"/>
-      <stop offset="60%" stop-color="rgba(123, 106, 217, 0.62)"/>
-      <stop offset="82%" stop-color="rgba(54, 61, 91, 0.22)"/>
-      <stop offset="100%" stop-color="rgba(10, 14, 24, 0.06)"/>
+    <linearGradient id="grad-primary_large_normal.svg" x1="0" y1="0" x2="640" y2="156">
+      <stop offset="0%" stop-color="#6F56FF"/>
+      <stop offset="58%" stop-color="#9A7BFF"/>
+      <stop offset="100%" stop-color="#C7A2FF"/>
     </linearGradient>
 
     <linearGradient id="sheen-primary_large_normal.svg" x1="0" y1="0" x2="0" y2="156">
@@ -13,6 +11,10 @@
       <stop offset="42%" stop-color="white" stop-opacity="0.16"/>
       <stop offset="100%" stop-color="white" stop-opacity="0"/>
     </linearGradient>
+
+    <filter id="glow-primary_large_normal.svg" x="-35%" y="-60%" width="170%" height="240%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+    </filter>
 
     <filter id="soft-primary_large_normal.svg" x="-8%" y="-8%" width="116%" height="116%">
       <feGaussianBlur stdDeviation="0.7"/>
@@ -35,7 +37,18 @@
   </defs>
 
   <g transform="translate(0.00 0.00) scale(1.0)">
-
+    <path d="M 22 18
+    Q 30 10, 42 10
+    L 548 10
+    Q 574 10, 592 24
+    L 622 78.0
+    L 586 140
+    Q 570 150, 542 150
+    L 52 148
+    Q 28 148, 18 130
+    L 10 84.0
+    Q 6 76.0, 12 66.0
+    L 22 18" fill="rgba(158,120,255,0.48)" opacity="1" filter="url(#glow-primary_large_normal.svg)"/>
     <path d="M 22 18
     Q 30 10, 42 10
     L 548 10
@@ -68,7 +81,6 @@
     Q 28 148, 18 130
     L 10 84.0
     Q 6 76.0, 12 66.0
-    L 22 18" fill="none" stroke="rgba(225, 235, 255, 0.34)" stroke-width="2" stroke-linejoin="round"/>
+    L 22 18" stroke="rgba(255,255,255,0.56)" stroke-width="2.2" filter="url(#soft-primary_large_normal.svg)"/>
   </g>
-
 </svg>

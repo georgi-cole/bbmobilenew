@@ -48,9 +48,11 @@
   display: inline-block;
   width: 44px;
   height: 44px;
-  background: transparent url('../assets/side_utilities_button/side_utility_shell_normal.svg') center / contain no-repeat;
+  background: transparent;
+  border-radius: 12px;
+  isolation: isolate;
   border: 0;
-  box-shadow: none;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.34);
   font-family: inherit;
   cursor: pointer;
   pointer-events: auto;
@@ -63,14 +65,46 @@
   touch-action: manipulation;
 }
 
+.hub-chip::before,
+.hub-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.hub-chip::before {
+  z-index: 0;
+  background: linear-gradient(135deg, rgba(88, 101, 160, 0.72) 0%, rgba(42, 50, 83, 0.58) 48%, rgba(15, 20, 34, 0.38) 100%);
+  -webkit-backdrop-filter: blur(9px) saturate(155%);
+  backdrop-filter: blur(9px) saturate(155%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(200, 215, 255, 0.11),
+    inset 0 -5px 8px rgba(0, 0, 0, 0.32);
+  transition: filter 150ms ease, opacity 150ms ease;
+}
+
+.hub-chip::after {
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.03) 26%, transparent 54%, rgba(0, 0, 0, 0.12) 72%, rgba(0, 0, 0, 0.3) 100%);
+}
+
 .hub-chip:hover {
-  background-image: url('../assets/side_utilities_button/side_utility_shell_hover.svg');
   transform: scale(1.05);
 }
 
+.hub-chip:hover::before {
+  filter: brightness(1.08);
+}
+
 .hub-chip:active {
-  background-image: url('../assets/side_utilities_button/side_utility_shell_pressed.svg');
   transform: scale(0.96);
+}
+
+.hub-chip:active::before {
+  filter: brightness(0.92);
 }
 
 .hub-chip:focus-visible {
@@ -79,13 +113,13 @@
 }
 
 /* ===== Inactive chip state (e.g. music/sounds off) ===== */
-.hub-chip--inactive {
-  background-image: url('../assets/side_utilities_button/side_utility_shell_disabled.svg');
+.hub-chip--inactive::before {
+  opacity: 0.65;
 }
 
-.hub-chip--inactive:hover,
-.hub-chip--inactive:active {
-  background-image: url('../assets/side_utilities_button/side_utility_shell_disabled.svg');
+.hub-chip--inactive:hover::before,
+.hub-chip--inactive:active::before {
+  filter: none;
 }
 
 .hub-chip__icon {
@@ -97,6 +131,8 @@
   background-repeat: no-repeat;
   background-size: contain;
   pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.72));
 }
 
 .hub-chip--inactive .hub-chip__icon {
@@ -122,6 +158,7 @@
 /* ===== Notification Badge Dot ===== */
 .hub-chip__badge {
   position: absolute;
+  z-index: 3;
   right: -3px;
   bottom: -3px;
   width: 20px;
