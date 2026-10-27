@@ -62,10 +62,13 @@
         elimination timing and season placement, marketplace product choices and purchase outcomes,
         and session duration. Purchase prices are not collected. The profile ID lets the project
         owner join gameplay events to that profile's backup and display name. Analytics uses a
-        separate anonymous installation identifier and does not include biographies or conversation
-        text. Deleting a profile also removes its linked backup and analytics rows. Other analytics
-        rows remain until removed by the project owner or in response to a deletion request. For
-        access or deletion requests, email
+        separate anonymous installation identifier. Session events also include broad device type
+        and family, operating system, and browser; an exact device model is included only when the
+        browser provides it. A full browser user-agent string is not sent. Analytics does not
+        include biographies or conversation text. Events carry a build label (QA, production, or
+        development) so test activity can be distinguished. Deleting a profile also removes its
+        linked backup and analytics rows. Other analytics rows remain until removed by the project
+        owner or in response to a deletion request. For access or deletion requests, email
         <a href="mailto:kolequant@gmail.com">kolequant@gmail.com</a>.
       </p>
       <h2>Optional location</h2>
