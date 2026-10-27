@@ -395,6 +395,18 @@
       "loop": true
     },
     {
+      "path": "music/dressing_room.mp3",
+      "key": "music:dressing_room",
+      "category": "music",
+      "trackId": "dressing_room",
+      "displayName": "Move Into Me — Dressing Room",
+      "fallbackTrack": "introhub",
+      "tags": ["ambient", "social"],
+      "preload": false,
+      "volume": 0.38,
+      "loop": true
+    },
+    {
       "path": "music/competition.mp3",
       "key": "music:spectator_loop",
       "category": "music",
