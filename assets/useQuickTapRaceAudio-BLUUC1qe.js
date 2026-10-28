@@ -1,1 +1,0 @@
-import{o as e}from"./jsx-runtime-DVpe7PXp.js";import{t}from"./react-DwCLAt2P.js";import{t as n}from"./SoundManager-Cc0fpRBk.js";var r=e(t(),1),i=`minigame:quicktap_booster`,a=`minigame:quicktap_half_tap`;function o(e){return{playBooster:(0,r.useCallback)(()=>{n.play(i)},[]),playHalfTap:(0,r.useCallback)(()=>{n.play(a)},[])}}export{o as t};
