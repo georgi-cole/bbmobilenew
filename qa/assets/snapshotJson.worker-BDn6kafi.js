@@ -1,0 +1,1 @@
+(function(){self.onmessage=e=>{let{id:t,snapshot:n}=e.data,r=performance.now();try{let e=JSON.stringify(n);self.postMessage({id:t,json:e,serializeMs:performance.now()-r})}catch{self.postMessage({id:t})}}})();

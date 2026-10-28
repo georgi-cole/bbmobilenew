@@ -1,0 +1,1 @@
+import{o as e}from"./jsx-runtime-DVpe7PXp.js";import{t}from"./react-DwCLAt2P.js";var n=e(t(),1),r=new Map;function i(e=!0){(0,n.useEffect)(()=>{let t=e?`minigame-portal-active`:`card-minigame-active`;return r.set(t,(r.get(t)??0)+1),document.body.classList.add(t),()=>{let e=(r.get(t)??1)-1;e?r.set(t,e):(r.delete(t),document.body.classList.remove(t))}},[e])}export{i as t};
