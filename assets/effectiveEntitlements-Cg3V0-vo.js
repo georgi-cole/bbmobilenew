@@ -1,0 +1,1 @@
+import{n as e,t}from"./buildTarget-EFAiwiSC.js";var n=t||e||!1;function r(e,t=n){return t||e?.debugUnlocked===!0||e?.isActive===!0}function i(e,t,i=n){return r(e,i)||e?.entitlements?.[t]===!0}export{i as n,r,n as t};
