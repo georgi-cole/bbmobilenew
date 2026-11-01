@@ -9,7 +9,7 @@
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "./favicon.svg?v=embroidered-4d338174",
       "sizes": "any",
       "type": "image/svg+xml"
     }
