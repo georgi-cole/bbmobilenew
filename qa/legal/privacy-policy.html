@@ -37,7 +37,7 @@
   <body>
     <main>
       <h1>The Big Eye Privacy Policy</h1>
-      <p class="updated">Last updated: October 27, 2026</p>
+      <p class="updated">Last updated: November 1, 2026</p>
       <p>This policy explains how The Big Eye handles information when you use the mobile game.</p>
       <h2>Information stored on your device</h2>
       <p>
@@ -51,25 +51,55 @@
         When the online backend is enabled for this version, saved profiles are automatically backed
         up to Supabase. The backup includes the profile identifier, display name, avatar, selected
         appearance, achievements, and unlock progress. Photos, biographies, wallet data, season
-        archives, and saved games remain on the device. The backup is associated with an anonymous
-        account stored by this installation and cannot currently be restored on another device.
+        archives, and saved games remain on the device. The backup uses an anonymous account stored
+        by this installation. Adding an optional contact email does not change this identity or
+        provide restoration of device-only data on another device.
       </p>
       <p>
-        The app automatically sends pseudonymous gameplay events to Supabase while a saved profile
-        is active. Events include the profile's installation-local profile ID, selected appearance,
-        screen visits and visible time, game modes and numbered days reached, minigame duration,
-        placements and exits, Social module use and action categories, selected gameplay decisions,
-        elimination timing and season placement, marketplace product choices and purchase outcomes,
-        and session duration. Purchase prices are not collected. The profile ID lets the project
-        owner join gameplay events to that profile's backup and display name. Analytics uses a
-        separate anonymous installation identifier. Session events also include broad device type
+        The app automatically sends pseudonymous gameplay events to Supabase, including guest
+        activity. Saved-profile events include the installation-local profile ID, selected
+        appearance, screen visits and visible time, game modes and numbered days reached, minigame
+        duration, placements and exits, Social module use and action categories, selected gameplay
+        decisions, elimination timing and season placement, marketplace product choices and purchase
+        outcomes, and session duration. Purchase prices are not collected. The profile ID lets the
+        project owner join gameplay events to that profile's backup and display name. Analytics uses
+        a separate anonymous installation identifier. Session events also include broad device type
         and family, operating system, and browser; an exact device model is included only when the
         browser provides it. A full browser user-agent string is not sent. Analytics does not
         include biographies or conversation text. Events carry a build label (QA, production, or
-        development) so test activity can be distinguished. Deleting a profile also removes its
-        linked backup and analytics rows. Other analytics rows remain until removed by the project
-        owner or in response to a deletion request. For access or deletion requests, email
+        development) so test activity can be distinguished. Guest events have no profile ID and are
+        grouped by the anonymous installation identifier. Guest history is not retroactively merged
+        into a newly created profile. Activity groups describe records, not a verified count of
+        unique people. Deleting a profile also removes its linked backup and analytics rows. Other
+        analytics rows remain until removed by the project owner or in response to a deletion
+        request. For access or deletion requests, email
         <a href="mailto:kolequant@gmail.com">kolequant@gmail.com</a>.
+      </p>
+      <h2>Optional profile email and game updates</h2>
+      <p>
+        When this feature is enabled, you may add an email while creating or editing a profile.
+        Supabase stores it in a private contact record linked to that profile so the project owner
+        can associate your contact information and communication preference with your player record.
+        The address is unverified and is not used to sign in, recover saves, or automatically
+        combine profiles. It is not copied into local game saves, profile backup snapshots, or
+        gameplay event payloads. Authorized administrators can view it with your preference and
+        broad activity groups, such as returning or inactive player records.
+      </p>
+      <p>
+        The optional, initially unchecked subscription box gives consent to receive The Big Eye news
+        and playtest invitations by email. Entering an address or accepting this policy does not
+        subscribe you. We record your choice, the displayed consent version, and when the choice
+        changed. Invitations do not automatically enroll you in a testing program. You can turn off
+        this profile's subscription in Edit Profile. Each campaign email must also include an
+        unsubscribe link that stops these messages for the address, without requiring a game login
+        or deleting your profiles. Changing the address requires a new subscription choice.
+      </p>
+      <p>
+        Your contact address remains linked to the profile until you clear it in Edit Profile or the
+        profile's online record is deleted. Clearing the address also removes its subscription.
+        Deleting a profile requests deletion of its contact record with its backup when the device
+        next connects. Uninstalling alone does not delete online records. For access, correction, or
+        deletion requests, contact <a href="mailto:kolequant@gmail.com">kolequant@gmail.com</a>.
       </p>
       <h2>Optional location</h2>
       <p>
