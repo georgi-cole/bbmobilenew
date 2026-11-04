@@ -609,6 +609,62 @@
       "preload": false,
       "volume": 0.8,
       "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/transition.wav",
+      "key": "tv:ceremony_transition",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.22,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/suspense.wav",
+      "key": "tv:ceremony_suspense",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.18,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/reveal.wav",
+      "key": "tv:ceremony_reveal",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.28,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/shield.wav",
+      "key": "tv:ceremony_shield",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.25,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/save.wav",
+      "key": "tv:ceremony_save",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.24,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/impact.wav",
+      "key": "tv:ceremony_impact",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.28,
+      "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/door.wav",
+      "key": "tv:ceremony_door",
+      "category": "tv",
+      "preload": false,
+      "volume": 0.22,
+      "loop": false
     }
   ],
   "keyAliases": {
