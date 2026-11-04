@@ -1,1 +1,0 @@
-var e=1e3;function t(e,t){return typeof t==`number`&&Number.isFinite(t)?t:e.filter(e=>e.twinShockConsumed===!0).map(e=>e.seasonIndex).filter(e=>Number.isFinite(e)).sort((e,t)=>e-t)[0]??null}export{t as n,e as t};
