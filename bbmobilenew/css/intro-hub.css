@@ -18,17 +18,28 @@
   --floating-corner-right-touch-safe-padding: 20px;
   --hub-chip-top-offset: var(
     --floating-corner-top-offset,
-    max(var(--floating-corner-top-base), calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding)))
+    max(
+      var(--floating-corner-top-base),
+      calc(env(safe-area-inset-top, 0px) + var(--floating-corner-top-safe-padding))
+    )
   );
   --hub-chip-left-offset: var(
     --floating-corner-left-offset,
-    max(var(--floating-corner-left-base), calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding)))
+    max(
+      var(--floating-corner-left-base),
+      calc(env(safe-area-inset-left, 0px) + var(--floating-corner-left-safe-padding))
+    )
   );
   --hub-chip-right-offset: var(
     --floating-corner-right-offset,
-    max(var(--floating-corner-right-base), calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding)))
+    max(
+      var(--floating-corner-right-base),
+      calc(env(safe-area-inset-right, 0px) + var(--floating-corner-right-safe-padding))
+    )
   );
-  --hub-chip-stack-step: 44px;
+  --hub-chip-size: 44px;
+  --hub-chip-gap: 4px;
+  --hub-chip-stack-step: calc(var(--hub-chip-size) + var(--hub-chip-gap));
   --hub-chip-stack-step-double: calc(var(--hub-chip-stack-step) + var(--hub-chip-stack-step));
 }
 
@@ -46,9 +57,10 @@
 .hub-chip {
   position: absolute;
   display: inline-block;
-  width: 44px;
-  height: 44px;
-  background: transparent url('../../assets/side_utilities_button/side_utility_shell_normal.svg') center / contain no-repeat;
+  width: var(--hub-chip-size);
+  height: var(--hub-chip-size);
+  background: transparent url('../../assets/side_utilities_button/side_utility_shell_normal.svg')
+    center / contain no-repeat;
   border: 0;
   box-shadow: none;
   font-family: inherit;
@@ -103,16 +115,36 @@
   opacity: 0.55;
 }
 
-.hub-chip__icon--housemates { background-image: url('../../assets/side_utilities_button/housemates_v2.svg'); }
-.hub-chip__icon--music { background-image: url('../../assets/side_utilities_button/music_v2.svg'); }
-.hub-chip__icon--sound { background-image: url('../../assets/side_utilities_button/sound_v2.svg'); }
-.hub-chip__icon--settings { background-image: url('../../assets/side_utilities_button/settings_v2.svg'); }
-.hub-chip__icon--share { background-image: url('../../assets/side_utilities_button/share_v2.svg'); }
-.hub-chip__icon--feedback { background-image: url('../../assets/side_utilities_button/feedback_v2.svg'); }
-.hub-chip__icon--news { background-image: url('../../assets/side_utilities_button/news_v2.svg'); }
-.hub-chip__icon--achievements { background-image: url('../../assets/side_utilities_button/achievements_v2.svg'); }
-.hub-chip__icon--social { background-image: url('../../assets/side_utilities_button/social_v2.svg'); }
-.hub-chip__icon--shop { background-image: url('../../assets/side_utilities_button/shop_v2.svg'); }
+.hub-chip__icon--housemates {
+  background-image: url('../../assets/side_utilities_button/housemates_v2.svg');
+}
+.hub-chip__icon--music {
+  background-image: url('../../assets/side_utilities_button/music_v2.svg');
+}
+.hub-chip__icon--sound {
+  background-image: url('../../assets/side_utilities_button/sound_v2.svg');
+}
+.hub-chip__icon--settings {
+  background-image: url('../../assets/side_utilities_button/settings_v2.svg');
+}
+.hub-chip__icon--share {
+  background-image: url('../../assets/side_utilities_button/share_v2.svg');
+}
+.hub-chip__icon--feedback {
+  background-image: url('../../assets/side_utilities_button/feedback_v2.svg');
+}
+.hub-chip__icon--news {
+  background-image: url('../../assets/side_utilities_button/news_v2.svg');
+}
+.hub-chip__icon--achievements {
+  background-image: url('../../assets/side_utilities_button/achievements_v2.svg');
+}
+.hub-chip__icon--social {
+  background-image: url('../../assets/side_utilities_button/social_v2.svg');
+}
+.hub-chip__icon--shop {
+  background-image: url('../../assets/side_utilities_button/shop_v2.svg');
+}
 
 /* ===== Chip Label — hidden (icon-only chips) ===== */
 .hub-chip__label {
@@ -126,7 +158,8 @@
   bottom: -3px;
   width: 20px;
   height: 20px;
-  background: transparent url('../../assets/side_utilities_button/badge_alert_red.svg') center / contain no-repeat;
+  background: transparent url('../../assets/side_utilities_button/badge_alert_red.svg') center /
+    contain no-repeat;
   display: none;
 }
 
@@ -155,7 +188,7 @@
   right: 16px;
 }
 
-/* Secondary chips stacked below primary in each corner (44px chip + 8px gap) */
+/* Shared 4px edge gap for every corner stack. */
 .hub-chip--top-left-2 {
   top: calc(var(--hub-chip-top-offset) + var(--hub-chip-stack-step));
   left: var(--hub-chip-left-offset);
@@ -167,12 +200,12 @@
 }
 
 .hub-chip--bottom-left-2 {
-  bottom: 84px;
+  bottom: calc(32px + var(--hub-chip-stack-step));
   left: 16px;
 }
 
 .hub-chip--bottom-right-2 {
-  bottom: 84px;
+  bottom: calc(32px + var(--hub-chip-stack-step));
   right: 16px;
 }
 
@@ -188,12 +221,12 @@
 }
 
 .hub-chip--bottom-left-3 {
-  bottom: 128px;
+  bottom: calc(32px + var(--hub-chip-stack-step-double));
   left: 16px;
 }
 
 .hub-chip--bottom-right-3 {
-  bottom: 128px;
+  bottom: calc(32px + var(--hub-chip-stack-step-double));
   right: 16px;
 }
 
@@ -216,9 +249,8 @@
 }
 
 @media (max-width: 360px) {
-  .hub-chip {
-    width: 38px;
-    height: 38px;
+  :root {
+    --hub-chip-size: 38px;
   }
 }
 
@@ -230,11 +262,11 @@
 
   .hub-chip--bottom-left-2,
   .hub-chip--bottom-right-2 {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(32px + var(--hub-chip-stack-step) + env(safe-area-inset-bottom));
   }
 
   .hub-chip--bottom-left-3,
   .hub-chip--bottom-right-3 {
-    bottom: calc(128px + env(safe-area-inset-bottom));
+    bottom: calc(32px + var(--hub-chip-stack-step-double) + env(safe-area-inset-bottom));
   }
 }

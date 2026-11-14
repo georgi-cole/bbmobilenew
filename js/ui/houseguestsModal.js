@@ -87,6 +87,23 @@
     return [...regularHousemates, ...mysteryHousemates];
   }
 
+  // Reuse the controls rendered by HomeHub. The fallback serves standalone legacy pages.
+  function createBackButton(destination, label, onClick) {
+    const template = document.querySelector(
+      `#intro-hub-players-controls [data-players-back="${destination}"]`
+    );
+    const button = template ? template.cloneNode(true) : document.createElement('button');
+    if (!template) {
+      button.className = destination === 'home' ? 'houseguests-modal__close-btn' : 'houseguests-detail__back-btn';
+      button.textContent = destination === 'home' ? '←' : label;
+      button.setAttribute('aria-label', label);
+    }
+    button.type = 'button';
+    button.dataset.playersBack = destination;
+    button.addEventListener('click', onClick);
+    return button;
+  }
+
   /**
    * Build the modal container structure
    */
@@ -116,11 +133,7 @@
     title.className = 'houseguests-modal__title';
     title.textContent = 'Players';
 
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'houseguests-modal__close-btn';
-    closeBtn.setAttribute('aria-label', 'Back to Intro Hub');
-    closeBtn.textContent = '↩';
-    closeBtn.addEventListener('click', closeModal);
+    const closeBtn = createBackButton('home', 'Back to Intro Hub', closeModal);
 
     header.appendChild(title);
     header.appendChild(closeBtn);
@@ -235,10 +248,7 @@
     body.className = 'houseguests-modal__body houseguests-modal__body--detail';
 
     // Add back button
-    const backBtn = document.createElement('button');
-    backBtn.className = 'houseguests-detail__back-btn';
-    backBtn.innerHTML = '↩ Back to Players';
-    backBtn.addEventListener('click', renderListView);
+    const backBtn = createBackButton('list', 'Back to Players', renderListView);
 
     // Create detail card
     const card = document.createElement('div');
@@ -391,7 +401,7 @@
     requestAnimationFrame(() => {
       modalContainer.classList.add('houseguests-modal--visible');
       // Focus management
-      const closeBtn = modalContainer.querySelector('.houseguests-modal__close-btn');
+      const closeBtn = modalContainer.querySelector('[data-players-back="home"]');
       if (closeBtn) closeBtn.focus();
     });
 

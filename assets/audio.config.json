@@ -247,7 +247,7 @@
       "loop": false
     },
     {
-      "path": "sounds/minigames/minigame_wildcard_winner.mp3",
+      "path": "sounds/minigames/minigame_risk_wheel_winner.mp3",
       "key": "minigame:wildcard_winner",
       "category": "minigame",
       "preload": false,

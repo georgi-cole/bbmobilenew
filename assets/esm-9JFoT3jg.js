@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-DBv3dxMS.js","assets/dist-BbRJc5Kk.js"])))=>i.map(i=>d[i]);
+import{i as e}from"./dist-BbRJc5Kk.js";import{t}from"./preload-helper-Z4eMaxEk.js";var n=e(`Browser`,{web:()=>t(()=>import(`./web-DBv3dxMS.js`).then(e=>new e.BrowserWeb),__vite__mapDeps([0,1]))});export{n as Browser};

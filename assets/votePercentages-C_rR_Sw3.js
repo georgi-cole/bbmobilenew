@@ -1,0 +1,1 @@
+var e=e=>Number.isFinite(e)?Math.max(0,Math.min(100,e)):0;function t(t){let n=[...new Set(t.map(e))];for(let e=1;e<15;e+=1)if(new Set(n.map(t=>t.toFixed(e))).size===n.length)return e;return 15}function n(t,n=1){return`${e(t).toFixed(n)}%`}export{t as n,n as t};
