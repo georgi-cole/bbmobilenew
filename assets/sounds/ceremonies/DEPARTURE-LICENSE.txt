@@ -1,0 +1,5 @@
+Departure Foley source: Kenney, Impact Sounds (CC0 1.0 Universal).
+https://kenney.nl/assets/impact-sounds
+Sources: footstep_concrete_000..004.ogg, impactWood_heavy_002.ogg,
+impactMetal_heavy_004.ogg. Mixed with filters, distance attenuation and room decay.
+The premixed stereo PCM file is used for consistent web/iOS/Android playback.

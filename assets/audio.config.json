@@ -665,6 +665,14 @@
       "preload": false,
       "volume": 0.22,
       "loop": false
+    },
+    {
+      "path": "sounds/ceremonies/departureFoley.wav",
+      "key": "tv:ceremony_departureFoley",
+      "category": "tv",
+      "preload": false,
+      "volume": 1,
+      "loop": false
     }
   ],
   "keyAliases": {
