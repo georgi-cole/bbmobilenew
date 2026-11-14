@@ -240,7 +240,12 @@
         justify-content: center;
         width: min(100%, 1100px);
         min-height: 44px;
-        padding: 0 54px;
+        padding: 0 12px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .message-slot:has(.visible, .show) {
+        opacity: 1;
       }
       .topnote,
       .banner {
@@ -258,24 +263,6 @@
         line-height: 1.3;
         opacity: 0;
         pointer-events: none;
-      }
-      .fullscreen-toggle {
-        position: absolute;
-        right: 4px;
-        top: 50%;
-        min-width: 42px;
-        min-height: 38px;
-        transform: translateY(-50%);
-        border: 1px solid #85dcf255;
-        border-radius: 10px;
-        background: #07122ad9;
-        color: #f3ecff;
-        font-size: 21px;
-        line-height: 1;
-        touch-action: manipulation;
-      }
-      .fullscreen-toggle[hidden] {
-        display: none;
       }
       .control,
       .key,
@@ -347,7 +334,7 @@
           transform: translateX(-50%);
           width: min(64vw, 620px);
           min-height: 34px;
-          padding: 0 48px 0 12px;
+          padding: 0 12px;
           border: 1px solid #85dcf255;
           border-radius: 999px;
           background: #07122ad9;
@@ -480,15 +467,6 @@
       </section>
       <div class="message-slot" aria-live="polite" aria-atomic="true">
         <div class="topnote" id="note" role="status">Find the three hidden pipes in order</div>
-        <button
-          class="fullscreen-toggle"
-          id="fullscreen"
-          type="button"
-          aria-label="Enter fullscreen"
-          title="Enter fullscreen"
-        >
-          ⛶
-        </button>
       </div>
       <div class="controls" aria-label="Touch controls">
         <div class="group">
@@ -2058,31 +2036,6 @@
       document.addEventListener('contextmenu', (event) => {
         if (event.target.closest?.('canvas, .controls')) event.preventDefault()
       })
-    </script>
-    <script>
-      const fullscreenToggle = document.querySelector('#fullscreen')
-      if (!document.fullscreenEnabled || !document.documentElement.requestFullscreen) {
-        fullscreenToggle.hidden = true
-      } else {
-        fullscreenToggle.addEventListener('click', async () => {
-          try {
-            if (document.fullscreenElement) await document.exitFullscreen()
-            else
-              await document.documentElement.requestFullscreen({
-                navigationUI: 'hide',
-              })
-          } catch {
-            fullscreenToggle.title = 'Fullscreen is unavailable in this browser'
-            fullscreenToggle.setAttribute('aria-label', fullscreenToggle.title)
-          }
-        })
-        document.addEventListener('fullscreenchange', () => {
-          const isFullscreen = Boolean(document.fullscreenElement)
-          fullscreenToggle.textContent = isFullscreen ? '⤢' : '⛶'
-          fullscreenToggle.title = isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
-          fullscreenToggle.setAttribute('aria-label', fullscreenToggle.title)
-        })
-      }
     </script>
     <script src="../bridge.js"></script>
   </body>
