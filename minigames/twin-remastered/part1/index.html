@@ -307,16 +307,14 @@
           left: 50%;
           top: calc(
             env(safe-area-inset-top, 0px) +
-              (
-                100svh - env(safe-area-inset-top, 0px) - clamp(58px, 12svh, 82px) -
-                  env(safe-area-inset-bottom, 0px)
-              ) /
-              2
+              (100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2
           );
           transform: translate(-50%, -50%);
           width: min(
             calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)),
-            141svh
+            calc(
+              (100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 16 / 9
+            )
           );
           height: auto;
           max-width: none;
@@ -344,16 +342,14 @@
           z-index: 8;
           left: 0;
           right: 0;
-          bottom: 0;
+          bottom: max(8px, env(safe-area-inset-bottom, 0px));
           display: flex;
           justify-content: space-between;
           width: auto;
-          height: calc(clamp(58px, 12vh, 82px) + env(safe-area-inset-bottom));
-          height: calc(clamp(58px, 12svh, 82px) + env(safe-area-inset-bottom));
-          padding: 0 max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
-            max(16px, env(safe-area-inset-left));
-          background: linear-gradient(180deg, #0a1024 0%, #050916 100%);
-          border-top: 1px solid #7887b344;
+          height: auto;
+          padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+          background: transparent;
+          border: 0;
           pointer-events: none;
         }
         .controls .group:first-child,
@@ -380,7 +376,9 @@
         }
         .result-overlay {
           z-index: 6;
-          padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+          place-content: normal;
+          place-items: center;
+          padding: 10px;
         }
         .result-panel {
           display: grid;
