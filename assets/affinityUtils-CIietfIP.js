@@ -1,0 +1,1 @@
+function e(e,t,n){return Math.max(t,Math.min(n,e))}function t(t){return e(t,-100,100)/100}export{t};
