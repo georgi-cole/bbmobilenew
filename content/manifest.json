@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "entries": {
+    "credits": {
+      "revision": "037a00a98639b2d13403ab661259e12309e237f4cf184e4ec56e17d7311cd828",
+      "bytes": 3407
+    },
+    "after-the-eye": {
+      "revision": "7538fd4322da3ca7c8731b4779d8911d8d9f23a9376b710998cc6b5185f2c7d7",
+      "bytes": 410072
+    },
+    "cwgo": {
+      "revision": "2baf4f804d9631465faaa61418ecfc049f498d48f46e835ae1c849da1a1de53c",
+      "bytes": 12475
+    },
+    "credits-video": {
+      "revision": "fde8630b97b1badec958d72f09404186800ac3ca3038c5f4db383dc80f99ef4a",
+      "bytes": 8245895
+    }
+  }
+}
