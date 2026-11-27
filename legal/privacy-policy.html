@@ -37,7 +37,7 @@
   <body>
     <main>
       <h1>The Big Eye Privacy Policy</h1>
-      <p class="updated">Last updated: November 10, 2026</p>
+      <p class="updated">Last updated: November 27, 2026</p>
       <p>This policy explains how The Big Eye handles information when you use the mobile game.</p>
       <h2>Information stored on your device</h2>
       <p>
@@ -56,23 +56,29 @@
         provide restoration of device-only data on another device.
       </p>
       <p>
-        The app automatically sends pseudonymous gameplay events to Supabase, including guest
-        activity. Saved-profile events include the installation-local profile ID, selected
-        appearance, screen visits and visible time, game modes and numbered days reached, minigame
-        duration, placements and exits, Social module use and action categories, selected gameplay
-        decisions, elimination timing and season placement, marketplace product choices and purchase
-        outcomes, and session duration. Purchase prices are not collected. The profile ID lets the
-        project owner join gameplay events to that profile's backup and display name. Analytics uses
-        a separate anonymous installation identifier. Session events also include broad device type
-        and family, operating system, and browser; an exact device model is included only when the
-        browser provides it. A full browser user-agent string is not sent. Analytics does not
-        include biographies or conversation text. Events carry a build label (QA, production, or
-        development) so test activity can be distinguished. Guest events have no profile ID and are
-        grouped by the anonymous installation identifier. Guest history is not retroactively merged
-        into a newly created profile. Activity groups describe records, not a verified count of
-        unique people. Deleting a profile also removes its linked backup and analytics rows. Other
-        analytics rows remain until removed by the project owner or in response to a deletion
-        request. For access or deletion requests, email
+        In builds with usage measurement controls, adults can choose to send pseudonymous gameplay
+        events, including guest activity, under Settings → Advertising privacy → Optional usage
+        measurement. Switching it off stops future uploads and clears queued events. Earlier builds
+        with Supabase enabled may send events automatically. Saved-profile events include the
+        installation-local profile ID, selected appearance, screen visits and visible time, game
+        modes and numbered days reached, minigame duration, placements and exits, Social module use
+        and action categories, selected gameplay decisions, elimination timing and season placement,
+        marketplace product choices and purchase outcomes, and session duration. Purchase prices are
+        not collected. The profile ID lets the project owner join gameplay events to that profile's
+        backup and display name. Analytics uses a separate anonymous installation identifier.
+        Session events also include broad device type and family, operating system, and browser; an
+        exact device model is included only when the browser provides it. A full browser user-agent
+        string is not sent. Analytics does not include biographies, conversation text, or location.
+        Events can include the app version, build number and distribution channel, such as
+        TestFlight, an app store, or a browser. With usage measurement on, Google Play installs can
+        also report the install source and campaign labels, and whether a referrer contained an ad
+        click ID. Raw click IDs are not uploaded. Georgi Kolev uses this data to understand gameplay
+        and measure how people find the game. Supabase hosts the event data. Guest events have no
+        profile ID and are grouped by the anonymous installation identifier. Guest history is not
+        retroactively merged into a newly created profile. Activity groups describe records, not a
+        verified count of unique people. Deleting a profile also removes its linked backup and
+        analytics rows. Other analytics rows remain until removed by the project owner or in
+        response to a deletion request. For access or deletion requests, email
         <a href="mailto:kolequant@gmail.com">kolequant@gmail.com</a>.
       </p>
       <h2>Optional account sign-in</h2>

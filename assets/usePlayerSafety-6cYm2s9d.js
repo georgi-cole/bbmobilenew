@@ -1,0 +1,1 @@
+import{o as e}from"./jsx-runtime-DVpe7PXp.js";import{t}from"./react-DwCLAt2P.js";import{l as n,s as r}from"./playerSafety-hHF5I0VQ.js";var i=e(t(),1);function a(){return(0,i.useSyncExternalStore)(n,r,()=>null)}export{a as t};
